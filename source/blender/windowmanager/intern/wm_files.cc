@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -288,7 +289,7 @@ static void wm_window_match_keep_current_wm(const bContext *C,
   bScreen *screen = nullptr;
 
   /* match oldwm to new dbase, only old files */
-  wm->initialized &= ~WM_WINDOW_IS_INIT;
+  wm->init_flag &= ~WM_INIT_FLAG_WINDOW;
 
   /* when loading without UI, no matching needed */
   if (load_ui && (screen = CTX_wm_screen(C))) {
@@ -383,7 +384,7 @@ static void wm_window_match_replace_by_file_wm(bContext *C,
   oldwm->userconf = nullptr;
 
   /* ensure making new keymaps and set space types */
-  wm->initialized = 0;
+  wm->init_flag = 0;
   wm->winactive = nullptr;
 
   /* Clearing drawable of before deleting any context
@@ -1669,7 +1670,7 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
   int win_size[2];
   /* NOTE: always read from front-buffer as drawing a window can cause problems while saving,
    * even if this means the thumbnail from the screen-shot fails to be created, see: #98462. */
-  uint *buffer = WM_window_pixels_read_from_frontbuffer(wm, win, win_size);
+  uint8_t *buffer = WM_window_pixels_read_from_frontbuffer(wm, win, win_size);
   ImBuf *ibuf = IMB_allocFromBufferOwn(buffer, nullptr, win_size[0], win_size[1], 24);
 
   if (ibuf) {
@@ -2136,15 +2137,15 @@ void wm_autosave_delete(void)
   wm_autosave_location(filepath);
 
   if (BLI_exists(filepath)) {
-    char str[FILE_MAX];
-    BLI_path_join(str, sizeof(str), BKE_tempdir_base(), BLENDER_QUIT_FILE);
+    char filepath_quit[FILE_MAX];
+    BLI_path_join(filepath_quit, sizeof(filepath_quit), BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
     /* For global undo; remove temporarily saved file, otherwise rename. */
     if (U.uiflag & USER_GLOBALUNDO) {
       BLI_delete(filepath, false, false);
     }
     else {
-      BLI_rename(filepath, str);
+      BLI_rename_overwrite(filepath, filepath_quit);
     }
   }
 }
@@ -2797,6 +2798,7 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   bool success;
 
   RNA_string_get(op->ptr, "filepath", filepath);
+  BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   /* re-use last loaded setting so we can reload a file without changing */
   wm_open_init_load_ui(op, false);
@@ -3101,6 +3103,7 @@ static int wm_recover_auto_save_exec(bContext *C, wmOperator *op)
   bool success;
 
   RNA_string_get(op->ptr, "filepath", filepath);
+  BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   wm_open_init_use_scripts(op, true);
   SET_FLAG_FROM_TEST(G.f, RNA_boolean_get(op->ptr, "use_scripts"), G_FLAG_SCRIPT_AUTOEXEC);
@@ -3242,6 +3245,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
   const bool is_filepath_set = RNA_struct_property_is_set(op->ptr, "filepath");
   if (is_filepath_set) {
     RNA_string_get(op->ptr, "filepath", filepath);
+    BLI_path_canonicalize_native(filepath, sizeof(filepath));
   }
   else {
     STRNCPY(filepath, BKE_main_blendfile_path(bmain));
@@ -3251,19 +3255,6 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports,
                RPT_ERROR,
                "Unable to save an unsaved file with an empty or unset \"filepath\" property");
-    return OPERATOR_CANCELLED;
-  }
-
-  /* NOTE(@ideasman42): only check this for file-path properties so saving an already
-   * saved file never fails with an error.
-   * Even though this should never happen, there may be some corner case where a malformed
-   * path is stored in `G.main->filepath`: when the file path is initialized from recovering
-   * a blend file - for example, so in this case failing to save isn't ideal. */
-  if (is_filepath_set && !BLI_path_is_abs_from_cwd(filepath)) {
-    BKE_reportf(op->reports,
-                RPT_ERROR,
-                "The \"filepath\" property was not an absolute path: \"%s\"",
-                filepath);
     return OPERATOR_CANCELLED;
   }
 

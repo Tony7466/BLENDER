@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -15,7 +17,7 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 struct bNode;
 struct bNodeSocket;
@@ -96,7 +98,8 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    */
   NodeIDVectorSet nodes_by_id;
 
-  /** Execution data.
+  /**
+   * Execution data.
    *
    * XXX It would be preferable to completely move this data out of the underlying node tree,
    * so node tree execution could finally run independent of the tree itself.

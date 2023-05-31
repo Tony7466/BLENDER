@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -78,7 +79,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_node.h" /* for tree type defines */
+#include "BKE_node.hh" /* for tree type defines */
 #include "BKE_object.h"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
@@ -285,7 +286,7 @@ static void *oldnewmap_lookup_and_inc(OldNewMap *onm, const void *addr, bool inc
 }
 
 /* for libdata, NewAddress.nr has ID code, no increment */
-static void *oldnewmap_liblookup(OldNewMap *onm, const void *addr, const void *lib)
+static void *oldnewmap_liblookup(OldNewMap *onm, const void *addr, const bool is_linked_only)
 {
   if (addr == nullptr) {
     return nullptr;
@@ -295,7 +296,7 @@ static void *oldnewmap_liblookup(OldNewMap *onm, const void *addr, const void *l
   if (id == nullptr) {
     return nullptr;
   }
-  if (!lib || id->lib) {
+  if (!is_linked_only || ID_IS_LINKED(id)) {
     return id;
   }
   return nullptr;
@@ -1386,14 +1387,20 @@ static void *newpackedadr(FileData *fd, const void *adr)
 }
 
 /* only lib data */
-static void *newlibadr(FileData *fd, const void *lib, const void *adr)
+static void *newlibadr(FileData *fd,
+                       ID * /* self_id */,
+                       const bool is_linked_only,
+                       const void *adr)
 {
-  return oldnewmap_liblookup(fd->libmap, adr, lib);
+  return oldnewmap_liblookup(fd->libmap, adr, is_linked_only);
 }
 
-void *blo_do_versions_newlibadr(FileData *fd, const void *lib, const void *adr)
+void *blo_do_versions_newlibadr(FileData *fd,
+                                ID *self_id,
+                                const bool is_linked_only,
+                                const void *adr)
 {
-  return newlibadr(fd, lib, adr);
+  return newlibadr(fd, self_id, is_linked_only, adr);
 }
 
 /* increases user number */
@@ -1844,7 +1851,7 @@ static void lib_link_id_embedded_id(BlendLibReader *reader, ID *id)
   bNodeTree *nodetree = ntreeFromID(id);
   if (nodetree != nullptr) {
     lib_link_id(reader, &nodetree->id);
-    ntreeBlendReadLib(reader, nodetree);
+    blender::bke::ntreeBlendReadLib(reader, nodetree);
   }
 
   if (GS(id->name) == ID_SCE) {
@@ -1860,7 +1867,7 @@ static void lib_link_id(BlendLibReader *reader, ID *id)
 {
   /* NOTE: WM IDProperties are never written to file, hence they should always be nullptr here. */
   BLI_assert((GS(id->name) != ID_WM) || id->properties == nullptr);
-  IDP_BlendReadLib(reader, id->lib, id->properties);
+  IDP_BlendReadLib(reader, id, id->properties);
 
   AnimData *adt = BKE_animdata_from_id(id);
   if (adt != nullptr) {
@@ -1868,9 +1875,9 @@ static void lib_link_id(BlendLibReader *reader, ID *id)
   }
 
   if (id->override_library) {
-    BLO_read_id_address(reader, id->lib, &id->override_library->reference);
-    BLO_read_id_address(reader, id->lib, &id->override_library->storage);
-    BLO_read_id_address(reader, id->lib, &id->override_library->hierarchy_root);
+    BLO_read_id_address(reader, id, &id->override_library->reference);
+    BLO_read_id_address(reader, id, &id->override_library->storage);
+    BLO_read_id_address(reader, id, &id->override_library->hierarchy_root);
   }
 
   lib_link_id_embedded_id(reader, id);
@@ -1915,7 +1922,7 @@ static void direct_link_id_embedded_id(BlendDataReader *reader,
                           (ID *)*nodetree,
                           id_old != nullptr ? (ID *)ntreeFromID(id_old) : nullptr,
                           0);
-    ntreeBlendReadData(reader, id, *nodetree);
+    blender::bke::ntreeBlendReadData(reader, id, *nodetree);
   }
 
   if (GS(id->name) == ID_SCE) {
@@ -2668,6 +2675,16 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
 {
   Main *newmain;
 
+  /* Make sure we have full path in lib->filepath_abs */
+  /* NOTE: Since existing libraries are searched by their absolute path, this has to be generated
+   * before the lookup below. Otherwise, in case the stored absolute filepath is not 'correct' (may
+   * be empty, or have been stored in a different 'relative path context'), the comparison below
+   * will always fail, leading to creating duplicates IDs of a same library. */
+  /* TODO: May be worth checking whether comparison below could use `lib->filepath` instead? */
+  STRNCPY(lib->filepath_abs, lib->filepath);
+  BLI_path_abs(lib->filepath_abs, fd->relabase);
+  BLI_path_normalize(lib->filepath_abs);
+
   /* check if the library was already read */
   for (newmain = static_cast<Main *>(fd->mainlist->first); newmain; newmain = newmain->next) {
     if (newmain->curlib) {
@@ -2697,11 +2714,6 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
       }
     }
   }
-
-  /* Make sure we have full path in lib->filepath_abs */
-  STRNCPY(lib->filepath_abs, lib->filepath);
-  BLI_path_abs(lib->filepath_abs, fd->relabase);
-  BLI_path_normalize(lib->filepath_abs);
 
   //  printf("direct_link_library: filepath %s\n", lib->filepath);
   //  printf("direct_link_library: filepath_abs %s\n", lib->filepath_abs);
@@ -2891,6 +2903,8 @@ static const char *dataname(short id_code)
       return "Data from VO";
     case ID_SIM:
       return "Data from SIM";
+    case ID_GP:
+      return "Data from GP";
   }
   return "Data from Lib Block";
 }
@@ -3444,8 +3458,8 @@ static void link_global(FileData *fd, BlendFileData *bfd)
 {
   bfd->cur_view_layer = static_cast<ViewLayer *>(
       blo_read_get_new_globaldata_address(fd, bfd->cur_view_layer));
-  bfd->curscreen = static_cast<bScreen *>(newlibadr(fd, nullptr, bfd->curscreen));
-  bfd->curscene = static_cast<Scene *>(newlibadr(fd, nullptr, bfd->curscene));
+  bfd->curscreen = static_cast<bScreen *>(newlibadr(fd, nullptr, false, bfd->curscreen));
+  bfd->curscene = static_cast<Scene *>(newlibadr(fd, nullptr, false, bfd->curscene));
   /* this happens in files older than 2.35 */
   if (bfd->curscene == nullptr) {
     if (bfd->curscreen) {
@@ -3565,6 +3579,9 @@ static void do_versions_after_linking(FileData *fd, Main *main)
   }
   if (!main->is_read_invalid) {
     do_versions_after_linking_300(fd, main);
+  }
+  if (!main->is_read_invalid) {
+    do_versions_after_linking_400(fd, main);
   }
   if (!main->is_read_invalid) {
     do_versions_after_linking_cycles(main);
@@ -3950,11 +3967,15 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
     /* After all data has been read and versioned, uses LIB_TAG_NEW. Theoretically this should
      * not be calculated in the undo case, but it is currently needed even on undo to recalculate
      * a cache. */
-    ntreeUpdateAllNew(bfd->main);
+    blender::bke::ntreeUpdateAllNew(bfd->main);
 
     placeholders_ensure_valid(bfd->main);
 
     BKE_main_id_tag_all(bfd->main, LIB_TAG_NEW, false);
+
+    /* Must happen before applying liboverrides, as this process may fully invalidate e.g. view
+     * layer pointers in case a Scene is a liboverride. */
+    link_global(fd, bfd);
 
     /* Now that all our data-blocks are loaded,
      * we can re-generate overrides from their references. */
@@ -3962,8 +3983,19 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
       /* Do not apply in undo case! */
       fd->reports->duration.lib_overrides = PIL_check_seconds_timer();
 
+      std::string cur_view_layer_name = bfd->cur_view_layer != nullptr ?
+                                            bfd->cur_view_layer->name :
+                                            "";
+
       BKE_lib_override_library_main_validate(bfd->main, fd->reports->reports);
       BKE_lib_override_library_main_update(bfd->main);
+
+      /* In case the current scene is a liboverride, while the ID pointer itself remains valid,
+       * above update of liboverrides will have completely invalidated its old content, so the
+       * current view-layer needs to be searched for again. */
+      if (bfd->cur_view_layer != nullptr) {
+        bfd->cur_view_layer = BKE_view_layer_find(bfd->curscene, cur_view_layer_name.c_str());
+      }
 
       /* FIXME Temporary 'fix' to a problem in how temp ID are copied in
        * `BKE_lib_override_library_main_update`, see #103062.
@@ -3978,8 +4010,6 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
 
     /* Make all relative paths, relative to the open blend file. */
     fix_relpaths_library(fd->relabase, bfd->main);
-
-    link_global(fd, bfd); /* as last */
   }
 
   fd->mainlist = nullptr; /* Safety, this is local variable, shall not be used afterward. */
@@ -4287,7 +4317,7 @@ static void expand_id_embedded_id(BlendExpander *expander, ID *id)
   bNodeTree *nodetree = ntreeFromID(id);
   if (nodetree != nullptr) {
     expand_id(expander, &nodetree->id);
-    ntreeBlendReadExpand(expander, nodetree);
+    blender::bke::ntreeBlendReadExpand(expander, nodetree);
   }
 
   if (GS(id->name) == ID_SCE) {
@@ -4606,7 +4636,7 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
   BKE_main_id_refcount_recompute(mainvar, false);
 
   /* After all data has been read and versioned, uses LIB_TAG_NEW. */
-  ntreeUpdateAllNew(mainvar);
+  blender::bke::ntreeUpdateAllNew(mainvar);
 
   placeholders_ensure_valid(mainvar);
 
@@ -4996,9 +5026,12 @@ void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_a
   return newpackedadr(reader->fd, old_address);
 }
 
-ID *BLO_read_get_new_id_address(BlendLibReader *reader, Library *lib, ID *id)
+ID *BLO_read_get_new_id_address(BlendLibReader *reader,
+                                ID *self_id,
+                                const bool is_linked_only,
+                                ID *id)
 {
-  return static_cast<ID *>(newlibadr(reader->fd, lib, id));
+  return static_cast<ID *>(newlibadr(reader->fd, self_id, is_linked_only, id));
 }
 
 int BLO_read_fileversion_get(BlendDataReader *reader)

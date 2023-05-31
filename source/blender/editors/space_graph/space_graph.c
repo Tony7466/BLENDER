@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spgraph
@@ -848,8 +849,8 @@ static void graph_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, Sp
   bDopeSheet *ads = sipo->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id->lib, &ads->source);
-    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id, &ads->source);
+    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
   }
 }
 

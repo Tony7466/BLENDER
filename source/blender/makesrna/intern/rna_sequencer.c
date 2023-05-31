@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -329,7 +331,7 @@ static void rna_Sequence_retiming_handle_remove(ID *id, SeqRetimingHandle *handl
     return;
   }
 
-  SEQ_retiming_remove_handle(seq, handle);
+  SEQ_retiming_remove_handle(scene, seq, handle);
 
   SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);

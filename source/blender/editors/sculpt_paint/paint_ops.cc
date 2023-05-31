@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -472,7 +474,7 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
 
   ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
-  if (ibuf && ibuf->rect) {
+  if (ibuf && ibuf->byte_buffer.data) {
     /* Extract all colors. */
     const int range = int(pow(10.0f, threshold));
     for (int row = 0; row < ibuf->y; row++) {

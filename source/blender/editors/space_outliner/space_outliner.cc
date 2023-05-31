@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -479,9 +480,7 @@ static void outliner_space_blend_read_data(BlendDataReader *reader, SpaceLink *s
   space_outliner->runtime = nullptr;
 }
 
-static void outliner_space_blend_read_lib(BlendLibReader *reader,
-                                          ID * /*parent_id*/,
-                                          SpaceLink *sl)
+static void outliner_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
 
@@ -492,7 +491,7 @@ static void outliner_space_blend_read_lib(BlendLibReader *reader,
     BLI_mempool_iternew(space_outliner->treestore, &iter);
     while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
       if (TSE_IS_REAL_ID(tselem)) {
-        BLO_read_id_address(reader, nullptr, &tselem->id);
+        BLO_read_id_address(reader, parent_id, &tselem->id);
       }
       else {
         tselem->id = nullptr;

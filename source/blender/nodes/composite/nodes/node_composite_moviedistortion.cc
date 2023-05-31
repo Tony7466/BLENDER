@@ -1,11 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
  */
-
-#include "BLT_translation.h"
 
 #include "BLI_string_utf8.h"
 
@@ -26,8 +25,8 @@ namespace blender::nodes::node_composite_moviedistortion_cc {
 
 static void cmp_node_moviedistortion_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Image")).default_value({0.8f, 0.8f, 0.8f, 1.0f});
-  b.add_output<decl::Color>(N_("Image"));
+  b.add_input<decl::Color>("Image").default_value({0.8f, 0.8f, 0.8f, 1.0f});
+  b.add_output<decl::Color>("Image");
 }
 
 static void label(const bNodeTree * /*ntree*/, const bNode *node, char *label, int label_maxncpy)

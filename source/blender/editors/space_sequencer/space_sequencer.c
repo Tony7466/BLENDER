@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spseq
@@ -987,7 +988,7 @@ static void sequencer_space_blend_read_lib(BlendLibReader *reader, ID *parent_id
   /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
    * so fingers crossed this works fine!
    */
-  BLO_read_id_address(reader, parent_id->lib, &sseq->gpd);
+  BLO_read_id_address(reader, parent_id, &sseq->gpd);
 }
 
 static void sequencer_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -1048,7 +1049,7 @@ void ED_spacetype_sequencer(void)
                     ED_KEYMAP_GPENCIL;
   BLI_addhead(&st->regiontypes, art);
 
-  /* Listview/buttons. */
+  /* List-view/buttons. */
   art = MEM_callocN(sizeof(ARegionType), "spacetype sequencer region");
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = UI_SIDEBAR_PANEL_WIDTH * 1.3f;

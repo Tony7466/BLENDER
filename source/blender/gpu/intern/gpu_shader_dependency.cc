@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -111,6 +112,8 @@ struct GPUSource {
         string_preprocess();
       }
       if ((source.find("drw_debug_") != StringRef::not_found) &&
+          /* Avoid this file as it is a false positive match (matches "drw_debug_print_buf"). */
+          filename != "draw_debug_print_display_vert.glsl" &&
           /* Avoid these two files where it makes no sense to add the dependency. */
           !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl"))
       {

@@ -26,31 +26,36 @@ class ParallelEdgeGroupFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
-    const Span<MLoop> loops = mesh.loops();
-    const Span<MPoly> polys = mesh.polys();
-    DisjointSet<int> parallels(mesh.totedge);
+    DisjointSet<int> parallel_edges(mesh.totedge);
 
-    for (const MPoly poly : polys) {
-      if (!(poly.totloop % 2)) {
-        const int half = poly.totloop / 2;
-        const Span<MLoop> face_loops = loops.slice(poly.loopstart, poly.totloop);
-        for (const int i : IndexRange(half)) {
-          const MLoop parallel_loop_a = face_loops[i];
-          const MLoop parallel_loop_b = face_loops[i + half];
-          parallels.join(parallel_loop_a.e, parallel_loop_b.e);
-        }
+    const Span<int> corner_edges = mesh.corner_edges();
+    const blender::OffsetIndices<int> polys = mesh.polys();
+    for (const int poly_index : IndexRange(mesh.totpoly)) {
+      const IndexRange poly_range = polys[poly_index];
+      if (poly_range.size() % 2) {
+        continue;
+      }
+      /* Split corners of polygon to semicircle segments. */
+      const int semicircle_size = poly_range.size() / 2;
+      const Span<int> north_corners = corner_edges.slice(poly_range).take_front(semicircle_size);
+      const Span<int> south_corners = corner_edges.slice(poly_range).take_back(semicircle_size);
+      for (const int index : IndexRange(semicircle_size)) {
+        const int north_edge = north_corners[index];
+        const int south_edge = south_corners[index];
+        parallel_edges.join(north_edge, south_edge);
       }
     }
 
-    const IndexMask edge_mask = domain == ATTR_DOMAIN_EDGE ? mask : IndexMask(mesh.totedge);
+    const IndexMask edge_mask = IndexMask(mesh.totedge);
+    const IndexMask &mask_to_result = domain == ATTR_DOMAIN_EDGE ? mask : edge_mask;
     Array<int> edge_group(mesh.totedge);
-    VectorSet<int> ordered_roots;
-    for (const int i : edge_mask) {
-      const int root = parallels.find_root(i);
-      edge_group[i] = ordered_roots.index_of_or_add(root);
-    }
+    VectorSet<int> ordered_rings_roots;
+    mask_to_result.foreach_index_optimized<int>([&](const int edge_index) {
+      const int root = parallel_edges.find_root(edge_index);
+      edge_group[edge_index] = ordered_rings_roots.index_of_or_add(root);
+    });
 
     return mesh.attributes().adapt_domain<int>(
         VArray<int>::ForContainer(std::move(edge_group)), ATTR_DOMAIN_EDGE, domain);
