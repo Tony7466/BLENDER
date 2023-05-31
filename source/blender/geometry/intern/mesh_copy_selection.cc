@@ -144,10 +144,10 @@ static IndexMask poly_selection_from_mapped_corner(const OffsetIndices<int> poly
 /** A face is selected if all of its vertices are selected. */
 static IndexMask poly_selection_from_vert(const OffsetIndices<int> polys,
                                           const Span<int> corner_verts,
-                                          const Span<bool> vert_mask,
+                                          const Span<bool> vert_selection,
                                           IndexMaskMemory &memory)
 {
-  return poly_selection_from_mapped_corner(polys, corner_verts, vert_mask, memory);
+  return poly_selection_from_mapped_corner(polys, corner_verts, vert_selection, memory);
 }
 
 /** A face is selected if all of its edges are selected. */
