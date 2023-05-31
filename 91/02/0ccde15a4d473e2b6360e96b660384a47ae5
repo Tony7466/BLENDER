@@ -1,2 +1,3 @@
 Referenced by issue #107381, Regression: Geometry Nodes: Fill Volume input disappeared from the Mesh to Volume node
 Referenced by issue #108034, Multires - Crash with Simple subdivision
+Referenced by commit f78d1fd1146f6b460a7fe6964eaff086e34da862, Fix memory leak during uv packing
