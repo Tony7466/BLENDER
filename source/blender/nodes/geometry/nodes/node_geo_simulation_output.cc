@@ -151,7 +151,8 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
     geometry.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH,
                                       GEO_COMPONENT_TYPE_CURVE,
                                       GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                      GEO_COMPONENT_TYPE_INSTANCES});
+                                      GEO_COMPONENT_TYPE_INSTANCES,
+                                      GEO_COMPONENT_TYPE_VOLUME});
   });
 }
 
@@ -263,7 +264,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
       GeometryComponent &component = geometry->get_component_for_write(type);
       MutableAttributeAccessor attributes = *component.attributes_for_write();
       for (const MapItem<std::string, AnonymousAttributeIDPtr> &attribute_item :
-           attribute_map.items()) {
+           attribute_map.items())
+      {
         attributes.rename(attribute_item.key, *attribute_item.value);
       }
     }

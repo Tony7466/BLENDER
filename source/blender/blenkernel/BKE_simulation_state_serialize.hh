@@ -158,6 +158,7 @@ std::string get_default_modifier_bake_directory(const Main &bmain,
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
                                          BDataSharing &bdata_sharing,
+                                         StringRef vdb_path,
                                          DictionaryValue &r_io_root);
 /**
  * Fill the simulation state by parsing the provided #DictionaryValue which also contains

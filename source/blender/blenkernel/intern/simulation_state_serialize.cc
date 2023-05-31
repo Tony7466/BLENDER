@@ -3,16 +3,19 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
+#include "BKE_global.h"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_simulation_state_serialize.hh"
+#include "BKE_volume.h"
 
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_volume_types.h"
 
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
@@ -22,6 +25,11 @@
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
+
+#ifdef WITH_OPENVDB
+#  include <openvdb/io/Stream.h>
+#  include <openvdb/openvdb.h>
+#endif
 
 namespace blender::bke::sim {
 
@@ -502,6 +510,30 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
   return mesh;
 }
 
+static Volume *try_load_volume(const DictionaryValue &io_geometry)
+{
+  const DictionaryValue *io_volume = io_geometry.lookup_dict("volume");
+  if (!io_volume) {
+    return nullptr;
+  }
+  const std::optional<StringRefNull> vdb_path = io_volume->lookup_str("vdb_path");
+  if (!vdb_path) {
+    return nullptr;
+  }
+  Volume *volume = static_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
+  STRNCPY(volume->filepath, vdb_path.value().c_str());
+
+  auto cancel = [&]() {
+    BKE_id_free(nullptr, volume);
+    return nullptr;
+  };
+
+  if (!BKE_volume_load(volume, G.main)) {
+    return cancel();
+  }
+  return volume;
+}
+
 static GeometrySet load_geometry(const DictionaryValue &io_geometry,
                                  const BDataReader &bdata_reader,
                                  const BDataSharing &bdata_sharing);
@@ -571,6 +603,7 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
   geometry.replace_mesh(try_load_mesh(io_geometry, bdata_reader, bdata_sharing));
   geometry.replace_pointcloud(try_load_pointcloud(io_geometry, bdata_reader, bdata_sharing));
   geometry.replace_curves(try_load_curves(io_geometry, bdata_reader, bdata_sharing));
+  geometry.replace_volume(try_load_volume(io_geometry));
   geometry.replace_instances(
       try_load_instances(io_geometry, bdata_reader, bdata_sharing).release());
   return geometry;
@@ -634,7 +667,8 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
 
 static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet &geometry,
                                                                BDataWriter &bdata_writer,
-                                                               BDataSharing &bdata_sharing)
+                                                               BDataSharing &bdata_sharing,
+                                                               StringRef vdb_path)
 {
   auto io_geometry = std::make_shared<DictionaryValue>();
   if (geometry.has_mesh()) {
@@ -698,6 +732,25 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
         curves.attributes(), bdata_writer, bdata_sharing, {});
     io_curves->append("attributes", io_attributes);
   }
+#ifdef WITH_OPENVDB
+  if (geometry.has_volume()) {
+    const Volume &volume = *geometry.get_volume_for_read();
+    openvdb::GridCPtrVec grids;
+
+    for (const int i : IndexRange(BKE_volume_num_grids(&volume))) {
+      const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(&volume, i);
+      openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(&volume, volume_grid);
+      grids.push_back(grid);
+    }
+
+    BLI_file_ensure_parent_dir_exists(vdb_path.data());
+    std::ofstream ofile(vdb_path, std::ios_base::binary);
+    openvdb::io::Stream(ofile).write(grids);
+
+    auto io_volume = io_geometry->append_dict("volume");
+    io_volume->append_str("vdb_path", vdb_path);
+  }
+#endif
   if (geometry.has_instances()) {
     const bke::Instances &instances = *geometry.get_instances_for_read();
     auto io_instances = io_geometry->append_dict("instances");
@@ -708,7 +761,7 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
     for (const bke::InstanceReference &reference : instances.references()) {
       BLI_assert(reference.type() == bke::InstanceReference::Type::GeometrySet);
       io_references->append(
-          serialize_geometry_set(reference.geometry_set(), bdata_writer, bdata_sharing));
+          serialize_geometry_set(reference.geometry_set(), bdata_writer, bdata_sharing, nullptr));
     }
 
     io_instances->append("transforms",
@@ -788,6 +841,7 @@ static std::shared_ptr<io::serialize::Value> serialize_primitive_value(
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
                                          BDataSharing &bdata_sharing,
+                                         StringRef vdb_path,
                                          DictionaryValue &r_io_root)
 {
   r_io_root.append_int("version", 1);
@@ -819,7 +873,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
         io_state_item->append_str("type", "GEOMETRY");
 
         const GeometrySet &geometry = geometry_state_item->geometry;
-        auto io_geometry = serialize_geometry_set(geometry, bdata_writer, bdata_sharing);
+        auto io_geometry = serialize_geometry_set(geometry, bdata_writer, bdata_sharing, vdb_path);
         io_state_item->append("data", io_geometry);
       }
       else if (const AttributeSimulationStateItem *attribute_state_item =
@@ -1056,7 +1110,8 @@ void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
               io_string.value());
         }
         else if (const io::serialize::DictionaryValue *io_string =
-                     io_data->get()->as_dictionary_value()) {
+                     io_data->get()->as_dictionary_value())
+        {
           const std::optional<int64_t> size = io_string->lookup_int("size");
           if (!size) {
             continue;
