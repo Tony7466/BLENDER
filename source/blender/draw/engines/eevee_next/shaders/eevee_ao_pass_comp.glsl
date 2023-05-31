@@ -7,8 +7,7 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  // ivec2 extent = imageSize(in_normal_img);
-  ivec2 extent = imageSize(in_normal_img).xy;
+  ivec2 extent = imageSize(in_normal_img);
   if (any(greaterThanEqual(texel, extent))) {
     return;
   }
@@ -17,15 +16,14 @@ void main()
   vec3 vP, vNg;
   if (!reconstruct_view_position_and_normal_from_depth(hiz_tx, extent, uv, vP, vNg)) {
     /* Do not trace for background */
-    imageStore(out_ao_img, ivec3(texel, ao_index), vec4(0.0));
+    imageStore(out_ao_img, texel, vec4(0.0));
     return;
   }
 
   vec3 P = transform_point(ViewMatrixInverse, vP);
   vec3 V = cameraVec(P);
   vec3 Ng = transform_direction(ViewMatrixInverse, vNg);
-  // vec3 N = imageLoad(in_normal_img, texel).xyz;
-  vec3 N = imageLoad(in_normal_img, ivec3(texel, normal_index)).xyz;
+  vec3 N = imageLoad(in_normal_img, texel).xyz;
 
   // OcclusionData data = unpack_occlusion_data(texelFetch(horizons_tx, texel, 0));
   OcclusionData data = occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
@@ -37,6 +35,5 @@ void main()
   /* Scale by user factor */
   visibility = occlusion_pow(saturate(visibility), ao_buf.factor);
 
-  // imageStore(out_ao_img, texel, vec4(visibility));
-  imageStore(out_ao_img, ivec3(texel, ao_index), vec4(visibility));
+  imageStore(out_ao_img, texel, vec4(visibility));
 }

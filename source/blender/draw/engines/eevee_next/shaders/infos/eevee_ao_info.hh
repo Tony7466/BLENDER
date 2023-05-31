@@ -22,12 +22,6 @@ GPU_SHADER_CREATE_INFO(eevee_ao_pass)
     .additional_info("eevee_ao_data")
     .compute_source("eevee_ao_pass_comp.glsl")
     .local_group_size(AO_PASS_TILE_SIZE, AO_PASS_TILE_SIZE)
-    /*
     .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "in_normal_img")
     .image(1, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_ao_img")
-    */
-    .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D_ARRAY, "in_normal_img")
-    .push_constant(Type::INT, "normal_index")
-    .image(1, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D_ARRAY, "out_ao_img")
-    .push_constant(Type::INT, "ao_index")
     .do_static_compilation(true);
