@@ -1954,6 +1954,20 @@ bool UI_panel_list_matches_data(struct ARegion *region,
                                 struct ListBase *data,
                                 uiListPanelIDFromDataFunc panel_idname_func);
 
+typedef bool (*uiListPanelMatchesDataFunc)(void *data_link, const struct Panel *panel);
+/**
+ * Check if the instanced panels in the region's panels correspond to the list of data the panels
+ * represent. Returns false if the panels have been reordered or if the types from the list data
+ * don't match in any way.
+ *
+ * \param data: The list of data to check against the instanced panels.
+ * \param panel_idname_func: Function to find the #PanelType.idname for each item in the data list.
+ * For a readability and generality, this lookup happens separately for each type of panel list.
+ */
+bool UI_panel_list_matches_data_ex(struct ARegion *region,
+                                   struct ListBase *data,
+                                   uiListPanelMatchesDataFunc panel_matches_data_func);
+
 /* Handlers
  *
  * Handlers that can be registered in regions, areas and windows for
@@ -2149,6 +2163,9 @@ void UI_menutype_draw(struct bContext *C, struct MenuType *mt, struct uiLayout *
  * Used for popup panels only.
  */
 void UI_paneltype_draw(struct bContext *C, struct PanelType *pt, struct uiLayout *layout);
+void UI_paneltype_draw_with_header(struct bContext *C,
+                                   struct PanelType *pt,
+                                   struct uiLayout *layout);
 
 /* Only for convenience. */
 void uiLayoutSetContextFromBut(uiLayout *layout, uiBut *but);

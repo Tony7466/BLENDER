@@ -191,7 +191,8 @@ struct DisplaceGridOp {
   template<typename GridType> void operator()()
   {
     if constexpr (blender::
-                      is_same_any_v<GridType, openvdb::points::PointDataGrid, openvdb::MaskGrid>) {
+                      is_same_any_v<GridType, openvdb::points::PointDataGrid, openvdb::MaskGrid>)
+    {
       /* We don't support displacing these grid types yet. */
       return;
     }
@@ -339,6 +340,8 @@ ModifierTypeInfo modifierType_VolumeDisplace = {
     /*foreachTexLink*/ foreachTexLink,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

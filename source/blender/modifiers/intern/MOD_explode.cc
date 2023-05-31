@@ -1268,6 +1268,8 @@ ModifierTypeInfo modifierType_Explode = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ blendRead,
 };

@@ -19,6 +19,7 @@
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_search.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"
@@ -101,10 +102,6 @@ namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 
 namespace blender {
-
-// XXX This is nasty, but modifier (sub)panel types are not registered with WM_panel_type_add
-// Find better solution
-static PanelType *socket_category_panel_type = nullptr;
 
 static void initData(ModifierData *md)
 {
@@ -1846,33 +1843,6 @@ static void draw_property_for_output_socket(const bContext &C,
   add_attribute_search_button(C, row, nmd, md_ptr, rna_path_attribute_name, socket, true);
 }
 
-static void subpanel_draw(const bContext *C, uiLayout *layout)
-{
-  //    char pt_idname[BKE_ST_MAXNAME];
-  //    SNPRINTF(pt_idname, "%s_%s", panel->type->idname, "socket_category");
-  //    PanelType *pt = WM_paneltype_find(pt_idname, true);
-  PanelType *pt = socket_category_panel_type;
-  if (pt == nullptr) {
-    // TODO error message
-    return;
-  }
-
-  //    if (pt->poll && (pt->poll(C, pt) == false)) {
-  //      return;
-  //    }
-
-  if (pt->draw_header && !(pt->flag & PANEL_TYPE_NO_HEADER)) {
-    uiLayout *row = uiLayoutRow(layout, true);
-    Panel subpanel{};
-    subpanel.type = pt;
-    subpanel.layout = row;
-    subpanel.flag = 0;
-    pt->draw_header(C, &subpanel);
-  }
-
-  UI_paneltype_draw(const_cast<bContext *>(C), pt, layout);
-}
-
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -1919,9 +1889,6 @@ static void panel_draw(const bContext *C, Panel *panel)
       }
     }
   }
-
-  subpanel_draw(C, layout);
-  subpanel_draw(C, layout);
 
   modifier_panel_end(layout, ptr);
 }
@@ -2023,20 +1990,31 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
-static bool socket_category_panel_poll(const bContext * /*C*/, PanelType *panel_type)
+static bool socket_category_panel_poll(const bContext *C, PanelType * /*panel_type*/)
 {
   /* Always hidden, panel is drawn explicitly. */
-  return false;
+  //  return false;
+
+  Object *ob = ED_object_active_context(C);
+
+  return (ob != nullptr) && (ob->type != OB_GPENCIL_LEGACY);
 }
 
-static void socket_category_panel_draw_header(const bContext * /*C*/, Panel *panel)
+static void socket_category_panel_draw_header(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
   //  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   //  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
-  uiItemL(layout, "Hello!", ICON_NONE);
+  const PointerRNA socket_ptr = CTX_data_pointer_get(C, "socket_category");
+  const bNodeSocket *socket = static_cast<bNodeSocket *>(socket_ptr.data);
+  if (socket == nullptr) {
+    return;
+  }
+
+  std::string category = "Your category could be here! " + std::string(socket->name);
+  uiItemL(layout, category.c_str(), ICON_NONE);
 }
 
 static void socket_category_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -2046,33 +2024,106 @@ static void socket_category_panel_draw(const bContext * /*C*/, Panel *panel)
   //  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   //  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
-  uiItemL(layout, "World", ICON_NONE);
+  uiItemL(layout, "Hello World!", ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
 {
   using namespace blender;
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
-  modifier_subpanel_register(region_type,
-                             "output_attributes",
-                             N_("Output Attributes"),
-                             nullptr,
-                             output_attribute_panel_draw,
-                             panel_type);
-  modifier_subpanel_register(region_type,
-                             "internal_dependencies",
-                             N_("Internal Dependencies"),
-                             nullptr,
-                             internal_dependencies_panel_draw,
-                             panel_type);
-  socket_category_panel_type = modifier_subpanel_register_ex(region_type,
-                                                             "socket_category",
-                                                             N_("Socket Category"),
-                                                             socket_category_panel_poll,
-                                                             socket_category_panel_draw_header,
-                                                             socket_category_panel_draw,
-                                                             panel_type,
-                                                             0);
+  modifier_subpanel_register_ex(region_type,
+                                "socket_category",
+                                N_("Socket Category"),
+                                socket_category_panel_poll,
+                                socket_category_panel_draw_header,
+                                socket_category_panel_draw,
+                                panel_type,
+                                PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED);
+  modifier_subpanel_register_ex(region_type,
+                                "output_attributes",
+                                N_("Output Attributes"),
+                                nullptr,
+                                nullptr,
+                                output_attribute_panel_draw,
+                                panel_type,
+                                PANEL_TYPE_INSTANCED);
+  modifier_subpanel_register_ex(region_type,
+                                "internal_dependencies",
+                                N_("Internal Dependencies"),
+                                nullptr,
+                                nullptr,
+                                internal_dependencies_panel_draw,
+                                panel_type,
+                                PANEL_TYPE_INSTANCED);
+}
+
+static void addChildPanelInstances(ModifierData *md,
+                                   bContext *C,
+                                   ARegion *region,
+                                   const char *parent_idname,
+                                   ListBase *child_panels,
+                                   PointerRNA *custom_data)
+{
+  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+
+  if (nmd->node_group == nullptr) {
+    return;
+  }
+
+  char socket_category_panel_idname[MAX_NAME];
+  char output_attributes_panel_idname[MAX_NAME];
+  char internal_dependencies_panel_idname[MAX_NAME];
+  BLI_string_join(socket_category_panel_idname,
+                  sizeof(socket_category_panel_idname),
+                  parent_idname,
+                  "_socket_category");
+  BLI_string_join(output_attributes_panel_idname,
+                  sizeof(output_attributes_panel_idname),
+                  parent_idname,
+                  "_output_attributes");
+  BLI_string_join(internal_dependencies_panel_idname,
+                  sizeof(internal_dependencies_panel_idname),
+                  parent_idname,
+                  "_internal_dependencies");
+
+  LISTBASE_FOREACH (bNodeSocket *, socket, &nmd->node_group->inputs) {
+    if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
+      continue;
+    }
+
+    UI_panel_add_instanced(C, region, child_panels, socket_category_panel_idname, custom_data);
+  }
+
+  UI_panel_add_instanced(C, region, child_panels, output_attributes_panel_idname, custom_data);
+  UI_panel_add_instanced(C, region, child_panels, internal_dependencies_panel_idname, custom_data);
+}
+
+static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
+{
+  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+
+  if (nmd->node_group == nullptr) {
+    return false;
+  }
+
+  char parent_idname[MAX_NAME];
+  BKE_modifier_type_panel_id(ModifierType(md->type), parent_idname);
+
+  const Panel *child_panel = static_cast<Panel *>(parent->children.first);
+  LISTBASE_FOREACH (bNodeSocket *, socket, &nmd->node_group->inputs) {
+    if (!(socket->flag & SOCK_HIDE_IN_MODIFIER) && (child_panel->flag & PANEL_TYPE_INSTANCED)) {
+      char child_panel_idname[MAX_NAME];
+      BLI_string_join(
+          child_panel_idname, sizeof(child_panel_idname), parent_idname, "_socket_category");
+
+      //      if (!STREQ(child_panel_idname, child_panel->type->idname)) {)
+      //      }
+
+      child_panel = child_panel->next;
+    }
+  }
+
+  return true;
 }
 
 static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -2088,8 +2139,9 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
     if (!BLO_write_is_undo(writer)) {
       /* Boolean properties are added automatically for boolean node group inputs. Integer
        * properties are automatically converted to boolean sockets where applicable as well.
-       * However, boolean properties will crash old versions of Blender, so convert them to integer
-       * properties for writing. The actual value is stored in the same variable for both types */
+       * However, boolean properties will crash old versions of Blender, so convert them to
+       * integer properties for writing. The actual value is stored in the same variable for both
+       * types */
       LISTBASE_FOREACH (IDProperty *, prop, &nmd->settings.properties->data.group) {
         if (prop->type == IDP_BOOLEAN) {
           boolean_props.add_new(prop, reinterpret_cast<IDPropertyUIDataBool *>(prop->ui_data));
@@ -2167,8 +2219,8 @@ static void freeData(ModifierData *md)
 
 static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks *r_cddata_masks)
 {
-  /* We don't know what the node tree will need. If there are vertex groups, it is likely that the
-   * node tree wants to access them. */
+  /* We don't know what the node tree will need. If there are vertex groups, it is likely that
+   * the node tree wants to access them. */
   r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   r_cddata_masks->vmask |= CD_MASK_PROP_ALL;
 }
@@ -2208,6 +2260,8 @@ ModifierTypeInfo modifierType_Nodes = {
     /*foreachTexLink*/ blender::foreachTexLink,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ blender::panelRegister,
+    /*addChildPanelInstances*/ blender::addChildPanelInstances,
+    /*childPanelInstancesMatchData*/ blender::childPanelInstancesMatchData,
     /*blendWrite*/ blender::blendWrite,
     /*blendRead*/ blender::blendRead,
 };

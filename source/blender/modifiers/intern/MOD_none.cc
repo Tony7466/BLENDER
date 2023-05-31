@@ -51,6 +51,8 @@ ModifierTypeInfo modifierType_None = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ nullptr,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

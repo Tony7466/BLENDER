@@ -262,6 +262,8 @@ ModifierTypeInfo modifierType_Mirror = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

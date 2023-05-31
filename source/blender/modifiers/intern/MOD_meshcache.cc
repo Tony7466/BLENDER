@@ -430,6 +430,8 @@ ModifierTypeInfo modifierType_MeshCache = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

@@ -445,6 +445,8 @@ ModifierTypeInfo modifierType_Bevel = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ nullptr,
     /*uiPanel*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ blendWrite,
     /*blendRead*/ blendRead,
 };

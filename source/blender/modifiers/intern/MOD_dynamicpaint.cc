@@ -219,6 +219,8 @@ ModifierTypeInfo modifierType_DynamicPaint = {
     /*foreachTexLink*/ foreachTexLink,
     /*freeRuntimeData*/ freeRuntimeData,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

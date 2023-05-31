@@ -502,6 +502,8 @@ ModifierTypeInfo modifierType_Displace = {
     /*foreachTexLink*/ foreachTexLink,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

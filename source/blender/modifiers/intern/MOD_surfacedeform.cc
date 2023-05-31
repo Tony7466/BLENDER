@@ -1774,6 +1774,8 @@ ModifierTypeInfo modifierType_SurfaceDeform = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ blendWrite,
     /*blendRead*/ blendRead,
 };

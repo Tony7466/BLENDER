@@ -28,8 +28,12 @@ struct Main;
 struct Mesh;
 struct ModifierData;
 struct Object;
+struct Panel;
+struct PointerRNA;
 struct Scene;
 struct bArmature;
+struct bContext;
+struct ARegion;
 
 typedef enum {
   /* Should not be used, only for None modifier type */
@@ -355,6 +359,16 @@ typedef struct ModifierTypeInfo {
 
   /** Register the panel types for the modifier's UI. */
   void (*panelRegister)(struct ARegionType *region_type);
+
+  /** Add instances of child panels. */
+  void (*addChildPanelInstances)(struct ModifierData *md,
+                                 struct bContext *C,
+                                 struct ARegion *region,
+                                 const char *parent_idname,
+                                 struct ListBase *child_panels,
+                                 struct PointerRNA *custom_data);
+  /** Test if child panels match expectation. */
+  bool (*childPanelInstancesMatchData)(struct ModifierData *md, const struct Panel *parent);
 
   /**
    * Is called when the modifier is written to a file. The modifier data struct itself is written

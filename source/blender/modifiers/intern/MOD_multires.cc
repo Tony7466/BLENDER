@@ -516,6 +516,8 @@ ModifierTypeInfo modifierType_Multires = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ freeRuntimeData,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

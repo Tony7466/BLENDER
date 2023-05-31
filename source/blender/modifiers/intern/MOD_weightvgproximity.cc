@@ -55,7 +55,7 @@
 #include "MOD_util.hh"
 #include "MOD_weightvg_util.hh"
 
-//#define USE_TIMEIT
+// #define USE_TIMEIT
 
 #ifdef USE_TIMEIT
 #  include "PIL_time.h"
@@ -378,7 +378,8 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
     DEG_add_object_relation(
         ctx->node, wmd->proximity_ob_target, DEG_OB_COMP_TRANSFORM, "WeightVGProximity Modifier");
     if (wmd->proximity_ob_target->data != nullptr &&
-        wmd->proximity_mode == MOD_WVG_PROXIMITY_GEOMETRY) {
+        wmd->proximity_mode == MOD_WVG_PROXIMITY_GEOMETRY)
+    {
       DEG_add_object_relation(
           ctx->node, wmd->proximity_ob_target, DEG_OB_COMP_GEOMETRY, "WeightVGProximity Modifier");
     }
@@ -764,6 +765,8 @@ ModifierTypeInfo modifierType_WeightVGProximity = {
     /*foreachTexLink*/ foreachTexLink,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ blendWrite,
     /*blendRead*/ blendRead,
 };

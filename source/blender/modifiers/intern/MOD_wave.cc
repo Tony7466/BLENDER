@@ -494,6 +494,8 @@ ModifierTypeInfo modifierType_Wave = {
     /*foreachTexLink*/ foreachTexLink,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ nullptr,
 };

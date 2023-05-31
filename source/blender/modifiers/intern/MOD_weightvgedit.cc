@@ -417,6 +417,8 @@ ModifierTypeInfo modifierType_WeightVGEdit = {
     /*foreachTexLink*/ foreachTexLink,
     /*freeRuntimeData*/ nullptr,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ blendWrite,
     /*blendRead*/ blendRead,
 };

@@ -2284,10 +2284,24 @@ void uiTemplatePathBuilder(uiLayout *layout,
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-static void modifier_panel_id(void *md_link, char *r_name)
+static bool modifier_panel_matches_data(void *md_link, const Panel *panel)
 {
   ModifierData *md = (ModifierData *)md_link;
-  BKE_modifier_type_panel_id(ModifierType(md->type), r_name);
+  const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
+
+  char mod_panel_idname[MAX_NAME];
+  BKE_modifier_type_panel_id(ModifierType(md->type), mod_panel_idname);
+  if (!STREQ(mod_panel_idname, panel->type->idname)) {
+    return false;
+  }
+
+  if (mti->childPanelInstancesMatchData != nullptr) {
+    if (!mti->childPanelInstancesMatchData(md, panel)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
@@ -2297,7 +2311,8 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
   Object *ob = ED_object_active_context(C);
   ListBase *modifiers = &ob->modifiers;
 
-  const bool panels_match = UI_panel_list_matches_data(region, modifiers, modifier_panel_id);
+  const bool panels_match = UI_panel_list_matches_data_ex(
+      region, modifiers, modifier_panel_matches_data);
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
@@ -2308,13 +2323,17 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
       }
 
       char panel_idname[MAX_NAME];
-      modifier_panel_id(md, panel_idname);
+      BKE_modifier_type_panel_id(ModifierType(md->type), panel_idname);
 
       /* Create custom data RNA pointer. */
       PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
       RNA_pointer_create(&ob->id, &RNA_Modifier, md, md_ptr);
 
-      UI_panel_add_instanced(C, region, &region->panels, panel_idname, md_ptr);
+      Panel *panel = UI_panel_add_instanced(C, region, &region->panels, panel_idname, md_ptr);
+
+      if (mti->addChildPanelInstances) {
+        mti->addChildPanelInstances(md, C, region, panel_idname, &panel->children, md_ptr);
+      }
     }
   }
   else {
@@ -2778,7 +2797,8 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
         (layout_flags & UI_TEMPLATE_OP_PROPS_COMPACT));
 
     if ((return_info & UI_PROP_BUTS_NONE_ADDED) &&
-        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY)) {
+        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY))
+    {
       uiItemL(layout, IFACE_("No Properties"), ICON_NONE);
     }
   }
@@ -2889,7 +2909,8 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
         continue;
       }
       if (op->type->poll_property &&
-          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data)) {
+          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data))
+      {
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
@@ -4803,7 +4824,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
                       TIP_("Auto Handle"));
     UI_but_func_set(bt, curvemap_tools_handle_auto, cumap, nullptr);
     if (((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
-        ((cmp->flag & CUMA_HANDLE_VECTOR) == false)) {
+        ((cmp->flag & CUMA_HANDLE_VECTOR) == false))
+    {
       bt->flag |= UI_SELECT_DRAW;
     }
 

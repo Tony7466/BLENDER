@@ -523,6 +523,8 @@ ModifierTypeInfo modifierType_Subsurf = {
     /*foreachTexLink*/ nullptr,
     /*freeRuntimeData*/ freeRuntimeData,
     /*panelRegister*/ panelRegister,
+    /*addChildPanelInstances*/ nullptr,
+    /*childPanelInstancesMatchData*/ nullptr,
     /*blendWrite*/ nullptr,
     /*blendRead*/ blendRead,
 };

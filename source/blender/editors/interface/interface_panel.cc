@@ -236,7 +236,10 @@ static Panel *panel_add_instanced(ARegion *region,
    * function to create them, as UI_panel_begin does other things we don't need to do. */
   LISTBASE_FOREACH (LinkData *, child, &panel_type->children) {
     PanelType *child_type = static_cast<PanelType *>(child->data);
-    panel_add_instanced(region, &panel->children, child_type, custom_data);
+    /* Child panels themselves can be instanced. */
+    if (!(child_type->flag & PANEL_TYPE_INSTANCED)) {
+      panel_add_instanced(region, &panel->children, child_type, custom_data);
+    }
   }
 
   /* Make sure the panel is added to the end of the display-order as well. This is needed for
@@ -364,6 +367,53 @@ bool UI_panel_list_matches_data(ARegion *region,
       char panel_idname[MAX_NAME];
       panel_idname_func(data_link, panel_idname);
       if (!STREQ(panel_idname, panel->type->idname)) {
+        return false;
+      }
+
+      data_link = data_link->next;
+      i++;
+    }
+  }
+
+  /* If we didn't make it to the last list item, the panel list isn't complete. */
+  if (i != data_len) {
+    return false;
+  }
+
+  return true;
+}
+
+bool UI_panel_list_matches_data_ex(ARegion *region,
+                                   ListBase *data,
+                                   uiListPanelMatchesDataFunc panel_matches_data_func)
+{
+  /* Check for nullptr data. */
+  int data_len = 0;
+  Link *data_link = nullptr;
+  if (data == nullptr) {
+    data_len = 0;
+    data_link = nullptr;
+  }
+  else {
+    data_len = BLI_listbase_count(data);
+    data_link = static_cast<Link *>(data->first);
+  }
+
+  int i = 0;
+  LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+    if (panel->type != nullptr && panel->type->flag & PANEL_TYPE_INSTANCED) {
+      /* The panels were reordered by drag and drop. */
+      if (panel->flag & PNL_INSTANCED_LIST_ORDER_CHANGED) {
+        return false;
+      }
+
+      /* We reached the last data item before the last instanced panel. */
+      if (data_link == nullptr) {
+        return false;
+      }
+
+      /* Check if the panel type matches the panel type from the data item. */
+      if (!panel_matches_data_func(data_link, panel)) {
         return false;
       }
 
@@ -628,7 +678,8 @@ static void panels_collapse_all(ARegion *region, const Panel *from_panel)
     if (pt && from_pt && !(pt->flag & PANEL_TYPE_NO_HEADER)) {
       if (!pt->context[0] || !from_pt->context[0] || STREQ(pt->context, from_pt->context)) {
         if ((panel->flag & PNL_PIN) || !category || !pt->category[0] ||
-            STREQ(pt->category, category)) {
+            STREQ(pt->category, category))
+        {
           panel->flag |= PNL_CLOSED;
         }
       }
@@ -2170,7 +2221,8 @@ static void ui_panel_category_active_set(ARegion *region, const char *idname, bo
     while ((pc_act = pc_act_next)) {
       pc_act_next = pc_act->next;
       if (!BLI_findstring(
-              &region->type->paneltypes, pc_act->idname, offsetof(PanelType, category))) {
+              &region->type->paneltypes, pc_act->idname, offsetof(PanelType, category)))
+      {
         BLI_remlink(lb, pc_act);
         MEM_freeN(pc_act);
       }
@@ -2363,7 +2415,8 @@ int ui_handler_panel_region(bContext *C,
       /* The panel collapse / expand key "A" is special as it takes priority over
        * active button handling. */
       if (event->type == EVT_AKEY &&
-          ((event->modifier & (KM_SHIFT | KM_CTRL | KM_ALT | KM_OSKEY)) == 0)) {
+          ((event->modifier & (KM_SHIFT | KM_CTRL | KM_ALT | KM_OSKEY)) == 0))
+      {
         retval = WM_UI_HANDLER_BREAK;
         ui_handle_panel_header(
             C, block, mx, event->type, event->modifier & KM_CTRL, event->modifier & KM_SHIFT);

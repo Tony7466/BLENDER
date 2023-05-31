@@ -1095,7 +1095,8 @@ static void region_azones_scrollbars_init(ScrArea *area, ARegion *region)
     region_azone_scrollbar_init(area, region, AZ_SCROLL_VERT);
   }
   if ((v2d->scroll & V2D_SCROLL_HORIZONTAL) &&
-      ((v2d->scroll & V2D_SCROLL_HORIZONTAL_HANDLES) == 0)) {
+      ((v2d->scroll & V2D_SCROLL_HORIZONTAL_HANDLES) == 0))
+  {
     region_azone_scrollbar_init(area, region, AZ_SCROLL_HOR);
   }
 }
@@ -2818,11 +2819,12 @@ static void ed_panel_draw(const bContext *C,
 
   /* Draw child panels. */
   if (open || search_filter_active) {
-    LISTBASE_FOREACH (LinkData *, link, &pt->children) {
-      PanelType *child_pt = static_cast<PanelType *>(link->data);
-      Panel *child_panel = UI_panel_find_by_type(&panel->children, child_pt);
+    LISTBASE_FOREACH (Panel *, child_panel, &panel->children) {
+      PanelType *child_pt = child_panel->type;
 
       if (child_pt->draw && (!child_pt->poll || child_pt->poll(C, child_pt))) {
+        char unique_child_panel_str[INSTANCED_PANEL_UNIQUE_STR_LEN];
+        UI_list_panel_unique_str(child_panel, unique_child_panel_str);
         ed_panel_draw(C,
                       region,
                       &panel->children,
@@ -2830,7 +2832,7 @@ static void ed_panel_draw(const bContext *C,
                       child_panel,
                       w,
                       em,
-                      unique_panel_str,
+                      unique_child_panel_str,
                       search_filter);
       }
     }
