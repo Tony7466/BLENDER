@@ -225,6 +225,39 @@ TEST(index_mask, FromPredicateFuzzy)
 
 TEST(index_mask, Complement)
 {
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask(0);
+    const IndexMask complement = mask.complement(IndexRange(100), memory);
+    EXPECT_EQ(100 - mask.size(), complement.size());
+    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
+  }
+  {
+    const IndexMask mask(10000);
+    const IndexMask complement = mask.complement(IndexRange(10000), memory);
+    EXPECT_EQ(10000 - mask.size(), complement.size());
+    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
+  }
+  {
+    const IndexMask mask(IndexRange(100, 900));
+    const IndexMask complement = mask.complement(IndexRange(1000), memory);
+    EXPECT_EQ(1000 - mask.size(), complement.size());
+    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
+  }
+  {
+    const IndexMask mask(IndexRange(0, 900));
+    const IndexMask complement = mask.complement(IndexRange(1000), memory);
+    EXPECT_EQ(1000 - mask.size(), complement.size());
+    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
+  }
+}
+
+TEST(index_mask, ComplementFuzzy)
+{
   RandomNumberGenerator rng;
 
   const int64_t mask_size = 100;
@@ -246,38 +279,6 @@ TEST(index_mask, Complement)
     EXPECT_EQ(universe_size - mask.size(), complement.size());
     complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
     mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
-  }
-}
-
-TEST(index_mask, ComplementPerformance)
-{
-  RandomNumberGenerator rng;
-
-  const int64_t mask_size = 1000000;
-  const int64_t iter_num = 100;
-  const int64_t universe_size = 1100000;
-
-  for (const int64_t iter : IndexRange(iter_num)) {
-    const float probability = float(iter) / float(iter_num);
-    Array<bool> bools(mask_size);
-    for (const int64_t i : bools.index_range()) {
-      bools[i] = rng.get_float() > probability;
-    }
-    Set<int> values;
-    for ([[maybe_unused]] const int64_t _ : IndexRange(iter * mask_size / iter_num)) {
-      values.add(rng.get_int32(mask_size));
-    }
-    IndexMaskMemory memory;
-    const IndexMask mask = IndexMask::from_bools(bools, memory);
-
-    IndexMask complement;
-    {
-      SCOPED_TIMER("Probability: " + std::to_string(probability));
-      complement = mask.complement(IndexRange(universe_size), memory);
-    }
-    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
-    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
-    EXPECT_EQ(universe_size - mask.size(), complement.size());
   }
 }
 
