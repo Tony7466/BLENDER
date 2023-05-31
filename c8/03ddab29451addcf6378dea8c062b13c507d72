@@ -1,1 +1,2 @@
 Referenced by commit d3d91b79e0a7d4c083dfb627b3e715fb293efc21, Fix error from recent refactor failing to save user data on exit
+Referenced by commit b2950b2ad77290ba4762d8c7888af4d82a9e4f5b, Fix saving a quit.blend on exit when a file failed to load
