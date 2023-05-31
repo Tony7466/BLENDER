@@ -108,11 +108,12 @@ static void delete_selected_instances(GeometrySet &geometry_set,
   instances.remove(selection, propagation_info);
 }
 
-static Mesh *separate_mesh_selection(const Mesh &mesh,
-                                     const Field<bool> &selection,
-                                     const eAttrDomain selection_domain,
-                                     const GeometryNodeDeleteGeometryMode mode,
-                                     const AnonymousAttributePropagationInfo &propagation_info)
+static std::optional<Mesh *> separate_mesh_selection(
+    const Mesh &mesh,
+    const Field<bool> &selection,
+    const eAttrDomain selection_domain,
+    const GeometryNodeDeleteGeometryMode mode,
+    const AnonymousAttributePropagationInfo &propagation_info)
 {
   switch (mode) {
     case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
@@ -153,7 +154,11 @@ void separate_geometry(GeometrySet &geometry_set,
   }
   if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
     if (ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER)) {
-      file_ns::separate_mesh_selection(*mesh, selection, domain, mode, propagation_info);
+      std::optional<Mesh *> dst_mesh = file_ns::separate_mesh_selection(
+          *mesh, selection, domain, mode, propagation_info);
+      if (dst_mesh) {
+        geometry_set.replace_mesh(*dst_mesh);
+      }
       some_valid_domain = true;
     }
   }

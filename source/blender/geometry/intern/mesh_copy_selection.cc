@@ -159,10 +159,11 @@ static IndexMask poly_selection_from_edge(const OffsetIndices<int> polys,
   return poly_selection_from_mapped_corner(polys, corner_edges, edge_mask, memory);
 }
 
-Mesh *mesh_copy_selection(const Mesh &src_mesh,
-                          const fn::Field<bool> &selection_field,
-                          const eAttrDomain selection_domain,
-                          const bke::AnonymousAttributePropagationInfo &propagation_info)
+std::optional<Mesh *> mesh_copy_selection(
+    const Mesh &src_mesh,
+    const fn::Field<bool> &selection_field,
+    const eAttrDomain selection_domain,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const Span<int2> src_edges = src_mesh.edges();
   const OffsetIndices src_polys = src_mesh.polys();
@@ -176,7 +177,7 @@ Mesh *mesh_copy_selection(const Mesh &src_mesh,
   evaluator.evaluate();
   const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
   if (const std::optional<bool> single = selection.get_if_single()) {
-    return *single ? BKE_mesh_copy_for_eval(&src_mesh) : nullptr;
+    return *single ? std::nullopt : std::make_optional<Mesh *>(nullptr);
   }
 
   threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
@@ -235,7 +236,7 @@ Mesh *mesh_copy_selection(const Mesh &src_mesh,
     return nullptr;
   }
   if (vert_mask.size() == src_mesh.totvert) {
-    return BKE_mesh_copy_for_eval(&src_mesh);
+    return std::nullopt;
   }
 
   Mesh *dst_mesh = BKE_mesh_new_nomain(vert_mask.size(), edge_mask.size(), poly_mask.size(), 0);
@@ -300,7 +301,7 @@ Mesh *mesh_copy_selection(const Mesh &src_mesh,
   return dst_mesh;
 }
 
-Mesh *mesh_copy_selection_keep_verts(
+std::optional<Mesh *> mesh_copy_selection_keep_verts(
     const Mesh &src_mesh,
     const fn::Field<bool> &selection_field,
     const eAttrDomain selection_domain,
@@ -318,7 +319,7 @@ Mesh *mesh_copy_selection_keep_verts(
   evaluator.evaluate();
   const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
   if (const std::optional<bool> single = selection.get_if_single()) {
-    return *single ? BKE_mesh_copy_for_eval(&src_mesh) : nullptr;
+    return *single ? std::nullopt : std::make_optional<Mesh *>(nullptr);
   }
 
   threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
@@ -367,7 +368,7 @@ Mesh *mesh_copy_selection_keep_verts(
     return nullptr;
   }
   if (edge_mask.size() == src_mesh.totedge) {
-    return BKE_mesh_copy_for_eval(&src_mesh);
+    return std::nullopt;
   }
 
   Mesh *dst_mesh = BKE_mesh_new_nomain(0, edge_mask.size(), poly_mask.size(), 0);
@@ -416,7 +417,7 @@ Mesh *mesh_copy_selection_keep_verts(
   return dst_mesh;
 }
 
-Mesh *mesh_copy_selection_keep_edges(
+std::optional<Mesh *> mesh_copy_selection_keep_edges(
     const Mesh &src_mesh,
     const fn::Field<bool> &selection_field,
     const eAttrDomain selection_domain,
@@ -428,9 +429,10 @@ Mesh *mesh_copy_selection_keep_edges(
   const bke::MeshFieldContext context(src_mesh, selection_domain);
   fn::FieldEvaluator evaluator(context, src_attributes.domain_size(selection_domain));
   evaluator.add(selection_field);
+  evaluator.evaluate();
   const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
   if (const std::optional<bool> single = selection.get_if_single()) {
-    return *single ? BKE_mesh_copy_for_eval(&src_mesh) : nullptr;
+    return *single ? std::nullopt : std::make_optional<Mesh *>(nullptr);
   }
 
   IndexMaskMemory memory;
@@ -456,7 +458,7 @@ Mesh *mesh_copy_selection_keep_edges(
     return nullptr;
   }
   if (poly_mask.size() == src_mesh.totpoly) {
-    return BKE_mesh_copy_for_eval(&src_mesh);
+    return std::nullopt;
   }
 
   Mesh *dst_mesh = BKE_mesh_new_nomain(0, 0, poly_mask.size(), 0);
