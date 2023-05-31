@@ -236,7 +236,7 @@ static bke::CurvesGeometry create_drawing_data(const Span<float3> positions,
   return curves;
 }
 
-void create_blank(Main &bmain, Object &object, int frame_numer)
+void create_blank(Main &bmain, Object &object, const int frame_numer)
 {
   using namespace blender::bke::greasepencil;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
@@ -253,7 +253,7 @@ void create_blank(Main &bmain, Object &object, int frame_numer)
   new_layer.insert_frame(frame_numer, std::move(frame));
 }
 
-void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_numer)
+void create_stroke(Main &bmain, Object &object, float4x4 matrix, const int frame_numer)
 {
   using namespace blender::bke::greasepencil;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);

@@ -22,8 +22,8 @@ extern "C" {
 
 namespace blender::ed::greasepencil {
 
-void create_blank(Main &bmain, Object &object, const int frame_numer);
-void create_stroke(Main &bmain, Object &object, float4x4 matrix, const int frame_numer);
+void create_blank(Main &bmain, Object &object, int frame_numer);
+void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_numer);
 
 }  // namespace blender::ed::greasepencil
 #endif
