@@ -250,7 +250,7 @@ void create_blank(Main &bmain, Object &object, const int frame_numer)
   grease_pencil.add_empty_drawings(1);
 
   GreasePencilFrame frame{0, 0, BEZT_KEYTYPE_KEYFRAME};
-  new_layer.insert_frame(frame_numer, std::move(frame));
+  new_layer.insert_frame(frame_numer, frame);
 }
 
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, const int frame_numer)
@@ -275,22 +275,13 @@ void create_stroke(Main &bmain, Object &object, float4x4 matrix, const int frame
 
   GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
       grease_pencil.drawings_for_write()[1]);
-  std::array stroke_offsets{0, 175};
-  std::array materials{material_index};
-  std::array radii_factor{75};
-  drawing.geometry.wrap() = create_drawing_data(stroke_positions,
-                                                stroke_radii,
-                                                stroke_opacities,
-                                                stroke_offsets,
-                                                materials,
-                                                radii_factor,
-                                                matrix);
-  drawing.tag_positions_changed();
+  drawing.geometry.wrap() = create_drawing_data(
+      stroke_positions, stroke_radii, stroke_opacities, {0, 175}, {material_index}, {75}, matrix);
 
   GreasePencilFrame frame_lines{0, 0, BEZT_KEYTYPE_KEYFRAME};
   GreasePencilFrame frame_color{1, 0, BEZT_KEYTYPE_KEYFRAME};
-  layer_lines.insert_frame(frame_numer, std::move(frame_lines));
-  layer_color.insert_frame(frame_numer, std::move(frame_color));
+  layer_lines.insert_frame(frame_numer, frame_lines);
+  layer_color.insert_frame(frame_numer, frame_color);
 }
 
 }  // namespace blender::ed::greasepencil

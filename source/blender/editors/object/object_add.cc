@@ -1634,14 +1634,13 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
       break;
     }
     case GP_STROKE: {
-      float radius = RNA_float_get(op->ptr, "radius");
-      float scale[3];
-      copy_v3_fl(scale, radius);
+      const float radius = RNA_float_get(op->ptr, "radius");
+      const float3 scale(radius);
 
-      float mat[4][4];
-      ED_object_new_primitive_matrix(C, object, loc, rot, scale, mat);
+      float4x4 mat;
+      ED_object_new_primitive_matrix(C, object, loc, rot, scale, mat.ptr());
 
-      greasepencil::create_stroke(*bmain, *object, float4x4(mat), scene->r.cfra);
+      greasepencil::create_stroke(*bmain, *object, mat, scene->r.cfra);
       break;
     }
     case GP_MONKEY:

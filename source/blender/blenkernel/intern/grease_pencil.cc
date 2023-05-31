@@ -409,22 +409,10 @@ bool Layer::insert_frame(int frame_number, const GreasePencilFrame &frame)
   return this->frames_for_write().add(frame_number, frame);
 }
 
-bool Layer::insert_frame(int frame_number, GreasePencilFrame &&frame)
-{
-  this->tag_frames_map_changed();
-  return this->frames_for_write().add(frame_number, frame);
-}
-
 bool Layer::overwrite_frame(int frame_number, const GreasePencilFrame &frame)
 {
   this->tag_frames_map_changed();
   return this->frames_for_write().add_overwrite(frame_number, frame);
-}
-
-bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &&frame)
-{
-  this->tag_frames_map_changed();
-  return this->frames_for_write().add_overwrite(frame_number, std::move(frame));
 }
 
 Span<int> Layer::sorted_keys() const

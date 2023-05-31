@@ -203,7 +203,6 @@ class Layer : public ::GreasePencilLayer {
    * \returns true on success.
    */
   bool insert_frame(int frame_number, const GreasePencilFrame &frame);
-  bool insert_frame(int frame_number, GreasePencilFrame &&frame);
 
   /**
    * Inserts the frame into the layer. If there exists a frame at \a frame_number already, it is
@@ -211,7 +210,6 @@ class Layer : public ::GreasePencilLayer {
    * \returns true on success.
    */
   bool overwrite_frame(int frame_number, const GreasePencilFrame &frame);
-  bool overwrite_frame(int frame_number, GreasePencilFrame &&frame);
 
   /**
    * Returns the sorted (start) frame numbers of the frames of this layer.
