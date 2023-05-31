@@ -1,14 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_multi_value_map.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
 
 #include "GEO_mesh_separate.hh"
 
@@ -87,39 +83,6 @@ static IndexMask vert_selection_from_edge(const Span<int2> edges,
   return IndexMask::from_bools(span, memory);
 }
 
-static IndexMask poly_selection_from_mapped_corner(const OffsetIndices<int> polys,
-                                                   const Span<int> corner_verts_or_edges,
-                                                   const IndexMask &vert_or_edge_selection,
-                                                   IndexMaskMemory &memory)
-{
-  // TODO: To bits first?
-  return IndexMask::from_predicate(
-      polys.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
-        const Span<int> poly = corner_verts_or_edges.slice(polys[i]);
-        return std::all_of(poly.begin(), poly.end(), [&](const int edge) {
-          return vert_or_edge_selection.contains(edge);
-        });
-      });
-}
-
-/** A face is selected if all of its vertices are selected. */
-static IndexMask poly_selection_from_vert(const OffsetIndices<int> polys,
-                                          const Span<int> corner_verts,
-                                          const IndexMask &vert_selection,
-                                          IndexMaskMemory &memory)
-{
-  return poly_selection_from_mapped_corner(polys, corner_verts, vert_selection, memory);
-}
-
-/** A face is selected if all of its edges are selected. */
-static IndexMask poly_selection_from_edge(const OffsetIndices<int> polys,
-                                          const Span<int> corner_edges,
-                                          const IndexMask &edge_selection,
-                                          IndexMaskMemory &memory)
-{
-  return poly_selection_from_mapped_corner(polys, corner_edges, edge_selection, memory);
-}
-
 static IndexMask mapped_corner_selection_from_poly(const OffsetIndices<int> polys,
                                                    const IndexMask &poly_selection,
                                                    const Span<int> corner_verts_or_edges,
@@ -154,6 +117,49 @@ static IndexMask edge_selection_from_poly(const OffsetIndices<int> polys,
   return mapped_corner_selection_from_poly(polys, poly_selection, corner_edges, edges_num, memory);
 }
 
+/** An edge is selected if both of its vertices are selected. */
+static IndexMask edge_selection_from_vert(const Span<int2> edges,
+                                          const Span<bool> vert_selection,
+                                          IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(
+      edges.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
+        const int2 edge = edges[i];
+        return vert_selection[edge[0]] && vert_selection[edge[1]];
+      });
+}
+
+static IndexMask poly_selection_from_mapped_corner(const OffsetIndices<int> polys,
+                                                   const Span<int> corner_verts_or_edges,
+                                                   const Span<bool> vert_or_edge_selection,
+                                                   IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(
+      polys.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
+        const Span<int> poly = corner_verts_or_edges.slice(polys[i]);
+        return std::all_of(
+            poly.begin(), poly.end(), [&](const int i) { return vert_or_edge_selection[i]; });
+      });
+}
+
+/** A face is selected if all of its vertices are selected. */
+static IndexMask poly_selection_from_vert(const OffsetIndices<int> polys,
+                                          const Span<int> corner_verts,
+                                          const Span<bool> vert_selection,
+                                          IndexMaskMemory &memory)
+{
+  return poly_selection_from_mapped_corner(polys, corner_verts, vert_selection, memory);
+}
+
+/** A face is selected if all of its edges are selected. */
+static IndexMask poly_selection_from_edge(const OffsetIndices<int> polys,
+                                          const Span<int> corner_edges,
+                                          const Span<bool> edge_selection,
+                                          IndexMaskMemory &memory)
+{
+  return poly_selection_from_mapped_corner(polys, corner_edges, edge_selection, memory);
+}
+
 Mesh *mesh_copy_selection(const Mesh &src_mesh,
                           const fn::Field<bool> &selection,
                           const eAttrDomain selection_domain,
@@ -175,21 +181,14 @@ Mesh *mesh_copy_selection(const Mesh &src_mesh,
       fn::FieldEvaluator evaluator(context, src_mesh.totvert);
       evaluator.add(selection);
       evaluator.evaluate();
-      vert_selection = evaluator.get_evaluated_as_mask(0);
-      BitVector<> selected_verts(src_mesh.totvert);
-      vert_selection.to_bits(selected_verts);
+      const VArraySpan<bool> selection = evaluator.get_evaluated<bool>(0);
       threading::parallel_invoke(
           vert_selection.size() > 1024,
-          [&]() {
-            edge_selection = IndexMask::from_predicate(
-                src_edges.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
-                  const int2 edge = src_edges[i];
-                  return selected_verts[edge[0]] && selected_verts[edge[1]];
-                });
-          },
+          [&]() { vert_selection = IndexMask::from_bools(selection, memory); },
+          [&]() { edge_selection = edge_selection_from_vert(src_edges, selection, memory); },
           [&]() {
             poly_selection = poly_selection_from_vert(
-                src_polys, src_corner_verts, vert_selection, memory);
+                src_polys, src_corner_verts, selection, memory);
           });
       break;
     }
@@ -198,16 +197,17 @@ Mesh *mesh_copy_selection(const Mesh &src_mesh,
       fn::FieldEvaluator evaluator(context, src_mesh.totedge);
       evaluator.add(selection);
       evaluator.evaluate();
-      edge_selection = evaluator.get_evaluated_as_mask(0);
+      const VArraySpan<bool> selection = evaluator.get_evaluated<bool>(0);
       threading::parallel_invoke(
           edge_selection.size() > 1024,
           [&]() {
+            edge_selection = IndexMask::from_bools(selection, memory);
             vert_selection = vert_selection_from_edge(
                 src_edges, edge_selection, src_mesh.totvert, memory);
           },
           [&]() {
             poly_selection = poly_selection_from_edge(
-                src_polys, src_corner_edges, edge_selection, memory);
+                src_polys, src_corner_edges, selection, memory);
           });
       break;
     }
@@ -216,7 +216,13 @@ Mesh *mesh_copy_selection(const Mesh &src_mesh,
       fn::FieldEvaluator evaluator(context, src_mesh.totpoly);
       evaluator.add(selection);
       evaluator.evaluate();
-      poly_selection = evaluator.get_evaluated_as_mask(0);
+      poly_selection = IndexMask::from_bools(evaluator.get_evaluated<bool>(0), memory);
+      if (poly_selection.is_empty()) {
+        return nullptr;
+      }
+      if (poly_selection.size() == src_mesh.totpoly) {
+        return BKE_mesh_copy_for_eval(&src_mesh);
+      }
       threading::parallel_invoke(
           poly_selection.size() > 1024,
           [&]() {
@@ -314,20 +320,13 @@ Mesh *mesh_copy_selection_keep_verts(
       fn::FieldEvaluator evaluator(context, src_mesh.totvert);
       evaluator.add(selection);
       evaluator.evaluate();
-      const VArraySpan<bool> vert_selection = evaluator.get_evaluated<bool>(0);
-
-      // TODO: Deduplicate
-      edge_selection = IndexMask::from_predicate(
-          src_edges.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
-            const int2 edge = src_edges[i];
-            return vert_selection[edge[0]] && vert_selection[edge[1]];
-          });
-      poly_selection = IndexMask::from_predicate(
-          src_polys.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
-            const Span<int> poly_verts = src_corner_verts.slice(src_polys[i]);
-            return std::all_of(poly_verts.begin(), poly_verts.end(), [&](const int vert) {
-              return vert_selection[vert];
-            });
+      const VArraySpan<bool> selection = evaluator.get_evaluated<bool>(0);
+      threading::parallel_invoke(
+          poly_selection.size() > 1024,
+          [&]() { edge_selection = edge_selection_from_vert(src_edges, selection, memory); },
+          [&]() {
+            poly_selection = poly_selection_from_vert(
+                src_polys, src_corner_verts, selection, memory);
           });
       break;
     }
@@ -336,9 +335,20 @@ Mesh *mesh_copy_selection_keep_verts(
       fn::FieldEvaluator evaluator(context, src_mesh.totedge);
       evaluator.add(selection);
       evaluator.evaluate();
-      edge_selection = evaluator.get_evaluated_as_mask(0);
-      poly_selection = poly_selection_from_edge(
-          src_polys, src_corner_edges, edge_selection, memory);
+      const VArraySpan<bool> selection = evaluator.get_evaluated<bool>(0);
+      threading::parallel_invoke(
+          poly_selection.size() > 1024,
+          [&]() { edge_selection = IndexMask::from_bools(selection, memory); },
+          [&]() {
+            poly_selection = poly_selection_from_edge(
+                src_polys, src_corner_edges, selection, memory);
+          });
+      if (edge_selection.is_empty()) {
+        return nullptr;
+      }
+      if (edge_selection.size() == src_mesh.totedge) {
+        return BKE_mesh_copy_for_eval(&src_mesh);
+      }
       break;
     }
     case ATTR_DOMAIN_FACE: {
@@ -346,9 +356,20 @@ Mesh *mesh_copy_selection_keep_verts(
       fn::FieldEvaluator evaluator(context, src_polys.size());
       evaluator.add(selection);
       evaluator.evaluate();
-      poly_selection = evaluator.get_evaluated_as_mask(0);
-      edge_selection = edge_selection_from_poly(
-          src_polys, poly_selection, src_corner_edges, src_edges.size(), memory);
+      const VArraySpan<bool> selection = evaluator.get_evaluated<bool>(0);
+      threading::parallel_invoke(
+          poly_selection.size() > 1024,
+          [&]() {
+            edge_selection = edge_selection_from_poly(
+                src_polys, poly_selection, src_corner_edges, src_edges.size(), memory);
+          },
+          [&]() { poly_selection = IndexMask::from_bools(selection, memory); });
+      if (poly_selection.is_empty()) {
+        return nullptr;
+      }
+      if (poly_selection.size() == src_mesh.totpoly) {
+        return BKE_mesh_copy_for_eval(&src_mesh);
+      }
       break;
     }
     default:
@@ -398,37 +419,69 @@ Mesh *mesh_copy_selection_keep_verts(
   return dst_mesh;
 }
 
-Mesh *mesh_copy_selection_keep_verts_edges(
-    const Mesh &mesh,
+Mesh *mesh_copy_selection_keep_edges(
+    const Mesh &src_mesh,
     const fn::Field<bool> &selection,
+    const eAttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const bke::MeshFieldContext context(mesh, ATTR_DOMAIN_FACE);
-  fn::FieldEvaluator evaluator(context, mesh.totpoly);
-  evaluator.set_selection(selection);
-  evaluator.evaluate();
-  const IndexMask poly_selection = evaluator.get_evaluated_selection_as_mask();
+  IndexMaskMemory memory;
+  IndexMask poly_selection;
+  switch (selection_domain) {
+    case ATTR_DOMAIN_POINT: {
+      const bke::MeshFieldContext context(src_mesh, ATTR_DOMAIN_POINT);
+      fn::FieldEvaluator evaluator(context, src_mesh.totvert);
+      evaluator.add(selection);
+      evaluator.evaluate();
+      const VArraySpan<bool> vert_selection = evaluator.get_evaluated<bool>(0);
+      poly_selection = poly_selection_from_vert(
+          src_mesh.polys(), src_mesh.corner_verts(), vert_selection, memory);
+      break;
+    }
+    case ATTR_DOMAIN_EDGE: {
+      const bke::MeshFieldContext context(src_mesh, ATTR_DOMAIN_EDGE);
+      fn::FieldEvaluator evaluator(context, src_mesh.totedge);
+      evaluator.add(selection);
+      evaluator.evaluate();
+      const VArraySpan<bool> edge_selection = evaluator.get_evaluated<bool>(0);
+      poly_selection = poly_selection_from_edge(
+          src_mesh.polys(), src_mesh.corner_edges(), edge_selection, memory);
+      break;
+    }
+    case ATTR_DOMAIN_FACE: {
+      const bke::MeshFieldContext context(src_mesh, ATTR_DOMAIN_FACE);
+      fn::FieldEvaluator evaluator(context, src_mesh.totpoly);
+      evaluator.add(selection);
+      evaluator.evaluate();
+      poly_selection = IndexMask::from_bools(evaluator.get_evaluated<bool>(0), memory);
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
   if (poly_selection.is_empty()) {
     return nullptr;
   }
-  if (poly_selection.size() == mesh.totpoly) {
-    return BKE_mesh_copy_for_eval(&mesh);
+  if (poly_selection.size() == src_mesh.totpoly) {
+    return BKE_mesh_copy_for_eval(&src_mesh);
   }
 
   Mesh *dst_mesh = BKE_mesh_new_nomain(0, 0, poly_selection.size(), 0);
   CustomData_free_layer_named(&dst_mesh->vdata, "position", 0);
   CustomData_free_layer_named(&dst_mesh->edata, ".edge_verts", 0);
-  dst_mesh->totvert = mesh.totvert;
-  dst_mesh->totedge = mesh.totedge;
-  BKE_mesh_copy_parameters_for_eval(dst_mesh, &mesh);
+  dst_mesh->totvert = src_mesh.totvert;
+  dst_mesh->totedge = src_mesh.totedge;
+  BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
 
-  const OffsetIndices src_polys = mesh.polys();
+  const OffsetIndices src_polys = src_mesh.polys();
 
   const OffsetIndices<int> dst_polys = offset_indices::gather_selected_offsets(
       src_polys, poly_selection, dst_mesh->poly_offsets_for_write());
   dst_mesh->totloop = dst_polys.total_size();
 
-  const bke::AttributeAccessor src_attributes = mesh.attributes();
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
 
   bke::copy_attributes(src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, dst_attributes);
@@ -445,7 +498,7 @@ Mesh *mesh_copy_selection_keep_verts_edges(
                                         dst_attributes);
 
   /* Positions are not changed by the operation, so the bounds are the same. */
-  dst_mesh->runtime->bounds_cache = mesh.runtime->bounds_cache;
+  dst_mesh->runtime->bounds_cache = src_mesh.runtime->bounds_cache;
   return dst_mesh;
 }
 
