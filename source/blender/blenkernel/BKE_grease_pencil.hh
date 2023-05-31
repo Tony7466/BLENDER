@@ -17,6 +17,13 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 
+struct Main;
+struct Depsgraph;
+struct BoundBox;
+struct Scene;
+struct Object;
+struct Material;
+
 namespace blender::bke {
 
 namespace greasepencil {
@@ -364,18 +371,22 @@ inline bool GreasePencil::has_active_layer() const
   return (this->active_layer != nullptr);
 }
 
-struct Main;
-struct Depsgraph;
-struct BoundBox;
-struct Scene;
-struct Object;
-
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 GreasePencil *BKE_grease_pencil_new_nomain();
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph,
                                    struct Scene *scene,
                                    struct Object *object);
+
+int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
+Material *BKE_grease_pencil_object_material_new(Main *bmain,
+                                                Object *ob,
+                                                const char *name,
+                                                int *r_index);
+Material *BKE_grease_pencil_object_material_ensure_by_name(Main *bmain,
+                                                           Object *ob,
+                                                           const char *name,
+                                                           int *r_index);
 
 bool BKE_grease_pencil_references_cyclic_check(const GreasePencil *id_reference,
                                                const GreasePencil *grease_pencil);
