@@ -15,7 +15,7 @@
 namespace blender::ed::outliner {
 
 TreeElementIDMesh::TreeElementIDMesh(TreeElement &legacy_te_, Mesh &mesh)
-: TreeElementID(legacy_te_, mesh.id), mesh_(mesh)
+    : TreeElementID(legacy_te_, mesh.id), mesh_(mesh)
 {
 }
 
@@ -27,22 +27,23 @@ bool TreeElementIDMesh::isExpandValid() const
 void TreeElementIDMesh::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, mesh_.adt);
-  
+
   expandKey(space_outliner);
   expandMaterials(space_outliner);
 }
 
 void TreeElementIDMesh::expandKey(SpaceOutliner &space_outliner) const
 {
-  outliner_add_element(&space_outliner, &legacy_te_.subtree, mesh_.key, &legacy_te_, TSE_SOME_ID, 0);
+  outliner_add_element(
+      &space_outliner, &legacy_te_.subtree, mesh_.key, &legacy_te_, TSE_SOME_ID, 0);
 }
 
 void TreeElementIDMesh::expandMaterials(SpaceOutliner &space_outliner) const
 {
-  for (int a = 0; a < mesh_.totcol; a++)
-  {
-    outliner_add_element(&space_outliner, &legacy_te_.subtree, mesh_.mat[a], &legacy_te_, TSE_SOME_ID, a);
+  for (int a = 0; a < mesh_.totcol; a++) {
+    outliner_add_element(
+        &space_outliner, &legacy_te_.subtree, mesh_.mat[a], &legacy_te_, TSE_SOME_ID, a);
   }
 }
 
-} // namespace blender::ed::outliner
+}  // namespace blender::ed::outliner
