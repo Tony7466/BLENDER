@@ -198,7 +198,8 @@ bool PathTraceWorkCPU::copy_render_buffers_from_device_impl()
 
 bool PathTraceWorkCPU::copy_master_render_buffers_from_device_impl()
 {
-  return master_buffers_->copy_from_device();
+  master_buffers_->buffer.copy_from_device();
+  return true;
 }
 
 bool PathTraceWorkCPU::copy_render_buffers_to_device_impl()
@@ -215,7 +216,7 @@ bool PathTraceWorkCPU::copy_master_render_buffers_to_device_impl()
 
 bool PathTraceWorkCPU::zero_master_render_buffers_impl()
 {
-  master_buffers_->zero();
+  master_buffers_->buffer.zero_to_device();
   return true;
 }
 
