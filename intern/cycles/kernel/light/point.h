@@ -18,31 +18,32 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
 
   const float radius = klight->spot.radius;
 
+  const float one_minus_cos = sin_to_one_minus_cos(radius / dist);
+
+  float cos_theta;
+  /* We set the light normal to the outgoing direction to support texturing. */
   if (dist > radius) {
-    const float one_minus_cos = sin_to_one_minus_cos(radius / dist);
-
-    float cos_theta;
-    /* We set the light normal to the outgoing direction to support texturing. */
     sample_uniform_cone_concentric(lightN, one_minus_cos, rand, &cos_theta, &ls->Ng, &ls->pdf);
-    ls->D = -ls->Ng;
-
-    const float d_cos_theta = dist * cos_theta;
-    /* Law of cosines. */
-    ls->t = d_cos_theta - safe_sqrtf(sqr(radius) - sqr(dist) + sqr(d_cos_theta));
-
-    ls->P = P + ls->D * ls->t;
-
-    kernel_assert(fabsf(len(ls->P - klight->co) - radius) < 1e-4f);
-
-    /* TODO: change invarea to that of a sphere. */
-    ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
-    if (radius == 0) {
-      /* Use intensity instead of radiance for point light. */
-      ls->eval_fac /= sqr(ls->t);
-    }
   }
   else {
-    /* TODO */
+    ls->Ng = sample_uniform_sphere(rand);
+    ls->pdf = M_1_2PI_F * 0.5f;
+    cos_theta = dot(ls->Ng, lightN);
+  }
+  ls->D = -ls->Ng;
+
+  const float d_cos_theta = dist * cos_theta;
+  /* Law of cosines. */
+  ls->t = d_cos_theta -
+          copysignf(safe_sqrtf(sqr(radius) - sqr(dist) + sqr(d_cos_theta)), dist - radius);
+
+  ls->P = P + ls->D * ls->t;
+
+  /* TODO: change invarea to that of a sphere. */
+  ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
+  if (radius == 0) {
+    /* Use intensity instead of radiance for point light. */
+    ls->eval_fac /= sqr(ls->t);
   }
 
   const float2 uv = map_to_sphere(ls->Ng);
@@ -69,8 +70,9 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
   if (radius > 0) {
     const float dist = len(P - klight->co);
     const float one_minus_cos_angle = sin_to_one_minus_cos(radius / dist);
+    ls->pdf = (dist > radius) ? M_1_2PI_F / one_minus_cos_angle : M_1_2PI_F * 0.5f;
     /* NOTE : preserve pdf in area measure. */
-    ls->pdf = M_1_2PI_F / one_minus_cos_angle * dist / powf(ls->t, 3.0f);
+    ls->pdf *= 0.5f * fabsf(sqr(dist) - sqr(radius) - sqr(ls->t)) / (radius * ls->t * sqr(ls->t));
   }
   else {
     ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
@@ -107,11 +109,14 @@ ccl_device_inline bool point_light_sample_from_intersection(
   ls->u = uv.x;
   ls->v = uv.y;
 
-  ls->pdf = (ls->t == FLT_MAX) ?
-                0.0f :
-                M_1_2PI_F / sin_to_one_minus_cos(klight->spot.radius / len(ray_P - klight->co));
-
-  /* TODO: inside. */
+  if (ls->t == FLT_MAX) {
+    ls->pdf = 0.0f;
+  }
+  else {
+    const float dist = len(ray_P - klight->co);
+    const float radius = klight->spot.radius;
+    ls->pdf = (dist > radius) ? M_1_2PI_F / sin_to_one_minus_cos(radius / dist) : M_1_2PI_F * 0.5f;
+  }
 
   return true;
 }
@@ -125,6 +130,7 @@ ccl_device_forceinline bool point_light_tree_parameters(const ccl_global KernelL
                                                         ccl_private float3 &point_to_centroid)
 {
   if (in_volume_segment) {
+    /* TODO: does this still hold? */
     cos_theta_u = 1.0f; /* Any value in [-1, 1], irrelevant since theta = 0 */
     return true;
   }
@@ -134,15 +140,19 @@ ccl_device_forceinline bool point_light_tree_parameters(const ccl_global KernelL
 
   const float radius = klight->spot.radius;
   if (dist_point_to_centroid > radius) {
-    const float min_dist = dist_point_to_centroid - radius;
+    /* Equivalent to a disk light with the same angular span. */
     const float max_dist = sqrtf(sqr(dist_point_to_centroid) - sqr(radius));
     cos_theta_u = max_dist / dist_point_to_centroid;
-    distance = make_float2(max_dist, min_dist);
-    return true;
+    distance = make_float2(dist_point_to_centroid, max_dist);
+  }
+  else {
+    /* Similar to background light. */
+    cos_theta_u = -1.0f;
+    /* HACK: pack radiance scaling in the distance. */
+    distance = one_float2() * radius / M_SQRT2_F;
   }
 
-  /* TODO */
-  return false;
+  return true;
 }
 
 CCL_NAMESPACE_END
