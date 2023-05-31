@@ -4,3 +4,4 @@ Referenced by issue #103747, Regression: Crash when using Rotation Output of Cur
 Referenced by issue #103756, Regression: Geometry Node: Anonymous attribute tooltip display wrong dependencies names
 Referenced by issue #106497, Geometry Nodes: Freeze Node
 Referenced by issue #108456, Regressino: Geometry Node: Edge Path to Curves does not work with anonymous attributes
+Referenced by pull request #108460, Fix #108456: Geometry Nodes: Missed declaration function in Shortest Edge Paths node
