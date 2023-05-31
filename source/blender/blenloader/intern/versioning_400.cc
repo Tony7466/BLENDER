@@ -31,37 +31,9 @@
 
 #include "versioning_common.h"
 
-/* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
-static void version_vertex_weight_edit(Main *bmain)
-{
-  /* Object */
-  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-
-    if (ob->type != OB_MESH) {
-      continue;
-    }
-
-    /* Object modifiers */
-    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-      if (md->type == eModifierType_WeightVGEdit) {
-
-        WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
-        if (wmd->default_weight == wmd->add_threshold) {
-          wmd->add_threshold = nexttoward(wmd->add_threshold, 2.0);
-        }
-        if (wmd->default_weight == wmd->rem_threshold) {
-          wmd->rem_threshold = nexttoward(wmd->rem_threshold, -1.0);
-        }
-      }
-    }
-  }
-}
-
 void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
 {
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 4)) {
-    version_vertex_weight_edit(bmain);
-  }
+  UNUSED_VARS(bmain);
 }
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
@@ -131,6 +103,28 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
   }
 }
 
+/* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
+static void version_vertex_weight_edit(Main *bmain)
+{
+  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+    if (ob->type != OB_MESH) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type == eModifierType_WeightVGEdit) {
+        WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
+        if (wmd->default_weight == wmd->add_threshold) {
+          wmd->add_threshold = nexttoward(wmd->add_threshold, 2.0);
+        }
+        if (wmd->default_weight == wmd->rem_threshold) {
+          wmd->rem_threshold = nexttoward(wmd->rem_threshold, -1.0);
+        }
+      }
+    }
+  }
+}
+
 void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
@@ -152,6 +146,10 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
         version_geometry_nodes_add_realize_instance_nodes(ntree);
       }
     }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 4)) {
+    version_vertex_weight_edit(bmain);
   }
   /**
    * Versioning code until next subversion bump goes here.
