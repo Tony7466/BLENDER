@@ -17,6 +17,10 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#ifndef NOMINMAX
+#  define NOMINMAX
+#endif
+
 #include <windows.h>
 
 #undef rad
@@ -53,7 +57,7 @@ extern "C" {
 #  define R_OK 4
 #  define W_OK 2
 /* Not accepted by `access()` on windows. */
-//#  define X_OK    1
+// #  define X_OK    1
 #  define F_OK 0
 #endif
 
