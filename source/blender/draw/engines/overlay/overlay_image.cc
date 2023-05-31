@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -454,7 +455,8 @@ void OVERLAY_image_scene_background_draw(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
 
   if (DRW_state_is_fbo() && (!DRW_pass_is_empty(psl->image_background_scene_ps) ||
-                             !DRW_pass_is_empty(psl->image_foreground_scene_ps))) {
+                             !DRW_pass_is_empty(psl->image_foreground_scene_ps)))
+  {
     const DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     GPU_framebuffer_bind(dfbl->default_fb);
 

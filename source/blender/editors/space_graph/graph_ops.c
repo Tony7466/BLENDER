@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spgraph
@@ -464,6 +465,7 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_breakdown);
   WM_operatortype_append(GRAPH_OT_ease);
   WM_operatortype_append(GRAPH_OT_blend_to_default);
+  WM_operatortype_append(GRAPH_OT_gaussian_smooth);
   WM_operatortype_append(GRAPH_OT_euler_filter);
   WM_operatortype_append(GRAPH_OT_delete);
   WM_operatortype_append(GRAPH_OT_duplicate);

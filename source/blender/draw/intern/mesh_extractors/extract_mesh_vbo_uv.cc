@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -45,7 +46,7 @@ static bool mesh_extract_uv_format_init(GPUVertFormat *format,
 
       GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
       /* UV layer name. */
-      BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+      SNPRINTF(attr_name, "a%s", attr_safe_name);
       GPU_vertformat_attr_add(format, attr_name, GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       /* Active render layer name. */
       if (i == CustomData_get_render_layer(cd_ldata, CD_PROP_FLOAT2)) {
@@ -91,7 +92,8 @@ static void extract_uv_init(const MeshRenderData *mr,
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, v_len);
 
-  MutableSpan<float2> uv_data(static_cast<float2 *>(GPU_vertbuf_get_data(vbo)), v_len);
+  MutableSpan<float2> uv_data(static_cast<float2 *>(GPU_vertbuf_get_data(vbo)),
+                              v_len * format.attr_len);
   int vbo_index = 0;
   for (const int i : IndexRange(MAX_MTFACE)) {
     if (uv_layers & (1 << i)) {

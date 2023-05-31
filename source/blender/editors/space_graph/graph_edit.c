@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spgraph
@@ -80,6 +81,11 @@ static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
      0,
      "Only Selected Channels",
      "Insert a keyframe on selected F-Curves using each curve's current value"},
+    {GRAPHKEYS_INSERTKEY_ACTIVE,
+     "ACTIVE",
+     0,
+     "Only Active F-Curve",
+     "Insert a keyframe on the active F-Curve using the curve's current value"},
     {GRAPHKEYS_INSERTKEY_ACTIVE | GRAPHKEYS_INSERTKEY_CURSOR,
      "CURSOR_ACTIVE",
      0,
@@ -518,7 +524,7 @@ static int graphkeys_copy_exec(bContext *C, wmOperator *op)
 
   /* Copy keyframes. */
   if (copy_graph_keys(&ac)) {
-    BKE_report(op->reports, RPT_ERROR, "No keyframes copied to keyframes copy/paste buffer");
+    BKE_report(op->reports, RPT_ERROR, "No keyframes copied to the internal clipboard");
     return OPERATOR_CANCELLED;
   }
 
@@ -531,7 +537,7 @@ void GRAPH_OT_copy(wmOperatorType *ot)
   /* Identifiers */
   ot->name = "Copy Keyframes";
   ot->idname = "GRAPH_OT_copy";
-  ot->description = "Copy selected keyframes to the copy/paste buffer";
+  ot->description = "Copy selected keyframes to the internal clipboard";
 
   /* API callbacks */
   ot->exec = graphkeys_copy_exec;
@@ -569,7 +575,7 @@ static int graphkeys_paste_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
 
     case KEYFRAME_PASTE_NOTHING_TO_PASTE:
-      BKE_report(op->reports, RPT_ERROR, "No data in buffer to paste");
+      BKE_report(op->reports, RPT_ERROR, "No data in the internal clipboard to paste");
       return OPERATOR_CANCELLED;
   }
 
@@ -600,7 +606,8 @@ void GRAPH_OT_paste(wmOperatorType *ot)
   ot->name = "Paste Keyframes";
   ot->idname = "GRAPH_OT_paste";
   ot->description =
-      "Paste keyframes from copy/paste buffer for the selected channels, starting on the current "
+      "Paste keyframes from the internal clipboard for the selected channels, starting on the "
+      "current "
       "frame";
 
   /* API callbacks */
@@ -944,12 +951,13 @@ void GRAPH_OT_bake(wmOperatorType *ot)
   ot->description = "Bake selected F-Curves to a set of sampled points defining a similar curve";
 
   /* API callbacks */
-  ot->invoke = WM_operator_confirm; /* FIXME */
+  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = graphkeys_bake_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  WM_operator_properties_confirm_or_exec(ot);
 
   /* TODO: add props for start/end frames (Joshua Leung 2009) */
 }

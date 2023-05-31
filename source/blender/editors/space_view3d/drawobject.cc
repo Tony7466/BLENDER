@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -70,7 +71,7 @@ void ED_draw_object_facemap(Depsgraph *depsgraph,
     GPU_blend(GPU_BLEND_ALPHA);
 
     const float(*positions)[3] = BKE_mesh_vert_positions(me);
-    const blender::Span<MPoly> polys = me->polys();
+    const blender::OffsetIndices polys = me->polys();
     const blender::Span<int> corner_verts = me->corner_verts();
     const blender::Span<MLoopTri> looptris = me->looptris();
 
@@ -93,9 +94,8 @@ void ED_draw_object_facemap(Depsgraph *depsgraph,
 
     int tri_index = 0;
     for (const int i : polys.index_range()) {
-      const MPoly &poly = polys[i];
       if (facemap_data[i] == facemap) {
-        for (int j = 2; j < poly.totloop; j++) {
+        for (int j = 2; j < polys[i].size(); j++) {
           copy_v3_v3(static_cast<float *>(GPU_vertbuf_raw_step(&pos_step)),
                      positions[corner_verts[looptris[tri_index].tri[0]]]);
           copy_v3_v3(static_cast<float *>(GPU_vertbuf_raw_step(&pos_step)),
@@ -107,7 +107,7 @@ void ED_draw_object_facemap(Depsgraph *depsgraph,
         }
       }
       else {
-        tri_index += poly.totloop - 2;
+        tri_index += polys[i].size() - 2;
       }
     }
 

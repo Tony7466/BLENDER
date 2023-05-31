@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup sptext
@@ -60,9 +61,7 @@ static void text_font_begin(const TextDrawContext *tdc)
   BLF_size(tdc->font_id, (float)tdc->lheight_px);
 }
 
-static void text_font_end(const TextDrawContext *UNUSED(tdc))
-{
-}
+static void text_font_end(const TextDrawContext *UNUSED(tdc)) {}
 
 static int text_font_draw(const TextDrawContext *tdc, int x, int y, const char *str)
 {
@@ -714,7 +713,7 @@ static void text_update_drawcache(SpaceText *st, ARegion *region)
   drawcache->valid_tail = 0;
 }
 
-void text_drawcache_tag_update(SpaceText *st, int full)
+void text_drawcache_tag_update(SpaceText *st, const bool full)
 {
   /* This happens if text editor ops are called from Python. */
   if (st == NULL) {
@@ -935,7 +934,8 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
                   (pix_bardiff * (lhlstart - st->top) / st->runtime.viewlines);
       }
       else if (lhlstart > st->top + st->runtime.viewlines && hlstart < barstart + barheight &&
-               hlstart > barstart) {
+               hlstart > barstart)
+      {
         /* push hl start down */
         hlstart = barstart + barheight;
       }
@@ -949,8 +949,8 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
       }
 
       /* the end of the highlight is in the current viewport */
-      if (st->runtime.viewlines && lhlend >= st->top &&
-          lhlend <= st->top + st->runtime.viewlines) {
+      if (st->runtime.viewlines && lhlend >= st->top && lhlend <= st->top + st->runtime.viewlines)
+      {
         /* Speed the progression of the end of the highlight through the scroll-bar. */
         hlend = (((pix_available - pix_bardiff) * lhlend) / ltexth) +
                 (pix_bardiff * (lhlend - st->top) / st->runtime.viewlines);
@@ -960,7 +960,8 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
         hlend = barstart;
       }
       else if (lhlend > st->top + st->runtime.viewlines &&
-               lhlstart < st->top + st->runtime.viewlines && hlend < barstart + barheight) {
+               lhlstart < st->top + st->runtime.viewlines && hlend < barstart + barheight)
+      {
         /* fill out end */
         hlend = barstart + barheight;
       }
@@ -1455,7 +1456,8 @@ static void draw_brackets(const SpaceText *st, const TextDrawContext *tdc, ARegi
 
   /* Don't highlight brackets if syntax HL is off or bracket in string or comment. */
   if (!linep->format || linep->format[fc] == FMT_TYPE_STRING ||
-      linep->format[fc] == FMT_TYPE_COMMENT) {
+      linep->format[fc] == FMT_TYPE_COMMENT)
+  {
     return;
   }
 
@@ -1696,11 +1698,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
     if (st->showlinenrs && !wrap_skip) {
       /* Draw line number. */
       UI_FontThemeColor(tdc.font_id, (tmp == text->sell) ? TH_HILITE : TH_LINENUMBERS);
-      BLI_snprintf(linenr,
-                   sizeof(linenr),
-                   "%*d",
-                   st->runtime.line_number_display_digits,
-                   i + linecount + 1);
+      SNPRINTF(linenr, "%*d", st->runtime.line_number_display_digits, i + linecount + 1);
       text_font_draw(&tdc, TXT_NUMCOL_PAD * st->runtime.cwidth_px, y, linenr);
       /* Change back to text color. */
       UI_FontThemeColor(tdc.font_id, TH_TEXT);

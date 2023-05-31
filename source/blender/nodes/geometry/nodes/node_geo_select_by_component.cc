@@ -10,10 +10,10 @@ namespace blender::nodes::node_geo_select_by_component_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Bool>(N_("Is Mesh")).field_source_reference_all();
-  b.add_output<decl::Bool>(N_("Is Curves")).field_source_reference_all();
-  b.add_output<decl::Bool>(N_("Is Point Cloud")).field_source_reference_all();
-  b.add_output<decl::Bool>(N_("Is Instances")).field_source_reference_all();
+  b.add_output<decl::Bool>(N_("Is Mesh")).field_source();
+  b.add_output<decl::Bool>(N_("Is Curves")).field_source();
+  b.add_output<decl::Bool>(N_("Is Point Cloud")).field_source();
+  b.add_output<decl::Bool>(N_("Is Instances")).field_source();
 }
 
 class SelectByComponentFieldInput final : public bke::GeometryFieldInput {
@@ -27,10 +27,10 @@ class SelectByComponentFieldInput final : public bke::GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
     const GeometryComponentType context_component_type = context.type();
-    return VArray<bool>::ForSingle(context_component_type == type_, mask.min_array_size());
+    return VArray<bool>::ForSingle(context_component_type == type_, mask.size());
   }
 
   uint64_t hash() const override
@@ -41,7 +41,8 @@ class SelectByComponentFieldInput final : public bke::GeometryFieldInput {
   bool is_equal_to(const fn::FieldNode &other) const override
   {
     if (const SelectByComponentFieldInput *other_mask =
-            dynamic_cast<const SelectByComponentFieldInput *>(&other)) {
+            dynamic_cast<const SelectByComponentFieldInput *>(&other))
+    {
       return other_mask->type_ == this->type_;
     }
     return false;

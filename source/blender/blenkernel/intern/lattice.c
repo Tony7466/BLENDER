@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -161,8 +162,8 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
 static void lattice_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Lattice *lt = (Lattice *)id;
-  BLO_read_id_address(reader, lt->id.lib, &lt->ipo);  // XXX deprecated - old animation system
-  BLO_read_id_address(reader, lt->id.lib, &lt->key);
+  BLO_read_id_address(reader, id, &lt->ipo);  // XXX deprecated - old animation system
+  BLO_read_id_address(reader, id, &lt->key);
 }
 
 static void lattice_blend_read_expand(BlendExpander *expander, ID *id)
@@ -758,11 +759,10 @@ bool BKE_lattice_is_any_selected(const Lattice *lt)
 
 /* **** Depsgraph evaluation **** */
 
-void BKE_lattice_eval_geometry(struct Depsgraph *UNUSED(depsgraph), Lattice *UNUSED(latt))
-{
-}
+void BKE_lattice_eval_geometry(struct Depsgraph *UNUSED(depsgraph), Lattice *UNUSED(latt)) {}
 
 /* Draw Engine */
+
 void (*BKE_lattice_batch_cache_dirty_tag_cb)(Lattice *lt, int mode) = NULL;
 void (*BKE_lattice_batch_cache_free_cb)(Lattice *lt) = NULL;
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -10,9 +11,7 @@
 
 #include "overlay_private.hh"
 
-void OVERLAY_facing_init(OVERLAY_Data * /*vedata*/)
-{
-}
+void OVERLAY_facing_init(OVERLAY_Data * /*vedata*/) {}
 
 void OVERLAY_facing_cache_init(OVERLAY_Data *vedata)
 {

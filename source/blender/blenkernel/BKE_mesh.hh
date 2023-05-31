@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -21,7 +23,7 @@ float3 poly_normal_calc(Span<float3> vert_positions, Span<int> poly_verts);
  * Calculate tessellation into #MLoopTri which exist only for this purpose.
  */
 void looptris_calc(Span<float3> vert_positions,
-                   Span<MPoly> polys,
+                   OffsetIndices<int> polys,
                    Span<int> corner_verts,
                    MutableSpan<MLoopTri> looptris);
 /**
@@ -32,10 +34,12 @@ void looptris_calc(Span<float3> vert_positions,
  * to calculate normals just to use this function.
  */
 void looptris_calc_with_normals(Span<float3> vert_positions,
-                                Span<MPoly> polys,
+                                OffsetIndices<int> polys,
                                 Span<int> corner_verts,
                                 Span<float3> poly_normals,
                                 MutableSpan<MLoopTri> looptris);
+
+void looptris_calc_poly_indices(OffsetIndices<int> polys, MutableSpan<int> looptri_polys);
 
 /** Calculate the average position of the vertices in the polygon. */
 float3 poly_center_calc(Span<float3> vert_positions, Span<int> poly_verts);
@@ -61,7 +65,7 @@ void poly_angles_calc(Span<float3> vert_positions,
  * since they may already be calculated and cached on the mesh.
  */
 void normals_calc_polys(Span<float3> vert_positions,
-                        Span<MPoly> polys,
+                        OffsetIndices<int> polys,
                         Span<int> corner_verts,
                         MutableSpan<float3> poly_normals);
 
@@ -72,10 +76,56 @@ void normals_calc_polys(Span<float3> vert_positions,
  * since they may already be calculated and cached on the mesh.
  */
 void normals_calc_poly_vert(Span<float3> vert_positions,
-                            Span<MPoly> polys,
+                            OffsetIndices<int> polys,
                             Span<int> corner_verts,
                             MutableSpan<float3> poly_normals,
                             MutableSpan<float3> vert_normals);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Face Corner Normal Calculation
+ * \{ */
+
+/**
+ * Combined with the automatically calculated face corner normal, this gives a dimensional
+ * coordinate space used to convert normals between the "custom normal" #short2 representation and
+ * a regular #float3 format.
+ */
+struct CornerNormalSpace {
+  /** Reference vector, orthogonal to corner normal. */
+  float3 vec_ref;
+  /** Third vector, orthogonal to corner normal and #vec_ref. */
+  float3 vec_ortho;
+  /** Reference angle around #vec_ortho, in [0, pi] range (0.0 marks space as invalid). */
+  float ref_alpha;
+  /** Reference angle around corner normal, in [0, 2pi] range (0.0 marks space as invalid). */
+  float ref_beta;
+};
+
+/**
+ * Storage for corner fan coordinate spaces for an entire mesh.
+ */
+struct CornerNormalSpaceArray {
+  /**
+   * The normal coordinate spaces, potentially shared between multiple face corners in a smooth fan
+   * connected to a vertex (and not per face corner). Depending on the mesh (the amount of sharing
+   * / number of sharp edges / size of each fan), there may be many fewer spaces than face corners,
+   * so they are stored in a separate array.
+   */
+  Array<CornerNormalSpace> spaces;
+
+  /**
+   * The index of the data in the #spaces array for each face corner (the array size is the
+   * same as #Mesh::totloop). Rare -1 values define face corners without a coordinate space.
+   */
+  Array<int> corner_space_indices;
+};
+
+void lnor_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
+                                      float3 lnor_no_custom,
+                                      const float custom_lnor[3],
+                                      short r_clnor_data[2]);
 
 /**
  * Compute split normals, i.e. vertex normals associated with each poly (hence 'loop normals').
@@ -85,10 +135,12 @@ void normals_calc_poly_vert(Span<float3> vert_positions,
  * \param loop_to_poly_map: Optional pre-created map from corners to their polygon.
  * \param sharp_edges: Optional array of sharp edge tags, used to split the evaluated normals on
  * each side of the edge.
+ * \param r_lnors_spacearr: Optional return data filled with information about the custom
+ * normals spaces for each grouped fan of face corners.
  */
 void normals_calc_loop(Span<float3> vert_positions,
-                       Span<MEdge> edges,
-                       Span<MPoly> polys,
+                       Span<int2> edges,
+                       OffsetIndices<int> polys,
                        Span<int> corner_verts,
                        Span<int> corner_edges,
                        Span<int> loop_to_poly_map,
@@ -98,13 +150,13 @@ void normals_calc_loop(Span<float3> vert_positions,
                        const bool *sharp_faces,
                        bool use_split_normals,
                        float split_angle,
-                       short (*clnors_data)[2],
-                       MLoopNorSpaceArray *r_lnors_spacearr,
+                       short2 *clnors_data,
+                       CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
 void normals_loop_custom_set(Span<float3> vert_positions,
-                             Span<MEdge> edges,
-                             Span<MPoly> polys,
+                             Span<int2> edges,
+                             OffsetIndices<int> polys,
                              Span<int> corner_verts,
                              Span<int> corner_edges,
                              Span<float3> vert_normals,
@@ -112,11 +164,11 @@ void normals_loop_custom_set(Span<float3> vert_positions,
                              const bool *sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
-                             short (*r_clnors_data)[2]);
+                             MutableSpan<short2> r_clnors_data);
 
 void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
-                                        Span<MEdge> edges,
-                                        Span<MPoly> polys,
+                                        Span<int2> edges,
+                                        OffsetIndices<int> polys,
                                         Span<int> corner_verts,
                                         Span<int> corner_edges,
                                         Span<float3> vert_normals,
@@ -124,7 +176,7 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
                                         const bool *sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
-                                        short (*r_clnors_data)[2]);
+                                        MutableSpan<short2> r_clnors_data);
 
 /**
  * Define sharp edges as needed to mimic 'autosmooth' from angle threshold.
@@ -134,7 +186,7 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
  *
  * \param sharp_faces: Optional array used to mark specific faces for sharp shading.
  */
-void edges_sharp_from_angle_set(Span<MPoly> polys,
+void edges_sharp_from_angle_set(OffsetIndices<int> polys,
                                 Span<int> corner_verts,
                                 Span<int> corner_edges,
                                 Span<float3> poly_normals,
@@ -142,9 +194,75 @@ void edges_sharp_from_angle_set(Span<MPoly> polys,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
 
-}  // namespace blender::bke::mesh
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Topology Queries
+ * \{ */
+
+/**
+ * Find the index of the next corner in the polygon, looping to the start if necessary.
+ * The indices are into the entire corners array, not just the polygon's corners.
+ */
+inline int poly_corner_prev(const IndexRange poly, const int corner)
+{
+  return corner - 1 + (corner == poly.start()) * poly.size();
+}
+
+/**
+ * Find the index of the previous corner in the polygon, looping to the end if necessary.
+ * The indices are into the entire corners array, not just the polygon's corners.
+ */
+inline int poly_corner_next(const IndexRange poly, const int corner)
+{
+  if (corner == poly.last()) {
+    return poly.start();
+  }
+  return corner + 1;
+}
+
+/**
+ * Find the index of the corner in the polygon that uses the given vertex.
+ * The index is into the entire corners array, not just the polygon's corners.
+ */
+inline int poly_find_corner_from_vert(const IndexRange poly,
+                                      const Span<int> corner_verts,
+                                      const int vert)
+{
+  return poly[corner_verts.slice(poly).first_index(vert)];
+}
+
+/**
+ * Return the vertex indices on either side of the given vertex, ordered based on the winding
+ * direction of the polygon. The vertex must be in the polygon.
+ */
+inline int2 poly_find_adjecent_verts(const IndexRange poly,
+                                     const Span<int> corner_verts,
+                                     const int vert)
+{
+  const int corner = poly_find_corner_from_vert(poly, corner_verts, vert);
+  return {corner_verts[poly_corner_prev(poly, corner)],
+          corner_verts[poly_corner_next(poly, corner)]};
+}
+
+/**
+ * Return the index of the edge's vertex that is not the \a vert.
+ * If neither edge vertex is equal to \a v, returns -1.
+ */
+inline int edge_other_vert(const int2 &edge, const int vert)
+{
+  if (edge[0] == vert) {
+    return edge[1];
+  }
+  if (edge[1] == vert) {
+    return edge[0];
+  }
+  return -1;
+}
 
 /** \} */
+
+}  // namespace blender::bke::mesh
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
@@ -160,22 +278,36 @@ inline blender::MutableSpan<blender::float3> Mesh::vert_positions_for_write()
           this->totvert};
 }
 
-inline blender::Span<MEdge> Mesh::edges() const
+inline blender::Span<blender::int2> Mesh::edges() const
 {
-  return {BKE_mesh_edges(this), this->totedge};
+  return {static_cast<const blender::int2 *>(
+              CustomData_get_layer_named(&this->edata, CD_PROP_INT32_2D, ".edge_verts")),
+          this->totedge};
 }
-inline blender::MutableSpan<MEdge> Mesh::edges_for_write()
+inline blender::MutableSpan<blender::int2> Mesh::edges_for_write()
 {
-  return {BKE_mesh_edges_for_write(this), this->totedge};
+  return {static_cast<blender::int2 *>(CustomData_get_layer_named_for_write(
+              &this->edata, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
+          this->totedge};
 }
 
-inline blender::Span<MPoly> Mesh::polys() const
+inline blender::OffsetIndices<int> Mesh::polys() const
 {
-  return {BKE_mesh_polys(this), this->totpoly};
+  return blender::Span(BKE_mesh_poly_offsets(this), this->totpoly + 1);
 }
-inline blender::MutableSpan<MPoly> Mesh::polys_for_write()
+inline blender::Span<int> Mesh::poly_offsets() const
 {
-  return {BKE_mesh_polys_for_write(this), this->totpoly};
+  if (this->totpoly == 0) {
+    return {};
+  }
+  return {BKE_mesh_poly_offsets(this), this->totpoly + 1};
+}
+inline blender::MutableSpan<int> Mesh::poly_offsets_for_write()
+{
+  if (this->totpoly == 0) {
+    return {};
+  }
+  return {BKE_mesh_poly_offsets_for_write(this), this->totpoly + 1};
 }
 
 inline blender::Span<int> Mesh::corner_verts() const

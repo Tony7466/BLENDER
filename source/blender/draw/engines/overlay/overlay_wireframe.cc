@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -21,6 +22,7 @@
 #include "BKE_particle.h"
 
 #include "BLI_hash.h"
+#include "BLI_math_base.hh"
 
 #include "DRW_render.h"
 #include "GPU_shader.h"
@@ -28,6 +30,8 @@
 #include "ED_view3d.h"
 
 #include "overlay_private.hh"
+
+using namespace blender::math;
 
 void OVERLAY_wireframe_init(OVERLAY_Data *vedata)
 {
@@ -47,7 +51,13 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
 
   View3DShading *shading = &draw_ctx->v3d->shading;
 
-  pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
+  /* Use `sqrt` since the value stored in the edge is a variation of the cosine, so its square
+   * becomes more proportional with a variation of angle. */
+  pd->shdata.wire_step_param = sqrt(abs(pd->overlay.wireframe_threshold));
+
+  /* The maximum value (255 in the VBO) is used to force hide the edge. */
+  pd->shdata.wire_step_param = interpolate(0.0f, 1.0f - (1.0f / 255), pd->shdata.wire_step_param);
+
   pd->shdata.wire_opacity = pd->overlay.wireframe_opacity;
 
   bool is_wire_shmode = (shading->type == OB_WIRE);
@@ -186,7 +196,8 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
   if (use_wire && pd->wireframe_mode && ob->particlesystem.first) {
     for (ParticleSystem *psys = static_cast<ParticleSystem *>(ob->particlesystem.first);
          psys != nullptr;
-         psys = psys->next) {
+         psys = psys->next)
+    {
       if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
         continue;
       }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -129,7 +131,7 @@ wmGizmoGroupTypeRef *WM_gizmogrouptype_append_and_link(wmGizmoMapType *gzmap_typ
  */
 static void gizmogrouptype_free(wmGizmoGroupType *gzgt)
 {
-  /* Python gizmo group, allocates it's own string. */
+  /* Python gizmo group, allocates its own string. */
   if (gzgt->rna_ext.srna) {
     MEM_freeN((void *)gzgt->idname);
   }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -62,9 +63,11 @@
 
 #include "IMB_colormanagement.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
-extern "C" {
+/* -------------------------------------------------------------------- */
+/** \name Image Paint Tile Utilities (Partial Update)
+ * \{ */
 
 /**
  * This is a static resource for non-global access.
@@ -175,6 +178,12 @@ void imapaint_image_update(
   }
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Image Paint Blur
+ * \{ */
+
 BlurKernel *paint_new_blur_kernel(Brush *br, bool proj)
 {
   int i, j;
@@ -251,7 +260,11 @@ void paint_delete_blur_kernel(BlurKernel *kernel)
   }
 }
 
-/************************ image paint poll ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Image Paint Poll
+ * \{ */
 
 static Brush *image_paint_brush(bContext *C)
 {
@@ -320,7 +333,12 @@ static bool image_paint_2d_clone_poll(bContext *C)
   return false;
 }
 
-/************************ paint operator ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Paint Operator
+ * \{ */
+
 bool paint_use_opacity_masking(Brush *brush)
 {
   return ((brush->flag & BRUSH_AIRBRUSH) || (brush->flag & BRUSH_DRAG_DOT) ||
@@ -425,7 +443,11 @@ bool get_imapaint_zoom(bContext *C, float *zoomx, float *zoomy)
   return false;
 }
 
-/************************ cursor drawing *******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Cursor Drawing
+ * \{ */
 
 static void toggle_paint_cursor(Scene *scene, bool enable)
 {
@@ -470,7 +492,11 @@ void ED_space_image_paint_update(Main *bmain, wmWindowManager *wm, Scene *scene)
   }
 }
 
-/************************ grab clone operator ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Grab Clone Operator
+ * \{ */
 
 struct GrabClone {
   float startoffset[2];
@@ -579,7 +605,12 @@ void PAINT_OT_grab_clone(wmOperatorType *ot)
                        1.0f);
 }
 
-/******************** sample color operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Sample Color Operator
+ * \{ */
+
 struct SampleColorData {
   bool show_cursor;
   short launch_event;
@@ -593,12 +624,10 @@ static void sample_color_update_header(SampleColorData *data, bContext *C)
   ScrArea *area = CTX_wm_area(C);
 
   if (area) {
-    BLI_snprintf(msg,
-                 sizeof(msg),
-                 TIP_("Sample color for %s"),
-                 !data->sample_palette ?
-                     TIP_("Brush. Use Left Click to sample for palette instead") :
-                     TIP_("Palette. Use Left Click to sample more colors"));
+    SNPRINTF(msg,
+             TIP_("Sample color for %s"),
+             !data->sample_palette ? TIP_("Brush. Use Left Click to sample for palette instead") :
+                                     TIP_("Palette. Use Left Click to sample more colors"));
     ED_workspace_status_text(C, msg);
   }
 }
@@ -757,7 +786,11 @@ void PAINT_OT_sample_color(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "palette", false, "Add to Palette", "");
 }
 
-/******************** texture paint toggle operator ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Texture Paint Toggle Operator
+ * \{ */
 
 static void paint_init_pivot_mesh(Object *ob, float location[3])
 {
@@ -782,6 +815,12 @@ static void paint_init_pivot_curves(Object *ob, float location[3])
   interp_v3_v3v3(location, bbox->vec[0], bbox->vec[6], 0.5f);
 }
 
+static void paint_init_pivot_grease_pencil(Object *ob, float location[3])
+{
+  const BoundBox *bbox = BKE_object_boundbox_get(ob);
+  interp_v3_v3v3(location, bbox->vec[0], bbox->vec[6], 0.5f);
+}
+
 void paint_init_pivot(Object *ob, Scene *scene)
 {
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
@@ -793,6 +832,9 @@ void paint_init_pivot(Object *ob, Scene *scene)
       break;
     case OB_CURVES:
       paint_init_pivot_curves(ob, location);
+      break;
+    case OB_GREASE_PENCIL:
+      paint_init_pivot_grease_pencil(ob, location);
       break;
     default:
       BLI_assert_unreachable();
@@ -957,6 +999,12 @@ void PAINT_OT_texture_paint_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Brush Color Flip Operator
+ * \{ */
+
 static int brush_colors_flip_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
@@ -1014,6 +1062,12 @@ void PAINT_OT_brush_colors_flip(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER;
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Texture Paint Bucket Fill Operator
+ * \{ */
+
 void ED_imapaint_bucket_fill(struct bContext *C,
                              float color[3],
                              wmOperator *op,
@@ -1065,4 +1119,5 @@ bool mask_paint_poll(bContext *C)
 {
   return BKE_paint_select_elem_test(CTX_data_active_object(C));
 }
-}
+
+/** \} */

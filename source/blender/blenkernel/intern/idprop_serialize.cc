@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <optional>
 
@@ -102,9 +103,7 @@ struct DictionaryEntryParser {
   const DictionaryValue::Lookup lookup;
 
  public:
-  explicit DictionaryEntryParser(const DictionaryValue &value) : lookup(value.create_lookup())
-  {
-  }
+  explicit DictionaryEntryParser(const DictionaryValue &value) : lookup(value.create_lookup()) {}
 
   std::optional<eIDPropertyType> get_type() const
   {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -28,10 +30,9 @@ static void gather_point_data_from_component(Field<float> radius_field,
   if (component.is_empty()) {
     return;
   }
-  VArray<float3> positions = component.attributes()->lookup_or_default<float3>(
-      "position", ATTR_DOMAIN_POINT, {0, 0, 0});
+  const VArray<float3> positions = *component.attributes()->lookup<float3>("position");
 
-  bke::GeometryFieldContext field_context{component, ATTR_DOMAIN_POINT};
+  const bke::GeometryFieldContext field_context{component, ATTR_DOMAIN_POINT};
   const int domain_num = component.attribute_domain_size(ATTR_DOMAIN_POINT);
 
   r_positions.resize(r_positions.size() + domain_num);
@@ -87,7 +88,8 @@ void initialize_volume_component_from_points(GeoNodeExecParams &params,
   Field<float> radius_field = params.get_input<Field<float>>("Radius");
 
   for (const GeometryComponentType type :
-       {GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD, GEO_COMPONENT_TYPE_CURVE}) {
+       {GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD, GEO_COMPONENT_TYPE_CURVE})
+  {
     if (r_geometry_set.has(type)) {
       gather_point_data_from_component(
           radius_field, *r_geometry_set.get_component_for_read(type), positions, radii);
@@ -98,7 +100,7 @@ void initialize_volume_component_from_points(GeoNodeExecParams &params,
     return;
   }
 
-  float voxel_size;
+  float voxel_size = 0.0f;
   if (storage.resolution_mode == GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE) {
     voxel_size = params.get_input<float>("Voxel Size");
   }
@@ -106,6 +108,9 @@ void initialize_volume_component_from_points(GeoNodeExecParams &params,
     const float voxel_amount = params.get_input<float>("Voxel Amount");
     const float max_radius = *std::max_element(radii.begin(), radii.end());
     voxel_size = compute_voxel_size_from_amount(voxel_amount, positions, max_radius);
+  }
+  else {
+    BLI_assert_msg(0, "Unknown volume resolution mode");
   }
 
   const double determinant = std::pow(double(voxel_size), 3.0);
@@ -138,27 +143,27 @@ NODE_STORAGE_FUNCS(NodeGeometryPointsToVolume)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Points"));
-  b.add_input<decl::Float>(N_("Density")).default_value(1.0f).min(0.0f);
-  b.add_input<decl::Float>(N_("Voxel Size"))
+  b.add_input<decl::Geometry>("Points");
+  b.add_input<decl::Float>("Density").default_value(1.0f).min(0.0f);
+  b.add_input<decl::Float>("Voxel Size")
       .default_value(0.3f)
       .min(0.01f)
       .subtype(PROP_DISTANCE)
       .make_available([](bNode &node) {
         node_storage(node).resolution_mode = GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE;
       });
-  b.add_input<decl::Float>(N_("Voxel Amount"))
+  b.add_input<decl::Float>("Voxel Amount")
       .default_value(64.0f)
       .min(0.0f)
       .make_available([](bNode &node) {
         node_storage(node).resolution_mode = GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT;
       });
-  b.add_input<decl::Float>(N_("Radius"))
+  b.add_input<decl::Float>("Radius")
       .default_value(0.5f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)
       .field_on_all();
-  b.add_output<decl::Geometry>(N_("Volume"));
+  b.add_output<decl::Geometry>("Volume").translation_context(BLT_I18NCONTEXT_ID_ID);
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -180,14 +185,14 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const NodeGeometryPointsToVolume &storage = node_storage(*node);
   bNodeSocket *voxel_size_socket = nodeFindSocket(node, SOCK_IN, "Voxel Size");
   bNodeSocket *voxel_amount_socket = nodeFindSocket(node, SOCK_IN, "Voxel Amount");
-  nodeSetSocketAvailability(ntree,
-                            voxel_amount_socket,
-                            storage.resolution_mode ==
-                                GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
-  nodeSetSocketAvailability(ntree,
-                            voxel_size_socket,
-                            storage.resolution_mode ==
-                                GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE);
+  bke::nodeSetSocketAvailability(ntree,
+                                 voxel_amount_socket,
+                                 storage.resolution_mode ==
+                                     GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
+  bke::nodeSetSocketAvailability(ntree,
+                                 voxel_size_socket,
+                                 storage.resolution_mode ==
+                                     GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -220,7 +225,7 @@ void register_node_type_geo_points_to_volume()
                     "NodeGeometryPointsToVolume",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  node_type_size(&ntype, 170, 120, 700);
+  blender::bke::node_type_size(&ntype, 170, 120, 700);
   ntype.initfunc = file_ns::node_init;
   ntype.updatefunc = file_ns::node_update;
   ntype.declare = file_ns::node_declare;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -127,7 +129,8 @@ static void bli_builddir(struct BuildDirCtx *dir_ctx, const char *dirname)
       dirname_with_slash, dirname, sizeof(dirname_with_slash) - 1);
 
   if ((dirname_with_slash_len > 0) &&
-      (BLI_path_slash_is_native_compat(dirname[dirname_with_slash_len - 1]) == false)) {
+      (BLI_path_slash_is_native_compat(dirname[dirname_with_slash_len - 1]) == false))
+  {
     dirname_with_slash[dirname_with_slash_len++] = SEP;
     dirname_with_slash[dirname_with_slash_len] = '\0';
   }
@@ -150,7 +153,7 @@ static void bli_builddir(struct BuildDirCtx *dir_ctx, const char *dirname)
   if (!has_parent) {
     char pardir[FILE_MAXDIR];
 
-    BLI_strncpy(pardir, dirname, sizeof(pardir));
+    STRNCPY(pardir, dirname);
     if (BLI_path_parent_dir(pardir) && (BLI_access(pardir, R_OK) == 0)) {
       struct dirlink *const dlink = (struct dirlink *)malloc(sizeof(struct dirlink));
       if (dlink != NULL) {

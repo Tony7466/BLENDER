@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
@@ -617,7 +618,7 @@ static bPoseChannel *pose_bone_do_paste(Object *ob,
     BLI_string_flip_side_name(name, chan->name, false, sizeof(name));
   }
   else {
-    BLI_strncpy(name, chan->name, sizeof(name));
+    STRNCPY(name, chan->name);
   }
 
   /* only copy when:
@@ -756,7 +757,7 @@ static bPoseChannel *pose_bone_do_paste(Object *ob,
 static int pose_copy_exec(bContext *C, wmOperator *op)
 {
   Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
   /* Sanity checking. */
   if (ELEM(NULL, ob, ob->pose)) {
     BKE_report(op->reports, RPT_ERROR, "No pose to copy");
@@ -788,8 +789,8 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
    * existing on its own.
    */
   BKE_copybuffer_copy_tag_ID(&ob_copy.id);
-  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer_pose.blend");
-  BKE_copybuffer_copy_end(temp_bmain, str, op->reports);
+  BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), "copybuffer_pose.blend");
+  BKE_copybuffer_copy_end(temp_bmain, filepath, op->reports);
   /* We clear the lists so no datablocks gets freed,
    * This is required because objects in temp bmain shares same pointers
    * as the real ones.
@@ -798,7 +799,7 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
   BLI_listbase_clear(&temp_bmain->armatures);
   BKE_main_free(temp_bmain);
   /* We are all done! */
-  BKE_report(op->reports, RPT_INFO, "Copied pose to buffer");
+  BKE_report(op->reports, RPT_INFO, "Copied pose to internal clipboard");
   return OPERATOR_FINISHED;
 }
 
@@ -807,7 +808,7 @@ void POSE_OT_copy(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Copy Pose";
   ot->idname = "POSE_OT_copy";
-  ot->description = "Copies the current pose of the selected bones to copy/paste buffer";
+  ot->description = "Copy the current pose of the selected bones to the internal clipboard";
 
   /* api callbacks */
   ot->exec = pose_copy_exec;
@@ -840,19 +841,19 @@ static int pose_paste_exec(bContext *C, wmOperator *op)
   }
 
   /* Read copy buffer .blend file. */
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
   Main *tmp_bmain = BKE_main_new();
   STRNCPY(tmp_bmain->filepath, BKE_main_blendfile_path_from_global());
 
-  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer_pose.blend");
-  if (!BKE_copybuffer_read(tmp_bmain, str, op->reports, FILTER_ID_OB)) {
-    BKE_report(op->reports, RPT_ERROR, "Copy buffer is empty");
+  BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), "copybuffer_pose.blend");
+  if (!BKE_copybuffer_read(tmp_bmain, filepath, op->reports, FILTER_ID_OB)) {
+    BKE_report(op->reports, RPT_ERROR, "Internal clipboard is empty");
     BKE_main_free(tmp_bmain);
     return OPERATOR_CANCELLED;
   }
   /* Make sure data from this file is usable for pose paste. */
   if (BLI_listbase_count_at_most(&tmp_bmain->objects, 2) != 1) {
-    BKE_report(op->reports, RPT_ERROR, "Copy buffer is not from pose mode");
+    BKE_report(op->reports, RPT_ERROR, "Internal clipboard is not from pose mode");
     BKE_main_free(tmp_bmain);
     return OPERATOR_CANCELLED;
   }
@@ -860,7 +861,7 @@ static int pose_paste_exec(bContext *C, wmOperator *op)
   Object *object_from = tmp_bmain->objects.first;
   bPose *pose_from = object_from->pose;
   if (pose_from == NULL) {
-    BKE_report(op->reports, RPT_ERROR, "Copy buffer has no pose");
+    BKE_report(op->reports, RPT_ERROR, "Internal clipboard has no pose");
     BKE_main_free(tmp_bmain);
     return OPERATOR_CANCELLED;
   }
@@ -1360,7 +1361,7 @@ static int pose_clear_user_transforms_exec(bContext *C, wmOperator *op)
       /* execute animation step for current frame using a dummy copy of the pose */
       BKE_pose_copy_data(&dummyPose, ob->pose, 0);
 
-      BLI_strncpy(workob.id.name, "OB<ClearTfmWorkOb>", sizeof(workob.id.name));
+      STRNCPY(workob.id.name, "OB<ClearTfmWorkOb>");
       workob.type = OB_ARMATURE;
       workob.data = ob->data;
       workob.adt = ob->adt;

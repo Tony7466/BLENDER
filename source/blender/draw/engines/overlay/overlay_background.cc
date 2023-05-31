@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -51,7 +52,8 @@ void OVERLAY_background_cache_init(OVERLAY_Data *vedata)
       color_override[3] = 1.0f;
     }
     else if (v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT &&
-             v3d->shading.type <= OB_SOLID) {
+             v3d->shading.type <= OB_SOLID)
+    {
       background_type = BG_SOLID;
       copy_v3_v3(color_override, v3d->shading.background_color);
       color_override[3] = 1.0f;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <string>
 
@@ -21,9 +23,7 @@ namespace blender::realtime_compositor {
 
 using namespace nodes::derived_node_tree_types;
 
-Evaluator::Evaluator(Context &context) : context_(context)
-{
-}
+Evaluator::Evaluator(Context &context) : context_(context) {}
 
 void Evaluator::evaluate()
 {

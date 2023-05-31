@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -49,10 +50,10 @@ static void applyCurveShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
     char c[NUM_STR_REP_LEN];
 
     outputNumInput(&(t->num), c, &t->scene->unit);
-    BLI_snprintf(str, sizeof(str), TIP_("Shrink/Fatten: %s"), c);
+    SNPRINTF(str, TIP_("Shrink/Fatten: %s"), c);
   }
   else {
-    BLI_snprintf(str, sizeof(str), TIP_("Shrink/Fatten: %3f"), ratio);
+    SNPRINTF(str, TIP_("Shrink/Fatten: %3f"), ratio);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -104,7 +105,8 @@ void initCurveShrinkFatten(TransInfo *t)
   float scale_factor = 0.0f;
   if (((t->spacetype == SPACE_VIEW3D) && (t->region->regiontype == RGN_TYPE_WINDOW) &&
        (t->data_len_all == 1)) ||
-      (t->data_len_all == 3 && TRANS_DATA_CONTAINER_FIRST_OK(t)->data[0].val == NULL)) {
+      (t->data_len_all == 3 && TRANS_DATA_CONTAINER_FIRST_OK(t)->data[0].val == NULL))
+  {
     /* For cases where only one point on the curve is being transformed and the radius of that
      * point is zero, use the factor to multiply the offset of the ratio and allow scaling.
      * Note that for bezier curves, 3 TransData equals 1 point in most cases. */

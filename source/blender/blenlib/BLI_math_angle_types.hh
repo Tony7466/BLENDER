@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -14,6 +16,8 @@
  *
  * This design allows some function overloads to be more efficient with certain types.
  */
+
+#include <iostream>
 
 #include "BLI_math_base.hh"
 
@@ -741,5 +745,3 @@ using AngleRadian = AngleRadianBase<float>;
 using AngleCartesian = AngleCartesianBase<float>;
 
 }  // namespace blender::math
-
-/** \} */

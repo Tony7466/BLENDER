@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -51,7 +53,8 @@ static bool WIDGETGROUP_camera_poll(const bContext *C, wmGizmoGroupType *UNUSED(
     return false;
   }
   if ((v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_LENS) == 0 &&
-      (v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_DOF_DIST) == 0) {
+      (v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_DOF_DIST) == 0)
+  {
     return false;
   }
 

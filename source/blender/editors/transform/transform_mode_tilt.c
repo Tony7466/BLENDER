@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -49,13 +50,13 @@ static void applyTilt(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    BLI_snprintf(str, sizeof(str), TIP_("Tilt: %s° %s"), &c[0], t->proptext);
+    SNPRINTF(str, TIP_("Tilt: %s° %s"), &c[0], t->proptext);
 
     /* XXX For some reason, this seems needed for this op, else RNA prop is not updated... :/ */
     t->values_final[0] = final;
   }
   else {
-    BLI_snprintf(str, sizeof(str), TIP_("Tilt: %.2f° %s"), RAD2DEGF(final), t->proptext);
+    SNPRINTF(str, TIP_("Tilt: %.2f° %s"), RAD2DEGF(final), t->proptext);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {

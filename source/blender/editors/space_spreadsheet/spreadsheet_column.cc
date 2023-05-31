@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_space_types.h"
 
@@ -29,6 +31,9 @@ eSpreadsheetColumnValueType cpp_type_to_column_type(const CPPType &type)
   }
   if (type.is<int>()) {
     return SPREADSHEET_VALUE_TYPE_INT32;
+  }
+  if (type.is<int2>()) {
+    return SPREADSHEET_VALUE_TYPE_INT32_2D;
   }
   if (type.is<float>()) {
     return SPREADSHEET_VALUE_TYPE_FLOAT;

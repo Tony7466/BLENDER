@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -44,22 +45,22 @@ struct FlagIdentifierPair {
 };
 
 static void event_ids_from_flag(char *str,
-                                const int str_maxlen,
+                                const int str_maxncpy,
                                 const struct FlagIdentifierPair *flag_data,
                                 const int flag_data_len,
                                 const uint flag)
 {
   int ofs = 0;
-  ofs += BLI_strncpy_rlen(str + ofs, "{", str_maxlen - ofs);
+  ofs += BLI_strncpy_rlen(str + ofs, "{", str_maxncpy - ofs);
   for (int i = 0; i < flag_data_len; i++) {
     if (flag & flag_data[i].flag) {
       if (ofs != 1) {
-        ofs += BLI_strncpy_rlen(str + ofs, "|", str_maxlen - ofs);
+        ofs += BLI_strncpy_rlen(str + ofs, "|", str_maxncpy - ofs);
       }
-      ofs += BLI_strncpy_rlen(str + ofs, flag_data[i].id, str_maxlen - ofs);
+      ofs += BLI_strncpy_rlen(str + ofs, flag_data[i].id, str_maxncpy - ofs);
     }
   }
-  ofs += BLI_strncpy_rlen(str + ofs, "}", str_maxlen - ofs);
+  ofs += BLI_strncpy_rlen(str + ofs, "}", str_maxncpy - ofs);
 }
 
 static void event_ids_from_type_and_value(const short type,
@@ -341,20 +342,11 @@ bool WM_cursor_test_motion_and_update(const int mval[2])
 /** \name Event Consecutive Checks
  * \{ */
 
-/**
- * Return true if this event type is a candidate for being flagged as consecutive.
- *
- * See: #WM_EVENT_IS_CONSECUTIVE doc-string.
- */
 bool WM_event_consecutive_gesture_test(const wmEvent *event)
 {
   return ISMOUSE_GESTURE(event->type) || (event->type == NDOF_MOTION);
 }
 
-/**
- * Return true if this event should break the chain of consecutive gestures.
- * Practically all intentional user input should, key presses or button clicks.
- */
 bool WM_event_consecutive_gesture_test_break(const wmWindow *win, const wmEvent *event)
 {
   /* Cursor motion breaks the chain. */
@@ -362,7 +354,8 @@ bool WM_event_consecutive_gesture_test_break(const wmWindow *win, const wmEvent 
     /* Mouse motion is checked because the user may navigate to a new area
      * and perform the same gesture - logically it's best to view this as two separate gestures. */
     if (len_manhattan_v2v2_int(event->xy, win->event_queue_consecutive_gesture_xy) >
-        WM_EVENT_CURSOR_MOTION_THRESHOLD) {
+        WM_EVENT_CURSOR_MOTION_THRESHOLD)
+    {
       return true;
     }
   }

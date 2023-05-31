@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PreviewOperation.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "IMB_colormanagement.h"
 
 namespace blender::compositor {
@@ -32,7 +33,7 @@ void PreviewOperation::verify_preview(bNodeInstanceHash *previews, bNodeInstance
   /* Size (0, 0) ensures the preview rect is not allocated in advance,
    * this is set later in init_execution once the resolution is determined.
    */
-  preview_ = BKE_node_preview_verify(previews, key, 0, 0, true);
+  preview_ = blender::bke::node_preview_verify(previews, key, 0, 0, true);
 }
 
 void PreviewOperation::init_execution()

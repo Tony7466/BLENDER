@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -32,7 +33,7 @@
 
 #include "ED_image.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 namespace blender::ed::sculpt_paint::image::ops::paint {
 
@@ -502,7 +503,6 @@ static void paint_cancel(bContext *C, wmOperator *op)
 }
 }  // namespace blender::ed::sculpt_paint::image::ops::paint
 
-extern "C" {
 void PAINT_OT_image_paint(wmOperatorType *ot)
 {
   using namespace blender::ed::sculpt_paint::image::ops::paint;
@@ -523,5 +523,4 @@ void PAINT_OT_image_paint(wmOperatorType *ot)
   ot->flag = OPTYPE_BLOCKING;
 
   paint_stroke_operator_properties(ot);
-}
 }

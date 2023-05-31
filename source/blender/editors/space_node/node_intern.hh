@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -12,7 +13,7 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "UI_interface.h"
 #include "UI_interface.hh"
@@ -190,6 +191,10 @@ void node_socket_select(bNode *node, bNodeSocket &sock);
 void node_socket_deselect(bNode *node, bNodeSocket &sock, bool deselect_node);
 void node_deselect_all_input_sockets(bNodeTree &node_tree, bool deselect_nodes);
 void node_deselect_all_output_sockets(bNodeTree &node_tree, bool deselect_nodes);
+/**
+ * Select nodes that are paired to a selected node.
+ */
+void node_select_paired(bNodeTree &node_tree);
 void node_select_single(bContext &C, bNode &node);
 
 void NODE_OT_select(wmOperatorType *ot);
@@ -247,6 +252,8 @@ void node_draw_link_bezier(const bContext &C,
                            int th_col3,
                            bool selected);
 
+std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
+                                                      const bNodeLink &link);
 void node_link_bezier_points_evaluated(const bNodeLink &link,
                                        std::array<float2, NODE_LINK_RESOL + 1> &coords);
 
@@ -356,6 +363,7 @@ void NODE_OT_clipboard_paste(wmOperatorType *ot);
 void NODE_OT_tree_socket_add(wmOperatorType *ot);
 void NODE_OT_tree_socket_remove(wmOperatorType *ot);
 void NODE_OT_tree_socket_change_type(wmOperatorType *ot);
+void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot);
 void NODE_OT_tree_socket_move(wmOperatorType *ot);
 
 void NODE_OT_shader_script_update(wmOperatorType *ot);

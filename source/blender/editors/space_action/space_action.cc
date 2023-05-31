@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -44,6 +45,8 @@
 
 #include "BLO_read_write.h"
 
+#include "GPU_matrix.h"
+
 #include "action_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
@@ -65,11 +68,9 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
 
   saction->ads.filterflag |= ADS_FILTER_SUMMARY;
 
-  /* enable all cache display */
-  saction->cache_display |= TIME_CACHE_DISPLAY;
-  saction->cache_display |= (TIME_CACHE_SOFTBODY | TIME_CACHE_PARTICLES);
-  saction->cache_display |= (TIME_CACHE_CLOTH | TIME_CACHE_SMOKE | TIME_CACHE_DYNAMICPAINT);
-  saction->cache_display |= TIME_CACHE_RIGIDBODY;
+  saction->cache_display = TIME_CACHE_DISPLAY | TIME_CACHE_SOFTBODY | TIME_CACHE_PARTICLES |
+                           TIME_CACHE_CLOTH | TIME_CACHE_SMOKE | TIME_CACHE_DYNAMICPAINT |
+                           TIME_CACHE_RIGIDBODY | TIME_CACHE_SIMULATION_NODES;
 
   /* header */
   region = MEM_cnew<ARegion>("header for action");
@@ -101,9 +102,9 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   BLI_addtail(&saction->regionbase, region);
   region->regiontype = RGN_TYPE_WINDOW;
 
-  region->v2d.tot.xmin = (float)(scene->r.sfra - 10);
-  region->v2d.tot.ymin = (float)(-area->winy) / 3.0f;
-  region->v2d.tot.xmax = (float)(scene->r.efra + 10);
+  region->v2d.tot.xmin = float(scene->r.sfra - 10);
+  region->v2d.tot.ymin = float(-area->winy) / 3.0f;
+  region->v2d.tot.xmax = float(scene->r.efra + 10);
   region->v2d.tot.ymax = 0.0f;
 
   region->v2d.cur = region->v2d.tot;
@@ -169,7 +170,6 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
   /* draw entirely, view changes should be handled here */
   SpaceAction *saction = CTX_wm_space_action(C);
   Scene *scene = CTX_data_scene(C);
-  Object *obact = CTX_data_active_object(C);
   bAnimContext ac;
   View2D *v2d = &region->v2d;
   short marker_flag = 0;
@@ -212,11 +212,6 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
     ED_markers_draw(C, marker_flag);
   }
 
-  /* caches */
-  if (saction->mode == SACTCONT_TIMELINE) {
-    timeline_draw_cache(saction, obact, scene);
-  }
-
   /* preview range */
   UI_view2d_view_ortho(v2d);
   ANIM_draw_previewrange(C, v2d, 0);
@@ -240,7 +235,16 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   /* draw entirely, view changes should be handled here */
   const SpaceAction *saction = CTX_wm_space_action(C);
   const Scene *scene = CTX_data_scene(C);
+  const Object *obact = CTX_data_active_object(C);
   View2D *v2d = &region->v2d;
+
+  /* caches */
+  if (saction->mode == SACTCONT_TIMELINE) {
+    GPU_matrix_push_projection();
+    UI_view2d_view_orthoSpecial(region, v2d, 1);
+    timeline_draw_cache(saction, obact, scene);
+    GPU_matrix_pop_projection();
+  }
 
   /* scrubbing region */
   ED_time_scrub_draw_current_frame(region, scene, saction->flag & SACTION_DRAWTIME);
@@ -544,7 +548,8 @@ static void action_listener(const wmSpaceTypeListenerParams *params)
        * (assume for now that if just adding these works, that will be fine).
        */
       else if (((wmn->data == ND_KEYFRAME) && ELEM(wmn->action, NA_ADDED, NA_REMOVED)) ||
-               ((wmn->data == ND_ANIMCHAN) && (wmn->action != NA_SELECTED))) {
+               ((wmn->data == ND_ANIMCHAN) && (wmn->action != NA_SELECTED)))
+      {
         ED_area_tag_refresh(area);
       }
       /* for simple edits to the curve data though (or just plain selections),
@@ -577,8 +582,8 @@ static void action_listener(const wmSpaceTypeListenerParams *params)
           LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
             if (region->regiontype == RGN_TYPE_WINDOW) {
               Scene *scene = static_cast<Scene *>(wmn->reference);
-              region->v2d.tot.xmin = (float)(scene->r.sfra - 4);
-              region->v2d.tot.xmax = (float)(scene->r.efra + 4);
+              region->v2d.tot.xmin = float(scene->r.sfra - 4);
+              region->v2d.tot.xmax = float(scene->r.efra + 4);
               break;
             }
           }
@@ -849,26 +854,26 @@ static void action_space_subtype_item_extend(bContext * /*C*/,
   RNA_enum_items_add(item, totitem, rna_enum_space_action_mode_items);
 }
 
-static void action_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
+static void action_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceAction *saction = (SpaceAction *)sl;
   memset(&saction->runtime, 0x0, sizeof(saction->runtime));
 }
 
-static void action_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
+static void action_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceAction *saction = (SpaceAction *)sl;
   bDopeSheet *ads = &saction->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id->lib, &ads->source);
-    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id, &ads->source);
+    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
   }
 
-  BLO_read_id_address(reader, parent_id->lib, &saction->action);
+  BLO_read_id_address(reader, parent_id, &saction->action);
 }
 
-static void action_blend_write(BlendWriter *writer, SpaceLink *sl)
+static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceAction, sl);
 }
@@ -900,9 +905,9 @@ void ED_spacetype_action(void)
   st->space_subtype_item_extend = action_space_subtype_item_extend;
   st->space_subtype_get = action_space_subtype_get;
   st->space_subtype_set = action_space_subtype_set;
-  st->blend_read_data = action_blend_read_data;
-  st->blend_read_lib = action_blend_read_lib;
-  st->blend_write = action_blend_write;
+  st->blend_read_data = action_space_blend_read_data;
+  st->blend_read_lib = action_space_blend_read_lib;
+  st->blend_write = action_space_blend_write;
 
   /* regions: main window */
   art = MEM_cnew<ARegionType>("spacetype action region");

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -239,7 +240,7 @@ static void gpu_material_sky_texture_build(GPUMaterial *mat)
                                              mat->sky_builder->current_layer,
                                              1,
                                              GPU_RGBA32F,
-                                             GPU_TEXTURE_USAGE_GENERAL,
+                                             GPU_TEXTURE_USAGE_SHADER_READ,
                                              (float *)mat->sky_builder->pixels);
 
   MEM_freeN(mat->sky_builder);
@@ -787,9 +788,10 @@ eGPUMaterialFlag GPU_material_flag(const GPUMaterial *mat)
   return mat->flag;
 }
 
-/* NOTE: Consumes the flags. */
 bool GPU_material_recalc_flag_get(GPUMaterial *mat)
 {
+  /* NOTE: Consumes the flags. */
+
   bool updated = (mat->flag & GPU_MATFLAG_UPDATED) != 0;
   mat->flag &= ~GPU_MATFLAG_UPDATED;
   return updated;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -1132,7 +1133,8 @@ static void bm_loop_walk_data(struct LoopWalkCtx *lwc, BMLoop *l_walk)
       BLI_assert(l_other->v == l_walk->v);
       if (BM_elem_flag_test(l_other, BM_ELEM_INTERNAL_TAG)) {
         if (CustomData_data_equals(
-                lwc->type, lwc->data_ref, BM_ELEM_CD_GET_VOID_P(l_other, lwc->cd_layer_offset))) {
+                lwc->type, lwc->data_ref, BM_ELEM_CD_GET_VOID_P(l_other, lwc->cd_layer_offset)))
+        {
           bm_loop_walk_data(lwc, l_other);
         }
       }

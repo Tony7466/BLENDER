@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -106,7 +108,7 @@ void WM_gizmotype_append_ptr(void (*gtfunc)(struct wmGizmoType *, void *), void 
 
 void WM_gizmotype_free_ptr(wmGizmoType *gzt)
 {
-  /* Python gizmo, allocates it's own string. */
+  /* Python gizmo, allocates its own string. */
   if (gzt->rna_ext.srna) {
     MEM_freeN((void *)gzt->idname);
   }

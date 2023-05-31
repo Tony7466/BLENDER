@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 by Campbell Barton. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 by Campbell Barton. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -146,7 +147,8 @@ int BM_mesh_edgeloops_find(BMesh *bm,
 
       /* add both directions */
       if (bm_loop_build(el_store, e->v1, e->v2, 1) && bm_loop_build(el_store, e->v2, e->v1, -1) &&
-          el_store->len > 1) {
+          el_store->len > 1)
+      {
         BLI_addtail(r_eloops, el_store);
         count++;
       }

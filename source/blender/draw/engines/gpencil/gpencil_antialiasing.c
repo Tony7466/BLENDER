@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -9,7 +10,7 @@
 
 #include "gpencil_engine.h"
 
-#include "smaa_textures.h"
+#include "BLI_smaa_textures.h"
 
 void GPENCIL_antialiasing_init(struct GPENCIL_Data *vedata)
 {

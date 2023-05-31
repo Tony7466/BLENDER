@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *  */
 
 /** \file
  * \ingroup eevee
@@ -161,8 +162,6 @@ class DeferredLayer {
 
 class DeferredPipeline {
  private:
-  Instance &inst_;
-
   /* Gbuffer filling passes. We could have an arbitrary number of them but for now we just have
    * a hardcoded number of them. */
   DeferredLayer opaque_layer_;
@@ -171,7 +170,7 @@ class DeferredPipeline {
 
  public:
   DeferredPipeline(Instance &inst)
-      : inst_(inst), opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};
+      : opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};
 
   void begin_sync();
   void end_sync();

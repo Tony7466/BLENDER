@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 /** \file
  * \ingroup bli
  */
+
+#include <iostream>
 
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_base.hh"
@@ -286,15 +290,22 @@ template<typename T> [[nodiscard]] inline bool is_normalized(const DualQuaternio
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Assertions
+ * \{ */
+
 template<typename U> struct AssertUnitEpsilon<QuaternionBase<U>> {
   static constexpr U value = AssertUnitEpsilon<U>::value * 10;
 };
 
-/**
- * Intermediate Types.
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Intermediate Types
  *
  * Some functions need to have higher precision than standard floats for some operations.
- */
+ * \{ */
+
 template<typename T> struct TypeTraits {
   using DoublePrecision = T;
 };
@@ -305,6 +316,6 @@ template<> struct TypeTraits<float> {
 using Quaternion = QuaternionBase<float>;
 using DualQuaternion = DualQuaternionBase<float>;
 
-}  // namespace blender::math
-
 /** \} */
+
+}  // namespace blender::math

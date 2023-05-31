@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -164,7 +165,9 @@ typedef enum eObClearParentTypes {
 } eObClearParentTypes;
 
 #ifdef __RNA_TYPES_H__
+/** Operator Property: `OBJECT_OT_parent_clear`. */
 extern struct EnumPropertyItem prop_clear_parent_types[];
+/** Operator Property: `OBJECT_OT_parent_set`. */
 extern struct EnumPropertyItem prop_make_parent_types[];
 #endif
 

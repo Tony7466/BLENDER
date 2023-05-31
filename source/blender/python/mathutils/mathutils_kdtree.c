@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup mathutils
@@ -320,7 +322,8 @@ static PyObject *py_kdtree_find_range(PyKDTree *self, PyObject *args, PyObject *
   const char *keywords[] = {"co", "radius", NULL};
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwargs, "Of:find_range", (char **)keywords, &py_co, &radius)) {
+          args, kwargs, "Of:find_range", (char **)keywords, &py_co, &radius))
+  {
     return NULL;
   }
 

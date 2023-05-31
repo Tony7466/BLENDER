@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -399,7 +401,7 @@ static int transformops_data(bContext *C, wmOperator *op, const wmEvent *event)
 
 static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  int exit_code;
+  int exit_code = OPERATOR_PASS_THROUGH;
 
   TransInfo *t = op->customdata;
   const eTfmMode mode_prev = t->mode;
@@ -419,13 +421,42 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
   exit_code = transformEvent(t, event);
   t->context = NULL;
 
-  /* XXX, workaround: active needs to be calculated before transforming,
-   * since we're not reading from 'td->center' in this case. see: #40241 */
-  if (t->tsnap.source_operation == SCE_SNAP_SOURCE_ACTIVE) {
-    /* In camera view, tsnap callback is not set
-     * (see #initSnappingMode() in transform_snap.c, and #40348). */
-    if (t->tsnap.snap_source_fn && ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0)) {
-      t->tsnap.snap_source_fn(t);
+  /* Allow navigation while transforming. */
+  if (t->vod && (exit_code & OPERATOR_PASS_THROUGH)) {
+    RegionView3D *rv3d = t->region->regiondata;
+    const bool is_navigating = (rv3d->rflag & RV3D_NAVIGATING) != 0;
+    if (ED_view3d_navigation_do(C, t->vod, event)) {
+      if (!is_navigating) {
+        /* Navigation has started. */
+
+        if (t->modifiers & MOD_PRECISION) {
+          /* WORKAROUND: Remove precision modification, it may have be unintentionally enabled. */
+          t->modifiers &= ~MOD_PRECISION;
+          t->mouse.precision = false;
+          transform_input_virtual_mval_reset(t);
+        }
+      }
+
+      if (rv3d->rflag & RV3D_NAVIGATING) {
+        /* Navigation is running. */
+
+        /* Do not update transform while navigating. This can be distracting. */
+        return OPERATOR_RUNNING_MODAL;
+      }
+
+      {
+        /* Navigation has ended. */
+
+        /* Make sure `t->mval` is up to date before calling #transformViewUpdate. */
+        copy_v2_v2_int(t->mval, event->mval);
+
+        /* Call before #applyMouseInput. */
+        tranformViewUpdate(t);
+
+        /* Mouse input is outdated. */
+        applyMouseInput(t, &t->mouse, t->mval, t->values);
+        t->redraw |= TREDRAW_HARD;
+      }
     }
   }
 
@@ -762,6 +793,15 @@ void Transform_Properties(struct wmOperatorType *ot, int flags)
     RNA_def_property_flag(prop, PROP_HIDDEN);
   }
 
+  if (flags & P_VIEW3D_NAVIGATION) {
+    prop = RNA_def_boolean(ot->srna,
+                           "allow_navigation",
+                           0,
+                           "Allow Navigation",
+                           "Allow navigation while transforming");
+    RNA_def_property_flag(prop, PROP_HIDDEN);
+  }
+
   if (flags & P_POST_TRANSFORM) {
     prop = RNA_def_boolean(ot->srna,
                            "use_automerge_and_split",
@@ -796,7 +836,7 @@ static void TRANSFORM_OT_translate(struct wmOperatorType *ot)
   Transform_Properties(ot,
                        P_ORIENT_MATRIX | P_CONSTRAINT | P_PROPORTIONAL | P_MIRROR | P_ALIGN_SNAP |
                            P_OPTIONS | P_GPENCIL_EDIT | P_CURSOR_EDIT | P_VIEW2D_EDGE_PAN |
-                           P_POST_TRANSFORM);
+                           P_VIEW3D_NAVIGATION | P_POST_TRANSFORM);
 }
 
 static void TRANSFORM_OT_resize(struct wmOperatorType *ot)
@@ -835,7 +875,7 @@ static void TRANSFORM_OT_resize(struct wmOperatorType *ot)
 
   Transform_Properties(ot,
                        P_ORIENT_MATRIX | P_CONSTRAINT | P_PROPORTIONAL | P_MIRROR | P_GEO_SNAP |
-                           P_OPTIONS | P_GPENCIL_EDIT | P_CENTER);
+                           P_OPTIONS | P_GPENCIL_EDIT | P_CENTER | P_VIEW3D_NAVIGATION);
 }
 
 static void TRANSFORM_OT_skin_resize(struct wmOperatorType *ot)
@@ -912,7 +952,7 @@ static void TRANSFORM_OT_rotate(struct wmOperatorType *ot)
 
   Transform_Properties(ot,
                        P_ORIENT_AXIS | P_ORIENT_MATRIX | P_CONSTRAINT | P_PROPORTIONAL | P_MIRROR |
-                           P_GEO_SNAP | P_GPENCIL_EDIT | P_CENTER);
+                           P_GEO_SNAP | P_GPENCIL_EDIT | P_CENTER | P_VIEW3D_NAVIGATION);
 }
 
 static void TRANSFORM_OT_tilt(struct wmOperatorType *ot)
@@ -1157,7 +1197,7 @@ static void TRANSFORM_OT_edge_slide(struct wmOperatorType *ot)
                   "When Even mode is active, flips between the two adjacent edge loops");
   RNA_def_boolean(ot->srna, "use_clamp", true, "Clamp", "Clamp within the edge extents");
 
-  Transform_Properties(ot, P_MIRROR | P_GEO_SNAP | P_CORRECT_UV);
+  Transform_Properties(ot, P_MIRROR | P_GEO_SNAP | P_CORRECT_UV | P_VIEW3D_NAVIGATION);
 }
 
 static void TRANSFORM_OT_vert_slide(struct wmOperatorType *ot)
@@ -1192,7 +1232,7 @@ static void TRANSFORM_OT_vert_slide(struct wmOperatorType *ot)
                   "When Even mode is active, flips between the two adjacent edge loops");
   RNA_def_boolean(ot->srna, "use_clamp", true, "Clamp", "Clamp within the edge extents");
 
-  Transform_Properties(ot, P_MIRROR | P_GEO_SNAP | P_CORRECT_UV);
+  Transform_Properties(ot, P_MIRROR | P_GEO_SNAP | P_CORRECT_UV | P_VIEW3D_NAVIGATION);
 }
 
 static void TRANSFORM_OT_edge_crease(struct wmOperatorType *ot)
@@ -1340,7 +1380,7 @@ static void TRANSFORM_OT_transform(struct wmOperatorType *ot)
 
   Transform_Properties(ot,
                        P_ORIENT_AXIS | P_ORIENT_MATRIX | P_CONSTRAINT | P_PROPORTIONAL | P_MIRROR |
-                           P_ALIGN_SNAP | P_GPENCIL_EDIT | P_CENTER);
+                           P_ALIGN_SNAP | P_GPENCIL_EDIT | P_CENTER | P_VIEW3D_NAVIGATION);
 }
 
 static int transform_from_gizmo_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
