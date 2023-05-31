@@ -326,7 +326,7 @@ struct VoronoiOutput {
 
 /* ***** Distances ***** */
 
-float voronoi_distance_1d(const float a, const float b, const VoronoiParams &params);
+float voronoi_distance(const float a, const float b);
 float voronoi_distance(const float2 a, const float2 b, const VoronoiParams &params);
 float voronoi_distance(const float3 a, const float3 b, const VoronoiParams &params);
 float voronoi_distance(const float4 a, const float4 b, const VoronoiParams &params);

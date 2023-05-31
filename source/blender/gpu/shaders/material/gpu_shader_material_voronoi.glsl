@@ -39,7 +39,7 @@ struct VoronoiOutput {
 
 /* **** Distance Functions **** */
 
-float voronoi_distance_1d(float a, float b, VoronoiParams params)
+float voronoi_distance(float a, float b)
 {
   return abs(a - b);
 }
@@ -137,7 +137,7 @@ VoronoiOutput voronoi_f1(VoronoiParams params, float coord)
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
-    float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, params);
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition);
     if (distanceToPoint < minDistance) {
       targetOffset = cellOffset;
       minDistance = distanceToPoint;
@@ -164,7 +164,7 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, float coord)
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
-    float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, params);
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition);
     float h = smoothstep(
         0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
     float correctionFactor = params.smoothness * h * (1.0 - h);
@@ -197,7 +197,7 @@ VoronoiOutput voronoi_f2(VoronoiParams params, float coord)
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
-    float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, params);
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition);
     if (distanceToPoint < distanceF1) {
       distanceF2 = distanceF1;
       distanceF1 = distanceToPoint;

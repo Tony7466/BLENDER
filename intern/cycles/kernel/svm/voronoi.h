@@ -44,13 +44,8 @@ struct VoronoiOutput {
 
 /* ***** Distances ***** */
 
-ccl_device float voronoi_distance_1d(const float a,
-                                     const float b,
-                                     ccl_private const VoronoiParams &params)
+ccl_device float voronoi_distance(const float a, const float b)
 {
-  /* Supress compiler warnings, not used for 1D. */
-  (void)params;
-
   return fabsf(b - a);
 }
 
@@ -93,7 +88,7 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
-    float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, params);
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition);
     if (distanceToPoint < minDistance) {
       targetOffset = cellOffset;
       minDistance = distanceToPoint;
@@ -121,7 +116,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
-    float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, params);
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition);
     float h = smoothstep(
         0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
     float correctionFactor = params.smoothness * h * (1.0f - h);
@@ -154,7 +149,7 @@ ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, con
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
-    float distanceToPoint = voronoi_distance_1d(pointPosition, localPosition, params);
+    float distanceToPoint = voronoi_distance(pointPosition, localPosition);
     if (distanceToPoint < distanceF1) {
       distanceF2 = distanceF1;
       distanceF1 = distanceToPoint;
@@ -878,7 +873,8 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &p
   float scale = 1.0f;
 
   VoronoiOutput output;
-  bool zero_input = params.detail == 0.0f || params.roughness == 0.0f || params.lacunarity == 0.0f;
+  const bool zero_input = params.detail == 0.0f || params.roughness == 0.0f ||
+                          params.lacunarity == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
     VoronoiOutput octave = (params.feature == NODE_VORONOI_F1) ?
@@ -889,9 +885,7 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &p
 
     if (zero_input) {
       max_amplitude = 1.0f;
-      output.distance = octave.distance;
-      output.color = octave.color;
-      output.position = octave.position;
+      output = octave;
       break;
     }
     else if (i <= params.detail) {
@@ -934,7 +928,8 @@ ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParam
   float scale = 1.0f;
   float distance = 8.0f;
 
-  bool zero_input = params.detail == 0.0f || params.roughness == 0.0f || params.lacunarity == 0.0f;
+  const bool zero_input = params.detail == 0.0f || params.roughness == 0.0f ||
+                          params.lacunarity == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
     const float octave_distance = voronoi_distance_to_edge(params, coord * scale);

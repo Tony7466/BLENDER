@@ -228,7 +228,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 4);
-    if (metric_ == SHD_VORONOI_MINKOWSKI) {
+    if ELEM (metric_, SHD_VORONOI_MINKOWSKI) {
       static std::array<mf::Signature, 12> signatures{
           create_signature(1, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
           create_signature(2, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
@@ -348,26 +348,24 @@ class VoronoiMetricFunction : public mf::MultiFunction {
 
     int param = 0;
 
-    const VArray<float3> &vector = (dimensions_ != 1) ? get_vector(param++) : VArray<float3>{};
-    const VArray<float> &w = (dimensions_ == 1) || (dimensions_ == 4) ? get_w(param++) :
-                                                                        VArray<float>{};
+    const VArray<float3> &vector = !ELEM(dimensions_, 1) ? get_vector(param++) : VArray<float3>{};
+    const VArray<float> &w = ELEM(dimensions_, 1, 4) ? get_w(param++) : VArray<float>{};
     const VArray<float> &scale = get_scale(param++);
     const VArray<float> &detail = get_detail(param++);
     const VArray<float> &roughness = get_roughness(param++);
     const VArray<float> &lacunarity = get_lacunarity(param++);
-    const VArray<float> &smoothness = (feature_ == SHD_VORONOI_SMOOTH_F1) ?
+    const VArray<float> &smoothness = ELEM(feature_, SHD_VORONOI_SMOOTH_F1) ?
                                           get_smoothness(param++) :
                                           VArray<float>{};
-    const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) && (dimensions_ != 1) ?
+    const VArray<float> &exponent = ELEM(metric_, SHD_VORONOI_MINKOWSKI) && !ELEM(dimensions_, 1) ?
                                         get_exponent(param++) :
                                         VArray<float>{};
     const VArray<float> &randomness = get_randomness(param++);
     MutableSpan<float> r_distance = get_r_distance(param++);
     MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
-    MutableSpan<float3> r_position = (dimensions_ != 1) ? get_r_position(param++) :
-                                                          MutableSpan<float3>{};
-    MutableSpan<float> r_w = (dimensions_ == 1) || (dimensions_ == 4) ? get_r_w(param++) :
-                                                                        MutableSpan<float>{};
+    MutableSpan<float3> r_position = !ELEM(dimensions_, 1) ? get_r_position(param++) :
+                                                             MutableSpan<float3>{};
+    MutableSpan<float> r_w = ELEM(dimensions_, 1, 4) ? get_r_w(param++) : MutableSpan<float>{};
     const bool calc_distance = !r_distance.is_empty();
     const bool calc_color = !r_color.is_empty();
     const bool calc_position = !r_position.is_empty();
@@ -386,7 +384,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           params.detail = detail[i];
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
-          params.smoothness = (feature_ == SHD_VORONOI_SMOOTH_F1) ?
+          params.smoothness = ELEM(feature_, SHD_VORONOI_SMOOTH_F1) ?
                                   std::min(std::max(smoothness[i] / 2.0f, 0.0f), 0.5f) :
                                   0.0f;
           params.exponent = 0.0f;
@@ -413,10 +411,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           params.detail = detail[i];
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
-          params.smoothness = (feature_ == SHD_VORONOI_SMOOTH_F1) ?
+          params.smoothness = ELEM(feature_, SHD_VORONOI_SMOOTH_F1) ?
                                   std::min(std::max(smoothness[i] / 2.0f, 0.0f), 0.5f) :
                                   0.0f;
-          params.exponent = (metric_ == SHD_VORONOI_MINKOWSKI) && (dimensions_ != 1) ?
+          params.exponent = ELEM(metric_, SHD_VORONOI_MINKOWSKI) && !ELEM(dimensions_, 1) ?
                                 exponent[i] :
                                 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -446,10 +444,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           params.detail = detail[i];
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
-          params.smoothness = (feature_ == SHD_VORONOI_SMOOTH_F1) ?
+          params.smoothness = ELEM(feature_, SHD_VORONOI_SMOOTH_F1) ?
                                   std::min(std::max(smoothness[i] / 2.0f, 0.0f), 0.5f) :
                                   0.0f;
-          params.exponent = (metric_ == SHD_VORONOI_MINKOWSKI) && (dimensions_ != 1) ?
+          params.exponent = ELEM(metric_, SHD_VORONOI_MINKOWSKI) && !ELEM(dimensions_, 1) ?
                                 exponent[i] :
                                 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -479,10 +477,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           params.detail = detail[i];
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
-          params.smoothness = (feature_ == SHD_VORONOI_SMOOTH_F1) ?
+          params.smoothness = ELEM(feature_, SHD_VORONOI_SMOOTH_F1) ?
                                   std::min(std::max(smoothness[i] / 2.0f, 0.0f), 0.5f) :
                                   0.0f;
-          params.exponent = (metric_ == SHD_VORONOI_MINKOWSKI) && (dimensions_ != 1) ?
+          params.exponent = ELEM(metric_, SHD_VORONOI_MINKOWSKI) && !ELEM(dimensions_, 1) ?
                                 exponent[i] :
                                 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -590,9 +588,8 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
 
     int param = 0;
 
-    const VArray<float3> &vector = (dimensions_ != 1) ? get_vector(param++) : VArray<float3>{};
-    const VArray<float> &w = (dimensions_ == 1) || (dimensions_ == 4) ? get_w(param++) :
-                                                                        VArray<float>{};
+    const VArray<float3> &vector = !ELEM(dimensions_, 1) ? get_vector(param++) : VArray<float3>{};
+    const VArray<float> &w = ELEM(dimensions_, 1, 4) ? get_w(param++) : VArray<float>{};
     const VArray<float> &scale = get_scale(param++);
     const VArray<float> &detail = get_detail(param++);
     const VArray<float> &roughness = get_roughness(param++);
@@ -721,9 +718,8 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
 
     int param = 0;
 
-    const VArray<float3> &vector = (dimensions_ != 1) ? get_vector(param++) : VArray<float3>{};
-    const VArray<float> &w = (dimensions_ == 1) || (dimensions_ == 4) ? get_w(param++) :
-                                                                        VArray<float>{};
+    const VArray<float3> &vector = !ELEM(dimensions_, 1) ? get_vector(param++) : VArray<float3>{};
+    const VArray<float> &w = ELEM(dimensions_, 1, 4) ? get_w(param++) : VArray<float>{};
     const VArray<float> &scale = get_scale(param++);
     const VArray<float> &randomness = get_randomness(param++);
     MutableSpan<float> r_radius = get_r_radius(param++);

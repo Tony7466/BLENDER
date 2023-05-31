@@ -35,9 +35,7 @@
 \
       if (zero_input) { \
         max_amplitude = 1.0; \
-        Output.Distance = octave.Distance; \
-        Output.Color = octave.Color; \
-        Output.Position = octave.Position; \
+        Output = octave; \
         break; \
       } \
       else if (i <= params.detail) { \
