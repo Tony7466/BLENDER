@@ -419,6 +419,32 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
   if (this->is_empty()) {
     return universe;
   }
+  if (universe.is_empty()) {
+    return {};
+  }
+  const std::optional<IndexRange> this_range = this->to_range();
+  if (this_range) {
+    const bool first_in_range = this_range->first() <= universe.first();
+    const bool last_in_range = this_range->last() >= universe.last();
+    if (first_in_range && last_in_range) {
+      /* This mask fills the entire universe, so the complement is empty. */
+      return {};
+    }
+    if (first_in_range) {
+      /* This mask is a range that contains the start of the universe.
+       * The complement is a range that contains the end of the universe. */
+      const int64_t complement_start = this_range->one_after_last();
+      const int64_t complement_size = universe.one_after_last() - complement_start;
+      return IndexRange(complement_start, complement_size);
+    }
+    if (last_in_range) {
+      /* This mask is a range that contains the end of the universe.
+       * The complement is a range that contains the start of the universe. */
+      const int64_t complement_start = universe.first();
+      const int64_t complement_size = this_range->first() - complement_start;
+      return IndexRange(complement_start, complement_size);
+    }
+  }
 
   Vector<IndexMaskSegment, 16> segments;
 
@@ -426,7 +452,7 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
     range_to_segments(universe.take_front(this->first() - universe.start()), segments);
   }
 
-  if (!this->to_range()) {
+  if (!this_range) {
     const int64_t segments_num = this->segments_num();
 
     constexpr int64_t min_grain_size = 16;
@@ -455,9 +481,7 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
     range_to_segments(universe.take_back(universe.last() - this->last()), segments);
   }
 
-  IndexMask result = mask_from_segments(segments, memory);
-  // BLI_assert(result.size() == universe.size() - this->size());
-  return result;
+  return mask_from_segments(segments, memory);
 }
 
 template<typename T>
