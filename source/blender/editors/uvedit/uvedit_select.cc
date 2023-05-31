@@ -3748,7 +3748,8 @@ static bool uv_circle_select_is_edge_inside(const float uv_a[2],
       (uv_b[0] - offset[0]) * ellipse[0],
       (uv_b[1] - offset[1]) * ellipse[1],
   };
-  return dist_squared_to_line_segment_v2((const float[2]){0.0f, 0.0f}, co_a, co_b) < 1.0f;
+  const float co_zero[2] = {0.0f, 0.0f};
+  return dist_squared_to_line_segment_v2(co_zero, co_a, co_b) < 1.0f;
 }
 
 static int uv_circle_select_exec(bContext *C, wmOperator *op)
