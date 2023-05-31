@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -1163,12 +1165,10 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
     const char *addons[] = {
         "io_anim_bvh",
         "io_curve_svg",
-        "io_mesh_ply",
         "io_mesh_stl",
         "io_mesh_uv_layout",
         "io_scene_fbx",
         "io_scene_gltf2",
-        "io_scene_obj",
         "io_scene_x3d",
         "cycles",
         "pose_library",

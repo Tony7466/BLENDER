@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 if(CMAKE_COMPILER_IS_GNUCC)
   # add here so we fail early.
@@ -377,6 +378,14 @@ endif()
 
 if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
+endif()
+
+if(WITH_VULKAN_METAL)
+  add_definitions(-DWITH_VULKAN_METAL)
+endif()
+
+if(WITH_VULKAN_BACKEND)
+  add_definitions(-DWITH_VULKAN_BACKEND)
 endif()
 
 if(WITH_GMP)

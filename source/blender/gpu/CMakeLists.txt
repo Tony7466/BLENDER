@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 # WITH_OPENGL limits the visibility of the opengl headers to just GPU and bg_gpu,
 # to more easily highlight code-paths in other libraries that need to be refactored,
@@ -569,6 +570,7 @@ set(GLSL_SRC
 
 set(GLSL_SRC_TEST
   tests/shaders/gpu_math_test.glsl
+  tests/shaders/gpu_buffer_texture_test.glsl
   tests/shaders/gpu_compute_1d_test.glsl
   tests/shaders/gpu_compute_2d_test.glsl
   tests/shaders/gpu_compute_ibo_test.glsl
@@ -850,6 +852,7 @@ if(WITH_GTESTS)
     set(TEST_SRC
       tests/gpu_testing.cc
 
+      tests/buffer_texture_test.cc
       tests/framebuffer_test.cc
       tests/immediate_test.cc
       tests/index_buffer_test.cc
