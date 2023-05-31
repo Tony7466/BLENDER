@@ -2,3 +2,4 @@ Referenced by commit 8f63dccaa96, Event System: ignore keys such as print-screen
 Referenced by commit 7a2b1815917, Fix T94041: Loading a new file gives crash while rendering in viewport
 Referenced by commit 6dca61b91c3, Cleanup: remove KM_MOD_SECOND & KM_SHIFT2, KM_CTRL2.. etc
 Referenced by commit cb0c4f04d4b318963158a1a2707b259c49e210e5, Fix material copy-buffer memory leak on exit
+Referenced by commit f5ad77adbf90bc144bb34fb44291714048e10c2d, Fix material copy-buffer memory leak on exit
