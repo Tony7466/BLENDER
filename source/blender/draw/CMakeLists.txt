@@ -436,8 +436,9 @@ set(GLSL_SRC
   engines/eevee/shaders/infos/engine_eevee_legacy_shared.h
   engines/eevee/engine_eevee_shared_defines.h
 
-  engines/eevee_next/shaders/eevee_ao_frag.glsl
+  engines/eevee_next/shaders/eevee_ao_horizons_frag.glsl
   engines/eevee_next/shaders/eevee_ao_lib.glsl
+  engines/eevee_next/shaders/eevee_ao_pass_comp.glsl
   engines/eevee_next/shaders/eevee_attributes_lib.glsl
   engines/eevee_next/shaders/eevee_camera_lib.glsl
   engines/eevee_next/shaders/eevee_colorspace_lib.glsl

@@ -25,30 +25,6 @@ float cone_cosine(float r)
  * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pptx
  */
 
-/* TODO(Miguel Pozo) */
-
-#if defined(MAT_GEOM_MESH)
-#  if !defined(USE_ALPHA_HASH)
-#    if !defined(DEPTH_SHADER)
-#      if !defined(MAT_TRANSPARENT)
-#        if !defined(USE_REFRACTION)
-#          define ENABLE_DEFERRED_AO
-#        endif
-#      endif
-#    endif
-#  endif
-#endif
-
-#ifndef ENABLE_DEFERRED_AO
-#  if defined(STEP_RESOLVE)
-#    define ENABLE_DEFERRED_AO
-#  endif
-#endif
-
-#ifndef GPU_FRAGMENT_SHADER
-#  define gl_FragCoord vec4(0.0)
-#endif
-
 #define NO_OCCLUSION_DATA OcclusionData(vec4(M_PI, -M_PI, M_PI, -M_PI), 1.0)
 
 struct OcclusionData {
@@ -77,10 +53,10 @@ OcclusionData unpack_occlusion_data(vec4 v)
   return OcclusionData((1.0 - v) * vec4(1, -1, 1, -1) * M_PI, 0.0);
 }
 
-vec2 get_ao_noise(void)
+vec2 get_ao_noise(ivec2 texel)
 {
-  vec2 uv_offset = sampling_rng_2D_get(SAMPLING_SHADOW_X) * vec2(UTIL_TEX_SIZE);
-  vec2 noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy + uv_offset, UTIL_BLUE_NOISE_LAYER).xy;
+  texel += ivec2(sampling_rng_2D_get(SAMPLING_SHADOW_X) * UTIL_TEX_SIZE);
+  vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).xy;
   return noise;
 }
 
@@ -170,14 +146,18 @@ float search_horizon(vec3 vI,
   return fast_acos(h);
 }
 
-OcclusionData occlusion_search(
-    vec3 vP, sampler2D depth_tx, float radius, const float inverted, const float dir_sample_count)
+OcclusionData occlusion_search(vec3 vP,
+                               sampler2D depth_tx,
+                               ivec2 texel,
+                               float radius,
+                               const float inverted,
+                               const float dir_sample_count)
 {
   if (!ao_buf.enabled) {
     return NO_OCCLUSION_DATA;
   }
 
-  vec2 noise = get_ao_noise();
+  vec2 noise = get_ao_noise(texel);
   vec2 dir = get_ao_dir(noise.x);
   vec2 uv = get_uvs_from_view(vP);
   vec3 vI = ((ProjectionMatrix[3][3] == 0.0) ? normalize(-vP) : vec3(0.0, 0.0, 1.0));
@@ -228,6 +208,7 @@ vec2 clamp_horizons_to_hemisphere(vec2 horizons, float angle_N, const float inve
 }
 
 void occlusion_eval(OcclusionData data,
+                    ivec2 texel,
                     vec3 V,
                     vec3 N,
                     vec3 Ng,
@@ -260,7 +241,7 @@ void occlusion_eval(OcclusionData data,
     return;
   }
 
-  vec2 noise = get_ao_noise();
+  vec2 noise = get_ao_noise(texel);
   vec2 dir = get_ao_dir(noise.x);
 
   visibility_error = 0.0;
@@ -346,23 +327,23 @@ float gtao_multibounce(float visibility, vec3 albedo)
   return max(x, ((x * a + b) * x + c) * x);
 }
 
-float diffuse_occlusion(OcclusionData data, vec3 V, vec3 N, vec3 Ng)
+float diffuse_occlusion(OcclusionData data, ivec2 texel, vec3 V, vec3 N, vec3 Ng)
 {
   vec3 unused;
   float unused_error;
   float visibility;
-  occlusion_eval(data, V, N, Ng, 0.0, visibility, unused_error, unused);
+  occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, unused);
   /* Scale by user factor */
   visibility = occlusion_pow(saturate(visibility), ao_buf.factor);
   return visibility;
 }
 
 float diffuse_occlusion(
-    OcclusionData data, vec3 V, vec3 N, vec3 Ng, vec3 albedo, out vec3 bent_normal)
+    OcclusionData data, ivec2 texel, vec3 V, vec3 N, vec3 Ng, vec3 albedo, out vec3 bent_normal)
 {
   float visibility;
   float unused_error;
-  occlusion_eval(data, V, N, Ng, 0.0, visibility, unused_error, bent_normal);
+  occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, bent_normal);
 
   visibility = gtao_multibounce(visibility, albedo);
   /* Scale by user factor */
@@ -402,12 +383,12 @@ float spherical_cap_intersection(float radius1, float radius2, float dist)
 }
 
 float specular_occlusion(
-    OcclusionData data, vec3 V, vec3 N, float roughness, inout vec3 specular_dir)
+    OcclusionData data, ivec2 texel, vec3 V, vec3 N, float roughness, inout vec3 specular_dir)
 {
   vec3 visibility_dir;
   float visibility_error;
   float visibility;
-  occlusion_eval(data, V, N, N, 0.0, visibility, visibility_error, visibility_dir);
+  occlusion_eval(data, texel, V, N, N, 0.0, visibility, visibility_error, visibility_dir);
 
   /* Correct visibility error for very sharp surfaces. */
   visibility *= mix(safe_rcp(visibility_error), 1.0, roughness);
@@ -433,27 +414,3 @@ float specular_occlusion(
   visibility = occlusion_pow(saturate(visibility), ao_buf.factor);
   return visibility;
 }
-
-/* Use the right occlusion. */
-OcclusionData occlusion_load(vec3 vP, float custom_occlusion)
-{
-  /* Default to fully opened cone. */
-  OcclusionData data = NO_OCCLUSION_DATA;
-
-#ifdef ENABLE_DEFERRED_AO
-  if (ao_buf.enabled) {
-    data = unpack_occlusion_data(texelFetch(horizons_tx, ivec2(gl_FragCoord.xy), 0));
-  }
-#else
-  /* For blended surfaces. */
-  data = occlusion_search(vP, hiz_tx, ao_buf.distance, 0.0, 8.0);
-#endif
-
-  data.custom_occlusion = custom_occlusion;
-
-  return data;
-}
-
-#ifndef GPU_FRAGMENT_SHADER
-#  undef gl_FragCoord
-#endif

@@ -205,7 +205,8 @@ float ambient_occlusion_eval(vec3 normal,
 {
 #if defined(GPU_FRAGMENT_SHADER) && defined(MAT_AO) && !defined(MAT_DEPTH) && !defined(MAT_SHADOW)
   vec3 vP = transform_point(ViewMatrix, g_data.P);
-  OcclusionData data = occlusion_search(vP, hiz_tx, max_distance, inverted, sample_count);
+  ivec2 texel = ivec2(gl_FragCoord.xy);
+  OcclusionData data = occlusion_search(vP, hiz_tx, texel, max_distance, inverted, sample_count);
 
   vec3 V = cameraVec(g_data.P);
   vec3 N = g_data.N;
@@ -213,7 +214,7 @@ float ambient_occlusion_eval(vec3 normal,
 
   float unused_error, visibility;
   vec3 unused;
-  occlusion_eval(data, V, N, Ng, inverted, visibility, unused_error, unused);
+  occlusion_eval(data, texel, V, N, Ng, inverted, visibility, unused_error, unused);
   return visibility;
 #else
   return 1.0;

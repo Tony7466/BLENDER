@@ -12,10 +12,22 @@ GPU_SHADER_CREATE_INFO(eevee_ao_data)
     .sampler(AO_HORIZONS_TEX_SLOT, ImageType::FLOAT_2D, "horizons_tx")
     .uniform_buf(AO_BUF_SLOT, "AOData", "ao_buf");
 
-GPU_SHADER_CREATE_INFO(eevee_ao)
-    .additional_info("eevee_ao_data")
-    .additional_info("draw_fullscreen")
-    .fragment_source("eevee_ao_frag.glsl")
+GPU_SHADER_CREATE_INFO(eevee_ao_horizons)
+    .additional_info("eevee_ao_data", "draw_fullscreen")
+    .fragment_source("eevee_ao_horizons_frag.glsl")
     .fragment_out(0, Type::VEC4, "out_horizons")
-    .sampler(0, ImageType::FLOAT_2D, "normal_tx")
+    .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(eevee_ao_pass)
+    .additional_info("eevee_ao_data")
+    .compute_source("eevee_ao_pass_comp.glsl")
+    .local_group_size(AO_PASS_TILE_SIZE, AO_PASS_TILE_SIZE)
+    /*
+    .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "in_normal_img")
+    .image(1, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_ao_img")
+    */
+    .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D_ARRAY, "in_normal_img")
+    .push_constant(Type::INT, "normal_index")
+    .image(1, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D_ARRAY, "out_ao_img")
+    .push_constant(Type::INT, "ao_index")
     .do_static_compilation(true);

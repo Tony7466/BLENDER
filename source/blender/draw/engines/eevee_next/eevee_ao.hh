@@ -24,6 +24,7 @@ class AmbientOcclusion {
   class Instance &inst_;
 
   bool debug_;
+  bool render_pass_enabled_;
 
   /* TODO: Move somewhere else. */
   RayTracingDataBuf rt_data_;
@@ -36,6 +37,12 @@ class AmbientOcclusion {
   Framebuffer fb_ = {"GTAO"};
 
   PassSimple horizons_search_ps_ = {"GTAO Horizons Search"};
+  PassSimple render_pass_ps_ = {"GTAO Render Pass"};
+
+  GPUTexture *rp_normal_tx_ = nullptr;
+  int rp_normal_index = 0;
+  GPUTexture *rp_ao_tx_ = nullptr;
+  int rp_ao_index = 0;
 
  public:
   AmbientOcclusion(Instance &inst) : inst_(inst)
@@ -52,6 +59,7 @@ class AmbientOcclusion {
   void sync();
 
   void render(View &view);
+  void render_pass(View &view);
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {

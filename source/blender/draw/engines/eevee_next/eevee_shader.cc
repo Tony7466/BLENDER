@@ -81,11 +81,13 @@ ShaderModule::~ShaderModule()
 const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_type)
 {
   switch (shader_type) {
-    case AO:
-      return "eevee_ao";
+    case AO_HORIZONS:
+      return "eevee_ao_horizons";
+    case AO_PASS:
+      return "eevee_ao_pass";
     case AO_DEBUG:
       /* TODO */
-      return "eevee_ao";
+      return "eevee_ao_pass";
     case FILM_FRAG:
       return "eevee_film_frag";
     case FILM_COMP:

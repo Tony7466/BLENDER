@@ -117,11 +117,11 @@ void Instance::begin_sync()
   depth_of_field.sync();
   motion_blur.sync();
   hiz_buffer.sync();
-  ao.sync();
   main_view.sync();
   world.sync();
   film.sync();
   render_buffers.sync();
+  ao.sync();
   irradiance_cache.sync();
 }
 

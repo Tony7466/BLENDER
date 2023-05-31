@@ -118,7 +118,7 @@ void main()
   output_renderpass_color(rp_buf.specular_light_id, vec4(specular_light, 1.0));
   output_renderpass_color(rp_buf.emission_id, vec4(g_emission, 1.0));
   output_renderpass_value(rp_buf.shadow_id, shadow);
-  /* TODO: AO. */
+  /** NOTE: AO is done on its own pass. */
 #endif
 
   out_radiance.rgb *= 1.0 - g_holdout;

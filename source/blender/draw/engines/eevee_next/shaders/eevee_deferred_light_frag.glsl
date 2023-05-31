@@ -88,7 +88,7 @@ void main()
     if (rp_buf.shadow_id >= 0) {
       imageStore(rp_value_img, ivec3(texel, rp_buf.shadow_id), vec4(shadow));
     }
-    /* TODO: AO. */
+    /** NOTE: AO is done on its own pass. */
 
     diffuse_light *= diffuse_data.color;
     reflection_light *= reflection_data.color;
