@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -593,6 +594,7 @@ NodeType geometry_tag_to_component(const ID *id)
         case OB_CURVES:
         case OB_POINTCLOUD:
         case OB_VOLUME:
+        case OB_GREASE_PENCIL:
           return NodeType::GEOMETRY;
         case OB_ARMATURE:
           return NodeType::EVAL_POSE;
@@ -619,6 +621,8 @@ NodeType geometry_tag_to_component(const ID *id)
       return NodeType::PARAMETERS;
     case ID_MSK:
       return NodeType::PARAMETERS;
+    case ID_GP:
+      return NodeType::GEOMETRY;
     default:
       break;
   }

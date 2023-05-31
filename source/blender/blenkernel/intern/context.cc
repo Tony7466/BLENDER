@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -1184,6 +1186,8 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
         return CTX_MODE_EDIT_LATTICE;
       case OB_CURVES:
         return CTX_MODE_EDIT_CURVES;
+      case OB_GREASE_PENCIL:
+        return CTX_MODE_EDIT_GPENCIL;
     }
   }
   else {

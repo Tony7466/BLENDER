@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2003-2009 Blender Foundation.
- *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -254,21 +255,21 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
     if (prefix[0] != '\0') {
       for (i = 0; i < totfiles; i++) {
         const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
-        char str[FILE_MAX];
+        char filepath_view[FILE_MAX];
         StripAnim *sanim = MEM_mallocN(sizeof(StripAnim), "Strip Anim");
 
         BLI_addtail(&seq->anims, sanim);
 
-        SNPRINTF(str, "%s%s%s", prefix, suffix, ext);
+        SNPRINTF(filepath_view, "%s%s%s", prefix, suffix, ext);
 
         if (openfile) {
-          sanim->anim = openanim(str,
+          sanim->anim = openanim(filepath_view,
                                  IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
                                  seq->streamindex,
                                  seq->strip->colorspace_settings.name);
         }
         else {
-          sanim->anim = openanim_noload(str,
+          sanim->anim = openanim_noload(filepath_view,
                                         IB_rect |
                                             ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
                                         seq->streamindex,

@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2003-2009 Blender Foundation.
- *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -341,7 +342,7 @@ static bool seq_proxy_multiview_context_invalid(Sequence *seq,
   }
 
   if ((seq->type == SEQ_TYPE_IMAGE) && (seq->views_format == R_IMF_VIEWS_INDIVIDUAL)) {
-    char str[FILE_MAX];
+    char filepath[FILE_MAX];
 
     if (view_id == 0) {
       /* Clear on first use. */
@@ -358,9 +359,9 @@ static bool seq_proxy_multiview_context_invalid(Sequence *seq,
       return view_id != 0;
     }
 
-    seq_multiview_name(scene, view_id, prefix_vars->prefix, prefix_vars->ext, str, FILE_MAX);
+    seq_multiview_name(scene, view_id, prefix_vars->prefix, prefix_vars->ext, filepath, FILE_MAX);
 
-    if (BLI_access(str, R_OK) == 0) {
+    if (BLI_access(filepath, R_OK) == 0) {
       return false;
     }
 
