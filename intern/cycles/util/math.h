@@ -747,11 +747,10 @@ ccl_device_inline float cos_from_sin(const float s)
   return safe_sqrtf(1.0f - sqr(s));
 }
 
-ccl_device_inline float sin_to_one_minus_cos(const float s)
+ccl_device_inline float sin_sqr_to_one_minus_cos(const float s2)
 {
   /* Using second-order Taylor expansion at small angles for better accuracy. */
-  const float s2 = sqr(s);
-  return s > 0.02f ? 1.0f - safe_sqrtf(1.0f - s2) : 0.5f * s2;
+  return s2 > 0.0004f ? 1.0f - safe_sqrtf(1.0f - s2) : 0.5f * s2;
 }
 
 ccl_device_inline float pow20(float a)
