@@ -399,7 +399,6 @@ struct RegularNodeTrees {
   bNodeTree *instances_on_faces = nullptr;
 
   bNodeTree *view_geometry = nullptr;
-  /* TODO */
   bNodeTree *invert_rotation = nullptr;
 
   bNodeTree *reset_instances_transform = nullptr;
@@ -420,6 +419,67 @@ static void for_node_storage(bNodeTree *tree,
   if (node->typeinfo->updatefunc != nullptr) {
     node->typeinfo->updatefunc(tree, node);
   }
+}
+
+static bNodeTree *invert_rotation_tree(Main *bmain, RegularNodeTrees &cached_node_trees)
+{
+  if (cached_node_trees.invert_rotation != nullptr) {
+    return cached_node_trees.invert_rotation;
+  }
+
+  bNodeTree *node_tree = ntreeAddTree(bmain, "InvertRotation", "GeometryNodeTree");
+
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketVector", "Rotation");
+
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketVector", "Rotation");
+
+  const auto connect = [node_tree](bNode *node_out,
+                                   const StringRefNull name_out,
+                                   bNode *node_in,
+                                   const StringRefNull name_in) {
+    BLI_assert(node_out != node_in);
+    bNodeSocket &out = node_output_by_name(name_out, node_out);
+    bNodeSocket &in = node_input_by_name(name_in, node_in);
+    nodeAddLink(node_tree, node_out, &out, node_in, &in);
+  };
+
+  bNode *rotation_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+
+  bNode *negative_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
+  negative_rotation->custom1 = NODE_VECTOR_MATH_SCALE;
+  negative_rotation->typeinfo->updatefunc(node_tree, negative_rotation);
+  node_input_by_name("Scale", negative_rotation)
+      .default_value_typed<bNodeSocketValueFloat>()
+      ->value = -1.0f;
+  connect(rotation_in, "Rotation", negative_rotation, "Vector");
+
+  bNode *separate_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_SEPXYZ);
+  connect(negative_rotation, "Vector", separate_rotation, "Vector");
+
+  bNode *combine_rotation_on_z = nodeAddStaticNode(nullptr, node_tree, SH_NODE_COMBXYZ);
+  connect(separate_rotation, "Z", combine_rotation_on_z, "Z");
+  bNode *rotate_z = nodeAddStaticNode(nullptr, node_tree, FN_NODE_ROTATE_EULER);
+  connect(combine_rotation_on_z, "Vector", rotate_z, "Rotate By");
+
+  bNode *combine_rotation_on_y = nodeAddStaticNode(nullptr, node_tree, SH_NODE_COMBXYZ);
+  connect(separate_rotation, "Y", combine_rotation_on_y, "Y");
+  bNode *rotate_y = nodeAddStaticNode(nullptr, node_tree, FN_NODE_ROTATE_EULER);
+  connect(combine_rotation_on_y, "Vector", rotate_y, "Rotate By");
+
+  bNode *combine_rotation_on_x = nodeAddStaticNode(nullptr, node_tree, SH_NODE_COMBXYZ);
+  connect(separate_rotation, "X", combine_rotation_on_x, "X");
+  bNode *rotate_x = nodeAddStaticNode(nullptr, node_tree, FN_NODE_ROTATE_EULER);
+  connect(combine_rotation_on_x, "Vector", rotate_x, "Rotate By");
+
+  bNode *rotation_out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
+
+  connect(rotate_z, "Rotation", rotate_y, "Rotation");
+  connect(rotate_y, "Rotation", rotate_x, "Rotation");
+  connect(rotate_x, "Rotation", rotation_out, "Rotation");
+
+  bke::node_field_inferencing::update_field_inferencing(*node_tree);
+  cached_node_trees.invert_rotation = node_tree;
+  return node_tree;
 }
 
 static bNodeTree *view_geometry_tree(Main *bmain, RegularNodeTrees &cached_node_trees)
@@ -516,9 +576,22 @@ static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &
                                    const StringRefNull name_out,
                                    bNode *node_in,
                                    const StringRefNull name_in) {
+    BLI_assert(node_out != node_in);
     bNodeSocket &out = node_output_by_name(name_out, node_out);
     bNodeSocket &in = node_input_by_name(name_in, node_in);
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
+  };
+
+  const auto add_node_group =
+      [&](const FunctionRef<bNodeTree *(Main * bmain, RegularNodeTrees & cached_node_trees)>
+              tree_func) -> bNode * {
+    bNodeTree *tree = tree_func(bmain, cached_node_trees);
+    bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
+    group->id = &tree->id;
+    id_us_plus(&tree->id);
+    bke::node_field_inferencing::update_field_inferencing(*node_tree);
+    nodes::update_node_declaration_and_sockets(*node_tree, *group);
+    return group;
   };
 
   const auto set_in = [](bNode *node, StringRefNull input_name, auto value) {
@@ -546,21 +619,15 @@ static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &
   bNode *instances_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *scale_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SCALE_INSTANCES);
-  connect(instances_in, "Instances", scale_instances, "Instances");
   set_in(scale_instances, "Local Space", false);
+  connect(instances_in, "Instances", scale_instances, "Instances");
 
-  bNode *rotate_z_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
-  connect(scale_instances, "Instances", rotate_z_instances, "Instances");
-  set_in(rotate_z_instances, "Local Space", false);
-  bNode *rotate_y_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
-  connect(rotate_z_instances, "Instances", rotate_y_instances, "Instances");
-  set_in(rotate_y_instances, "Local Space", false);
-  bNode *rotate_x_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
-  connect(rotate_y_instances, "Instances", rotate_x_instances, "Instances");
-  set_in(rotate_x_instances, "Local Space", false);
+  bNode *rotate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
+  set_in(rotate_instances, "Local Space", false);
+  connect(scale_instances, "Instances", rotate_instances, "Instances");
 
   bNode *translate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_TRANSLATE_INSTANCES);
-  connect(rotate_x_instances, "Instances", translate_instances, "Instances");
+  connect(rotate_instances, "Instances", translate_instances, "Instances");
   set_in(translate_instances, "Local Space", false);
 
   bNode *geometry_out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
@@ -572,36 +639,21 @@ static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &
   set_in(invert_size, "Vector", float3{1.0f});
   connect(invert_size, "Vector", scale_instances, "Scale");
 
-  bNode *flip_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
-  flip_rotation->custom1 = NODE_VECTOR_MATH_SCALE;
-  flip_rotation->typeinfo->updatefunc(node_tree, flip_rotation);
-  set_in(flip_rotation, "Scale", -1.0f);
+  bNode *invert_rotation = add_node_group(invert_rotation_tree);
+  connect(invert_rotation, "Rotation", rotate_instances, "Rotation");
 
-  bNode *separate_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_SEPXYZ);
-  connect(flip_rotation, "Vector", separate_rotation, "Vector");
-
-  bNode *combine_z_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_COMBXYZ);
-  connect(separate_rotation, "Z", combine_z_rotation, "Z");
-  connect(combine_z_rotation, "Vector", rotate_z_instances, "Rotation");
-  bNode *combine_y_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_COMBXYZ);
-  connect(separate_rotation, "Y", combine_y_rotation, "Y");
-  connect(combine_y_rotation, "Vector", rotate_y_instances, "Rotation");
-  bNode *combine_x_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_COMBXYZ);
-  connect(separate_rotation, "Z", combine_x_rotation, "Z");
-  connect(combine_x_rotation, "Vector", rotate_x_instances, "Rotation");
-
-  bNode *go_back_position = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
-  go_back_position->custom1 = NODE_VECTOR_MATH_SCALE;
-  go_back_position->typeinfo->updatefunc(node_tree, go_back_position);
-  connect(go_back_position, "Vector", translate_instances, "Translation");
-  set_in(go_back_position, "Scale", -1.0f);
+  bNode *invert_position = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
+  invert_position->custom1 = NODE_VECTOR_MATH_SCALE;
+  invert_position->typeinfo->updatefunc(node_tree, invert_position);
+  set_in(invert_position, "Scale", -1.0f);
+  connect(invert_position, "Vector", translate_instances, "Translation");
 
   bNode *set_scale = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_INSTANCE_SCALE);
   connect(set_scale, "Scale", invert_size, "Vector_001");
   bNode *set_rotation = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_INSTANCE_ROTATION);
-  connect(set_rotation, "Rotation", flip_rotation, "Vector");
+  connect(set_rotation, "Rotation", invert_rotation, "Rotation");
   bNode *set_position = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_POSITION);
-  connect(set_position, "Position", go_back_position, "Vector");
+  connect(set_position, "Position", invert_position, "Vector");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.reset_instances_transform = node_tree;
@@ -1159,11 +1211,8 @@ static bNodeTree *instances_on_points(const Span<Object *> objects,
   connect(instansing_group, "Instances", join_parent, "Geometry");
   connect(view_switch_group, "Geometry", join_parent, "Geometry");
 
-  bNode *realize_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_REALIZE_INSTANCES);
-  connect(join_parent, "Geometry", realize_instances, "Geometry");
-
   bNode *group_output = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
-  connect(realize_instances, "Geometry", group_output, "Geometry");
+  connect(join_parent, "Geometry", group_output, "Geometry");
 
   return node_tree;
 }
@@ -1238,11 +1287,8 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   connect(scale_instances, "Instances", join_parent, "Geometry");
   connect(view_switch_group, "Geometry", join_parent, "Geometry");
 
-  bNode *realize_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_REALIZE_INSTANCES);
-  connect(join_parent, "Geometry", realize_instances, "Geometry");
-
   bNode *group_output = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
-  connect(realize_instances, "Geometry", group_output, "Geometry");
+  connect(join_parent, "Geometry", group_output, "Geometry");
   return node_tree;
 }
 
@@ -1299,8 +1345,7 @@ static void object_push_instances_modifier(const StringRefNull modifier_name,
   PointerRNA object_ptr;
   RNA_pointer_create(&object.id, &RNA_Object, &object, &object_ptr);
 
-  static const Map<StringRef, StringRef> socket_legacy_name_maping = []() -> auto
-  {
+  static const Map<StringRef, StringRef> socket_legacy_name_maping = []() {
     Map<StringRef, StringRef> name_mapping;
 
     name_mapping.add("Viewport", "show_instancer_for_viewport");
@@ -1311,8 +1356,7 @@ static void object_push_instances_modifier(const StringRefNull modifier_name,
 
     name_mapping.add("Aling to Vertex Normal", "use_instance_vertices_rotation");
     return name_mapping;
-  }
-  ();
+  }();
 
   Vector<std::string> legacy_rna_paths;
   Vector<AnimationBasePathChange> animation_data;
