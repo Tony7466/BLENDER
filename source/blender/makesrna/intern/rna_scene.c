@@ -923,11 +923,6 @@ static void rna_Scene_camera_update(Main *bmain, Scene *UNUSED(scene_unused), Po
   DEG_relations_tag_update(bmain);
 }
 
-static void simulation_reset_cache(Scene *scene)
-{
-  BKE_simulation_reset_scene(scene);
-}
-
 static void rna_Scene_fps_update(Main *bmain, Scene *UNUSED(active_scene), PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
@@ -936,7 +931,8 @@ static void rna_Scene_fps_update(Main *bmain, Scene *UNUSED(active_scene), Point
    * however, changes in FPS actually modifies an original skip length,
    * so this we take care about here. */
   SEQ_sound_update_length(bmain, scene);
-  simulation_reset_cache(scene);
+  /* Reset simulation states because new frame interval doesn't apply anymore. */
+  BKE_simulation_reset_scene(scene);
 }
 
 static void rna_Scene_listener_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)

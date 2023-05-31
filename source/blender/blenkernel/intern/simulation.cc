@@ -194,9 +194,7 @@ void BKE_simulation_reset_scene(Scene *scene)
         continue;
       }
       NodesModifierData *nmd = (NodesModifierData *)md;
-      NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
-          BKE_modifier_get_original(ob, &nmd->modifier));
-      nmd_orig->simulation_cache->reset();
+      nmd->simulation_cache->reset();
     }
   }
   FOREACH_SCENE_OBJECT_END;
