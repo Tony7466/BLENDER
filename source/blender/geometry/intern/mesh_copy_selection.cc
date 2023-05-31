@@ -74,12 +74,12 @@ static IndexMask vert_selection_from_edge(const Span<int2> edges,
                                           const int verts_num,
                                           IndexMaskMemory &memory)
 {
-  Array<bool> span(verts_num, false);
+  Array<bool> array(verts_num, false);
   edge_mask.foreach_index_optimized<int>([&](const int i) {
-    span[edges[i][0]] = true;
-    span[edges[i][1]] = true;
+    array[edges[i][0]] = true;
+    array[edges[i][1]] = true;
   });
-  return IndexMask::from_bools(span, memory);
+  return IndexMask::from_bools(array, memory);
 }
 
 static IndexMask mapped_corner_selection_from_poly(const OffsetIndices<int> polys,
@@ -90,8 +90,8 @@ static IndexMask mapped_corner_selection_from_poly(const OffsetIndices<int> poly
 {
   Array<bool> array(verts_or_edges_num, false);
   poly_mask.foreach_index(GrainSize(512), [&](const int64_t i) {
-    const Span<int> poly_edges = corner_verts_or_edges.slice(polys[i]);
-    array.as_mutable_span().fill_indices(poly_edges, true);
+    const Span<int> poly = corner_verts_or_edges.slice(polys[i]);
+    array.as_mutable_span().fill_indices(poly, true);
   });
   return IndexMask::from_bools(array, memory);
 }
