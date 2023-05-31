@@ -1191,7 +1191,7 @@ CurvesGeometry curves_copy_curve_selection(
   MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
   gather_attributes_group_to_group(src_attributes,
-                                   ATTR_DOMAIN_CURVE,
+                                   ATTR_DOMAIN_POINT,
                                    propagation_info,
                                    {},
                                    points_by_curve,
