@@ -118,13 +118,13 @@ static IndexMask edge_selection_from_poly(const OffsetIndices<int> polys,
 
 /** An edge is selected if both of its vertices are selected. */
 static IndexMask edge_selection_from_vert(const Span<int2> edges,
-                                          const Span<bool> vert_mask,
+                                          const Span<bool> vert_selection,
                                           IndexMaskMemory &memory)
 {
   return IndexMask::from_predicate(
       edges.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
         const int2 edge = edges[i];
-        return vert_mask[edge[0]] && vert_mask[edge[1]];
+        return vert_selection[edge[0]] && vert_selection[edge[1]];
       });
 }
 
