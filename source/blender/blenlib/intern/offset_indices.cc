@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 
 namespace blender::offset_indices {
 
-OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets, const int start_offset)
+OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
+                                                const int start_offset)
 {
   int offset = start_offset;
   for (const int i : counts_to_offsets.index_range().drop_back(1)) {
@@ -16,6 +19,23 @@ OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offse
   }
   counts_to_offsets.last() = offset;
   return OffsetIndices<int>(counts_to_offsets);
+}
+
+void copy_group_sizes(const OffsetIndices<int> offsets,
+                      const IndexMask &mask,
+                      MutableSpan<int> sizes)
+{
+  mask.foreach_index_optimized<int64_t>(GrainSize(4096),
+                                        [&](const int64_t i) { sizes[i] = offsets[i].size(); });
+}
+
+void gather_group_sizes(const OffsetIndices<int> offsets,
+                        const IndexMask &mask,
+                        MutableSpan<int> sizes)
+{
+  mask.foreach_index_optimized<int64_t>(GrainSize(4096), [&](const int64_t i, const int64_t pos) {
+    sizes[pos] = offsets[i].size();
+  });
 }
 
 void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map)

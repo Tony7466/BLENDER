@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_heap.h"
 #include "BLI_math_matrix.hh"
@@ -92,6 +94,8 @@ class UVPackIsland_Params {
   eUVPackIsland_MarginMethod margin_method;
   /** Additional translation for bottom left corner. */
   float udim_base_offset[2];
+  /** Target vertical extent. Should be 1.0f for the unit square. */
+  float target_extent;
   /** Target aspect ratio. */
   float target_aspect_y;
   /** Which shape to use when packing. */

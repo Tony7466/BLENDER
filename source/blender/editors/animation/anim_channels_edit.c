@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edanimation
@@ -3950,6 +3951,8 @@ static void ANIM_OT_channel_select_keys(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = animchannels_channel_select_keys_invoke;
   ot->poll = animedit_poll_channels_active;
+
+  ot->flag = OPTYPE_UNDO;
 
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
