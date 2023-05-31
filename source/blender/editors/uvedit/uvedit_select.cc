@@ -3663,10 +3663,9 @@ static int uv_box_select_exec(bContext *C, wmOperator *op)
           }
         }
         if (has_selected && use_select_linked) {
-          UvNearestHit hit = {
-              .ob = obedit,
-              .efa = efa,
-          };
+          UvNearestHit hit = {};
+          hit.ob = obedit;
+          hit.efa = efa;
           uv_select_linked_multi(scene, objects, objects_len, &hit, true, !select, false, false);
         }
       }
@@ -3879,10 +3878,9 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
           }
         }
         if (has_selected && use_select_linked) {
-          UvNearestHit hit = {
-              .ob = obedit,
-              .efa = efa,
-          };
+          UvNearestHit hit = {};
+          hit.ob = obedit;
+          hit.efa = efa;
           uv_select_linked_multi(scene, objects, objects_len, &hit, true, !select, false, false);
         }
       }
@@ -4112,10 +4110,9 @@ static bool do_lasso_select_mesh_uv(bContext *C,
           }
         }
         if (has_selected && use_select_linked) {
-          UvNearestHit hit = {
-              .ob = obedit,
-              .efa = efa,
-          };
+          UvNearestHit hit = {};
+          hit.ob = obedit;
+          hit.efa = efa;
           uv_select_linked_multi(scene, objects, objects_len, &hit, true, !select, false, false);
         }
       }

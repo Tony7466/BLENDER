@@ -587,7 +587,7 @@ static UVRipPairs *uv_rip_pairs_from_loop(BMLoop *l_init,
   UL(l_init)->in_stack = true;
 
   BMLoop *l_step;
-  while ((l_step = BLI_SMALLSTACK_POP(stack))) {
+  while ((l_step = static_cast<BMLoop *>(BLI_SMALLSTACK_POP(stack)))) {
     int side = UL(l_step)->side;
     UL(l_step)->in_stack = false;
 

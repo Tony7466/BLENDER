@@ -621,10 +621,9 @@ static void uv_weld_align(bContext *C, eUVWeldAlign tool)
     }
 
     if (changed) {
-      Mesh *me = static_cast<Mesh *>(obedit->data);
       uvedit_live_unwrap_update(sima, scene, obedit);
-      DEG_id_tag_update(&me->id, 0);
-      WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
 
@@ -812,10 +811,9 @@ static int uv_remove_doubles_to_selected(bContext *C, wmOperator *op)
     for (ob_index = 0; ob_index < objects_len; ob_index++) {
       if (changed[ob_index]) {
         Object *obedit = objects[ob_index];
-        Mesh *me = static_cast<Mesh *>(obedit->data);
         uvedit_live_unwrap_update(sima, scene, obedit);
-        DEG_id_tag_update(&me->id, 0);
-        WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
+        DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+        WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
       }
     }
   }
@@ -923,10 +921,9 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      Mesh *me = static_cast<Mesh *>(obedit->data);
       uvedit_live_unwrap_update(sima, scene, obedit);
-      DEG_id_tag_update(&me->id, 0);
-      WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
 
@@ -1292,11 +1289,10 @@ static int uv_snap_selection_exec(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      Mesh *me = static_cast<Mesh *>(obedit->data);
       changed_multi = true;
       uvedit_live_unwrap_update(sima, scene, obedit);
-      DEG_id_tag_update(&me->id, 0);
-      WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
   MEM_freeN(objects);
@@ -1378,9 +1374,8 @@ static int uv_pin_exec(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      Mesh *me = static_cast<Mesh *>(obedit->data);
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
-      DEG_id_tag_update(&me->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_COPY_ON_WRITE);
     }
   }
   MEM_freeN(objects);
@@ -1569,9 +1564,8 @@ static int uv_hide_exec(bContext *C, wmOperator *op)
 
     BM_select_history_validate(em->bm);
 
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    DEG_id_tag_update(&me->id, ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, me);
+    DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
   }
 
   MEM_freeN(objects);
@@ -1722,9 +1716,8 @@ static int uv_reveal_exec(bContext *C, wmOperator *op)
     /* re-select tagged faces */
     BM_mesh_elem_hflag_enable_test(em->bm, BM_FACE, BM_ELEM_SELECT, true, false, BM_ELEM_TAG);
 
-    Mesh *me = static_cast<Mesh *>(ob->data);
-    DEG_id_tag_update(&me->id, ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, me);
+    DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
   }
 
   MEM_freeN(objects);
@@ -1891,7 +1884,6 @@ static int uv_seams_from_islands_exec(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
       changed_multi = true;
       DEG_id_tag_update(&me->id, 0);
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
@@ -1969,7 +1961,6 @@ static int uv_mark_seam_exec(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
       DEG_id_tag_update(&me->id, 0);
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
     }

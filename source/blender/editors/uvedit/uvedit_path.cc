@@ -169,11 +169,10 @@ static int mouse_mesh_uv_shortest_path_vert(Scene *scene,
   BMesh *bm = em->bm;
   int flush = 0;
 
-  struct UserData_UV user_data = {
-      .scene = scene,
-      .em = em,
-      .offsets = offsets,
-  };
+  struct UserData_UV user_data = {};
+  user_data.scene = scene;
+  user_data.em = em;
+  user_data.offsets = offsets;
 
   struct BMCalcPathUVParams params {
   };
@@ -290,11 +289,10 @@ static int mouse_mesh_uv_shortest_path_edge(Scene *scene,
   BMesh *bm = em->bm;
   int flush = 0;
 
-  struct UserData_UV user_data = {
-      .scene = scene,
-      .em = em,
-      .offsets = offsets,
-  };
+  struct UserData_UV user_data = {};
+  user_data.scene = scene;
+  user_data.em = em;
+  user_data.offsets = offsets;
 
   struct BMCalcPathUVParams params = {};
   params.use_topology_distance = op_params->use_topology_distance;
@@ -406,11 +404,10 @@ static int mouse_mesh_uv_shortest_path_face(Scene *scene,
   BMesh *bm = em->bm;
   int flush = 0;
 
-  struct UserData_UV user_data = {
-      .scene = scene,
-      .em = em,
-      .offsets = offsets,
-  };
+  struct UserData_UV user_data = {};
+  user_data.scene = scene;
+  user_data.em = em;
+  user_data.offsets = offsets;
 
   struct BMCalcPathUVParams params = {};
   params.use_topology_distance = op_params->use_topology_distance;
