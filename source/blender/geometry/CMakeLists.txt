@@ -18,6 +18,7 @@ set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
   intern/fillet_curves.cc
+  intern/mesh_copy_selection.cc
   intern/mesh_flip_faces.cc
   intern/mesh_merge_by_distance.cc
   intern/mesh_primitive_cuboid.cc
@@ -42,6 +43,7 @@ set(SRC
   GEO_mesh_merge_by_distance.hh
   GEO_mesh_primitive_cuboid.hh
   GEO_mesh_split_edges.hh
+  GEO_mesh_copy_selection.hh
   GEO_mesh_to_curve.hh
   GEO_mesh_to_volume.hh
   GEO_point_merge_by_distance.hh

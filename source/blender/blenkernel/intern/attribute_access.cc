@@ -1059,7 +1059,6 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
                                       const IndexMask &selection,
                                       MutableAttributeAccessor dst_attributes)
 {
-  const int src_size = src_attributes.domain_size(domain);
   src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
     if (meta_data.domain != domain) {
       return true;
