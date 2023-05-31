@@ -1867,12 +1867,20 @@ static void panel_draw(const bContext *C, Panel *panel)
                false,
                nullptr);
 
+  /* Draw uncategorized sockets. */
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
     PointerRNA bmain_ptr;
     RNA_main_pointer_create(bmain, &bmain_ptr);
 
     int socket_index;
     LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &nmd->node_group->inputs, socket_index) {
+      /* TODO using name as placeholder until categories are added. */
+      const char *socket_category = socket->name;
+
+      if (socket_category[0] != '\0') {
+        break;
+      }
+
       if (!(socket->flag & SOCK_HIDE_IN_MODIFIER)) {
         draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
       }
@@ -1990,7 +1998,7 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
-static bool socket_category_panel_poll(const bContext *C, PanelType * /*panel_type*/)
+static bool child_panel_poll(const bContext *C, PanelType * /*panel_type*/)
 {
   /* Always hidden, panel is drawn explicitly. */
   //  return false;
@@ -2000,20 +2008,23 @@ static bool socket_category_panel_poll(const bContext *C, PanelType * /*panel_ty
   return (ob != nullptr) && (ob->type != OB_GPENCIL_LEGACY);
 }
 
-static void socket_category_panel_draw_header(const bContext *C, Panel *panel)
+static void socket_category_panel_draw_header(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  //  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  //  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
-  const PointerRNA socket_ptr = CTX_data_pointer_get(C, "socket_category");
-  const bNodeSocket *socket = static_cast<bNodeSocket *>(socket_ptr.data);
-  if (socket == nullptr) {
+  const bNodeSocket *start_socket = static_cast<bNodeSocket *>(
+      BLI_findlink(&nmd->node_group->inputs, panel->runtime.custom_data_int[0]));
+  const bNodeSocket *end_socket = static_cast<bNodeSocket *>(
+      BLI_findlink(&nmd->node_group->inputs, panel->runtime.custom_data_int[1]));
+  if (start_socket == nullptr || end_socket == nullptr) {
     return;
   }
 
-  std::string category = "Your category could be here! " + std::string(socket->name);
+  std::string category = "Sockets from " + std::string(start_socket->name) + " to " +
+                         std::string(end_socket->name);
   uiItemL(layout, category.c_str(), ICON_NONE);
 }
 
@@ -2021,8 +2032,8 @@ static void socket_category_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  //  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  //  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
   uiItemL(layout, "Hello World!", ICON_NONE);
 }
@@ -2034,7 +2045,7 @@ static void panelRegister(ARegionType *region_type)
   modifier_subpanel_register_ex(region_type,
                                 "socket_category",
                                 N_("Socket Category"),
-                                socket_category_panel_poll,
+                                child_panel_poll,
                                 socket_category_panel_draw_header,
                                 socket_category_panel_draw,
                                 panel_type,
@@ -2042,7 +2053,7 @@ static void panelRegister(ARegionType *region_type)
   modifier_subpanel_register_ex(region_type,
                                 "output_attributes",
                                 N_("Output Attributes"),
-                                nullptr,
+                                child_panel_poll,
                                 nullptr,
                                 output_attribute_panel_draw,
                                 panel_type,
@@ -2050,7 +2061,7 @@ static void panelRegister(ARegionType *region_type)
   modifier_subpanel_register_ex(region_type,
                                 "internal_dependencies",
                                 N_("Internal Dependencies"),
-                                nullptr,
+                                child_panel_poll,
                                 nullptr,
                                 internal_dependencies_panel_draw,
                                 panel_type,
@@ -2086,12 +2097,31 @@ static void addChildPanelInstances(ModifierData *md,
                   parent_idname,
                   "_internal_dependencies");
 
-  LISTBASE_FOREACH (bNodeSocket *, socket, &nmd->node_group->inputs) {
+  const char *current_category = "";
+  Panel *current_subpanel = nullptr;
+  int socket_index;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &nmd->node_group->inputs, socket_index) {
     if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
       continue;
     }
 
-    UI_panel_add_instanced(C, region, child_panels, socket_category_panel_idname, custom_data);
+    /* TODO using name as placeholder until categories are added. */
+    const char *socket_category = socket->name;
+
+    if (!STREQ(socket_category, current_category)) {
+      if (current_subpanel) {
+        current_subpanel->runtime.custom_data_int[1] = socket_index;
+      }
+
+      current_subpanel = UI_panel_add_instanced(
+          C, region, child_panels, socket_category_panel_idname, custom_data);
+      if (current_subpanel) {
+        current_subpanel->runtime.custom_data_int[0] = socket_index;
+      }
+    }
+  }
+  if (current_subpanel) {
+    current_subpanel->runtime.custom_data_int[1] = socket_index;
   }
 
   UI_panel_add_instanced(C, region, child_panels, output_attributes_panel_idname, custom_data);
@@ -2102,26 +2132,62 @@ static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
 
-  if (nmd->node_group == nullptr) {
-    return false;
+  if (nmd->node_group) {
+    return BLI_listbase_is_empty(&parent->children);
   }
 
   char parent_idname[MAX_NAME];
   BKE_modifier_type_panel_id(ModifierType(md->type), parent_idname);
 
-  const Panel *child_panel = static_cast<Panel *>(parent->children.first);
+  char socket_category_panel_idname[MAX_NAME];
+  char output_attributes_panel_idname[MAX_NAME];
+  char internal_dependencies_panel_idname[MAX_NAME];
+  BLI_string_join(socket_category_panel_idname,
+                  sizeof(socket_category_panel_idname),
+                  parent_idname,
+                  "_socket_category");
+  BLI_string_join(output_attributes_panel_idname,
+                  sizeof(output_attributes_panel_idname),
+                  parent_idname,
+                  "_output_attributes");
+  BLI_string_join(internal_dependencies_panel_idname,
+                  sizeof(internal_dependencies_panel_idname),
+                  parent_idname,
+                  "_internal_dependencies");
+
+  const char *current_category = "";
+  const Panel *current_subpanel = static_cast<const Panel *>(parent->children.first);
   LISTBASE_FOREACH (bNodeSocket *, socket, &nmd->node_group->inputs) {
-    if (!(socket->flag & SOCK_HIDE_IN_MODIFIER) && (child_panel->flag & PANEL_TYPE_INSTANCED)) {
-      char child_panel_idname[MAX_NAME];
-      BLI_string_join(
-          child_panel_idname, sizeof(child_panel_idname), parent_idname, "_socket_category");
+    if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
+      continue;
+    }
 
-      //      if (!STREQ(child_panel_idname, child_panel->type->idname)) {)
-      //      }
+    /* TODO using name as placeholder until categories are added. */
+    const char *socket_category = socket->name;
 
-      child_panel = child_panel->next;
+    if (!STREQ(socket_category, current_category)) {
+      if (current_subpanel == nullptr ||
+          !STREQ(socket_category_panel_idname, current_subpanel->type->idname))
+      {
+        return false;
+      }
+      current_subpanel = current_subpanel->next;
     }
   }
+
+  if (current_subpanel == nullptr ||
+      !STREQ(output_attributes_panel_idname, current_subpanel->type->idname))
+  {
+    return false;
+  }
+  current_subpanel = current_subpanel->next;
+
+  if (current_subpanel == nullptr ||
+      !STREQ(internal_dependencies_panel_idname, current_subpanel->type->idname))
+  {
+    return false;
+  }
+  current_subpanel = current_subpanel->next;
 
   return true;
 }

@@ -135,6 +135,14 @@ typedef struct Panel_Runtime {
    */
   struct PointerRNA *custom_data_ptr;
 
+  /**
+   * XXX horrible placeholder to stuff extra custom data into modifier panels.
+   * Will need some kind of addressable data in modifier runtime or so,
+   * and then use the custom_data_ptr (with an internal pointer back to modifier).
+   * It's really limiting here to have to put so much context data into a single pointer.
+   */
+  int custom_data_int[2];
+
   /* Pointer to the panel's block. Useful when changes to panel #uiBlocks
    * need some context from traversal of the panel "tree". */
   struct uiBlock *block;
