@@ -5,10 +5,11 @@
  *
  * Ground Truth Ambient Occlusion
  *
- */
-
-/**
- * Occlusion Algorithm Overview:
+ * Based on Practical Realtime Strategies for Accurate Indirect Occlusion
+ * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pdf
+ * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pptx
+ *
+ * Algorithm Overview:
  *
  * We separate the computation into 2 steps.
  *

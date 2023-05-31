@@ -36,10 +36,9 @@ class AmbientOcclusion {
   PassSimple horizons_search_ps_ = {"GTAO Horizons Search"};
   PassSimple render_pass_ps_ = {"GTAO Render Pass"};
 
+  /* Used as pointers for texture views in the AO Render Pass. */
   GPUTexture *rp_normal_tx_ = nullptr;
-  int rp_normal_index = 0;
   GPUTexture *rp_ao_tx_ = nullptr;
-  int rp_ao_index = 0;
 
  public:
   AmbientOcclusion(Instance &inst) : inst_(inst)
