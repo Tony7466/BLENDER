@@ -69,6 +69,12 @@ ccl_device_inline void sample_cos_hemisphere(const float3 N,
   *pdf = costheta * M_1_PI_F;
 }
 
+ccl_device_inline float pdf_cos_hemisphere(const float3 N, const float3 D)
+{
+  const float cos_theta = dot(N, D);
+  return cos_theta > 0 ? cos_theta * M_1_PI_F : 0.0f;
+}
+
 /* sample direction uniformly distributed in hemisphere */
 ccl_device_inline void sample_uniform_hemisphere(const float3 N,
                                                  const float2 rand,
