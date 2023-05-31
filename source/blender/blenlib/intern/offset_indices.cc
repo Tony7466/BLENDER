@@ -42,6 +42,9 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
                                            MutableSpan<int> dst_offsets)
 {
+  if (selection.is_empty()) {
+    return {};
+  }
   BLI_assert(selection.size() == (dst_offsets.size() - 1));
   offset_indices::gather_group_sizes(src_offsets, selection, dst_offsets);
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
