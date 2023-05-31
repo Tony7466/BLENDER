@@ -459,9 +459,9 @@ set(LZMA_HASH_TYPE SHA256)
 set(LZMA_FILE xz-${LZMA_VERSION}.tar.bz2)
 
 # NOTE: Python's build has been modified to use our ssl version.
-set(SSL_VERSION 1.1.1t)
+set(SSL_VERSION 1.1.1u)
 set(SSL_URI https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz)
-set(SSL_HASH 8dee9b24bdb1dcbf0c3d1e9b02fb8f6bf22165e807f45adeb7c9677536859d3b)
+set(SSL_HASH e2f8d84b523eecd06c7be7626830370300fbcc15386bf5142d72758f6963ebc6)
 set(SSL_HASH_TYPE SHA256)
 set(SSL_FILE openssl-${SSL_VERSION}.tar.gz)
 set(SSL_CPE "cpe:2.3:a:openssl:openssl:${SSL_VERSION}:*:*:*:*:*:*:*")
