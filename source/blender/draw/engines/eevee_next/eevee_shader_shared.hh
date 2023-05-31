@@ -886,13 +886,16 @@ enum eClosureBits : uint32_t {
 
 struct RayTracingData {
   float2 pixel_size;
-  float quality;
-  float thickness;
-  float border_factor; /* This is the only one used */
-  float max_roughness;
-  float firefly_factor;
-  float brdf_bias;
-  bool1 toggle;
+  float border_fade;
+
+  /* TODO(Miguel Pozo): Does this belong here? */
+  float ssr_quality;
+  float ssr_thickness;
+  float ssr_max_roughness;
+  float ssr_firefly_factor;
+  float ssr_brdf_bias;
+  bool1 ssr_enabled;
+
   int _pad0;
   int _pad1;
   int _pad2;

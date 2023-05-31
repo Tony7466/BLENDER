@@ -26,9 +26,6 @@ class AmbientOcclusion {
   bool debug_;
   bool render_pass_enabled_;
 
-  /* TODO: Move somewhere else. */
-  RayTracingDataBuf rt_data_;
-
   AODataBuf data_;
 
   Texture dummy_horizons_tx_;
@@ -61,12 +58,14 @@ class AmbientOcclusion {
   void render(View &view);
   void render_pass(View &view);
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  template<typename T>
+  void bind_resources(draw::detail::PassBase<T> *pass, bool bind_horizons = true)
   {
     inst_.sampling.bind_resources(pass);
     inst_.hiz_buffer.bind_resources(pass);
+    inst_.raytracing.bind_resources(pass);
+    pass->bind_texture(RBUFS_UTILITY_TEX_SLOT, &inst_.pipelines.utility_tx);
     pass->bind_ubo(AO_BUF_SLOT, &data_);
-    pass->bind_ubo(RAYTRACE_BUF_SLOT, &rt_data_);
     pass->bind_texture(AO_HORIZONS_TEX_SLOT, data_.enabled ? &horizons_tx_ : &dummy_horizons_tx_);
   }
 };

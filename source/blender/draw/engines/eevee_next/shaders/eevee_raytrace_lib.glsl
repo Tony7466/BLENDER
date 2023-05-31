@@ -245,7 +245,7 @@ bool raytrace_planar(Ray ray, RayTraceParameters params, int planar_ref_id, out 
 float screen_border_mask(vec2 hit_co)
 {
   const float margin = 0.003;
-  float atten = rt_buf.border_factor + margin; /* Screen percentage */
+  float atten = rt_buf.border_fade + margin; /* Screen percentage */
   hit_co = smoothstep(0.0, atten, hit_co) * (1.0 - smoothstep(1.0 - atten, 1.0, hit_co));
 
   float screenfade = hit_co.x * hit_co.y;

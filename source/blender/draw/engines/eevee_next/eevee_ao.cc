@@ -59,10 +59,6 @@ void AmbientOcclusion::init()
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
   horizons_tx_.ensure_2d(GPU_RGBA8, inst_.film.render_extent_get(), usage);
-
-  /* Compute pixel size. Size is multiplied by 2 because it is applied in NDC [-1..1] range. */
-  rt_data_.pixel_size = float2(2.0f) / float2(inst_.film.render_extent_get());
-  rt_data_.push_update();
 }
 
 void AmbientOcclusion::sync()
@@ -74,10 +70,7 @@ void AmbientOcclusion::sync()
   horizons_search_ps_.init();
   horizons_search_ps_.state_set(DRW_STATE_WRITE_COLOR);
   horizons_search_ps_.shader_set(inst_.shaders.static_shader_get(AO_HORIZONS));
-  horizons_search_ps_.bind_ubo(RAYTRACE_BUF_SLOT, &rt_data_);
-  horizons_search_ps_.bind_ubo(AO_BUF_SLOT, &data_);
-  horizons_search_ps_.bind_texture("utility_tx", &inst_.pipelines.utility_tx);
-  inst_.hiz_buffer.bind_resources(&horizons_search_ps_);
+  bind_resources(&horizons_search_ps_, false);
 
   horizons_search_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 
@@ -121,14 +114,14 @@ void AmbientOcclusion::render_pass(View &view)
     return;
   }
 
+  inst_.hiz_buffer.update();
+
   RenderBuffers &rb = inst_.render_buffers;
 
   rb.rp_color_tx.ensure_layer_views();
   rp_normal_tx_ = rb.rp_color_tx.layer_view(rb.data.normal_id);
   rb.rp_value_tx.ensure_layer_views();
   rp_ao_tx_ = rb.rp_value_tx.layer_view(rb.data.ambient_occlusion_id);
-
-  BLI_assert(rp_normal_tx_ && rp_ao_tx_);
 
   inst_.manager->submit(render_pass_ps_, view);
 }

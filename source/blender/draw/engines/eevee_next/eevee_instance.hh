@@ -28,6 +28,7 @@
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
+#include "eevee_raytracing.hh"
 #include "eevee_renderbuffers.hh"
 #include "eevee_sampling.hh"
 #include "eevee_shader.hh"
@@ -67,6 +68,7 @@ class Instance {
   MainView main_view;
   World world;
   IrradianceCache irradiance_cache;
+  RayTracing raytracing;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -112,7 +114,8 @@ class Instance {
         render_buffers(*this),
         main_view(*this),
         world(*this),
-        irradiance_cache(*this){};
+        irradiance_cache(*this),
+        raytracing(*this){};
   ~Instance(){};
 
   void init(const int2 &output_res,

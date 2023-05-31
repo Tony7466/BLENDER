@@ -73,6 +73,7 @@ void Instance::init(const int2 &output_res,
   motion_blur.init();
   main_view.init();
   irradiance_cache.init();
+  raytracing.init();
 }
 
 void Instance::set_time(float time)

@@ -151,6 +151,7 @@ set(SRC
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
+  engines/eevee_next/eevee_raytracing.cc
   engines/eevee_next/eevee_renderbuffers.cc
   engines/eevee_next/eevee_sampling.cc
   engines/eevee_next/eevee_shader.cc
@@ -292,6 +293,7 @@ set(SRC
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
+  engines/eevee_next/eevee_raytracing.hh
   engines/eevee_next/eevee_renderbuffers.hh
   engines/eevee_next/eevee_sampling.hh
   engines/eevee_next/eevee_shader.hh
