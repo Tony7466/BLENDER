@@ -47,7 +47,6 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
 
   ls->P = P + ls->D * ls->t;
 
-  /* TODO: change invarea to that of a sphere. */
   ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
   if (r_sqr == 0) {
     /* Use intensity instead of radiance for point light. */
@@ -129,7 +128,7 @@ ccl_device_inline bool point_light_sample_from_intersection(
   /* We set the light normal to the outgoing direction to support texturing. */
   ls->Ng = -ls->D;
 
-  ls->eval_fac = (0.25f * M_1_PI_F) * klight->spot.invarea;
+  ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
 
   const float2 uv = map_to_sphere(ls->Ng);
   ls->u = uv.x;

@@ -1213,6 +1213,9 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       shader_id &= ~SHADER_AREA_LIGHT;
 
       float radius = light->size;
+      /* TODO: change `invarea` to that of a sphere. `invarea` was used for disk sampling, with the
+       * current solid angle sampling this does not seem necessary. Maybe store `eval_fac`
+       * directly? */
       float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
                                                             1.0f;
 
