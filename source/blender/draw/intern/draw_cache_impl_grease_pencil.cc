@@ -282,10 +282,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         &format_edit_points_selection, "selection", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
 
-  cache->edit_points_pos = GPU_vertbuf_calloc();
-  cache->edit_points_selection = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format(cache->edit_points_pos, &format_edit_points_pos);
-  GPU_vertbuf_init_with_format(cache->edit_points_selection, &format_edit_points_selection);
+  cache->edit_points_pos = GPU_vertbuf_create_with_format(&format_edit_points_pos);
+  cache->edit_points_selection = GPU_vertbuf_create_with_format(&format_edit_points_selection);
   GPU_vertbuf_data_alloc(cache->edit_points_pos, total_points_num);
   GPU_vertbuf_data_alloc(cache->edit_points_selection, total_points_num);
 
@@ -329,7 +327,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     const VArray<float> opacities = *attributes.lookup_or_default<float>(
         "opacity", ATTR_DOMAIN_POINT, 1.0f);
     const VArray<bool> selection = *attributes.lookup_or_default<bool>(
-        ".selection", ATTR_DOMAIN_POINT, 1.0f);
+        ".selection", ATTR_DOMAIN_POINT, false);
     const VArray<int8_t> start_caps = *attributes.lookup_or_default<int8_t>(
         "start_cap", ATTR_DOMAIN_CURVE, 0);
     const VArray<int8_t> end_caps = *attributes.lookup_or_default<int8_t>(
@@ -497,8 +495,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
   GPU_vertbuf_use(cache->vbo_col);
 
   /* Create the batches */
-  cache->edit_points = GPU_batch_create(GPU_PRIM_TRIS, cache->edit_points_pos, nullptr);
-  GPU_vertbuf_use(cache->edit_points_pos);
+  cache->edit_points = GPU_batch_create(GPU_PRIM_POINTS, cache->edit_points_pos, nullptr);
+  GPU_batch_vertbuf_add(cache->edit_points, cache->edit_points_pos, false);
 
   cache->is_dirty = false;
 }

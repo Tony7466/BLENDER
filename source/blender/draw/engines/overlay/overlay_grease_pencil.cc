@@ -21,7 +21,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
 
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                    DRW_STATE_BLEND_ALPHA;
-  DRW_PASS_CREATE(psl->edit_grease_pencil_ps, state | pd->clipping_state);
+  DRW_PASS_CREATE(psl->edit_grease_pencil_ps, (state | pd->clipping_state));
 
   sh = OVERLAY_shader_edit_particle_point();
   grp = pd->edit_grease_pencil_points_grp = DRW_shgroup_create(sh, psl->edit_grease_pencil_ps);
