@@ -503,6 +503,19 @@ GPUBatch *DRW_cache_grease_pencil_get(Object *ob, int cfra)
   return cache->geom_batch;
 }
 
+GPUBatch *DRW_cache_grease_pencil_edit_points_get(Object *ob, int cfra)
+{
+  using namespace blender::draw;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+  /* TODO. */
+  // GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil, cfra);
+  // grease_pencil_batches_ensure(grease_pencil, cfra);
+
+  // return cache->geom_batch;
+
+  return nullptr;
+}
+
 GPUVertBuf *DRW_cache_grease_pencil_position_buffer_get(Object *ob, int cfra)
 {
   using namespace blender::draw;
