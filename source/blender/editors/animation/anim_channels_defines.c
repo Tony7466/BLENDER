@@ -1043,11 +1043,9 @@ static bool acf_fcurve_name_prop(bAnimListElem *ale, PointerRNA *ptr, PropertyRN
 
 /* check if some setting exists for this channel */
 static bool acf_fcurve_setting_valid(bAnimContext *ac,
-                                     bAnimListElem *ale,
+                                     bAnimListElem *UNUSED(ale),
                                      eAnimChannel_Settings setting)
 {
-  FCurve *fcu = (FCurve *)ale->data;
-
   switch (setting) {
     /* unsupported */
     case ACHANNEL_SETTING_SOLO:   /* Solo Flag is only for NLA */
@@ -1055,14 +1053,8 @@ static bool acf_fcurve_setting_valid(bAnimContext *ac,
     case ACHANNEL_SETTING_PINNED: /* This is only for NLA Actions */
       return false;
 
-    /* conditionally available */
-    case ACHANNEL_SETTING_PROTECT: /* Protection is only valid when there's keyframes */
-      if (fcu->bezt) {
-        return true;
-      }
-      else {
-        return false; /* NOTE: in this special case, we need to draw ICON_ZOOMOUT */
-      }
+    case ACHANNEL_SETTING_PROTECT:
+      return true;
 
     case ACHANNEL_SETTING_VISIBLE: /* Only available in Graph Editor */
       return (ac->spacetype == SPACE_GRAPH);
@@ -5183,6 +5175,12 @@ static void draw_setting_widget(bAnimContext *ac,
   {
     if (setting != ACHANNEL_SETTING_EXPAND) {
       UI_but_disable(but, TIP_("Can't edit this property from a linked data-block"));
+    }
+  }
+  if (ale->datatype == ALE_FCURVE && setting == ACHANNEL_SETTING_PROTECT) {
+    FCurve *fcu = ale->key_data;
+    if (!fcu->bezt) {
+      UI_but_disable(but, TIP_("Baked curves cannot be locked"));
     }
   }
 }
