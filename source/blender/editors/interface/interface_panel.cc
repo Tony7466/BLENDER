@@ -302,6 +302,11 @@ static void panel_delete(const bContext *C, ARegion *region, ListBase *panels, P
 {
   /* Recursively delete children. */
   LISTBASE_FOREACH_MUTABLE (Panel *, child, &panel->children) {
+    /* Make sure the panel's handler is removed before deleting it. */
+    if (C != nullptr && child->activedata != nullptr) {
+      panel_activate_state(C, child, PANEL_STATE_EXIT);
+    }
+
     panel_delete(C, region, &panel->children, child);
   }
   BLI_freelistN(&panel->children);
