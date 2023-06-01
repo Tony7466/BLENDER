@@ -284,4 +284,189 @@ void create_stroke(Main &bmain, Object &object, float4x4 matrix, const int frame
   layer_color.insert_frame(frame_numer, frame_color);
 }
 
+
+extern std::array<float3, 270> monkey_data0_pos;
+extern std::array<float, 270> monkey_data0_rad;
+extern std::array<float, 270> monkey_data0_opa;
+extern std::array<float3, 33> monkey_data1_pos;
+extern std::array<float, 33> monkey_data1_rad;
+extern std::array<float, 33> monkey_data1_opa;
+extern std::array<float3, 18> monkey_data2_pos;
+extern std::array<float, 18> monkey_data2_rad;
+extern std::array<float, 18> monkey_data2_opa;
+extern std::array<float3, 64> monkey_data3_pos;
+extern std::array<float, 64> monkey_data3_rad;
+extern std::array<float, 64> monkey_data3_opa;
+extern std::array<float3, 33> monkey_data4_pos;
+extern std::array<float, 33> monkey_data4_rad;
+extern std::array<float, 33> monkey_data4_opa;
+extern std::array<float3, 64> monkey_data5_pos;
+extern std::array<float, 64> monkey_data5_rad;
+extern std::array<float, 64> monkey_data5_opa;
+extern std::array<float3, 33> monkey_data6_pos;
+extern std::array<float, 33> monkey_data6_rad;
+extern std::array<float, 33> monkey_data6_opa;
+extern std::array<float3, 18> monkey_data7_pos;
+extern std::array<float, 18> monkey_data7_rad;
+extern std::array<float, 18> monkey_data7_opa;
+extern std::array<float3, 49> monkey_data8_pos;
+extern std::array<float, 49> monkey_data8_rad;
+extern std::array<float, 49> monkey_data8_opa;
+extern std::array<float3, 33> monkey_data9_pos;
+extern std::array<float, 33> monkey_data9_rad;
+extern std::array<float, 33> monkey_data9_opa;
+extern std::array<float3, 49> monkey_data10_pos;
+extern std::array<float, 49> monkey_data10_rad;
+extern std::array<float, 49> monkey_data10_opa;
+extern std::array<float3, 18> monkey_data11_pos;
+extern std::array<float, 18> monkey_data11_rad;
+extern std::array<float, 18> monkey_data11_opa;
+extern std::array<float3, 18> monkey_data12_pos;
+extern std::array<float, 18> monkey_data12_rad;
+extern std::array<float, 18> monkey_data12_opa;
+extern std::array<float3, 33> monkey_data13_pos;
+extern std::array<float, 33> monkey_data13_rad;
+extern std::array<float, 33> monkey_data13_opa;
+extern std::array<float3, 33> monkey_data14_pos;
+extern std::array<float, 33> monkey_data14_rad;
+extern std::array<float, 33> monkey_data14_opa;
+extern std::array<float3, 65> monkey_data15_pos;
+extern std::array<float, 65> monkey_data15_rad;
+extern std::array<float, 65> monkey_data15_opa;
+extern std::array<float3, 34> monkey_data16_pos;
+extern std::array<float, 34> monkey_data16_rad;
+extern std::array<float, 34> monkey_data16_opa;
+extern std::array<float3, 33> monkey_data17_pos;
+extern std::array<float, 33> monkey_data17_rad;
+extern std::array<float, 33> monkey_data17_opa;
+extern std::array<float3, 33> monkey_data18_pos;
+extern std::array<float, 33> monkey_data18_rad;
+extern std::array<float, 33> monkey_data18_opa;
+extern std::array<float3, 34> monkey_data19_pos;
+extern std::array<float, 34> monkey_data19_rad;
+extern std::array<float, 34> monkey_data19_opa;
+extern std::array<float3, 33> monkey_data20_pos;
+extern std::array<float, 33> monkey_data20_rad;
+extern std::array<float, 33> monkey_data20_opa;
+extern std::array<float3, 64> monkey_data21_pos;
+extern std::array<float, 64> monkey_data21_rad;
+extern std::array<float, 64> monkey_data21_opa;
+extern std::array<float3, 26> monkey_data22_pos;
+extern std::array<float, 26> monkey_data22_rad;
+extern std::array<float, 26> monkey_data22_opa;
+extern std::array<float3, 26> monkey_data23_pos;
+extern std::array<float, 26> monkey_data23_rad;
+extern std::array<float, 26> monkey_data23_opa;
+extern std::array<float3, 33> monkey_data24_pos;
+extern std::array<float, 33> monkey_data24_rad;
+extern std::array<float, 33> monkey_data24_opa;
+extern std::array<float3, 18> monkey_data25_pos;
+extern std::array<float, 18> monkey_data25_rad;
+extern std::array<float, 18> monkey_data25_opa;
+extern std::array<float3, 18> monkey_data26_pos;
+extern std::array<float, 18> monkey_data26_rad;
+extern std::array<float, 18> monkey_data26_opa;
+extern std::array<float3, 33> monkey_data27_pos;
+extern std::array<float, 33> monkey_data27_rad;
+extern std::array<float, 33> monkey_data27_opa;
+
+static const ColorTemplate gp_monkey_pct_black = {
+    N_("Black"),
+    {0.0f, 0.0f, 0.0f, 1.0f},
+    {0.0f, 0.0f, 0.0f, 0.0f},
+};
+
+static const ColorTemplate gp_monkey_pct_skin = {
+    N_("Skin"),
+    {0.733f, 0.569f, 0.361f, 1.0f},
+    {0.745f, 0.502f, 0.278f, 1.0f},
+};
+
+static const ColorTemplate gp_monkey_pct_skin_light = {
+    N_("Skin_Light"),
+    {0.914f, 0.827f, 0.635f, 1.0f},
+    {0.913f, 0.828f, 0.637f, 0.0f},
+};
+
+static const ColorTemplate gp_monkey_pct_skin_shadow = {
+    N_("Skin_Shadow"),
+    {0.322f, 0.29f, 0.224f, 0.5f},
+    {0.32f, 0.29f, 0.223f, 0.3f},
+};
+
+static const ColorTemplate gp_monkey_pct_eyes = {
+    N_("Eyes"),
+    {0.553f, 0.39f, 0.266f, 0.0f},
+    {0.847f, 0.723f, 0.599f, 1.0f},
+};
+
+static const ColorTemplate gp_monkey_pct_pupils = {
+    N_("Pupils"),
+    {0.0f, 0.0f, 0.0f, 0.0f},
+    {0.0f, 0.0f, 0.0f, 1.0f},
+};
+
+void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int frame_numer)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  int color_Black = add_material_from_template(bmain, object, gp_monkey_pct_black);
+  int color_Eyes = add_material_from_template(bmain, object, gp_monkey_pct_eyes);
+  int color_Pupils = add_material_from_template(bmain, object, gp_monkey_pct_pupils);
+  int color_Skin = add_material_from_template(bmain, object, gp_monkey_pct_skin);
+  int color_Skin_Light = add_material_from_template(bmain, object, gp_monkey_pct_skin_light);
+  int color_Skin_Shadow = add_material_from_template(bmain, object, gp_monkey_pct_skin_shadow);
+  object.actcol = color_Black;
+
+  Layer &layer_lines = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "Lines");
+  Layer &layer_color = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "Color");
+  grease_pencil.active_layer = &layer_lines;
+
+  grease_pencil.add_empty_drawings(28);
+
+#define ADD_DATA(a,mat_index) \
+  { \
+    GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>( \
+        grease_pencil.drawings_for_write()[a]); \
+    drawing.geometry.wrap() = create_drawing_data( \
+        monkey_data##a##_pos, monkey_data##a##_rad, monkey_data##a##_opa, \
+        {0, monkey_data##a##_pos.size()}, {mat_index}, {75}, matrix); \
+  }
+    
+  ADD_DATA(0,color_Skin)
+  ADD_DATA(1,color_Skin_Shadow)
+  ADD_DATA(2,color_Skin_Shadow)
+  ADD_DATA(3,color_Skin_Light)
+  ADD_DATA(4,color_Skin_Light)
+  ADD_DATA(5,color_Skin_Light)
+  ADD_DATA(6,color_Skin_Light)
+  ADD_DATA(7,color_Skin_Light)
+  ADD_DATA(8,color_Eyes)
+  ADD_DATA(9,color_Skin_Shadow)
+  ADD_DATA(10,color_Eyes)
+  ADD_DATA(11,color_Skin_Shadow)
+  ADD_DATA(12,color_Skin_Shadow)
+  ADD_DATA(13,color_Black)
+  ADD_DATA(14,color_Black)
+  ADD_DATA(15,color_Black)
+  ADD_DATA(16,color_Black)
+  ADD_DATA(17,color_Black)
+  ADD_DATA(18,color_Black)
+  ADD_DATA(19,color_Black)
+  ADD_DATA(20,color_Black)
+  ADD_DATA(21,color_Black)
+  ADD_DATA(22,color_Pupils)
+  ADD_DATA(23,color_Pupils)
+  ADD_DATA(24,color_Black)
+  ADD_DATA(25,color_Black)
+  ADD_DATA(26,color_Black)
+  ADD_DATA(27,color_Black)
+
+  GreasePencilFrame frame_lines{0, 0, BEZT_KEYTYPE_KEYFRAME};
+  GreasePencilFrame frame_color{1, 0, BEZT_KEYTYPE_KEYFRAME};
+  layer_lines.insert_frame(frame_numer, frame_lines);
+  layer_color.insert_frame(frame_numer, frame_color);
+}
+
 }  // namespace blender::ed::greasepencil
