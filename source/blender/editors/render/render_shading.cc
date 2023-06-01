@@ -38,7 +38,6 @@
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
-#include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -2737,12 +2736,6 @@ void TEXTURE_OT_slot_move(wmOperatorType *ot)
 /** \name Material Copy Operator
  * \{ */
 
-/**
- * Property names that marks this material as active,
- * needed to check which material is active when multiple are written.
- */
-static const char *material_clipboard_prop_id = "__active_material_clipboard__";
-
 static int copy_material_exec(bContext *C, wmOperator *op)
 {
   Material *ma = static_cast<Material *>(
@@ -2756,38 +2749,12 @@ static int copy_material_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
 
   /* Mark is the material to use (others may be expanded). */
-  const bool had_prop_group = (ma->id.properties != nullptr);
-  IDProperty *properties = nullptr;
-  if (!had_prop_group) {
-    properties = IDP_GetProperties(&ma->id, true);
-  }
-  IDProperty *prop_mark = IDP_GetPropertyFromGroup(properties, material_clipboard_prop_id);
-  const bool had_prop_item = prop_mark != nullptr;
-  if (!had_prop_item) {
-    IDPropertyTemplate val = {};
-    prop_mark = IDP_New(IDP_INT, &val, __func__);
-    STRNCPY(prop_mark->name, material_clipboard_prop_id);
-    IDP_ReplaceInGroup_ex(properties, prop_mark, NULL);
-  }
-
   BKE_copybuffer_copy_begin(bmain);
 
-  /* TODO(@ideasman42): this could potentially expand into many ID data types.
-   * We may want to limit this to avoid expanding entire scenes & object data,
-   * although this is more of a worst case scenario. */
   BKE_copybuffer_copy_tag_ID(&ma->id);
 
   BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), "copybuffer_material.blend");
   BKE_copybuffer_copy_end(bmain, filepath, op->reports);
-
-  /* Clear mark (as needed). */
-  if (!had_prop_group) {
-    IDP_FreeProperty(properties);
-    ma->id.properties = nullptr;
-  }
-  else if (!had_prop_item) {
-    IDP_FreeFromGroup(properties, prop_mark);
-  }
 
   /* We are all done! */
   BKE_report(op->reports, RPT_INFO, "Copied material to internal clipboard");
@@ -2823,8 +2790,8 @@ static int paste_material_nodetree_ids_decref(LibraryIDLinkCallbackData *cb_data
 {
   if (cb_data->cb_flag & IDWALK_CB_USER) {
     id_us_min(*cb_data->id_pointer);
-    *cb_data->id_pointer = nullptr;
   }
+  *cb_data->id_pointer = nullptr;
   return IDWALK_RET_NOP;
 }
 
@@ -2845,6 +2812,9 @@ static int paste_material_nodetree_ids_relink_or_clear(LibraryIDLinkCallbackData
     *id_p = id_local;
     if (cb_data->cb_flag & IDWALK_CB_USER) {
       id_us_plus(id_local);
+    }
+    else if (cb_data->cb_flag & IDWALK_CB_USER_ONE) {
+      id_us_ensure_real(id_local);
     }
     id_lib_extern(id_local);
   }
@@ -2895,14 +2865,9 @@ static int paste_material_exec(bContext *C, wmOperator *op)
   /* There may be multiple materials,
    * check for a property that marks this as the active material. */
   Material *ma_from = nullptr;
-  LISTBASE_FOREACH (Material *, ma, &temp_bmain->materials) {
-    if (ma->id.properties == nullptr) {
-      continue;
-    }
-    IDProperty *prop_mark = IDP_GetPropertyFromGroup(ma->id.properties,
-                                                     material_clipboard_prop_id);
-    if (prop_mark) {
-      ma_from = ma;
+  LISTBASE_FOREACH (Material *, ma_iter, &temp_bmain->materials) {
+    if (ma_iter->id.flag & LIB_CLIPBOARD_MARK) {
+      ma_from = ma_iter;
       break;
     }
   }
