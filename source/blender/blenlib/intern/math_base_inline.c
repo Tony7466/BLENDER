@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -385,6 +386,16 @@ MINLINE uint64_t ceil_to_multiple_ul(uint64_t a, uint64_t b)
 MINLINE int mod_i(int i, int n)
 {
   return (i % n + n) % n;
+}
+
+MINLINE float mod_f_positive(const float f, const float n)
+{
+  const float modulo = fmodf(f, n);
+  if (modulo < 0) {
+    /* fmodf returns a value in the interval (-n, n). */
+    return modulo + n;
+  }
+  return modulo;
 }
 
 MINLINE float fractf(float a)

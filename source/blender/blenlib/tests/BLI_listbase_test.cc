@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -107,7 +109,7 @@ TEST(listbase, FindLinkOrIndex)
 TEST(listbase, FindLinkFromStringOrPointer)
 {
   struct TestLink {
-    struct TestLink *prev, *next;
+    struct TestLink *next, *prev;
     char name[64];
     const void *ptr;
   };

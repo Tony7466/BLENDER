@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -11,6 +12,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -57,7 +59,7 @@ static void initData(GpencilModifierData *md)
 
   DashGpencilModifierSegment *ds = DNA_struct_default_alloc(DashGpencilModifierSegment);
   ds->dmd = dmd;
-  STRNCPY(ds->name, DATA_("Segment"));
+  STRNCPY_UTF8(ds->name, DATA_("Segment"));
 
   dmd->segments = ds;
 }

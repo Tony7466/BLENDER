@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -152,8 +153,10 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
 /**
  * This has to be called from each make_local_* func, we could call from BKE_lib_id_make_local()
  * but then the make local functions would not be self contained.
- * Also note that the id _must_ have a library - campbell */
-/* TODO: This can probably be replaced by an ID-level version of #BKE_bpath_relative_rebase. */
+ *
+ * NOTE(@ideasman42): that the id _must_ have a library.
+ * TODO: This can probably be replaced by an ID-level version of #BKE_bpath_relative_rebase.
+ */
 static void lib_id_library_local_paths(Main *bmain, Library *lib, ID *id)
 {
   const char *bpath_user_data[2] = {BKE_main_blendfile_path(bmain), lib->filepath_abs};
@@ -173,7 +176,7 @@ static int lib_id_clear_library_data_users_update_cb(LibraryIDLinkCallbackData *
     /* Even though the ID itself remain the same after being made local, from depsgraph point of
      * view this is a different ID. Hence we need to tag all of its users for COW update. */
     DEG_id_tag_update_ex(
-        cb_data->bmain, cb_data->id_owner, ID_RECALC_TAG_FOR_UNDO | ID_RECALC_COPY_ON_WRITE);
+        cb_data->bmain, cb_data->owner_id, ID_RECALC_TAG_FOR_UNDO | ID_RECALC_COPY_ON_WRITE);
     return IDWALK_RET_STOP_ITER;
   }
   return IDWALK_RET_NOP;
@@ -396,7 +399,7 @@ void BKE_id_newptr_and_tag_clear(ID *id)
 static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
 {
   Main *bmain = cb_data->bmain;
-  ID *id_self = cb_data->id_self;
+  ID *self_id = cb_data->self_id;
   ID **id_pointer = cb_data->id_pointer;
   int const cb_flag = cb_data->cb_flag;
   const int flags = POINTER_AS_INT(cb_data->user_data);
@@ -412,7 +415,7 @@ static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
      * local directly), its embedded IDs should also have already been duplicated, and hence be
      * fully local here already. */
     if (*id_pointer != NULL && ID_IS_LINKED(*id_pointer)) {
-      BLI_assert(*id_pointer != id_self);
+      BLI_assert(*id_pointer != self_id);
 
       BKE_lib_id_clear_library_data(bmain, *id_pointer, flags);
     }
@@ -423,7 +426,7 @@ static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
    * (through drivers)...
    * Just skip it, shape key can only be either indirectly linked, or fully local, period.
    * And let's curse one more time that stupid useless shape-key ID type! */
-  if (*id_pointer && *id_pointer != id_self &&
+  if (*id_pointer && *id_pointer != self_id &&
       BKE_idtype_idcode_is_linkable(GS((*id_pointer)->name)))
   {
     id_lib_extern(*id_pointer);
@@ -583,14 +586,14 @@ static int id_copy_libmanagement_cb(LibraryIDLinkCallbackData *cb_data)
 
   /* Remap self-references to new copied ID. */
   if (id == data->id_src) {
-    /* We cannot use id_self here, it is not *always* id_dst (thanks to $£!+@#&/? nodetrees). */
+    /* We cannot use self_id here, it is not *always* id_dst (thanks to $£!+@#&/? nodetrees). */
     id = *id_pointer = data->id_dst;
   }
 
   /* Increase used IDs refcount if needed and required. */
   if ((data->flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0 && (cb_flag & IDWALK_CB_USER)) {
     if ((data->flag & LIB_ID_CREATE_NO_MAIN) != 0) {
-      BLI_assert(cb_data->id_self->tag & LIB_TAG_NO_MAIN);
+      BLI_assert(cb_data->self_id->tag & LIB_TAG_NO_MAIN);
       id_us_plus_no_lib(id);
     }
     else {
@@ -1346,14 +1349,18 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
   ID *new_id = *r_newid;
   int flag = orig_flag;
 
-  const bool is_private_id_data = (id->flag & LIB_EMBEDDED_DATA) != 0;
+  const bool is_embedded_id = (id->flag & LIB_EMBEDDED_DATA) != 0;
 
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || bmain != NULL);
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || (flag & LIB_ID_CREATE_NO_ALLOCATE) == 0);
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || (flag & LIB_ID_CREATE_LOCAL) == 0);
 
-  /* 'Private ID' data handling. */
-  if ((bmain != NULL) && is_private_id_data) {
+  /* Embedded ID handling.
+   *
+   * NOTE: This makes copying code of embedded IDs non-reentrant (i.e. copying an embedded ID as
+   * part of another embedded ID would not work properly). This is not an issue currently, but may
+   * need to be addressed in the future. */
+  if ((bmain != NULL) && is_embedded_id) {
     flag |= LIB_ID_CREATE_NO_MAIN;
   }
 
@@ -1390,6 +1397,11 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
   }
 
   new_id->flag = (new_id->flag & ~copy_idflag_mask) | (id->flag & copy_idflag_mask);
+
+  /* 'Private ID' data handling. */
+  if (is_embedded_id && (orig_flag & LIB_ID_CREATE_NO_MAIN) == 0) {
+    new_id->tag &= ~LIB_TAG_NO_MAIN;
+  }
 
   /* We do not want any handling of user-count in code duplicating the data here, we do that all
    * at once in id_copy_libmanagement_cb() at the end. */
@@ -1603,7 +1615,7 @@ bool BKE_id_new_name_validate(
 
   if (name[0] == '\0') {
     /* Disallow empty names. */
-    STRNCPY(name, DATA_(BKE_idtype_idcode_to_name(GS(id->name))));
+    STRNCPY_UTF8(name, DATA_(BKE_idtype_idcode_to_name(GS(id->name))));
   }
   else {
     /* disallow non utf8 chars,
@@ -1664,6 +1676,10 @@ void BKE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_onl
     /* Note that we keep EXTRAUSER tag here, since some UI users may define it too... */
     if (id->tag & LIB_TAG_EXTRAUSER) {
       id->tag &= ~(LIB_TAG_EXTRAUSER | LIB_TAG_EXTRAUSER_SET);
+      id_us_ensure_real(id);
+    }
+    if (ELEM(GS(id->name), ID_SCE, ID_WM, ID_WS)) {
+      /* These IDs should always have a 'virtual' user. */
       id_us_ensure_real(id);
     }
   }
@@ -1741,19 +1757,19 @@ static void library_make_local_copying_check(ID *id,
   BLI_gset_remove(loop_tags, id, NULL);
 }
 
-/* NOTE: Old (2.77) version was simply making (tagging) data-blocks as local,
- * without actually making any check whether they were also indirectly used or not...
- *
- * Current version uses regular id_make_local callback, with advanced pre-processing step to
- * detect all cases of IDs currently indirectly used, but which will be used by local data only
- * once this function is finished.  This allows to avoid any unneeded duplication of IDs, and
- * hence all time lost afterwards to remove orphaned linked data-blocks. */
 void BKE_library_make_local(Main *bmain,
                             const Library *lib,
                             GHash *old_to_new_ids,
                             const bool untagged_only,
                             const bool set_fake)
 {
+  /* NOTE: Old (2.77) version was simply making (tagging) data-blocks as local,
+   * without actually making any check whether they were also indirectly used or not...
+   *
+   * Current version uses regular id_make_local callback, with advanced pre-processing step to
+   * detect all cases of IDs currently indirectly used, but which will be used by local data only
+   * once this function is finished.  This allows to avoid any unneeded duplication of IDs, and
+   * hence all time lost afterwards to remove orphaned linked data-blocks. */
 
   ListBase *lbarray[INDEX_ID_MAX];
 
@@ -1944,7 +1960,7 @@ void BKE_library_make_local(Main *bmain,
   /* This is probably more of a hack than something we should do here, but...
    * Issue is, the whole copying + remapping done in complex cases above may leave pose-channels
    * of armatures in complete invalid state (more precisely, the bone pointers of the
-   * pose-channels - very crappy cross-data-blocks relationship), se we tag it to be fully
+   * pose-channels - very crappy cross-data-blocks relationship), so we tag it to be fully
    * recomputed, but this does not seems to be enough in some cases, and evaluation code ends up
    * trying to evaluate a not-yet-updated armature object's deformations.
    * Try "make all local" in 04_01_H.lighting.blend from Agent327 without this, e.g. */

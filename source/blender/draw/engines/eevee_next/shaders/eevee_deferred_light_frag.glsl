@@ -51,19 +51,25 @@ void main()
 
   vec3 diffuse_light = vec3(0.0);
   vec3 reflection_light = vec3(0.0);
+  float shadow = 1.0;
 
-  light_eval(
-      diffuse_data, reflection_data, P, Ng, V, vP_z, thickness, diffuse_light, reflection_light);
+  light_eval(diffuse_data,
+             reflection_data,
+             P,
+             Ng,
+             V,
+             vP_z,
+             thickness,
+             diffuse_light,
+             reflection_light,
+             shadow);
 
   if (!is_last_eval_pass) {
-    /* Store lighting for next deferred pass. */
-
     /* Output diffuse light along with object ID for sub-surface screen space processing. */
     vec4 diffuse_radiance;
     diffuse_radiance.xyz = diffuse_light;
     diffuse_radiance.w = gbuffer_object_id_f16_pack(diffuse_data.sss_id);
     imageStore(out_diffuse_light_img, texel, diffuse_radiance);
-
     imageStore(out_specular_light_img, texel, vec4(reflection_light, 0.0));
   }
 
@@ -78,13 +84,20 @@ void main()
     diffuse_data.color = vec3(0.0);
   }
 
-  reflection_light *= reflection_data.color;
+  /* Light passes. */
+  if (rp_buf.diffuse_light_id >= 0) {
+    imageStore(rp_color_img, ivec3(texel, rp_buf.diffuse_light_id), vec4(diffuse_light, 1.0));
+  }
+  if (rp_buf.specular_light_id >= 0) {
+    imageStore(rp_color_img, ivec3(texel, rp_buf.specular_light_id), vec4(reflection_light, 1.0));
+  }
+  if (rp_buf.shadow_id >= 0) {
+    imageStore(rp_value_img, ivec3(texel, rp_buf.shadow_id), vec4(shadow));
+  }
+  /* TODO: AO. */
+
   diffuse_light *= diffuse_data.color;
-  /* Add radiance to light pass. */
-  imageStore(
-      rp_light_img, ivec3(texel, RENDER_PASS_LAYER_DIFFUSE_LIGHT), vec4(diffuse_light, 1.0));
-  imageStore(
-      rp_light_img, ivec3(texel, RENDER_PASS_LAYER_SPECULAR_LIGHT), vec4(reflection_light, 1.0));
+  reflection_light *= reflection_data.color;
   /* Add radiance to combined pass. */
   out_radiance = vec4(diffuse_light + reflection_light, 0.0);
   out_transmittance = vec4(1.0);

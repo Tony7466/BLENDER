@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -1980,8 +1981,7 @@ static int view3d_context(const bContext *C, const char *member, bContextDataRes
       Object *ob = base->object;
       /* if hidden but in edit mode, we still display, can happen with animation */
       if ((base->flag & BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT) != 0 ||
-          (ob->mode != OB_MODE_OBJECT))
-      {
+          (ob->mode != OB_MODE_OBJECT)) {
         CTX_data_id_pointer_set(result, &ob->id);
       }
     }
@@ -2087,14 +2087,14 @@ static void view3d_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, S
 {
   View3D *v3d = (View3D *)sl;
 
-  BLO_read_id_address(reader, parent_id->lib, &v3d->camera);
-  BLO_read_id_address(reader, parent_id->lib, &v3d->ob_center);
+  BLO_read_id_address(reader, parent_id, &v3d->camera);
+  BLO_read_id_address(reader, parent_id, &v3d->ob_center);
 
   if (v3d->localvd) {
-    BLO_read_id_address(reader, parent_id->lib, &v3d->localvd->camera);
+    BLO_read_id_address(reader, parent_id, &v3d->localvd->camera);
   }
 
-  BKE_viewer_path_blend_read_lib(reader, parent_id->lib, &v3d->viewer_path);
+  BKE_viewer_path_blend_read_lib(reader, parent_id, &v3d->viewer_path);
 }
 
 static void view3d_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -2151,7 +2151,7 @@ void ED_spacetype_view3d()
   art->lock = 1; /* can become flag, see BKE_spacedata_draw_locks */
   BLI_addhead(&st->regiontypes, art);
 
-  /* regions: listview/buttons */
+  /* regions: list-view/buttons */
   art = MEM_cnew<ARegionType>("spacetype view3d buttons region");
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = UI_SIDEBAR_PANEL_WIDTH;

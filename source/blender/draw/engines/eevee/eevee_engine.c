@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -329,6 +330,7 @@ static void eevee_draw_scene(void *vedata)
     EEVEE_renderpasses_output_accumulate(sldata, vedata, false);
 
     /* Transparent */
+    EEVEE_material_transparent_output_accumulate(vedata);
     /* TODO(@fclem): should be its own Frame-buffer.
      * This is needed because dual-source blending only works with 1 color buffer. */
     GPU_framebuffer_texture_attach(fbl->main_color_fb, dtxl->depth, 0, 0);

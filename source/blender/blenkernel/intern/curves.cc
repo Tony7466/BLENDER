@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -137,9 +139,9 @@ static void curves_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Curves *curves = (Curves *)id;
   for (int a = 0; a < curves->totcol; a++) {
-    BLO_read_id_address(reader, curves->id.lib, &curves->mat[a]);
+    BLO_read_id_address(reader, id, &curves->mat[a]);
   }
-  BLO_read_id_address(reader, curves->id.lib, &curves->surface);
+  BLO_read_id_address(reader, id, &curves->surface);
 }
 
 static void curves_blend_read_expand(BlendExpander *expander, ID *id)

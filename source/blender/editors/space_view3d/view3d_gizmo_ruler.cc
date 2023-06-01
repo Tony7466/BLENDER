@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -1234,7 +1236,6 @@ static void WIDGETGROUP_ruler_setup(const bContext *C, wmGizmoGroup *gzgroup)
     gzt_snap = WM_gizmotype_find("GIZMO_GT_snap_3d", true);
     gizmo = WM_gizmo_new_ptr(gzt_snap, gzgroup, nullptr);
 
-    RNA_enum_set(gizmo->ptr, "snap_elements_force", SCE_SNAP_MODE_GEOM);
     ED_gizmotypes_snap_3d_flag_set(gizmo, V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE);
     WM_gizmo_set_color(gizmo, blender::float4(1.0f));
 

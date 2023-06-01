@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -12,7 +13,7 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "UI_interface.h"
 #include "UI_interface.hh"

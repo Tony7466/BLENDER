@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_TrackPositionNode.h"
 
@@ -8,7 +9,7 @@
 
 #include "DNA_movieclip_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 namespace blender::compositor {
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edphys
@@ -200,6 +202,7 @@ void DPAINT_OT_type_toggle(wmOperatorType *ot)
                       MOD_DYNAMICPAINT_TYPE_CANVAS,
                       "Type",
                       "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SIMULATION);
   ot->prop = prop;
 }
 
