@@ -46,8 +46,8 @@ OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
     return {};
   }
   BLI_assert(selection.size() == (dst_offsets.size() - 1));
-  offset_indices::gather_group_sizes(src_offsets, selection, dst_offsets);
-  offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  gather_group_sizes(src_offsets, selection, dst_offsets);
+  accumulate_counts_to_offsets(dst_offsets);
   return OffsetIndices<int>(dst_offsets);
 }
 
