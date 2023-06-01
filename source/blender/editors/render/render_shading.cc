@@ -38,6 +38,7 @@
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
+#include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -2736,6 +2737,12 @@ void TEXTURE_OT_slot_move(wmOperatorType *ot)
 /** \name Material Copy Operator
  * \{ */
 
+/**
+ * Property names that marks this material as active,
+ * needed to check which material is active when multiple are written.
+ */
+static const char *material_clipboard_prop_id = "__active_material_clipboard__";
+
 static int copy_material_exec(bContext *C, wmOperator *op)
 {
   Material *ma = static_cast<Material *>(
@@ -2748,6 +2755,21 @@ static int copy_material_exec(bContext *C, wmOperator *op)
   char filepath[FILE_MAX];
   Main *bmain = CTX_data_main(C);
 
+  /* Mark is the material to use (others may be expanded). */
+  const bool had_prop_group = (ma->id.properties != nullptr);
+  IDProperty *properties = nullptr;
+  if (!had_prop_group) {
+    properties = IDP_GetProperties(&ma->id, true);
+  }
+  IDProperty *prop_mark = IDP_GetPropertyFromGroup(properties, material_clipboard_prop_id);
+  const bool had_prop_item = prop_mark != nullptr;
+  if (!had_prop_item) {
+    IDPropertyTemplate val = {};
+    prop_mark = IDP_New(IDP_INT, &val, __func__);
+    STRNCPY(prop_mark->name, material_clipboard_prop_id);
+    IDP_ReplaceInGroup_ex(properties, prop_mark, NULL);
+  }
+
   BKE_copybuffer_copy_begin(bmain);
 
   /* TODO(@ideasman42): this could potentially expand into many ID data types.
@@ -2758,7 +2780,14 @@ static int copy_material_exec(bContext *C, wmOperator *op)
   BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), "copybuffer_material.blend");
   BKE_copybuffer_copy_end(bmain, filepath, op->reports);
 
-  return OPERATOR_FINISHED;
+  /* Clear mark (as needed). */
+  if (!had_prop_group) {
+    IDP_FreeProperty(properties);
+    ma->id.properties = nullptr;
+  }
+  else if (!had_prop_item) {
+    IDP_FreeFromGroup(properties, prop_mark);
+  }
 
   /* We are all done! */
   BKE_report(op->reports, RPT_INFO, "Copied material to internal clipboard");
@@ -2814,10 +2843,10 @@ static int paste_material_nodetree_ids_relink_or_clear(LibraryIDLinkCallbackData
     ID *id_local = static_cast<ID *>(
         BLI_findstring(lb, (*id_p)->name + 2, offsetof(ID, name) + 2));
     *id_p = id_local;
-    if (id_local) {
+    if (cb_data->cb_flag & IDWALK_CB_USER) {
       id_us_plus(id_local);
-      id_lib_extern(id_local);
     }
+    id_lib_extern(id_local);
   }
   return IDWALK_RET_NOP;
 }
@@ -2863,14 +2892,27 @@ static int paste_material_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* There may be multiple materials,
+   * check for a property that marks this as the active material. */
+  Material *ma_from = nullptr;
+  LISTBASE_FOREACH (Material *, ma, &temp_bmain->materials) {
+    if (ma->id.properties == nullptr) {
+      continue;
+    }
+    IDProperty *prop_mark = IDP_GetPropertyFromGroup(ma->id.properties,
+                                                     material_clipboard_prop_id);
+    if (prop_mark) {
+      ma_from = ma;
+      break;
+    }
+  }
+
   /* Make sure data from this file is usable for material paste. */
-  if (!BLI_listbase_is_single(&temp_bmain->materials)) {
+  if (ma_from == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Internal clipboard is not from a material");
     BKE_main_free(temp_bmain);
     return OPERATOR_CANCELLED;
   }
-
-  Material *ma_from = static_cast<Material *>(temp_bmain->materials.first);
 
   /* Keep animation by moving local animation to the paste node-tree. */
   if (ma->nodetree && ma_from->nodetree) {
@@ -2936,7 +2978,7 @@ static int paste_material_exec(bContext *C, wmOperator *op)
    * TODO(@ideasman42): support merging indirectly referenced data-blocks besides the material,
    * this would be useful for pasting materials with node-groups between files. */
   if (ma->nodetree) {
-    ma->nodetree->owner_id = &ma->id;
+    ma->nodetree->owner_id = nullptr;
     /* Map remote ID's to local ones. */
     BKE_library_foreach_ID_link(
         bmain, &ma->nodetree->id, paste_material_nodetree_ids_relink_or_clear, bmain, IDWALK_NOP);
