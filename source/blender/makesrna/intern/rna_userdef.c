@@ -6513,15 +6513,15 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "text_editor");
   RNA_def_property_ui_text(prop, "Text Editor", "Path to an text editor");
 
-  prop = RNA_def_property(srna, "animation_player", PROP_STRING, PROP_FILEPATH);
-  RNA_def_property_string_sdna(prop, NULL, "anim_player");
-  RNA_def_property_ui_text(
-      prop, "Animation Player", "Path to a custom animation/frame sequence player");
-
   prop = RNA_def_property(srna, "text_editor_preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "text_editor_preset");
   RNA_def_property_enum_items(prop, text_editor_presets);
   RNA_def_property_ui_text(prop, "Text Editor Preset", "Preset configs for text editors");
+
+  prop = RNA_def_property(srna, "animation_player", PROP_STRING, PROP_FILEPATH);
+  RNA_def_property_string_sdna(prop, NULL, "anim_player");
+  RNA_def_property_ui_text(
+      prop, "Animation Player", "Path to a custom animation/frame sequence player");
 
   prop = RNA_def_property(srna, "animation_player_preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "anim_player_preset");
