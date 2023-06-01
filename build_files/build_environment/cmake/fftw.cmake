@@ -38,13 +38,13 @@ fftw_build(float --enable-float)
 if(MSVC)
   if(BUILD_MODE STREQUAL Release)
     ExternalProject_Add_Step(external_fftw3_double after_install
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/lib/fftw3.lib ${HARVEST_TARGET}/fftw3/lib/libfftw.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/lib/fftw3.lib ${HARVEST_TARGET}/fftw3/lib/fftw3.lib
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/bin/fftw3.dll ${HARVEST_TARGET}/fftw3/lib/fftw3.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/include/fftw3.h ${HARVEST_TARGET}/fftw3/include/fftw3.h
       DEPENDEES install
     )
     ExternalProject_Add_Step(external_fftw3_float after_install
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/lib/fftw3f.lib ${HARVEST_TARGET}/fftw3/lib/libfftw3f.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/lib/fftw3f.lib ${HARVEST_TARGET}/fftw3/lib/fftw3f.lib
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/fftw3/bin/fftw3f.dll ${HARVEST_TARGET}/fftw3/lib/fftw3f.dll
       DEPENDEES install
     )    

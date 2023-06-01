@@ -902,6 +902,11 @@ elseif(WIN32)
       FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
       ALL
     )
+  elseif(EXISTS ${LIBDIR}/fftw3/lib/fftw3f.dll)
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/fftw3/lib/fftw3f.dll
+      ALL
+    )
   endif()
   if(MSVC_ASAN)
     # The ASAN DLL's can be found in the same folder as the compiler,
