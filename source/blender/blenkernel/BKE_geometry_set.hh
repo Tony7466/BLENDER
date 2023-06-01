@@ -18,6 +18,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_geometry_set.h"
+#include "BKE_gizmos.hh"
 
 struct Curves;
 struct Curve;
@@ -645,4 +646,38 @@ class GeometryComponentEditData final : public GeometryComponent {
   static void remember_deformed_curve_positions_if_necessary(GeometrySet &geometry);
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_EDIT;
+};
+
+/**
+ * A geometry component that stores a gizmo points.
+ *
+ * This component is taked at the finishing of modifier evaluation and storend in COW object runtime.
+ */
+class GizmosComponent : public GeometryComponent {
+ private:
+  blender::bke::GizmosGeometry *gizmos_ = nullptr;
+  GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
+
+ public:
+  GizmosComponent();
+  ~GizmosComponent();
+  GizmosComponent *copy() const override;
+
+  void clear() override;
+  bool has_gizmos() const;
+
+  const blender::bke::GizmosGeometry *get_for_read() const;
+  blender::bke::GizmosGeometry *get_for_write();
+
+  bool is_empty() const final;
+
+  bool owns_direct_data() const override;
+  void ensure_owns_direct_data() override;
+
+  std::optional<blender::bke::AttributeAccessor> attributes() const final;
+  std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write() final;
+
+  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_GIZMO;
+
+ private:
 };
