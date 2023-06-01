@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -95,7 +96,7 @@ bool BLI_windows_unregister_blend_extension(bool all_users);
  * using a fall-back in case the root directory can't be found.
  */
 void BLI_windows_get_default_root_dir(char root_dir[4]);
-int BLI_windows_get_executable_dir(char *str);
+int BLI_windows_get_executable_dir(char r_dirpath[/*FILE_MAXDIR*/]);
 
 /* ShellExecute Helpers. */
 
