@@ -10,7 +10,7 @@
 
 /* needed for directory lookup */
 #  ifndef WIN32
-#    include <cdirent>
+#    include <dirent.h>
 #  else
 #    include "BLI_winstuff.h"
 #  endif
