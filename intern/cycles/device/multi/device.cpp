@@ -281,6 +281,8 @@ class MultiDevice : public Device {
     BVHMulti *const bvh_multi = static_cast<BVHMulti *>(bvh);
     SubDevice &sub = devices[device_index];
 
+    printf("BVH: build %p for device %d\n", bvh, (int)device_index);
+
     if (!bvh_multi->sub_bvhs[device_index]) {
       BVHParams params = bvh_multi->params;
       params.bvh_layout = get_bvh_layout(sub.device.get(), bvh_multi->params.bvh_layout);
@@ -435,6 +437,8 @@ class MultiDevice : public Device {
     const size_t size = memory_entry.copy_size;
     const size_t offset = memory_entry.copy_offset;
 
+    printf("MEMORY: mem_copy_to <%s> for device %d\n", mem.name, (int)peer_island_index);
+
     /* The tile buffers are allocated on each device (see below), so copy to all of them */
     MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
     SubDevice &owner_sub = find_suitable_mem_device(key, peer_island_index);
@@ -567,6 +571,8 @@ class MultiDevice : public Device {
       return;
     }
 
+    printf("MEMORY: flush\n");
+
     parallel_for(size_t(0), peer_islands.size(), [&](const size_t peer_island_index) {
       for (auto &it : memory_map) {
         device_ptr key = it.first;
@@ -602,6 +608,8 @@ class MultiDevice : public Device {
     if (bvh_bottom_level_build_queue.empty() && bvh_top_level_build_queue.empty()) {
       return;
     }
+
+    printf("BVH: flush\n");
 
     parallel_for(size_t(0), devices.size(), [&](const size_t device_index) {
       /* Bottom level BVHs first, since top level needs them. */
