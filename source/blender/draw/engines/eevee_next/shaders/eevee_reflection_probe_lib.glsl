@@ -1,9 +1,4 @@
-void light_world_eval(ClosureDiffuse diffuse,
-                      ClosureReflection reflection,
-                      vec3 P,
-                      vec3 V,
-                      inout vec3 out_diffuse,
-                      inout vec3 out_specular)
+void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 out_specular)
 {
   float linear_roughness = fast_sqrt(reflection.roughness);
   /* TODO: This should be based by actual resolution. Currently the resolution is fixed but
