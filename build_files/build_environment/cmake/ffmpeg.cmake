@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-set(temp_LIBDIR ${LIBDIR})
+set(temp_LIBDIR ${msys2_LIBDIR})
 
 if(NOT WIN32)
   set(LIBDIR_FLAG "-L")
 else()
-  set(LIBDIR_FLAG "-LIBPATH")
+  set(LIBDIR_FLAG "-LIBPATH:")
 endif()
 
 set(FFMPEG_CFLAGS "\
