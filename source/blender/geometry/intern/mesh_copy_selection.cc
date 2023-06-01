@@ -456,7 +456,7 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
           src_polys, src_mesh.corner_edges(), VArraySpan(selection), memory);
       break;
     case ATTR_DOMAIN_FACE:
-      poly_mask = IndexMask::from_bools(evaluator.get_evaluated<bool>(0), memory);
+      poly_mask = IndexMask::from_bools(selection, memory);
       break;
     default:
       BLI_assert_unreachable();
