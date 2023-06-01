@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -130,6 +132,7 @@ set(SRC
   nodes/node_geo_mesh_to_points.cc
   nodes/node_geo_mesh_to_sdf_volume.cc
   nodes/node_geo_mesh_to_volume.cc
+  nodes/node_geo_mesh_topology_corners_of_edge.cc
   nodes/node_geo_mesh_topology_corners_of_face.cc
   nodes/node_geo_mesh_topology_corners_of_vertex.cc
   nodes/node_geo_mesh_topology_edges_of_corner.cc
@@ -153,6 +156,7 @@ set(SRC
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
   nodes/node_geo_sample_uv_surface.cc
+  nodes/node_geo_sample_volume.cc
   nodes/node_geo_scale_elements.cc
   nodes/node_geo_scale_instances.cc
   nodes/node_geo_sdf_volume_sphere.cc

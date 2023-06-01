@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -471,9 +472,9 @@ void multires_force_sculpt_rebuild(Object *object)
     object->sculpt->pbvh = nullptr;
   }
 
-  MEM_SAFE_FREE(ss->pmap);
-
-  MEM_SAFE_FREE(ss->pmap_mem);
+  ss->vert_to_poly_indices = {};
+  ss->vert_to_poly_offsets = {};
+  ss->pmap = {};
 }
 
 void multires_force_external_reload(Object *object)
@@ -1521,8 +1522,10 @@ void multires_ensure_external_read(struct Mesh *mesh, int top_level)
     return;
   }
 
-  MDisps *mdisps = static_cast<MDisps *>(
-      CustomData_get_layer_for_write(&mesh->ldata, CD_MDISPS, mesh->totloop));
+  /* Modify the data array from the original mesh, not the evaluated mesh.
+   * When multiple objects share the same mesh, this can lead to memory leaks. */
+  MDisps *mdisps = const_cast<MDisps *>(
+      static_cast<const MDisps *>(CustomData_get_layer(&mesh->ldata, CD_MDISPS)));
   if (mdisps == nullptr) {
     mdisps = static_cast<MDisps *>(
         CustomData_add_layer(&mesh->ldata, CD_MDISPS, CD_SET_DEFAULT, mesh->totloop));

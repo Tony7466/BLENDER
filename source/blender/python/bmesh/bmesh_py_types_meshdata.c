@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pybmesh
@@ -600,7 +601,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_keys_doc,
              ".. method:: keys()\n"
              "\n"
              "   Return the group indices used by this vertex\n"
-             "   (matching pythons dict.keys() functionality).\n"
+             "   (matching Python's dict.keys() functionality).\n"
              "\n"
              "   :return: the deform group this vertex uses\n"
              "   :rtype: list of ints\n");
@@ -622,7 +623,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_values_doc,
              ".. method:: values()\n"
              "\n"
              "   Return the weights of the deform vertex\n"
-             "   (matching pythons dict.values() functionality).\n"
+             "   (matching Python's dict.values() functionality).\n"
              "\n"
              "   :return: The weights that influence this vertex\n"
              "   :rtype: list of floats\n");
@@ -644,7 +645,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_items_doc,
              ".. method:: items()\n"
              "\n"
              "   Return (group, weight) pairs for this vertex\n"
-             "   (matching pythons dict.items() functionality).\n"
+             "   (matching Python's dict.items() functionality).\n"
              "\n"
              "   :return: (key, value) pairs for each deform weight of this vertex.\n"
              "   :rtype: list of tuples\n");
@@ -669,7 +670,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_get_doc,
              ".. method:: get(key, default=None)\n"
              "\n"
              "   Returns the deform weight matching the key or default\n"
-             "   when not found (matches pythons dictionary function of the same name).\n"
+             "   when not found (matches Python's dictionary function of the same name).\n"
              "\n"
              "   :arg key: The key associated with deform weight.\n"
              "   :type key: int\n"

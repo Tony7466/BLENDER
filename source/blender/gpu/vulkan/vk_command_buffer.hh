@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -144,7 +145,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   /* Bind the given buffer as a vertex buffer. */
   void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer);
   void bind(const uint32_t binding, const VkBuffer &vk_vertex_buffer, const VkDeviceSize offset);
-  void bind(const VKIndexBuffer &index_buffer, VkIndexType index_type);
+  /* Bind the given buffer as an index buffer. */
+  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
 
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
@@ -161,6 +163,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   /** Copy the contents of a texture MIP level to the dst buffer. */
   void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
   void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
+  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
   void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions);
   void pipeline_barrier(VkPipelineStageFlags source_stages,
                         VkPipelineStageFlags destination_stages);

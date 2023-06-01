@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -1461,7 +1462,7 @@ static int outliner_item_drag_drop_invoke(bContext *C, wmOperator * /*op*/, cons
                                        TSE_GPENCIL_EFFECT,
                                        TSE_GPENCIL_EFFECT_BASE);
 
-  const int wm_drag_type = use_datastack_drag ? WM_DRAG_DATASTACK : WM_DRAG_ID;
+  const eWM_DragDataType wm_drag_type = use_datastack_drag ? WM_DRAG_DATASTACK : WM_DRAG_ID;
   wmDrag *drag = WM_drag_data_create(C, data.icon, wm_drag_type, nullptr, 0.0, WM_DRAG_NOP);
 
   if (use_datastack_drag) {

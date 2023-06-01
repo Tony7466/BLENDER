@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -44,8 +45,8 @@ void IMB_metadata_free(struct IDProperty *metadata)
 
 bool IMB_metadata_get_field(struct IDProperty *metadata,
                             const char *key,
-                            char *field,
-                            const size_t len)
+                            char *value,
+                            const size_t value_maxncpy)
 {
   IDProperty *prop;
 
@@ -56,7 +57,7 @@ bool IMB_metadata_get_field(struct IDProperty *metadata,
   prop = IDP_GetPropertyFromGroup(metadata, key);
 
   if (prop && prop->type == IDP_STRING) {
-    BLI_strncpy(field, IDP_String(prop), len);
+    BLI_strncpy(value, IDP_String(prop), value_maxncpy);
     return true;
   }
   return false;

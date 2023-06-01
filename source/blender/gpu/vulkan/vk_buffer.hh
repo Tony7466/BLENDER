@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -66,6 +67,8 @@ class VKBuffer {
  *
  * VKImmediate mode uses a single VKBuffer with multiple vertex layouts. Those layouts are send to
  * the command buffer containing an offset.
+ *
+ * VKIndexBuffer uses this when it is a subrange of another buffer.
  */
 struct VKBufferWithOffset {
   VKBuffer &buffer;

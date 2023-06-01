@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "vk_vertex_attribute_object.hh"
 
@@ -96,8 +97,6 @@ void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch 
   }
 
   is_valid = true;
-
-  BLI_assert(interface.enabled_attr_mask_ == occupied_attributes);
 }
 
 void VKVertexAttributeObject::update_bindings(VKImmediate &immediate)
