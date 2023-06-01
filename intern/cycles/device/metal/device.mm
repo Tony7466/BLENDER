@@ -61,9 +61,10 @@ void device_metal_info(vector<DeviceInfo> &devices)
     info.has_light_tree = vendor != METAL_GPU_AMD;
 
     if (@available(macos 11.0, *)) {
-        info.use_hardware_raytracing =  device.supportsRaytracing;
-    } else {
-        info.use_hardware_raytracing =  vendor != METAL_GPU_INTEL;
+      info.use_hardware_raytracing = device.supportsRaytracing;
+    }
+    else {
+      info.use_hardware_raytracing = vendor != METAL_GPU_INTEL;
     }
     devices.push_back(info);
     device_index++;
