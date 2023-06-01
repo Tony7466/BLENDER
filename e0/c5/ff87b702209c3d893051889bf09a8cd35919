@@ -1,1 +1,2 @@
 Referenced by issue #108492, Regression: Compositor Track Position node outputs incorrect Y values for Relative Start & Relative Frame
+Referenced by pull request #108504, Fix #108492 : Compo Track Position node wrong Y for Relative Start/Frame
