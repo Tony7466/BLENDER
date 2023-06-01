@@ -2056,7 +2056,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Nodes, panel_draw);
   modifier_subpanel_register_ex(region_type,
                                 "socket_category",
-                                N_("Socket Category"),
+                                "",
                                 child_panel_poll,
                                 socket_category_panel_draw_header,
                                 socket_category_panel_draw,
