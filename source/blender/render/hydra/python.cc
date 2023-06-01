@@ -111,7 +111,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     engine = new ViewportEngine(bl_engine, render_delegate_id);
   }
   else if (STREQ(engine_type, "PREVIEW")) {
-    engine = PreviewEngine::create(bl_engine, render_delegate_id);
+    engine = new PreviewEngine(bl_engine, render_delegate_id);
   }
   else {
     if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
@@ -134,13 +134,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-  PreviewEngine *preview_engine = dynamic_cast<PreviewEngine *>(engine);
-  if (preview_engine) {
-    PreviewEngine::free();
-  }
-  else {
-    delete engine;
-  }
+  delete engine;
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
