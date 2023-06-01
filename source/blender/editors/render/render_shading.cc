@@ -2787,6 +2787,41 @@ void MATERIAL_OT_copy(wmOperatorType *ot)
 /** \name Material Paste Operator
  * \{ */
 
+/**
+ * Clear ID's as freeing the data-block doesn't handle reference counting.
+ */
+static int paste_material_nodetree_ids_decref(LibraryIDLinkCallbackData *cb_data)
+{
+  if (cb_data->cb_flag & IDWALK_CB_USER) {
+    id_us_min(*cb_data->id_pointer);
+    *cb_data->id_pointer = nullptr;
+  }
+  return IDWALK_RET_NOP;
+}
+
+/**
+ * Re-map ID's from the clipboard to ID's in `main`, by name.
+ */
+static int paste_material_nodetree_ids_relink_or_clear(LibraryIDLinkCallbackData *cb_data)
+{
+  Main *bmain = static_cast<Main *>(cb_data->user_data);
+  ID **id_p = cb_data->id_pointer;
+  if (*id_p) {
+    if (cb_data->cb_flag & IDWALK_CB_USER) {
+      id_us_min(*id_p);
+    }
+    ListBase *lb = which_libbase(bmain, GS((*id_p)->name));
+    ID *id_local = static_cast<ID *>(
+        BLI_findstring(lb, (*id_p)->name + 2, offsetof(ID, name) + 2));
+    *id_p = id_local;
+    if (id_local) {
+      id_us_plus(id_local);
+      id_lib_extern(id_local);
+    }
+  }
+  return IDWALK_RET_NOP;
+}
+
 static int paste_material_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -2837,19 +2872,10 @@ static int paste_material_exec(bContext *C, wmOperator *op)
 
   Material *ma_from = static_cast<Material *>(temp_bmain->materials.first);
 
-  /* Important to run this when the embedded tree if freed,
-   * otherwise the depsgraph holds a reference to the (now freed) `ma->nodetree`.
-   * Also run this when a new node-tree is set to ensure it's accounted for.
-   * This also applies to animation data which is likely to be stored in the depsgraph. */
-  bool update_relations = false;
-  if (ma->nodetree || ma_from->nodetree) {
-    update_relations = true;
-  }
-
   /* Keep animation by moving local animation to the paste node-tree. */
   if (ma->nodetree && ma_from->nodetree) {
     BLI_assert(ma_from->nodetree->adt == nullptr);
-    std::swap(ma->adt, ma_from->adt);
+    std::swap(ma->nodetree->adt, ma_from->nodetree->adt);
   }
 
   /* Needed to update #SpaceNode::nodetree else a stale pointer is used. */
@@ -2861,39 +2887,48 @@ static int paste_material_exec(bContext *C, wmOperator *op)
      * freed as part of #BKE_main_free which doesn't handle user-counts. */
     /* Walk over all the embedded nodes ID's (non-recursively). */
     BKE_library_foreach_ID_link(
-        bmain,
-        &nodetree->id,
-        [](LibraryIDLinkCallbackData *cb_data) -> int {
-          if (cb_data->cb_flag & IDWALK_CB_USER) {
-            id_us_min(*cb_data->id_pointer);
-            *cb_data->id_pointer = nullptr;
-          }
-          return IDWALK_RET_NOP;
-        },
-        nullptr,
-        IDWALK_NOP);
+        bmain, &nodetree->id, paste_material_nodetree_ids_decref, nullptr, IDWALK_NOP);
 
     ntreeFreeEmbeddedTree(nodetree);
     MEM_freeN(nodetree);
     ma->nodetree = nullptr;
   }
 
-  /* Swap data-block content. */
-  {
-    /* It's important to keep: `id` & `adt` so the current material name,
-     * custom properties, etc are maintained and animation data isn't clobbered. */
-    Material ma_temp;
-    MEMCPY_STRUCT_AFTER(&ma_temp, ma, adt);
-    MEMCPY_STRUCT_AFTER(ma, ma_from, adt);
-    MEMCPY_STRUCT_AFTER(ma_from, &ma_temp, adt);
+/* Swap data-block content, while swapping isn't always needed,
+ * it means memory is properly freed in the case of allocations.. */
+#define SWAP_MEMBER(member) std::swap(ma->member, ma_from->member)
 
-    /* Keep these values by swapping them back, because the values in the copy buffer
-     * wont link to other ID's usefully. Other members such as `gpumaterial`
-     * wont have useful values in the clipboard file either. */
-    std::swap(ma->gpumaterial, ma_from->gpumaterial);
-    std::swap(ma->texpaintslot, ma_from->texpaintslot);
-    std::swap(ma->gp_style, ma_from->gp_style);
-  }
+  /* Intentionally skip:
+   * - Texture painting slots.
+   * - Preview render.
+   * - Grease pencil styles (we could although they reference many ID's themselves).
+   */
+  SWAP_MEMBER(flag);
+  SWAP_MEMBER(r);
+  SWAP_MEMBER(g);
+  SWAP_MEMBER(b);
+  SWAP_MEMBER(a);
+  SWAP_MEMBER(specr);
+  SWAP_MEMBER(specg);
+  SWAP_MEMBER(specb);
+  SWAP_MEMBER(spec);
+  SWAP_MEMBER(roughness);
+  SWAP_MEMBER(metallic);
+  SWAP_MEMBER(use_nodes);
+  SWAP_MEMBER(index);
+  SWAP_MEMBER(nodetree);
+  SWAP_MEMBER(line_col);
+  SWAP_MEMBER(line_priority);
+  SWAP_MEMBER(vcol_alpha);
+  SWAP_MEMBER(vcol_alpha);
+
+  SWAP_MEMBER(alpha_threshold);
+  SWAP_MEMBER(refract_depth);
+  SWAP_MEMBER(blend_method);
+  SWAP_MEMBER(blend_shadow);
+  SWAP_MEMBER(blend_flag);
+
+#undef SWAP_MEMBER
 
   /* The node-tree from the clipboard is now assigned to the local material,
    * however the ID's it references are still part of `temp_bmain`.
@@ -2902,43 +2937,19 @@ static int paste_material_exec(bContext *C, wmOperator *op)
    * this would be useful for pasting materials with node-groups between files. */
   if (ma->nodetree) {
     ma->nodetree->owner_id = &ma->id;
-
     /* Map remote ID's to local ones. */
     BKE_library_foreach_ID_link(
-        bmain,
-        &ma->nodetree->id,
-        [](LibraryIDLinkCallbackData *cb_data) -> int {
-          Main *bmain = static_cast<Main *>(cb_data->user_data);
-          ID **id_p = cb_data->id_pointer;
-          if (*id_p) {
-            if (cb_data->cb_flag & IDWALK_CB_USER) {
-              id_us_min(*id_p);
-            }
-            ListBase *lb = which_libbase(bmain, GS((*id_p)->name));
-            ID *id_local = static_cast<ID *>(
-                BLI_findstring(lb, (*id_p)->name + 2, offsetof(ID, name) + 2));
-            *id_p = id_local;
-            if (id_local) {
-              id_us_plus(id_local);
-              id_lib_extern(id_local);
-            }
-          }
-          return IDWALK_RET_NOP;
-        },
-        bmain,
-        IDWALK_NOP);
-
-    LISTBASE_FOREACH (bNode *, node, &ma->nodetree->nodes) {
-      if (node->id == nullptr) {
-        continue;
-      }
-    }
+        bmain, &ma->nodetree->id, paste_material_nodetree_ids_relink_or_clear, bmain, IDWALK_NOP);
   }
   BKE_main_free(temp_bmain);
 
-  if (update_relations) {
-    DEG_relations_tag_update(bmain);
-  }
+  /* Important to run this when the embedded tree if freed,
+   * otherwise the depsgraph holds a reference to the (now freed) `ma->nodetree`.
+   * Also run this when a new node-tree is set to ensure it's accounted for.
+   * This also applies to animation data which is likely to be stored in the depsgraph.
+   * Always call instead of checking when it *might* be needed. */
+  DEG_relations_tag_update(bmain);
+
   DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
   WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_LINKS, ma);
 
