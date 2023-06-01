@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -60,7 +61,7 @@
 #    define bool3 bvec3
 #    define bool4 bvec4
 #    define packed_float3 vec3
-#    define packed_int3 ivec3
+#    define packed_int3 int3
 #  endif
 
 #else /* C / C++ */

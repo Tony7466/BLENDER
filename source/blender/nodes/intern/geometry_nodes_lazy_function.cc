@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -502,7 +504,8 @@ static void execute_multi_function_on_value_or_field(
   }
   else {
     /* In this case, the multi-function is evaluated directly. */
-    mf::ParamsBuilder params{fn, 1};
+    const IndexMask mask(1);
+    mf::ParamsBuilder params{fn, &mask};
     mf::ContextBuilder context;
 
     for (const int i : input_types.index_range()) {
@@ -519,7 +522,7 @@ static void execute_multi_function_on_value_or_field(
       type.value.destruct(value);
       params.add_uninitialized_single_output(GMutableSpan{type.value, value, 1});
     }
-    fn.call(IndexRange(1), params, context);
+    fn.call(mask, params, context);
   }
 }
 
@@ -1893,6 +1896,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNodeSocket *bsocket : bnode.output_sockets()) {
       const int lf_index = mapping_->lf_index_by_bsocket[bsocket->index_in_tree()];
+      if (lf_index == -1) {
+        continue;
+      }
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
       output_socket_map_.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);

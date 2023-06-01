@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -952,7 +954,7 @@ static int foreach_libblock_link_append_callback(LibraryIDLinkCallbackData *cb_d
      * meshes for shape keys e.g.), or this is an unsupported case (two shape-keys depending on
      * each-other need to be also 'linked' in by their respective meshes, independent shape-keys
      * are not allowed). ref #96048. */
-    if (id != cb_data->id_self && BKE_idtype_idcode_is_linkable(GS(cb_data->id_self->name))) {
+    if (id != cb_data->self_id && BKE_idtype_idcode_is_linkable(GS(cb_data->self_id->name))) {
       BKE_library_foreach_ID_link(
           cb_data->bmain, id, foreach_libblock_link_append_callback, data, IDWALK_NOP);
     }
@@ -972,7 +974,7 @@ static int foreach_libblock_link_append_callback(LibraryIDLinkCallbackData *cb_d
   const bool do_recursive = (data->lapp_context->params->flag & BLO_LIBLINK_APPEND_RECURSIVE) !=
                                 0 ||
                             do_link;
-  if (!do_recursive && cb_data->id_owner->lib != id->lib) {
+  if (!do_recursive && cb_data->owner_id->lib != id->lib) {
     return IDWALK_RET_NOP;
   }
 
@@ -1010,6 +1012,10 @@ static void blendfile_link_append_proxies_convert(Main *bmain, ReportList *repor
 
   BlendFileReadReport bf_reports = {.reports = reports};
   BKE_lib_override_library_main_proxy_convert(bmain, &bf_reports);
+
+  /* Currently liboverride code can generate invalid namemap. This is a known issue, requires
+   * #107847 to be properly fixed. */
+  BKE_main_namemap_validate_and_fix(bmain);
 
   if (bf_reports.count.proxies_to_lib_overrides_success != 0 ||
       bf_reports.count.proxies_to_lib_overrides_failures != 0)
