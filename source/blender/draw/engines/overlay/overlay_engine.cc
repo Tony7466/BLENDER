@@ -286,6 +286,8 @@ static bool overlay_object_is_edit_mode(const OVERLAY_PrivateData *pd, const Obj
       case OB_VOLUME:
         /* No edit mode yet. */
         return false;
+      case OB_GREASE_PENCIL:
+        return pd->ctx_mode == CTX_MODE_EDIT_GPENCIL;
     }
   }
   return false;
