@@ -326,7 +326,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         "radius", ATTR_DOMAIN_POINT, 1.0f);
     const VArray<float> opacities = *attributes.lookup_or_default<float>(
         "opacity", ATTR_DOMAIN_POINT, 1.0f);
-    const VArray<bool> selection = *attributes.lookup_or_default<bool>(
+    const VArray<float> selection_float = *attributes.lookup_or_default<float>(
         ".selection", ATTR_DOMAIN_POINT, false);
     const VArray<int8_t> start_caps = *attributes.lookup_or_default<int8_t>(
         "start_cap", ATTR_DOMAIN_CURVE, 0);
@@ -341,9 +341,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     edit_points.slice(drawing_start_offset, curves.points_num()).copy_from(curves.positions());
     MutableSpan<float> selection_slice = edit_points_selection.slice(drawing_start_offset,
                                                                      curves.points_num());
-    for (const int point_i : curves.points_range()) {
-      selection_slice[point_i] = (selection[point_i]) ? 1.0f : 0.0f;
-    }
+    selection_float.materialize(selection_slice);
     drawing_start_offset += curves.points_num();
 
     auto populate_point = [&](IndexRange verts_range,
@@ -496,7 +494,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
 
   /* Create the batches */
   cache->edit_points = GPU_batch_create(GPU_PRIM_POINTS, cache->edit_points_pos, nullptr);
-  GPU_batch_vertbuf_add(cache->edit_points, cache->edit_points_pos, false);
+  GPU_batch_vertbuf_add(cache->edit_points, cache->edit_points_selection, false);
 
   cache->is_dirty = false;
 }
