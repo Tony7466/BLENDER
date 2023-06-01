@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -157,7 +158,8 @@ static GPUPass *gpu_pass_cache_resolve_collision(GPUPass *pass,
   BLI_spin_lock(&pass_cache_spin);
   for (; pass && (pass->hash == hash); pass = pass->next) {
     if (*reinterpret_cast<ShaderCreateInfo *>(info) ==
-        *reinterpret_cast<ShaderCreateInfo *>(pass->create_info)) {
+        *reinterpret_cast<ShaderCreateInfo *>(pass->create_info))
+    {
       BLI_spin_unlock(&pass_cache_spin);
       return pass;
     }
@@ -482,16 +484,26 @@ void GPUCodegen::generate_library()
   GPUCodegenCreateInfo &info = *create_info;
 
   void *value;
-  /* Iterate over libraries. We need to keep this struct intact in case
-   * it is required for the optimization pass. */
+  blender::Vector<std::string> source_files;
+
+  /* Iterate over libraries. We need to keep this struct intact in case it is required for the
+   * optimization pass. The first pass just collects the keys from the GSET, given items in a GSET
+   * are unordered this can cause order differences between invocations, so we collect the keys
+   * first, and sort them before doing actual work, to guarantee stable behavior while still
+   * having cheap insertions into the GSET */
   GHashIterator *ihash = BLI_ghashIterator_new((GHash *)graph.used_libraries);
   while (!BLI_ghashIterator_done(ihash)) {
     value = BLI_ghashIterator_getKey(ihash);
-    auto deps = gpu_shader_dependency_get_resolved_source((const char *)value);
-    info.dependencies_generated.extend_non_duplicates(deps);
+    source_files.append((const char *)value);
     BLI_ghashIterator_step(ihash);
   }
   BLI_ghashIterator_free(ihash);
+
+  std::sort(source_files.begin(), source_files.end());
+  for (auto &key : source_files) {
+    auto deps = gpu_shader_dependency_get_resolved_source(key.c_str());
+    info.dependencies_generated.extend_non_duplicates(deps);
+  }
 }
 
 void GPUCodegen::node_serialize(std::stringstream &eval_ss, const GPUNode *node)
@@ -842,7 +854,8 @@ static bool gpu_pass_shader_validate(GPUPass *pass, GPUShader *shader)
 
   /* Validate against opengl limit. */
   if ((active_samplers_len > GPU_max_textures_frag()) ||
-      (active_samplers_len > GPU_max_textures_vert())) {
+      (active_samplers_len > GPU_max_textures_vert()))
+  {
     return false;
   }
 

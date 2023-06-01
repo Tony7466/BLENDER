@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2015 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -227,7 +228,8 @@ static PyObject *pygpu_offscreen__tp_new(PyTypeObject *UNUSED(self),
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, &width, &height, PyC_ParseStringEnum, &pygpu_textureformat)) {
+          args, kwds, &_parser, &width, &height, PyC_ParseStringEnum, &pygpu_textureformat))
+  {
     return NULL;
   }
 
@@ -369,7 +371,8 @@ static PyObject *pygpu_offscreen_draw_view3d(BPyGPUOffScreen *self, PyObject *ar
       (!(scene = PyC_RNA_AsPointer(py_scene, "Scene")) ||
        !(view_layer = PyC_RNA_AsPointer(py_view_layer, "ViewLayer")) ||
        !(v3d = PyC_RNA_AsPointer(py_view3d, "SpaceView3D")) ||
-       !(region = PyC_RNA_AsPointer(py_region, "Region")))) {
+       !(region = PyC_RNA_AsPointer(py_region, "Region"))))
+  {
     return NULL;
   }
 

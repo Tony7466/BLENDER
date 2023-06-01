@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -571,7 +572,8 @@ void DRW_shader_queue_optimize_material(GPUMaterial *mat)
   if (ELEM(GPU_material_optimization_status(mat),
            GPU_MAT_OPTIMIZATION_SKIP,
            GPU_MAT_OPTIMIZATION_SUCCESS,
-           GPU_MAT_OPTIMIZATION_QUEUED)) {
+           GPU_MAT_OPTIMIZATION_QUEUED))
+  {
     return;
   }
 
@@ -693,7 +695,7 @@ void DRW_shader_library_add_file(DRWShaderLibrary *lib, const char *lib_code, co
 
   if (index > -1) {
     lib->libs[index] = lib_code;
-    BLI_strncpy(lib->libs_name[index], lib_name, MAX_LIB_NAME);
+    STRNCPY(lib->libs_name[index], lib_name);
     lib->libs_deps[index] = drw_shader_dependencies_get(
         lib, "BLENDER_REQUIRE(", lib_code, lib_name);
   }

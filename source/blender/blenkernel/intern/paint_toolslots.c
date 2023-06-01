@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -139,8 +141,8 @@ void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint)
   for (int i = 0; i < paint->tool_slots_len; i++) {
     PaintToolSlot *tslot = &paint->tool_slots[i];
     if (tslot->brush) {
-      if ((i != BKE_brush_tool_get(tslot->brush, paint)) ||
-          (tslot->brush->ob_mode & ob_mode) == 0) {
+      if ((i != BKE_brush_tool_get(tslot->brush, paint)) || (tslot->brush->ob_mode & ob_mode) == 0)
+      {
         id_us_min(&tslot->brush->id);
         tslot->brush = NULL;
       }

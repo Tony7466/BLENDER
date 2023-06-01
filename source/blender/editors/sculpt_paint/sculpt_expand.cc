@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -43,7 +44,7 @@
 
 #include "ED_screen.h"
 #include "ED_sculpt.h"
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "IMB_colormanagement.h"
@@ -727,8 +728,8 @@ static float *sculpt_expand_diagonals_falloff_create(Object *ob, const PBVHVertR
 
     int v_next_i = BKE_pbvh_vertex_to_index(ss->pbvh, v_next);
 
-    for (int j = 0; j < ss->pmap[v_next_i].count; j++) {
-      for (const int vert : ss->corner_verts.slice(ss->polys[ss->pmap[v_next_i].indices[j]])) {
+    for (const int poly : ss->pmap[v_next_i]) {
+      for (const int vert : ss->corner_verts.slice(ss->polys[poly])) {
         const PBVHVertRef neighbor_v = BKE_pbvh_make_vref(vert);
         if (BLI_BITMAP_TEST(visited_verts, neighbor_v.i)) {
           continue;
@@ -1008,7 +1009,8 @@ static void sculpt_expand_initialize_from_face_set_boundary(Object *ob,
       PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
       if (!(SCULPT_vertex_has_face_set(ss, vertex, active_face_set) &&
-            SCULPT_vertex_has_unique_face_set(ss, vertex))) {
+            SCULPT_vertex_has_unique_face_set(ss, vertex)))
+      {
         continue;
       }
       expand_cache->vert_falloff[i] *= -1.0f;
@@ -1278,7 +1280,8 @@ static void sculpt_expand_mask_update_task_cb(void *__restrict userdata,
     const bool enabled = sculpt_expand_state_get(ss, expand_cache, vd.vertex);
 
     if (expand_cache->check_islands &&
-        !sculpt_expand_is_vert_in_active_component(ss, expand_cache, vd.vertex)) {
+        !sculpt_expand_is_vert_in_active_component(ss, expand_cache, vd.vertex))
+    {
       continue;
     }
 
@@ -1844,7 +1847,8 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
         copy_v2_v2(expand_cache->initial_mouse_move, mval_fl);
         copy_v2_v2(expand_cache->original_mouse_move, expand_cache->initial_mouse);
         if (expand_cache->falloff_type == SCULPT_EXPAND_FALLOFF_GEODESIC &&
-            SCULPT_vertex_count_get(ss) > expand_cache->max_geodesic_move_preview) {
+            SCULPT_vertex_count_get(ss) > expand_cache->max_geodesic_move_preview)
+        {
           /* Set to spherical falloff for preview in high poly meshes as it is the fastest one.
            * In most cases it should match closely the preview from geodesic. */
           expand_cache->move_preview_falloff_type = SCULPT_EXPAND_FALLOFF_SPHERICAL;
@@ -1982,7 +1986,7 @@ static void sculpt_expand_delete_face_set_id(int *r_face_sets,
                                              const int delete_id)
 {
   const int totface = ss->totfaces;
-  MeshElemMap *pmap = ss->pmap;
+  const blender::GroupedSpan<int> pmap = ss->pmap;
   const blender::OffsetIndices polys = mesh->polys();
   const blender::Span<int> corner_verts = mesh->corner_verts();
 
@@ -2020,10 +2024,7 @@ static void sculpt_expand_delete_face_set_id(int *r_face_sets,
       const int f_index = POINTER_AS_INT(BLI_LINKSTACK_POP(queue));
       int other_id = delete_id;
       for (const int vert : corner_verts.slice(polys[f_index])) {
-        const MeshElemMap *vert_map = &pmap[vert];
-        for (int i = 0; i < vert_map->count; i++) {
-
-          const int neighbor_face_index = vert_map->indices[i];
+        for (const int neighbor_face_index : pmap[vert]) {
           if (expand_cache->original_face_sets[neighbor_face_index] <= 0) {
             /* Skip picking IDs from hidden Face Sets. */
             continue;
@@ -2201,7 +2202,8 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
   /* Face Set operations are not supported in dyntopo. */
   if (ss->expand_cache->target == SCULPT_EXPAND_TARGET_FACE_SETS &&
-      BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+      BKE_pbvh_type(ss->pbvh) == PBVH_BMESH)
+  {
     sculpt_expand_cache_free(ss);
     return OPERATOR_CANCELLED;
   }

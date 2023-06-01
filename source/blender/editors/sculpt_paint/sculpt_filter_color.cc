@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -335,7 +336,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
-  PBVH *pbvh = ob->sculpt->pbvh;
   View3D *v3d = CTX_wm_view3d(C);
 
   int mval[2];
@@ -367,10 +367,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
    * earlier steps modifying the data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
-
-  if (BKE_pbvh_type(pbvh) == PBVH_FACES && !ob->sculpt->pmap) {
-    return OPERATOR_CANCELLED;
-  }
 
   SCULPT_filter_cache_init(C,
                            ob,

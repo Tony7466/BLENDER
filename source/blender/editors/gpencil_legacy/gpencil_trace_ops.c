@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -211,8 +212,8 @@ static void trace_start_job(void *customdata, bool *stop, bool *do_update, float
   G.is_break = false;
 
   /* Single Image. */
-  if ((trace_job->image->source == IMA_SRC_FILE) ||
-      (trace_job->mode == GPENCIL_TRACE_MODE_SINGLE)) {
+  if ((trace_job->image->source == IMA_SRC_FILE) || (trace_job->mode == GPENCIL_TRACE_MODE_SINGLE))
+  {
     void *lock;
     ImageUser *iuser = trace_job->ob_active->iuser;
 

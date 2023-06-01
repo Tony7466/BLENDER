@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -194,11 +195,11 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    BLI_snprintf(str, sizeof(str), TIP_("To Sphere: %s %s"), c, t->proptext);
+    SNPRINTF(str, TIP_("To Sphere: %s %s"), c, t->proptext);
   }
   else {
     /* default header print */
-    BLI_snprintf(str, sizeof(str), TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
+    SNPRINTF(str, TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
   }
 
   const struct ToSphereInfo *to_sphere_info = t->custom.mode.data;

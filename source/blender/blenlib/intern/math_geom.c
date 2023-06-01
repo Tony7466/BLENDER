@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -1469,7 +1470,8 @@ bool isect_point_poly_v2(const float pt[2],
     if (((verts[i][1] > pt[1]) != (verts[j][1] > pt[1])) &&
         (pt[0] <
          (verts[j][0] - verts[i][0]) * (pt[1] - verts[i][1]) / (verts[j][1] - verts[i][1]) +
-             verts[i][0])) {
+             verts[i][0]))
+    {
       isect = !isect;
     }
   }
@@ -1488,7 +1490,8 @@ bool isect_point_poly_v2_int(const int pt[2],
     if (((verts[i][1] > pt[1]) != (verts[j][1] > pt[1])) &&
         (pt[0] <
          (verts[j][0] - verts[i][0]) * (pt[1] - verts[i][1]) / (verts[j][1] - verts[i][1]) +
-             verts[i][0])) {
+             verts[i][0]))
+    {
       isect = !isect;
     }
   }
@@ -1869,7 +1872,8 @@ bool isect_ray_tri_watertight_v3(const float ray_origin[3],
 #if 0
         || (sign_T > *r_lambda * xor_signmask(det, sign_mask))
 #endif
-  ) {
+  )
+  {
     return false;
   }
 
@@ -2259,7 +2263,8 @@ bool isect_tri_tri_v3_ex(const float tri_a[3][3],
   }
 
   if ((side[1][0] && side[1][1] && side[1][2]) && (side[1][0] < 0.0f) == (side[1][1] < 0.0f) &&
-      (side[1][0] < 0.0f) == (side[1][2] < 0.0f)) {
+      (side[1][0] < 0.0f) == (side[1][2] < 0.0f))
+  {
     /* All vertices of the 2nd triangle are positioned on the same side to the
      * plane defined by the 1st triangle. */
     return false;
@@ -2274,7 +2279,8 @@ bool isect_tri_tri_v3_ex(const float tri_a[3][3],
   side[0][2] = (float)(dot_v3db_v3fl(plane_b, tri_a[2]) + plane_b[3]);
 
   if ((side[0][0] && side[0][1] && side[0][2]) && (side[0][0] < 0.0f) == (side[0][1] < 0.0f) &&
-      (side[0][0] < 0.0f) == (side[0][2] < 0.0f)) {
+      (side[0][0] < 0.0f) == (side[0][2] < 0.0f))
+  {
     /* All vertices of the 1st triangle are positioned on the same side to the
      * plane defined by the 2nd triangle. */
     return false;
@@ -3666,7 +3672,8 @@ int barycentric_inside_triangle_v2(const float w[3])
     return 1;
   }
   if (IN_RANGE_INCL(w[0], 0.0f, 1.0f) && IN_RANGE_INCL(w[1], 0.0f, 1.0f) &&
-      IN_RANGE_INCL(w[2], 0.0f, 1.0f)) {
+      IN_RANGE_INCL(w[2], 0.0f, 1.0f))
+  {
     return 2;
   }
 

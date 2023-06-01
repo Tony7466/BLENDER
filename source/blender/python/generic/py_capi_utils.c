@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pygen
@@ -214,8 +216,8 @@ static int PyC_AsArray_Multi_FAST_impl(void **array_p,
   const int length = dims[0];
 
   if (dims_len == 1) {
-    if (PyC_AsArray_FAST(*array_p, array_item_size, value_fast, length, type, error_prefix) ==
-        -1) {
+    if (PyC_AsArray_FAST(*array_p, array_item_size, value_fast, length, type, error_prefix) == -1)
+    {
       return -1;
     }
     *array_p = POINTER_OFFSET(*array_p, array_item_size * length);
@@ -241,7 +243,8 @@ static int PyC_AsArray_Multi_FAST_impl(void **array_p,
                                  dims_next,
                                  dims_next_len,
                                  type,
-                                 error_prefix) == -1) {
+                                 error_prefix) == -1)
+      {
         return -1;
       }
     }
@@ -570,12 +573,12 @@ void PyC_ObSpit(const char *name, PyObject *var)
   }
 }
 
-void PyC_ObSpitStr(char *result, size_t result_len, PyObject *var)
+void PyC_ObSpitStr(char *result, size_t result_maxncpy, PyObject *var)
 {
   /* No name, creator of string can manage that. */
   const char *null_str = "<null>";
   if (var == NULL) {
-    BLI_snprintf(result, result_len, "%s", null_str);
+    BLI_snprintf(result, result_maxncpy, "%s", null_str);
   }
   else {
     const PyTypeObject *type = Py_TYPE(var);
@@ -586,7 +589,7 @@ void PyC_ObSpitStr(char *result, size_t result_len, PyObject *var)
       PyErr_Clear();
     }
     BLI_snprintf(result,
-                 result_len,
+                 result_maxncpy,
                  " ref=%d, ptr=%p, type=%s, value=%.200s",
                  (int)var->ob_refcnt,
                  (void *)var,
@@ -606,7 +609,7 @@ void PyC_LineSpit(void)
 
   /* NOTE: allow calling from outside python (RNA). */
   if (!PyC_IsInterpreterActive()) {
-    fprintf(stderr, "python line lookup failed, interpreter inactive\n");
+    fprintf(stderr, "Python line lookup failed, interpreter inactive\n");
     return;
   }
 
@@ -620,7 +623,7 @@ void PyC_StackSpit(void)
 {
   /* NOTE: allow calling from outside python (RNA). */
   if (!PyC_IsInterpreterActive()) {
-    fprintf(stderr, "python line lookup failed, interpreter inactive\n");
+    fprintf(stderr, "Python line lookup failed, interpreter inactive\n");
     return;
   }
 
@@ -939,7 +942,7 @@ PyObject *PyC_ExceptionBuffer(void)
   PySys_SetObject("stdout", stdout_backup);
   PySys_SetObject("stderr", stderr_backup);
 
-  Py_DECREF(stdout_backup); /* now sys owns the ref again */
+  Py_DECREF(stdout_backup); /* Now `sys` owns the reference again. */
   Py_DECREF(stderr_backup);
 
   Py_DECREF(string_io_mod);
@@ -1095,7 +1098,7 @@ PyObject *PyC_DefaultNameSpace(const char *filename)
   PyObject *builtins = PyEval_GetBuiltins();
   PyObject *mod_main = PyModule_New("__main__");
   PyDict_SetItemString(modules, "__main__", mod_main);
-  Py_DECREF(mod_main); /* sys.modules owns now */
+  Py_DECREF(mod_main); /* `sys.modules` owns now. */
   PyModule_AddStringConstant(mod_main, "__name__", "__main__");
   if (filename) {
     /* __file__ mainly for nice UI'ness
@@ -1309,7 +1312,8 @@ void *PyC_RNA_AsPointer(PyObject *value, const char *type_name)
 
   if (STREQ(Py_TYPE(value)->tp_name, type_name) &&
       (as_pointer = PyObject_GetAttrString(value, "as_pointer")) != NULL &&
-      PyCallable_Check(as_pointer)) {
+      PyCallable_Check(as_pointer))
+  {
     void *result = NULL;
 
     /* must be a 'type_name' object */

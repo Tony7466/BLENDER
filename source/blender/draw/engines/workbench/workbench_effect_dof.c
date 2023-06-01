@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -130,7 +131,8 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata)
 
   Camera *cam = camera != NULL && camera->type == OB_CAMERA ? camera->data : NULL;
   if ((wpd->shading.flag & V3D_SHADING_DEPTH_OF_FIELD) == 0 || (cam == NULL) ||
-      ((cam->dof.flag & CAM_DOF_ENABLED) == 0)) {
+      ((cam->dof.flag & CAM_DOF_ENABLED) == 0))
+  {
     wpd->dof_enabled = false;
 
     /* Cleanup. */
@@ -226,7 +228,8 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata)
     float ratio = 1.0f / cam->dof.aperture_ratio;
 
     if (wpd->vldata->dof_sample_ubo == NULL || blades != wpd->dof_blades ||
-        rotation != wpd->dof_rotation || ratio != wpd->dof_ratio) {
+        rotation != wpd->dof_rotation || ratio != wpd->dof_ratio)
+    {
       wpd->dof_blades = blades;
       wpd->dof_rotation = rotation;
       wpd->dof_ratio = ratio;

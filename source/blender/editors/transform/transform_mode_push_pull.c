@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -122,12 +123,11 @@ static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    BLI_snprintf(str, sizeof(str), TIP_("Push/Pull: %s%s %s"), c, t->con.text, t->proptext);
+    SNPRINTF(str, TIP_("Push/Pull: %s%s %s"), c, t->con.text, t->proptext);
   }
   else {
     /* default header print */
-    BLI_snprintf(
-        str, sizeof(str), TIP_("Push/Pull: %.4f%s %s"), distance, t->con.text, t->proptext);
+    SNPRINTF(str, TIP_("Push/Pull: %.4f%s %s"), distance, t->con.text, t->proptext);
   }
 
   if (t->con.applyRot && t->con.mode & CON_APPLY) {

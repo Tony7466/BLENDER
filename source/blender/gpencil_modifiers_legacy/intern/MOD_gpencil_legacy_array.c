@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -143,7 +144,8 @@ static bool gpencil_data_selected_minmax(ArrayGpencilModifierData *mmd,
                                            mmd->flag & GP_ARRAY_INVERT_LAYER,
                                            mmd->flag & GP_ARRAY_INVERT_PASS,
                                            mmd->flag & GP_ARRAY_INVERT_LAYERPASS,
-                                           mmd->flag & GP_ARRAY_INVERT_MATERIAL)) {
+                                           mmd->flag & GP_ARRAY_INVERT_MATERIAL))
+        {
           changed |= BKE_gpencil_stroke_minmax(gps, false, r_min, r_max);
         }
       }
@@ -198,7 +200,8 @@ static void generate_geometry(GpencilModifierData *md,
                                          mmd->flag & GP_ARRAY_INVERT_LAYER,
                                          mmd->flag & GP_ARRAY_INVERT_PASS,
                                          mmd->flag & GP_ARRAY_INVERT_LAYERPASS,
-                                         mmd->flag & GP_ARRAY_INVERT_MATERIAL)) {
+                                         mmd->flag & GP_ARRAY_INVERT_MATERIAL))
+      {
         tmpStrokes *tmp = MEM_callocN(sizeof(tmpStrokes), __func__);
         tmp->gpf = gpf;
         tmp->gps = gps;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup sim
@@ -364,8 +365,7 @@ DO_INLINE void inverse_fmatrix(float to[3][3], float from[3][3])
   float d;
 
   if ((d = det_fmatrix(from)) == 0) {
-    printf("can't build inverse");
-    exit(0);
+    // printf("can't build inverse");
   }
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
@@ -598,7 +598,7 @@ DO_INLINE void mul_bfmatrix_lfvector(float (*to)[3], fmatrix3x3 *from, lfVector 
     {
       for (uint i = from[0].vcount; i < from[0].vcount + from[0].scount; i++) {
         /* This is the lower triangle of the sparse matrix,
-         * therefore multiplication occurs with transposed submatrices. */
+         * therefore multiplication occurs with transposed sub-matrices. */
         muladd_fmatrixT_fvector(to[from[i].c], from[i].m, fLongVector[from[i].r]);
       }
     }
@@ -815,8 +815,8 @@ static int cg_filtered(lfVector *ldV, fmatrix3x3 *lA, lfVector *lB, lfVector *z,
   del_lfvector(r);
   // printf("W/O conjgrad_loopcount: %d\n", conjgrad_loopcount);
 
-  return conjgrad_loopcount <
-         conjgrad_looplimit;  /* true means we reached desired accuracy in given time - ie stable */
+  /* True means we reached desired accuracy in given time - ie stable. */
+  return conjgrad_loopcount < conjgrad_looplimit;
 }
 #  endif
 
@@ -911,8 +911,8 @@ static int cg_filtered(lfVector *ldV,
   result->iterations = conjgrad_loopcount;
   result->error = bnorm2 > 0.0f ? sqrtf(delta_new / bnorm2) : 0.0f;
 
-  return conjgrad_loopcount <
-         conjgrad_looplimit; /* true means we reached desired accuracy in given time - ie stable */
+  /* True means we reached desired accuracy in given time - ie stable. */
+  return conjgrad_loopcount < conjgrad_looplimit;
 }
 
 #  if 0

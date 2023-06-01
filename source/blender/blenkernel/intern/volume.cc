@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -335,6 +337,9 @@ struct VolumeGrid {
       catch (const openvdb::IoError &e) {
         entry->error_msg = e.what();
       }
+      catch (...) {
+        entry->error_msg = "Unknown error reading VDB file";
+      }
     });
 
     std::atomic_thread_fence(std::memory_order_release);
@@ -515,7 +520,7 @@ static void volume_init_data(ID *id)
 
   BKE_volume_init_grids(volume);
 
-  BLI_strncpy(volume->velocity_grid, "velocity", sizeof(volume->velocity_grid));
+  STRNCPY(volume->velocity_grid, "velocity");
 }
 
 static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
@@ -631,7 +636,7 @@ static void volume_blend_read_lib(BlendLibReader *reader, ID *id)
   BKE_volume_init_grids(volume);
 
   for (int a = 0; a < volume->totcol; a++) {
-    BLO_read_id_address(reader, volume->id.lib, &volume->mat[a]);
+    BLO_read_id_address(reader, id, &volume->mat[a]);
   }
 }
 
@@ -769,7 +774,7 @@ static void volume_filepath_get(const Main *bmain, const Volume *volume, char r_
   if (volume->is_sequence && BLI_path_frame_get(r_filepath, &path_frame, &path_digits)) {
     char ext[32];
     BLI_path_frame_strip(r_filepath, ext, sizeof(ext));
-    BLI_path_frame(r_filepath, volume->runtime.frame, path_digits);
+    BLI_path_frame(r_filepath, FILE_MAX, volume->runtime.frame, path_digits);
     BLI_path_extension_ensure(r_filepath, FILE_MAX, ext);
   }
 }
@@ -793,7 +798,7 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
   const StringRefNull ref_base_name = base_name;
 
   if (BKE_volume_grid_find_for_read(volume, base_name)) {
-    BLI_strncpy(volume->velocity_grid, base_name, sizeof(volume->velocity_grid));
+    STRNCPY(volume->velocity_grid, base_name);
     volume->runtime.velocity_x_grid[0] = '\0';
     volume->runtime.velocity_y_grid[0] = '\0';
     volume->runtime.velocity_z_grid[0] = '\0';
@@ -818,16 +823,10 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
     }
 
     /* Save the base name as well. */
-    BLI_strncpy(volume->velocity_grid, base_name, sizeof(volume->velocity_grid));
-    BLI_strncpy(volume->runtime.velocity_x_grid,
-                (ref_base_name + postfix[0]).c_str(),
-                sizeof(volume->runtime.velocity_x_grid));
-    BLI_strncpy(volume->runtime.velocity_y_grid,
-                (ref_base_name + postfix[1]).c_str(),
-                sizeof(volume->runtime.velocity_y_grid));
-    BLI_strncpy(volume->runtime.velocity_z_grid,
-                (ref_base_name + postfix[2]).c_str(),
-                sizeof(volume->runtime.velocity_z_grid));
+    STRNCPY(volume->velocity_grid, base_name);
+    STRNCPY(volume->runtime.velocity_x_grid, (ref_base_name + postfix[0]).c_str());
+    STRNCPY(volume->runtime.velocity_y_grid, (ref_base_name + postfix[1]).c_str());
+    STRNCPY(volume->runtime.velocity_z_grid, (ref_base_name + postfix[2]).c_str());
     return true;
   }
 
@@ -873,7 +872,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   /* Test if file exists. */
   if (!BLI_exists(filepath)) {
     char filename[FILE_MAX];
-    BLI_split_file_part(filepath, filename, sizeof(filename));
+    BLI_path_split_file_part(filepath, filename, sizeof(filename));
     grids.error_msg = filename + std::string(" not found");
     CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
     return false;
@@ -885,7 +884,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
 
   try {
     /* Disable delay loading and file copying, this has poor performance
-     * on network drivers. */
+     * on network drives. */
     const bool delay_load = false;
     file.setCopyMaxBytes(0);
     file.open(delay_load);
@@ -894,6 +893,10 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   }
   catch (const openvdb::IoError &e) {
     grids.error_msg = e.what();
+    CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
+  }
+  catch (...) {
+    grids.error_msg = "Unknown error reading VDB file";
     CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
   }
 
@@ -963,6 +966,10 @@ bool BKE_volume_save(const Volume *volume,
   }
   catch (const openvdb::IoError &e) {
     BKE_reportf(reports, RPT_ERROR, "Could not write volume: %s", e.what());
+    return false;
+  }
+  catch (...) {
+    BKE_reportf(reports, RPT_ERROR, "Could not write volume: Unknown error writing VDB file");
     return false;
   }
 

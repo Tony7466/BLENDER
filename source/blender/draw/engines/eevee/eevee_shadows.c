@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup EEVEE
@@ -67,7 +68,8 @@ void EEVEE_shadows_init(EEVEE_ViewLayerData *sldata)
   }
 
   if ((linfo->shadow_cascade_size != sh_cascade_size) ||
-      (linfo->shadow_high_bitdepth != sh_high_bitdepth)) {
+      (linfo->shadow_high_bitdepth != sh_high_bitdepth))
+  {
     BLI_assert((sh_cascade_size > 0) && (sh_cascade_size <= 4096));
     DRW_TEXTURE_FREE_SAFE(sldata->shadow_cascade_pool);
     CLAMP(sh_cascade_size, 1, 4096);

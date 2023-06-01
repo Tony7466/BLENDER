@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
@@ -18,18 +20,9 @@ static inline bool naive_edges_equal(const int2 &edge1, const int2 &edge2)
   return edge1 == edge2;
 }
 
-template<typename T>
-static void copy_to_new_verts(MutableSpan<T> data, const Span<int> new_to_old_verts_map)
-{
-  const Span<T> old_data = data.drop_back(new_to_old_verts_map.size());
-  MutableSpan<T> new_data = data.take_back(new_to_old_verts_map.size());
-  array_utils::gather(old_data, new_to_old_verts_map, new_data);
-}
-
 static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
 {
   /* These types aren't supported for interpolation below. */
-  CustomData_free_layers(&mesh.vdata, CD_BWEIGHT, mesh.totvert);
   CustomData_free_layers(&mesh.vdata, CD_SHAPEKEY, mesh.totvert);
   CustomData_free_layers(&mesh.vdata, CD_CLOTH_ORCO, mesh.totvert);
   CustomData_free_layers(&mesh.vdata, CD_MVERT_SKIN, mesh.totvert);
@@ -46,20 +39,26 @@ static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
       continue;
     }
 
-    attribute_math::convert_to_static_type(attribute.span.type(), [&](auto dummy) {
-      using T = decltype(dummy);
-      copy_to_new_verts(attribute.span.typed<T>(), new_to_old_verts_map);
-    });
+    bke::attribute_math::gather(attribute.span,
+                                new_to_old_verts_map,
+                                attribute.span.take_back(new_to_old_verts_map.size()));
 
     attribute.finish();
   }
   if (float3 *orco = static_cast<float3 *>(
-          CustomData_get_layer_for_write(&mesh.vdata, CD_ORCO, mesh.totvert))) {
-    copy_to_new_verts<float3>({orco, mesh.totvert}, new_to_old_verts_map);
+          CustomData_get_layer_for_write(&mesh.vdata, CD_ORCO, mesh.totvert)))
+  {
+    array_utils::gather(Span(orco, mesh.totvert),
+                        new_to_old_verts_map,
+                        MutableSpan(orco, mesh.totvert).take_back(new_to_old_verts_map.size()));
   }
   if (int *orig_indices = static_cast<int *>(
-          CustomData_get_layer_for_write(&mesh.vdata, CD_ORIGINDEX, mesh.totvert))) {
-    copy_to_new_verts<int>({orig_indices, mesh.totvert}, new_to_old_verts_map);
+          CustomData_get_layer_for_write(&mesh.vdata, CD_ORIGINDEX, mesh.totvert)))
+  {
+    array_utils::gather(
+        Span(orig_indices, mesh.totvert),
+        new_to_old_verts_map,
+        MutableSpan(orig_indices, mesh.totvert).take_back(new_to_old_verts_map.size()));
   }
 }
 
@@ -73,7 +72,7 @@ static void add_new_edges(Mesh &mesh,
   /* Store a copy of the IDs locally since we will remove the existing attributes which
    * can also free the names, since the API does not provide pointer stability. */
   Vector<std::string> named_ids;
-  Vector<bke::AutoAnonymousAttributeID> anonymous_ids;
+  Vector<bke::AnonymousAttributeIDPtr> anonymous_ids;
   for (const bke::AttributeIDRef &id : attributes.all_ids()) {
     if (attributes.lookup_meta_data(id)->domain != ATTR_DOMAIN_EDGE) {
       continue;
@@ -95,7 +94,7 @@ static void add_new_edges(Mesh &mesh,
   for (const StringRef name : named_ids) {
     local_edge_ids.append(name);
   }
-  for (const bke::AutoAnonymousAttributeID &id : anonymous_ids) {
+  for (const bke::AnonymousAttributeIDPtr &id : anonymous_ids) {
     local_edge_ids.append(*id);
   }
 
@@ -117,12 +116,8 @@ static void add_new_edges(Mesh &mesh,
     const CPPType &type = attribute.varray.type();
     void *new_data = MEM_malloc_arrayN(new_edges.size(), type.size(), __func__);
 
-    attribute_math::convert_to_static_type(type, [&](auto dummy) {
-      using T = decltype(dummy);
-      const VArray<T> src = attribute.varray.typed<T>();
-      MutableSpan<T> dst(static_cast<T *>(new_data), new_edges.size());
-      array_utils::gather(src, new_to_old_edges_map, dst);
-    });
+    bke::attribute_math::gather(
+        attribute.varray, new_to_old_edges_map, GMutableSpan(type, new_data, new_edges.size()));
 
     /* Free the original attribute as soon as possible to lower peak memory usage. */
     attributes.remove(local_id);
@@ -131,7 +126,8 @@ static void add_new_edges(Mesh &mesh,
 
   int *new_orig_indices = nullptr;
   if (const int *orig_indices = static_cast<const int *>(
-          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX))) {
+          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX)))
+  {
     new_orig_indices = static_cast<int *>(
         MEM_malloc_arrayN(new_edges.size(), sizeof(int), __func__));
     array_utils::gather(Span(orig_indices, mesh.totedge),
@@ -365,37 +361,44 @@ static void split_edge_per_poly(const int edge_i,
 }
 
 void split_edges(Mesh &mesh,
-                 const IndexMask mask,
+                 const IndexMask &mask,
                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   /* Flag vertices that need to be split. */
   Array<bool> should_split_vert(mesh.totvert, false);
   const Span<int2> edges = mesh.edges();
-  for (const int edge_i : mask) {
+  mask.foreach_index([&](const int edge_i) {
     const int2 &edge = edges[edge_i];
     should_split_vert[edge[0]] = true;
     should_split_vert[edge[1]] = true;
-  }
+  });
 
   /* Precalculate topology info. */
-  Array<Vector<int>> vert_to_edge_map = bke::mesh_topology::build_vert_to_edge_map(edges,
-                                                                                   mesh.totvert);
-  Vector<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map_resizable(
-      mesh.corner_edges(), mesh.totedge);
-  Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(mesh.polys());
+  Array<Vector<int>> vert_to_edge_map(mesh.totvert);
+  for (const int i : edges.index_range()) {
+    vert_to_edge_map[edges[i][0]].append(i);
+    vert_to_edge_map[edges[i][1]].append(i);
+  }
+
+  Array<int> orig_edge_to_loop_offsets;
+  Array<int> orig_edge_to_loop_indices;
+  const GroupedSpan<int> orig_edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
+      mesh.corner_edges(), mesh.totedge, orig_edge_to_loop_offsets, orig_edge_to_loop_indices);
+
+  Array<int> loop_to_poly_map = bke::mesh::build_loop_to_poly_map(mesh.polys());
 
   /* Store offsets, so we can split edges in parallel. */
   Array<int> edge_offsets(edges.size());
   Array<int> num_edge_duplicates(edges.size());
   int new_edges_size = edges.size();
-  for (const int edge : mask) {
+  mask.foreach_index([&](const int edge) {
     edge_offsets[edge] = new_edges_size;
     /* We add duplicates of the edge for each poly (except the first). */
-    const int num_connected_loops = edge_to_loop_map[edge].size();
+    const int num_connected_loops = orig_edge_to_loop_map[edge].size();
     const int num_duplicates = std::max(0, num_connected_loops - 1);
     new_edges_size += num_duplicates;
     num_edge_duplicates[edge] = num_duplicates;
-  }
+  });
 
   const OffsetIndices polys = mesh.polys();
 
@@ -404,32 +407,36 @@ void split_edges(Mesh &mesh,
   Vector<int2> new_edges(new_edges_size);
   new_edges.as_mutable_span().take_front(edges.size()).copy_from(edges);
 
-  edge_to_loop_map.resize(new_edges_size);
-
-  /* Used for transferring attributes. */
-  Vector<int> new_to_old_edges_map(IndexRange(new_edges.size()).as_span());
-
-  /* Step 1: Split the edges. */
-  threading::parallel_for(mask.index_range(), 512, [&](IndexRange range) {
-    for (const int mask_i : range) {
-      const int edge_i = mask[mask_i];
-      split_edge_per_poly(edge_i,
-                          edge_offsets[edge_i],
-                          edge_to_loop_map,
-                          corner_edges,
-                          new_edges,
-                          new_to_old_edges_map);
+  Vector<Vector<int>> edge_to_loop_map(new_edges_size);
+  threading::parallel_for(edges.index_range(), 512, [&](const IndexRange range) {
+    for (const int i : range) {
+      edge_to_loop_map[i].extend(orig_edge_to_loop_map[i]);
     }
   });
 
+  /* Used for transferring attributes. */
+  Vector<int> new_to_old_edges_map(new_edges.size());
+  std::iota(new_to_old_edges_map.begin(), new_to_old_edges_map.end(), 0);
+
+  /* Step 1: Split the edges. */
+
+  mask.foreach_index(GrainSize(512), [&](const int edge_i) {
+    split_edge_per_poly(edge_i,
+                        edge_offsets[edge_i],
+                        edge_to_loop_map,
+                        corner_edges,
+                        new_edges,
+                        new_to_old_edges_map);
+  });
+
   /* Step 1.5: Update topology information (can't parallelize). */
-  for (const int edge_i : mask) {
+  mask.foreach_index([&](const int edge_i) {
     const int2 &edge = edges[edge_i];
     for (const int duplicate_i : IndexRange(edge_offsets[edge_i], num_edge_duplicates[edge_i])) {
       vert_to_edge_map[edge[0]].append(duplicate_i);
       vert_to_edge_map[edge[1]].append(duplicate_i);
     }
-  }
+  });
 
   /* Step 2: Calculate vertex fans. */
   Array<Vector<int>> vertex_fan_sizes(mesh.totvert);

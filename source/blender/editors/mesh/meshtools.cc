@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -1238,7 +1239,8 @@ static void ed_mesh_pick_face_vert__mpoly_find(
     float sco[2];
     const int v_idx = corner_verts[poly[j]];
     if (ED_view3d_project_float_object(region, vert_positions[v_idx], sco, V3D_PROJ_TEST_NOP) ==
-        V3D_PROJ_RET_OK) {
+        V3D_PROJ_RET_OK)
+    {
       const float len_test = len_manhattan_v2v2(mval, sco);
       if (len_test < *r_len_best) {
         *r_len_best = len_test;
@@ -1257,13 +1259,12 @@ bool ED_mesh_pick_face_vert(
   BLI_assert(me && GS(me->id.name) == ID_ME);
 
   if (ED_mesh_pick_face(C, ob, mval, dist_px, &poly_index)) {
-    Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
-    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+    if (!me_eval) {
+      return false;
+    }
     ARegion *region = CTX_wm_region(C);
-
-    /* derived mesh to find deformed locations */
-    Mesh *me_eval = mesh_get_eval_final(
-        depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH_ORIGINDEX);
 
     int v_idx_best = ORIGINDEX_NONE;
 
@@ -1348,7 +1349,8 @@ static void ed_mesh_pick_vert__mapFunc(void *userData,
   }
   float sco[2];
   if (ED_view3d_project_float_object(data->region, co, sco, V3D_PROJ_TEST_CLIP_DEFAULT) ==
-      V3D_PROJ_RET_OK) {
+      V3D_PROJ_RET_OK)
+  {
     const float len = len_manhattan_v2v2(data->mval_f, sco);
     if (len < data->len_best) {
       data->len_best = len;
@@ -1391,11 +1393,8 @@ bool ED_mesh_pick_vert(
     (*r_index)--;
   }
   else {
-    Scene *scene_eval = DEG_get_evaluated_scene(vc.depsgraph);
-    Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, ob);
-
-    /* derived mesh to find deformed locations */
-    Mesh *me_eval = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+    const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, ob);
+    const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
     ARegion *region = vc.region;
     RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 

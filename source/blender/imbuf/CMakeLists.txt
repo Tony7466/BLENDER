@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 set(INC
   .
@@ -21,13 +22,13 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/allocimbuf.c
-  intern/anim_movie.c
-  intern/colormanagement.c
-  intern/colormanagement_inline.c
-  intern/divers.c
-  intern/filetype.c
-  intern/filter.c
+  intern/allocimbuf.cc
+  intern/anim_movie.cc
+  intern/colormanagement.cc
+  intern/colormanagement_inline.h
+  intern/divers.cc
+  intern/filetype.cc
+  intern/filter.cc
   intern/format_bmp.cc
   intern/format_dds.cc
   intern/format_hdr.cc
@@ -35,25 +36,25 @@ set(SRC
   intern/format_psd.cc
   intern/format_targa.cc
   intern/format_tiff.cc
-  intern/imageprocess.c
-  intern/indexer.c
-  intern/iris.c
-  intern/jpeg.c
-  intern/metadata.c
-  intern/module.c
+  intern/imageprocess.cc
+  intern/indexer.cc
+  intern/iris.cc
+  intern/jpeg.cc
+  intern/metadata.cc
+  intern/module.cc
   intern/moviecache.cc
-  intern/readimage.c
-  intern/rectop.c
-  intern/rotate.c
-  intern/scaling.c
-  intern/stereoimbuf.c
-  intern/thumbs.c
-  intern/thumbs_blend.c
-  intern/thumbs_font.c
+  intern/readimage.cc
+  intern/rectop.cc
+  intern/rotate.cc
+  intern/scaling.cc
+  intern/stereoimbuf.cc
+  intern/thumbs.cc
+  intern/thumbs_blend.cc
+  intern/thumbs_font.cc
   intern/transform.cc
-  intern/util.c
-  intern/util_gpu.c
-  intern/writeimage.c
+  intern/util.cc
+  intern/util_gpu.cc
+  intern/writeimage.cc
 
   IMB_colormanagement.h
   IMB_imbuf.h
@@ -102,7 +103,7 @@ if(WITH_IMAGE_OPENJPEG)
     ${OPENJPEG_INCLUDE_DIRS}
   )
   list(APPEND SRC
-    intern/jp2.c
+    intern/jp2.cc
   )
   list(APPEND LIB
     ${OPENJPEG_LIBRARIES}
@@ -147,7 +148,7 @@ endif()
 
 if(WITH_IMAGE_WEBP)
   list(APPEND SRC
-    intern/webp.c
+    intern/webp.cc
   )
   list(APPEND INC_SYS
     ${WEBP_INCLUDE_DIRS}
@@ -156,6 +157,18 @@ if(WITH_IMAGE_WEBP)
     ${WEBP_LIBRARIES}
   )
   add_definitions(-DWITH_WEBP)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
+  )
 endif()
 
 list(APPEND INC
@@ -170,7 +183,7 @@ endif()
 
 # no need to compile object files for inline headers.
 set_source_files_properties(
-  intern/colormanagement_inline.c
+  intern/colormanagement_inline.cc
   PROPERTIES HEADER_FILE_ONLY TRUE
 )
 

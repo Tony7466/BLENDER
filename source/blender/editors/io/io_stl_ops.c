@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editor/io
@@ -58,7 +60,7 @@ static int wm_stl_import_execute(bContext *C, wmOperator *op)
     STL_import(C, &params);
   }
   else {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
@@ -76,7 +78,8 @@ static bool wm_stl_import_check(bContext *UNUSED(C), wmOperator *op)
   const int num_axes = 3;
   /* Both forward and up axes cannot be the same (or same except opposite sign). */
   if (RNA_enum_get(op->ptr, "forward_axis") % num_axes ==
-      (RNA_enum_get(op->ptr, "up_axis") % num_axes)) {
+      (RNA_enum_get(op->ptr, "up_axis") % num_axes))
+  {
     RNA_enum_set(op->ptr, "up_axis", RNA_enum_get(op->ptr, "up_axis") % num_axes + 1);
     return true;
   }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -218,7 +219,8 @@ static void annotation_draw_stroke_buffer(bGPdata *gps,
     }
     /* Draw starting arrow stroke. */
     if ((sflag & GP_STROKE_USE_ARROW_START) &&
-        (runtime.arrow_start_style != GP_STROKE_ARROWSTYLE_NONE)) {
+        (runtime.arrow_start_style != GP_STROKE_ARROWSTYLE_NONE))
+    {
       float start[2];
       copy_v2_v2(start, points[0].m_xy);
       annotation_draw_stroke_arrow_buffer(

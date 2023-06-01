@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -69,7 +71,8 @@ void AbcCameraReader::readObjectData(Main *bmain, const ISampleSelector &sample_
   ICompoundProperty customDataContainer = m_schema.getUserProperties();
 
   if (customDataContainer.valid() && customDataContainer.getPropertyHeader("stereoDistance") &&
-      customDataContainer.getPropertyHeader("eyeSeparation")) {
+      customDataContainer.getPropertyHeader("eyeSeparation"))
+  {
     IFloatProperty convergence_plane(customDataContainer, "stereoDistance");
     IFloatProperty eye_separation(customDataContainer, "eyeSeparation");
 

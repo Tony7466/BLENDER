@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -37,8 +39,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 static void generate_vert_coordinates(Mesh *mesh,
                                       Object *ob,
@@ -147,7 +149,8 @@ static void mix_normals(const float mix_factor,
   }
 
   for (i = corner_verts.size(), no_new = nos_new, no_old = nos_old, wfac = facs; i--;
-       no_new++, no_old++, wfac++) {
+       no_new++, no_old++, wfac++)
+  {
     const float fac = facs ? *wfac * mix_factor : mix_factor;
 
     switch (mix_mode) {
@@ -222,7 +225,7 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
                                          const ModifierEvalContext * /*ctx*/,
                                          Object *ob,
                                          Mesh *mesh,
-                                         short (*clnors)[2],
+                                         blender::MutableSpan<blender::short2> clnors,
                                          blender::MutableSpan<blender::float3> loop_normals,
                                          const short mix_mode,
                                          const float mix_factor,
@@ -325,7 +328,8 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
 
   if (do_polynors_fix &&
       polygons_check_flip(
-          corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals())) {
+          corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals()))
+  {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
   const bool *sharp_faces = static_cast<const bool *>(
@@ -350,7 +354,7 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
                                               const ModifierEvalContext * /*ctx*/,
                                               Object *ob,
                                               Mesh *mesh,
-                                              short (*clnors)[2],
+                                              blender::MutableSpan<blender::short2> clnors,
                                               blender::MutableSpan<blender::float3> loop_normals,
                                               const short mix_mode,
                                               const float mix_factor,
@@ -432,7 +436,8 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
 
   if (do_polynors_fix &&
       polygons_check_flip(
-          corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals())) {
+          corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals()))
+  {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
   const bool *sharp_faces = static_cast<const bool *>(
@@ -530,10 +535,10 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
   bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
 
-  short(*clnors)[2] = static_cast<short(*)[2]>(
+  blender::short2 *clnors = static_cast<blender::short2 *>(
       CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
   if (use_current_clnors) {
-    clnors = static_cast<short(*)[2]>(
+    clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
     loop_normals.reinitialize(corner_verts.size());
     const bool *sharp_faces = static_cast<const bool *>(
@@ -556,7 +561,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
   }
 
   if (clnors == nullptr) {
-    clnors = static_cast<short(*)[2]>(
+    clnors = static_cast<blender::short2 *>(
         CustomData_add_layer(ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, corner_verts.size()));
   }
 
@@ -567,7 +572,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                  ctx,
                                  ob,
                                  result,
-                                 clnors,
+                                 {clnors, result->totloop},
                                  loop_normals,
                                  enmd->mix_mode,
                                  enmd->mix_factor,
@@ -587,7 +592,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                       ctx,
                                       ob,
                                       result,
-                                      clnors,
+                                      {clnors, result->totloop},
                                       loop_normals,
                                       enmd->mix_mode,
                                       enmd->mix_factor,
@@ -625,7 +630,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 
   r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
 
-  /* Ask for vertexgroups if we need them. */
+  /* Ask for vertex-groups if we need them. */
   if (enmd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }

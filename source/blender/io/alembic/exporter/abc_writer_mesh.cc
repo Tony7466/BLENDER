@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -537,7 +539,8 @@ static void get_loop_normals(struct Mesh *mesh,
   /* If all polygons are smooth shaded, and there are no custom normals, we don't need to export
    * normals at all. This is also done by other software, see #71246. */
   if (!has_flat_shaded_poly && !CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL) &&
-      (mesh->flag & ME_AUTOSMOOTH) == 0) {
+      (mesh->flag & ME_AUTOSMOOTH) == 0)
+  {
     return;
   }
 

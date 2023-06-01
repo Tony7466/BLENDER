@@ -1,7 +1,7 @@
 diff -Naur ffmpeg-clean/configure ffmpeg-dirty/configure
---- ffmpeg-clean/configure	2022-08-31 19:58:25.000000000 +0100
-+++ ffmpeg-dirty/configure	2023-03-22 09:43:21.688874500 +0000
-@@ -6523,7 +6523,7 @@
+--- ffmpeg-clean/configure	2023-02-27 20:43:45.000000000 +0000
++++ ffmpeg-dirty/configure	2023-05-25 09:49:24.949566500 +0100
+@@ -6563,7 +6563,7 @@
  enabled jni               && { [ $target_os = "android" ] && check_headers jni.h && enabled pthreads || die "ERROR: jni not found"; }
  enabled ladspa            && require_headers "ladspa.h dlfcn.h"
  enabled lcms2             && require_pkg_config lcms2 "lcms2 >= 2.13" lcms2.h cmsCreateContext
@@ -10,7 +10,7 @@ diff -Naur ffmpeg-clean/configure ffmpeg-dirty/configure
  enabled libaribb24        && { check_pkg_config libaribb24 "aribb24 > 1.0.3" "aribb24/aribb24.h" arib_instance_new ||
                                 { enabled gpl && require_pkg_config libaribb24 aribb24 "aribb24/aribb24.h" arib_instance_new; } ||
                                 die "ERROR: libaribb24 requires version higher than 1.0.3 or --enable-gpl."; }
-@@ -6596,16 +6596,15 @@
+@@ -6654,16 +6654,15 @@
                                   require libopencv opencv2/core/core_c.h cvCreateImageHeader -lopencv_core -lopencv_imgproc; } ||
                                 require_pkg_config libopencv opencv opencv/cxcore.h cvCreateImageHeader; }
  enabled libopenh264       && require_pkg_config libopenh264 openh264 wels/codec_api.h WelsGetCodecVersion
@@ -26,11 +26,11 @@ diff -Naur ffmpeg-clean/configure ffmpeg-dirty/configure
      }
      enabled libopus_encoder && {
 -        require_pkg_config libopus opus opus_multistream.h opus_multistream_surround_encoder_create
-+		require libopus opus_multistream.h opus_multistream_encoder_create -lopus
++        require libopus opus_multistream.h opus_multistream_encoder_create -lopus
      }
  }
  enabled libplacebo        && require_pkg_config libplacebo "libplacebo >= 4.192.0" libplacebo/vulkan.h pl_vulkan_create
-@@ -6638,8 +6637,8 @@
+@@ -6696,8 +6695,8 @@
  enabled libvidstab        && require_pkg_config libvidstab "vidstab >= 0.98" vid.stab/libvidstab.h vsMotionDetectInit
  enabled libvmaf           && require_pkg_config libvmaf "libvmaf >= 2.0.0" libvmaf.h vmaf_init
  enabled libvo_amrwbenc    && require libvo_amrwbenc vo-amrwbenc/enc_if.h E_IF_init -lvo-amrwbenc
@@ -41,86 +41,12 @@ diff -Naur ffmpeg-clean/configure ffmpeg-dirty/configure
  
  enabled libvpx            && {
      enabled libvpx_vp8_decoder && {
-@@ -6666,7 +6665,7 @@
+@@ -6724,7 +6723,7 @@
  enabled libwebp           && {
      enabled libwebp_encoder      && require_pkg_config libwebp "libwebp >= 0.2.0" webp/encode.h WebPGetEncoderVersion
      enabled libwebp_anim_encoder && check_pkg_config libwebp_anim_encoder "libwebpmux >= 0.4.0" webp/mux.h WebPAnimEncoderOptionsInit; }
 -enabled libx264           && require_pkg_config libx264 x264 "stdint.h x264.h" x264_encoder_encode &&
 +enabled libx264           && require libx264 "stdint.h x264.h" x264_encoder_encode -lx264 &&
-                              require_cpp_condition libx264 x264.h "X264_BUILD >= 118" && {
+                              require_cpp_condition libx264 x264.h "X264_BUILD >= 122" && {
                               [ "$toolchain" != "msvc" ] ||
                               require_cpp_condition libx264 x264.h "X264_BUILD >= 158"; } &&
-diff -Naur ffmpeg-clean/libavcodec/cfhddata.c ffmpeg-dirty/libavcodec/cfhddata.c
---- ffmpeg-clean/libavcodec/cfhddata.c	2022-07-22 18:58:39.000000000 +0100
-+++ ffmpeg-dirty/libavcodec/cfhddata.c	2022-12-21 17:18:31.553744000 +0000
-@@ -276,10 +276,10 @@
- av_cold int ff_cfhd_init_vlcs(CFHDContext *s)
- {
-     int i, j, ret = 0;
--    uint32_t new_cfhd_vlc_bits[NB_VLC_TABLE_18 * 2];
--    uint8_t  new_cfhd_vlc_len[NB_VLC_TABLE_18 * 2];
--    uint16_t new_cfhd_vlc_run[NB_VLC_TABLE_18 * 2];
--    int16_t  new_cfhd_vlc_level[NB_VLC_TABLE_18 * 2];
-+    uint32_t *new_cfhd_vlc_bits = av_calloc(sizeof(uint32_t), NB_VLC_TABLE_18 * 2);
-+    uint8_t  *new_cfhd_vlc_len = av_calloc(sizeof(uint8_t), NB_VLC_TABLE_18 * 2);
-+    uint16_t *new_cfhd_vlc_run = av_calloc(sizeof(uint16_t), NB_VLC_TABLE_18 * 2);
-+    int16_t  *new_cfhd_vlc_level = av_calloc(sizeof(int16_t), NB_VLC_TABLE_18 * 2);
- 
-     /** Similar to dv.c, generate signed VLC tables **/
- 
-@@ -305,8 +305,13 @@
- 
-     ret = init_vlc(&s->vlc_9, VLC_BITS, j, new_cfhd_vlc_len,
-                    1, 1, new_cfhd_vlc_bits, 4, 4, 0);
--    if (ret < 0)
-+    if (ret < 0) {
-+        av_free(new_cfhd_vlc_bits);
-+        av_free(new_cfhd_vlc_len);
-+        av_free(new_cfhd_vlc_run);
-+        av_free(new_cfhd_vlc_level);
-         return ret;
-+    }
-     for (i = 0; i < s->vlc_9.table_size; i++) {
-         int code = s->vlc_9.table[i].sym;
-         int len  = s->vlc_9.table[i].len;
-@@ -346,8 +351,14 @@
- 
-     ret = init_vlc(&s->vlc_18, VLC_BITS, j, new_cfhd_vlc_len,
-                    1, 1, new_cfhd_vlc_bits, 4, 4, 0);
--    if (ret < 0)
-+    if (ret < 0) {
-+        av_free(new_cfhd_vlc_bits);
-+        av_free(new_cfhd_vlc_len);
-+        av_free(new_cfhd_vlc_run);
-+        av_free(new_cfhd_vlc_level);
-         return ret;
-+    }
-+
-     av_assert0(s->vlc_18.table_size == 4572);
- 
-     for (i = 0; i < s->vlc_18.table_size; i++) {
-@@ -367,5 +378,10 @@
-         s->table_18_rl_vlc[i].run   = run;
-     }
- 
-+    av_free(new_cfhd_vlc_bits);
-+    av_free(new_cfhd_vlc_len);
-+    av_free(new_cfhd_vlc_run);
-+    av_free(new_cfhd_vlc_level);
-+
-     return ret;
- }
-diff -Naur ffmpeg-clean/libavcodec/x86/simple_idct.asm ffmpeg-dirty/libavcodec/x86/simple_idct.asm
---- ffmpeg-clean/libavcodec/x86/simple_idct.asm	2022-07-22 18:58:39.000000000 +0100
-+++ ffmpeg-dirty/libavcodec/x86/simple_idct.asm	2022-12-21 17:18:31.570744100 +0000
-@@ -25,9 +25,9 @@
- 
- %include "libavutil/x86/x86util.asm"
- 
--%if ARCH_X86_32
- SECTION_RODATA
- 
-+%if ARCH_X86_32
- cextern pb_80
- 
- wm1010: dw 0, 0xffff, 0, 0xffff

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -56,7 +57,7 @@
 #include "ED_screen.h"
 #include "ED_sculpt.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -349,8 +350,8 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
 
   sculpt_init_session(bmain, depsgraph, scene, ob);
 
-  if (!(fabsf(ob->scale[0] - ob->scale[1]) < 1e-4f &&
-        fabsf(ob->scale[1] - ob->scale[2]) < 1e-4f)) {
+  if (!(fabsf(ob->scale[0] - ob->scale[1]) < 1e-4f && fabsf(ob->scale[1] - ob->scale[2]) < 1e-4f))
+  {
     BKE_report(
         reports, RPT_WARNING, "Object has non-uniform scale, sculpting may be unpredictable");
   }
@@ -576,10 +577,6 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
   }
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
-
-  if (!ss->pmap) {
-    return;
-  }
 
   float brush_co[3];
   copy_v3_v3(brush_co, SCULPT_active_vertex_co_get(ss));
@@ -906,9 +903,12 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  View3D *v3d = CTX_wm_view3d(C);
-  if (v3d->shading.type == OB_SOLID) {
-    v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+
+  {
+    View3D *v3d = CTX_wm_view3d(C);
+    if (v3d && v3d->shading.type == OB_SOLID) {
+      v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+    }
   }
 
   /* Color data is not available in multi-resolution or dynamic topology. */
@@ -1397,6 +1397,7 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
   WM_operatortype_append(SCULPT_OT_face_sets_create);
   WM_operatortype_append(SCULPT_OT_face_sets_change_visibility);
+  WM_operatortype_append(SCULPT_OT_face_sets_invert_visibility);
   WM_operatortype_append(SCULPT_OT_face_sets_randomize_colors);
   WM_operatortype_append(SCULPT_OT_face_sets_init);
   WM_operatortype_append(SCULPT_OT_cloth_filter);

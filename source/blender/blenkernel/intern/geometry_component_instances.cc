@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <mutex>
 
@@ -56,7 +58,7 @@ GeometryComponent *InstancesComponent::copy() const
 
 void InstancesComponent::clear()
 {
-  BLI_assert(this->is_mutable());
+  BLI_assert(this->is_mutable() || this->is_expired());
   if (ownership_ == GeometryOwnershipType::Owned) {
     delete instances_;
   }

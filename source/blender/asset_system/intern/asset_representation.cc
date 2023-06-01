@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup asset_system
@@ -106,6 +108,14 @@ bool AssetRepresentation::may_override_import_method() const
   return owner_asset_library_->may_override_import_method_;
 }
 
+bool AssetRepresentation::get_use_relative_path() const
+{
+  if (!owner_asset_library_) {
+    return false;
+  }
+  return owner_asset_library_->use_relative_path_;
+}
+
 ID *AssetRepresentation::local_id() const
 {
   return is_local_id_ ? local_asset_id_ : nullptr;
@@ -153,6 +163,13 @@ bool AS_asset_representation_may_override_import_method(const AssetRepresentatio
   const asset_system::AssetRepresentation *asset =
       reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
   return asset->may_override_import_method();
+}
+
+bool AS_asset_representation_use_relative_path_get(const AssetRepresentation *asset_handle)
+{
+  const asset_system::AssetRepresentation *asset =
+      reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
+  return asset->get_use_relative_path();
 }
 
 /* ---------------------------------------------------------------------- */

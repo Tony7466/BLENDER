@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -489,8 +491,9 @@ static bool rna_path_parse(const PointerRNA *ptr,
     *r_item_ptr = nextptr;
   }
 
-  if (prop_elem && (prop_elem->ptr.data != curptr.data || prop_elem->prop != prop ||
-                    prop_elem->index != index)) {
+  if (prop_elem &&
+      (prop_elem->ptr.data != curptr.data || prop_elem->prop != prop || prop_elem->index != index))
+  {
     prop_elem = MEM_cnew<PropertyElemRNA>(__func__);
     prop_elem->ptr = curptr;
     prop_elem->prop = prop;
@@ -618,7 +621,7 @@ char *RNA_path_append(const char *path,
     }
     else {
       char appendstr[128];
-      BLI_snprintf(appendstr, sizeof(appendstr), "%d", intkey);
+      SNPRINTF(appendstr, "%d", intkey);
       BLI_dynstr_append(dynstr, appendstr);
     }
 
@@ -811,7 +814,8 @@ static char *rna_idp_path(PointerRNA *ptr,
   link.index = -1;
 
   for (i = 0, iter = static_cast<IDProperty *>(haystack->data.group.first); iter;
-       iter = iter->next, i++) {
+       iter = iter->next, i++)
+  {
     if (needle == iter) { /* found! */
       link.name = iter->name;
       link.index = -1;

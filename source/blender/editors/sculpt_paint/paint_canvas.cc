@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_compiler_compat.h"
 
@@ -107,7 +109,8 @@ eV3DShadingColorType ED_paint_shading_color_override(bContext *C,
    */
   if (!ED_paint_tool_use_canvas(C, nullptr) &&
       !(paint_tool_shading_color_follows_last_used_tool(C, ob) &&
-        ob->sculpt->sticky_shading_color)) {
+        ob->sculpt->sticky_shading_color))
+  {
     return orig_color_type;
   }
 

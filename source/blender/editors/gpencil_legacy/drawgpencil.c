@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -319,13 +320,15 @@ static void gpencil_draw_strokes(tGPDdraw *tgpw)
 
     if ((gp_style == NULL) || (gp_style->flag & GP_MATERIAL_HIDE) ||
         /* If onion and ghost flag do not draw. */
-        (tgpw->onion && (gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN))) {
+        (tgpw->onion && (gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN)))
+    {
       continue;
     }
 
     /* if disable fill, the colors with fill must be omitted too except fill boundary strokes */
     if ((tgpw->disable_fill == 1) && (gp_style->fill_rgba[3] > 0.0f) &&
-        ((gps->flag & GP_STROKE_NOFILL) == 0) && (gp_style->flag & GP_MATERIAL_FILL_SHOW)) {
+        ((gps->flag & GP_STROKE_NOFILL) == 0) && (gp_style->flag & GP_MATERIAL_FILL_SHOW))
+    {
       continue;
     }
 

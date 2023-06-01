@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -454,7 +455,8 @@ void BKE_mesh_calc_volume(const float (*vert_positions)[3],
   }
 
   if (!mesh_calc_center_centroid_ex(
-          vert_positions, mverts_num, looptri, looptri_num, corner_verts, center)) {
+          vert_positions, mverts_num, looptri, looptri_num, corner_verts, center))
+  {
     return;
   }
 

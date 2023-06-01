@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -614,7 +616,8 @@ static const EnumPropertyItem *rna_Fluid_cachetype_volume_itemf(bContext *UNUSED
   /* Support for deprecated .raw format. */
   FluidDomainSettings *fds = (FluidDomainSettings *)ptr->data;
   if (fds->cache_data_format == FLUID_DOMAIN_FILE_RAW ||
-      fds->cache_noise_format == FLUID_DOMAIN_FILE_RAW) {
+      fds->cache_noise_format == FLUID_DOMAIN_FILE_RAW)
+  {
     tmp.value = FLUID_DOMAIN_FILE_RAW;
     tmp.identifier = "RAW";
     tmp.name = N_("Raw Cache");
@@ -657,7 +660,7 @@ static void rna_Fluid_cache_directory_set(struct PointerRNA *ptr, const char *va
     return;
   }
 
-  BLI_strncpy(settings->cache_directory, value, sizeof(settings->cache_directory));
+  STRNCPY(settings->cache_directory, value);
 
   /* TODO(sebbas): Read cache state in order to set cache bake flags and cache pause frames
    * correctly. */

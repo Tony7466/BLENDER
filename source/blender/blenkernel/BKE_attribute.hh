@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -587,6 +589,7 @@ class AttributeAccessor {
 
   /**
    * Run the provided function for every attribute.
+   * Attributes should not be removed or added during iteration.
    */
   bool for_all(const AttributeForeachCallback fn) const
   {
@@ -652,6 +655,11 @@ class MutableAttributeAccessor : public AttributeAccessor {
     }
     return {};
   }
+
+  /**
+   * Replace the existing attribute with a new one with a different name.
+   */
+  bool rename(const AttributeIDRef &old_attribute_id, const AttributeIDRef &new_attribute_id);
 
   /**
    * Create a new attribute.
@@ -912,5 +920,18 @@ inline const AnonymousAttributeID &AttributeIDRef::anonymous_id() const
   BLI_assert(this->is_anonymous());
   return *anonymous_id_;
 }
+
+void gather_attributes(AttributeAccessor src_attributes,
+                       eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const IndexMask &selection,
+                       MutableAttributeAccessor dst_attributes);
+
+void copy_attributes(const AttributeAccessor src_attributes,
+                     const eAttrDomain domain,
+                     const AnonymousAttributePropagationInfo &propagation_info,
+                     const Set<std::string> &skip,
+                     MutableAttributeAccessor dst_attributes);
 
 }  // namespace blender::bke

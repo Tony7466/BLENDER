@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spuserpref
@@ -177,7 +178,7 @@ static void userpref_navigation_region_listener(const wmRegionListenerParams *UN
 
 static void userpref_execute_region_listener(const wmRegionListenerParams *UNUSED(params)) {}
 
-static void userpref_blend_write(BlendWriter *writer, SpaceLink *sl)
+static void userpref_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceUserPref, sl);
 }
@@ -196,7 +197,7 @@ void ED_spacetype_userpref(void)
   st->duplicate = userpref_duplicate;
   st->operatortypes = userpref_operatortypes;
   st->keymap = userpref_keymap;
-  st->blend_write = userpref_blend_write;
+  st->blend_write = userpref_space_blend_write;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype userpref region");

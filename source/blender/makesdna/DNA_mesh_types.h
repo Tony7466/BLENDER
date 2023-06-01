@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -27,6 +28,7 @@ namespace bke {
 struct MeshRuntime;
 class AttributeAccessor;
 class MutableAttributeAccessor;
+struct LooseVertCache;
 struct LooseEdgeCache;
 }  // namespace bke
 }  // namespace blender
@@ -291,9 +293,14 @@ typedef struct Mesh {
   blender::MutableSpan<MDeformVert> deform_verts_for_write();
 
   /**
-   * Cached triangulation of the mesh.
+   * Cached triangulation of mesh faces, depending on the face topology and the vertex positions.
    */
   blender::Span<MLoopTri> looptris() const;
+
+  /**
+   * A map containing the face index that each cached triangle from #Mesh::looptris() came from.
+   */
+  blender::Span<int> looptri_polys() const;
 
   /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
   void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);
@@ -303,13 +310,30 @@ typedef struct Mesh {
    */
   const blender::bke::LooseEdgeCache &loose_edges() const;
   /**
+   * Cached information about vertices that aren't used by any edges.
+   */
+  const blender::bke::LooseVertCache &loose_verts() const;
+  /**
+   * Cached information about vertices that aren't used by faces (but may be used by loose edges).
+   */
+  const blender::bke::LooseVertCache &verts_no_face() const;
+
+  /**
    * Explicitly set the cached number of loose edges to zero. This can improve performance
    * later on, because finding loose edges lazily can be skipped entirely.
    *
    * \note To allow setting this status on meshes without changing them, this does not tag the
    * cache dirty. If the mesh was changed first, the relevant dirty tags should be called first.
    */
-  void loose_edges_tag_none() const;
+  void tag_loose_edges_none() const;
+  /**
+   * Set the number of vertices not connected to edges to zero. Similar to #tag_loose_edges_none().
+   * There may still be vertices only used by loose edges though.
+   *
+   * \note If both #tag_loose_edges_none() and #tag_loose_verts_none() are called,
+   * all vertices are used by faces, so #verts_no_faces() will be tagged empty as well.
+   */
+  void tag_loose_verts_none() const;
 
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.

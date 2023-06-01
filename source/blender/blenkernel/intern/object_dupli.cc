@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -981,7 +982,8 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
                                 nullptr,
                                 id,
                                 &geometry_set,
-                                i)) {
+                                i))
+        {
           break;
         }
 
@@ -1012,7 +1014,8 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
                                nullptr,
                                id,
                                &geometry_set,
-                               i)) {
+                               i))
+        {
           make_duplis_geometry_set_impl(
               &sub_ctx, reference.geometry_set(), new_transform, true, false);
         }
@@ -1383,7 +1386,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
   totchild = psys->totchild;
 
   if ((for_render || part->draw_as == PART_DRAW_REND) &&
-      ELEM(part->ren_as, PART_DRAW_OB, PART_DRAW_GR)) {
+      ELEM(part->ren_as, PART_DRAW_OB, PART_DRAW_GR))
+  {
     ParticleSimulationData sim = {nullptr};
     sim.depsgraph = ctx->depsgraph;
     sim.scene = scene;
@@ -1454,8 +1458,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         }
       }
       else {
-        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-            part->instance_collection, object, mode) {
+        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (part->instance_collection, object, mode)
+        {
           (void)object;
           totcollection++;
         }
@@ -1482,8 +1486,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
       }
       else {
         a = 0;
-        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-            part->instance_collection, object, mode) {
+        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (part->instance_collection, object, mode)
+        {
           oblist[a] = object;
           a++;
         }
@@ -1526,7 +1530,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
       /* Some hair paths might be non-existent so they can't be used for duplication. */
       if (hair && psys->pathcache &&
           ((a < totpart && psys->pathcache[a]->segments < 0) ||
-           (a >= totpart && psys->childcache[a - totpart]->segments < 0))) {
+           (a >= totpart && psys->childcache[a - totpart]->segments < 0)))
+      {
         continue;
       }
 
@@ -1577,8 +1582,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 
       if (part->ren_as == PART_DRAW_GR && psys->part->draw & PART_DRAW_WHOLE_GR) {
         b = 0;
-        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-            part->instance_collection, object, mode) {
+        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (part->instance_collection, object, mode)
+        {
           copy_m4_m4(tmat, oblist[b]->object_to_world);
 
           /* Apply collection instance offset. */
@@ -1705,7 +1710,8 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
 
   /* Should the dupli's be generated for this object? - Respect restrict flags. */
   if (DEG_get_mode(ctx->depsgraph) == DAG_EVAL_RENDER ? (visibility_flag & OB_HIDE_RENDER) :
-                                                        (visibility_flag & OB_HIDE_VIEWPORT)) {
+                                                        (visibility_flag & OB_HIDE_VIEWPORT))
+  {
     return nullptr;
   }
 
@@ -1789,7 +1795,8 @@ ListBase *object_duplilist_preview(Depsgraph *depsgraph,
       continue;
     }
     if (const geo_log::ViewerNodeLog *viewer_log =
-            geo_log::GeoModifierLog::find_viewer_node_log_for_path(*viewer_path)) {
+            geo_log::GeoModifierLog::find_viewer_node_log_for_path(*viewer_path))
+    {
       ctx.preview_base_geometry = &viewer_log->geometry;
       make_duplis_geometry_set_impl(
           &ctx, viewer_log->geometry, ob_eval->object_to_world, true, ob_eval->type == OB_CURVES);

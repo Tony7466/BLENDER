@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -17,6 +19,9 @@
 #include "BLI_math_base.h"
 #include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
+#ifdef WIN32
+#  include "BLI_winstuff.h"
+#endif
 
 #include "BLT_translation.h"
 
@@ -361,7 +366,7 @@ static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *v
     value = DATA_("Untitled");
   }
 
-  BLI_strncpy_utf8(script_dir->name, value, sizeof(script_dir->name));
+  STRNCPY_UTF8(script_dir->name, value);
   BLI_uniquename(&U.script_directories,
                  script_dir,
                  value,
@@ -655,13 +660,22 @@ static void rna_UserDef_viewport_lights_update(Main *bmain, Scene *scene, Pointe
   /* If all lights are off gpu_draw resets them all, see: #27627,
    * so disallow them all to be disabled. */
   if (U.light_param[0].flag == 0 && U.light_param[1].flag == 0 && U.light_param[2].flag == 0 &&
-      U.light_param[3].flag == 0) {
+      U.light_param[3].flag == 0)
+  {
     SolidLight *light = ptr->data;
     light->flag |= 1;
   }
 
   WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_GPU, NULL);
   rna_userdef_update(bmain, scene, ptr);
+}
+
+static bool rna_userdef_is_microsoft_store_install_get(PointerRNA *UNUSED(ptr))
+{
+#  ifdef WIN32
+  return BLI_windows_is_store_install();
+#  endif
+  return false;
 }
 
 static void rna_userdef_autosave_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -879,7 +893,7 @@ static StructRNA *rna_AddonPref_register(Main *bmain,
     return NULL;
   }
 
-  BLI_strncpy(dummy_apt.idname, dummy_addon.module, sizeof(dummy_apt.idname));
+  STRNCPY(dummy_apt.idname, dummy_addon.module);
   if (strlen(identifier) >= sizeof(dummy_apt.idname)) {
     BKE_reportf(reports,
                 RPT_ERROR,
@@ -962,22 +976,22 @@ static void rna_StudioLights_remove(UserDef *UNUSED(userdef), StudioLight *studi
   BKE_studiolight_remove(studio_light);
 }
 
-static StudioLight *rna_StudioLights_load(UserDef *UNUSED(userdef), const char *path, int type)
+static StudioLight *rna_StudioLights_load(UserDef *UNUSED(userdef), const char *filepath, int type)
 {
-  return BKE_studiolight_load(path, type);
+  return BKE_studiolight_load(filepath, type);
 }
 
 /* TODO: Make it accept arguments. */
-static StudioLight *rna_StudioLights_new(UserDef *userdef, const char *name)
+static StudioLight *rna_StudioLights_new(UserDef *userdef, const char *filepath)
 {
-  return BKE_studiolight_create(name, userdef->light_param, userdef->light_ambient);
+  return BKE_studiolight_create(filepath, userdef->light_param, userdef->light_ambient);
 }
 
 /* StudioLight.name */
 static void rna_UserDef_studiolight_name_get(PointerRNA *ptr, char *value)
 {
   StudioLight *sl = (StudioLight *)ptr->data;
-  BLI_strncpy(value, sl->name, FILE_MAXFILE);
+  strcpy(value, sl->name);
 }
 
 static int rna_UserDef_studiolight_name_length(PointerRNA *ptr)
@@ -990,13 +1004,13 @@ static int rna_UserDef_studiolight_name_length(PointerRNA *ptr)
 static void rna_UserDef_studiolight_path_get(PointerRNA *ptr, char *value)
 {
   StudioLight *sl = (StudioLight *)ptr->data;
-  BLI_strncpy(value, sl->path, FILE_MAX);
+  strcpy(value, sl->filepath);
 }
 
 static int rna_UserDef_studiolight_path_length(PointerRNA *ptr)
 {
   StudioLight *sl = (StudioLight *)ptr->data;
-  return strlen(sl->path);
+  return strlen(sl->filepath);
 }
 
 /* StudioLight.path_irr_cache */
@@ -1004,7 +1018,7 @@ static void rna_UserDef_studiolight_path_irr_cache_get(PointerRNA *ptr, char *va
 {
   StudioLight *sl = (StudioLight *)ptr->data;
   if (sl->path_irr_cache) {
-    BLI_strncpy(value, sl->path_irr_cache, FILE_MAX);
+    strcpy(value, sl->path_irr_cache);
   }
   else {
     value[0] = '\0';
@@ -1025,7 +1039,7 @@ static void rna_UserDef_studiolight_path_sh_cache_get(PointerRNA *ptr, char *val
 {
   StudioLight *sl = (StudioLight *)ptr->data;
   if (sl->path_sh_cache) {
-    BLI_strncpy(value, sl->path_sh_cache, FILE_MAX);
+    strcpy(value, sl->path_sh_cache);
   }
   else {
     value[0] = '\0';
@@ -1607,8 +1621,7 @@ static void rna_def_userdef_theme_ui(BlenderRNA *brna)
   prop = RNA_def_property(srna, "widget_text_cursor", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, NULL, "widget_text_cursor");
   RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(
-      prop, "Text Cursor", "Color of the interface widgets text insertion cursor (caret)");
+  RNA_def_property_ui_text(prop, "Text Cursor", "Color of the text insertion cursor (caret)");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "panel_roundness", PROP_FLOAT, PROP_FACTOR);
@@ -3056,6 +3069,12 @@ static void rna_def_userdef_theme_space_node(BlenderRNA *brna)
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Attribute Node", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "simulation_zone", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "node_zone_simulation");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Simulation Zone", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
 static void rna_def_userdef_theme_space_buts(BlenderRNA *brna)
@@ -3556,6 +3575,12 @@ static void rna_def_userdef_theme_space_action(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(
       prop, "Interpolation Line", "Color of lines showing non-bezier interpolation modes");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "simulated_frames", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "simulated_frames");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Simulated Frames", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
@@ -4763,7 +4788,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 1000);
   RNA_def_property_ui_text(prop,
                            "Tap Key Timeout",
-                           "Pie menu button held longer than this will dismiss menu on release."
+                           "Pie menu button held longer than this will dismiss menu on release "
                            "(in 1/100ths of sec)");
 
   prop = RNA_def_property(srna, "pie_animation_timeout", PROP_INT, PROP_NONE);
@@ -5804,6 +5829,24 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_HIDDEN);
   RNA_def_property_ui_text(prop, "Legacy Compute Device Type", "For backwards compatibility only");
 #  endif
+
+  /* Registration and Unregistration */
+
+  prop = RNA_def_property(srna, "register_all_users", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_REGISTER_ALL_USERS);
+  RNA_def_property_ui_text(
+      prop,
+      "Register for All Users",
+      "Make this Blender version open blend files for all users. Requires elevated privileges");
+
+  prop = RNA_def_boolean(
+      srna,
+      "is_microsoft_store_install",
+      false,
+      "Is Microsoft Store Install",
+      "Whether this blender installation is a sandboxed Microsoft Store version");
+  RNA_def_property_boolean_funcs(prop, "rna_userdef_is_microsoft_store_install_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 static void rna_def_userdef_input(BlenderRNA *brna)
@@ -6258,6 +6301,11 @@ static void rna_def_userdef_filepaths_asset_library(BlenderRNA *brna)
       "Default Import Method",
       "Determine how the asset will be imported, unless overridden by the Asset Browser");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_relative_path", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ASSET_LIBRARY_RELATIVE_PATH);
+  RNA_def_property_ui_text(
+      prop, "Relative Path", "Use relative path when linking assets from this asset library");
 }
 
 static void rna_def_userdef_script_directory(BlenderRNA *brna)
@@ -6275,6 +6323,22 @@ static void rna_def_userdef_script_directory(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  /* NOTE(@ideasman42): Ideally, changing scripts directory would behave as if
+   * Blender were launched with different script directories (instead of requiring a restart).
+   * Editing could re-initialize Python's `sys.path`, however this isn't enough.
+   *
+   * - For adding new directories this would work for the most-part, duplicate modules between
+   *   directories might cause Python's state on restart to differ however that could
+   *   be considered a corner case as duplicate modules might cause bad/unexpected behavior anyway.
+   * - Support for removing/changing directories is more involved as there might be modules
+   *   loaded into memory which are no longer accessible.
+   *
+   * Properly supporting this would likely require unloading all Blender/Python modules,
+   * then re-initializing Python's state. This is already supported with `SCRIPT_OT_reload`,
+   * even then, there are cases that don't work well (especially if any Python operators are
+   * running at the time this runs). So accept the limitation having to restart
+   * before changes to script directories are taken into account. */
+
   prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_sdna(prop, NULL, "dir_path");
   RNA_def_property_ui_text(
@@ -6282,7 +6346,6 @@ static void rna_def_userdef_script_directory(BlenderRNA *brna)
       "Python Scripts Directory",
       "Alternate script path, matching the default layout with sub-directories: startup, add-ons, "
       "modules, and presets (requires restart)");
-  /* TODO: editing should reset sys.path! */
 }
 
 static void rna_def_userdef_script_directory_collection(BlenderRNA *brna, PropertyRNA *cprop)
@@ -6298,14 +6361,14 @@ static void rna_def_userdef_script_directory_collection(BlenderRNA *brna, Proper
 
   func = RNA_def_function(srna, "new", "rna_userdef_script_directory_new");
   RNA_def_function_flag(func, FUNC_NO_SELF);
-  RNA_def_function_ui_description(func, "Add a new python script directory");
+  RNA_def_function_ui_description(func, "Add a new Python script directory");
   /* return type */
   parm = RNA_def_pointer(func, "script_directory", "ScriptDirectory", "", "");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "remove", "rna_userdef_script_directory_remove");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
-  RNA_def_function_ui_description(func, "Remove a python script directory");
+  RNA_def_function_ui_description(func, "Remove a Python script directory");
   parm = RNA_def_pointer(func, "script_directory", "ScriptDirectory", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
@@ -6614,11 +6677,15 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_override_templates", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_override_templates", 1);
   RNA_def_property_ui_text(
-      prop, "Override Templates", "Enable library override template in the python API");
+      prop, "Override Templates", "Enable library override template in the Python API");
 
   prop = RNA_def_property(srna, "enable_eevee_next", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "enable_eevee_next", 1);
   RNA_def_property_ui_text(prop, "EEVEE Next", "Enable the new EEVEE codebase, requires restart");
+
+  prop = RNA_def_property(srna, "use_grease_pencil_version3", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_grease_pencil_version3", 1);
+  RNA_def_property_ui_text(prop, "Grease Pencil 3.0", "Enable the new grease pencil 3.0 codebase");
 
   prop = RNA_def_property(srna, "enable_workbench_next", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "enable_workbench_next", 1);
@@ -6634,6 +6701,11 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "Enable viewport debugging options for developers in the overlays "
                            "pop-over");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
+
+  prop = RNA_def_property(srna, "enable_overlay_next", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "enable_overlay_next", 1);
+  RNA_def_property_ui_text(
+      prop, "Overlay Next", "Enable the new Overlay codebase, requires restart");
 
   prop = RNA_def_property(srna, "use_all_linked_data_direct", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(

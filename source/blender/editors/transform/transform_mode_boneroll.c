@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -49,10 +50,10 @@ static void applyBoneRoll(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    BLI_snprintf(str, sizeof(str), TIP_("Roll: %s"), &c[0]);
+    SNPRINTF(str, TIP_("Roll: %s"), &c[0]);
   }
   else {
-    BLI_snprintf(str, sizeof(str), TIP_("Roll: %.2f"), RAD2DEGF(final));
+    SNPRINTF(str, TIP_("Roll: %.2f"), RAD2DEGF(final));
   }
 
   /* set roll values */

@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 add_subdirectory(composite)
 add_subdirectory(function)
@@ -75,8 +76,8 @@ set(SRC
   NOD_static_types.h
   NOD_texture.h
   intern/node_common.h
-  intern/node_exec.h
-  intern/node_util.h
+  intern/node_exec.hh
+  intern/node_util.hh
 )
 
 set(LIB

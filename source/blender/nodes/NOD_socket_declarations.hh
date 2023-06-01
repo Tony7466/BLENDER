@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -402,5 +404,7 @@ inline Texture::Texture() : IDSocketDeclaration("NodeSocketTexture") {}
 inline Image::Image() : IDSocketDeclaration("NodeSocketImage") {}
 
 /** \} */
+
+SocketDeclarationPtr create_extend_declaration(const eNodeSocketInOut in_out);
 
 }  // namespace blender::nodes::decl

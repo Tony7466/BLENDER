@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -214,7 +216,8 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
   const rcti *rect_visible = ED_region_visible_rect(region);
 
   if ((navgroup->state.rect_visible.xmax == rect_visible->xmax) &&
-      (navgroup->state.rect_visible.ymax == rect_visible->ymax)) {
+      (navgroup->state.rect_visible.ymax == rect_visible->ymax))
+  {
     return;
   }
 

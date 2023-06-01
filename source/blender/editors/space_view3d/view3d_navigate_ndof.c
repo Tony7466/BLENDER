@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -435,8 +437,7 @@ static int ndof_orbit_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   const wmNDOFMotionData *ndof = event->customdata;
 
-  vod = op->customdata = viewops_data_create(
-      C, event, (viewops_flag_from_prefs() & ~VIEWOPS_FLAG_DEPTH_NAVIGATE));
+  vod = op->customdata = viewops_data_create(C, event, V3D_OP_MODE_NDOF_ORBIT, false);
 
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
 
@@ -522,8 +523,7 @@ static int ndof_orbit_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   const wmNDOFMotionData *ndof = event->customdata;
 
-  vod = op->customdata = viewops_data_create(
-      C, event, (viewops_flag_from_prefs() & ~VIEWOPS_FLAG_DEPTH_NAVIGATE));
+  vod = op->customdata = viewops_data_create(C, event, V3D_OP_MODE_NDOF_ORBIT_ZOOM, false);
 
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
 

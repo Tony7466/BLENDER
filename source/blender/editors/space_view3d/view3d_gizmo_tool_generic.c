@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -138,13 +140,15 @@ static void WIDGETGROUP_tool_generic_refresh(const bContext *C, wmGizmoGroup *gz
       orientation = V3D_ORIENT_GLOBAL; /* dummy, use view. */
     }
 
+    RegionView3D *rv3d = CTX_wm_region_data(C);
     struct TransformBounds tbounds;
     const bool hide = ED_transform_calc_gizmo_stats(C,
                                                     &(struct TransformCalcParams){
                                                         .use_only_center = true,
                                                         .orientation_index = orientation + 1,
                                                     },
-                                                    &tbounds) == 0;
+                                                    &tbounds,
+                                                    rv3d) == 0;
 
     WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, hide);
     if (hide) {

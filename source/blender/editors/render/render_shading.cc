@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edrend
@@ -41,7 +42,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -1169,7 +1170,7 @@ void SCENE_OT_view_layer_add_lightgroup(wmOperatorType *ot)
   ot->prop = RNA_def_string(ot->srna,
                             "name",
                             nullptr,
-                            sizeof(((ViewLayerLightgroup *)nullptr)->name),
+                            sizeof(ViewLayerLightgroup::name),
                             "Name",
                             "Name of newly created lightgroup");
 }
@@ -1248,7 +1249,8 @@ static int view_layer_add_used_lightgroups_exec(bContext *C, wmOperator * /*op*/
   GSet *used_lightgroups = get_used_lightgroups(scene);
   GSET_FOREACH_BEGIN (const char *, used_lightgroup, used_lightgroups) {
     if (!BLI_findstring(
-            &view_layer->lightgroups, used_lightgroup, offsetof(ViewLayerLightgroup, name))) {
+            &view_layer->lightgroups, used_lightgroup, offsetof(ViewLayerLightgroup, name)))
+    {
       BKE_view_layer_add_lightgroup(view_layer, used_lightgroup);
     }
   }
@@ -2765,16 +2767,20 @@ void MATERIAL_OT_copy(wmOperatorType *ot)
 /** \name Material Paste Operator
  * \{ */
 
-static int paste_material_exec(bContext *C, wmOperator * /*op*/)
+static int paste_material_exec(bContext *C, wmOperator *op)
 {
   Material *ma = static_cast<Material *>(
       CTX_data_pointer_get_type(C, "material", &RNA_Material).data);
 
   if (ma == nullptr) {
+    BKE_report(op->reports, RPT_WARNING, "Cannot paste without a material");
     return OPERATOR_CANCELLED;
   }
 
-  BKE_material_copybuf_paste(CTX_data_main(C), ma);
+  if (!BKE_material_copybuf_paste(CTX_data_main(C), ma)) {
+    BKE_report(op->reports, RPT_WARNING, "No material in the internal clipboard to paste");
+    return OPERATOR_CANCELLED;
+  }
 
   DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
   WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_LINKS, ma);

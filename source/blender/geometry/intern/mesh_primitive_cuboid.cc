@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_index_range.hh"
 #include "BLI_math_vector.h"
@@ -417,6 +419,7 @@ Mesh *create_cuboid_mesh(const float3 &size,
 
   const float3 bounds = size * 0.5f;
   mesh->bounds_set_eager({-bounds, bounds});
+  mesh->tag_loose_verts_none();
 
   return mesh;
 }

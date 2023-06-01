@@ -26,6 +26,10 @@ if(HAVE_FEENABLEEXCEPT)
   add_definitions(-DHAVE_FEENABLEEXCEPT)
 endif()
 
+if(WITH_STRSIZE_DEBUG)
+  add_definitions(-DWITH_STRSIZE_DEBUG)
+endif()
+
 if(WITH_TBB)
   # Force TBB libraries to be in front of MKL (part of `OpenImageDenoise`), so
   # that it is initialized before MKL and static library initialization order issues are avoided.
@@ -45,6 +49,7 @@ if(WITH_LIBMV)
 endif()
 
 if(WITH_CYCLES)
+  add_definitions(-DWITH_CYCLES)
   if(WITH_CYCLES_LOGGING)
     list(APPEND INC ../../intern/cycles/blender)
     add_definitions(-DWITH_CYCLES_LOGGING)
@@ -71,6 +76,18 @@ if(WITH_TBB)
   endif()
 endif()
 
+if(WITH_USD)
+  # USD links libMaterialX, when using pre-compiled libraries
+  # ensures `usd_ms` can find `MaterialXRender` and friends.
+  #
+  # NOTE: This is _only_ needed when linking blender before the install target runs.
+  # Once MATERIALX libraries have been copied into `TARGETDIR_LIB` then Blender will link.
+  # Don't rely on this though as failing on a fresh build is no good and the library
+  # files could get outdated too.
+  if(DEFINED LIBDIR)
+    link_directories(${LIBDIR}/materialx/lib)
+  endif()
+endif()
 
 if(WITH_PYTHON)
   list(APPEND INC ../blender/python)
@@ -318,11 +335,15 @@ endif()
 
 
 set(BLENDER_TEXT_FILES
-  ${CMAKE_SOURCE_DIR}/release/text/copyright.txt
   # Generate this file:
   # `${CMAKE_SOURCE_DIR}/release/text/readme.html`
 )
 
+if(WITH_INSTALL_COPYRIGHT)
+  list(APPEND BLENDER_TEXT_FILES
+    ${CMAKE_SOURCE_DIR}/release/text/copyright.txt
+  )
+endif()
 
 # -----------------------------------------------------------------------------
 # Platform specific target destinations
@@ -876,8 +897,12 @@ elseif(WIN32)
     FILES ${FFTW_DLL}
     ALL
   )
-  unset(FFTW_DLL)
-
+  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3f-3.dll)
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
+      ALL
+    )
+  endif()
   if(MSVC_ASAN)
     # The ASAN DLL's can be found in the same folder as the compiler,
     # this is the easiest way to find these.
@@ -1009,6 +1034,24 @@ elseif(WIN32)
       ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
     RELEASE
   )
+  if(EXISTS ${LIBDIR}/materialx/bin/MaterialXRender.dll) # 3.6+
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/materialx/bin/MaterialXRender.dll
+        ${LIBDIR}/materialx/bin/MaterialXRenderGlsl.dll
+        ${LIBDIR}/materialx/bin/MaterialXRenderHw.dll
+        ${LIBDIR}/materialx/bin/MaterialXRenderOsl.dll
+      RELEASE
+    )
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/materialx/bin/MaterialXRender_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXRenderGlsl_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXRenderHw_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXRenderOsl_d.dll
+      DEBUG
+    )
+  endif()
   windows_install_shared_manifest(
     FILES
       ${LIBDIR}/materialx/bin/MaterialXCore_d.dll
@@ -1188,9 +1231,20 @@ elseif(WIN32)
 
   endif()
 
-  # Filenames change slightly between FFMPEG versions check both 5.0 and fallback to 4.4
+  # Filenames change slightly between FFMPEG versions check both 6.0 and fallback to 5.0
   # to ease the transition between versions.
-  if(EXISTS "${LIBDIR}/ffmpeg/lib/avcodec-59.dll")
+  if(EXISTS "${LIBDIR}/ffmpeg/lib/avcodec-60.dll")
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/ffmpeg/lib/avcodec-60.dll
+        ${LIBDIR}/ffmpeg/lib/avformat-60.dll
+        ${LIBDIR}/ffmpeg/lib/avdevice-60.dll
+        ${LIBDIR}/ffmpeg/lib/avutil-58.dll
+        ${LIBDIR}/ffmpeg/lib/swscale-7.dll
+        ${LIBDIR}/ffmpeg/lib/swresample-4.dll
+      ALL
+    )
+  else()
     windows_install_shared_manifest(
       FILES
         ${LIBDIR}/ffmpeg/lib/avcodec-59.dll
@@ -1199,17 +1253,6 @@ elseif(WIN32)
         ${LIBDIR}/ffmpeg/lib/avutil-57.dll
         ${LIBDIR}/ffmpeg/lib/swscale-6.dll
         ${LIBDIR}/ffmpeg/lib/swresample-4.dll
-      ALL
-    )
-  else()
-    windows_install_shared_manifest(
-      FILES
-        ${LIBDIR}/ffmpeg/lib/avcodec-58.dll
-        ${LIBDIR}/ffmpeg/lib/avformat-58.dll
-        ${LIBDIR}/ffmpeg/lib/avdevice-58.dll
-        ${LIBDIR}/ffmpeg/lib/avutil-56.dll
-        ${LIBDIR}/ffmpeg/lib/swscale-5.dll
-        ${LIBDIR}/ffmpeg/lib/swresample-3.dll
       ALL
     )
   endif()
@@ -1683,14 +1726,34 @@ endif()
 if(UNIX AND NOT APPLE)
   if(NOT WITH_PYTHON_MODULE)
     if(WITH_DOC_MANPAGE)
+      # Only run the command to generate the man-page when it may be outdated.
+      # The `IS_NEWER_THAN` checks always run when files are missing.
       install(
         CODE "\
-execute_process(\
-  COMMAND \
-  \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\" \
-  --blender \"${EXECUTABLE_OUTPUT_PATH}/blender\" \
-  --output \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\"\
-)"
+set(BLENDER_BIN \"${EXECUTABLE_OUTPUT_PATH}/blender\")\n\
+set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
+set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
+if(\n\
+  ($\{BLENDER_BIN\} IS_NEWER_THAN $\{MANPAGE_OUT\}) OR\n\
+  ($\{MANPAGE_GEN\} IS_NEWER_THAN $\{MANPAGE_OUT\})\n\
+)\n\
+  set(ENV{ASAN_OPTIONS} \"$ENV{ASAN_OPTIONS}:\
+exitcode=0:\
+check_initialization_order=0:\
+strict_init_order=0:\
+detect_leaks=0\"\n\
+  )\n\
+  execute_process(\n\
+    OUTPUT_QUIET\n\
+    COMMAND $\{BLENDER_BIN\}\n\
+    --background\n\
+    --factory-startup\n\
+    --python $\{MANPAGE_GEN\}\n\
+    --\n\
+    --output $\{MANPAGE_OUT\}\n\
+  )\n\
+endif()\n\
+"
         DEPENDS blender
       )
 

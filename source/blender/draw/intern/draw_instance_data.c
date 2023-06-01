@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -649,7 +650,8 @@ GPUUniformBuf *drw_ensure_layer_attribute_buffer(void)
     float value[4];
 
     if (BKE_view_layer_find_rgba_attribute(
-            DST.draw_ctx.scene, DST.draw_ctx.view_layer, attr->name, value)) {
+            DST.draw_ctx.scene, DST.draw_ctx.view_layer, attr->name, value))
+    {
       LayerAttribute *item = &buffer[count++];
 
       memcpy(item->data, value, sizeof(item->data));

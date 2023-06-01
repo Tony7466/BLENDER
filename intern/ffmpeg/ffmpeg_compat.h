@@ -123,6 +123,17 @@ int64_t av_get_pts_from_frame(AVFrame *picture)
   return timestamp_from_pts_or_dts(picture->pts, picture->pkt_dts);
 }
 
+/*  Duration of the frame, in the same units as pts. 0 if unknown. */
+FFMPEG_INLINE
+int64_t av_get_frame_duration_in_pts_units(const AVFrame *picture)
+{
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 30, 100)
+  return picture->pkt_duration;
+#else
+  return picture->duration;
+#endif
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Deinterlace code block
  *
@@ -282,7 +293,8 @@ int av_image_deinterlace(
   if (pix_fmt != AV_PIX_FMT_YUV420P && pix_fmt != AV_PIX_FMT_YUVJ420P &&
       pix_fmt != AV_PIX_FMT_YUV422P && pix_fmt != AV_PIX_FMT_YUVJ422P &&
       pix_fmt != AV_PIX_FMT_YUV444P && pix_fmt != AV_PIX_FMT_YUV411P &&
-      pix_fmt != AV_PIX_FMT_GRAY8) {
+      pix_fmt != AV_PIX_FMT_GRAY8)
+  {
     return -1;
   }
   if ((width & 3) != 0 || (height & 3) != 0) {

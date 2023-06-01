@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -89,6 +90,9 @@ bool BKE_vfont_to_curve_ex(struct Object *ob,
                            bool *r_text_free,
                            struct CharTrans **r_chartransdata);
 bool BKE_vfont_to_curve_nubase(struct Object *ob, int mode, struct ListBase *r_nubase);
+
+int BKE_vfont_cursor_to_text_index(struct Object *ob, float cursor_location[2]);
+
 /**
  * \warning Expects to have access to evaluated data (i.e. passed object should be evaluated one).
  */

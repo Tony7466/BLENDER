@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "gpu_testing.hh"
 
@@ -60,6 +62,37 @@ static void test_texture_read()
   GPU_render_end();
 }
 GPU_TEST(texture_read)
+
+static void test_texture_copy()
+{
+  const int SIZE = 128;
+  GPU_render_begin();
+
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_HOST_READ;
+  GPUTexture *src_tx = GPU_texture_create_2d("src", SIZE, SIZE, 1, GPU_RGBA32F, usage, nullptr);
+  GPUTexture *dst_tx = GPU_texture_create_2d("dst", SIZE, SIZE, 1, GPU_RGBA32F, usage, nullptr);
+
+  const float4 color(0.0, 1.0f, 2.0f, 123.0f);
+  const float4 clear_color(0.0f);
+  GPU_texture_clear(src_tx, GPU_DATA_FLOAT, color);
+  GPU_texture_clear(dst_tx, GPU_DATA_FLOAT, clear_color);
+
+  GPU_texture_copy(dst_tx, src_tx);
+
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
+
+  float4 *data = (float4 *)GPU_texture_read(dst_tx, GPU_DATA_FLOAT, 0);
+  for (int index : IndexRange(SIZE * SIZE)) {
+    EXPECT_EQ(color, data[index]);
+  }
+  MEM_freeN(data);
+
+  GPU_texture_free(src_tx);
+  GPU_texture_free(dst_tx);
+
+  GPU_render_end();
+}
+GPU_TEST(texture_copy)
 
 template<typename DataType> static DataType *generate_test_data(size_t data_len)
 {
@@ -262,13 +295,11 @@ static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F()
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F);
 #endif
 
-#if RUN_SRGB_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8()
 {
-  texture_create_upload_read_with_bias<GPU_SRGB8_A8, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_SRGB8_A8, GPU_DATA_FLOAT>(0.003f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8);
-#endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_SNORM()
 {
@@ -405,13 +436,13 @@ static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT32F()
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT32F);
 #endif
 
-#if RUN_COMPONENT_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT24()
 {
-  texture_create_upload_read_with_bias<GPU_DEPTH_COMPONENT24, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_DEPTH_COMPONENT24, GPU_DATA_FLOAT>(0.0000001f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT24);
 
+#if RUN_COMPONENT_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT16()
 {
   texture_create_upload_read_with_bias<GPU_DEPTH_COMPONENT16, GPU_DATA_FLOAT>(0.0f);

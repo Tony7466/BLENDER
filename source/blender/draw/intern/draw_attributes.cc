@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "draw_attributes.hh"
 
@@ -10,7 +11,8 @@ static bool drw_attributes_has_request(const DRW_Attributes *requests,
   for (int i = 0; i < requests->num_requests; i++) {
     const DRW_AttributeRequest &src_req = requests->requests[i];
     if (src_req.domain == req.domain && src_req.layer_index == req.layer_index &&
-        src_req.cd_type == req.cd_type) {
+        src_req.cd_type == req.cd_type)
+    {
       return true;
     }
   }
@@ -63,13 +65,14 @@ void drw_attributes_add_request(DRW_Attributes *attrs,
                                 const eAttrDomain domain)
 {
   if (attrs->num_requests >= GPU_MAX_ATTR ||
-      drw_attributes_has_request(attrs, {type, layer_index, domain})) {
+      drw_attributes_has_request(attrs, {type, layer_index, domain}))
+  {
     return;
   }
 
   DRW_AttributeRequest *req = &attrs->requests[attrs->num_requests];
   req->cd_type = type;
-  BLI_strncpy(req->attribute_name, name, sizeof(req->attribute_name));
+  STRNCPY(req->attribute_name, name);
   req->layer_index = layer_index;
   req->domain = domain;
   attrs->num_requests += 1;

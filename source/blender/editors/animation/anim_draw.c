@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edanimation
@@ -234,7 +235,8 @@ AnimData *ANIM_nla_mapping_get(bAnimContext *ac, bAnimListElem *ale)
            ANIMCONT_FCURVES,
            ANIMCONT_NLA,
            ANIMCONT_CHANNEL,
-           ANIMCONT_TIMELINE)) {
+           ANIMCONT_TIMELINE))
+  {
     /* handling depends on the type of animation-context we've got */
     if (ale) {
       /* NLA Control Curves occur on NLA strips,

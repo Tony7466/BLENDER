@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -36,8 +37,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 static void initData(ModifierData *md)
 {
@@ -128,7 +129,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       const blender::int2 &edge = edges_src[i];
 
       if (BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge[0])) &&
-          BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge[1]))) {
+          BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge[1])))
+      {
         BLI_ghash_insert(edgeHash, (void *)hash_num, (void *)hash_num_alt);
         BLI_ghash_insert(edgeHash2, (void *)hash_num_alt, (void *)hash_num);
         hash_num++;

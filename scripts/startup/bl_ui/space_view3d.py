@@ -569,7 +569,7 @@ class _draw_tool_settings_context_mode:
             row.prop(brush.curves_sculpt_settings, "density_add_attempts", text="Count Max")
             layout.popover("VIEW3D_PT_tools_brush_falloff")
             layout.popover("VIEW3D_PT_curves_sculpt_add_shape", text="Curve Shape")
-        elif curves_tool == "SLIDE":
+        elif curves_tool == 'SLIDE':
             layout.popover("VIEW3D_PT_tools_brush_falloff")
 
         return True
@@ -1038,10 +1038,22 @@ class VIEW3D_MT_transform_base:
     # TODO: get rid of the custom text strings?
     def draw(self, context):
         layout = self.layout
+        allow_navigation = getattr(
+            context.window_manager.keyconfigs.active.preferences,
+            "use_transform_navigation",
+            False)
 
-        layout.operator("transform.translate")
-        layout.operator("transform.rotate")
-        layout.operator("transform.resize", text="Scale")
+        props = layout.operator("transform.translate")
+        props.release_confirm = False
+        props.allow_navigation = allow_navigation
+
+        props = layout.operator("transform.rotate")
+        props.release_confirm = False
+        props.allow_navigation = allow_navigation
+
+        props = layout.operator("transform.resize", text="Scale")
+        props.release_confirm = False
+        props.allow_navigation = allow_navigation
 
         layout.separator()
 
@@ -1969,7 +1981,7 @@ class VIEW3D_MT_paint_gpencil(Menu):
         layout.operator("gpencil.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
-class VIEW3D_MT_select_gpencil(Menu):
+class VIEW3D_MT_select_edit_gpencil(Menu):
     bl_label = "Select"
 
     def draw(self, context):
@@ -3261,8 +3273,7 @@ class VIEW3D_MT_sculpt(Menu):
         props.action = 'SHOW'
         props.area = 'ALL'
 
-        props = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible")
-        props.mode = 'INVERT'
+        layout.operator("sculpt.face_set_invert_visibility", text="Invert Visible")
 
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
@@ -3414,7 +3425,7 @@ class VIEW3D_MT_mask(Menu):
         layout.separator()
 
         props = layout.operator("sculpt.mask_from_cavity", text="Mask From Cavity")
-        props.settings_source = "OPERATOR"
+        props.settings_source = 'OPERATOR'
 
         layout.separator()
 
@@ -3470,8 +3481,7 @@ class VIEW3D_MT_face_sets(Menu):
 
         layout.separator()
 
-        props = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible Face Sets")
-        props.mode = 'INVERT'
+        layout.operator("sculpt.face_set_invert_visibility", text="Invert Visible Face Sets")
 
         props = layout.operator("sculpt.reveal_all", text="Show All Face Sets")
 
@@ -4511,8 +4521,8 @@ class VIEW3D_MT_edit_mesh_normals(Menu):
 
         layout.separator()
 
-        layout.operator("mesh.normals_tools", text="Copy Vectors").mode = 'COPY'
-        layout.operator("mesh.normals_tools", text="Paste Vectors").mode = 'PASTE'
+        layout.operator("mesh.normals_tools", text="Copy Vector").mode = 'COPY'
+        layout.operator("mesh.normals_tools", text="Paste Vector").mode = 'PASTE'
 
         layout.operator("mesh.smooth_normals", text="Smooth Vectors")
         layout.operator("mesh.normals_tools", text="Reset Vectors").mode = 'RESET'
@@ -5404,6 +5414,13 @@ class VIEW3D_MT_edit_gpencil_showhide(Menu):
         layout.operator("gpencil.hide", text="Hide Inactive Layers").unselected = True
 
 
+class VIEW3D_MT_edit_greasepencil(Menu):
+    bl_label = "Grease Pencil"
+
+    def draw(self, _context):
+        pass
+
+
 class VIEW3D_MT_edit_curves(Menu):
     bl_label = "Curves"
 
@@ -5652,8 +5669,7 @@ class VIEW3D_MT_sculpt_face_sets_edit_pie(Menu):
         props = pie.operator("sculpt.face_sets_create", text="Face Set from Visible")
         props.mode = 'VISIBLE'
 
-        props = pie.operator("sculpt.face_set_change_visibility", text="Invert Visible")
-        props.mode = 'INVERT'
+        pie.operator("sculpt.face_set_invert_visibility", text="Invert Visible")
 
         props = pie.operator("sculpt.reveal_all", text="Show All")
 
@@ -7105,6 +7121,7 @@ class VIEW3D_PT_proportional_edit(Panel):
             col.separator()
 
         col.prop(tool_settings, "proportional_edit_falloff", expand=True)
+        col.prop(tool_settings, "proportional_distance")
 
 
 class VIEW3D_PT_transform_orientations(Panel):
@@ -7901,7 +7918,7 @@ class VIEW3D_PT_sculpt_automasking(Panel):
 
         if is_cavity_active:
             props = row.operator("sculpt.mask_from_cavity", text="Create Mask")
-            props.settings_source = "SCENE"
+            props.settings_source = 'SCENE'
 
         col.prop(sculpt, "use_automasking_cavity_inverted", text="Cavity (inverted)")
 
@@ -8153,7 +8170,7 @@ classes = (
     VIEW3D_MT_edit_lattice_context_menu,
     VIEW3D_MT_select_edit_lattice,
     VIEW3D_MT_select_edit_armature,
-    VIEW3D_MT_select_gpencil,
+    VIEW3D_MT_select_edit_gpencil,
     VIEW3D_MT_select_paint_mask,
     VIEW3D_MT_select_paint_mask_vertex,
     VIEW3D_MT_edit_curves_select_more_less,
@@ -8257,6 +8274,7 @@ classes = (
     VIEW3D_MT_gpencil_simplify,
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_context_menu,
+    VIEW3D_MT_edit_greasepencil,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
     VIEW3D_MT_edit_curve_segments,

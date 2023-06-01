@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -792,7 +793,8 @@ static void gpencil_stroke_to_path(bContext *C,
   /* add points */
   for (i = (stitch) ? 1 : 0, pt = &gps->points[(stitch) ? 1 : 0], bp = &nu->bp[old_nbp];
        i < gps->totpoints;
-       i++, pt++, bp++) {
+       i++, pt++, bp++)
+  {
     float p[3];
     float width = pt->pressure * (gps->thickness + gpl->line_change) * WIDTH_CORR_FAC;
 
@@ -1415,7 +1417,8 @@ static bool gpencil_convert_check_has_valid_timing(bContext *C, bGPDlayer *gpl, 
   bool valid = true;
 
   if (!gpl || !(gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_USE_PREV)) ||
-      !(gps = gpf->strokes.first)) {
+      !(gps = gpf->strokes.first))
+  {
     return false;
   }
 
@@ -1579,7 +1582,8 @@ static bool gpencil_convert_poll_property(const bContext *UNUSED(C),
                "radius_multiplier",
                "use_link_strokes",
                "bevel_depth",
-               "bevel_resolution")) {
+               "bevel_resolution"))
+  {
     return true;
   }
 

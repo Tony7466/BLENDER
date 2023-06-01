@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pymathutils
@@ -102,7 +104,8 @@ int mathutils_array_parse(
 
   if ((num = VectorObject_Check(value) ? ((VectorObject *)value)->vec_num : 0) ||
       (num = EulerObject_Check(value) ? 3 : 0) || (num = QuaternionObject_Check(value) ? 4 : 0) ||
-      (num = ColorObject_Check(value) ? 3 : 0)) {
+      (num = ColorObject_Check(value) ? 3 : 0))
+  {
     if (BaseMath_ReadCallback((BaseMathObject *)value) == -1) {
       return -1;
     }
@@ -196,7 +199,8 @@ int mathutils_array_parse_alloc(float **array,
 
   if ((num = VectorObject_Check(value) ? ((VectorObject *)value)->vec_num : 0) ||
       (num = EulerObject_Check(value) ? 3 : 0) || (num = QuaternionObject_Check(value) ? 4 : 0) ||
-      (num = ColorObject_Check(value) ? 3 : 0)) {
+      (num = ColorObject_Check(value) ? 3 : 0))
+  {
     if (BaseMath_ReadCallback((BaseMathObject *)value) == -1) {
       return -1;
     }

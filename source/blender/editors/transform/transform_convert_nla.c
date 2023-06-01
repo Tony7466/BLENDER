@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -77,8 +78,9 @@ static bool nlastrip_is_overlap(const NlaStrip *strip_a,
                     strip_b->end + offset_b);
 }
 
-/** Assumes strips to horizontally translate (shuffle) are tagged with
- * NLASTRIP_FLAG_INVALID_LOCATION.
+/**
+ * Assumes strips to horizontally translate (shuffle) are tagged with
+ * #NLASTRIP_FLAG_INVALID_LOCATION.
  *
  * \returns The total sided offset that results in no overlaps between tagged strips and non-tagged
  * strips.
@@ -122,8 +124,9 @@ static float transdata_get_time_shuffle_offset_side(ListBase *trans_datas, const
   return total_offset;
 }
 
-/** Assumes strips to horizontally translate (shuffle) are tagged with
- * NLASTRIP_FLAG_INVALID_LOCATION.
+/**
+ * Assumes strips to horizontally translate (shuffle) are tagged with
+ * #NLASTRIP_FLAG_INVALID_LOCATION.
  *
  * \returns The minimal total signed offset that results in no overlaps between tagged strips and
  * non-tagged strips.
@@ -184,12 +187,14 @@ static void nlastrip_flag_overlaps(NlaStrip *strip)
 
   NlaStrip *adj_strip = strip->prev;
   if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
-      nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
+      nlastrip_is_overlap(strip, 0, adj_strip, 0))
+  {
     strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
   }
   adj_strip = strip->next;
   if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
-      nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
+      nlastrip_is_overlap(strip, 0, adj_strip, 0))
+  {
     strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
   }
 }
@@ -590,7 +595,8 @@ static void recalcData_nla(TransInfo *t)
         for (track = tdn->nlt->next, n = 0; (track) && (n < delta); track = track->next, n++) {
           /* check if space in this track for the strip */
           if (BKE_nlatrack_has_space(track, strip->start, strip->end) &&
-              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track)) {
+              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track))
+          {
             /* move strip to this track */
             BKE_nlatrack_remove_strip(tdn->nlt, strip);
             BKE_nlatrack_add_strip(track, strip, is_liboverride);
@@ -610,7 +616,8 @@ static void recalcData_nla(TransInfo *t)
         for (track = tdn->nlt->prev, n = 0; (track) && (n < delta); track = track->prev, n++) {
           /* check if space in this track for the strip */
           if (BKE_nlatrack_has_space(track, strip->start, strip->end) &&
-              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track)) {
+              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track))
+          {
             /* move strip to this track */
             BKE_nlatrack_remove_strip(tdn->nlt, strip);
             BKE_nlatrack_add_strip(track, strip, is_liboverride);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <utility>
 
@@ -18,6 +20,8 @@
 #include "BLI_color.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+
+#include "BLT_translation.h"
 
 #include "FN_field.hh"
 
@@ -49,8 +53,8 @@ std::ostream &operator<<(std::ostream &stream, const AttributeIDRef &attribute_i
   return stream;
 }
 
-const char *no_procedural_access_message =
-    "This attribute can not be accessed in a procedural context";
+const char *no_procedural_access_message = N_(
+    "This attribute can not be accessed in a procedural context");
 
 bool allow_procedural_attribute_access(StringRef attribute_name)
 {
@@ -444,7 +448,7 @@ bool BuiltinCustomDataLayerProvider::try_create(void *owner,
 
   const int element_num = custom_data_access_.get_element_num(owner);
   if (stored_as_named_attribute_) {
-    if (CustomData_get_layer_named(custom_data, data_type_, name_.c_str())) {
+    if (CustomData_has_layer_named(custom_data, data_type_, name_.c_str())) {
       /* Exists already. */
       return false;
     }
@@ -467,7 +471,7 @@ bool BuiltinCustomDataLayerProvider::exists(const void *owner) const
     return false;
   }
   if (stored_as_named_attribute_) {
-    return CustomData_get_layer_named(custom_data, stored_type_, name_.c_str()) != nullptr;
+    return CustomData_has_layer_named(custom_data, stored_type_, name_.c_str());
   }
   return CustomData_get_layer(custom_data, stored_type_) != nullptr;
 }
@@ -530,7 +534,8 @@ bool CustomDataAttributeProvider::try_delete(void *owner, const AttributeIDRef &
   for (const int i : IndexRange(custom_data->totlayer)) {
     const CustomDataLayer &layer = custom_data->layers[i];
     if (this->type_is_supported((eCustomDataType)layer.type) &&
-        custom_data_layer_matches_attribute_id(layer, attribute_id)) {
+        custom_data_layer_matches_attribute_id(layer, attribute_id))
+    {
       CustomData_free_layer(custom_data, eCustomDataType(layer.type), element_num, i);
       return true;
     }
@@ -911,6 +916,43 @@ GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_only_span
   return {};
 }
 
+bool MutableAttributeAccessor::rename(const AttributeIDRef &old_attribute_id,
+                                      const AttributeIDRef &new_attribute_id)
+{
+  if (old_attribute_id == new_attribute_id) {
+    return true;
+  }
+  if (this->contains(new_attribute_id)) {
+    return false;
+  }
+  const GAttributeReader old_attribute = this->lookup(old_attribute_id);
+  if (!old_attribute) {
+    return false;
+  }
+  const eCustomDataType type = cpp_type_to_custom_data_type(old_attribute.varray.type());
+  if (old_attribute.sharing_info != nullptr && old_attribute.varray.is_span()) {
+    if (!this->add(new_attribute_id,
+                   old_attribute.domain,
+                   type,
+                   AttributeInitShared{old_attribute.varray.get_internal_span().data(),
+                                       *old_attribute.sharing_info}))
+    {
+      return false;
+    }
+  }
+  else {
+    if (!this->add(new_attribute_id,
+                   old_attribute.domain,
+                   type,
+                   AttributeInitVArray{old_attribute.varray}))
+    {
+      return false;
+    }
+  }
+  this->remove(old_attribute_id);
+  return true;
+}
+
 fn::GField AttributeValidator::validate_field_if_necessary(const fn::GField &field) const
 {
   if (function) {
@@ -940,11 +982,9 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
           return true;
         }
 
-        GVArray src = *src_attributes.lookup(id, meta_data.domain);
-        BLI_assert(src);
+        const GVArray src = *src_attributes.lookup(id, meta_data.domain);
         bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
             id, meta_data.domain, meta_data.data_type);
-        BLI_assert(dst);
         attributes.append({std::move(src), meta_data, std::move(dst)});
 
         return true;
@@ -953,5 +993,54 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
 }
 
 /** \} */
+
+void gather_attributes(const AttributeAccessor src_attributes,
+                       const eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const IndexMask &selection,
+                       MutableAttributeAccessor dst_attributes)
+{
+  const int src_size = src_attributes.domain_size(domain);
+  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+    if (meta_data.domain != domain) {
+      return true;
+    }
+    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+      return true;
+    }
+    if (skip.contains(id.name())) {
+      return true;
+    }
+    const bke::GAttributeReader src = src_attributes.lookup(id, domain);
+    if (selection.size() == src_size && src.sharing_info && src.varray.is_span()) {
+      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                          *src.sharing_info);
+      if (dst_attributes.add(id, domain, meta_data.data_type, init)) {
+        return true;
+      }
+    }
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, domain, meta_data.data_type);
+    array_utils::gather(src.varray, selection, dst.span);
+    dst.finish();
+    return true;
+  });
+}
+
+void copy_attributes(const AttributeAccessor src_attributes,
+                     const eAttrDomain domain,
+                     const AnonymousAttributePropagationInfo &propagation_info,
+                     const Set<std::string> &skip,
+                     MutableAttributeAccessor dst_attributes)
+{
+  BLI_assert(src_attributes.domain_size(domain) == dst_attributes.domain_size(domain));
+  return gather_attributes(src_attributes,
+                           domain,
+                           propagation_info,
+                           skip,
+                           IndexMask(src_attributes.domain_size(domain)),
+                           dst_attributes);
+}
 
 }  // namespace blender::bke

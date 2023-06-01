@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -200,7 +201,7 @@ void GPU_vertformat_multiload_enable(GPUVertFormat *format, int load_count)
     const char *attr_name = GPU_vertformat_attr_name_get(format, attr, 0);
     for (int j = 1; j < load_count; j++) {
       char load_name[68 /* MAX_CUSTOMDATA_LAYER_NAME */];
-      BLI_snprintf(load_name, sizeof(load_name), "%s%d", attr_name, j);
+      SNPRINTF(load_name, "%s%d", attr_name, j);
       GPUVertAttr *dst_attr = &format->attrs[format->attr_len++];
       *dst_attr = *attr;
 

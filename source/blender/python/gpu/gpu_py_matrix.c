@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -291,7 +293,8 @@ static PyObject *pygpu_matrix_scale(PyObject *UNUSED(self), PyObject *value)
   float scale[3];
   int len;
   if ((len = mathutils_array_parse(
-           scale, 2, 3, value, "gpu.matrix.scale(): invalid vector arg")) == -1) {
+           scale, 2, 3, value, "gpu.matrix.scale(): invalid vector arg")) == -1)
+  {
     return NULL;
   }
   if (len == 2) {
@@ -331,7 +334,8 @@ static PyObject *pygpu_matrix_translate(PyObject *UNUSED(self), PyObject *value)
   float offset[3];
   int len;
   if ((len = mathutils_array_parse(
-           offset, 2, 3, value, "gpu.matrix.translate(): invalid vector arg")) == -1) {
+           offset, 2, 3, value, "gpu.matrix.translate(): invalid vector arg")) == -1)
+  {
     return NULL;
   }
   if (len == 2) {

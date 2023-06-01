@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -55,11 +56,12 @@ static void extract_edituv_tris_iter_looptri_bm(const MeshRenderData * /*mr*/,
 
 static void extract_edituv_tris_iter_looptri_mesh(const MeshRenderData *mr,
                                                   const MLoopTri *mlt,
-                                                  const int /*elt_index*/,
+                                                  const int elt_index,
                                                   void *_data)
 {
   MeshExtract_EditUvElem_Data *data = static_cast<MeshExtract_EditUvElem_Data *>(_data);
-  const BMFace *efa = bm_original_face_get(mr, mlt->poly);
+  const int poly_i = mr->looptri_polys[elt_index];
+  const BMFace *efa = bm_original_face_get(mr, poly_i);
   const bool mp_hidden = (efa) ? BM_elem_flag_test_bool(efa, BM_ELEM_HIDDEN) : true;
   const bool mp_select = (efa) ? BM_elem_flag_test_bool(efa, BM_ELEM_SELECT) : false;
 

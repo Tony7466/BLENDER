@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -44,7 +45,7 @@ static void fontstyle_set_ex(const uiFontStyle *fs, const float dpi_fac);
  * This is a complete set of layout rules, the 'state' of the Layout
  * Engine. Multiple styles are possible, defined via C or Python. Styles
  * get a name, and will typically get activated per region type, like
- * "Header", or "Listview" or "Toolbar". Properties of Style definitions
+ * `Header`, or `Listview` or `Toolbar`. Properties of Style definitions
  * are:
  *
  * - default column properties, internal spacing, aligning, min/max width
@@ -62,7 +63,7 @@ static uiStyle *ui_style_new(ListBase *styles, const char *name, short uifont_id
   uiStyle *style = MEM_cnew<uiStyle>(__func__);
 
   BLI_addtail(styles, style);
-  BLI_strncpy(style->name, name, MAX_STYLE_NAME);
+  STRNCPY(style->name, name);
 
   style->panelzoom = 1.0; /* unused */
 
@@ -385,11 +386,11 @@ void uiStyleInit()
   }
 
   if (U.font_path_ui[0]) {
-    BLI_strncpy(font_first->filepath, U.font_path_ui, sizeof(font_first->filepath));
+    STRNCPY(font_first->filepath, U.font_path_ui);
     font_first->uifont_id = UIFONT_CUSTOM1;
   }
   else {
-    BLI_strncpy(font_first->filepath, "default", sizeof(font_first->filepath));
+    STRNCPY(font_first->filepath, "default");
     font_first->uifont_id = UIFONT_DEFAULT;
   }
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -44,8 +46,8 @@
 
 #include "GEO_mesh_primitive_cuboid.hh"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #if defined(WITH_USD) || defined(WITH_ALEMBIC)
 #  include "BKE_global.h"
@@ -216,7 +218,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
      * flags) and duplicate those too.
      * XXX(Hans): This probably isn't true anymore with various CoW improvements, etc. */
     if ((me_positions.data() == mesh_positions.data()) || (me_edges.data() == mesh_edges.data()) ||
-        (me_polys.data() == mesh_polys.data())) {
+        (me_polys.data() == mesh_polys.data()))
+    {
       /* We need to duplicate data here, otherwise we'll modify org mesh, see #51701. */
       mesh = reinterpret_cast<Mesh *>(
           BKE_id_copy_ex(nullptr,

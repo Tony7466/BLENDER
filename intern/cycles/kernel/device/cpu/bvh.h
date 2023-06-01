@@ -178,14 +178,19 @@ ccl_device_inline void kernel_embree_setup_rayhit(const Ray &ray,
   rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
 }
 
+ccl_device_inline int kernel_embree_get_hit_object(const RTCHit *hit)
+{
+  return (hit->instID[0] != RTC_INVALID_GEOMETRY_ID ? hit->instID[0] : hit->geomID) / 2;
+}
+
 ccl_device_inline bool kernel_embree_is_self_intersection(const KernelGlobals kg,
                                                           const RTCHit *hit,
                                                           const Ray *ray,
                                                           const intptr_t prim_offset)
 {
-  int object, prim;
-  object = (hit->instID[0] != RTC_INVALID_GEOMETRY_ID ? hit->instID[0] : hit->geomID) / 2;
+  const int object = kernel_embree_get_hit_object(hit);
 
+  int prim;
   if ((ray->self.object == object) || (ray->self.light_object == object)) {
     prim = hit->primID + prim_offset;
   }
@@ -209,7 +214,7 @@ ccl_device_inline void kernel_embree_convert_hit(KernelGlobals kg,
 {
   isect->t = ray->tfar;
   isect->prim = hit->primID + prim_offset;
-  isect->object = hit->instID[0] != RTC_INVALID_GEOMETRY_ID ? hit->instID[0] / 2 : hit->geomID / 2;
+  isect->object = kernel_embree_get_hit_object(hit);
 
   const bool is_hair = hit->geomID & 1;
   if (is_hair) {
@@ -284,9 +289,18 @@ ccl_device_forceinline void kernel_embree_filter_intersection_func_impl(
   const Ray *cray = ctx->ray;
 
   if (kernel_embree_is_self_intersection(
-          kg, hit, cray, reinterpret_cast<intptr_t>(args->geometryUserPtr))) {
+          kg, hit, cray, reinterpret_cast<intptr_t>(args->geometryUserPtr)))
+  {
     *args->valid = 0;
+    return;
   }
+
+#ifdef __SHADOW_LINKING__
+  if (intersection_skip_shadow_link(kg, cray, kernel_embree_get_hit_object(hit))) {
+    *args->valid = 0;
+    return;
+  }
+#endif
 }
 
 /* This gets called by Embree at every valid ray/object intersection.
@@ -321,6 +335,13 @@ ccl_device_forceinline void kernel_embree_filter_occluded_shadow_all_func_impl(
     *args->valid = 0;
     return;
   }
+
+#ifdef __SHADOW_LINKING__
+  if (intersection_skip_shadow_link(kg, cray, current_isect.object)) {
+    *args->valid = 0;
+    return;
+  }
+#endif
 
   /* If no transparent shadows or max number of hits exceeded, all light is blocked. */
   const int flags = intersection_get_shader_flags(kg, current_isect.prim, current_isect.type);
@@ -577,7 +598,8 @@ ccl_device void kernel_embree_filter_func_backface_cull(const RTCFilterFunctionN
 
   /* Always ignore back-facing intersections. */
   if (dot(make_float3(ray->dir_x, ray->dir_y, ray->dir_z),
-          make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z)) > 0.0f) {
+          make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z)) > 0.0f)
+  {
     *args->valid = 0;
     return;
   }
@@ -587,7 +609,8 @@ ccl_device void kernel_embree_filter_func_backface_cull(const RTCFilterFunctionN
   const Ray *cray = ctx->ray;
 
   if (kernel_embree_is_self_intersection(
-          kg, hit, cray, reinterpret_cast<intptr_t>(args->geometryUserPtr))) {
+          kg, hit, cray, reinterpret_cast<intptr_t>(args->geometryUserPtr)))
+  {
     *args->valid = 0;
   }
 }
@@ -600,7 +623,8 @@ ccl_device void kernel_embree_filter_occluded_func_backface_cull(
 
   /* Always ignore back-facing intersections. */
   if (dot(make_float3(ray->dir_x, ray->dir_y, ray->dir_z),
-          make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z)) > 0.0f) {
+          make_float3(hit->Ng_x, hit->Ng_y, hit->Ng_z)) > 0.0f)
+  {
     *args->valid = 0;
     return;
   }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editor/io
@@ -96,6 +97,21 @@ typedef struct eUSDOperatorOptions {
   bool as_background_job;
 } eUSDOperatorOptions;
 
+/* Ensure that the prim_path is not set to
+ * the absolute root path '/'. */
+static void process_prim_path(char *prim_path)
+{
+  if (prim_path == NULL || prim_path[0] == '\0') {
+    return;
+  }
+
+  /* The absolute root "/" path indicates a no-op,
+   * so clear the string. */
+  if (prim_path[0] == '/' && strlen(prim_path) == 1) {
+    prim_path[0] = '\0';
+  }
+}
+
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   eUSDOperatorOptions *options = MEM_callocN(sizeof(eUSDOperatorOptions), "eUSDOperatorOptions");
@@ -112,12 +128,12 @@ static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
 static int wm_usd_export_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
-  char filename[FILE_MAX];
-  RNA_string_get(op->ptr, "filepath", filename);
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
 
   eUSDOperatorOptions *options = (eUSDOperatorOptions *)op->customdata;
   const bool as_background_job = (options != NULL && options->as_background_job);
@@ -138,6 +154,10 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool overwrite_textures = RNA_boolean_get(op->ptr, "overwrite_textures");
   const bool relative_paths = RNA_boolean_get(op->ptr, "relative_paths");
 
+  char root_prim_path[FILE_MAX];
+  RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
+  process_prim_path(root_prim_path);
+
   struct USDExportParams params = {
       export_animation,
       export_hair,
@@ -154,7 +174,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       relative_paths,
   };
 
-  bool ok = USD_export(C, filename, &params, as_background_job);
+  STRNCPY(params.root_prim_path, root_prim_path);
+
+  bool ok = USD_export(C, filepath, &params, as_background_job);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -179,6 +201,7 @@ static void wm_usd_export_draw(bContext *UNUSED(C), wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "export_normals", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "export_materials", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "root_prim_path", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", 0, NULL, ICON_NONE);
@@ -337,6 +360,14 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                   "Relative Paths",
                   "Use relative paths to reference external files (i.e. textures, volumes) in "
                   "USD, otherwise use absolute paths");
+
+  RNA_def_string(ot->srna,
+                 "root_prim_path",
+                 NULL,
+                 FILE_MAX,
+                 "Root Prim",
+                 "If set, add a transform primitive with the given path to the stage "
+                 "as the parent of all exported data");
 }
 
 /* ====== USD Import ====== */
@@ -353,12 +384,12 @@ static int wm_usd_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
 static int wm_usd_import_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
-  char filename[FILE_MAX];
-  RNA_string_get(op->ptr, "filepath", filename);
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
 
   eUSDOperatorOptions *options = (eUSDOperatorOptions *)op->customdata;
   const bool as_background_job = (options != NULL && options->as_background_job);
@@ -395,8 +426,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   const bool create_collection = RNA_boolean_get(op->ptr, "create_collection");
 
-  char prim_path_mask[1024];
-  RNA_string_get(op->ptr, "prim_path_mask", prim_path_mask);
+  char *prim_path_mask = RNA_string_get_alloc(op->ptr, "prim_path_mask", NULL, 0, NULL);
 
   const bool import_guide = RNA_boolean_get(op->ptr, "import_guide");
   const bool import_proxy = RNA_boolean_get(op->ptr, "import_proxy");
@@ -448,6 +478,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
                                    .import_meshes = import_meshes,
                                    .import_volumes = import_volumes,
                                    .import_shapes = import_shapes,
+                                   .prim_path_mask = prim_path_mask,
                                    .import_subdiv = import_subdiv,
                                    .import_instance_proxies = import_instance_proxies,
                                    .create_collection = create_collection,
@@ -464,10 +495,9 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
                                    .tex_name_collision_mode = tex_name_collision_mode,
                                    .import_all_materials = import_all_materials};
 
-  STRNCPY(params.prim_path_mask, prim_path_mask);
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
-  const bool ok = USD_import(C, filename, &params, as_background_job);
+  const bool ok = USD_import(C, filepath, &params, as_background_job);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -623,9 +653,10 @@ void WM_OT_usd_import(struct wmOperatorType *ot)
   RNA_def_string(ot->srna,
                  "prim_path_mask",
                  NULL,
-                 1024,
+                 0,
                  "Path Mask",
-                 "Import only the subset of the USD scene rooted at the given primitive");
+                 "Import only the primitive at the given path and its descendents.  "
+                 "Multiple paths may be specified in a list delimited by commas or semicolons");
 
   RNA_def_boolean(ot->srna, "import_guide", false, "Guide", "Import guide geometry");
 

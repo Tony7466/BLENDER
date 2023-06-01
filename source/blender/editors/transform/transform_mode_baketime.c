@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -62,19 +63,19 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
     outputNumInput(&(t->num), c, &t->scene->unit);
 
     if (time >= 0.0f) {
-      BLI_snprintf(str, sizeof(str), TIP_("Time: +%s %s"), c, t->proptext);
+      SNPRINTF(str, TIP_("Time: +%s %s"), c, t->proptext);
     }
     else {
-      BLI_snprintf(str, sizeof(str), TIP_("Time: %s %s"), c, t->proptext);
+      SNPRINTF(str, TIP_("Time: %s %s"), c, t->proptext);
     }
   }
   else {
     /* default header print */
     if (time >= 0.0f) {
-      BLI_snprintf(str, sizeof(str), TIP_("Time: +%.3f %s"), time, t->proptext);
+      SNPRINTF(str, TIP_("Time: +%.3f %s"), time, t->proptext);
     }
     else {
-      BLI_snprintf(str, sizeof(str), TIP_("Time: %.3f %s"), time, t->proptext);
+      SNPRINTF(str, TIP_("Time: %.3f %s"), time, t->proptext);
     }
   }
 

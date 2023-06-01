@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -16,7 +17,6 @@
 #include "BKE_customdata.h"
 #include "BKE_mesh_types.h"
 
-struct BLI_Stack;
 struct BMesh;
 struct BMeshCreateParams;
 struct BMeshFromMeshParams;
@@ -42,13 +42,6 @@ struct Scene;
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-/* setting zero so we can catch bugs in OpenMP/BMesh */
-#ifdef DEBUG
-#  define BKE_MESH_OMP_LIMIT 0
-#else
-#  define BKE_MESH_OMP_LIMIT 10000
 #endif
 
 /*  mesh_runtime.cc  */
@@ -207,12 +200,10 @@ void BKE_mesh_to_curve(struct Main *bmain,
                        struct Depsgraph *depsgraph,
                        struct Scene *scene,
                        struct Object *ob);
-void BKE_pointcloud_from_mesh(const struct Mesh *me, struct PointCloud *pointcloud);
 void BKE_mesh_to_pointcloud(struct Main *bmain,
                             struct Depsgraph *depsgraph,
                             struct Scene *scene,
                             struct Object *ob);
-void BKE_mesh_from_pointcloud(const struct PointCloud *pointcloud, struct Mesh *me);
 void BKE_pointcloud_to_mesh(struct Main *bmain,
                             struct Depsgraph *depsgraph,
                             struct Scene *scene,
@@ -397,9 +388,6 @@ typedef struct MLoopNorSpace {
    *     - BMLoop pointers. */
   struct LinkNode *loops;
   char flags;
-
-  /** To be used for extended processing related to loop normal spaces (aka smooth fans). */
-  void *user_data;
 } MLoopNorSpace;
 /**
  * MLoopNorSpace.flags
@@ -449,6 +437,9 @@ void BKE_lnor_spacearr_tls_join(MLoopNorSpaceArray *lnors_spacearr,
                                 MLoopNorSpaceArray *lnors_spacearr_tls);
 
 MLoopNorSpace *BKE_lnor_space_create(MLoopNorSpaceArray *lnors_spacearr);
+
+#ifdef __cplusplus
+
 /**
  * Should only be called once.
  * Beware, this modifies ref_vec and other_vec in place!
@@ -459,7 +450,10 @@ void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
                            const float lnor[3],
                            float vec_ref[3],
                            float vec_other[3],
-                           struct BLI_Stack *edge_vectors);
+                           blender::Span<blender::float3> edge_vectors);
+
+#endif
+
 /**
  * Add a new given loop to given lnor_space.
  * Depending on \a lnor_space->data_type, we expect \a bm_loop to be a pointer to BMLoop struct

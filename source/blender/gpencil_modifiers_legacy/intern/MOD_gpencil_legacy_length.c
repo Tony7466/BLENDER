@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -225,7 +226,8 @@ static void deformStroke(GpencilModifierData *md,
                                       lmd->flag & GP_LENGTH_INVERT_LAYER,
                                       lmd->flag & GP_LENGTH_INVERT_PASS,
                                       lmd->flag & GP_LENGTH_INVERT_LAYERPASS,
-                                      lmd->flag & GP_LENGTH_INVERT_MATERIAL)) {
+                                      lmd->flag & GP_LENGTH_INVERT_MATERIAL))
+  {
     return;
   }
   if ((gps->flag & GP_STROKE_CYCLIC) != 0) {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -442,6 +444,9 @@ static void setup_app_data(bContext *C,
    * linked libraries. */
   if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 1)) {
     BKE_lib_override_library_main_proxy_convert(bmain, reports);
+    /* Currently liboverride code can generate invalid namemap. This is a known issue, requires
+     * #107847 to be properly fixed. */
+    BKE_main_namemap_validate_and_fix(bmain);
   }
 
   if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 3)) {
@@ -535,7 +540,8 @@ static void handle_subversion_warning(Main *main, BlendFileReadReport *reports)
 {
   if (main->minversionfile > BLENDER_FILE_VERSION ||
       (main->minversionfile == BLENDER_FILE_VERSION &&
-       main->minsubversionfile > BLENDER_FILE_SUBVERSION)) {
+       main->minsubversionfile > BLENDER_FILE_SUBVERSION))
+  {
     BKE_reportf(reports->reports,
                 RPT_WARNING,
                 "File written by newer Blender binary (%d.%d), expect loss of data!",
@@ -745,12 +751,10 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
     const char *addons[] = {
         "io_anim_bvh",
         "io_curve_svg",
-        "io_mesh_ply",
         "io_mesh_stl",
         "io_mesh_uv_layout",
         "io_scene_fbx",
         "io_scene_gltf2",
-        "io_scene_obj",
         "io_scene_x3d",
         "cycles",
         "pose_library",
@@ -939,12 +943,13 @@ bool BKE_blendfile_workspace_config_write(Main *bmain, const char *filepath, Rep
   BKE_blendfile_write_partial_begin(bmain);
 
   for (WorkSpace *workspace = static_cast<WorkSpace *>(bmain->workspaces.first); workspace;
-       workspace = static_cast<WorkSpace *>(workspace->id.next)) {
+       workspace = static_cast<WorkSpace *>(workspace->id.next))
+  {
     BKE_blendfile_write_partial_tag_ID(&workspace->id, true);
   }
 
-  if (BKE_blendfile_write_partial(
-          bmain, filepath, fileflags, BLO_WRITE_PATH_REMAP_NONE, reports)) {
+  if (BKE_blendfile_write_partial(bmain, filepath, fileflags, BLO_WRITE_PATH_REMAP_NONE, reports))
+  {
     retval = true;
   }
 

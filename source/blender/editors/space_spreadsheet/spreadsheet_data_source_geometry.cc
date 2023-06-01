@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_index_mask_ops.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_virtual_array.hh"
 
@@ -235,7 +236,8 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
 
   if (component_->type() == GEO_COMPONENT_TYPE_INSTANCES) {
     if (const bke::Instances *instances =
-            static_cast<const InstancesComponent &>(*component_).get_for_read()) {
+            static_cast<const InstancesComponent &>(*component_).get_for_read())
+    {
       if (STREQ(column_id.name, "Name")) {
         Span<int> reference_handles = instances->reference_handles();
         Span<bke::InstanceReference> references = instances->references();
@@ -265,7 +267,8 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
     const MeshComponent &component = static_cast<const MeshComponent &>(*component_);
     if (const Mesh *mesh = component.get_for_read()) {
       if (std::unique_ptr<ColumnValues> values = build_mesh_debug_columns(
-              *mesh, domain_, column_id.name)) {
+              *mesh, domain_, column_id.name))
+      {
         return values;
       }
     }
@@ -324,7 +327,7 @@ bool GeometryDataSource::has_selection_filter() const
   }
 }
 
-IndexMask GeometryDataSource::apply_selection_filter(Vector<int64_t> &indices) const
+IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) const
 {
   std::lock_guard lock{mutex_};
   const IndexMask full_range(this->tot_rows());
@@ -361,8 +364,7 @@ IndexMask GeometryDataSource::apply_selection_filter(Vector<int64_t> &indices) c
                                   }),
             ATTR_DOMAIN_POINT,
             domain_);
-        return index_mask_ops::find_indices_from_virtual_array(
-            full_range, selection, 1024, indices);
+        return IndexMask::from_bools(selection, memory);
       }
 
       if (mesh_eval->totvert == bm->totvert) {
@@ -375,22 +377,20 @@ IndexMask GeometryDataSource::apply_selection_filter(Vector<int64_t> &indices) c
                                   }),
             ATTR_DOMAIN_POINT,
             domain_);
-        return index_mask_ops::find_indices_from_virtual_array(
-            full_range, selection, 2048, indices);
+        return IndexMask::from_bools(selection, memory);
       }
 
       return full_range;
     }
     case GEO_COMPONENT_TYPE_CURVE: {
       BLI_assert(object_eval_->type == OB_CURVES);
-      BLI_assert(object_eval_->mode == OB_MODE_SCULPT_CURVES);
       const CurveComponent &component = static_cast<const CurveComponent &>(*component_);
       const Curves &curves_id = *component.get_for_read();
       switch (domain_) {
         case ATTR_DOMAIN_POINT:
-          return curves::retrieve_selected_points(curves_id, indices);
+          return curves::retrieve_selected_points(curves_id, memory);
         case ATTR_DOMAIN_CURVE:
-          return curves::retrieve_selected_curves(curves_id, indices);
+          return curves::retrieve_selected_curves(curves_id, memory);
         default:
           BLI_assert_unreachable();
       }
@@ -525,7 +525,8 @@ GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *sspread
     else {
       if (const ViewerNodeLog *viewer_log =
               nodes::geo_eval_log::GeoModifierLog::find_viewer_node_log_for_path(
-                  sspreadsheet->viewer_path)) {
+                  sspreadsheet->viewer_path))
+      {
         geometry_set = viewer_log->geometry;
       }
     }

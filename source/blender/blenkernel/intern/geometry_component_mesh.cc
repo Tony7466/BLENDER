@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_listbase.h"
 #include "BLI_task.hh"
@@ -44,7 +46,7 @@ GeometryComponent *MeshComponent::copy() const
 
 void MeshComponent::clear()
 {
-  BLI_assert(this->is_mutable());
+  BLI_assert(this->is_mutable() || this->is_expired());
   if (mesh_ != nullptr) {
     if (ownership_ == GeometryOwnershipType::Owned) {
       BKE_id_free(nullptr, mesh_);
@@ -117,7 +119,7 @@ void MeshComponent::ensure_owns_direct_data()
 namespace blender::bke {
 
 VArray<float3> mesh_normals_varray(const Mesh &mesh,
-                                   const IndexMask mask,
+                                   const IndexMask &mask,
                                    const eAttrDomain domain)
 {
   switch (domain) {
@@ -135,11 +137,11 @@ VArray<float3> mesh_normals_varray(const Mesh &mesh,
       Span<float3> vert_normals = mesh.vert_normals();
       const Span<int2> edges = mesh.edges();
       Array<float3> edge_normals(mask.min_array_size());
-      for (const int i : mask) {
+      mask.foreach_index([&](const int i) {
         const int2 &edge = edges[i];
         edge_normals[i] = math::normalize(
             math::interpolate(vert_normals[edge[0]], vert_normals[edge[1]], 0.5f));
-      }
+      });
 
       return VArray<float3>::ForContainer(std::move(edge_normals));
     }
@@ -190,29 +192,27 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
   BLI_assert(r_values.size() == mesh.totvert);
   const Span<int> corner_verts = mesh.corner_verts();
 
-  Array<bool> loose_verts(mesh.totvert, true);
-
   r_values.fill(true);
   for (const int corner : IndexRange(mesh.totloop)) {
     const int point_index = corner_verts[corner];
 
-    loose_verts[point_index] = false;
     if (!old_values[corner]) {
       r_values[point_index] = false;
     }
   }
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
-  /* The record fact says that the value is true.
-   * Writing to the array from different threads is okay because each thread sets the same value.
-   */
-  threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
-    for (const int vert_index : range) {
-      if (loose_verts[vert_index]) {
-        r_values[vert_index] = false;
+  const bke::LooseVertCache &loose_verts = mesh.verts_no_face();
+  if (loose_verts.count > 0) {
+    const BitSpan bits = loose_verts.is_loose_bits;
+    threading::parallel_for(bits.index_range(), 2048, [&](const IndexRange range) {
+      for (const int vert_index : range) {
+        if (bits[vert_index]) {
+          r_values[vert_index] = false;
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 static GVArray adapt_mesh_domain_corner_to_point(const Mesh &mesh, const GVArray &varray)
@@ -754,20 +754,26 @@ static bool can_simple_adapt_for_single(const Mesh &mesh,
       /* All other domains are always connected to points. */
       return true;
     case ATTR_DOMAIN_EDGE:
-      /* There may be loose vertices not connected to edges. */
-      return ELEM(to_domain, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER);
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.loose_verts().count == 0;
+      }
+      return true;
     case ATTR_DOMAIN_FACE:
-      /* There may be loose vertices or edges not connected to faces. */
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.verts_no_face().count == 0;
+      }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
       }
-      return to_domain == ATTR_DOMAIN_CORNER;
+      return true;
     case ATTR_DOMAIN_CORNER:
-      /* Only faces are always connected to corners. */
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.verts_no_face().count == 0;
+      }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
       }
-      return to_domain == ATTR_DOMAIN_FACE;
+      return true;
     default:
       BLI_assert_unreachable();
       return false;
@@ -919,24 +925,22 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
     });
   }
 
-  void materialize(IndexMask mask, float *dst) const override
+  void materialize(const IndexMask &mask, float *dst) const override
   {
     if (dverts_ == nullptr) {
       mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
     }
-    threading::parallel_for(mask.index_range(), 4096, [&](const IndexRange range) {
-      for (const int64_t i : mask.slice(range)) {
-        if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
-          dst[i] = weight->weight;
-        }
-        else {
-          dst[i] = 0.0f;
-        }
+    mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
+      if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
+        dst[i] = weight->weight;
+      }
+      else {
+        dst[i] = 0.0f;
       }
     });
   }
 
-  void materialize_to_uninitialized(IndexMask mask, float *dst) const override
+  void materialize_to_uninitialized(const IndexMask &mask, float *dst) const override
   {
     this->materialize(mask, dst);
   }
@@ -1153,7 +1157,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    ATTR_DOMAIN_EDGE,
                                                    CD_PROP_INT32_2D,
                                                    CD_PROP_INT32_2D,
-                                                   BuiltinAttributeProvider::NonCreatable,
+                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::NonDeletable,
                                                    edge_access,
                                                    nullptr,
@@ -1169,7 +1173,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                     ATTR_DOMAIN_CORNER,
                                                     CD_PROP_INT32,
                                                     CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::NonCreatable,
+                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
@@ -1178,7 +1182,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                     ATTR_DOMAIN_CORNER,
                                                     CD_PROP_INT32,
                                                     CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::NonCreatable,
+                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
