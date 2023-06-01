@@ -118,7 +118,6 @@ bMovieHandle *BKE_movie_handle_get(const char imtype)
   if (ELEM(imtype,
            R_IMF_IMTYPE_FFMPEG,
            R_IMF_IMTYPE_H264,
-           R_IMF_IMTYPE_XVID,
            R_IMF_IMTYPE_THEORA,
            R_IMF_IMTYPE_AV1))
   {

@@ -287,11 +287,6 @@ static const char **get_file_extensions(int format)
       return rv;
     }
 
-    case FFMPEG_XVID: {
-      /* FIXME: avi for now... */
-      static const char *rv[] = {".avi", NULL};
-      return rv;
-    }
     case FFMPEG_FLV: {
       static const char *rv[] = {".flv", NULL};
       return rv;
@@ -807,12 +802,6 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
     c->pix_fmt = AV_PIX_FMT_YUV422P;
   }
 
-  if (context->ffmpeg_type == FFMPEG_XVID) {
-    /* arghhhh ... */
-    c->pix_fmt = AV_PIX_FMT_YUV420P;
-    c->codec_tag = (('D' << 24) + ('I' << 16) + ('V' << 8) + 'X');
-  }
-
   /* Keep lossless encodes in the RGB domain. */
   if (codec_id == AV_CODEC_ID_HUFFYUV) {
     if (rd->im_format.planes == R_IMF_PLANES_RGBA) {
@@ -1174,9 +1163,6 @@ static int start_ffmpeg_impl(FFMpegContext *context,
       break;
     case FFMPEG_H264:
       video_codec = AV_CODEC_ID_H264;
-      break;
-    case FFMPEG_XVID:
-      video_codec = AV_CODEC_ID_MPEG4;
       break;
     case FFMPEG_FLV:
       video_codec = AV_CODEC_ID_FLV1;
@@ -1708,12 +1694,7 @@ void BKE_ffmpeg_preset_set(RenderData *rd, int preset)
       break;
 
     case FFMPEG_PRESET_THEORA:
-    case FFMPEG_PRESET_XVID:
-      if (preset == FFMPEG_PRESET_XVID) {
-        rd->ffcodecdata.type = FFMPEG_AVI;
-        rd->ffcodecdata.codec = AV_CODEC_ID_MPEG4;
-      }
-      else if (preset == FFMPEG_PRESET_THEORA) {
+      if (preset == FFMPEG_PRESET_THEORA) {
         rd->ffcodecdata.type = FFMPEG_OGG; /* XXX broken */
         rd->ffcodecdata.codec = AV_CODEC_ID_THEORA;
       }
@@ -1763,12 +1744,6 @@ void BKE_ffmpeg_image_type_verify(RenderData *rd, const ImageFormatData *imf)
   else if (imf->imtype == R_IMF_IMTYPE_H264) {
     if (rd->ffcodecdata.codec != AV_CODEC_ID_H264) {
       BKE_ffmpeg_preset_set(rd, FFMPEG_PRESET_H264);
-      audio = 1;
-    }
-  }
-  else if (imf->imtype == R_IMF_IMTYPE_XVID) {
-    if (rd->ffcodecdata.codec != AV_CODEC_ID_MPEG4) {
-      BKE_ffmpeg_preset_set(rd, FFMPEG_PRESET_XVID);
       audio = 1;
     }
   }
