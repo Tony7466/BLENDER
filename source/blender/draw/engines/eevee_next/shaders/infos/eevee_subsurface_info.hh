@@ -9,11 +9,12 @@ GPU_SHADER_CREATE_INFO(eevee_transmittance_data)
 
 GPU_SHADER_CREATE_INFO(eevee_subsurface_eval)
     .do_static_compilation(true)
-    .additional_info("eevee_shared")
+    .additional_info("eevee_shared", "eevee_render_pass_out")
     .uniform_buf(1, "SubsurfaceData", "sss_buf")
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
     .sampler(1, ImageType::FLOAT_2D_ARRAY, "gbuffer_color_tx")
     .sampler(2, ImageType::FLOAT_2D, "radiance_tx")
+    .early_fragment_test(true)
     .fragment_out(0, Type::VEC4, "out_combined")
     .fragment_source("eevee_subsurface_eval_frag.glsl")
     /* TODO(fclem) Output to diffuse pass without feedback loop. */

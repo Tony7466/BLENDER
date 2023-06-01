@@ -74,7 +74,7 @@ void main(void)
   float pixel_footprint = sample_scale.x * textureSize(hiz_tx, 0).x;
   if (pixel_footprint <= 1.0) {
     /* Early out. */
-    out_combined = vec4(0);
+    out_combined = vec4(0.0);
     return;
   }
 
@@ -125,6 +125,10 @@ void main(void)
   }
   /* Normalize the sum (slide 34). */
   accum /= accum_weight;
+
+  if (rp_buf.diffuse_light_id >= 0) {
+    imageStore(rp_color_img, ivec3(texel, rp_buf.diffuse_light_id), vec4(accum, 1.0));
+  }
 
   /* This pass uses additive blending.
    * Subtract the surface diffuse radiance so it's not added twice. */
