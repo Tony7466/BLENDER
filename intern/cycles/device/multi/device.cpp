@@ -16,9 +16,59 @@
 #include "util/foreach.h"
 #include "util/log.h"
 #include "util/map.h"
+#include "util/tbb.h"
+#include "util/thread.h"
 #include "util/time.h"
 
 CCL_NAMESPACE_BEGIN
+
+// TODO: properly integrate this ino device/memory.h somehow
+// TODO: this is incorrect for host memory fallback, the shared pointer
+// should be shared across clones and mutex protected
+class device_memory_clone : public device_texture {
+ public:
+  device_memory_clone(const device_memory &mem, Device *sub_device, device_ptr sub_device_pointer)
+      : device_texture(sub_device,
+                       mem.name,
+                       0,
+                       IMAGE_DATA_TYPE_FLOAT,
+                       INTERPOLATION_NONE,
+                       EXTENSION_REPEAT)  // mem.type)
+  {
+    data_type = mem.data_type;
+    data_elements = mem.data_elements;
+    data_size = mem.data_size;
+    device_size = mem.device_size;
+    data_width = mem.data_width;
+    data_height = mem.data_height;
+    data_depth = mem.data_depth;
+    type = mem.type;
+    name = mem.name;
+
+    /* Pointers. */
+    device = sub_device;
+    device_pointer = sub_device_pointer;
+
+    host_pointer = mem.host_pointer;
+    shared_pointer = mem.shared_pointer;
+    /* reference counter for shared_pointer */
+    shared_counter = mem.shared_counter;
+    modified = mem.modified;
+
+    if (type == MEM_TEXTURE) {
+      const device_texture *p_tex = static_cast<const device_texture *>(&mem);
+      memcpy(&info, &(p_tex->info), sizeof(TextureInfo));
+      slot = p_tex->slot;
+    }
+  }
+
+  ~device_memory_clone()
+  {
+    // Don't free anything
+    host_pointer = 0;
+    device_pointer = 0;
+  }
+};
 
 class MultiDevice : public Device {
  public:
@@ -36,7 +86,7 @@ class MultiDevice : public Device {
 
   /* Map that tracks all memory allocations performed for this multi device.
    * The key is fake device pointer, which is mapped to the actual per island
-   * pointer when performing memory operations. */
+   * device pointer when performing memory operations. */
   struct MemoryAlloc {
     SubDevice *owner = nullptr;
     device_ptr device_pointer = 0;
@@ -47,10 +97,17 @@ class MultiDevice : public Device {
 
     device_memory &mem;
     vector<MemoryAlloc> allocations;
+
+    bool need_alloc = false;
+    bool need_copy = false;
+    bool need_zero = false;
+    size_t copy_size = 0, copy_offset = 0;
   };
 
   map<device_ptr, MemoryEntry> memory_map;
+  thread_mutex memory_map_mutex;
   device_ptr unique_key = 1;
+  bool queued_memory_operation = false;
 
   MultiDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
       : Device(info, stats, profiler)
@@ -158,6 +215,8 @@ class MultiDevice : public Device {
 
   bool load_kernels(const uint kernel_features) override
   {
+    flush_memory_operations();
+
     foreach (SubDevice &sub, devices)
       if (!sub.device->load_kernels(kernel_features))
         return false;
@@ -167,6 +226,8 @@ class MultiDevice : public Device {
 
   bool load_osl_kernels() override
   {
+    flush_memory_operations();
+
     foreach (SubDevice &sub, devices)
       if (!sub.device->load_osl_kernels())
         return false;
@@ -176,6 +237,8 @@ class MultiDevice : public Device {
 
   void build_bvh(BVH *bvh, Progress &progress, bool refit) override
   {
+    flush_memory_operations();
+
     /* Try to build and share a single acceleration structure, if possible */
     if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2 || bvh->params.bvh_layout == BVH_LAYOUT_EMBREE) {
       devices.back().device->build_bvh(bvh, progress, refit);
@@ -283,7 +346,10 @@ class MultiDevice : public Device {
   {
     /* Already allocated, get owner. */
     if (key) {
-      return *(memory_map.at(key).allocations[peer_island_index].owner);
+      SubDevice *owner = memory_map.at(key).allocations[peer_island_index].owner;
+      if (owner) {
+        return *owner;
+      }
     }
 
     /* Not allocated yet, find device with lowest memory usage. */
@@ -317,9 +383,10 @@ class MultiDevice : public Device {
 
   MemoryEntry &ensure_memory_entry(device_ptr key, device_memory &mem)
   {
+    thread_scoped_lock lock(memory_map_mutex);
     auto it = memory_map.find(key);
     if (it != memory_map.end()) {
-      assert(&memory_entry.mem == &mem);
+      assert(&it->second.mem == &mem);
       return it->second;
     }
 
@@ -331,61 +398,78 @@ class MultiDevice : public Device {
     device_ptr key = unique_key++;
     MemoryEntry &memory_entry = ensure_memory_entry(key, mem);
 
+    /* Only these types can be handled by multi device, others need to be done for individual
+     * devices. */
     assert(mem.type == MEM_READ_ONLY || mem.type == MEM_READ_WRITE || mem.type == MEM_DEVICE_ONLY);
-    /* The remaining memory types can be distributed across devices */
-    for (size_t peer_island_index = 0; peer_island_index < peer_islands.size();
-         peer_island_index++) {
-      SubDevice &owner_sub = find_suitable_mem_device(key, peer_island_index);
-      mem.device = owner_sub.device.get();
-      mem.device_pointer = 0;
-      mem.device_size = 0;
 
-      owner_sub.device->mem_alloc(mem);
+    memory_entry.need_alloc = true;
+    assert(!memory_entry.need_copy);
+    assert(!memory_entry.need_zero);
+    queued_memory_operation = true;
 
-      MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
-      alloc.device_pointer = mem.device_pointer;
-      alloc.owner = &owner_sub;
-    }
-
-    mem.device = this;
     mem.device_pointer = key;
-    stats.mem_alloc(mem.device_size);
+  }
+
+  void mem_alloc_(device_ptr key, MemoryEntry &memory_entry, size_t peer_island_index)
+  {
+    SubDevice &owner_sub = find_suitable_mem_device(key, peer_island_index);
+
+    device_memory &mem = memory_entry.mem;
+    device_memory_clone sub_mem(mem, owner_sub.device.get(), 0);
+    sub_mem.device_size = 0;
+
+    owner_sub.device->mem_alloc(sub_mem);
+
+    MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
+    alloc.device_pointer = sub_mem.device_pointer;
+    alloc.owner = &owner_sub;
+
+    // TODO: do just once: stats.mem_alloc(mem.device_size);
   }
 
   void mem_copy_to(device_memory &mem, size_t size, size_t offset) override
   {
     device_ptr existing_key = mem.device_pointer;
     device_ptr key = (existing_key) ? existing_key : unique_key++;
-    size_t existing_size = mem.device_size;
     MemoryEntry &memory_entry = ensure_memory_entry(key, mem);
 
+    const size_t new_start = min(memory_entry.copy_offset, offset);
+    const size_t new_end = max(memory_entry.copy_offset + memory_entry.copy_size, offset + size);
+
+    memory_entry.need_copy = true;
+    memory_entry.copy_offset = new_start;
+    memory_entry.copy_size = new_end - new_start;
+    queued_memory_operation = true;
+
+    mem.device_pointer = key;
+  }
+
+  void mem_copy_to_(device_ptr key, MemoryEntry &memory_entry, size_t peer_island_index)
+  {
+    device_memory &mem = memory_entry.mem;
+    const size_t size = memory_entry.copy_size;
+    const size_t offset = memory_entry.copy_offset;
+
     /* The tile buffers are allocated on each device (see below), so copy to all of them */
-    for (size_t peer_island_index = 0; peer_island_index < peer_islands.size();
-         peer_island_index++) {
-      MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
-      SubDevice &owner_sub = find_suitable_mem_device(existing_key, peer_island_index);
-      mem.device = owner_sub.device.get();
-      mem.device_pointer = alloc.device_pointer;
-      mem.device_size = existing_size;
+    MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
+    SubDevice &owner_sub = find_suitable_mem_device(key, peer_island_index);
 
-      owner_sub.device->mem_copy_to(mem, size, offset);
+    device_memory_clone sub_mem(mem, owner_sub.device.get(), alloc.device_pointer);
+    owner_sub.device->mem_copy_to(sub_mem, size, offset);
 
-      alloc.device_pointer = mem.device_pointer;
-      alloc.owner = &owner_sub;
+    alloc.device_pointer = sub_mem.device_pointer;
+    alloc.owner = &owner_sub;
 
-      if (mem.type == MEM_GLOBAL || mem.type == MEM_TEXTURE) {
-        /* Need to create texture objects and update pointer in kernel globals on all devices */
-        foreach (SubDevice *island_sub, peer_islands[peer_island_index]) {
-          if (island_sub != &owner_sub) {
-            island_sub->device->mem_copy_to(mem, size, offset);
-          }
+    if (mem.type == MEM_GLOBAL || mem.type == MEM_TEXTURE) {
+      /* Need to create texture objects and update pointer in kernel globals on all devices */
+      foreach (SubDevice *island_sub, peer_islands[peer_island_index]) {
+        if (island_sub != &owner_sub) {
+          island_sub->device->mem_copy_to(sub_mem, size, offset);
         }
       }
     }
 
-    mem.device = this;
-    mem.device_pointer = key;
-    stats.mem_alloc(mem.device_size - existing_size);
+    // TODO: do just once. stats.mem_alloc(mem.device_size - existing_size);
   }
 
   void mem_copy_from(device_memory &mem) override
@@ -397,26 +481,30 @@ class MultiDevice : public Device {
   {
     device_ptr existing_key = mem.device_pointer;
     device_ptr key = (existing_key) ? existing_key : unique_key++;
-    size_t existing_size = mem.device_size;
     MemoryEntry &memory_entry = ensure_memory_entry(key, mem);
 
-    for (size_t peer_island_index = 0; peer_island_index < peer_islands.size();
-         peer_island_index++) {
-      MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
-      SubDevice &owner_sub = find_suitable_mem_device(existing_key, peer_island_index);
-      mem.device = owner_sub.device.get();
-      mem.device_pointer = alloc.device_pointer;
-      mem.device_size = existing_size;
+    memory_entry.need_zero = true;
+    memory_entry.need_copy = false;
+    queued_memory_operation = true;
 
-      owner_sub.device->mem_zero(mem);
-
-      alloc.device_pointer = mem.device_pointer;
-      alloc.owner = &owner_sub;
-    }
-
-    mem.device = this;
     mem.device_pointer = key;
-    stats.mem_alloc(mem.device_size - existing_size);
+  }
+
+  void mem_zero_(device_ptr key, MemoryEntry &memory_entry, size_t peer_island_index)
+  {
+    device_memory &mem = memory_entry.mem;
+
+    MemoryAlloc &alloc = memory_entry.allocations[peer_island_index];
+    SubDevice &owner_sub = find_suitable_mem_device(key, peer_island_index);
+
+    device_memory_clone sub_mem(mem, owner_sub.device.get(), alloc.device_pointer);
+
+    owner_sub.device->mem_zero(mem);
+
+    alloc.device_pointer = mem.device_pointer;
+    alloc.owner = &owner_sub;
+
+    // TODO: do just once. stats.mem_alloc(mem.device_size - existing_size);
   }
 
   void mem_free(device_memory &mem) override
@@ -427,31 +515,38 @@ class MultiDevice : public Device {
       return;
     }
 
-    size_t existing_size = mem.device_size;
+    // TODO: postpone and multithread memory free as well?
+
+    thread_scoped_lock lock(memory_map_mutex);
     MemoryEntry &entry = memory_map.at(key);
+    memory_map.erase(key);
+    lock.unlock();
+
+    size_t existing_size = mem.device_size;
 
     /* Free memory that was allocated for all devices (see above) on each device */
     for (size_t peer_island_index = 0; peer_island_index < peer_islands.size();
          peer_island_index++) {
       MemoryAlloc &alloc = entry.allocations[peer_island_index];
-      SubDevice &owner_sub = *alloc.owner;
-      mem.device = owner_sub.device.get();
-      mem.device_pointer = alloc.device_pointer;
-      mem.device_size = existing_size;
 
-      owner_sub.device->mem_free(mem);
+      if (alloc.owner) {
+        SubDevice &owner_sub = *alloc.owner;
+        mem.device = owner_sub.device.get();
+        mem.device_pointer = alloc.device_pointer;
+        mem.device_size = existing_size;
 
-      if (mem.type == MEM_TEXTURE) {
-        /* Free texture objects on all devices */
-        foreach (SubDevice *island_sub, peer_islands[peer_island_index]) {
-          if (island_sub != &owner_sub) {
-            island_sub->device->mem_free(mem);
+        owner_sub.device->mem_free(mem);
+
+        if (mem.type == MEM_TEXTURE) {
+          /* Free texture objects on all devices */
+          foreach (SubDevice *island_sub, peer_islands[peer_island_index]) {
+            if (island_sub != &owner_sub) {
+              island_sub->device->mem_free(mem);
+            }
           }
         }
       }
     }
-
-    memory_map.erase(key);
 
     /* Restore the device. */
     mem.device = this;
@@ -459,7 +554,7 @@ class MultiDevice : public Device {
     /* NULL the pointer and size and update the memory tracking. */
     mem.device_pointer = 0;
     mem.device_size = 0;
-    stats.mem_free(existing_size);
+    // TODO: fix other places before re-enabling this. stats.mem_free(existing_size);
   }
 
   void const_copy_to(const char *name, void *host, size_t size) override
@@ -479,6 +574,47 @@ class MultiDevice : public Device {
     }
 
     return -1;
+  }
+
+  void flush_memory_operations()
+  {
+    if (!queued_memory_operation) {
+      return;
+    }
+
+    parallel_for(size_t(0), peer_islands.size(), [&](const size_t peer_island_index) {
+      for (auto &it : memory_map) {
+        device_ptr key = it.first;
+        MemoryEntry &memory_entry = it.second;
+
+        if (memory_entry.need_alloc) {
+          mem_alloc_(key, memory_entry, peer_island_index);
+        }
+        if (memory_entry.need_zero) {
+          mem_zero_(key, memory_entry, peer_island_index);
+        }
+        if (memory_entry.need_copy) {
+          mem_copy_to_(key, memory_entry, peer_island_index);
+        }
+      }
+    });
+
+    for (auto &it : memory_map) {
+      MemoryEntry &memory_entry = it.second;
+
+      memory_entry.need_alloc = false;
+      memory_entry.need_copy = false;
+      memory_entry.need_zero = false;
+      memory_entry.copy_size = 0;
+      memory_entry.copy_offset = 0;
+    }
+
+    queued_memory_operation = false;
+  }
+
+  void flush_operations() override
+  {
+    flush_memory_operations();
   }
 
   virtual void foreach_device(const function<void(Device *)> &callback) override

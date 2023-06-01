@@ -29,6 +29,8 @@ bool ShaderEval::eval(const ShaderEvalType type,
   bool first_device = true;
   bool success = true;
 
+  device_->flush_operations();
+
   device_->foreach_device([&](Device *device) {
     if (!first_device) {
       VLOG_WORK << "Multi-devices are not yet fully implemented, will evaluate shader on a "

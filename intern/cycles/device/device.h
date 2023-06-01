@@ -169,6 +169,10 @@ class Device {
   Stats &stats;
   Profiler &profiler;
 
+  /* Perform queued operations. must be run after any scene memory or BVH
+   * building changes and before running the kernels that use them. */
+  virtual void flush_operations() {}
+
   /* constant memory */
   virtual void const_copy_to(const char *name, void *host, size_t size) = 0;
 

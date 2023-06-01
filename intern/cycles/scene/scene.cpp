@@ -315,6 +315,11 @@ void Scene::device_update(Device *device_, Progress &progress)
   if (progress.get_cancel() || device->have_error())
     return;
 
+  device->flush_operations();
+
+  if (progress.get_cancel() || device->have_error())
+    return;
+
   if (device->have_error() == false) {
     dscene.data.volume_stack_size = get_volume_stack_size();
 
