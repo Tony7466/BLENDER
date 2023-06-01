@@ -57,7 +57,7 @@
 #include "ED_util.h"
 #include "ED_uvedit.h"
 
-#include "io_ops.h"
+#include "io_ops.hh"
 
 void ED_spacetypes_init(void)
 {
