@@ -4545,9 +4545,10 @@ def km_weight_paint_vertex_selection(params):
          {"properties": [("select", False)]}),
         ("paint.vert_select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True}, None),
         ("paint.vert_select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True}, None),
-        ("paint.vert_select_loop", {"type": "LEFTMOUSE", "value": 'PRESS', "alt": True}, None),
+        ("paint.vert_select_loop", {"type": "LEFTMOUSE", "value": 'PRESS', "alt": True},
+         {"properties": [('extend', False), ('select', True)]}),
         ("paint.vert_select_loop", {"type": "LEFTMOUSE", "value": 'PRESS', "alt": True, "shift": True},
-         {"properties": [('extend', True)]}),
+         {"properties": [('extend', True), ('select', True)]}),
         ("paint.vert_select_loop", {"type": "LEFTMOUSE", "value": 'PRESS', "alt": True, "shift": True, "ctrl": True},
          {"properties": [('extend', True), ('select', False)]}),
     ])

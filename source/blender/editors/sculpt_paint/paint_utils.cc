@@ -964,7 +964,7 @@ void PAINT_OT_vert_select_less(wmOperatorType *ot)
       ot->srna, "face_step", true, "Face Step", "Also deselect faces that only touch on a corner");
 }
 
-static int paintface_select_loop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int paintvert_select_loop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool select = RNA_boolean_get(op->ptr, "select");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
@@ -983,12 +983,12 @@ void PAINT_OT_vert_select_loop(wmOperatorType *ot)
   ot->description = "Select vert loop under the cursor";
   ot->idname = "PAINT_OT_vert_select_loop";
 
-  ot->invoke = paintface_select_loop_invoke;
-  ot->poll = facemask_paint_poll;
+  ot->invoke = paintvert_select_loop_invoke;
+  ot->poll = vert_paint_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "select", true, "Select", "If false, faces will be deseleced");
+  RNA_def_boolean(ot->srna, "select", true, "Select", "If false, faces will be deselected");
   RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
 }
 
