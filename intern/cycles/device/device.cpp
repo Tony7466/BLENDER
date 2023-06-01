@@ -341,10 +341,12 @@ DeviceInfo Device::get_multi_device(const vector<DeviceInfo> &subdevices,
 {
   assert(subdevices.size() > 0);
 
+#if 0
   if (subdevices.size() == 1) {
     /* No multi device needed. */
     return subdevices.front();
   }
+#endif
 
   DeviceInfo info;
   info.type = DEVICE_NONE;
