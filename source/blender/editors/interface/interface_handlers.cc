@@ -276,7 +276,9 @@ static void ui_selectcontext_apply(bContext *C,
                                    const double value,
                                    const double value_orig);
 
-#  define IS_ALLSELECT_EVENT(event) (((event)->modifier & KM_ALT) != 0)
+#  define IS_ALLSELECT_EVENT(event) \
+    (((event)->modifier & KM_ALT) != 0 && \
+     (ISMOUSE((event)->type) || ELEM((event)->type, EVT_RETKEY, EVT_PADENTER)))
 
 /** just show a tinted color so users know its activated */
 #  define UI_BUT_IS_SELECT_CONTEXT UI_BUT_NODE_ACTIVE
@@ -2248,17 +2250,10 @@ static void ui_apply_but(
         if (data->select_others.elems_len == 0)
     {
       wmWindow *win = CTX_wm_window(C);
-      wmEvent *event = win->eventstate;
-      /* May have been enabled before activating, dont do for array pasting. */
-      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(event)) {
-        const bool is_array_paste = (event->val == KM_PRESS) &&
-                                    (event->modifier & (KM_CTRL | KM_OSKEY)) &&
-                                    (event->modifier & KM_SHIFT) == 0 &&
-                                    (event->type == EVT_VKEY);
-        if (!is_array_paste) {
-          ui_selectcontext_begin(C, but, &data->select_others);
-          data->select_others.is_enabled = true;
-        }
+      /* may have been enabled before activating */
+      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(win->eventstate)) {
+        ui_selectcontext_begin(C, but, &data->select_others);
+        data->select_others.is_enabled = true;
       }
     }
     if (data->select_others.elems_len == 0) {
