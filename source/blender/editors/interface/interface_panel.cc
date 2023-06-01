@@ -112,7 +112,9 @@ struct PanelSort {
   int new_offset_y;
 };
 
-static void panel_set_expansion_from_list_data(const bContext *C, Panel *panel);
+static void panel_set_expansion_from_list_data(const bContext *C,
+                                               const ListBase *panels,
+                                               Panel *panel);
 static int get_panel_real_size_y(const Panel *panel);
 static void panel_activate_state(const bContext *C, Panel *panel, const uiHandlePanelState state);
 static int compare_panel(const void *a, const void *b);
@@ -279,7 +281,7 @@ Panel *UI_panel_add_instanced(const bContext *C,
   Panel *new_panel = panel_add_instanced(region, panels, panel_type, custom_data);
 
   /* Do this after #panel_add_instatnced so all sub-panels are added. */
-  panel_set_expansion_from_list_data(C, new_panel);
+  panel_set_expansion_from_list_data(C, panels, new_panel);
 
   return new_panel;
 }
@@ -306,6 +308,13 @@ static void panel_delete(const bContext *C, ARegion *region, ListBase *panels, P
     if (C != nullptr && child->activedata != nullptr) {
       panel_activate_state(C, child, PANEL_STATE_EXIT);
     }
+
+    // XXX child panel's customdata is expected(!) to be shared with parent and free'd by the
+    // parent
+    /* Free panel's custom data. */
+    //    if (child->runtime.custom_data_ptr != nullptr) {
+    //      MEM_freeN(child->runtime.custom_data_ptr);
+    //    }
 
     panel_delete(C, region, &panel->children, child);
   }
@@ -534,22 +543,29 @@ static bool panel_set_expand_from_list_data_recursive(Panel *panel, short flag, 
  * Set the expansion of the panel and its sub-panels from the flag stored in the
  * corresponding list data. The flag has expansion stored in each bit in depth first order.
  */
-static void panel_set_expansion_from_list_data(const bContext *C, Panel *panel)
+static void panel_set_expansion_from_list_data(const bContext *C,
+                                               const ListBase *panels,
+                                               Panel *panel)
 {
   BLI_assert(panel->type != nullptr);
   BLI_assert(panel->type->flag & PANEL_TYPE_INSTANCED);
+
   if (panel->type->get_list_data_expand_flag == nullptr) {
     /* Instanced panel doesn't support loading expansion. */
     return;
   }
 
   const short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
-  short flag_index = 0;
+  /* If panel is a child, take offset in the parent list into account. */
+  short flag_index = panel->type->parent == nullptr ?
+                         0 :
+                         1 + BLI_findindex(const_cast<ListBase *>(panels), panel);
+  if (panel->type)
 
-  /* Start panel animation if the open state was changed. */
-  if (panel_set_expand_from_list_data_recursive(panel, expand_flag, &flag_index)) {
-    panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
-  }
+    /* Start panel animation if the open state was changed. */
+    if (panel_set_expand_from_list_data_recursive(panel, expand_flag, &flag_index)) {
+      panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
+    }
 }
 
 /**
@@ -561,7 +577,7 @@ static void region_panels_set_expansion_from_list_data(const bContext *C, ARegio
     if (panel->runtime_flag & PANEL_ACTIVE) {
       PanelType *panel_type = panel->type;
       if (panel_type != nullptr && panel->type->flag & PANEL_TYPE_INSTANCED) {
-        panel_set_expansion_from_list_data(C, panel);
+        panel_set_expansion_from_list_data(C, &region->panels, panel);
       }
     }
   }
