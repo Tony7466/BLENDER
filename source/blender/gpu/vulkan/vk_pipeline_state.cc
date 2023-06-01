@@ -16,9 +16,7 @@ VKPipelineStateManager::VKPipelineStateManager()
   rasterization_state = {};
   rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
   rasterization_state.lineWidth = 1.0f;
-  /* By enabling depth clamping we disable depth clipping. */
-  /* Note that this is only possible when device feature is available, which isn't on AMD/Mesa.*/
-  rasterization_state.depthClampEnable = VK_TRUE;
+  rasterization_state.depthClampEnable = VK_FALSE;
 
   pipeline_color_blend_state = {};
   pipeline_color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
