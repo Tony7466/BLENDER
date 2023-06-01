@@ -383,17 +383,17 @@ static int find_closest_edge_in_poly(ARegion *region,
   return closest_edge_index;
 }
 
-static int get_opposing_edge_index(blender::IndexRange poly,
+static int get_opposing_edge_index(const blender::IndexRange poly,
                                    const blender::Span<int> corner_edges,
                                    const int current_edge_index)
 {
-  const int poly_index = corner_edges.slice(poly).first_index(current_edge_index);
+  const int index_in_poly = corner_edges.slice(poly).first_index(current_edge_index);
   /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
-  if (poly_index >= 2) {
-    return corner_edges[poly[poly_index - 2]];
+  if (index_in_poly >= 2) {
+    return corner_edges[poly[index_in_poly - 2]];
   }
   /* Cannot be out of bounds because of the preceding if statement: if i < 2 then i+2 < 4. */
-  return corner_edges[poly[poly_index + 2]];
+  return corner_edges[poly[index_in_poly + 2]];
 }
 
 /**
@@ -406,13 +406,11 @@ static bool follow_face_loop(const int poly_start_index,
                              const blender::VArray<bool> &hide_poly,
                              const blender::Span<int> corner_edges,
                              const blender::GroupedSpan<int> edge_to_poly_map,
-                             blender::Vector<int> &r_loop_polys)
+                             blender::VectorSet<int> &r_loop_polys)
 {
   using namespace blender;
   int current_poly_index = poly_start_index;
   int current_edge_index = edge_start_index;
-
-  VectorSet<int> vector_set;
 
   while (current_edge_index > 0) {
     int next_poly_index = -1;
@@ -435,7 +433,7 @@ static bool follow_face_loop(const int poly_start_index,
     }
 
     /* Happens if we looped around the mesh. */
-    if (vector_set.contains(next_poly_index)) {
+    if (r_loop_polys.contains(next_poly_index)) {
       return true;
     }
 
@@ -444,8 +442,7 @@ static bool follow_face_loop(const int poly_start_index,
       return false;
     }
 
-    r_loop_polys.append(next_poly_index);
-    vector_set.add(next_poly_index);
+    r_loop_polys.add(next_poly_index);
 
     const IndexRange next_poly = polys[next_poly_index];
     current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
@@ -492,7 +489,7 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
       polys, corner_edges, mesh->totedge, edge_to_poly_offsets, edge_to_poly_indices);
 
-  Vector<int> polys_to_select;
+  VectorSet<int> polys_to_select;
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
