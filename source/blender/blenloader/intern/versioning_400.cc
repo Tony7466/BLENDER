@@ -18,9 +18,7 @@
 #include "BLI_listbase.h"
 #include "BLI_set.hh"
 
-#include "BKE_deform.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_node.hh"
 #include "BKE_tracking.h"
