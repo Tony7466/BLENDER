@@ -17,7 +17,7 @@ static void create_reverse_map(const IndexMask &mask, MutableSpan<int> r_map)
   r_map.fill(-1);
 #endif
   mask.foreach_index_optimized<int>(
-      GrainSize(4049), [&](const int src_i, const int dst_i) { r_map[src_i] = dst_i; });
+      GrainSize(4096), [&](const int src_i, const int dst_i) { r_map[src_i] = dst_i; });
 }
 
 static void remap_verts(const OffsetIndices<int> src_polys,
