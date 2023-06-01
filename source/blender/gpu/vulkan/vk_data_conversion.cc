@@ -586,7 +586,8 @@ using SRGBA8 = PixelValue<ColorSceneLinearByteEncoded4b<eAlpha::Premultiplied>>;
 using FLOAT3 = PixelValue<float3>;
 using FLOAT4 = PixelValue<ColorSceneLinear4f<eAlpha::Premultiplied>>;
 /* NOTE: Vulkan stores R11_G11_B10 in reverse component order. */
-class B10F_G11G_R11F : public PixelValue<uint32_t> {};
+class B10F_G11G_R11F : public PixelValue<uint32_t> {
+};
 
 class DepthComponent24 : public ComponentValue<uint32_t> {
  public:
