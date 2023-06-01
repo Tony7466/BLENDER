@@ -14,15 +14,15 @@ namespace blender::ed::outliner {
 
 class TreeElementIDCurve final : public TreeElementID {
   Curve &curve_;
-  
-public:
+
+ public:
   TreeElementIDCurve(TreeElement &legacy_te, Curve &curve);
-  
+
   void expand(SpaceOutliner &) const override;
   bool isExpandValid() const override;
-  
-private:
+
+ private:
   void expandMaterials(SpaceOutliner &) const;
 };
 
-} // namespace blender::ed::outliner
+}  // namespace blender::ed::outliner
