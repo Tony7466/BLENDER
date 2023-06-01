@@ -17,14 +17,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 
-//should be removed after #T108471 is merged
-#ifndef NOMINMAX
-#  define NOMINMAX
 #  include <windows.h>
-#  undef NOMINMAX
-#else
-#  include <windows.h>
-#endif
 
 #undef rad
 #undef rad1
