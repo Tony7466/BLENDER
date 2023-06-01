@@ -1745,14 +1745,15 @@ static int editsource_text_edit(bContext *C,
   Main *bmain = CTX_data_main(C);
   Text *text = nullptr;
 
-  if (U.text_editor_preset != 0) {
-    wmOperatorType *ot = WM_operatortype_find("TEXT_OT_jump_to_file_at_line", true);
+  if (U.text_editor[0] != '\0') {
+    wmOperatorType *ot = WM_operatortype_find("TEXT_OT_jump_to_file_at_point", true);
     PointerRNA op_props;
-    
+
     WM_operator_properties_create_ptr(&op_props, ot);
     RNA_string_set(&op_props, "filepath", filepath);
     RNA_int_set(&op_props, "line", line);
-    
+    RNA_int_set(&op_props, "column", 0);
+
     int result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &op_props, NULL);
     if (result & OPERATOR_FINISHED) {
       return OPERATOR_FINISHED;

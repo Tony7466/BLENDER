@@ -551,7 +551,8 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext *UNUSED(
   int totitem = 0;
 
   for (const EnumPropertyItem *it = rna_enum_preference_section_items; it->identifier != NULL;
-       it++) {
+       it++)
+  {
     if (it->value == USER_SECTION_EXPERIMENTAL) {
       continue;
     }
@@ -6386,12 +6387,7 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
       {50, "CUSTOM", 0, "Custom", "Custom animation player executable path"},
       {0, NULL, 0, NULL, NULL},
   };
-  static const EnumPropertyItem text_editor_presets[] = {
-      {0, "INTERNAL", 0, "Internal", "Built-in text editor"},
-      {1, "VSCODE", 0, "Visual Studio Code", "Open source code editor"},
-      {50, "CUSTOM", 0, "Custom", "Custom text editor executable path"},
-      {0, NULL, 0, NULL, NULL},
-  };
+
   static const EnumPropertyItem preview_type_items[] = {
       {USER_FILE_PREVIEW_NONE, "NONE", 0, "None", "Do not create blend previews"},
       {USER_FILE_PREVIEW_AUTO, "AUTO", 0, "Auto", "Automatically select best preview type"},
@@ -6513,10 +6509,9 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "text_editor");
   RNA_def_property_ui_text(prop, "Text Editor", "Path to an text editor");
 
-  prop = RNA_def_property(srna, "text_editor_preset", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "text_editor_preset");
-  RNA_def_property_enum_items(prop, text_editor_presets);
-  RNA_def_property_ui_text(prop, "Text Editor Preset", "Preset configs for text editors");
+  prop = RNA_def_property(srna, "text_editor_args", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "text_editor_args");
+  RNA_def_property_ui_text(prop, "Text Editor Args", "text_editor_args");
 
   prop = RNA_def_property(srna, "animation_player", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_string_sdna(prop, NULL, "anim_player");

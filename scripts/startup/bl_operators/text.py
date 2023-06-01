@@ -4,13 +4,14 @@ from bpy.types import Operator
 from bpy.props import (IntProperty, StringProperty)
 
 
-class TEXT_OT_jump_to_file_at_line(Operator):
-    bl_idname = "text.jump_to_file_at_line"
-    bl_label = "Open Text File at line"
+class TEXT_OT_jump_to_file_at_point(Operator):
+    bl_idname = "text.jump_to_file_at_point"
+    bl_label = "Open Text File at point"
     bl_description = "Edit text file in external text editor"
 
     filepath: StringProperty(name="filepath")
     line: IntProperty(name="line")
+    column: IntProperty(name="column")
 
     def execute(self, context):
         if not self.properties.is_property_set("filepath"):
@@ -19,14 +20,19 @@ class TEXT_OT_jump_to_file_at_line(Operator):
                 return {'CANCELLED'}
             self.filepath = text.filepath
             self.line = text.current_line_index + 1
+            self.column = text.current_character + 1
 
-        preset = context.preferences.filepaths.text_editor_preset
-        args = []
-        import platform
-        if preset == 'VSCODE':
-            args = ["code.cmd" if platform.system() == 'Windows' else "code", "-g", f"{self.filepath}:{self.line}"]
-        if preset == 'CUSTOM':
-            args = [context.preferences.filepaths.text_editor, f"{self.filepath}"]
+        text_editor = context.preferences.filepaths.text_editor
+        text_editor_args = context.preferences.filepaths.text_editor_args
+
+        args = [text_editor]
+
+        if not text_editor_args:
+            text_editor_args = "{file} {line} {column}"
+
+        text_editor_args = text_editor_args.format(file=self.filepath, line=self.line, column=self.column)
+        args.extend(text_editor_args.split(" "))
+
         try:
             import subprocess
             process = subprocess.run(args)
@@ -37,4 +43,4 @@ class TEXT_OT_jump_to_file_at_line(Operator):
             return {'CANCELLED'}
 
 
-classes = (TEXT_OT_jump_to_file_at_line,)
+classes = (TEXT_OT_jump_to_file_at_point,)
