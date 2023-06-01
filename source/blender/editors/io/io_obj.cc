@@ -74,7 +74,7 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
-  struct OBJExportParams export_params;
+  OBJExportParams export_params;
   export_params.file_base_for_tests[0] = '\0';
   RNA_string_get(op->ptr, "filepath", export_params.filepath);
   export_params.blen_filepath = CTX_data_main(C)->filepath;
@@ -224,7 +224,7 @@ static bool wm_obj_export_check(bContext *C, wmOperator *op)
   return changed;
 }
 
-void WM_OT_obj_export(struct wmOperatorType *ot)
+void WM_OT_obj_export(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -381,7 +381,7 @@ static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*e
 
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
-  struct OBJImportParams import_params;
+  OBJImportParams import_params;
   RNA_string_get(op->ptr, "filepath", import_params.filepath);
   import_params.global_scale = RNA_float_get(op->ptr, "global_scale");
   import_params.clamp_size = RNA_float_get(op->ptr, "clamp_size");
@@ -463,7 +463,7 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
   ui_obj_import_settings(op->layout, &ptr);
 }
 
-void WM_OT_obj_import(struct wmOperatorType *ot)
+void WM_OT_obj_import(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 

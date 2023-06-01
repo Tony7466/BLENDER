@@ -66,7 +66,7 @@ static int wm_ply_export_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
-  struct PLYExportParams export_params = {"\0"};
+  PLYExportParams export_params = {"\0"};
   export_params.file_base_for_tests[0] = '\0';
   RNA_string_get(op->ptr, "filepath", export_params.filepath);
   export_params.blen_filepath = CTX_data_main(C)->filepath;
@@ -146,7 +146,7 @@ static bool wm_ply_export_check(bContext * /*C*/, wmOperator *op)
   return changed;
 }
 
-void WM_OT_ply_export(struct wmOperatorType *ot)
+void WM_OT_ply_export(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -232,7 +232,7 @@ static int wm_ply_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
 static int wm_ply_import_execute(bContext *C, wmOperator *op)
 {
-  struct PLYImportParams params;
+  PLYImportParams params;
   params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
   params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
   params.use_scene_unit = RNA_boolean_get(op->ptr, "use_scene_unit");
@@ -274,7 +274,7 @@ static int wm_ply_import_execute(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void WM_OT_ply_import(struct wmOperatorType *ot)
+void WM_OT_ply_import(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 

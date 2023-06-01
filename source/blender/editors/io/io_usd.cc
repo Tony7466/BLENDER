@@ -94,9 +94,9 @@ const EnumPropertyItem rna_enum_usd_tex_name_collision_mode_items[] = {
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 enum { AS_BACKGROUND_JOB = 1 };
-typedef struct eUSDOperatorOptions {
+struct eUSDOperatorOptions {
   bool as_background_job;
-} eUSDOperatorOptions;
+};
 
 /* Ensure that the prim_path is not set to
  * the absolute root path '/'. */
@@ -160,7 +160,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
 
-  struct USDExportParams params = {
+  USDExportParams params = {
       export_animation,
       export_hair,
       export_uvmaps,
@@ -187,7 +187,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *col;
-  struct PointerRNA *ptr = op->ptr;
+  PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
 
@@ -260,7 +260,7 @@ static bool wm_usd_export_check(bContext * /*C*/, wmOperator *op)
   return false;
 }
 
-void WM_OT_usd_export(struct wmOperatorType *ot)
+void WM_OT_usd_export(wmOperatorType *ot)
 {
   ot->name = "Export USD";
   ot->description = "Export current scene in a USD archive";
@@ -468,7 +468,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const eUSDTexNameCollisionMode tex_name_collision_mode = eUSDTexNameCollisionMode(
       RNA_enum_get(op->ptr, "tex_name_collision_mode"));
 
-  struct USDImportParams params;
+  USDImportParams params;
   params.scale = scale;
   params.is_sequence = is_sequence;
   params.set_frame_range = set_frame_range;
@@ -515,7 +515,7 @@ static void wm_usd_import_cancel(bContext * /*C*/, wmOperator *op)
 static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
-  struct PointerRNA *ptr = op->ptr;
+  PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -573,7 +573,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "import_materials"));
 }
 
-void WM_OT_usd_import(struct wmOperatorType *ot)
+void WM_OT_usd_import(wmOperatorType *ot)
 {
   ot->name = "Import USD";
   ot->description = "Import USD stage into current scene";

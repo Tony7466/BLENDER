@@ -96,7 +96,7 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
-  struct AlembicExportParams params;
+  AlembicExportParams params;
   params.frame_start = RNA_int_get(op->ptr, "start");
   params.frame_end = RNA_int_get(op->ptr, "end");
 
@@ -473,10 +473,10 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 
 /* TODO(kevin): check on de-duplicating all this with code in image_ops.c */
 
-typedef struct CacheFrame {
-  struct CacheFrame *next, *prev;
+struct CacheFrame {
+  CacheFrame *next, *prev;
   int framenr;
-} CacheFrame;
+};
 
 static int cmp_frame(const void *a, const void *b)
 {
@@ -528,7 +528,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
   ListBase frames;
   BLI_listbase_clear(&frames);
 
-  struct dirent *fname;
+  dirent *fname;
   while ((fname = readdir(dir)) != nullptr) {
     /* do we have the right extension? */
     if (!strstr(fname->d_name, ext)) {
@@ -644,7 +644,7 @@ static int wm_alembic_import_exec(bContext *C, wmOperator *op)
     ED_object_mode_set(C, OB_MODE_OBJECT);
   }
 
-  struct AlembicImportParams params = {0};
+  AlembicImportParams params = {0};
   params.global_scale = scale;
   params.sequence_len = sequence_len;
   params.sequence_offset = offset;
