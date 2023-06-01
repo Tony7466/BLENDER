@@ -791,7 +791,7 @@ void PAINT_OT_face_select_loop(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "select", true, "Select", "If false, faces will be deseleced");
+  RNA_def_boolean(ot->srna, "select", true, "Select", "If false, faces will be deselected");
   RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
 }
 
