@@ -79,6 +79,14 @@ void WorldProbePipeline::sync()
     side.cubemap_face_ps.init();
     side.cubemap_face_ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
   }
+  dummy_cryptomatte_tx_.ensure_2d(
+      GPU_RGBA16F, int2(1), GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
+  dummy_renderpass_tx_.ensure_2d(
+      GPU_RGBA32F, int2(1), GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
+  dummy_aov_color_tx_.ensure_2d_array(
+      GPU_RGBA16F, int2(1), 1, GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
+  dummy_aov_value_tx_.ensure_2d_array(
+      GPU_R16F, int2(1), 1, GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
 }
 
 void WorldProbePipeline::sync(GPUMaterial *gpumat)
@@ -99,14 +107,26 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
   side.cubemap_face_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap, face));
 
   ResourceHandle handle = manager.resource_handle(float4x4::identity());
+  PassSimple &pass = side.cubemap_face_ps;
 
-  side.cubemap_face_ps.framebuffer_set(&side.cubemap_face_fb);
-  side.cubemap_face_ps.material_set(manager, gpumat);
-  side.cubemap_face_ps.push_constant("world_opacity_fade", 1.0f);
+  pass.framebuffer_set(&side.cubemap_face_fb);
+  pass.material_set(manager, gpumat);
+  pass.push_constant("world_opacity_fade", 1.0f);
 
-  side.cubemap_face_ps.draw(DRW_cache_fullscreen_quad_get(), handle);
+  pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_light_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_diffuse_color_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_specular_color_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_emission_img", dummy_renderpass_tx_);
+  pass.bind_image("rp_cryptomatte_img", dummy_cryptomatte_tx_);
+
+  pass.bind_image("aov_color_img", dummy_aov_color_tx_);
+  pass.bind_image("aov_value_img", dummy_aov_value_tx_);
+  pass.bind_ssbo("aov_buf", &inst_.film.aovs_info);
+
+  pass.draw(DRW_cache_fullscreen_quad_get(), handle);
   /* To allow opaque pass rendering over it. */
-  side.cubemap_face_ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
 void WorldProbePipeline::render()

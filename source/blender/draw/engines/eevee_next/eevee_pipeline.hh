@@ -53,6 +53,11 @@ class WorldProbePipeline {
  private:
   Instance &inst_;
 
+  Texture dummy_renderpass_tx_;
+  Texture dummy_cryptomatte_tx_;
+  Texture dummy_aov_color_tx_;
+  Texture dummy_aov_value_tx_;
+
   struct CubemapSide {
     PassSimple cubemap_face_ps;
     View view;
