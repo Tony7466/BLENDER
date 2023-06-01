@@ -28,6 +28,7 @@ set(INC
 
 set(SRC
   nodes/node_geo_accumulate_field.cc
+  nodes/node_geo_arrow_gizmos.cc
   nodes/node_geo_attribute_capture.cc
   nodes/node_geo_attribute_domain_size.cc
   nodes/node_geo_attribute_statistic.cc

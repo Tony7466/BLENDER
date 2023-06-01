@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_vector_set.hh"
+
 #include "BKE_attribute.hh"
 
 namespace blender::bke {
@@ -17,8 +19,9 @@ class GizmosGeometry {
 
  public:
   GizmosGeometry() = default;
-  //GizmosGeometry(int pathes, int gizmos);
-  //GizmosGeometry(const GizmosGeometry &other);
+  GizmosGeometry(std::string);
+  // GizmosGeometry(int pathes, int gizmos);
+  // GizmosGeometry(const GizmosGeometry &other);
 
   GizmosGeometry *copy() const;
 
@@ -28,7 +31,8 @@ class GizmosGeometry {
   int gizmos_num() const;
 
   /**
-   * Remove the indices that are not contained in the mask input, and remove unused pathes afterwards.
+   * Remove the indices that are not contained in the mask input, and remove unused pathes
+   * afterwards.
    */
   void remove(const blender::IndexMask &mask,
               const blender::bke::AnonymousAttributePropagationInfo &propagation_info);
@@ -39,5 +43,15 @@ class GizmosGeometry {
   CustomDataAttributes &custom_data_attributes();
   const CustomDataAttributes &custom_data_attributes() const;
 };
+
+inline CustomDataAttributes &GizmosGeometry::custom_data_attributes()
+{
+  return attributes_;
+}
+
+inline const CustomDataAttributes &GizmosGeometry::custom_data_attributes() const
+{
+  return attributes_;
+}
 
 }  // namespace blender::bke

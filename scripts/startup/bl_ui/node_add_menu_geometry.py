@@ -620,6 +620,17 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
+class NODE_MT_category_GEO_GIZMOS(Menu):
+    bl_idname = "NODE_MT_category_GEO_GIZMOS"
+    bl_label = "Gizmos"
+    bl_translation_context = i18n_contexts.id_id
+
+    def draw(self, context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeArrowGizmo")
+        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
+
 class NODE_MT_category_GEO_GROUP(Menu):
     bl_idname = "NODE_MT_category_GEO_GROUP"
     bl_label = "Group"
@@ -658,6 +669,7 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_geometry_node_GEO_MESH")
         layout.menu("NODE_MT_category_GEO_POINT")
         layout.menu("NODE_MT_category_GEO_VOLUME")
+        layout.menu("NODE_MT_category_GEO_GIZMOS")
         layout.separator()
         layout.menu("NODE_MT_category_simulation")
         layout.separator()
@@ -702,6 +714,7 @@ classes = (
     NODE_MT_category_GEO_POINT,
     NODE_MT_category_simulation,
     NODE_MT_category_GEO_VOLUME,
+    NODE_MT_category_GEO_GIZMOS,
     NODE_MT_geometry_node_GEO_MATERIAL,
     NODE_MT_category_GEO_TEXTURE,
     NODE_MT_category_GEO_UTILITIES,

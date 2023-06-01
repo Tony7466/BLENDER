@@ -58,6 +58,8 @@ GeometryComponentPtr GeometryComponent::create(GeometryComponentType component_t
       return new CurveComponent();
     case GEO_COMPONENT_TYPE_EDIT:
       return new GeometryComponentEditData();
+    case GEO_COMPONENT_TYPE_GIZMO:
+      return new GizmosComponent();
   }
   BLI_assert_unreachable();
   return {};
@@ -416,6 +418,17 @@ GeometrySet GeometrySet::create_with_pointcloud(PointCloud *pointcloud,
   if (pointcloud != nullptr) {
     PointCloudComponent &component = geometry_set.get_component_for_write<PointCloudComponent>();
     component.replace(pointcloud, ownership);
+  }
+  return geometry_set;
+}
+
+GeometrySet GeometrySet::create_with_gizmos(blender::bke::GizmosGeometry *gizmos,
+                                            GeometryOwnershipType ownership)
+{
+  GeometrySet geometry_set;
+  if (gizmos != nullptr) {
+    GizmosComponent &component = geometry_set.get_component_for_write<GizmosComponent>();
+    component.replace(gizmos, ownership);
   }
   return geometry_set;
 }

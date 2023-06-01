@@ -39,6 +39,7 @@ namespace blender::bke {
 class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
+class GizmosGeometry;
 }  // namespace blender::bke
 
 class GeometryComponent;
@@ -243,6 +244,10 @@ struct GeometrySet {
    */
   static GeometrySet create_with_pointcloud(
       PointCloud *pointcloud, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+
+  static GeometrySet create_with_gizmos(
+      blender::bke::GizmosGeometry *gizmos,
+      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given curves.
    */
@@ -651,7 +656,8 @@ class GeometryComponentEditData final : public GeometryComponent {
 /**
  * A geometry component that stores a gizmo points.
  *
- * This component is taked at the finishing of modifier evaluation and storend in COW object runtime.
+ * This component is taked at the finishing of modifier evaluation and storend in COW object
+ * runtime.
  */
 class GizmosComponent : public GeometryComponent {
  private:
@@ -661,10 +667,13 @@ class GizmosComponent : public GeometryComponent {
  public:
   GizmosComponent();
   ~GizmosComponent();
-  GizmosComponent *copy() const override;
+  GeometryComponent *copy() const final;
 
   void clear() override;
   bool has_gizmos() const;
+
+  void replace(blender::bke::GizmosGeometry *gizmos,
+               GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   const blender::bke::GizmosGeometry *get_for_read() const;
   blender::bke::GizmosGeometry *get_for_write();

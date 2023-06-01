@@ -2,7 +2,23 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_gizmos.hh"
+
 namespace blender::bke {
+
+GizmosGeometry::GizmosGeometry(std::string path) : paths_{std::move(path)}, mapping(1, 0)
+{
+  attributes_.reallocate(1);
+}
+
+GizmosGeometry *GizmosGeometry::copy() const
+{
+  GizmosGeometry *gizmos = new GizmosGeometry;
+  gizmos->paths_ = paths_;
+  gizmos->mapping = mapping;
+  gizmos->attributes_ = attributes_;
+  return gizmos;
+}
 
 int GizmosGeometry::pathes_num() const
 {

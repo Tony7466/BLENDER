@@ -2,6 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_geometry_set.hh"
+#include "attribute_access_intern.hh"
+
+/* -------------------------------------------------------------------- */
+/** \name Geometry Component Implementation
+ * \{ */
+
 GizmosComponent::GizmosComponent() : GeometryComponent(GEO_COMPONENT_TYPE_GIZMO) {}
 
 GizmosComponent::~GizmosComponent()
@@ -29,18 +36,26 @@ void GizmosComponent::clear()
     gizmos_ = nullptr;
   }
 }
+void GizmosComponent::replace(blender::bke::GizmosGeometry *gizmos,
+                              GeometryOwnershipType ownership)
+{
+  BLI_assert(this->is_mutable());
+  this->clear();
+  gizmos_ = gizmos;
+  ownership_ = ownership;
+}
 
 bool GizmosComponent::has_gizmos() const
 {
   return gizmos_ != nullptr;
 }
 
-const PointCloud *GizmosComponent::get_for_read() const
+const blender::bke::GizmosGeometry *GizmosComponent::get_for_read() const
 {
-  return pointcloud_;
+  return gizmos_;
 }
 
-PointCloud *GizmosComponent::get_for_write()
+blender::bke::GizmosGeometry *GizmosComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
@@ -77,36 +92,20 @@ void GizmosComponent::ensure_owns_direct_data()
 
 namespace blender::bke {
 
-static void tag_component_positions_changed(void *owner)
+static ComponentAttributeProviders create_attribute_providers_for_gizmos()
 {
-  PointCloud &points = *static_cast<PointCloud *>(owner);
-  points.tag_positions_changed();
-}
-
-static void tag_component_radius_changed(void *owner)
-{
-  PointCloud &points = *static_cast<PointCloud *>(owner);
-  points.tag_radii_changed();
-}
-
-/**
- * In this function all the attribute providers for a point cloud component are created. Most data
- * in this function is statically allocated, because it does not change over time.
- */
-static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
-{
-  static CustomDataAccessInfo point_access = {
+  static CustomDataAccessInfo gizmos_access = {
       [](void *owner) -> CustomData * {
-        PointCloud *pointcloud = static_cast<PointCloud *>(owner);
-        return &pointcloud->pdata;
+        GizmosGeometry *gizmos = static_cast<GizmosGeometry *>(owner);
+        return &gizmos->custom_data_attributes().data;
       },
       [](const void *owner) -> const CustomData * {
-        const PointCloud *pointcloud = static_cast<const PointCloud *>(owner);
-        return &pointcloud->pdata;
+        const GizmosGeometry *gizmos = static_cast<const GizmosGeometry *>(owner);
+        return &gizmos->custom_data_attributes().data;
       },
       [](const void *owner) -> int {
-        const PointCloud *pointcloud = static_cast<const PointCloud *>(owner);
-        return pointcloud->totpoint;
+        const GizmosGeometry *gizmos = static_cast<const GizmosGeometry *>(owner);
+        return gizmos->gizmos_num();
       }};
 
   static BuiltinCustomDataLayerProvider position("position",
@@ -115,42 +114,33 @@ static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
                                                  CD_PROP_FLOAT3,
                                                  BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
-                                                 point_access,
-                                                 tag_component_positions_changed);
-  static BuiltinCustomDataLayerProvider radius("radius",
-                                               ATTR_DOMAIN_POINT,
-                                               CD_PROP_FLOAT,
-                                               CD_PROP_FLOAT,
-                                               BuiltinAttributeProvider::Creatable,
-                                               BuiltinAttributeProvider::Deletable,
-                                               point_access,
-                                               tag_component_radius_changed);
+                                                 gizmos_access,
+                                                 nullptr);
   static BuiltinCustomDataLayerProvider id("id",
                                            ATTR_DOMAIN_POINT,
                                            CD_PROP_INT32,
                                            CD_PROP_INT32,
                                            BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
-                                           point_access,
+                                           gizmos_access,
                                            nullptr);
-  static CustomDataAttributeProvider point_custom_data(ATTR_DOMAIN_POINT, point_access);
-  return ComponentAttributeProviders({&position, &radius, &id}, {&point_custom_data});
+  static CustomDataAttributeProvider gizmos_custom_data(ATTR_DOMAIN_POINT, gizmos_access);
+  return ComponentAttributeProviders({&position, &id}, {&gizmos_custom_data});
 }
 
-static AttributeAccessorFunctions get_pointcloud_accessor_functions()
+static AttributeAccessorFunctions get_gizmos_accessor_functions()
 {
-  static const ComponentAttributeProviders providers =
-      create_attribute_providers_for_point_cloud();
+  static const ComponentAttributeProviders providers = create_attribute_providers_for_gizmos();
   AttributeAccessorFunctions fn =
       attribute_accessor_functions::accessor_functions_for_providers<providers>();
   fn.domain_size = [](const void *owner, const eAttrDomain domain) {
     if (owner == nullptr) {
       return 0;
     }
-    const PointCloud &pointcloud = *static_cast<const PointCloud *>(owner);
+    const GizmosGeometry &gizmos = *static_cast<const GizmosGeometry *>(owner);
     switch (domain) {
       case ATTR_DOMAIN_POINT:
-        return pointcloud.totpoint;
+        return gizmos.gizmos_num();
       default:
         return 0;
     }
@@ -170,37 +160,36 @@ static AttributeAccessorFunctions get_pointcloud_accessor_functions()
   return fn;
 }
 
-static const AttributeAccessorFunctions &get_pointcloud_accessor_functions_ref()
+static const AttributeAccessorFunctions &get_gizmos_accessor_functions_ref()
 {
-  static const AttributeAccessorFunctions fn = get_pointcloud_accessor_functions();
+  static const AttributeAccessorFunctions fn = get_gizmos_accessor_functions();
   return fn;
 }
 
 }  // namespace blender::bke
 
-blender::bke::AttributeAccessor PointCloud::attributes() const
+blender::bke::AttributeAccessor blender::bke::GizmosGeometry::attributes() const
 {
-  return blender::bke::AttributeAccessor(this,
-                                         blender::bke::get_pointcloud_accessor_functions_ref());
+  return blender::bke::AttributeAccessor(this, blender::bke::get_gizmos_accessor_functions_ref());
 }
 
-blender::bke::MutableAttributeAccessor PointCloud::attributes_for_write()
+blender::bke::MutableAttributeAccessor blender::bke::GizmosGeometry::attributes_for_write()
 {
-  return blender::bke::MutableAttributeAccessor(
-      this, blender::bke::get_pointcloud_accessor_functions_ref());
+  return blender::bke::MutableAttributeAccessor(this,
+                                                blender::bke::get_gizmos_accessor_functions_ref());
 }
 
-std::optional<blender::bke::AttributeAccessor> PointCloudComponent::attributes() const
+std::optional<blender::bke::AttributeAccessor> GizmosComponent::attributes() const
 {
-  return blender::bke::AttributeAccessor(pointcloud_,
-                                         blender::bke::get_pointcloud_accessor_functions_ref());
+  return blender::bke::AttributeAccessor(gizmos_,
+                                         blender::bke::get_gizmos_accessor_functions_ref());
 }
 
-std::optional<blender::bke::MutableAttributeAccessor> PointCloudComponent::attributes_for_write()
+std::optional<blender::bke::MutableAttributeAccessor> GizmosComponent::attributes_for_write()
 {
-  PointCloud *pointcloud = this->get_for_write();
-  return blender::bke::MutableAttributeAccessor(
-      pointcloud, blender::bke::get_pointcloud_accessor_functions_ref());
+  blender::bke::GizmosGeometry *gizmos = this->get_for_write();
+  return blender::bke::MutableAttributeAccessor(gizmos,
+                                                blender::bke::get_gizmos_accessor_functions_ref());
 }
 
 /** \} */

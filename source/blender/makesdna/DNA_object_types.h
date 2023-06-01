@@ -160,6 +160,9 @@ typedef struct Object_Runtime {
    */
   struct GeometrySet *geometry_set_eval;
 
+  /* Evaluated object only runtime. */
+  // GizmosComponent *overlay_gizmo
+
   /**
    * Mesh structure created during object evaluation.
    * It has deformation only modifiers applied on it.
