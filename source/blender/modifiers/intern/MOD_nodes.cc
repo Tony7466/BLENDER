@@ -2144,7 +2144,7 @@ static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
 
-  if (nmd->node_group) {
+  if (nmd->node_group == nullptr) {
     return BLI_listbase_is_empty(&parent->children);
   }
 
