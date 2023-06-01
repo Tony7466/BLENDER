@@ -155,7 +155,6 @@ ccl_device_forceinline bool point_light_tree_parameters(const ccl_global KernelL
                                                         ccl_private float3 &point_to_centroid)
 {
   if (in_volume_segment) {
-    /* TODO: does this still hold? */
     cos_theta_u = 1.0f; /* Any value in [-1, 1], irrelevant since theta = 0 */
     return true;
   }
