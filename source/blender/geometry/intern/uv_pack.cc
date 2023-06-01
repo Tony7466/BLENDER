@@ -339,7 +339,7 @@ UVPackIsland_Params::UVPackIsland_Params()
   only_selected_faces = false;
   use_seams = false;
   correct_aspect = false;
-  pin_method = ED_UVPACK_PIN_DEFAULT;
+  pin_method = ED_UVPACK_PIN_PACK;
   pin_unselected = false;
   merge_overlap = false;
   margin = 0.001f;
@@ -1546,6 +1546,13 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
                     r_phis,
                     &final_extent);
 
+  /* Housekeeping. */
+  for (const int64_t i : aabbs.index_range()) {
+    UVAABBIsland *aabb = aabbs[i];
+    aabbs[i] = nullptr;
+    delete aabb;
+  }
+
   return get_aspect_scaled_extent(final_extent, params);
 }
 
@@ -1981,7 +1988,6 @@ bool PackIsland::can_translate_(const UVPackIsland_Params &params) const
   }
   switch (params.pin_method) {
     case ED_UVPACK_PIN_LOCK_ALL:
-    case ED_UVPACK_PIN_LOCK_TRANSLATION:
       return false;
     default:
       return true;
