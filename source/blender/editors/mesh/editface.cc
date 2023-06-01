@@ -253,8 +253,7 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
         }
 
         for (const int inner_edge :
-             poly_edges.slice(poly_loop_index, poly_edges.size() - poly_loop_index))
-        {
+             poly_edges.slice(poly_loop_index, poly_edges.size() - poly_loop_index)) {
           if (outer_edge == inner_edge) {
             continue;
           }
