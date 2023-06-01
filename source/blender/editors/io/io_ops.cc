@@ -44,14 +44,15 @@ void ED_operatortypes_io(void)
   WM_operatortype_append(WM_OT_usd_export);
 #endif
 
-#  ifdef WITH_IO_GPENCIL
+#ifdef WITH_IO_GPENCIL
   WM_operatortype_append(WM_OT_gpencil_import_svg);
-#    ifdef WITH_PUGIXML
+#  ifdef WITH_PUGIXML
   WM_operatortype_append(WM_OT_gpencil_export_svg);
-#    endif
-#    ifdef WITH_HARU
+#  endif
+#  ifdef WITH_HARU
   WM_operatortype_append(WM_OT_gpencil_export_pdf);
-#    endif
+#  endif
+#endif
 
   WM_operatortype_append(CACHEFILE_OT_open);
   WM_operatortype_append(CACHEFILE_OT_reload);
@@ -59,7 +60,6 @@ void ED_operatortypes_io(void)
   WM_operatortype_append(CACHEFILE_OT_layer_add);
   WM_operatortype_append(CACHEFILE_OT_layer_remove);
   WM_operatortype_append(CACHEFILE_OT_layer_move);
-#endif
 #ifdef WITH_IO_WAVEFRONT_OBJ
   WM_operatortype_append(WM_OT_obj_export);
   WM_operatortype_append(WM_OT_obj_import);
