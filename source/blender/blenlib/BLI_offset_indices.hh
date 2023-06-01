@@ -146,6 +146,7 @@ void copy_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, Mutable
 /** Gather the number of indices in each indexed group to sizes. */
 void gather_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, MutableSpan<int> sizes);
 
+/** Build new offsets that contains only the groups chosen by \a selection. */
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
                                            MutableSpan<int> dst_offsets);
