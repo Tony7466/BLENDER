@@ -123,7 +123,9 @@ ccl_device_inline float pdf_uniform_cone(const float3 N, float3 D, float angle)
 
 /* Uniformly sample a direction in a cone of given angle around `N`. Use concentric mapping to
  * better preserve stratification. Return the angle between `N` and the sampled direction as
- * `cos_theta`. Be careful of precision issues at small angles (see sphere light for reference). */
+ * `cos_theta`.
+ * Pass `1 - cos(angle)` as argument instead of `angle` to alleviate precision issues at small
+ * angles (see sphere light for reference). */
 ccl_device_inline void sample_uniform_cone_concentric(const float3 N,
                                                       const float one_minus_cos_angle,
                                                       const float2 rand,
