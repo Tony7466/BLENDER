@@ -54,6 +54,7 @@ class ReflectionProbeModule {
    * Must be a power of two; intension to be used as a cubemap atlas.
    */
   static constexpr int MAX_RESOLUTION = 2048;
+  static constexpr int MIPMAP_LEVELS = 12;
 
   /**
    * Index of the probe that is used for world background.
