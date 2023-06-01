@@ -17,7 +17,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 
-#if defined(WIN32) && !defined(NOMINMAX)
+#ifndef NOMINMAX
 #  define NOMINMAX
 #  include <windows.h>
 #  undef NOMINMAX
