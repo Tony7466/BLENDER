@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -340,7 +341,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                                 OB_GPENCIL_LEGACY,
                                 OB_CURVES,
                                 OB_POINTCLOUD,
-                                OB_VOLUME);
+                                OB_VOLUME,
+                                OB_GREASE_PENCIL);
   const bool draw_surface = (ob->dt >= OB_WIRE) && (renderable || (ob->dt == OB_WIRE));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION) &&
                            !is_select;
