@@ -198,6 +198,9 @@ std::optional<Mesh *> mesh_copy_selection(
   evaluator.add(selection_field);
   evaluator.evaluate();
   const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
+  if (selection.is_empty()) {
+    return std::nullopt;
+  }
   if (const std::optional<bool> single = selection.get_if_single()) {
     return *single ? std::nullopt : std::make_optional<Mesh *>(nullptr);
   }
@@ -339,6 +342,9 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
   evaluator.add(selection_field);
   evaluator.evaluate();
   const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
+  if (selection.is_empty()) {
+    return std::nullopt;
+  }
 
   threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
   IndexMask edge_mask;
@@ -434,6 +440,9 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
   evaluator.add(selection_field);
   evaluator.evaluate();
   const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
+  if (selection.is_empty()) {
+    return std::nullopt;
+  }
 
   IndexMaskMemory memory;
   IndexMask poly_mask;
