@@ -2017,25 +2017,37 @@ static void socket_category_panel_draw_header(const bContext * /*C*/, Panel *pan
 
   const bNodeSocket *start_socket = static_cast<bNodeSocket *>(
       BLI_findlink(&nmd->node_group->inputs, panel->runtime.custom_data_int[0]));
-  const bNodeSocket *end_socket = static_cast<bNodeSocket *>(
-      BLI_findlink(&nmd->node_group->inputs, panel->runtime.custom_data_int[1]));
-  if (start_socket == nullptr || end_socket == nullptr) {
+  if (start_socket == nullptr) {
     return;
   }
 
-  std::string category = "Sockets from " + std::string(start_socket->name) + " to " +
-                         std::string(end_socket->name);
-  uiItemL(layout, category.c_str(), ICON_NONE);
+  /* TODO using name as placeholder until categories are added. */
+  const char *socket_category = start_socket->name;
+  uiItemL(layout, socket_category, ICON_NONE);
 }
 
-static void socket_category_panel_draw(const bContext * /*C*/, Panel *panel)
+static void socket_category_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
+
+  PointerRNA bmain_ptr;
+  RNA_main_pointer_create(CTX_data_main(C), &bmain_ptr);
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
-  uiItemL(layout, "Hello World!", ICON_NONE);
+  const Span<const bNodeSocket *> sockets = nmd->node_group->interface_inputs();
+  const int start_index = panel->runtime.custom_data_int[0];
+  const int end_index = panel->runtime.custom_data_int[1];
+  for (const int socket_index : sockets.index_range().slice(start_index, end_index - start_index))
+  {
+    const bNodeSocket *socket = sockets[socket_index];
+    if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
+      continue;
+    }
+
+    draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
+  }
 }
 
 static void panelRegister(ARegionType *region_type)
