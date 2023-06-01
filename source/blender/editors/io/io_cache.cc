@@ -48,7 +48,7 @@ static void cachefile_init(bContext *C, wmOperator *op)
   UI_context_active_but_prop_get_templateID(C, &pprop->ptr, &pprop->prop);
 }
 
-static int cachefile_open_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int cachefile_open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     char filepath[FILE_MAX];
@@ -64,8 +64,6 @@ static int cachefile_open_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   WM_event_add_fileselect(C, op);
 
   return OPERATOR_RUNNING_MODAL;
-
-  UNUSED_VARS(event);
 }
 
 static void open_cancel(bContext * /*C*/, wmOperator *op)
@@ -161,7 +159,7 @@ void CACHEFILE_OT_reload(wmOperatorType *ot)
 
 /* ***************************** Add Layer Operator **************************** */
 
-static int cachefile_layer_open_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int cachefile_layer_open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     char filepath[FILE_MAX];
@@ -178,8 +176,6 @@ static int cachefile_layer_open_invoke(bContext *C, wmOperator *op, const wmEven
   WM_event_add_fileselect(C, op);
 
   return OPERATOR_RUNNING_MODAL;
-
-  UNUSED_VARS(event);
 }
 
 static int cachefile_layer_add_exec(bContext *C, wmOperator *op)

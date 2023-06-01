@@ -69,7 +69,7 @@ const EnumPropertyItem rna_enum_abc_export_evaluation_mode_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static int wm_alembic_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int wm_alembic_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
     RNA_boolean_set(op->ptr, "as_background_job", true);
@@ -82,8 +82,6 @@ static int wm_alembic_export_invoke(bContext *C, wmOperator *op, const wmEvent *
   WM_event_add_fileselect(C, op);
 
   return OPERATOR_RUNNING_MODAL;
-
-  UNUSED_VARS(event);
 }
 
 static int wm_alembic_export_exec(bContext *C, wmOperator *op)
