@@ -183,6 +183,8 @@ void Instance::object_sync(Object *ob)
       case OB_GPENCIL_LEGACY:
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
+      case OB_LIGHTPROBE:
+        sync.sync_light_probe(ob, ob_handle, res_handle);
       default:
         break;
     }

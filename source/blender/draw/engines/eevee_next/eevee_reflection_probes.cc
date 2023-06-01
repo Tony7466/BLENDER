@@ -41,18 +41,61 @@ void ReflectionProbeModule::sync()
 
 void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
 {
-  if (cubemap.type == ReflectionProbe::Type::World) {
-    GPUMaterial *world_material = instance_.world.get_world_material();
-    instance_.pipelines.world_probe.sync(world_material);
-  }
-  else {
-    BLI_assert_unreachable();
+  switch (cubemap.type) {
+    case ReflectionProbe::Type::World: {
+      GPUMaterial *world_material = instance_.world.get_world_material();
+      instance_.pipelines.world_probe.sync(world_material);
+      break;
+    }
+    case ReflectionProbe::Type::Probe: {
+      /* TODO: Implement*/
+      break;
+    }
+    case ReflectionProbe::Type::Unused: {
+      break;
+    }
   }
 }
 
 void ReflectionProbeModule::set_world_dirty()
 {
   cubemaps_[WORLD_SLOT].is_dirty = true;
+}
+
+void ReflectionProbeModule::sync_object(Object *ob,
+                                        ObjectHandle &ob_handle,
+                                        ResourceHandle res_handle,
+                                        bool is_dirty)
+{
+  ReflectionProbe &probe = find_or_insert(ob_handle);
+  probe.is_dirty |= is_dirty;
+}
+
+ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle)
+{
+  ReflectionProbe *first_unused = nullptr;
+  for (ReflectionProbe &reflection_probe : cubemaps_) {
+    if (reflection_probe.object_hash_value == ob_handle.object_key.hash_value) {
+      return reflection_probe;
+    }
+    if (first_unused == nullptr && reflection_probe.type == ReflectionProbe::Type::Unused) {
+      first_unused = &reflection_probe;
+    }
+  }
+
+  if (first_unused == nullptr) {
+    ReflectionProbe new_slot;
+    cubemaps_.append_as(new_slot);
+    first_unused = &cubemaps_.last();
+  }
+  BLI_assert(first_unused != nullptr);
+  first_unused->is_dirty = true;
+  first_unused->object_hash_value = ob_handle.object_key.hash_value;
+  first_unused->type = ReflectionProbe::Type::Probe;
+
+  /* TODO: We should free slots that aren't used anymore. This could be implemented with a tag
+   * or priority list. */
+  return *first_unused;
 }
 
 /* -------------------------------------------------------------------- */

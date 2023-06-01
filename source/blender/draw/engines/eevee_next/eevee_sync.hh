@@ -170,6 +170,7 @@ class SyncModule {
                    ObjectHandle &ob_handle,
                    ResourceHandle res_handle,
                    ModifierData *modifier_data = nullptr);
+  void sync_light_probe(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle);
 };
 
 /** \} */

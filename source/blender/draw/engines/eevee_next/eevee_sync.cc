@@ -290,6 +290,19 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name LightProbe
+ * \{ */
+
+void SyncModule::sync_light_probe(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle)
+{
+  bool is_dirty = ob_handle.recalc;
+  inst_.reflection_probes.sync_object(ob, ob_handle, res_handle, is_dirty);
+  ob_handle.reset_recalc_flag();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Hair
  * \{ */
 

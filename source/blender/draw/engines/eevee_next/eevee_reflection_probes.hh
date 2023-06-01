@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "draw_manager.hh"
+
 #include "eevee_shader_shared.hh"
 
 #include "BKE_cryptomatte.hh"
@@ -28,6 +30,7 @@ struct Material;
 namespace blender::eevee {
 
 class Instance;
+struct ObjectHandle;
 class WorldProbePipeline;
 
 /* -------------------------------------------------------------------- */
@@ -35,10 +38,13 @@ class WorldProbePipeline;
  * \{ */
 class ReflectionProbe {
  public:
-  enum Type { Unused, World };
+  enum Type { Unused, World, Probe };
 
   Type type;
   bool is_dirty = false;
+  /* When reflection probe is a probe its ObjectKey.hash_value is copied here to keep track between
+   * draws.*/
+  uint32_t object_hash_value = 0;
 
   bool needs_update() const;
 };
@@ -46,7 +52,7 @@ class ReflectionProbe {
 class ReflectionProbeModule {
  private:
   /** The max number of probes to track. */
-  static constexpr int MAX_PROBES = 1;
+  static constexpr int MAX_PROBES = 8;
 
   /**
    * The maximum resolution of a cubemap side.
@@ -75,6 +81,7 @@ class ReflectionProbeModule {
   void set_world_dirty();
 
   void sync();
+  void sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle, bool is_dirty);
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
@@ -83,6 +90,7 @@ class ReflectionProbeModule {
 
  private:
   void sync(const ReflectionProbe &cubemap);
+  ReflectionProbe &find_or_insert(ObjectHandle &ob_handle);
 
   friend class WorldProbePipeline;
 };
