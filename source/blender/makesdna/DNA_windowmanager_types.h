@@ -204,14 +204,6 @@ typedef struct wmWindowManager {
   //#ifdef WITH_XR_OPENXR
   wmXrData xr;
   //#endif
-
-  /** Runtime pointer used during post-processing of readfile to store the old WM when the new one
-   * is used. Needed for WM code to re-use existing windows, keymaps etc.
-   *
-   * NOTE: This ID pointer should never need to be handled by ID management code (lib_query, etc.),
-   * and can be fully ignored outside of the post-readfile processing context. */
-  struct wmWindowManager *readfile_old_wm;
-  void *_pad_v;
 } wmWindowManager;
 
 /** #wmWindowManager.init_flag */

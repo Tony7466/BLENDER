@@ -229,18 +229,24 @@ typedef struct ReuseOldBMainData {
   Main *new_bmain;
   Main *old_bmain;
 
-  /* Storage for all remapping rules (old_id -> new_id) required by the preservation of old IDs
+  /** Data generated and used by calling WM code to handle keeping WM and UI IDs as best as
+   * possible across file reading.
+   *
+   * \note: May be null in undo (memfile) case.. */
+  BlendFileReadWMSetupData *wm_setup_data;
+
+  /** Storage for all remapping rules (old_id -> new_id) required by the preservation of old IDs
    * into the new Main. */
   IDRemapper *remapper;
   bool is_libraries_remapped;
 
-  /* Used to find matching IDs by name/lib in new main, to remap ID usages of data ported over
+  /** Used to find matching IDs by name/lib in new main, to remap ID usages of data ported over
    * from old main. */
   IDNameLib_Map *id_map;
 } ReuseOldBMainData;
 
-/* Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library IDs
- * having the same absolute filepath), and create a remapping rule for these.
+/** Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library
+ * IDs having the same absolute filepath), and create a remapping rule for these.
  *
  * NOTE: The case where the `old_bmain` would be a library in the newly read one is not handled
  * here, as it does not create explicit issues. The local data from `old_bmain` is either
@@ -303,7 +309,7 @@ static bool reuse_bmain_data_remapper_is_id_remapped(IDRemapper *remapper, ID *i
   return false;
 }
 
-/* Does a complete replacement of data in `new_bmain` by data from `old_bmain. Original new data
+/** Does a complete replacement of data in `new_bmain` by data from `old_bmain. Original new data
  * are moved to the `old_bmain`, and will be freed together with it.
  *
  * WARNING: Currently only expects to work on local data, won't work properly if some of the IDs of
@@ -384,7 +390,7 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
   FOREACH_MAIN_LISTBASE_ID_END;
 }
 
-/* Similar to #swap_old_bmain_data_for_blendfile, but with special handling for WM ID. Tightly
+/** Similar to #swap_old_bmain_data_for_blendfile, but with special handling for WM ID. Tightly
  * related to further WM post-processing from calling WM code (see #WM_file_read and
  * #wm_homefile_read_ex). */
 static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool load_ui)
@@ -429,8 +435,7 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
     /* Do not add old WM back to `old_bmain`, so that it does not get freed when `old_bmain` is
      * freed. Calling WM code will need this old WM to restore some windows etc. data into the
      * new WM, and is responsible to free it properly. */
-    new_wm->readfile_old_wm = old_wm;
-    old_wm->readfile_old_wm = nullptr;
+    reuse_data->wm_setup_data->old_wm = old_wm;
 
     IDRemapper *remapper = reuse_bmain_data_remapper_ensure(reuse_data);
     BKE_id_remapper_add(remapper, &old_wm->id, &new_wm->id);
@@ -532,7 +537,8 @@ static int reuse_bmain_data_invalid_local_usages_fix_cb(LibraryIDLinkCallbackDat
   return IDWALK_RET_NOP;
 }
 
-/* Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides). */
+/** Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
+ */
 static void reuse_bmain_data_invalid_local_usages_fix(ReuseOldBMainData *reuse_data)
 {
   Main *new_bmain = reuse_data->new_bmain;
@@ -647,6 +653,7 @@ static void wm_data_consistency_ensure(wmWindowManager *curwm,
 static void setup_app_data(bContext *C,
                            BlendFileData *bfd,
                            const struct BlendFileReadParams *params,
+                           BlendFileReadWMSetupData *wm_setup_data,
                            BlendFileReadReport *reports)
 {
   Main *bmain = G_MAIN;
@@ -692,6 +699,7 @@ static void setup_app_data(bContext *C,
   ReuseOldBMainData reuse_data = {nullptr};
   reuse_data.new_bmain = bfd->main;
   reuse_data.old_bmain = bmain;
+  reuse_data.wm_setup_data = wm_setup_data;
 
   if (mode != LOAD_UNDO) {
     const short ui_id_codes[]{ID_WS, ID_SCR};
@@ -956,13 +964,14 @@ static void setup_app_data(bContext *C,
 static void setup_app_blend_file_data(bContext *C,
                                       BlendFileData *bfd,
                                       const struct BlendFileReadParams *params,
+                                      BlendFileReadWMSetupData *wm_setup_data,
                                       BlendFileReadReport *reports)
 {
   if ((params->skip_flags & BLO_READ_SKIP_USERDEF) == 0) {
     setup_app_userdef(bfd);
   }
   if ((params->skip_flags & BLO_READ_SKIP_DATA) == 0) {
-    setup_app_data(C, bfd, params, reports);
+    setup_app_data(C, bfd, params, wm_setup_data, reports);
   }
 }
 
@@ -980,13 +989,14 @@ static void handle_subversion_warning(Main *main, BlendFileReadReport *reports)
   }
 }
 
-void BKE_blendfile_read_setup_ex(bContext *C,
-                                 BlendFileData *bfd,
-                                 const struct BlendFileReadParams *params,
-                                 BlendFileReadReport *reports,
-                                 /* Extra args. */
-                                 const bool startup_update_defaults,
-                                 const char *startup_app_template)
+void BKE_blendfile_read_setup_readfile(bContext *C,
+                                       BlendFileData *bfd,
+                                       const struct BlendFileReadParams *params,
+                                       BlendFileReadWMSetupData *wm_setup_data,
+                                       BlendFileReadReport *reports,
+                                       /* Extra args. */
+                                       const bool startup_update_defaults,
+                                       const char *startup_app_template)
 {
   if (bfd->main->is_read_invalid) {
     BKE_reports_prepend(reports->reports,
@@ -1000,16 +1010,16 @@ void BKE_blendfile_read_setup_ex(bContext *C,
       BLO_update_defaults_startup_blend(bfd->main, startup_app_template);
     }
   }
-  setup_app_blend_file_data(C, bfd, params, reports);
+  setup_app_blend_file_data(C, bfd, params, wm_setup_data, reports);
   BLO_blendfiledata_free(bfd);
 }
 
-void BKE_blendfile_read_setup(bContext *C,
-                              BlendFileData *bfd,
-                              const struct BlendFileReadParams *params,
-                              BlendFileReadReport *reports)
+void BKE_blendfile_read_setup_undo(bContext *C,
+                                   BlendFileData *bfd,
+                                   const struct BlendFileReadParams *params,
+                                   BlendFileReadReport *reports)
 {
-  BKE_blendfile_read_setup_ex(C, bfd, params, reports, false, nullptr);
+  BKE_blendfile_read_setup_readfile(C, bfd, params, nullptr, reports, false, nullptr);
 }
 
 struct BlendFileData *BKE_blendfile_read(const char *filepath,
