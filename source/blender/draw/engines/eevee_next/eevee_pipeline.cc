@@ -79,14 +79,14 @@ void WorldProbePipeline::sync()
     side.cubemap_face_ps.init();
     side.cubemap_face_ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
   }
-  dummy_cryptomatte_tx_.ensure_2d(
-      GPU_RGBA16F, int2(1), GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
-  dummy_renderpass_tx_.ensure_2d(
-      GPU_RGBA32F, int2(1), GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
-  dummy_aov_color_tx_.ensure_2d_array(
-      GPU_RGBA16F, int2(1), 1, GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
-  dummy_aov_value_tx_.ensure_2d_array(
-      GPU_R16F, int2(1), 1, GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE);
+  const int2 extent(1);
+  const eGPUTextureUsage usage = GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent, usage);
+  dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent, usage);
+  dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent, 1, usage);
+  dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent, 1, usage);
+
+  has_draw_commands_ = false;
 }
 
 void WorldProbePipeline::sync(GPUMaterial *gpumat)
@@ -94,6 +94,7 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat)
   for (int face : IndexRange(6)) {
     sync(gpumat, face);
   }
+  has_draw_commands_ = true;
 }
 
 void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
@@ -119,18 +120,23 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
   pass.bind_image("rp_specular_color_img", dummy_renderpass_tx_);
   pass.bind_image("rp_emission_img", dummy_renderpass_tx_);
   pass.bind_image("rp_cryptomatte_img", dummy_cryptomatte_tx_);
+  /* Required by validation layers. */
+  inst_.cryptomatte.bind_resources(&pass);
 
   pass.bind_image("aov_color_img", dummy_aov_color_tx_);
   pass.bind_image("aov_value_img", dummy_aov_value_tx_);
   pass.bind_ssbo("aov_buf", &inst_.film.aovs_info);
 
   pass.draw(DRW_cache_fullscreen_quad_get(), handle);
-  /* To allow opaque pass rendering over it. */
+
   pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
 void WorldProbePipeline::render()
 {
+  if (!has_draw_commands_) {
+    return;
+  }
   GPUFrameBuffer *previous_framebuffer = GPU_framebuffer_active_get();
 
   GPU_debug_group_begin("World.Probe");

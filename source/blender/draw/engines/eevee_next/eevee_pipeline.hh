@@ -65,6 +65,12 @@ class WorldProbePipeline {
     void render(Instance &instance);
   };
 
+  /**
+   * Keep track if the world probe needs to be updated. This should only be the case when the
+   * world is updated. This flag is used to skip updating mipmaps when the world isn't changed.
+   */
+  bool has_draw_commands_ = false;
+
   CubemapSide sides_[6] = {
       {{"PosX"}, {"PosX"}},
       {{"NegX"}, {"NegX"}},
