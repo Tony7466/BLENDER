@@ -1557,6 +1557,10 @@ static int pose_slide_blend_rest_invoke(bContext *C, wmOperator *op, const wmEve
     return OPERATOR_CANCELLED;
   }
 
+  tPoseSlideOp *pso = op->customdata;
+  ED_slider_factor_set(pso->slider, 0);
+  ED_slider_factor_bounds_set(pso->slider, -1, 1);
+
   /* do common setup work */
   return pose_slide_invoke_common(C, op, event);
 }
@@ -1585,7 +1589,7 @@ void POSE_OT_blend_to_rest(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Blend Pose to Rest Pose";
   ot->idname = "POSE_OT_blend_to_rest";
-  ot->description = "Blend the current pose to the rest pose";
+  ot->description = "Make the current pose more similar to, or further away from, the rest pose";
 
   /* callbacks */
   ot->exec = pose_slide_blend_rest_exec;
