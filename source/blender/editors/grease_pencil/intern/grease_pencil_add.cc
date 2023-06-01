@@ -1036,8 +1036,18 @@ void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int fram
 
   grease_pencil.add_empty_drawings(2);
 
-  GreasePencilDrawing *drawing_fills = reinterpret_cast<GreasePencilDrawing *>(
+  GreasePencilDrawing *drawing_lines = reinterpret_cast<GreasePencilDrawing *>(
       grease_pencil.drawings_for_write()[0]);
+  drawing_lines->geometry.wrap() = create_drawing_data(monkey_line_pos,
+                                                       monkey_line_rad,
+                                                       monkey_line_opa,
+                                                       monkey_line_offsets,
+                                                       monkey_line_materials,
+                                                       monkey_line_influence,
+                                                       matrix);
+
+  GreasePencilDrawing *drawing_fills = reinterpret_cast<GreasePencilDrawing *>(
+      grease_pencil.drawings_for_write()[1]);
   drawing_fills->geometry.wrap() = create_drawing_data(monkey_fill_pos,
                                                        monkey_fill_rad,
                                                        monkey_fill_opa,
@@ -1046,20 +1056,10 @@ void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int fram
                                                        monkey_fill_influence,
                                                        matrix);
 
-  GreasePencilDrawing *drawing_lines = reinterpret_cast<GreasePencilDrawing *>(
-      grease_pencil.drawings_for_write()[1]);
-  drawing_lines->geometry.wrap() = create_drawing_data(monkey_line_pos,
-                                             monkey_line_rad,
-                                             monkey_line_opa,
-                                             monkey_line_offsets,
-                                             monkey_line_materials,
-                                             monkey_line_influence,
-                                             matrix);
-
-  GreasePencilFrame frame_fills{0, 0, BEZT_KEYTYPE_KEYFRAME};
-  GreasePencilFrame frame_lines{1, 0, BEZT_KEYTYPE_KEYFRAME};
-  layer_fills.insert_frame(frame_number, frame_fills);
+  GreasePencilFrame frame_lines{0, 0, BEZT_KEYTYPE_KEYFRAME};
+  GreasePencilFrame frame_fills{1, 0, BEZT_KEYTYPE_KEYFRAME};
   layer_lines.insert_frame(frame_number, frame_lines);
+  layer_fills.insert_frame(frame_number, frame_fills);
 }
 
 }  // namespace blender::ed::greasepencil
