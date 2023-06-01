@@ -178,7 +178,10 @@ bool wm_file_or_session_data_has_unsaved_changes(const Main *bmain, const wmWind
  * Best case is all screens match, in that case they get assigned to proper window.
  */
 
-/** Clears several WM/UI runtime data that would make later complex WM handling impossible. */
+/**
+ * Clear several WM/UI runtime data that would make later complex WM handling impossible.
+ *
+ * Return data should be cleared by #wm_file_read_setup_wm_finalize. */
 static bool wm_file_read_setup_wm_init(bContext *C, Main *bmain)
 {
   BLI_assert(BLI_listbase_count_at_most(&bmain->wm, 2) <= 1);
@@ -379,6 +382,8 @@ static void wm_file_read_setup_wm_use_new(bContext *C, Main * /* bmain */, wmWin
 /**
  * Finalize setting up the WM for the newly read file, transferring GHOST windows from the old WM
  * if needed, updating other UI data, etc. And free the old WM if any.
+ *
+ * Counterpart of #wm_file_read_setup_wm_init.
  */
 static void wm_file_read_setup_wm_finalize(bContext *C, Main *bmain, const bool had_wm)
 {

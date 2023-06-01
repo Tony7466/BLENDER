@@ -501,6 +501,13 @@ static int reuse_bmain_data_invalid_local_usages_fix_cb(LibraryIDLinkCallbackDat
     return IDWALK_RET_NOP;
   }
 
+  /* Embedded data cannot (yet) be fully trusted to have the same lib pointer as their owner ID, so
+   * for now ignore them. This code should never have anything to fix for them anyway, otherwise
+   * there is something extremely wrong going on. */
+  if ((cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING)) != 0) {
+    return IDWALK_RET_NOP;
+  }
+
   if (!ID_IS_LINKED(id)) {
     ID *owner_id = cb_data->owner_id;
 
