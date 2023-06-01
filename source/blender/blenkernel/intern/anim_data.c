@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -136,14 +137,13 @@ bool BKE_animdata_set_action(ReportList *reports, ID *id, bAction *act)
     return false;
   }
 
-  /* Reduce user-count for current action. */
+  /* Unassign current action. */
   if (adt->action) {
     id_us_min((ID *)adt->action);
+    adt->action = NULL;
   }
 
   if (act == NULL) {
-    /* Just clearing the action. */
-    adt->action = NULL;
     return true;
   }
 
@@ -1479,8 +1479,8 @@ void BKE_animdata_blend_read_lib(BlendLibReader *reader, ID *id, AnimData *adt)
   }
 
   /* link action data */
-  BLO_read_id_address(reader, id->lib, &adt->action);
-  BLO_read_id_address(reader, id->lib, &adt->tmpact);
+  BLO_read_id_address(reader, id, &adt->action);
+  BLO_read_id_address(reader, id, &adt->tmpact);
 
   /* link drivers */
   BKE_fcurve_blend_read_lib(reader, id, &adt->drivers);

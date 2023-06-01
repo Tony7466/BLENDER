@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -140,6 +141,10 @@ DNA_STRUCT_RENAME_ELEM(SDefBind, numverts, verts_num)
 DNA_STRUCT_RENAME_ELEM(SDefVert, numbinds, binds_num)
 DNA_STRUCT_RENAME_ELEM(SpaceImage, pixel_snap_mode, pixel_round_mode)
 DNA_STRUCT_RENAME_ELEM(SpaceSeq, overlay_type, overlay_frame_type)
+DNA_STRUCT_RENAME_ELEM(Strip, dir, dirpath)
+DNA_STRUCT_RENAME_ELEM(StripElem, name, filename)
+DNA_STRUCT_RENAME_ELEM(StripProxy, dir, dirpath)
+DNA_STRUCT_RENAME_ELEM(StripProxy, file, filename)
 DNA_STRUCT_RENAME_ELEM(SurfaceDeformModifierData, num_mesh_verts, mesh_verts_num)
 DNA_STRUCT_RENAME_ELEM(SurfaceDeformModifierData, numpoly, target_polys_num)
 DNA_STRUCT_RENAME_ELEM(SurfaceDeformModifierData, numverts, bind_verts_num)

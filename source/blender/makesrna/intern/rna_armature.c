@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -1561,9 +1563,9 @@ static void rna_def_armature(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "layer_protected", 1);
   RNA_def_property_array(prop, 32);
   RNA_def_property_ui_text(prop,
-                           "Layer Proxy Protection",
-                           "Protected layers in Proxy Instances are restored to Proxy settings "
-                           "on file reload and undo");
+                           "Layer Override Protection",
+                           "Protected layers in overridden instances are restored to "
+                           "their original settings on file reload and undo");
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
 
   /* flag */

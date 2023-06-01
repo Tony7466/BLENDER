@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -14,7 +15,7 @@
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
@@ -48,11 +49,11 @@ static void create_transform_data_for_node(TransData &td,
 
   /* account for parents (nested nodes) */
   if (node.parent) {
-    nodeToView(node.parent,
-               node.locx + roundf(node.offsetx),
-               node.locy + roundf(node.offsety),
-               &locx,
-               &locy);
+    blender::bke::nodeToView(node.parent,
+                             node.locx + roundf(node.offsetx),
+                             node.locy + roundf(node.offsety),
+                             &locx,
+                             &locy);
   }
   else {
     locx = node.locx + roundf(node.offsetx);
@@ -249,11 +250,11 @@ static void flushTransNodes(TransInfo *t)
 
       /* account for parents (nested nodes) */
       if (node->parent) {
-        nodeFromView(node->parent,
-                     loc[0] - roundf(node->offsetx),
-                     loc[1] - roundf(node->offsety),
-                     &node->locx,
-                     &node->locy);
+        blender::bke::nodeFromView(node->parent,
+                                   loc[0] - roundf(node->offsetx),
+                                   loc[1] - roundf(node->offsety),
+                                   &node->locx,
+                                   &node->locy);
       }
       else {
         node->locx = loc[0] - roundf(node->offsetx);

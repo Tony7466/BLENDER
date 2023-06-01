@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -178,7 +179,7 @@ static void world_blend_read_data(BlendDataReader *reader, ID *id)
 static void world_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   World *wrld = (World *)id;
-  BLO_read_id_address(reader, wrld->id.lib, &wrld->ipo); /* XXX deprecated, old animation system */
+  BLO_read_id_address(reader, id, &wrld->ipo); /* XXX deprecated, old animation system */
 }
 
 static void world_blend_read_expand(BlendExpander *expander, ID *id)
