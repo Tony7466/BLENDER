@@ -126,8 +126,8 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 4)) {
     LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
-      act->frame_start = max_ii(act->frame_start, MINFRAME);
-      act->frame_end = min_ii(act->frame_end, MAXFRAME);
+      act->frame_start = max_ff(act->frame_start, MINAFRAMEF);
+      act->frame_end = min_ff(act->frame_end, MAXFRAMEF);
     }
   }
 
