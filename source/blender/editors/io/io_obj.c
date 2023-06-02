@@ -532,22 +532,4 @@ void WM_OT_obj_import(struct wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-bool obj_file_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
-{
-  if (drag->type == WM_DRAG_PATH) {
-    const eFileSel_File_Types file_type = WM_drag_get_path_file_type(drag);
-    if (file_type == FILE_TYPE_OBJECT_IO &&
-        BLI_path_extension_check(WM_drag_get_path(drag), ".obj")) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void WM_obj_dropbox_add()
-{
-  ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
-  WM_dropbox_add(lb, "WM_OT_obj_import", obj_file_drop_poll, files_drop_copy, NULL, NULL);
-}
-
 #endif /* WITH_IO_WAVEFRONT_OBJ */

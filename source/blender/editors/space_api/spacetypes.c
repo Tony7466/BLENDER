@@ -58,6 +58,8 @@
 #include "ED_uvedit.h"
 
 #include "io_ops.h"
+#include "io_ops_dropbox.h"
+
 
 void ED_spacetypes_init(void)
 {
@@ -113,6 +115,7 @@ void ED_spacetypes_init(void)
   ED_operatortypes_render();
   ED_operatortypes_mask();
   ED_operatortypes_io();
+  ED_dropboxes_io();
   ED_operatortypes_edutils();
 
   ED_operatortypes_view2d();

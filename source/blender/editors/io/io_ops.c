@@ -34,22 +34,18 @@ void ED_operatortypes_io(void)
   /* Collada operators: */
   WM_operatortype_append(WM_OT_collada_export);
   WM_operatortype_append(WM_OT_collada_import);
-  // WM_collada_dropbox_add();
 #endif
 #ifdef WITH_ALEMBIC
   WM_operatortype_append(WM_OT_alembic_import);
   WM_operatortype_append(WM_OT_alembic_export);
-  // WM_alembic_dropbox_add();
 #endif
 #ifdef WITH_USD
   WM_operatortype_append(WM_OT_usd_import);
   WM_operatortype_append(WM_OT_usd_export);
-  // WM_usd_dropbox_add();
 #endif
 
 #ifdef WITH_IO_GPENCIL
   WM_operatortype_append(WM_OT_gpencil_import_svg);
-  // WM_gpencil_dropbox_add();
 #  ifdef WITH_PUGIXML
   WM_operatortype_append(WM_OT_gpencil_export_svg);
 #  endif
@@ -68,17 +64,14 @@ void ED_operatortypes_io(void)
 #ifdef WITH_IO_WAVEFRONT_OBJ
   WM_operatortype_append(WM_OT_obj_export);
   WM_operatortype_append(WM_OT_obj_import);
-  WM_obj_dropbox_add();
 #endif
 
 #ifdef WITH_IO_PLY
   WM_operatortype_append(WM_OT_ply_export);
   WM_operatortype_append(WM_OT_ply_import);
-  // WM_ply_dropbox_add();
 #endif
 
 #ifdef WITH_IO_STL
   WM_operatortype_append(WM_OT_stl_import);
-  // WM_stl_dropbox_add();
 #endif
 }

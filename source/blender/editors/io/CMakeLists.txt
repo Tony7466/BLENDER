@@ -40,6 +40,7 @@ set(SRC
   io_ply_ops.c
   io_stl_ops.c
   io_usd.c
+  io_ops_dropbox.cc
 
   io_utils.hh
   io_alembic.h
@@ -51,6 +52,7 @@ set(SRC
   io_ply_ops.h
   io_stl_ops.h
   io_usd.h
+  io_ops_dropbox.h
 )
 
 set(LIB
