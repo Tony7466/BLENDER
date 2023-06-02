@@ -269,6 +269,9 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   for (bNode *new_node : node_map.values()) {
     nodeSetSelected(new_node, true);
 
+    /* Keep previous active node, this is in line with how objects are pasted. */
+    new_node->flag &= ~NODE_ACTIVE;
+
     /* The parent pointer must be redirected to new node. */
     if (new_node->parent) {
       if (node_map.contains(new_node->parent)) {
