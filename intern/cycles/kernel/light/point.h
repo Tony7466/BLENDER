@@ -24,22 +24,19 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   float cos_theta;
   if (d_sqr > r_sqr) {
     const float one_minus_cos = sin_sqr_to_one_minus_cos(r_sqr / d_sqr);
-    sample_uniform_cone_concentric(lightN, one_minus_cos, rand, &cos_theta, &ls->Ng, &ls->pdf);
+    sample_uniform_cone_concentric(-lightN, one_minus_cos, rand, &cos_theta, &ls->D, &ls->pdf);
   }
   else {
     const bool has_transmission = (shader_flags & SD_BSDF_HAS_TRANSMISSION);
     if (has_transmission) {
-      ls->Ng = sample_uniform_sphere(rand);
+      ls->D = sample_uniform_sphere(rand);
       ls->pdf = M_1_2PI_F * 0.5f;
     }
     else {
-      sample_cos_hemisphere(-N, rand, &ls->Ng, &ls->pdf);
+      sample_cos_hemisphere(N, rand, &ls->D, &ls->pdf);
     }
-    cos_theta = dot(ls->Ng, lightN);
+    cos_theta = -dot(ls->D, lightN);
   }
-
-  /* We set the light normal to the outgoing direction to support texturing. */
-  ls->D = -ls->Ng;
 
   /* Law of cosines. */
   ls->t = d * cos_theta -
@@ -51,6 +48,12 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   if (r_sqr == 0) {
     /* Use intensity instead of radiance for point light. */
     ls->eval_fac /= sqr(ls->t);
+    ls->Ng = -ls->D;
+  }
+  else {
+    ls->Ng = normalize(ls->P - klight->co);
+    /* Remap sampled point onto the sphere to prevent precision issues with small radius. */
+    ls->P = ls->Ng * klight->spot.radius + klight->co;
   }
 
   const float2 uv = map_to_sphere(ls->Ng);
@@ -71,7 +74,6 @@ ccl_device_forceinline float point_light_pdf(
   return has_transmission ? M_1_2PI_F * 0.5f : pdf_cos_hemisphere(N, D);
 }
 
-/* TODO: could there be visibility problem? */
 ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global KernelLight *klight,
                                                            ccl_private LightSample *ls,
                                                            const float3 P,
@@ -79,11 +81,6 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
                                                            const uint32_t path_flag)
 {
   ls->D = normalize_len(ls->P - P, &ls->t);
-  ls->Ng = -ls->D;
-
-  const float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
 
   const float radius = klight->spot.radius;
 
@@ -96,11 +93,20 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
 
     /* NOTE : preserve pdf in area measure. */
     ls->pdf *= 0.5f * fabsf(d_sqr - r_sqr - t_sqr) / (radius * ls->t * t_sqr);
+
+    ls->Ng = normalize(ls->P - klight->co);
   }
   else {
     ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
+
+    ls->Ng = -ls->D;
+
     /* PDF does not change. */
   }
+
+  const float2 uv = map_to_sphere(ls->Ng);
+  ls->u = uv.x;
+  ls->v = uv.y;
 }
 
 ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *klight,
@@ -125,10 +131,11 @@ ccl_device_inline bool point_light_sample_from_intersection(
     const uint32_t path_flag,
     ccl_private LightSample *ccl_restrict ls)
 {
-  /* We set the light normal to the outgoing direction to support texturing. */
-  ls->Ng = -ls->D;
-
   ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
+
+  const float radius = klight->spot.radius;
+
+  ls->Ng = radius > 0 ? normalize(ls->P - klight->co) : -ray_D;
 
   const float2 uv = map_to_sphere(ls->Ng);
   ls->u = uv.x;
@@ -138,8 +145,7 @@ ccl_device_inline bool point_light_sample_from_intersection(
     ls->pdf = 0.0f;
   }
   else {
-    ls->pdf = point_light_pdf(
-        len_squared(ray_P - klight->co), sqr(klight->spot.radius), N, ls->D, path_flag);
+    ls->pdf = point_light_pdf(len_squared(ray_P - klight->co), sqr(radius), N, ray_D, path_flag);
   }
 
   return true;
