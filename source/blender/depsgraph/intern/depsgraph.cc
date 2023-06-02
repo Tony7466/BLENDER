@@ -65,6 +65,7 @@ Depsgraph::Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluati
       use_editors_update(false)
 {
   BLI_spin_init(&lock);
+
   memset(id_type_updated, 0, sizeof(id_type_updated));
   memset(id_type_exist, 0, sizeof(id_type_exist));
   memset(physics_relations, 0, sizeof(physics_relations));
@@ -74,9 +75,19 @@ Depsgraph::Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluati
 
 Depsgraph::~Depsgraph()
 {
-  clear_id_nodes();
+  clear();
+
   delete time_source;
   BLI_spin_end(&lock);
+}
+
+void Depsgraph::clear()
+{
+  memset(id_type_updated, 0, sizeof(id_type_updated));
+  memset(id_type_exist, 0, sizeof(id_type_exist));
+  memset(physics_relations, 0, sizeof(physics_relations));
+
+  clear_id_nodes();
 }
 
 /* Node Management ---------------------------- */
@@ -343,4 +354,14 @@ void DEG_disable_visibility_optimization(struct Depsgraph *depsgraph)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
   deg_graph->use_visibility_optimization = false;
+}
+
+void DEG_set_mode(struct Depsgraph *depsgraph, eEvaluationMode mode)
+{
+  deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
+
+  deg_graph->mode = mode;
+  deg_graph->clear();
+
+  DEG_graph_tag_relations_update(depsgraph);
 }

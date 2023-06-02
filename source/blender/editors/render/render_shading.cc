@@ -1029,6 +1029,48 @@ void SCENE_OT_view_layer_remove(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Set view layer evaluation mode
+ * \{ */
+
+static int view_layer_evaluation_mode_set_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+
+  const eEvaluationMode mode = eEvaluationMode(RNA_enum_get(op->ptr, "mode"));
+
+  DEG_set_mode(depsgraph, mode);
+
+  WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
+
+  return OPERATOR_FINISHED;
+}
+
+void SCENE_OT_view_layer_evaluation_mode_set(wmOperatorType *ot)
+{
+  static const EnumPropertyItem mode_items[] = {
+      {DAG_EVAL_VIEWPORT, "VIEWPORT", 0, "Viewport evaluation mode", ""},
+      {DAG_EVAL_RENDER, "RENDER", 0, "Render evaluation mode", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  /* identifiers */
+  ot->name = "Set Evaluation Mode";
+  ot->idname = "SCENE_OT_view_layer_evaluation_mode_set";
+  ot->description = "Set evaluation mode of the active view layer used in the editors";
+
+  /* api callbacks */
+  ot->exec = view_layer_evaluation_mode_set_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_INTERNAL;
+
+  RNA_def_enum(ot->srna, "mode", mode_items, DAG_EVAL_VIEWPORT, "Evaluation Mode", "");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name View Layer Add AOV Operator
  * \{ */
 

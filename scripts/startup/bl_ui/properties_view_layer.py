@@ -261,6 +261,28 @@ class VIEWLAYER_PT_layer_custom_props(PropertyPanel, Panel):
     _property_type = ViewLayer
 
 
+class VIEWLAYER_PT_layer_dependency_graph(Panel):
+    bl_label = "Dependency Graph"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "view_layer"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        depsgraph = context.view_layer.depsgraph
+        is_viewport = (depsgraph is None) or (depsgraph.mode == 'VIEWPORT')
+
+        if is_viewport:
+            layout.operator("scene.view_layer_evaluation_mode_set", text="Set Render Evaluation Mode").mode = 'RENDER'
+        else:
+            layout.operator(
+                "scene.view_layer_evaluation_mode_set",
+                text="Set Viewport Evaluation Mode").mode = 'VIEWPORT'
+            layout.label(text="Confusing Mode Engaged!", icon='ERROR')
+
+
 classes = (
     VIEWLAYER_MT_lightgroup_sync,
     VIEWLAYER_PT_layer,
@@ -273,6 +295,7 @@ classes = (
     VIEWLAYER_PT_layer_passes_aov,
     VIEWLAYER_PT_layer_passes_lightgroups,
     VIEWLAYER_PT_layer_custom_props,
+    VIEWLAYER_PT_layer_dependency_graph,
     VIEWLAYER_UL_aov,
 )
 

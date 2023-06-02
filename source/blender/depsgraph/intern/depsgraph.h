@@ -49,6 +49,8 @@ struct Depsgraph {
   Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluationMode mode);
   ~Depsgraph();
 
+  void clear();
+
   TimeSourceNode *add_time_source();
   TimeSourceNode *find_time_source() const;
   void tag_time_source();

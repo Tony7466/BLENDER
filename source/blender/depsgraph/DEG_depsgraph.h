@@ -216,6 +216,9 @@ void DEG_editors_set_update_cb(DEG_EditorUpdateIDCb id_func, DEG_EditorUpdateSce
 /** \name Evaluation
  * \{ */
 
+// XXX: Documentation.
+void DEG_set_mode(struct Depsgraph *depsgraph, eEvaluationMode mode);
+
 bool DEG_is_evaluating(const struct Depsgraph *depsgraph);
 
 bool DEG_is_active(const struct Depsgraph *depsgraph);
