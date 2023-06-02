@@ -1484,7 +1484,7 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
 
   RNA_def_int(ot->srna,
               "blend_in_out",
-              0,
+              4,
               0,
               INT_MAX,
               "Blend In/Out",
