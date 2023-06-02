@@ -113,7 +113,9 @@ void PathTraceWork::render_samples(RenderStatistics &statistics,
                               int samples_num,
                               int sample_offset)
 {
+  SCOPED_MARKER(device_, "render_samples");
   for (int i = 0; i < work_set_.size(); i++) {
+    SCOPED_MARKER(device_, "render_samples_work_set");
   set_current_work_set(i);
   if(effective_buffer_params_.height > 0) {
   render_samples_impl(statistics, start_sample, samples_num, sample_offset);
@@ -123,7 +125,9 @@ void PathTraceWork::render_samples(RenderStatistics &statistics,
 
 void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
 {
+  SCOPED_MARKER(device_, "copy_to_display");
   for (int i = 0; i < work_set_.size(); i++) {
+    SCOPED_MARKER(device_, "copy_to_display_work_set");
   set_current_work_set(i);
   if(effective_buffer_params_.height > 0)
     copy_to_display_impl(display, pass_mode, num_samples);
@@ -132,23 +136,28 @@ void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mod
 
 bool PathTraceWork::copy_render_buffers_from_device()
 {
+  SCOPED_MARKER(device_, "copy_render_buffers_from_device");
   return copy_master_render_buffers_from_device_impl();
 }
 
 bool PathTraceWork::copy_render_buffers_to_device()
 {
+  SCOPED_MARKER(device_, "copy_render_buffers_to_device");
   return copy_master_render_buffers_to_device_impl();
 }
 
 bool PathTraceWork::zero_render_buffers()
 {
+  SCOPED_MARKER(device_, "zerop_render_buffers");
   return zero_master_render_buffers_impl();
 }
 
 void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 {
+  SCOPED_MARKER(device_, "copy_to_render_buffers");
   copy_render_buffers_from_device();
   for (int i = 0; i < work_set_.size(); i++) {
+    SCOPED_MARKER(device_, "copy_to_render_buffers_work_set");
   set_current_work_set(i);
   if(effective_buffer_params_.height > 0) {
   const int64_t width = effective_buffer_params_.width;
@@ -170,7 +179,9 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 
 void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers)
 {
+  SCOPED_MARKER(device_, "copy_from_render_buffers");
   for (int i = 0; i < work_set_.size(); i++) {
+    SCOPED_MARKER(device_, "copy_from_render_buffers_work_set");
   set_current_work_set(i);
   if(effective_buffer_params_.height > 0) {
   const int64_t width = effective_buffer_params_.width;

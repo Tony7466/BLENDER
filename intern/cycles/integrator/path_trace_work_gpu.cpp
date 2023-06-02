@@ -1113,6 +1113,7 @@ void PathTraceWorkGPU::enqueue_adaptive_sampling_filter_y()
 
 void PathTraceWorkGPU::cryptomatte_postproces()
 {
+  SCOPED_MARKER(device_, "cryptomatte_postproces");
   for (int i = 0; i < work_set_.size(); i++){
   set_current_work_set(i);
   if(effective_buffer_params_.height > 0) {
@@ -1130,6 +1131,7 @@ void PathTraceWorkGPU::cryptomatte_postproces()
 
 bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
 {
+  SCOPED_MARKER(device_, "copy_master_render_buffers_from_device_impl");
   queue_->copy_from_device(buffers_->buffer);
 
   /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
@@ -1138,6 +1140,7 @@ bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
 
 bool PathTraceWorkGPU::copy_master_render_buffers_from_device_impl()
 {
+  SCOPED_MARKER(device_, "copy_master_render_buffers_from_device_impl");
   queue_->copy_from_device(master_buffers_->buffer);
 
   /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
@@ -1146,6 +1149,7 @@ bool PathTraceWorkGPU::copy_master_render_buffers_from_device_impl()
 
 bool PathTraceWorkGPU::copy_master_render_buffers_to_device_impl()
 {
+  SCOPED_MARKER(device_, "copy_master_render_buffers_to_device_impl");
   queue_->copy_to_device(master_buffers_->buffer);
 
   return true;
@@ -1153,6 +1157,7 @@ bool PathTraceWorkGPU::copy_master_render_buffers_to_device_impl()
 
 bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
 {
+  SCOPED_MARKER(device_, "copy_render_buffers_from_device_impl");
   queue_->copy_to_device(buffers_->buffer);
 
   /* NOTE: The direct device access to the buffers only happens within this path trace work. The
@@ -1164,6 +1169,7 @@ bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
 
 bool PathTraceWorkGPU::zero_master_render_buffers_impl()
 {
+  SCOPED_MARKER(device_, "zero_master_render_buffers_impl");
   queue_->zero_to_device(master_buffers_->buffer);
 
   return true;
@@ -1171,6 +1177,7 @@ bool PathTraceWorkGPU::zero_master_render_buffers_impl()
 
 bool PathTraceWorkGPU::zero_render_buffers_impl()
 {
+  SCOPED_MARKER(device_, "zero_render_buffers_impl");
   queue_->zero_to_device(buffers_->buffer);
 
   return true;

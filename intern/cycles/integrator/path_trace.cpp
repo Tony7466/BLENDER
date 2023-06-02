@@ -393,6 +393,8 @@ void PathTrace::update_work_buffer_params_if_needed(const RenderWork &render_wor
 
 void PathTrace::init_render_buffers(const RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "init_render_buffers");
+    
   update_work_buffer_params_if_needed(render_work);
 
   /* Handle initialization scheduled by the render scheduler. */
@@ -408,6 +410,7 @@ void PathTrace::init_render_buffers(const RenderWork &render_work)
 
 void PathTrace::path_trace(RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "path_trace");
   if (!render_work.path_trace.num_samples) {
     return;
   }
@@ -461,6 +464,7 @@ void PathTrace::path_trace(RenderWork &render_work)
 
 void PathTrace::adaptive_sample(RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "adaptive_sample");
   if (!render_work.adaptive_sampling.filter) {
     return;
   }
@@ -550,6 +554,7 @@ void PathTrace::set_adaptive_sampling(const AdaptiveSampling &adaptive_sampling)
 
 void PathTrace::cryptomatte_postprocess(const RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "cryptomatte_postprocess");
   if (!render_work.cryptomatte.postprocess) {
     return;
   }
@@ -562,6 +567,7 @@ void PathTrace::cryptomatte_postprocess(const RenderWork &render_work)
 
 void PathTrace::denoise(const RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "denoise");
   if (!render_work.tile.denoise) {
     return;
   }
@@ -680,6 +686,7 @@ void PathTrace::flush_display()
 
 void PathTrace::update_display(const RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "update_display");
   if (!render_work.display.update) {
     return;
   }
@@ -738,6 +745,7 @@ void PathTrace::update_display(const RenderWork &render_work)
 
 void PathTrace::rebalance(const RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "rebalance");
   if (!render_work.rebalance) {
     return;
   }
@@ -791,6 +799,7 @@ void PathTrace::rebalance(const RenderWork &render_work)
 
 void PathTrace::write_tile_buffer(const RenderWork &render_work)
 {
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "write_tile_buffer");
   if (!render_work.tile.write) {
     return;
   }
@@ -822,6 +831,7 @@ void PathTrace::write_tile_buffer(const RenderWork &render_work)
 
 void PathTrace::finalize_full_buffer_on_disk(const RenderWork &render_work)
 {
+    SCOPED_MARKER(path_trace_works_[0]->get_device(), "finalize_full_buffer_on_disk");
   if (!render_work.full.write) {
     return;
   }
