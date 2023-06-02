@@ -1,4 +1,4 @@
 Referenced by commit 8f0829f2a0e1be5c4264be8f90f415cbc65d5292, Cleanup: Remove accidentally committed TODO comment
 Referenced by issue #102879, Asset Shelf (for brush assets, pose libraries, etc.)
 Referenced by commit 56640440f0742427e5f989cbcf98f7d48ddd275f, Fix crash loading pre 2.5 test file (Cycles test failure)
-Referenced by issue #107870, Movie Clip Editor hangs when on top left
+Referenced by issue #107870, Movie Clip Editor hangs in "Clip" view
