@@ -200,10 +200,6 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
 void VKTexture::update_sub(
     int mip, int offset[3], int extent_[3], eGPUDataFormat format, const void *data)
 {
-  if (mip != 0) {
-    NOT_YET_IMPLEMENTED;
-    return;
-  }
   if (!is_allocated()) {
     allocate();
   }
