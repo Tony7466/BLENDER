@@ -2585,6 +2585,8 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
     }
   }
 
+  ntreeEnsureSocketCategoryOrder(ntree);
+
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
 

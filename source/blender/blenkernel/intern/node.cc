@@ -3664,6 +3664,13 @@ static bNodeSocket *make_socket_interface(bNodeTree *ntree,
   return sock;
 }
 
+static int node_socket_category_cmp(const void *a, const void *b)
+{
+  const bNodeSocket *sock_a = static_cast<const bNodeSocket *>(a);
+  const bNodeSocket *sock_b = static_cast<const bNodeSocket *>(b);
+  return (sock_a->category_index > sock_b->category_index) ? 1 : 0;
+}
+
 bNodeSocket *ntreeFindSocketInterface(bNodeTree *ntree,
                                       const eNodeSocketInOut in_out,
                                       const char *identifier)
@@ -3679,6 +3686,12 @@ bNodeSocket *ntreeFindSocketInterface(bNodeTree *ntree,
 
 }  // namespace blender::bke
 
+void ntreeEnsureSocketCategoryOrder(bNodeTree *ntree)
+{
+  BLI_listbase_sort(&ntree->inputs, blender::bke::node_socket_category_cmp);
+  BLI_listbase_sort(&ntree->outputs, blender::bke::node_socket_category_cmp);
+}
+
 bNodeSocket *ntreeAddSocketInterface(bNodeTree *ntree,
                                      const eNodeSocketInOut in_out,
                                      const char *idname,
@@ -3691,8 +3704,28 @@ bNodeSocket *ntreeAddSocketInterface(bNodeTree *ntree,
   else if (in_out == SOCK_OUT) {
     BLI_addtail(&ntree->outputs, iosock);
   }
+
+  ntreeEnsureSocketCategoryOrder(ntree);
+
   BKE_ntree_update_tag_interface(ntree);
   return iosock;
+}
+
+void ntreeSetSocketInterfaceCategory(bNodeTree *ntree,
+                                     bNodeSocket *socket,
+                                     bNodeSocketCategory *category)
+{
+  if (category == NULL) {
+    socket->category_index = -1;
+    return;
+  }
+
+  socket->category_index = category - ntree->socket_categories_array;
+  BLI_assert(ntree->socket_categories().index_range().contains(socket->category_index));
+
+  ntreeEnsureSocketCategoryOrder(ntree);
+
+  BKE_ntree_update_tag_interface(ntree);
 }
 
 namespace blender::bke {
@@ -3710,6 +3743,9 @@ bNodeSocket *ntreeInsertSocketInterface(bNodeTree *ntree,
   else if (in_out == SOCK_OUT) {
     BLI_insertlinkbefore(&ntree->outputs, next_sock, iosock);
   }
+
+  ntreeEnsureSocketCategoryOrder(ntree);
+
   BKE_ntree_update_tag_interface(ntree);
   return iosock;
 }
@@ -3765,6 +3801,8 @@ void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock)
   blender::bke::node_socket_interface_free(ntree, sock, true);
   MEM_freeN(sock);
 
+  /* No need to resort by category, removing doesn't change anything. */
+
   BKE_ntree_update_tag_interface(ntree);
 }
 
@@ -3805,6 +3843,7 @@ bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, 
   MEM_SAFE_FREE(old_categories_array);
 
   /* No need to remap socket categories, in this case old indices stay the same. */
+  /* No need to sort sockets, nothing is using the new category yet */
 
   return &new_category;
 }
@@ -3840,6 +3879,8 @@ bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
     return old_category_index < index ? old_category_index : old_category_index + 1;
   });
 
+  /* No need to sort sockets, nothing is using the new category yet */
+
   return &new_category;
 }
 
@@ -3870,6 +3911,8 @@ void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category)
     return old_category_index < index ? old_category_index :
                                         (old_category_index > index ? old_category_index - 1 : -1);
   });
+
+  ntreeEnsureSocketCategoryOrder(ntree);
 }
 
 void ntreeClearSocketCategories(bNodeTree *ntree)
@@ -3879,6 +3922,8 @@ void ntreeClearSocketCategories(bNodeTree *ntree)
   ntree->socket_categories_num = 0;
 
   blender::bke::remap_socket_categories(*ntree, [](const int /*old_index*/) { return -1; });
+
+  /* No need to sort sockets, only null category exists, relative order remains unchanged. */
 }
 
 void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index)
@@ -3921,6 +3966,8 @@ void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, in
                      (old_category_index == old_index ? new_index : old_category_index + 1);
         });
   }
+
+  ntreeEnsureSocketCategoryOrder(ntree);
 }
 
 namespace blender::bke {

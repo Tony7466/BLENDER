@@ -541,12 +541,23 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \name Node Tree Interface
  * \{ */
 
+/**
+ * Run this after relevant changes to categories
+ * to ensure sockets remain sorted by category.
+ */
+void ntreeEnsureSocketCategoryOrder(bNodeTree *ntree);
+
 void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
 
 struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             eNodeSocketInOut in_out,
                                             const char *idname,
                                             const char *name);
+
+/** Set the category of the interface socket. */
+void ntreeSetSocketInterfaceCategory(bNodeTree *ntree,
+                                     bNodeSocket *sock,
+                                     bNodeSocketCategory *category);
 
 /** \} */
 

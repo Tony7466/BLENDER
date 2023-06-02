@@ -3186,15 +3186,13 @@ static void rna_NodeSocketInterface_category_set(PointerRNA *ptr,
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
 
-  if (category == NULL) {
-    socket->category_index = -1;
+  const size_t index = category - ntree->socket_categories_array;
+  if (index < 0 || index >= ntree->socket_categories_num) {
+    BKE_report(reports, RPT_ERROR, "Category is not in the node tree interface");
+    return;
   }
 
-  socket->category_index = category - ntree->socket_categories_array;
-  if (socket->category_index < 0 || socket->category_index >= ntree->socket_categories_num) {
-    BKE_report(reports, RPT_ERROR, "Category is not in the node tree interface");
-    socket->category_index = -1;
-  }
+  ntreeSetSocketInterfaceCategory(ntree, socket, category);
 }
 
 static bool rna_NodeSocketInterface_category_poll(PointerRNA *ptr, PointerRNA value)
