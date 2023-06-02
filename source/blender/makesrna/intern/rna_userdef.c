@@ -551,8 +551,7 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext *UNUSED(
   int totitem = 0;
 
   for (const EnumPropertyItem *it = rna_enum_preference_section_items; it->identifier != NULL;
-       it++)
-  {
+       it++) {
     if (it->value == USER_SECTION_EXPERIMENTAL) {
       continue;
     }
