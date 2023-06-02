@@ -39,8 +39,6 @@ void AmbientOcclusion::init()
   const Scene *scene = inst_.scene;
   data_.enabled = (scene->eevee.flag & SCE_EEVEE_GTAO_ENABLED) ||
                   (inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO);
-
-  debug_ = data_.enabled && G.debug_value == 6;
   render_pass_enabled_ = data_.enabled && inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO;
 
   if (!data_.enabled) {

@@ -29,7 +29,6 @@ namespace blender::eevee {
 enum eShaderType {
   AO_HORIZONS = 0,
   AO_PASS,
-  AO_DEBUG,
 
   FILM_FRAG,
   FILM_COMP,

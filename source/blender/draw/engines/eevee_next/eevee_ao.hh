@@ -23,7 +23,6 @@ class AmbientOcclusion {
  private:
   class Instance &inst_;
 
-  bool debug_;
   bool render_pass_enabled_;
 
   AODataBuf data_;
