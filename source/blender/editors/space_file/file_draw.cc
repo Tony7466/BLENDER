@@ -425,7 +425,7 @@ static void file_draw_preview(const FileDirEntry *file,
 
   if (!is_icon && file->typeflag & FILE_TYPE_IMAGE) {
     /* Draw checker pattern behind image previews in case they have transparency. */
-    imm_draw_box_checker_2d((float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
+    imm_draw_box_checker_2d(float(xco), float(yco), float(xco + ex), float(yco + ey));
   }
 
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
