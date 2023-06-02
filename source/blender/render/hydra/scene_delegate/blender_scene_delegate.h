@@ -11,6 +11,7 @@
 
 #include "CLG_log.h"
 
+#include "BLI_set.hh"
 #include "curves.h"
 #include "instancer.h"
 #include "light.h"

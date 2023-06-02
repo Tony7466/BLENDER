@@ -134,10 +134,10 @@ pxr::SdfPath CurvesData::material_id() const
   return mat_data_->prim_id;
 }
 
-void CurvesData::available_materials(std::set<pxr::SdfPath> &paths) const
+void CurvesData::available_materials(Set<pxr::SdfPath> &paths) const
 {
   if (mat_data_ && !mat_data_->prim_id.IsEmpty()) {
-    paths.insert(mat_data_->prim_id);
+    paths.add(mat_data_->prim_id);
   }
 }
 
@@ -199,7 +199,8 @@ void CurvesData::write_material()
   pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
   mat_data_ = scene_delegate_->material_data(p_id);
   if (!mat_data_) {
-    scene_delegate_->materials_[p_id] = std::make_unique<MaterialData>(scene_delegate_, mat, p_id);
+    scene_delegate_->materials_.add_new(
+        p_id, std::make_unique<MaterialData>(scene_delegate_, mat, p_id));
     mat_data_ = scene_delegate_->material_data(p_id);
     mat_data_->init();
     mat_data_->insert();

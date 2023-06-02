@@ -74,14 +74,14 @@ void InstancerData::insert()
 void InstancerData::remove()
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
-  for (auto &it : mesh_instances_) {
-    it.second.data->remove();
+  for (auto &m_inst : mesh_instances_.values()) {
+    m_inst.data->remove();
   }
   scene_delegate_->GetRenderIndex().RemoveInstancer(prim_id);
 
-  for (auto &it : light_instances_) {
-    it.second.transforms.clear();
-    update_light_instance(it.second);
+  for (auto &l_inst : light_instances_.values()) {
+    l_inst.transforms.clear();
+    update_light_instance(l_inst);
   }
 }
 
@@ -118,17 +118,17 @@ bool InstancerData::update_visibility()
   if (ret) {
     auto &change_tracker = scene_delegate_->GetRenderIndex().GetChangeTracker();
     change_tracker.MarkInstancerDirty(prim_id, pxr::HdChangeTracker::DirtyVisibility);
-    for (auto &it : mesh_instances_) {
-      it.second.data->visible = visible;
-      for (auto &p : it.second.data->submesh_paths()) {
+    for (auto &m_inst : mesh_instances_.values()) {
+      m_inst.data->visible = visible;
+      for (auto &p : m_inst.data->submesh_paths()) {
         change_tracker.MarkRprimDirty(p, pxr::HdChangeTracker::DirtyVisibility);
       }
     }
     char name[16];
-    for (auto &it : light_instances_) {
-      for (int i = 0; i < it.second.count; ++i) {
+    for (auto &l_inst : light_instances_.values()) {
+      for (int i = 0; i < l_inst.count; ++i) {
         snprintf(name, 16, "L_%08x", i);
-        change_tracker.MarkRprimDirty(it.second.data->prim_id.AppendElementString(name),
+        change_tracker.MarkRprimDirty(l_inst.data->prim_id.AppendElementString(name),
                                       pxr::HdChangeTracker::DirtyVisibility);
       }
     }
@@ -179,8 +179,8 @@ ObjectData *InstancerData::object_data(pxr::SdfPath const &id) const
 pxr::SdfPathVector InstancerData::prototypes() const
 {
   pxr::SdfPathVector paths;
-  for (auto &it : mesh_instances_) {
-    for (auto &p : it.second.data->submesh_paths()) {
+  for (auto &m_inst : mesh_instances_.values()) {
+    for (auto &p : m_inst.data->submesh_paths()) {
       paths.push_back(p);
     }
   }
@@ -194,7 +194,7 @@ void InstancerData::check_update(Object *object)
   if (m_inst) {
     if (!is_instance_visible(object)) {
       m_inst->data->remove();
-      mesh_instances_.erase(path);
+      mesh_instances_.remove(path);
       scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
           prim_id, pxr::HdChangeTracker::AllDirty);
       return;
@@ -215,7 +215,7 @@ void InstancerData::check_update(Object *object)
     if (!is_instance_visible(object)) {
       l_inst->transforms.clear();
       update_light_instance(*l_inst);
-      light_instances_.erase(path);
+      light_instances_.remove(path);
       return;
     }
 
@@ -243,7 +243,7 @@ void InstancerData::check_update(Object *object)
 
     if (do_write_instances) {
       write_instances();
-      if (!mesh_instances_.empty()) {
+      if (!mesh_instances_.is_empty()) {
         scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
             prim_id, pxr::HdChangeTracker::AllDirty);
       }
@@ -251,40 +251,39 @@ void InstancerData::check_update(Object *object)
   }
 }
 
-void InstancerData::check_remove(std::set<std::string> &available_objects)
+void InstancerData::check_remove(Set<std::string> &available_objects)
 {
   bool ret = false;
-  for (auto it = mesh_instances_.begin(); it != mesh_instances_.end(); ++it) {
-    if (available_objects.find(it->first.GetName()) != available_objects.end()) {
-      continue;
-    }
-    it->second.data->remove();
-    mesh_instances_.erase(it);
-    it = mesh_instances_.begin();
-    ret = true;
-  }
+
+  mesh_instances_.remove_if([&](auto item) {
+    bool res = !available_objects.contains(item.key.GetName());
+    if (res) {
+      item.value.data->remove();
+      ret = true;
+    };
+    return res;
+  });
+
   if (ret) {
     write_instances();
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
         prim_id, pxr::HdChangeTracker::AllDirty);
   }
 
-  for (auto it = light_instances_.begin(); it != light_instances_.end(); ++it) {
-    if (available_objects.find(it->first.GetName()) != available_objects.end()) {
-      continue;
-    }
-    it->second.transforms.clear();
-    update_light_instance(it->second);
-
-    light_instances_.erase(it);
-    it = light_instances_.begin();
-  }
+  light_instances_.remove_if([&](auto item) {
+    bool res = !available_objects.contains(item.key.GetName());
+    if (res) {
+      item.value.transforms.clear();
+      update_light_instance(item.value);
+    };
+    return res;
+  });
 }
 
-void InstancerData::available_materials(std::set<pxr::SdfPath> &paths) const
+void InstancerData::available_materials(Set<pxr::SdfPath> &paths) const
 {
-  for (auto &it : mesh_instances_) {
-    ((MeshData *)it.second.data.get())->available_materials(paths);
+  for (auto &m_inst : mesh_instances_.values()) {
+    ((MeshData *)m_inst.data.get())->available_materials(paths);
   }
 }
 
@@ -297,8 +296,8 @@ void InstancerData::update_as_parent()
 
 void InstancerData::update_double_sided(MaterialData *mat_data)
 {
-  for (auto &it : mesh_instances_) {
-    it.second.data->update_double_sided(mat_data);
+  for (auto &m_inst : mesh_instances_.values()) {
+    m_inst.data->update_double_sided(mat_data);
   }
 }
 
@@ -343,11 +342,11 @@ int InstancerData::light_prim_id_index(pxr::SdfPath const &id) const
 void InstancerData::write_instances()
 {
   mesh_transforms_.clear();
-  for (auto &it : mesh_instances_) {
-    it.second.indices.clear();
+  for (auto &m_inst : mesh_instances_.values()) {
+    m_inst.indices.clear();
   }
-  for (auto &it : light_instances_) {
-    it.second.transforms.clear();
+  for (auto &l_inst : light_instances_.values()) {
+    l_inst.transforms.clear();
   }
 
   ListBase *lb = object_duplilist(
@@ -362,7 +361,7 @@ void InstancerData::write_instances()
     if (ob->type == OB_LAMP) {
       LightInstance *inst = light_instance(p_id);
       if (!inst) {
-        inst = &light_instances_[p_id];
+        inst = &light_instances_.lookup_or_add_default(p_id);
         inst->data = std::make_unique<LightData>(scene_delegate_, ob, p_id);
         inst->data->init();
       }
@@ -372,7 +371,7 @@ void InstancerData::write_instances()
     else {
       MeshInstance *inst = mesh_instance(p_id);
       if (!inst) {
-        inst = &mesh_instances_[p_id];
+        inst = &mesh_instances_.lookup_or_add_default(p_id);
         inst->data = std::make_unique<MeshData>(scene_delegate_, ob, p_id);
         inst->data->init();
         inst->data->insert();
@@ -385,23 +384,19 @@ void InstancerData::write_instances()
   free_object_duplilist(lb);
 
   /* Remove mesh intances without indices */
-  for (auto it = mesh_instances_.begin(); it != mesh_instances_.end(); ++it) {
-    if (!it->second.indices.empty()) {
-      continue;
+  mesh_instances_.remove_if([&](auto item) {
+    bool res = item.value.indices.empty();
+    if (res) {
+      item.value.data->remove();
     }
-    it->second.data->remove();
-    mesh_instances_.erase(it);
-    it = mesh_instances_.begin();
-  }
+    return res;
+  });
 
   /* Update light intances and remove instances without transforms */
-  for (auto it = light_instances_.begin(); it != light_instances_.end(); ++it) {
-    update_light_instance(it->second);
-    if (it->second.transforms.empty()) {
-      light_instances_.erase(it);
-      it = light_instances_.begin();
-    }
-  }
+  light_instances_.remove_if([&](auto item) {
+    update_light_instance(item.value);
+    return item.value.transforms.empty();
+  });
 }
 
 void InstancerData::update_light_instance(LightInstance &inst)
@@ -461,20 +456,22 @@ void InstancerData::update_light_instance(LightInstance &inst)
 
 InstancerData::MeshInstance *InstancerData::mesh_instance(pxr::SdfPath const &id) const
 {
-  auto it = mesh_instances_.find(id.GetPathElementCount() == 4 ? id.GetParentPath() : id);
-  if (it == mesh_instances_.end()) {
+  auto m_inst = mesh_instances_.lookup_ptr(id.GetPathElementCount() == 4 ? id.GetParentPath() :
+                                                                           id);
+  if (!m_inst) {
     return nullptr;
   }
-  return const_cast<MeshInstance *>(&it->second);
+  return const_cast<MeshInstance *>(m_inst);
 }
 
 InstancerData::LightInstance *InstancerData::light_instance(pxr::SdfPath const &id) const
 {
-  auto it = light_instances_.find(id.GetPathElementCount() == 4 ? id.GetParentPath() : id);
-  if (it == light_instances_.end()) {
+  auto l_inst = light_instances_.lookup_ptr(id.GetPathElementCount() == 4 ? id.GetParentPath() :
+                                                                            id);
+  if (!l_inst) {
     return nullptr;
   }
-  return const_cast<LightInstance *>(&it->second);
+  return const_cast<LightInstance *>(l_inst);
 }
 
 }  // namespace blender::render::hydra

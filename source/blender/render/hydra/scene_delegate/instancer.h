@@ -4,6 +4,8 @@
 #pragma once
 
 #include "BKE_duplilist.h"
+#include "BLI_map.hh"
+#include "BLI_set.hh"
 
 #include "light.h"
 #include "mesh.h"
@@ -41,8 +43,8 @@ class InstancerData : public ObjectData {
   ObjectData *object_data(pxr::SdfPath const &id) const;
   pxr::SdfPathVector prototypes() const;
   void check_update(Object *object);
-  void check_remove(std::set<std::string> &available_objects);
-  void available_materials(std::set<pxr::SdfPath> &paths) const;
+  void check_remove(Set<std::string> &available_objects);
+  void available_materials(Set<pxr::SdfPath> &paths) const;
   void update_as_parent();
   void update_double_sided(MaterialData *mat_data);
 
@@ -56,12 +58,11 @@ class InstancerData : public ObjectData {
   MeshInstance *mesh_instance(pxr::SdfPath const &id) const;
   LightInstance *light_instance(pxr::SdfPath const &id) const;
 
-  pxr::TfHashMap<pxr::SdfPath, MeshInstance, pxr::SdfPath::Hash> mesh_instances_;
-  pxr::TfHashMap<pxr::SdfPath, LightInstance, pxr::SdfPath::Hash> light_instances_;
+  Map<pxr::SdfPath, MeshInstance> mesh_instances_;
+  Map<pxr::SdfPath, LightInstance> light_instances_;
   pxr::VtMatrix4dArray mesh_transforms_;
 };
 
-using InstancerDataMap =
-    pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<InstancerData>, pxr::SdfPath::Hash>;
+using InstancerDataMap = Map<pxr::SdfPath, std::unique_ptr<InstancerData>>;
 
 }  // namespace blender::render::hydra

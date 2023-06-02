@@ -7,6 +7,7 @@
 #include <pxr/imaging/hd/sceneDelegate.h>
 
 #include "BKE_duplilist.h"
+#include "BLI_set.hh"
 
 #include "material.h"
 #include "object.h"
@@ -39,7 +40,7 @@ class MeshData : public ObjectData {
   pxr::SdfPath material_id(pxr::SdfPath const &id) const;
   bool double_sided(pxr::SdfPath const &id) const;
   void update_double_sided(MaterialData *mat_data);
-  void available_materials(std::set<pxr::SdfPath> &paths) const;
+  void available_materials(Set<pxr::SdfPath> &paths) const;
   pxr::SdfPathVector submesh_paths() const;
 
   pxr::HdCullStyle cull_style = pxr::HdCullStyleBackUnlessDoubleSided;

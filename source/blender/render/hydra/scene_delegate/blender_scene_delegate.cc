@@ -211,14 +211,14 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
 
 void BlenderSceneDelegate::clear()
 {
-  for (auto &it : objects_) {
-    it.second->remove();
+  for (auto &obj_data : objects_.values()) {
+    obj_data->remove();
   }
-  for (auto &it : instancers_) {
-    it.second->remove();
+  for (auto &i_data : instancers_.values()) {
+    i_data->remove();
   }
-  for (auto &it : materials_) {
-    it.second->remove();
+  for (auto &mat_data : materials_.values()) {
+    mat_data->remove();
   }
 
   objects_.clear();
@@ -269,9 +269,9 @@ pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
 ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
 {
   pxr::SdfPath p_id = (id.GetName().find("SM_") == 0) ? id.GetParentPath() : id;
-  auto it = objects_.find(p_id);
-  if (it != objects_.end()) {
-    return it->second.get();
+  auto obj_data = objects_.lookup_ptr(p_id);
+  if (obj_data) {
+    return obj_data->get();
   }
   InstancerData *i_data = instancer_data(p_id, true);
   if (i_data) {
@@ -297,11 +297,11 @@ LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id) const
 
 MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id) const
 {
-  auto it = materials_.find(id);
-  if (it == materials_.end()) {
+  auto mat_data = materials_.lookup_ptr(id);
+  if (!mat_data) {
     return nullptr;
   }
-  return it->second.get();
+  return mat_data->get();
 }
 
 InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
@@ -322,9 +322,9 @@ InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool
     p_id = id;
   }
 
-  auto it = instancers_.find(p_id);
-  if (it != instancers_.end()) {
-    return it->second.get();
+  auto i_data = instancers_.lookup_ptr(p_id);
+  if (i_data) {
+    return i_data->get();
   }
   return nullptr;
 }
@@ -349,7 +349,7 @@ void BlenderSceneDelegate::update_objects(Object *object)
     return;
   }
 
-  objects_[id] = ObjectData::create(this, object, id);
+  objects_.add_new(id, ObjectData::create(this, object, id));
   obj_data = object_data(id);
   obj_data->update_parent();
   obj_data->init();
@@ -359,8 +359,8 @@ void BlenderSceneDelegate::update_objects(Object *object)
 void BlenderSceneDelegate::update_instancers(Object *object)
 {
   /* Check object inside instancers */
-  for (auto &it : instancers_) {
-    it.second->check_update(object);
+  for (auto &i_data : instancers_.values()) {
+    i_data->check_update(object);
   }
 
   pxr::SdfPath id = instancer_prim_id(object);
@@ -369,7 +369,7 @@ void BlenderSceneDelegate::update_instancers(Object *object)
     if ((object->transflag & OB_DUPLI) == 0) {
       /* Object isn't instancer anymore and should be removed */
       i_data->remove();
-      instancers_.erase(id);
+      instancers_.remove(id);
       return;
     }
 
@@ -386,8 +386,7 @@ void BlenderSceneDelegate::update_instancers(Object *object)
     return;
   }
 
-  instancers_[id] = std::make_unique<InstancerData>(this, object, id);
-  i_data = instancer_data(id);
+  i_data = instancers_.lookup_or_add(id, std::make_unique<InstancerData>(this, object, id)).get();
   i_data->init();
   i_data->insert();
 }
@@ -524,7 +523,7 @@ void BlenderSceneDelegate::add_new_objects()
 void BlenderSceneDelegate::remove_unused_objects()
 {
   /* Get available objects */
-  std::set<std::string> available_objects;
+  Set<std::string> available_objects;
 
   DEGObjectIterSettings settings = {0};
   settings.depsgraph = depsgraph;
@@ -542,67 +541,66 @@ void BlenderSceneDelegate::remove_unused_objects()
               object)
   {
     if (ObjectData::is_supported(object)) {
-      available_objects.insert(object_prim_id(object).GetName());
+      available_objects.add(object_prim_id(object).GetName());
     }
-    available_objects.insert(instancer_prim_id(object).GetName());
+    available_objects.add(instancer_prim_id(object).GetName());
   }
   ITER_END;
 
   /* Remove unused instancers */
-  for (auto it = instancers_.begin(); it != instancers_.end(); ++it) {
-    if (available_objects.find(it->first.GetName()) != available_objects.end()) {
-      /* Remove objects from instancers */
-      it->second->check_remove(available_objects);
-      continue;
+  instancers_.remove_if([&](auto item) {
+    bool ret = !available_objects.contains(item.key.GetName());
+    if (ret) {
+      item.value->remove();
     }
-    it->second->remove();
-    instancers_.erase(it);
-    it = instancers_.begin();
-  }
+    else {
+      item.value->check_remove(available_objects);
+    }
+    return ret;
+  });
 
   /* Remove unused objects */
-  for (auto it = objects_.begin(); it != objects_.end(); ++it) {
-    if (available_objects.find(it->first.GetName()) != available_objects.end()) {
-      continue;
+  objects_.remove_if([&](auto item) {
+    bool ret = !available_objects.contains(item.key.GetName());
+    if (ret) {
+      item.value->remove();
     }
-    it->second->remove();
-    objects_.erase(it);
-    it = objects_.begin();
-  }
+    return ret;
+  });
 
   /* Remove unused materials */
-  std::set<pxr::SdfPath> available_materials;
-  for (auto &it : objects_) {
-    MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
+  Set<pxr::SdfPath> available_materials;
+  for (auto &val : objects_.values()) {
+    MeshData *m_data = dynamic_cast<MeshData *>(val.get());
     if (m_data) {
       m_data->available_materials(available_materials);
     }
-    CurvesData *c_data = dynamic_cast<CurvesData *>(it.second.get());
+    CurvesData *c_data = dynamic_cast<CurvesData *>(val.get());
     if (c_data) {
       c_data->available_materials(available_materials);
     }
   }
-  for (auto &it : instancers_) {
-    it.second->available_materials(available_materials);
+  for (auto &val : instancers_.values()) {
+    val->available_materials(available_materials);
   }
-  for (auto it = materials_.begin(); it != materials_.end(); ++it) {
-    if (available_materials.find(it->first) != available_materials.end()) {
-      continue;
+
+  materials_.remove_if([&](auto item) {
+    bool ret = !available_materials.contains(item.key);
+    if (ret) {
+      item.value->remove();
     }
-    it->second->remove();
-    materials_.erase(it);
-    it = materials_.begin();
-  }
+    return ret;
+  });
 }
 
 void BlenderSceneDelegate::update_visibility()
 {
   /* Updating visibility of existing objects/instancers */
-  for (auto &it : objects_) {
-    it.second->update_visibility();
+  for (auto &val : objects_.values()) {
+    val->update_visibility();
   }
-  for (auto &it : instancers_) {
-    it.second->update_visibility();
+  for (auto &val : instancers_.values()) {
+    val->update_visibility();
   }
 
   /* Add objects/instancers which were invisible before and not added yet */

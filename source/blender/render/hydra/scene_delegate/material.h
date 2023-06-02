@@ -7,6 +7,7 @@
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
 
+#include "BLI_map.hh"
 #include "DNA_material_types.h"
 
 #include "id.h"
@@ -37,7 +38,6 @@ class MaterialData : public IdData {
   pxr::VtValue material_network_map_;
 };
 
-using MaterialDataMap =
-    pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<MaterialData>, pxr::SdfPath::Hash>;
+using MaterialDataMap = Map<pxr::SdfPath, std::unique_ptr<MaterialData>>;
 
 }  // namespace blender::render::hydra

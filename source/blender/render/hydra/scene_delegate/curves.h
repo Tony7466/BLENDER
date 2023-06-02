@@ -9,6 +9,7 @@
 #include "BKE_duplilist.h"
 #include "DNA_Curves_types.h"
 
+#include "BLI_set.hh"
 #include "material.h"
 #include "object.h"
 
@@ -29,7 +30,7 @@ class CurvesData : public ObjectData {
   pxr::HdBasisCurvesTopology curves_topology(pxr::SdfPath const &id) const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
   pxr::SdfPath material_id() const;
-  void available_materials(std::set<pxr::SdfPath> &paths) const;
+  void available_materials(Set<pxr::SdfPath> &paths) const;
 
  private:
   void write_curves(Curves *curves);

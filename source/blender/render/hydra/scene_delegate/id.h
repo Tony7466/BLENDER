@@ -7,7 +7,15 @@
 #include <pxr/base/vt/value.h>
 #include <pxr/usd/sdf/path.h>
 
+#include "BLI_hash.hh"
 #include "DNA_ID.h"
+
+template<> struct blender::DefaultHash<pxr::SdfPath> {
+  uint64_t operator()(const pxr::SdfPath &value) const
+  {
+    return pxr::SdfPath::Hash()(value);
+  }
+};
 
 namespace blender::render::hydra {
 

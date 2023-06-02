@@ -173,11 +173,11 @@ void MeshData::update_double_sided(MaterialData *mat_data)
   }
 }
 
-void MeshData::available_materials(std::set<pxr::SdfPath> &paths) const
+void MeshData::available_materials(Set<pxr::SdfPath> &paths) const
 {
   for (auto &sm : submeshes_) {
     if (sm.mat_data && !sm.mat_data->prim_id.IsEmpty()) {
-      paths.insert(sm.mat_data->prim_id);
+      paths.add(sm.mat_data->prim_id);
     }
   }
 }
@@ -301,15 +301,14 @@ void MeshData::write_materials()
       m.mat_data = nullptr;
       continue;
     }
+
     pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
-    m.mat_data = scene_delegate_->material_data(p_id);
-    if (!m.mat_data) {
-      scene_delegate_->materials_[p_id] = std::make_unique<MaterialData>(
-          scene_delegate_, mat, p_id);
-      m.mat_data = scene_delegate_->material_data(p_id);
-      m.mat_data->init();
-      m.mat_data->insert();
-    }
+    m.mat_data = scene_delegate_->materials_
+                     .lookup_or_add(p_id,
+                                    std::make_unique<MaterialData>(scene_delegate_, mat, p_id))
+                     .get();
+    m.mat_data->init();
+    m.mat_data->insert();
   }
 }
 

@@ -60,14 +60,14 @@ void MaterialData::update()
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                       pxr::HdMaterial::AllDirty);
   if (prev_double_sided != double_sided) {
-    for (auto &it : scene_delegate_->objects_) {
-      MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
+    for (auto &obj_data : scene_delegate_->objects_.values()) {
+      MeshData *m_data = dynamic_cast<MeshData *>(obj_data.get());
       if (m_data) {
         m_data->update_double_sided(this);
       }
     }
-    for (auto &it : scene_delegate_->instancers_) {
-      it.second->update_double_sided(this);
+    for (auto &i_data : scene_delegate_->instancers_.values()) {
+      i_data->update_double_sided(this);
     }
   }
 }

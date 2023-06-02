@@ -7,6 +7,7 @@
 #include <pxr/base/gf/matrix4d.h>
 
 #include "BKE_layer.h"
+#include "BLI_map.hh"
 #include "DNA_object_types.h"
 
 #include "id.h"
@@ -36,8 +37,7 @@ class ObjectData : public IdData {
   Object *parent_ = nullptr;
 };
 
-using ObjectDataMap =
-    pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<ObjectData>, pxr::SdfPath::Hash>;
+using ObjectDataMap = Map<pxr::SdfPath, std::unique_ptr<ObjectData>>;
 
 pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4]);
 
