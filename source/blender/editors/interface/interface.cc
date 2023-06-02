@@ -3861,7 +3861,10 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
             }
           }
         }
-        if (!(but->drawflag & UI_BUT_INDETERMINATE)) {
+        if (but->drawflag & UI_BUT_INDETERMINATE) {
+          STRNCPY(but->drawstr, "\u2014");
+        }
+        else {
           STRNCPY(but->drawstr, but->str);
         }
       }
@@ -3874,7 +3877,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
       }
       UI_GET_BUT_VALUE_INIT(but, value);
       if (but->drawflag & UI_BUT_INDETERMINATE) {
-        /* Pass. */
+        STRNCPY(but->drawstr, "\u2014");
       }
       else if (ui_but_is_float(but)) {
         ui_but_build_drawstr_float(but, value);
@@ -3898,11 +3901,15 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 
     case UI_BTYPE_TEXT:
     case UI_BTYPE_SEARCH_MENU:
-      if (!but->editstr && !(but->drawflag & UI_BUT_INDETERMINATE)) {
-        char str[UI_MAX_DRAW_STR];
-
-        ui_but_string_get(but, str, UI_MAX_DRAW_STR);
-        SNPRINTF(but->drawstr, "%s%s", but->str, str);
+      if (!but->editstr) {
+        if (but->drawflag & UI_BUT_INDETERMINATE) {
+          STRNCPY(but->drawstr, "\u2014");
+        }
+        else {
+          char str[UI_MAX_DRAW_STR];
+          ui_but_string_get(but, str, UI_MAX_DRAW_STR);
+          SNPRINTF(but->drawstr, "%s%s", but->str, str);
+        }
       }
       break;
 
