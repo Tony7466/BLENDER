@@ -222,12 +222,13 @@ ccl_device_inline float2 floor(const float2 a)
   return make_float2(floorf(a.x), floorf(a.y));
 }
 
-ccl_device_inline float2 pow(float2 v, float e)
+#endif /* !__KERNEL_METAL__ */
+
+/* Consistent name for this would be pow, but HIP compiler crashes in name mangling. */
+ccl_device_inline float2 power(float2 v, float e)
 {
   return make_float2(powf(v.x, e), powf(v.y, e));
 }
-
-#endif /* !__KERNEL_METAL__ */
 
 ccl_device_inline float2 safe_divide_float2_float(const float2 a, const float b)
 {

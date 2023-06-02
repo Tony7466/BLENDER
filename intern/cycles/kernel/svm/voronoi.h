@@ -62,7 +62,7 @@ ccl_device float voronoi_distance(const T a, const T b, ccl_private const Vorono
     return reduce_max(fabs(a - b));
   }
   else if (params.metric == NODE_VORONOI_MINKOWSKI) {
-    return powf(reduce_add(pow(fabs(a - b), params.exponent)), 1.0f / params.exponent);
+    return powf(reduce_add(power(fabs(a - b), params.exponent)), 1.0f / params.exponent);
   }
   else {
     return 0.0f;

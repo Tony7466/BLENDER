@@ -392,7 +392,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           params.max_distance = (0.5f + 0.5f * params.randomness) *
                                 ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
-          output = noise::fractal_voronoi_x_fx<float>(params, w[i] * params.scale);
+          output = noise::fractal_voronoi_x_fx<float>(params, w[i] * params.scale, calc_color);
           if (calc_distance) {
             r_distance[i] = output.distance;
           }
@@ -425,7 +425,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                 ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
           output = noise::fractal_voronoi_x_fx<float2>(
-              params, float2{vector[i].x, vector[i].y} * params.scale);
+              params, float2{vector[i].x, vector[i].y} * params.scale, calc_color);
           if (calc_distance) {
             r_distance[i] = output.distance;
           }
@@ -458,7 +458,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                                         params) *
                                 ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
-          output = noise::fractal_voronoi_x_fx<float3>(params, vector[i] * params.scale);
+          output = noise::fractal_voronoi_x_fx<float3>(
+              params, vector[i] * params.scale, calc_color);
           if (calc_distance) {
             r_distance[i] = output.distance;
           }
@@ -493,7 +494,9 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                 ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
           output = noise::fractal_voronoi_x_fx<float4>(
-              params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);
+              params,
+              float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale,
+              calc_color);
           if (calc_distance) {
             r_distance[i] = output.distance;
           }

@@ -1484,7 +1484,9 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord)
   return octave;
 }
 
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float coord)
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float coord,
+                                const bool calc_color)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -1503,7 +1505,9 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float coord)
     smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
     correctionFactor /= 1.0f + 3.0f * params.smoothness;
     float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
-    smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+    if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+      smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+    }
     smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
   }
 
@@ -1641,7 +1645,9 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float2 coord)
   return octave;
 }
 
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float2 coord)
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float2 coord,
+                                const bool calc_color)
 {
   float2 cellPosition = math::floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -1660,8 +1666,10 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float2 coord)
       float correctionFactor = params.smoothness * h * (1.0f - h);
       smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
       correctionFactor /= 1.0f + 3.0f * params.smoothness;
-      float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
-      smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+      if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+        float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
+        smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+      }
       smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
     }
   }
@@ -1834,7 +1842,9 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float3 coord)
   return octave;
 }
 
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float3 coord)
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float3 coord,
+                                const bool calc_color)
 {
   float3 cellPosition = math::floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -1854,8 +1864,10 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float3 coord)
         float correctionFactor = params.smoothness * h * (1.0f - h);
         smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
         correctionFactor /= 1.0f + 3.0f * params.smoothness;
-        float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
-        smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+        if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+          float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
+          smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+        }
         smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
       }
     }
@@ -2043,7 +2055,9 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float4 coord)
   return octave;
 }
 
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float4 coord)
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float4 coord,
+                                const bool calc_color)
 {
   float4 cellPosition = math::floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -2064,8 +2078,10 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float4 coord)
           float correctionFactor = params.smoothness * h * (1.0f - h);
           smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
           correctionFactor /= 1.0f + 3.0f * params.smoothness;
-          float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
-          smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+          if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+            float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
+            smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+          }
           smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
         }
       }
@@ -2226,7 +2242,10 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord)
 
 /* **** Fractal Voronoi **** */
 
-template<typename T> VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const T coord)
+template<typename T>
+VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
+                                   const T coord,
+                                   const bool calc_color /* Only used to optimize Smooth F1 */)
 {
   float amplitude = 1.0f;
   float max_amplitude = 0.0f;
@@ -2240,7 +2259,7 @@ template<typename T> VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &par
     VoronoiOutput octave = (params.feature == NOISE_SHD_VORONOI_F1) ?
                                voronoi_f1(params, coord * scale) :
                            (params.feature == NOISE_SHD_VORONOI_SMOOTH_F1) ?
-                               voronoi_smooth_f1(params, coord * scale) :
+                               voronoi_smooth_f1(params, coord * scale, calc_color) :
                                voronoi_f2(params, coord * scale);
 
     if (zero_input) {
@@ -2326,13 +2345,18 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
 
 /* Explicit function template instantiation */
 
-template VoronoiOutput fractal_voronoi_x_fx<float>(const VoronoiParams &params, const float coord);
+template VoronoiOutput fractal_voronoi_x_fx<float>(const VoronoiParams &params,
+                                                   const float coord,
+                                                   const bool calc_color);
 template VoronoiOutput fractal_voronoi_x_fx<float2>(const VoronoiParams &params,
-                                                    const float2 coord);
+                                                    const float2 coord,
+                                                    const bool calc_color);
 template VoronoiOutput fractal_voronoi_x_fx<float3>(const VoronoiParams &params,
-                                                    const float3 coord);
+                                                    const float3 coord,
+                                                    const bool calc_color);
 template VoronoiOutput fractal_voronoi_x_fx<float4>(const VoronoiParams &params,
-                                                    const float4 coord);
+                                                    const float4 coord,
+                                                    const bool calc_color);
 
 template float fractal_voronoi_distance_to_edge<float>(const VoronoiParams &params,
                                                        const float coord);

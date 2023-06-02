@@ -335,7 +335,9 @@ float voronoi_distance(const float4 a, const float4 b, const VoronoiParams &para
 
 float4 voronoi_position(const float coord);
 VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord);
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float coord,
+                                const bool calc_color);
 VoronoiOutput voronoi_f2(const VoronoiParams &params, const float coord);
 float voronoi_distance_to_edge(const VoronoiParams &params, const float coord);
 float voronoi_n_sphere_radius(const VoronoiParams &params, const float coord);
@@ -344,7 +346,9 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float coord);
 
 float4 voronoi_position(const float2 coord);
 VoronoiOutput voronoi_f1(const VoronoiParams &params, const float2 coord);
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float2 coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float2 coord,
+                                const bool calc_color);
 VoronoiOutput voronoi_f2(const VoronoiParams &params, const float2 coord);
 float voronoi_distance_to_edge(const VoronoiParams &params, const float2 coord);
 float voronoi_n_sphere_radius(const VoronoiParams &params, const float2 coord);
@@ -353,7 +357,9 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float2 coord);
 
 float4 voronoi_position(const float3 coord);
 VoronoiOutput voronoi_f1(const VoronoiParams &params, const float3 coord);
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float3 coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float3 coord,
+                                const bool calc_color);
 VoronoiOutput voronoi_f2(const VoronoiParams &params, const float3 coord);
 float voronoi_distance_to_edge(const VoronoiParams &params, const float3 coord);
 float voronoi_n_sphere_radius(const VoronoiParams &params, const float3 coord);
@@ -362,7 +368,9 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float3 coord);
 
 float4 voronoi_position(const float4 coord);
 VoronoiOutput voronoi_f1(const VoronoiParams &params, const float4 coord);
-VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float4 coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
+                                const float4 coord,
+                                const bool calc_color);
 VoronoiOutput voronoi_f2(const VoronoiParams &params, const float4 coord);
 float voronoi_distance_to_edge(const VoronoiParams &params, const float4 coord);
 float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord);
@@ -370,7 +378,9 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord);
 /* Fractal Voronoi Noise */
 
 template<typename T>
-VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const T coord);
+VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
+                                   const T coord,
+                                   const bool calc_color);
 template<typename T>
 float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coord);
 
