@@ -1302,6 +1302,7 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
   /* Clamp cutoff frequency to Nyquist Frequency. */
   const float cutoff_frequency = (sampling_frequency / 2) * slider_cutoff_factor;
   RNA_float_set(op->ptr, "cutoff_frequency", cutoff_frequency);
+  const int blend_in_out = RNA_int_get(op->ptr, "blend_in_out");
 
   ED_anim_calculate_butterworth_coefficients(
       cutoff_frequency, sampling_frequency, operator_data->coefficients);
@@ -1312,6 +1313,7 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
                                       segment->samples,
                                       segment->sample_count,
                                       1,
+                                      blend_in_out,
                                       samples_per_frame,
                                       operator_data->coefficients);
   }
@@ -1350,6 +1352,7 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static void btw_smooth_graph_keys(bAnimContext *ac,
                                   const float factor,
+                                  const int blend_in_out,
                                   float cutoff_frequency,
                                   const int filter_order,
                                   const int samples_per_frame)
@@ -1378,7 +1381,7 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
       sample_fcurve_segment(
           fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
       butterworth_smooth_fcurve_segment(
-          fcu, segment, samples, sample_count, factor, samples_per_frame, bw_coeff);
+          fcu, segment, samples, sample_count, factor, blend_in_out, samples_per_frame, bw_coeff);
       MEM_freeN(samples);
     }
 
@@ -1402,7 +1405,9 @@ static int btw_smooth_exec(bContext *C, wmOperator *op)
   const float cutoff_frequency = RNA_float_get(op->ptr, "cutoff_frequency");
   const int filter_order = RNA_int_get(op->ptr, "filter_order");
   const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
-  btw_smooth_graph_keys(&ac, factor, cutoff_frequency, filter_order, samples_per_frame);
+  const int blend_in_out = RNA_int_get(op->ptr, "blend_in_out");
+  btw_smooth_graph_keys(
+      &ac, factor, blend_in_out, cutoff_frequency, filter_order, samples_per_frame);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1476,5 +1481,15 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
               "How many samples to calculate per frame, helps with subframe data",
               1,
               16);
+
+  RNA_def_int(ot->srna,
+              "blend_in_out",
+              0,
+              0,
+              INT_MAX,
+              "Blend In/Out",
+              "Smoothly blend to the original data at the start and end for this duration",
+              0,
+              INT_MAX);
 }
 /** \} */

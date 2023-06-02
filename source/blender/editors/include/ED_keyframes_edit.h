@@ -450,6 +450,7 @@ void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
                                        float *samples,
                                        int sample_count,
                                        float factor,
+                                       int blend_in_out,
                                        int sample_rate,
                                        struct ButterworthCoefficients *bw_coeff);
 void smooth_fcurve_segment(struct FCurve *fcu,

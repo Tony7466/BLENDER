@@ -446,6 +446,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        float *samples,
                                        const int sample_count,
                                        const float factor,
+                                       const int blend_in_out,
                                        const int sample_rate,
                                        ButterworthCoefficients *bw_coeff)
 {
@@ -482,13 +483,24 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     const double filtered_value = butterworth_filter_value(x, w0, w1, w2, bw_coeff);
     filtered_values[i] = (float)(filtered_value) + bwd_offset;
   }
-
+  const int segment_end_index = segment->start_index + segment->length;
   BezTriple left_bezt = fcu->bezt[segment->start_index];
-  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+  for (int i = segment->start_index; i < segment_end_index; i++) {
     const float x_delta = fcu->bezt[i].vec[1][0] - left_bezt.vec[1][0] + filter_order;
     const int filter_index = (int)(x_delta * sample_rate);
-    const float key_y_value = interpf(
-        filtered_values[filter_index], samples[filter_index], factor);
+    float key_y_value = interpf(filtered_values[filter_index], samples[filter_index], factor);
+
+    float blend_in_out_factor;
+    if (blend_in_out == 0) {
+      blend_in_out_factor = 1;
+    }
+    else if (i < segment_end_index / 2) {
+      blend_in_out_factor = min_ff((float)(i - segment->start_index) / blend_in_out, 1.0f);
+    }
+    else {
+      blend_in_out_factor = min_ff((float)(segment_end_index - i) / blend_in_out, 1.0f);
+    }
+    key_y_value = interpf(key_y_value, samples[filter_index], blend_in_out_factor);
     BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 
