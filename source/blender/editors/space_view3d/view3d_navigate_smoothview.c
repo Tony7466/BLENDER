@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -270,7 +272,8 @@ void ED_view3d_smooth_view_ex(
       (sms.dst.lens == v3d->lens) &&            /* Lens. */
       equals_v3v3(sms.dst.ofs, rv3d->ofs) &&    /* Offset. */
       equals_v4v4(sms.dst.quat, rv3d->viewquat) /* Rotation. */
-  ) {
+  )
+  {
     /* Early return if nothing changed. */
     return;
   }

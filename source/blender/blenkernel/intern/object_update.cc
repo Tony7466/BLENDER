@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation */
+/* SPDX-FileCopyrightText: 2014 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -31,6 +32,8 @@
 #include "BKE_effect.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
@@ -49,7 +52,10 @@
 #include "MEM_guardedalloc.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_light_linking.hh"
 #include "DEG_depsgraph_query.h"
+
+namespace deg = blender::deg;
 
 void BKE_object_eval_reset(Object *ob_eval)
 {
@@ -196,6 +202,9 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     case OB_VOLUME:
       BKE_volume_data_update(depsgraph, scene, ob);
       break;
+    case OB_GREASE_PENCIL:
+      BKE_grease_pencil_data_update(depsgraph, scene, ob);
+      break;
   }
 
   /* particles */
@@ -209,7 +218,8 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
         /* check use of dupli objects here */
         if (psys->part && (psys->part->draw_as == PART_DRAW_REND || use_render_params) &&
             ((psys->part->ren_as == PART_DRAW_OB && psys->part->instance_object) ||
-             (psys->part->ren_as == PART_DRAW_GR && psys->part->instance_collection))) {
+             (psys->part->ren_as == PART_DRAW_GR && psys->part->instance_collection)))
+        {
           ob->transflag |= OB_DUPLIPARTS;
         }
 
@@ -265,7 +275,8 @@ void BKE_object_sync_to_original(Depsgraph *depsgraph, Object *object)
   for (ModifierData *md = static_cast<ModifierData *>(object->modifiers.first),
                     *md_orig = static_cast<ModifierData *>(object_orig->modifiers.first);
        md != nullptr && md_orig != nullptr;
-       md = md->next, md_orig = md_orig->next) {
+       md = md->next, md_orig = md_orig->next)
+  {
     BLI_assert(md->type == md_orig->type && STREQ(md->name, md_orig->name));
     MEM_SAFE_FREE(md_orig->error);
     if (md->error != nullptr) {
@@ -313,6 +324,10 @@ void BKE_object_batch_cache_dirty_tag(Object *ob)
       break;
     case OB_VOLUME:
       BKE_volume_batch_cache_dirty_tag((struct Volume *)ob->data, BKE_VOLUME_BATCH_DIRTY_ALL);
+      break;
+    case OB_GREASE_PENCIL:
+      BKE_grease_pencil_batch_cache_dirty_tag((struct GreasePencil *)ob->data,
+                                              BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
       break;
     default:
       break;
@@ -425,7 +440,8 @@ void BKE_object_eval_eval_base_flags(Depsgraph *depsgraph,
   if (object->mode == OB_MODE_PARTICLE_EDIT) {
     for (ParticleSystem *psys = static_cast<ParticleSystem *>(object->particlesystem.first);
          psys != nullptr;
-         psys = psys->next) {
+         psys = psys->next)
+    {
       BKE_particle_batch_cache_dirty_tag(psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
     }
   }
@@ -437,4 +453,10 @@ void BKE_object_eval_eval_base_flags(Depsgraph *depsgraph,
     BLI_assert(base_orig->object != nullptr);
     base_orig->flag = base->flag;
   }
+}
+
+void BKE_object_eval_light_linking(Depsgraph *depsgraph, Object *object)
+{
+  DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
+  deg::light_linking::eval_runtime_data(depsgraph, *object);
 }

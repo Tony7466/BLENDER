@@ -11,10 +11,17 @@
 using namespace blender;
 using namespace blender::gpu;
 
+/* Memory size in bytes macros, used as pool flushing frequency thresholds. */
+#define MEMORY_SIZE_2GB 2147483648LL
+#define MEMORY_SIZE_1GB 1073741824LL
+#define MEMORY_SIZE_512MB 536870912LL
+#define MEMORY_SIZE_256MB 268435456LL
+
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
-/** \name Memory Management - MTLBufferPool and MTLSafeFreeList implementations. */
+/** \name Memory Management - MTLBufferPool and MTLSafeFreeList implementations
+ * \{ */
 
 void MTLBufferPool::init(id<MTLDevice> mtl_device)
 {
@@ -27,9 +34,10 @@ void MTLBufferPool::init(id<MTLDevice> mtl_device)
     /* Debug statistics. */
     total_allocation_bytes_ = 0;
     per_frame_allocation_count_ = 0;
-    allocations_in_pool_ = 0;
     buffers_in_pool_ = 0;
 #endif
+    /* Track pool allocation size. */
+    allocations_in_pool_ = 0;
 
     /* Free pools -- Create initial safe free pool */
     BLI_assert(current_free_list_ == nullptr);
@@ -52,7 +60,8 @@ void MTLBufferPool::free()
   allocations_.clear();
 
   for (std::multiset<blender::gpu::MTLBufferHandle, blender::gpu::CompareMTLBuffer> *buffer_pool :
-       buffer_pools_.values()) {
+       buffer_pools_.values())
+  {
     delete buffer_pool;
   }
   buffer_pools_.clear();
@@ -116,7 +125,8 @@ gpu::MTLBuffer *MTLBufferPool::allocate_aligned(uint64_t size,
       uint64_t found_size = found_buffer->get_size();
 
       if (found_size >= aligned_alloc_size &&
-          found_size <= (aligned_alloc_size * mtl_buffer_size_threshold_factor_)) {
+          found_size <= (aligned_alloc_size * mtl_buffer_size_threshold_factor_))
+      {
         MTL_LOG_INFO(
             "[MemoryAllocator] Suitable Buffer of size %lld found, for requested size: %lld\n",
             found_size,
@@ -156,10 +166,12 @@ gpu::MTLBuffer *MTLBufferPool::allocate_aligned(uint64_t size,
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
     /* Debug. */
-    allocations_in_pool_ -= new_buffer->get_size();
     buffers_in_pool_--;
-    BLI_assert(allocations_in_pool_ >= 0);
 #endif
+
+    /* Decrement size of pool. */
+    BLI_assert(allocations_in_pool_ >= 0);
+    allocations_in_pool_ -= new_buffer->get_size();
 
     /* Ensure buffer memory is correctly backed. */
     BLI_assert(new_buffer->get_metal_buffer());
@@ -230,7 +242,8 @@ void MTLBufferPool::update_memory_pools()
 
   /* Always free oldest MTLSafeFreeList first. */
   for (int safe_pool_free_index = 0; safe_pool_free_index < completed_safelist_queue_.size();
-       safe_pool_free_index++) {
+       safe_pool_free_index++)
+  {
     MTLSafeFreeList *current_pool = completed_safelist_queue_[safe_pool_free_index];
 
     /* Iterate through all MTLSafeFreeList linked-chunks. */
@@ -268,6 +281,59 @@ void MTLBufferPool::update_memory_pools()
       if (next_list != nullptr) {
         current_pool = next_list;
       }
+    }
+  }
+
+  /* Release memory allocations which have not been used in a while.
+   * This ensures memory pressure stays low for scenes with compounding complexity during
+   * animation.
+   * If memory is continually used, then we do not want to free this memory as it will be
+   * re-allocated during a short time period. */
+  const time_t time_now = std::time(nullptr);
+  for (auto buffer_pool_list : buffer_pools_.items()) {
+    MTLBufferPoolOrderedList *pool_allocations = buffer_pool_list.value;
+    MTLBufferPoolOrderedList::iterator pool_iterator = pool_allocations->begin();
+    while (pool_iterator != pool_allocations->end()) {
+
+      const MTLBufferHandle handle = *pool_iterator;
+      const time_t time_passed = time_now - handle.insert_time;
+
+      /* Free allocations if a certain amount of time has passed.
+       * Deletion frequency depends on how much excess memory
+       * the application is using. */
+      time_t deletion_time_threshold_s = 600;
+      /* Spare pool memory >= 2GB. */
+      if (allocations_in_pool_ >= MEMORY_SIZE_2GB) {
+        deletion_time_threshold_s = 2;
+      }
+      else
+          /* Spare pool memory >= 1GB. */
+          if (allocations_in_pool_ >= MEMORY_SIZE_1GB)
+      {
+        deletion_time_threshold_s = 4;
+      }
+      /* Spare pool memory >= 512MB.*/
+      else if (allocations_in_pool_ >= MEMORY_SIZE_512MB) {
+        deletion_time_threshold_s = 15;
+      }
+      /* Spare pool memory >= 256MB. */
+      else if (allocations_in_pool_ >= MEMORY_SIZE_256MB) {
+        deletion_time_threshold_s = 60;
+      }
+
+      if (time_passed > deletion_time_threshold_s) {
+
+        /* Delete allocation. */
+        delete handle.buffer;
+        pool_iterator = pool_allocations->erase(pool_iterator);
+        allocations_in_pool_ -= handle.buffer_size;
+#if MTL_DEBUG_MEMORY_STATISTICS == 1
+        total_allocation_bytes_ -= handle.buffer_size;
+        buffers_in_pool_--;
+#endif
+        continue;
+      }
+      pool_iterator++;
     }
   }
 
@@ -379,10 +445,10 @@ void MTLBufferPool::insert_buffer_into_pool(MTLResourceOptions options, gpu::MTL
 
   std::multiset<MTLBufferHandle, CompareMTLBuffer> *pool = buffer_pools_.lookup(options);
   pool->insert(MTLBufferHandle(buffer));
+  allocations_in_pool_ += buffer->get_size();
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
   /* Debug statistics. */
-  allocations_in_pool_ += buffer->get_size();
   buffers_in_pool_++;
 #endif
 }
@@ -773,7 +839,7 @@ MTLTemporaryBuffer MTLCircularBuffer::allocate_range_aligned(uint64_t alloc_size
 
   /* Ensure alignment of an allocation is aligned to compatible offset boundaries. */
   BLI_assert(alignment > 0);
-  alignment = max_ulul(alignment, 256);
+  alignment = max_uu(alignment, 256);
 
   /* Align current offset and allocation size to desired alignment */
   uint64_t aligned_current_offset = ceil_to_multiple_ul(current_offset_, alignment);

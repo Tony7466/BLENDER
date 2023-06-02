@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -817,7 +819,8 @@ static int flyApply(bContext *C, FlyInfo *fly, bool is_confirm)
     /* Should we redraw? */
     if ((fly->speed != 0.0f) || moffset[0] || moffset[1] ||
         (fly->zlock != FLY_AXISLOCK_STATE_OFF) || (fly->xlock != FLY_AXISLOCK_STATE_OFF) ||
-        dvec[0] || dvec[1] || dvec[2]) {
+        dvec[0] || dvec[1] || dvec[2])
+    {
       float dvec_tmp[3];
 
       /* time how fast it takes for us to redraw,
@@ -1095,7 +1098,8 @@ static int fly_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
   else
 #endif /* WITH_INPUT_NDOF */
-      if (event->type == TIMER && event->customdata == fly->timer) {
+      if (event->type == TIMER && event->customdata == fly->timer)
+  {
     flyApply(C, fly, false);
   }
 

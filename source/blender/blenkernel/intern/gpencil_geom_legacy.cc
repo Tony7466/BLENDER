@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -315,7 +316,8 @@ static int stroke_march_next_point_no_interp(const bGPDstroke *gps,
     if (next_point_index < gps->totpoints - 1 &&
         angle_v3v3v3(&gps->points[next_point_index - 1].x,
                      &gps->points[next_point_index].x,
-                     &gps->points[next_point_index + 1].x) < sharp_threshold) {
+                     &gps->points[next_point_index + 1].x) < sharp_threshold)
+    {
       copy_v3_v3(result, &pt->x);
       pt->flag |= GP_SPOINT_TEMP_TAG;
       next_point_index++;
@@ -367,7 +369,8 @@ static int stroke_march_count(const bGPDstroke *gps, const float dist, const flo
   }
 
   while ((next_point_index = stroke_march_next_point_no_interp(
-              gps, next_point_index, point, dist, sharp_threshold, point)) > -1) {
+              gps, next_point_index, point, dist, sharp_threshold, point)) > -1)
+  {
     point_count++;
     if (next_point_index == 0) {
       break; /* last point finished */
@@ -523,7 +526,8 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
                                                      &uv_rot,
                                                      &ratio_result,
                                                      &index_from,
-                                                     &index_to)) > -1) {
+                                                     &index_to)) > -1)
+  {
     if (is_cyclic && next_point_index == 0) {
       break; /* last point finished */
     }
@@ -649,7 +653,7 @@ bool BKE_gpencil_stroke_stretch(bGPDstroke *gps,
   if (!isfinite(used_percent_length)) {
     /* #used_percent_length must always be finite, otherwise a segfault occurs.
      * Since this function should never segfault, set #used_percent_length to a safe fallback. */
-    /* NOTE: This fallback is used if gps->totpoints == 2, see MOD_gpencillength.c */
+    /* NOTE: This fallback is used if gps->totpoints == 2, see MOD_gpencil_legacy_length.c */
     used_percent_length = 0.1f;
   }
 
@@ -2306,7 +2310,8 @@ void BKE_gpencil_stroke_subdivide(bGPdata *gpd, bGPDstroke *gps, int level, int 
       float mid[3];
       /* extreme points are not changed */
       for (int i = cyclic ? 0 : 2, j = cyclic ? gps->totpoints - 2 : 0; i < gps->totpoints - 2;
-           j = i, i += 2) {
+           j = i, i += 2)
+      {
         bGPDspoint *prev = &gps->points[j + 1];
         bGPDspoint *pt = &gps->points[i];
         bGPDspoint *next = &gps->points[i + 1];
@@ -2503,11 +2508,11 @@ static void gpencil_generate_edgeloops(Object *ob,
     return;
   }
   const Span<float3> vert_positions = me->vert_positions();
-  const Span<MEdge> edges = me->edges();
+  const Span<int2> edges = me->edges();
   const Span<MDeformVert> dverts = me->deform_verts();
   const blender::Span<blender::float3> vert_normals = me->vert_normals();
   const bke::AttributeAccessor attributes = me->attributes();
-  const VArray<bool> uv_seams = attributes.lookup_or_default<bool>(
+  const VArray<bool> uv_seams = *attributes.lookup_or_default<bool>(
       ".uv_seam", ATTR_DOMAIN_EDGE, false);
 
   /* Arrays for all edge vertices (forward and backward) that form a edge loop.
@@ -2520,18 +2525,18 @@ static void gpencil_generate_edgeloops(Object *ob,
   GpEdge *gp_edges = (GpEdge *)MEM_callocN(sizeof(GpEdge) * me->totedge, __func__);
   GpEdge *gped = nullptr;
   for (int i = 0; i < me->totedge; i++) {
-    const MEdge *edge = &edges[i];
+    const blender::int2 &edge = edges[i];
     gped = &gp_edges[i];
-    copy_v3_v3(gped->n1, vert_normals[edge->v1]);
+    copy_v3_v3(gped->n1, vert_normals[edge[0]]);
 
-    gped->v1 = edge->v1;
-    copy_v3_v3(gped->v1_co, vert_positions[edge->v1]);
+    gped->v1 = edge[0];
+    copy_v3_v3(gped->v1_co, vert_positions[edge[0]]);
 
-    copy_v3_v3(gped->n2, vert_normals[edge->v2]);
-    gped->v2 = edge->v2;
-    copy_v3_v3(gped->v2_co, vert_positions[edge->v2]);
+    copy_v3_v3(gped->n2, vert_normals[edge[1]]);
+    gped->v2 = edge[1];
+    copy_v3_v3(gped->v2_co, vert_positions[edge[1]]);
 
-    sub_v3_v3v3(gped->vec, vert_positions[edge->v1], vert_positions[edge->v2]);
+    sub_v3_v3v3(gped->vec, vert_positions[edge[0]], vert_positions[edge[1]]);
 
     /* If use seams, mark as done if not a seam. */
     if ((use_seams) && !uv_seams[i]) {
@@ -2655,7 +2660,8 @@ static Material *gpencil_add_material(Main *bmain,
 
   /* Check at least one is enabled. */
   if (((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0) &&
-      ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0)) {
+      ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0))
+  {
     gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
   }
 
@@ -2705,7 +2711,8 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   using namespace blender;
   using namespace blender::bke;
   if (ELEM(nullptr, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL_LEGACY) ||
-      (ob_gp->data == nullptr)) {
+      (ob_gp->data == nullptr))
+  {
     return false;
   }
 
@@ -2715,7 +2722,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
   const Span<float3> positions = me_eval->vert_positions();
-  const Span<MPoly> polys = me_eval->polys();
+  const OffsetIndices polys = me_eval->polys();
   const Span<int> corner_verts = me_eval->corner_verts();
   int polys_len = me_eval->totpoly;
   char element_name[200];
@@ -2753,10 +2760,10 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         gpl_fill, scene->r.cfra + frame_offset, GP_GETFRAME_ADD_NEW);
     int i;
 
-    const VArray<int> mesh_material_indices = me_eval->attributes().lookup_or_default<int>(
+    const VArray<int> mesh_material_indices = *me_eval->attributes().lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_FACE, 0);
     for (i = 0; i < polys_len; i++) {
-      const MPoly &poly = polys[i];
+      const IndexRange poly = polys[i];
 
       /* Find material. */
       int mat_idx = 0;
@@ -2776,19 +2783,19 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         gpencil_add_material(bmain, ob_gp, element_name, color, false, true, &mat_idx);
       }
 
-      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, poly.totloop, 10, false);
+      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, poly.size(), 10, false);
       gps_fill->flag |= GP_STROKE_CYCLIC;
 
       /* Create dvert data. */
       const Span<MDeformVert> dverts = me_eval->deform_verts();
       if (use_vgroups && !dverts.is_empty()) {
-        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * poly.totloop,
+        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * poly.size(),
                                                      "gp_fill_dverts");
       }
 
       /* Add points to strokes. */
-      for (int j = 0; j < poly.totloop; j++) {
-        const int vert = corner_verts[poly.loopstart + j];
+      for (int j = 0; j < poly.size(); j++) {
+        const int vert = corner_verts[poly[j]];
 
         bGPDspoint *pt = &gps_fill->points[j];
         copy_v3_v3(&pt->x, positions[vert]);
@@ -2810,7 +2817,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         }
       }
       /* If has only 3 points subdivide. */
-      if (poly.totloop == 3) {
+      if (poly.size() == 3) {
         BKE_gpencil_stroke_subdivide(gpd, gps_fill, 1, GP_SUBDIV_SIMPLE);
       }
 

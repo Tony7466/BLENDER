@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -113,6 +114,10 @@ struct Render {
 
   RenderStats i;
 
+  /**
+   * Optional report list which may be null (borrowed memory).
+   * Callers to rendering functions are responsible for setting can clearing, see: #RE_SetReports.
+   */
   struct ReportList *reports;
 
   void **movie_ctx_arr;

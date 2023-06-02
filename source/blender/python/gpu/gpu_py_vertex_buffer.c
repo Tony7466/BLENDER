@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -244,7 +246,8 @@ static PyObject *pygpu_vertbuf__tp_new(PyTypeObject *UNUSED(type), PyObject *arg
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, &BPyGPUVertFormat_Type, &params.py_fmt, &params.len)) {
+          args, kwds, &_parser, &BPyGPUVertFormat_Type, &params.py_fmt, &params.len))
+  {
     return NULL;
   }
 

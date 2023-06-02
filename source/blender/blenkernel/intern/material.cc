@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,6 +25,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -57,7 +59,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
@@ -82,6 +84,8 @@ static void material_init_data(ID *id)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(material, id));
 
   MEMCPY_STRUCT_AFTER(material, DNA_struct_default_get(Material), id);
+
+  *((short *)id->name) = ID_MA;
 }
 
 static void material_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
@@ -148,8 +152,9 @@ static void material_free_data(ID *id)
 
   MEM_SAFE_FREE(material->gp_style);
 
-  BKE_icon_id_delete((ID *)material);
   BKE_previewimg_free(&material->preview);
+
+  BKE_icon_id_delete((ID *)material);
 }
 
 static void material_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -185,8 +190,15 @@ static void material_blend_write(BlendWriter *writer, ID *id, const void *id_add
 
   /* nodetree is integral part of material, no libdata */
   if (ma->nodetree) {
-    BLO_write_struct(writer, bNodeTree, ma->nodetree);
-    ntreeBlendWrite(writer, ma->nodetree);
+    BLO_Write_IDBuffer *temp_embedded_id_buffer = BLO_write_allocate_id_buffer();
+    BLO_write_init_id_buffer_from_id(
+        temp_embedded_id_buffer, &ma->nodetree->id, BLO_write_is_undo(writer));
+    BLO_write_struct_at_address(
+        writer, bNodeTree, ma->nodetree, BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    ntreeBlendWrite(
+        writer,
+        reinterpret_cast<bNodeTree *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
+    BLO_write_destroy_id_buffer(&temp_embedded_id_buffer);
   }
 
   BKE_previewimg_blend_write(writer, ma->preview);
@@ -216,16 +228,16 @@ static void material_blend_read_data(BlendDataReader *reader, ID *id)
 static void material_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Material *ma = (Material *)id;
-  BLO_read_id_address(reader, ma->id.lib, &ma->ipo); /* XXX deprecated - old animation system */
+  BLO_read_id_address(reader, id, &ma->ipo); /* XXX deprecated - old animation system */
 
   /* relink grease pencil settings */
   if (ma->gp_style != nullptr) {
     MaterialGPencilStyle *gp_style = ma->gp_style;
     if (gp_style->sima != nullptr) {
-      BLO_read_id_address(reader, ma->id.lib, &gp_style->sima);
+      BLO_read_id_address(reader, id, &gp_style->sima);
     }
     if (gp_style->ima != nullptr) {
-      BLO_read_id_address(reader, ma->id.lib, &gp_style->ima);
+      BLO_read_id_address(reader, id, &gp_style->ima);
     }
   }
 }
@@ -344,6 +356,10 @@ Material ***BKE_object_material_array_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->mat);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array);
+  }
   return nullptr;
 }
 
@@ -377,6 +393,10 @@ short *BKE_object_material_len_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->totcol);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array_size);
+  }
   return nullptr;
 }
 
@@ -400,6 +420,8 @@ Material ***BKE_id_material_array_p(ID *id)
       return &(((PointCloud *)id)->mat);
     case ID_VO:
       return &(((Volume *)id)->mat);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array);
     default:
       break;
   }
@@ -426,6 +448,8 @@ short *BKE_id_material_len_p(ID *id)
       return &(((PointCloud *)id)->totcol);
     case ID_VO:
       return &(((Volume *)id)->totcol);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array_size);
     default:
       break;
   }
@@ -752,6 +776,10 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
 int BKE_object_material_count_eval(Object *ob)
 {
   BLI_assert(DEG_is_evaluated_object(ob));
+  if (ob->type == OB_EMPTY) {
+    return 0;
+  }
+  BLI_assert(ob->data != nullptr);
   ID *id = get_evaluated_object_data_with_materials(ob);
   const short *len_p = BKE_id_material_len_p(id);
   return len_p ? *len_p : 0;
@@ -1272,11 +1300,9 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
     return false;
   }
 
-  /* take a mesh/curve/mball as starting point, remove 1 index,
-   * AND with all objects that share the ob->data
-   *
-   * after that check indices in mesh/curve/mball!!!
-   */
+  /* Take a mesh/curve/meta-ball as starting point, remove 1 index,
+   * AND with all objects that share the `ob->data`.
+   * After that check indices in mesh/curve/meta-ball! */
 
   totcolp = BKE_object_material_len_p(ob);
   matarar = BKE_object_material_array_p(ob);
@@ -1309,7 +1335,8 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
   const int actcol = ob->actcol;
 
   for (Object *obt = static_cast<Object *>(bmain->objects.first); obt;
-       obt = static_cast<Object *>(obt->id.next)) {
+       obt = static_cast<Object *>(obt->id.next))
+  {
     if (obt->data == ob->data) {
       /* Can happen when object material lists are used, see: #52953 */
       if (actcol > obt->totcol) {
@@ -1390,7 +1417,8 @@ static bool ntree_foreach_texnode_recursive(bNodeTree *nodetree,
   const bool do_color_attributes = (slot_filter & PAINT_SLOT_COLOR_ATTRIBUTE) != 0;
   for (bNode *node : nodetree->all_nodes()) {
     if (do_image_nodes && node->typeinfo->nclass == NODE_CLASS_TEXTURE &&
-        node->typeinfo->type == SH_NODE_TEX_IMAGE && node->id) {
+        node->typeinfo->type == SH_NODE_TEX_IMAGE && node->id)
+    {
       if (!callback(node, userdata)) {
         return false;
       }
@@ -1402,8 +1430,8 @@ static bool ntree_foreach_texnode_recursive(bNodeTree *nodetree,
     }
     else if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id) {
       /* recurse into the node group and see if it contains any textures */
-      if (!ntree_foreach_texnode_recursive(
-              (bNodeTree *)node->id, callback, userdata, slot_filter)) {
+      if (!ntree_foreach_texnode_recursive((bNodeTree *)node->id, callback, userdata, slot_filter))
+      {
         return false;
       }
     }
@@ -1547,7 +1575,7 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const struct Ob
       ma->texpaintslot = static_cast<TexPaintSlot *>(
           MEM_callocN(sizeof(TexPaintSlot) * count, "texpaint_slots"));
 
-      bNode *active_node = nodeGetActivePaintCanvas(ma->nodetree);
+      bNode *active_node = blender::bke::nodeGetActivePaintCanvas(ma->nodetree);
 
       fill_texpaint_slots_recursive(ma->nodetree, active_node, ob, ma, count, slot_filter);
 
@@ -1569,7 +1597,8 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const struct Ob
       ma->paint_clone_slot != prev_paint_clone_slot ||
       (ma->texpaintslot && prev_texpaintslot &&
        memcmp(ma->texpaintslot, prev_texpaintslot, sizeof(*ma->texpaintslot) * ma->tot_slots) !=
-           0)) {
+           0))
+  {
     DEG_id_tag_update(&ma->id, ID_RECALC_SHADING | ID_RECALC_COPY_ON_WRITE);
   }
 
@@ -1883,75 +1912,6 @@ void ramp_blend(int type, float r_col[3], const float fac, const float col[3])
   }
 }
 
-/**
- * \brief copy/paste buffer, if we had a proper py api that would be better
- * \note matcopybuf.nodetree does _NOT_ use ID's
- * \todo matcopybuf.nodetree's  node->id's are NOT validated, this will crash!
- */
-static Material matcopybuf;
-static short matcopied = 0;
-
-void BKE_material_copybuf_clear(void)
-{
-  matcopybuf = blender::dna::shallow_zero_initialize();
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_free(void)
-{
-  if (matcopybuf.nodetree) {
-    ntreeFreeLocalTree(matcopybuf.nodetree);
-    BLI_assert(!matcopybuf.nodetree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
-    MEM_freeN(matcopybuf.nodetree);
-    matcopybuf.nodetree = nullptr;
-  }
-
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_copy(Main *bmain, Material *ma)
-{
-  if (matcopied) {
-    BKE_material_copybuf_free();
-  }
-
-  matcopybuf = blender::dna::shallow_copy(*ma);
-
-  if (ma->nodetree != nullptr) {
-    matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
-  }
-
-  matcopybuf.preview = nullptr;
-  BLI_listbase_clear(&matcopybuf.gpumaterial);
-  /* TODO: Duplicate Engine Settings and set runtime to nullptr. */
-  matcopied = 1;
-}
-
-void BKE_material_copybuf_paste(Main *bmain, Material *ma)
-{
-  ID id;
-
-  if (matcopied == 0) {
-    return;
-  }
-
-  /* Free gpu material before the ntree */
-  GPU_material_free(&ma->gpumaterial);
-
-  if (ma->nodetree) {
-    ntreeFreeEmbeddedTree(ma->nodetree);
-    MEM_freeN(ma->nodetree);
-  }
-
-  id = (ma->id);
-  *ma = blender::dna::shallow_copy(matcopybuf);
-  (ma->id) = id;
-
-  if (matcopybuf.nodetree != nullptr) {
-    ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
-  }
-}
-
 void BKE_material_eval(struct Depsgraph *depsgraph, Material *material)
 {
   DEG_debug_print_eval(depsgraph, __func__, material->id.name, material);
@@ -1978,16 +1938,16 @@ static Material *default_materials[] = {&default_material_empty,
 
 static void material_default_gpencil_init(Material *ma)
 {
-  strcpy(ma->id.name, "MADefault GPencil");
+  BLI_strncpy(ma->id.name + 2, "Default GPencil", MAX_NAME);
   BKE_gpencil_material_attr_init(ma);
   add_v3_fl(&ma->gp_style->stroke_rgba[0], 0.6f);
 }
 
 static void material_default_surface_init(Material *ma)
 {
-  strcpy(ma->id.name, "MADefault Surface");
+  BLI_strncpy(ma->id.name + 2, "Default Surface", MAX_NAME);
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 
@@ -2013,9 +1973,9 @@ static void material_default_surface_init(Material *ma)
 
 static void material_default_volume_init(Material *ma)
 {
-  strcpy(ma->id.name, "MADefault Volume");
+  BLI_strncpy(ma->id.name + 2, "Default Volume", MAX_NAME);
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 
@@ -2038,9 +1998,9 @@ static void material_default_volume_init(Material *ma)
 
 static void material_default_holdout_init(Material *ma)
 {
-  strcpy(ma->id.name, "MADefault Holdout");
+  BLI_strncpy(ma->id.name + 2, "Default Holdout", MAX_NAME);
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 

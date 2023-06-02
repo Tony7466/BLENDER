@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -362,7 +363,7 @@ struct DRWUniform {
         GPUTexture *texture;
         GPUTexture **texture_ref;
       };
-      eGPUSamplerState sampler_state;
+      GPUSamplerState sampler_state;
     };
     /* DRW_UNIFORM_BLOCK */
     union {

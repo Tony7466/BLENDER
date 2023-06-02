@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spconsole
@@ -33,6 +35,18 @@
 #include "RNA_define.h"
 
 #include "console_intern.h"
+
+/* TODO: Text operations not yet supported for console:
+ * Mac KM_OSKEY-arrow to beginning/end of line
+ * Mac KM_OSKEY-backspace to start of line
+ * Mac KM_OSKEY-delete to end of line
+ * Text cursor insertion by mouse
+ * Mouse drag to select does not change text cursor position.
+ * Shift-ctrl-arrow to select word
+ * ctrl-x to copy to clipboard and delete.
+ * ctrl-a to select all
+ * ctrl-z，shift-crtrl-z undo/redo
+ */
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities
@@ -470,10 +484,10 @@ static int console_insert_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   /* NOTE: the "text" property is always set from key-map,
    * so we can't use #RNA_struct_property_is_set, check the length instead. */
   if (!RNA_string_length(op->ptr, "text")) {
-    /* if alt/ctrl/super are pressed pass through except for utf8 character event
-     * (when input method are used for utf8 inputs, the user may assign key event
-     * including alt/ctrl/super like ctrl+m to commit utf8 string.  in such case,
-     * the modifiers in the utf8 character event make no sense.) */
+    /* If alt/control/super are pressed pass through except for UTF8 character event
+     * (when input method are used for UTF8 inputs, the user may assign key event
+     * including alt/control/super like control-m to commit UTF8 string.
+     * in such case, the modifiers in the UTF8 character event make no sense.) */
     if ((event->modifier & (KM_CTRL | KM_OSKEY)) && !event->utf8_buf[0]) {
       return OPERATOR_PASS_THROUGH;
     }
@@ -1064,7 +1078,7 @@ static int console_paste_exec(bContext *C, wmOperator *op)
   ConsoleLine *ci = console_history_verify(C);
   int buf_len;
 
-  char *buf_str = WM_clipboard_text_get(selection, &buf_len);
+  char *buf_str = WM_clipboard_text_get(selection, true, &buf_len);
   char *buf_step, *buf_next;
 
   if (buf_str == NULL) {
@@ -1258,9 +1272,7 @@ static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const 
   if (console_line_column_from_index(sc, pos, &cl, &offset, &n)) {
     int sel[2] = {n, n};
 
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
-
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+    BLI_str_cursor_step_bounds_utf8(cl->line, cl->len, n, &sel[1], &sel[0]);
 
     sel[0] = offset - sel[0];
     sel[1] = offset - sel[1];

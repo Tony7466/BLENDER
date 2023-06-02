@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_volume_types.h"
 
@@ -21,7 +23,7 @@ GeometryComponent *VolumeComponent::copy() const
 {
   VolumeComponent *new_component = new VolumeComponent();
   if (volume_ != nullptr) {
-    new_component->volume_ = BKE_volume_copy_for_eval(volume_, false);
+    new_component->volume_ = BKE_volume_copy_for_eval(volume_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return new_component;
@@ -29,7 +31,7 @@ GeometryComponent *VolumeComponent::copy() const
 
 void VolumeComponent::clear()
 {
-  BLI_assert(this->is_mutable());
+  BLI_assert(this->is_mutable() || this->is_expired());
   if (volume_ != nullptr) {
     if (ownership_ == GeometryOwnershipType::Owned) {
       BKE_id_free(nullptr, volume_);
@@ -68,7 +70,7 @@ Volume *VolumeComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    volume_ = BKE_volume_copy_for_eval(volume_, false);
+    volume_ = BKE_volume_copy_for_eval(volume_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return volume_;
@@ -83,7 +85,7 @@ void VolumeComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    volume_ = BKE_volume_copy_for_eval(volume_, false);
+    volume_ = BKE_volume_copy_for_eval(volume_);
     ownership_ = GeometryOwnershipType::Owned;
   }
 }

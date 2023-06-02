@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -35,8 +36,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_util.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_util.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -94,7 +95,7 @@ void MOD_get_texture_coords(MappingInfoModifierData *dmd,
   /* UVs need special handling, since they come from faces */
   if (texmapping == MOD_DISP_MAP_UV) {
     if (CustomData_has_layer(&mesh->ldata, CD_PROP_FLOAT2)) {
-      const blender::Span<MPoly> polys = mesh->polys();
+      const OffsetIndices polys = mesh->polys();
       const Span<int> corner_verts = mesh->corner_verts();
       BLI_bitmap *done = BLI_BITMAP_NEW(verts_num, __func__);
       char uvname[MAX_CUSTOMDATA_LAYER_NAME];
@@ -104,11 +105,11 @@ void MOD_get_texture_coords(MappingInfoModifierData *dmd,
 
       /* verts are given the UV from the first face that uses them */
       for (const int i : polys.index_range()) {
-        const MPoly &poly = polys[i];
-        uint fidx = poly.totloop - 1;
+        const IndexRange poly = polys[i];
+        uint fidx = poly.size() - 1;
 
         do {
-          uint lidx = poly.loopstart + fidx;
+          uint lidx = poly.start() + fidx;
           const int vidx = corner_verts[lidx];
 
           if (!BLI_BITMAP_TEST(done, vidx)) {
@@ -182,10 +183,8 @@ Mesh *MOD_deform_mesh_eval_get(Object *ob,
       /* TODO(sybren): after modifier conversion of DM to Mesh is done, check whether
        * we really need a copy here. Maybe the CoW ob->data can be directly used. */
       Mesh *mesh_prior_modifiers = BKE_object_get_pre_modified_mesh(ob);
-      mesh = (Mesh *)BKE_id_copy_ex(nullptr,
-                                    &mesh_prior_modifiers->id,
-                                    nullptr,
-                                    (LIB_ID_COPY_LOCALIZE | LIB_ID_COPY_CD_REFERENCE));
+      mesh = (Mesh *)BKE_id_copy_ex(
+          nullptr, &mesh_prior_modifiers->id, nullptr, LIB_ID_COPY_LOCALIZE);
       mesh->runtime->deformed_only = true;
     }
 

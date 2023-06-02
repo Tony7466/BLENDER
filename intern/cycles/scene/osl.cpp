@@ -703,8 +703,11 @@ string OSLCompiler::id(ShaderNode *node)
 {
   /* assign layer unique name based on pointer address + bump mode */
   stringstream stream;
-  stream.imbue(std::locale("C")); /* Ensure that no grouping characters (e.g. commas with en_US
-                                     locale) are added to the pointer string */
+
+  /* Ensure that no grouping characters (e.g. commas with en_US locale)
+   * are added to the pointer string. */
+  stream.imbue(std::locale("C"));
+
   stream << "node_" << node->type->name << "_" << node;
 
   return stream.str();
@@ -1048,8 +1051,10 @@ void OSLCompiler::parameter(ShaderNode *node, const char *name)
     case SocketType::CLOSURE:
     case SocketType::NODE:
     case SocketType::NODE_ARRAY:
+    case SocketType::UINT:
+    case SocketType::UINT64:
     case SocketType::UNDEFINED:
-    case SocketType::UINT: {
+    case SocketType::NUM_TYPES: {
       assert(0);
       break;
     }

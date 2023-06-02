@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup asset_system
@@ -101,6 +103,7 @@ AssetLibrary *AssetLibraryService::get_asset_library(
       AssetLibrary *library = get_asset_library_on_disk_custom(custom_library->name, root_path);
       library->import_method_ = eAssetImportMethod(custom_library->import_method);
       library->may_override_import_method_ = true;
+      library->use_relative_path_ = (custom_library->flag & ASSET_LIBRARY_RELATIVE_PATH) != 0;
 
       return library;
     }

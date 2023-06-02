@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *  */
 
 /** \file
  * \ingroup eevee
@@ -132,7 +133,7 @@ void MotionBlurModule::sync()
     return;
   }
 
-  eGPUSamplerState no_filter = GPU_SAMPLER_DEFAULT;
+  GPUSamplerState no_filter = GPUSamplerState::default_sampler();
   RenderBuffers &render_buffers = inst_.render_buffers;
 
   motion_blur_ps_.init();

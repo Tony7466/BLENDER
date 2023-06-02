@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -64,6 +66,7 @@ enum {
   ED_GIZMO_ARROW_STYLE_CROSS = 1,
   ED_GIZMO_ARROW_STYLE_BOX = 2,
   ED_GIZMO_ARROW_STYLE_CONE = 3,
+  ED_GIZMO_ARROW_STYLE_PLANE = 4,
 };
 
 /* transform */
@@ -78,6 +81,7 @@ enum {
 enum {
   /* Show arrow stem. */
   ED_GIZMO_ARROW_DRAW_FLAG_STEM = (1 << 0),
+  ED_GIZMO_ARROW_DRAW_FLAG_ORIGIN = (1 << 1),
 };
 
 /**
@@ -233,6 +237,8 @@ enum {
 
 enum {
   ED_GIZMO_PRIMITIVE_STYLE_PLANE = 0,
+  ED_GIZMO_PRIMITIVE_STYLE_CIRCLE,
+  ED_GIZMO_PRIMITIVE_STYLE_ANNULUS,
 };
 
 /* -------------------------------------------------------------------- */
@@ -244,10 +250,7 @@ struct SnapObjectContext *ED_gizmotypes_snap_3d_context_ensure(struct Scene *sce
                                                                struct wmGizmo *gz);
 
 void ED_gizmotypes_snap_3d_flag_set(struct wmGizmo *gz, int flag);
-void ED_gizmotypes_snap_3d_flag_clear(struct wmGizmo *gz, int flag);
-bool ED_gizmotypes_snap_3d_flag_test(struct wmGizmo *gz, int flag);
 
-bool ED_gizmotypes_snap_3d_invert_snap_get(struct wmGizmo *gz);
 bool ED_gizmotypes_snap_3d_is_enabled(const struct wmGizmo *gz);
 
 void ED_gizmotypes_snap_3d_data_get(const struct bContext *C,

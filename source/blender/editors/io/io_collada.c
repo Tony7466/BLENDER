@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -84,7 +85,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   int sample_animations;
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
@@ -93,7 +94,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 
   /* Avoid File write exceptions in Collada */
   if (!BLI_exists(filepath)) {
-    BLI_make_existing_file(filepath);
+    BLI_file_ensure_parent_dir_exists(filepath);
     if (!BLI_file_touch(filepath)) {
       BKE_report(op->reports, RPT_ERROR, "Can't create export file");
       fprintf(stdout, "Collada export: Can not create: %s\n", filepath);
@@ -218,7 +219,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   }
 
   char buff[100];
-  BLI_snprintf(buff, sizeof(buff), "Exported %d Objects", export_count);
+  SNPRINTF(buff, "Exported %d Objects", export_count);
   BKE_report(op->reports, RPT_INFO, buff);
   return OPERATOR_FINISHED;
 }
@@ -454,6 +455,9 @@ void WM_OT_collada_export(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
+  PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.dae", 0, "", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+
   RNA_def_enum(ot->srna,
                "prop_bc_export_ui_section",
                prop_bc_export_ui_section,
@@ -465,7 +469,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
                   "apply_modifiers",
                   0,
                   "Apply Modifiers",
-                  "Apply modifiers to exported mesh (non destructive))");
+                  "Apply modifiers to exported mesh (non destructive)");
 
   RNA_def_int(ot->srna,
               "export_mesh_type",
@@ -675,7 +679,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
 
 static int wm_collada_import_exec(bContext *C, wmOperator *op)
 {
-  char filename[FILE_MAX];
+  char filepath[FILE_MAX];
   int import_units;
   int find_chains;
   int auto_connect;
@@ -687,7 +691,7 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
   ImportSettings import_settings;
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
@@ -702,9 +706,9 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
 
   min_chain_length = RNA_int_get(op->ptr, "min_chain_length");
 
-  RNA_string_get(op->ptr, "filepath", filename);
+  RNA_string_get(op->ptr, "filepath", filepath);
 
-  import_settings.filepath = filename;
+  import_settings.filepath = filepath;
   import_settings.import_units = import_units != 0;
   import_settings.custom_normals = custom_normals != 0;
   import_settings.auto_connect = auto_connect != 0;
@@ -775,6 +779,9 @@ void WM_OT_collada_import(wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+
+  PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.dae", 0, "", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_boolean(ot->srna,
                   "import_units",

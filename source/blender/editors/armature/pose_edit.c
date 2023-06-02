@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
@@ -568,7 +569,7 @@ static int pose_autoside_names_exec(bContext *C, wmOperator *op)
   /* loop through selected bones, auto-naming them */
   CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     bArmature *arm = ob->data;
-    BLI_strncpy(newname, pchan->name, sizeof(newname));
+    STRNCPY(newname, pchan->name);
     if (bone_autoside_name(newname, 1, axis, pchan->bone->head[axis], pchan->bone->tail[axis])) {
       ED_armature_bone_rename(bmain, arm, pchan->name, newname);
     }

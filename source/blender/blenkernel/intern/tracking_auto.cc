@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -300,7 +301,8 @@ static bool tracking_check_marker_margin(const libmv_Marker *libmv_marker,
   if (libmv_marker->center[0] < margin_left ||
       libmv_marker->center[0] > frame_width - margin_right ||
       libmv_marker->center[1] < margin_bottom ||
-      libmv_marker->center[1] > frame_height - margin_top) {
+      libmv_marker->center[1] > frame_height - margin_top)
+  {
     return false;
   }
 
@@ -644,7 +646,8 @@ static void autotrack_context_step_cb(void *__restrict userdata,
 
   /* Check whether marker is going outside of allowed frame margin. */
   if (!tracking_check_marker_margin(
-          libmv_current_marker, track->margin, autotrack_clip->width, autotrack_clip->height)) {
+          libmv_current_marker, track->margin, autotrack_clip->width, autotrack_clip->height))
+  {
     return;
   }
 

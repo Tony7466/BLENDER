@@ -66,12 +66,12 @@ class TEXT_HT_footer(Header):
             if text.filepath:
                 if text.is_dirty:
                     row.label(
-                        text=iface_("File: *%s (unsaved)" % text.filepath),
+                        text=iface_("File: *%s (unsaved)") % text.filepath,
                         translate=False,
                     )
                 else:
                     row.label(
-                        text=iface_("File: %s" % text.filepath),
+                        text=iface_("File: %s") % text.filepath,
                         translate=False,
                     )
             else:
@@ -221,6 +221,16 @@ class TEXT_MT_view(Menu):
         syntax.active = st.is_syntax_highlight_supported()
         syntax.prop(st, "show_syntax_highlight")
         layout.prop(st, "show_line_highlight")
+
+        layout.separator()
+
+        props = layout.operator("wm.context_cycle_int", text="Zoom In")
+        props.data_path = "space_data.font_size"
+        props.reverse = False
+
+        props = layout.operator("wm.context_cycle_int", text="Zoom Out")
+        props.data_path = "space_data.font_size"
+        props.reverse = True
 
         layout.separator()
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -49,7 +51,8 @@ static PyObject *bpy_app_icons_new_triangles(PyObject *UNUSED(self), PyObject *a
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kw, &_parser, &coords_range[0], &coords_range[1], &py_coords, &py_colors)) {
+          args, kw, &_parser, &coords_range[0], &coords_range[1], &py_coords, &py_colors))
+  {
     return NULL;
   }
 
