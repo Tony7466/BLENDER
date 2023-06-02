@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -22,7 +23,7 @@
 #include "draw_common.h"
 #include "draw_manager_text.h"
 
-void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
+void OVERLAY_edit_gpencil_legacy_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
@@ -204,7 +205,7 @@ void OVERLAY_edit_gpencil_cache_init(OVERLAY_Data *vedata)
   }
 }
 
-void OVERLAY_gpencil_cache_init(OVERLAY_Data *vedata)
+void OVERLAY_gpencil_legacy_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
@@ -425,7 +426,7 @@ static void OVERLAY_gpencil_color_names(Object *ob)
       nullptr, ob, nullptr, overlay_gpencil_draw_stroke_color_name, ob, false, cfra);
 }
 
-void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
+void OVERLAY_gpencil_legacy_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
@@ -449,7 +450,7 @@ void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 }
 
-void OVERLAY_gpencil_draw(OVERLAY_Data *vedata)
+void OVERLAY_gpencil_legacy_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
 
@@ -458,7 +459,7 @@ void OVERLAY_gpencil_draw(OVERLAY_Data *vedata)
   }
 }
 
-void OVERLAY_edit_gpencil_draw(OVERLAY_Data *vedata)
+void OVERLAY_edit_gpencil_legacy_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -2902,6 +2903,8 @@ static const char *dataname(short id_code)
       return "Data from VO";
     case ID_SIM:
       return "Data from SIM";
+    case ID_GP:
+      return "Data from GP";
   }
   return "Data from Lib Block";
 }

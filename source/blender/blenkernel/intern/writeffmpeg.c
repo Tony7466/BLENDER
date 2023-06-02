@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
  * Partial Copyright 2006 Peter Schlaile. */
 
 /** \file
@@ -103,7 +105,7 @@ typedef struct FFMpegContext {
 
 static void ffmpeg_dict_set_int(AVDictionary **dict, const char *key, int value);
 static void ffmpeg_filepath_get(FFMpegContext *context,
-                                char string[FILE_MAX],
+                                char filepath[FILE_MAX],
                                 const struct RenderData *rd,
                                 bool preview,
                                 const char *suffix);

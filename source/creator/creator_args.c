@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup creator
@@ -30,6 +32,7 @@
 #  include "BLI_threads.h"
 #  include "BLI_utildefines.h"
 
+#  include "BKE_appdir.h"
 #  include "BKE_blender_version.h"
 #  include "BKE_blendfile.h"
 #  include "BKE_context.h"
@@ -542,7 +545,7 @@ static int arg_handle_print_version(int UNUSED(argc),
                                     void *UNUSED(data))
 {
   print_version_full();
-  exit(0);
+  exit(EXIT_SUCCESS);
   BLI_assert_unreachable();
   return 0;
 }
@@ -552,7 +555,7 @@ static void print_help(bArgs *ba, bool all)
   struct BuildDefs defs;
   build_defs_init(&defs, all);
 
-/* All printing must go via `PRINT` macro.  */
+/* All printing must go via `PRINT` macro. */
 #  define printf __ERROR__
 
 #  define PRINT(...) BLI_args_printf(ba, __VA_ARGS__)
@@ -577,8 +580,9 @@ static void print_help(bArgs *ba, bool all)
     PRINT("Cycles Render Options:\n");
     PRINT("\tCycles add-on options must be specified following a double dash.\n");
     PRINT("\n");
-    PRINT("--cycles-device OPTIX\n");
-    PRINT("\tSet the device used for rendering. Options: CPU, CUDA, OPTIX, HIP, ONEAPI, METAL.\n");
+    PRINT("--cycles-device <device>\n");
+    PRINT("\tSet the device used for rendering.\n");
+    PRINT("\tValid options are: 'CPU' 'CUDA' 'OPTIX' 'HIP' 'ONEAPI' 'METAL'.\n");
     PRINT("\n");
     PRINT("\tAppend +CPU to a GPU device to render on both CPU and GPU.\n");
     PRINT("\n");
@@ -737,10 +741,11 @@ static void print_help(bArgs *ba, bool all)
   PRINT("\tArguments must be separated by white space, eg:\n");
   PRINT("\t# blender -ba test.blend\n");
   PRINT("\t...will exit since '-ba' is an unknown argument.\n");
+  PRINT("\n");
 
   PRINT("Argument Order:\n");
   PRINT("\tArguments are executed in the order they are given. eg:\n");
-  PRINT("\t# blender --background test.blend --render-frame 1 --render-output '/tmp'\n");
+  PRINT("\t# blender --background test.blend --render-frame 1 --render-output \"/tmp\"\n");
   PRINT(
       "\t...will not render to '/tmp' because '--render-frame 1' renders before the output path "
       "is set.\n");
@@ -813,7 +818,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 
   print_help(ba, false);
 
-  exit(0);
+  exit(EXIT_SUCCESS);
   BLI_assert_unreachable();
 
   return 0;
@@ -831,12 +836,12 @@ static int arg_handle_arguments_end(int UNUSED(argc),
 }
 
 /* only to give help message */
-#  ifndef WITH_PYTHON_SECURITY /* default */
-#    define PY_ENABLE_AUTO ", (default)"
-#    define PY_DISABLE_AUTO ""
-#  else
+#  ifdef WITH_PYTHON_SECURITY /* default */
 #    define PY_ENABLE_AUTO ""
-#    define PY_DISABLE_AUTO ", (compiled as non-standard default)"
+#    define PY_DISABLE_AUTO ", (default)"
+#  else
+#    define PY_ENABLE_AUTO ", (default, non-standard compilation option)"
+#    define PY_DISABLE_AUTO ""
 #  endif
 
 static const char arg_handle_python_set_doc_enable[] =
@@ -1254,6 +1259,12 @@ static int arg_handle_debug_gpu_renderdoc_set(int UNUSED(argc),
   return 0;
 }
 
+static const char arg_handle_gpu_backend_set_doc_all[] =
+    "\n"
+    "\tForce to use a specific GPU backend. Valid options: "
+    "'vulkan',  "
+    "'metal',  "
+    "'opengl'.";
 static const char arg_handle_gpu_backend_set_doc[] =
     "\n"
     "\tForce to use a specific GPU backend. Valid options: "
@@ -1331,7 +1342,7 @@ static int arg_handle_app_template(int argc, const char **argv, void *UNUSED(dat
 
 static const char arg_handle_factory_startup_set_doc[] =
     "\n\t"
-    "Skip reading the " STRINGIFY(BLENDER_STARTUP_FILE) " in the users home directory.";
+    "Skip reading the '" BLENDER_STARTUP_FILE "' in the users home directory.";
 static int arg_handle_factory_startup_set(int UNUSED(argc),
                                           const char **UNUSED(argv),
                                           void *UNUSED(data))
@@ -1372,7 +1383,7 @@ static int arg_handle_env_system_set(int argc, const char **argv, void *UNUSED(d
 
   if (argc < 2) {
     fprintf(stderr, "%s requires one argument\n", argv[0]);
-    exit(1);
+    exit(EXIT_FAILURE);
     BLI_assert_unreachable();
   }
 
@@ -1396,7 +1407,7 @@ static const char arg_handle_playback_mode_doc[] =
     "\t\tOpen with lower left corner at <sx>, <sy>.\n"
     "\t-m\n"
     "\t\tRead from disk (Do not buffer).\n"
-    "\t-f <fps> <fps-base>\n"
+    "\t-f <fps> <fps_base>\n"
     "\t\tSpecify FPS to start with.\n"
     "\t-j <frame>\n"
     "\t\tSet frame step to <frame>.\n"
@@ -1419,7 +1430,7 @@ static int arg_handle_playback_mode(int argc, const char **argv, void *UNUSED(da
     /* This function knows to skip this argument ('-a'). */
     WM_main_playanim(argc, argv);
 
-    exit(0);
+    exit(EXIT_SUCCESS);
   }
 
   return -2;
@@ -1680,10 +1691,10 @@ static const char arg_handle_image_type_set_doc[] =
     "<format>\n"
     "\tSet the render format.\n"
     "\tValid options are:\n"
-    "\t'TGA' 'RAWTGA' 'JPEG' 'IRIS' 'IRIZ' 'AVIRAW' 'AVIJPEG' 'PNG' 'BMP'\n"
+    "\t'TGA' 'RAWTGA' 'JPEG' 'IRIS' 'IRIZ' 'AVIRAW' 'AVIJPEG' 'PNG' 'BMP'.\n"
     "\n"
     "\tFormats that can be compiled into Blender, not available on all systems:\n"
-    "\t'HDR' 'TIFF' 'OPEN_EXR' 'OPEN_EXR_MULTILAYER' 'MPEG' 'CINEON' 'DPX' 'DDS' 'JP2' 'WEBP'";
+    "\t'HDR' 'TIFF' 'OPEN_EXR' 'OPEN_EXR_MULTILAYER' 'MPEG' 'CINEON' 'DPX' 'DDS' 'JP2' 'WEBP'.";
 static int arg_handle_image_type_set(int argc, const char **argv, void *data)
 {
   bContext *C = data;
@@ -2030,8 +2041,7 @@ static int arg_handle_python_file_run(int argc, const char **argv, void *data)
     BPY_CTX_SETUP(ok = BPY_run_filepath(C, filepath, NULL));
     if (!ok && app_state.exit_code_on_error.python) {
       fprintf(stderr, "\nError: script failed, file: '%s', exiting.\n", argv[1]);
-      BPY_python_end();
-      exit(app_state.exit_code_on_error.python);
+      WM_exit(C, app_state.exit_code_on_error.python);
     }
     return 1;
   }
@@ -2070,8 +2080,7 @@ static int arg_handle_python_text_run(int argc, const char **argv, void *data)
 
     if (!ok && app_state.exit_code_on_error.python) {
       fprintf(stderr, "\nError: script failed, text: '%s', exiting.\n", argv[1]);
-      BPY_python_end();
-      exit(app_state.exit_code_on_error.python);
+      WM_exit(C, app_state.exit_code_on_error.python);
     }
 
     return 1;
@@ -2100,8 +2109,7 @@ static int arg_handle_python_expr_run(int argc, const char **argv, void *data)
     BPY_CTX_SETUP(ok = BPY_run_string_exec(C, NULL, argv[1]));
     if (!ok && app_state.exit_code_on_error.python) {
       fprintf(stderr, "\nError: script failed, expr: '%s', exiting.\n", argv[1]);
-      BPY_python_end();
-      exit(app_state.exit_code_on_error.python);
+      WM_exit(C, app_state.exit_code_on_error.python);
     }
     return 1;
   }
@@ -2206,27 +2214,22 @@ static int arg_handle_addons_set(int argc, const char **argv, void *data)
   return 0;
 }
 
-static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
+/**
+ * Implementation for #arg_handle_load_last_file, also used by `--open-last`.
+ * \return true on success.
+ */
+static bool handle_load_file(bContext *C, const char *filepath_arg, const bool load_empty_file)
 {
-  bContext *C = data;
-  ReportList reports;
-  bool success;
-
   /* Make the path absolute because its needed for relative linked blends to be found */
   char filepath[FILE_MAX];
-
-  /* NOTE: we could skip these, but so far we always tried to load these files. */
-  if (argv[0][0] == '-') {
-    fprintf(stderr, "unknown argument, loading as file: %s\n", argv[0]);
-  }
-
-  STRNCPY(filepath, argv[0]);
+  STRNCPY(filepath, filepath_arg);
   BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   /* load the file */
+  ReportList reports;
   BKE_reports_init(&reports, RPT_PRINT);
   WM_file_autoexec_init(filepath);
-  success = WM_file_read(C, filepath, &reports);
+  const bool success = WM_file_read(C, filepath, &reports);
   BKE_reports_clear(&reports);
 
   if (success) {
@@ -2244,25 +2247,62 @@ static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
        * good or bad things are.
        */
       G.is_break = true;
-      return -1;
+      return false;
     }
 
-    if (BKE_blendfile_extension_check(filepath)) {
-      /* Just pretend a file was loaded, so the user can press Save and it'll
-       * save at the filepath from the CLI. */
-      STRNCPY(G_MAIN->filepath, filepath);
-      printf("... opened default scene instead; saving will write to: %s\n", filepath);
+    const char *error_msg_generic = "file could not be loaded";
+    const char *error_msg = NULL;
+
+    if (load_empty_file == false) {
+      error_msg = error_msg_generic;
     }
-    else {
-      fprintf(
-          stderr,
-          "Error: argument has no '.blend' file extension, not using as new file, exiting! %s\n",
-          filepath);
-      G.is_break = true;
-      WM_exit(C);
+    else if (BLI_exists(filepath)) {
+      /* When a file is found but can't be loaded, handling it as a new file
+       * could cause it to be unintentionally overwritten (data loss).
+       * Further this is almost certainly not that a user would expect or want.
+       * If they do, they can delete the file beforehand. */
+      error_msg = error_msg_generic;
     }
+    else if (!BKE_blendfile_extension_check(filepath)) {
+      /* Unrelated arguments should not be treated as new blend files. */
+      error_msg = "argument has no '.blend' file extension, not using as new file";
+    }
+
+    if (error_msg) {
+      fprintf(stderr, "Error: %s, exiting! %s\n", error_msg, filepath);
+      WM_exit(C, EXIT_FAILURE);
+      /* Unreachable, return for clarity. */
+      return false;
+    }
+
+    /* Behave as if a file was loaded, calling "Save" will write to the `filepath` from the CLI.
+     *
+     * WARNING: The path referenced may be incorrect, no attempt is made to validate the path
+     * here or check that writing to it will work. If the users enters the path of a directory
+     * that doesn't exist (for e.g.) saving will fail.
+     * Attempting to create the file at this point is possible but likely to cause more
+     * trouble than it's worth (what with network drives), removable devices ... etc. */
+
+    STRNCPY(G_MAIN->filepath, filepath);
+    printf("... opened default scene instead; saving will write to: %s\n", filepath);
   }
 
+  return true;
+}
+
+int main_args_handle_load_file(int UNUSED(argc), const char **argv, void *data)
+{
+  bContext *C = data;
+  const char *filepath = argv[0];
+
+  /* NOTE: we could skip these, but so far we always tried to load these files. */
+  if (argv[0][0] == '-') {
+    fprintf(stderr, "unknown argument, loading as file: %s\n", filepath);
+  }
+
+  if (!handle_load_file(C, filepath, true)) {
+    return -1;
+  }
   return 0;
 }
 
@@ -2276,15 +2316,22 @@ static int arg_handle_load_last_file(int UNUSED(argc), const char **UNUSED(argv)
     return -1;
   }
 
+  bContext *C = data;
   const RecentFile *recent_file = G.recent_files.first;
-  const char *fake_argv[] = {recent_file->filepath};
-  return arg_handle_load_file(ARRAY_SIZE(fake_argv), fake_argv, data);
+  if (!handle_load_file(C, recent_file->filepath, false)) {
+    return -1;
+  }
+  return 0;
 }
 
 void main_args_setup(bContext *C, bArgs *ba, bool all)
 {
+  /** Expand the doc-string from the function. */
 #  define CB(a) a##_doc, a
+  /** A version of `CB` that expands an additional suffix. */
 #  define CB_EX(a, b) a##_doc_##b, a
+  /** A version of `CB` that uses `all`, needed when the doc-string depends on build options. */
+#  define CB_ALL(a) (all ? a##_doc_all : a##_doc), a
 
   struct BuildDefs defs;
   build_defs_init(&defs, all);
@@ -2321,7 +2368,7 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
 
   /* GPU backend selection should be part of #ARG_PASS_ENVIRONMENT for correct GPU context
    * selection for animation player. */
-  BLI_args_add(ba, NULL, "--gpu-backend", CB(arg_handle_gpu_backend_set), NULL);
+  BLI_args_add(ba, NULL, "--gpu-backend", CB_ALL(arg_handle_gpu_backend_set), NULL);
 
   /* Pass: Background Mode & Settings
    *
@@ -2501,6 +2548,8 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
   BLI_args_add_case(ba, "-setaudio", 1, NULL, 0, CB(arg_handle_audio_set), NULL);
 
   /* Pass: Processing Arguments. */
+  /* NOTE: Use #WM_exit for these callbacks, not `exit()`
+   * so temporary files are properly cleaned up. */
   BLI_args_pass_set(ba, ARG_PASS_FINAL);
   BLI_args_add(ba, "-f", "--render-frame", CB(arg_handle_render_frame), C);
   BLI_args_add(ba, "-a", "--render-anim", CB(arg_handle_render_animation), C);
@@ -2525,19 +2574,12 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
 
 #  undef CB
 #  undef CB_EX
+#  undef CB_ALL
 
 #  ifdef WITH_PYTHON
   /* Use for Python to extract help text (Python can't call directly - bad-level call). */
   BPY_python_app_help_text_fn = main_args_help_as_string;
 #  endif
-}
-
-/**
- * Needs to be added separately.
- */
-void main_args_setup_post(bContext *C, bArgs *ba)
-{
-  BLI_args_parse(ba, ARG_PASS_FINAL, arg_handle_load_file, C);
 }
 
 /** \} */
