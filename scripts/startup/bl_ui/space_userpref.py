@@ -1422,12 +1422,12 @@ class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
             return base_class._text_editor_ret
 
         text_editor_label = text_editor
-        show_input = preset_label == "Custom"
+        show_input = text_editor or preset_label == "Custom"
 
         if show_input:
-            text_editor_label = tip_("Custom (%s)") % text_editor
+            text_editor_label = tip_("External: %s") % text_editor
 
-        if not show_input and not text_editor_label:
+        if not show_input:
             text_editor_label = tip_("Internal")
 
         base_class._text_editor_args_prev = args

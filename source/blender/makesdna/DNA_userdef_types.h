@@ -728,7 +728,7 @@ typedef struct UserDef {
   char image_editor[1024];
   /** 1024 = FILE_MAX. */
   char text_editor[1024];
-  char text_editor_args[1024];
+  char text_editor_args[256];
   /** 1024 = FILE_MAX. */
   char anim_player[1024];
   int anim_player_preset;

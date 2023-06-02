@@ -28,18 +28,34 @@ class TEXT_OT_jump_to_file_at_point(Operator):
         args = [text_editor]
 
         if not text_editor_args:
-            text_editor_args = "{file} {line} {column}"
+            self.report(
+                {'ERROR_INVALID_INPUT'},
+                """Please provide the specific format of the arguments with which the text editor opens files. The supported expansions are as follows:
 
-        text_editor_args = text_editor_args.format(file=self.filepath, line=self.line, column=self.column)
-        args.extend(text_editor_args.split(" "))
+$file Specifies the absolute path of the file.
+$line Specifies the line where the cursor will be placed on. (Optional)
+$column Specifies the character position within the $line where the cursor will be placed. (Optional)
+
+Ex: -f $file -l $line -c $column""")
+            return {'CANCELLED'}
+
+        if "$file" not in text_editor_args:
+            self.report({'ERROR_INVALID_INPUT'}, "Text Editor Args Format must contain $file expansion specification")
+            return {'CANCELLED'}
+
+        from string import Template
+        import shlex
+        for plain_arg in shlex.split(text_editor_args):
+            arg = Template(plain_arg).substitute(file=self.filepath, line=self.line, column=self.column)
+            args.append(arg)
 
         try:
             import subprocess
-            process = subprocess.run(args)
-            if process.returncode != 0:
-                return {'CANCELLED'}
+            # whit check=True if process.returncode !=0 a exception will be raised
+            process = subprocess.run(args, check=True)
             return {'FINISHED'}
-        except:
+        except subprocess.CalledProcessError as exception:
+            self.report({'ERROR'}, exception.output)
             return {'CANCELLED'}
 
 

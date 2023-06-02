@@ -6511,7 +6511,16 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "text_editor_args", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "text_editor_args");
-  RNA_def_property_ui_text(prop, "Text Editor Args", "text_editor_args");
+  RNA_def_property_ui_text(
+      prop,
+      "Text Editor Args",
+      "Defines the specific format of the arguments with which the text editor opens files. The "
+      "supported expansions are as follows:\n\n"
+      "$file Specifies the absolute path of the file.\n"
+      "$line Specifies the line where the cursor will be placed on. (Optional)\n"
+      "$column Specifies the character position within the $line where the cursor will be "
+      "placed. (Optional)\n\n"
+      "Ex: -f $file -l $line -c $column");
 
   prop = RNA_def_property(srna, "animation_player", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_string_sdna(prop, NULL, "anim_player");
