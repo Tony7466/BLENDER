@@ -560,10 +560,10 @@ static int get_sequence_len(const char *filepath, int *ofs)
       cache_frame = cache_frame->next;
     }
 
+    BLI_freelistN(&frames);
+
     return frame_curr - (*ofs);
   }
-
-  BLI_freelistN(&frames);
 
   return 1;
 }
