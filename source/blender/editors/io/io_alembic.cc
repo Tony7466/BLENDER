@@ -29,6 +29,7 @@
 #  include "BKE_main.h"
 #  include "BKE_report.h"
 
+#  include "BLI_listbase.h"
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
@@ -123,6 +124,7 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
   params.quad_method = RNA_enum_get(op->ptr, "quad_method");
   params.ngon_method = RNA_enum_get(op->ptr, "ngon_method");
   params.evaluation_mode = eEvaluationMode(RNA_enum_get(op->ptr, "evaluation_mode"));
+
   params.global_scale = RNA_float_get(op->ptr, "global_scale");
 
   /* Take some defaults from the scene, if not specified explicitly. */
@@ -471,15 +473,19 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 /* TODO(kevin): check on de-duplicating all this with code in image_ops.c */
 
 struct CacheFrame {
+  struct CacheFrame *next, *prev;
   int framenr;
 };
 
-static int cmp_frame(const CacheFrame &frame_a, const CacheFrame &frame_b)
+static int cmp_frame(const void *a, const void *b)
 {
-  if (frame_a.framenr < frame_b.framenr) {
+  const CacheFrame *frame_a = static_cast<const CacheFrame *>(a);
+  const CacheFrame *frame_b = static_cast<const CacheFrame *>(b);
+
+  if (frame_a->framenr < frame_b->framenr) {
     return -1;
   }
-  if (frame_a.framenr > frame_b.framenr) {
+  if (frame_a->framenr > frame_b->framenr) {
     return 1;
   }
   return 0;
@@ -518,7 +524,9 @@ static int get_sequence_len(const char *filepath, int *ofs)
   const char *basename = BLI_path_basename(filepath);
   const int len = strlen(basename) - (numdigit + strlen(ext));
 
-  std::vector<CacheFrame> frames{};
+  ListBase frames{};
+  BLI_listbase_clear(&frames);
+
   dirent *fname;
   while ((fname = readdir(dir)) != nullptr) {
     /* do we have the right extension? */
@@ -530,27 +538,32 @@ static int get_sequence_len(const char *filepath, int *ofs)
       continue;
     }
 
-    CacheFrame cache_frame {};
-    BLI_path_frame_get(fname->d_name, &cache_frame.framenr, &numdigit);
-    frames.push_back(cache_frame);
+    CacheFrame *cache_frame = MEM_cnew<CacheFrame>("abc_frame");
+
+    BLI_path_frame_get(fname->d_name, &cache_frame->framenr, &numdigit);
+
+    BLI_addtail(&frames, cache_frame);
   }
 
   closedir(dir);
-  std::sort(frames.begin(), frames.end(), cmp_frame);
 
-  if (frames.size()) {
-    int frame_curr = frames[0].framenr;
+  BLI_listbase_sort(&frames, cmp_frame);
+
+  CacheFrame *cache_frame = static_cast<CacheFrame *>(frames.first);
+
+  if (cache_frame != nullptr) {
+    int frame_curr = cache_frame->framenr;
     (*ofs) = frame_curr;
 
-    for (CacheFrame cache_frame : frames) {
-      if (cache_frame.framenr != frame_curr) {
-        break;
-      }
+    while (cache_frame && (cache_frame->framenr == frame_curr)) {
       frame_curr++;
+      cache_frame = cache_frame->next;
     }
 
     return frame_curr - (*ofs);
   }
+
+  BLI_freelistN(&frames);
 
   return 1;
 }

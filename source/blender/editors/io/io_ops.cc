@@ -6,7 +6,7 @@
  * \ingroup collada
  */
 
-#include "io_ops.hh" /* own include */
+#include "io_ops.h" /* own include */
 
 #include "WM_api.h"
 
