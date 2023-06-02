@@ -11,11 +11,8 @@ from bpy.app.translations import (
     pgettext_tip as tip_,
 )
 
-from bl_ui.utils import PresetPanel
-
 # -----------------------------------------------------------------------------
 # Main Header
-
 
 class USERPREF_HT_header(Header):
     bl_space_type = 'PREFERENCES'
@@ -1426,8 +1423,7 @@ class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
 
         if show_input:
             text_editor_label = tip_("External: %s") % text_editor
-
-        if not show_input:
+        else:
             text_editor_label = tip_("Internal")
 
         base_class._text_editor_args_prev = args
