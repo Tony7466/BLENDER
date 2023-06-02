@@ -25,36 +25,36 @@ class TEXT_OT_jump_to_file_at_point(Operator):
         text_editor = context.preferences.filepaths.text_editor
         text_editor_args = context.preferences.filepaths.text_editor_args
 
-        args = [text_editor]
-
         if not text_editor_args:
             self.report(
                 {'ERROR_INVALID_INPUT'},
-                ("Please provide the specific format of the arguments with which the text editor opens files."
-                 "The supported expansions are as follows:\n\n"
-                 "$file Specifies the absolute path of the file.\n"
-                 "$line Specifies the line where the cursor will be placed on. (Optional)\n"
-                 "$column Specifies the character position within the $line where the cursor will be placed. (Optional)\n\n"
-                 "Ex: -f $file -l $line -c $column"))
+                "Provide Text Editor Args Format in File Paths/Applications, see input field tooltip for more information.")
             return {'CANCELLED'}
 
         if "$file" not in text_editor_args:
             self.report({'ERROR_INVALID_INPUT'}, "Text Editor Args Format must contain $file expansion specification")
             return {'CANCELLED'}
 
-        from string import Template
-        import shlex
-        for plain_arg in shlex.split(text_editor_args):
-            arg = Template(plain_arg).substitute(file=self.filepath, line=self.line, column=self.column)
-            args.append(arg)
+        args = []
+        template_vars = {"file": self.filepath, "line": self.line, "column": self.column}
+
+        try:
+            from string import Template
+            import shlex
+            args = [Template(arg).substitute(**template_vars) for arg in shlex.split(text_editor_args)]
+        except Exception as ex:
+            self.report({'ERROR'}, "Exception parsing template: %r" % ex)
+            return {'CANCELLED'}
+
+        args.insert(0, text_editor)
 
         try:
             import subprocess
             # whit check=True if process.returncode !=0 a exception will be raised
             process = subprocess.run(args, check=True)
             return {'FINISHED'}
-        except subprocess.CalledProcessError as exception:
-            self.report({'ERROR'}, exception.output)
+        except Exception as ex:
+            self.report({'ERROR'}, "Exception running external editor: %r" % ex)
             return {'CANCELLED'}
 
 
