@@ -3162,6 +3162,59 @@ static IDProperty **rna_NodeSocketInterface_idprops(PointerRNA *ptr)
   return &sock->prop;
 }
 
+static PointerRNA rna_NodeSocketInterface_category_get(PointerRNA *ptr)
+{
+  bNodeSocket *socket = (bNodeSocket *)ptr->data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  const int index = socket->category_index;
+
+  bNodeSocketCategory *category = NULL;
+  if (index >= 0 && index < ntree->socket_categories_num) {
+    category = &ntree->socket_categories_array[index];
+  }
+
+  PointerRNA r_ptr;
+  RNA_pointer_create(&ntree->id, &RNA_NodeSocketCategory, category, &r_ptr);
+  return r_ptr;
+}
+
+static void rna_NodeSocketInterface_category_set(PointerRNA *ptr,
+                                                 PointerRNA value,
+                                                 struct ReportList *reports)
+{
+  bNodeSocket *socket = (bNodeSocket *)ptr->data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
+
+  if (category == NULL) {
+    socket->category_index = -1;
+  }
+
+  socket->category_index = category - ntree->socket_categories_array;
+  if (socket->category_index < 0 || socket->category_index >= ntree->socket_categories_num) {
+    BKE_report(reports, RPT_ERROR, "Category is not in the node tree interface");
+    socket->category_index = -1;
+  }
+}
+
+static bool rna_NodeSocketInterface_category_poll(PointerRNA *ptr, PointerRNA value)
+{
+  bNodeSocket *socket = (bNodeSocket *)ptr->data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
+
+  if (category == NULL) {
+    return true;
+  }
+
+  const int index = category - ntree->socket_categories_array;
+  if (index < 0 || index >= ntree->socket_categories_num) {
+    return false;
+  }
+
+  return true;
+}
+
 static void rna_NodeSocketInterface_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
@@ -3329,11 +3382,14 @@ static void rna_NodeTree_socket_categories_clear(bNodeTree *ntree, Main *bmain)
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-static void rna_NodeTree_socket_categories_move(
-    bNodeTree *ntree, Main *bmain, int from_index, int to_index)
+static void rna_NodeTree_socket_categories_move(bNodeTree *ntree,
+                                                Main *bmain,
+                                                int from_index,
+                                                int to_index)
 {
   if (from_index < 0 || from_index >= ntree->socket_categories_num || to_index < 0 ||
-      to_index >= ntree->socket_categories_num) {
+      to_index >= ntree->socket_categories_num)
+  {
     return;
   }
 
@@ -3348,7 +3404,9 @@ static PointerRNA rna_NodeTree_active_socket_category_get(PointerRNA *ptr)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->data;
   bNodeSocketCategory *category = NULL;
-  if (ntree->active_socket_category >= 0 && ntree->active_socket_category < ntree->socket_categories_num) {
+  if (ntree->active_socket_category >= 0 &&
+      ntree->active_socket_category < ntree->socket_categories_num)
+  {
     category = &ntree->socket_categories_array[ntree->active_socket_category];
   }
 
@@ -3357,7 +3415,9 @@ static PointerRNA rna_NodeTree_active_socket_category_get(PointerRNA *ptr)
   return r_ptr;
 }
 
-static void rna_NodeTree_active_socket_category_set(PointerRNA *ptr, PointerRNA value, struct ReportList *UNUSED(reports))
+static void rna_NodeTree_active_socket_category_set(PointerRNA *ptr,
+                                                    PointerRNA value,
+                                                    struct ReportList *UNUSED(reports))
 {
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
   bNodeTree *ntree = (bNodeTree *)ptr->data;
@@ -11691,6 +11751,18 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
                            "Don't show the input value in the geometry nodes modifier interface");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
 
+  prop = RNA_def_property(srna, "category", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeSocketInterface_category_get",
+                                 "rna_NodeSocketInterface_category_set",
+                                 NULL,
+                                 "rna_NodeSocketInterface_category_poll");
+  RNA_def_property_struct_type(prop, "NodeSocketCategory");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Socket Category", "Category to group sockets together in the UI");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
+
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
   RNA_def_property_ui_text(
@@ -13125,7 +13197,8 @@ static void rna_def_node_tree_socket_categories_api(BlenderRNA *brna, PropertyRN
   RNA_def_property_srna(cprop, "NodeSocketCategories");
   srna = RNA_def_struct(brna, "NodeSocketCategories", NULL);
   RNA_def_struct_sdna(srna, "bNodeTree");
-  RNA_def_struct_ui_text(srna, "Node Tree Socket Categories", "Collection of socket categories in a node tree");
+  RNA_def_struct_ui_text(
+      srna, "Node Tree Socket Categories", "Collection of socket categories in a node tree");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "active_socket_category");
@@ -13136,7 +13209,11 @@ static void rna_def_node_tree_socket_categories_api(BlenderRNA *brna, PropertyRN
   prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodeSocketCategory");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, "rna_NodeTree_active_socket_category_get", "rna_NodeTree_active_socket_category_set", NULL, NULL);
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeTree_active_socket_category_get",
+                                 "rna_NodeTree_active_socket_category_set",
+                                 NULL,
+                                 NULL);
   RNA_def_property_ui_text(prop, "Active", "Active category");
   RNA_def_property_update(prop, NC_NODE, NULL);
 
@@ -13162,15 +13239,8 @@ static void rna_def_node_tree_socket_categories_api(BlenderRNA *brna, PropertyRN
   func = RNA_def_function(srna, "move", "rna_NodeTree_socket_categories_move");
   RNA_def_function_ui_description(func, "Move a socket category to another position");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
-  parm = RNA_def_int(func,
-                     "from_index",
-                     -1,
-                     0,
-                     INT_MAX,
-                     "From Index",
-                     "Index of the category to move",
-                     0,
-                     10000);
+  parm = RNA_def_int(
+      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the category to move", 0, 10000);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_int(
       func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the category", 0, 10000);
@@ -13283,7 +13353,8 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, NULL, "socket_categories_array", "socket_categories_num");
   RNA_def_property_struct_type(prop, "NodeSocketCategory");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Socket Categories", "Socket categories for structuring the node tree interface");
+  RNA_def_property_ui_text(
+      prop, "Socket Categories", "Socket categories for structuring the node tree interface");
   rna_def_node_tree_socket_categories_api(brna, prop);
 
   /* exposed as a function for runtime interface type properties */

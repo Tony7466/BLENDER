@@ -1269,7 +1269,8 @@ static void remap_pairing(bNodeTree &dst_tree, const Map<bNode *, bNode *> &node
       NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
           dst_node->storage);
       if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                        nullptr)) {
+                                                                        nullptr))
+      {
         data->output_node_id = output_node->identifier;
       }
       else {
@@ -2190,6 +2191,8 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
+    /* Inherit socket category from the active socket interface. */
+    sock->category_index = active_sock->category_index;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2483,7 +2486,8 @@ static const EnumPropertyItem *socket_change_subtype_itemf(bContext *C,
   EnumPropertyItem *items = nullptr;
   int items_count = 0;
   for (const EnumPropertyItem *item = rna_enum_property_subtype_items; item->name != nullptr;
-       item++) {
+       item++)
+  {
     if (subtypes.contains(item->value)) {
       RNA_enum_item_add(&items, &items_count, item);
     }

@@ -3659,6 +3659,7 @@ static bNodeSocket *make_socket_interface(bNodeTree *ntree,
   STRNCPY(sock->name, name);
   sock->storage = nullptr;
   sock->flag |= SOCK_COLLAPSED;
+  sock->category_index = -1;
 
   return sock;
 }

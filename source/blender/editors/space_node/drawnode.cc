@@ -1295,7 +1295,8 @@ static void std_node_socket_draw(
   }
 
   if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_IS_LINKED) ||
-      (sock->flag & SOCK_HIDE_VALUE)) {
+      (sock->flag & SOCK_HIDE_VALUE))
+  {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
     return;
   }
@@ -1428,6 +1429,9 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   int type = sock->typeinfo->type;
 
+  PointerRNA tree_ptr;
+  RNA_id_pointer_create(ptr->owner_id, &tree_ptr);
+
   uiLayout *col = uiLayoutColumn(layout, false);
 
   switch (type) {
@@ -1472,6 +1476,8 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   if (sock->in_out == SOCK_IN && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
   }
+
+  uiItemPointerR(col, ptr, "category", &tree_ptr, "socket_categories", nullptr, 0);
 }
 
 static void node_socket_virtual_draw_color(bContext * /*C*/,

@@ -114,6 +114,7 @@ set(SRC_DNA_DEFAULTS_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_meta_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_modifier_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_movieclip_defaults.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_node_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_object_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_particle_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_pointcloud_defaults.h
