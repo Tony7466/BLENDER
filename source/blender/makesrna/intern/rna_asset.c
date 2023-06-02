@@ -33,6 +33,9 @@
 
 #  include "RNA_access.h"
 
+#  include "WM_api.h"
+#  include "WM_types.h"
+
 static char *rna_AssetMetaData_path(const PointerRNA *UNUSED(ptr))
 {
   return BLI_strdup("asset_data");
@@ -338,6 +341,32 @@ void rna_AssetMetaData_catalog_id_update(struct bContext *C, struct PointerRNA *
   AS_asset_library_refresh_catalog_simplename(asset_library, asset_data);
 }
 
+void rna_AssetMetaData_copy_to_id(AssetMetaData *self, ReportList *reports, ID *destination)
+{
+  if (destination == NULL) {
+    BKE_reportf(reports, RPT_ERROR, "destination '%s' cannot be NULL", destination->name + 2);
+    return;
+  }
+
+  if (!BKE_id_can_be_asset(destination)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "destination '%s' is of a type that cannot be marked as asset",
+                destination->name + 2);
+    return;
+  }
+
+  const bool dest_already_was_asset = destination->asset_data != NULL;
+  if (destination->asset_data) {
+    BKE_asset_metadata_free(&destination->asset_data);
+  }
+  destination->asset_data = BKE_asset_metadata_copy(self);
+
+  const int classification = dest_already_was_asset ? NA_EDITED : NA_ADDED;
+  WM_main_add_notifier(NC_ASSET | classification, NULL);
+  WM_main_add_notifier(NC_ID | NA_EDITED, NULL);
+}
+
 static PointerRNA rna_AssetHandle_file_data_get(PointerRNA *ptr)
 {
   AssetHandle *asset_handle = ptr->data;
@@ -443,6 +472,8 @@ static void rna_def_asset_data(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   srna = RNA_def_struct(brna, "AssetMetaData", NULL);
   RNA_def_struct_path_func(srna, "rna_AssetMetaData_path");
@@ -524,6 +555,16 @@ static void rna_def_asset_data(BlenderRNA *brna)
                            "Catalog Simple Name",
                            "Simple name of the asset's catalog, for debugging and "
                            "data recovery purposes");
+
+  func = RNA_def_function(srna, "copy_to_id", "rna_AssetMetaData_copy_to_id");
+  RNA_def_function_ui_description(
+      func,
+      "Copy this asset data to another data-block. Note that this does not include the preview "
+      "image, as that is part of the data-block itself, and not the asset data");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(
+      func, "destination", "ID", "destination", "Data-block to copy the asset data to");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
 static void rna_def_asset_handle_api(StructRNA *srna)
