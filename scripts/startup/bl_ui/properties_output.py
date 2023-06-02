@@ -399,7 +399,7 @@ class RENDER_PT_encoding(RenderOutputButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         rd = context.scene.render
-        return rd.image_settings.file_format in {'FFMPEG', 'H264', 'THEORA'}
+        return rd.image_settings.file_format in {'FFMPEG', 'XVID', 'H264', 'THEORA'}
 
     def draw(self, context):
         layout = self.layout
@@ -426,7 +426,7 @@ class RENDER_PT_encoding_video(RenderOutputButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         rd = context.scene.render
-        return rd.image_settings.file_format in {'FFMPEG', 'H264', 'THEORA'}
+        return rd.image_settings.file_format in {'FFMPEG', 'XVID', 'H264', 'THEORA'}
 
     def draw(self, context):
         layout = self.layout
@@ -507,7 +507,7 @@ class RENDER_PT_encoding_audio(RenderOutputButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         rd = context.scene.render
-        return rd.image_settings.file_format in {'FFMPEG', 'H264', 'THEORA'}
+        return rd.image_settings.file_format in {'FFMPEG', 'XVID', 'H264', 'THEORA'}
 
     def draw(self, context):
         layout = self.layout
