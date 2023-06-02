@@ -3767,6 +3767,25 @@ void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock)
   BKE_ntree_update_tag_interface(ntree);
 }
 
+namespace blender::bke {
+
+/* Fix socket category indices after changes. */
+static void remap_socket_categories(bNodeTree &ntree, std::function<int(int)> index_fn)
+{
+  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree.inputs) {
+    socket->category_index = index_fn(socket->category_index);
+    BLI_assert(socket->category_index == -1 ||
+               ntree.socket_categories().index_range().contains(socket->category_index));
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree.outputs) {
+    socket->category_index = index_fn(socket->category_index);
+    BLI_assert(socket->category_index == -1 ||
+               ntree.socket_categories().index_range().contains(socket->category_index));
+  }
+}
+
+}  // namespace blender::bke
+
 bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, int flag)
 {
   bNodeSocketCategory *old_categories_array = ntree->socket_categories_array;
@@ -3783,6 +3802,8 @@ bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, 
   new_category = {BLI_strdup(name), flag};
 
   MEM_SAFE_FREE(old_categories_array);
+
+  /* No need to remap socket categories, in this case old indices stay the same. */
 
   return &new_category;
 }
@@ -3814,6 +3835,10 @@ bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
 
   MEM_SAFE_FREE(old_categories_array);
 
+  blender::bke::remap_socket_categories(*ntree, [index](const int old_category_index) {
+    return old_category_index < index ? old_category_index : old_category_index + 1;
+  });
+
   return &new_category;
 }
 
@@ -3839,6 +3864,11 @@ void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category)
   }
 
   MEM_SAFE_FREE(old_categories_array);
+
+  blender::bke::remap_socket_categories(*ntree, [index](const int old_category_index) {
+    return old_category_index < index ? old_category_index :
+                                        (old_category_index > index ? old_category_index - 1 : -1);
+  });
 }
 
 void ntreeClearSocketCategories(bNodeTree *ntree)
@@ -3846,6 +3876,8 @@ void ntreeClearSocketCategories(bNodeTree *ntree)
   MEM_SAFE_FREE(ntree->socket_categories_array);
   ntree->socket_categories_array = nullptr;
   ntree->socket_categories_num = 0;
+
+  blender::bke::remap_socket_categories(*ntree, [](const int /*old_index*/) { return -1; });
 }
 
 void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index)
@@ -3866,6 +3898,13 @@ void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, in
       categories[i] = categories[i + 1];
     }
     categories[new_index] = tmp;
+
+    blender::bke::remap_socket_categories(
+        *ntree, [old_index, new_index](const int old_category_index) {
+          return old_category_index < old_index || old_category_index > new_index ?
+                     old_category_index :
+                     (old_category_index == old_index ? new_index : old_category_index - 1);
+        });
   }
   else /* old_index > new_index */ {
     const bNodeSocketCategory tmp = categories[old_index];
@@ -3873,6 +3912,13 @@ void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, in
       categories[i] = categories[i - 1];
     }
     categories[new_index] = tmp;
+
+    blender::bke::remap_socket_categories(
+        *ntree, [old_index, new_index](const int old_category_index) {
+          return old_category_index < new_index || old_category_index > old_index ?
+                     old_category_index :
+                     (old_category_index == old_index ? new_index : old_category_index + 1);
+        });
   }
 }
 
