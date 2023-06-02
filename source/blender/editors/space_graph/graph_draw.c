@@ -173,7 +173,7 @@ static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
  * NOTE: the caller MUST HAVE GL_LINE_SMOOTH & GL_BLEND ENABLED, otherwise the controls don't
  * have a consistent appearance (due to off-pixel alignments).
  */
-static void draw_x(float position[2], float scale[2], uint attr_id)
+static void draw_cross(float position[2], float scale[2], uint attr_id)
 {
   GPU_matrix_push();
   GPU_matrix_translate_2fv(position);
@@ -241,7 +241,7 @@ static void draw_locked_keyframe_vertices(FCurve *fcu, View2D *v2d, uint attr_id
       continue;
     }
     float position[2] = {bezt->vec[1][0], bezt->vec[1][1]};
-    draw_x(position, scale, attr_id);
+    draw_cross(position, scale, attr_id);
   }
 }
 
@@ -580,8 +580,8 @@ static void draw_fcurve_samples(ARegion *region, FCurve *fcu)
 
     immUniformThemeColor((fcu->flag & FCURVE_SELECTED) ? TH_TEXT_HI : TH_TEXT);
 
-    draw_x(first->vec, scale, pos);
-    draw_x(last->vec, scale, pos);
+    draw_cross(first->vec, scale, pos);
+    draw_cross(last->vec, scale, pos);
 
     immUnbindProgram();
 
@@ -1090,7 +1090,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
           "viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
       immUniform1i("colors_len", 0); /* Simple dashes. */
       immUniform1f("dash_width", 16.0f * U.scale_factor);
-      immUniform1f("udash_factor", 0.4f * U.scale_factor);
+      immUniform1f("udash_factor", 0.2f * U.scale_factor);
     }
     else {
       immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
