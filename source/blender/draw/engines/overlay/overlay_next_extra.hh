@@ -15,6 +15,11 @@
 #include "DNA_object_force_types.h"
 #include "DNA_rigidbody_types.h"
 
+#include "BKE_camera.h"
+#include "DNA_camera_types.h"
+
+#include "DEG_depsgraph_query.h"
+
 namespace blender::draw::overlay {
 
 class Extras {
@@ -220,6 +225,9 @@ class Extras {
     const select::ID select_id = res.select_id(ob_ref);
 
     switch (ob_ref.object->type) {
+      case OB_CAMERA:
+        camera_sync(state, bufs, ob_ref, data, select_id);
+        break;
       case OB_EMPTY:
         empty_sync(bufs, ob_ref, data, select_id);
         break;
@@ -385,33 +393,33 @@ class Extras {
     ExtraInstanceData _data = data;
 
     /* Pack render data into object matrix. */
-    float4x4 &matrix = _data.object_to_world_;
+    float4x4 &matrix = _data.matrix;
     float &area_size_x = matrix[0].w;
     float &area_size_y = matrix[1].w;
     float &spot_cosine = matrix[0].w;
     float &spot_blend = matrix[1].w;
-    float &clip_sta = matrix[2].w;
+    float &clip_start = matrix[2].w;
     float &clip_end = matrix[3].w;
 
     /* FIXME / TODO: clip_end has no meaning nowadays.
-     * In EEVEE, Only clip_sta is used shadow-mapping.
+     * In EEVEE, Only clip_start is used shadow-mapping.
      * Clip end is computed automatically based on light power.
      * For now, always use the custom distance as clip_end. */
     clip_end = la->att_dist;
-    clip_sta = la->clipsta;
+    clip_start = la->clipsta;
 
     /* Remove the alpha. */
-    float4 theme_color = float4(data.color_.xyz(), 1.0f);
+    float4 theme_color = float4(data.color.xyz(), 1.0f);
 
     float4 light_color = theme_color;
     if (state.overlay.flag & V3D_OVERLAY_SHOW_LIGHT_COLORS) {
       light_color = float4(la->r, la->g, la->b, 1.0f);
     }
 
-    _data.color_ = theme_color;
+    _data.color = theme_color;
 
     /* TODO
-    DRW_buffer_add_entry(cb->groundline, matrix.pos);
+    DRW_buffer_add_entry(cb->groundline, matrix.matrix.location());
     */
 
     bufs.light_icon_inner.append(_data.with_color(light_color), select_id);
@@ -444,7 +452,7 @@ class Extras {
       spot_blend = sqrtf((a2 - a2 * c2) / (c2 - a2 * c2));
       spot_cosine = a;
       /* HACK: We pack the area size in alpha color. This is decoded by the shader. */
-      _data.color_.w = -max_ff(la->radius, FLT_MIN);
+      _data.color.w = -max_ff(la->radius, FLT_MIN);
       bufs.light_spot.append(_data, select_id);
       if ((la->mode & LA_SHOW_CONE) && !DRW_state_is_select()) {
         bufs.light_spot_cone_front.append(_data.with_color({0.0f, 0.0f, 0.0f, 0.5f}), select_id);
@@ -497,21 +505,21 @@ class Extras {
     if (boundtype == OB_BOUND_BOX) {
       float4x4 mat = math::from_scale<float4x4>(size);
       mat.location() = center;
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.cube.append(_data, select_id);
     }
     else if (boundtype == OB_BOUND_SPHERE) {
       size = float3(std::max({size.x, size.y, size.z}));
       float4x4 mat = math::from_scale<float4x4>(size);
       mat.location() = center;
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.sphere.append(_data, select_id);
     }
     else if (boundtype == OB_BOUND_CYLINDER) {
       size.x = size.y = std::max(size.x, size.y);
       float4x4 mat = math::from_scale<float4x4>(size);
       mat.location() = center;
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.cylinder.append(_data, select_id);
     }
     else if (boundtype == OB_BOUND_CONE) {
@@ -521,7 +529,7 @@ class Extras {
       /* Cone batch has base at 0 and is pointing towards +Y. */
       std::swap(mat[1], mat[2]);
       mat.location().z -= size.z;
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.cone.append(_data, select_id);
     }
     else if (boundtype == OB_BOUND_CAPSULE) {
@@ -530,16 +538,16 @@ class Extras {
       mat.location() = center;
 
       mat.location().z = center.z + std::max(0.0f, size.z - size.x);
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.capsule_cap.append(_data, select_id);
 
       mat.location().z = center.z - std::max(0.0f, size.z - size.x);
       mat.z_axis() *= -1.0f;
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.capsule_cap.append(_data, select_id);
 
       mat.z_axis().z = std::max(0.0f, (size.z - size.x) * 2.0f);
-      _data.object_to_world_ = data.object_to_world_ * mat;
+      _data.matrix = data.matrix * mat;
       bufs.capsule_body.append(_data, select_id);
     }
   }
@@ -584,15 +592,15 @@ class Extras {
 
     if (probe->type == LIGHTPROBE_TYPE_CUBE) {
       ExtraInstanceData _data = data;
-      _data.object_to_world_[2][3] = show_clipping ? probe->clipsta : -1.0;
-      _data.object_to_world_[3][3] = show_clipping ? probe->clipend : -1.0;
+      _data.matrix[2][3] = show_clipping ? probe->clipsta : -1.0;
+      _data.matrix[3][3] = show_clipping ? probe->clipend : -1.0;
 
       bufs.probe_cube.append(_data, select_id);
 
 #if 0
       /* TODO: This requires a different shader.  */
-      _data.object_to_world_ = math::translate(float4x4::identity(),
-                                               _data.object_to_world_.location());
+      _data.matrix = math::translate(float4x4::identity(),
+                                               _data.matrix.location());
       bufs.groundline.append(_data, select_id);
 #endif
 
@@ -603,10 +611,8 @@ class Extras {
         InstanceBuf &buf = (probe->attenuation_type == LIGHTPROBE_SHAPE_BOX) ? bufs.cube :
                                                                                bufs.sphere;
 
-        buf.append(ExtraInstanceData(data.object_to_world_, data.color_, influence_start),
-                   select_id);
-        buf.append(ExtraInstanceData(data.object_to_world_, data.color_, influence_end),
-                   select_id);
+        buf.append(ExtraInstanceData(data.matrix, data.color, influence_start), select_id);
+        buf.append(ExtraInstanceData(data.matrix, data.color, influence_end), select_id);
       }
 
       if (show_parallax) {
@@ -614,44 +620,42 @@ class Extras {
                                                                          probe->distinf;
         InstanceBuf &buf = (probe->parallax_type == LIGHTPROBE_SHAPE_BOX) ? bufs.cube :
                                                                             bufs.sphere;
-        buf.append(ExtraInstanceData(data.object_to_world_, data.color_, radius), select_id);
+        buf.append(ExtraInstanceData(data.matrix, data.color, radius), select_id);
       }
     }
     else if (probe->type == LIGHTPROBE_TYPE_GRID) {
       ExtraInstanceData _data = data;
-      _data.object_to_world_[2][3] = show_clipping ? probe->clipsta : -1.0;
-      _data.object_to_world_[3][3] = show_clipping ? probe->clipend : -1.0;
+      _data.matrix[2][3] = show_clipping ? probe->clipsta : -1.0;
+      _data.matrix[3][3] = show_clipping ? probe->clipend : -1.0;
       bufs.probe_grid.append(_data, select_id);
 
       if (show_influence) {
         float influence_start = 1.0f + probe->distinf * (1.0f - probe->falloff);
         float influence_end = 1.0f + probe->distinf;
 
-        bufs.cube.append(ExtraInstanceData(data.object_to_world_, data.color_, influence_start),
-                         select_id);
-        bufs.cube.append(ExtraInstanceData(data.object_to_world_, data.color_, influence_end),
-                         select_id);
+        bufs.cube.append(ExtraInstanceData(data.matrix, data.color, influence_start), select_id);
+        bufs.cube.append(ExtraInstanceData(data.matrix, data.color, influence_end), select_id);
       }
 
       /* TODO(Miguel Pozo) */
 #if 0
     /* Data dots */
     if (show_data) {
-      _data.object_to_world_[0][3] = probe->grid_resolution_x;
-      _data.object_to_world_[1][3] = probe->grid_resolution_y;
-      _data.object_to_world_[2][3] = probe->grid_resolution_z;
+      _data.matrix[0][3] = probe->grid_resolution_x;
+      _data.matrix[1][3] = probe->grid_resolution_y;
+      _data.matrix[2][3] = probe->grid_resolution_z;
       /* Put theme id in matrix. */
       if (theme_id == TH_ACTIVE) {
-        _data.object_to_world_[3][3] = 1.0;
+        _data.matrix[3][3] = 1.0;
       }
       else /* TH_SELECT */ {
-        _data.object_to_world_[3][3] = 2.0;
+        _data.matrix[3][3] = 2.0;
       }
 
       uint cell_count = probe->grid_resolution_x * probe->grid_resolution_y *
                         probe->grid_resolution_z;
-      DRWShadingGroup *grp = DRW_shgroup_create_sub(vedata->stl->pd->extra_grid_grp);
-      DRW_shgroup_uniform_mat4_copy(grp, "gridModelMatrix", instdata.mat);
+      DRWShadingGroup *grp = DRW_shgroup_create_sub(vedata.stl->pd->extra_grid_grp);
+      DRW_shgroup_uniform_mat4_copy(grp, "gridModelMatrix", _data.matrix);
       DRW_shgroup_call_procedural_points(grp, nullptr, cell_count);
     }
 #endif
@@ -665,7 +669,7 @@ class Extras {
       }
 
       ExtraInstanceData _data = data;
-      float3 &z = _data.object_to_world_.z_axis();
+      float3 &z = _data.matrix.z_axis();
 
       if (show_influence) {
         z = math::normalize(z) * probe->distinf;
@@ -678,11 +682,10 @@ class Extras {
       bufs.cube.append(_data, select_id);
 
       _data = data;
-      _data.object_to_world_ = math::normalize(_data.object_to_world_);
-      _data.object_to_world_[3] = data.object_to_world_[3];
+      _data.matrix = math::normalize(_data.matrix);
+      _data.matrix[3] = data.matrix[3];
       bufs.single_arrow.append(
-          ExtraInstanceData(_data.object_to_world_, data.color_, ob_ref.object->empty_drawsize),
-          select_id);
+          ExtraInstanceData(_data.matrix, data.color, ob_ref.object->empty_drawsize), select_id);
     }
   }
 
@@ -700,9 +703,9 @@ class Extras {
 
     /* Pack render data into object matrix. */
     ExtraInstanceData _data = data;
-    float &size_x = _data.object_to_world_[0].w;
-    float &size_y = _data.object_to_world_[1].w;
-    float &size_z = _data.object_to_world_[2].w;
+    float &size_x = _data.matrix[0].w;
+    float &size_y = _data.matrix[1].w;
+    float &size_z = _data.matrix[2].w;
 
     size_x = size_y = size_z = ob->empty_drawsize;
 
@@ -723,14 +726,14 @@ class Extras {
           size_x = size_y = size_z = pd->f_strength;
           float4 position;
           BKE_where_on_path(ob, 0.0f, position, nullptr, nullptr, nullptr, nullptr);
-          _data.object_to_world_.location() = data.object_to_world_.location() + position.xyz();
+          _data.matrix.location() = data.matrix.location() + position.xyz();
           bufs.field_curve.append(_data, select_id);
 
           BKE_where_on_path(ob, 1.0f, position, nullptr, nullptr, nullptr, nullptr);
-          _data.object_to_world_.location() = data.object_to_world_.location() + position.xyz();
+          _data.matrix.location() = data.matrix.location() + position.xyz();
           bufs.field_sphere_limit.append(_data, select_id);
           /* Restore */
-          _data.object_to_world_.location() = data.object_to_world_.location();
+          _data.matrix.location() = data.matrix.location();
         }
         break;
     }

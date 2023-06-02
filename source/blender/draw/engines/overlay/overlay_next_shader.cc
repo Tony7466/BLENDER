@@ -74,8 +74,8 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   extra_shape = selectable_shader("overlay_extra", [](gpu::shader::ShaderCreateInfo &info) {
     info.storage_buf(0, Qualifier::READ, "ExtraInstanceData", "data_buf[]");
-    info.define("color", "data_buf[gl_InstanceID].color_");
-    info.define("inst_obmat", "data_buf[gl_InstanceID].object_to_world_");
+    info.define("color", "data_buf[gl_InstanceID]._color");
+    info.define("inst_obmat", "data_buf[gl_InstanceID].matrix");
     info.vertex_inputs_.pop_last();
     info.vertex_inputs_.pop_last();
   });

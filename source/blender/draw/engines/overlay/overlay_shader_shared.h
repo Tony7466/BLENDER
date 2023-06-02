@@ -193,37 +193,44 @@ struct ThemeColorData {
 BLI_STATIC_ASSERT_ALIGN(ThemeColorData, 16)
 
 struct ExtraInstanceData {
-  float4 color_;
-  float4x4 object_to_world_;
+#ifdef GPU_SHADER
+  /** NOTE: The `color` token is reserved for its macro alias. */
+  float4 _color;
+#else
+  float4 color;
+#endif
+  float4x4 matrix;
 
 #if !defined(GPU_SHADER) && defined(__cplusplus)
+  ExtraInstanceData() = default;
+
   ExtraInstanceData(const float4x4 &object_to_world, const float4 &color, float draw_size)
   {
-    this->color_ = color;
-    this->object_to_world_ = object_to_world;
-    this->object_to_world_[3][3] = draw_size;
+    this->color = color;
+    this->matrix = object_to_world;
+    this->matrix[3][3] = draw_size;
   };
 
   ExtraInstanceData with_matrix(const float4x4 &matrix) const
   {
     ExtraInstanceData copy = *this;
-    copy.object_to_world_ = matrix;
-    copy.object_to_world_[3][3] = object_to_world_[3][3];
+    copy.matrix = matrix;
+    copy.matrix[3][3] = this->matrix[3][3];
     return copy;
   }
 
   ExtraInstanceData with_color(const float4 &color) const
   {
     ExtraInstanceData copy = *this;
-    copy.color_ = color;
-    copy.object_to_world_[3][3] = object_to_world_[3][3];
+    copy.color = color;
+    copy.matrix[3][3] = this->matrix[3][3];
     return copy;
   }
 
   ExtraInstanceData with_size(const float &draw_size) const
   {
     ExtraInstanceData copy = *this;
-    copy.object_to_world_[3][3] = draw_size;
+    copy.matrix[3][3] = draw_size;
     return copy;
   }
 #endif
