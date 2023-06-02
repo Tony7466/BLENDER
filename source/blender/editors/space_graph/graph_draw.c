@@ -1090,7 +1090,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
           "viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
       immUniform1i("colors_len", 0); /* Simple dashes. */
       immUniform1f("dash_width", 16.0f * U.scale_factor);
-      immUniform1f("udash_factor", 0.2f * U.scale_factor);
+      immUniform1f("udash_factor", 0.35f * U.scale_factor);
     }
     else {
       immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
