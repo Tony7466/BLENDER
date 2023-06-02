@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -49,6 +50,7 @@
 
 #include "transform.h"
 #include "transform_convert.h"
+#include "transform_mode.h"
 #include "transform_snap.h"
 
 /* use half of flt-max so we can scale up without an exception */
@@ -545,7 +547,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
     }
 
     if (validSnap(t)) {
-      t->tsnap.snap_mode_apply_fn(t, vec);
+      t->mode_info->snap_apply_fn(t, vec);
     }
   }
 }
@@ -1316,7 +1318,7 @@ static void snap_source_closest_fn(TransInfo *t)
               copy_v3_v3(loc, bb->vec[j]);
               mul_m4_v3(td->ext->obmat, loc);
 
-              dist = t->tsnap.snap_mode_distance_fn(t, loc, t->tsnap.snap_target);
+              dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
               if ((dist != TRANSFORM_DIST_INVALID) &&
                   (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
@@ -1333,7 +1335,7 @@ static void snap_source_closest_fn(TransInfo *t)
 
             copy_v3_v3(loc, td->center);
 
-            dist = t->tsnap.snap_mode_distance_fn(t, loc, t->tsnap.snap_target);
+            dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
             if ((dist != TRANSFORM_DIST_INVALID) &&
                 (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
@@ -1358,7 +1360,7 @@ static void snap_source_closest_fn(TransInfo *t)
             mul_m4_v3(tc->mat, loc);
           }
 
-          dist = t->tsnap.snap_mode_distance_fn(t, loc, t->tsnap.snap_target);
+          dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
           if ((dist != TRANSFORM_DIST_INVALID) &&
               (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {

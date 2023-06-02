@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,6 +25,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -150,8 +152,9 @@ static void material_free_data(ID *id)
 
   MEM_SAFE_FREE(material->gp_style);
 
-  BKE_icon_id_delete((ID *)material);
   BKE_previewimg_free(&material->preview);
+
+  BKE_icon_id_delete((ID *)material);
 }
 
 static void material_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -353,6 +356,10 @@ Material ***BKE_object_material_array_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->mat);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array);
+  }
   return nullptr;
 }
 
@@ -386,6 +393,10 @@ short *BKE_object_material_len_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->totcol);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array_size);
+  }
   return nullptr;
 }
 
@@ -409,6 +420,8 @@ Material ***BKE_id_material_array_p(ID *id)
       return &(((PointCloud *)id)->mat);
     case ID_VO:
       return &(((Volume *)id)->mat);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array);
     default:
       break;
   }
@@ -435,6 +448,8 @@ short *BKE_id_material_len_p(ID *id)
       return &(((PointCloud *)id)->totcol);
     case ID_VO:
       return &(((Volume *)id)->totcol);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array_size);
     default:
       break;
   }
@@ -1894,75 +1909,6 @@ void ramp_blend(int type, float r_col[3], const float fac, const float col[3])
         r_col[2] = r_col[2] + fac * (2.0f * (col[2]) - 1.0f);
       }
       break;
-  }
-}
-
-/**
- * \brief copy/paste buffer, if we had a proper py api that would be better
- * \note matcopybuf.nodetree does _NOT_ use ID's
- * \todo matcopybuf.nodetree's  node->id's are NOT validated, this will crash!
- */
-static Material matcopybuf;
-static short matcopied = 0;
-
-void BKE_material_copybuf_clear(void)
-{
-  matcopybuf = blender::dna::shallow_zero_initialize();
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_free(void)
-{
-  if (matcopybuf.nodetree) {
-    ntreeFreeLocalTree(matcopybuf.nodetree);
-    BLI_assert(!matcopybuf.nodetree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
-    MEM_freeN(matcopybuf.nodetree);
-    matcopybuf.nodetree = nullptr;
-  }
-
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_copy(Main *bmain, Material *ma)
-{
-  if (matcopied) {
-    BKE_material_copybuf_free();
-  }
-
-  matcopybuf = blender::dna::shallow_copy(*ma);
-
-  if (ma->nodetree != nullptr) {
-    matcopybuf.nodetree = blender::bke::ntreeCopyTree_ex(ma->nodetree, bmain, false);
-  }
-
-  matcopybuf.preview = nullptr;
-  BLI_listbase_clear(&matcopybuf.gpumaterial);
-  /* TODO: Duplicate Engine Settings and set runtime to nullptr. */
-  matcopied = 1;
-}
-
-void BKE_material_copybuf_paste(Main *bmain, Material *ma)
-{
-  ID id;
-
-  if (matcopied == 0) {
-    return;
-  }
-
-  /* Free gpu material before the ntree */
-  GPU_material_free(&ma->gpumaterial);
-
-  if (ma->nodetree) {
-    ntreeFreeEmbeddedTree(ma->nodetree);
-    MEM_freeN(ma->nodetree);
-  }
-
-  id = (ma->id);
-  *ma = blender::dna::shallow_copy(matcopybuf);
-  (ma->id) = id;
-
-  if (matcopybuf.nodetree != nullptr) {
-    ma->nodetree = blender::bke::ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
   }
 }
 

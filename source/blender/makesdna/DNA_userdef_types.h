@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -675,10 +676,11 @@ typedef struct UserDef_Experimental {
   char use_override_templates;
   char enable_eevee_next;
   char use_sculpt_texture_paint;
+  char use_grease_pencil_version3;
   char enable_overlay_next;
   char enable_workbench_next;
   char use_new_volume_nodes;
-  char _pad[5];
+  char _pad[4];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 

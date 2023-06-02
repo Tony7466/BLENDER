@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
@@ -413,7 +415,8 @@ void split_edges(Mesh &mesh,
   });
 
   /* Used for transferring attributes. */
-  Vector<int> new_to_old_edges_map(IndexRange(new_edges.size()).as_span());
+  Vector<int> new_to_old_edges_map(new_edges.size());
+  std::iota(new_to_old_edges_map.begin(), new_to_old_edges_map.end(), 0);
 
   /* Step 1: Split the edges. */
 

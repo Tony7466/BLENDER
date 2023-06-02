@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -712,6 +714,7 @@ static const EnumPropertyItem snap_to_items[] = {
 #  include "BKE_pointcache.h"
 #  include "BKE_scene.h"
 #  include "BKE_screen.h"
+#  include "BKE_simulation.h"
 #  include "BKE_unit.h"
 
 #  include "NOD_composite.h"
@@ -930,6 +933,8 @@ static void rna_Scene_fps_update(Main *bmain, Scene *UNUSED(active_scene), Point
    * however, changes in FPS actually modifies an original skip length,
    * so this we take care about here. */
   SEQ_sound_update_length(bmain, scene);
+  /* Reset simulation states because new frame interval doesn't apply anymore. */
+  BKE_simulation_reset_scene(scene);
 }
 
 static void rna_Scene_listener_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
@@ -5908,7 +5913,7 @@ static void rna_def_scene_image_format_data(BlenderRNA *brna)
 #  endif
 
 #  ifdef WITH_OPENJPEG
-  /* Jpeg 2000 */
+  /* JPEG 2000 */
   prop = RNA_def_property(srna, "use_jpeg2k_ycc", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "jp2_flag", R_IMF_JP2_FLAG_YCC);
   RNA_def_property_ui_text(
