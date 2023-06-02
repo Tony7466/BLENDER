@@ -30,13 +30,12 @@ class TEXT_OT_jump_to_file_at_point(Operator):
         if not text_editor_args:
             self.report(
                 {'ERROR_INVALID_INPUT'},
-                """Please provide the specific format of the arguments with which the text editor opens files. The supported expansions are as follows:
-
-$file Specifies the absolute path of the file.
-$line Specifies the line where the cursor will be placed on. (Optional)
-$column Specifies the character position within the $line where the cursor will be placed. (Optional)
-
-Ex: -f $file -l $line -c $column""")
+                ("Please provide the specific format of the arguments with which the text editor opens files."
+                 "The supported expansions are as follows:\n\n"
+                 "$file Specifies the absolute path of the file.\n"
+                 "$line Specifies the line where the cursor will be placed on. (Optional)\n"
+                 "$column Specifies the character position within the $line where the cursor will be placed. (Optional)\n\n"
+                 "Ex: -f $file -l $line -c $column"))
             return {'CANCELLED'}
 
         if "$file" not in text_editor_args:
