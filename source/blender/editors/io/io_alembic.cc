@@ -530,7 +530,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
       continue;
     }
 
-    CacheFrame cache_frame;
+    CacheFrame cache_frame {};
     BLI_path_frame_get(fname->d_name, &cache_frame.framenr, &numdigit);
     frames.push_back(cache_frame);
   }
