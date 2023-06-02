@@ -11,6 +11,7 @@ from bpy.app.translations import (
     pgettext_tip as tip_,
 )
 
+
 # -----------------------------------------------------------------------------
 # Main Header
 
