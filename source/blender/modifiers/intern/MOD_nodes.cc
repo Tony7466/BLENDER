@@ -2142,29 +2142,25 @@ static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
                   parent_idname,
                   "_internal_dependencies");
 
-  const char *current_category = "";
   const Panel *current_subpanel = static_cast<const Panel *>(parent->children.first);
-  LISTBASE_FOREACH (bNodeSocket *, socket, &nmd->node_group->inputs) {
-    if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
-      continue;
+  for (const int category_index : nmd->node_group->socket_categories().index_range()) {
+    if (current_subpanel == nullptr ||
+        !STREQ(socket_category_panel_idname, current_subpanel->type->idname))
+    {
+      /* Fewer panels than expected. */
+      return false;
     }
-
-    /* TODO using name as placeholder until categories are added. */
-    const char *socket_category = socket->name;
-
-    if (!STREQ(socket_category, current_category)) {
-      if (current_subpanel == nullptr ||
-          !STREQ(socket_category_panel_idname, current_subpanel->type->idname))
-      {
-        return false;
-      }
-      current_subpanel = current_subpanel->next;
+    if (current_subpanel->runtime.custom_data_int[0] != category_index) {
+      /* Panel has wrong category. */
+      return false;
     }
+    current_subpanel = current_subpanel->next;
   }
 
   if (current_subpanel == nullptr ||
       !STREQ(output_attributes_panel_idname, current_subpanel->type->idname))
   {
+    /* Missing "Output Attributes" panel. */
     return false;
   }
   current_subpanel = current_subpanel->next;
@@ -2172,9 +2168,15 @@ static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
   if (current_subpanel == nullptr ||
       !STREQ(internal_dependencies_panel_idname, current_subpanel->type->idname))
   {
+    /* Missing "Internal Dependencies" panel. */
     return false;
   }
   current_subpanel = current_subpanel->next;
+
+  if (current_subpanel) {
+    /* More panels than expected. */
+    return false;
+  }
 
   return true;
 }

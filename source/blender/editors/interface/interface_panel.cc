@@ -560,12 +560,12 @@ static void panel_set_expansion_from_list_data(const bContext *C,
   short flag_index = panel->type->parent == nullptr ?
                          0 :
                          1 + BLI_findindex(const_cast<ListBase *>(panels), panel);
-  if (panel->type)
-
+  if (panel->type) {
     /* Start panel animation if the open state was changed. */
     if (panel_set_expand_from_list_data_recursive(panel, expand_flag, &flag_index)) {
       panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
     }
+  }
 }
 
 /**

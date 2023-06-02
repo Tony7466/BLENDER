@@ -2819,10 +2819,39 @@ static void ed_panel_draw(const bContext *C,
 
   /* Draw child panels. */
   if (open || search_filter_active) {
-    LISTBASE_FOREACH (Panel *, child_panel, &panel->children) {
-      PanelType *child_pt = child_panel->type;
+    bool has_instanced_panel = false;
+    LISTBASE_FOREACH (LinkData *, link, &pt->children) {
+      PanelType *child_pt = static_cast<PanelType *>(link->data);
+      if (child_pt->flag & PANEL_TYPE_INSTANCED) {
+        has_instanced_panel = true;
+        continue;
+      }
 
+      Panel *child_panel = UI_panel_find_by_type(&panel->children, child_pt);
       if (child_pt->draw && (!child_pt->poll || child_pt->poll(C, child_pt))) {
+        ed_panel_draw(C,
+                      region,
+                      &panel->children,
+                      child_pt,
+                      child_panel,
+                      w,
+                      em,
+                      unique_panel_str,
+                      search_filter);
+      }
+    }
+
+    /* Draw "poly-instantiated" panels that don't have a 1 to 1 correspondence with their types. */
+    if (has_instanced_panel) {
+      int child_index;
+      LISTBASE_FOREACH_INDEX (Panel *, child_panel, &panel->children, child_index) {
+        PanelType *child_pt = child_panel->type;
+        if (!(child_pt->flag & PANEL_TYPE_INSTANCED)) {
+          continue;
+        }
+
+        /* Use a unique identifier for instanced panels, otherwise an old block for a different
+         * panel of the same type might be found. */
         char unique_child_panel_str[INSTANCED_PANEL_UNIQUE_STR_LEN];
         UI_list_panel_unique_str(child_panel, unique_child_panel_str);
         ed_panel_draw(C,
