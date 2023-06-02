@@ -115,8 +115,7 @@ static void process_prim_path(char *prim_path)
 
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  eUSDOperatorOptions *options = static_cast<eUSDOperatorOptions *>(
-      MEM_callocN(sizeof(eUSDOperatorOptions), "eUSDOperatorOptions"));
+  eUSDOperatorOptions *options = MEM_cnew<eUSDOperatorOptions>("eUSDOperatorOptions");
   options->as_background_job = true;
   op->customdata = options;
 
@@ -137,7 +136,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
-  eUSDOperatorOptions *options = (eUSDOperatorOptions *)op->customdata;
+  eUSDOperatorOptions *options = static_cast<eUSDOperatorOptions *>(op->customdata);
   const bool as_background_job = (options != nullptr && options->as_background_job);
   MEM_SAFE_FREE(op->customdata);
 
@@ -376,8 +375,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
 
 static int wm_usd_import_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  eUSDOperatorOptions *options = static_cast<eUSDOperatorOptions *>(
-      MEM_callocN(sizeof(eUSDOperatorOptions), "eUSDOperatorOptions"));
+  eUSDOperatorOptions *options = MEM_cnew<eUSDOperatorOptions>("eUSDOperatorOptions");
   options->as_background_job = true;
   op->customdata = options;
 
@@ -394,7 +392,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
-  eUSDOperatorOptions *options = (eUSDOperatorOptions *)op->customdata;
+  eUSDOperatorOptions *options = static_cast<eUSDOperatorOptions *>(op->customdata);
   const bool as_background_job = (options != nullptr && options->as_background_job);
   MEM_SAFE_FREE(op->customdata);
 
@@ -468,7 +466,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const eUSDTexNameCollisionMode tex_name_collision_mode = eUSDTexNameCollisionMode(
       RNA_enum_get(op->ptr, "tex_name_collision_mode"));
 
-  USDImportParams params;
+  USDImportParams params{};
   params.scale = scale;
   params.is_sequence = is_sequence;
   params.set_frame_range = set_frame_range;

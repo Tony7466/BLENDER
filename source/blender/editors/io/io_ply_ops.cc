@@ -124,7 +124,7 @@ static void ui_ply_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_ply_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr;
+  PointerRNA ptr{nullptr};
   RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
   ui_ply_export_settings(op->layout, &ptr);
 }
@@ -232,7 +232,7 @@ static int wm_ply_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
 static int wm_ply_import_execute(bContext *C, wmOperator *op)
 {
-  PLYImportParams params;
+  PLYImportParams params{};
   params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
   params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
   params.use_scene_unit = RNA_boolean_get(op->ptr, "use_scene_unit");
@@ -243,7 +243,7 @@ static int wm_ply_import_execute(bContext *C, wmOperator *op)
   int files_len = RNA_collection_length(op->ptr, "files");
 
   if (files_len) {
-    PointerRNA fileptr;
+    PointerRNA fileptr{nullptr};
     PropertyRNA *prop;
     char dir_only[FILE_MAX], file_only[FILE_MAX];
 

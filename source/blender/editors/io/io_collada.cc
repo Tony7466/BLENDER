@@ -156,7 +156,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 
   // Scene *scene = CTX_data_scene(C);
 
-  ExportSettings export_settings;
+  ExportSettings export_settings{};
 
   export_settings.filepath = filepath;
 
@@ -690,7 +690,7 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
 
   int keep_bind_info;
   int custom_normals;
-  ImportSettings import_settings;
+  ImportSettings import_settings{};
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");

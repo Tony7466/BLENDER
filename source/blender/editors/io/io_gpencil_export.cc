@@ -134,7 +134,7 @@ static int wm_gpencil_export_svg_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
 
-  GpencilIOParams params;
+  GpencilIOParams params{};
   params.C = C;
   params.region = region;
   params.v3d = v3d;
@@ -288,7 +288,7 @@ static int wm_gpencil_export_pdf_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
 
-  GpencilIOParams params;
+  GpencilIOParams params{};
   params.C = C;
   params.region = region;
   params.v3d = v3d;

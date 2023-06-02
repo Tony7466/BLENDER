@@ -43,8 +43,7 @@ static void cachefile_init(bContext *C, wmOperator *op)
 {
   PropertyPointerRNA *pprop;
 
-  op->customdata = pprop = static_cast<PropertyPointerRNA *>(
-      MEM_callocN(sizeof(PropertyPointerRNA), "OpenPropertyPointerRNA"));
+  op->customdata = pprop = MEM_cnew<PropertyPointerRNA>("OpenPropertyPointerRNA");
   UI_context_active_but_prop_get_templateID(C, &pprop->ptr, &pprop->prop);
 }
 
@@ -98,7 +97,7 @@ static int cachefile_open_exec(bContext *C, wmOperator *op)
        * pointer see also increases user, so this compensates it. */
       id_us_min(&cache_file->id);
 
-      PointerRNA idptr;
+      PointerRNA idptr{nullptr};
       RNA_id_pointer_create(&cache_file->id, &idptr);
       RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, nullptr);
       RNA_property_update(C, &pprop->ptr, pprop->prop);

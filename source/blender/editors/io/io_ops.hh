@@ -5,13 +5,13 @@
 /** \file
  * \ingroup editor/io
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #pragma once
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void ED_operatortypes_io(void);
 

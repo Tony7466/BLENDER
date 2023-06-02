@@ -31,7 +31,7 @@ static int wm_stl_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
 static int wm_stl_import_execute(bContext *C, wmOperator *op)
 {
-  STLImportParams params;
+  STLImportParams params{};
   params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
   params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
   params.use_facet_normal = RNA_boolean_get(op->ptr, "use_facet_normal");
@@ -42,7 +42,7 @@ static int wm_stl_import_execute(bContext *C, wmOperator *op)
   int files_len = RNA_collection_length(op->ptr, "files");
 
   if (files_len) {
-    PointerRNA fileptr;
+    PointerRNA fileptr{nullptr};
     PropertyRNA *prop;
     char dir_only[FILE_MAX], file_only[FILE_MAX];
 

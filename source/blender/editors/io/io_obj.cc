@@ -74,7 +74,7 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
-  OBJExportParams export_params;
+  OBJExportParams export_params{};
   export_params.file_base_for_tests[0] = '\0';
   RNA_string_get(op->ptr, "filepath", export_params.filepath);
   export_params.blen_filepath = CTX_data_main(C)->filepath;
@@ -180,7 +180,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr;
+  PointerRNA ptr{nullptr};
   RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
   ui_obj_export_settings(op->layout, &ptr);
 }
@@ -381,7 +381,7 @@ static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*e
 
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
-  OBJImportParams import_params;
+  OBJImportParams import_params{};
   RNA_string_get(op->ptr, "filepath", import_params.filepath);
   import_params.global_scale = RNA_float_get(op->ptr, "global_scale");
   import_params.clamp_size = RNA_float_get(op->ptr, "clamp_size");
@@ -397,7 +397,7 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   int files_len = RNA_collection_length(op->ptr, "files");
   if (files_len) {
     /* Importing multiple files: loop over them and import one by one. */
-    PointerRNA fileptr;
+    PointerRNA fileptr{nullptr};
     PropertyRNA *prop;
     char dir_only[FILE_MAX], file_only[FILE_MAX];
 
@@ -457,7 +457,7 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr;
+  PointerRNA ptr{nullptr};
   wmWindowManager *wm = CTX_wm_manager(C);
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
   ui_obj_import_settings(op->layout, &ptr);
