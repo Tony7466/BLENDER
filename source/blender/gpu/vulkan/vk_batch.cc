@@ -19,7 +19,7 @@ namespace blender::gpu {
 void VKBatch::draw_setup()
 {
   /* Currently the pipeline is rebuild on each draw command. Clearing the dirty flag for
-   * consistency with the internals of GPU module.  */
+   * consistency with the internals of GPU module. */
   flag &= ~GPU_BATCH_DIRTY;
 
   /* Finalize graphics pipeline */
