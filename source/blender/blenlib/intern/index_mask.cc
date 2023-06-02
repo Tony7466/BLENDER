@@ -380,6 +380,7 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
       break;
     }
 
+    /* The int16_t() is needed otherwise gcc 9.4 would give an error. */
     const int16_t gap_first = int16_t(indices[size_before_gap - 1] + 1);
     const int16_t next = indices[size_before_gap];
     const int16_t gap_size = int16_t(next - gap_first);
