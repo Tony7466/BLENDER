@@ -61,6 +61,15 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
   scene_delegate_->populate(depsgraph, context);
 }
 
+void Engine::sync_usd(pxr::UsdStageRefPtr stage)
+{
+  if (!usd_delegate_) {
+    usd_delegate_ = std::make_unique<pxr::UsdImagingDelegate>(
+        render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("usd"));
+  }
+  usd_delegate_->Populate(stage->GetPseudoRoot());
+}
+
 void Engine::set_sync_setting(const std::string &key, const pxr::VtValue &val)
 {
   scene_delegate_->set_setting(key, val);

@@ -3,8 +3,11 @@
 
 #include <Python.h>
 
+#include <boost/python/extract.hpp>
+
 #include <pxr/base/plug/plugin.h>
 #include <pxr/base/plug/registry.h>
+#include <pxr/usd/usd/stage.h>
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
 #include "BKE_appdir.h"
@@ -157,6 +160,24 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject *engine_sync_usd_func(PyObject * /*self*/, PyObject *args)
+{
+  PyObject *pyengine, *pystage;
+  if (!PyArg_ParseTuple(args, "OO", &pyengine, &pystage)) {
+    Py_RETURN_NONE;
+  }
+
+  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
+
+  boost::python::extract<pxr::UsdStageRefPtr> extract(pystage);
+  pxr::UsdStagePtr stage = extract();
+
+  engine->sync_usd(stage);
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
+  Py_RETURN_NONE;
+}
+
 static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
 {
   PyObject *pyengine, *pydepsgraph;
@@ -253,6 +274,7 @@ static PyMethodDef methods[] = {
     {"engine_create", engine_create_func, METH_VARARGS, ""},
     {"engine_free", engine_free_func, METH_VARARGS, ""},
     {"engine_sync", engine_sync_func, METH_VARARGS, ""},
+    {"engine_sync_usd", engine_sync_usd_func, METH_VARARGS, ""},
     {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
     {"engine_set_sync_setting", engine_set_sync_setting_func, METH_VARARGS, ""},

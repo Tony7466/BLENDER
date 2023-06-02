@@ -10,6 +10,8 @@
 #include <pxr/imaging/hd/pluginRenderDelegateUniqueHandle.h>
 #include <pxr/imaging/hdx/freeCameraSceneDelegate.h>
 #include <pxr/imaging/hgi/hgi.h>
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usdImaging/usdImaging/delegate.h>
 
 #include "RE_engine.h"
 
@@ -29,6 +31,7 @@ class Engine {
   virtual ~Engine() = default;
 
   void sync(Depsgraph *depsgraph, bContext *context);
+  void sync_usd(pxr::UsdStageRefPtr stage);
   virtual void render(Depsgraph *depsgraph) = 0;
 
   void set_sync_setting(const std::string &key, const pxr::VtValue &val);
@@ -50,6 +53,7 @@ class Engine {
   std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
   std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate_;
+  std::unique_ptr<pxr::UsdImagingDelegate> usd_delegate_;
   std::unique_ptr<pxr::HdEngine> engine_;
 };
 
