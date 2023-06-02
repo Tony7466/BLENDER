@@ -10,10 +10,11 @@ from bpy.app.translations import (
     pgettext_iface as iface_,
     pgettext_tip as tip_,
 )
-
+from bl_ui.utils import PresetPanel
 
 # -----------------------------------------------------------------------------
 # Main Header
+
 
 class USERPREF_HT_header(Header):
     bl_space_type = 'PREFERENCES'
@@ -1399,54 +1400,15 @@ class USERPREF_PT_file_paths_render(FilePathsPanel, Panel):
         col.prop(paths, "render_cache_directory", text="Render Cache")
 
 
-class USERPREF_MT_text_editor_presets(Menu):
+class USERPREF_PT_text_editor_presets(PresetPanel, Panel):
     bl_label = "Text Editor Presets"
     preset_subdir = "text_editor"
     preset_operator = "script.execute_preset"
-    draw = Menu.draw_preset
+    preset_add_operator = "text_editor.preset_add"
 
 
 class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
     bl_label = "Applications"
-
-    _text_editor_args_prev = None
-    _preset_class = None
-
-    @staticmethod
-    def _draw_text_editor_label(*args):
-        base_class, text_editor, preset_label = args
-
-        if base_class._text_editor_args_prev == args:
-            return base_class._text_editor_ret
-
-        text_editor_label = text_editor
-        show_input = text_editor or preset_label == "Custom"
-
-        if show_input:
-            text_editor_label = tip_("External: %s") % text_editor
-        else:
-            text_editor_label = tip_("Internal")
-
-        base_class._text_editor_args_prev = args
-        base_class._text_editor_ret = args = (text_editor_label, show_input)
-        return args
-
-    @staticmethod
-    def draw_text_editor(layout, paths):
-        base_class = USERPREF_PT_file_paths_applications
-
-        if base_class._preset_class is None:
-            base_class._preset_class = bpy.types.USERPREF_MT_text_editor_presets
-
-        args = base_class, paths.text_editor, base_class._preset_class.bl_label
-        text_editor_label, show_input = base_class._draw_text_editor_label(*args)
-
-        layout.menu("USERPREF_MT_text_editor_presets", text=text_editor_label)
-
-        col = layout.column(align=True)
-        if show_input:
-            col.prop(paths, "text_editor", text="Path")
-            col.prop(paths, "text_editor_args", text="Args Format")
 
     def draw(self, context):
         layout = self.layout
@@ -1458,10 +1420,28 @@ class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
         col = layout.column()
         col.prop(paths, "image_editor", text="Image Editor")
         col = layout.column(heading="Text Editor")
-        self.draw_text_editor(col, paths)
         col.prop(paths, "animation_player_preset", text="Animation Player")
         if paths.animation_player_preset == 'CUSTOM':
             col.prop(paths, "animation_player", text="Player")
+
+
+class USERPREF_PT_text_editor(FilePathsPanel, Panel):
+    bl_label = "Text Editor"
+    bl_parent_id = "USERPREF_PT_file_paths_applications"
+
+    def draw_header_preset(self, _context):
+        USERPREF_PT_text_editor_presets.draw_panel_header(self.layout)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        paths = context.preferences.filepaths
+
+        col = layout.column()
+        col.prop(paths, "text_editor", text="Executable path")
+        col.prop(paths, "text_editor_args", text="Args Format")
 
 
 class USERPREF_PT_file_paths_development(FilePathsPanel, Panel):
@@ -2502,7 +2482,6 @@ classes = (
     USERPREF_MT_editor_menus,
     USERPREF_MT_view,
     USERPREF_MT_save_load,
-    USERPREF_MT_text_editor_presets,
 
     USERPREF_PT_interface_display,
     USERPREF_PT_interface_editors,
@@ -2557,6 +2536,8 @@ classes = (
     USERPREF_PT_file_paths_script_directories,
     USERPREF_PT_file_paths_render,
     USERPREF_PT_file_paths_applications,
+    USERPREF_PT_text_editor,
+    USERPREF_PT_text_editor_presets,
     USERPREF_PT_file_paths_development,
     USERPREF_PT_file_paths_asset_libraries,
 

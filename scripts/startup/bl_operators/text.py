@@ -14,6 +14,10 @@ class TEXT_OT_jump_to_file_at_point(Operator):
     column: IntProperty(name="column")
 
     def execute(self, context):
+        from string import Template
+        import shlex
+        import subprocess
+        
         if not self.properties.is_property_set("filepath"):
             text = context.space_data.text
             if not text:
@@ -35,21 +39,16 @@ class TEXT_OT_jump_to_file_at_point(Operator):
             self.report({'ERROR_INVALID_INPUT'}, "Text Editor Args Format must contain $file expansion specification")
             return {'CANCELLED'}
 
-        args = []
+        args = [text_editor]
         template_vars = {"file": self.filepath, "line": self.line, "column": self.column}
 
         try:
-            from string import Template
-            import shlex
-            args = [Template(arg).substitute(**template_vars) for arg in shlex.split(text_editor_args)]
+            args.extend([Template(arg).substitute(**template_vars) for arg in shlex.split(text_editor_args)])
         except Exception as ex:
             self.report({'ERROR'}, "Exception parsing template: %r" % ex)
             return {'CANCELLED'}
 
-        args.insert(0, text_editor)
-
         try:
-            import subprocess
             # whit check=True if process.returncode !=0 a exception will be raised
             process = subprocess.run(args, check=True)
             return {'FINISHED'}
