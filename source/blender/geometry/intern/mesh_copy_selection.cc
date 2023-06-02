@@ -274,12 +274,12 @@ std::optional<Mesh *> mesh_copy_selection(
   }
 
   if (vert_mask.is_empty()) {
-    return std::make_optional<Mesh *>(nullptr);
+    return nullptr;
   }
-  const bool same_vertices = vert_mask.size() == src_mesh.totvert;
+  const bool same_verts = vert_mask.size() == src_mesh.totvert;
   const bool same_edges = edge_mask.size() == src_mesh.totedge;
-  const bool same_polygons = poly_mask.size() == src_mesh.totpoly;
-  if (same_vertices && same_edges && same_polygons) {
+  const bool same_polys = poly_mask.size() == src_mesh.totpoly;
+  if (same_verts && same_edges && same_polys) {
     return std::nullopt;
   }
 
@@ -412,8 +412,8 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
   }
 
   const bool same_edges = edge_mask.size() == src_mesh.totedge;
-  const bool same_polygons = poly_mask.size() == src_mesh.totpoly;
-  if (same_edges && same_polygons) {
+  const bool same_polys = poly_mask.size() == src_mesh.totpoly;
+  if (same_edges && same_polys) {
     return std::nullopt;
   }
 
@@ -497,8 +497,8 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
       break;
   }
 
-  const bool same_polygons = poly_mask.size() == src_mesh.totpoly;
-  if (same_polygons) {
+  const bool same_polys = poly_mask.size() == src_mesh.totpoly;
+  if (same_polys) {
     return std::nullopt;
   }
 
