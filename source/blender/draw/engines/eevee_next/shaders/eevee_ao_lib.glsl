@@ -55,9 +55,8 @@ OcclusionData unpack_occlusion_data(vec4 v)
 
 vec2 get_ao_noise(ivec2 texel)
 {
-  texel += ivec2(sampling_rng_2D_get(SAMPLING_SHADOW_X) * UTIL_TEX_SIZE);
   vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).xy;
-  return noise;
+  return fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
 }
 
 vec2 get_ao_dir(float jitter)
