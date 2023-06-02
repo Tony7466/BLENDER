@@ -9,6 +9,7 @@ from bpy.types import (
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
+    EnumProperty,
     FloatVectorProperty,
     StringProperty,
 )
@@ -243,11 +244,93 @@ class NODE_OT_tree_path_parent(Operator):
         return {'FINISHED'}
 
 
+class NodeSocketCategoryOperator():
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        tree = snode.edit_tree
+        if tree is None:
+            return False
+        if tree.is_embedded_data:
+            return False
+        return True
+
+
+class NODE_OT_socket_category_add(NodeSocketCategoryOperator, Operator):
+    '''Add a new socket category to the tree'''
+    bl_idname = "node.function_parameter_add"
+    bl_label = "Add Socket Category"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        categories = tree.socket_categories
+
+        # Remember index to move the item
+        dst_index = min(categories.active_index + 1, len(categories))
+        categories.new("Category")
+        categories.move(len(categories) - 1, dst_index)
+        categories.active_index = dst_index
+
+        return {'FINISHED'}
+
+
+class NODE_OT_socket_category_remove(NodeSocketCategoryOperator, Operator):
+    '''Remove a socket category from the tree'''
+    bl_idname = "node.function_parameter_remove"
+    bl_label = "Remove Socket Category"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        categories = tree.socket_categories
+
+        if categories.active:
+            categories.remove(categories.active)
+            categories.active_index = min(categories.active_index, len(categories) - 1)
+
+        return {'FINISHED'}
+
+
+class NODE_OT_socket_category_move(NodeSocketCategoryOperator, Operator):
+    '''Move a socket category to another position'''
+    bl_idname = "node.function_parameter_move"
+    bl_label = "Move Socket Category"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default = 'UP',
+    )
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        categories = tree.socket_categories
+
+        if self.direction == 'UP' and categories.active_index > 0:
+            categories.move(categories.active_index, categories.active_index - 1)
+            categories.active_index -= 1
+        elif self.direction == 'DOWN' and categories.active_index < len(categories) - 1:
+            categories.move(categories.active_index, categories.active_index + 1)
+            categories.active_index += 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
     NODE_OT_collapse_hide_unused_toggle,
+    NODE_OT_socket_category_add,
+    NODE_OT_socket_category_remove,
+    NODE_OT_socket_category_move,
     NODE_OT_tree_path_parent,
 )

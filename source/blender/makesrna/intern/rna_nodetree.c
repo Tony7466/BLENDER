@@ -3311,7 +3311,6 @@ static bNodeSocketCategory *rna_NodeTree_socket_categories_new(bNodeTree *ntree,
 
 static void rna_NodeTree_socket_categories_remove(bNodeTree *ntree,
                                                   Main *bmain,
-                                                  ReportList *reports,
                                                   bNodeSocketCategory *category)
 {
   ntreeRemoveSocketCategory(ntree, category);
@@ -3358,7 +3357,7 @@ static PointerRNA rna_NodeTree_active_socket_category_get(PointerRNA *ptr)
   return r_ptr;
 }
 
-static void rna_NodeTree_active_socket_category_set(PointerRNA *ptr, PointerRNA value)
+static void rna_NodeTree_active_socket_category_set(PointerRNA *ptr, PointerRNA value, struct ReportList *UNUSED(reports))
 {
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
   bNodeTree *ntree = (bNodeTree *)ptr->data;
@@ -13136,12 +13135,13 @@ static void rna_def_node_tree_socket_categories_api(BlenderRNA *brna, PropertyRN
 
   prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodeSocketCategory");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop, "rna_NodeTree_active_socket_category_get", "rna_NodeTree_active_socket_category_set", NULL, NULL);
   RNA_def_property_ui_text(prop, "Active", "Active category");
   RNA_def_property_update(prop, NC_NODE, NULL);
 
   func = RNA_def_function(srna, "new", "rna_NodeTree_socket_categories_new");
-  RNA_def_function_ui_description(func, "Add a new socket category to this tree");
+  RNA_def_function_ui_description(func, "Add a new socket category to the tree");
   RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
@@ -13150,17 +13150,17 @@ static void rna_def_node_tree_socket_categories_api(BlenderRNA *brna, PropertyRN
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "remove", "rna_NodeTree_socket_categories_remove");
-  RNA_def_function_ui_description(func, "Remove a socket category from this tree");
-  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove a socket category from the tree");
+  RNA_def_function_flag(func, FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "category", "NodeSocketCategory", "", "The category to remove");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
   func = RNA_def_function(srna, "clear", "rna_NodeTree_socket_categories_clear");
-  RNA_def_function_ui_description(func, "Remove all categories from this tree");
+  RNA_def_function_ui_description(func, "Remove all categories from the tree");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
 
   func = RNA_def_function(srna, "move", "rna_NodeTree_socket_categories_move");
-  RNA_def_function_ui_description(func, "Move a category to another position");
+  RNA_def_function_ui_description(func, "Move a socket category to another position");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
   parm = RNA_def_int(func,
                      "from_index",

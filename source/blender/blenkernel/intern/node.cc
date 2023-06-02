@@ -3831,7 +3831,10 @@ void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category)
   --ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
-  for (const int i : new_categories.index_range().slice(index, new_categories.size() - index)) {
+  for (const int i : new_categories.index_range().take_front(index)) {
+    new_categories[i] = old_categories[i];
+  }
+  for (const int i : new_categories.index_range().drop_front(index)) {
     new_categories[i] = old_categories[i + 1];
   }
 
@@ -3852,31 +3855,25 @@ void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, in
     return;
   }
 
-  bNodeSocketCategory *old_categories_array = ntree->socket_categories_array;
-  const Span<bNodeSocketCategory> old_categories = ntree->socket_categories();
-  ntree->socket_categories_array = MEM_cnew_array<bNodeSocketCategory>(
-      ntree->socket_categories_num, "socket categories");
-  const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
+  const MutableSpan<bNodeSocketCategory> categories = ntree->socket_categories_for_write();
 
   if (old_index == new_index) {
     return;
   }
   else if (old_index < new_index) {
-    const bNodeSocketCategory tmp = old_categories[old_index];
+    const bNodeSocketCategory tmp = categories[old_index];
     for (int i = old_index; i < new_index; ++i) {
-      new_categories[i] = old_categories[i + 1];
+      categories[i] = categories[i + 1];
     }
-    new_categories[new_index] = tmp;
+    categories[new_index] = tmp;
   }
-  else /* from_index > to_index */ {
-    const bNodeSocketCategory tmp = old_categories[old_index];
+  else /* old_index > new_index */ {
+    const bNodeSocketCategory tmp = categories[old_index];
     for (int i = old_index; i > new_index; --i) {
-      new_categories[i] = old_categories[i - 1];
+      categories[i] = categories[i - 1];
     }
-    new_categories[new_index] = tmp;
+    categories[new_index] = tmp;
   }
-
-  MEM_SAFE_FREE(old_categories_array);
 }
 
 namespace blender::bke {
