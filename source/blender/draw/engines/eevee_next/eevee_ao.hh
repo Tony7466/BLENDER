@@ -65,7 +65,10 @@ class AmbientOcclusion {
     inst_.raytracing.bind_resources(pass);
     pass->bind_texture(RBUFS_UTILITY_TEX_SLOT, &inst_.pipelines.utility_tx);
     pass->bind_ubo(AO_BUF_SLOT, &data_);
-    pass->bind_texture(AO_HORIZONS_TEX_SLOT, data_.enabled ? &horizons_tx_ : &dummy_horizons_tx_);
+    if (bind_horizons) {
+      pass->bind_texture(AO_HORIZONS_TEX_SLOT,
+                         data_.enabled ? &horizons_tx_ : &dummy_horizons_tx_);
+    }
   }
 };
 
