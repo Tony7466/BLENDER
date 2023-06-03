@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -208,7 +210,7 @@ static void mesh_attributes_copy_to_bmesh_block(CustomData &data,
   }
 }
 
-void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshParams *params)
+void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const BMeshFromMeshParams *params)
 {
   if (!me) {
     /* Sanity check. */
@@ -964,18 +966,18 @@ static void bm_to_mesh_shape(BMesh *bm,
 static void assert_bmesh_has_no_mesh_only_attributes(const BMesh &bm)
 {
   (void)bm; /* Unused in the release builds. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_edge") == nullptr);
+  BLI_assert(!CustomData_has_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position"));
+  BLI_assert(!CustomData_has_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_vert"));
+  BLI_assert(!CustomData_has_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_edge"));
 
   /* The "hide" attributes are stored as flags on #BMesh. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".hide_edge") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".hide_poly") == nullptr);
+  BLI_assert(!CustomData_has_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert"));
+  BLI_assert(!CustomData_has_layer_named(&bm.edata, CD_PROP_BOOL, ".hide_edge"));
+  BLI_assert(!CustomData_has_layer_named(&bm.pdata, CD_PROP_BOOL, ".hide_poly"));
   /* The "selection" attributes are stored as flags on #BMesh. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".select_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".select_edge") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".select_poly") == nullptr);
+  BLI_assert(!CustomData_has_layer_named(&bm.vdata, CD_PROP_BOOL, ".select_vert"));
+  BLI_assert(!CustomData_has_layer_named(&bm.edata, CD_PROP_BOOL, ".select_edge"));
+  BLI_assert(!CustomData_has_layer_named(&bm.pdata, CD_PROP_BOOL, ".select_poly"));
 }
 
 static void bmesh_to_mesh_calc_object_remap(Main &bmain,
@@ -1276,6 +1278,9 @@ static void bm_to_mesh_verts(const BMesh &bm,
       bmesh_block_copy_to_mesh_attributes(info, vert_i, src_vert.head.data);
       any_loose_vert_local = any_loose_vert_local || src_vert.e == nullptr;
     }
+    if (any_loose_vert_local) {
+      any_loose_vert.store(true, std::memory_order_relaxed);
+    }
     if (!select_vert.is_empty()) {
       for (const int vert_i : range) {
         select_vert[vert_i] = BM_elem_flag_test(bm_verts[vert_i], BM_ELEM_SELECT);
@@ -1341,7 +1346,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
   });
 
   if (!any_loose_edge) {
-    mesh.loose_edges_tag_none();
+    mesh.tag_loose_edges_none();
   }
 }
 
@@ -1404,7 +1409,7 @@ static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loop
 
 }  // namespace blender
 
-void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMeshParams *params)
+void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const BMeshToMeshParams *params)
 {
   using namespace blender;
   const int old_verts_num = me->totvert;

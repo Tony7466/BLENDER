@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_camera_types.h"
 #include "DRW_render.h"
@@ -333,6 +335,8 @@ class VolumePass {
   Texture dummy_shadow_tx_ = {"Volume.Dummy Shadow Tx"};
   Texture dummy_volume_tx_ = {"Volume.Dummy Volume Tx"};
   Texture dummy_coba_tx_ = {"Volume.Dummy Coba Tx"};
+
+  GPUTexture *stencil_tx_ = nullptr;
 
   GPUShader *shaders_[2 /*slice*/][2 /*coba*/][3 /*interpolation*/][2 /*smoke*/];
 

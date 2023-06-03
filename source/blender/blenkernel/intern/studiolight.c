@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006-2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006-2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -103,7 +104,7 @@ static const char *STUDIOLIGHT_MATCAP_DEFAULT = "basic_1.exr";
     } \
   } while (0)
 
-static void studiolight_free(struct StudioLight *sl)
+static void studiolight_free(StudioLight *sl)
 {
 #define STUDIOLIGHT_DELETE_ICON(s) \
   do { \
@@ -138,9 +139,9 @@ static void studiolight_free(struct StudioLight *sl)
   MEM_SAFE_FREE(sl);
 }
 
-static struct StudioLight *studiolight_create(int flag)
+static StudioLight *studiolight_create(int flag)
 {
-  struct StudioLight *sl = MEM_callocN(sizeof(*sl), __func__);
+  StudioLight *sl = MEM_callocN(sizeof(*sl), __func__);
   sl->filepath[0] = 0x00;
   sl->name[0] = 0x00;
   sl->path_irr_cache = NULL;
@@ -484,7 +485,7 @@ static void studiolight_create_equirect_radiance_gputexture(StudioLight *sl)
                                                              1,
                                                              GPU_RGBA16F,
                                                              GPU_TEXTURE_USAGE_SHADER_READ,
-                                                             ibuf->rect_float);
+                                                             ibuf->float_buffer.data);
     GPUTexture *tex = sl->equirect_radiance_gputexture;
     GPU_texture_filter_mode(tex, true);
     GPU_texture_extend_mode(tex, GPU_SAMPLER_EXTEND_MODE_REPEAT);
@@ -498,7 +499,7 @@ static void studiolight_create_matcap_gputexture(StudioLightImage *sli)
   ImBuf *ibuf = sli->ibuf;
   float *gpu_matcap_3components = MEM_callocN(sizeof(float[3]) * ibuf->x * ibuf->y, __func__);
 
-  const float(*offset4)[4] = (const float(*)[4])ibuf->rect_float;
+  const float(*offset4)[4] = (const float(*)[4])ibuf->float_buffer.data;
   float(*offset3)[3] = (float(*)[3])gpu_matcap_3components;
   for (int i = 0; i < ibuf->x * ibuf->y; i++, offset4++, offset3++) {
     copy_v3_v3(*offset3, *offset4);
@@ -545,7 +546,7 @@ static void studiolight_create_equirect_irradiance_gputexture(StudioLight *sl)
                                                                1,
                                                                GPU_RGBA16F,
                                                                GPU_TEXTURE_USAGE_SHADER_READ,
-                                                               ibuf->rect_float);
+                                                               ibuf->float_buffer.data);
     GPUTexture *tex = sl->equirect_irradiance_gputexture;
     GPU_texture_filter_mode(tex, true);
     GPU_texture_extend_mode(tex, GPU_SAMPLER_EXTEND_MODE_REPEAT);
@@ -681,7 +682,7 @@ static void studiolight_spherical_harmonics_calculate_coefficients(StudioLight *
 
   for (int face = 0; face < 6; face++) {
     ITER_PIXELS (float,
-                 sl->radiance_cubemap_buffers[face]->rect_float,
+                 sl->radiance_cubemap_buffers[face]->float_buffer.data,
                  4,
                  STUDIOLIGHT_RADIANCE_CUBEMAP_SIZE,
                  STUDIOLIGHT_RADIANCE_CUBEMAP_SIZE)
@@ -976,7 +977,7 @@ BLI_INLINE void studiolight_evaluate_specular_radiance_buffer(ImBuf *radiance_bu
   float accum[3] = {0.0f, 0.0f, 0.0f};
   float accum_weight = 0.00001f;
   ITER_PIXELS (float,
-               radiance_buffer->rect_float,
+               radiance_buffer->float_buffer.data,
                4,
                STUDIOLIGHT_RADIANCE_CUBEMAP_SIZE,
                STUDIOLIGHT_RADIANCE_CUBEMAP_SIZE)
@@ -1444,13 +1445,13 @@ void BKE_studiolight_init(void)
 
 void BKE_studiolight_free(void)
 {
-  struct StudioLight *sl;
+  StudioLight *sl;
   while ((sl = BLI_pophead(&studiolights))) {
     studiolight_free(sl);
   }
 }
 
-struct StudioLight *BKE_studiolight_find_default(int flag)
+StudioLight *BKE_studiolight_find_default(int flag)
 {
   const char *default_name = "";
 
@@ -1475,7 +1476,7 @@ struct StudioLight *BKE_studiolight_find_default(int flag)
   return NULL;
 }
 
-struct StudioLight *BKE_studiolight_find(const char *name, int flag)
+StudioLight *BKE_studiolight_find(const char *name, int flag)
 {
   LISTBASE_FOREACH (StudioLight *, sl, &studiolights) {
     if (STREQLEN(sl->name, name, FILE_MAXFILE)) {
@@ -1491,7 +1492,7 @@ struct StudioLight *BKE_studiolight_find(const char *name, int flag)
   return BKE_studiolight_find_default(flag);
 }
 
-struct StudioLight *BKE_studiolight_findindex(int index, int flag)
+StudioLight *BKE_studiolight_findindex(int index, int flag)
 {
   LISTBASE_FOREACH (StudioLight *, sl, &studiolights) {
     if (sl->index == index) {
@@ -1502,7 +1503,7 @@ struct StudioLight *BKE_studiolight_findindex(int index, int flag)
   return BKE_studiolight_find_default(flag);
 }
 
-struct ListBase *BKE_studiolight_listbase(void)
+ListBase *BKE_studiolight_listbase(void)
 {
   return &studiolights;
 }

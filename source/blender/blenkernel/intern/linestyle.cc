@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -682,7 +683,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleColorModifier_DistanceFromObject *cm =
             (LineStyleColorModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &cm->target);
+        BLO_read_id_address(reader, id, &cm->target);
         break;
       }
     }
@@ -692,7 +693,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleAlphaModifier_DistanceFromObject *am =
             (LineStyleAlphaModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &am->target);
+        BLO_read_id_address(reader, id, &am->target);
         break;
       }
     }
@@ -702,7 +703,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleThicknessModifier_DistanceFromObject *tm =
             (LineStyleThicknessModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &tm->target);
+        BLO_read_id_address(reader, id, &tm->target);
         break;
       }
     }
@@ -710,8 +711,8 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
   for (int a = 0; a < MAX_MTEX; a++) {
     MTex *mtex = linestyle->mtex[a];
     if (mtex) {
-      BLO_read_id_address(reader, linestyle->id.lib, &mtex->tex);
-      BLO_read_id_address(reader, linestyle->id.lib, &mtex->object);
+      BLO_read_id_address(reader, id, &mtex->tex);
+      BLO_read_id_address(reader, id, &mtex->object);
     }
   }
 }
@@ -788,7 +789,7 @@ void BKE_linestyle_init(FreestyleLineStyle *linestyle)
   linestyle_init_data(&linestyle->id);
 }
 
-FreestyleLineStyle *BKE_linestyle_new(struct Main *bmain, const char *name)
+FreestyleLineStyle *BKE_linestyle_new(Main *bmain, const char *name)
 {
   FreestyleLineStyle *linestyle;
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -745,7 +747,7 @@ const char *RNA_path_array_index_token_find(const char *rna_path, const Property
 /* generic path search func
  * if its needed this could also reference the IDProperty direct */
 typedef struct IDP_Chain {
-  struct IDP_Chain *up; /* parent member, reverse and set to child for path conversion. */
+  IDP_Chain *up; /* parent member, reverse and set to child for path conversion. */
 
   const char *name;
   int index;
@@ -1018,7 +1020,7 @@ char *RNA_path_from_ID_to_struct(const PointerRNA *ptr)
   return ptrpath;
 }
 
-char *RNA_path_from_real_ID_to_struct(Main *bmain, const PointerRNA *ptr, struct ID **r_real)
+char *RNA_path_from_real_ID_to_struct(Main *bmain, const PointerRNA *ptr, ID **r_real)
 {
   char *path = RNA_path_from_ID_to_struct(ptr);
 

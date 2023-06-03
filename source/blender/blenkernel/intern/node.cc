@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -879,9 +880,9 @@ static void ntree_blend_read_data(BlendDataReader *reader, ID *id)
   ntreeBlendReadData(reader, nullptr, ntree);
 }
 
-static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSocket *sock)
+static void lib_link_node_socket(BlendLibReader *reader, ID *self_id, bNodeSocket *sock)
 {
-  IDP_BlendReadLib(reader, lib, sock->prop);
+  IDP_BlendReadLib(reader, self_id, sock->prop);
 
   /* This can happen for all socket types when a file is saved in an older version of Blender than
    * it was originally created in (#86298). Some socket types still require a default value. The
@@ -893,26 +894,27 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
       BLO_read_id_address(
-          reader, lib, &sock->default_value_typed<bNodeSocketValueObject>()->value);
+          reader, self_id, &sock->default_value_typed<bNodeSocketValueObject>()->value);
       break;
     }
     case SOCK_IMAGE: {
-      BLO_read_id_address(reader, lib, &sock->default_value_typed<bNodeSocketValueImage>()->value);
+      BLO_read_id_address(
+          reader, self_id, &sock->default_value_typed<bNodeSocketValueImage>()->value);
       break;
     }
     case SOCK_COLLECTION: {
       BLO_read_id_address(
-          reader, lib, &sock->default_value_typed<bNodeSocketValueCollection>()->value);
+          reader, self_id, &sock->default_value_typed<bNodeSocketValueCollection>()->value);
       break;
     }
     case SOCK_TEXTURE: {
       BLO_read_id_address(
-          reader, lib, &sock->default_value_typed<bNodeSocketValueTexture>()->value);
+          reader, self_id, &sock->default_value_typed<bNodeSocketValueTexture>()->value);
       break;
     }
     case SOCK_MATERIAL: {
       BLO_read_id_address(
-          reader, lib, &sock->default_value_typed<bNodeSocketValueMaterial>()->value);
+          reader, self_id, &sock->default_value_typed<bNodeSocketValueMaterial>()->value);
       break;
     }
     case SOCK_FLOAT:
@@ -929,32 +931,30 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
   }
 }
 
-static void lib_link_node_sockets(BlendLibReader *reader, Library *lib, ListBase *sockets)
+static void lib_link_node_sockets(BlendLibReader *reader, ID *self_id, ListBase *sockets)
 {
   LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-    lib_link_node_socket(reader, lib, sock);
+    lib_link_node_socket(reader, self_id, sock);
   }
 }
 
 void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
 {
-  Library *lib = ntree->id.lib;
-
-  BLO_read_id_address(reader, lib, &ntree->gpd);
+  BLO_read_id_address(reader, &ntree->id, &ntree->gpd);
 
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     /* Link ID Properties -- and copy this comment EXACTLY for easy finding
      * of library blocks that implement this. */
-    IDP_BlendReadLib(reader, lib, node->prop);
+    IDP_BlendReadLib(reader, &ntree->id, node->prop);
 
-    BLO_read_id_address(reader, lib, &node->id);
+    BLO_read_id_address(reader, &ntree->id, &node->id);
 
-    lib_link_node_sockets(reader, lib, &node->inputs);
-    lib_link_node_sockets(reader, lib, &node->outputs);
+    lib_link_node_sockets(reader, &ntree->id, &node->inputs);
+    lib_link_node_sockets(reader, &ntree->id, &node->outputs);
   }
 
-  lib_link_node_sockets(reader, lib, &ntree->inputs);
-  lib_link_node_sockets(reader, lib, &ntree->outputs);
+  lib_link_node_sockets(reader, &ntree->id, &ntree->inputs);
+  lib_link_node_sockets(reader, &ntree->id, &ntree->outputs);
 
   /* Set `node->typeinfo` pointers. This is done in lib linking, after the
    * first versioning that can change types still without functions that
@@ -1353,6 +1353,7 @@ namespace blender::bke {
 
 static GHash *nodetreetypes_hash = nullptr;
 static GHash *nodetypes_hash = nullptr;
+static GHash *nodetypes_alias_hash = nullptr;
 static GHash *nodesockettypes_hash = nullptr;
 
 }  // namespace blender::bke
@@ -1417,6 +1418,19 @@ bNodeType *nodeTypeFind(const char *idname)
   return nullptr;
 }
 
+const char *nodeTypeFindAlias(const char *alias)
+{
+  if (alias[0]) {
+    const char *idname = static_cast<const char *>(
+        BLI_ghash_lookup(blender::bke::nodetypes_alias_hash, alias));
+    if (idname) {
+      return idname;
+    }
+  }
+
+  return alias;
+}
+
 static void node_free_type(void *nodetype_v)
 {
   bNodeType *nodetype = static_cast<bNodeType *>(nodetype_v);
@@ -1457,6 +1471,11 @@ void nodeRegisterType(bNodeType *nt)
 void nodeUnregisterType(bNodeType *nt)
 {
   BLI_ghash_remove(blender::bke::nodetypes_hash, nt->idname, nullptr, node_free_type);
+}
+
+void nodeRegisterAlias(bNodeType *nt, const char *alias)
+{
+  BLI_ghash_insert(blender::bke::nodetypes_alias_hash, BLI_strdup(alias), BLI_strdup(nt->idname));
 }
 
 namespace blender::bke {
@@ -1757,7 +1776,7 @@ void nodeModifySocketType(bNodeTree *ntree,
     if (sock->type != socktype->type) {
       /* Only reallocate the default value if the type changed so that UI data like min and max
        * isn't removed. This assumes that the default value is stored in the same format for all
-       * socket types with the same #eNodeSocketDatatype.  */
+       * socket types with the same #eNodeSocketDatatype. */
       socket_id_user_decrement(sock);
       MEM_freeN(sock->default_value);
       sock->default_value = nullptr;
@@ -4390,6 +4409,7 @@ void BKE_node_system_init()
 {
   blender::bke::nodetreetypes_hash = BLI_ghash_str_new("nodetreetypes_hash gh");
   blender::bke::nodetypes_hash = BLI_ghash_str_new("nodetypes_hash gh");
+  blender::bke::nodetypes_alias_hash = BLI_ghash_str_new("nodetypes_alias_hash gh");
   blender::bke::nodesockettypes_hash = BLI_ghash_str_new("nodesockettypes_hash gh");
 
   register_nodes();
@@ -4397,6 +4417,11 @@ void BKE_node_system_init()
 
 void BKE_node_system_exit()
 {
+  if (blender::bke::nodetypes_alias_hash) {
+    BLI_ghash_free(blender::bke::nodetypes_alias_hash, MEM_freeN, MEM_freeN);
+    blender::bke::nodetypes_alias_hash = nullptr;
+  }
+
   if (blender::bke::nodetypes_hash) {
     NODE_TYPES_BEGIN (nt) {
       if (nt->rna_ext.free) {

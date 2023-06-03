@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -835,7 +836,7 @@ int DRW_curve_material_count_get(Curve *cu)
 /** \name Grouped batch generation
  * \{ */
 
-void DRW_curve_batch_cache_create_requested(Object *ob, const struct Scene *scene)
+void DRW_curve_batch_cache_create_requested(Object *ob, const Scene *scene)
 {
   BLI_assert(ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF, OB_FONT));
 

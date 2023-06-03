@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -448,6 +450,7 @@ static const EnumPropertyItem rna_enum_view3dshading_render_pass_type_items[] = 
     {EEVEE_RENDER_PASS_ENVIRONMENT, "ENVIRONMENT", 0, "Environment", ""},
     {EEVEE_RENDER_PASS_AO, "AO", 0, "Ambient Occlusion", ""},
     {EEVEE_RENDER_PASS_SHADOW, "SHADOW", 0, "Shadow", ""},
+    {EEVEE_RENDER_PASS_TRANSPARENT, "TRANSPARENT", 0, "Transparent", ""},
 
     RNA_ENUM_ITEM_HEADING(N_("Light"), NULL),
     {EEVEE_RENDER_PASS_DIFFUSE_LIGHT, "DIFFUSE_LIGHT", 0, "Diffuse Light", ""},
@@ -7164,7 +7167,7 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
                                     NULL,
                                     NULL,
                                     NULL);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_int(srna,
                      "bookmarks_active",
@@ -7195,7 +7198,7 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
                                     NULL,
                                     NULL,
                                     NULL);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_int(srna,
                      "recent_folders_active",
