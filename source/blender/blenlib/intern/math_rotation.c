@@ -2049,22 +2049,6 @@ void add_weighted_dq_dq(DualQuat *dq_sum, const DualQuat *dq, float weight)
 {
   bool flipped = false;
 
-  /* FIX https://projects.blender.org/blender/blender/issues/32022 */
-  DualQuat mdq;
-  if (dq->scale_weight) {
-    memcpy(&mdq, dq, sizeof(DualQuat));
-    float w = mdq.quat[0], x = mdq.quat[1], y = mdq.quat[2], z = mdq.quat[3];
-    float dstx = mdq.scale[3][0], dsty = mdq.scale[3][1], dstz = mdq.scale[3][2];
-    mdq.scale[3][0] -= dstx;
-    mdq.scale[3][1] -= dsty;
-    mdq.scale[3][2] -= dstz;
-    mdq.trans[0] -= .5f * (x * dstx + y * dsty + z * dstz);
-    mdq.trans[1] += .5f * (w * dstx + y * dstz - z * dsty);
-    mdq.trans[2] += .5f * (w * dsty + z * dstx - x * dstz);
-    mdq.trans[3] += .5f * (w * dstz + x * dsty - y * dstx);
-    dq = &mdq;
-  }
-
   /* make sure we interpolate quats in the right direction */
   if (dot_qtqt(dq->quat, dq_sum->quat) < 0) {
     flipped = true;
