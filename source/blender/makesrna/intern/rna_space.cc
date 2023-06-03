@@ -2502,7 +2502,16 @@ static PointerRNA rna_SpaceNode_overlay_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_SpaceNodeOverlay, ptr->data);
 }
 
+<<<<<<< HEAD:source/blender/makesrna/intern/rna_space.cc
 static char *rna_SpaceNodeOverlay_path(const PointerRNA * /*ptr*/)
+=======
+static bool rna_SpaceNode_supports_previews(PointerRNA *ptr)
+{
+  return ED_node_supports_preview((SpaceNode *)ptr->data);
+}
+
+static char *rna_SpaceNodeOverlay_path(const PointerRNA *UNUSED(ptr))
+>>>>>>> 584e584fdb0 (Add preview option from nodeArea options.):source/blender/makesrna/intern/rna_space.c
 {
   return BLI_strdup("overlay");
 }
@@ -7401,7 +7410,18 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_ui_text(
       prop, "Show Named Attributes", "Show when nodes are using named attributes");
+<<<<<<< HEAD:source/blender/makesrna/intern/rna_space.cc
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+=======
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, NULL);
+  
+  prop = RNA_def_property(srna, "show_previews", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "overlay.flag", SN_OVERLAY_SHOW_PREVIEWS);
+  RNA_def_property_boolean_default(prop, false);
+  RNA_def_property_ui_text(
+      prop, "Show Node Previews", "Display each node's preview if node is toggled");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, NULL);
+>>>>>>> 584e584fdb0 (Add preview option from nodeArea options.):source/blender/makesrna/intern/rna_space.c
 }
 
 static void rna_def_space_node(BlenderRNA *brna)
@@ -7620,6 +7640,10 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, "rna_SpaceNode_overlay_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Overlay Settings", "Settings for display of overlays in the Node Editor");
+
+  prop = RNA_def_property(srna, "supports_preview", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_SpaceNode_supports_previews", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   rna_def_space_node_overlay(brna);
   RNA_api_space_node(srna);

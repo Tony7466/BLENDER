@@ -2109,7 +2109,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     rctf preview_rect;
 
     extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
-    extra_info_rect.xmax = extra_info_rect.xmax + width;
+    extra_info_rect.xmax = extra_info_rect.xmin + width;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
     if (preview) {
@@ -2191,7 +2191,7 @@ static void node_draw_basis(const bContext &C,
   bNodeInstanceHash *previews =
       (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
   bNodePreview *preview = nullptr;
-  if (node.flag & NODE_PREVIEW && previews) {
+  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
     preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
     if (!preview || !(preview->xsize && preview->ysize)) {
       preview = nullptr;
