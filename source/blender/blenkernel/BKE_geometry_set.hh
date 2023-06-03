@@ -282,6 +282,10 @@ struct GeometrySet {
    */
   bool has_curves() const;
   /**
+   * Returns true when the geometry set has a curves component that has a curves data-block.
+   */
+  bool has_gizmos() const;
+  /**
    * Returns true when the geometry set has any data that is not an instance.
    */
   bool has_realized_data() const;
@@ -306,6 +310,10 @@ struct GeometrySet {
    * Returns a read-only curves data-block or null.
    */
   const Curves *get_curves_for_read() const;
+  /**
+   * Returns a read-only curves data-block or null.
+   */
+  const blender::bke::GizmosGeometry *get_gizmos_for_read() const;
   /**
    * Returns read-only instances or null.
    */

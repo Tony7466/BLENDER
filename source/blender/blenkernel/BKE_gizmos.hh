@@ -30,6 +30,11 @@ class GizmosGeometry {
   int pathes_num() const;
   int gizmos_num() const;
 
+  const Span<std::string> pathes() const
+  {
+    return paths_;
+  }
+
   /**
    * Remove the indices that are not contained in the mask input, and remove unused pathes
    * afterwards.

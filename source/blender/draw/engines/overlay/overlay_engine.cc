@@ -20,6 +20,7 @@
 #include "BKE_duplilist.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_geometry_set.hh"
 
 #include "GPU_capabilities.h"
 
@@ -367,6 +368,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
   const bool draw_motion_paths = (pd->overlay.flag & V3D_OVERLAY_HIDE_MOTION_PATHS) == 0;
 
+  const bool draw_geometry_node_gizmos = ob->runtime.geometry_set_eval->has_gizmos();
+
   bool do_init;
   OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &do_init);
 
@@ -482,6 +485,11 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
+  
+  if (draw_geometry_node_gizmos) {
+    //OVERLAY_geometry_node_gizmo_cache_populate(data, ob); ?
+  }
+  
   /* Non-Meshes */
   if (draw_extras) {
     switch (ob->type) {
