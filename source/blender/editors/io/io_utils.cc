@@ -3,14 +3,14 @@
 #if defined(WITH_COLLADA) || defined(WITH_IO_GPENCIL) || defined(WITH_IO_WAVEFRONT_OBJ) || \
     defined(WITH_IO_PLY) || defined(WITH_IO_STL) || defined(WITH_USD)
 
-#  include "DNA_space_types.h"
-
 #  include "BKE_context.h"
 
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
 #  include "BLT_translation.h"
+
+#  include "DNA_space_types.h"
 
 #  include "ED_fileselect.h"
 
@@ -20,6 +20,7 @@
 #  include "UI_interface.h"
 
 #  include "WM_api.h"
+
 #  include "io_utils.hh"
 
 int wm_io_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */)
@@ -53,26 +54,7 @@ void skip_save_import_paths_props(wmOperatorType *ot, const eFileSel_Flag flag)
   }
 }
 
-void files_drop_copy(bContext * /* C */, wmDrag *drag, wmDropBox *drop)
-{
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
-  if (!RNA_struct_find_property(drop->ptr, "directory")) {
-    return;
-  }
-
-  // TODO(@guishe): Add support for multiple drag&drop files import
-  char dir[FILE_MAX], file[FILE_MAX];
-  BLI_path_split_dir_file(WM_drag_get_path(drag), dir, sizeof(dir), file, sizeof(file));
-
-  RNA_string_set(drop->ptr, "directory", dir);
-  
-  RNA_collection_clear(drop->ptr, "files");
-  PointerRNA itemptr;
-  RNA_collection_add(drop->ptr, "files", &itemptr);
-  RNA_string_set(&itemptr, "name", file);
-}
-
-void files_drop_info_draw(bContext *C, wmOperator *op, int icon)
+void files_drop_label_draw(bContext *C, wmOperator *op, int icon)
 {
   ScrArea *area = CTX_wm_area(C);
   if (area->spacetype == SPACE_FILE) {

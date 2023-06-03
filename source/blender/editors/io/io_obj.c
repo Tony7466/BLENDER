@@ -454,7 +454,7 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
   PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
-  files_drop_info_draw(C, op, ICON_FILE_3D);
+  files_drop_label_draw(C, op, ICON_FILE_3D);
   ui_obj_import_settings(op->layout, &ptr);
 }
 
@@ -480,7 +480,9 @@ void WM_OT_obj_import(struct wmOperatorType *ot)
                                      WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+
   skip_save_import_paths_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES);
+
   RNA_def_float(
       ot->srna,
       "global_scale",

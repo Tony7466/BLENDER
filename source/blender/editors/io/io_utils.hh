@@ -17,12 +17,8 @@ struct wmDrag;
 struct wmDropBox;
 
 int wm_io_import_invoke(bContext *C, wmOperator *op, const wmEvent *event);
-
 void skip_save_import_paths_props(wmOperatorType *ot, const eFileSel_Flag flag);
-
-void files_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop);
-
-void files_drop_info_draw(bContext *C, wmOperator *op, int icon);
+void files_drop_label_draw(bContext *C, wmOperator *op, int icon);
 
 #  ifdef __cplusplus
 }
