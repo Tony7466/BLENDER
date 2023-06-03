@@ -171,6 +171,9 @@ class IMAGE_MT_select(Menu):
         layout.operator("uv.select_split")
         layout.operator("uv.select_overlap")
 
+        layout.separator()
+        layout.operator("uv.select_random")
+
 
 class IMAGE_MT_select_linked(Menu):
     bl_label = "Select Linked"

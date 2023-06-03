@@ -33,6 +33,8 @@
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
+#include "BLI_rand.h"
+#include "BLI_rand.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -3161,11 +3163,13 @@ static int uv_select_split_exec(bContext *C, wmOperator *op)
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
 
         if (BM_ELEM_CD_GET_BOOL(l, offsets.select_vert) ||
-            BM_ELEM_CD_GET_BOOL(l, offsets.select_edge)) {
+            BM_ELEM_CD_GET_BOOL(l, offsets.select_edge))
+        {
           is_sel = true;
         }
         if (!BM_ELEM_CD_GET_BOOL(l, offsets.select_vert) ||
-            !BM_ELEM_CD_GET_BOOL(l, offsets.select_edge)) {
+            !BM_ELEM_CD_GET_BOOL(l, offsets.select_edge))
+        {
           is_unsel = true;
         }
 
@@ -3313,7 +3317,8 @@ static void uv_select_flush_from_tag_face(const Scene *scene, Object *obedit, co
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
   if ((ts->uv_flag & UV_SYNC_SELECTION) == 0 &&
-      ELEM(ts->uv_sticky, SI_STICKY_VERTEX, SI_STICKY_LOC)) {
+      ELEM(ts->uv_sticky, SI_STICKY_VERTEX, SI_STICKY_LOC))
+  {
 
     uint efa_index;
 
@@ -3456,7 +3461,8 @@ static void uv_select_flush_from_loop_edge_flag(const Scene *scene, BMEditMesh *
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
   if ((ts->uv_flag & UV_SYNC_SELECTION) == 0 &&
-      ELEM(ts->uv_sticky, SI_STICKY_LOC, SI_STICKY_VERTEX)) {
+      ELEM(ts->uv_sticky, SI_STICKY_LOC, SI_STICKY_VERTEX))
+  {
     /* Use UV edge selection to identify which verts must to be selected */
     uint efa_index;
     /* Clear UV vert flags */
@@ -4076,7 +4082,8 @@ static bool do_lasso_select_mesh_uv(bContext *C,
           BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
             float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
             if (do_lasso_select_mesh_uv_is_edge_inside(
-                    region, &rect, mcoords, mcoords_len, luv, luv_prev)) {
+                    region, &rect, mcoords, mcoords_len, luv, luv_prev))
+            {
               uvedit_edge_select_set_with_sticky(scene, em, l_prev, select, false, offsets);
               changed = true;
             }
@@ -5646,6 +5653,413 @@ void UV_OT_select_mode(wmOperatorType *ot)
   ot->prop = prop = RNA_def_enum(
       ot->srna, "type", rna_enum_mesh_select_mode_uv_items, 0, "Type", "");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Select Random Operator
+ * \{ */
+static int uv_select_random_vert(bContext *C, wmOperator *op)
+{
+  const bool select = (RNA_enum_get(op->ptr, "action") == SEL_SELECT);
+  const float randfac = RNA_float_get(op->ptr, "ratio");
+  const int seed = WM_operator_properties_select_random_seed_increment_get(op);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  BMFace *efa;
+  BMLoop *l;
+  BMIter iter, liter;
+  const ToolSettings *ts = scene->toolsettings;
+  blender::RandomNumberGenerator rng;
+  rng.seed(seed);
+
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, ((View3D *)nullptr), &objects_len);
+
+  if (ts->uv_flag & UV_SYNC_SELECTION) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      BMIter iter;
+      int seed_iter = seed;
+
+      /* This gives a consistent result regardless of object order. */
+      if (ob_index) {
+        seed_iter += BLI_ghashutil_strhash_p(obedit->id.name);
+      }
+
+      EDBM_select_random(em, &iter, seed_iter, randfac, select);
+
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  /*Random selection when sticky is disabled*/
+  if (ts->uv_sticky == SI_STICKY_DISABLE) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+          /*Randomly choose selection state*/
+          bool select_rand = rng.get_float() < randfac;
+          if (select_rand) {
+            BM_ELEM_CD_SET_BOOL(l, offsets.select_vert, select);
+          }
+        }
+      }
+
+      uvedit_select_flush(scene, em);
+
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  /*Random selection when shared vertex is enabled*/
+  if (ts->uv_sticky == SI_STICKY_VERTEX) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+      UvElementMap *elementmap = BM_uv_element_map_create(em->bm, scene, false, false, true, true);
+
+      /*Clear tags*/
+      bm_loop_tags_clear(em->bm);
+
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        if (uvedit_face_visible_test(scene, efa)) {
+
+          BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+            if (!BM_elem_flag_test(l, BM_ELEM_TAG)) {
+
+              UvElement *initelement = elementmap->vertex[BM_elem_index_get(l->v)];
+
+              /*Randomly choose selection state*/
+              bool select_rand = rng.get_float() < randfac;
+
+              for (UvElement *element = initelement; element; element = element->next) {
+                BM_elem_flag_enable(element->l, BM_ELEM_TAG);
+                if (select_rand) {
+                  BM_ELEM_CD_SET_BOOL(element->l, offsets.select_vert, select);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      uvedit_select_flush(scene, em);
+
+      BM_uv_element_map_free(elementmap);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  /*Random selection when shared location is enabled (fallback)*/
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+    UvElementMap *elementmap = BM_uv_element_map_create(em->bm, scene, false, false, true, true);
+
+    /*Clear tags*/
+    bm_loop_tags_clear(em->bm);
+
+    BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+      if (uvedit_face_visible_test(scene, efa)) {
+
+        BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+          if (!BM_elem_flag_test(l, BM_ELEM_TAG)) {
+
+            UvElement *initelement = elementmap->vertex[BM_elem_index_get(l->v)];
+
+            /*Randomly choose selection state*/
+            bool select_rand = rng.get_float() < randfac;
+
+            for (UvElement *element = initelement; element; element = element->next) {
+              if (element->separate) {
+                select_rand = rng.get_float() < randfac;
+                BM_elem_flag_enable(element->l, BM_ELEM_TAG);
+                if (select_rand) {
+                  BM_ELEM_CD_SET_BOOL(element->l, offsets.select_vert, select);
+                }
+              }
+              else {
+                BM_elem_flag_enable(element->l, BM_ELEM_TAG);
+                if (select_rand) {
+                  BM_ELEM_CD_SET_BOOL(element->l, offsets.select_vert, select);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    uvedit_select_flush(scene, em);
+
+    BM_uv_element_map_free(elementmap);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+  }
+
+  MEM_freeN(objects);
+  return OPERATOR_FINISHED;
+}
+
+static int uv_select_random_edge(bContext *C, wmOperator *op)
+{
+  const float randfac = RNA_float_get(op->ptr, "ratio");
+  const bool select = (RNA_enum_get(op->ptr, "action") == SEL_SELECT);
+  const int seed = WM_operator_properties_select_random_seed_increment_get(op);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  BMFace *efa;
+  BMLoop *l;
+  BMIter iter, liter;
+  const ToolSettings *ts = scene->toolsettings;
+  blender::RandomNumberGenerator rng;
+  rng.seed(seed);
+
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, ((View3D *)nullptr), &objects_len);
+
+  if (ts->uv_flag & UV_SYNC_SELECTION) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      BMIter iter;
+      int seed_iter = seed;
+
+      /* This gives a consistent result regardless of object order. */
+      if (ob_index) {
+        seed_iter += BLI_ghashutil_strhash_p(obedit->id.name);
+      }
+
+      EDBM_select_random(em, &iter, seed_iter, randfac, select);
+
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  /*Select random when sticky is disabled*/
+  if (ts->uv_sticky == SI_STICKY_DISABLE) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        if (uvedit_face_visible_test(scene, efa)) {
+          BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+            /*Randomly choose selection state*/
+            bool select_rand = rng.get_float() < randfac;
+            if (select_rand) {
+              BM_ELEM_CD_SET_BOOL(l, offsets.select_edge, select);
+            }
+          }
+        }
+      }
+
+      uv_select_flush_from_loop_edge_flag(scene, em);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  /*Random selection when shared vertex is enabled*/
+  if (ts->uv_sticky == SI_STICKY_VERTEX) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
+      /*Clear tags*/
+      bm_loop_tags_clear(em->bm);
+
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        if (uvedit_face_visible_test(scene, efa)) {
+          BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+            if (!BM_elem_flag_test(l, BM_ELEM_TAG)) {
+
+              /*Randomly choose selection state*/
+              bool select_rand = rng.get_float() < randfac;
+              BMLoop *l_iter = l;
+              do {
+                BM_elem_flag_enable(l_iter, BM_ELEM_TAG);
+                if (select_rand) {
+                  BM_ELEM_CD_SET_BOOL(l_iter, offsets.select_edge, select);
+                }
+              } while ((l_iter = l_iter->radial_next) != l);
+            }
+          }
+        }
+      }
+
+      uv_select_flush_from_loop_edge_flag(scene, em);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  /*Random selection when shared location is enabled (fallback)*/
+
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
+    /*Clear tags*/
+    bm_loop_tags_clear(em->bm);
+
+    BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+      if (uvedit_face_visible_test(scene, efa)) {
+        BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+          if (!BM_elem_flag_test(l, BM_ELEM_TAG)) {
+
+            /*Randomly choose selection state*/
+            bool select_rand = rng.get_float() < randfac;
+            BMLoop *l_iter = l;
+            do {
+              if (BM_loop_uv_share_edge_check(l, l_iter, offsets.uv)) {
+                BM_elem_flag_enable(l_iter, BM_ELEM_TAG);
+                if (select_rand) {
+                  BM_ELEM_CD_SET_BOOL(l_iter, offsets.select_edge, select);
+                }
+              }
+
+            } while ((l_iter = l_iter->radial_next) != l);
+          }
+        }
+      }
+    }
+
+    uv_select_flush_from_loop_edge_flag(scene, em);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+  }
+  MEM_freeN(objects);
+  return OPERATOR_FINISHED;
+}
+
+static int uv_select_random_face(bContext *C, wmOperator *op)
+{
+  const float randfac = RNA_float_get(op->ptr, "ratio");
+  const bool select = (RNA_enum_get(op->ptr, "action") == SEL_SELECT);
+  const int seed = WM_operator_properties_select_random_seed_increment_get(op);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  BMFace *efa;
+  BMIter iter;
+  const ToolSettings *ts = scene->toolsettings;
+  blender::RandomNumberGenerator rng;
+  rng.seed(seed);
+
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, ((View3D *)nullptr), &objects_len);
+
+  if (ts->uv_flag & UV_SYNC_SELECTION) {
+    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      BMIter iter;
+      int seed_iter = seed;
+
+      /* This gives a consistent result regardless of object order. */
+      if (ob_index) {
+        seed_iter += BLI_ghashutil_strhash_p(obedit->id.name);
+      }
+
+      EDBM_select_random(em, &iter, seed_iter, randfac, select);
+
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
+
+    MEM_freeN(objects);
+    return OPERATOR_FINISHED;
+  }
+
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
+    BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+      /*Randomly choose selection state*/
+      bool select_rand = rng.get_float() < randfac;
+
+      if (select_rand) {
+        uvedit_face_select_set_with_sticky(scene, em, efa, select, false, offsets);
+      }
+    }
+
+    uvedit_select_flush(scene, em);
+
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+  }
+
+  MEM_freeN(objects);
+  return OPERATOR_FINISHED;
+}
+
+static int uv_select_random_exec(bContext *C, wmOperator *op)
+{
+  ToolSettings *ts = CTX_data_tool_settings(C);
+
+  if (ts->uv_selectmode == UV_SELECT_VERTEX) {
+    return uv_select_random_vert(C, op);
+  }
+  else if (ts->uv_selectmode == UV_SELECT_EDGE) {
+    return uv_select_random_edge(C, op);
+  }
+  else {
+    return uv_select_random_face(C, op);
+  }
+}
+
+void UV_OT_select_random(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select Random";
+  ot->description = "Randomly select vertices";
+  ot->idname = "UV_OT_select_random";
+
+  /* api callbacks */
+  ot->exec = uv_select_random_exec;
+  ot->poll = ED_operator_uvedit;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* props */
+  WM_operator_properties_select_random(ot);
 }
 
 /** \} */

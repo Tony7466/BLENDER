@@ -174,6 +174,7 @@ void UV_OT_select_more(struct wmOperatorType *ot);
 void UV_OT_select_less(struct wmOperatorType *ot);
 void UV_OT_select_overlap(struct wmOperatorType *ot);
 void UV_OT_select_similar(struct wmOperatorType *ot);
+void UV_OT_select_random(struct wmOperatorType *ot);
 /* Used only when UV sync select is disabled. */
 void UV_OT_select_mode(struct wmOperatorType *ot);
 

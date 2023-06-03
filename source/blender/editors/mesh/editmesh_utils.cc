@@ -19,6 +19,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+#include "BLI_rand.h"
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_context.h"
@@ -421,6 +422,72 @@ void EDBM_select_less(BMEditMesh *em, const bool use_face_step)
 
   /* only needed for select less, ensure we don't have isolated elements remaining */
   BM_mesh_select_mode_clean(em->bm);
+}
+
+void EDBM_select_random(
+    BMEditMesh *em, BMIter *iter, const int seed_iter, const float randfac, const bool select)
+{
+
+  if (em->selectmode & SCE_SELECT_VERTEX) {
+    int elem_map_len = 0;
+    BMVert **elem_map = static_cast<BMVert **>(
+        MEM_mallocN(sizeof(*elem_map) * em->bm->totvert, __func__));
+    BMVert *eve;
+    BM_ITER_MESH (eve, iter, em->bm, BM_VERTS_OF_MESH) {
+      if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
+        elem_map[elem_map_len++] = eve;
+      }
+    }
+
+    BLI_array_randomize(elem_map, sizeof(*elem_map), elem_map_len, seed_iter);
+    const int count_select = elem_map_len * randfac;
+    for (int i = 0; i < count_select; i++) {
+      BM_vert_select_set(em->bm, elem_map[i], select);
+    }
+    MEM_freeN(elem_map);
+  }
+  else if (em->selectmode & SCE_SELECT_EDGE) {
+    int elem_map_len = 0;
+    BMEdge **elem_map = static_cast<BMEdge **>(
+        MEM_mallocN(sizeof(*elem_map) * em->bm->totedge, __func__));
+    BMEdge *eed;
+    BM_ITER_MESH (eed, iter, em->bm, BM_EDGES_OF_MESH) {
+      if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
+        elem_map[elem_map_len++] = eed;
+      }
+    }
+    BLI_array_randomize(elem_map, sizeof(*elem_map), elem_map_len, seed_iter);
+    const int count_select = elem_map_len * randfac;
+    for (int i = 0; i < count_select; i++) {
+      BM_edge_select_set(em->bm, elem_map[i], select);
+    }
+    MEM_freeN(elem_map);
+  }
+  else {
+    int elem_map_len = 0;
+    BMFace **elem_map = static_cast<BMFace **>(
+        MEM_mallocN(sizeof(*elem_map) * em->bm->totface, __func__));
+    BMFace *efa;
+    BM_ITER_MESH (efa, iter, em->bm, BM_FACES_OF_MESH) {
+      if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+        elem_map[elem_map_len++] = efa;
+      }
+    }
+    BLI_array_randomize(elem_map, sizeof(*elem_map), elem_map_len, seed_iter);
+    const int count_select = elem_map_len * randfac;
+    for (int i = 0; i < count_select; i++) {
+      BM_face_select_set(em->bm, elem_map[i], select);
+    }
+    MEM_freeN(elem_map);
+  }
+
+  if (select) {
+    /* was EDBM_select_flush, but it over select in edge/face mode */
+    EDBM_selectmode_flush(em);
+  }
+  else {
+    EDBM_deselect_flush(em);
+  }
 }
 
 void EDBM_flag_disable_all(BMEditMesh *em, const char hflag)
@@ -1943,7 +2010,8 @@ void EDBM_project_snap_verts(
     if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
       float mval[2], co_proj[3];
       if (ED_view3d_project_float_object(region, eve->co, mval, V3D_PROJ_TEST_NOP) ==
-          V3D_PROJ_RET_OK) {
+          V3D_PROJ_RET_OK)
+      {
         SnapObjectParams params{};
         params.snap_target_select = target_op;
         params.edit_mode_type = SNAP_GEOM_FINAL;

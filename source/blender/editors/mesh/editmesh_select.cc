@@ -4721,66 +4721,7 @@ static int edbm_select_random_exec(bContext *C, wmOperator *op)
       seed_iter += BLI_ghashutil_strhash_p(obedit->id.name);
     }
 
-    if (em->selectmode & SCE_SELECT_VERTEX) {
-      int elem_map_len = 0;
-      BMVert **elem_map = static_cast<BMVert **>(
-          MEM_mallocN(sizeof(*elem_map) * em->bm->totvert, __func__));
-      BMVert *eve;
-      BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
-        if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
-          elem_map[elem_map_len++] = eve;
-        }
-      }
-
-      BLI_array_randomize(elem_map, sizeof(*elem_map), elem_map_len, seed_iter);
-      const int count_select = elem_map_len * randfac;
-      for (int i = 0; i < count_select; i++) {
-        BM_vert_select_set(em->bm, elem_map[i], select);
-      }
-      MEM_freeN(elem_map);
-    }
-    else if (em->selectmode & SCE_SELECT_EDGE) {
-      int elem_map_len = 0;
-      BMEdge **elem_map = static_cast<BMEdge **>(
-          MEM_mallocN(sizeof(*elem_map) * em->bm->totedge, __func__));
-      BMEdge *eed;
-      BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
-        if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          elem_map[elem_map_len++] = eed;
-        }
-      }
-      BLI_array_randomize(elem_map, sizeof(*elem_map), elem_map_len, seed_iter);
-      const int count_select = elem_map_len * randfac;
-      for (int i = 0; i < count_select; i++) {
-        BM_edge_select_set(em->bm, elem_map[i], select);
-      }
-      MEM_freeN(elem_map);
-    }
-    else {
-      int elem_map_len = 0;
-      BMFace **elem_map = static_cast<BMFace **>(
-          MEM_mallocN(sizeof(*elem_map) * em->bm->totface, __func__));
-      BMFace *efa;
-      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          elem_map[elem_map_len++] = efa;
-        }
-      }
-      BLI_array_randomize(elem_map, sizeof(*elem_map), elem_map_len, seed_iter);
-      const int count_select = elem_map_len * randfac;
-      for (int i = 0; i < count_select; i++) {
-        BM_face_select_set(em->bm, elem_map[i], select);
-      }
-      MEM_freeN(elem_map);
-    }
-
-    if (select) {
-      /* was EDBM_select_flush, but it over select in edge/face mode */
-      EDBM_selectmode_flush(em);
-    }
-    else {
-      EDBM_deselect_flush(em);
-    }
+    EDBM_select_random(em, &iter, seed_iter, randfac, select);
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
