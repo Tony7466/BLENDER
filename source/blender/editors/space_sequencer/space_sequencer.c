@@ -671,6 +671,56 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
+static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
+{
+  SpaceSeq *sseq = (SpaceSeq *)area->spacedata.first;
+  View2D *v2d = &region->v2d;
+  Scene *scene = win->scene;
+  Editing *ed = SEQ_editing_get(scene);
+  int wmcursor = WM_CURSOR_DEFAULT;
+
+  if (ed == NULL) {
+    WM_cursor_set(win, wmcursor);
+    return;
+  }
+
+  float view_x;
+  float view_y;
+  UI_view2d_region_to_view(&region->v2d,
+                           win->eventstate->xy[0] - region->winrct.xmin,
+                           win->eventstate->xy[1] - region->winrct.ymin,
+                           &view_x,
+                           &view_y);
+  float pixelx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
+  rctf rectf;
+
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+
+    if (SEQ_transform_is_locked(ed->displayed_channels, seq)) {
+      break;
+    }
+
+    seq_rectf(scene, seq, &rectf);
+    if (BLI_rctf_isect_pt(&rectf, view_x, view_y)) {
+      if ((seq->flag & (SEQ_LEFTSEL | SEQ_RIGHTSEL)) != 0) {
+        wmcursor = WM_CURSOR_X_MOVE;
+      }
+      else {
+        float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx);
+        if ((view_x < rectf.xmin + handsize) || (view_x > rectf.xmax - handsize)) {
+          wmcursor = WM_CURSOR_X_MOVE;
+        }
+        else {
+          wmcursor = WM_CURSOR_NSEW_SCROLL;
+        }
+      }
+      break;
+    }
+  }
+
+  WM_cursor_set(win, wmcursor);
+}
+
 /* *********************** header region ************************ */
 /* Add handlers, stuff you only do once or on area/region changes. */
 static void sequencer_header_region_init(wmWindowManager *UNUSED(wm), ARegion *region)
@@ -1034,6 +1084,10 @@ void ED_spacetype_sequencer(void)
   art->message_subscribe = sequencer_main_region_message_subscribe;
   art->keymapflag = ED_KEYMAP_TOOL | ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES |
                     ED_KEYMAP_ANIMATION;
+  art->cursor = sequencer_cursor;
+  art->event_cursor = true;
+  art->clip_gizmo_events_by_ui = true;
+
   BLI_addhead(&st->regiontypes, art);
 
   /* Preview. */

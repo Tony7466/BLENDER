@@ -643,7 +643,8 @@ static void draw_seq_handle(const Scene *scene,
                             uint pos,
                             bool seq_active,
                             float pixelx,
-                            bool y_threshold)
+                            bool y_threshold,
+                            bool is_overlapping)
 {
   float rx1 = 0, rx2 = 0;
   float x1, x2, y1, y2;
@@ -668,26 +669,24 @@ static void draw_seq_handle(const Scene *scene,
     whichsel = SEQ_RIGHTSEL;
   }
 
-  if (!(seq->type & SEQ_TYPE_EFFECT) || SEQ_effect_get_num_inputs(seq->type) == 0) {
+  if ((seq->flag & whichsel) &&
+      (!(seq->type & SEQ_TYPE_EFFECT) ||
+      SEQ_effect_get_num_inputs(seq->type) == 0))
+  {
     GPU_blend(GPU_BLEND_ALPHA);
 
-    GPU_blend(GPU_BLEND_ALPHA);
-
-    if (seq->flag & whichsel) {
-      if (seq_active) {
-        UI_GetThemeColor3ubv(TH_SEQ_ACTIVE, col);
-      }
-      else {
-        UI_GetThemeColor3ubv(TH_SEQ_SELECTED, col);
-        /* Make handles slightly brighter than the outlines. */
-        UI_GetColorPtrShade3ubv(col, col, 50);
-      }
-      col[3] = 255;
-      immUniformColor4ubv(col);
+    if (is_overlapping) {
+      col[0] = 255;
+      col[1] = col[2] = 33;
+    }
+    else if (seq_active) {
+      UI_GetThemeColor3ubv(TH_SEQ_ACTIVE, col);
     }
     else {
-      immUniformColor4ub(0, 0, 0, 50);
+      UI_GetThemeColor3ubv(TH_SEQ_SELECTED, col);
     }
+    col[3] = 255;
+    immUniformColor4ubv(col);
 
     immRectf(pos, rx1, y1, rx2, y2);
     GPU_blend(GPU_BLEND_NONE);
@@ -712,7 +711,7 @@ static void draw_seq_handle(const Scene *scene,
 
     if ((x2 - x1) / pixelx > 20 + tot_width) {
       col[0] = col[1] = col[2] = col[3] = 255;
-      float text_margin = 1.2f * handsize_clamped;
+      float text_margin = (seq->flag & whichsel) ? 1.2f * handsize_clamped : 3.0f * pixelx;
 
       if (direction == SEQ_LEFTHANDLE) {
         numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_left_handle_frame_get(scene, seq));
@@ -738,7 +737,9 @@ static void draw_seq_outline(Scene *scene,
                              float y2,
                              float pixelx,
                              float pixely,
-                             bool seq_active)
+                             bool seq_active,
+                             bool is_moving,
+                             bool is_overlapping)
 {
   uchar col[3];
 
@@ -758,10 +759,8 @@ static void draw_seq_outline(Scene *scene,
    *  - Slightly lighter.
    *  - Red when overlapping with other strips.
    */
-  const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(scene);
-  if ((G.moving & G_TRANSFORM_SEQ) && (seq->flag & SELECT) &&
-      overlap_mode != SEQ_OVERLAP_OVERWRITE) {
-    if (seq->flag & SEQ_OVERLAP) {
+  if (is_moving) {
+    if (is_overlapping) {
       col[0] = 255;
       col[1] = col[2] = 33;
     }
@@ -769,6 +768,7 @@ static void draw_seq_outline(Scene *scene,
       UI_GetColorPtrShade3ubv(col, col, 70);
     }
   }
+
   immUniformColor3ubv(col);
 
   /* 2px wide outline for selected strips. */
@@ -1302,6 +1302,12 @@ static void draw_seq_strip(const bContext *C,
 {
   Editing *ed = SEQ_editing_get(CTX_data_scene(C));
   ListBase *channels = SEQ_channels_displayed_get(ed);
+  const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(scene);
+  bool is_locked = SEQ_transform_is_locked(channels, seq);
+  bool is_selected = seq->flag & SELECT;
+  bool is_moving = is_selected && G.moving & G_TRANSFORM_SEQ &&
+                   overlap_mode != SEQ_OVERLAP_OVERWRITE;
+  bool is_overlapping = seq->flag & SEQ_OVERLAP;
 
   View2D *v2d = &region->v2d;
   float x1, x2, y1, y2;
@@ -1394,7 +1400,7 @@ static void draw_seq_strip(const bContext *C,
         C, region, seq, x1, y_threshold ? y1 + 0.05f : y1, x2, y_threshold ? text_margin_y : y2);
   }
   /* Draw locked state. */
-  if (SEQ_transform_is_locked(channels, seq)) {
+  if (is_locked) {
     draw_seq_locked(x1, y1, x2, y2);
   }
 
@@ -1406,14 +1412,32 @@ static void draw_seq_strip(const bContext *C,
   pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (!SEQ_transform_is_locked(channels, seq)) {
-    draw_seq_handle(
-        scene, v2d, seq, handsize_clamped, SEQ_LEFTHANDLE, pos, seq_active, pixelx, y_threshold);
-    draw_seq_handle(
-        scene, v2d, seq, handsize_clamped, SEQ_RIGHTHANDLE, pos, seq_active, pixelx, y_threshold);
+  if ((seq->flag & (SEQ_LEFTSEL | SEQ_RIGHTSEL)) != 0 && !is_locked) {
+    draw_seq_handle(scene,
+                    v2d,
+                    seq,
+                    handsize_clamped,
+                    SEQ_LEFTHANDLE,
+                    pos,
+                    seq_active,
+                    pixelx,
+                    y_threshold,
+                    is_overlapping);
+    draw_seq_handle(scene,
+                    v2d,
+                    seq,
+                    handsize_clamped,
+                    SEQ_RIGHTHANDLE,
+                    pos,
+                    seq_active,
+                    pixelx,
+                    y_threshold,
+                    is_overlapping);
   }
-
-  draw_seq_outline(scene, seq, pos, x1, x2, y1, y2, pixelx, pixely, seq_active);
+  else {
+    draw_seq_outline(
+        scene, seq, pos, x1, x2, y1, y2, pixelx, pixely, seq_active, is_moving, is_overlapping);
+  }
 
   immUnbindProgram();
 
