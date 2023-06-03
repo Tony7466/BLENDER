@@ -892,10 +892,11 @@ static void node_resize_exit(bContext *C, wmOperator *op, bool cancel)
 {
   WM_cursor_modal_restore(CTX_wm_window(C));
 
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNode *node = nodeGetActive(snode->edittree);
+
   /* Restore old data on cancel. */
   if (cancel) {
-    SpaceNode *snode = CTX_wm_space_node(C);
-    bNode *node = nodeGetActive(snode->edittree);
     NodeSizeWidget *nsw = (NodeSizeWidget *)op->customdata;
 
     node->locx = nsw->oldlocx;
@@ -905,6 +906,15 @@ static void node_resize_exit(bContext *C, wmOperator *op, bool cancel)
     node->width = nsw->oldwidth;
     node->height = nsw->oldheight;
   }
+
+  if (node->is_frame()) {
+    NodeFrame *data = static_cast<NodeFrame *>(node->storage);
+    data->flag &= ~NODE_FRAME_RESIZING;
+  }
+
+  bNodeTree *node_tree = snode->edittree;
+  node_tree_update_frame_attachment(*node_tree);
+  ED_node_tree_propagate_change(C, CTX_data_main(C), node_tree);
 
   MEM_freeN(op->customdata);
   op->customdata = nullptr;
@@ -1032,6 +1042,25 @@ static int node_resize_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   const NodeResizeDirection dir = node_get_resize_direction(*snode, node, cursor.x, cursor.y);
   if (dir == NODE_RESIZE_NONE) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
+  if (node->is_frame()) {
+    NodeFrame *data = static_cast<NodeFrame *>(node->storage);
+    data->flag |= NODE_FRAME_RESIZING;
+
+    bNodeTree &node_tree = *snode->edittree;
+    node_sort(node_tree);
+
+    /* Move child nodes up one level in the parenting hierarchy during resizing. */
+    LISTBASE_FOREACH (bNode *, child_node, &node_tree.nodes) {
+      if (child_node->parent != node) {
+        continue;
+      }
+      nodeDetachNode(&node_tree, child_node);
+      if (node->parent) {
+        nodeAttachNode(&node_tree, child_node, node->parent);
+      }
+    }
   }
 
   node_resize_init(C, op, cursor, node, dir);

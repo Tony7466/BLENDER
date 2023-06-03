@@ -1678,8 +1678,8 @@ typedef struct NodeShaderMix {
 
 /* Frame node flags. */
 
-#define NODE_FRAME_SHRINK 1     /* keep the bounding box minimal */
-#define NODE_FRAME_RESIZEABLE 2 /* test flag, if frame can be resized by user */
+#define NODE_FRAME_SHRINK 1   /* keep the bounding box minimal */
+#define NODE_FRAME_RESIZING 2 /* temporary flag for when the frame is resized by user */
 
 /* Proxy node flags. */
 

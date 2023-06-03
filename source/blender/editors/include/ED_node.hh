@@ -26,6 +26,8 @@ void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region);
 void node_insert_on_link_flags(Main &bmain, SpaceNode &snode);
 void node_insert_on_link_flags_clear(bNodeTree &node_tree);
 
+void node_tree_update_frame_attachment(bNodeTree &ntree);
+
 /**
  * Draw a single node socket at default size.
  * \note this is only called from external code, internally #node_socket_draw_nested() is used for

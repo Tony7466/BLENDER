@@ -257,6 +257,24 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
     return false;
   }
 
+  /* Put frames in the back during resizing. Otherwise the bigger frame should be behind. */
+  if (a->is_frame() && b->is_frame()) {
+    if (static_cast<NodeFrame *>(a->storage)->flag & NODE_FRAME_RESIZING) {
+      return true;
+    }
+    if (static_cast<NodeFrame *>(b->storage)->flag & NODE_FRAME_RESIZING) {
+      return false;
+    }
+
+    rctf *rect_a = &a->runtime->totr;
+    rctf *rect_b = &b->runtime->totr;
+
+    const float area_a = BLI_rctf_size_x(rect_a) * BLI_rctf_size_y(rect_a);
+    const float area_b = BLI_rctf_size_x(rect_b) * BLI_rctf_size_y(rect_b);
+
+    return area_a > area_b;
+  }
+
   /* One has a higher selection state (active > selected > nothing). */
   if (a_active && !b_active) {
     return false;
@@ -2748,31 +2766,34 @@ static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
   rctf rect;
   node_to_updated_rect(node, rect);
 
-  /* Frame can be resized manually only if shrinking is disabled or no children are attached. */
-  data->flag |= NODE_FRAME_RESIZEABLE;
+  /* Shrinking is disabled while resizing the node. */
+  const bool shrink = (data->flag & NODE_FRAME_SHRINK) &&
+                      ((data->flag & NODE_FRAME_RESIZING) == 0);
+
   /* For shrinking bounding box, initialize the rect from first child node. */
-  bool bbinit = (data->flag & NODE_FRAME_SHRINK);
-  /* Fit bounding box to all children. */
-  for (const bNode *tnode : nodes) {
-    if (tnode->parent != &node) {
-      continue;
-    }
+  if (shrink) {
+    bool bbinit = true;
+    /* Fit bounding box to all children. */
+    for (const bNode *tnode : nodes) {
+      if (tnode->parent != &node) {
+        continue;
+      }
 
-    /* Add margin to node rect. */
-    rctf noderect = tnode->runtime->totr;
-    noderect.xmin -= margin;
-    noderect.xmax += margin;
-    noderect.ymin -= margin;
-    noderect.ymax += margin_top;
+      /* Add margin to node rect. */
+      rctf noderect = tnode->runtime->totr;
+      noderect.xmin -= margin;
+      noderect.xmax += margin;
+      noderect.ymin -= margin;
+      noderect.ymax += margin_top;
 
-    /* First child initializes frame. */
-    if (bbinit) {
-      bbinit = false;
-      rect = noderect;
-      data->flag &= ~NODE_FRAME_RESIZEABLE;
-    }
-    else {
-      BLI_rctf_union(&rect, &noderect);
+      /* First child initializes frame. */
+      if (bbinit) {
+        bbinit = false;
+        rect = noderect;
+      }
+      else {
+        BLI_rctf_union(&rect, &noderect);
+      }
     }
   }
 

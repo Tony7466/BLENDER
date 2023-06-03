@@ -315,7 +315,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
 
       char str_attach_km[64];
       WM_modalkeymap_items_to_string(
-          t->keymap, TFM_MODAL_NODE_ATTACH_OFF, true, str_attach_km, sizeof(str_attach_km));
+          t->keymap, TFM_MODAL_NODE_LINK_ATTACH_OFF, true, str_attach_km, sizeof(str_attach_km));
       ofs += BLI_snprintf_rlen(
           str + ofs, UI_MAX_DRAW_STR - ofs, TIP_(", %s: Toggle auto-attach"), str_attach_km);
     }

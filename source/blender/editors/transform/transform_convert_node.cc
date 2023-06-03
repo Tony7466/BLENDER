@@ -31,26 +31,31 @@
 
 #include "WM_api.h"
 
-struct TransCustomDataNode {
+struct TransInfoCustomDataNode {
   View2DEdgePanData edgepan_data;
 
   /* Compare if the view has changed so we can update with `transformViewUpdate`. */
   rctf viewrect_prev;
+  eTModifier attachment_state;
+};
+
+struct TransCustomDataNode {
+  /* For reversible unparenting during transform. */
+  bNode *parent;
 };
 
 /* -------------------------------------------------------------------- */
 /** \name Node Transform Creation
  * \{ */
 
-static void create_transform_data_for_node(TransData &td,
-                                           TransData2D &td2d,
-                                           bNode &node,
-                                           const float dpi_fac)
+static void create_transform_data_for_node(
+    TransData &td, TransData2D &td2d, TransCustomDataNode &tdc, bNode &node, const float dpi_fac)
 {
   float locx, locy;
 
   /* account for parents (nested nodes) */
   if (node.parent) {
+    tdc.parent = node.parent;
     blender::bke::nodeToView(node.parent,
                              node.locx + roundf(node.offsetx),
                              node.locy + roundf(node.offsety),
@@ -101,6 +106,40 @@ static bool is_node_parent_select(const bNode *node)
   return false;
 }
 
+static void node_transform_restore_parenting_hierarchy(TransDataContainer *tc,
+                                                       bNodeTree &node_tree)
+{
+  for (int i = 0; i < tc->data_len; i++) {
+    TransData *td = &tc->data[i];
+    bNode *node = static_cast<bNode *>(td->extra);
+
+    TransCustomDataNode *tdc = static_cast<TransCustomDataNode *>(tc->custom.type.data);
+    bNode *parent_node = tdc[i].parent;
+
+    if (parent_node == nullptr) {
+      continue;
+    }
+
+    nodeAttachNode(&node_tree, node, parent_node);
+  }
+}
+
+static void node_transform_detach_nodes(bNodeTree &node_tree)
+{
+  for (bNode *node : blender::ed::space_node::get_selected_nodes(node_tree)) {
+    if (node->parent == nullptr) {
+      continue;
+    }
+    if (is_node_parent_select(node)) {
+      /* When a parent frame is transformed together with the node we don't need to clear
+       * the parenting. */
+      continue;
+    }
+
+    nodeDetachNode(&node_tree, node);
+  }
+}
+
 static void createTransNodeData(bContext * /*C*/, TransInfo *t)
 {
   using namespace blender;
@@ -112,7 +151,7 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
   }
 
   /* Custom data to enable edge panning during the node transform */
-  TransCustomDataNode *customdata = MEM_cnew<TransCustomDataNode>(__func__);
+  TransInfoCustomDataNode *customdata = MEM_cnew<TransInfoCustomDataNode>(__func__);
   UI_view2d_edge_pan_init(t->context,
                           &customdata->edgepan_data,
                           NODE_EDGE_PAN_INSIDE_PAD,
@@ -123,11 +162,15 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
                           NODE_EDGE_PAN_ZOOM_INFLUENCE);
   customdata->viewrect_prev = customdata->edgepan_data.initial_rect;
 
-  if (t->modifiers & MOD_NODE_ATTACH) {
+  if (t->modifiers & MOD_NODE_LINK_ATTACH) {
     space_node::node_insert_on_link_flags_set(*snode, *t->region);
   }
   else {
-    space_node::node_insert_on_link_flags_clear(*snode->edittree);
+    space_node::node_insert_on_link_flags_clear(*node_tree);
+  }
+
+  if (t->modifiers & MOD_NODE_FRAME_ATTACH) {
+    node_transform_detach_nodes(*node_tree);
   }
 
   t->custom.type.data = customdata;
@@ -147,9 +190,13 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
   tc->data_len = nodes.size();
   tc->data = MEM_cnew_array<TransData>(tc->data_len, __func__);
   tc->data_2d = MEM_cnew_array<TransData2D>(tc->data_len, __func__);
+  tc->custom.type.data = MEM_cnew_array<TransCustomDataNode>(tc->data_len, __func__);
+  tc->custom.type.use_free = true;
 
   for (const int i : nodes.index_range()) {
-    create_transform_data_for_node(tc->data[i], tc->data_2d[i], *nodes[i], UI_SCALE_FAC);
+    TransCustomDataNode *data_node = static_cast<TransCustomDataNode *>(tc->custom.type.data);
+    create_transform_data_for_node(
+        tc->data[i], tc->data_2d[i], data_node[i], *nodes[i], UI_SCALE_FAC);
   }
 }
 
@@ -207,8 +254,9 @@ static void flushTransNodes(TransInfo *t)
   using namespace blender::ed;
   const float dpi_fac = UI_SCALE_FAC;
   SpaceNode *snode = static_cast<SpaceNode *>(t->area->spacedata.first);
+  bNodeTree &node_tree = *snode->edittree;
 
-  TransCustomDataNode *customdata = (TransCustomDataNode *)t->custom.type.data;
+  TransInfoCustomDataNode *customdata = (TransInfoCustomDataNode *)t->custom.type.data;
 
   if (t->options & CTX_VIEW2D_EDGE_PAN) {
     if (t->state == TRANS_CANCEL) {
@@ -264,13 +312,31 @@ static void flushTransNodes(TransInfo *t)
       }
     }
 
-    /* handle intersection with noodles */
-    if (tc->data_len == 1) {
-      if (t->modifiers & MOD_NODE_ATTACH) {
+    /* Handle intersection with node links. */
+    if (t->modifiers & MOD_NODE_LINK_ATTACH) {
+      if (tc->data_len == 1) {
         space_node::node_insert_on_link_flags_set(*snode, *t->region);
       }
+    }
+    else {
+      if (tc->data_len == 1) {
+        space_node::node_insert_on_link_flags_clear(node_tree);
+      }
+    }
+
+    /* Handle detaching nodes from parent frames. */
+    const bool frame_attachment_state_changed = (t->modifiers & MOD_NODE_FRAME_ATTACH) !=
+                                                (customdata->attachment_state &
+                                                 MOD_NODE_FRAME_ATTACH);
+
+    if (frame_attachment_state_changed) {
+      if (t->modifiers & MOD_NODE_FRAME_ATTACH) {
+        node_transform_detach_nodes(node_tree);
+        customdata->attachment_state = MOD_NODE_FRAME_ATTACH;
+      }
       else {
-        space_node::node_insert_on_link_flags_clear(*snode->edittree);
+        node_transform_restore_parenting_hierarchy(tc, node_tree);
+        customdata->attachment_state &= ~MOD_NODE_FRAME_ATTACH;
       }
     }
   }
@@ -305,12 +371,13 @@ static void special_aftertrans_update__node(bContext *C, TransInfo *t)
 
   if (!canceled) {
     ED_node_post_apply_transform(C, snode->edittree);
-    if (t->modifiers & MOD_NODE_ATTACH) {
+    if (t->modifiers & MOD_NODE_LINK_ATTACH) {
       space_node::node_insert_on_link_flags(*bmain, *snode);
     }
   }
 
   space_node::node_insert_on_link_flags_clear(*ntree);
+  space_node::node_tree_update_frame_attachment(*ntree);
 
   wmOperatorType *ot = WM_operatortype_find("NODE_OT_insert_offset", true);
   BLI_assert(ot);

@@ -1885,83 +1885,66 @@ void NODE_OT_join(wmOperatorType *ot)
 /** \name Attach Operator
  * \{ */
 
-static bNode *node_find_frame_to_attach(ARegion &region,
-                                        const bNodeTree &ntree,
-                                        const int2 mouse_xy)
+static bool node_can_be_attached_to_frame(const bNode &node, const bNode &frame)
 {
-  /* convert mouse coordinates to v2d space */
-  float2 cursor;
-  UI_view2d_region_to_view(&region.v2d, mouse_xy.x, mouse_xy.y, &cursor.x, &cursor.y);
+  if (&node == &frame) {
+    return false;
+  }
+  if (node.parent == nullptr) {
+    return true;
+  }
+
+  /* Check if the direct parent of the node is also an ancestor of the frame. */
+  for (bNode *frame_ancestor = frame.parent; frame_ancestor;
+       frame_ancestor = frame_ancestor->parent) {
+    if (frame_ancestor == node.parent) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static bool node_is_inside_parent_frame(const bNode &node)
+{
+  if (node.parent == nullptr) {
+    return false;
+  }
+
+  rctf *node_rect = &node.runtime->totr;
+  rctf *frame_rect = &node.parent->runtime->totr;
+  return BLI_rctf_inside_rctf(frame_rect, node_rect);
+}
+
+static void node_attach_to_underlying_frame(bNodeTree &ntree, bNode &node)
+{
+  rctf *node_rect = &node.runtime->totr;
 
   LISTBASE_FOREACH_BACKWARD (bNode *, frame, &ntree.nodes) {
-    /* skip selected, those are the nodes we want to attach */
-    if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
+    if (!frame->is_frame()) {
       continue;
     }
-    if (BLI_rctf_isect_pt_v(&frame->runtime->totr, cursor)) {
-      return frame;
+    if (!node_can_be_attached_to_frame(node, *frame)) {
+      continue;
+    }
+    rctf *frame_rect = &frame->runtime->totr;
+    if (BLI_rctf_inside_rctf(frame_rect, node_rect)) {
+      nodeAttachNode(&ntree, &node, frame);
     }
   }
-
-  return nullptr;
 }
 
-static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+void node_tree_update_frame_attachment(bNodeTree &ntree)
 {
-  ARegion &region = *CTX_wm_region(C);
-  SpaceNode &snode = *CTX_wm_space_node(C);
-  bNodeTree &ntree = *snode.edittree;
-  bNode *frame = node_find_frame_to_attach(region, ntree, event->mval);
-  if (frame == nullptr) {
-    /* Return "finished" so that auto offset operator macros can work. */
-    return OPERATOR_FINISHED;
+  LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+    if (!node_is_inside_parent_frame(*node)) {
+      nodeDetachNode(&ntree, node);
+    }
   }
 
-  LISTBASE_FOREACH_BACKWARD (bNode *, node, &ntree.nodes) {
-    if (!(node->flag & NODE_SELECT)) {
-      continue;
-    }
-
-    /* Disallow moving a parent into its child. */
-    if (node->is_frame() && nodeIsParentAndChild(node, frame)) {
-      continue;
-    }
-
-    if (node->parent == nullptr) {
-      nodeAttachNode(&ntree, node, frame);
-      continue;
-    }
-
-    /* Attach nodes which share parent with the frame. */
-    const bool share_parent = nodeIsParentAndChild(node->parent, frame);
-    if (!share_parent) {
-      continue;
-    }
-
-    nodeDetachNode(&ntree, node);
-    nodeAttachNode(&ntree, node, frame);
+  LISTBASE_FOREACH (bNode *, frame, &ntree.nodes) {
+    node_attach_to_underlying_frame(ntree, *frame);
   }
-
-  node_sort(ntree);
-  WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
-
-  return OPERATOR_FINISHED;
-}
-
-void NODE_OT_attach(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Attach Nodes";
-  ot->description = "Attach active node to a frame";
-  ot->idname = "NODE_OT_attach";
-
-  /* api callbacks */
-
-  ot->invoke = node_attach_invoke;
-  ot->poll = ED_operator_node_editable;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /** \} */
@@ -2414,8 +2397,7 @@ static bool node_link_insert_offset_chain_cb(bNode *fromnode,
 }
 
 static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
-                                          ARegion *region,
-                                          const int mouse_xy[2],
+                                          const SpaceNode &snode,
                                           const bool right_alignment)
 {
   bNodeTree *ntree = iofsd->ntree;
@@ -2437,44 +2419,6 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
    * so `totr_insert` is used to get the correct world-space coords. */
   rctf totr_insert;
   node_to_updated_rect(insert, totr_insert);
-
-  /* Frame attachment wasn't handled yet so we search the frame that the node will be attached to
-   * later. */
-  insert.parent = node_find_frame_to_attach(*region, *ntree, mouse_xy);
-
-  /* This makes sure nodes are also correctly offset when inserting a node on top of a frame
-   * without actually making it a part of the frame (because mouse isn't intersecting it)
-   * - logic here is similar to node_find_frame_to_attach. */
-  if (!insert.parent ||
-      (prev->parent && (prev->parent == next->parent) && (prev->parent != insert.parent)))
-  {
-    bNode *frame;
-    rctf totr_frame;
-
-    /* check nodes front to back */
-    for (frame = (bNode *)ntree->nodes.last; frame; frame = frame->prev) {
-      /* skip selected, those are the nodes we want to attach */
-      if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
-        continue;
-      }
-
-      /* for some reason frame y coords aren't correct yet */
-      node_to_updated_rect(*frame, totr_frame);
-
-      if (BLI_rctf_isect_x(&totr_frame, totr_insert.xmin) &&
-          BLI_rctf_isect_x(&totr_frame, totr_insert.xmax))
-      {
-        if (BLI_rctf_isect_y(&totr_frame, totr_insert.ymin) ||
-            BLI_rctf_isect_y(&totr_frame, totr_insert.ymax))
-        {
-          /* frame isn't insert.parent actually, but this is needed to make offsetting
-           * nodes work correctly for above checked cases (it is restored later) */
-          insert.parent = frame;
-          break;
-        }
-      }
-    }
-  }
 
   /* *** ensure offset at the left (or right for right_alignment case) of insert_node *** */
 
@@ -2609,7 +2553,7 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
   iofsd->anim_timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
 
   node_link_insert_offset_ntree(
-      iofsd, CTX_wm_region(C), event->mval, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));
+      iofsd, *snode, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));
 
   /* add temp handler */
   WM_event_add_modal_handler(C, op);
