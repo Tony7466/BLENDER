@@ -62,10 +62,27 @@ static void pchan_deform_accumulate(const DualQuat *deform_dq,
 
   if (dq_accum) {
     BLI_assert(!co_accum);
-    DualQuat dq;
-    memcpy(&dq, deform_dq, sizeof(DualQuat));
-    set_scale_pivot_dq(&dq, co_in);
-    add_weighted_dq_dq(dq_accum, &dq, weight);
+    
+    /* FIX https://projects.blender.org/blender/blender/issues/32022 */
+    DualQuat mdq;
+    if (deform_dq->scale_weight) {
+      float dst[3];
+      memcpy(&mdq, deform_dq, sizeof(DualQuat));
+      mul_v3_m4v3(dst, mdq.scale, co_in);
+      sub_v3_v3(dst, co_in);
+      float w = mdq.quat[0], x = mdq.quat[1], y = mdq.quat[2], z = mdq.quat[3];
+      float dstx = mdq.scale[3][0], dsty = mdq.scale[3][1], dstz = mdq.scale[3][2];
+      mdq.scale[3][0] -= dst[0];
+      mdq.scale[3][1] -= dst[1];
+      mdq.scale[3][2] -= dst[2];
+      mdq.trans[0] -= .5f * (x * dst[0] + y * dst[1] + z * dst[2]);
+      mdq.trans[1] += .5f * (w * dst[0] + y * dst[2] - z * dst[1]);
+      mdq.trans[2] += .5f * (w * dst[1] + z * dst[0] - x * dst[2]);
+      mdq.trans[3] += .5f * (w * dst[2] + x * dst[1] - y * dst[0]);
+      deform_dq = &mdq;
+    }
+
+    add_weighted_dq_dq(dq_accum, deform_dq, weight);
   }
   else {
     float tmp[3];
