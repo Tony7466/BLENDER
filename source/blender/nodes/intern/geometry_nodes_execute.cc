@@ -473,7 +473,7 @@ static void store_output_attributes(GeometrySet &geometry,
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
-GeometrySet execute_geometry_nodes(
+GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
     const IDProperty *properties,
     const ComputeContext &base_compute_context,

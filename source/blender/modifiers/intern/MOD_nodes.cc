@@ -790,13 +790,14 @@ static void modifyGeometry(ModifierData *md,
 
   prepare_simulation_states_for_evaluation(*nmd, *nmd_orig, *ctx, modifier_eval_data);
 
-  geometry_set = nodes::execute_geometry_nodes(tree,
-                                               nmd->settings.properties,
-                                               modifier_compute_context,
-                                               std::move(geometry_set),
-                                               [&](nodes::GeoNodesLFUserData &user_data) {
-                                                 user_data.modifier_data = &modifier_eval_data;
-                                               });
+  geometry_set = nodes::execute_geometry_nodes_on_geometry(
+      tree,
+      nmd->settings.properties,
+      modifier_compute_context,
+      std::move(geometry_set),
+      [&](nodes::GeoNodesLFUserData &user_data) {
+        user_data.modifier_data = &modifier_eval_data;
+      });
 
   if (DEG_is_active(ctx->depsgraph)) {
     /* When caching is turned off, remove all states except the last which was just created in this

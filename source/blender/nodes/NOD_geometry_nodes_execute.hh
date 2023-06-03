@@ -44,11 +44,12 @@ bool id_property_type_matches_socket(const bNodeSocket &socket, const IDProperty
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeSocket &socket);
 
-GeometrySet execute_geometry_nodes(const bNodeTree &btree,
-                                   const IDProperty *properties,
-                                   const ComputeContext &base_compute_context,
-                                   GeometrySet input_geometry,
-                                   FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data);
+GeometrySet execute_geometry_nodes_on_geometry(
+    const bNodeTree &btree,
+    const IDProperty *properties,
+    const ComputeContext &base_compute_context,
+    GeometrySet input_geometry,
+    FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data);
 
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
