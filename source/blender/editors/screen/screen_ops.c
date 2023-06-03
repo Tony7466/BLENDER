@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edscr
@@ -2090,7 +2091,7 @@ static bool area_split_allowed(const ScrArea *area, const eScreenAxis dir_axis)
   return true;
 }
 
-static void area_split_draw_cb(const struct wmWindow *UNUSED(win), void *userdata)
+static void area_split_draw_cb(const wmWindow *UNUSED(win), void *userdata)
 {
   const wmOperator *op = userdata;
 
@@ -3395,7 +3396,7 @@ typedef struct sAreaJoinData {
 
 } sAreaJoinData;
 
-static void area_join_draw_cb(const struct wmWindow *UNUSED(win), void *userdata)
+static void area_join_draw_cb(const wmWindow *UNUSED(win), void *userdata)
 {
   const wmOperator *op = userdata;
 
@@ -3903,7 +3904,7 @@ static void SCREEN_OT_redo_last(wmOperatorType *ot)
 /** \name Region Quad-View Operator
  * \{ */
 
-static void view3d_localview_update_rv3d(struct RegionView3D *rv3d)
+static void view3d_localview_update_rv3d(RegionView3D *rv3d)
 {
   if (rv3d->localvd) {
     rv3d->localvd->view = rv3d->view;
@@ -4288,10 +4289,6 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
 void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
   ScrArea *area = CTX_wm_area(C);
-  ARegion *region = CTX_wm_region(C);
-  const char *but_flip_str = (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_TOP) ?
-                                 IFACE_("Flip to Bottom") :
-                                 IFACE_("Flip to Top");
   {
     PointerRNA ptr;
     RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
@@ -4313,12 +4310,9 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UN
             "SCREEN_OT_header_toggle_menus");
   }
 
-  /* default is WM_OP_INVOKE_REGION_WIN, which we don't want here. */
-  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-
   if (!ELEM(area->spacetype, SPACE_TOPBAR)) {
     uiItemS(layout);
-    uiItemO(layout, but_flip_str, ICON_NONE, "SCREEN_OT_region_flip");
+    ED_screens_region_flip_menu_create(C, layout, NULL);
     uiItemS(layout);
     screen_area_menu_items(area, layout);
   }
@@ -4327,31 +4321,26 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UN
 void ED_screens_footer_tools_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
   ScrArea *area = CTX_wm_area(C);
-  ARegion *region = CTX_wm_region(C);
-  const char *but_flip_str = (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_TOP) ?
-                                 IFACE_("Flip to Bottom") :
-                                 IFACE_("Flip to Top");
+
   {
     PointerRNA ptr;
     RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
     uiItemR(layout, &ptr, "show_region_footer", 0, IFACE_("Show Footer"), ICON_NONE);
   }
 
-  /* default is WM_OP_INVOKE_REGION_WIN, which we don't want here. */
-  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-
-  uiItemO(layout, but_flip_str, ICON_NONE, "SCREEN_OT_region_flip");
-
+  ED_screens_region_flip_menu_create(C, layout, NULL);
   uiItemS(layout);
   screen_area_menu_items(area, layout);
 }
 
-void ED_screens_navigation_bar_tools_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
+void ED_screens_region_flip_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
   const ARegion *region = CTX_wm_region(C);
-  const char *but_flip_str = (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_LEFT) ?
-                                 IFACE_("Flip to Right") :
-                                 IFACE_("Flip to Left");
+  const short region_alignment = RGN_ALIGN_ENUM_FROM_MASK(region->alignment);
+  const char *but_flip_str = region_alignment == RGN_ALIGN_LEFT   ? IFACE_("Flip to Right") :
+                             region_alignment == RGN_ALIGN_RIGHT  ? IFACE_("Flip to Left") :
+                             region_alignment == RGN_ALIGN_BOTTOM ? IFACE_("Flip to Top") :
+                                                                    IFACE_("Flip to Bottom");
 
   /* default is WM_OP_INVOKE_REGION_WIN, which we don't want here. */
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
@@ -4402,7 +4391,7 @@ static int screen_context_menu_invoke(bContext *C,
     else if (region->regiontype == RGN_TYPE_NAV_BAR) {
       uiPopupMenu *pup = UI_popup_menu_begin(C, IFACE_("Navigation Bar"), ICON_NONE);
       uiLayout *layout = UI_popup_menu_layout(pup);
-      ED_screens_navigation_bar_tools_menu_create(C, layout, NULL);
+      ED_screens_region_flip_menu_create(C, layout, NULL);
       UI_popup_menu_end(C, pup);
     }
   }
@@ -5056,7 +5045,7 @@ static int fullscreen_back_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void SCREEN_OT_back_to_previous(struct wmOperatorType *ot)
+static void SCREEN_OT_back_to_previous(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Back to Previous Screen";
@@ -5121,7 +5110,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_userpref_show(struct wmOperatorType *ot)
+static void SCREEN_OT_userpref_show(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -5210,7 +5199,7 @@ static int drivers_editor_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_drivers_editor_show(struct wmOperatorType *ot)
+static void SCREEN_OT_drivers_editor_show(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Show Drivers Editor";
@@ -5256,7 +5245,7 @@ static int info_log_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_info_log_show(struct wmOperatorType *ot)
+static void SCREEN_OT_info_log_show(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Show Info Log";

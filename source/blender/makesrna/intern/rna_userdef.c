@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -17,6 +19,9 @@
 #include "BLI_math_base.h"
 #include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
+#ifdef WIN32
+#  include "BLI_winstuff.h"
+#endif
 
 #include "BLT_translation.h"
 
@@ -665,6 +670,14 @@ static void rna_UserDef_viewport_lights_update(Main *bmain, Scene *scene, Pointe
   rna_userdef_update(bmain, scene, ptr);
 }
 
+static bool rna_userdef_is_microsoft_store_install_get(PointerRNA *UNUSED(ptr))
+{
+#  ifdef WIN32
+  return BLI_windows_is_store_install();
+#  endif
+  return false;
+}
+
 static void rna_userdef_autosave_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   wmWindowManager *wm = bmain->wm.first;
@@ -1255,7 +1268,7 @@ static void rna_def_userdef_theme_ui_wcol(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Theme Widget Color Set", "Theme settings for widget color sets");
 
   prop = RNA_def_property(srna, "outline", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_array(prop, 3);
+  RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Outline", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
@@ -1837,7 +1850,7 @@ static void rna_def_userdef_theme_space_common(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "tab_outline", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_array(prop, 3);
+  RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Tab Outline", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
@@ -4775,7 +4788,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 1000);
   RNA_def_property_ui_text(prop,
                            "Tap Key Timeout",
-                           "Pie menu button held longer than this will dismiss menu on release."
+                           "Pie menu button held longer than this will dismiss menu on release "
                            "(in 1/100ths of sec)");
 
   prop = RNA_def_property(srna, "pie_animation_timeout", PROP_INT, PROP_NONE);
@@ -5816,6 +5829,24 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_HIDDEN);
   RNA_def_property_ui_text(prop, "Legacy Compute Device Type", "For backwards compatibility only");
 #  endif
+
+  /* Registration and Unregistration */
+
+  prop = RNA_def_property(srna, "register_all_users", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_REGISTER_ALL_USERS);
+  RNA_def_property_ui_text(
+      prop,
+      "Register for All Users",
+      "Make this Blender version open blend files for all users. Requires elevated privileges");
+
+  prop = RNA_def_boolean(
+      srna,
+      "is_microsoft_store_install",
+      false,
+      "Is Microsoft Store Install",
+      "Whether this blender installation is a sandboxed Microsoft Store version");
+  RNA_def_property_boolean_funcs(prop, "rna_userdef_is_microsoft_store_install_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 static void rna_def_userdef_input(BlenderRNA *brna)
@@ -6651,6 +6682,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "enable_eevee_next", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "enable_eevee_next", 1);
   RNA_def_property_ui_text(prop, "EEVEE Next", "Enable the new EEVEE codebase, requires restart");
+
+  prop = RNA_def_property(srna, "use_grease_pencil_version3", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_grease_pencil_version3", 1);
+  RNA_def_property_ui_text(prop, "Grease Pencil 3.0", "Enable the new grease pencil 3.0 codebase");
 
   prop = RNA_def_property(srna, "enable_workbench_next", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "enable_workbench_next", 1);

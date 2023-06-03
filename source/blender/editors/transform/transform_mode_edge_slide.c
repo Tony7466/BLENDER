@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -28,6 +29,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "RNA_access.h"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -45,14 +48,14 @@
 
 typedef struct TransDataEdgeSlideVert {
   /** #TransDataGenericSlideVert (header) */
-  struct BMVert *v;
+  BMVert *v;
   struct LinkNode **cd_loop_groups;
   float v_co_orig[3];
   /* end generic */
 
   float edge_len;
 
-  struct BMVert *v_side[2];
+  BMVert *v_side[2];
 
   /* add origvert.co to get the original locations */
   float dir_side[2][3];
@@ -101,7 +104,7 @@ static EdgeSlideData *edgeSlideFirstGet(TransInfo *t)
   return tc->custom.mode.data;
 }
 
-static void calcEdgeSlideCustomPoints(struct TransInfo *t)
+static void calcEdgeSlideCustomPoints(TransInfo *t)
 {
   EdgeSlideData *sld = edgeSlideFirstGet(t);
 
@@ -1078,52 +1081,46 @@ static void freeEdgeSlideVerts(TransInfo *UNUSED(t),
   custom_data->data = NULL;
 }
 
-static eRedrawFlag handleEventEdgeSlide(struct TransInfo *t, const struct wmEvent *event)
+static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
 {
-  if (t->mode == TFM_EDGE_SLIDE) {
-    EdgeSlideParams *slp = t->custom.mode.data;
+  EdgeSlideParams *slp = t->custom.mode.data;
 
-    if (slp) {
-      switch (event->type) {
-        case EVT_EKEY:
-          if (event->val == KM_PRESS) {
-            slp->use_even = !slp->use_even;
-            calcEdgeSlideCustomPoints(t);
-            return TREDRAW_HARD;
-          }
-          break;
-        case EVT_FKEY:
-          if (event->val == KM_PRESS) {
-            slp->flipped = !slp->flipped;
-            calcEdgeSlideCustomPoints(t);
-            return TREDRAW_HARD;
-          }
-          break;
-        case EVT_CKEY:
-          /* use like a modifier key */
-          if (event->val == KM_PRESS) {
-            t->flag ^= T_ALT_TRANSFORM;
-            calcEdgeSlideCustomPoints(t);
-            return TREDRAW_HARD;
-          }
-          break;
-        case MOUSEMOVE:
+  if (slp) {
+    switch (event->type) {
+      case EVT_EKEY:
+        if (event->val == KM_PRESS) {
+          slp->use_even = !slp->use_even;
           calcEdgeSlideCustomPoints(t);
-          break;
-        default:
-          break;
-      }
+          return TREDRAW_HARD;
+        }
+        break;
+      case EVT_FKEY:
+        if (event->val == KM_PRESS) {
+          slp->flipped = !slp->flipped;
+          calcEdgeSlideCustomPoints(t);
+          return TREDRAW_HARD;
+        }
+        break;
+      case EVT_CKEY:
+        /* use like a modifier key */
+        if (event->val == KM_PRESS) {
+          t->flag ^= T_ALT_TRANSFORM;
+          calcEdgeSlideCustomPoints(t);
+          return TREDRAW_HARD;
+        }
+        break;
+      case MOUSEMOVE:
+        calcEdgeSlideCustomPoints(t);
+        break;
+      default:
+        break;
     }
   }
   return TREDRAW_NOTHING;
 }
 
-void drawEdgeSlide(TransInfo *t)
+static void drawEdgeSlide(TransInfo *t)
 {
-  if (t->mode != TFM_EDGE_SLIDE) {
-    return;
-  }
-
   EdgeSlideData *sld = edgeSlideFirstGet(t);
   if (sld == NULL) {
     return;
@@ -1483,18 +1480,13 @@ static void applyEdgeSlide(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-void initEdgeSlide_ex(
+static void initEdgeSlide_ex(
     TransInfo *t, bool use_double_side, bool use_even, bool flipped, bool use_clamp)
 {
   EdgeSlideData *sld;
   bool ok = false;
 
   t->mode = TFM_EDGE_SLIDE;
-  t->transform = applyEdgeSlide;
-  t->handleEvent = handleEventEdgeSlide;
-  t->transform_matrix = NULL;
-  t->tsnap.snap_mode_apply_fn = edge_slide_snap_apply;
-  t->tsnap.snap_mode_distance_fn = transform_snap_distance_len_squared_fn;
 
   {
     EdgeSlideParams *slp = MEM_callocN(sizeof(*slp), __func__);
@@ -1541,13 +1533,21 @@ void initEdgeSlide_ex(
   copy_v3_fl(t->num.val_inc, t->snap[0]);
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_type[0] = B_UNIT_NONE;
-
-  t->flag |= T_NO_CONSTRAINT | T_NO_PROJECT;
 }
 
-void initEdgeSlide(TransInfo *t)
+static void initEdgeSlide(TransInfo *t, wmOperator *op)
 {
-  initEdgeSlide_ex(t, true, false, false, true);
+  bool use_double_side = true;
+  bool use_even = false;
+  bool flipped = false;
+  bool use_clamp = true;
+  if (op) {
+    use_double_side = !RNA_boolean_get(op->ptr, "single_side");
+    use_even = RNA_boolean_get(op->ptr, "use_even");
+    flipped = RNA_boolean_get(op->ptr, "flipped");
+    use_clamp = RNA_boolean_get(op->ptr, "use_clamp");
+  }
+  initEdgeSlide_ex(t, use_double_side, use_even, flipped, use_clamp);
 }
 
 /** \} */
@@ -1580,3 +1580,14 @@ void transform_mode_edge_slide_reproject_input(TransInfo *t)
 }
 
 /** \} */
+
+TransModeInfo TransMode_edgeslide = {
+    /*flags*/ T_NO_CONSTRAINT | T_NO_PROJECT,
+    /*init_fn*/ initEdgeSlide,
+    /*transform_fn*/ applyEdgeSlide,
+    /*transform_matrix_fn*/ NULL,
+    /*handle_event_fn*/ handleEventEdgeSlide,
+    /*snap_distance_fn*/ transform_snap_distance_len_squared_fn,
+    /*snap_apply_fn*/ edge_slide_snap_apply,
+    /*draw_fn*/ drawEdgeSlide,
+};

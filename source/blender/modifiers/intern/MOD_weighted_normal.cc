@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -239,6 +241,9 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
     WeightedNormalDataAggregateItem start_item{};
     start_item.curr_strength = FACE_STRENGTH_WEAK;
     items_data = Array<WeightedNormalDataAggregateItem>(verts_num, start_item);
+    lnors_spacearr.corner_space_indices.reinitialize(corner_verts.size());
+    std::iota(
+        lnors_spacearr.corner_space_indices.begin(), lnors_spacearr.corner_space_indices.end(), 0);
   }
   wn_data->items_data = items_data;
 

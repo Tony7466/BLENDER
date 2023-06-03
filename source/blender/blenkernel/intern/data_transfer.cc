@@ -1,11 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation */
+/* SPDX-FileCopyrightText: 2014 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  */
-
-#include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -34,9 +33,9 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
-#include "data_transfer_intern.h"
+#include "DEG_depsgraph_query.h"
 
-static CLG_LogRef LOG = {"bke.data_transfer"};
+#include "data_transfer_intern.h"
 
 void BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types,
                                                 CustomData_MeshMasks *r_data_masks)
@@ -1117,8 +1116,7 @@ static bool data_transfer_layersmapping_generate(ListBase *r_map,
   return false;
 }
 
-void BKE_object_data_transfer_layout(struct Depsgraph *depsgraph,
-                                     Scene *scene,
+void BKE_object_data_transfer_layout(Depsgraph *depsgraph,
                                      Object *ob_src,
                                      Object *ob_dst,
                                      const int data_types,
@@ -1126,20 +1124,17 @@ void BKE_object_data_transfer_layout(struct Depsgraph *depsgraph,
                                      const int fromlayers_select[DT_MULTILAYER_INDEX_MAX],
                                      const int tolayers_select[DT_MULTILAYER_INDEX_MAX])
 {
-  Mesh *me_src;
   Mesh *me_dst;
 
   const bool use_create = true; /* We always create needed layers here. */
-
-  CustomData_MeshMasks me_src_mask = CD_MASK_BAREMESH;
 
   BLI_assert((ob_src != ob_dst) && (ob_src->type == OB_MESH) && (ob_dst->type == OB_MESH));
 
   me_dst = static_cast<Mesh *>(ob_dst->data);
 
   /* Get source evaluated mesh. */
-  BKE_object_data_transfer_dttypes_to_cdmask(data_types, &me_src_mask);
-  me_src = mesh_get_eval_final(depsgraph, scene, ob_src, &me_src_mask);
+  const Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
+  const Mesh *me_src = BKE_object_get_evaluated_mesh(ob_src_eval);
   if (!me_src) {
     return;
   }
@@ -1265,8 +1260,7 @@ void BKE_object_data_transfer_layout(struct Depsgraph *depsgraph,
   }
 }
 
-bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
-                                 Scene *scene,
+bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
                                  Object *ob_src,
                                  Object *ob_dst,
                                  Mesh *me_dst,
@@ -1311,8 +1305,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
 
   const bool use_delete = false; /* We never delete data layers from destination here. */
 
-  CustomData_MeshMasks me_src_mask = CD_MASK_BAREMESH;
-
   BLI_assert((ob_src != ob_dst) && (ob_src->type == OB_MESH) && (ob_dst->type == OB_MESH));
 
   if (me_dst) {
@@ -1333,19 +1325,12 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
   }
 
   /* Get source evaluated mesh. */
-  BKE_object_data_transfer_dttypes_to_cdmask(data_types, &me_src_mask);
   if (is_modifier) {
     me_src = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_src);
-
-    if (me_src == nullptr ||
-        !CustomData_MeshMasks_are_matching(&ob_src->runtime.last_data_mask, &me_src_mask))
-    {
-      CLOG_WARN(&LOG, "Data Transfer: source mesh data is not ready - dependency cycle?");
-      return changed;
-    }
   }
   else {
-    me_src = mesh_get_eval_final(depsgraph, scene, ob_src, &me_src_mask);
+    const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_src);
+    me_src = BKE_object_get_evaluated_mesh(ob_eval);
   }
   if (!me_src) {
     return changed;
@@ -1753,8 +1738,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
 #undef DATAMAX
 }
 
-bool BKE_object_data_transfer_mesh(struct Depsgraph *depsgraph,
-                                   Scene *scene,
+bool BKE_object_data_transfer_mesh(Depsgraph *depsgraph,
                                    Object *ob_src,
                                    Object *ob_dst,
                                    const int data_types,
@@ -1777,7 +1761,6 @@ bool BKE_object_data_transfer_mesh(struct Depsgraph *depsgraph,
                                    ReportList *reports)
 {
   return BKE_object_data_transfer_ex(depsgraph,
-                                     scene,
                                      ob_src,
                                      ob_dst,
                                      nullptr,

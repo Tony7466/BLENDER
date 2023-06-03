@@ -710,9 +710,7 @@ ccl_device_forceinline bool integrate_volume_equiangular_sample_light(
 
   LightSample ls ccl_optional_struct_init;
   if (!light_sample_from_volume_segment(kg,
-                                        rand_light.z,
-                                        rand_light.x,
-                                        rand_light.y,
+                                        rand_light,
                                         sd->time,
                                         sd->P,
                                         ray->D,
@@ -776,9 +774,7 @@ ccl_device_forceinline void integrate_volume_direct_light(
 
     if (!light_sample_from_position(kg,
                                     rng_state,
-                                    rand_light.z,
-                                    rand_light.x,
-                                    rand_light.y,
+                                    rand_light,
                                     sd->time,
                                     P,
                                     zero_float3(),
@@ -883,7 +879,7 @@ ccl_device_forceinline void integrate_volume_direct_light(
       state, path, transmission_bounce);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, throughput) = throughput_phase;
 
-  /* Write Lightgroup, +1 as lightgroup is int but we need to encode into a uint8_t. */
+  /* Write Light-group, +1 as light-group is int but we need to encode into a uint8_t. */
   INTEGRATOR_STATE_WRITE(
       shadow_state, shadow_path, lightgroup) = (ls.type != LIGHT_BACKGROUND) ?
                                                    ls.group + 1 :
