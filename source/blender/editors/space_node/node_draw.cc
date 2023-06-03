@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spnode
@@ -25,7 +24,6 @@
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_map.hh"
-#include "BLI_rect.h"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -2083,30 +2081,31 @@ static void node_draw_extra_info_row(const bNode &node,
 static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
-                                       const rctf &node_rct,
+                                       bNodePreview *preview,
                                        uiBlock &block)
 {
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
-  if (extra_info_rows.size() == 0) {
+  if (extra_info_rows.size() == 0 && !preview) {
     return;
   }
 
+  const rctf &rct = node.runtime->totr;
   float color[4];
   rctf extra_info_rect;
 
   const float width = (node.width - 6.0f) * UI_SCALE_FAC;
 
   if (node.is_frame()) {
-    extra_info_rect.xmin = node_rct.xmin;
-    extra_info_rect.xmax = node_rct.xmin + 95.0f * UI_SCALE_FAC;
-    extra_info_rect.ymin = node_rct.ymin + 2.0f * UI_SCALE_FAC;
-    extra_info_rect.ymax = node_rct.ymin + 2.0f * UI_SCALE_FAC;
+    extra_info_rect.xmin = rct.xmin;
+    extra_info_rect.xmax = rct.xmin + 95.0f * UI_SCALE_FAC;
+    extra_info_rect.ymin = rct.ymin + 2.0f * UI_SCALE_FAC;
+    extra_info_rect.ymax = rct.ymin + 2.0f * UI_SCALE_FAC;
   }
   else {
-    extra_info_rect.xmin = node_rct.xmin + 3.0f * UI_SCALE_FAC;
-    extra_info_rect.xmax = node_rct.xmin + width;
-    extra_info_rect.ymin = node_rct.ymax;
-    extra_info_rect.ymax = node_rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
+    extra_info_rect.xmax = rct.xmin + width;
+    extra_info_rect.ymin = rct.ymax;
+    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     if (node.flag & NODE_MUTED) {
       UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color);
@@ -2117,26 +2116,36 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     color[3] -= 0.35f;
     UI_draw_roundbox_corner_set(
         UI_CNR_ALL & ~UI_CNR_BOTTOM_LEFT &
-        ((node_rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
+        ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, true, BASIS_RAD, color);
 
     /* Draw outline. */
     const float outline_width = 1.0f;
-    extra_info_rect.xmin = node_rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
-    extra_info_rect.xmax = node_rct.xmin + width + outline_width;
-    extra_info_rect.ymin = node_rct.ymax - outline_width;
-    extra_info_rect.ymax = node_rct.ymax + outline_width +
+    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
+    extra_info_rect.xmax = rct.xmin + width + outline_width;
+    extra_info_rect.ymin = rct.ymax - outline_width;
+    extra_info_rect.ymax = rct.ymax + outline_width +
                            extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
         UI_CNR_ALL & ~UI_CNR_BOTTOM_LEFT &
-        ((node_rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
+        ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
   }
 
   for (int row : extra_info_rows.index_range()) {
     node_draw_extra_info_row(node, block, extra_info_rect, row, extra_info_rows[row]);
+  }
+
+  if (preview) {
+    rctf preview_rect;
+    const float preview_height = width * preview->ysize / preview->xsize;
+    preview_rect.ymax = extra_info_rect.ymax + preview_height;
+    preview_rect.ymin = extra_info_rect.ymax;
+    preview_rect.xmin = extra_info_rect.xmin;
+    preview_rect.xmax = extra_info_rect.xmax;
+    node_draw_preview(preview, &preview_rect);
   }
 }
 
@@ -2168,31 +2177,17 @@ static void node_draw_basis(const bContext &C,
 
   GPU_line_width(1.0f);
 
-  /* Overlay atop the node. */
-  {
-    bool show_preview = false;
-
-    bNodeInstanceHash *previews =
-        (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
-    if (node.flag & NODE_PREVIEW && previews) {
-      bNodePreview *preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
-      if (preview && (preview->xsize && preview->ysize) && preview->rect) {
-        show_preview = true;
-        rctf preview_rect;
-        const float preview_height = (rct.xmax - rct.xmin) * preview->ysize / preview->xsize;
-        BLI_rctf_init(&preview_rect, rct.xmin, rct.xmax, rct.ymax, rct.ymax + preview_height);
-        node_draw_preview(preview, &preview_rect);
-
-        /* Draw the extra infos atop the preview, that's why we give the preview rectangle (ymin
-         * isn't used to draw infos of regular nodes anyway). */
-        node_draw_extra_info_panel(tree_draw_ctx, snode, node, preview_rect, block);
-      }
-    }
-
-    if (!show_preview) {
-      node_draw_extra_info_panel(tree_draw_ctx, snode, node, rct, block);
+  bNodeInstanceHash *previews =
+      (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
+  bNodePreview *preview = nullptr;
+  if (node.flag & NODE_PREVIEW && previews) {
+    preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
+    if (!preview || !(preview->xsize && preview->ysize)) {
+      preview = nullptr;
     }
   }
+
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, preview, block);
 
   /* Header. */
   {
@@ -2499,7 +2494,7 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, node.runtime->totr, block);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -2985,7 +2980,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, node.runtime->totr, block);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
