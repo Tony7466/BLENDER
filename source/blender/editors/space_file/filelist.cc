@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -1387,7 +1388,7 @@ static bool filelist_checkdir_main(FileList *filelist,
   return filelist_checkdir_lib(filelist, dirpath, do_change);
 }
 
-static bool filelist_checkdir_return_always_valid(struct FileList * /*filelist*/,
+static bool filelist_checkdir_return_always_valid(FileList * /*filelist*/,
                                                   char /*dirpath*/[FILE_MAX_LIBEXTRA],
                                                   const bool /*do_change*/)
 {
@@ -2235,7 +2236,7 @@ ID *filelist_file_get_id(const FileDirEntry *file)
   return file->id;
 }
 
-const char *filelist_entry_get_relpath(const struct FileList *filelist, int index)
+const char *filelist_entry_get_relpath(const FileList *filelist, int index)
 {
   const FileListInternEntry *intern_entry = filelist_entry_intern_get(filelist, index);
   return intern_entry->relpath;

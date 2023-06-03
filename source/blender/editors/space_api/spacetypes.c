@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spapi
@@ -220,7 +221,7 @@ void ED_spacetypes_keymap(wmKeyConfig *keyconf)
 typedef struct RegionDrawCB {
   struct RegionDrawCB *next, *prev;
 
-  void (*draw)(const struct bContext *, struct ARegion *, void *);
+  void (*draw)(const bContext *, ARegion *, void *);
   void *customdata;
 
   int type;
@@ -228,7 +229,7 @@ typedef struct RegionDrawCB {
 } RegionDrawCB;
 
 void *ED_region_draw_cb_activate(ARegionType *art,
-                                 void (*draw)(const struct bContext *, struct ARegion *, void *),
+                                 void (*draw)(const bContext *, ARegion *, void *),
                                  void *customdata,
                                  int type)
 {

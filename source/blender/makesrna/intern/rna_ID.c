@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -1017,6 +1019,8 @@ static void rna_ID_user_remap(ID *id, Main *bmain, ID *new_id)
     /* For now, do not allow remapping data in linked data from here... */
     BKE_libblock_remap(
         bmain, id, new_id, ID_REMAP_SKIP_INDIRECT_USAGE | ID_REMAP_SKIP_NEVER_NULL_USAGE);
+
+    WM_main_add_notifier(NC_WINDOW, NULL);
   }
 }
 

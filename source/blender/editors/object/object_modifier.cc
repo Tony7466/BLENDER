@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -100,7 +101,7 @@ using blender::Span;
 
 static CLG_LogRef LOG = {"ed.object"};
 
-static void modifier_skin_customdata_delete(struct Object *ob);
+static void modifier_skin_customdata_delete(Object *ob);
 
 /* ------------------------------------------------------------------- */
 /** \name Public Api
@@ -1014,7 +1015,7 @@ static bool modifier_apply_obdata(
     Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
     Curve *curve = static_cast<Curve *>(ob->data);
     Curve *curve_eval = static_cast<Curve *>(object_eval->data);
-    ModifierEvalContext mectx = {depsgraph, object_eval, (ModifierApplyFlag)0};
+    ModifierEvalContext mectx = {depsgraph, object_eval, ModifierApplyFlag(0)};
 
     if (ELEM(mti->type, eModifierTypeType_Constructive, eModifierTypeType_Nonconstructive)) {
       BKE_report(
@@ -1040,7 +1041,7 @@ static bool modifier_apply_obdata(
   else if (ob->type == OB_LATTICE) {
     Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
     Lattice *lattice = static_cast<Lattice *>(ob->data);
-    ModifierEvalContext mectx = {depsgraph, object_eval, (ModifierApplyFlag)0};
+    ModifierEvalContext mectx = {depsgraph, object_eval, ModifierApplyFlag(0)};
 
     if (ELEM(mti->type, eModifierTypeType_Constructive, eModifierTypeType_Nonconstructive)) {
       BKE_report(reports, RPT_ERROR, "Constructive modifiers cannot be applied");
@@ -1068,7 +1069,7 @@ static bool modifier_apply_obdata(
     geometry_set.get_component_for_write<CurveComponent>().replace(
         &curves, GeometryOwnershipType::ReadOnly);
 
-    ModifierEvalContext mectx = {depsgraph, ob, (ModifierApplyFlag)0};
+    ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
     if (!geometry_set.has_curves()) {
       BKE_report(reports, RPT_ERROR, "Evaluated geometry from modifier does not contain curves");
@@ -1096,7 +1097,7 @@ static bool modifier_apply_obdata(
     geometry_set.get_component_for_write<PointCloudComponent>().replace(
         &points, GeometryOwnershipType::ReadOnly);
 
-    ModifierEvalContext mectx = {depsgraph, ob, (ModifierApplyFlag)0};
+    ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
     if (!geometry_set.has_pointcloud()) {
       BKE_report(
@@ -1880,9 +1881,9 @@ static int modifier_apply_as_shapekey_invoke(bContext *C, wmOperator *op, const 
   return retval;
 }
 
-static char *modifier_apply_as_shapekey_get_description(struct bContext * /*C*/,
-                                                        struct wmOperatorType * /*op*/,
-                                                        struct PointerRNA *values)
+static char *modifier_apply_as_shapekey_get_description(bContext * /*C*/,
+                                                        wmOperatorType * /*op*/,
+                                                        PointerRNA *values)
 {
   bool keep = RNA_boolean_get(values, "keep_modifier");
 
@@ -3284,13 +3285,13 @@ static bool ocean_bake_poll(bContext *C)
 
 struct OceanBakeJob {
   /* from wmJob */
-  struct Object *owner;
+  Object *owner;
   bool *stop, *do_update;
   float *progress;
   int current_frame;
-  struct OceanCache *och;
-  struct Ocean *ocean;
-  struct OceanModifierData *omd;
+  OceanCache *och;
+  Ocean *ocean;
+  OceanModifierData *omd;
 };
 
 static void oceanbake_free(void *customdata)
@@ -3408,7 +3409,7 @@ static int ocean_bake_exec(bContext *C, wmOperator *op)
   }
 
   /* Make a copy of ocean to use for baking - thread-safety. */
-  struct Ocean *ocean = BKE_ocean_add();
+  Ocean *ocean = BKE_ocean_add();
   BKE_ocean_init_from_modifier(ocean, omd, omd->resolution);
 
 #if 0

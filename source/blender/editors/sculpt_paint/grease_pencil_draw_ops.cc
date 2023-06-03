@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
@@ -66,7 +67,7 @@ static bool stroke_get_location(bContext * /*C*/,
   return true;
 }
 
-static bool stroke_test_start(bContext *C, struct wmOperator *op, const float mouse[2])
+static bool stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
 {
   PaintStroke *paint_stroke = static_cast<PaintStroke *>(op->customdata);
 
@@ -148,7 +149,7 @@ static void grease_pencil_stroke_cancel(bContext *C, wmOperator *op)
   paint_stroke_cancel(C, op, static_cast<PaintStroke *>(op->customdata));
 }
 
-static void GREASE_PENCIL_OT_brush_stroke(struct wmOperatorType *ot)
+static void GREASE_PENCIL_OT_brush_stroke(wmOperatorType *ot)
 {
   ot->name = "Stroke Curves Sculpt";
   ot->idname = "GREASE_PENCIL_OT_brush_stroke";

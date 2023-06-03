@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -330,7 +331,7 @@ void WM_operator_free(wmOperator *op)
   MEM_freeN(op);
 }
 
-void WM_operator_free_all_after(wmWindowManager *wm, struct wmOperator *op)
+void WM_operator_free_all_after(wmWindowManager *wm, wmOperator *op)
 {
   op = op->next;
   while (op != NULL) {

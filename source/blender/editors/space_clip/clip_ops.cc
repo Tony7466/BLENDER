@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -1169,11 +1170,11 @@ void CLIP_OT_change_frame(wmOperatorType *ot)
 
 typedef struct ProxyBuildJob {
   Scene *scene;
-  struct Main *main;
+  Main *main;
   MovieClip *clip;
   int clip_flag;
   bool stop;
-  struct IndexBuildContext *index_context;
+  IndexBuildContext *index_context;
 } ProxyJob;
 
 static void proxy_freejob(void *pjv)
@@ -1225,7 +1226,7 @@ static void do_movie_proxy(void *pjv,
 {
   ProxyJob *pj = static_cast<ProxyJob *>(pjv);
   MovieClip *clip = pj->clip;
-  struct MovieDistortion *distortion = nullptr;
+  MovieDistortion *distortion = nullptr;
 
   if (pj->index_context) {
     IMB_anim_index_rebuild(pj->index_context, stop, do_update, progress);
@@ -1292,7 +1293,7 @@ typedef struct ProxyQueue {
 
 typedef struct ProxyThread {
   MovieClip *clip;
-  struct MovieDistortion *distortion;
+  MovieDistortion *distortion;
   int *build_sizes, build_count;
   int *build_undistort_sizes, build_undistort_count;
 } ProxyThread;

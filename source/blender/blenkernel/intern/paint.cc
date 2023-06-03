@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -1933,6 +1934,7 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
   }
 
   BKE_id_attributes_active_color_set(&orig_me->id, unique_name);
+  BKE_id_attributes_default_color_set(&orig_me->id, unique_name);
   DEG_id_tag_update(&orig_me->id, ID_RECALC_GEOMETRY_ALL_MODES);
   BKE_mesh_tessface_clear(orig_me);
 
@@ -2645,7 +2647,7 @@ static SculptAttribute *sculpt_alloc_attr(SculptSession *ss)
   return nullptr;
 }
 
-SculptAttribute *BKE_sculpt_attribute_get(struct Object *ob,
+SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
                                           eAttrDomain domain,
                                           eCustomDataType proptype,
                                           const char *name)

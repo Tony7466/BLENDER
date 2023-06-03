@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -341,7 +343,7 @@ uiBut *ui_but_find_mouse_over(const ARegion *region, const wmEvent *event)
       region, event->xy, event->modifier & KM_CTRL, false, nullptr, nullptr);
 }
 
-uiBut *ui_but_find_rect_over(const struct ARegion *region, const rcti *rect_px)
+uiBut *ui_but_find_rect_over(const ARegion *region, const rcti *rect_px)
 {
   if (!ui_region_contains_rect_px(region, rect_px)) {
     return nullptr;

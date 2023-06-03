@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -222,10 +223,7 @@ static bool panels_need_realign(const ScrArea *area, ARegion *region, Panel **r_
 /** \name Functions for Instanced Panels
  * \{ */
 
-static Panel *panel_add_instanced(ARegion *region,
-                                  ListBase *panels,
-                                  PanelType *panel_type,
-                                  PointerRNA *custom_data)
+static Panel *panel_add_instanced(ListBase *panels, PanelType *panel_type, PointerRNA *custom_data)
 {
   Panel *panel = MEM_cnew<Panel>(__func__);
   panel->type = panel_type;
@@ -240,7 +238,7 @@ static Panel *panel_add_instanced(ARegion *region,
     PanelType *child_type = static_cast<PanelType *>(child->data);
     /* Child panels themselves can be instanced. */
     if (!(child_type->flag & PANEL_TYPE_INSTANCED)) {
-      panel_add_instanced(region, &panel->children, child_type, custom_data);
+      panel_add_instanced(&panel->children, child_type, custom_data);
     }
   }
 
@@ -278,7 +276,7 @@ Panel *UI_panel_add_instanced(const bContext *C,
     return nullptr;
   }
 
-  Panel *new_panel = panel_add_instanced(region, panels, panel_type, custom_data);
+  Panel *new_panel = panel_add_instanced(panels, panel_type, custom_data);
 
   /* Do this after #panel_add_instatnced so all sub-panels are added. */
   panel_set_expansion_from_list_data(C, panels, new_panel);
