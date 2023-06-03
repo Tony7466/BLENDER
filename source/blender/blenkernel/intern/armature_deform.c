@@ -62,8 +62,10 @@ static void pchan_deform_accumulate(const DualQuat *deform_dq,
 
   if (dq_accum) {
     BLI_assert(!co_accum);
-
-    add_weighted_dq_dq(dq_accum, deform_dq, weight);
+    DualQuat dq;
+    memcpy(&dq, deform_dq, sizeof(DualQuat));
+    set_scale_pivot_dq(&dq, co_in);
+    add_weighted_dq_dq(dq_accum, &dq, weight);
   }
   else {
     float tmp[3];
