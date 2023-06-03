@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -436,6 +437,15 @@ void BLI_str_rstrip(char *str) ATTR_NONNULL(1);
 int BLI_str_rstrip_float_zero(char *str, char pad) ATTR_NONNULL(1);
 
 /**
+ * Strip trailing digits.
+ *   ABC123 -> ABC
+ *
+ * \param str:
+ * \return The number of digits stripped.
+ */
+int BLI_str_rstrip_digits(char *str) ATTR_NONNULL();
+
+/**
  * Return index of a string in a string array.
  *
  * \param str: The string to find.
@@ -551,7 +561,10 @@ int BLI_string_find_split_words(const char *str,
  * \note `ARRAY_SIZE` allows pointers on some platforms.
  * \{ */
 
-#define STRNCPY(dst, src) BLI_strncpy(dst, src, ARRAY_SIZE(dst))
+#ifndef __cplusplus
+#  define STRNCPY(dst, src) BLI_strncpy(dst, src, ARRAY_SIZE(dst))
+#endif
+
 #define STRNCPY_RLEN(dst, src) BLI_strncpy_rlen(dst, src, ARRAY_SIZE(dst))
 #define SNPRINTF(dst, format, ...) BLI_snprintf(dst, ARRAY_SIZE(dst), format, __VA_ARGS__)
 #define SNPRINTF_RLEN(dst, format, ...) \
@@ -635,4 +648,17 @@ void BLI_string_debug_size_after_nil(char *str, size_t str_maxncpy);
 /** \} */
 #ifdef __cplusplus
 }
+
+/**
+ * Copy source string str into the destination dst of a size known at a compile time.
+ * Ensures that the destination is not overflown, and that the destination is always
+ * null-terminated.
+ *
+ * Returns the dst.
+ */
+template<size_t N> inline char *STRNCPY(char (&dst)[N], const char *src)
+{
+  return BLI_strncpy(dst, src, N);
+}
+
 #endif

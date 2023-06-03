@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -49,6 +50,7 @@
 
 #include "transform.h"
 #include "transform_convert.h"
+#include "transform_mode.h"
 #include "transform_snap.h"
 
 /* use half of flt-max so we can scale up without an exception */
@@ -165,7 +167,7 @@ static bool doForceIncrementSnap(const TransInfo *t)
   return !transformModeUseSnap(t);
 }
 
-void drawSnapping(const struct bContext *C, TransInfo *t)
+void drawSnapping(const bContext *C, TransInfo *t)
 {
   uchar col[4], selectedCol[4], activeCol[4];
   if (!transform_snap_is_active(t)) {
@@ -545,7 +547,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
     }
 
     if (validSnap(t)) {
-      t->tsnap.snap_mode_apply_fn(t, vec);
+      t->mode_info->snap_apply_fn(t, vec);
     }
   }
 }
@@ -714,6 +716,10 @@ static eSnapTargetOP snap_target_select_from_spacetype(TransInfo *t)
         if ((t->flag & T_PROP_EDIT) != 0) {
           /* Exclude editmesh when using proportional edit */
           ret |= SCE_SNAP_TARGET_NOT_EDITED;
+        }
+        /* UV editing must never snap to the selection as this is what is transformed. */
+        if (t->spacetype == SPACE_IMAGE) {
+          ret |= SCE_SNAP_TARGET_NOT_SELECTED;
         }
       }
       else if (ELEM(obedit_type, OB_ARMATURE, OB_CURVES_LEGACY, OB_SURF, OB_LATTICE, OB_MBALL)) {
@@ -1312,7 +1318,7 @@ static void snap_source_closest_fn(TransInfo *t)
               copy_v3_v3(loc, bb->vec[j]);
               mul_m4_v3(td->ext->obmat, loc);
 
-              dist = t->tsnap.snap_mode_distance_fn(t, loc, t->tsnap.snap_target);
+              dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
               if ((dist != TRANSFORM_DIST_INVALID) &&
                   (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
@@ -1329,7 +1335,7 @@ static void snap_source_closest_fn(TransInfo *t)
 
             copy_v3_v3(loc, td->center);
 
-            dist = t->tsnap.snap_mode_distance_fn(t, loc, t->tsnap.snap_target);
+            dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
             if ((dist != TRANSFORM_DIST_INVALID) &&
                 (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
@@ -1354,7 +1360,7 @@ static void snap_source_closest_fn(TransInfo *t)
             mul_m4_v3(tc->mat, loc);
           }
 
-          dist = t->tsnap.snap_mode_distance_fn(t, loc, t->tsnap.snap_target);
+          dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
 
           if ((dist != TRANSFORM_DIST_INVALID) &&
               (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
@@ -1433,13 +1439,13 @@ bool peelObjectsTransform(TransInfo *t,
 
   if (!BLI_listbase_is_empty(&depths_peel)) {
     /* At the moment we only use the hits of the first object */
-    struct SnapObjectHitDepth *hit_min = static_cast<SnapObjectHitDepth *>(depths_peel.first);
-    for (struct SnapObjectHitDepth *iter = hit_min->next; iter; iter = iter->next) {
+    SnapObjectHitDepth *hit_min = static_cast<SnapObjectHitDepth *>(depths_peel.first);
+    for (SnapObjectHitDepth *iter = hit_min->next; iter; iter = iter->next) {
       if (iter->depth < hit_min->depth) {
         hit_min = iter;
       }
     }
-    struct SnapObjectHitDepth *hit_max = nullptr;
+    SnapObjectHitDepth *hit_max = nullptr;
 
     if (use_peel_object) {
       /* if peeling objects, take the first and last from each object */

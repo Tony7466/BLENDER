@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -71,7 +72,8 @@ using blender::Vector;
 #define CUSTOMDATA_GROW 5
 
 /* ensure typemap size is ok */
-BLI_STATIC_ASSERT(ARRAY_SIZE(((CustomData *)nullptr)->typemap) == CD_NUMTYPES, "size mismatch");
+BLI_STATIC_ASSERT(BOUNDED_ARRAY_TYPE_SIZE<decltype(CustomData::typemap)>() == CD_NUMTYPES,
+                  "size mismatch");
 
 static CLG_LogRef LOG = {"bke.customdata"};
 
@@ -242,7 +244,7 @@ static void layerInterp_mdeformvert(const void **sources,
   /* A single linked list of #MDeformWeight's.
    * use this to avoid double allocations (which #LinkNode would do). */
   struct MDeformWeight_Link {
-    struct MDeformWeight_Link *next;
+    MDeformWeight_Link *next;
     MDeformWeight dw;
   };
 
@@ -2434,8 +2436,8 @@ void CustomData_copy(const CustomData *source, CustomData *dest, eCustomDataMask
   CustomData_merge(source, dest, mask, totelem);
 }
 
-void CustomData_copy_layout(const struct CustomData *source,
-                            struct CustomData *dest,
+void CustomData_copy_layout(const CustomData *source,
+                            CustomData *dest,
                             eCustomDataMask mask,
                             eCDAllocType alloctype,
                             int totelem)
@@ -2808,7 +2810,7 @@ void CustomData_clear_layer_flag(CustomData *data, const eCustomDataType type, c
   }
 }
 
-bool CustomData_layer_is_anonymous(const struct CustomData *data, eCustomDataType type, int n)
+bool CustomData_layer_is_anonymous(const CustomData *data, eCustomDataType type, int n)
 {
   const int layer_index = CustomData_get_layer_index_n(data, type, n);
 

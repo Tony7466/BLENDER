@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -69,7 +70,7 @@ static void wm_drag_free_path_data(wmDragPath **path_data);
 /* when editors become configurable, they can add own dropbox definitions */
 
 struct wmDropBoxMap {
-  struct wmDropBoxMap *next, *prev;
+  wmDropBoxMap *next, *prev;
 
   ListBase dropboxes;
   short spaceid, regionid;

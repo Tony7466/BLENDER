@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -174,7 +175,7 @@ LinkNode *BLO_blendhandle_get_datablock_info(BlendHandle *bh,
       if (skip_datablock) {
         continue;
       }
-      struct BLODataBlockInfo *info = static_cast<BLODataBlockInfo *>(
+      BLODataBlockInfo *info = static_cast<BLODataBlockInfo *>(
           MEM_mallocN(sizeof(*info), __func__));
 
       /* Lastly, read asset data from the following blocks. */
@@ -440,7 +441,7 @@ BlendFileData *BLO_read_from_memory(const void *mem,
 BlendFileData *BLO_read_from_memfile(Main *oldmain,
                                      const char *filepath,
                                      MemFile *memfile,
-                                     const struct BlendFileReadParams *params,
+                                     const BlendFileReadParams *params,
                                      ReportList *reports)
 {
   BlendFileData *bfd = nullptr;

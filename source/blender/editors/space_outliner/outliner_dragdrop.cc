@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -894,7 +895,7 @@ static bool datastack_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 static char *datastack_drop_tooltip(bContext * /*C*/,
                                     wmDrag *drag,
                                     const int /*xy*/[2],
-                                    struct wmDropBox * /*drop*/)
+                                    wmDropBox * /*drop*/)
 {
   StackDropData *drop_data = static_cast<StackDropData *>(drag->poin);
   switch (drop_data->drop_action) {
