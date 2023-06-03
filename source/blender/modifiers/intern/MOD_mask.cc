@@ -494,8 +494,7 @@ static void add_interpolated_polys_to_new_mesh(const Mesh &src_mesh,
   int sub_poly_index = 0;
   int last_i_src = -1;
   for (const int i_dst :
-       IndexRange(polys_masked_num, masked_poly_indices.size() - polys_masked_num))
-  {
+       IndexRange(polys_masked_num, masked_poly_indices.size() - polys_masked_num)) {
     const int i_src = masked_poly_indices[i_dst];
     if (i_src == last_i_src) {
       sub_poly_index++;
