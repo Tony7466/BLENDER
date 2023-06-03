@@ -3797,6 +3797,10 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
     }
   }
 
+  if (but->drawflag & UI_BUT_INDETERMINATE) {
+    but->drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
+  }
+
   /* test for min and max, icon sliders, etc */
   switch (but->type) {
     case UI_BTYPE_NUM:
