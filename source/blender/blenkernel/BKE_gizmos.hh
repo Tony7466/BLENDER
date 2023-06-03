@@ -8,18 +8,22 @@
 
 #include "BKE_attribute.hh"
 
+#include "DNA_node_types.h"
+
 namespace blender::bke {
 
 class GizmosGeometry {
  private:
   blender::VectorSet<std::string> paths_;
+  blender::VectorSet<bNode *> nodes_;
   blender::Array<int> mapping;
 
   CustomDataAttributes attributes_;
 
  public:
   GizmosGeometry() = default;
-  GizmosGeometry(std::string);
+  GizmosGeometry(std::string path);
+  GizmosGeometry(std::string path, bNode *node) : paths_{std::move(path)}, nodes_{node} {};
   // GizmosGeometry(int pathes, int gizmos);
   // GizmosGeometry(const GizmosGeometry &other);
 
@@ -33,6 +37,11 @@ class GizmosGeometry {
   const Span<std::string> pathes() const
   {
     return paths_;
+  }
+
+  const Span<bNode *> nodes() const
+  {
+    return nodes_;
   }
 
   Span<int> paths_mapping() const

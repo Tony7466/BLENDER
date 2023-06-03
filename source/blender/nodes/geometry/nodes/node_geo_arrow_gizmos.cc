@@ -15,7 +15,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  bke::GizmosGeometry *gizmo = new bke::GizmosGeometry("path!");
+  bke::GizmosGeometry *gizmo = new bke::GizmosGeometry("path!", const_cast<bNode *>(&params.node()));
 
   params.set_output("Gizmo", GeometrySet::create_with_gizmos(gizmo));
 }
