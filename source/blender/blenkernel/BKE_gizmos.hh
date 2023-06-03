@@ -35,6 +35,11 @@ class GizmosGeometry {
     return paths_;
   }
 
+  Span<int> paths_mapping() const
+  {
+    return mapping;
+  }
+
   /**
    * Remove the indices that are not contained in the mask input, and remove unused pathes
    * afterwards.
