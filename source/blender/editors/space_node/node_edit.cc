@@ -1029,7 +1029,7 @@ static int node_resize_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   int2 mval;
   WM_event_drag_start_mval(event, region, mval);
   UI_view2d_region_to_view(&region->v2d, mval.x, mval.y, &cursor.x, &cursor.y);
-  const NodeResizeDirection dir = node_get_resize_direction(node, cursor.x, cursor.y);
+  const NodeResizeDirection dir = node_get_resize_direction(*snode, node, cursor.x, cursor.y);
   if (dir == NODE_RESIZE_NONE) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
@@ -1099,7 +1099,7 @@ void node_set_hidden_sockets(SpaceNode *snode, bNode *node, int set)
       }
     }
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-      if (nodeCountSocketLinks(snode->edittree, sock) == 0) {
+      if ((sock->flag & SOCK_IS_LINKED) == 0) {
         sock->flag |= SOCK_HIDDEN;
       }
     }
