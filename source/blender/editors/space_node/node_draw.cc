@@ -1368,11 +1368,14 @@ static void node_draw_preview(bNodePreview *preview, rctf *prv)
 
   GPU_blend(GPU_BLEND_NONE);
 
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformThemeColorShadeAlpha(TH_BACK, -15, +100);
-  imm_draw_box_wire_2d(pos, draw_rect.xmin, draw_rect.ymin, draw_rect.xmax, draw_rect.ymax);
-  immUnbindProgram();
+  float black[4] = {0.f, 0.f, 0.f, 1.f};
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  const float outline_width = 1.0f;
+  draw_rect.xmin -= outline_width;
+  draw_rect.xmax += outline_width;
+  draw_rect.ymin -= outline_width;
+  draw_rect.ymax += outline_width;
+  UI_draw_roundbox_4fv(&draw_rect, false, BASIS_RAD/2, black);
 }
 
 /* Common handle function for operator buttons that need to select the node first. */
@@ -2102,10 +2105,22 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.ymax = rct.ymin + 2.0f * UI_SCALE_FAC;
   }
   else {
+    float preview_height = 0;
+    rctf preview_rect;
+
     extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
-    extra_info_rect.xmax = rct.xmin + width;
+    extra_info_rect.xmax = extra_info_rect.xmax + width;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+    if (preview) {
+      const float preview_padding = 3.0f * UI_SCALE_FAC;
+      preview_height = (width - 2.0 * preview_padding) * float(preview->ysize) / float(preview->xsize) + 2.0 * preview_padding;
+      preview_rect.ymin = extra_info_rect.ymin + preview_padding;
+      preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
+      preview_rect.xmin = extra_info_rect.xmin + preview_padding;
+      preview_rect.xmax = extra_info_rect.xmax - preview_padding;
+      extra_info_rect.ymax += preview_height;
+    }
 
     if (node.flag & NODE_MUTED) {
       UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color);
@@ -2121,31 +2136,27 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
 
     /* Draw outline. */
     const float outline_width = 1.0f;
-    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
-    extra_info_rect.xmax = rct.xmin + width + outline_width;
-    extra_info_rect.ymin = rct.ymax - outline_width;
-    extra_info_rect.ymax = rct.ymax + outline_width +
-                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+    extra_info_rect.xmin -= outline_width;
+    extra_info_rect.xmax += outline_width;
+    extra_info_rect.ymin -= outline_width;
+    extra_info_rect.ymax += outline_width;
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
         UI_CNR_ALL & ~UI_CNR_BOTTOM_LEFT &
         ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
+
+    if (preview) {
+      node_draw_preview(preview, &preview_rect);
+    }
+
+    /* resize the rect to draw the textual infos on top of the preview. */
+    extra_info_rect.ymin += preview_height;
   }
 
   for (int row : extra_info_rows.index_range()) {
     node_draw_extra_info_row(node, block, extra_info_rect, row, extra_info_rows[row]);
-  }
-
-  if (preview) {
-    rctf preview_rect;
-    const float preview_height = width * preview->ysize / preview->xsize;
-    preview_rect.ymax = extra_info_rect.ymax + preview_height;
-    preview_rect.ymin = extra_info_rect.ymax;
-    preview_rect.xmin = extra_info_rect.xmin;
-    preview_rect.xmax = extra_info_rect.xmax;
-    node_draw_preview(preview, &preview_rect);
   }
 }
 
