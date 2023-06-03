@@ -3843,6 +3843,10 @@ static void widget_swatch(uiBut *but,
 
   ui_but_v3_get(but, col);
 
+  if (but->drawflag & UI_BUT_INDETERMINATE) {
+    col[0] = col[1] = col[2] = col[3] = 0.5f;
+  }
+
   if ((state->but_flag & (UI_BUT_ANIMATED | UI_BUT_ANIMATED_KEY | UI_BUT_DRIVEN |
                           UI_BUT_OVERRIDDEN | UI_BUT_REDALERT)) ||
       (state->but_drawflag & UI_BUT_ANIMATED_CHANGED))
@@ -4156,7 +4160,7 @@ static void widget_optionbut(uiWidgetColors *wcol,
     wcol->inner[0] = wcol->inner_sel[0];
     wcol->inner[1] = wcol->inner_sel[1];
     wcol->inner[2] = wcol->inner_sel[2];
-    wcol->inner[3] = 96;
+    wcol->inner[3] = 60;
   }
 
   const float rad = widget_radius_from_rcti(&recttemp, wcol);
