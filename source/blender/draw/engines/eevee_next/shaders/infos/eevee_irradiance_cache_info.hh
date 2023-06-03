@@ -63,12 +63,6 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_light)
     .compute_source("eevee_surfel_light_comp.glsl")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(eevee_surfel_bounce)
-    .local_group_size(SURFEL_GROUP_SIZE)
-    .additional_info("eevee_shared", "eevee_surfel_common")
-    .compute_source("eevee_surfel_bounce_comp.glsl")
-    .do_static_compilation(true);
-
 GPU_SHADER_CREATE_INFO(eevee_surfel_list_build)
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
@@ -88,6 +82,8 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_list_sort)
 GPU_SHADER_CREATE_INFO(eevee_surfel_ray)
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
+    .push_constant(Type::INT, "radiance_src")
+    .push_constant(Type::INT, "radiance_dst")
     .compute_source("eevee_surfel_ray_comp.glsl")
     .do_static_compilation(true);
 
@@ -106,6 +102,7 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_ray)
                       IRRADIANCE_GRID_GROUP_SIZE,
                       IRRADIANCE_GRID_GROUP_SIZE)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
+    .push_constant(Type::INT, "radiance_src")
     .storage_buf(0, Qualifier::READ, "int", "list_start_buf[]")
     .storage_buf(6, Qualifier::READ, "SurfelListInfoData", "list_info_buf")
     .image(0, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L0_img")

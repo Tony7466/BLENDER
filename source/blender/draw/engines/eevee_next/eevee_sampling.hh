@@ -173,6 +173,13 @@ class Sampling {
   static float3 sample_hemisphere(const float2 &rand);
 
   /**
+   * Uniform sphere distribution.
+   * \a rand is 2 random float in the [0..1] range.
+   * Returns point on the sphere of radius 1 and centered on the origin.
+   */
+  static float3 sample_sphere(const float2 &rand);
+
+  /**
    * Uniform disc distribution using Fibonacci spiral sampling.
    * \a rand is 2 random float in the [0..1] range.
    * Returns point in a disk of radius 1 and centered on the origin.

@@ -13,29 +13,60 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
-void radiance_transfer(inout Surfel surfel, vec3 irradiance, vec3 L)
+void radiance_transfer(inout Surfel surfel, vec3 in_radiance, vec3 L)
 {
   float NL = dot(surfel.normal, L);
   /* Lambertian BSDF. Albedo applied later depending on which side of the surfel was hit. */
   float bsdf = M_1_PI;
-  /* Outgoing light. */
-  vec3 radiance = bsdf * irradiance * abs(NL);
-  if (NL > 0.0) {
-    surfel.incomming_light_front += vec4(radiance * surfel.albedo_front, 1.0);
+  /* From "Global Illumination using Parallel Global Ray-Bundles"
+   * Eq. 3: Outgoing light */
+  vec3 out_radiance = (M_TAU / capture_info_buf.sample_count) * bsdf * in_radiance * abs(NL);
+
+  SurfelRadiance surfel_radiance_indirect = surfel.radiance_indirect[radiance_dst];
+
+  bool front_facing = (NL > 0.0);
+  if (front_facing) {
+    /* Store radiance normalized for spherical harmonic accumulation and for visualization. */
+    surfel_radiance_indirect.front.rgb *= surfel_radiance_indirect.front.w;
+    surfel_radiance_indirect.front += vec4(out_radiance * surfel.albedo_front,
+                                           1.0 / capture_info_buf.sample_count);
+    surfel_radiance_indirect.front.rgb /= surfel_radiance_indirect.front.w;
   }
   else {
-    surfel.incomming_light_back += vec4(radiance * surfel.albedo_back, 1.0);
+    /* Store radiance normalized for spherical harmonic accumulation and for visualization. */
+    surfel_radiance_indirect.back.rgb *= surfel_radiance_indirect.back.w;
+    surfel_radiance_indirect.back += vec4(out_radiance * surfel.albedo_back,
+                                          1.0 / capture_info_buf.sample_count);
+    surfel_radiance_indirect.back.rgb /= surfel_radiance_indirect.back.w;
   }
+
+  surfel.radiance_indirect[radiance_dst] = surfel_radiance_indirect;
 }
 
-void radiance_transfer(inout Surfel surfel, Surfel surfel_emitter)
+void radiance_transfer_surfel(inout Surfel receiver, Surfel sender)
 {
-  vec3 L = safe_normalize(surfel_emitter.position - surfel.position);
-  bool facing = dot(-L, surfel_emitter.normal) > 0.0;
-  vec3 irradiance = facing ? surfel_emitter.outgoing_light_front :
-                             surfel_emitter.outgoing_light_back;
+  vec3 L = safe_normalize(sender.position - receiver.position);
+  bool front_facing = dot(-L, sender.normal) > 0.0;
 
-  radiance_transfer(surfel, irradiance, L);
+  vec3 radiance;
+  SurfelRadiance sender_radiance_indirect = sender.radiance_indirect[radiance_src];
+  if (front_facing) {
+    radiance = sender.radiance_direct.front.rgb;
+    radiance += sender_radiance_indirect.front.rgb * sender_radiance_indirect.front.w;
+  }
+  else {
+    radiance = sender.radiance_direct.back.rgb;
+    radiance += sender_radiance_indirect.back.rgb * sender_radiance_indirect.back.w;
+  }
+
+  radiance_transfer(receiver, radiance, L);
+}
+
+void radiance_transfer_sky(inout Surfel receiver, vec3 sky_L)
+{
+  /* TODO(fclem): Sky radiance. */
+  vec3 radiance = vec3(0.0);
+  radiance_transfer(receiver, radiance, -sky_L);
 }
 
 void main()
@@ -50,21 +81,18 @@ void main()
   vec3 sky_L = cameraVec(surfel.position);
 
   if (surfel.next > -1) {
-    radiance_transfer(surfel, surfel_buf[surfel.next]);
+    radiance_transfer_surfel(surfel, surfel_buf[surfel.next]);
   }
   else {
-    /* TODO(fclem): Sky radiance. */
-    radiance_transfer(surfel, vec3(0.0), sky_L);
+    radiance_transfer_sky(surfel, sky_L);
   }
 
   if (surfel.prev > -1) {
-    radiance_transfer(surfel, surfel_buf[surfel.prev]);
+    radiance_transfer_surfel(surfel, surfel_buf[surfel.prev]);
   }
   else {
-    /* TODO(fclem): Sky radiance. */
-    radiance_transfer(surfel, vec3(0.0), -sky_L);
+    radiance_transfer_sky(surfel, -sky_L);
   }
 
-  surfel_buf[surfel_index].incomming_light_front = surfel.incomming_light_front;
-  surfel_buf[surfel_index].incomming_light_back = surfel.incomming_light_back;
+  surfel_buf[surfel_index] = surfel;
 }

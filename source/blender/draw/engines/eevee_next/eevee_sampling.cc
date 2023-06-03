@@ -192,6 +192,14 @@ float3 Sampling::sample_hemisphere(const float2 &rand)
   return float3(sin_theta * float2(cosf(omega), sinf(omega)), cos_theta);
 }
 
+float3 Sampling::sample_sphere(const float2 &rand)
+{
+  const float omega = rand.y * 2.0f * M_PI;
+  const float cos_theta = rand.x * 2.0f - 1.0f;
+  const float sin_theta = safe_sqrtf(1.0f - square_f(cos_theta));
+  return float3(sin_theta * float2(cosf(omega), sinf(omega)), cos_theta);
+}
+
 float2 Sampling::sample_spiral(const float2 &rand)
 {
   /* Fibonacci spiral. */

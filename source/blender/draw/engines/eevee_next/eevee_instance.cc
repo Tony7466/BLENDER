@@ -485,48 +485,40 @@ void Instance::light_bake_irradiance(
     irradiance_cache.bake.surfels_lights_eval();
   });
 
-  int bounce_len = scene->eevee.gi_diffuse_bounces;
-  for (int bounce = 0; bounce <= bounce_len; bounce++) {
-    /* Last iteration only captures lighting. */
-    const bool is_last_bounce = (bounce == bounce_len);
+  sampling.init(scene);
+  while (!sampling.finished()) {
+    context_wrapper([&]() {
+      /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
+       * switch. */
+      /* TODO(fclem): Could make the number of iteration depend on the computation time. */
+      for (int i = 0; i < 16 && !sampling.finished(); i++) {
+        sampling.step();
 
-    sampling.init(scene);
-    while (!sampling.finished()) {
-      context_wrapper([&]() {
-        /* Batch ray cast by pack of 16 to avoid too much overhead of
-         * the update function & context switch. */
-        for (int i = 0; i < 16 && !sampling.finished(); i++) {
-          sampling.step();
-
-          irradiance_cache.bake.raylists_build();
-          if (!is_last_bounce) {
-            irradiance_cache.bake.propagate_light();
-          }
-          if (is_last_bounce) {
-            irradiance_cache.bake.irradiance_capture();
-          }
-        }
-        if (sampling.finished() && !is_last_bounce) {
-          irradiance_cache.bake.accumulate_bounce();
-        }
-
-        LightProbeGridCacheFrame *cache_frame;
-        if (bounce != bounce_len) {
-          /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
-          cache_frame = irradiance_cache.bake.read_result_unpacked();
-        }
-        else {
-          cache_frame = irradiance_cache.bake.read_result_packed();
-        }
-
-        float bounce_progress = sampling.sample_index() / float(sampling.sample_count());
-        float progress = (bounce + bounce_progress) / float(bounce_len + 1);
-        result_update(cache_frame, progress);
-      });
-
-      if (stop()) {
-        return;
+        irradiance_cache.bake.raylists_build();
+        irradiance_cache.bake.propagate_light();
+        irradiance_cache.bake.irradiance_capture();
       }
+
+      if (sampling.finished()) {
+        /* TODO(fclem): Dilation, filter etc... */
+        // irradiance_cache.bake.irradiance_finalize();
+      }
+
+      LightProbeGridCacheFrame *cache_frame;
+      if (sampling.finished()) {
+        cache_frame = irradiance_cache.bake.read_result_packed();
+      }
+      else {
+        /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
+        cache_frame = irradiance_cache.bake.read_result_unpacked();
+      }
+
+      float progress = sampling.sample_index() / float(sampling.sample_count());
+      result_update(cache_frame, progress);
+    });
+
+    if (stop()) {
+      return;
     }
   }
 }

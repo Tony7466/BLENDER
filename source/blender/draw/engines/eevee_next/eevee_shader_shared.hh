@@ -830,6 +830,12 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 /** \name Irradiance Cache
  * \{ */
 
+struct SurfelRadiance {
+  float4 front;
+  float4 back;
+};
+BLI_STATIC_ASSERT_ALIGN(SurfelRadiance, 16)
+
 struct Surfel {
   /** World position of the surfel. */
   packed_float3 position;
@@ -841,23 +847,15 @@ struct Surfel {
   int next;
   /** Surface albedo to apply to incoming radiance. */
   packed_float3 albedo_front;
-  int _pad3;
-  packed_float3 albedo_back;
   /** Distance along the ray direction for sorting. */
   float ray_distance;
-  /** Surface  radiance. */
-  packed_float3 radiance_front;
-  int _pad4;
-  packed_float3 radiance_back;
-  int _pad0;
-  /** Radiance from previous bounce. This is what is being scattered during a bounce. */
-  packed_float3 outgoing_light_front;
-  int _pad1;
-  packed_float3 outgoing_light_back;
-  int _pad2;
-  /** Accumulated radiance for the current bounce. Weight is stored in the fourth component. */
-  float4 incomming_light_front;
-  float4 incomming_light_back;
+  /** Surface albedo to apply to incoming radiance. */
+  packed_float3 albedo_back;
+  int _pad3;
+  /** Surface radiance: Emission + Direct Lighting. */
+  SurfelRadiance radiance_direct;
+  /** Surface radiance: Indirect Lighting. Double buffered to avoid race conditions. */
+  SurfelRadiance radiance_indirect[2];
 };
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
@@ -870,10 +868,10 @@ struct CaptureInfoData {
   bool1 do_surfel_count;
   /** Number of surfels inside the surfel buffer or the needed len. */
   uint surfel_len;
-
-  float _pad3;
-  /** Accumulated directional samples in irradiance grid. */
-  int irradiance_accum_sample_count;
+  /** Total number of a ray for light transportation. */
+  float sample_count;
+  /** 0 based sample index. */
+  float sample_index;
   /** Transform of the lightprobe object. */
   float4x4 irradiance_grid_local_to_world;
   /** Transform vectors from world space to local space. Does not have location component. */
@@ -1062,6 +1060,7 @@ using ShadowTileMapDataBuf = draw::StorageVectorBuffer<ShadowTileMapData, SHADOW
 using ShadowTileMapClipBuf = draw::StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, true>;
 using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_MAX_TILE, true>;
 using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
+using SurfelRadianceBuf = draw::StorageArrayBuffer<SurfelRadiance, 64>;
 using CaptureInfoBuf = draw::StorageBuffer<CaptureInfoData>;
 using SurfelListInfoBuf = draw::StorageBuffer<SurfelListInfoData>;
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;

@@ -45,12 +45,12 @@ class IrradianceBake {
   PassSimple surfel_ray_build_ps_ = {"RayBuild"};
   /** Propagate light from surfel to surfel. */
   PassSimple surfel_light_propagate_ps_ = {"LightPropagate"};
-  /** Start of a light bounce. Accumulate light from previous propagation. */
-  PassSimple surfel_light_bounce_ps_ = {"LightBounce"};
   /** Capture surfel lighting to irradiance samples. */
   PassSimple irradiance_capture_ps_ = {"IrradianceCapture"};
   /** Compute scene bounding box. */
   PassSimple irradiance_bounds_ps_ = {"IrradianceBounds"};
+  /** Index of source and destination radiance in radiance double-buffer. */
+  int radiance_src_ = 0, radiance_dst_ = 1;
 
   /**
    * Basis orientation for each baking projection.
@@ -89,10 +89,10 @@ class IrradianceBake {
   Texture irradiance_L1_b_tx_ = {"irradiance_L1_b_tx_"};
   Texture irradiance_L1_c_tx_ = {"irradiance_L1_c_tx_"};
 
-  /* Bounding box vertices of the irradiance grid being baked. In world space. */
-  Vector<float3> scene_bbox_vertices_;
+  /* Bounding sphere of the scene being baked. In world space. */
+  float4 scene_bound_sphere_;
   /* Surfel per unit distance. */
-  float surfel_density_ = 2.0f;
+  float surfel_density_ = 1.0f;
 
  public:
   IrradianceBake(Instance &inst) : inst_(inst){};
@@ -111,8 +111,6 @@ class IrradianceBake {
   void propagate_light();
   /** Store surfel irradiance inside the irradiance grid samples. */
   void irradiance_capture();
-  /** Accumulate light inside `surfel.radiance_bounce` to `surfel.radiance`. */
-  void accumulate_bounce();
 
   /** Read grid unpacked irradiance back to CPU and returns as a #LightProbeGridCacheFrame. */
   LightProbeGridCacheFrame *read_result_unpacked();

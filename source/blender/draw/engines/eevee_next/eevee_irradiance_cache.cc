@@ -372,7 +372,7 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     display_grids_ps_.framebuffer_set(&view_fb);
     display_grids_ps_.shader_set(inst_.shaders.static_shader_get(DISPLAY_PROBE_GRID));
 
-    display_grids_ps_.push_constant("sphere_radius", 0.3f); /* TODO property */
+    display_grids_ps_.push_constant("sphere_radius", inst_.scene->eevee.gi_irradiance_draw_size);
     display_grids_ps_.push_constant("grid_resolution", grid_size);
     display_grids_ps_.push_constant("grid_to_world", grid.object_to_world);
     display_grids_ps_.push_constant("world_to_grid", grid.world_to_object);
@@ -451,6 +451,8 @@ void IrradianceBake::sync()
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
       sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+      sub.push_constant("radiance_src", &radiance_src_);
+      sub.push_constant("radiance_dst", &radiance_dst_);
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       sub.dispatch(&dispatch_per_surfel_);
     }
@@ -463,21 +465,13 @@ void IrradianceBake::sync()
     pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
     pass.bind_ssbo("list_start_buf", &list_start_buf_);
     pass.bind_ssbo("list_info_buf", &list_info_buf_);
+    pass.push_constant("radiance_src", &radiance_src_);
     pass.bind_image("irradiance_L0_img", &irradiance_L0_tx_);
     pass.bind_image("irradiance_L1_a_img", &irradiance_L1_a_tx_);
     pass.bind_image("irradiance_L1_b_img", &irradiance_L1_b_tx_);
     pass.bind_image("irradiance_L1_c_img", &irradiance_L1_c_tx_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.dispatch(&dispatch_per_grid_sample_);
-  }
-  {
-    PassSimple &pass = surfel_light_bounce_ps_;
-    pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(SURFEL_BOUNCE));
-    pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
-    pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
-    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
-    pass.dispatch(&dispatch_per_surfel_);
   }
 }
 
@@ -525,7 +519,6 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
   capture_info_buf_.irradiance_grid_world_to_local_rotation = float4x4(
       (invert(normalize(float3x3(grid_local_to_world)))));
-  capture_info_buf_.irradiance_accum_sample_count = 0;
 
   eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                                    GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
@@ -592,16 +585,8 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   scene_max += epsilon;
   surfel_raster_views_sync(scene_min, scene_max);
 
-  /* Extract bounding box. Order is arbitrary as it is not important for our usage. */
-  scene_bbox_vertices_.clear();
-  scene_bbox_vertices_.append(float3{scene_max.x, scene_max.y, scene_max.z});
-  scene_bbox_vertices_.append(float3{scene_min.x, scene_max.y, scene_max.z});
-  scene_bbox_vertices_.append(float3{scene_max.x, scene_min.y, scene_max.z});
-  scene_bbox_vertices_.append(float3{scene_min.x, scene_min.y, scene_max.z});
-  scene_bbox_vertices_.append(float3{scene_max.x, scene_max.y, scene_min.z});
-  scene_bbox_vertices_.append(float3{scene_min.x, scene_max.y, scene_min.z});
-  scene_bbox_vertices_.append(float3{scene_max.x, scene_min.y, scene_min.z});
-  scene_bbox_vertices_.append(float3{scene_min.x, scene_min.y, scene_min.z});
+  scene_bound_sphere_ = float4(midpoint(scene_max, scene_min),
+                               distance(scene_max, scene_min) / 2.0f);
 
   DRW_stats_group_end();
 
@@ -635,6 +620,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
 
   /* TODO(fclem): Check for GL limit and abort if the surfel cache doesn't fit the GPU memory. */
   surfels_buf_.resize(capture_info_buf_.surfel_len);
+  surfels_buf_.clear_to_zero();
 
   dispatch_per_surfel_.x = divide_ceil_u(surfels_buf_.size(), SURFEL_GROUP_SIZE);
 
@@ -677,8 +663,8 @@ void IrradianceBake::raylists_build()
 {
   using namespace blender::math;
 
-  float2 rand_uv = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_FILTER_U);
-  const float3 ray_direction = inst_.sampling.sample_hemisphere(rand_uv);
+  float2 rand_uv = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_LENS_U);
+  const float3 ray_direction = inst_.sampling.sample_sphere(rand_uv);
   const float3 up = ray_direction;
   const float3 forward = cross(up, normalize(orthogonal(up)));
   const float4x4 viewinv = from_orthonormal_axes<float4x4>(float3(0.0f), forward, up);
@@ -686,15 +672,9 @@ void IrradianceBake::raylists_build()
 
   /* Compute projection bounds. */
   float2 min, max;
-  INIT_MINMAX2(min, max);
-  for (const float3 &point : scene_bbox_vertices_) {
-    min_max(transform_point(viewmat, point).xy(), min, max);
-  }
-
-  /* NOTE: Z values do not really matter since we are not doing any rasterization. */
-  const float4x4 winmat = projection::orthographic<float>(min.x, max.x, min.y, max.y, 0, 1);
-
-  ray_view_.sync(viewmat, winmat);
+  min = max = transform_point(viewmat, scene_bound_sphere_.xyz()).xy();
+  min -= scene_bound_sphere_.w;
+  max += scene_bound_sphere_.w;
 
   /* This avoid light leaking by making sure that for one surface there will always be at least 1
    * surfel capture inside a ray list. Since the surface with the maximum distance (after
@@ -705,12 +685,36 @@ void IrradianceBake::raylists_build()
    * Biasing the grid_density like that will create many invalid link between coplanar surfels.
    * These are dealt with during the list sorting pass.
    *
+   * This has a side effect of inflating shadows and emissive surfaces.
+   *
    * We add an extra epsilon just in case. We really need this step to be leak free. */
   const float max_distance_between_neighbor_surfels_inv = M_SQRT1_2 - 1e-4;
+  /* Surfel list per unit distance. */
   const float ray_grid_density = surfel_density_ * max_distance_between_neighbor_surfels_inv;
+  /* Surfel list size in unit distance. */
+  const float pixel_size = 1.0f / ray_grid_density;
   list_info_buf_.ray_grid_size = math::max(int2(1), int2(ray_grid_density * (max - min)));
+
+  /* Add a 2 pixels margin to have empty lists for irradiance grid samples to fall into (as they
+   * are not considered by the scene bounds). The first pixel margin is because we are jittering
+   * the grid position. */
+  list_info_buf_.ray_grid_size += int2(4);
+  min -= pixel_size * 2.0f;
+  max += pixel_size * 2.0f;
+
+  /* Randomize grid center to avoid uneven inflating of corners in some directions. */
+  const float2 aa_rand = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_FILTER_U);
+  /* Offset in surfel list "pixel". */
+  const float2 aa_offset = (aa_rand - 0.5f) * 0.499f;
+  min += pixel_size * aa_offset;
+
   list_info_buf_.list_max = list_info_buf_.ray_grid_size.x * list_info_buf_.ray_grid_size.y;
   list_info_buf_.push_update();
+
+  /* NOTE: Z values do not really matter since we are not doing any rasterization. */
+  const float4x4 winmat = projection::orthographic<float>(min.x, max.x, min.y, max.y, 0, 1);
+
+  ray_view_.sync(viewmat, winmat);
 
   dispatch_per_list_.x = divide_ceil_u(list_info_buf_.list_max, SURFEL_LIST_GROUP_SIZE);
 
@@ -722,22 +726,19 @@ void IrradianceBake::raylists_build()
 
 void IrradianceBake::propagate_light()
 {
+  /* NOTE: Subtract 1 because after `sampling.step()`. */
+  capture_info_buf_.sample_index = inst_.sampling.sample_index() - 1;
+  capture_info_buf_.sample_count = inst_.sampling.sample_count();
+  capture_info_buf_.push_update();
+
   inst_.manager->submit(surfel_light_propagate_ps_, ray_view_);
+
+  std::swap(radiance_src_, radiance_dst_);
 }
 
 void IrradianceBake::irradiance_capture()
 {
-  capture_info_buf_.push_update();
-
   inst_.manager->submit(irradiance_capture_ps_, ray_view_);
-
-  /* Increment twice because each ray is evaluated in both directions. */
-  capture_info_buf_.irradiance_accum_sample_count += 2;
-}
-
-void IrradianceBake::accumulate_bounce()
-{
-  inst_.manager->submit(surfel_light_bounce_ps_);
 }
 
 void IrradianceBake::read_surfels(LightProbeGridCacheFrame *cache_frame)

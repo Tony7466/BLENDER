@@ -64,7 +64,7 @@ void main()
 
   ClosureDiffuse diffuse_data;
   diffuse_data.N = surfel.normal;
-  /* TODO: These could saved inside the surfel. */
+  /* TODO: These could be saved inside the surfel. */
   diffuse_data.sss_radius = vec3(0.0);
   diffuse_data.sss_id = 0u;
   float thickness = 0.0;
@@ -74,7 +74,7 @@ void main()
 
   light_eval_surfel(diffuse_data, surfel.position, surfel.normal, thickness, diffuse_light);
 
-  surfel_buf[index].radiance_front += diffuse_light * surfel.albedo_front;
+  surfel_buf[index].radiance_direct.front.rgb += diffuse_light * surfel.albedo_front;
 
   diffuse_data.N = -surfel.normal;
   diffuse_light = vec3(0.0);
@@ -82,5 +82,5 @@ void main()
 
   light_eval_surfel(diffuse_data, surfel.position, -surfel.normal, thickness, diffuse_light);
 
-  surfel_buf[index].radiance_back += diffuse_light * surfel.albedo_back;
+  surfel_buf[index].radiance_direct.back.rgb += diffuse_light * surfel.albedo_back;
 }

@@ -515,7 +515,6 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surf_lib.glsl
   engines/eevee_next/shaders/eevee_surf_shadow_frag.glsl
   engines/eevee_next/shaders/eevee_surf_world_frag.glsl
-  engines/eevee_next/shaders/eevee_surfel_bounce_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_light_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_build_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_lib.glsl
