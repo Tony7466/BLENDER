@@ -29,7 +29,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  bke::GizmosGeometry *gizmo = new bke::GizmosGeometry("value", const_cast<bNode *>(&params.node()));
+  bke::GizmosGeometry *gizmo = new bke::GizmosGeometry("value",
+                                                       const_cast<bNode *>(&params.node()));
 
   params.set_output("Gizmo", GeometrySet::create_with_gizmos(gizmo));
 }

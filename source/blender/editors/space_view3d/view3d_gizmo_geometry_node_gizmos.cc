@@ -6,14 +6,14 @@
  * \ingroup spview3d
  */
 
+#include "BKE_context.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_gizmos.hh"
 #include "BKE_layer.h"
-#include "BKE_context.h"
 
 #include "BLI_array.hh"
-#include "BLI_span.hh"
 #include "BLI_index_range.hh"
+#include "BLI_span.hh"
 
 #include "DNA_node_types.h"
 
@@ -38,10 +38,10 @@ struct GeometryNodeGizmoWrapper {
   const bke::GizmosGeometry &gizmos_geometry;
   Array<wmGizmo *> gizmos_objects;
 
-  GeometryNodeGizmoWrapper(const bke::GizmosGeometry &gizmos_geometry_source) :
-      gizmos_geometry(gizmos_geometry_source),
-      gizmos_objects(gizmos_geometry.gizmos_num())
-    {}
+  GeometryNodeGizmoWrapper(const bke::GizmosGeometry &gizmos_geometry_source)
+      : gizmos_geometry(gizmos_geometry_source), gizmos_objects(gizmos_geometry.gizmos_num())
+  {
+  }
 };
 
 static const bke::GizmosGeometry *gizmos_from_context_try(const bContext *C)
@@ -60,7 +60,7 @@ static const bke::GizmosGeometry *gizmos_from_context_try(const bContext *C)
   }
 
   Object *object = base->object;
-  if (object == nullptr){
+  if (object == nullptr) {
     return nullptr;
   }
 
@@ -70,14 +70,14 @@ static const bke::GizmosGeometry *gizmos_from_context_try(const bContext *C)
   BLI_assert(evaluated_object != nullptr);
 
   const GeometrySet *evaluated_geometry_set = evaluated_object->runtime.geometry_set_eval;
-  if (evaluated_geometry_set == nullptr){
+  if (evaluated_geometry_set == nullptr) {
     return nullptr;
   }
 
   return evaluated_geometry_set->get_gizmos_for_read();
 }
 
-static bool WIDGETGROUP_geometry_node_poll(const bContext *C, wmGizmoGroupType */*gzgt*/)
+static bool WIDGETGROUP_geometry_node_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
 {
   if (gizmos_from_context_try(C) != nullptr) {
     return true;
@@ -107,7 +107,8 @@ static void WIDGETGROUP_geometry_node_refresh(const bContext *C, wmGizmoGroup *g
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Object *object = BKE_view_layer_active_object_get(view_layer);
-  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(gzgroup->customdata);
+  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(
+      gzgroup->customdata);
 
   const Span<bNode *> nodes = gzgroup_data.gizmos_geometry.nodes();
   const Span<bNodeTree *> trees = gzgroup_data.gizmos_geometry.trees();
@@ -135,7 +136,8 @@ static void WIDGETGROUP_geometry_node_draw_prepare(const bContext *C, wmGizmoGro
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
   const Object *object = BKE_view_layer_active_object_get(view_layer);
-  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(gzgroup->customdata);
+  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(
+      gzgroup->customdata);
 
   for (const int index : IndexRange(gzgroup_data.gizmos_geometry.gizmos_num())) {
     wmGizmo *gz = gzgroup_data.gizmos_objects[index];
@@ -144,7 +146,7 @@ static void WIDGETGROUP_geometry_node_draw_prepare(const bContext *C, wmGizmoGro
     WM_gizmo_set_matrix_location(gz, object->object_to_world[3]);
   }
 }
-}
+}  // namespace blender
 
 void VIEW3D_GGT_geometry_node_gizmos(wmGizmoGroupType *gzgt)
 {

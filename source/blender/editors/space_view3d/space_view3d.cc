@@ -1032,7 +1032,6 @@ static void view3d_widgets()
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_camera);
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_camera_view);
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_empty_image);
-  WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_geometry_node_gizmos);
   /* TODO(@ideasman42): Not working well enough, disable for now. */
 #if 0
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_armature_spline);
@@ -1046,6 +1045,7 @@ static void view3d_widgets()
   WM_gizmogrouptype_append(VIEW3D_GGT_mesh_preselect_edgering);
   WM_gizmogrouptype_append(VIEW3D_GGT_tool_generic_handle_normal);
   WM_gizmogrouptype_append(VIEW3D_GGT_tool_generic_handle_free);
+  // WM_gizmogrouptype_append(VIEW3D_GGT_geometry_node_gizmos);
 
   WM_gizmogrouptype_append(VIEW3D_GGT_ruler);
   WM_gizmotype_append(VIEW3D_GT_ruler_item);

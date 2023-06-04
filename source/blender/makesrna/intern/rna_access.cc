@@ -2960,7 +2960,7 @@ void RNA_property_float_set(PointerRNA *ptr, PropertyRNA *prop, float value)
   BLI_assert(RNA_property_array_check(prop) == false);
   /* useful to check on bad values but set function should clamp */
   // BLI_assert(RNA_property_float_clamp(ptr, prop, &value) == 0);
-printf("1\n");
+  printf("1\n");
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
     printf("2\n");
     RNA_property_float_clamp(ptr, prop, &value);

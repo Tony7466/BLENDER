@@ -24,7 +24,11 @@ class GizmosGeometry {
  public:
   GizmosGeometry() = default;
   GizmosGeometry(std::string path);
-  GizmosGeometry(std::string path, bNode *node) : paths_{std::move(path)}, nodes_{node}, trees_{const_cast<bNodeTree *>(&node->owner_tree())}, mapping(1, 0) {};
+  GizmosGeometry(std::string path, bNode *node)
+      : paths_{std::move(path)},
+        nodes_{node},
+        trees_{const_cast<bNodeTree *>(&node->owner_tree())},
+        mapping(1, 0){};
   // GizmosGeometry(int pathes, int gizmos);
   // GizmosGeometry(const GizmosGeometry &other);
 

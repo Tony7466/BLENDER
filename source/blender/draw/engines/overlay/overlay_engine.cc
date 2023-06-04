@@ -18,9 +18,9 @@
 #include "UI_interface.h"
 
 #include "BKE_duplilist.h"
+#include "BKE_geometry_set.hh"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_geometry_set.hh"
 
 #include "GPU_capabilities.h"
 
@@ -499,11 +499,11 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
-  
+
   if (draw_geometry_node_gizmos) {
-    //OVERLAY_geometry_node_gizmo_cache_populate(data, ob); ?
+    // OVERLAY_geometry_node_gizmo_cache_populate(data, ob); ?
   }
-  
+
   /* Non-Meshes */
   if (draw_extras) {
     switch (ob->type) {
