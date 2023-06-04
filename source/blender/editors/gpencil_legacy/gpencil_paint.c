@@ -2947,18 +2947,6 @@ static void gpencil_draw_apply_event(bContext *C,
   /* By default use pen pressure for random curves but attenuated. */
   p->random_settings.pen_press = pow(p->pressure, 3.0f);
 
-  /* Hack for pressure sensitive eraser on D+RMB when using a tablet:
-   * The pen has to float over the tablet surface, resulting in
-   * zero pressure (#47101). Ignore pressure values if floating
-   * (i.e. "effectively zero" pressure), and only when the "active"
-   * end is the stylus (i.e. the default when not eraser)
-   */
-  if (p->paintmode == GP_PAINTMODE_ERASER) {
-    if ((event->tablet.active != EVT_TABLET_ERASER) && (p->pressure < 0.001f)) {
-      p->pressure = 1.0f;
-    }
-  }
-
   /* special eraser modes */
   if (p->paintmode == GP_PAINTMODE_ERASER) {
     if (event->modifier & KM_SHIFT) {
