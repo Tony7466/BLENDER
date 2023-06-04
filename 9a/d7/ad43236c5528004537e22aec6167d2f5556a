@@ -1,2 +1,2 @@
 Referenced by commit 8ed65fe6de9a386f99b0ed7b255f76beaa86ae5b, Cleanup: consistently use rnaindex -1 to mean the no or entire array
-Referenced by issue #108553, Alt + value change doesn't work for various inputs
+Referenced by issue #108553, Regression: Alt + value change doesn't work for various inputs
