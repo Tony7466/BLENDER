@@ -11,12 +11,6 @@
 
 #include "BLI_utildefines.h"
 
-/*
-#ifdef __cplusplus
-#  include "BKE_gizmos.hh"
-#endif
-*/
-
 #include "DNA_object_enums.h"
 
 #include "DNA_customdata_types.h"
@@ -52,14 +46,6 @@ struct RigidBodyOb;
 struct SculptSession;
 struct SoftBody;
 struct bGPdata;
-
-/* replaced by //struct GeometrySet *geometry_set_eval;
-#ifdef __cplusplus
-using runtime_gizmo_geometry = *blender::bke::GizmosGeometry;
-#else
-typedef void *runtime_gizmo_geometry;
-#endif
-*/
 
 /** Vertex Groups - Name Info */
 typedef struct bDeformGroup {

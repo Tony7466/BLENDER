@@ -197,7 +197,6 @@ void WM_gizmo_target_property_float_set(bContext *C,
 
   /* reset property */
   if (gz_prop->index == -1) {
-    printf("W:\n");
     RNA_property_float_set(&gz_prop->ptr, gz_prop->prop, value);
   }
   else {

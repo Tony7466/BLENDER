@@ -2960,9 +2960,8 @@ void RNA_property_float_set(PointerRNA *ptr, PropertyRNA *prop, float value)
   BLI_assert(RNA_property_array_check(prop) == false);
   /* useful to check on bad values but set function should clamp */
   // BLI_assert(RNA_property_float_clamp(ptr, prop, &value) == 0);
-  printf("1\n");
+
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
-    printf("2\n");
     RNA_property_float_clamp(ptr, prop, &value);
     if (idprop->type == IDP_FLOAT) {
       IDP_Float(idprop) = value;
@@ -2974,15 +2973,12 @@ void RNA_property_float_set(PointerRNA *ptr, PropertyRNA *prop, float value)
     rna_idproperty_touch(idprop);
   }
   else if (fprop->set) {
-    printf("3\n");
     fprop->set(ptr, value);
   }
   else if (fprop->set_ex) {
-    printf("4\n");
     fprop->set_ex(ptr, prop, value);
   }
   else if (prop->flag & PROP_EDITABLE) {
-    printf("5\n");
     IDPropertyTemplate val = {0};
     IDProperty *group;
 
@@ -2995,7 +2991,6 @@ void RNA_property_float_set(PointerRNA *ptr, PropertyRNA *prop, float value)
       IDP_AddToGroup(group, IDP_New(IDP_FLOAT, &val, prop->identifier));
     }
   }
-  printf("6\n");
 }
 
 static void rna_property_float_fill_default_array_values(

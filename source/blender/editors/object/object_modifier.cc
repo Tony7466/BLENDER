@@ -956,8 +956,6 @@ static bool modifier_apply_obdata(
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_eval->type);
 
-  // GizmosComponent *overlay_gizmo = ob->runtime->overlay_gizmo;
-
   if (mti->isDisabled && mti->isDisabled(scene, md_eval, false)) {
     BKE_report(reports, RPT_ERROR, "Modifier is disabled, skipping apply");
     return false;
