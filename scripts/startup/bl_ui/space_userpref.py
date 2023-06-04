@@ -12,9 +12,9 @@ from bpy.app.translations import (
 )
 from bl_ui.utils import PresetPanel
 
+
 # -----------------------------------------------------------------------------
 # Main Header
-
 
 class USERPREF_HT_header(Header):
     bl_space_type = 'PREFERENCES'
@@ -1439,8 +1439,8 @@ class USERPREF_PT_text_editor(FilePathsPanel, Panel):
         paths = context.preferences.filepaths
 
         col = layout.column()
-        col.prop(paths, "text_editor", text="Executable path")
-        col.prop(paths, "text_editor_args", text="Args Format")
+        col.prop(paths, "text_editor", text="Program")
+        col.prop(paths, "text_editor_args", text="Arguments")
 
 
 class USERPREF_PT_file_paths_development(FilePathsPanel, Panel):

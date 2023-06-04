@@ -1,4 +1,6 @@
 import bpy
 
-bpy.context.preferences.filepaths.text_editor = ""
-bpy.context.preferences.filepaths.text_editor_args = ""
+filepaths = bpy.context.preferences.filepaths
+
+filepaths.text_editor = ""
+filepaths.text_editor_args = ""

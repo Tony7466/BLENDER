@@ -1752,7 +1752,7 @@ static int editsource_text_edit(bContext *C,
 
     WM_operator_properties_create_ptr(&op_props, ot);
     RNA_string_set(&op_props, "filepath", filepath);
-    RNA_int_set(&op_props, "line", line);
+    RNA_int_set(&op_props, "line", line - 1);
     RNA_int_set(&op_props, "column", 0);
 
     int result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &op_props, NULL);
