@@ -10997,6 +10997,16 @@ static void def_geo_sample_volume(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
 }
 
+static void def_geo_arrow_gizmos(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeGeometryArrowGizmo", "storage");
+  PropertyRNA *prop = RNA_def_property(srna, "value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 10.0f, 10, 3);
+  RNA_def_property_ui_text(prop, "Value", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_geo_image(StructRNA *srna)
 {
   PropertyRNA *prop;
