@@ -152,7 +152,7 @@ static bool gather_objects_paths(const IObject &object, ListBase *object_paths)
   return parent_is_part_of_this_object;
 }
 
-CacheArchiveHandle *ABC_create_handle(struct Main *bmain,
+CacheArchiveHandle *ABC_create_handle(Main *bmain,
                                       const char *filename,
                                       const CacheFileLayer *layers,
                                       ListBase *object_paths)
@@ -719,7 +719,7 @@ bool ABC_import(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need NULL pointer checks while importing. */
+    /* Fake a job context, so that we don't need null pointer checks while importing. */
     bool stop = false, do_update = false;
     float progress = 0.0f;
 
