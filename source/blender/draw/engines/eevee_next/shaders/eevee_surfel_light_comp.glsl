@@ -18,6 +18,7 @@ void light_eval_surfel(
 
   vec3 V = Ng;
   float vP_z = 0.0;
+  float out_shadow_unused;
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
     light_eval_ex(diffuse,
@@ -31,7 +32,8 @@ void light_eval_surfel(
                   ltc_mat_dummy,
                   l_idx,
                   out_diffuse,
-                  out_specular);
+                  out_specular,
+                  out_shadow_unused);
   }
   LIGHT_FOREACH_END
 
@@ -48,7 +50,8 @@ void light_eval_surfel(
                   ltc_mat_dummy,
                   l_idx,
                   out_diffuse,
-                  out_specular);
+                  out_specular,
+                  out_shadow_unused);
   }
   LIGHT_FOREACH_END
 }
