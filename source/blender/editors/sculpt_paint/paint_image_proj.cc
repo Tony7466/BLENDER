@@ -6870,9 +6870,12 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
   get_default_texture_layer_name_for_object(ob, type, (char *)&imagename, sizeof(imagename));
   RNA_string_set(op->ptr, "name", imagename);
 
-  /* Set default color. Copy the color from nodes, so it matches the existing material. */
-  float color[4];
-  default_paint_slot_color_get(type, ma, color);
+  /* Set default color. Copy the color from nodes, so it matches the existing material.
+   * Material could be null so we should have a default color. */
+  float color[4]={1.0f, 1.0f, 1.0f, 1.0f};
+  if(ma) {
+    default_paint_slot_color_get(type, ma, color);
+  }
   RNA_float_set_array(op->ptr, "color", color);
 
   return WM_operator_props_dialog_popup(C, op, 300);
