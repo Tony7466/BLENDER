@@ -739,10 +739,8 @@ static void rna_ID_asset_data_set(PointerRNA *ptr, PointerRNA value, struct Repo
   const bool assigned_ok = ED_asset_copy_to_id(asset_data, destination);
 
   if (!assigned_ok) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "destination '%s' is of a type that cannot be an asset",
-                destination->name + 2);
+    BKE_reportf(
+        reports, RPT_ERROR, "'%s' is of a type that cannot be an asset", destination->name + 2);
     return;
   }
 
