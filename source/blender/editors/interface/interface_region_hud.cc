@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -104,7 +103,7 @@ static bool hud_panel_operator_redo_poll(const bContext *C, PanelType * /*pt*/)
 static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *panel)
 {
   wmOperator *op = WM_operator_last_redo(C);
-  STRNCPY(panel->drawname, WM_operatortype_name(op->type, op->ptr));
+  BLI_strncpy(panel->drawname, WM_operatortype_name(op->type, op->ptr), sizeof(panel->drawname));
 }
 
 static void hud_panel_operator_redo_draw(const bContext *C, Panel *panel)

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -53,7 +51,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_multires.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "IMB_imbuf.h"
 #include "MEM_guardedalloc.h"
@@ -1070,7 +1068,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "CacheFile", "char", "velocity_unit")) {
       LISTBASE_FOREACH (CacheFile *, cache_file, &bmain->cachefiles) {
-        STRNCPY(cache_file->velocity_name, ".velocities");
+        BLI_strncpy(cache_file->velocity_name, ".velocities", sizeof(cache_file->velocity_name));
         cache_file->velocity_unit = CACHEFILE_VELOCITY_UNIT_SECOND;
       }
     }
@@ -1459,7 +1457,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
             LISTBASE_FOREACH (bNodeSocket *, output_socket, &node->outputs) {
               const char *volume_scatter = "VolumeScatterCol";
               if (STREQLEN(output_socket->name, volume_scatter, MAX_NAME)) {
-                STRNCPY(output_socket->name, RE_PASSNAME_VOLUME_LIGHT);
+                BLI_strncpy(output_socket->name, RE_PASSNAME_VOLUME_LIGHT, MAX_NAME);
               }
             }
           }

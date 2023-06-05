@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edanimation
@@ -128,14 +127,11 @@ static int seq_frame_apply_snap(bContext *C, Scene *scene, const int timeline_fr
 }
 
 /* Set the new frame number */
-static void change_frame_apply(bContext *C, wmOperator *op, const bool always_update)
+static void change_frame_apply(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   float frame = RNA_float_get(op->ptr, "frame");
   bool do_snap = RNA_boolean_get(op->ptr, "snap");
-
-  const int old_frame = scene->r.cfra;
-  const float old_subframe = scene->r.subframe;
 
   if (do_snap) {
     if (CTX_wm_space_seq(C) && SEQ_editing_get(scene) != NULL) {
@@ -158,11 +154,8 @@ static void change_frame_apply(bContext *C, wmOperator *op, const bool always_up
   FRAMENUMBER_MIN_CLAMP(scene->r.cfra);
 
   /* do updates */
-  const bool frame_changed = (old_frame != scene->r.cfra) || (old_subframe != scene->r.subframe);
-  if (frame_changed || always_update) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
-    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
-  }
+  DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
+  WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 }
 
 /* ---- */
@@ -170,7 +163,7 @@ static void change_frame_apply(bContext *C, wmOperator *op, const bool always_up
 /* Non-modal callback for running operator without user input */
 static int change_frame_exec(bContext *C, wmOperator *op)
 {
-  change_frame_apply(C, op, true);
+  change_frame_apply(C, op);
 
   return OPERATOR_FINISHED;
 }
@@ -195,21 +188,41 @@ static float frame_from_event(bContext *C, const wmEvent *event)
   return frame;
 }
 
-static void change_frame_seq_preview_begin(bContext *C, const wmEvent *event, SpaceSeq *sseq)
+static void change_frame_seq_preview_begin(bContext *C, const wmEvent *event)
 {
-  BLI_assert(sseq != NULL);
-  ARegion *region = CTX_wm_region(C);
-  if (ED_space_sequencer_check_show_strip(sseq) && !ED_time_scrub_event_in_region(region, event)) {
-    ED_sequencer_special_preview_set(C, event->mval);
+  ScrArea *area = CTX_wm_area(C);
+  bScreen *screen = CTX_wm_screen(C);
+  if (area && area->spacetype == SPACE_SEQ) {
+    SpaceSeq *sseq = area->spacedata.first;
+    ARegion *region = CTX_wm_region(C);
+    if (ED_space_sequencer_check_show_strip(sseq) && !ED_time_scrub_event_in_region(region, event))
+    {
+      ED_sequencer_special_preview_set(C, event->mval);
+    }
+  }
+  if (screen) {
+    screen->scrubbing = true;
   }
 }
 
-static void change_frame_seq_preview_end(SpaceSeq *sseq)
+static void change_frame_seq_preview_end(bContext *C)
 {
-  BLI_assert(sseq != NULL);
-  UNUSED_VARS_NDEBUG(sseq);
+  bScreen *screen = CTX_wm_screen(C);
+  bool notify = false;
+
+  if (screen->scrubbing) {
+    screen->scrubbing = false;
+    notify = true;
+  }
+
   if (ED_sequencer_special_preview_get() != NULL) {
     ED_sequencer_special_preview_clear();
+    notify = true;
+  }
+
+  if (notify) {
+    Scene *scene = CTX_data_scene(C);
+    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
 }
 
@@ -229,7 +242,6 @@ static bool use_sequencer_snapping(bContext *C)
 static int change_frame_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
-  bScreen *screen = CTX_wm_screen(C);
   if (CTX_wm_space_seq(C) != NULL && region->regiontype == RGN_TYPE_PREVIEW) {
     return OPERATOR_CANCELLED;
   }
@@ -244,13 +256,9 @@ static int change_frame_invoke(bContext *C, wmOperator *op, const wmEvent *event
     RNA_boolean_set(op->ptr, "snap", true);
   }
 
-  screen->scrubbing = true;
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (sseq) {
-    change_frame_seq_preview_begin(C, event, sseq);
-  }
+  change_frame_seq_preview_begin(C, event);
 
-  change_frame_apply(C, op, true);
+  change_frame_apply(C, op);
 
   /* add temp handler */
   WM_event_add_modal_handler(C, op);
@@ -258,50 +266,9 @@ static int change_frame_invoke(bContext *C, wmOperator *op, const wmEvent *event
   return OPERATOR_RUNNING_MODAL;
 }
 
-static bool need_extra_redraw_after_scrubbing_ends(bContext *C)
-{
-  if (CTX_wm_space_seq(C)) {
-    /* During scrubbing in the sequencer, a preview of the final video might be drawn. After
-     * scrubbing, the actual result should be shown again. */
-    return true;
-  }
-  wmWindowManager *wm = CTX_wm_manager(C);
-  Object *object = CTX_data_active_object(C);
-  if (object && object->type == OB_GPENCIL_LEGACY) {
-    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-      bScreen *screen = WM_window_get_active_screen(win);
-      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-        SpaceLink *sl = (SpaceLink *)area->spacedata.first;
-        if (sl->spacetype == SPACE_VIEW3D) {
-          View3D *v3d = (View3D *)sl;
-          if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
-            if (v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) {
-              /* Grease pencil onion skin is not drawn during scrubbing. Redraw is necessary after
-               * scrubbing ends to show onion skin again. */
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
 static void change_frame_cancel(bContext *C, wmOperator *UNUSED(op))
 {
-  bScreen *screen = CTX_wm_screen(C);
-  screen->scrubbing = false;
-
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (sseq != NULL) {
-    change_frame_seq_preview_end(sseq);
-  }
-
-  if (need_extra_redraw_after_scrubbing_ends(C)) {
-    Scene *scene = CTX_data_scene(C);
-    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
-  }
+  change_frame_seq_preview_end(C);
 }
 
 /* Modal event handling of frame changing */
@@ -316,7 +283,7 @@ static int change_frame_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
     case MOUSEMOVE:
       RNA_float_set(op->ptr, "frame", frame_from_event(C, event));
-      change_frame_apply(C, op, false);
+      change_frame_apply(C, op);
       break;
 
     case LEFTMOUSE:
@@ -351,17 +318,7 @@ static int change_frame_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   if (ret != OPERATOR_RUNNING_MODAL) {
-    bScreen *screen = CTX_wm_screen(C);
-    screen->scrubbing = false;
-
-    SpaceSeq *sseq = CTX_wm_space_seq(C);
-    if (sseq != NULL) {
-      change_frame_seq_preview_end(sseq);
-    }
-    if (need_extra_redraw_after_scrubbing_ends(C)) {
-      Scene *scene = CTX_data_scene(C);
-      WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
-    }
+    change_frame_seq_preview_end(C);
   }
 
   return ret;

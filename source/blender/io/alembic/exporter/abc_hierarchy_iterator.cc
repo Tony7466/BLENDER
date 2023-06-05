@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 #include "abc_hierarchy_iterator.h"
 #include "abc_writer_abstract.h"

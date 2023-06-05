@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 by Campbell Barton. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 by Campbell Barton. All rights reserved. */
 
 #pragma once
 

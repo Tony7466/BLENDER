@@ -31,7 +31,7 @@ if(HIPRT_INCLUDE_DIR)
     NAMES
       hiprt${_hiprt_version}_amd_lib_win.bc
     HINTS
-      ${HIPRT_ROOT_DIR}/dist/bin/Release
+      ${HIPRT_INCLUDE_DIR}/hiprt/win
     NO_DEFAULT_PATH
   )
 

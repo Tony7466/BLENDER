@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -50,7 +49,7 @@ BLI_INLINE eParticleRefineShaderType drw_curves_shader_type_get()
 }
 
 struct CurvesEvalCall {
-  CurvesEvalCall *next;
+  struct CurvesEvalCall *next;
   GPUVertBuf *vbo;
   DRWShadingGroup *shgrp;
   uint vert_len;
@@ -62,6 +61,7 @@ static int g_tf_target_width;
 static int g_tf_target_height;
 
 static GPUVertBuf *g_dummy_vbo = nullptr;
+static GPUTexture *g_dummy_texture = nullptr;
 static DRWPass *g_tf_pass; /* XXX can be a problem with multiple DRWManager in the future */
 
 using CurvesInfosBuf = blender::draw::UniformBuffer<CurvesInfos>;
@@ -121,6 +121,8 @@ void DRW_curves_init(DRWData *drw_data)
     GPU_vertbuf_attr_fill(g_dummy_vbo, dummy_id, vert);
     /* Create vbo immediately to bind to texture buffer. */
     GPU_vertbuf_use(g_dummy_vbo);
+
+    g_dummy_texture = GPU_texture_create_from_vertbuf("hair_dummy_attr", g_dummy_vbo);
   }
 }
 
@@ -316,12 +318,12 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   DRWShadingGroup *shgrp = DRW_shgroup_create_sub(shgrp_parent);
 
-  /* Fix issue with certain driver not drawing anything if there is nothing bound to
+  /* Fix issue with certain driver not drawing anything if there is no texture bound to
    * "ac", "au", "u" or "c". */
-  DRW_shgroup_buffer_texture(shgrp, "u", g_dummy_vbo);
-  DRW_shgroup_buffer_texture(shgrp, "au", g_dummy_vbo);
-  DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
-  DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
+  DRW_shgroup_uniform_texture(shgrp, "u", g_dummy_texture);
+  DRW_shgroup_uniform_texture(shgrp, "au", g_dummy_texture);
+  DRW_shgroup_uniform_texture(shgrp, "c", g_dummy_texture);
+  DRW_shgroup_uniform_texture(shgrp, "ac", g_dummy_texture);
 
   /* TODO: Generalize radius implementation for curves data type. */
   float hair_rad_shape = 0.0f;
@@ -413,7 +415,7 @@ void DRW_curves_update()
   /* Update legacy hair too, to avoid verbosity in callers. */
   DRW_hair_update();
 
-  if (drw_curves_shader_type_get() == PART_REFINE_SHADER_TRANSFORM_FEEDBACK_WORKAROUND) {
+  if (!GPU_transform_feedback_support()) {
     /**
      * Workaround to transform feedback not working on mac.
      * On some system it crashes (see #58489) and on some other it renders garbage (see #60171).
@@ -536,4 +538,5 @@ void DRW_curves_free()
   DRW_hair_free();
 
   GPU_VERTBUF_DISCARD_SAFE(g_dummy_vbo);
+  DRW_TEXTURE_FREE_SAFE(g_dummy_texture);
 }

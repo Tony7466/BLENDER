@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup spbuttons
@@ -59,7 +58,7 @@ static int buttons_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void BUTTONS_OT_start_filter(wmOperatorType *ot)
+void BUTTONS_OT_start_filter(struct wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Filter";
@@ -84,7 +83,7 @@ static int buttons_clear_filter_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void BUTTONS_OT_clear_filter(wmOperatorType *ot)
+void BUTTONS_OT_clear_filter(struct wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Clear Filter";
@@ -184,8 +183,8 @@ static int file_browse_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   FileBrowseOp *fbo = op->customdata;
   ID *id;
-  char *path;
-  int path_len;
+  char *str;
+  int str_len;
   const char *path_prop = RNA_struct_find_property(op->ptr, "directory") ? "directory" :
                                                                            "filepath";
 
@@ -193,41 +192,41 @@ static int file_browse_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  path = RNA_string_get_alloc(op->ptr, path_prop, NULL, 0, &path_len);
+  str = RNA_string_get_alloc(op->ptr, path_prop, NULL, 0, &str_len);
 
   /* Add slash for directories, important for some properties. */
   if (RNA_property_subtype(fbo->prop) == PROP_DIRPATH) {
-    char path_buf[FILE_MAX];
+    char path[FILE_MAX];
     const bool is_relative = RNA_boolean_get(op->ptr, "relative_path");
     id = fbo->ptr.owner_id;
 
-    STRNCPY(path_buf, path);
-    BLI_path_abs(path_buf, id ? ID_BLEND_PATH(bmain, id) : BKE_main_blendfile_path(bmain));
+    BLI_strncpy(path, str, FILE_MAX);
+    BLI_path_abs(path, id ? ID_BLEND_PATH(bmain, id) : BKE_main_blendfile_path(bmain));
 
-    if (BLI_is_dir(path_buf)) {
+    if (BLI_is_dir(path)) {
       /* Do this first so '//' isn't converted to '//\' on windows. */
-      BLI_path_slash_ensure(path_buf, sizeof(path_buf));
+      BLI_path_slash_ensure(path, sizeof(path));
       if (is_relative) {
-        BLI_path_rel(path_buf, BKE_main_blendfile_path(bmain));
-        path_len = strlen(path_buf);
-        path = MEM_reallocN(path, path_len + 1);
-        memcpy(path, path_buf, path_len + 1);
+        BLI_path_rel(path, BKE_main_blendfile_path(bmain));
+        str_len = strlen(path);
+        str = MEM_reallocN(str, str_len + 1);
+        memcpy(str, path, str_len + 1);
       }
       else {
-        path = MEM_reallocN(path, path_len + 1);
+        str = MEM_reallocN(str, str_len + 1);
       }
     }
     else {
-      char *const lslash = (char *)BLI_path_slash_rfind(path);
+      char *const lslash = (char *)BLI_path_slash_rfind(str);
       if (lslash) {
         lslash[1] = '\0';
       }
     }
   }
 
-  RNA_property_string_set(&fbo->ptr, fbo->prop, path);
+  RNA_property_string_set(&fbo->ptr, fbo->prop, str);
   RNA_property_update(C, &fbo->ptr, fbo->prop);
-  MEM_freeN(path);
+  MEM_freeN(str);
 
   if (fbo->is_undo) {
     const char *undostr = RNA_property_identifier(fbo->prop);
@@ -267,7 +266,7 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   bool is_undo;
   bool is_userdef;
   FileBrowseOp *fbo;
-  char *path;
+  char *str;
 
   const SpaceFile *sfile = CTX_wm_space_file(C);
   if (sfile && sfile->op) {
@@ -281,7 +280,7 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  path = RNA_property_string_get_alloc(&ptr, prop, NULL, 0, NULL);
+  str = RNA_property_string_get_alloc(&ptr, prop, NULL, 0, NULL);
 
   /* Useful yet irritating feature, Shift+Click to open the file
    * Alt+Click to browse a folder in the OS's browser. */
@@ -290,18 +289,18 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     PointerRNA props_ptr;
 
     if (event->modifier & KM_ALT) {
-      char *lslash = (char *)BLI_path_slash_rfind(path);
+      char *lslash = (char *)BLI_path_slash_rfind(str);
       if (lslash) {
         *lslash = '\0';
       }
     }
 
     WM_operator_properties_create_ptr(&props_ptr, ot);
-    RNA_string_set(&props_ptr, "filepath", path);
+    RNA_string_set(&props_ptr, "filepath", str);
     WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &props_ptr, NULL);
     WM_operator_properties_free(&props_ptr);
 
-    MEM_freeN(path);
+    MEM_freeN(str);
     return OPERATOR_CANCELLED;
   }
 
@@ -323,8 +322,8 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
       /* While we want to follow the defaults,
        * we better not switch existing paths relative/absolute state. */
-      if (path[0]) {
-        is_relative = BLI_path_is_rel(path);
+      if (str[0]) {
+        is_relative = BLI_path_is_rel(str);
       }
 
       if (UNLIKELY(ptr.data == &U || is_userdef)) {
@@ -336,8 +335,8 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
 
-  RNA_string_set(op->ptr, path_prop, path);
-  MEM_freeN(path);
+  RNA_string_set(op->ptr, path_prop, str);
+  MEM_freeN(str);
 
   PropertyRNA *prop_check_existing = RNA_struct_find_property(op->ptr, "check_existing");
   if (!RNA_property_is_set(op->ptr, prop_check_existing)) {

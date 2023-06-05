@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -17,6 +15,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define TODO_LAYER_OVERRIDE  /* CollectionOverride */
+#define TODO_LAYER_OPERATORS /* collection mamanger and property panel operators */
+#define TODO_LAYER           /* generic todo */
 
 struct Base;
 struct BlendDataReader;
@@ -273,7 +275,7 @@ void BKE_view_layer_blend_write(struct BlendWriter *writer,
                                 struct ViewLayer *view_layer);
 void BKE_view_layer_blend_read_data(struct BlendDataReader *reader, struct ViewLayer *view_layer);
 void BKE_view_layer_blend_read_lib(struct BlendLibReader *reader,
-                                   struct ID *self_id,
+                                   struct Library *lib,
                                    struct ViewLayer *view_layer);
 
 /* iterators */
@@ -623,8 +625,8 @@ void BKE_view_layer_rename_lightgroup(struct Scene *scene,
                                       ViewLayerLightgroup *lightgroup,
                                       const char *name);
 
-int BKE_lightgroup_membership_get(const struct LightgroupMembership *lgm, char *name);
-int BKE_lightgroup_membership_length(const struct LightgroupMembership *lgm);
+void BKE_lightgroup_membership_get(struct LightgroupMembership *lgm, char *name);
+int BKE_lightgroup_membership_length(struct LightgroupMembership *lgm);
 void BKE_lightgroup_membership_set(struct LightgroupMembership **lgm, const char *name);
 
 #ifdef __cplusplus

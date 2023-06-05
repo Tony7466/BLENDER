@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
@@ -247,7 +245,7 @@ void node_geometry_add_attribute_search_button(const bContext & /*C*/,
   const bNodeSocket &socket = *static_cast<const bNodeSocket *>(socket_ptr.data);
   AttributeSearchData *data = MEM_new<AttributeSearchData>(__func__);
   data->node_id = node.identifier;
-  STRNCPY(data->socket_identifier, socket.identifier);
+  BLI_strncpy(data->socket_identifier, socket.identifier, sizeof(data->socket_identifier));
 
   UI_but_func_search_set_results_are_suggestions(but, true);
   UI_but_func_search_set_sep_string(but, UI_MENU_ARROW_SEP);

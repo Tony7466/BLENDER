@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -86,7 +85,7 @@ static bool modifiers_disable_subsurf_temporary(Object *ob, const int cageIndex)
   return changed;
 }
 
-float (*BKE_crazyspace_get_mapped_editverts(Depsgraph *depsgraph, Object *obedit))[3]
+float (*BKE_crazyspace_get_mapped_editverts(struct Depsgraph *depsgraph, Object *obedit))[3]
 {
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
   Object *obedit_eval = DEG_get_evaluated_object(depsgraph, obedit);
@@ -236,7 +235,7 @@ void BKE_crazyspace_set_quats_mesh(Mesh *me,
   MEM_freeN(vert_tag);
 }
 
-int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
+int BKE_crazyspace_get_first_deform_matrices_editbmesh(struct Depsgraph *depsgraph,
                                                        Scene *scene,
                                                        Object *ob,
                                                        BMEditMesh *em,
@@ -316,7 +315,7 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
  *
  * Similar to #BKE_object_eval_reset(), but does not modify the actual evaluated object.
  */
-static void crazyspace_init_object_for_eval(Depsgraph *depsgraph,
+static void crazyspace_init_object_for_eval(struct Depsgraph *depsgraph,
                                             Object *object,
                                             Object *object_crazy)
 {
@@ -356,7 +355,7 @@ static bool crazyspace_modifier_supports_deform(ModifierData *md)
   return (mti->type == eModifierTypeType_OnlyDeform);
 }
 
-int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
+int BKE_sculpt_get_first_deform_matrices(struct Depsgraph *depsgraph,
                                          Scene *scene,
                                          Object *object,
                                          float (**deformmats)[3][3],
@@ -428,7 +427,7 @@ int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
   return modifiers_left_num;
 }
 
-void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
+void BKE_crazyspace_build_sculpt(struct Depsgraph *depsgraph,
                                  Scene *scene,
                                  Object *object,
                                  float (**deformmats)[3][3],
@@ -522,7 +521,7 @@ void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
 void BKE_crazyspace_api_eval(Depsgraph *depsgraph,
                              Scene *scene,
                              Object *object,
-                             ReportList *reports)
+                             struct ReportList *reports)
 {
   if (object->runtime.crazyspace_deform_imats != nullptr ||
       object->runtime.crazyspace_deform_cos != nullptr)
@@ -546,8 +545,8 @@ void BKE_crazyspace_api_eval(Depsgraph *depsgraph,
                               &object->runtime.crazyspace_deform_cos);
 }
 
-void BKE_crazyspace_api_displacement_to_deformed(Object *object,
-                                                 ReportList *reports,
+void BKE_crazyspace_api_displacement_to_deformed(struct Object *object,
+                                                 struct ReportList *reports,
                                                  int vertex_index,
                                                  float displacement[3],
                                                  float r_displacement_deformed[3])
@@ -566,8 +565,8 @@ void BKE_crazyspace_api_displacement_to_deformed(Object *object,
               displacement);
 }
 
-void BKE_crazyspace_api_displacement_to_original(Object *object,
-                                                 ReportList *reports,
+void BKE_crazyspace_api_displacement_to_original(struct Object *object,
+                                                 struct ReportList *reports,
                                                  int vertex_index,
                                                  float displacement_deformed[3],
                                                  float r_displacement[3])

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -39,8 +37,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_ui_common.hh"
-#include "MOD_util.hh"
+#include "MOD_ui_common.h"
+#include "MOD_util.h"
 
 static void generate_vert_coordinates(Mesh *mesh,
                                       Object *ob,
@@ -630,7 +628,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 
   r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
 
-  /* Ask for vertex-groups if we need them. */
+  /* Ask for vertexgroups if we need them. */
   if (enmd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
@@ -648,7 +646,7 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
   walk(userData, ob, (ID **)&enmd->target, IDWALK_CB_NOP);
 }
 
-static bool isDisabled(const Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
+static bool isDisabled(const struct Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
 {
   NormalEditModifierData *enmd = (NormalEditModifierData *)md;
 

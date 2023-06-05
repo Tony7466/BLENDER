@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -178,8 +176,8 @@ static void bpy_msgbus_notify(bContext *C,
 }
 
 /* Follow wmMsgSubscribeValueFreeDataFn spec */
-static void bpy_msgbus_subscribe_value_free_data(wmMsgSubscribeKey *UNUSED(msg_key),
-                                                 wmMsgSubscribeValue *msg_val)
+static void bpy_msgbus_subscribe_value_free_data(struct wmMsgSubscribeKey *UNUSED(msg_key),
+                                                 struct wmMsgSubscribeValue *msg_val)
 {
   const PyGILState_STATE gilstate = PyGILState_Ensure();
   Py_DECREF(msg_val->owner);
@@ -379,7 +377,7 @@ static PyObject *bpy_msgbus_clear_by_owner(PyObject *UNUSED(self), PyObject *py_
   Py_RETURN_NONE;
 }
 
-static PyMethodDef BPy_msgbus_methods[] = {
+static struct PyMethodDef BPy_msgbus_methods[] = {
     {"subscribe_rna",
      (PyCFunction)bpy_msgbus_subscribe_rna,
      METH_VARARGS | METH_KEYWORDS,
@@ -395,7 +393,7 @@ static PyMethodDef BPy_msgbus_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyModuleDef _bpy_msgbus_def = {
+static struct PyModuleDef _bpy_msgbus_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "msgbus",
     /*m_doc*/ NULL,

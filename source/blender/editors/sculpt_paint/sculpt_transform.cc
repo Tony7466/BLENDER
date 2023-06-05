@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -27,7 +26,7 @@
 #include "ED_screen.h"
 #include "ED_sculpt.h"
 #include "ED_view3d.h"
-#include "paint_intern.hh"
+#include "paint_intern.h"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"

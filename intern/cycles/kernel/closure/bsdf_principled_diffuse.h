@@ -132,7 +132,8 @@ ccl_device Spectrum bsdf_principled_diffuse_eval(ccl_private const ShaderClosure
 ccl_device int bsdf_principled_diffuse_sample(ccl_private const ShaderClosure *sc,
                                               float3 Ng,
                                               float3 wi,
-                                              float2 rand,
+                                              float randu,
+                                              float randv,
                                               ccl_private Spectrum *eval,
                                               ccl_private float3 *wo,
                                               ccl_private float *pdf)
@@ -141,7 +142,7 @@ ccl_device int bsdf_principled_diffuse_sample(ccl_private const ShaderClosure *s
 
   float3 N = bsdf->N;
 
-  sample_cos_hemisphere(N, rand, wo, pdf);
+  sample_cos_hemisphere(N, randu, randv, wo, pdf);
 
   if (dot(Ng, *wo) > 0) {
     *eval = bsdf_principled_diffuse_compute_brdf(bsdf, N, wi, *wo, pdf);

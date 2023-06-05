@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -91,10 +90,10 @@ void workbench_cache_init(void *ved)
 
 /* TODO(fclem): DRW_cache_object_surface_material_get needs a refactor to allow passing NULL
  * instead of gpumat_array. Avoiding all this boilerplate code. */
-static GPUBatch **workbench_object_surface_material_get(Object *ob)
+static struct GPUBatch **workbench_object_surface_material_get(Object *ob)
 {
   const int materials_len = DRW_cache_object_material_count_get(ob);
-  GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
+  struct GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
   memset(gpumat_array, 0, sizeof(*gpumat_array) * materials_len);
 
   return DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
@@ -115,7 +114,7 @@ static void workbench_cache_sculpt_populate(WORKBENCH_PrivateData *wpd,
   }
   else {
     const int materials_len = DRW_cache_object_material_count_get(ob);
-    DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
+    struct DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
     for (int i = 0; i < materials_len; i++) {
       shgrps[i] = workbench_material_setup(wpd, ob, i + 1, color_type, NULL);
     }
@@ -123,7 +122,7 @@ static void workbench_cache_sculpt_populate(WORKBENCH_PrivateData *wpd,
   }
 }
 
-BLI_INLINE void workbench_object_drawcall(DRWShadingGroup *grp, GPUBatch *geom, Object *ob)
+BLI_INLINE void workbench_object_drawcall(DRWShadingGroup *grp, struct GPUBatch *geom, Object *ob)
 {
   if (ob->type == OB_POINTCLOUD) {
     /* Draw range to avoid drawcall batching messing up the instance attribute. */
@@ -142,7 +141,7 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
   const bool use_single_drawcall = imapaint->mode == IMAGEPAINT_MODE_IMAGE;
 
   if (use_single_drawcall) {
-    GPUBatch *geom = DRW_cache_mesh_surface_texpaint_single_get(ob);
+    struct GPUBatch *geom = DRW_cache_mesh_surface_texpaint_single_get(ob);
     if (geom) {
       Image *ima = imapaint->canvas;
 
@@ -157,7 +156,7 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
     }
   }
   else {
-    GPUBatch **geoms = DRW_cache_mesh_surface_texpaint_get(ob);
+    struct GPUBatch **geoms = DRW_cache_mesh_surface_texpaint_get(ob);
     if (geoms) {
       const int materials_len = DRW_cache_object_material_count_get(ob);
       for (int i = 0; i < materials_len; i++) {
@@ -183,7 +182,7 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd,
       color_type, V3D_SHADING_MATERIAL_COLOR, V3D_SHADING_TEXTURE_COLOR);
 
   if (use_single_drawcall) {
-    GPUBatch *geom;
+    struct GPUBatch *geom;
     if (use_vcol) {
       if (ob->mode & OB_MODE_VERTEX_PAINT) {
         geom = DRW_cache_mesh_surface_vertpaint_get(ob);
@@ -202,8 +201,8 @@ static void workbench_cache_common_populate(WORKBENCH_PrivateData *wpd,
     }
   }
   else {
-    GPUBatch **geoms = (use_tex) ? DRW_cache_mesh_surface_texpaint_get(ob) :
-                                   workbench_object_surface_material_get(ob);
+    struct GPUBatch **geoms = (use_tex) ? DRW_cache_mesh_surface_texpaint_get(ob) :
+                                          workbench_object_surface_material_get(ob);
     if (geoms) {
       const int materials_len = DRW_cache_object_material_count_get(ob);
       for (int i = 0; i < materials_len; i++) {
@@ -661,7 +660,7 @@ static void workbench_view_update(void *vedata)
   workbench_antialiasing_view_updated(data);
 }
 
-static void workbench_id_update(void *UNUSED(vedata), ID *id)
+static void workbench_id_update(void *UNUSED(vedata), struct ID *id)
 {
   if (GS(id->name) == ID_OB) {
     WORKBENCH_ObjectData *oed = (WORKBENCH_ObjectData *)DRW_drawdata_get(id,

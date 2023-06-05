@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2023 NVIDIA Corporation. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 NVIDIA Corporation. All rights reserved. */
 
 #include "usd_asset_utils.h"
 

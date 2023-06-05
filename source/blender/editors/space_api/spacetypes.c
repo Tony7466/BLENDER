@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. */
 
 /** \file
  * \ingroup spapi
@@ -35,7 +34,6 @@
 #include "ED_geometry.h"
 #include "ED_gizmo_library.h"
 #include "ED_gpencil_legacy.h"
-#include "ED_grease_pencil_draw.h"
 #include "ED_lattice.h"
 #include "ED_markers.h"
 #include "ED_mask.h"
@@ -93,7 +91,6 @@ void ED_spacetypes_init(void)
   ED_operatortypes_anim();
   ED_operatortypes_animchannels();
   ED_operatortypes_asset();
-  ED_operatortypes_grease_pencil_draw();
   ED_operatortypes_gpencil();
   ED_operatortypes_object();
   ED_operatortypes_lattice();
@@ -221,7 +218,7 @@ void ED_spacetypes_keymap(wmKeyConfig *keyconf)
 typedef struct RegionDrawCB {
   struct RegionDrawCB *next, *prev;
 
-  void (*draw)(const bContext *, ARegion *, void *);
+  void (*draw)(const struct bContext *, struct ARegion *, void *);
   void *customdata;
 
   int type;
@@ -229,7 +226,7 @@ typedef struct RegionDrawCB {
 } RegionDrawCB;
 
 void *ED_region_draw_cb_activate(ARegionType *art,
-                                 void (*draw)(const bContext *, ARegion *, void *),
+                                 void (*draw)(const struct bContext *, struct ARegion *, void *),
                                  void *customdata,
                                  int type)
 {

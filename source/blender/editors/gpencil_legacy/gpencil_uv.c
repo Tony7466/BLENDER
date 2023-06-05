@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -107,7 +105,7 @@ static void gpencil_uv_transform_update_header(wmOperator *op, bContext *C)
       default:
         break;
     }
-    SNPRINTF(msg, str, flts_str, flts_str + NUM_STR_REP_LEN);
+    BLI_snprintf(msg, sizeof(msg), str, flts_str, flts_str + NUM_STR_REP_LEN);
     ED_area_status_text(area, msg);
   }
 }

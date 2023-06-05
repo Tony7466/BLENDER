@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -63,7 +62,9 @@
 
 #include "IMB_colormanagement.h"
 
-#include "paint_intern.hh"
+#include "paint_intern.h"
+
+extern "C" {
 
 /* -------------------------------------------------------------------- */
 /** \name Image Paint Tile Utilities (Partial Update)
@@ -81,7 +82,7 @@ ImagePaintPartialRedraw *get_imapaintpartial(void)
   return &imapaintpartial;
 }
 
-void set_imapaintpartial(ImagePaintPartialRedraw *ippr)
+void set_imapaintpartial(struct ImagePaintPartialRedraw *ippr)
 {
   imapaintpartial = *ippr;
 }
@@ -354,14 +355,14 @@ bool paint_use_opacity_masking(Brush *brush)
               true);
 }
 
-void paint_brush_color_get(Scene *scene,
-                           Brush *br,
+void paint_brush_color_get(struct Scene *scene,
+                           struct Brush *br,
                            bool color_correction,
                            bool invert,
                            float distance,
                            float pressure,
                            float color[3],
-                           ColorManagedDisplay *display)
+                           struct ColorManagedDisplay *display)
 {
   if (invert) {
     copy_v3_v3(color, BKE_brush_secondary_color_get(scene, br));
@@ -624,10 +625,12 @@ static void sample_color_update_header(SampleColorData *data, bContext *C)
   ScrArea *area = CTX_wm_area(C);
 
   if (area) {
-    SNPRINTF(msg,
-             TIP_("Sample color for %s"),
-             !data->sample_palette ? TIP_("Brush. Use Left Click to sample for palette instead") :
-                                     TIP_("Palette. Use Left Click to sample more colors"));
+    BLI_snprintf(msg,
+                 sizeof(msg),
+                 TIP_("Sample color for %s"),
+                 !data->sample_palette ?
+                     TIP_("Brush. Use Left Click to sample for palette instead") :
+                     TIP_("Palette. Use Left Click to sample more colors"));
     ED_workspace_status_text(C, msg);
   }
 }
@@ -815,12 +818,6 @@ static void paint_init_pivot_curves(Object *ob, float location[3])
   interp_v3_v3v3(location, bbox->vec[0], bbox->vec[6], 0.5f);
 }
 
-static void paint_init_pivot_grease_pencil(Object *ob, float location[3])
-{
-  const BoundBox *bbox = BKE_object_boundbox_get(ob);
-  interp_v3_v3v3(location, bbox->vec[0], bbox->vec[6], 0.5f);
-}
-
 void paint_init_pivot(Object *ob, Scene *scene)
 {
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
@@ -832,9 +829,6 @@ void paint_init_pivot(Object *ob, Scene *scene)
       break;
     case OB_CURVES:
       paint_init_pivot_curves(ob, location);
-      break;
-    case OB_GREASE_PENCIL:
-      paint_init_pivot_grease_pencil(ob, location);
       break;
     default:
       BLI_assert_unreachable();
@@ -956,7 +950,7 @@ static bool texture_paint_toggle_poll(bContext *C)
 
 static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
 {
-  wmMsgBus *mbus = CTX_wm_message_bus(C);
+  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -1068,7 +1062,10 @@ void PAINT_OT_brush_colors_flip(wmOperatorType *ot)
 /** \name Texture Paint Bucket Fill Operator
  * \{ */
 
-void ED_imapaint_bucket_fill(bContext *C, float color[3], wmOperator *op, const int mouse[2])
+void ED_imapaint_bucket_fill(struct bContext *C,
+                             float color[3],
+                             wmOperator *op,
+                             const int mouse[2])
 {
   SpaceImage *sima = CTX_wm_space_image(C);
 
@@ -1115,6 +1112,7 @@ bool vert_paint_poll(bContext *C)
 bool mask_paint_poll(bContext *C)
 {
   return BKE_paint_select_elem_test(CTX_data_active_object(C));
+}
 }
 
 /** \} */

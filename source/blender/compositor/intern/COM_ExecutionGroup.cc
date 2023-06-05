@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #include "COM_ExecutionGroup.h"
 #include "COM_ChunkOrder.h"
@@ -420,7 +419,8 @@ void ExecutionGroup::finalize_chunk_execution(int chunk_number, MemoryBuffer **m
     bTree_->runtime->progress(bTree_->runtime->prh, progress);
 
     char buf[128];
-    SNPRINTF(buf, TIP_("Compositing | Tile %u-%u"), chunks_finished_, chunks_len_);
+    BLI_snprintf(
+        buf, sizeof(buf), TIP_("Compositing | Tile %u-%u"), chunks_finished_, chunks_len_);
     bTree_->runtime->stats_draw(bTree_->runtime->sdh, buf);
   }
 }

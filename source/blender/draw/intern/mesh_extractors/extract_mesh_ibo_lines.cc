@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -120,14 +119,14 @@ static void extract_lines_iter_poly_mesh(const MeshRenderData *mr,
 
 static void extract_lines_iter_loose_edge_bm(const MeshRenderData *mr,
                                              const BMEdge *eed,
-                                             const int loose_edge_i,
+                                             const int ledge_index,
                                              void *tls_data)
 {
   MeshExtract_LinesData *data = static_cast<MeshExtract_LinesData *>(tls_data);
   GPUIndexBufBuilder *elb = &data->elb;
-  const int l_index_offset = mr->edge_len + loose_edge_i;
+  const int l_index_offset = mr->edge_len + ledge_index;
   if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-    const int l_index = mr->loop_len + loose_edge_i * 2;
+    const int l_index = mr->loop_len + ledge_index * 2;
     GPU_indexbuf_set_line_verts(elb, l_index_offset, l_index, l_index + 1);
   }
   else {
@@ -139,15 +138,15 @@ static void extract_lines_iter_loose_edge_bm(const MeshRenderData *mr,
 
 static void extract_lines_iter_loose_edge_mesh(const MeshRenderData *mr,
                                                const int2 /*edge*/,
-                                               const int loose_edge_i,
+                                               const int ledge_index,
                                                void *tls_data)
 {
   MeshExtract_LinesData *data = static_cast<MeshExtract_LinesData *>(tls_data);
   GPUIndexBufBuilder *elb = &data->elb;
-  const int l_index_offset = mr->edge_len + loose_edge_i;
-  const int e_index = mr->loose_edges[loose_edge_i];
+  const int l_index_offset = mr->edge_len + ledge_index;
+  const int e_index = mr->loose_edges[ledge_index];
   if (is_edge_visible(data, e_index)) {
-    const int l_index = mr->loop_len + loose_edge_i * 2;
+    const int l_index = mr->loop_len + ledge_index * 2;
     GPU_indexbuf_set_line_verts(elb, l_index_offset, l_index, l_index + 1);
   }
   else {
@@ -323,7 +322,7 @@ static void extract_lines_with_lines_loose_finish(const MeshRenderData *mr,
   extract_lines_loose_subbuffer(mr, cache);
 }
 
-static void extract_lines_with_lines_loose_finish_subdiv(const DRWSubdivCache *subdiv_cache,
+static void extract_lines_with_lines_loose_finish_subdiv(const struct DRWSubdivCache *subdiv_cache,
                                                          const MeshRenderData * /*mr*/,
                                                          MeshBatchCache *cache,
                                                          void * /*buf*/,

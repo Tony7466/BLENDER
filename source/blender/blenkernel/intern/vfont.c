@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -67,7 +66,7 @@ static void vfont_init_data(ID *id)
     if (vfd) {
       vfont->data = vfd;
 
-      STRNCPY(vfont->filepath, FO_BUILTIN_NAME);
+      BLI_strncpy(vfont->filepath, FO_BUILTIN_NAME, sizeof(vfont->filepath));
     }
 
     /* Free the packed file */
@@ -186,7 +185,7 @@ IDTypeInfo IDType_ID_VF = {
 
 /***************************** VFont *******************************/
 
-void BKE_vfont_free_data(VFont *vfont)
+void BKE_vfont_free_data(struct VFont *vfont)
 {
   if (vfont->data) {
     if (vfont->data->characters) {
@@ -221,7 +220,7 @@ void BKE_vfont_free_data(VFont *vfont)
 static const void *builtin_font_data = NULL;
 static int builtin_font_size = 0;
 
-bool BKE_vfont_is_builtin(const VFont *vfont)
+bool BKE_vfont_is_builtin(const struct VFont *vfont)
 {
   return STREQ(vfont->filepath, FO_BUILTIN_NAME);
 }
@@ -322,7 +321,7 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
   bool is_builtin;
 
   if (STREQ(filepath, FO_BUILTIN_NAME)) {
-    STRNCPY(filename, filepath);
+    BLI_strncpy(filename, filepath, sizeof(filename));
 
     pf = get_builtin_packedfile();
     is_builtin = true;
@@ -342,7 +341,7 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
       /* If there's a font name, use it for the ID name. */
       vfont = BKE_libblock_alloc(bmain, ID_VF, vfd->name[0] ? vfd->name : filename, 0);
       vfont->data = vfd;
-      STRNCPY(vfont->filepath, filepath);
+      BLI_strncpy(vfont->filepath, filepath, sizeof(vfont->filepath));
 
       /* if auto-pack is on store the packed-file in de font structure */
       if (!is_builtin && (G.fileflags & G_FILE_AUTOPACK)) {
@@ -364,20 +363,20 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
   return vfont;
 }
 
-VFont *BKE_vfont_load_exists_ex(Main *bmain, const char *filepath, bool *r_exists)
+VFont *BKE_vfont_load_exists_ex(struct Main *bmain, const char *filepath, bool *r_exists)
 {
   VFont *vfont;
-  char filepath_abs[FILE_MAX], filepath_test[FILE_MAX];
+  char str[FILE_MAX], strtest[FILE_MAX];
 
-  STRNCPY(filepath_abs, filepath);
-  BLI_path_abs(filepath_abs, BKE_main_blendfile_path(bmain));
+  BLI_strncpy(str, filepath, sizeof(str));
+  BLI_path_abs(str, BKE_main_blendfile_path(bmain));
 
   /* first search an identical filepath */
   for (vfont = bmain->fonts.first; vfont; vfont = vfont->id.next) {
-    STRNCPY(filepath_test, vfont->filepath);
-    BLI_path_abs(filepath_test, ID_BLEND_PATH(bmain, &vfont->id));
+    BLI_strncpy(strtest, vfont->filepath, sizeof(vfont->filepath));
+    BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &vfont->id));
 
-    if (BLI_path_cmp(filepath_test, filepath_abs) == 0) {
+    if (BLI_path_cmp(strtest, str) == 0) {
       id_us_plus(&vfont->id); /* officially should not, it doesn't link here! */
       if (r_exists) {
         *r_exists = true;
@@ -392,7 +391,7 @@ VFont *BKE_vfont_load_exists_ex(Main *bmain, const char *filepath, bool *r_exist
   return BKE_vfont_load(bmain, filepath);
 }
 
-VFont *BKE_vfont_load_exists(Main *bmain, const char *filepath)
+VFont *BKE_vfont_load_exists(struct Main *bmain, const char *filepath)
 {
   return BKE_vfont_load_exists_ex(bmain, filepath, NULL);
 }
@@ -534,7 +533,7 @@ void BKE_vfont_build_char(Curve *cu,
       if (nu2 == NULL) {
         break;
       }
-      memcpy(nu2, nu1, sizeof(Nurb));
+      memcpy(nu2, nu1, sizeof(struct Nurb));
       nu2->resolu = cu->resolu;
       nu2->bp = NULL;
       nu2->knotsu = nu2->knotsv = NULL;
@@ -555,7 +554,7 @@ void BKE_vfont_build_char(Curve *cu,
         MEM_freeN(nu2);
         break;
       }
-      memcpy(bezt2, bezt1, u * sizeof(BezTriple));
+      memcpy(bezt2, bezt1, u * sizeof(struct BezTriple));
       nu2->bezt = bezt2;
 
       if (shear != 0.0f) {
@@ -794,7 +793,7 @@ static bool vfont_to_curve(Object *ob,
                            Curve *cu,
                            int mode,
                            VFontToCurveIter *iter_data,
-                           VFontCursor_Params *cursor_params,
+                           struct VFontCursor_Params *cursor_params,
                            ListBase *r_nubase,
                            const char32_t **r_text,
                            int *r_text_len,

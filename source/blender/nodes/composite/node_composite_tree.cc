@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup nodes
@@ -12,11 +11,13 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_tracking.h"
@@ -24,7 +25,7 @@
 #include "UI_resources.h"
 
 #include "node_common.h"
-#include "node_util.hh"
+#include "node_util.h"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
@@ -74,7 +75,7 @@ static void localize(bNodeTree *localtree, bNodeTree *ntree)
     local_node->runtime->original = node;
 
     /* move over the compbufs */
-    /* right after #blender::bke::ntreeCopyTree() `oldsock` pointers are valid */
+    /* right after #ntreeCopyTree() `oldsock` pointers are valid */
 
     if (ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
       if (node->id) {
@@ -95,7 +96,7 @@ static void localize(bNodeTree *localtree, bNodeTree *ntree)
 static void local_merge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
 {
   /* move over the compbufs and previews */
-  blender::bke::node_preview_merge_tree(ntree, localtree, true);
+  BKE_node_preview_merge_tree(ntree, localtree, true);
 
   for (bNode *lnode = (bNode *)localtree->nodes.first; lnode; lnode = lnode->next) {
     if (bNode *orig_node = nodeFindNodebyName(ntree, lnode->name)) {
@@ -141,7 +142,7 @@ static void composite_node_add_init(bNodeTree * /*bnodetree*/, bNode *bnode)
 static bool composite_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
                                                   bNodeSocketType *socket_type)
 {
-  return blender::bke::nodeIsStaticSocketType(socket_type) &&
+  return nodeIsStaticSocketType(socket_type) &&
          ELEM(socket_type->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
 }
 

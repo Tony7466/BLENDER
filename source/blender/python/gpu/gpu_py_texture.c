@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -441,7 +439,7 @@ static PyGetSetDef pygpu_texture__tp_getseters[] = {
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
 };
 
-static PyMethodDef pygpu_texture__tp_methods[] = {
+static struct PyMethodDef pygpu_texture__tp_methods[] = {
     {"clear",
      (PyCFunction)pygpu_texture_clear,
      METH_VARARGS | METH_KEYWORDS,
@@ -556,7 +554,7 @@ static PyObject *pygpu_texture_from_image(PyObject *UNUSED(self), PyObject *arg)
   return BPyGPUTexture_CreatePyObject(tex, true);
 }
 
-static PyMethodDef pygpu_texture__m_methods[] = {
+static struct PyMethodDef pygpu_texture__m_methods[] = {
     {"from_image", (PyCFunction)pygpu_texture_from_image, METH_O, pygpu_texture_from_image_doc},
     {NULL, NULL, 0, NULL},
 };

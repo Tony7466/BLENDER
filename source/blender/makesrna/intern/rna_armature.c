@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -361,8 +359,8 @@ static void rna_EditBone_name_set(PointerRNA *ptr, const char *value)
   char oldname[sizeof(ebone->name)], newname[sizeof(ebone->name)];
 
   /* need to be on the stack */
-  STRNCPY_UTF8(newname, value);
-  STRNCPY(oldname, ebone->name);
+  BLI_strncpy_utf8(newname, value, sizeof(ebone->name));
+  BLI_strncpy(oldname, ebone->name, sizeof(ebone->name));
 
   BLI_assert(BKE_id_is_in_global_main(&arm->id));
   ED_armature_bone_rename(G_MAIN, arm, oldname, newname);
@@ -375,8 +373,8 @@ static void rna_Bone_name_set(PointerRNA *ptr, const char *value)
   char oldname[sizeof(bone->name)], newname[sizeof(bone->name)];
 
   /* need to be on the stack */
-  STRNCPY_UTF8(newname, value);
-  STRNCPY(oldname, bone->name);
+  BLI_strncpy_utf8(newname, value, sizeof(bone->name));
+  BLI_strncpy(oldname, bone->name, sizeof(bone->name));
 
   BLI_assert(BKE_id_is_in_global_main(&arm->id));
   ED_armature_bone_rename(G_MAIN, arm, oldname, newname);
@@ -1563,9 +1561,9 @@ static void rna_def_armature(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "layer_protected", 1);
   RNA_def_property_array(prop, 32);
   RNA_def_property_ui_text(prop,
-                           "Layer Override Protection",
-                           "Protected layers in overridden instances are restored to "
-                           "their original settings on file reload and undo");
+                           "Layer Proxy Protection",
+                           "Protected layers in Proxy Instances are restored to Proxy settings "
+                           "on file reload and undo");
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
 
   /* flag */

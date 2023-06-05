@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup sptext
@@ -94,7 +93,7 @@ static void text_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void text_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
+static void text_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
 
 static SpaceLink *text_duplicate(SpaceLink *sl)
 {
@@ -133,7 +132,7 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
       switch (wmn->action) {
         case NA_EDITED:
           if (st->text) {
-            text_drawcache_tag_update(st, true);
+            text_drawcache_tag_update(st, 1);
             text_update_edited(st->text);
           }
 
@@ -213,7 +212,7 @@ static void text_operatortypes(void)
   WM_operatortype_append(TEXT_OT_autocomplete);
 }
 
-static void text_keymap(wmKeyConfig *keyconf)
+static void text_keymap(struct wmKeyConfig *keyconf)
 {
   WM_keymap_ensure(keyconf, "Text Generic", SPACE_TEXT, 0);
   WM_keymap_ensure(keyconf, "Text", SPACE_TEXT, 0);
@@ -406,7 +405,7 @@ static void text_space_blend_read_data(BlendDataReader *UNUSED(reader), SpaceLin
 static void text_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceText *st = (SpaceText *)sl;
-  BLO_read_id_address(reader, parent_id, &st->text);
+  BLO_read_id_address(reader, parent_id->lib, &st->text);
 }
 
 static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)

@@ -1,12 +1,11 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #include <cstring>
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "COM_NodeOperationBuilder.h"
 
@@ -131,7 +130,7 @@ Node *COM_convert_bnode(bNode *b_node)
   Node *node = nullptr;
 
   /* ignore undefined nodes with missing or invalid node data */
-  if (blender::bke::node_type_is_undefined(b_node)) {
+  if (nodeTypeUndefined(b_node)) {
     return nullptr;
   }
 

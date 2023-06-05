@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -94,7 +93,7 @@ void OVERLAY_background_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "ucolor", G_draw.block.color_clipping_border);
     DRW_shgroup_uniform_vec3(grp, "boundbox", &bb->vec[0][0], 8);
 
-    GPUBatch *cube = DRW_cache_cube_get();
+    struct GPUBatch *cube = DRW_cache_cube_get();
     DRW_shgroup_call(grp, cube, nullptr);
   }
   else {

@@ -1,5 +1,3 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
-#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -24,16 +22,16 @@ set(INC_SYS
 )
 
 set(SRC
-  uvedit_buttons.cc
+  uvedit_buttons.c
   uvedit_clipboard.cc
   uvedit_clipboard_graph_iso.cc
-  uvedit_draw.cc
+  uvedit_draw.c
   uvedit_islands.cc
-  uvedit_ops.cc
-  uvedit_path.cc
-  uvedit_rip.cc
-  uvedit_select.cc
-  uvedit_smart_stitch.cc
+  uvedit_ops.c
+  uvedit_path.c
+  uvedit_rip.c
+  uvedit_select.c
+  uvedit_smart_stitch.c
   uvedit_unwrap_ops.cc
 
   uvedit_clipboard_graph_iso.hh

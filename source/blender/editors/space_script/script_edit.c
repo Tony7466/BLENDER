@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spscript
@@ -32,10 +31,10 @@
 
 static int run_pyfile_exec(bContext *C, wmOperator *op)
 {
-  char filepath[FILE_MAX];
-  RNA_string_get(op->ptr, "filepath", filepath);
+  char path[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", path);
 #ifdef WITH_PYTHON
-  if (BPY_run_filepath(C, filepath, op->reports)) {
+  if (BPY_run_filepath(C, path, op->reports)) {
     ARegion *region = CTX_wm_region(C);
     if (region != NULL) {
       ED_region_tag_redraw(region);

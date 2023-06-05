@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -27,12 +25,12 @@ using namespace blender::bke;
 
 /* simple struct for storing backup info for one pose channel */
 struct PoseChannelBackup {
-  PoseChannelBackup *next, *prev;
+  struct PoseChannelBackup *next, *prev;
 
-  bPoseChannel *pchan; /* Pose channel this backup is for. */
+  struct bPoseChannel *pchan; /* Pose channel this backup is for. */
 
-  bPoseChannel olddata; /* Backup of pose channel. */
-  IDProperty *oldprops; /* Backup copy (needs freeing) of pose channel's ID properties. */
+  struct bPoseChannel olddata; /* Backup of pose channel. */
+  struct IDProperty *oldprops; /* Backup copy (needs freeing) of pose channel's ID properties. */
 };
 
 struct PoseBackup {
@@ -108,7 +106,7 @@ PoseBackup *BKE_pose_backup_create_selected_bones(const Object *ob, const bActio
   return pose_backup_create(ob, action, selected_bone_names);
 }
 
-bool BKE_pose_backup_is_selection_relevant(const PoseBackup *pose_backup)
+bool BKE_pose_backup_is_selection_relevant(const struct PoseBackup *pose_backup)
 {
   return pose_backup->is_bone_selection_relevant;
 }
@@ -145,7 +143,7 @@ void BKE_pose_backup_create_on_object(Object *ob, const bAction *action)
   ob->runtime.pose_backup = pose_backup;
 }
 
-bool BKE_pose_backup_restore_on_object(Object *ob)
+bool BKE_pose_backup_restore_on_object(struct Object *ob)
 {
   if (ob->runtime.pose_backup == nullptr) {
     return false;

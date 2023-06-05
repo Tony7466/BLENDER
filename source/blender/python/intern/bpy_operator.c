@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -62,10 +60,29 @@ static wmOperatorType *ot_lookup_from_py_string(PyObject *value, const char *py_
   return ot;
 }
 
+static void op_context_override_deprecated_warning(const char *action, const char *opname)
+{
+  if (PyErr_WarnFormat(
+          PyExc_DeprecationWarning,
+          /* Use stack level 2 as this call is wrapped by `scripts/modules/bpy/ops.py`,
+           * An extra stack level is needed to show the warning in the authors script. */
+          2,
+          "Passing in context overrides is deprecated in favor of "
+          "Context.temp_override(..), %s \"%s\"",
+          action,
+          opname) < 0)
+  {
+    /* The function has no return value, the exception cannot
+     * be reported to the caller, so just log it. */
+    PyErr_WriteUnraisable(NULL);
+  }
+}
+
 static PyObject *pyop_poll(PyObject *UNUSED(self), PyObject *args)
 {
   wmOperatorType *ot;
   const char *opname;
+  PyObject *context_dict = NULL; /* optional args */
   const char *context_str = NULL;
   PyObject *ret;
 
@@ -80,17 +97,7 @@ static PyObject *pyop_poll(PyObject *UNUSED(self), PyObject *args)
     return NULL;
   }
 
-  /* All arguments are positional. */
-  static const char *_keywords[] = {"", "", NULL};
-  static _PyArg_Parser _parser = {
-      "s" /* `opname` */
-      "|" /* Optional arguments. */
-      "s" /* `context_str` */
-      ":_bpy.ops.poll",
-      _keywords,
-      0,
-  };
-  if (!_PyArg_ParseTupleAndKeywordsFast(args, NULL, &_parser, &opname, &context_str)) {
+  if (!PyArg_ParseTuple(args, "s|Os:_bpy.ops.poll", &opname, &context_dict, &context_str)) {
     return NULL;
   }
 
@@ -121,8 +128,40 @@ static PyObject *pyop_poll(PyObject *UNUSED(self), PyObject *args)
     context = context_int;
   }
 
+  if (ELEM(context_dict, NULL, Py_None)) {
+    context_dict = NULL;
+  }
+  else if (PyDict_Check(context_dict)) {
+    op_context_override_deprecated_warning("polling", opname);
+  }
+  else {
+    PyErr_Format(PyExc_TypeError,
+                 "Calling operator \"bpy.ops.%s.poll\" error, "
+                 "custom context expected a dict or None, got a %.200s",
+                 opname,
+                 Py_TYPE(context_dict)->tp_name);
+    return NULL;
+  }
+
+  struct bContext_PyState context_py_state;
+  if (context_dict != NULL) {
+    CTX_py_state_push(C, &context_py_state, (void *)context_dict);
+    Py_INCREF(context_dict); /* so we don't lose it */
+  }
+
   /* main purpose of this function */
   ret = WM_operator_poll_context((bContext *)C, ot, context) ? Py_True : Py_False;
+
+  if (context_dict != NULL) {
+    PyObject *context_dict_test = CTX_py_dict_get(C);
+    if (context_dict_test != context_dict) {
+      Py_DECREF(context_dict_test);
+    }
+    /* Restore with original context dict,
+     * probably NULL but need this for nested operator calls. */
+    Py_DECREF(context_dict);
+    CTX_py_state_pop(C, &context_py_state);
+  }
 
   return Py_INCREF_RET(ret);
 }
@@ -136,7 +175,8 @@ static PyObject *pyop_call(PyObject *UNUSED(self), PyObject *args)
 
   const char *opname;
   const char *context_str = NULL;
-  PyObject *kw = NULL; /* optional args */
+  PyObject *kw = NULL;           /* optional args */
+  PyObject *context_dict = NULL; /* optional args */
 
   wmOperatorCallContext context = WM_OP_EXEC_DEFAULT;
   int is_undo = false;
@@ -150,20 +190,14 @@ static PyObject *pyop_call(PyObject *UNUSED(self), PyObject *args)
     return NULL;
   }
 
-  /* All arguments are positional. */
-  static const char *_keywords[] = {"", "", "", "", NULL};
-  static _PyArg_Parser _parser = {
-      "s"  /* `opname` */
-      "|"  /* Optional arguments. */
-      "O!" /* `kw` */
-      "s"  /* `context_str` */
-      "i"  /* `is_undo` */
-      ":_bpy.ops.call",
-      _keywords,
-      0,
-  };
-  if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, NULL, &_parser, &opname, &PyDict_Type, &kw, &context_str, &is_undo))
+  if (!PyArg_ParseTuple(args,
+                        "sO|O!si:_bpy.ops.call",
+                        &opname,
+                        &context_dict,
+                        &PyDict_Type,
+                        &kw,
+                        &context_str,
+                        &is_undo))
   {
     return NULL;
   }
@@ -201,6 +235,32 @@ static PyObject *pyop_call(PyObject *UNUSED(self), PyObject *args)
     }
     /* Copy back to the properly typed enum. */
     context = context_int;
+  }
+
+  if (ELEM(context_dict, NULL, Py_None)) {
+    context_dict = NULL;
+  }
+  else if (PyDict_Check(context_dict)) {
+    op_context_override_deprecated_warning("calling", opname);
+  }
+  else {
+    PyErr_Format(PyExc_TypeError,
+                 "Calling operator \"bpy.ops.%s\" error, "
+                 "custom context expected a dict or None, got a %.200s",
+                 opname,
+                 Py_TYPE(context_dict)->tp_name);
+    return NULL;
+  }
+
+  /**
+   * It might be that there is already a Python context override. We don't want to remove that
+   * except when this operator call sets a new override explicitly. This is necessary so that
+   * called operator runs in the same context as the calling code by default.
+   */
+  struct bContext_PyState context_py_state;
+  if (context_dict != NULL) {
+    CTX_py_state_push(C, &context_py_state, (void *)context_dict);
+    Py_INCREF(context_dict); /* so we don't lose it */
   }
 
   if (WM_operator_poll_context((bContext *)C, ot, context) == false) {
@@ -284,6 +344,17 @@ static PyObject *pyop_call(PyObject *UNUSED(self), PyObject *args)
 #endif
   }
 
+  if (context_dict != NULL) {
+    PyObject *context_dict_test = CTX_py_dict_get(C);
+    if (context_dict_test != context_dict) {
+      Py_DECREF(context_dict_test);
+    }
+    /* Restore with original context dict,
+     * probably NULL but need this for nested operator calls. */
+    Py_DECREF(context_dict);
+    CTX_py_state_pop(C, &context_py_state);
+  }
+
   if (error_val == -1) {
     return NULL;
   }
@@ -320,28 +391,15 @@ static PyObject *pyop_as_string(PyObject *UNUSED(self), PyObject *args)
     return NULL;
   }
 
-  /* All arguments are positional. */
-  static const char *_keywords[] = {"", "", "", "", NULL};
-  static _PyArg_Parser _parser = {
-      "s"  /* `opname` */
-      "|"  /* Optional arguments. */
-      "O!" /* `kw` */
-      "O&" /* `all_args` */
-      "O&" /* `macro_args` */
-      ":_bpy.ops.as_string",
-      _keywords,
-      0,
-  };
-  if (!_PyArg_ParseTupleAndKeywordsFast(args,
-                                        NULL,
-                                        &_parser,
-                                        &opname,
-                                        &PyDict_Type,
-                                        &kw,
-                                        PyC_ParseBool,
-                                        &all_args,
-                                        PyC_ParseBool,
-                                        &macro_args))
+  if (!PyArg_ParseTuple(args,
+                        "s|O!O&O&:_bpy.ops.as_string",
+                        &opname,
+                        &PyDict_Type,
+                        &kw,
+                        PyC_ParseBool,
+                        &all_args,
+                        PyC_ParseBool,
+                        &macro_args))
   {
     return NULL;
   }
@@ -425,7 +483,7 @@ static PyObject *pyop_get_bl_options(PyObject *UNUSED(self), PyObject *value)
   return pyrna_enum_bitfield_as_set(rna_enum_operator_type_flag_items, ot->flag);
 }
 
-static PyMethodDef bpy_ops_methods[] = {
+static struct PyMethodDef bpy_ops_methods[] = {
     {"poll", (PyCFunction)pyop_poll, METH_VARARGS, NULL},
     {"call", (PyCFunction)pyop_call, METH_VARARGS, NULL},
     {"as_string", (PyCFunction)pyop_as_string, METH_VARARGS, NULL},
@@ -436,7 +494,7 @@ static PyMethodDef bpy_ops_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyModuleDef bpy_ops_module = {
+static struct PyModuleDef bpy_ops_module = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "_bpy.ops",
     /*m_doc*/ NULL,

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -51,10 +50,10 @@ static void applyGPShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
     char c[NUM_STR_REP_LEN];
 
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Shrink/Fatten: %s"), c);
+    BLI_snprintf(str, sizeof(str), TIP_("Shrink/Fatten: %s"), c);
   }
   else {
-    SNPRINTF(str, TIP_("Shrink/Fatten: %3f"), ratio);
+    BLI_snprintf(str, sizeof(str), TIP_("Shrink/Fatten: %3f"), ratio);
   }
 
   bool recalc = false;
@@ -90,9 +89,10 @@ static void applyGPShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initGPShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
+void initGPShrinkFatten(TransInfo *t)
 {
   t->mode = TFM_GPENCIL_SHRINKFATTEN;
+  t->transform = applyGPShrinkFatten;
 
   initMouseInputMode(t, &t->mouse, INPUT_SPRING);
 
@@ -108,17 +108,8 @@ static void initGPShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
 #ifdef USE_NUM_NO_ZERO
   t->num.val_flag[0] |= NUM_NO_ZERO;
 #endif
+
+  t->flag |= T_NO_CONSTRAINT;
 }
 
 /** \} */
-
-TransModeInfo TransMode_gpshrinkfatten = {
-    /*flags*/ T_NO_CONSTRAINT,
-    /*init_fn*/ initGPShrinkFatten,
-    /*transform_fn*/ applyGPShrinkFatten,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

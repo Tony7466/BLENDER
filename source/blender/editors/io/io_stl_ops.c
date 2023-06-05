@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editor/io
@@ -60,7 +58,7 @@ static int wm_stl_import_execute(bContext *C, wmOperator *op)
     STL_import(C, &params);
   }
   else {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
 
@@ -86,7 +84,7 @@ static bool wm_stl_import_check(bContext *UNUSED(C), wmOperator *op)
   return false;
 }
 
-void WM_OT_stl_import(wmOperatorType *ot)
+void WM_OT_stl_import(struct wmOperatorType *ot)
 {
   PropertyRNA *prop;
 

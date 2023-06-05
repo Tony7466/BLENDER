@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -310,19 +309,25 @@ static void apply_shear(TransInfo *t, const int UNUSED(mval[2]))
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Shear: %s %s"), c, t->proptext);
+    BLI_snprintf(str, sizeof(str), TIP_("Shear: %s %s"), c, t->proptext);
   }
   else {
     /* default header print */
-    SNPRINTF(str, TIP_("Shear: %.3f %s (Press X or Y to set shear axis)"), value, t->proptext);
+    BLI_snprintf(str,
+                 sizeof(str),
+                 TIP_("Shear: %.3f %s (Press X or Y to set shear axis)"),
+                 value,
+                 t->proptext);
   }
 
   ED_area_status_text(t->area, str);
 }
 
-static void initShear(TransInfo *t, struct wmOperator *UNUSED(op))
+void initShear(TransInfo *t)
 {
   t->mode = TFM_SHEAR;
+  t->transform = apply_shear;
+  t->handleEvent = handleEventShear;
 
   if (t->orient_axis == t->orient_axis_ortho) {
     t->orient_axis = 2;
@@ -340,18 +345,9 @@ static void initShear(TransInfo *t, struct wmOperator *UNUSED(op))
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_type[0] = B_UNIT_NONE; /* Don't think we have any unit here? */
 
+  t->flag |= T_NO_CONSTRAINT;
+
   transform_mode_default_modal_orientation_set(t, V3D_ORIENT_VIEW);
 }
 
 /** \} */
-
-TransModeInfo TransMode_shear = {
-    /*flags*/ T_NO_CONSTRAINT,
-    /*init_fn*/ initShear,
-    /*transform_fn*/ apply_shear,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ handleEventShear,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

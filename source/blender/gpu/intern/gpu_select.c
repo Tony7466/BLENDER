@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -10,8 +9,6 @@
  */
 #include <stdlib.h>
 #include <string.h>
-
-#include "DNA_userdef_types.h"
 
 #include "GPU_select.h"
 
@@ -33,8 +30,6 @@ typedef enum eGPUSelectAlgo {
   /** Read depth buffer for every drawing pass and extract depths, `gpu_select_pick.c`
    * Only sets 4th component (ID) correctly. */
   ALGO_GL_PICK = 2,
-  /** Use Select-Next draw engine. */
-  ALGO_SELECT_NEXT = 3,
 } eGPUSelectAlgo;
 
 typedef struct GPUSelectState {
@@ -65,12 +60,11 @@ static GPUSelectState g_select_state = {0};
 /** \name Public API
  * \{ */
 
-static void gpu_select_begin_ex(GPUSelectResult *buffer,
-                                const uint buffer_len,
-                                const rcti *input,
-                                eGPUSelectMode mode,
-                                int oldhits,
-                                bool use_select_next)
+void GPU_select_begin(GPUSelectResult *buffer,
+                      const uint buffer_len,
+                      const rcti *input,
+                      eGPUSelectMode mode,
+                      int oldhits)
 {
   if (mode == GPU_SELECT_NEAREST_SECOND_PASS) {
     /* In the case hits was '-1',
@@ -82,10 +76,7 @@ static void gpu_select_begin_ex(GPUSelectResult *buffer,
   g_select_state.select_is_active = true;
   g_select_state.mode = mode;
 
-  if (use_select_next) {
-    g_select_state.algorithm = ALGO_SELECT_NEXT;
-  }
-  else if (ELEM(g_select_state.mode, GPU_SELECT_PICK_ALL, GPU_SELECT_PICK_NEAREST)) {
+  if (ELEM(g_select_state.mode, GPU_SELECT_PICK_ALL, GPU_SELECT_PICK_NEAREST)) {
     g_select_state.algorithm = ALGO_GL_PICK;
   }
   else {
@@ -98,7 +89,6 @@ static void gpu_select_begin_ex(GPUSelectResult *buffer,
     g_select_state.use_cache_needs_init = false;
 
     switch (g_select_state.algorithm) {
-      case ALGO_SELECT_NEXT:
       case ALGO_GL_QUERY: {
         g_select_state.use_cache = false;
         break;
@@ -112,10 +102,6 @@ static void gpu_select_begin_ex(GPUSelectResult *buffer,
   }
 
   switch (g_select_state.algorithm) {
-    case ALGO_SELECT_NEXT: {
-      gpu_select_next_begin(buffer, buffer_len, input, mode);
-      break;
-    }
     case ALGO_GL_QUERY: {
       gpu_select_query_begin(buffer, buffer_len, input, mode, oldhits);
       break;
@@ -128,25 +114,6 @@ static void gpu_select_begin_ex(GPUSelectResult *buffer,
   }
 }
 
-void GPU_select_begin_next(GPUSelectResult *buffer,
-                           const uint buffer_len,
-                           const rcti *input,
-                           eGPUSelectMode mode,
-                           int oldhits)
-{
-  gpu_select_begin_ex(
-      buffer, buffer_len, input, mode, oldhits, U.experimental.enable_overlay_next);
-}
-
-void GPU_select_begin(GPUSelectResult *buffer,
-                      const uint buffer_len,
-                      const rcti *input,
-                      eGPUSelectMode mode,
-                      int oldhits)
-{
-  gpu_select_begin_ex(buffer, buffer_len, input, mode, oldhits, false);
-}
-
 bool GPU_select_load_id(uint id)
 {
   /* if no selection mode active, ignore */
@@ -155,11 +122,6 @@ bool GPU_select_load_id(uint id)
   }
 
   switch (g_select_state.algorithm) {
-    case ALGO_SELECT_NEXT:
-      /* This shouldn't use this pipeline. */
-      BLI_assert_unreachable();
-      return 0;
-
     case ALGO_GL_QUERY: {
       return gpu_select_query_load_id(id);
     }
@@ -175,10 +137,6 @@ uint GPU_select_end(void)
   uint hits = 0;
 
   switch (g_select_state.algorithm) {
-    case ALGO_SELECT_NEXT: {
-      hits = gpu_select_next_end();
-      break;
-    }
     case ALGO_GL_QUERY: {
       hits = gpu_select_query_end();
       break;

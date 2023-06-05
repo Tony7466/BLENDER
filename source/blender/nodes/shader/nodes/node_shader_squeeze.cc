@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup shdnodes
@@ -12,10 +11,10 @@ namespace blender::nodes::node_shader_squeeze_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Value").default_value(0.0f).min(-100.0f).max(100.0f);
-  b.add_input<decl::Float>("Width").default_value(1.0f).min(-100.0f).max(100.0f);
-  b.add_input<decl::Float>("Center").default_value(0.0f).min(-100.0f).max(100.0f);
-  b.add_output<decl::Float>("Value");
+  b.add_input<decl::Float>(N_("Value")).default_value(0.0f).min(-100.0f).max(100.0f);
+  b.add_input<decl::Float>(N_("Width")).default_value(1.0f).min(-100.0f).max(100.0f);
+  b.add_input<decl::Float>(N_("Center")).default_value(0.0f).min(-100.0f).max(100.0f);
+  b.add_output<decl::Float>(N_("Value"));
 }
 
 static int gpu_shader_squeeze(GPUMaterial *mat,

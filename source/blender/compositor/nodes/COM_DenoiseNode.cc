@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 #include "COM_DenoiseNode.h"
 #include "COM_DenoiseOperation.h"
 

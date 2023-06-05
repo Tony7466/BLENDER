@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation.
+ */
 
 /** \file
  * \ingroup eevee
@@ -261,6 +260,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       pipeline_type == MAT_PIPE_FORWARD)
   {
     /* Opaque forward do support AOVs and render pass if not using transparency. */
+    info.additional_info("eevee_aov_out");
     info.additional_info("eevee_render_pass_out");
     info.additional_info("eevee_cryptomatte_out");
   }
@@ -462,7 +462,7 @@ static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *co
 }
 
 GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
-                                               bNodeTree *nodetree,
+                                               struct bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
                                                bool deferred_compilation)
@@ -475,7 +475,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
       blender_mat, nodetree, shader_uuid, is_volume, deferred_compilation, codegen_callback, this);
 }
 
-GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, bNodeTree *nodetree)
+GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, struct bNodeTree *nodetree)
 {
   eMaterialPipeline pipeline_type = MAT_PIPE_DEFERRED; /* Unused. */
   eMaterialGeometry geometry_type = MAT_GEOM_WORLD;
@@ -498,7 +498,7 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, bNodeTree *n
  * materials and call GPU_material_free on it to update the material. */
 GPUMaterial *ShaderModule::material_shader_get(const char *name,
                                                ListBase &materials,
-                                               bNodeTree *nodetree,
+                                               struct bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
                                                bool is_lookdev)

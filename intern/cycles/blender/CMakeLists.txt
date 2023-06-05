@@ -26,7 +26,6 @@ set(SRC
   image.cpp
   geometry.cpp
   light.cpp
-  light_linking.cpp
   mesh.cpp
   object.cpp
   object_cull.cpp
@@ -48,7 +47,6 @@ set(SRC
   display_driver.h
   id_map.h
   image.h
-  light_linking.h
   object_cull.h
   output_driver.h
   sync.h

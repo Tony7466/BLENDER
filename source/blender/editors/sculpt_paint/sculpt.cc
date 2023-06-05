@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 by Nicholas Bishop. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -69,7 +68,7 @@
 #include "ED_sculpt.h"
 #include "ED_view3d.h"
 
-#include "paint_intern.hh"
+#include "paint_intern.h"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -484,8 +483,9 @@ bool SCULPT_vertex_any_face_visible_get(SculptSession *ss, PBVHVertRef vertex)
       if (!ss->hide_poly) {
         return true;
       }
-      for (const int poly : ss->pmap[vertex.i]) {
-        if (!ss->hide_poly[poly]) {
+      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
+      for (int j = 0; j < ss->pmap[vertex.i].count; j++) {
+        if (!ss->hide_poly[vert_map->indices[j]]) {
           return true;
         }
       }
@@ -506,8 +506,9 @@ bool SCULPT_vertex_all_faces_visible_get(const SculptSession *ss, PBVHVertRef ve
       if (!ss->hide_poly) {
         return true;
       }
-      for (const int poly : ss->pmap[vertex.i]) {
-        if (ss->hide_poly[poly]) {
+      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
+      for (int j = 0; j < vert_map->count; j++) {
+        if (ss->hide_poly[vert_map->indices[j]]) {
           return false;
         }
       }
@@ -555,7 +556,9 @@ void SCULPT_vertex_face_set_set(SculptSession *ss, PBVHVertRef vertex, int face_
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
       BLI_assert(ss->face_sets != nullptr);
-      for (const int poly_index : ss->pmap[vertex.i]) {
+      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
+      for (int j = 0; j < vert_map->count; j++) {
+        const int poly_index = vert_map->indices[j];
         if (ss->hide_poly && ss->hide_poly[poly_index]) {
           /* Skip hidden faces connected to the vertex. */
           continue;
@@ -588,10 +591,11 @@ int SCULPT_vertex_face_set_get(SculptSession *ss, PBVHVertRef vertex)
       if (!ss->face_sets) {
         return SCULPT_FACE_SET_NONE;
       }
+      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
       int face_set = 0;
-      for (const int poly_index : ss->pmap[vertex.i]) {
-        if (ss->face_sets[poly_index] > face_set) {
-          face_set = abs(ss->face_sets[poly_index]);
+      for (int i = 0; i < vert_map->count; i++) {
+        if (ss->face_sets[vert_map->indices[i]] > face_set) {
+          face_set = abs(ss->face_sets[vert_map->indices[i]]);
         }
       }
       return face_set;
@@ -618,8 +622,9 @@ bool SCULPT_vertex_has_face_set(SculptSession *ss, PBVHVertRef vertex, int face_
       if (!ss->face_sets) {
         return face_set == SCULPT_FACE_SET_NONE;
       }
-      for (const int poly_index : ss->pmap[vertex.i]) {
-        if (ss->face_sets[poly_index] == face_set) {
+      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
+      for (int i = 0; i < vert_map->count; i++) {
+        if (ss->face_sets[vert_map->indices[i]] == face_set) {
           return true;
         }
       }
@@ -697,13 +702,14 @@ static bool sculpt_check_unique_face_set_in_base_mesh(SculptSession *ss, int ind
   if (!ss->face_sets) {
     return true;
   }
+  const MeshElemMap *vert_map = &ss->pmap[index];
   int face_set = -1;
-  for (const int poly_index : ss->pmap[index]) {
+  for (int i = 0; i < vert_map->count; i++) {
     if (face_set == -1) {
-      face_set = ss->face_sets[poly_index];
+      face_set = ss->face_sets[vert_map->indices[i]];
     }
     else {
-      if (ss->face_sets[poly_index] != face_set) {
+      if (ss->face_sets[vert_map->indices[i]] != face_set) {
         return false;
       }
     }
@@ -717,19 +723,19 @@ static bool sculpt_check_unique_face_set_in_base_mesh(SculptSession *ss, int ind
  */
 static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(SculptSession *ss, int v1, int v2)
 {
-  const Span<int> vert_map = ss->pmap[v1];
+  const MeshElemMap *vert_map = &ss->pmap[v1];
   int p1 = -1, p2 = -1;
-  for (int i = 0; i < vert_map.size(); i++) {
-    const int poly_i = vert_map[i];
+  for (int i = 0; i < vert_map->count; i++) {
+    const int poly_i = vert_map->indices[i];
     for (const int corner : ss->polys[poly_i]) {
       if (ss->corner_verts[corner] == v2) {
         if (p1 == -1) {
-          p1 = vert_map[i];
+          p1 = vert_map->indices[i];
           break;
         }
 
         if (p2 == -1) {
-          p2 = vert_map[i];
+          p2 = vert_map->indices[i];
           break;
         }
       }
@@ -870,18 +876,19 @@ static void sculpt_vertex_neighbors_get_faces(SculptSession *ss,
                                               PBVHVertRef vertex,
                                               SculptVertexNeighborIter *iter)
 {
+  const MeshElemMap *vert_map = &ss->pmap[vertex.i];
   iter->size = 0;
   iter->num_duplicates = 0;
   iter->capacity = SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY;
   iter->neighbors = iter->neighbors_fixed;
   iter->neighbor_indices = iter->neighbor_indices_fixed;
 
-  for (const int poly_i : ss->pmap[vertex.i]) {
-    if (ss->hide_poly && ss->hide_poly[poly_i]) {
+  for (int i = 0; i < vert_map->count; i++) {
+    if (ss->hide_poly && ss->hide_poly[vert_map->indices[i]]) {
       /* Skip connectivity from hidden faces. */
       continue;
     }
-    const blender::IndexRange poly = ss->polys[poly_i];
+    const blender::IndexRange poly = ss->polys[vert_map->indices[i]];
     const blender::int2 f_adj_v = blender::bke::mesh::poly_find_adjecent_verts(
         poly, ss->corner_verts, vertex.i);
     for (int j = 0; j < 2; j++) {
@@ -3022,10 +3029,7 @@ static void calc_brush_local_mat(const float rotation,
 
   /* Square tips should scale by square root of 2. */
   if (BKE_brush_has_cube_tip(cache->brush, PAINT_MODE_SCULPT)) {
-    radius += (radius / M_SQRT2 - radius) * cache->brush->tip_roundness;
-  }
-  else {
-    radius /= M_SQRT2;
+    radius += (radius * M_SQRT2 - radius) * (1.0f - cache->brush->tip_roundness);
   }
 
   normalize_m4(mat);
@@ -3666,10 +3670,7 @@ static void do_brush_action(Sculpt *sd,
         sd, ob, nodes, ss->cache->cloth_sim, ss->cache->location, FLT_MAX);
   }
 
-  bool invert = ss->cache->pen_flip || ss->cache->invert;
-  if (brush->flag & BRUSH_DIR_IN) {
-    invert = !invert;
-  }
+  bool invert = ss->cache->pen_flip || ss->cache->invert || brush->flag & BRUSH_DIR_IN;
 
   /* Apply one type of brush action. */
   switch (brush->sculpt_tool) {
@@ -4398,7 +4399,9 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
   else {
     int cur_brush_size = BKE_brush_size_get(scene, brush);
 
-    STRNCPY(cache->saved_active_brush_name, brush->id.name + 2);
+    BLI_strncpy(cache->saved_active_brush_name,
+                brush->id.name + 2,
+                sizeof(cache->saved_active_brush_name));
 
     /* Switch to the smooth brush. */
     brush = BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH);

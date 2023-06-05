@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 1999-2002 David Hodson <hodsond@acm.org>.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 1999-2002 David Hodson <hodsond@acm.org>. */
 
 /** \file
  * \ingroup imbcineon
@@ -45,7 +44,7 @@ static void fillDpxMainHeader(LogImageFile *dpx,
                               const char *creator)
 {
   time_t fileClock;
-  tm *fileTime;
+  struct tm *fileTime;
 
   memset(header, 0, sizeof(DpxMainHeader));
 

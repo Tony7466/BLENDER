@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -16,11 +14,11 @@ namespace Freestyle {
 
 namespace CurveInternal {
 
-/**
- * Iterator on a curve. Allows an iterating outside
- * initial vertices. A CurvePoint is instantiated an returned
- * when the iterator is dereferenced.
+/** iterator on a curve. Allows an iterating outside
+ *  initial vertices. A CurvePoint is instantiated an returned
+ *  when the iterator is dereferenced.
  */
+
 class CurvePointIterator : public Interface0DIteratorNested {
  public:
   friend class Freestyle::Curve;

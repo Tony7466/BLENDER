@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup edphys
@@ -67,7 +66,7 @@ typedef struct FluidJob {
   const char *type;
   const char *name;
 
-  Main *bmain;
+  struct Main *bmain;
   Scene *scene;
   Depsgraph *depsgraph;
   Object *ob;
@@ -240,7 +239,7 @@ static void fluid_bake_sequence(FluidJob *job)
   frames = fds->cache_frame_end - fds->cache_frame_start + 1;
 
   if (frames <= 0) {
-    STRNCPY(fds->error, N_("No frames to bake"));
+    BLI_strncpy(fds->error, N_("No frames to bake"), sizeof(fds->error));
     return;
   }
 
@@ -513,7 +512,7 @@ static void fluid_free_startjob(void *customdata, bool *stop, bool *do_update, f
 
 /***************************** Operators ******************************/
 
-static int fluid_bake_exec(bContext *C, wmOperator *op)
+static int fluid_bake_exec(struct bContext *C, struct wmOperator *op)
 {
   FluidJob *job = MEM_mallocN(sizeof(FluidJob), "FluidJob");
   char error_msg[256] = "\0";
@@ -538,7 +537,9 @@ static int fluid_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int fluid_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(_event))
+static int fluid_bake_invoke(struct bContext *C,
+                             struct wmOperator *op,
+                             const wmEvent *UNUSED(_event))
 {
   Scene *scene = CTX_data_scene(C);
   FluidJob *job = MEM_mallocN(sizeof(FluidJob), "FluidJob");
@@ -593,7 +594,7 @@ static int fluid_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *
   return OPERATOR_PASS_THROUGH;
 }
 
-static int fluid_free_exec(bContext *C, wmOperator *op)
+static int fluid_free_exec(struct bContext *C, struct wmOperator *op)
 {
   FluidModifierData *fmd = NULL;
   FluidDomainSettings *fds;
@@ -658,7 +659,7 @@ static int fluid_free_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int fluid_pause_exec(bContext *C, wmOperator *op)
+static int fluid_pause_exec(struct bContext *C, struct wmOperator *op)
 {
   FluidModifierData *fmd = NULL;
   FluidDomainSettings *fds;

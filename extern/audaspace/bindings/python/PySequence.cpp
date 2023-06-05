@@ -99,7 +99,7 @@ Sequence_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 PyDoc_STRVAR(M_aud_Sequence_add_doc,
-			 ".. method:: add()\n\n"
+			 ".. classmethod:: add()\n\n"
 			 "   Adds a new entry to the sequence.\n\n"
 			 "   :arg sound: The sound this entry should play.\n"
 			 "   :type sound: :class:`Sound`\n"
@@ -151,7 +151,7 @@ Sequence_add(Sequence* self, PyObject* args, PyObject* kwds)
 }
 
 PyDoc_STRVAR(M_aud_Sequence_remove_doc,
-			 ".. method:: remove()\n\n"
+			 ".. classmethod:: remove()\n\n"
 			 "   Removes an entry from the sequence.\n\n"
 			 "   :arg entry: The entry to remove.\n"
 			 "   :type entry: :class:`SequenceEntry`\n");
@@ -183,7 +183,7 @@ Sequence_remove(Sequence* self, PyObject* args)
 }
 
 PyDoc_STRVAR(M_aud_Sequence_setAnimationData_doc,
-			 ".. method:: setAnimationData()\n\n"
+			 ".. classmethod:: setAnimationData()\n\n"
 			 "   Writes animation data to a sequence.\n\n"
 			 "   :arg type: The type of animation data.\n"
 			 "   :type type: int\n"

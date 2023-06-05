@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edanimation
@@ -423,7 +422,7 @@ static void draw_marker_name(const uchar *text_color,
 
   const int icon_half_width = UI_ICON_SIZE * 0.6;
   const struct uiFontStyleDraw_Params fs_params = {.align = UI_STYLE_TEXT_LEFT, .word_wrap = 0};
-  const rcti rect = {
+  const struct rcti rect = {
       .xmin = marker_x + icon_half_width,
       .xmax = xmax - icon_half_width,
       .ymin = text_y,
@@ -747,7 +746,7 @@ static int ed_marker_add_exec(bContext *C, wmOperator *UNUSED(op))
   marker = MEM_callocN(sizeof(TimeMarker), "TimeMarker");
   marker->flag = SELECT;
   marker->frame = frame;
-  SNPRINTF(marker->name, "F_%02d", frame); /* XXX: temp code only. */
+  BLI_snprintf(marker->name, sizeof(marker->name), "F_%02d", frame); /* XXX: temp code only. */
   BLI_addtail(markers, marker);
 
   WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, NULL);
@@ -844,23 +843,24 @@ static void ed_marker_move_update_header(bContext *C, wmOperator *op)
     outputNumInput(&mm->num, str_ofs, &scene->unit);
   }
   else if (use_time) {
-    SNPRINTF(str_ofs, "%.2f", FRA2TIME(ofs));
+    BLI_snprintf(str_ofs, sizeof(str_ofs), "%.2f", FRA2TIME(ofs));
   }
   else {
-    SNPRINTF(str_ofs, "%d", ofs);
+    BLI_snprintf(str_ofs, sizeof(str_ofs), "%d", ofs);
   }
 
   if (totmark == 1 && selmarker) {
     /* we print current marker value */
     if (use_time) {
-      SNPRINTF(str, TIP_("Marker %.2f offset %s"), FRA2TIME(selmarker->frame), str_ofs);
+      BLI_snprintf(
+          str, sizeof(str), TIP_("Marker %.2f offset %s"), FRA2TIME(selmarker->frame), str_ofs);
     }
     else {
-      SNPRINTF(str, TIP_("Marker %d offset %s"), selmarker->frame, str_ofs);
+      BLI_snprintf(str, sizeof(str), TIP_("Marker %d offset %s"), selmarker->frame, str_ofs);
     }
   }
   else {
-    SNPRINTF(str, TIP_("Marker offset %s"), str_ofs);
+    BLI_snprintf(str, sizeof(str), TIP_("Marker offset %s"), str_ofs);
   }
 
   ED_area_status_text(CTX_wm_area(C), str);
@@ -1174,7 +1174,7 @@ static void ed_marker_duplicate_apply(bContext *C)
       newmarker = MEM_callocN(sizeof(TimeMarker), "TimeMarker");
       newmarker->flag = SELECT;
       newmarker->frame = marker->frame;
-      STRNCPY(newmarker->name, marker->name);
+      BLI_strncpy(newmarker->name, marker->name, sizeof(marker->name));
 
 #ifdef DURIAN_CAMERA_SWITCH
       newmarker->camera = marker->camera;
@@ -1417,7 +1417,7 @@ static void MARKER_OT_select(wmOperatorType *ot)
  * xmin, ymin
  * xmax, ymax
  *
- * customdata: the wmGesture pointer, with sub-window.
+ * customdata: the wmGesture pointer, with subwindow
  *
  * callbacks:
  *

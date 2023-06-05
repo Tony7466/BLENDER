@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -26,8 +25,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "RNA_access.h"
-
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -45,7 +42,7 @@
 
 typedef struct TransDataVertSlideVert {
   /** #TransDataGenericSlideVert (header) */
-  BMVert *v;
+  struct BMVert *v;
   struct LinkNode **cd_loop_groups;
   float co_orig_3d[3];
   /* end generic */
@@ -99,7 +96,7 @@ static void vert_slide_update_input(TransInfo *t)
   }
 }
 
-static void calcVertSlideCustomPoints(TransInfo *t)
+static void calcVertSlideCustomPoints(struct TransInfo *t)
 {
   vert_slide_update_input(t);
 
@@ -112,7 +109,7 @@ static void calcVertSlideCustomPoints(TransInfo *t)
 /**
  * Run once when initializing vert slide to find the reference edge
  */
-static void calcVertSlideMouseActiveVert(TransInfo *t, const int mval[2])
+static void calcVertSlideMouseActiveVert(struct TransInfo *t, const int mval[2])
 {
   /* Active object may have no selected vertices. */
   VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
@@ -140,7 +137,7 @@ static void calcVertSlideMouseActiveVert(TransInfo *t, const int mval[2])
 /**
  * Run while moving the mouse to slide along the edge matching the mouse direction
  */
-static void calcVertSlideMouseActiveEdges(TransInfo *t, const int mval[2])
+static void calcVertSlideMouseActiveEdges(struct TransInfo *t, const int mval[2])
 {
   VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
   const float imval_fl[2] = {UNPACK2(t->mouse.imval)};
@@ -304,55 +301,57 @@ static void freeVertSlideVerts(TransInfo *UNUSED(t),
   custom_data->data = NULL;
 }
 
-static eRedrawFlag handleEventVertSlide(TransInfo *t, const wmEvent *event)
+static eRedrawFlag handleEventVertSlide(struct TransInfo *t, const struct wmEvent *event)
 {
-  VertSlideParams *slp = t->custom.mode.data;
+  if (t->mode == TFM_VERT_SLIDE) {
+    VertSlideParams *slp = t->custom.mode.data;
 
-  if (slp) {
-    switch (event->type) {
-      case EVT_EKEY:
-        if (event->val == KM_PRESS) {
-          slp->use_even = !slp->use_even;
-          if (slp->flipped) {
-            calcVertSlideCustomPoints(t);
+    if (slp) {
+      switch (event->type) {
+        case EVT_EKEY:
+          if (event->val == KM_PRESS) {
+            slp->use_even = !slp->use_even;
+            if (slp->flipped) {
+              calcVertSlideCustomPoints(t);
+            }
+            return TREDRAW_HARD;
           }
-          return TREDRAW_HARD;
-        }
-        break;
-      case EVT_FKEY:
-        if (event->val == KM_PRESS) {
-          slp->flipped = !slp->flipped;
+          break;
+        case EVT_FKEY:
+          if (event->val == KM_PRESS) {
+            slp->flipped = !slp->flipped;
+            calcVertSlideCustomPoints(t);
+            return TREDRAW_HARD;
+          }
+          break;
+        case EVT_CKEY:
+          /* use like a modifier key */
+          if (event->val == KM_PRESS) {
+            t->flag ^= T_ALT_TRANSFORM;
+            calcVertSlideCustomPoints(t);
+            return TREDRAW_HARD;
+          }
+          break;
+        case MOUSEMOVE: {
+          /* don't recalculate the best edge */
+          const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
+          if (is_clamp) {
+            calcVertSlideMouseActiveEdges(t, event->mval);
+          }
           calcVertSlideCustomPoints(t);
-          return TREDRAW_HARD;
+          break;
         }
-        break;
-      case EVT_CKEY:
-        /* use like a modifier key */
-        if (event->val == KM_PRESS) {
-          t->flag ^= T_ALT_TRANSFORM;
-          calcVertSlideCustomPoints(t);
-          return TREDRAW_HARD;
-        }
-        break;
-      case MOUSEMOVE: {
-        /* don't recalculate the best edge */
-        const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
-        if (is_clamp) {
-          calcVertSlideMouseActiveEdges(t, event->mval);
-        }
-        calcVertSlideCustomPoints(t);
-        break;
+        default:
+          break;
       }
-      default:
-        break;
     }
   }
   return TREDRAW_NOTHING;
 }
 
-static void drawVertSlide(TransInfo *t)
+void drawVertSlide(TransInfo *t)
 {
-  if (TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data) {
+  if ((t->mode == TFM_VERT_SLIDE) && TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data) {
     const VertSlideParams *slp = t->custom.mode.data;
     VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
     const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
@@ -610,39 +609,15 @@ static void applyVertSlide(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void vert_slide_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
-{
-  float delta[3], orig_co[3], final_co[3];
-
-  VertSlideParams *slp = t->custom.mode.data;
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
-  VertSlideData *sld_active = tc->custom.mode.data;
-  TransDataVertSlideVert *sv_active = &sld_active->sv[sld_active->curr_sv_index];
-
-  copy_v3_v3(orig_co, sv_active->co_orig_3d);
-
-  float tperc = t->values_final[0];
-  if (slp->use_even) {
-    const float edge_len_curr = len_v3v3(sv_active->co_orig_3d,
-                                         sv_active->co_link_orig_3d[sv_active->co_link_curr]);
-    tperc *= edge_len_curr;
-  }
-
-  vert_slide_apply_elem(sv_active, tperc, slp->use_even, slp->flipped, final_co);
-
-  if (tc->use_local_mat) {
-    mul_m4_v3(tc->mat, orig_co);
-    mul_m4_v3(tc->mat, final_co);
-  }
-
-  sub_v3_v3v3(delta, final_co, orig_co);
-  add_v3_v3(mat_xform[3], delta);
-}
-
-static void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use_clamp)
+void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use_clamp)
 {
 
   t->mode = TFM_VERT_SLIDE;
+  t->transform = applyVertSlide;
+  t->handleEvent = handleEventVertSlide;
+  t->transform_matrix = NULL;
+  t->tsnap.snap_mode_apply_fn = vert_slide_snap_apply;
+  t->tsnap.snap_mode_distance_fn = transform_snap_distance_len_squared_fn;
 
   {
     VertSlideParams *slp = MEM_callocN(sizeof(*slp), __func__);
@@ -688,19 +663,13 @@ static void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use
   copy_v3_fl(t->num.val_inc, t->snap[0]);
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_type[0] = B_UNIT_NONE;
+
+  t->flag |= T_NO_CONSTRAINT | T_NO_PROJECT;
 }
 
-static void initVertSlide(TransInfo *t, wmOperator *op)
+void initVertSlide(TransInfo *t)
 {
-  bool use_even = false;
-  bool flipped = false;
-  bool use_clamp = true;
-  if (op) {
-    use_even = RNA_boolean_get(op->ptr, "use_even");
-    flipped = RNA_boolean_get(op->ptr, "flipped");
-    use_clamp = RNA_boolean_get(op->ptr, "use_clamp");
-  }
-  initVertSlide_ex(t, use_even, flipped, use_clamp);
+  initVertSlide_ex(t, false, false, true);
 }
 
 /** \} */
@@ -723,14 +692,3 @@ void transform_mode_vert_slide_reproject_input(TransInfo *t)
 }
 
 /** \} */
-
-TransModeInfo TransMode_vertslide = {
-    /*flags*/ T_NO_CONSTRAINT | T_NO_PROJECT,
-    /*init_fn*/ initVertSlide,
-    /*transform_fn*/ applyVertSlide,
-    /*transform_matrix_fn*/ vert_slide_transform_matrix_fn,
-    /*handle_event_fn*/ handleEventVertSlide,
-    /*snap_distance_fn*/ transform_snap_distance_len_squared_fn,
-    /*snap_apply_fn*/ vert_slide_snap_apply,
-    /*draw_fn*/ drawVertSlide,
-};

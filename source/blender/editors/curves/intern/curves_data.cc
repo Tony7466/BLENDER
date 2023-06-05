@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
@@ -16,19 +14,21 @@ namespace blender::ed::curves {
 
 void transverts_from_curves_positions_create(bke::CurvesGeometry &curves, TransVertStore *tvs)
 {
-  IndexMaskMemory memory;
-  IndexMask selection = retrieve_selected_points(curves, memory);
+  Vector<int64_t> selected_indices;
+  IndexMask selection = retrieve_selected_points(curves, selected_indices);
   MutableSpan<float3> positions = curves.positions_for_write();
 
   tvs->transverts = static_cast<TransVert *>(
       MEM_calloc_arrayN(selection.size(), sizeof(TransVert), __func__));
   tvs->transverts_tot = selection.size();
 
-  selection.foreach_index(GrainSize(1024), [&](const int64_t i, const int64_t pos) {
-    TransVert &tv = tvs->transverts[pos];
-    tv.loc = positions[i];
-    tv.flag = SELECT;
-    copy_v3_v3(tv.oldloc, tv.loc);
+  threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange selection_range) {
+    for (const int point_i : selection_range) {
+      TransVert &tv = tvs->transverts[point_i];
+      tv.loc = positions[selection[point_i]];
+      tv.flag = SELECT;
+      copy_v3_v3(tv.oldloc, tv.loc);
+    }
   });
 }
 

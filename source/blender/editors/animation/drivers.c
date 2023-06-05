@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
 
 /** \file
  * \ingroup edanimation
@@ -89,9 +88,9 @@ FCurve *verify_driver_fcurve(ID *id,
   return fcu;
 }
 
-FCurve *alloc_driver_fcurve(const char rna_path[],
-                            const int array_index,
-                            eDriverFCurveCreationMode creation_mode)
+struct FCurve *alloc_driver_fcurve(const char rna_path[],
+                                   const int array_index,
+                                   eDriverFCurveCreationMode creation_mode)
 {
   FCurve *fcu = BKE_fcurve_create();
 
@@ -179,7 +178,7 @@ static int add_driver_with_target(ReportList *UNUSED(reports),
       /* Rotation Destination:  normal -> radians,  so convert src to radians
        * (However, if both input and output is a rotation, don't apply such corrections)
        */
-      STRNCPY(driver->expression, "radians(var)");
+      BLI_strncpy(driver->expression, "radians(var)", sizeof(driver->expression));
     }
     else if ((RNA_property_unit(src_prop) == PROP_UNIT_ROTATION) &&
              (RNA_property_unit(dst_prop) != PROP_UNIT_ROTATION))
@@ -187,11 +186,11 @@ static int add_driver_with_target(ReportList *UNUSED(reports),
       /* Rotation Source: radians -> normal, so convert src to degrees
        * (However, if both input and output is a rotation, don't apply such corrections)
        */
-      STRNCPY(driver->expression, "degrees(var)");
+      BLI_strncpy(driver->expression, "degrees(var)", sizeof(driver->expression));
     }
     else {
       /* Just a normal property without any unit problems */
-      STRNCPY(driver->expression, "var");
+      BLI_strncpy(driver->expression, "var", sizeof(driver->expression));
     }
 
     /* Create a driver variable for the target
@@ -460,8 +459,7 @@ int ANIM_add_driver(
         int array = RNA_property_array_length(&ptr, prop);
         const char *dvar_prefix = (flag & CREATEDRIVER_WITH_DEFAULT_DVAR) ? "var + " : "";
         char *expression = driver->expression;
-        const size_t expression_maxncpy = sizeof(driver->expression);
-        int val;
+        int val, maxlen = sizeof(driver->expression);
         float fval;
 
         if (proptype == PROP_BOOLEAN) {
@@ -472,8 +470,7 @@ int ANIM_add_driver(
             val = RNA_property_boolean_get_index(&ptr, prop, array_index);
           }
 
-          BLI_snprintf(
-              expression, expression_maxncpy, "%s%s", dvar_prefix, (val) ? "True" : "False");
+          BLI_snprintf(expression, maxlen, "%s%s", dvar_prefix, (val) ? "True" : "False");
         }
         else if (proptype == PROP_INT) {
           if (!array) {
@@ -483,7 +480,7 @@ int ANIM_add_driver(
             val = RNA_property_int_get_index(&ptr, prop, array_index);
           }
 
-          BLI_snprintf(expression, expression_maxncpy, "%s%d", dvar_prefix, val);
+          BLI_snprintf(expression, maxlen, "%s%d", dvar_prefix, val);
         }
         else if (proptype == PROP_FLOAT) {
           if (!array) {
@@ -493,11 +490,11 @@ int ANIM_add_driver(
             fval = RNA_property_float_get_index(&ptr, prop, array_index);
           }
 
-          BLI_snprintf(expression, expression_maxncpy, "%s%.3f", dvar_prefix, fval);
+          BLI_snprintf(expression, maxlen, "%s%.3f", dvar_prefix, fval);
           BLI_str_rstrip_float_zero(expression, '\0');
         }
         else if (flag & CREATEDRIVER_WITH_DEFAULT_DVAR) {
-          BLI_strncpy(expression, "var", expression_maxncpy);
+          BLI_strncpy(expression, "var", maxlen);
         }
       }
 
@@ -796,7 +793,7 @@ bool ANIM_driver_vars_paste(ReportList *reports, FCurve *fcu, bool replace)
 
 /* -------------------------------------------------- */
 
-void ANIM_copy_as_driver(ID *target_id, const char *target_path, const char *var_name)
+void ANIM_copy_as_driver(struct ID *target_id, const char *target_path, const char *var_name)
 {
   /* Clear copy/paste buffer first (for consistency with other copy/paste buffers). */
   ANIM_drivers_copybuf_free();
@@ -816,7 +813,7 @@ void ANIM_copy_as_driver(ID *target_id, const char *target_path, const char *var
 
   /* Set the variable name. */
   if (var_name) {
-    STRNCPY(var->name, var_name);
+    BLI_strncpy(var->name, var_name, sizeof(var->name));
 
     /* Sanitize the name. */
     for (int i = 0; var->name[i]; i++) {
@@ -826,7 +823,7 @@ void ANIM_copy_as_driver(ID *target_id, const char *target_path, const char *var
     }
   }
 
-  STRNCPY(driver->expression, var->name);
+  BLI_strncpy(driver->expression, var->name, sizeof(driver->expression));
 
   /* Store the driver into the copy/paste buffers. */
   channeldriver_copypaste_buf = fcu;

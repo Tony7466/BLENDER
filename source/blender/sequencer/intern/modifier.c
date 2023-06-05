@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -91,12 +90,12 @@ static ImBuf *modifier_render_mask_input(const SeqRenderData *context,
       mask_input = seq_render_strip(context, &state, mask_sequence, timeline_frame);
 
       if (make_float) {
-        if (!mask_input->float_buffer.data) {
+        if (!mask_input->rect_float) {
           IMB_float_from_rect(mask_input);
         }
       }
       else {
-        if (!mask_input->byte_buffer.data) {
+        if (!mask_input->rect) {
           IMB_rect_from_float(mask_input);
         }
       }
@@ -140,21 +139,21 @@ static void modifier_init_handle(void *handle_v, int start_line, int tot_line, v
   handle->apply_callback = init_data->apply_callback;
   handle->user_data = init_data->user_data;
 
-  if (ibuf->byte_buffer.data) {
-    handle->rect = ibuf->byte_buffer.data + offset;
+  if (ibuf->rect) {
+    handle->rect = (uchar *)ibuf->rect + offset;
   }
 
-  if (ibuf->float_buffer.data) {
-    handle->rect_float = ibuf->float_buffer.data + offset;
+  if (ibuf->rect_float) {
+    handle->rect_float = ibuf->rect_float + offset;
   }
 
   if (mask) {
-    if (mask->byte_buffer.data) {
-      handle->mask_rect = mask->byte_buffer.data + offset;
+    if (mask->rect) {
+      handle->mask_rect = (uchar *)mask->rect + offset;
     }
 
-    if (mask->float_buffer.data) {
-      handle->mask_rect_float = mask->float_buffer.data + offset;
+    if (mask->rect_float) {
+      handle->mask_rect_float = mask->rect_float + offset;
     }
   }
   else {
@@ -524,21 +523,21 @@ static void color_balance_init_handle(void *handle_v,
   handle->height = tot_line;
   handle->make_float = init_data->make_float;
 
-  if (ibuf->byte_buffer.data) {
-    handle->rect = ibuf->byte_buffer.data + offset;
+  if (ibuf->rect) {
+    handle->rect = (uchar *)ibuf->rect + offset;
   }
 
-  if (ibuf->float_buffer.data) {
-    handle->rect_float = ibuf->float_buffer.data + offset;
+  if (ibuf->rect_float) {
+    handle->rect_float = ibuf->rect_float + offset;
   }
 
   if (mask) {
-    if (mask->byte_buffer.data) {
-      handle->mask_rect = mask->byte_buffer.data + offset;
+    if (mask->rect) {
+      handle->mask_rect = (uchar *)mask->rect + offset;
     }
 
-    if (mask->float_buffer.data) {
-      handle->mask_rect_float = mask->float_buffer.data + offset;
+    if (mask->rect_float) {
+      handle->mask_rect_float = mask->rect_float + offset;
     }
   }
   else {
@@ -594,7 +593,7 @@ static void modifier_color_balance_apply(
 {
   ColorBalanceInitData init_data;
 
-  if (!ibuf->float_buffer.data && make_float) {
+  if (!ibuf->rect_float && make_float) {
     imb_addrectfloatImBuf(ibuf, 4);
   }
 
@@ -614,7 +613,7 @@ static void modifier_color_balance_apply(
    * free byte buffer if there's float buffer since float buffer would be used for
    * color balance in favor of byte buffer
    */
-  if (ibuf->float_buffer.data && ibuf->byte_buffer.data) {
+  if (ibuf->rect_float && ibuf->rect) {
     imb_freerectImBuf(ibuf);
   }
 }
@@ -823,7 +822,7 @@ static void curves_apply_threaded(int width,
   }
 }
 
-static void curves_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void curves_apply(struct SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
 {
   CurvesModifierData *cmd = (CurvesModifierData *)smd;
 
@@ -955,7 +954,7 @@ static void hue_correct_apply_threaded(int width,
   }
 }
 
-static void hue_correct_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void hue_correct_apply(struct SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
 {
   HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
 
@@ -1060,7 +1059,7 @@ static void brightcontrast_apply_threaded(int width,
   }
 }
 
-static void brightcontrast_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void brightcontrast_apply(struct SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
 {
   BrightContrastModifierData *bcmd = (BrightContrastModifierData *)smd;
   BrightContrastThreadData data;
@@ -1137,7 +1136,7 @@ static void maskmodifier_apply_threaded(int width,
   }
 }
 
-static void maskmodifier_apply(SequenceModifierData *UNUSED(smd), ImBuf *ibuf, ImBuf *mask)
+static void maskmodifier_apply(struct SequenceModifierData *UNUSED(smd), ImBuf *ibuf, ImBuf *mask)
 {
   // SequencerMaskModifierData *bcmd = (SequencerMaskModifierData *)smd;
 
@@ -1163,7 +1162,7 @@ static SequenceModifierTypeInfo seqModifier_Mask = {
 
 typedef struct AvgLogLum {
   SequencerTonemapModifierData *tmmd;
-  ColorSpace *colorspace;
+  struct ColorSpace *colorspace;
   float al;
   float auto_key;
   float lav;
@@ -1307,17 +1306,16 @@ static void tonemapmodifier_apply_threaded_photoreceptor(int width,
   }
 }
 
-static void tonemapmodifier_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void tonemapmodifier_apply(struct SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
 {
   SequencerTonemapModifierData *tmmd = (SequencerTonemapModifierData *)smd;
   AvgLogLum data;
   data.tmmd = tmmd;
-  data.colorspace = (ibuf->float_buffer.data != NULL) ? ibuf->float_colorspace :
-                                                        ibuf->rect_colorspace;
+  data.colorspace = (ibuf->rect_float != NULL) ? ibuf->float_colorspace : ibuf->rect_colorspace;
   float lsum = 0.0f;
   int p = ibuf->x * ibuf->y;
-  float *fp = ibuf->float_buffer.data;
-  uchar *cp = ibuf->byte_buffer.data;
+  float *fp = ibuf->rect_float;
+  uchar *cp = (uchar *)ibuf->rect;
   float avl, maxl = -FLT_MAX, minl = FLT_MAX;
   const float sc = 1.0f / p;
   float Lav = 0.0f;
@@ -1414,10 +1412,10 @@ SequenceModifierData *SEQ_modifier_new(Sequence *seq, const char *name, int type
   smd->flag |= SEQUENCE_MODIFIER_EXPANDED;
 
   if (!name || !name[0]) {
-    STRNCPY(smd->name, smti->name);
+    BLI_strncpy(smd->name, smti->name, sizeof(smd->name));
   }
   else {
-    STRNCPY(smd->name, name);
+    BLI_strncpy(smd->name, name, sizeof(smd->name));
   }
 
   BLI_addtail(&seq->modifiers, smd);
@@ -1519,7 +1517,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
       }
 
       ImBuf *mask = modifier_mask_get(
-          smd, context, timeline_frame, frame_offset, ibuf->float_buffer.data != NULL);
+          smd, context, timeline_frame, frame_offset, ibuf->rect_float != NULL);
 
       if (processed_ibuf == ibuf) {
         processed_ibuf = IMB_dupImBuf(ibuf);
@@ -1621,7 +1619,7 @@ void SEQ_modifier_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase 
 {
   LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
     if (smd->mask_id) {
-      BLO_read_id_address(reader, &scene->id, &smd->mask_id);
+      BLO_read_id_address(reader, scene->id.lib, &smd->mask_id);
     }
   }
 }

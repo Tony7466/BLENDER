@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright Blender Foundation */
 
 #pragma once
 
@@ -14,8 +13,7 @@ namespace Eigen {
 
 namespace internal {
 
-/**
- * \internal Low-level conjugate gradient algorithm
+/** \internal Low-level conjugate gradient algorithm
  * \param mat: The matrix A
  * \param rhs: The right hand side vector b
  * \param x: On input and initial solution, on output the computed solution.
@@ -221,8 +219,7 @@ class ConstrainedConjugateGradient
   /** Default constructor. */
   ConstrainedConjugateGradient() : Base() {}
 
-  /**
-   * Initialize the solver with matrix \a A for further \c Ax=b solving.
+  /** Initialize the solver with matrix \a A for further \c Ax=b solving.
    *
    * This constructor is a shortcut for the default constructor followed
    * by a call to compute().
@@ -245,8 +242,7 @@ class ConstrainedConjugateGradient
     return m_filter;
   }
 
-  /**
-   * \returns the solution x of \f$ A x = b \f$ using the current decomposition of A
+  /** \returns the solution x of \f$ A x = b \f$ using the current decomposition of A
    * \a x0 as an initial solution.
    *
    * \sa compute()

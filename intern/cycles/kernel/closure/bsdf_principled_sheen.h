@@ -84,7 +84,8 @@ ccl_device Spectrum bsdf_principled_sheen_eval(ccl_private const ShaderClosure *
 ccl_device int bsdf_principled_sheen_sample(ccl_private const ShaderClosure *sc,
                                             float3 Ng,
                                             float3 wi,
-                                            float2 rand,
+                                            float randu,
+                                            float randv,
                                             ccl_private Spectrum *eval,
                                             ccl_private float3 *wo,
                                             ccl_private float *pdf)
@@ -93,7 +94,7 @@ ccl_device int bsdf_principled_sheen_sample(ccl_private const ShaderClosure *sc,
 
   float3 N = bsdf->N;
 
-  sample_cos_hemisphere(N, rand, wo, pdf);
+  sample_cos_hemisphere(N, randu, randv, wo, pdf);
 
   if (dot(Ng, *wo) > 0) {
     float3 H = normalize(wi + *wo);

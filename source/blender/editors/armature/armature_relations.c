@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edarmature
@@ -82,7 +81,7 @@ static void joined_armature_fix_links_constraints(Main *bmain,
           }
           else if (STREQ(ct->subtarget, pchan->name)) {
             ct->tar = tarArm;
-            STRNCPY(ct->subtarget, curbone->name);
+            BLI_strncpy(ct->subtarget, curbone->name, sizeof(ct->subtarget));
             changed = true;
           }
         }
@@ -194,7 +193,7 @@ static void joined_armature_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data
                 }
                 if (STREQ(dtar->pchan_name, old_name)) {
                   /* Change target bone name */
-                  STRNCPY(dtar->pchan_name, new_name);
+                  BLI_strncpy(dtar->pchan_name, new_name, sizeof(dtar->pchan_name));
                   break; /* no need to try any more names for bone subtarget */
                 }
               }
@@ -242,7 +241,7 @@ static void joined_armature_fix_links(
       if (ob->partype == PARBONE) {
         /* bone name in object */
         if (STREQ(ob->parsubstr, pchan->name)) {
-          STRNCPY(ob->parsubstr, curbone->name);
+          BLI_strncpy(ob->parsubstr, curbone->name, sizeof(ob->parsubstr));
         }
       }
 
@@ -365,7 +364,7 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
         joined_armature_fix_links(bmain, ob_active, ob_iter, pchan, curbone);
 
         /* Rename pchan */
-        STRNCPY(pchan->name, curbone->name);
+        BLI_strncpy(pchan->name, curbone->name, sizeof(pchan->name));
 
         /* Jump Ship! */
         BLI_remlink(curarm->edbo, curbone);
@@ -710,13 +709,12 @@ void ARMATURE_OT_separate(wmOperatorType *ot)
   ot->description = "Isolate selected bones into a separate armature";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = WM_operator_confirm;
   ot->exec = separate_armature_exec;
   ot->poll = ED_operator_editarmature;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /** \} */

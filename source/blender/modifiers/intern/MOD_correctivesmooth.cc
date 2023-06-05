@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -37,9 +36,9 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.hh"
-#include "MOD_ui_common.hh"
-#include "MOD_util.hh"
+#include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
+#include "MOD_util.h"
 
 #include "BLO_read_write.h"
 
@@ -654,17 +653,12 @@ static void correctivesmooth_modifier_do(ModifierData *md,
     }
     else {
       int me_numVerts;
-      if (em) {
-        rest_coords = BKE_editmesh_vert_coords_alloc_orco(em, &me_numVerts);
-        is_rest_coords_alloc = true;
-      }
-      else {
-        const Mesh *me = static_cast<const Mesh *>(ob->data);
-        rest_coords = BKE_mesh_vert_positions(me);
-        me_numVerts = me->totvert;
-      }
+      rest_coords = em ? BKE_editmesh_vert_coords_alloc_orco(em, &me_numVerts) :
+                         BKE_mesh_vert_coords_alloc(static_cast<const Mesh *>(ob->data),
+                                                    &me_numVerts);
 
       BLI_assert((uint)me_numVerts == verts_num);
+      is_rest_coords_alloc = true;
     }
 
 #ifdef DEBUG_TIME

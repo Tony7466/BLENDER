@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -13,7 +11,6 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -100,10 +97,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
   }
 
-  if (!USER_VERSION_ATLEAST(306, 8)) {
-    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_simulation);
-    FROM_DEFAULT_V4_UCHAR(space_action.simulated_frames);
-  }
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -542,7 +535,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_REGISTER_ALL_USERS);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_UIFLAG_UNUSED_22);
   }
 
   if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -815,7 +808,7 @@ void blo_do_versions_userdef(UserDef *userdef)
                                                      "Versioning user script path");
 
       STRNCPY(script_dir->dir_path, userdef->pythondir_legacy);
-      STRNCPY_UTF8(script_dir->name, DATA_("Untitled"));
+      STRNCPY(script_dir->name, DATA_("Untitled"));
       BLI_addhead(&userdef->script_directories, script_dir);
     }
   }
@@ -824,12 +817,6 @@ void blo_do_versions_userdef(UserDef *userdef)
     LISTBASE_FOREACH (bUserAssetLibrary *, asset_library, &userdef->asset_libraries) {
       asset_library->flag |= ASSET_LIBRARY_RELATIVE_PATH;
     }
-  }
-
-  if (!USER_VERSION_ATLEAST(400, 4)) {
-    /* obj and ply python addons were removed. */
-    BKE_addon_remove_safe(&userdef->addons, "io_mesh_ply");
-    BKE_addon_remove_safe(&userdef->addons, "io_scene_obj");
   }
 
   /**

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_pointcloud.h"
 #include "DNA_pointcloud_types.h"
@@ -13,21 +11,21 @@ namespace blender::nodes::node_geo_points_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>("Count")
+  b.add_input<decl::Int>(N_("Count"))
       .default_value(1)
-      .description("The number of points to create")
+      .description(N_("The number of points to create"))
       .min(0);
-  b.add_input<decl::Vector>("Position")
+  b.add_input<decl::Vector>(N_("Position"))
       .supports_field()
       .default_value(float3(0.0f))
-      .description("The positions of the new points");
-  b.add_input<decl::Float>("Radius")
+      .description(N_("The positions of the new points"));
+  b.add_input<decl::Float>(N_("Radius"))
       .min(0.0f)
       .default_value(0.1f)
       .supports_field()
       .subtype(PROP_DISTANCE)
-      .description("The radii of the new points");
-  b.add_output<decl::Geometry>("Geometry");
+      .description(N_("The radii of the new points"));
+  b.add_output<decl::Geometry>(N_("Geometry"));
 }
 
 class PointsFieldContext : public FieldContext {
@@ -43,7 +41,7 @@ class PointsFieldContext : public FieldContext {
   }
 
   GVArray get_varray_for_input(const FieldInput &field_input,
-                               const IndexMask &mask,
+                               const IndexMask mask,
                                ResourceScope & /*scope*/) const
   {
     const bke::IDAttributeFieldInput *id_field_input =

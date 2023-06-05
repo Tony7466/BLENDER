@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 by Nicholas Bishop. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -57,7 +56,7 @@
 #include "ED_screen.h"
 #include "ED_sculpt.h"
 
-#include "paint_intern.hh"
+#include "paint_intern.h"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -577,6 +576,10 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
   }
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
+
+  if (!ss->pmap) {
+    return;
+  }
 
   float brush_co[3];
   copy_v3_v3(brush_co, SCULPT_active_vertex_co_get(ss));
@@ -1397,7 +1400,6 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
   WM_operatortype_append(SCULPT_OT_face_sets_create);
   WM_operatortype_append(SCULPT_OT_face_sets_change_visibility);
-  WM_operatortype_append(SCULPT_OT_face_sets_invert_visibility);
   WM_operatortype_append(SCULPT_OT_face_sets_randomize_colors);
   WM_operatortype_append(SCULPT_OT_face_sets_init);
   WM_operatortype_append(SCULPT_OT_cloth_filter);

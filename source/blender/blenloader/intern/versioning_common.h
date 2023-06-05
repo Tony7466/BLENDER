@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -111,10 +109,6 @@ void version_socket_update_is_used(bNodeTree *ntree);
 ARegion *do_versions_add_region(int regiontype, const char *name);
 
 void sequencer_init_preview_region(ARegion *region);
-
-void add_realize_instances_before_socket(bNodeTree *ntree,
-                                         bNode *node,
-                                         bNodeSocket *geometry_socket);
 
 #ifdef __cplusplus
 }

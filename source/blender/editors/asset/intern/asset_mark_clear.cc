@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -72,7 +70,7 @@ bool ED_asset_clear_id(ID *id)
   return true;
 }
 
-void ED_assets_pre_save(Main *bmain)
+void ED_assets_pre_save(struct Main *bmain)
 {
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {

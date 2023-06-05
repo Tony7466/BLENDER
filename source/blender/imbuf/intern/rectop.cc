@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
@@ -253,11 +252,10 @@ void IMB_rect_crop(ImBuf *ibuf, const rcti *crop)
     return;
   }
 
-  /* TODO(sergey: Validate ownership. */
-  rect_crop_4bytes((void **)&ibuf->byte_buffer.data, size_src, crop);
-  rect_crop_4bytes((void **)&ibuf->z_buffer.data, size_src, crop);
-  rect_crop_4bytes((void **)&ibuf->float_z_buffer.data, size_src, crop);
-  rect_crop_16bytes((void **)&ibuf->float_buffer.data, size_src, crop);
+  rect_crop_4bytes((void **)&ibuf->rect, size_src, crop);
+  rect_crop_4bytes((void **)&ibuf->zbuf, size_src, crop);
+  rect_crop_4bytes((void **)&ibuf->zbuf_float, size_src, crop);
+  rect_crop_16bytes((void **)&ibuf->rect_float, size_src, crop);
 
   ibuf->x = size_dst[0];
   ibuf->y = size_dst[1];
@@ -291,11 +289,10 @@ void IMB_rect_size_set(ImBuf *ibuf, const uint size[2])
     return;
   }
 
-  /* TODO(sergey: Validate ownership. */
-  rect_realloc_4bytes((void **)&ibuf->byte_buffer.data, size);
-  rect_realloc_4bytes((void **)&ibuf->z_buffer.data, size);
-  rect_realloc_4bytes((void **)&ibuf->float_z_buffer.data, size);
-  rect_realloc_16bytes((void **)&ibuf->float_buffer.data, size);
+  rect_realloc_4bytes((void **)&ibuf->rect, size);
+  rect_realloc_4bytes((void **)&ibuf->zbuf, size);
+  rect_realloc_4bytes((void **)&ibuf->zbuf_float, size);
+  rect_realloc_16bytes((void **)&ibuf->rect_float, size);
 
   ibuf->x = size[0];
   ibuf->y = size[1];
@@ -536,18 +533,16 @@ void IMB_rectblend(ImBuf *dbuf,
     return;
   }
 
-  const bool do_char = (sbuf && sbuf->byte_buffer.data && dbuf->byte_buffer.data &&
-                        obuf->byte_buffer.data);
-  const bool do_float = (sbuf && sbuf->float_buffer.data && dbuf->float_buffer.data &&
-                         obuf->float_buffer.data);
+  const bool do_char = (sbuf && sbuf->rect && dbuf->rect && obuf->rect);
+  const bool do_float = (sbuf && sbuf->rect_float && dbuf->rect_float && obuf->rect_float);
 
   if (do_char) {
-    drect = (uint *)dbuf->byte_buffer.data + size_t(desty) * dbuf->x + destx;
-    orect = (uint *)obuf->byte_buffer.data + size_t(origy) * obuf->x + origx;
+    drect = dbuf->rect + size_t(desty) * dbuf->x + destx;
+    orect = obuf->rect + size_t(origy) * obuf->x + origx;
   }
   if (do_float) {
-    drectf = dbuf->float_buffer.data + (size_t(desty) * dbuf->x + destx) * 4;
-    orectf = obuf->float_buffer.data + (size_t(origy) * obuf->x + origx) * 4;
+    drectf = dbuf->rect_float + (size_t(desty) * dbuf->x + destx) * 4;
+    orectf = obuf->rect_float + (size_t(origy) * obuf->x + origx) * 4;
   }
 
   if (dmaskrect) {
@@ -559,10 +554,10 @@ void IMB_rectblend(ImBuf *dbuf,
 
   if (sbuf) {
     if (do_char) {
-      srect = (uint *)sbuf->byte_buffer.data + size_t(srcy) * sbuf->x + srcx;
+      srect = sbuf->rect + size_t(srcy) * sbuf->x + srcx;
     }
     if (do_float) {
-      srectf = sbuf->float_buffer.data + (size_t(srcy) * sbuf->x + srcx) * 4;
+      srectf = sbuf->rect_float + (size_t(srcy) * sbuf->x + srcx) * 4;
     }
     srcskip = sbuf->x;
 
@@ -811,7 +806,7 @@ void IMB_rectblend(ImBuf *dbuf,
             }
             dmaskrect += origskip;
           }
-          /* No destination mask buffer, do regular blend with mask-texture if present. */
+          /* no destination mask buffer, do regular blend with masktexture if present */
           else {
             for (x = width; x > 0; x--, dr++, outr++, sr++, cmr++) {
               uchar *src = (uchar *)sr;
@@ -910,7 +905,7 @@ void IMB_rectblend(ImBuf *dbuf,
             }
             dmaskrect += origskip;
           }
-          /* No destination mask buffer, do regular blend with mask-texture if present. */
+          /* no destination mask buffer, do regular blend with masktexture if present */
           else {
             for (x = width; x > 0; x--, drf += 4, orf += 4, srf += 4, cmr++) {
               float mask = float(mask_max) * float(*cmr);
@@ -1054,8 +1049,8 @@ void IMB_rectfill(ImBuf *drect, const float col[4])
 {
   int num;
 
-  if (drect->byte_buffer.data) {
-    uint *rrect = (uint *)drect->byte_buffer.data;
+  if (drect->rect) {
+    uint *rrect = drect->rect;
     char ccol[4];
 
     ccol[0] = int(col[0] * 255);
@@ -1069,8 +1064,8 @@ void IMB_rectfill(ImBuf *drect, const float col[4])
     }
   }
 
-  if (drect->float_buffer.data) {
-    float *rrectf = drect->float_buffer.data;
+  if (drect->rect_float) {
+    float *rrectf = drect->rect_float;
 
     num = drect->x * drect->y;
     for (; num > 0; num--) {
@@ -1116,13 +1111,13 @@ void IMB_rectfill_area_replace(
     for (int x = x1; x < x2; x++) {
       size_t offset = size_t(ibuf->x) * y * 4 + 4 * x;
 
-      if (ibuf->byte_buffer.data) {
-        uchar *rrect = ibuf->byte_buffer.data + offset;
+      if (ibuf->rect) {
+        uchar *rrect = (uchar *)ibuf->rect + offset;
         memcpy(rrect, col_char, sizeof(uchar[4]));
       }
 
-      if (ibuf->float_buffer.data) {
-        float *rrectf = ibuf->float_buffer.data + offset;
+      if (ibuf->rect_float) {
+        float *rrectf = ibuf->rect_float + offset;
         memcpy(rrectf, col, sizeof(float[4]));
       }
     }
@@ -1134,7 +1129,7 @@ void buf_rectfill_area(uchar *rect,
                        int width,
                        int height,
                        const float col[4],
-                       ColorManagedDisplay *display,
+                       struct ColorManagedDisplay *display,
                        int x1,
                        int y1,
                        int x2,
@@ -1240,38 +1235,35 @@ void buf_rectfill_area(uchar *rect,
   }
 }
 
-void IMB_rectfill_area(
-    ImBuf *ibuf, const float col[4], int x1, int y1, int x2, int y2, ColorManagedDisplay *display)
+void IMB_rectfill_area(ImBuf *ibuf,
+                       const float col[4],
+                       int x1,
+                       int y1,
+                       int x2,
+                       int y2,
+                       struct ColorManagedDisplay *display)
 {
   if (!ibuf) {
     return;
   }
-  buf_rectfill_area(ibuf->byte_buffer.data,
-                    ibuf->float_buffer.data,
-                    ibuf->x,
-                    ibuf->y,
-                    col,
-                    display,
-                    x1,
-                    y1,
-                    x2,
-                    y2);
+  buf_rectfill_area(
+      (uchar *)ibuf->rect, ibuf->rect_float, ibuf->x, ibuf->y, col, display, x1, y1, x2, y2);
 }
 
 void IMB_rectfill_alpha(ImBuf *ibuf, const float value)
 {
   int i;
 
-  if (ibuf->float_buffer.data && (ibuf->channels == 4)) {
-    float *fbuf = ibuf->float_buffer.data + 3;
+  if (ibuf->rect_float && (ibuf->channels == 4)) {
+    float *fbuf = ibuf->rect_float + 3;
     for (i = ibuf->x * ibuf->y; i > 0; i--, fbuf += 4) {
       *fbuf = value;
     }
   }
 
-  if (ibuf->byte_buffer.data) {
+  if (ibuf->rect) {
     const uchar cvalue = value * 255;
-    uchar *cbuf = ibuf->byte_buffer.data + 3;
+    uchar *cbuf = ((uchar *)ibuf->rect) + 3;
     for (i = ibuf->x * ibuf->y; i > 0; i--, cbuf += 4) {
       *cbuf = cvalue;
     }

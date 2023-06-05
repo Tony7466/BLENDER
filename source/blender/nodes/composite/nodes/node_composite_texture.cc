@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
  */
+
+#include "BLT_translation.h"
 
 #include "COM_cached_texture.hh"
 #include "COM_node_operation.hh"
@@ -18,19 +19,19 @@ namespace blender::nodes::node_composite_texture_cc {
 
 static void cmp_node_texture_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Offset")
+  b.add_input<decl::Vector>(N_("Offset"))
       .min(-2.0f)
       .max(2.0f)
       .subtype(PROP_TRANSLATION)
       .compositor_expects_single_value();
-  b.add_input<decl::Vector>("Scale")
+  b.add_input<decl::Vector>(N_("Scale"))
       .default_value({1.0f, 1.0f, 1.0f})
       .min(-10.0f)
       .max(10.0f)
       .subtype(PROP_XYZ)
       .compositor_expects_single_value();
-  b.add_output<decl::Float>("Value");
-  b.add_output<decl::Color>("Color");
+  b.add_output<decl::Float>(N_("Value"));
+  b.add_output<decl::Color>(N_("Color"));
 }
 
 using namespace blender::realtime_compositor;

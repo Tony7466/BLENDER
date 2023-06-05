@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -45,7 +44,7 @@ static void fontstyle_set_ex(const uiFontStyle *fs, const float dpi_fac);
  * This is a complete set of layout rules, the 'state' of the Layout
  * Engine. Multiple styles are possible, defined via C or Python. Styles
  * get a name, and will typically get activated per region type, like
- * `Header`, or `Listview` or `Toolbar`. Properties of Style definitions
+ * "Header", or "Listview" or "Toolbar". Properties of Style definitions
  * are:
  *
  * - default column properties, internal spacing, aligning, min/max width
@@ -63,7 +62,7 @@ static uiStyle *ui_style_new(ListBase *styles, const char *name, short uifont_id
   uiStyle *style = MEM_cnew<uiStyle>(__func__);
 
   BLI_addtail(styles, style);
-  STRNCPY(style->name, name);
+  BLI_strncpy(style->name, name, MAX_STYLE_NAME);
 
   style->panelzoom = 1.0; /* unused */
 
@@ -128,10 +127,10 @@ void UI_fontstyle_draw_ex(const uiFontStyle *fs,
                           const char *str,
                           const size_t str_len,
                           const uchar col[4],
-                          const uiFontStyleDraw_Params *fs_params,
+                          const struct uiFontStyleDraw_Params *fs_params,
                           int *r_xofs,
                           int *r_yofs,
-                          ResultBLF *r_info)
+                          struct ResultBLF *r_info)
 {
   int xofs = 0, yofs;
   int font_flag = BLF_CLIPPING;
@@ -199,7 +198,7 @@ void UI_fontstyle_draw(const uiFontStyle *fs,
                        const char *str,
                        const size_t str_len,
                        const uchar col[4],
-                       const uiFontStyleDraw_Params *fs_params)
+                       const struct uiFontStyleDraw_Params *fs_params)
 {
   UI_fontstyle_draw_ex(fs, rect, str, str_len, col, fs_params, nullptr, nullptr, nullptr);
 }
@@ -386,11 +385,11 @@ void uiStyleInit()
   }
 
   if (U.font_path_ui[0]) {
-    STRNCPY(font_first->filepath, U.font_path_ui);
+    BLI_strncpy(font_first->filepath, U.font_path_ui, sizeof(font_first->filepath));
     font_first->uifont_id = UIFONT_CUSTOM1;
   }
   else {
-    STRNCPY(font_first->filepath, "default");
+    BLI_strncpy(font_first->filepath, "default", sizeof(font_first->filepath));
     font_first->uifont_id = UIFONT_DEFAULT;
   }
 

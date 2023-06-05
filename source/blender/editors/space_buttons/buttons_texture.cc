@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup spbuttons
@@ -34,7 +33,7 @@
 #include "BKE_layer.h"
 #include "BKE_linestyle.h"
 #include "BKE_modifier.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
@@ -508,14 +507,14 @@ static void template_texture_user_menu(bContext *C, uiLayout *layout, void * /*a
       Tex *tex = static_cast<Tex *>(texptr.data);
 
       if (tex) {
-        SNPRINTF(name, "  %s - %s", user->name, tex->id.name + 2);
+        BLI_snprintf(name, UI_MAX_NAME_STR, "  %s - %s", user->name, tex->id.name + 2);
       }
       else {
-        SNPRINTF(name, "  %s", user->name);
+        BLI_snprintf(name, UI_MAX_NAME_STR, "  %s", user->name);
       }
     }
     else {
-      SNPRINTF(name, "  %s", user->name);
+      BLI_snprintf(name, UI_MAX_NAME_STR, "  %s", user->name);
     }
 
     but = uiDefIconTextBut(block,
@@ -566,7 +565,7 @@ void uiTemplateTextureUser(uiLayout *layout, bContext *C)
   }
 
   /* create button */
-  STRNCPY(name, user->name);
+  BLI_strncpy(name, user->name, UI_MAX_NAME_STR);
 
   if (user->icon) {
     but = uiDefIconTextMenuBut(block,

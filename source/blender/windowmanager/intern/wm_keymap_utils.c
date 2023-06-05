@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -282,7 +280,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   else if (STRPREFIX(opname, "MBALL_OT")) {
     km = WM_keymap_find_all(wm, "Metaball", 0, 0);
 
-    /* Some meta-ball operators are active in object mode too, like add-primitive. */
+    /* some mball operators are active in object mode too, like add-prim */
     if (km && !WM_keymap_poll((bContext *)C, km)) {
       km = WM_keymap_find_all(wm, "Object Mode", 0, 0);
     }

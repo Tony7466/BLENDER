@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -190,7 +188,7 @@ void WM_msg_publish_with_key(struct wmMsgBus *mbus, wmMsgSubscribeKey *msg_key)
   }
 }
 
-void WM_msg_id_update(struct wmMsgBus *mbus, ID *id_src, ID *id_dst)
+void WM_msg_id_update(struct wmMsgBus *mbus, struct ID *id_src, struct ID *id_dst)
 {
   for (uint i = 0; i < WM_MSG_TYPE_NUM; i++) {
     wmMsgTypeInfo *info = &wm_msg_types[i];
@@ -200,7 +198,7 @@ void WM_msg_id_update(struct wmMsgBus *mbus, ID *id_src, ID *id_dst)
   }
 }
 
-void WM_msg_id_remove(struct wmMsgBus *mbus, const ID *id)
+void WM_msg_id_remove(struct wmMsgBus *mbus, const struct ID *id)
 {
   for (uint i = 0; i < WM_MSG_TYPE_NUM; i++) {
     wmMsgTypeInfo *info = &wm_msg_types[i];

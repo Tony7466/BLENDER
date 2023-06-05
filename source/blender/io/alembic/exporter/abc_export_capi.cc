@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 #include "ABC_alembic.h"
 #include "abc_archive.h"
@@ -41,7 +40,7 @@ struct ExportJobData {
   Depsgraph *depsgraph;
   wmWindowManager *wm;
 
-  char filepath[FILE_MAX];
+  char filename[FILE_MAX];
   AlembicExportParams params;
 
   bool was_canceled;
@@ -65,7 +64,7 @@ static void build_depsgraph(Depsgraph *depsgraph, const bool visible_objects_onl
 static void report_job_duration(const ExportJobData *data)
 {
   blender::timeit::Nanoseconds duration = blender::timeit::Clock::now() - data->start_time;
-  std::cout << "Alembic export of '" << data->filepath << "' took ";
+  std::cout << "Alembic export of '" << data->filename << "' took ";
   blender::timeit::print_duration(duration);
   std::cout << '\n';
 }
@@ -104,11 +103,11 @@ static void export_startjob(void *customdata,
   std::unique_ptr<ABCArchive> abc_archive;
   try {
     abc_archive = std::make_unique<ABCArchive>(
-        data->bmain, scene, data->params, std::string(data->filepath));
+        data->bmain, scene, data->params, std::string(data->filename));
   }
   catch (const std::exception &ex) {
     std::stringstream error_message_stream;
-    error_message_stream << "Error writing to " << data->filepath;
+    error_message_stream << "Error writing to " << data->filename;
     const std::string &error_message = error_message_stream.str();
 
     /* The exception message can be very cryptic (just "iostream error" on Linux, for example),
@@ -121,7 +120,7 @@ static void export_startjob(void *customdata,
   catch (...) {
     /* Unknown exception class, so we cannot include its message. */
     std::stringstream error_message_stream;
-    error_message_stream << "Unknown error writing to " << data->filepath;
+    error_message_stream << "Unknown error writing to " << data->filename;
     WM_report(RPT_ERROR, error_message_stream.str().c_str());
     data->export_ok = false;
     return;
@@ -183,8 +182,8 @@ static void export_endjob(void *customdata)
 
   DEG_graph_free(data->depsgraph);
 
-  if (data->was_canceled && BLI_exists(data->filepath)) {
-    BLI_delete(data->filepath, false, false);
+  if (data->was_canceled && BLI_exists(data->filename)) {
+    BLI_delete(data->filename, false, false);
   }
 
   G.is_rendering = false;
@@ -208,7 +207,7 @@ bool ABC_export(Scene *scene,
   job->bmain = CTX_data_main(C);
   job->wm = CTX_wm_manager(C);
   job->export_ok = false;
-  STRNCPY(job->filepath, filepath);
+  BLI_strncpy(job->filename, filepath, sizeof(job->filename));
 
   job->depsgraph = DEG_graph_new(job->bmain, scene, view_layer, params->evaluation_mode);
   job->params = *params;
@@ -230,7 +229,7 @@ bool ABC_export(Scene *scene,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need null pointer checks while exporting. */
+    /* Fake a job context, so that we don't need NULL pointer checks while exporting. */
     bool stop = false, do_update = false;
     float progress = 0.0f;
 

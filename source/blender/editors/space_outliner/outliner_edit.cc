@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2004 Blender Foundation */
 
 /** \file
  * \ingroup spoutliner
@@ -73,18 +72,6 @@ static void outliner_show_active(SpaceOutliner *space_outliner,
                                  ARegion *region,
                                  TreeElement *te,
                                  ID *id);
-
-/* -------------------------------------------------------------------- */
-/** \name Local Utilities
- * \{ */
-
-static void outliner_copybuffer_filepath_get(char filepath[FILE_MAX], size_t filepath_maxncpy)
-{
-  /* NOTE: this uses the same path as the 3D viewport. */
-  BLI_path_join(filepath, filepath_maxncpy, BKE_tempdir_base(), "copybuffer.blend");
-}
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Highlight on Cursor Motion Operator
@@ -819,7 +806,7 @@ static int outliner_id_copy_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  char filepath[FILE_MAX];
+  char str[FILE_MAX];
 
   BKE_copybuffer_copy_begin(bmain);
 
@@ -829,8 +816,8 @@ static int outliner_id_copy_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  outliner_copybuffer_filepath_get(filepath, sizeof(filepath));
-  BKE_copybuffer_copy_end(bmain, filepath, op->reports);
+  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
+  BKE_copybuffer_copy_end(bmain, str, op->reports);
 
   BKE_reportf(op->reports, RPT_INFO, "Copied %d selected data-block(s)", num_ids);
 
@@ -860,12 +847,12 @@ void OUTLINER_OT_id_copy(wmOperatorType *ot)
 
 static int outliner_id_paste_exec(bContext *C, wmOperator *op)
 {
-  char filepath[FILE_MAX];
+  char str[FILE_MAX];
   const short flag = FILE_AUTOSELECT | FILE_ACTIVE_COLLECTION;
 
-  outliner_copybuffer_filepath_get(filepath, sizeof(filepath));
+  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
 
-  const int num_pasted = BKE_copybuffer_paste(C, filepath, flag, op->reports, 0);
+  const int num_pasted = BKE_copybuffer_paste(C, str, flag, op->reports, 0);
   if (num_pasted == 0) {
     BKE_report(op->reports, RPT_INFO, "No data to paste");
     return OPERATOR_CANCELLED;
@@ -1279,8 +1266,7 @@ static int outliner_open_back(TreeElement *te)
   return retval;
 }
 
-/**
- * \return element representing the active base or bone in the outliner, or null if none exists
+/* Return element representing the active base or bone in the outliner, or NULL if none exists
  */
 static TreeElement *outliner_show_active_get_element(bContext *C,
                                                      SpaceOutliner *space_outliner,

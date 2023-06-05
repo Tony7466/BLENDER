@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edarmature
@@ -118,7 +117,7 @@ static void constraint_bone_name_fix(Object *ob,
       for (ct = targets.first; ct; ct = ct->next) {
         if (ct->tar == ob) {
           if (STREQ(ct->subtarget, oldname)) {
-            STRNCPY(ct->subtarget, newname);
+            BLI_strncpy(ct->subtarget, newname, MAXBONENAME);
           }
         }
       }
@@ -147,9 +146,9 @@ void ED_armature_bone_rename(Main *bmain,
   if (!STREQLEN(oldnamep, newnamep, MAXBONENAME)) {
 
     /* we alter newname string... so make copy */
-    STRNCPY(newname, newnamep);
+    BLI_strncpy(newname, newnamep, MAXBONENAME);
     /* we use oldname for search... so make copy */
-    STRNCPY(oldname, oldnamep);
+    BLI_strncpy(oldname, oldnamep, MAXBONENAME);
 
     /* now check if we're in editmode, we need to find the unique name */
     if (arm->edbo) {
@@ -157,7 +156,7 @@ void ED_armature_bone_rename(Main *bmain,
 
       if (eBone) {
         ED_armature_ebone_unique_name(arm->edbo, newname, NULL);
-        STRNCPY(eBone->name, newname);
+        BLI_strncpy(eBone->name, newname, MAXBONENAME);
       }
       else {
         return;
@@ -174,7 +173,7 @@ void ED_armature_bone_rename(Main *bmain,
           BLI_ghash_remove(arm->bonehash, bone->name, NULL, NULL);
         }
 
-        STRNCPY(bone->name, newname);
+        BLI_strncpy(bone->name, newname, MAXBONENAME);
 
         if (arm->bonehash) {
           BLI_ghash_insert(arm->bonehash, bone->name, bone);
@@ -208,7 +207,7 @@ void ED_armature_bone_rename(Main *bmain,
               BLI_ghash_remove(gh, pchan->name, NULL, NULL);
             }
 
-            STRNCPY(pchan->name, newname);
+            BLI_strncpy(pchan->name, newname, MAXBONENAME);
 
             if (gh) {
               BLI_ghash_insert(gh, pchan->name, pchan);
@@ -237,7 +236,7 @@ void ED_armature_bone_rename(Main *bmain,
         if (ob->partype == PARBONE) {
           /* bone name in object */
           if (STREQ(ob->parsubstr, oldname)) {
-            STRNCPY(ob->parsubstr, newname);
+            BLI_strncpy(ob->parsubstr, newname, MAXBONENAME);
           }
         }
       }
@@ -245,7 +244,7 @@ void ED_armature_bone_rename(Main *bmain,
       if (BKE_modifiers_uses_armature(ob, arm) && BKE_object_supports_vertex_groups(ob)) {
         bDeformGroup *dg = BKE_object_defgroup_find_name(ob, oldname);
         if (dg) {
-          STRNCPY(dg->name, newname);
+          BLI_strncpy(dg->name, newname, MAXBONENAME);
           DEG_id_tag_update(ob->data, ID_RECALC_GEOMETRY);
         }
       }
@@ -258,7 +257,7 @@ void ED_armature_bone_rename(Main *bmain,
 
             if (hmd->object && (hmd->object->data == arm)) {
               if (STREQ(hmd->subtarget, oldname)) {
-                STRNCPY(hmd->subtarget, newname);
+                BLI_strncpy(hmd->subtarget, newname, MAXBONENAME);
               }
             }
             break;
@@ -268,12 +267,12 @@ void ED_armature_bone_rename(Main *bmain,
 
             if (umd->object_src && (umd->object_src->data == arm)) {
               if (STREQ(umd->bone_src, oldname)) {
-                STRNCPY(umd->bone_src, newname);
+                BLI_strncpy(umd->bone_src, newname, MAXBONENAME);
               }
             }
             if (umd->object_dst && (umd->object_dst->data == arm)) {
               if (STREQ(umd->bone_dst, oldname)) {
-                STRNCPY(umd->bone_dst, newname);
+                BLI_strncpy(umd->bone_dst, newname, MAXBONENAME);
               }
             }
             break;
@@ -288,7 +287,7 @@ void ED_armature_bone_rename(Main *bmain,
         Camera *cam = (Camera *)ob->data;
         if ((cam->dof.focus_object != NULL) && (cam->dof.focus_object->data == arm)) {
           if (STREQ(cam->dof.focus_subtarget, oldname)) {
-            STRNCPY(cam->dof.focus_subtarget, newname);
+            BLI_strncpy(cam->dof.focus_subtarget, newname, MAXBONENAME);
             DEG_id_tag_update(&cam->id, ID_RECALC_COPY_ON_WRITE);
           }
         }
@@ -301,7 +300,7 @@ void ED_armature_bone_rename(Main *bmain,
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           if ((gpl->parent != NULL) && (gpl->parent->data == arm)) {
             if (STREQ(gpl->parsubstr, oldname)) {
-              STRNCPY(gpl->parsubstr, newname);
+              BLI_strncpy(gpl->parsubstr, newname, MAXBONENAME);
             }
           }
         }
@@ -313,7 +312,7 @@ void ED_armature_bone_rename(Main *bmain,
               if (mmd->object && mmd->object->data == arm) {
                 bDeformGroup *dg = BKE_object_defgroup_find_name(ob, oldname);
                 if (dg) {
-                  STRNCPY(dg->name, newname);
+                  BLI_strncpy(dg->name, newname, MAXBONENAME);
                   DEG_id_tag_update(ob->data, ID_RECALC_GEOMETRY);
                 }
               }
@@ -323,7 +322,7 @@ void ED_armature_bone_rename(Main *bmain,
               HookGpencilModifierData *hgp_md = (HookGpencilModifierData *)gp_md;
               if (hgp_md->object && (hgp_md->object->data == arm)) {
                 if (STREQ(hgp_md->subtarget, oldname)) {
-                  STRNCPY(hgp_md->subtarget, newname);
+                  BLI_strncpy(hgp_md->subtarget, newname, MAXBONENAME);
                 }
               }
               break;
@@ -360,7 +359,7 @@ void ED_armature_bone_rename(Main *bmain,
               View3D *v3d = (View3D *)sl;
               if (v3d->ob_center && v3d->ob_center->data == arm) {
                 if (STREQ(v3d->ob_center_bone, oldname)) {
-                  STRNCPY(v3d->ob_center_bone, newname);
+                  BLI_strncpy(v3d->ob_center_bone, newname, MAXBONENAME);
                 }
               }
             }
@@ -407,7 +406,7 @@ void ED_armature_bones_flip_names(Main *bmain,
     if (!STREQ(name, name_flip)) {
       bfn = alloca(sizeof(BoneFlipNameData));
       bfn->name = name;
-      STRNCPY(bfn->name_flip, name_flip);
+      BLI_strncpy(bfn->name_flip, name_flip, sizeof(bfn->name_flip));
       BLI_addtail(&bones_names_conflicts, bfn);
     }
   }
@@ -546,7 +545,7 @@ static int armature_autoside_names_exec(bContext *C, wmOperator *op)
         if (arm->flag & ARM_MIRROR_EDIT) {
           EditBone *flipbone = ED_armature_ebone_get_mirrored(arm->edbo, ebone);
           if ((flipbone) && !(flipbone->flag & BONE_SELECTED)) {
-            STRNCPY(newname, flipbone->name);
+            BLI_strncpy(newname, flipbone->name, sizeof(newname));
             if (bone_autoside_name(newname, 1, axis, flipbone->head[axis], flipbone->tail[axis])) {
               ED_armature_bone_rename(bmain, arm, flipbone->name, newname);
               changed = true;
@@ -554,7 +553,7 @@ static int armature_autoside_names_exec(bContext *C, wmOperator *op)
           }
         }
 
-        STRNCPY(newname, ebone->name);
+        BLI_strncpy(newname, ebone->name, sizeof(newname));
         if (bone_autoside_name(newname, 1, axis, ebone->head[axis], ebone->tail[axis])) {
           ED_armature_bone_rename(bmain, arm, ebone->name, newname);
           changed = true;

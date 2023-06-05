@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation. */
 
 /** \file
  * \ingroup imbuf
@@ -58,14 +57,13 @@ template<typename T, int Channels = 4> struct ImageBufferAccessor {
   {
     if constexpr ((std::is_same_v<T, float4>)) {
       int offset = (coordinate.y * image_buffer.x + coordinate.x) * Channels;
-      return float4(&image_buffer.float_buffer.data[offset]);
+      return float4(&image_buffer.rect_float[offset]);
     }
     if constexpr ((std::is_same_v<T, int>)) {
       int offset = (coordinate.y * image_buffer.x + coordinate.x);
       float4 result;
-      rgba_uchar_to_float(
-          result,
-          static_cast<uchar *>(static_cast<void *>(&image_buffer.byte_buffer.data[offset])));
+      rgba_uchar_to_float(result,
+                          static_cast<uchar *>(static_cast<void *>(&image_buffer.rect[offset])));
       return result;
     }
     return float4();
@@ -75,13 +73,12 @@ template<typename T, int Channels = 4> struct ImageBufferAccessor {
   {
     if constexpr ((std::is_same_v<T, float>)) {
       int offset = (coordinate.y * image_buffer.x + coordinate.x) * Channels;
-      copy_v4_v4(&image_buffer.float_buffer.data[offset], new_value);
+      copy_v4_v4(&image_buffer.rect_float[offset], new_value);
     }
     if constexpr ((std::is_same_v<T, int>)) {
       int offset = (coordinate.y * image_buffer.x + coordinate.x);
-      rgba_float_to_uchar(
-          static_cast<uchar *>(static_cast<void *>(&image_buffer.byte_buffer.data[offset])),
-          new_value);
+      rgba_float_to_uchar(static_cast<uchar *>(static_cast<void *>(&image_buffer.rect[offset])),
+                          new_value);
     }
   }
 };

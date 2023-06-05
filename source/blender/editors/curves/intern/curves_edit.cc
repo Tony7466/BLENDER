@@ -1,10 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
  */
+
+#include "BLI_index_mask_ops.hh"
 
 #include "BKE_curves.hh"
 
@@ -18,8 +18,9 @@ bool remove_selection(bke::CurvesGeometry &curves, const eAttrDomain selection_d
   const VArray<bool> selection = *attributes.lookup_or_default<bool>(
       ".selection", selection_domain, true);
   const int domain_size_orig = attributes.domain_size(selection_domain);
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_bools(selection, memory);
+  Vector<int64_t> indices;
+  const IndexMask mask = index_mask_ops::find_indices_from_virtual_array(
+      selection.index_range(), selection, 4096, indices);
   switch (selection_domain) {
     case ATTR_DOMAIN_POINT:
       curves.remove_points(mask);

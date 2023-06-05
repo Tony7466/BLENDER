@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spview3d
@@ -1624,7 +1623,7 @@ static bool object_mouse_select_menu(bContext *C,
   int base_count = 0;
 
   struct BaseRefWithDepth {
-    BaseRefWithDepth *next, *prev;
+    struct BaseRefWithDepth *next, *prev;
     Base *base;
     /** The scale isn't defined, simply use for sorting. */
     uint depth_id;
@@ -1835,7 +1834,7 @@ static bool bone_mouse_select_menu(bContext *C,
   int bone_count = 0;
 
   struct BoneRefWithDepth {
-    BoneRefWithDepth *next, *prev;
+    struct BoneRefWithDepth *next, *prev;
     Base *base;
     union {
       EditBone *ebone;
@@ -3674,7 +3673,8 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
   if (ts->selectmode & SCE_SELECT_EDGE) {
     /* Does both use_zbuf and non-use_zbuf versions (need screen cos for both) */
-    BoxSelectUserData_ForMeshEdge cb_data{};
+    struct BoxSelectUserData_ForMeshEdge cb_data {
+    };
     cb_data.data = &data;
     cb_data.esel = use_zbuf ? esel : nullptr;
     cb_data.backbuf_offset = use_zbuf ? DRW_select_buffer_context_offset_for_object_elem(

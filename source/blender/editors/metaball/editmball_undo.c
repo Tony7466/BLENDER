@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmeta
@@ -148,7 +146,7 @@ static bool mball_undosys_poll(bContext *C)
   return editmball_object_from_context(C) != NULL;
 }
 
-static bool mball_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
+static bool mball_undosys_step_encode(struct bContext *C, struct Main *bmain, UndoStep *us_p)
 {
   MBallUndoStep *us = (MBallUndoStep *)us_p;
 
@@ -179,8 +177,8 @@ static bool mball_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
   return true;
 }
 
-static void mball_undosys_step_decode(bContext *C,
-                                      Main *bmain,
+static void mball_undosys_step_decode(struct bContext *C,
+                                      struct Main *bmain,
                                       UndoStep *us_p,
                                       const eUndoStepDir UNUSED(dir),
                                       bool UNUSED(is_final))

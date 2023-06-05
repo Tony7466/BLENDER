@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GEO_realize_instances.hh"
 
@@ -12,8 +10,8 @@ namespace blender::nodes::node_geo_join_geometry_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry").multi_input();
-  b.add_output<decl::Geometry>("Geometry").propagate_all();
+  b.add_input<decl::Geometry>(N_("Geometry")).multi_input();
+  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
 
 template<typename Component>

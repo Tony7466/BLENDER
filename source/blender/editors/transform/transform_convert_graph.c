@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -136,7 +135,7 @@ static void bezt_to_transdata(TransData *td,
 
 static bool graph_edit_is_translation_mode(TransInfo *t)
 {
-  return ELEM(t->mode, TFM_TRANSLATION, TFM_TIME_TRANSLATE, TFM_TIME_SLIDE);
+  return ELEM(t->mode, TFM_TRANSLATION, TFM_TIME_TRANSLATE, TFM_TIME_SLIDE, TFM_TIME_DUPLICATE);
 }
 
 static bool graph_edit_use_local_center(TransInfo *t)
@@ -983,7 +982,7 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
   const bool canceled = (t->state == TRANS_CANCEL);
-  const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
+  const bool duplicate = (t->mode == TFM_TIME_DUPLICATE);
 
   /* initialize relevant anim-context 'context' data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {

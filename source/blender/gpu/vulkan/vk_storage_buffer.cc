@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -16,33 +15,32 @@ namespace blender::gpu {
 void VKStorageBuffer::update(const void *data)
 {
   if (!buffer_.is_allocated()) {
-    allocate();
+    VKContext &context = *VKContext::get();
+    allocate(context);
   }
   buffer_.update(data);
 }
 
-void VKStorageBuffer::allocate()
+void VKStorageBuffer::allocate(VKContext &context)
 {
-  buffer_.create(size_in_bytes_,
+  buffer_.create(context,
+                 size_in_bytes_,
                  usage_,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-  debug::object_label(buffer_.vk_handle(), name_);
 }
 
 void VKStorageBuffer::bind(int slot)
 {
   VKContext &context = *VKContext::get();
   if (!buffer_.is_allocated()) {
-    allocate();
+    allocate(context);
   }
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
-  const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(
-          shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, slot);
-  BLI_assert_msg(location, "Locations to SSBOs should always exist.");
-  shader->pipeline_get().descriptor_set_get().bind(*this, *location);
+  const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
+      shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, slot);
+  shader->pipeline_get().descriptor_set_get().bind(*this, location);
 }
 
 void VKStorageBuffer::unbind() {}
@@ -51,7 +49,7 @@ void VKStorageBuffer::clear(uint32_t clear_value)
 {
   VKContext &context = *VKContext::get();
   if (!buffer_.is_allocated()) {
-    allocate();
+    allocate(context);
   }
   buffer_.clear(context, clear_value);
 }
@@ -65,11 +63,11 @@ void VKStorageBuffer::copy_sub(VertBuf * /*src*/,
 
 void VKStorageBuffer::read(void *data)
 {
+  VKContext &context = *VKContext::get();
   if (!buffer_.is_allocated()) {
-    allocate();
+    allocate(context);
   }
 
-  VKContext &context = *VKContext::get();
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.submit();
 

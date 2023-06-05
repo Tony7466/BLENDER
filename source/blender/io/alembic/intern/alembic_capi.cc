@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -95,7 +93,7 @@ BLI_INLINE CacheArchiveHandle *handle_from_archive(ArchiveReader *archive)
 static void add_object_path(ListBase *object_paths, const IObject &object)
 {
   CacheObjectPath *abc_path = MEM_cnew<CacheObjectPath>("CacheObjectPath");
-  STRNCPY(abc_path->path, object.getFullName().c_str());
+  BLI_strncpy(abc_path->path, object.getFullName().c_str(), sizeof(abc_path->path));
   BLI_addtail(object_paths, abc_path);
 }
 
@@ -152,25 +150,25 @@ static bool gather_objects_paths(const IObject &object, ListBase *object_paths)
   return parent_is_part_of_this_object;
 }
 
-CacheArchiveHandle *ABC_create_handle(Main *bmain,
-                                      const char *filepath,
+CacheArchiveHandle *ABC_create_handle(struct Main *bmain,
+                                      const char *filename,
                                       const CacheFileLayer *layers,
                                       ListBase *object_paths)
 {
-  std::vector<const char *> filepaths;
-  filepaths.push_back(filepath);
+  std::vector<const char *> filenames;
+  filenames.push_back(filename);
 
   while (layers) {
     if ((layers->flag & CACHEFILE_LAYER_HIDDEN) == 0) {
-      filepaths.push_back(layers->filepath);
+      filenames.push_back(layers->filepath);
     }
     layers = layers->next;
   }
 
   /* We need to reverse the order as overriding archives should come first. */
-  std::reverse(filepaths.begin(), filepaths.end());
+  std::reverse(filenames.begin(), filenames.end());
 
-  ArchiveReader *archive = ArchiveReader::get(bmain, filepaths);
+  ArchiveReader *archive = ArchiveReader::get(bmain, filenames);
 
   if (!archive || !archive->valid()) {
     delete archive;
@@ -426,7 +424,7 @@ struct ImportJobData {
   ViewLayer *view_layer;
   wmWindowManager *wm;
 
-  char filepath[1024];
+  char filename[1024];
   ImportSettings settings;
 
   ArchiveReader *archive;
@@ -446,7 +444,7 @@ struct ImportJobData {
 static void report_job_duration(const ImportJobData *data)
 {
   blender::timeit::Nanoseconds duration = blender::timeit::Clock::now() - data->start_time;
-  std::cout << "Alembic import of '" << data->filepath << "' took ";
+  std::cout << "Alembic import of '" << data->filename << "' took ";
   blender::timeit::print_duration(duration);
   std::cout << '\n';
 }
@@ -464,7 +462,7 @@ static void import_startjob(void *user_data, bool *stop, bool *do_update, float 
 
   WM_set_locked_interface(data->wm, true);
 
-  ArchiveReader *archive = ArchiveReader::get(data->bmain, {data->filepath});
+  ArchiveReader *archive = ArchiveReader::get(data->bmain, {data->filename});
 
   if (!archive || !archive->valid()) {
     data->error_code = ABC_ARCHIVE_FAIL;
@@ -473,7 +471,7 @@ static void import_startjob(void *user_data, bool *stop, bool *do_update, float 
   }
 
   CacheFile *cache_file = static_cast<CacheFile *>(
-      BKE_cachefile_add(data->bmain, BLI_path_basename(data->filepath)));
+      BKE_cachefile_add(data->bmain, BLI_path_basename(data->filename)));
 
   /* Decrement the ID ref-count because it is going to be incremented for each
    * modifier and constraint that it will be attached to, so since currently
@@ -482,7 +480,7 @@ static void import_startjob(void *user_data, bool *stop, bool *do_update, float 
 
   cache_file->is_sequence = data->settings.is_sequence;
   cache_file->scale = data->settings.scale;
-  STRNCPY(cache_file->filepath, data->filepath);
+  STRNCPY(cache_file->filepath, data->filename);
 
   data->archive = archive;
   data->settings.cache_file = cache_file;
@@ -525,7 +523,7 @@ static void import_startjob(void *user_data, bool *stop, bool *do_update, float 
       max_time = std::max(max_time, reader->maxTime());
     }
     else {
-      std::cerr << "Object " << reader->name() << " in Alembic file " << data->filepath
+      std::cerr << "Object " << reader->name() << " in Alembic file " << data->filename
                 << " is invalid.\n";
     }
 
@@ -686,7 +684,7 @@ bool ABC_import(bContext *C,
   job->view_layer = CTX_data_view_layer(C);
   job->wm = CTX_wm_manager(C);
   job->import_ok = false;
-  STRNCPY(job->filepath, filepath);
+  BLI_strncpy(job->filename, filepath, 1024);
 
   job->settings.scale = params->global_scale;
   job->settings.is_sequence = params->is_sequence;
@@ -719,7 +717,7 @@ bool ABC_import(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need null pointer checks while importing. */
+    /* Fake a job context, so that we don't need NULL pointer checks while importing. */
     bool stop = false, do_update = false;
     float progress = 0.0f;
 

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 
@@ -16,18 +14,18 @@ namespace blender::nodes::node_geo_mesh_primitive_ico_sphere_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Radius")
+  b.add_input<decl::Float>(N_("Radius"))
       .default_value(1.0f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)
-      .description("Distance from the generated points to the origin");
-  b.add_input<decl::Int>("Subdivisions")
+      .description(N_("Distance from the generated points to the origin"));
+  b.add_input<decl::Int>(N_("Subdivisions"))
       .default_value(1)
       .min(1)
       .max(7)
-      .description("Number of subdivisions on top of the basic icosahedron");
-  b.add_output<decl::Geometry>("Mesh");
-  b.add_output<decl::Vector>("UV Map").field_on_all();
+      .description(N_("Number of subdivisions on top of the basic icosahedron"));
+  b.add_output<decl::Geometry>(N_("Mesh"));
+  b.add_output<decl::Vector>(N_("UV Map")).field_on_all();
 }
 
 static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int subdivisions)

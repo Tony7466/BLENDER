@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
 
@@ -10,15 +8,15 @@ namespace blender::nodes::node_geo_curve_topology_curve_of_point_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>("Point Index")
+  b.add_input<decl::Int>(N_("Point Index"))
       .implicit_field(implicit_field_inputs::index)
-      .description("The control point to retrieve data from");
-  b.add_output<decl::Int>("Curve Index")
+      .description(N_("The control point to retrieve data from"));
+  b.add_output<decl::Int>(N_("Curve Index"))
       .field_source_reference_all()
-      .description("The curve the control point is part of");
-  b.add_output<decl::Int>("Index in Curve")
+      .description(N_("The curve the control point is part of"));
+  b.add_output<decl::Int>(N_("Index in Curve"))
       .field_source_reference_all()
-      .description("How far along the control point is along its curve");
+      .description(N_("How far along the control point is along its curve"));
 }
 
 class CurveOfPointInput final : public bke::CurvesFieldInput {
@@ -30,7 +28,7 @@ class CurveOfPointInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};
@@ -66,7 +64,7 @@ class PointIndexInCurveInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};
@@ -106,12 +104,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (params.output_is_required("Curve Index")) {
     params.set_output(
         "Curve Index",
-        Field<int>(std::make_shared<EvaluateAtIndexInput>(
+        Field<int>(std::make_shared<FieldAtIndexInput>(
             point_index, Field<int>(std::make_shared<CurveOfPointInput>()), ATTR_DOMAIN_POINT)));
   }
   if (params.output_is_required("Index in Curve")) {
     params.set_output("Index in Curve",
-                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
+                      Field<int>(std::make_shared<FieldAtIndexInput>(
                           point_index,
                           Field<int>(std::make_shared<PointIndexInCurveInput>()),
                           ATTR_DOMAIN_POINT)));

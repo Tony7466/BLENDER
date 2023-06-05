@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -155,11 +153,11 @@ void AssetList::setup()
   const bool use_asset_indexer = !USER_EXPERIMENTAL_TEST(&U, no_asset_indexing);
   filelist_setindexer(files, use_asset_indexer ? &file_indexer_asset : &file_indexer_noop);
 
-  char dirpath[FILE_MAX_LIBEXTRA] = "";
+  char path[FILE_MAXDIR] = "";
   if (!asset_lib_path.empty()) {
-    STRNCPY(dirpath, asset_lib_path.c_str());
+    BLI_strncpy(path, asset_lib_path.c_str(), sizeof(path));
   }
-  filelist_setdir(files, dirpath);
+  filelist_setdir(files, path);
 }
 
 void AssetList::fetch(const bContext &C)
@@ -220,10 +218,9 @@ void AssetList::ensurePreviewsJob(const bContext *C)
   int numfiles = filelist_files_ensure(files);
 
   filelist_cache_previews_set(files, true);
+  filelist_file_cache_slidingwindow_set(files, 256);
   /* TODO fetch all previews for now. */
-  /* Add one extra entry to ensure nothing is lost because of integer division. */
-  filelist_file_cache_slidingwindow_set(files, numfiles / 2 + 1);
-  filelist_file_cache_block(files, 0);
+  filelist_file_cache_block(files, numfiles / 2);
   filelist_cache_previews_update(files);
 
   {

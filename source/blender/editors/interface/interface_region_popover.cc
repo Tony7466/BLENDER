@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -62,7 +61,7 @@ struct uiPopover {
   /* Needed for keymap removal. */
   wmWindow *window;
   wmKeyMap *keymap;
-  wmEventHandler_Keymap *keymap_handler;
+  struct wmEventHandler_Keymap *keymap_handler;
 
   uiMenuCreateFunc menu_func;
   void *menu_arg;

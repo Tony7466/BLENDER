@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spnla
@@ -126,7 +125,7 @@ static void nla_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void nla_init(wmWindowManager *wm, ScrArea *area)
+static void nla_init(struct wmWindowManager *wm, ScrArea *area)
 {
   SpaceNla *snla = (SpaceNla *)area->spacedata.first;
 
@@ -578,8 +577,8 @@ static void nla_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, Spac
   bDopeSheet *ads = snla->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id, &ads->source);
-    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id->lib, &ads->source);
+    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
   }
 }
 

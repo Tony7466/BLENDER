@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -60,40 +59,40 @@ typedef struct tGPDinterpolate_layer {
   struct tGPDinterpolate_layer *next, *prev;
 
   /** layer */
-  bGPDlayer *gpl;
+  struct bGPDlayer *gpl;
   /** frame before current frame (interpolate-from) */
-  bGPDframe *prevFrame;
+  struct bGPDframe *prevFrame;
   /** frame after current frame (interpolate-to) */
-  bGPDframe *nextFrame;
+  struct bGPDframe *nextFrame;
   /** interpolated frame */
-  bGPDframe *interFrame;
+  struct bGPDframe *interFrame;
   /** interpolate factor */
   float factor;
 
   /* List of strokes and Hash tablets to create temp relationship between strokes. */
-  ListBase selected_strokes;
-  GHash *used_strokes;
-  GHash *pair_strokes;
+  struct ListBase selected_strokes;
+  struct GHash *used_strokes;
+  struct GHash *pair_strokes;
 
 } tGPDinterpolate_layer;
 
 typedef struct tGPDinterpolate {
   /** Current depsgraph from context */
-  Depsgraph *depsgraph;
+  struct Depsgraph *depsgraph;
   /** current scene from context */
-  Scene *scene;
+  struct Scene *scene;
   /** area where painting originated */
-  ScrArea *area;
+  struct ScrArea *area;
   /** region where painting originated */
-  ARegion *region;
+  struct ARegion *region;
   /** current object */
-  Object *ob;
+  struct Object *ob;
   /** current GP datablock */
-  bGPdata *gpd;
+  struct bGPdata *gpd;
   /** current material */
   struct Material *mat;
   /* Space Conversion Data */
-  GP_SpaceConversion gsc;
+  struct GP_SpaceConversion gsc;
 
   /** current frame number */
   int cframe;
@@ -596,16 +595,20 @@ static void gpencil_interpolate_status_indicators(bContext *C, tGPDinterpolate *
   char status_str[UI_MAX_DRAW_STR];
   char msg_str[UI_MAX_DRAW_STR];
 
-  STRNCPY(msg_str, TIP_("GPencil Interpolation: "));
+  BLI_strncpy(msg_str, TIP_("GPencil Interpolation: "), UI_MAX_DRAW_STR);
 
   if (hasNumInput(&p->num)) {
     char str_ofs[NUM_STR_REP_LEN];
 
     outputNumInput(&p->num, str_ofs, &scene->unit);
-    SNPRINTF(status_str, "%s%s", msg_str, str_ofs);
+    BLI_snprintf(status_str, sizeof(status_str), "%s%s", msg_str, str_ofs);
   }
   else {
-    SNPRINTF(status_str, "%s%d %%", msg_str, (int)((p->init_factor + p->shift) * 100.0f));
+    BLI_snprintf(status_str,
+                 sizeof(status_str),
+                 "%s%d %%",
+                 msg_str,
+                 (int)((p->init_factor + p->shift) * 100.0f));
   }
 
   ED_area_status_text(p->area, status_str);

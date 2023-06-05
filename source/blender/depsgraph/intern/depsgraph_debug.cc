@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -41,19 +40,19 @@ int DEG_debug_flags_get(const Depsgraph *depsgraph)
   return deg_graph->debug.flags;
 }
 
-void DEG_debug_name_set(Depsgraph *depsgraph, const char *name)
+void DEG_debug_name_set(struct Depsgraph *depsgraph, const char *name)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
   deg_graph->debug.name = name;
 }
 
-const char *DEG_debug_name_get(Depsgraph *depsgraph)
+const char *DEG_debug_name_get(struct Depsgraph *depsgraph)
 {
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(depsgraph);
   return deg_graph->debug.name.c_str();
 }
 
-bool DEG_debug_compare(const Depsgraph *graph1, const Depsgraph *graph2)
+bool DEG_debug_compare(const struct Depsgraph *graph1, const struct Depsgraph *graph2)
 {
   BLI_assert(graph1 != nullptr);
   BLI_assert(graph2 != nullptr);
@@ -224,7 +223,7 @@ void DEG_stats_simple(const Depsgraph *graph,
   }
 }
 
-static deg::string depsgraph_name_for_logging(Depsgraph *depsgraph)
+static deg::string depsgraph_name_for_logging(struct Depsgraph *depsgraph)
 {
   const char *name = DEG_debug_name_get(depsgraph);
   if (name[0] == '\0') {
@@ -233,12 +232,12 @@ static deg::string depsgraph_name_for_logging(Depsgraph *depsgraph)
   return "[" + deg::string(name) + "]: ";
 }
 
-void DEG_debug_print_begin(Depsgraph *depsgraph)
+void DEG_debug_print_begin(struct Depsgraph *depsgraph)
 {
   fprintf(stdout, "%s", depsgraph_name_for_logging(depsgraph).c_str());
 }
 
-void DEG_debug_print_eval(Depsgraph *depsgraph,
+void DEG_debug_print_eval(struct Depsgraph *depsgraph,
                           const char *function_name,
                           const char *object_name,
                           const void *object_address)
@@ -257,7 +256,7 @@ void DEG_debug_print_eval(Depsgraph *depsgraph,
   fflush(stdout);
 }
 
-void DEG_debug_print_eval_subdata(Depsgraph *depsgraph,
+void DEG_debug_print_eval_subdata(struct Depsgraph *depsgraph,
                                   const char *function_name,
                                   const char *object_name,
                                   const void *object_address,
@@ -284,7 +283,7 @@ void DEG_debug_print_eval_subdata(Depsgraph *depsgraph,
   fflush(stdout);
 }
 
-void DEG_debug_print_eval_subdata_index(Depsgraph *depsgraph,
+void DEG_debug_print_eval_subdata_index(struct Depsgraph *depsgraph,
                                         const char *function_name,
                                         const char *object_name,
                                         const void *object_address,
@@ -313,7 +312,7 @@ void DEG_debug_print_eval_subdata_index(Depsgraph *depsgraph,
   fflush(stdout);
 }
 
-void DEG_debug_print_eval_parent_typed(Depsgraph *depsgraph,
+void DEG_debug_print_eval_parent_typed(struct Depsgraph *depsgraph,
                                        const char *function_name,
                                        const char *object_name,
                                        const void *object_address,
@@ -340,7 +339,7 @@ void DEG_debug_print_eval_parent_typed(Depsgraph *depsgraph,
   fflush(stdout);
 }
 
-void DEG_debug_print_eval_time(Depsgraph *depsgraph,
+void DEG_debug_print_eval_time(struct Depsgraph *depsgraph,
                                const char *function_name,
                                const char *object_name,
                                const void *object_address,

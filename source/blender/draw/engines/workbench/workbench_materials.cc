@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -11,7 +10,7 @@
 #include "BLI_memblock.h"
 
 #include "BKE_image.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "BLI_dynstr.h"
 #include "BLI_hash.h"

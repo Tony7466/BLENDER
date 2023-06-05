@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -101,10 +99,10 @@ Object *ED_view3d_cameracontrol_object_get(View3DCameraControl *vctrl)
   return NULL;
 }
 
-View3DCameraControl *ED_view3d_cameracontrol_acquire(Depsgraph *depsgraph,
-                                                     Scene *scene,
-                                                     View3D *v3d,
-                                                     RegionView3D *rv3d)
+struct View3DCameraControl *ED_view3d_cameracontrol_acquire(Depsgraph *depsgraph,
+                                                            Scene *scene,
+                                                            View3D *v3d,
+                                                            RegionView3D *rv3d)
 {
   View3DCameraControl *vctrl;
 

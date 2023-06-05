@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -22,9 +20,9 @@
 #include "BKE_mesh.hh"
 #include "BKE_particle.h"
 
-#include "MOD_modifiertypes.hh"
+#include "MOD_modifiertypes.h"
 #include "MOD_solidify_util.hh" /* own include */
-#include "MOD_util.hh"
+#include "MOD_util.h"
 
 /* -------------------------------------------------------------------- */
 /** \name High Quality Normal Calculation Function
@@ -387,8 +385,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 
   float *result_edge_bweight = nullptr;
   if (do_bevel_convex) {
-    result_edge_bweight = static_cast<float *>(CustomData_add_layer_named(
-        &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "bevel_weight_edge"));
+    result_edge_bweight = static_cast<float *>(
+        CustomData_add_layer(&result->edata, CD_BWEIGHT, CD_SET_DEFAULT, result->totedge));
   }
 
   /* Initializes: (`i_end`, `do_shell_align`, `vert_index`). */

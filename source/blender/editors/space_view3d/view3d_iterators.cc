@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -30,7 +28,6 @@
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -293,9 +290,12 @@ void meshobject_foreachScreenVert(ViewContext *vc,
 {
   BLI_assert((clip_flag & V3D_PROJ_TEST_CLIP_CONTENT) == 0);
   foreachScreenObjectVert_userData data;
+  Mesh *me;
 
-  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
-  const Mesh *me = BKE_object_get_evaluated_mesh(ob_eval);
+  Scene *scene_eval = DEG_get_evaluated_scene(vc->depsgraph);
+  Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
+
+  me = mesh_get_eval_final(vc->depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 

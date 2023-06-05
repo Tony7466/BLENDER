@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #include "COM_ViewerOperation.h"
 #include "BKE_image.h"
@@ -156,13 +155,13 @@ void ViewerOperation::init_image()
   }
 
   /* now we combine the input with ibuf */
-  output_buffer_ = ibuf->float_buffer.data;
+  output_buffer_ = ibuf->rect_float;
 
   /* needed for display buffer update */
   ibuf_ = ibuf;
 
   if (do_depth_buffer_) {
-    depth_buffer_ = ibuf->float_z_buffer.data;
+    depth_buffer_ = ibuf->zbuf_float;
   }
 
   BKE_image_release_ibuf(image_, ibuf_, lock);

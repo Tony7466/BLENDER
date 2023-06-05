@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -115,7 +114,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  DRWTextStore *dt = DRW_text_cache_ensure();
+  struct DRWTextStore *dt = DRW_text_cache_ensure();
   int txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
   int cfra = int(DEG_get_ctime(draw_ctx->depsgraph));
   bool selected = (pchan) ? (pchan->bone->flag & BONE_SELECTED) : (ob->base_flag & BASE_SELECTED);
@@ -176,7 +175,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
       bool is_keyframe = (mpv->flag & MOTIONPATH_VERT_KEY) != 0;
 
       if ((show_keyframes && show_keyframes_no && is_keyframe) || (show_frame_no && (i == 0))) {
-        numstr_len = SNPRINTF_RLEN(numstr, " %d", frame);
+        numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), " %d", frame);
         DRW_text_cache_add(
             dt, mpv->co, numstr, numstr_len, 0, 0, txt_flag, (is_keyframe) ? col_kf : col);
       }
@@ -186,7 +185,7 @@ static void motion_path_cache(OVERLAY_Data *vedata,
         /* Only draw frame number if several consecutive highlighted points
          * don't occur on same point. */
         if ((equals_v3v3(mpv->co, mpvP->co) == 0) || (equals_v3v3(mpv->co, mpvN->co) == 0)) {
-          numstr_len = SNPRINTF_RLEN(numstr, " %d", frame);
+          numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), " %d", frame);
           DRW_text_cache_add(dt, mpv->co, numstr, numstr_len, 0, 0, txt_flag, col);
         }
       }

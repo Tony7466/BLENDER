@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -80,9 +79,8 @@ struct SubdivMeshContext {
 
   /* Lazily initialize a map from vertices to connected edges. */
   std::mutex vert_to_edge_map_mutex;
-  blender::Array<int> vert_to_edge_offsets;
-  blender::Array<int> vert_to_edge_indices;
-  blender::GroupedSpan<int> vert_to_edge_map;
+  int *vert_to_edge_buffer;
+  MeshElemMap *vert_to_edge_map;
 };
 
 static void subdiv_mesh_ctx_cache_uv_layers(SubdivMeshContext *ctx)
@@ -134,6 +132,8 @@ static void subdiv_mesh_prepare_accumulator(SubdivMeshContext *ctx, int num_vert
 static void subdiv_mesh_context_free(SubdivMeshContext *ctx)
 {
   MEM_SAFE_FREE(ctx->accumulated_counters);
+  MEM_SAFE_FREE(ctx->vert_to_edge_buffer);
+  MEM_SAFE_FREE(ctx->vert_to_edge_map);
 }
 
 /** \} */
@@ -951,7 +951,7 @@ static void subdiv_mesh_vertex_loose(const SubdivForeachContext *foreach_context
  * - neighbors[0] is an edge adjacent to edge->v1.
  * - neighbors[1] is an edge adjacent to edge->v2. */
 static void find_edge_neighbors(const int2 *coarse_edges,
-                                const blender::GroupedSpan<int> vert_to_edge_map,
+                                const MeshElemMap *vert_to_edge_map,
                                 const int edge_index,
                                 const int2 *neighbors[2])
 {
@@ -959,7 +959,7 @@ static void find_edge_neighbors(const int2 *coarse_edges,
   neighbors[0] = nullptr;
   neighbors[1] = nullptr;
   int neighbor_counters[2] = {0, 0};
-  for (const int i : vert_to_edge_map[edge[0]]) {
+  for (const int i : Span(vert_to_edge_map[edge[0]].indices, vert_to_edge_map[edge[0]].count)) {
     if (i == edge_index) {
       continue;
     }
@@ -968,7 +968,7 @@ static void find_edge_neighbors(const int2 *coarse_edges,
       ++neighbor_counters[0];
     }
   }
-  for (const int i : vert_to_edge_map[edge[1]]) {
+  for (const int i : Span(vert_to_edge_map[edge[1]].indices, vert_to_edge_map[edge[1]].count)) {
     if (i == edge_index) {
       continue;
     }
@@ -1026,7 +1026,7 @@ static void points_for_loose_edges_interpolation_get(const float (*coarse_positi
 
 void BKE_subdiv_mesh_interpolate_position_on_edge(const float (*coarse_positions)[3],
                                                   const blender::int2 *coarse_edges,
-                                                  const blender::GroupedSpan<int> vert_to_edge_map,
+                                                  const MeshElemMap *vert_to_edge_map,
                                                   const int coarse_edge_index,
                                                   const bool is_simple,
                                                   const float u,
@@ -1085,14 +1085,14 @@ static void subdiv_mesh_vertex_of_loose_edge(const SubdivForeachContext *foreach
 
   /* Lazily initialize a vertex to edge map to avoid quadratic runtime when subdividing loose
    * edges. Do this here to avoid the cost in common cases when there are no loose edges at all. */
-  if (ctx->vert_to_edge_map.is_empty()) {
+  if (ctx->vert_to_edge_map == nullptr) {
     std::lock_guard lock{ctx->vert_to_edge_map_mutex};
-    if (ctx->vert_to_edge_map.is_empty()) {
-      ctx->vert_to_edge_map = blender::bke::mesh::build_vert_to_edge_map(
-          ctx->coarse_edges,
-          coarse_mesh->totvert,
-          ctx->vert_to_edge_offsets,
-          ctx->vert_to_edge_indices);
+    if (ctx->vert_to_edge_map == nullptr) {
+      BKE_mesh_vert_edge_map_create(&ctx->vert_to_edge_map,
+                                    &ctx->vert_to_edge_buffer,
+                                    ctx->coarse_edges.data(),
+                                    coarse_mesh->totvert,
+                                    ctx->coarse_mesh->totedge);
     }
   }
 
@@ -1208,7 +1208,7 @@ Mesh *BKE_subdiv_to_mesh(Subdiv *subdiv,
     result->tag_loose_verts_none();
   }
   if (coarse_mesh->loose_edges().count == 0) {
-    result->tag_loose_edges_none();
+    result->loose_edges_tag_none();
   }
 
   if (subdiv->settings.is_simple) {

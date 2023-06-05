@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -52,7 +50,7 @@
 #include "BKE_main_namemap.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_paint.h"
@@ -290,7 +288,7 @@ void BLO_update_defaults_workspace(WorkSpace *workspace, const char *app_templat
 
 static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 {
-  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  BLI_strncpy(scene->r.engine, RE_engine_id_BLENDER_EEVEE, sizeof(scene->r.engine));
 
   scene->r.cfra = 1.0f;
 
@@ -639,7 +637,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
      * its values are overwritten by #BKE_brush_sculpt_reset below. */
     brush->alpha = 1.0;
 
-    /* Enable anti-aliasing by default. */
+    /* Enable antialiasing by default */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
   }
 

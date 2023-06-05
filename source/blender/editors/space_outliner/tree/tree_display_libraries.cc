@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -51,7 +49,7 @@ ListBase TreeDisplayLibraries::buildTree(const TreeSourceData &source_data)
   for (ID *id : List<ID>(source_data.bmain->libraries)) {
     Library *lib = reinterpret_cast<Library *>(id);
     TreeElement *ten = add_library_contents(*source_data.bmain, tree, lib);
-    /* Null-check matters, due to filtering there may not be a new element. */
+    /* NULL-check matters, due to filtering there may not be a new element. */
     if (ten) {
       lib->id.newid = (ID *)ten;
     }

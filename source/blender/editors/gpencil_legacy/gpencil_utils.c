@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -596,7 +595,7 @@ void gpencil_point_conversion_init(bContext *C, GP_SpaceConversion *r_gsc)
   if (area->spacetype == SPACE_VIEW3D) {
     wmWindow *win = CTX_wm_window(C);
     Scene *scene = CTX_data_scene(C);
-    Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    struct Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     View3D *v3d = (View3D *)CTX_wm_space_data(C);
     RegionView3D *rv3d = region->regiondata;
 
@@ -1671,7 +1670,7 @@ static bool gpencil_check_cursor_region(bContext *C, const int mval_i[2])
     return false;
   }
 
-  /* TODO: add more space-types. */
+  /* TODO: add more spacetypes */
   if (!ELEM(area->spacetype, SPACE_VIEW3D)) {
     return false;
   }
@@ -1783,8 +1782,8 @@ float ED_gpencil_cursor_radius(bContext *C, int x, int y)
   return radius;
 }
 
-float ED_gpencil_radial_control_scale(bContext *C,
-                                      Brush *brush,
+float ED_gpencil_radial_control_scale(struct bContext *C,
+                                      struct Brush *brush,
                                       float initial_value,
                                       const int mval[2])
 {
@@ -2724,12 +2723,12 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
    * This is done in order to keep cache small and improve speed. */
   if (*buffer_used + 1 > *buffer_size) {
     if ((*buffer_size == 0) || (buffer_array == NULL)) {
-      p = MEM_callocN(sizeof(tGPspoint) * GP_STROKE_BUFFER_CHUNK, "GPencil Sbuffer");
+      p = MEM_callocN(sizeof(struct tGPspoint) * GP_STROKE_BUFFER_CHUNK, "GPencil Sbuffer");
       *buffer_size = GP_STROKE_BUFFER_CHUNK;
     }
     else {
       *buffer_size += GP_STROKE_BUFFER_CHUNK;
-      p = MEM_recallocN(buffer_array, sizeof(tGPspoint) * *buffer_size);
+      p = MEM_recallocN(buffer_array, sizeof(struct tGPspoint) * *buffer_size);
     }
 
     if (p == NULL) {
@@ -3389,7 +3388,7 @@ void ED_gpencil_layer_merge(bGPdata *gpd,
   }
 }
 
-static void gpencil_layer_new_name_get(bGPdata *gpd, char *r_name, size_t name_maxncpy)
+static void gpencil_layer_new_name_get(bGPdata *gpd, char *rname)
 {
   int index = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -3399,10 +3398,12 @@ static void gpencil_layer_new_name_get(bGPdata *gpd, char *r_name, size_t name_m
   }
 
   if (index == 0) {
-    BLI_strncpy(r_name, "GP_Layer", name_maxncpy);
+    BLI_strncpy(rname, "GP_Layer", 128);
     return;
   }
-  BLI_snprintf(r_name, name_maxncpy, "GP_Layer.%03d", index);
+  char *name = BLI_sprintfN("%.*s.%03d", 128, "GP_Layer", index);
+  BLI_strncpy(rname, name, 128);
+  MEM_freeN(name);
 }
 
 int ED_gpencil_new_layer_dialog(bContext *C, wmOperator *op)
@@ -3414,7 +3415,7 @@ int ED_gpencil_new_layer_dialog(bContext *C, wmOperator *op)
     if (!RNA_property_is_set(op->ptr, prop)) {
       char name[MAX_NAME];
       bGPdata *gpd = ob->data;
-      gpencil_layer_new_name_get(gpd, name, sizeof(name));
+      gpencil_layer_new_name_get(gpd, name);
       RNA_property_string_set(op->ptr, prop, name);
       return WM_operator_props_dialog_popup(C, op, 200);
     }

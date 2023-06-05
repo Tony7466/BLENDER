@@ -67,20 +67,21 @@ ccl_device Spectrum volume_henyey_greenstein_eval_phase(ccl_private const Shader
   return make_spectrum(*pdf);
 }
 
-ccl_device float3 henyey_greenstrein_sample(float3 D, float g, float2 rand, ccl_private float *pdf)
+ccl_device float3
+henyey_greenstrein_sample(float3 D, float g, float randu, float randv, ccl_private float *pdf)
 {
   /* match pdf for small g */
   float cos_theta;
   bool isotropic = fabsf(g) < 1e-3f;
 
   if (isotropic) {
-    cos_theta = (1.0f - 2.0f * rand.x);
+    cos_theta = (1.0f - 2.0f * randu);
     if (pdf) {
       *pdf = M_1_PI_F * 0.25f;
     }
   }
   else {
-    float k = (1.0f - g * g) / (1.0f - g + 2.0f * g * rand.x);
+    float k = (1.0f - g * g) / (1.0f - g + 2.0f * g * randu);
     cos_theta = (1.0f + g * g - k * k) / (2.0f * g);
     if (pdf) {
       *pdf = single_peaked_henyey_greenstein(cos_theta, g);
@@ -88,7 +89,7 @@ ccl_device float3 henyey_greenstrein_sample(float3 D, float g, float2 rand, ccl_
   }
 
   float sin_theta = sin_from_cos(cos_theta);
-  float phi = M_2PI_F * rand.y;
+  float phi = M_2PI_F * randv;
   float3 dir = make_float3(sin_theta * cosf(phi), sin_theta * sinf(phi), cos_theta);
 
   float3 T, B;
@@ -100,7 +101,8 @@ ccl_device float3 henyey_greenstrein_sample(float3 D, float g, float2 rand, ccl_
 
 ccl_device int volume_henyey_greenstein_sample(ccl_private const ShaderVolumeClosure *svc,
                                                float3 wi,
-                                               float2 rand,
+                                               float randu,
+                                               float randv,
                                                ccl_private Spectrum *eval,
                                                ccl_private float3 *wo,
                                                ccl_private float *pdf)
@@ -108,7 +110,7 @@ ccl_device int volume_henyey_greenstein_sample(ccl_private const ShaderVolumeClo
   float g = svc->g;
 
   /* note that wi points towards the viewer and so is used negated */
-  *wo = henyey_greenstrein_sample(-wi, g, rand, pdf);
+  *wo = henyey_greenstrein_sample(-wi, g, randu, randv, pdf);
   *eval = make_spectrum(*pdf); /* perfect importance sampling */
 
   return LABEL_VOLUME_SCATTER;
@@ -126,12 +128,13 @@ ccl_device Spectrum volume_phase_eval(ccl_private const ShaderData *sd,
 
 ccl_device int volume_phase_sample(ccl_private const ShaderData *sd,
                                    ccl_private const ShaderVolumeClosure *svc,
-                                   float2 rand,
+                                   float randu,
+                                   float randv,
                                    ccl_private Spectrum *eval,
                                    ccl_private float3 *wo,
                                    ccl_private float *pdf)
 {
-  return volume_henyey_greenstein_sample(svc, sd->wi, rand, eval, wo, pdf);
+  return volume_henyey_greenstein_sample(svc, sd->wi, randu, randv, eval, wo, pdf);
 }
 
 /* Volume sampling utilities. */

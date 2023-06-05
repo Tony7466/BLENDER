@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -67,7 +66,7 @@ void OVERLAY_edit_curve_cache_populate(OVERLAY_Data *vedata, Object *ob)
   bool do_xray = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
 
   Curve *cu = static_cast<Curve *>(ob->data);
-  GPUBatch *geom;
+  struct GPUBatch *geom;
 
   geom = DRW_cache_curve_edge_wire_get(ob);
   if (geom) {
@@ -93,7 +92,7 @@ void OVERLAY_edit_curve_cache_populate(OVERLAY_Data *vedata, Object *ob)
 void OVERLAY_edit_surf_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  GPUBatch *geom;
+  struct GPUBatch *geom;
 
   geom = DRW_cache_curve_edge_overlay_get(ob);
   if (geom) {

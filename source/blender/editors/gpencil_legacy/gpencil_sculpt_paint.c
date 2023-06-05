@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2015 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -151,7 +150,7 @@ typedef struct tGP_BrushEditData {
 
   RNG *rng;
   /* Auto-masking strokes. */
-  GHash *automasking_strokes;
+  struct GHash *automasking_strokes;
   bool automasking_ready;
 
 } tGP_BrushEditData;
@@ -1128,11 +1127,12 @@ static void gpencil_sculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
   Brush *brush = gso->brush;
   char str[UI_MAX_DRAW_STR] = "";
 
-  SNPRINTF(str,
-           TIP_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
-                " | Ctrl to Invert Action | Wheel Up/Down for Size "
-                " | Shift-Wheel Up/Down for Strength"),
-           brush->id.name + 2);
+  BLI_snprintf(str,
+               sizeof(str),
+               TIP_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
+                    " | Ctrl to Invert Action | Wheel Up/Down for Size "
+                    " | Shift-Wheel Up/Down for Strength"),
+               brush->id.name + 2);
 
   ED_workspace_status_text(C, str);
 }
@@ -1687,7 +1687,7 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
              */
             gpencil_brush_grab_stroke_init(gso, gps_active);
             changed |= gpencil_sculpt_brush_do_stroke(
-                gso, gps, bound_mat, gpencil_brush_grab_store_points);
+                gso, gps_active, bound_mat, gpencil_brush_grab_store_points);
           }
           else {
             /* Apply effect to the stored points */

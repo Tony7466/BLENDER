@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup shdnodes
@@ -16,10 +15,10 @@ namespace blender::nodes::node_shader_clamp_cc {
 static void sh_node_clamp_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>("Value").default_value(1.0f);
-  b.add_input<decl::Float>("Min").default_value(0.0f).min(-10000.0f).max(10000.0f);
-  b.add_input<decl::Float>("Max").default_value(1.0f).min(-10000.0f).max(10000.0f);
-  b.add_output<decl::Float>("Result");
+  b.add_input<decl::Float>(N_("Value")).default_value(1.0f);
+  b.add_input<decl::Float>(N_("Min")).default_value(0.0f).min(-10000.0f).max(10000.0f);
+  b.add_input<decl::Float>(N_("Max")).default_value(1.0f).min(-10000.0f).max(10000.0f);
+  b.add_output<decl::Float>(N_("Result"));
 }
 
 static void node_shader_buts_clamp(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

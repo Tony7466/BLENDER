@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -261,7 +259,7 @@ void ED_object_xform_skip_child_container_item_ensure(struct XFormObjectSkipChil
 
 void ED_object_xform_skip_child_container_update_all(struct XFormObjectSkipChild_Container *xcs,
                                                      struct Main *bmain,
-                                                     Depsgraph *depsgraph)
+                                                     struct Depsgraph *depsgraph)
 {
   BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
 

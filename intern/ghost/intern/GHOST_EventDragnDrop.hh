@@ -8,8 +8,10 @@
 #pragma once
 
 #include "GHOST_Event.hh"
+extern "C" {
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
+};
 
 /**
  * Drag & drop event

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup edgpencil
@@ -33,10 +32,10 @@
 #include "gpencil_intern.h"
 
 typedef struct bGPundonode {
-  bGPundonode *next, *prev;
+  struct bGPundonode *next, *prev;
 
   char name[BKE_UNDO_STR_MAX];
-  bGPdata *gpd;
+  struct bGPdata *gpd;
 } bGPundonode;
 
 static ListBase undo_nodes = {nullptr, nullptr};

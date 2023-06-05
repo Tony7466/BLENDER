@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -44,8 +43,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_ui_common.hh"
-#include "MOD_util.hh"
+#include "MOD_ui_common.h"
+#include "MOD_util.h"
 
 #include "RE_texture.h"
 
@@ -64,7 +63,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 {
   DisplaceModifierData *dmd = (DisplaceModifierData *)md;
 
-  /* Ask for vertex-groups if we need them. */
+  /* ask for vertexgroups if we need them */
   if (dmd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }

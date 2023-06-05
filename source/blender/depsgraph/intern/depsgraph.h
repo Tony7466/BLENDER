@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -26,7 +25,6 @@
 #include "DEG_depsgraph_physics.h"
 
 #include "intern/debug/deg_debug.h"
-#include "intern/depsgraph_light_linking.h"
 #include "intern/depsgraph_type.h"
 
 struct ID;
@@ -168,8 +166,6 @@ struct Depsgraph {
   /* Cached list of colliders/effectors for collections and the scene
    * created along with relations, for fast lookup during evaluation. */
   Map<const ID *, ListBase *> *physics_relations[DEG_PHYSICS_RELATIONS_NUM];
-
-  light_linking::Cache light_linking_cache;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("Depsgraph");
 };

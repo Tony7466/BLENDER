@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -71,11 +70,11 @@ struct FloatBufferCache {
   ImBuf *cached_float_buffer(ImBuf *image_buffer)
   {
     /* Check if we can use the float buffer of the given image_buffer. */
-    if (image_buffer->float_buffer.data != nullptr) {
+    if (image_buffer->rect_float != nullptr) {
       BLI_assert_msg(
           IMB_colormanagement_space_name_is_scene_linear(
               IMB_colormanagement_get_float_colorspace(image_buffer)),
-          "Expected float buffer to be scene_linear - if there are code paths where this "
+          "Expected rect_float to be scene_linear - if there are code paths where this "
           "isn't the case we should convert those and add to the FloatBufferCache as well.");
       return image_buffer;
     }
@@ -91,8 +90,12 @@ struct FloatBufferCache {
     /* Generate a new float buffer. */
     IMB_float_from_rect(image_buffer);
     ImBuf *new_imbuf = IMB_allocImBuf(image_buffer->x, image_buffer->y, image_buffer->planes, 0);
-
-    IMB_assign_float_buffer(new_imbuf, IMB_steal_float_buffer(image_buffer), IB_TAKE_OWNERSHIP);
+    new_imbuf->rect_float = image_buffer->rect_float;
+    new_imbuf->flags |= IB_rectfloat;
+    new_imbuf->mall |= IB_rectfloat;
+    image_buffer->rect_float = nullptr;
+    image_buffer->flags &= ~IB_rectfloat;
+    image_buffer->mall &= ~IB_rectfloat;
 
     cache_.append(FloatImageBuffer(image_buffer, new_imbuf));
     return new_imbuf;

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -461,7 +459,7 @@ static PyObject *pygpu_matrix_get_normal_matrix(PyObject *UNUSED(self))
 /** \name Module
  * \{ */
 
-static PyMethodDef pygpu_matrix__tp_methods[] = {
+static struct PyMethodDef pygpu_matrix__tp_methods[] = {
     /* Manage Stack */
     {"push", (PyCFunction)pygpu_matrix_push, METH_NOARGS, pygpu_matrix_push_doc},
     {"pop", (PyCFunction)pygpu_matrix_pop, METH_NOARGS, pygpu_matrix_pop_doc},

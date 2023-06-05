@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -38,7 +36,7 @@ class MTLShaderInterface;
 class MTLContext;
 
 /* Debug control. */
-#define MTL_SHADER_DEBUG_EXPORT_SOURCE 1
+#define MTL_SHADER_DEBUG_EXPORT_SOURCE 0
 #define MTL_SHADER_TRANSLATION_DEBUG_OUTPUT 0
 
 /* Separate print used only during development and debugging. */
@@ -73,7 +71,7 @@ struct MTLRenderPipelineStateInstance {
    * bound buffers such as vertex buffers, as the count can vary. */
   int base_uniform_buffer_index;
   /* Base bind index for binding storage buffers. */
-  int base_storage_buffer_index;
+  int base_ssbo_buffer_index;
   /* buffer bind slot used for null attributes (-1 if not needed). */
   int null_attribute_buffer_index;
   /* buffer bind used for transform feedback output buffer. */
@@ -103,7 +101,7 @@ struct MTLComputePipelineStateInstance {
    * bound buffers such as vertex buffers, as the count can vary. */
   int base_uniform_buffer_index = -1;
   /* Base bind index for binding storage buffers. */
-  int base_storage_buffer_index = -1;
+  int base_ssbo_buffer_index = -1;
 
   int threadgroup_x_len = 1;
   int threadgroup_y_len = 1;

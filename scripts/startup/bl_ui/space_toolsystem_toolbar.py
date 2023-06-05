@@ -500,21 +500,23 @@ class _defs_view3d_add:
     # Layout tweaks here would be good to avoid,
     # this shows limits in layout engine, as buttons are using a lot of space.
     @staticmethod
-    def draw_settings_interactive_add(layout, tool_settings, tool, extra):
+    def draw_settings_interactive_add(layout, tool, extra):
         show_extra = False
+        props = tool.operator_properties("view3d.interactive_add")
         if not extra:
             row = layout.row()
             row.label(text="Depth:")
             row = layout.row()
-            row.prop(tool_settings, "plane_depth", text="")
+            row.prop(props, "plane_depth", text="")
             row = layout.row()
             row.label(text="Orientation:")
             row = layout.row()
-            row.prop(tool_settings, "plane_orientation", text="")
+            row.prop(props, "plane_orientation", text="")
             row = layout.row()
-            row.prop(tool_settings, "snap_elements_tool")
+            row.prop(props, "snap_target")
 
             region_is_header = bpy.context.region.type == 'TOOL_HEADER'
+
             if region_is_header:
                 # Don't draw the "extra" popover here as we might have other settings & this should be last.
                 show_extra = True
@@ -522,10 +524,9 @@ class _defs_view3d_add:
                 extra = True
 
         if extra:
-            props = tool.operator_properties("view3d.interactive_add")
             layout.use_property_split = True
-            layout.row().prop(tool_settings, "plane_axis", expand=True)
-            layout.row().prop(tool_settings, "plane_axis_auto")
+            layout.row().prop(props, "plane_axis", expand=True)
+            layout.row().prop(props, "plane_axis_auto")
 
             layout.label(text="Base")
             layout.row().prop(props, "plane_origin_base", expand=True)
@@ -537,8 +538,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def cube_add():
-        def draw_settings(context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
+        def draw_settings(_context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
             if show_extra:
                 layout.popover("TOPBAR_PT_tool_settings_extra", text="...")
 
@@ -556,8 +557,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def cone_add():
-        def draw_settings(context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
+        def draw_settings(_context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
             if extra:
                 return
 
@@ -582,8 +583,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def cylinder_add():
-        def draw_settings(context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
+        def draw_settings(_context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
             if extra:
                 return
 
@@ -607,8 +608,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def uv_sphere_add():
-        def draw_settings(context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
+        def draw_settings(_context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
             if extra:
                 return
 
@@ -632,8 +633,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def ico_sphere_add():
-        def draw_settings(context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
+        def draw_settings(_context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
             if extra:
                 return
 
@@ -1970,13 +1971,6 @@ class _defs_gpencil_paint:
 
     @staticmethod
     def generate_from_brushes(context):
-        if context and context.preferences.experimental.use_grease_pencil_version3:
-            return tuple([ToolDef.from_dict(dict(
-                idname="builtin_brush.draw",
-                label="Draw",
-                icon="brush.gpencil_draw.draw",
-                data_block='DRAW',
-            ))])
         return generate_from_enum_ex(
             context,
             idname_prefix="builtin_brush.",

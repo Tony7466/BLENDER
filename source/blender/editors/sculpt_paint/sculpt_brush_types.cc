@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 by Nicholas Bishop. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -32,7 +31,7 @@
 
 #include "ED_view3d.h"
 
-#include "paint_intern.hh"
+#include "paint_intern.h"
 #include "sculpt_intern.hh"
 
 #include "bmesh.h"

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -13,16 +11,15 @@ namespace blender::nodes::node_geo_mesh_face_group_boundaries_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>("Face Group ID", "Face Set")
+  b.add_input<decl::Int>(N_("Face Group ID"), "Face Set")
       .default_value(0)
       .hide_value()
       .supports_field()
-      .description(
-          "An identifier for the group of each face. All contiguous faces with the "
-          "same value are in the same region");
-  b.add_output<decl::Bool>("Boundary Edges")
+      .description(N_("An identifier for the group of each face. All contiguous faces with the "
+                      "same value are in the same region"));
+  b.add_output<decl::Bool>(N_("Boundary Edges"))
       .field_source_reference_all()
-      .description("The edges that lie on the boundaries between the different face groups");
+      .description(N_("The edges that lie on the boundaries between the different face groups"));
 }
 
 class BoundaryFieldInput final : public bke::MeshFieldInput {
@@ -38,7 +35,7 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     const bke::MeshFieldContext face_context{mesh, ATTR_DOMAIN_FACE};
     FieldEvaluator face_evaluator{face_context, mesh.totpoly};
@@ -94,7 +91,7 @@ void register_node_type_geo_mesh_face_group_boundaries()
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_FACE_GROUP_BOUNDARIES, "Face Group Boundaries", NODE_CLASS_INPUT);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  node_type_size_preset(&ntype, NODE_SIZE_MIDDLE);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);

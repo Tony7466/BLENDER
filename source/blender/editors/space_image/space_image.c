@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spimage
@@ -170,7 +169,7 @@ static void image_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback, add handlers */
-static void image_init(wmWindowManager *UNUSED(wm), ScrArea *area)
+static void image_init(struct wmWindowManager *UNUSED(wm), ScrArea *area)
 {
   ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, 0);
 
@@ -244,7 +243,7 @@ static void image_operatortypes(void)
   WM_operatortype_append(IMAGE_OT_tile_fill);
 }
 
-static void image_keymap(wmKeyConfig *keyconf)
+static void image_keymap(struct wmKeyConfig *keyconf)
 {
   WM_keymap_ensure(keyconf, "Image Generic", SPACE_IMAGE, 0);
   WM_keymap_ensure(keyconf, "Image", SPACE_IMAGE, 0);
@@ -1065,13 +1064,13 @@ static void image_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, Sp
 {
   SpaceImage *sima = (SpaceImage *)sl;
 
-  BLO_read_id_address(reader, parent_id, &sima->image);
-  BLO_read_id_address(reader, parent_id, &sima->mask_info.mask);
+  BLO_read_id_address(reader, parent_id->lib, &sima->image);
+  BLO_read_id_address(reader, parent_id->lib, &sima->mask_info.mask);
 
   /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
    * so fingers crossed this works fine!
    */
-  BLO_read_id_address(reader, parent_id, &sima->gpd);
+  BLO_read_id_address(reader, parent_id->lib, &sima->gpd);
 }
 
 static void image_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -1117,7 +1116,7 @@ void ED_spacetype_image(void)
   art->listener = image_main_region_listener;
   BLI_addhead(&st->regiontypes, art);
 
-  /* regions: list-view/buttons/scopes */
+  /* regions: listview/buttons/scopes */
   art = MEM_callocN(sizeof(ARegionType), "spacetype image region");
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = UI_SIDEBAR_PANEL_WIDTH;

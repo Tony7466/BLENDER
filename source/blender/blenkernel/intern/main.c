@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -48,10 +47,6 @@ void BKE_main_free(Main *mainvar)
     BKE_main_free(mainvar->next);
   }
 
-  /* Include this check here as the path may be manipulated after creation. */
-  BLI_assert_msg(!(mainvar->filepath[0] == '/' && mainvar->filepath[1] == '/'),
-                 "'.blend' relative \"//\" must not be used in Main!");
-
   /* also call when reading a file, erase all, etc */
   ListBase *lbarray[INDEX_ID_MAX];
   int a;
@@ -73,63 +68,118 @@ void BKE_main_free(Main *mainvar)
 #if 1
       BKE_id_free_ex(mainvar, id, free_flag, false);
 #else
-      /* Errors freeing ID's can be hard to track down,
-       * enable this so VALGRIND or ASAN will give the line number in its error log. */
-
-#  define CASE_ID_INDEX(id_index) \
-    case id_index: \
-      BKE_id_free_ex(mainvar, id, free_flag, false); \
-      break
-
-      switch ((eID_Index)a) {
-        CASE_ID_INDEX(INDEX_ID_LI);
-        CASE_ID_INDEX(INDEX_ID_IP);
-        CASE_ID_INDEX(INDEX_ID_AC);
-        CASE_ID_INDEX(INDEX_ID_GD_LEGACY);
-        CASE_ID_INDEX(INDEX_ID_NT);
-        CASE_ID_INDEX(INDEX_ID_VF);
-        CASE_ID_INDEX(INDEX_ID_TXT);
-        CASE_ID_INDEX(INDEX_ID_SO);
-        CASE_ID_INDEX(INDEX_ID_MSK);
-        CASE_ID_INDEX(INDEX_ID_IM);
-        CASE_ID_INDEX(INDEX_ID_MC);
-        CASE_ID_INDEX(INDEX_ID_TE);
-        CASE_ID_INDEX(INDEX_ID_MA);
-        CASE_ID_INDEX(INDEX_ID_LS);
-        CASE_ID_INDEX(INDEX_ID_WO);
-        CASE_ID_INDEX(INDEX_ID_CF);
-        CASE_ID_INDEX(INDEX_ID_SIM);
-        CASE_ID_INDEX(INDEX_ID_PA);
-        CASE_ID_INDEX(INDEX_ID_KE);
-        CASE_ID_INDEX(INDEX_ID_AR);
-        CASE_ID_INDEX(INDEX_ID_ME);
-        CASE_ID_INDEX(INDEX_ID_CU_LEGACY);
-        CASE_ID_INDEX(INDEX_ID_MB);
-        CASE_ID_INDEX(INDEX_ID_CV);
-        CASE_ID_INDEX(INDEX_ID_PT);
-        CASE_ID_INDEX(INDEX_ID_VO);
-        CASE_ID_INDEX(INDEX_ID_LT);
-        CASE_ID_INDEX(INDEX_ID_LA);
-        CASE_ID_INDEX(INDEX_ID_CA);
-        CASE_ID_INDEX(INDEX_ID_SPK);
-        CASE_ID_INDEX(INDEX_ID_LP);
-        CASE_ID_INDEX(INDEX_ID_OB);
-        CASE_ID_INDEX(INDEX_ID_GR);
-        CASE_ID_INDEX(INDEX_ID_PAL);
-        CASE_ID_INDEX(INDEX_ID_PC);
-        CASE_ID_INDEX(INDEX_ID_BR);
-        CASE_ID_INDEX(INDEX_ID_SCE);
-        CASE_ID_INDEX(INDEX_ID_SCR);
-        CASE_ID_INDEX(INDEX_ID_WS);
-        CASE_ID_INDEX(INDEX_ID_WM);
-        case INDEX_ID_NULL: {
+      /* errors freeing ID's can be hard to track down,
+       * enable this so valgrind will give the line number in its error log */
+      switch (a) {
+        case 0:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 1:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 2:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 3:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 4:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 5:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 6:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 7:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 8:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 9:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 10:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 11:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 12:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 13:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 14:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 15:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 16:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 17:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 18:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 19:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 20:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 21:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 22:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 23:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 24:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 25:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 26:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 27:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 28:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 29:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 30:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 31:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 32:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 33:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        case 34:
+          BKE_id_free_ex(mainvar, id, free_flag, false);
+          break;
+        default:
           BLI_assert_unreachable();
           break;
-        }
       }
-
-#  undef CASE_ID_INDEX
-
 #endif
     }
     BLI_listbase_clear(lb);
@@ -153,7 +203,7 @@ void BKE_main_free(Main *mainvar)
   MEM_freeN(mainvar);
 }
 
-bool BKE_main_is_empty(Main *bmain)
+bool BKE_main_is_empty(struct Main *bmain)
 {
   ID *id_iter;
   FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
@@ -163,12 +213,12 @@ bool BKE_main_is_empty(Main *bmain)
   return true;
 }
 
-void BKE_main_lock(Main *bmain)
+void BKE_main_lock(struct Main *bmain)
 {
   BLI_spin_lock((SpinLock *)bmain->lock);
 }
 
-void BKE_main_unlock(Main *bmain)
+void BKE_main_unlock(struct Main *bmain)
 {
   BLI_spin_unlock((SpinLock *)bmain->lock);
 }
@@ -176,22 +226,22 @@ void BKE_main_unlock(Main *bmain)
 static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
 {
   MainIDRelations *bmain_relations = cb_data->user_data;
-  ID *self_id = cb_data->self_id;
+  ID *id_self = cb_data->id_self;
   ID **id_pointer = cb_data->id_pointer;
   const int cb_flag = cb_data->cb_flag;
 
   if (*id_pointer) {
     MainIDRelationsEntry **entry_p;
 
-    /* Add `id_pointer` as child of `self_id`. */
+    /* Add `id_pointer` as child of `id_self`. */
     {
       if (!BLI_ghash_ensure_p(
-              bmain_relations->relations_from_pointers, self_id, (void ***)&entry_p)) {
+              bmain_relations->relations_from_pointers, id_self, (void ***)&entry_p)) {
         *entry_p = MEM_callocN(sizeof(**entry_p), __func__);
-        (*entry_p)->session_uuid = self_id->session_uuid;
+        (*entry_p)->session_uuid = id_self->session_uuid;
       }
       else {
-        BLI_assert((*entry_p)->session_uuid == self_id->session_uuid);
+        BLI_assert((*entry_p)->session_uuid == id_self->session_uuid);
       }
       MainIDRelationsEntryItem *to_id_entry = BLI_mempool_alloc(bmain_relations->entry_items_pool);
       to_id_entry->next = (*entry_p)->to_ids;
@@ -202,7 +252,7 @@ static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
       (*entry_p)->to_ids = to_id_entry;
     }
 
-    /* Add `self_id` as parent of `id_pointer`. */
+    /* Add `id_self` as parent of `id_pointer`. */
     if (*id_pointer != NULL) {
       if (!BLI_ghash_ensure_p(
               bmain_relations->relations_from_pointers, *id_pointer, (void ***)&entry_p)) {
@@ -215,8 +265,8 @@ static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
       MainIDRelationsEntryItem *from_id_entry = BLI_mempool_alloc(
           bmain_relations->entry_items_pool);
       from_id_entry->next = (*entry_p)->from_ids;
-      from_id_entry->id_pointer.from = self_id;
-      from_id_entry->session_uuid = self_id->session_uuid;
+      from_id_entry->id_pointer.from = id_self;
+      from_id_entry->session_uuid = id_self->session_uuid;
       from_id_entry->usage_flag = cb_flag;
       (*entry_p)->from_ids = from_id_entry;
     }
@@ -272,7 +322,9 @@ void BKE_main_relations_free(Main *bmain)
   }
 }
 
-void BKE_main_relations_tag_set(Main *bmain, const eMainIDRelationsEntryTags tag, const bool value)
+void BKE_main_relations_tag_set(struct Main *bmain,
+                                const eMainIDRelationsEntryTags tag,
+                                const bool value)
 {
   if (bmain->relations == NULL) {
     return;
@@ -321,8 +373,8 @@ static LibWeakRefKey *lib_weak_key_create(LibWeakRefKey *key,
   if (key == NULL) {
     key = MEM_mallocN(sizeof(*key), __func__);
   }
-  STRNCPY(key->filepath, lib_path);
-  STRNCPY(key->id_name, id_name);
+  BLI_strncpy(key->filepath, lib_path, sizeof(key->filepath));
+  BLI_strncpy(key->id_name, id_name, sizeof(key->id_name));
   return key;
 }
 
@@ -407,8 +459,12 @@ void BKE_main_library_weak_reference_add_item(GHash *library_weak_reference_mapp
   BLI_assert(!already_exist_in_mapping);
   UNUSED_VARS_NDEBUG(already_exist_in_mapping);
 
-  STRNCPY(new_id->library_weak_reference->library_filepath, library_filepath);
-  STRNCPY(new_id->library_weak_reference->library_id_name, library_id_name);
+  BLI_strncpy(new_id->library_weak_reference->library_filepath,
+              library_filepath,
+              sizeof(new_id->library_weak_reference->library_filepath));
+  BLI_strncpy(new_id->library_weak_reference->library_id_name,
+              library_id_name,
+              sizeof(new_id->library_weak_reference->library_id_name));
   *id_p = new_id;
 }
 
@@ -467,7 +523,7 @@ BlendThumbnail *BKE_main_thumbnail_from_imbuf(Main *bmain, ImBuf *img)
     IMB_rect_from_float(img); /* Just in case... */
     data->width = img->x;
     data->height = img->y;
-    memcpy(data->rect, img->byte_buffer.data, data_size - sizeof(*data));
+    memcpy(data->rect, img->rect, data_size - sizeof(*data));
   }
 
   if (bmain) {
@@ -486,13 +542,13 @@ ImBuf *BKE_main_thumbnail_to_imbuf(Main *bmain, BlendThumbnail *data)
 
   if (data) {
     img = IMB_allocFromBuffer(
-        (const uint8_t *)data->rect, NULL, (uint)data->width, (uint)data->height, 4);
+        (const uint *)data->rect, NULL, (uint)data->width, (uint)data->height, 4);
   }
 
   return img;
 }
 
-void BKE_main_thumbnail_create(Main *bmain)
+void BKE_main_thumbnail_create(struct Main *bmain)
 {
   MEM_SAFE_FREE(bmain->blen_thumb);
 
@@ -572,8 +628,6 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->wm);
     case ID_GD_LEGACY:
       return &(bmain->gpencils);
-    case ID_GP:
-      return &(bmain->grease_pencils);
     case ID_MC:
       return &(bmain->movieclips);
     case ID_MSK:
@@ -617,7 +671,6 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
 
   /* Referenced by nodes, objects, view, scene etc, before to free after. */
   lb[INDEX_ID_GD_LEGACY] = &(bmain->gpencils);
-  lb[INDEX_ID_GP] = &(bmain->grease_pencils);
 
   lb[INDEX_ID_NT] = &(bmain->nodetrees);
   lb[INDEX_ID_IM] = &(bmain->images);

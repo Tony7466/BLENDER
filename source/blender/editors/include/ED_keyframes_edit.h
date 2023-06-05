@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup editors
@@ -59,7 +58,6 @@ typedef enum eEditKeyframes_Select {
   SELECT_SUBTRACT = (1 << 2),
   /* flip ok status of keyframes based on key status */
   SELECT_INVERT = (1 << 3),
-  SELECT_EXTEND_RANGE = (1 << 4),
 } eEditKeyframes_Select;
 
 /* "selection map" building modes */

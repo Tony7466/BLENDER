@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -56,7 +55,7 @@ typedef enum eGP_EyeMode {
 } eGP_EyeMode;
 
 struct EyedropperGPencil {
-  ColorManagedDisplay *display;
+  struct ColorManagedDisplay *display;
   /** color under cursor RGB */
   float color[3];
   /** Mode */
@@ -67,7 +66,8 @@ struct EyedropperGPencil {
 static void eyedropper_gpencil_status_indicators(bContext *C)
 {
   char msg_str[UI_MAX_DRAW_STR];
-  STRNCPY(msg_str, TIP_("LMB: Stroke - Shift: Fill - Shift+Ctrl: Stroke + Fill"));
+  BLI_strncpy(
+      msg_str, TIP_("LMB: Stroke - Shift: Fill - Shift+Ctrl: Stroke + Fill"), UI_MAX_DRAW_STR);
 
   ED_workspace_status_text(C, msg_str);
 }

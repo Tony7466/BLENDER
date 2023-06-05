@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup sptext
@@ -143,7 +141,7 @@ static bool text_undosys_poll(bContext * /*C*/)
   return (ustack->step_init && (ustack->step_init->type == BKE_UNDOSYS_TYPE_TEXT));
 }
 
-static void text_undosys_step_encode_init(bContext *C, UndoStep *us_p)
+static void text_undosys_step_encode_init(struct bContext *C, UndoStep *us_p)
 {
   TextUndoStep *us = (TextUndoStep *)us_p;
   BLI_assert(BLI_array_is_zeroed(us->states, ARRAY_SIZE(us->states)));
@@ -169,7 +167,7 @@ static void text_undosys_step_encode_init(bContext *C, UndoStep *us_p)
   us->text_ref.ptr = text;
 }
 
-static bool text_undosys_step_encode(bContext *C, Main * /*bmain*/, UndoStep *us_p)
+static bool text_undosys_step_encode(struct bContext *C, struct Main * /*bmain*/, UndoStep *us_p)
 {
   TextUndoStep *us = (TextUndoStep *)us_p;
 
@@ -184,8 +182,11 @@ static bool text_undosys_step_encode(bContext *C, Main * /*bmain*/, UndoStep *us
   return true;
 }
 
-static void text_undosys_step_decode(
-    bContext *C, Main * /*bmain*/, UndoStep *us_p, const eUndoStepDir dir, bool is_final)
+static void text_undosys_step_decode(struct bContext *C,
+                                     struct Main * /*bmain*/,
+                                     UndoStep *us_p,
+                                     const eUndoStepDir dir,
+                                     bool is_final)
 {
   BLI_assert(dir != STEP_INVALID);
 
@@ -208,7 +209,7 @@ static void text_undosys_step_decode(
     st->text = text;
   }
   text_update_cursor_moved(C);
-  text_drawcache_tag_update(st, true);
+  text_drawcache_tag_update(st, 1);
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 }
 

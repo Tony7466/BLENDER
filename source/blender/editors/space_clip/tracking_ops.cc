@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup spclip
@@ -251,13 +250,12 @@ void CLIP_OT_delete_track(wmOperatorType *ot)
   ot->description = "Delete selected tracks";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = WM_operator_confirm;
   ot->exec = delete_track_exec;
   ot->poll = ED_space_clip_tracking_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /** \} */
@@ -317,13 +315,12 @@ void CLIP_OT_delete_marker(wmOperatorType *ot)
   ot->description = "Delete marker for current frame from selected tracks";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = WM_operator_confirm;
   ot->exec = delete_marker_exec;
   ot->poll = ED_space_clip_tracking_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /** \} */
@@ -525,7 +522,8 @@ static MovieTrackingTrack *tracking_marker_check_slide(
   return track_pick.track;
 }
 
-MovieTrackingTrack *tracking_find_slidable_track_in_proximity(bContext *C, const float co[2])
+struct MovieTrackingTrack *tracking_find_slidable_track_in_proximity(struct bContext *C,
+                                                                     const float co[2])
 {
   return tracking_marker_check_slide(C, co, nullptr, nullptr, nullptr);
 }

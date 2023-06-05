@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -14,7 +13,7 @@ namespace blender::gpu {
 
 class VKDrawList : public DrawList {
  public:
-  void append(GPUBatch *batch, int instance_first, int instance_count) override;
+  void append(GPUBatch *batch, int i_first, int i_count) override;
   void submit() override;
 };
 

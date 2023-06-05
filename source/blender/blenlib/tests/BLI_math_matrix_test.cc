@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -351,11 +349,11 @@ TEST(math_matrix, MatrixMethods)
 
   EXPECT_EQ(to_scale(m), expect_scale);
 
-  float4 expect_size = {3, 2, 2, M_SQRT2};
+  float4 expect_sz = {3, 2, 2, M_SQRT2};
   float4 size;
   float4x4 m1 = normalize_and_get_size(m, size);
   EXPECT_TRUE(is_unit_scale(m1));
-  EXPECT_V4_NEAR(size, expect_size, 0.0002f);
+  EXPECT_V4_NEAR(size, expect_sz, 0.0002f);
 
   float4x4 m2 = normalize(m);
   EXPECT_TRUE(is_unit_scale(m2));

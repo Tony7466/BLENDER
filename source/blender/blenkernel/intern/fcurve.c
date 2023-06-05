@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -162,7 +161,7 @@ void BKE_fcurves_copy(ListBase *dst, ListBase *src)
 void BKE_fmodifier_name_set(FModifier *fcm, const char *name)
 {
   /* Copy new Modifier name. */
-  STRNCPY(fcm->name, name);
+  BLI_strncpy(fcm->name, name, sizeof(fcm->name));
 
   /* Set default modifier name when name parameter is an empty string.
    * Ensure the name is unique. */
@@ -906,7 +905,7 @@ void BKE_fcurve_keyframe_move_time_with_handles(BezTriple *keyframe, const float
   keyframe->vec[2][0] += time_delta;
 }
 
-void BKE_fcurve_keyframe_move_value_with_handles(BezTriple *keyframe, const float new_value)
+void BKE_fcurve_keyframe_move_value_with_handles(struct BezTriple *keyframe, const float new_value)
 {
   const float value_delta = new_value - keyframe->vec[1][1];
   keyframe->vec[0][1] += value_delta;
@@ -1306,7 +1305,7 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
     if (a == 1) {
       next = cycle_offset_triple(cycle, &tmp, &fcu->bezt[1], first, last);
     }
-    else if (next != NULL) {
+    else {
       next++;
     }
 
@@ -1624,9 +1623,9 @@ static void fcurve_bezt_free(FCurve *fcu)
   fcu->totvert = 0;
 }
 
-bool BKE_fcurve_bezt_subdivide_handles(BezTriple *bezt,
-                                       BezTriple *prev,
-                                       BezTriple *next,
+bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,
+                                       struct BezTriple *prev,
+                                       struct BezTriple *next,
                                        float *r_pdelta)
 {
   /* The four points that make up this section of the Bezier curve. */
@@ -1686,7 +1685,7 @@ bool BKE_fcurve_bezt_subdivide_handles(BezTriple *bezt,
   return true;
 }
 
-void BKE_fcurve_bezt_shrink(FCurve *fcu, const int new_totvert)
+void BKE_fcurve_bezt_shrink(struct FCurve *fcu, const int new_totvert)
 {
   BLI_assert(new_totvert >= 0);
   BLI_assert(new_totvert <= fcu->totvert);
@@ -2541,7 +2540,7 @@ void BKE_fmodifiers_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *fmo
     switch (fcm->type) {
       case FMODIFIER_TYPE_PYTHON: {
         FMod_Python *data = (FMod_Python *)fcm->data;
-        BLO_read_id_address(reader, id, &data->script);
+        BLO_read_id_address(reader, id->lib, &data->script);
         break;
       }
     }
@@ -2671,7 +2670,7 @@ void BKE_fcurve_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *fcurves
         DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
           /* only relink if still used */
           if (tarIndex < dvar->num_targets) {
-            BLO_read_id_address(reader, id, &dtar->id);
+            BLO_read_id_address(reader, id->lib, &dtar->id);
           }
           else {
             dtar->id = NULL;

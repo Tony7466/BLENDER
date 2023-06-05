@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -53,7 +52,7 @@ using namespace blender::gpu;
 
 Shader::Shader(const char *sh_name)
 {
-  STRNCPY(this->name, sh_name);
+  BLI_strncpy(this->name, sh_name, sizeof(this->name));
 }
 
 Shader::~Shader()

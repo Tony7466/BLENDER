@@ -50,7 +50,7 @@ class MetalDevice : public Device {
   int max_threads_per_threadgroup;
 
   int mtlDevId = 0;
-  bool has_error = false;
+  bool first_error = true;
 
   struct MetalMem {
     device_memory *mem = nullptr;

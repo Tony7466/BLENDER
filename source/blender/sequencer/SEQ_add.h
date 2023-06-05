@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2004 Blender Foundation */
 
 #pragma once
 
@@ -28,8 +27,7 @@ typedef enum eSeqLoadFlags {
 typedef struct SeqLoadData {
   int start_frame;
   int channel;
-  char name[64]; /* Strip name. */
-  /** Typically a `filepath` but may reference any kind of path. */
+  char name[64];   /* Strip name. */
   char path[1024]; /* 1024 = FILE_MAX */
   struct {
     int len;
@@ -171,7 +169,7 @@ struct Sequence *SEQ_add_effect_strip(struct Scene *scene,
  * \param seq: image strip to be changed
  * \param path: directory path
  */
-void SEQ_add_image_set_directory(struct Sequence *seq, const char *dirpath);
+void SEQ_add_image_set_directory(struct Sequence *seq, char *path);
 /**
  * Set directory used by image strip.
  *
@@ -182,7 +180,7 @@ void SEQ_add_image_set_directory(struct Sequence *seq, const char *dirpath);
 void SEQ_add_image_load_file(struct Scene *scene,
                              struct Sequence *seq,
                              size_t strip_frame,
-                             const char *filename);
+                             char *filename);
 /**
  * Set image strip alpha mode
  *

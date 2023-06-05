@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Kévin Dietrich. All rights reserved. */
 
 /** \file
  * \ingroup balembic
@@ -109,12 +108,12 @@ void read_points_sample(const IPointsSchema &schema,
   read_mverts(*config.mesh, positions, vnormals);
 }
 
-Mesh *AbcPointsReader::read_mesh(Mesh *existing_mesh,
-                                 const ISampleSelector &sample_sel,
-                                 int read_flag,
-                                 const char * /*velocity_name*/,
-                                 const float /*velocity_scale*/,
-                                 const char **err_str)
+struct Mesh *AbcPointsReader::read_mesh(struct Mesh *existing_mesh,
+                                        const ISampleSelector &sample_sel,
+                                        int read_flag,
+                                        const char * /*velocity_name*/,
+                                        const float /*velocity_scale*/,
+                                        const char **err_str)
 {
   IPointsSchema::Sample sample;
   try {

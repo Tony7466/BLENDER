@@ -1,15 +1,12 @@
-/* SPDX-FileCopyrightText: 2021 NVIDIA Corporation. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 NVIDIA Corporation. All rights reserved. */
 #pragma once
 
 #include "usd.h"
 
-#include "BLI_map.hh"
-
 #include <pxr/usd/usdShade/material.h>
 
-#include <string>
+#include <map>
 
 struct Main;
 struct Material;
@@ -17,8 +14,6 @@ struct bNode;
 struct bNodeTree;
 
 namespace blender::io::usd {
-
-using ShaderToNodeMap = blender::Map<std::string, bNode *>;
 
 /* Helper struct used when arranging nodes in columns, keeping track the
  * occupancy information for a given column.  I.e., for column n,
@@ -30,12 +25,6 @@ struct NodePlacementContext {
   std::vector<float> column_offsets;
   const float horizontal_step;
   const float vertical_step;
-
-  /* Map a USD shader prim path to the Blender node converted
-   * from that shader.  This map is updated during shader
-   * conversion and is used to avoid creating duplicate nodes
-   * for a given shader. */
-  ShaderToNodeMap node_cache;
 
   NodePlacementContext(float in_origx,
                        float in_origy,

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup DNA
@@ -70,6 +69,9 @@ enum {
  *
  * Usage examples:
  * \code{.c}
+ * // access polygon attribute value.
+ * T value = polygon_attribute[lt->poly];
+ *
  * // access vertex locations.
  * float *vtri_co[3] = {
  *     positions[corner_verts[lt->tri[0]]],
@@ -135,6 +137,7 @@ enum {
  */
 typedef struct MLoopTri {
   unsigned int tri[3];
+  unsigned int poly;
 } MLoopTri;
 #
 #
@@ -214,14 +217,12 @@ typedef struct MVertSkin {
 } MVertSkin;
 
 typedef enum eMVertSkinFlag {
-  /**
-   * Marks a vertex as the edge-graph root, used for calculating rotations for all connected
+  /** Marks a vertex as the edge-graph root, used for calculating rotations for all connected
    * edges (recursively). Also used to choose a root when generating an armature.
    */
   MVERT_SKIN_ROOT = 1,
 
-  /**
-   * Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
+  /** Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
    * are directly hulled together, rather than the default of generating intermediate frames.
    */
   MVERT_SKIN_LOOSE = 2,

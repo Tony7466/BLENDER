@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -26,13 +24,15 @@ class AddFunction : public MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, Params params, Context /*context*/) const override
+  void call(IndexMask mask, Params params, Context /*context*/) const override
   {
     const VArray<int> &a = params.readonly_single_input<int>(0, "A");
     const VArray<int> &b = params.readonly_single_input<int>(1, "B");
     MutableSpan<int> result = params.uninitialized_single_output<int>(2, "Result");
 
-    mask.foreach_index([&](const int64_t i) { result[i] = a[i] + b[i]; });
+    for (int64_t i : mask) {
+      result[i] = a[i] + b[i];
+    }
   }
 };
 
@@ -44,16 +44,14 @@ TEST(multi_function, AddFunction)
   Array<int> input2 = {10, 20, 30};
   Array<int> output(3, -1);
 
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 2}, memory);
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, 3);
   params.add_readonly_single_input(input1.as_span());
   params.add_readonly_single_input(input2.as_span());
   params.add_uninitialized_single_output(output.as_mutable_span());
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call({0, 2}, params, context);
 
   EXPECT_EQ(output[0], 14);
   EXPECT_EQ(output[1], -1);
@@ -73,15 +71,13 @@ TEST(multi_function, AddPrefixFunction)
 
   std::string prefix = "AB";
 
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 2, 3}, memory);
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, strings.size());
   params.add_readonly_single_input(&prefix);
   params.add_single_mutable(strings.as_mutable_span());
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call({0, 2, 3}, params, context);
 
   EXPECT_EQ(strings[0], "ABHello");
   EXPECT_EQ(strings[1], "World");
@@ -97,15 +93,13 @@ TEST(multi_function, CreateRangeFunction)
   GVectorArray_TypedMutableRef<int> ranges_ref{ranges};
   Array<int> sizes = {3, 0, 6, 1, 4};
 
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 1, 2, 3}, memory);
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, ranges.size());
   params.add_readonly_single_input(sizes.as_span());
   params.add_vector_output(ranges);
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call({0, 1, 2, 3}, params, context);
 
   EXPECT_EQ(ranges[0].size(), 3);
   EXPECT_EQ(ranges[1].size(), 0);
@@ -131,14 +125,13 @@ TEST(multi_function, GenericAppendFunction)
   vectors_ref.append(2, 6);
   Array<int> values = {5, 7, 3, 1};
 
-  const IndexMask mask(IndexRange(vectors.size()));
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, vectors.size());
   params.add_vector_mutable(vectors);
   params.add_readonly_single_input(values.as_span());
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call(IndexRange(vectors.size()), params, context);
 
   EXPECT_EQ(vectors[0].size(), 3);
   EXPECT_EQ(vectors[1].size(), 1);
@@ -160,14 +153,12 @@ TEST(multi_function, CustomMF_Constant)
 
   Array<int> outputs(4, 0);
 
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 2, 3}, memory);
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, outputs.size());
   params.add_uninitialized_single_output(outputs.as_mutable_span());
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call({0, 2, 3}, params, context);
 
   EXPECT_EQ(outputs[0], 42);
   EXPECT_EQ(outputs[1], 0);
@@ -182,14 +173,12 @@ TEST(multi_function, CustomMF_GenericConstant)
 
   Array<int> outputs(4, 0);
 
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 1, 2}, memory);
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, outputs.size());
   params.add_uninitialized_single_output(outputs.as_mutable_span());
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call({0, 1, 2}, params, context);
 
   EXPECT_EQ(outputs[0], 42);
   EXPECT_EQ(outputs[1], 42);
@@ -205,14 +194,12 @@ TEST(multi_function, CustomMF_GenericConstantArray)
   GVectorArray vector_array{CPPType::get<int32_t>(), 4};
   GVectorArray_TypedMutableRef<int> vector_array_ref{vector_array};
 
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({1, 2, 3}, memory);
-  ParamsBuilder params(fn, &mask);
+  ParamsBuilder params(fn, vector_array.size());
   params.add_vector_output(vector_array);
 
   ContextBuilder context;
 
-  fn.call(mask, params, context);
+  fn.call({1, 2, 3}, params, context);
 
   EXPECT_EQ(vector_array[0].size(), 0);
   EXPECT_EQ(vector_array[1].size(), 4);
@@ -230,23 +217,21 @@ TEST(multi_function, IgnoredOutputs)
 {
   OptionalOutputsFunction fn;
   {
-    const IndexMask mask(10);
-    ParamsBuilder params(fn, &mask);
+    ParamsBuilder params(fn, 10);
     params.add_ignored_single_output("Out 1");
     params.add_ignored_single_output("Out 2");
     ContextBuilder context;
-    fn.call(mask, params, context);
+    fn.call(IndexRange(10), params, context);
   }
   {
     Array<int> results_1(10);
     Array<std::string> results_2(10, NoInitialization());
-    const IndexMask mask(10);
 
-    ParamsBuilder params(fn, &mask);
+    ParamsBuilder params(fn, 10);
     params.add_uninitialized_single_output(results_1.as_mutable_span(), "Out 1");
     params.add_uninitialized_single_output(results_2.as_mutable_span(), "Out 2");
     ContextBuilder context;
-    fn.call(mask, params, context);
+    fn.call(IndexRange(10), params, context);
 
     EXPECT_EQ(results_1[0], 5);
     EXPECT_EQ(results_1[3], 5);

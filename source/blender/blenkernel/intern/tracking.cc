@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -51,7 +50,7 @@
 #include "tracking_private.h"
 
 typedef struct MovieDistortion {
-  libmv_CameraIntrinsics *intrinsics;
+  struct libmv_CameraIntrinsics *intrinsics;
   /* Parameters needed for coordinates normalization. */
   float principal_px[2];
   float pixel_aspect;
@@ -610,7 +609,7 @@ void BKE_tracking_tracks_first_last_frame_minmax(/*const*/ MovieTrackingTrack **
   *r_first_frame = INT_MAX;
   *r_last_frame = INT_MIN;
   for (int i = 0; i < num_tracks; ++i) {
-    const MovieTrackingTrack *track = tracks[i];
+    const struct MovieTrackingTrack *track = tracks[i];
     int track_first_frame, track_last_frame;
     BKE_tracking_track_first_last_frame_get(track, &track_first_frame, &track_last_frame);
     *r_first_frame = min_ii(*r_first_frame, track_first_frame);
@@ -1418,7 +1417,9 @@ MovieTrackingMarker *BKE_tracking_marker_ensure(MovieTrackingTrack *track, int f
 }
 
 static const MovieTrackingMarker *get_usable_marker_for_interpolation(
-    MovieTrackingTrack *track, const MovieTrackingMarker *anchor_marker, const int direction)
+    struct MovieTrackingTrack *track,
+    const MovieTrackingMarker *anchor_marker,
+    const int direction)
 {
   BLI_assert(ELEM(direction, -1, 1));
 
@@ -1435,9 +1436,9 @@ static const MovieTrackingMarker *get_usable_marker_for_interpolation(
   return nullptr;
 }
 
-bool BKE_tracking_marker_get_interpolated(MovieTrackingTrack *track,
+bool BKE_tracking_marker_get_interpolated(struct MovieTrackingTrack *track,
                                           const int framenr,
-                                          MovieTrackingMarker *r_marker)
+                                          struct MovieTrackingMarker *r_marker)
 {
   const MovieTrackingMarker *closest_marker = BKE_tracking_marker_get(track, framenr);
   if (closest_marker == nullptr) {
@@ -1901,12 +1902,12 @@ MovieTrackingObject *BKE_tracking_object_add(MovieTracking *tracking, const char
 
   if (tracking->tot_object == 0) {
     /* first object is always camera */
-    STRNCPY(tracking_object->name, "Camera");
+    BLI_strncpy(tracking_object->name, "Camera", sizeof(tracking_object->name));
 
     tracking_object->flag |= TRACKING_OBJECT_CAMERA;
   }
   else {
-    STRNCPY(tracking_object->name, name);
+    BLI_strncpy(tracking_object->name, name, sizeof(tracking_object->name));
   }
 
   BLI_addtail(&tracking->objects, tracking_object);
@@ -2171,7 +2172,7 @@ void BKE_tracking_camera_get_reconstructed_interpolate(MovieTracking * /*trackin
   reconstructed_camera_scale_set(tracking_object, mat);
 }
 
-void BKE_tracking_camera_principal_point_pixel_get(MovieClip *clip,
+void BKE_tracking_camera_principal_point_pixel_get(struct MovieClip *clip,
                                                    float r_principal_point_pixel[2])
 {
   const MovieTrackingCamera *camera = &clip->tracking.camera;
@@ -2184,7 +2185,7 @@ void BKE_tracking_camera_principal_point_pixel_get(MovieClip *clip,
       camera->principal_point, frame_width, frame_height, r_principal_point_pixel);
 }
 
-void BKE_tracking_camera_principal_point_pixel_set(MovieClip *clip,
+void BKE_tracking_camera_principal_point_pixel_set(struct MovieClip *clip,
                                                    const float principal_point_pixel[2])
 {
   MovieTrackingCamera *camera = &clip->tracking.camera;
@@ -2276,46 +2277,48 @@ ImBuf *BKE_tracking_distortion_exec(MovieDistortion *distortion,
 
   resibuf = IMB_dupImBuf(ibuf);
 
-  if (ibuf->float_buffer.data) {
+  if (ibuf->rect_float) {
     if (undistort) {
       libmv_cameraIntrinsicsUndistortFloat(distortion->intrinsics,
-                                           ibuf->float_buffer.data,
+                                           ibuf->rect_float,
                                            ibuf->x,
                                            ibuf->y,
                                            overscan,
                                            ibuf->channels,
-                                           resibuf->float_buffer.data);
+                                           resibuf->rect_float);
     }
     else {
       libmv_cameraIntrinsicsDistortFloat(distortion->intrinsics,
-                                         ibuf->float_buffer.data,
+                                         ibuf->rect_float,
                                          ibuf->x,
                                          ibuf->y,
                                          overscan,
                                          ibuf->channels,
-                                         resibuf->float_buffer.data);
+                                         resibuf->rect_float);
     }
 
-    imb_freerectImBuf(ibuf);
+    if (ibuf->rect) {
+      imb_freerectImBuf(ibuf);
+    }
   }
   else {
     if (undistort) {
       libmv_cameraIntrinsicsUndistortByte(distortion->intrinsics,
-                                          ibuf->byte_buffer.data,
+                                          (uchar *)ibuf->rect,
                                           ibuf->x,
                                           ibuf->y,
                                           overscan,
                                           ibuf->channels,
-                                          resibuf->byte_buffer.data);
+                                          (uchar *)resibuf->rect);
     }
     else {
       libmv_cameraIntrinsicsDistortByte(distortion->intrinsics,
-                                        ibuf->byte_buffer.data,
+                                        (uchar *)ibuf->rect,
                                         ibuf->x,
                                         ibuf->y,
                                         overscan,
                                         ibuf->channels,
-                                        resibuf->byte_buffer.data);
+                                        (uchar *)resibuf->rect);
     }
   }
 
@@ -2570,7 +2573,7 @@ ImBuf *BKE_tracking_sample_pattern(const int frame_width,
   }
 
   pattern_ibuf = IMB_allocImBuf(
-      num_samples_x, num_samples_y, 32, search_ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
+      num_samples_x, num_samples_y, 32, search_ibuf->rect_float ? IB_rectfloat : IB_rect);
 
   tracking_get_marker_coords_for_tracking(
       frame_width, frame_height, marker, src_pixel_x, src_pixel_y);
@@ -2603,8 +2606,8 @@ ImBuf *BKE_tracking_sample_pattern(const int frame_width,
     mask = BKE_tracking_track_get_mask(frame_width, frame_height, track, marker);
   }
 
-  if (search_ibuf->float_buffer.data) {
-    libmv_samplePlanarPatchFloat(search_ibuf->float_buffer.data,
+  if (search_ibuf->rect_float) {
+    libmv_samplePlanarPatchFloat(search_ibuf->rect_float,
                                  search_ibuf->x,
                                  search_ibuf->y,
                                  4,
@@ -2613,12 +2616,12 @@ ImBuf *BKE_tracking_sample_pattern(const int frame_width,
                                  num_samples_x,
                                  num_samples_y,
                                  mask,
-                                 pattern_ibuf->float_buffer.data,
+                                 pattern_ibuf->rect_float,
                                  &warped_position_x,
                                  &warped_position_y);
   }
   else {
-    libmv_samplePlanarPatchByte(search_ibuf->byte_buffer.data,
+    libmv_samplePlanarPatchByte((uchar *)search_ibuf->rect,
                                 search_ibuf->x,
                                 search_ibuf->y,
                                 4,
@@ -2627,7 +2630,7 @@ ImBuf *BKE_tracking_sample_pattern(const int frame_width,
                                 num_samples_x,
                                 num_samples_y,
                                 mask,
-                                pattern_ibuf->byte_buffer.data,
+                                (uchar *)pattern_ibuf->rect,
                                 &warped_position_x,
                                 &warped_position_y);
   }
@@ -2709,7 +2712,7 @@ ImBuf *BKE_tracking_get_search_imbuf(const ImBuf *ibuf,
     return nullptr;
   }
 
-  searchibuf = IMB_allocImBuf(w, h, 32, ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
+  searchibuf = IMB_allocImBuf(w, h, 32, ibuf->rect_float ? IB_rectfloat : IB_rect);
 
   IMB_rectcpy(searchibuf, ibuf, 0, 0, x, y, w, h);
 
@@ -2763,7 +2766,7 @@ ImBuf *BKE_tracking_get_plane_imbuf(const ImBuf *frame_ibuf,
 
   /* Create new result image with the same type of content as the original. */
   ImBuf *plane_ibuf = IMB_allocImBuf(
-      num_samples_x, num_samples_y, 32, frame_ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
+      num_samples_x, num_samples_y, 32, frame_ibuf->rect_float ? IB_rectfloat : IB_rect);
 
   /* Calculate corner coordinates in pixel space, as separate X/Y arrays. */
   const double src_pixel_x[4] = {corners[0][0] * frame_width,
@@ -2779,8 +2782,8 @@ ImBuf *BKE_tracking_get_plane_imbuf(const ImBuf *frame_ibuf,
   double warped_position_x, warped_position_y;
 
   /* Actual sampling. */
-  if (frame_ibuf->float_buffer.data != nullptr) {
-    libmv_samplePlanarPatchFloat(frame_ibuf->float_buffer.data,
+  if (frame_ibuf->rect_float != nullptr) {
+    libmv_samplePlanarPatchFloat(frame_ibuf->rect_float,
                                  frame_ibuf->x,
                                  frame_ibuf->y,
                                  4,
@@ -2789,12 +2792,12 @@ ImBuf *BKE_tracking_get_plane_imbuf(const ImBuf *frame_ibuf,
                                  num_samples_x,
                                  num_samples_y,
                                  nullptr,
-                                 plane_ibuf->float_buffer.data,
+                                 plane_ibuf->rect_float,
                                  &warped_position_x,
                                  &warped_position_y);
   }
   else {
-    libmv_samplePlanarPatchByte(frame_ibuf->byte_buffer.data,
+    libmv_samplePlanarPatchByte((uchar *)frame_ibuf->rect,
                                 frame_ibuf->x,
                                 frame_ibuf->y,
                                 4,
@@ -2803,7 +2806,7 @@ ImBuf *BKE_tracking_get_plane_imbuf(const ImBuf *frame_ibuf,
                                 num_samples_x,
                                 num_samples_y,
                                 nullptr,
-                                plane_ibuf->byte_buffer.data,
+                                (uchar *)plane_ibuf->rect,
                                 &warped_position_x,
                                 &warped_position_y);
   }
@@ -2831,8 +2834,8 @@ void BKE_tracking_disable_channels(
     for (int x = 0; x < ibuf->x; x++) {
       int pixel = ibuf->x * y + x;
 
-      if (ibuf->float_buffer.data) {
-        float *rrgbf = ibuf->float_buffer.data + pixel * 4;
+      if (ibuf->rect_float) {
+        float *rrgbf = ibuf->rect_float + pixel * 4;
         float r = disable_red ? 0.0f : rrgbf[0];
         float g = disable_green ? 0.0f : rrgbf[1];
         float b = disable_blue ? 0.0f : rrgbf[2];
@@ -2849,10 +2852,10 @@ void BKE_tracking_disable_channels(
         }
       }
       else {
-        uchar *rrgb = ibuf->byte_buffer.data + pixel * 4;
-        uchar r = disable_red ? 0 : rrgb[0];
-        uchar g = disable_green ? 0 : rrgb[1];
-        uchar b = disable_blue ? 0 : rrgb[2];
+        char *rrgb = (char *)ibuf->rect + pixel * 4;
+        char r = disable_red ? 0 : rrgb[0];
+        char g = disable_green ? 0 : rrgb[1];
+        char b = disable_blue ? 0 : rrgb[2];
 
         if (grayscale) {
           float gray = (0.2126f * r + 0.7152f * g + 0.0722f * b) / scale;
@@ -2868,7 +2871,7 @@ void BKE_tracking_disable_channels(
     }
   }
 
-  if (ibuf->float_buffer.data) {
+  if (ibuf->rect_float) {
     ibuf->userflags |= IB_RECT_INVALID;
   }
 }
@@ -3191,10 +3194,10 @@ static void tracking_dopesheet_channels_calc(MovieTracking *tracking)
     channel->track = track;
 
     if (reconstruction->flag & TRACKING_RECONSTRUCTED) {
-      SNPRINTF(channel->name, "%s (%.4f)", track->name, track->error);
+      BLI_snprintf(channel->name, sizeof(channel->name), "%s (%.4f)", track->name, track->error);
     }
     else {
-      STRNCPY(channel->name, track->name);
+      BLI_strncpy(channel->name, track->name, sizeof(channel->name));
     }
 
     tracking_dopesheet_channels_segments_calc(channel);
@@ -3401,81 +3404,81 @@ MovieTrackingObject *BKE_tracking_find_object_for_plane_track(
   return nullptr;
 }
 
-void BKE_tracking_get_rna_path_for_track(const MovieTracking *tracking,
-                                         const MovieTrackingTrack *track,
+void BKE_tracking_get_rna_path_for_track(const struct MovieTracking *tracking,
+                                         const struct MovieTrackingTrack *track,
                                          char *rna_path,
-                                         size_t rna_path_maxncpy)
+                                         size_t rna_path_len)
 {
   MovieTrackingObject *tracking_object = BKE_tracking_find_object_for_track(tracking, track);
   char track_name_esc[MAX_NAME * 2];
   BLI_str_escape(track_name_esc, track->name, sizeof(track_name_esc));
   if (tracking_object == nullptr) {
-    BLI_snprintf(rna_path, rna_path_maxncpy, "tracking.tracks[\"%s\"]", track_name_esc);
+    BLI_snprintf(rna_path, rna_path_len, "tracking.tracks[\"%s\"]", track_name_esc);
   }
   else {
     char object_name_esc[MAX_NAME * 2];
     BLI_str_escape(object_name_esc, tracking_object->name, sizeof(object_name_esc));
     BLI_snprintf(rna_path,
-                 rna_path_maxncpy,
+                 rna_path_len,
                  "tracking.objects[\"%s\"].tracks[\"%s\"]",
                  object_name_esc,
                  track_name_esc);
   }
 }
 
-void BKE_tracking_get_rna_path_prefix_for_track(const MovieTracking *tracking,
-                                                const MovieTrackingTrack *track,
+void BKE_tracking_get_rna_path_prefix_for_track(const struct MovieTracking *tracking,
+                                                const struct MovieTrackingTrack *track,
                                                 char *rna_path,
-                                                size_t rna_path_maxncpy)
+                                                size_t rna_path_len)
 {
   MovieTrackingObject *tracking_object = BKE_tracking_find_object_for_track(tracking, track);
   if (tracking_object == nullptr) {
-    BLI_strncpy(rna_path, "tracking.tracks", rna_path_maxncpy);
+    BLI_strncpy(rna_path, "tracking.tracks", rna_path_len);
   }
   else {
     char object_name_esc[MAX_NAME * 2];
     BLI_str_escape(object_name_esc, tracking_object->name, sizeof(object_name_esc));
-    BLI_snprintf(rna_path, rna_path_maxncpy, "tracking.objects[\"%s\"]", object_name_esc);
+    BLI_snprintf(rna_path, rna_path_len, "tracking.objects[\"%s\"]", object_name_esc);
   }
 }
 
-void BKE_tracking_get_rna_path_for_plane_track(const MovieTracking *tracking,
-                                               const MovieTrackingPlaneTrack *plane_track,
+void BKE_tracking_get_rna_path_for_plane_track(const struct MovieTracking *tracking,
+                                               const struct MovieTrackingPlaneTrack *plane_track,
                                                char *rna_path,
-                                               size_t rna_path_maxncpy)
+                                               size_t rna_path_len)
 {
   MovieTrackingObject *tracking_object = BKE_tracking_find_object_for_plane_track(tracking,
                                                                                   plane_track);
   char track_name_esc[MAX_NAME * 2];
   BLI_str_escape(track_name_esc, plane_track->name, sizeof(track_name_esc));
   if (tracking_object == nullptr) {
-    BLI_snprintf(rna_path, rna_path_maxncpy, "tracking.plane_tracks[\"%s\"]", track_name_esc);
+    BLI_snprintf(rna_path, rna_path_len, "tracking.plane_tracks[\"%s\"]", track_name_esc);
   }
   else {
     char object_name_esc[MAX_NAME * 2];
     BLI_str_escape(object_name_esc, tracking_object->name, sizeof(object_name_esc));
     BLI_snprintf(rna_path,
-                 rna_path_maxncpy,
+                 rna_path_len,
                  "tracking.objects[\"%s\"].plane_tracks[\"%s\"]",
                  object_name_esc,
                  track_name_esc);
   }
 }
 
-void BKE_tracking_get_rna_path_prefix_for_plane_track(const MovieTracking *tracking,
-                                                      const MovieTrackingPlaneTrack *plane_track,
-                                                      char *rna_path,
-                                                      size_t rna_path_maxncpy)
+void BKE_tracking_get_rna_path_prefix_for_plane_track(
+    const struct MovieTracking *tracking,
+    const struct MovieTrackingPlaneTrack *plane_track,
+    char *rna_path,
+    size_t rna_path_len)
 {
   MovieTrackingObject *tracking_object = BKE_tracking_find_object_for_plane_track(tracking,
                                                                                   plane_track);
   if (tracking_object == nullptr) {
-    BLI_strncpy(rna_path, "tracking.plane_tracks", rna_path_maxncpy);
+    BLI_strncpy(rna_path, "tracking.plane_tracks", rna_path_len);
   }
   else {
     char object_name_esc[MAX_NAME * 2];
     BLI_str_escape(object_name_esc, tracking_object->name, sizeof(object_name_esc));
-    BLI_snprintf(
-        rna_path, rna_path_maxncpy, "tracking.objects[\"%s\"].plane_tracks", object_name_esc);
+    BLI_snprintf(rna_path, rna_path_len, "tracking.objects[\"%s\"].plane_tracks", object_name_esc);
   }
 }

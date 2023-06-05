@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edutil
@@ -80,7 +79,7 @@ static void image_sample_pixel_color_ubyte(const ImBuf *ibuf,
                                            uchar r_col[4],
                                            float r_col_linear[4])
 {
-  const uchar *cp = ibuf->byte_buffer.data + 4 * (coord[1] * ibuf->x + coord[0]);
+  const uchar *cp = (uchar *)(ibuf->rect + coord[1] * ibuf->x + coord[0]);
   copy_v4_v4_uchar(r_col, cp);
   rgba_uchar_to_float(r_col_linear, r_col);
   IMB_colormanagement_colorspace_to_scene_linear_v4(r_col_linear, false, ibuf->rect_colorspace);
@@ -88,7 +87,7 @@ static void image_sample_pixel_color_ubyte(const ImBuf *ibuf,
 
 static void image_sample_pixel_color_float(ImBuf *ibuf, const int coord[2], float r_col[4])
 {
-  const float *cp = ibuf->float_buffer.data + (ibuf->channels) * (coord[1] * ibuf->x + coord[0]);
+  const float *cp = ibuf->rect_float + (ibuf->channels) * (coord[1] * ibuf->x + coord[0]);
   copy_v4_v4(r_col, cp);
 }
 
@@ -199,7 +198,7 @@ static void image_sample_apply(bContext *C, wmOperator *op, const wmEvent *event
     sample_rect.xmax = min_ii(ibuf->x, sample_rect.xmin + info->sample_size) - 1;
     sample_rect.ymax = min_ii(ibuf->y, sample_rect.ymin + info->sample_size) - 1;
 
-    if (ibuf->byte_buffer.data) {
+    if (ibuf->rect) {
       image_sample_rect_color_ubyte(ibuf, &sample_rect, info->col, info->linearcol);
       rgba_uchar_to_float(info->colf, info->col);
 
@@ -207,7 +206,7 @@ static void image_sample_apply(bContext *C, wmOperator *op, const wmEvent *event
       info->colfp = info->colf;
       info->color_manage = true;
     }
-    if (ibuf->float_buffer.data) {
+    if (ibuf->rect_float) {
       image_sample_rect_color_float(ibuf, &sample_rect, info->colf);
 
       if (ibuf->channels == 4) {
@@ -228,21 +227,19 @@ static void image_sample_apply(bContext *C, wmOperator *op, const wmEvent *event
       info->color_manage = true;
     }
 
-    if (ibuf->z_buffer.data) {
+    if (ibuf->zbuf) {
       /* TODO: blend depth (not urgent). */
-      info->z = ibuf->z_buffer.data[y * ibuf->x + x];
+      info->z = ibuf->zbuf[y * ibuf->x + x];
       info->zp = &info->z;
-      /* NOTE: Follows legacy code. Although it is unclear how z-buffer can be the same as a 4
-       * channel RGBA 8bpp buffer. */
-      if (ibuf->z_buffer.data == (int *)ibuf->byte_buffer.data) {
+      if (ibuf->zbuf == (int *)ibuf->rect) {
         info->colp = NULL;
       }
     }
-    if (ibuf->float_z_buffer.data) {
+    if (ibuf->zbuf_float) {
       /* TODO: blend depth (not urgent). */
-      info->zf = ibuf->float_z_buffer.data[y * ibuf->x + x];
+      info->zf = ibuf->zbuf_float[y * ibuf->x + x];
       info->zfp = &info->zf;
-      if (ibuf->float_z_buffer.data == ibuf->float_buffer.data) {
+      if (ibuf->zbuf_float == ibuf->rect_float) {
         info->colfp = NULL;
       }
     }
@@ -325,8 +322,8 @@ static void sequencer_sample_apply(bContext *C, wmOperator *op, const wmEvent *e
     info->colp = NULL;
     info->colfp = NULL;
 
-    if (ibuf->byte_buffer.data) {
-      cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
+    if (ibuf->rect) {
+      cp = (uchar *)(ibuf->rect + y * ibuf->x + x);
 
       info->col[0] = cp[0];
       info->col[1] = cp[1];
@@ -346,8 +343,8 @@ static void sequencer_sample_apply(bContext *C, wmOperator *op, const wmEvent *e
 
       info->color_manage = true;
     }
-    if (ibuf->float_buffer.data) {
-      fp = (ibuf->float_buffer.data + (ibuf->channels) * (y * ibuf->x + x));
+    if (ibuf->rect_float) {
+      fp = (ibuf->rect_float + (ibuf->channels) * (y * ibuf->x + x));
 
       info->colf[0] = fp[0];
       info->colf[1] = fp[1];

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -57,7 +55,7 @@ static void toolsystem_refresh_screen_from_active_tool(Main *bmain,
 /** \name Tool Reference API
  * \{ */
 
-bToolRef *WM_toolsystem_ref_from_context(bContext *C)
+struct bToolRef *WM_toolsystem_ref_from_context(struct bContext *C)
 {
   WorkSpace *workspace = CTX_wm_workspace(C);
   const Scene *scene = CTX_data_scene(C);
@@ -78,7 +76,7 @@ bToolRef *WM_toolsystem_ref_from_context(bContext *C)
   return tref;
 }
 
-bToolRef_Runtime *WM_toolsystem_runtime_from_context(bContext *C)
+struct bToolRef_Runtime *WM_toolsystem_runtime_from_context(struct bContext *C)
 {
   bToolRef *tref = WM_toolsystem_ref_from_context(C);
   return tref ? tref->runtime : NULL;
@@ -101,7 +99,7 @@ bToolRef_Runtime *WM_toolsystem_runtime_find(WorkSpace *workspace, const bToolKe
   return tref ? tref->runtime : NULL;
 }
 
-bool WM_toolsystem_ref_ensure(WorkSpace *workspace, const bToolKey *tkey, bToolRef **r_tref)
+bool WM_toolsystem_ref_ensure(struct WorkSpace *workspace, const bToolKey *tkey, bToolRef **r_tref)
 {
   bToolRef *tref = WM_toolsystem_ref_find(workspace, tkey);
   if (tref) {
@@ -246,7 +244,7 @@ void WM_toolsystem_reinit(bContext *C, WorkSpace *workspace, const bToolKey *tke
   }
 }
 
-void WM_toolsystem_unlink_all(bContext *C, WorkSpace *workspace)
+void WM_toolsystem_unlink_all(struct bContext *C, struct WorkSpace *workspace)
 {
   LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
     tref->tag = 0;
@@ -262,14 +260,14 @@ void WM_toolsystem_unlink_all(bContext *C, WorkSpace *workspace)
   }
 }
 
-void WM_toolsystem_refresh_all(bContext *C, WorkSpace *workspace)
+void WM_toolsystem_refresh_all(struct bContext *C, struct WorkSpace *workspace)
 {
   BLI_assert(0);
   LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
     toolsystem_refresh_ref(C, workspace, tref);
   }
 }
-void WM_toolsystem_reinit_all(bContext *C, wmWindow *win)
+void WM_toolsystem_reinit_all(struct bContext *C, wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
   const Scene *scene = WM_window_get_active_scene(win);
@@ -294,8 +292,8 @@ void WM_toolsystem_reinit_all(bContext *C, wmWindow *win)
   }
 }
 
-void WM_toolsystem_ref_set_from_runtime(bContext *C,
-                                        WorkSpace *workspace,
+void WM_toolsystem_ref_set_from_runtime(struct bContext *C,
+                                        struct WorkSpace *workspace,
                                         bToolRef *tref,
                                         const bToolRef_Runtime *tref_rt,
                                         const char *idname)

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -32,7 +30,7 @@
 /** \name Generic Utilities
  * \{ */
 
-int WM_operator_flag_only_pass_through_on_press(int retval, const wmEvent *event)
+int WM_operator_flag_only_pass_through_on_press(int retval, const struct wmEvent *event)
 {
   if (event->val != KM_PRESS) {
     if (retval & OPERATOR_PASS_THROUGH) {

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -246,9 +244,9 @@ static bool rna_DepsgraphUpdate_is_updated_geometry_get(PointerRNA *ptr)
 
 /* **************** Depsgraph **************** */
 
-static void rna_Depsgraph_debug_relations_graphviz(Depsgraph *depsgraph, const char *filepath)
+static void rna_Depsgraph_debug_relations_graphviz(Depsgraph *depsgraph, const char *filename)
 {
-  FILE *f = fopen(filepath, "w");
+  FILE *f = fopen(filename, "w");
   if (f == NULL) {
     return;
   }
@@ -257,14 +255,14 @@ static void rna_Depsgraph_debug_relations_graphviz(Depsgraph *depsgraph, const c
 }
 
 static void rna_Depsgraph_debug_stats_gnuplot(Depsgraph *depsgraph,
-                                              const char *filepath,
-                                              const char *output_filepath)
+                                              const char *filename,
+                                              const char *output_filename)
 {
-  FILE *f = fopen(filepath, "w");
+  FILE *f = fopen(filename, "w");
   if (f == NULL) {
     return;
   }
-  DEG_debug_stats_gnuplot(depsgraph, f, "Timing Statistics", output_filepath);
+  DEG_debug_stats_gnuplot(depsgraph, f, "Timing Statistics", output_filename);
   fclose(f);
 }
 
@@ -695,15 +693,15 @@ static void rna_def_depsgraph(BlenderRNA *brna)
   func = RNA_def_function(
       srna, "debug_relations_graphviz", "rna_Depsgraph_debug_relations_graphviz");
   parm = RNA_def_string_file_path(
-      func, "filepath", NULL, FILE_MAX, "File Name", "Output path for the graphviz debug file");
+      func, "filename", NULL, FILE_MAX, "File Name", "Output path for the graphviz debug file");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
   func = RNA_def_function(srna, "debug_stats_gnuplot", "rna_Depsgraph_debug_stats_gnuplot");
   parm = RNA_def_string_file_path(
-      func, "filepath", NULL, FILE_MAX, "File Name", "Output path for the gnuplot debug file");
+      func, "filename", NULL, FILE_MAX, "File Name", "Output path for the gnuplot debug file");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_string_file_path(func,
-                                  "output_filepath",
+                                  "output_filename",
                                   NULL,
                                   FILE_MAX,
                                   "Output File Name",

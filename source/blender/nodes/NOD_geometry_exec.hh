@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -162,7 +160,14 @@ class GeoNodeExecParams {
 
   geo_eval_log::GeoTreeLogger *get_local_tree_logger() const
   {
-    return this->local_user_data()->tree_logger;
+    GeoNodesLFUserData *user_data = this->user_data();
+    BLI_assert(user_data != nullptr);
+    const ComputeContext *compute_context = user_data->compute_context;
+    BLI_assert(compute_context != nullptr);
+    if (user_data->modifier_data->eval_log == nullptr) {
+      return nullptr;
+    }
+    return &user_data->modifier_data->eval_log->get_local_tree_logger(*compute_context);
   }
 
   /**
@@ -213,12 +218,7 @@ class GeoNodeExecParams {
 
   GeoNodesLFUserData *user_data() const
   {
-    return static_cast<GeoNodesLFUserData *>(lf_context_.user_data);
-  }
-
-  GeoNodesLFLocalUserData *local_user_data() const
-  {
-    return static_cast<GeoNodesLFLocalUserData *>(lf_context_.local_user_data);
+    return dynamic_cast<GeoNodesLFUserData *>(lf_context_.user_data);
   }
 
   /**

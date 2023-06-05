@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -35,7 +34,7 @@ struct DRW_Global G_draw = {{{0}}};
 static bool weight_ramp_custom = false;
 static ColorBand weight_ramp_copy;
 
-static GPUTexture *DRW_create_weight_colorramp_texture(void);
+static struct GPUTexture *DRW_create_weight_colorramp_texture(void);
 
 void DRW_globals_update(void)
 {

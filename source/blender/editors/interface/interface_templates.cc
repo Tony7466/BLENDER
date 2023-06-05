@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -34,7 +32,6 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_search.h"
-#include "BLI_string_utils.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -520,14 +517,16 @@ static ARegion *template_ID_search_menu_item_tooltip(
   uiSearchItemTooltipData tooltip_data = {{0}};
 
   tooltip_data.name = active_id->name + 2;
-  SNPRINTF(tooltip_data.description,
-           TIP_("Choose %s data-block to be assigned to this user"),
-           RNA_struct_ui_name(type));
+  BLI_snprintf(tooltip_data.description,
+               sizeof(tooltip_data.description),
+               TIP_("Choose %s data-block to be assigned to this user"),
+               RNA_struct_ui_name(type));
   if (ID_IS_LINKED(active_id)) {
-    SNPRINTF(tooltip_data.hint,
-             TIP_("Source library: %s\n%s"),
-             active_id->lib->id.name + 2,
-             active_id->lib->filepath);
+    BLI_snprintf(tooltip_data.hint,
+                 sizeof(tooltip_data.hint),
+                 TIP_("Source library: %s\n%s"),
+                 active_id->lib->id.name + 2,
+                 active_id->lib->filepath);
   }
 
   return UI_tooltip_create_from_search_item_generic(C, region, item_rect, &tooltip_data);
@@ -1110,7 +1109,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
       case ID_GD_LEGACY:
-        return N_("Browse Grease Pencil (legacy) Data to be linked");
+        return N_("Browse Grease Pencil Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
       case ID_MSK:
@@ -1133,8 +1132,6 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Volume Data to be linked");
       case ID_SIM:
         return N_("Browse Simulation to be linked");
-      case ID_GP:
-        return N_("Browse Grease Pencil Data to be linked");
 
       /* Use generic text. */
       case ID_LI:
@@ -1233,7 +1230,6 @@ static uiBut *template_id_def_new_but(uiBlock *block,
                             BLT_I18NCONTEXT_ID_POINTCLOUD,
                             BLT_I18NCONTEXT_ID_VOLUME,
                             BLT_I18NCONTEXT_ID_SIMULATION, );
-  BLT_I18N_MSGID_MULTI_CTXT("New", BLT_I18NCONTEXT_ID_PAINTCURVE, );
   /* NOTE: BLT_I18N_MSGID_MULTI_CTXT takes a maximum number of parameters,
    * check the definition to see if a new call must be added when the limit
    * is exceeded. */
@@ -1438,7 +1434,7 @@ static void template_ID(const bContext *C,
       char numstr[32];
       short numstr_len;
 
-      numstr_len = SNPRINTF_RLEN(numstr, "%d", ID_REAL_USERS(id));
+      numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%d", ID_REAL_USERS(id));
 
       but = uiDefBut(
           block,
@@ -2413,7 +2409,7 @@ static void set_constraint_expand_flag(const bContext * /*C*/, Panel *panel, sho
  * \note Constraint panel types are assumed to be named with the struct name field
  * concatenated to the defined prefix.
  */
-static void object_constraint_panel_id(void *md_link, char *r_idname)
+static void object_constraint_panel_id(void *md_link, char *r_name)
 {
   bConstraint *con = (bConstraint *)md_link;
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(con->type);
@@ -2422,10 +2418,12 @@ static void object_constraint_panel_id(void *md_link, char *r_idname)
   if (cti == nullptr) {
     return;
   }
-  BLI_string_join(r_idname, BKE_ST_MAXNAME, CONSTRAINT_TYPE_PANEL_PREFIX, cti->structName);
+
+  strcpy(r_name, CONSTRAINT_TYPE_PANEL_PREFIX);
+  strcat(r_name, cti->structName);
 }
 
-static void bone_constraint_panel_id(void *md_link, char *r_idname)
+static void bone_constraint_panel_id(void *md_link, char *r_name)
 {
   bConstraint *con = (bConstraint *)md_link;
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(con->type);
@@ -2434,7 +2432,9 @@ static void bone_constraint_panel_id(void *md_link, char *r_idname)
   if (cti == nullptr) {
     return;
   }
-  BLI_string_join(r_idname, BKE_ST_MAXNAME, CONSTRAINT_BONE_TYPE_PANEL_PREFIX, cti->structName);
+
+  strcpy(r_name, CONSTRAINT_BONE_TYPE_PANEL_PREFIX);
+  strcat(r_name, cti->structName);
 }
 
 void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_constraints)
@@ -3181,7 +3181,8 @@ void uiTemplatePreview(uiLayout *layout,
 
   if (!preview_id || (preview_id[0] == '\0')) {
     /* If no identifier given, generate one from ID type. */
-    SNPRINTF(_preview_id, "uiPreview_%s", BKE_idtype_idcode_to_name(GS(id->name)));
+    BLI_snprintf(
+        _preview_id, UI_MAX_NAME_STR, "uiPreview_%s", BKE_idtype_idcode_to_name(GS(id->name)));
     preview_id = _preview_id;
   }
 
@@ -3192,7 +3193,7 @@ void uiTemplatePreview(uiLayout *layout,
 
   if (!ui_preview) {
     ui_preview = MEM_cnew<uiPreview>(__func__);
-    STRNCPY(ui_preview->preview_id, preview_id);
+    BLI_strncpy(ui_preview->preview_id, preview_id, sizeof(ui_preview->preview_id));
     ui_preview->height = short(UI_UNIT_Y * 7.6f);
     BLI_addtail(&region->ui_previews, ui_preview);
   }
@@ -6254,7 +6255,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
     /* get percentage done and set it as the UI text */
     const float progress = WM_jobs_progress(wm, owner);
     char text[8];
-    SNPRINTF(text, "%d%%", int(progress * 100));
+    BLI_snprintf(text, 8, "%d%%", int(progress * 100));
 
     const char *name = active ? WM_jobs_name(wm, owner) : "Canceling...";
 
@@ -6729,7 +6730,7 @@ void uiTemplateComponentMenu(uiLayout *layout,
   ComponentMenuArgs *args = MEM_cnew<ComponentMenuArgs>(__func__);
 
   args->ptr = *ptr;
-  STRNCPY(args->propname, propname);
+  BLI_strncpy(args->propname, propname, sizeof(args->propname));
 
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_align_begin(block);
@@ -6739,7 +6740,7 @@ void uiTemplateComponentMenu(uiLayout *layout,
   /* set rna directly, uiDefBlockButN doesn't do this */
   but->rnapoin = *ptr;
   but->rnaprop = RNA_struct_find_property(ptr, propname);
-  but->rnaindex = -1;
+  but->rnaindex = 0;
 
   UI_block_align_end(block);
 }
@@ -6883,7 +6884,7 @@ uiListType *UI_UL_cache_file_layers()
 {
   uiListType *list_type = (uiListType *)MEM_callocN(sizeof(*list_type), __func__);
 
-  STRNCPY(list_type->idname, "UI_UL_cache_file_layers");
+  BLI_strncpy(list_type->idname, "UI_UL_cache_file_layers", sizeof(list_type->idname));
   list_type->draw_item = cache_file_layer_item;
 
   return list_type;

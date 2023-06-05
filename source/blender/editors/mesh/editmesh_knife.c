@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup edmesh
@@ -505,7 +504,7 @@ static void knifetool_draw_visible_distances(const KnifeTool_OpData *kcd)
 
   UnitSettings *unit = &kcd->scene->unit;
   if (unit->system == USER_UNIT_NONE) {
-    SNPRINTF(numstr, "%.*f", distance_precision, cut_len);
+    BLI_snprintf(numstr, sizeof(numstr), "%.*f", distance_precision, cut_len);
   }
   else {
     BKE_unit_value_as_string(numstr,
@@ -640,7 +639,7 @@ static void knifetool_draw_angle(const KnifeTool_OpData *kcd,
 
   UnitSettings *unit = &kcd->scene->unit;
   if (unit->system == USER_UNIT_NONE) {
-    SNPRINTF(numstr, "%.*f°", angle_precision, RAD2DEGF(angle));
+    BLI_snprintf(numstr, sizeof(numstr), "%.*f°", angle_precision, RAD2DEGF(angle));
   }
   else {
     BKE_unit_value_as_string(
@@ -1101,8 +1100,9 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
   WM_modalkeymap_operator_items_to_string_buf( \
       op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
 
-  SNPRINTF(
+  BLI_snprintf(
       header,
+      sizeof(header),
       TIP_("%s: confirm, %s: cancel, %s: undo, "
            "%s: start/define cut, %s: close cut, %s: new cut, "
            "%s: midpoint snap (%s), %s: ignore snap (%s), "

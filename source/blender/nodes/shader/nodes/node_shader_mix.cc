@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup shdnodes
@@ -25,46 +24,37 @@ NODE_STORAGE_FUNCS(NodeShaderMix)
 static void sh_node_mix_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  /* WARNING:
+  /** WARNING:
    * Input socket indices must be kept in sync with ntree_shader_disconnect_inactive_mix_branches
    */
-  b.add_input<decl::Float>("Factor", "Factor_Float")
+  b.add_input<decl::Float>(N_("Factor"), "Factor_Float")
       .no_muted_links()
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Vector>("Factor", "Factor_Vector")
+  b.add_input<decl::Vector>(N_("Factor"), "Factor_Vector")
       .no_muted_links()
       .default_value(float3(0.5f))
       .subtype(PROP_FACTOR);
 
-  b.add_input<decl::Float>("A", "A_Float")
+  b.add_input<decl::Float>(N_("A"), "A_Float")
       .min(-10000.0f)
       .max(10000.0f)
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Float>("B", "B_Float")
-      .min(-10000.0f)
-      .max(10000.0f)
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+      .is_default_link_socket();
+  b.add_input<decl::Float>(N_("B"), "B_Float").min(-10000.0f).max(10000.0f);
 
-  b.add_input<decl::Vector>("A", "A_Vector")
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Vector>("B", "B_Vector").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input<decl::Vector>(N_("A"), "A_Vector").is_default_link_socket();
+  b.add_input<decl::Vector>(N_("B"), "B_Vector");
 
-  b.add_input<decl::Color>("A", "A_Color")
+  b.add_input<decl::Color>(N_("A"), "A_Color")
       .default_value({0.5f, 0.5f, 0.5f, 1.0f})
-      .is_default_link_socket()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Color>("B", "B_Color")
-      .default_value({0.5f, 0.5f, 0.5f, 1.0f})
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+      .is_default_link_socket();
+  b.add_input<decl::Color>(N_("B"), "B_Color").default_value({0.5f, 0.5f, 0.5f, 1.0f});
 
-  b.add_output<decl::Float>("Result", "Result_Float");
-  b.add_output<decl::Vector>("Result", "Result_Vector");
-  b.add_output<decl::Color>("Result", "Result_Color");
+  b.add_output<decl::Float>(N_("Result"), "Result_Float");
+  b.add_output<decl::Vector>(N_("Result"), "Result_Vector");
+  b.add_output<decl::Color>(N_("Result"), "Result_Color");
 };
 
 static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -87,7 +77,7 @@ static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *p
 static void sh_node_mix_label(const bNodeTree * /*ntree*/,
                               const bNode *node,
                               char *label,
-                              int label_maxncpy)
+                              int maxlen)
 {
   const NodeShaderMix &storage = node_storage(*node);
   if (storage.data_type == SOCK_RGBA) {
@@ -96,7 +86,7 @@ static void sh_node_mix_label(const bNodeTree * /*ntree*/,
     if (!enum_label) {
       name = "Unknown";
     }
-    BLI_strncpy_utf8(label, IFACE_(name), label_maxncpy);
+    BLI_strncpy(label, IFACE_(name), maxlen);
   }
 }
 
@@ -126,16 +116,16 @@ static void sh_node_mix_update(bNodeTree *ntree, bNode *node)
   bool use_vector_factor = data_type == SOCK_VECTOR &&
                            storage.factor_mode != NODE_MIX_MODE_UNIFORM;
 
-  bke::nodeSetSocketAvailability(ntree, sock_factor, !use_vector_factor);
+  nodeSetSocketAvailability(ntree, sock_factor, !use_vector_factor);
 
-  bke::nodeSetSocketAvailability(ntree, sock_factor_vec, use_vector_factor);
+  nodeSetSocketAvailability(ntree, sock_factor_vec, use_vector_factor);
 
   for (bNodeSocket *socket = sock_factor_vec->next; socket != nullptr; socket = socket->next) {
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
+    nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
   }
 
   LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
-    bke::nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
+    nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
   }
 }
 
@@ -181,7 +171,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
   }
   else {
     params.add_item(
-        CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, "A"),
+        IFACE_("A"),
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("ShaderNodeMix");
           node_storage(node).data_type = type;
@@ -190,7 +180,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
         weight);
     weight--;
     params.add_item(
-        CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, "B"),
+        IFACE_("B"),
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("ShaderNodeMix");
           node_storage(node).data_type = type;
@@ -395,7 +385,7 @@ class MixColorFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float> &fac = params.readonly_single_input<float>(0, "Factor");
     const VArray<ColorGeometry4f> &col1 = params.readonly_single_input<ColorGeometry4f>(1, "A");
@@ -404,21 +394,22 @@ class MixColorFunction : public mf::MultiFunction {
         3, "Result");
 
     if (clamp_factor_) {
-      mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
+      for (int64_t i : mask) {
         results[i] = col1[i];
         ramp_blend(blend_type_, results[i], std::clamp(fac[i], 0.0f, 1.0f), col2[i]);
-      });
+      }
     }
     else {
-      mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
+      for (int64_t i : mask) {
         results[i] = col1[i];
         ramp_blend(blend_type_, results[i], fac[i], col2[i]);
-      });
+      }
     }
 
     if (clamp_result_) {
-      mask.foreach_index_optimized<int64_t>(
-          [&](const int64_t i) { clamp_v3(results[i], 0.0f, 1.0f); });
+      for (int64_t i : mask) {
+        clamp_v3(results[i], 0.0f, 1.0f);
+      }
     }
   }
 };

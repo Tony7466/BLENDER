@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -20,8 +19,8 @@
 
 static struct {
   /* These are just references, not actually allocated */
-  GPUTexture *depth_src;
-  GPUTexture *color_src;
+  struct GPUTexture *depth_src;
+  struct GPUTexture *color_src;
 
   int depth_src_layer;
   /* Size can be vec3. But we only use 2 components in the shader. */

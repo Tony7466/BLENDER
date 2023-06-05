@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 #pragma once
 
@@ -285,12 +284,6 @@ BLI_INLINE void BLI_listbase_clear(struct ListBase *lb)
 {
   lb->first = lb->last = (void *)0;
 }
-
-/**
- * Validate the integrity of a given ListBase.
- * \return true if everything is OK, false otherwise.
- */
-bool BLI_listbase_validate(struct ListBase *lb);
 
 /**
  * Equality check for ListBase.

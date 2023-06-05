@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -195,11 +194,11 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    SNPRINTF(str, TIP_("To Sphere: %s %s"), c, t->proptext);
+    BLI_snprintf(str, sizeof(str), TIP_("To Sphere: %s %s"), c, t->proptext);
   }
   else {
     /* default header print */
-    SNPRINTF(str, TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
+    BLI_snprintf(str, sizeof(str), TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
   }
 
   const struct ToSphereInfo *to_sphere_info = t->custom.mode.data;
@@ -237,9 +236,10 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initToSphere(TransInfo *t, struct wmOperator *UNUSED(op))
+void initToSphere(TransInfo *t)
 {
   t->mode = TFM_TOSPHERE;
+  t->transform = applyToSphere;
 
   initMouseInputMode(t, &t->mouse, INPUT_HORIZONTAL_RATIO);
 
@@ -253,6 +253,7 @@ static void initToSphere(TransInfo *t, struct wmOperator *UNUSED(op))
   t->num.unit_type[0] = B_UNIT_NONE;
 
   t->num.val_flag[0] |= NUM_NULL_ONE | NUM_NO_NEGATIVE;
+  t->flag |= T_NO_CONSTRAINT;
 
   struct ToSphereInfo *data = MEM_callocN(sizeof(*data), __func__);
   t->custom.mode.data = data;
@@ -262,14 +263,3 @@ static void initToSphere(TransInfo *t, struct wmOperator *UNUSED(op))
 }
 
 /** \} */
-
-TransModeInfo TransMode_tosphere = {
-    /*flags*/ T_NO_CONSTRAINT,
-    /*init_fn*/ initToSphere,
-    /*transform_fn*/ applyToSphere,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

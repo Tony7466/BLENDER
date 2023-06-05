@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -13,12 +11,12 @@ namespace blender::nodes::node_geo_input_mesh_face_neighbors_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Int>("Vertex Count")
+  b.add_output<decl::Int>(N_("Vertex Count"))
       .field_source()
-      .description("Number of edges or points in the face");
-  b.add_output<decl::Int>("Face Count")
+      .description(N_("Number of edges or points in the face"));
+  b.add_output<decl::Int>(N_("Face Count"))
       .field_source()
-      .description("Number of faces which share an edge with the face");
+      .description(N_("Number of faces which share an edge with the face"));
 }
 
 static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const eAttrDomain domain)
@@ -52,7 +50,7 @@ class FaceNeighborCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     return construct_neighbor_count_varray(mesh, domain);
   }
@@ -93,7 +91,7 @@ class FaceVertexCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     return construct_vertex_count_varray(mesh, domain);
   }
@@ -132,7 +130,7 @@ void register_node_type_geo_input_mesh_face_neighbors()
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_INPUT_MESH_FACE_NEIGHBORS, "Face Neighbors", NODE_CLASS_INPUT);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  node_type_size_preset(&ntype, NODE_SIZE_MIDDLE);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);

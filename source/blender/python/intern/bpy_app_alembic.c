@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation */
 
 /** \file
  * \ingroup pythonintern
@@ -84,8 +83,8 @@ PyObject *BPY_app_alembic_struct(void)
   /* prevent user from creating new instances */
   BlenderAppABCType.tp_init = NULL;
   BlenderAppABCType.tp_new = NULL;
-  /* Without this we can't do `set(sys.modules)` #29635. */
-  BlenderAppABCType.tp_hash = (hashfunc)_Py_HashPointer;
+  BlenderAppABCType.tp_hash = (hashfunc)
+      _Py_HashPointer; /* without this we can't do set(sys.modules) #29635. */
 
   return ret;
 }

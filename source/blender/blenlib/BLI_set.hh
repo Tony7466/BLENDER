@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -68,9 +66,8 @@
 namespace blender {
 
 template<
-    /**
-     * Type of the elements that are stored in this set. It has to be movable.
-     * Furthermore, the hash and is-equal functions have to support it.
+    /** Type of the elements that are stored in this set. It has to be movable. Furthermore, the
+     * hash and is-equal functions have to support it.
      */
     typename Key,
     /**

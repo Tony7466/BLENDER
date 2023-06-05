@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -71,7 +69,7 @@ class GeometryDataSource : public DataSource {
   }
 
   bool has_selection_filter() const override;
-  IndexMask apply_selection_filter(IndexMaskMemory &memory) const;
+  IndexMask apply_selection_filter(Vector<int64_t> &indices) const;
 
   void foreach_default_column_ids(
       FunctionRef<void(const SpreadsheetColumnID &, bool is_extra)> fn) const override;

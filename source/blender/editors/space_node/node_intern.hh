@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spnode
@@ -13,7 +12,7 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "UI_interface.h"
 #include "UI_interface.hh"
@@ -183,7 +182,7 @@ void node_keymap(wmKeyConfig *keyconf);
 
 /* node_select.cc */
 
-rctf node_frame_rect_inside(const SpaceNode &snode, const bNode &node);
+rctf node_frame_rect_inside(const bNode &node);
 bool node_or_socket_isect_event(const bContext &C, const wmEvent &event);
 
 void node_deselect_all(bNodeTree &node_tree);
@@ -191,10 +190,6 @@ void node_socket_select(bNode *node, bNodeSocket &sock);
 void node_socket_deselect(bNode *node, bNodeSocket &sock, bool deselect_node);
 void node_deselect_all_input_sockets(bNodeTree &node_tree, bool deselect_nodes);
 void node_deselect_all_output_sockets(bNodeTree &node_tree, bool deselect_nodes);
-/**
- * Select nodes that are paired to a selected node.
- */
-void node_select_paired(bNodeTree &node_tree);
 void node_select_single(bContext &C, bNode &node);
 
 void NODE_OT_select(wmOperatorType *ot);
@@ -223,10 +218,7 @@ void NODE_OT_backimage_sample(wmOperatorType *ot);
 
 /* drawnode.cc */
 
-NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
-                                              const bNode *node,
-                                              int x,
-                                              int y);
+NodeResizeDirection node_get_resize_direction(const bNode *node, int x, int y);
 
 void nodelink_batch_start(SpaceNode &snode);
 void nodelink_batch_end(SpaceNode &snode);
@@ -255,8 +247,6 @@ void node_draw_link_bezier(const bContext &C,
                            int th_col3,
                            bool selected);
 
-std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
-                                                      const bNodeLink &link);
 void node_link_bezier_points_evaluated(const bNodeLink &link,
                                        std::array<float2, NODE_LINK_RESOL + 1> &coords);
 
@@ -327,7 +317,7 @@ bool composite_node_active(bContext *C);
 bool composite_node_editable(bContext *C);
 
 bool node_has_hidden_sockets(bNode *node);
-void node_set_hidden_sockets(bNode *node, int set);
+void node_set_hidden_sockets(SpaceNode *snode, bNode *node, int set);
 int node_render_changed_exec(bContext *, wmOperator *);
 bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         const float2 &cursor,

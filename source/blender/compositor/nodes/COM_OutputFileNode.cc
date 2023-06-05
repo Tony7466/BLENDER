@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #include "COM_OutputFileNode.h"
 
@@ -109,7 +108,7 @@ void OutputFileNode::convert_to_operations(NodeConverter &converter,
           BLI_path_join(path, FILE_MAX, storage->base_path, sockdata->path);
         }
         else {
-          STRNCPY(path, storage->base_path);
+          BLI_strncpy(path, storage->base_path, FILE_MAX);
           BLI_path_slash_ensure(path, FILE_MAX);
         }
 

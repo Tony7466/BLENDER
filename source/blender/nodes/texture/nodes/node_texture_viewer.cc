@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup texnodes
@@ -38,7 +37,7 @@ void register_node_type_tex_viewer(void)
   static bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_VIEWER, "Viewer", NODE_CLASS_OUTPUT);
-  blender::bke::node_type_socket_templates(&ntype, inputs, nullptr);
+  node_type_socket_templates(&ntype, inputs, nullptr);
   ntype.exec_fn = exec;
 
   ntype.no_muting = true;

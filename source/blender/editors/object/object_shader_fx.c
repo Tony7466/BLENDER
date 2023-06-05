@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation */
 
 /** \file
  * \ingroup edobj
@@ -79,7 +78,7 @@ ShaderFxData *ED_object_shaderfx_add(
   BLI_addtail(&ob->shader_fx, new_fx);
 
   if (name) {
-    STRNCPY_UTF8(new_fx->name, name);
+    BLI_strncpy_utf8(new_fx->name, name, sizeof(new_fx->name));
   }
 
   /* make sure effect data has unique name */
@@ -242,7 +241,7 @@ void ED_object_shaderfx_link(Object *dst, Object *src)
 void ED_object_shaderfx_copy(Object *dst, ShaderFxData *fx)
 {
   ShaderFxData *nfx = BKE_shaderfx_new(fx->type);
-  STRNCPY(nfx->name, fx->name);
+  BLI_strncpy(nfx->name, fx->name, sizeof(nfx->name));
   BKE_shaderfx_copydata(fx, nfx);
   BLI_addtail(&dst->shader_fx, nfx);
 
@@ -683,7 +682,7 @@ static int shaderfx_copy_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  STRNCPY(nfx->name, fx->name);
+  BLI_strncpy(nfx->name, fx->name, sizeof(nfx->name));
   /* Make sure effect data has unique name. */
   BKE_shaderfx_unique_name(&ob->shader_fx, nfx);
 

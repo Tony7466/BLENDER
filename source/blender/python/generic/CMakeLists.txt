@@ -1,5 +1,3 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
-#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -47,9 +45,5 @@ set(LIB
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
 )
-
-if(WITH_PYTHON_MODULE)
-  add_definitions(-DWITH_PYTHON_MODULE)
-endif()
 
 blender_add_lib(bf_python_ext "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

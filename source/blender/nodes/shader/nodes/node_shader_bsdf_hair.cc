@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -11,22 +10,25 @@ namespace blender::nodes::node_shader_bsdf_hair_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Color").default_value({0.8f, 0.8f, 0.8f, 1.0f});
-  b.add_input<decl::Float>("Offset").default_value(0.0f).min(-M_PI_2).max(M_PI_2).subtype(
-      PROP_ANGLE);
-  b.add_input<decl::Float>("RoughnessU")
+  b.add_input<decl::Color>(N_("Color")).default_value({0.8f, 0.8f, 0.8f, 1.0f});
+  b.add_input<decl::Float>(N_("Offset"))
+      .default_value(0.0f)
+      .min(-M_PI_2)
+      .max(M_PI_2)
+      .subtype(PROP_ANGLE);
+  b.add_input<decl::Float>(N_("RoughnessU"))
       .default_value(0.1f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("RoughnessV")
+  b.add_input<decl::Float>(N_("RoughnessV"))
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Vector>("Tangent").hide_value();
-  b.add_input<decl::Float>("Weight").unavailable();
-  b.add_output<decl::Shader>("BSDF");
+  b.add_input<decl::Vector>(N_("Tangent")).hide_value();
+  b.add_input<decl::Float>(N_("Weight")).unavailable();
+  b.add_output<decl::Shader>(N_("BSDF"));
 }
 
 static void node_shader_buts_hair(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -56,7 +58,7 @@ void register_node_type_sh_bsdf_hair()
   ntype.declare = file_ns::node_declare;
   ntype.add_ui_poll = object_cycles_shader_nodes_poll;
   ntype.draw_buttons = file_ns::node_shader_buts_hair;
-  blender::bke::node_type_size(&ntype, 150, 60, 200);
+  node_type_size(&ntype, 150, 60, 200);
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_hair;
 
   nodeRegisterType(&ntype);

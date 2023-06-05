@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -134,12 +132,12 @@ Imath::M44d get_matrix(const IXformSchema &schema, const chrono_t time)
   return s0.getMatrix();
 }
 
-Mesh *AbcObjectReader::read_mesh(Mesh *existing_mesh,
-                                 const Alembic::Abc::ISampleSelector & /*sample_sel*/,
-                                 int /*read_flag*/,
-                                 const char * /*velocity_name*/,
-                                 const float /*velocity_scale*/,
-                                 const char ** /*err_str*/)
+struct Mesh *AbcObjectReader::read_mesh(struct Mesh *existing_mesh,
+                                        const Alembic::Abc::ISampleSelector & /*sample_sel*/,
+                                        int /*read_flag*/,
+                                        const char * /*velocity_name*/,
+                                        const float /*velocity_scale*/,
+                                        const char ** /*err_str*/)
 {
   return existing_mesh;
 }
@@ -173,7 +171,7 @@ void AbcObjectReader::setupObjectTransform(const chrono_t time)
     bConstraint *con = BKE_constraint_add_for_object(
         m_object, nullptr, CONSTRAINT_TYPE_TRANSFORM_CACHE);
     bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
-    STRNCPY(data->object_path, m_iobject.getFullName().c_str());
+    BLI_strncpy(data->object_path, m_iobject.getFullName().c_str(), FILE_MAX);
 
     data->cache_file = m_settings->cache_file;
     id_us_plus(&data->cache_file->id);
@@ -269,7 +267,7 @@ void AbcObjectReader::addCacheModifier()
   mcmd->cache_file = m_settings->cache_file;
   id_us_plus(&mcmd->cache_file->id);
 
-  STRNCPY(mcmd->object_path, m_iobject.getFullName().c_str());
+  BLI_strncpy(mcmd->object_path, m_iobject.getFullName().c_str(), FILE_MAX);
 }
 
 chrono_t AbcObjectReader::minTime() const

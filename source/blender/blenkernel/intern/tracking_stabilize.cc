@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -1285,7 +1284,7 @@ void BKE_tracking_stabilization_data_get(MovieClip *clip,
   discard_stabilization_working_context(ctx);
 }
 
-typedef void (*interpolation_func)(const ImBuf *, ImBuf *, float, float, int, int);
+typedef void (*interpolation_func)(const struct ImBuf *, struct ImBuf *, float, float, int, int);
 
 typedef struct TrackingStabilizeFrameInterpolationData {
   ImBuf *ibuf;
@@ -1357,10 +1356,10 @@ ImBuf *BKE_tracking_stabilize_frame(
 
   /* Allocate frame for stabilization result, copy alpha mode and color-space. */
   ibuf_flags = 0;
-  if (ibuf->byte_buffer.data) {
+  if (ibuf->rect) {
     ibuf_flags |= IB_rect;
   }
-  if (ibuf->float_buffer.data) {
+  if (ibuf->rect_float) {
     ibuf_flags |= IB_rectfloat;
   }
 
@@ -1403,7 +1402,7 @@ ImBuf *BKE_tracking_stabilize_frame(
   BLI_task_parallel_range(
       0, tmpibuf->y, &data, tracking_stabilize_frame_interpolation_cb, &settings);
 
-  if (tmpibuf->float_buffer.data) {
+  if (tmpibuf->rect_float) {
     tmpibuf->userflags |= IB_RECT_INVALID;
   }
 

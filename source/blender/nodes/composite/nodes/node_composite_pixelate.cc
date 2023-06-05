@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -18,8 +17,8 @@ namespace blender::nodes::node_composite_pixelate_cc {
 
 static void cmp_node_pixelate_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Color");
-  b.add_output<decl::Color>("Color");
+  b.add_input<decl::Color>(N_("Color"));
+  b.add_output<decl::Color>(N_("Color"));
 }
 
 using namespace blender::realtime_compositor;

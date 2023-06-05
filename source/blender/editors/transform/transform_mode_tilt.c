@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -50,13 +49,13 @@ static void applyTilt(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    SNPRINTF(str, TIP_("Tilt: %s° %s"), &c[0], t->proptext);
+    BLI_snprintf(str, sizeof(str), TIP_("Tilt: %s° %s"), &c[0], t->proptext);
 
     /* XXX For some reason, this seems needed for this op, else RNA prop is not updated... :/ */
     t->values_final[0] = final;
   }
   else {
-    SNPRINTF(str, TIP_("Tilt: %.2f° %s"), RAD2DEGF(final), t->proptext);
+    BLI_snprintf(str, sizeof(str), TIP_("Tilt: %.2f° %s"), RAD2DEGF(final), t->proptext);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -77,9 +76,10 @@ static void applyTilt(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initTilt(TransInfo *t, struct wmOperator *UNUSED(op))
+void initTilt(TransInfo *t)
 {
   t->mode = TFM_TILT;
+  t->transform = applyTilt;
 
   initMouseInputMode(t, &t->mouse, INPUT_ANGLE);
 
@@ -92,17 +92,8 @@ static void initTilt(TransInfo *t, struct wmOperator *UNUSED(op))
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_use_radians = (t->scene->unit.system_rotation == USER_UNIT_ROT_RADIANS);
   t->num.unit_type[0] = B_UNIT_ROTATION;
+
+  t->flag |= T_NO_CONSTRAINT | T_NO_PROJECT;
 }
 
 /** \} */
-
-TransModeInfo TransMode_tilt = {
-    /*flags*/ T_NO_CONSTRAINT | T_NO_PROJECT,
-    /*init_fn*/ initTilt,
-    /*transform_fn*/ applyTilt,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

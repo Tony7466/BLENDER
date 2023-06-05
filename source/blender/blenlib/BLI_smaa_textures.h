@@ -1,10 +1,9 @@
-/* SPDX-FileCopyrightText: 2013 Jorge Jimenez <jorge@iryoku.com>
- * SPDX-FileCopyrightText: 2013 Jose I. Echevarria <joseignacioechevarria@gmail.com>
- * SPDX-FileCopyrightText: 2013 Belen Masia <bmasia@unizar.es>
- * SPDX-FileCopyrightText: 2013 Fernando Navarro <fernandn@microsoft.com>
- * SPDX-FileCopyrightText: 2013 Diego Gutierrez <diegog@unizar.es>
- *
- * SPDX-License-Identifier: MIT */
+/* SPDX-License-Identifier: MIT
+ * Copyright 2013 Jorge Jimenez <jorge@iryoku.com>
+ *           2013 Jose I. Echevarria <joseignacioechevarria@gmail.com>
+ *           2013 Belen Masia <bmasia@unizar.es>
+ *           2013 Fernando Navarro <fernandn@microsoft.com>
+ *           2013 Diego Gutierrez <diegog@unizar.es> */
 
 #pragma once
 

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -78,8 +77,6 @@ enum class NodeType {
   /* Used by all operations which are updating object when something is
    * changed in view layer. */
   OBJECT_FROM_LAYER,
-  /* Hierarchy of objects and collections */
-  HIERARCHY,
   /* Audio-related evaluation. */
   AUDIO,
   ARMATURE,

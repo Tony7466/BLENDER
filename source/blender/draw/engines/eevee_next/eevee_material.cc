@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation.
+ */
 
 /** \file
  * \ingroup eevee
@@ -11,7 +10,7 @@
 
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "NOD_shader.h"
 
 #include "eevee_instance.hh"
@@ -74,7 +73,7 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
 {
   {
     diffuse_mat = (::Material *)BKE_id_new_nomain(ID_MA, "EEVEE default diffuse");
-    bNodeTree *ntree = bke::ntreeAddTreeEmbedded(
+    bNodeTree *ntree = ntreeAddTreeEmbedded(
         nullptr, &diffuse_mat->id, "Shader Nodetree", ntreeType_Shader->idname);
     diffuse_mat->use_nodes = true;
     /* To use the forward pipeline. */
@@ -96,7 +95,7 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
   }
   {
     glossy_mat = (::Material *)BKE_id_new_nomain(ID_MA, "EEVEE default metal");
-    bNodeTree *ntree = bke::ntreeAddTreeEmbedded(
+    bNodeTree *ntree = ntreeAddTreeEmbedded(
         nullptr, &glossy_mat->id, "Shader Nodetree", ntreeType_Shader->idname);
     glossy_mat->use_nodes = true;
     /* To use the forward pipeline. */
@@ -120,7 +119,7 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
   }
   {
     error_mat_ = (::Material *)BKE_id_new_nomain(ID_MA, "EEVEE default error");
-    bNodeTree *ntree = bke::ntreeAddTreeEmbedded(
+    bNodeTree *ntree = ntreeAddTreeEmbedded(
         nullptr, &error_mat_->id, "Shader Nodetree", ntreeType_Shader->idname);
     error_mat_->use_nodes = true;
 
@@ -204,7 +203,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     matpass.sub_pass = nullptr;
   }
   else {
-    ShaderKey shader_key(matpass.gpumat, geometry_type, pipeline_type, blender_mat->blend_flag);
+    ShaderKey shader_key(matpass.gpumat, geometry_type, pipeline_type);
 
     PassMain::Sub *shader_sub = shader_map_.lookup_or_add_cb(shader_key, [&]() {
       /* First time encountering this shader. Create a sub that will contain materials using it. */

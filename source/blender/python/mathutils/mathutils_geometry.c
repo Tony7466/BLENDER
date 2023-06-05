@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pymathutils
@@ -1827,7 +1825,7 @@ static PyMethodDef M_Geometry_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyModuleDef M_Geometry_module_def = {
+static struct PyModuleDef M_Geometry_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "mathutils.geometry",
     /*m_doc*/ M_Geometry_doc,

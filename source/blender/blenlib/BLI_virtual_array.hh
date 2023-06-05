@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -109,7 +107,7 @@ template<typename T> class VArrayImpl {
    * Copy values from the virtual array into the provided span. The index of the value in the
    * virtual array is the same as the index in the span.
    */
-  virtual void materialize(const IndexMask &mask, T *dst) const
+  virtual void materialize(IndexMask mask, T *dst) const
   {
     mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
   }
@@ -117,7 +115,7 @@ template<typename T> class VArrayImpl {
   /**
    * Same as #materialize but #r_span is expected to be uninitialized.
    */
-  virtual void materialize_to_uninitialized(const IndexMask &mask, T *dst) const
+  virtual void materialize_to_uninitialized(IndexMask mask, T *dst) const
   {
     mask.foreach_index([&](const int64_t i) { new (dst + i) T(this->get(i)); });
   }
@@ -127,18 +125,25 @@ template<typename T> class VArrayImpl {
    * in virtual array is not the same as the index in the output span. Instead, the span is filled
    * without gaps.
    */
-  virtual void materialize_compressed(const IndexMask &mask, T *dst) const
+  virtual void materialize_compressed(IndexMask mask, T *dst) const
   {
-    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        dst[i] = this->get(best_mask[i]);
+      }
+    });
   }
 
   /**
    * Same as #materialize_compressed but #r_span is expected to be uninitialized.
    */
-  virtual void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const
+  virtual void materialize_compressed_to_uninitialized(IndexMask mask, T *dst) const
   {
-    mask.foreach_index(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) T(this->get(i)); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        new (dst + i) T(this->get(best_mask[i]));
+      }
+    });
   }
 
   /**
@@ -222,26 +227,32 @@ template<typename T> class VArrayImpl_For_Span : public VMutableArrayImpl<T> {
     return CommonVArrayInfo(CommonVArrayInfo::Type::Span, true, data_);
   }
 
-  void materialize(const IndexMask &mask, T *dst) const override
+  void materialize(IndexMask mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = data_[i]; });
+    mask.foreach_index([&](const int64_t i) { dst[i] = data_[i]; });
   }
 
-  void materialize_to_uninitialized(const IndexMask &mask, T *dst) const override
+  void materialize_to_uninitialized(IndexMask mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) T(data_[i]); });
+    mask.foreach_index([&](const int64_t i) { new (dst + i) T(data_[i]); });
   }
 
-  void materialize_compressed(const IndexMask &mask, T *dst) const override
+  void materialize_compressed(IndexMask mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = data_[i]; });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        dst[i] = data_[best_mask[i]];
+      }
+    });
   }
 
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const override
+  void materialize_compressed_to_uninitialized(IndexMask mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) T(data_[i]); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        new (dst + i) T(data_[best_mask[i]]);
+      }
+    });
   }
 };
 
@@ -314,22 +325,22 @@ template<typename T> class VArrayImpl_For_Single final : public VArrayImpl<T> {
     return CommonVArrayInfo(CommonVArrayInfo::Type::Single, true, &value_);
   }
 
-  void materialize(const IndexMask &mask, T *dst) const override
+  void materialize(IndexMask mask, T *dst) const override
   {
     mask.foreach_index([&](const int64_t i) { dst[i] = value_; });
   }
 
-  void materialize_to_uninitialized(const IndexMask &mask, T *dst) const override
+  void materialize_to_uninitialized(IndexMask mask, T *dst) const override
   {
     mask.foreach_index([&](const int64_t i) { new (dst + i) T(value_); });
   }
 
-  void materialize_compressed(const IndexMask &mask, T *dst) const override
+  void materialize_compressed(IndexMask mask, T *dst) const override
   {
     initialized_fill_n(dst, mask.size(), value_);
   }
 
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const override
+  void materialize_compressed_to_uninitialized(IndexMask mask, T *dst) const override
   {
     uninitialized_fill_n(dst, mask.size(), value_);
   }
@@ -358,25 +369,32 @@ template<typename T, typename GetFunc> class VArrayImpl_For_Func final : public 
     return get_func_(index);
   }
 
-  void materialize(const IndexMask &mask, T *dst) const override
+  void materialize(IndexMask mask, T *dst) const override
   {
     mask.foreach_index([&](const int64_t i) { dst[i] = get_func_(i); });
   }
 
-  void materialize_to_uninitialized(const IndexMask &mask, T *dst) const override
+  void materialize_to_uninitialized(IndexMask mask, T *dst) const override
   {
     mask.foreach_index([&](const int64_t i) { new (dst + i) T(get_func_(i)); });
   }
 
-  void materialize_compressed(const IndexMask &mask, T *dst) const override
+  void materialize_compressed(IndexMask mask, T *dst) const override
   {
-    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = get_func_(i); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        dst[i] = get_func_(best_mask[i]);
+      }
+    });
   }
 
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const override
+  void materialize_compressed_to_uninitialized(IndexMask mask, T *dst) const override
   {
-    mask.foreach_index(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) T(get_func_(i)); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        new (dst + i) T(get_func_(best_mask[i]));
+      }
+    });
   }
 };
 
@@ -414,27 +432,32 @@ class VArrayImpl_For_DerivedSpan final : public VMutableArrayImpl<ElemT> {
     SetFunc(data_[index], std::move(value));
   }
 
-  void materialize(const IndexMask &mask, ElemT *dst) const override
+  void materialize(IndexMask mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = GetFunc(data_[i]); });
+    mask.foreach_index([&](const int64_t i) { dst[i] = GetFunc(data_[i]); });
   }
 
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  void materialize_to_uninitialized(IndexMask mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { new (dst + i) ElemT(GetFunc(data_[i])); });
+    mask.foreach_index([&](const int64_t i) { new (dst + i) ElemT(GetFunc(data_[i])); });
   }
 
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
+  void materialize_compressed(IndexMask mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFunc(data_[i]); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        dst[i] = GetFunc(data_[best_mask[i]]);
+      }
+    });
   }
 
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  void materialize_compressed_to_uninitialized(IndexMask mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(GetFunc(data_[i])); });
+    mask.to_best_mask_type([&](auto best_mask) {
+      for (const int64_t i : IndexRange(best_mask.size())) {
+        new (dst + i) ElemT(GetFunc(data_[best_mask[i]]));
+      }
+    });
   }
 };
 
@@ -722,7 +745,7 @@ template<typename T> class VArrayCommon {
   }
 
   /** Copy some indices of the virtual array into a span. */
-  void materialize(const IndexMask &mask, MutableSpan<T> r_span) const
+  void materialize(IndexMask mask, MutableSpan<T> r_span) const
   {
     BLI_assert(mask.min_array_size() <= this->size());
     impl_->materialize(mask, r_span.data());
@@ -733,19 +756,19 @@ template<typename T> class VArrayCommon {
     this->materialize_to_uninitialized(IndexMask(this->size()), r_span);
   }
 
-  void materialize_to_uninitialized(const IndexMask &mask, MutableSpan<T> r_span) const
+  void materialize_to_uninitialized(IndexMask mask, MutableSpan<T> r_span) const
   {
     BLI_assert(mask.min_array_size() <= this->size());
     impl_->materialize_to_uninitialized(mask, r_span.data());
   }
 
   /** Copy some elements of the virtual array into a span. */
-  void materialize_compressed(const IndexMask &mask, MutableSpan<T> r_span) const
+  void materialize_compressed(IndexMask mask, MutableSpan<T> r_span) const
   {
     impl_->materialize_compressed(mask, r_span.data());
   }
 
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, MutableSpan<T> r_span) const
+  void materialize_compressed_to_uninitialized(IndexMask mask, MutableSpan<T> r_span) const
   {
     impl_->materialize_compressed_to_uninitialized(mask, r_span.data());
   }

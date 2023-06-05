@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. */
 
 /** \file
  * \ingroup DNA
@@ -721,8 +720,7 @@ typedef struct bGPdata {
    * active frame and the one before it (0 = only the ghost itself).
    */
   short gstep;
-  /**
-   * Ghosts After: max number of ghost frames to show after
+  /** Ghosts After: max number of ghost frames to show after
    * active frame and the following it (0 = only the ghost itself).
    */
   short gstep_next;

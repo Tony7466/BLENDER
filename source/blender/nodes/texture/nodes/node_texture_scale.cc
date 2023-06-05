@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup texnodes
@@ -54,7 +53,7 @@ void register_node_type_tex_scale()
   static bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_SCALE, "Scale", NODE_CLASS_DISTORT);
-  blender::bke::node_type_socket_templates(&ntype, inputs, outputs);
+  node_type_socket_templates(&ntype, inputs, outputs);
   ntype.exec_fn = exec;
 
   nodeRegisterType(&ntype);

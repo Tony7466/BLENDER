@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -217,7 +215,7 @@ void _bmo_slot_copy(BMOpSlot slot_args_src[BMO_OP_MAX_SLOTS],
                     const char *slot_name_src,
                     BMOpSlot slot_args_dst[BMO_OP_MAX_SLOTS],
                     const char *slot_name_dst,
-                    MemArena *arena_dst)
+                    struct MemArena *arena_dst)
 {
   BMOpSlot *slot_src = BMO_slot_get(slot_args_src, slot_name_src);
   BMOpSlot *slot_dst = BMO_slot_get(slot_args_dst, slot_name_dst);
@@ -236,7 +234,7 @@ void _bmo_slot_copy(BMOpSlot slot_args_src[BMO_OP_MAX_SLOTS],
     slot_dst->data.buf = NULL;
     slot_dst->len = slot_src->len;
     if (slot_dst->len) {
-      /* Check destination has all flags enabled that the source has. */
+      /* check dest has all flags enabled that the source has */
       const eBMOpSlotSubType_Elem src_elem_flag = (slot_src->slot_subtype.elem & BM_ALL_NOLOOP);
       const eBMOpSlotSubType_Elem dst_elem_flag = (slot_dst->slot_subtype.elem & BM_ALL_NOLOOP);
 
@@ -925,7 +923,7 @@ void _bmo_slot_buffer_append(BMOpSlot slot_args_dst[BMO_OP_MAX_SLOTS],
                              const char *slot_name_dst,
                              BMOpSlot slot_args_src[BMO_OP_MAX_SLOTS],
                              const char *slot_name_src,
-                             MemArena *arena_dst)
+                             struct MemArena *arena_dst)
 {
   BMOpSlot *slot_dst = BMO_slot_get(slot_args_dst, slot_name_dst);
   BMOpSlot *slot_src = BMO_slot_get(slot_args_src, slot_name_src);
@@ -1661,7 +1659,7 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
         GOTO_ERROR("name to slot code check failed");
       }
 
-      STRNCPY(slot_name, fmt);
+      BLI_strncpy(slot_name, fmt, sizeof(slot_name));
 
       state = false;
       fmt += i;

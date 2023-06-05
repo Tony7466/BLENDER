@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2009 Google Inc. All rights reserved. (BSD-3-Clause)
- * SPDX-FileCopyrightText: 2023 Blender Foundation (GPL-2.0-or-later).
- *
- * SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause */
+/* SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause
+ * Copyright 2009 Google Inc. All rights reserved. (BSD-3-Clause)
+ * Copyright 2023 Blender Foundation (GPL-2.0-or-later). */
 
 /**
  * Some portions of this file are from the Chromium project and have been adapted

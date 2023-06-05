@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -35,7 +34,7 @@
 #include "ED_util.h"
 #include "ED_view3d.h"
 
-#include "paint_intern.hh"
+#include "paint_intern.h"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -746,10 +745,11 @@ static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
   WM_modalkeymap_operator_items_to_string_buf( \
       op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
 
-  SNPRINTF(header,
-           TIP_("%s: Confirm, %s: Cancel"),
-           WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
-           WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
+  BLI_snprintf(header,
+               sizeof(header),
+               TIP_("%s: Confirm, %s: Cancel"),
+               WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
+               WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
 
 #undef WM_MODALKEY
 

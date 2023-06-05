@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -148,7 +146,7 @@ static PyObject *bpy_utils_previews_release(PyObject *UNUSED(self), PyObject *ar
   Py_RETURN_NONE;
 }
 
-static PyMethodDef bpy_utils_previews_methods[] = {
+static struct PyMethodDef bpy_utils_previews_methods[] = {
     /* Can't use METH_KEYWORDS alone, see http://bugs.python.org/issue11587 */
     {"new", (PyCFunction)bpy_utils_previews_new, METH_VARARGS, bpy_utils_previews_new_doc},
     {"load", (PyCFunction)bpy_utils_previews_load, METH_VARARGS, bpy_utils_previews_load_doc},
@@ -163,7 +161,7 @@ PyDoc_STRVAR(
     bpy_utils_previews_doc,
     "This object contains basic static methods to handle cached (non-ID) previews in Blender\n"
     "(low-level API, not exposed to final users).");
-static PyModuleDef bpy_utils_previews_module = {
+static struct PyModuleDef bpy_utils_previews_module = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bpy._utils_previews",
     /*m_doc*/ bpy_utils_previews_doc,

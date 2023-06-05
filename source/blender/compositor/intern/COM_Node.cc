@@ -1,8 +1,7 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"

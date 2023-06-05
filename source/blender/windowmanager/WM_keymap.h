@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 #pragma once
 
@@ -63,10 +62,7 @@ wmKeyMapItem *WM_keymap_add_item(struct wmKeyMap *keymap,
 wmKeyMapItem *WM_keymap_add_item_copy(struct wmKeyMap *keymap, wmKeyMapItem *kmi_src);
 
 bool WM_keymap_remove_item(struct wmKeyMap *keymap, struct wmKeyMapItem *kmi);
-int WM_keymap_item_to_string(const wmKeyMapItem *kmi,
-                             bool compact,
-                             char *result,
-                             int result_maxncpy);
+int WM_keymap_item_to_string(const wmKeyMapItem *kmi, bool compact, char *result, int result_len);
 
 wmKeyMap *WM_keymap_list_find(ListBase *lb, const char *idname, int spaceid, int regionid);
 wmKeyMap *WM_keymap_list_find_spaceid_or_empty(ListBase *lb,
@@ -137,13 +133,13 @@ void WM_keymap_fix_linking(void);
 /* Modal Keymap */
 
 int WM_modalkeymap_items_to_string(
-    const struct wmKeyMap *km, int propvalue, bool compact, char *result, int result_maxncpy);
+    const struct wmKeyMap *km, int propvalue, bool compact, char *result, int result_len);
 int WM_modalkeymap_operator_items_to_string(
-    struct wmOperatorType *ot, int propvalue, bool compact, char *result, int result_maxncpy);
+    struct wmOperatorType *ot, int propvalue, bool compact, char *result, int result_len);
 char *WM_modalkeymap_operator_items_to_string_buf(struct wmOperatorType *ot,
                                                   int propvalue,
                                                   bool compact,
-                                                  int result_maxncpy,
+                                                  int max_len,
                                                   int *r_available_len,
                                                   char **r_result);
 
@@ -184,7 +180,7 @@ int WM_keymap_item_raw_to_string(short shift,
                                  short type,
                                  bool compact,
                                  char *result,
-                                 int result_maxncpy);
+                                 int result_len);
 /**
  * \param include_mask, exclude_mask:
  * Event types to include/exclude when looking up keys (#eEventType_Mask).
@@ -202,7 +198,7 @@ char *WM_key_event_operator_string(const struct bContext *C,
                                    struct IDProperty *properties,
                                    bool is_strict,
                                    char *result,
-                                   int result_maxncpy);
+                                   int result_len);
 
 wmKeyMapItem *WM_key_event_operator_from_keymap(struct wmKeyMap *keymap,
                                                 const char *opname,

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -63,7 +62,7 @@ struct DepthDropper {
   char name[200];
 };
 
-static void depthdropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, void *arg)
+static void depthdropper_draw_cb(const struct bContext * /*C*/, ARegion * /*region*/, void *arg)
 {
   DepthDropper *ddr = static_cast<DepthDropper *>(arg);
   eyedropper_draw_cursor_text_region(ddr->name_pos, ddr->name);
@@ -159,7 +158,7 @@ static void depthdropper_depth_sample_pt(bContext *C,
     if (area->spacetype == SPACE_VIEW3D) {
       ARegion *region = BKE_area_find_region_xy(area, RGN_TYPE_WINDOW, m_xy);
       if (region) {
-        Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+        struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
         View3D *v3d = static_cast<View3D *>(area->spacedata.first);
         RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
         /* weak, we could pass in some reference point */
@@ -195,7 +194,7 @@ static void depthdropper_depth_sample_pt(bContext *C,
                                    false);
         }
         else {
-          STRNCPY(ddr->name, "Nothing under cursor");
+          BLI_strncpy(ddr->name, "Nothing under cursor", sizeof(ddr->name));
         }
       }
     }

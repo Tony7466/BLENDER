@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup shdnodes
@@ -12,17 +11,17 @@ namespace blender::nodes::node_shader_normal_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Normal")
+  b.add_input<decl::Vector>(N_("Normal"))
       .default_value({0.0f, 0.0f, 1.0f})
       .min(-1.0f)
       .max(1.0f)
       .subtype(PROP_DIRECTION);
-  b.add_output<decl::Vector>("Normal")
+  b.add_output<decl::Vector>(N_("Normal"))
       .default_value({0.0f, 0.0f, 1.0f})
       .min(-1.0f)
       .max(1.0f)
       .subtype(PROP_DIRECTION);
-  b.add_output<decl::Float>("Dot");
+  b.add_output<decl::Float>(N_("Dot"));
 }
 
 static int gpu_shader_normal(GPUMaterial *mat,

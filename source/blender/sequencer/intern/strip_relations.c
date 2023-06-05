@@ -1,8 +1,7 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
- * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved.
+ *           2003-2009 Blender Foundation.
+ *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
 
 /** \file
  * \ingroup bke
@@ -409,14 +408,14 @@ void SEQ_relations_sequence_free_anim(Sequence *seq)
   BLI_listbase_clear(&seq->anims);
 }
 
-void SEQ_relations_session_uuid_generate(Sequence *sequence)
+void SEQ_relations_session_uuid_generate(struct Sequence *sequence)
 {
   sequence->runtime.session_uuid = BLI_session_uuid_generate();
 }
 
 static bool get_uuids_cb(Sequence *seq, void *user_data)
 {
-  GSet *used_uuids = (GSet *)user_data;
+  struct GSet *used_uuids = (struct GSet *)user_data;
   const SessionUUID *session_uuid = &seq->runtime.session_uuid;
   if (!BLI_session_uuid_is_generated(session_uuid)) {
     printf("Sequence %s does not have UUID generated.\n", seq->name);
@@ -438,7 +437,7 @@ void SEQ_relations_check_uuids_unique_and_report(const Scene *scene)
     return;
   }
 
-  GSet *used_uuids = BLI_gset_new(
+  struct GSet *used_uuids = BLI_gset_new(
       BLI_session_uuid_ghash_hash, BLI_session_uuid_ghash_compare, "sequencer used uuids");
 
   SEQ_for_each_callback(&scene->ed->seqbase, get_uuids_cb, used_uuids);
@@ -446,7 +445,7 @@ void SEQ_relations_check_uuids_unique_and_report(const Scene *scene)
   BLI_gset_free(used_uuids, NULL);
 }
 
-Sequence *SEQ_find_metastrip_by_sequence(ListBase *seqbase, Sequence *meta, Sequence *seq)
+struct Sequence *SEQ_find_metastrip_by_sequence(ListBase *seqbase, Sequence *meta, Sequence *seq)
 {
   Sequence *iseq;
 

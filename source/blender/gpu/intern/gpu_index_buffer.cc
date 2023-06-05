@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 by Mike Erwin. All rights reserved. */
 
 /** \file
  * \ingroup gpu
@@ -319,7 +318,7 @@ void IndexBuf::init_build_on_device(uint index_len)
 
 void IndexBuf::init_subrange(IndexBuf *elem_src, uint start, uint length)
 {
-  /* We don't support nested sub-ranges. */
+  /* We don't support nested subranges. */
   BLI_assert(elem_src && elem_src->is_subrange_ == false);
   BLI_assert((length == 0) || (start + length <= elem_src->index_len_));
 

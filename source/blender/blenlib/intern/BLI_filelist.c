@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -119,7 +117,7 @@ static void bli_builddir(struct BuildDirCtx *dir_ctx, const char *dirname)
     return;
   }
 
-  ListBase dirbase = {NULL, NULL};
+  struct ListBase dirbase = {NULL, NULL};
   int newnum = 0;
   const struct dirent *fname;
   bool has_current = false, has_parent = false;
@@ -153,7 +151,7 @@ static void bli_builddir(struct BuildDirCtx *dir_ctx, const char *dirname)
   if (!has_parent) {
     char pardir[FILE_MAXDIR];
 
-    STRNCPY(pardir, dirname);
+    BLI_strncpy(pardir, dirname, sizeof(pardir));
     if (BLI_path_parent_dir(pardir) && (BLI_access(pardir, R_OK) == 0)) {
       struct dirlink *const dlink = (struct dirlink *)malloc(sizeof(struct dirlink));
       if (dlink != NULL) {

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Use a define instead of `#pragma once` because of `BLI_endian_switch_inline.h` */
 #ifndef __BLI_ENDIAN_SWITCH_H__

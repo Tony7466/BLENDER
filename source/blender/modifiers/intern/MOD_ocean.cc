@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -42,8 +41,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.hh"
-#include "MOD_ui_common.hh"
+#include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #ifdef WITH_OCEANSIM
 static void init_cache_data(Object *ob, OceanModifierData *omd, const int resolution)

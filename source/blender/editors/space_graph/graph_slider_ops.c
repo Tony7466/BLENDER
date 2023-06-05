@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup spgraph
@@ -68,7 +67,7 @@ typedef struct tGraphSliderOp {
   struct tSlider *slider;
 
   /* Each operator has a specific update function. */
-  void (*modal_update)(bContext *, wmOperator *);
+  void (*modal_update)(struct bContext *, struct wmOperator *);
 
   /* If an operator stores custom data, it also needs to provide the function to clean it up. */
   void *operator_data;
@@ -132,10 +131,10 @@ static void common_draw_status_header(bContext *C, tGraphSliderOp *gso, const ch
 
     outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
 
-    SNPRINTF(status_str, "%s: %s", mode_str, str_ofs);
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
   }
   else {
-    SNPRINTF(status_str, "%s: %s", mode_str, slider_string);
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
   }
 
   ED_workspace_status_text(C, status_str);
@@ -431,10 +430,10 @@ static void decimate_draw_status(bContext *C, tGraphSliderOp *gso)
 
     outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
 
-    SNPRINTF(status_str, "%s: %s", mode_str, str_ofs);
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
   }
   else {
-    SNPRINTF(status_str, "%s: %s", mode_str, slider_string);
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
   }
 
   ED_workspace_status_text(C, status_str);
@@ -470,7 +469,7 @@ static int decimate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   tGraphSliderOp *gso = op->customdata;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   gso->modal_update = decimate_modal_update;
-  ED_slider_allow_overshoot_set(gso->slider, false, false);
+  ED_slider_allow_overshoot_set(gso->slider, false);
 
   return invoke_result;
 }
@@ -644,8 +643,6 @@ static int blend_to_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent *
   gso->modal_update = blend_to_neighbor_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Neighbor");
-  ED_slider_factor_bounds_set(gso->slider, -1, 1);
-  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -686,12 +683,12 @@ void GRAPH_OT_blend_to_neighbor(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.0f,
+                       1.0f / 3.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Blend",
-                       "The blend factor with 0 being the current frame",
-                       -1.0f,
+                       "The blend factor with 0.5 being the current frame",
+                       0.0f,
                        1.0f);
 }
 
@@ -731,8 +728,6 @@ static int breakdown_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = breakdown_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Breakdown");
-  ED_slider_factor_bounds_set(gso->slider, -1, 1);
-  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -773,12 +768,12 @@ void GRAPH_OT_breakdown(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.0f,
+                       1.0f / 3.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Factor",
                        "Favor either the left or the right key",
-                       -1.0f,
+                       0.0f,
                        1.0f);
 }
 
@@ -838,7 +833,6 @@ static int blend_to_default_invoke(bContext *C, wmOperator *op, const wmEvent *e
   gso->modal_update = blend_to_default_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Default Value");
-  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -879,7 +873,7 @@ void GRAPH_OT_blend_to_default(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.0f,
+                       1.0f / 3.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Factor",
@@ -923,8 +917,6 @@ static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Ease Keys");
-  ED_slider_factor_bounds_set(gso->slider, -1, 1);
-  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -966,12 +958,12 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.0f,
+                       0.5f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
-                       -1.0f,
+                       0.0f,
                        1.0f);
 }
 
@@ -990,7 +982,7 @@ typedef struct tGaussOperatorData {
 
 /* Store data to smooth an FCurve segment. */
 typedef struct tFCurveSegmentLink {
-  struct tFCurveSegmentLink *next, *prev;
+  struct tFCurveSegmentLink *prev, *next;
   FCurve *fcu;
   FCurveSegment *segment;
   float *samples; /* Array of y-values of the FCurve segment. */
@@ -1099,7 +1091,7 @@ static int gaussian_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   gaussian_smooth_allocate_operator_data(gso, filter_width, sigma);
   gso->free_operator_data = gaussian_smooth_free_operator_data;
 
-  ED_slider_allow_overshoot_set(gso->slider, false, false);
+  ED_slider_allow_overshoot_set(gso->slider, false);
   ED_slider_factor_set(gso->slider, 0.0f);
   common_draw_status_header(C, gso, "Gaussian Smooth");
 

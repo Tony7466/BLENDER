@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -11,6 +10,8 @@
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_image_format.h"
@@ -127,9 +128,9 @@ bNodeSocket *ntreeCompositOutputFileAddSocket(bNodeTree *ntree,
   NodeImageMultiFileSocket *sockdata = MEM_cnew<NodeImageMultiFileSocket>(__func__);
   sock->storage = sockdata;
 
-  STRNCPY_UTF8(sockdata->path, name);
+  BLI_strncpy_utf8(sockdata->path, name, sizeof(sockdata->path));
   ntreeCompositOutputFileUniquePath(&node->inputs, sock, name, '_');
-  STRNCPY_UTF8(sockdata->layer, name);
+  BLI_strncpy_utf8(sockdata->layer, name, sizeof(sockdata->layer));
   ntreeCompositOutputFileUniqueLayer(&node->inputs, sock, name, '_');
 
   if (im_format) {
@@ -175,14 +176,14 @@ int ntreeCompositOutputFileRemoveActiveSocket(bNodeTree *ntree, bNode *node)
 void ntreeCompositOutputFileSetPath(bNode *node, bNodeSocket *sock, const char *name)
 {
   NodeImageMultiFileSocket *sockdata = (NodeImageMultiFileSocket *)sock->storage;
-  STRNCPY_UTF8(sockdata->path, name);
+  BLI_strncpy_utf8(sockdata->path, name, sizeof(sockdata->path));
   ntreeCompositOutputFileUniquePath(&node->inputs, sock, name, '_');
 }
 
 void ntreeCompositOutputFileSetLayer(bNode *node, bNodeSocket *sock, const char *name)
 {
   NodeImageMultiFileSocket *sockdata = (NodeImageMultiFileSocket *)sock->storage;
-  STRNCPY_UTF8(sockdata->layer, name);
+  BLI_strncpy_utf8(sockdata->layer, name, sizeof(sockdata->layer));
   ntreeCompositOutputFileUniqueLayer(&node->inputs, sock, name, '_');
 }
 
@@ -201,7 +202,7 @@ static void init_output_file(const bContext *C, PointerRNA *ptr)
   if (scene) {
     RenderData *rd = &scene->r;
 
-    STRNCPY(nimf->base_path, rd->pic);
+    BLI_strncpy(nimf->base_path, rd->pic, sizeof(nimf->base_path));
     BKE_image_format_copy(&nimf->format, &rd->im_format);
     nimf->format.color_management = R_IMF_COLOR_MANAGEMENT_FOLLOW_SCENE;
     if (BKE_imtype_is_movie(nimf->format.imtype)) {

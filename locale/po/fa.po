@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Beta (b'24ca886ac042')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'd1219b727c7c')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-22 16:40:40\n"
+"POT-Creation-Date: 2023-04-28 17:39:28\n"
 "PO-Revision-Date: 2012-10-31 17:00-0800\n"
 "Last-Translator: Amin Babaeipanah <translate@leomoon.com>\n"
 "Language-Team: LeoMoon Studios <blender@leomoon.com>\n"
@@ -604,16 +604,16 @@ msgid "Marker"
 msgstr "ﺮﮕﻧﺎﺸﻧ"
 
 
+msgid "Smooth"
+msgstr "ﻑﺎﺻ"
+
+
 msgid "Draw"
 msgstr "ﺩﺍﺯﺁ ﯽﺷﺎﻘﻧ"
 
 
 msgid "Blur"
 msgstr "ﯽﮔﺮﯿﺗ"
-
-
-msgid "Smooth"
-msgstr "ﻑﺎﺻ"
 
 
 msgid "Hue"
@@ -746,6 +746,10 @@ msgstr "ﺱﺃﺭ ﻩﻭﺮﮔ ﻥﺪﺷ ﻢﺧ ﯽﺘﺨﺳ"
 
 msgid "Vertex group for fine control over bending stiffness"
 msgstr "ﻥﺪﺷ ﻢﺧ ﯽﺘﺨﺳ ﯼﻭﺭ ﻖﯿﻗﺩ ﻝﺮﺘﻨﮐ ﯼﺍﺮﺑ ﺱﺃﺭ ﻩﻭﺮﮔ"
+
+
+msgid "Mass Vertex Group"
+msgstr "ﺱﺃﺭ ﯽﻌﻤﺟ ﯼﺎﻫ ﻩﻭﺮﮔ"
 
 
 msgid "Vertex Group for pinning of vertices"
@@ -3509,10 +3513,6 @@ msgid "Gray Scale"
 msgstr "ﯼﺮﺘﺴﮐﺎﺧ ﺱﺎﯿﻘﻣ"
 
 
-msgid "Mass Vertex Group"
-msgstr "ﺱﺃﺭ ﯽﻌﻤﺟ ﯼﺎﻫ ﻩﻭﺮﮔ"
-
-
 msgid "Lock to Selection"
 msgstr "ﻩﺪﺷ ﺏﺎﺨﺘﻧﺍ ﻪﺑ ﻞﻔﻗ"
 
@@ -3705,6 +3705,10 @@ msgid "Pivot Offset"
 msgstr "ﺭﻮﺤﻣ ﺖﺴﻓﺍ"
 
 
+msgid "Out"
+msgstr "ﯽﺟﻭﺮﺧ"
+
+
 msgid "Not Set"
 msgstr "ﻩﺪﺸﻧ ﺺﺨﺸﻣ"
 
@@ -3864,10 +3868,6 @@ msgstr "ﺶﯾﺍﺮﯾﻭ ﻥﺩﺮﮐ‌ﻝﺎﻌﻓ ﯼﺍﺮﺑ ﻪﻈﻓﺎ
 
 msgid "IK"
 msgstr "(IK) ﺱﻮﮑﻌﻣ ﺖﮐﺮﺣ"
-
-
-msgid "Out"
-msgstr "ﯽﺟﻭﺮﺧ"
 
 
 msgid "Nothing selected"
@@ -4210,6 +4210,10 @@ msgstr "(English) ﯽﺴﯿﻠﮕﻧﺍ"
 
 msgid "Japanese (日本語)"
 msgstr "(日本語) ﯽﻨﭘﺍﮊ"
+
+
+msgid "Dutch (Nederlandse taal)"
+msgstr "(Nederlandse taal) ﯼﺪﻨﻠﻫ"
 
 
 msgid "Italian (Italiano)"

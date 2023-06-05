@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup creator
@@ -136,14 +134,16 @@ static void sig_handle_crash(int signum)
   fflush(stdout);
 
 #  ifndef BUILD_DATE
-  SNPRINTF(header, "# " BLEND_VERSION_FMT ", Unknown revision\n", BLEND_VERSION_ARG);
+  BLI_snprintf(
+      header, sizeof(header), "# " BLEND_VERSION_FMT ", Unknown revision\n", BLEND_VERSION_ARG);
 #  else
-  SNPRINTF(header,
-           "# " BLEND_VERSION_FMT ", Commit date: %s %s, Hash %s\n",
-           BLEND_VERSION_ARG,
-           build_commit_date,
-           build_commit_time,
-           build_hash);
+  BLI_snprintf(header,
+               sizeof(header),
+               "# " BLEND_VERSION_FMT ", Commit date: %s %s, Hash %s\n",
+               BLEND_VERSION_ARG,
+               build_commit_date,
+               build_commit_time,
+               build_hash);
 #  endif
 
   /* open the crash log */

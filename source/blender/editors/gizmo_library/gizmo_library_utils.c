@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2015 Blender Foundation */
 
 /** \file
  * \ingroup edgizmolib
@@ -163,8 +162,12 @@ void gizmo_color_get(const wmGizmo *gz, const bool highlight, float r_col[4])
 
 /* -------------------------------------------------------------------- */
 
-bool gizmo_window_project_2d(
-    bContext *C, const wmGizmo *gz, const float mval[2], int axis, bool use_offset, float r_co[2])
+bool gizmo_window_project_2d(bContext *C,
+                             const struct wmGizmo *gz,
+                             const float mval[2],
+                             int axis,
+                             bool use_offset,
+                             float r_co[2])
 {
   float mat[4][4], imat[4][4];
   {
@@ -209,7 +212,7 @@ bool gizmo_window_project_2d(
 }
 
 bool gizmo_window_project_3d(
-    bContext *C, const wmGizmo *gz, const float mval[2], bool use_offset, float r_co[3])
+    bContext *C, const struct wmGizmo *gz, const float mval[2], bool use_offset, float r_co[3])
 {
   float mat[4][4], imat[4][4];
   {
@@ -251,7 +254,7 @@ bool gizmo_window_project_3d(
  * \{ */
 
 /* Based on 'rna_GizmoProperties_find_operator'. */
-wmGizmo *gizmo_find_from_properties(const IDProperty *properties,
+wmGizmo *gizmo_find_from_properties(const struct IDProperty *properties,
                                     const int spacetype,
                                     const int regionid)
 {

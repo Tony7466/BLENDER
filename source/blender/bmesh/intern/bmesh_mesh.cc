@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -124,7 +122,7 @@ void BM_mesh_elem_toolflags_clear(BMesh *bm)
   }
 }
 
-BMesh *BM_mesh_create(const BMAllocTemplate *allocsize, const BMeshCreateParams *params)
+BMesh *BM_mesh_create(const BMAllocTemplate *allocsize, const struct BMeshCreateParams *params)
 {
   /* allocate the structure */
   BMesh *bm = static_cast<BMesh *>(MEM_callocN(sizeof(BMesh), __func__));
@@ -1034,7 +1032,7 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
 }
 
 void BM_mesh_rebuild(BMesh *bm,
-                     const BMeshCreateParams *params,
+                     const struct BMeshCreateParams *params,
                      BLI_mempool *vpool_dst,
                      BLI_mempool *epool_dst,
                      BLI_mempool *lpool_dst,
@@ -1314,7 +1312,7 @@ void BM_mesh_toolflags_set(BMesh *bm, bool use_toolflags)
     bm->etoolflagpool = nullptr;
     bm->ftoolflagpool = nullptr;
   }
-  BMeshCreateParams params = {};
+  struct BMeshCreateParams params = {};
   params.use_toolflags = use_toolflags;
 
   BM_mesh_rebuild(bm, &params, vpool_dst, epool_dst, nullptr, fpool_dst);

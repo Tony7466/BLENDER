@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -33,12 +32,12 @@
 #include "tracking_private.h"
 
 typedef struct MovieReconstructContext {
-  libmv_Tracks *tracks;
+  struct libmv_Tracks *tracks;
   bool select_keyframes;
   int keyframe1, keyframe2;
   int refine_flags;
 
-  libmv_Reconstruction *reconstruction;
+  struct libmv_Reconstruction *reconstruction;
 
   char object_name[MAX_NAME];
   short motion_flag;
@@ -64,11 +63,14 @@ typedef struct ReconstructProgressData {
 } ReconstructProgressData;
 
 /* Create new libmv Tracks structure from blender's tracks list. */
-static libmv_Tracks *libmv_tracks_new(MovieClip *clip, ListBase *tracksbase, int width, int height)
+static struct libmv_Tracks *libmv_tracks_new(MovieClip *clip,
+                                             ListBase *tracksbase,
+                                             int width,
+                                             int height)
 {
   int tracknr = 0;
   MovieTrackingTrack *track;
-  libmv_Tracks *tracks = libmv_tracksNew();
+  struct libmv_Tracks *tracks = libmv_tracksNew();
 
   track = static_cast<MovieTrackingTrack *>(tracksbase->first);
   while (track) {
@@ -106,8 +108,8 @@ static libmv_Tracks *libmv_tracks_new(MovieClip *clip, ListBase *tracksbase, int
 static void reconstruct_retrieve_libmv_intrinsics(MovieReconstructContext *context,
                                                   MovieTracking *tracking)
 {
-  libmv_Reconstruction *libmv_reconstruction = context->reconstruction;
-  libmv_CameraIntrinsics *libmv_intrinsics = libmv_reconstructionExtractIntrinsics(
+  struct libmv_Reconstruction *libmv_reconstruction = context->reconstruction;
+  struct libmv_CameraIntrinsics *libmv_intrinsics = libmv_reconstructionExtractIntrinsics(
       libmv_reconstruction);
 
   libmv_CameraIntrinsicsOptions camera_intrinsics_options;
@@ -123,7 +125,7 @@ static void reconstruct_retrieve_libmv_intrinsics(MovieReconstructContext *conte
 static bool reconstruct_retrieve_libmv_tracks(MovieReconstructContext *context,
                                               MovieTracking *tracking)
 {
-  libmv_Reconstruction *libmv_reconstruction = context->reconstruction;
+  struct libmv_Reconstruction *libmv_reconstruction = context->reconstruction;
   bool ok = true;
   bool origin_set = false;
   int sfra = context->sfra, efra = context->efra;
@@ -332,7 +334,7 @@ MovieReconstructContext *BKE_tracking_reconstruction_context_new(
   const int num_tracks = BLI_listbase_count(&tracking_object->tracks);
   int sfra = INT_MAX, efra = INT_MIN;
 
-  STRNCPY(context->object_name, tracking_object->name);
+  BLI_strncpy(context->object_name, tracking_object->name, sizeof(context->object_name));
   context->motion_flag = tracking->settings.motion_flag;
 
   context->select_keyframes = (tracking->settings.reconstruction_flag &
@@ -391,7 +393,7 @@ void BKE_tracking_reconstruction_report_error_message(MovieReconstructContext *c
     /* Only keep initial error message, the rest are inducted ones. */
     return;
   }
-  STRNCPY(context->error_message, error_message);
+  BLI_strncpy(context->error_message, error_message, sizeof(context->error_message));
 }
 
 const char *BKE_tracking_reconstruction_error_message_get(const MovieReconstructContext *context)

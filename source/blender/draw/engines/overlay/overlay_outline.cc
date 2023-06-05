@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -225,7 +224,7 @@ static void gpencil_stroke_cache_populate(bGPDlayer * /*gpl*/,
     return;
   }
 
-  GPUBatch *geom = DRW_cache_gpencil_get(iter->ob, iter->cfra);
+  struct GPUBatch *geom = DRW_cache_gpencil_get(iter->ob, iter->cfra);
 
   if (show_fill) {
     int vfirst = gps->runtime.fill_start * 3;
@@ -269,7 +268,7 @@ static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
 
 static void OVERLAY_outline_volume(OVERLAY_PrivateData *pd, Object *ob)
 {
-  GPUBatch *geom = DRW_cache_volume_selection_surface_get(ob);
+  struct GPUBatch *geom = DRW_cache_volume_selection_surface_get(ob);
   if (geom == nullptr) {
     return;
   }
@@ -303,7 +302,7 @@ void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  GPUBatch *geom;
+  struct GPUBatch *geom;
   DRWShadingGroup *shgroup = nullptr;
   const bool draw_outline = ob->dt > OB_BOUNDBOX;
 

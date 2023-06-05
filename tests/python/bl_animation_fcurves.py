@@ -80,8 +80,7 @@ class EulerFilterTest(AbstractAnimationTest, unittest.TestCase):
         self.assertEqualAngle(111.422, fcu_rot[1], 23)
         self.assertEqualAngle(76.5996, fcu_rot[2], 23)
 
-        with bpy.context.temp_override(**self.get_context()):
-            bpy.ops.graph.euler_filter()
+        bpy.ops.graph.euler_filter(self.get_context())
 
         # Keyframes before the "jump". These shouldn't be touched by the filter.
         self.assertEqualAngle(-87.5742, fcu_rot[0], 22)
@@ -106,8 +105,7 @@ class EulerFilterTest(AbstractAnimationTest, unittest.TestCase):
         self.assertEqualAngle(720, fcu_rot[0], 16)
         self.assertEqualAngle(72, fcu_rot[1], 22)
 
-        with bpy.context.temp_override(**self.get_context()):
-            bpy.ops.graph.euler_filter()
+        bpy.ops.graph.euler_filter(self.get_context())
 
         # Keyframes before the "jump". These shouldn't be touched by the filter.
         self.assertEqualAngle(360, fcu_rot[0], 15)

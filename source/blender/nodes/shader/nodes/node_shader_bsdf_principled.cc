@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -13,93 +12,101 @@ namespace blender::nodes::node_shader_bsdf_principled_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Base Color").default_value({0.8f, 0.8f, 0.8f, 1.0f});
-  b.add_input<decl::Float>("Subsurface")
+  b.add_input<decl::Color>(N_("Base Color")).default_value({0.8f, 0.8f, 0.8f, 1.0f});
+  b.add_input<decl::Float>(N_("Subsurface"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Vector>("Subsurface Radius")
+  b.add_input<decl::Vector>(N_("Subsurface Radius"))
       .default_value({1.0f, 0.2f, 0.1f})
       .min(0.0f)
       .max(100.0f)
       .compact();
-  b.add_input<decl::Color>("Subsurface Color").default_value({0.8f, 0.8f, 0.8f, 1.0f});
-  b.add_input<decl::Float>("Subsurface IOR")
+  b.add_input<decl::Color>(N_("Subsurface Color")).default_value({0.8f, 0.8f, 0.8f, 1.0f});
+  b.add_input<decl::Float>(N_("Subsurface IOR"))
       .default_value(1.4f)
       .min(1.01f)
       .max(3.8f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Subsurface Anisotropy")
+  b.add_input<decl::Float>(N_("Subsurface Anisotropy"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Metallic")
+  b.add_input<decl::Float>(N_("Metallic"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Specular")
+  b.add_input<decl::Float>(N_("Specular"))
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Specular Tint")
+  b.add_input<decl::Float>(N_("Specular Tint"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Roughness")
+  b.add_input<decl::Float>(N_("Roughness"))
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Anisotropic")
+  b.add_input<decl::Float>(N_("Anisotropic"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Anisotropic Rotation")
+  b.add_input<decl::Float>(N_("Anisotropic Rotation"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Sheen").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Sheen Tint")
+  b.add_input<decl::Float>(N_("Sheen"))
+      .default_value(0.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR);
+  b.add_input<decl::Float>(N_("Sheen Tint"))
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Clearcoat")
+  b.add_input<decl::Float>(N_("Clearcoat"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Clearcoat Roughness")
+  b.add_input<decl::Float>(N_("Clearcoat Roughness"))
       .default_value(0.03f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("IOR").default_value(1.45f).min(0.0f).max(1000.0f);
-  b.add_input<decl::Float>("Transmission")
+  b.add_input<decl::Float>(N_("IOR")).default_value(1.45f).min(0.0f).max(1000.0f);
+  b.add_input<decl::Float>(N_("Transmission"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Transmission Roughness")
+  b.add_input<decl::Float>(N_("Transmission Roughness"))
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Color>("Emission").default_value({0.0f, 0.0f, 0.0f, 1.0f});
-  b.add_input<decl::Float>("Emission Strength").default_value(1.0).min(0.0f).max(1000000.0f);
-  b.add_input<decl::Float>("Alpha").default_value(1.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-  b.add_input<decl::Vector>("Normal").hide_value();
-  b.add_input<decl::Vector>("Clearcoat Normal").hide_value();
-  b.add_input<decl::Vector>("Tangent").hide_value();
-  b.add_input<decl::Float>("Weight").unavailable();
-  b.add_output<decl::Shader>("BSDF");
+  b.add_input<decl::Color>(N_("Emission")).default_value({0.0f, 0.0f, 0.0f, 1.0f});
+  b.add_input<decl::Float>(N_("Emission Strength")).default_value(1.0).min(0.0f).max(1000000.0f);
+  b.add_input<decl::Float>(N_("Alpha"))
+      .default_value(1.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR);
+  b.add_input<decl::Vector>(N_("Normal")).hide_value();
+  b.add_input<decl::Vector>(N_("Clearcoat Normal")).hide_value();
+  b.add_input<decl::Vector>(N_("Tangent")).hide_value();
+  b.add_input<decl::Float>(N_("Weight")).unavailable();
+  b.add_output<decl::Shader>(N_("BSDF"));
 }
 
 static void node_shader_buts_principled(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -218,11 +225,11 @@ static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
 
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (STREQ(sock->name, "Transmission Roughness")) {
-      bke::nodeSetSocketAvailability(ntree, sock, distribution == SHD_GLOSSY_GGX);
+      nodeSetSocketAvailability(ntree, sock, distribution == SHD_GLOSSY_GGX);
     }
 
     if (STR_ELEM(sock->name, "Subsurface IOR", "Subsurface Anisotropy")) {
-      bke::nodeSetSocketAvailability(ntree, sock, sss_method != SHD_SUBSURFACE_BURLEY);
+      nodeSetSocketAvailability(ntree, sock, sss_method != SHD_SUBSURFACE_BURLEY);
     }
   }
 }
@@ -240,7 +247,7 @@ void register_node_type_sh_bsdf_principled()
   ntype.declare = file_ns::node_declare;
   ntype.add_ui_poll = object_shader_nodes_poll;
   ntype.draw_buttons = file_ns::node_shader_buts_principled;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
   ntype.initfunc = file_ns::node_shader_init_principled;
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_principled;
   ntype.updatefunc = file_ns::node_shader_update_principled;

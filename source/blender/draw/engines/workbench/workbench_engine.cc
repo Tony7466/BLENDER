@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_editmesh.h"
 #include "BKE_modifier.h"
@@ -36,7 +34,6 @@ class Instance {
   TransparentDepthPass transparent_depth_ps;
 
   ShadowPass shadow_ps;
-  VolumePass volume_ps;
   OutlinePass outline_ps;
   DofPass dof_ps;
   AntiAliasingPass anti_aliasing_ps;
@@ -78,7 +75,6 @@ class Instance {
     transparent_depth_ps.sync(scene_state, resources);
 
     shadow_ps.sync();
-    volume_ps.sync(resources);
     outline_ps.sync(resources);
     dof_ps.sync(resources);
     anti_aliasing_ps.sync(resources, scene_state.resolution);
@@ -87,27 +83,6 @@ class Instance {
   void end_sync()
   {
     resources.material_buf.push_update();
-  }
-
-  Material get_material(ObjectRef ob_ref, eV3DShadingColorType color_type, int slot = 0)
-  {
-    switch (color_type) {
-      case V3D_SHADING_OBJECT_COLOR:
-        return Material(*ob_ref.object);
-      case V3D_SHADING_RANDOM_COLOR:
-        return Material(*ob_ref.object, true);
-      case V3D_SHADING_SINGLE_COLOR:
-        return scene_state.material_override;
-      case V3D_SHADING_VERTEX_COLOR:
-        return scene_state.material_attribute_color;
-      case V3D_SHADING_MATERIAL_COLOR:
-        if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, slot + 1)) {
-          return Material(*_mat);
-        }
-        ATTR_FALLTHROUGH;
-      default:
-        return Material(*BKE_material_default_empty());
-    }
   }
 
   void object_sync(Manager &manager, ObjectRef &ob_ref)
@@ -163,8 +138,9 @@ class Instance {
       if (md && BKE_modifier_is_enabled(scene_state.scene, md, eModifierMode_Realtime)) {
         FluidModifierData *fmd = (FluidModifierData *)md;
         if (fmd->domain) {
-          volume_ps.object_sync_modifier(manager, resources, scene_state, ob_ref, md);
-
+#if 0 /* TODO(@pragma37): */
+          workbench_volume_cache_populate(vedata, wpd->scene, ob, md, V3D_SHADING_SINGLE_COLOR);
+#endif
           if (fmd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
             return; /* Do not draw solid in this case. */
           }
@@ -187,16 +163,14 @@ class Instance {
 #if 0 /* TODO(@pragma37): */
       DRWShadingGroup *grp = workbench_material_hair_setup(
           wpd, ob, CURVES_MATERIAL_NR, object_state.color_type);
-      DRW_shgroup_curves_create_sub(ob, grp, nullptr);
+      DRW_shgroup_curves_create_sub(ob, grp, NULL);
 #endif
     }
     else if (ob->type == OB_VOLUME) {
       if (scene_state.shading.type != OB_WIRE) {
-        volume_ps.object_sync_volume(manager,
-                                     resources,
-                                     scene_state,
-                                     ob_ref,
-                                     get_material(ob_ref, object_state.color_type).base_color);
+#if 0 /* TODO(@pragma37): */
+        workbench_volume_cache_populate(vedata, wpd->scene, ob, NULL, object_state.color_type);
+#endif
       }
     }
   }
@@ -215,7 +189,7 @@ class Instance {
       if (object_state.use_per_material_batches) {
         const int material_count = DRW_cache_object_material_count_get(ob_ref.object);
 
-        GPUBatch **batches;
+        struct GPUBatch **batches;
         if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
           batches = DRW_cache_mesh_surface_texpaint_get(ob_ref.object);
         }
@@ -230,7 +204,15 @@ class Instance {
               continue;
             }
 
-            Material mat = get_material(ob_ref, object_state.color_type, i);
+            Material mat;
+
+            if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, i + 1)) {
+              mat = Material(*_mat);
+            }
+            else {
+              mat = Material(*BKE_material_default_empty());
+            }
+
             has_transparent_material = has_transparent_material || mat.is_transparent();
 
             ::Image *image = nullptr;
@@ -245,7 +227,7 @@ class Instance {
         }
       }
       else {
-        GPUBatch *batch;
+        struct GPUBatch *batch;
         if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
           batch = DRW_cache_mesh_surface_texpaint_single_get(ob_ref.object);
         }
@@ -262,7 +244,24 @@ class Instance {
         }
 
         if (batch) {
-          Material mat = get_material(ob_ref, object_state.color_type);
+          Material mat;
+
+          if (object_state.color_type == V3D_SHADING_OBJECT_COLOR) {
+            mat = Material(*ob_ref.object);
+          }
+          else if (object_state.color_type == V3D_SHADING_RANDOM_COLOR) {
+            mat = Material(*ob_ref.object, true);
+          }
+          else if (object_state.color_type == V3D_SHADING_SINGLE_COLOR) {
+            mat = scene_state.material_override;
+          }
+          else if (object_state.color_type == V3D_SHADING_VERTEX_COLOR) {
+            mat = scene_state.material_attribute_color;
+          }
+          else {
+            mat = Material(*BKE_material_default_empty());
+          }
+
           has_transparent_material = has_transparent_material || mat.is_transparent();
 
           draw_mesh(ob_ref,
@@ -371,7 +370,8 @@ class Instance {
     transparent_ps.draw(manager, view, resources, resolution);
     transparent_depth_ps.draw(manager, view, resources);
 
-    volume_ps.draw(manager, view, resources);
+    // volume_ps.draw_prepass(manager, view, resources.depth_tx);
+
     outline_ps.draw(manager, resources);
     dof_ps.draw(manager, view, resources, resolution);
     anti_aliasing_ps.draw(manager, view, resources, resolution, depth_tx, color_tx);
@@ -484,7 +484,7 @@ static void workbench_view_update(void *vedata)
   }
 }
 
-static void workbench_id_update(void *vedata, ID *id)
+static void workbench_id_update(void *vedata, struct ID *id)
 {
   UNUSED_VARS(vedata, id);
 }
@@ -538,10 +538,10 @@ static bool workbench_render_framebuffers_init(void)
 #  define GPU_FINISH_DELIMITER()
 #endif
 
-static void write_render_color_output(RenderLayer *layer,
+static void write_render_color_output(struct RenderLayer *layer,
                                       const char *viewname,
                                       GPUFrameBuffer *fb,
-                                      const rcti *rect)
+                                      const struct rcti *rect)
 {
   RenderPass *rp = RE_pass_find_by_name(layer, RE_PASSNAME_COMBINED, viewname);
   if (rp) {
@@ -554,14 +554,14 @@ static void write_render_color_output(RenderLayer *layer,
                                4,
                                0,
                                GPU_DATA_FLOAT,
-                               rp->buffer.data);
+                               rp->rect);
   }
 }
 
-static void write_render_z_output(RenderLayer *layer,
+static void write_render_z_output(struct RenderLayer *layer,
                                   const char *viewname,
                                   GPUFrameBuffer *fb,
-                                  const rcti *rect,
+                                  const struct rcti *rect,
                                   float4x4 winmat)
 {
   RenderPass *rp = RE_pass_find_by_name(layer, RE_PASSNAME_Z, viewname);
@@ -573,13 +573,13 @@ static void write_render_z_output(RenderLayer *layer,
                                BLI_rcti_size_x(rect),
                                BLI_rcti_size_y(rect),
                                GPU_DATA_FLOAT,
-                               rp->buffer.data);
+                               rp->rect);
 
     int pix_num = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
 
     /* Convert GPU depth [0..1] to view Z [near..far] */
     if (DRW_view_is_persp_get(nullptr)) {
-      for (float &z : MutableSpan(rp->buffer.data, pix_num)) {
+      for (float &z : MutableSpan(rp->rect, pix_num)) {
         if (z == 1.0f) {
           z = 1e10f; /* Background */
         }
@@ -595,7 +595,7 @@ static void write_render_z_output(RenderLayer *layer,
       float far = DRW_view_far_distance_get(nullptr);
       float range = fabsf(far - near);
 
-      for (float &z : MutableSpan(rp->buffer.data, pix_num)) {
+      for (float &z : MutableSpan(rp->rect, pix_num)) {
         if (z == 1.0f) {
           z = 1e10f; /* Background */
         }
@@ -608,9 +608,9 @@ static void write_render_z_output(RenderLayer *layer,
 }
 
 static void workbench_render_to_image(void *vedata,
-                                      RenderEngine *engine,
-                                      RenderLayer *layer,
-                                      const rcti *rect)
+                                      struct RenderEngine *engine,
+                                      struct RenderLayer *layer,
+                                      const struct rcti *rect)
 {
   /* TODO(fclem): Remove once it is minimum required. */
   if (!GPU_shader_storage_buffer_objects_support()) {
@@ -659,10 +659,12 @@ static void workbench_render_to_image(void *vedata,
     DRW_manager_get()->begin_sync();
 
     workbench_cache_init(vedata);
-    auto workbench_render_cache =
-        [](void *vedata, Object *ob, RenderEngine * /*engine*/, Depsgraph * /*depsgraph*/) {
-          workbench_cache_populate(vedata, ob);
-        };
+    auto workbench_render_cache = [](void *vedata,
+                                     struct Object *ob,
+                                     struct RenderEngine * /*engine*/,
+                                     struct Depsgraph * /*depsgraph*/) {
+      workbench_cache_populate(vedata, ob);
+    };
     DRW_render_object_iter(vedata, engine, depsgraph, workbench_render_cache);
     workbench_cache_finish(vedata);
 

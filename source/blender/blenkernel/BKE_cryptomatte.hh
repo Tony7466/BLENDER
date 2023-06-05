@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -119,15 +118,9 @@ struct CryptomatteStampDataCallbackData {
   static blender::StringRef extract_layer_hash(blender::StringRefNull key);
 
   /* C type callback function (StampCallback). */
-  static void extract_layer_names(void *_data,
-                                  const char *propname,
-                                  char *propvalue,
-                                  int propvalue_maxncpy);
+  static void extract_layer_names(void *_data, const char *propname, char *propvalue, int len);
   /* C type callback function (StampCallback). */
-  static void extract_layer_manifest(void *_data,
-                                     const char *propname,
-                                     char *propvalue,
-                                     int propvalue_maxncpy);
+  static void extract_layer_manifest(void *_data, const char *propname, char *propvalue, int len);
 };
 
 const blender::Vector<std::string> &BKE_cryptomatte_layer_names_get(

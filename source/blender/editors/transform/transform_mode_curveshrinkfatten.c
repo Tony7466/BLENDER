@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -50,10 +49,10 @@ static void applyCurveShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
     char c[NUM_STR_REP_LEN];
 
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Shrink/Fatten: %s"), c);
+    BLI_snprintf(str, sizeof(str), TIP_("Shrink/Fatten: %s"), c);
   }
   else {
-    SNPRINTF(str, TIP_("Shrink/Fatten: %3f"), ratio);
+    BLI_snprintf(str, sizeof(str), TIP_("Shrink/Fatten: %3f"), ratio);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -84,9 +83,10 @@ static void applyCurveShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initCurveShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
+void initCurveShrinkFatten(TransInfo *t)
 {
   t->mode = TFM_CURVE_SHRINKFATTEN;
+  t->transform = applyCurveShrinkFatten;
 
   initMouseInputMode(t, &t->mouse, INPUT_SPRING);
 
@@ -98,6 +98,8 @@ static void initCurveShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
   copy_v3_fl(t->num.val_inc, t->snap[0]);
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_type[0] = B_UNIT_NONE;
+
+  t->flag |= T_NO_CONSTRAINT;
 
   float scale_factor = 0.0f;
   if (((t->spacetype == SPACE_VIEW3D) && (t->region->regiontype == RGN_TYPE_WINDOW) &&
@@ -114,14 +116,3 @@ static void initCurveShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
 }
 
 /** \} */
-
-TransModeInfo TransMode_curveshrinkfatten = {
-    /*flags*/ T_NO_CONSTRAINT,
-    /*init_fn*/ initCurveShrinkFatten,
-    /*transform_fn*/ applyCurveShrinkFatten,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

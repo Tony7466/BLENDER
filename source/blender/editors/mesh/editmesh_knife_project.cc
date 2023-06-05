@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup edmesh
@@ -40,20 +39,27 @@
 
 #include "mesh_intern.h" /* own include */
 
-static LinkNode *knifeproject_poly_from_object(const bContext *C, Object *ob, LinkNode *polys)
+static LinkNode *knifeproject_poly_from_object(const bContext *C,
+                                               Scene *scene,
+                                               Object *ob,
+                                               LinkNode *polys)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ARegion *region = CTX_wm_region(C);
-  const Mesh *me_eval;
+  const struct Mesh *me_eval;
   bool me_eval_needs_free;
 
   if (ob->type == OB_MESH || ob->runtime.data_eval) {
-    const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+    if (me_eval == nullptr) {
+      Scene *scene_eval = (Scene *)DEG_get_evaluated_id(depsgraph, &scene->id);
+      me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+    }
     me_eval_needs_free = false;
   }
   else if (ELEM(ob->type, OB_FONT, OB_CURVES_LEGACY, OB_SURF)) {
-    const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     me_eval = BKE_mesh_new_nomain_from_curve(ob_eval);
     me_eval_needs_free = true;
   }
@@ -112,7 +118,7 @@ static int knifeproject_exec(bContext *C, wmOperator *op)
     if (BKE_object_is_in_editmode(ob)) {
       continue;
     }
-    polys = knifeproject_poly_from_object(C, ob, polys);
+    polys = knifeproject_poly_from_object(C, scene, ob, polys);
   }
   CTX_DATA_END;
 

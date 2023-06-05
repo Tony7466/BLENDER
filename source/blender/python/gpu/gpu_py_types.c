@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -20,7 +18,7 @@
 /** \name GPU Types Module
  * \{ */
 
-static PyModuleDef pygpu_types_module_def = {
+static struct PyModuleDef pygpu_types_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.types",
     /*m_doc*/ NULL,

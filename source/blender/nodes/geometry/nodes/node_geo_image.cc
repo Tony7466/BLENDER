@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_image_types.h"
 
@@ -13,7 +11,7 @@ namespace blender::nodes::node_geo_image_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Image>("Image");
+  b.add_output<decl::Image>(N_("Image"));
 }
 
 static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -47,6 +45,6 @@ void register_node_type_geo_image()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.draw_buttons = file_ns::node_layout;
   ntype.declare = file_ns::node_declare;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
   nodeRegisterType(&ntype);
 }

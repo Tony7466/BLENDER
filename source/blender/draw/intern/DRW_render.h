@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -42,7 +41,7 @@
 #include "draw_view.h"
 
 #include "draw_debug.h"
-#include "draw_manager_profiling.hh"
+#include "draw_manager_profiling.h"
 #include "draw_state.h"
 #include "draw_view_data.h"
 

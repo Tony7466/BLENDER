@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -71,7 +70,7 @@ static bool check_point_in_layer(bGPDlayer *layer, float x, float y)
 /* Get features detected by libmv and create tracks on the clip for them. */
 static void detect_retrieve_libmv_features(MovieTracking *tracking,
                                            ListBase *tracksbase,
-                                           libmv_Features *features,
+                                           struct libmv_Features *features,
                                            int framenr,
                                            int width,
                                            int height,
@@ -116,13 +115,13 @@ static void run_configured_detector(MovieTracking *tracking,
                                     bool place_outside_layer,
                                     libmv_DetectOptions *options)
 {
-  libmv_Features *features = nullptr;
+  struct libmv_Features *features = nullptr;
 
-  if (ibuf->float_buffer.data) {
-    features = libmv_detectFeaturesFloat(ibuf->float_buffer.data, ibuf->x, ibuf->y, 4, options);
+  if (ibuf->rect_float) {
+    features = libmv_detectFeaturesFloat(ibuf->rect_float, ibuf->x, ibuf->y, 4, options);
   }
-  else if (ibuf->byte_buffer.data) {
-    features = libmv_detectFeaturesByte(ibuf->byte_buffer.data, ibuf->x, ibuf->y, 4, options);
+  else if (ibuf->rect) {
+    features = libmv_detectFeaturesByte((uchar *)ibuf->rect, ibuf->x, ibuf->y, 4, options);
   }
 
   if (features != nullptr) {

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "gpu_shader_create_info.hh"
 
@@ -15,7 +13,6 @@ GPU_SHADER_INTERFACE_INFO(overlay_extra_iface, "")
 
 GPU_SHADER_CREATE_INFO(overlay_extra)
     .do_static_compilation(true)
-    .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::INT, "vclass")
     /* Instance attributes. */

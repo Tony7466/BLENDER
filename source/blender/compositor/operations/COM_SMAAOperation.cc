@@ -1,9 +1,8 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 #include "COM_SMAAOperation.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "COM_SMAAAreaTexture.h"
 
 extern "C" {

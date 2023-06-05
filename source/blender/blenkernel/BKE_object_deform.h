@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -9,8 +7,6 @@
  * \brief Functions for dealing with objects and deform verts,
  *        used by painting and tools.
  */
-
-#include "DNA_scene_enums.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,6 +92,7 @@ void BKE_object_defgroup_index_map_apply(struct MDeformVert *dvert,
 
 /* Select helpers. */
 
+enum eVGroupSelect;
 /**
  * Return the subset type of the Vertex Group Selection.
  */

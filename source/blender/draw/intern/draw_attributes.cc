@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 #include "draw_attributes.hh"
 
@@ -72,7 +71,7 @@ void drw_attributes_add_request(DRW_Attributes *attrs,
 
   DRW_AttributeRequest *req = &attrs->requests[attrs->num_requests];
   req->cd_type = type;
-  STRNCPY(req->attribute_name, name);
+  BLI_strncpy(req->attribute_name, name, sizeof(req->attribute_name));
   req->layer_index = layer_index;
   req->domain = domain;
   attrs->num_requests += 1;

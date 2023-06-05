@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup editor_physics
@@ -135,7 +134,7 @@ static int rigidbody_world_export_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   RigidBodyWorld *rbw = scene->rigidbody_world;
-  char filepath[FILE_MAX];
+  char path[FILE_MAX];
 
   /* sanity checks */
   if (ELEM(NULL, scene, rbw)) {
@@ -148,9 +147,9 @@ static int rigidbody_world_export_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  RNA_string_get(op->ptr, "filepath", filepath);
+  RNA_string_get(op->ptr, "filepath", path);
 #ifdef WITH_BULLET
-  RB_dworld_export(rbw->shared->physics_world, filepath);
+  RB_dworld_export(rbw->shared->physics_world, path);
 #endif
   return OPERATOR_FINISHED;
 }

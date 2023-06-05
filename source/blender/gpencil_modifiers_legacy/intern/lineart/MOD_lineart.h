@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup editors
@@ -170,8 +169,7 @@ typedef struct LineartEdge {
   uint16_t flags;
   uint8_t intersection_mask;
 
-  /**
-   * Matches the shadow result, used to determine whether a line is in the shadow or not.
+  /** Matches the shadow result, used to determine whether a line is in the shadow or not.
    * #edge_identifier usages:
    * - Intersection lines:
    *    ((e->t1->target_reference << 32) | e->t2->target_reference);
@@ -180,10 +178,8 @@ typedef struct LineartEdge {
    */
   uint64_t edge_identifier;
 
-  /**
-   * - Light contour: original_e->t1->target_reference | original_e->t2->target_reference.
-   * - Cast shadow: triangle_projected_onto->target_reference.
-   */
+  /** - Light contour: original_e->t1->target_reference | original_e->t2->target_reference.
+   *  - Cast shadow: triangle_projected_onto->target_reference. */
   uint64_t target_reference;
 
   /**

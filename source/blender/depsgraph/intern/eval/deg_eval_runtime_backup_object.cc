@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -30,9 +29,6 @@ void ObjectRuntimeBackup::init_from_object(Object *object)
 {
   /* Store evaluated mesh and curve_cache, and make sure we don't free it. */
   runtime = object->runtime;
-  if (object->light_linking) {
-    light_linking_runtime = object->light_linking->runtime;
-  }
   BKE_object_runtime_reset(object);
   /* Keep bbox (for now at least). */
   object->runtime.bb = runtime.bb;
@@ -115,7 +111,7 @@ void ObjectRuntimeBackup::restore_to_object(Object *object)
       }
     }
   }
-  else if (ELEM(object->type, OB_CURVES, OB_POINTCLOUD, OB_VOLUME, OB_GREASE_PENCIL)) {
+  else if (ELEM(object->type, OB_CURVES, OB_POINTCLOUD, OB_VOLUME)) {
     if (object->id.recalc & ID_RECALC_GEOMETRY) {
       /* Free evaluated caches. */
       object->data = data_orig;
@@ -126,18 +122,8 @@ void ObjectRuntimeBackup::restore_to_object(Object *object)
     }
   }
 
-  if (light_linking_runtime) {
-    /* Lazily allocate light linking on the evaluated object for the cases when the object is only
-     * a receiver or a blocker and does not need its own LightLinking on the original object. */
-    if (!object->light_linking) {
-      object->light_linking = MEM_cnew<LightLinking>(__func__);
-    }
-    object->light_linking->runtime = *light_linking_runtime;
-  }
-
   object->base_flag = base_flag;
   object->base_local_view_bits = base_local_view_bits;
-
   /* Restore modifier's runtime data.
    * NOTE: Data of unused modifiers will be freed there. */
   restore_modifier_runtime_data(object);

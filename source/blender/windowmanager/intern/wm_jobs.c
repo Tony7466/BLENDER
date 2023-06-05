@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -56,7 +55,7 @@
  */
 
 struct wmJob {
-  wmJob *next, *prev;
+  struct wmJob *next, *prev;
 
   /** Job originating from, keep track of this when deleting windows */
   wmWindow *win;
@@ -201,7 +200,7 @@ wmJob *WM_jobs_get(wmWindowManager *wm,
     wm_job->owner = owner;
     wm_job->flag = flag;
     wm_job->job_type = job_type;
-    STRNCPY(wm_job->name, name);
+    BLI_strncpy(wm_job->name, name, sizeof(wm_job->name));
 
     wm_job->main_thread_mutex = BLI_ticket_mutex_alloc();
     WM_job_main_thread_lock_acquire(wm_job);
@@ -218,16 +217,12 @@ bool WM_jobs_test(const wmWindowManager *wm, const void *owner, int job_type)
 {
   /* job can be running or about to run (suspended) */
   LISTBASE_FOREACH (wmJob *, wm_job, &wm->jobs) {
-    if (wm_job->owner != owner) {
-      continue;
-    }
-
-    if (!ELEM(job_type, WM_JOB_TYPE_ANY, wm_job->job_type)) {
-      continue;
-    }
-
-    if ((wm_job->flag & WM_JOB_PROGRESS) && (wm_job->running || wm_job->suspended)) {
-      return true;
+    if (wm_job->owner == owner) {
+      if (ELEM(job_type, WM_JOB_TYPE_ANY, wm_job->job_type)) {
+        if ((wm_job->flag & WM_JOB_PROGRESS) && (wm_job->running || wm_job->suspended)) {
+          return true;
+        }
+      }
     }
   }
 
@@ -576,15 +571,13 @@ void WM_jobs_kill_all_except(wmWindowManager *wm, const void *owner)
   }
 }
 
-void WM_jobs_kill_type(wmWindowManager *wm, const void *owner, int job_type)
+void WM_jobs_kill_type(struct wmWindowManager *wm, const void *owner, int job_type)
 {
   LISTBASE_FOREACH_MUTABLE (wmJob *, wm_job, &wm->jobs) {
-    if (owner && wm_job->owner != owner) {
-      continue;
-    }
-
-    if (ELEM(job_type, WM_JOB_TYPE_ANY, wm_job->job_type)) {
-      wm_jobs_kill_job(wm, wm_job);
+    if (!owner || wm_job->owner == owner) {
+      if (ELEM(job_type, WM_JOB_TYPE_ANY, wm_job->job_type)) {
+        wm_jobs_kill_job(wm, wm_job);
+      }
     }
   }
 }
@@ -624,37 +617,35 @@ void wm_jobs_timer_end(wmWindowManager *wm, wmTimer *wt)
 void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
 {
   LISTBASE_FOREACH_MUTABLE (wmJob *, wm_job, &wm->jobs) {
-    if (wm_job->wt != wt) {
-      continue;
-    }
+    if (wm_job->wt == wt) {
+      /* running threads */
+      if (wm_job->threads.first) {
 
-    /* running threads */
-    if (wm_job->threads.first) {
-      /* let threads get temporary lock over main thread if needed */
-      wm_job_main_thread_yield(wm_job);
+        /* let threads get temporary lock over main thread if needed */
+        wm_job_main_thread_yield(wm_job);
 
-      /* always call note and update when ready */
-      if (wm_job->do_update || wm_job->ready) {
-        if (wm_job->update) {
-          wm_job->update(wm_job->run_customdata);
+        /* always call note and update when ready */
+        if (wm_job->do_update || wm_job->ready) {
+          if (wm_job->update) {
+            wm_job->update(wm_job->run_customdata);
+          }
+          if (wm_job->note) {
+            WM_event_add_notifier_ex(wm, wm_job->win, wm_job->note, NULL);
+          }
+
+          if (wm_job->flag & WM_JOB_PROGRESS) {
+            WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, NULL);
+          }
+          wm_job->do_update = false;
         }
-        if (wm_job->note) {
-          WM_event_add_notifier_ex(wm, wm_job->win, wm_job->note, NULL);
-        }
 
-        if (wm_job->flag & WM_JOB_PROGRESS) {
-          WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, NULL);
-        }
-        wm_job->do_update = false;
-      }
+        if (wm_job->ready) {
+          wm_job_end(wm_job);
 
-      if (wm_job->ready) {
-        wm_job_end(wm_job);
-
-        /* free own data */
-        wm_job->run_free(wm_job->run_customdata);
-        wm_job->run_customdata = NULL;
-        wm_job->run_free = NULL;
+          /* free own data */
+          wm_job->run_free(wm_job->run_customdata);
+          wm_job->run_customdata = NULL;
+          wm_job->run_free = NULL;
 
 #if 0
           if (wm_job->stop) {
@@ -665,40 +656,41 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
           }
 #endif
 
-        if (G.debug & G_DEBUG_JOBS) {
-          printf("Job '%s' finished in %f seconds\n",
-                 wm_job->name,
-                 PIL_check_seconds_timer() - wm_job->start_time);
-        }
+          if (G.debug & G_DEBUG_JOBS) {
+            printf("Job '%s' finished in %f seconds\n",
+                   wm_job->name,
+                   PIL_check_seconds_timer() - wm_job->start_time);
+          }
 
-        wm_job->running = false;
+          wm_job->running = false;
 
-        WM_job_main_thread_lock_release(wm_job);
-        BLI_threadpool_end(&wm_job->threads);
-        WM_job_main_thread_lock_acquire(wm_job);
+          WM_job_main_thread_lock_release(wm_job);
+          BLI_threadpool_end(&wm_job->threads);
+          WM_job_main_thread_lock_acquire(wm_job);
 
-        if (wm_job->endnote) {
-          WM_event_add_notifier_ex(wm, wm_job->win, wm_job->endnote, NULL);
-        }
+          if (wm_job->endnote) {
+            WM_event_add_notifier_ex(wm, wm_job->win, wm_job->endnote, NULL);
+          }
 
-        WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, NULL);
+          WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, NULL);
 
-        /* new job added for wm_job? */
-        if (wm_job->customdata) {
-          // printf("job restarted with new data %s\n", wm_job->name);
-          WM_jobs_start(wm, wm_job);
-        }
-        else {
-          WM_event_remove_timer(wm, wm_job->win, wm_job->wt);
-          wm_job->wt = NULL;
+          /* new job added for wm_job? */
+          if (wm_job->customdata) {
+            // printf("job restarted with new data %s\n", wm_job->name);
+            WM_jobs_start(wm, wm_job);
+          }
+          else {
+            WM_event_remove_timer(wm, wm_job->win, wm_job->wt);
+            wm_job->wt = NULL;
 
-          /* remove wm_job */
-          wm_job_free(wm, wm_job);
+            /* remove wm_job */
+            wm_job_free(wm, wm_job);
+          }
         }
       }
-    }
-    else if (wm_job->suspended) {
-      WM_jobs_start(wm, wm_job);
+      else if (wm_job->suspended) {
+        WM_jobs_start(wm, wm_job);
+      }
     }
   }
 
@@ -717,7 +709,7 @@ bool WM_jobs_has_running(const wmWindowManager *wm)
   return false;
 }
 
-bool WM_jobs_has_running_type(const wmWindowManager *wm, int job_type)
+bool WM_jobs_has_running_type(const struct wmWindowManager *wm, int job_type)
 {
   LISTBASE_FOREACH (wmJob *, wm_job, &wm->jobs) {
     if (wm_job->running && wm_job->job_type == job_type) {

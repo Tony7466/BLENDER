@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edobj
@@ -183,7 +182,7 @@ static char *buildmenu_pyconstraints(Main *bmain, Text *con_text, int *pyconinde
   int i;
 
   /* add title first */
-  STRNCPY(buf, "Scripts: %t|[None]%x0|");
+  BLI_snprintf(buf, sizeof(buf), "Scripts: %%t|[None]%%x0|");
   BLI_dynstr_append(pupds, buf);
 
   /* init active-index first */
@@ -202,7 +201,7 @@ static char *buildmenu_pyconstraints(Main *bmain, Text *con_text, int *pyconinde
     if (BPY_is_pyconstraint(text)) {
       BLI_dynstr_append(pupds, text->id.name + 2);
 
-      SNPRINTF(buf, "%%x%d", i);
+      BLI_snprintf(buf, sizeof(buf), "%%x%d", i);
       BLI_dynstr_append(pupds, buf);
 
       if (text->id.next) {
@@ -270,7 +269,7 @@ static void set_constraint_nth_target(bConstraint *con,
     for (ct = targets.first, i = 0; ct; ct = ct->next, i++) {
       if (i == index) {
         ct->tar = target;
-        STRNCPY(ct->subtarget, subtarget);
+        BLI_strncpy(ct->subtarget, subtarget, sizeof(ct->subtarget));
         break;
       }
     }
@@ -780,9 +779,6 @@ static bConstraint *edit_constraint_property_get(bContext *C, wmOperator *op, Ob
 
   if (owner == EDIT_CONSTRAINT_OWNER_BONE) {
     list = ED_object_pose_constraint_list(C);
-    if (!list) {
-      return NULL;
-    }
   }
   else {
     list = &ob->constraints;
@@ -2636,7 +2632,7 @@ void POSE_OT_constraint_add_with_targets(wmOperatorType *ot)
  * \note Only for pose-channels.
  * \{ */
 
-/* TODO: should these be here, or back in `editors/armature/poseobject.c` again? */
+/* TODO: should these be here, or back in editors/armature/poseobject.c again? */
 
 /* present menu with options + validation for targets to use */
 static int pose_ik_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))

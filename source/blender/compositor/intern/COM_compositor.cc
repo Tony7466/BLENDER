@@ -1,12 +1,11 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #include "BLI_threads.h"
 
 #include "BLT_translation.h"
 
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.h"
 
@@ -38,7 +37,7 @@ static void compositor_init_node_previews(const RenderData *render_data, bNodeTr
     preview_width = int(blender::compositor::COM_PREVIEW_SIZE / aspect);
     preview_height = blender::compositor::COM_PREVIEW_SIZE;
   }
-  blender::bke::node_preview_init_tree(node_tree, preview_width, preview_height);
+  BKE_node_preview_init_tree(node_tree, preview_width, preview_height);
 }
 
 static void compositor_reset_node_tree_status(bNodeTree *node_tree)

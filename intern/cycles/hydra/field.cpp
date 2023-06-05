@@ -26,20 +26,12 @@ class HdCyclesVolumeLoader : public VDBImageLoader {
   HdCyclesVolumeLoader(const std::string &filePath, const std::string &gridName)
       : VDBImageLoader(gridName)
   {
-    /* Disable delay loading and file copying, this has poor performance on network drives. */
+    /* Disable delay loading and file copying, this has poor performance on network drivers. */
     const bool delay_load = false;
-    try {
-      openvdb::io::File file(filePath);
-      file.setCopyMaxBytes(0);
-      if (file.open(delay_load)) {
-        grid = file.readGrid(gridName);
-      }
-    }
-    catch (const openvdb::IoError &e) {
-      VLOG_WARNING << "Error loading OpenVDB file: " << e.what();
-    }
-    catch (...) {
-      VLOG_WARNING << "Error loading OpenVDB file: Unknown error";
+    openvdb::io::File file(filePath);
+    file.setCopyMaxBytes(0);
+    if (file.open(delay_load)) {
+      grid = file.readGrid(gridName);
     }
   }
 };

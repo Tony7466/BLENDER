@@ -93,10 +93,6 @@ void xml_read_node(XMLReader &reader, Node *node, xml_node xml_node)
         node->set(socket, (uint)atoi(attr.value()));
         break;
       }
-      case SocketType::UINT64: {
-        node->set(socket, (uint64_t)strtoull(attr.value(), nullptr, 10));
-        break;
-      }
       case SocketType::INT_ARRAY: {
         vector<string> tokens;
         string_split(tokens, attr.value());
@@ -217,7 +213,6 @@ void xml_read_node(XMLReader &reader, Node *node, xml_node xml_node)
       }
       case SocketType::CLOSURE:
       case SocketType::UNDEFINED:
-      case SocketType::NUM_TYPES:
         break;
     }
   }
@@ -283,10 +278,6 @@ xml_node xml_write_node(Node *node, xml_node xml_root)
       }
       case SocketType::UINT: {
         attr = node->get_uint(socket);
-        break;
-      }
-      case SocketType::UINT64: {
-        attr = node->get_uint64(socket);
         break;
       }
       case SocketType::INT_ARRAY: {
@@ -418,7 +409,6 @@ xml_node xml_write_node(Node *node, xml_node xml_root)
       }
       case SocketType::CLOSURE:
       case SocketType::UNDEFINED:
-      case SocketType::NUM_TYPES:
         break;
     }
   }

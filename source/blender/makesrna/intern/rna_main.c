@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -65,7 +63,7 @@ static bool rna_Main_is_dirty_get(PointerRNA *ptr)
 static void rna_Main_filepath_get(PointerRNA *ptr, char *value)
 {
   Main *bmain = (Main *)ptr->data;
-  strcpy(value, bmain->filepath);
+  BLI_strncpy(value, bmain->filepath, sizeof(bmain->filepath));
 }
 
 static int rna_Main_filepath_length(PointerRNA *ptr)
@@ -98,7 +96,6 @@ RNA_MAIN_LISTBASE_FUNCS_DEF(collections)
 RNA_MAIN_LISTBASE_FUNCS_DEF(curves)
 RNA_MAIN_LISTBASE_FUNCS_DEF(fonts)
 RNA_MAIN_LISTBASE_FUNCS_DEF(gpencils)
-RNA_MAIN_LISTBASE_FUNCS_DEF(grease_pencils)
 RNA_MAIN_LISTBASE_FUNCS_DEF(hair_curves)
 RNA_MAIN_LISTBASE_FUNCS_DEF(images)
 RNA_MAIN_LISTBASE_FUNCS_DEF(lattices)
@@ -157,7 +154,7 @@ static PointerRNA rna_Test_test_get(PointerRNA *ptr)
 #else
 
 /* local convenience types */
-typedef void(CollectionDefFunc)(BlenderRNA *brna, PropertyRNA *cprop);
+typedef void(CollectionDefFunc)(struct BlenderRNA *brna, struct PropertyRNA *cprop);
 
 typedef struct MainCollectionDef {
   const char *identifier;
@@ -335,20 +332,9 @@ void RNA_def_main(BlenderRNA *brna)
       {"grease_pencils",
        "GreasePencil",
        "rna_Main_gpencils_begin",
-#  ifdef WITH_GREASE_PENCIL_V3
        "Grease Pencil (legacy)",
        "Grease Pencil (legacy) data-blocks",
-#  else
-       "Grease Pencil",
-       "Grease Pencil data-blocks",
-#  endif
-       RNA_def_main_gpencil_legacy},
-      {"grease_pencils_v3",
-       "GreasePencilv3",
-       "rna_Main_grease_pencils_begin",
-       "Grease Pencil",
-       "Grease Pencil data-blocks",
-       RNA_def_main_grease_pencil},
+       RNA_def_main_gpencil},
       {"movieclips",
        "MovieClip",
        "rna_Main_movieclips_begin",

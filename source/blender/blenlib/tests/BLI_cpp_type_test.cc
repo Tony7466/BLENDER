@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -111,9 +109,7 @@ TEST(cpp_type, DefaultConstruction)
   EXPECT_EQ(buffer[1], default_constructed_value);
   EXPECT_EQ(buffer[2], default_constructed_value);
   EXPECT_EQ(buffer[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.default_construct_indices((void *)buffer,
-                                             IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.default_construct_indices((void *)buffer, {2, 5, 7});
   EXPECT_EQ(buffer[2], default_constructed_value);
   EXPECT_EQ(buffer[4], 0);
   EXPECT_EQ(buffer[5], default_constructed_value);
@@ -140,9 +136,7 @@ TEST(cpp_type, ValueInitialize)
   EXPECT_EQ(buffer[1], default_constructed_value);
   EXPECT_EQ(buffer[2], default_constructed_value);
   EXPECT_EQ(buffer[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.value_initialize_indices((void *)buffer,
-                                            IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.value_initialize_indices((void *)buffer, {2, 5, 7});
   EXPECT_EQ(buffer[2], default_constructed_value);
   EXPECT_EQ(buffer[4], 0);
   EXPECT_EQ(buffer[5], default_constructed_value);
@@ -169,9 +163,7 @@ TEST(cpp_type, Destruct)
   EXPECT_EQ(buffer[1], destructed_value);
   EXPECT_EQ(buffer[2], destructed_value);
   EXPECT_EQ(buffer[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.destruct_indices((void *)buffer,
-                                    IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.destruct_indices((void *)buffer, {2, 5, 7});
   EXPECT_EQ(buffer[2], destructed_value);
   EXPECT_EQ(buffer[4], 0);
   EXPECT_EQ(buffer[5], destructed_value);
@@ -196,9 +188,7 @@ TEST(cpp_type, CopyToUninitialized)
   EXPECT_EQ(buffer2[2], copy_constructed_value);
   EXPECT_EQ(buffer1[3], 0);
   EXPECT_EQ(buffer2[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.copy_construct_indices(
-      (void *)buffer1, (void *)buffer2, IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.copy_construct_indices((void *)buffer1, (void *)buffer2, {2, 5, 7});
   EXPECT_EQ(buffer1[2], copy_constructed_from_value);
   EXPECT_EQ(buffer2[2], copy_constructed_value);
   EXPECT_EQ(buffer1[4], 0);
@@ -229,9 +219,7 @@ TEST(cpp_type, CopyToInitialized)
   EXPECT_EQ(buffer2[2], copy_assigned_value);
   EXPECT_EQ(buffer1[3], 0);
   EXPECT_EQ(buffer2[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.copy_assign_indices(
-      (void *)buffer1, (void *)buffer2, IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.copy_assign_indices((void *)buffer1, (void *)buffer2, {2, 5, 7});
   EXPECT_EQ(buffer1[2], copy_assigned_from_value);
   EXPECT_EQ(buffer2[2], copy_assigned_value);
   EXPECT_EQ(buffer1[4], 0);
@@ -262,9 +250,7 @@ TEST(cpp_type, RelocateToUninitialized)
   EXPECT_EQ(buffer2[2], move_constructed_value);
   EXPECT_EQ(buffer1[3], 0);
   EXPECT_EQ(buffer2[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.relocate_construct_indices(
-      (void *)buffer1, (void *)buffer2, IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.relocate_construct_indices((void *)buffer1, (void *)buffer2, {2, 5, 7});
   EXPECT_EQ(buffer1[2], destructed_value);
   EXPECT_EQ(buffer2[2], move_constructed_value);
   EXPECT_EQ(buffer1[4], 0);
@@ -295,9 +281,7 @@ TEST(cpp_type, RelocateToInitialized)
   EXPECT_EQ(buffer2[2], move_assigned_value);
   EXPECT_EQ(buffer1[3], 0);
   EXPECT_EQ(buffer2[3], 0);
-  IndexMaskMemory memory;
-  CPPType_TestType.relocate_assign_indices(
-      (void *)buffer1, (void *)buffer2, IndexMask::from_indices<int>({2, 5, 7}, memory));
+  CPPType_TestType.relocate_assign_indices((void *)buffer1, (void *)buffer2, {2, 5, 7});
   EXPECT_EQ(buffer1[2], destructed_value);
   EXPECT_EQ(buffer2[2], move_assigned_value);
   EXPECT_EQ(buffer1[4], 0);
@@ -324,9 +308,7 @@ TEST(cpp_type, FillInitialized)
   EXPECT_EQ(buffer2[3], 0);
 
   buffer1 = 0;
-  IndexMaskMemory memory;
-  CPPType_TestType.fill_assign_indices(
-      (void *)&buffer1, (void *)buffer2, IndexMask::from_indices<int>({1, 6, 8}, memory));
+  CPPType_TestType.fill_assign_indices((void *)&buffer1, (void *)buffer2, {1, 6, 8});
   EXPECT_EQ(buffer1, copy_assigned_from_value);
   EXPECT_EQ(buffer2[0], copy_assigned_value);
   EXPECT_EQ(buffer2[1], copy_assigned_value);
@@ -352,9 +334,7 @@ TEST(cpp_type, FillUninitialized)
   EXPECT_EQ(buffer2[3], 0);
 
   buffer1 = 0;
-  IndexMaskMemory memory;
-  CPPType_TestType.fill_construct_indices(
-      (void *)&buffer1, (void *)buffer2, IndexMask::from_indices<int>({1, 6, 8}, memory));
+  CPPType_TestType.fill_construct_indices((void *)&buffer1, (void *)buffer2, {1, 6, 8});
   EXPECT_EQ(buffer1, copy_constructed_from_value);
   EXPECT_EQ(buffer2[0], copy_constructed_value);
   EXPECT_EQ(buffer2[1], copy_constructed_value);
@@ -405,9 +385,7 @@ TEST(cpp_type, CopyAssignCompressed)
 {
   std::array<std::string, 5> array = {"a", "b", "c", "d", "e"};
   std::array<std::string, 3> array_compressed;
-  IndexMaskMemory memory;
-  CPPType::get<std::string>().copy_assign_compressed(
-      &array, &array_compressed, IndexMask::from_indices<int>({0, 2, 3}, memory));
+  CPPType::get<std::string>().copy_assign_compressed(&array, &array_compressed, {0, 2, 3});
   EXPECT_EQ(array_compressed[0], "a");
   EXPECT_EQ(array_compressed[1], "c");
   EXPECT_EQ(array_compressed[2], "d");

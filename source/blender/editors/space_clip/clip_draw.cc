@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup spclip
@@ -268,7 +267,7 @@ static void draw_movieclip_notes(SpaceClip *sc, ARegion *region)
   bool full_redraw = false;
 
   if (tracking->stats) {
-    STRNCPY(str, tracking->stats->message);
+    BLI_strncpy(str, tracking->stats->message, sizeof(str));
     full_redraw = true;
   }
   else {
@@ -1095,10 +1094,10 @@ static void draw_marker_texts(SpaceClip *sc,
   }
 
   if (state[0]) {
-    SNPRINTF(str, "%s: %s", track->name, state);
+    BLI_snprintf(str, sizeof(str), "%s: %s", track->name, state);
   }
   else {
-    STRNCPY(str, track->name);
+    BLI_strncpy(str, track->name, sizeof(str));
   }
 
   BLF_position(fontid, pos[0], pos[1], 0.0f);
@@ -1106,7 +1105,7 @@ static void draw_marker_texts(SpaceClip *sc,
   pos[1] -= fontsize;
 
   if (track->flag & TRACK_HAS_BUNDLE) {
-    SNPRINTF(str, "Average error: %.2f px", track->error);
+    BLI_snprintf(str, sizeof(str), "Average error: %.2f px", track->error);
     BLF_position(fontid, pos[0], pos[1], 0.0f);
     BLF_draw(fontid, str, sizeof(str));
     pos[1] -= fontsize;

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008-2018 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008-2018 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -99,7 +98,7 @@ typedef struct tGPsdata {
   Main *bmain;
   /** current scene from context. */
   Scene *scene;
-  Depsgraph *depsgraph;
+  struct Depsgraph *depsgraph;
 
   /** window where painting originated. */
   wmWindow *win;

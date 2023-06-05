@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2023 Nvidia. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Nvidia. All rights reserved. */
 
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"

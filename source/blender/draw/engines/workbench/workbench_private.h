@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -270,7 +269,7 @@ typedef struct WORKBENCH_PrivateData {
   /** If the shadow has changed direction and ob bboxes needs to be updated. */
   bool shadow_changed;
 
-  /* Temporal Anti-aliasing. */
+  /* Temporal Antialiasing */
   /** Total number of samples to after which TAA stops accumulating samples. */
   int taa_sample_len;
   /** Total number of samples of the previous TAA. When changed TAA will be reset. */

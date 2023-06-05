@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spfile
@@ -199,7 +198,7 @@ static FileSelect file_select_do(bContext *C, int selected_idx, bool do_diropen)
           }
         }
         else if (file->redirection_path) {
-          STRNCPY(params->dir, file->redirection_path);
+          BLI_strncpy(params->dir, file->redirection_path, sizeof(params->dir));
           BLI_path_abs(params->dir, BKE_main_blendfile_path(bmain));
           BLI_path_normalize_dir(params->dir, sizeof(params->dir));
         }
@@ -707,7 +706,7 @@ void FILE_OT_select(wmOperatorType *ot)
 /**
  * \returns true if selection has changed
  */
-static bool file_walk_select_selection_set(bContext *C,
+static bool file_walk_select_selection_set(struct bContext *C,
                                            wmWindow *win,
                                            ARegion *region,
                                            SpaceFile *sfile,
@@ -1104,7 +1103,7 @@ static int bookmark_select_exec(bContext *C, wmOperator *op)
   char entry[256];
 
   RNA_property_string_get(op->ptr, prop, entry);
-  STRNCPY(params->dir, entry);
+  BLI_strncpy(params->dir, entry, sizeof(params->dir));
   BLI_path_abs(params->dir, BKE_main_blendfile_path(bmain));
   BLI_path_normalize_dir(params->dir, sizeof(params->dir));
   ED_file_change_dir(C);
@@ -1144,7 +1143,7 @@ static int bookmark_add_exec(bContext *C, wmOperator *op)
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
   struct FSMenu *fsmenu = ED_fsmenu_get();
-  FileSelectParams *params = ED_fileselect_get_active_params(sfile);
+  struct FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 
   if (params->dir[0] != '\0') {
 
@@ -1221,7 +1220,7 @@ static int bookmark_cleanup_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   struct FSMenu *fsmenu = ED_fsmenu_get();
-  FSMenuEntry *fsme_next, *fsme = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
+  struct FSMenuEntry *fsme_next, *fsme = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
   int index;
   bool changed = false;
 
@@ -1278,8 +1277,8 @@ static int bookmark_move_exec(bContext *C, wmOperator *op)
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
   struct FSMenu *fsmenu = ED_fsmenu_get();
-  FSMenuEntry *fsmentry = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
-  const FSMenuEntry *fsmentry_org = fsmentry;
+  struct FSMenuEntry *fsmentry = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
+  const struct FSMenuEntry *fsmentry_org = fsmentry;
 
   const int direction = RNA_enum_get(op->ptr, "direction");
   const int totitems = ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_BOOKMARKS);
@@ -1463,7 +1462,7 @@ static int file_highlight_invoke(bContext *C, wmOperator *UNUSED(op), const wmEv
   return OPERATOR_PASS_THROUGH;
 }
 
-void FILE_OT_highlight(wmOperatorType *ot)
+void FILE_OT_highlight(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Highlight File";
@@ -1562,7 +1561,7 @@ static int file_cancel_exec(bContext *C, wmOperator *UNUSED(unused))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_cancel(wmOperatorType *ot)
+void FILE_OT_cancel(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Cancel File Load";
@@ -1716,7 +1715,7 @@ void file_sfile_filepath_set(SpaceFile *sfile, const char *filepath)
   BLI_assert(BLI_exists(filepath));
 
   if (BLI_is_dir(filepath)) {
-    STRNCPY(params->dir, filepath);
+    BLI_strncpy(params->dir, filepath, sizeof(params->dir));
   }
   else {
     if ((params->flag & FILE_DIRSEL_ONLY) == 0) {
@@ -2071,7 +2070,7 @@ static bool file_execute(bContext *C, SpaceFile *sfile)
     }
     else {
       BLI_path_abs(params->dir, BKE_main_blendfile_path(bmain));
-      BLI_path_normalize_native(params->dir);
+      BLI_path_normalize(params->dir);
       BLI_path_append_dir(params->dir, sizeof(params->dir), file->relpath);
     }
     ED_file_change_dir(C);
@@ -2115,7 +2114,7 @@ static int file_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_execute(wmOperatorType *ot)
+void FILE_OT_execute(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Execute File Window";
@@ -2210,7 +2209,7 @@ static int file_refresh_exec(bContext *C, wmOperator *UNUSED(unused))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_refresh(wmOperatorType *ot)
+void FILE_OT_refresh(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Refresh File List";
@@ -2251,10 +2250,10 @@ static int file_parent_exec(bContext *C, wmOperator *UNUSED(unused))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_parent(wmOperatorType *ot)
+void FILE_OT_parent(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Parent Directory";
+  ot->name = "Parent File";
   ot->description = "Move to parent directory";
   ot->idname = "FILE_OT_parent";
 
@@ -2287,7 +2286,7 @@ static int file_previous_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_previous(wmOperatorType *ot)
+void FILE_OT_previous(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Previous Folder";
@@ -2324,7 +2323,7 @@ static int file_next_exec(bContext *C, wmOperator *UNUSED(unused))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_next(wmOperatorType *ot)
+void FILE_OT_next(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Next Folder";
@@ -2613,7 +2612,7 @@ static bool new_folder_path(const char *parent,
 static int file_directory_new_exec(bContext *C, wmOperator *op)
 {
   char dirname[FILE_MAXFILE];
-  char dirpath[FILE_MAX];
+  char path[FILE_MAX];
   bool generate_name = true;
 
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -2626,19 +2625,19 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  dirpath[0] = '\0';
+  path[0] = '\0';
 
   {
     PropertyRNA *prop = RNA_struct_find_property(op->ptr, "directory");
-    RNA_property_string_get(op->ptr, prop, dirpath);
-    if (dirpath[0] != '\0') {
+    RNA_property_string_get(op->ptr, prop, path);
+    if (path[0] != '\0') {
       generate_name = false;
     }
   }
 
   if (generate_name) {
     /* create a new, non-existing folder name */
-    if (!new_folder_path(params->dir, dirpath, dirname)) {
+    if (!new_folder_path(params->dir, path, dirname)) {
       BKE_report(op->reports, RPT_ERROR, "Could not create new folder name");
       return OPERATOR_CANCELLED;
     }
@@ -2646,22 +2645,22 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
   else { /* We assume we are able to generate a valid name! */
     char org_path[FILE_MAX];
 
-    STRNCPY(org_path, dirpath);
-    if (BLI_path_make_safe(dirpath)) {
+    BLI_strncpy(org_path, path, sizeof(org_path));
+    if (BLI_path_make_safe(path)) {
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "'%s' given path is OS-invalid, creating '%s' path instead",
                   org_path,
-                  dirpath);
+                  path);
     }
   }
 
   /* create the file */
   errno = 0;
-  if (!BLI_dir_create_recursive(dirpath) ||
+  if (!BLI_dir_create_recursive(path) ||
       /* Should no more be needed,
        * now that BLI_dir_create_recursive returns a success state - but kept just in case. */
-      !BLI_exists(dirpath))
+      !BLI_exists(path))
   {
     BKE_reportf(op->reports,
                 RPT_ERROR,
@@ -2677,7 +2676,7 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
     BLI_assert_msg(params->rename_id == NULL,
                    "File rename handling should immediately clear rename_id when done, "
                    "because otherwise it will keep taking precedence over renamefile.");
-    STRNCPY(params->renamefile, dirname);
+    BLI_strncpy(params->renamefile, dirname, FILE_MAXFILE);
     rename_flag = FILE_PARAMS_RENAME_PENDING;
   }
 
@@ -2688,7 +2687,7 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
   ED_fileselect_clear(wm, sfile);
 
   if (do_diropen) {
-    STRNCPY(params->dir, dirpath);
+    BLI_strncpy(params->dir, path, sizeof(params->dir));
     ED_file_change_dir(C);
   }
 
@@ -2697,7 +2696,7 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_directory_new(wmOperatorType *ot)
+void FILE_OT_directory_new(struct wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -2742,12 +2741,9 @@ static void file_expand_directory(bContext *C)
                                                  BKE_appdir_folder_default_or_root());
     }
     else if (params->dir[0] == '~') {
-      /* While path handling expansion typically doesn't support home directory expansion
-       * in Blender, this is a convenience to be able to type in a single character.
-       * Even though this is a UNIX convention, it's harmless to expand on WIN32 as well. */
       char tmpstr[sizeof(params->dir) - 1];
-      STRNCPY(tmpstr, params->dir + 1);
-      BLI_path_join(params->dir, sizeof(params->dir), BKE_appdir_folder_home(), tmpstr);
+      BLI_strncpy(tmpstr, params->dir + 1, sizeof(tmpstr));
+      BLI_path_join(params->dir, sizeof(params->dir), BKE_appdir_folder_default_or_root(), tmpstr);
     }
 
     else if (params->dir[0] == '\0')
@@ -2760,9 +2756,9 @@ static void file_expand_directory(bContext *C)
     {
       BLI_windows_get_default_root_dir(params->dir);
     }
-    /* Change `C:` --> `C:\`, #28102. */
-    else if (BLI_path_is_win32_drive_only(params->dir)) {
-      params->dir[2] = SEP;
+    /* change "C:" --> "C:\", #28102. */
+    else if ((isalpha(params->dir[0]) && (params->dir[1] == ':')) && (params->dir[2] == '\0')) {
+      params->dir[2] = '\\';
       params->dir[3] = '\0';
     }
     else if (BLI_path_is_unc(params->dir)) {
@@ -2799,7 +2795,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
   if (params) {
     char old_dir[sizeof(params->dir)];
 
-    STRNCPY(old_dir, params->dir);
+    BLI_strncpy(old_dir, params->dir, sizeof(old_dir));
 
     file_expand_directory(C);
 
@@ -2809,18 +2805,18 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
       char *group, *name;
 
       if (BLI_is_file(params->dir)) {
-        char dirpath[sizeof(params->dir)];
-        STRNCPY(dirpath, params->dir);
+        char path[sizeof(params->dir)];
+        BLI_strncpy(path, params->dir, sizeof(path));
         BLI_path_split_dir_file(
-            dirpath, params->dir, sizeof(params->dir), params->file, sizeof(params->file));
+            path, params->dir, sizeof(params->dir), params->file, sizeof(params->file));
       }
       else if (BKE_blendfile_library_path_explode(params->dir, tdir, &group, &name)) {
         if (group) {
           BLI_path_append(tdir, sizeof(tdir), group);
         }
-        STRNCPY(params->dir, tdir);
+        BLI_strncpy(params->dir, tdir, sizeof(params->dir));
         if (name) {
-          STRNCPY(params->file, name);
+          BLI_strncpy(params->file, name, sizeof(params->file));
         }
         else {
           params->file[0] = '\0';
@@ -2845,7 +2841,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
     else if (!can_create_dir(params->dir)) {
       const char *lastdir = folderlist_peeklastdir(sfile->folders_prev);
       if (lastdir) {
-        STRNCPY(params->dir, lastdir);
+        BLI_strncpy(params->dir, lastdir, sizeof(params->dir));
       }
     }
 #endif
@@ -2855,7 +2851,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
 
       /* If we are 'inside' a blend library, we cannot do anything... */
       if (lastdir && BKE_blendfile_library_path_explode(lastdir, tdir, NULL, NULL)) {
-        STRNCPY(params->dir, lastdir);
+        BLI_strncpy(params->dir, lastdir, sizeof(params->dir));
       }
       else {
         /* if not, ask to create it and enter if confirmed */
@@ -2869,7 +2865,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
         RNA_boolean_set(&ptr, "confirm", true);
 
         if (lastdir) {
-          STRNCPY(params->dir, lastdir);
+          BLI_strncpy(params->dir, lastdir, sizeof(params->dir));
         }
 
         WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &ptr, NULL);
@@ -2906,7 +2902,7 @@ void file_filename_enter_handle(bContext *C, void *UNUSED(arg_unused), void *arg
     if (matches) {
       /* replace the pattern (or filename that the user typed in,
        * with the first selected file of the match */
-      STRNCPY(params->file, matched_file);
+      BLI_strncpy(params->file, matched_file, sizeof(params->file));
 
       WM_event_add_notifier(C, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
     }
@@ -2918,7 +2914,7 @@ void file_filename_enter_handle(bContext *C, void *UNUSED(arg_unused), void *arg
       if (filelist_is_dir(sfile->files, filepath)) {
         BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
         BLI_path_normalize_dir(filepath, sizeof(filepath));
-        STRNCPY(params->dir, filepath);
+        BLI_strncpy(params->dir, filepath, sizeof(params->dir));
         params->file[0] = '\0';
         ED_file_change_dir(C);
         UI_textbutton_activate_but(C, but);
@@ -2952,7 +2948,7 @@ static int file_hidedot_exec(bContext *C, wmOperator *UNUSED(unused))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_hidedot(wmOperatorType *ot)
+void FILE_OT_hidedot(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Toggle Hide Dot Files";
@@ -2988,9 +2984,10 @@ static bool file_filenum_poll(bContext *C)
  * Looks for a string of digits within filename (using BLI_path_sequence_decode) and adjusts it by
  * add.
  */
-static void filenum_newname(char *filename, size_t filename_maxncpy, int add)
+static void filenum_newname(char *filename, size_t filename_size, int add)
 {
   char head[FILE_MAXFILE], tail[FILE_MAXFILE];
+  char filename_temp[FILE_MAXFILE];
   int pic;
   ushort digits;
 
@@ -3012,7 +3009,8 @@ static void filenum_newname(char *filename, size_t filename_maxncpy, int add)
   if (pic < 0) {
     pic = 0;
   }
-  BLI_path_sequence_encode(filename, filename_maxncpy, head, tail, digits, pic);
+  BLI_path_sequence_encode(filename_temp, sizeof(filename_temp), head, tail, digits, pic);
+  BLI_strncpy(filename, filename_temp, filename_size);
 }
 
 static int file_filenum_exec(bContext *C, wmOperator *op)
@@ -3032,7 +3030,7 @@ static int file_filenum_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_filenum(wmOperatorType *ot)
+void FILE_OT_filenum(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Increment Number in Filename";
@@ -3067,7 +3065,7 @@ static void file_rename_state_activate(SpaceFile *sfile, int file_idx, bool requ
 
       filelist_entry_select_index_set(
           sfile->files, file_idx, FILE_SEL_ADD, FILE_SEL_EDITING, CHECK_ALL);
-      STRNCPY(params->renamefile, file->relpath);
+      BLI_strncpy(params->renamefile, file->relpath, FILE_MAXFILE);
       /* We can skip the pending state,
        * as we can directly set FILE_SEL_EDITING on the expected entry here. */
       params->rename_flag = FILE_PARAMS_RENAME_ACTIVE;
@@ -3089,7 +3087,7 @@ static int file_rename_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_rename(wmOperatorType *ot)
+void FILE_OT_rename(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Rename File or Directory";
@@ -3140,9 +3138,9 @@ static bool file_delete_single(const struct FileList *files,
                                FileDirEntry *file,
                                const char **r_error_message)
 {
-  char filepath[FILE_MAX_LIBEXTRA];
-  filelist_file_get_full_path(files, file, filepath);
-  if (BLI_delete_soft(filepath, r_error_message) != 0 || BLI_exists(filepath)) {
+  char str[FILE_MAX_LIBEXTRA];
+  filelist_file_get_full_path(files, file, str);
+  if (BLI_delete_soft(str, r_error_message) != 0 || BLI_exists(str)) {
     return false;
   }
 
@@ -3185,7 +3183,7 @@ static int file_delete_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_delete(wmOperatorType *ot)
+void FILE_OT_delete(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Delete Selected Files";
@@ -3226,7 +3224,7 @@ static int file_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_start_filter(wmOperatorType *ot)
+void FILE_OT_start_filter(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Filter";
@@ -3267,7 +3265,7 @@ static int file_edit_directory_path_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void FILE_OT_edit_directory_path(wmOperatorType *ot)
+void FILE_OT_edit_directory_path(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Edit Directory Path";

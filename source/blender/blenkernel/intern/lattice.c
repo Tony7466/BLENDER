@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -162,8 +161,8 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
 static void lattice_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Lattice *lt = (Lattice *)id;
-  BLO_read_id_address(reader, id, &lt->ipo);  // XXX deprecated - old animation system
-  BLO_read_id_address(reader, id, &lt->key);
+  BLO_read_id_address(reader, lt->id.lib, &lt->ipo);  // XXX deprecated - old animation system
+  BLO_read_id_address(reader, lt->id.lib, &lt->key);
 }
 
 static void lattice_blend_read_expand(BlendExpander *expander, ID *id)
@@ -498,7 +497,7 @@ float (*BKE_lattice_vert_coords_alloc(const Lattice *lt, int *r_vert_len))[3]
   return vert_coords;
 }
 
-void BKE_lattice_vert_coords_apply_with_mat4(Lattice *lt,
+void BKE_lattice_vert_coords_apply_with_mat4(struct Lattice *lt,
                                              const float (*vert_coords)[3],
                                              const float mat[4][4])
 {
@@ -516,7 +515,7 @@ void BKE_lattice_vert_coords_apply(Lattice *lt, const float (*vert_coords)[3])
   }
 }
 
-void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
+void BKE_lattice_modifiers_calc(struct Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   BKE_object_free_derived_caches(ob);
   if (ob->runtime.curve_cache == NULL) {
@@ -573,14 +572,14 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   MEM_freeN(vert_coords);
 }
 
-MDeformVert *BKE_lattice_deform_verts_get(const Object *oblatt)
+struct MDeformVert *BKE_lattice_deform_verts_get(const struct Object *oblatt)
 {
   BLI_assert(oblatt->type == OB_LATTICE);
   Lattice *lt = BKE_object_get_lattice(oblatt);
   return lt->dvert;
 }
 
-BPoint *BKE_lattice_active_point_get(Lattice *lt)
+struct BPoint *BKE_lattice_active_point_get(Lattice *lt)
 {
   BLI_assert(GS(lt->id.name) == ID_LT);
 
@@ -759,7 +758,7 @@ bool BKE_lattice_is_any_selected(const Lattice *lt)
 
 /* **** Depsgraph evaluation **** */
 
-void BKE_lattice_eval_geometry(Depsgraph *UNUSED(depsgraph), Lattice *UNUSED(latt)) {}
+void BKE_lattice_eval_geometry(struct Depsgraph *UNUSED(depsgraph), Lattice *UNUSED(latt)) {}
 
 /* Draw Engine */
 

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -22,7 +21,7 @@ class VKPixelBuffer : public PixelBuffer {
   void *map() override;
   void unmap() override;
   int64_t get_native_handle() override;
-  size_t get_size() override;
+  uint get_size() override;
 };
 
 }  // namespace blender::gpu

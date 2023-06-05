@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -142,7 +141,7 @@ void BLI_rng_shuffle_array(RNG *rng, void *data, uint elem_size_i, uint elem_num
   free(temp);
 }
 
-void BLI_rng_shuffle_bitmap(RNG *rng, BLI_bitmap *bitmap, uint bits_num)
+void BLI_rng_shuffle_bitmap(struct RNG *rng, BLI_bitmap *bitmap, uint bits_num)
 {
   if (bits_num <= 1) {
     return;
@@ -246,7 +245,7 @@ RNG_THREAD_ARRAY *BLI_rng_threaded_new()
   return rngarr;
 }
 
-void BLI_rng_threaded_free(RNG_THREAD_ARRAY *rngarr)
+void BLI_rng_threaded_free(struct RNG_THREAD_ARRAY *rngarr)
 {
   MEM_freeN(rngarr);
 }

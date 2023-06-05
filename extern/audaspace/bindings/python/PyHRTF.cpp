@@ -54,7 +54,7 @@ HRTF_dealloc(HRTFP* self)
 }
 
 PyDoc_STRVAR(M_aud_HRTF_addImpulseResponse_doc,
-	".. method:: addImpulseResponseFromSound(sound, azimuth, elevation)\n\n"
+	".. classmethod:: addImpulseResponseFromSound(sound, azimuth, elevation)\n\n"
 	"   Adds a new hrtf to the HRTF object\n\n"
 	"   :arg sound: The sound that contains the hrtf.\n"
 	"   :type sound: :class:`Sound`\n"
@@ -90,7 +90,7 @@ HRTF_addImpulseResponseFromSound(HRTFP* self, PyObject* args)
 }
 
 PyDoc_STRVAR(M_aud_HRTF_loadLeftHrtfSet_doc,
-	".. method:: loadLeftHrtfSet(extension, directory)\n\n"
+	".. classmethod:: loadLeftHrtfSet(extension, directory)\n\n"
 	"   Loads all HRTFs from a directory.\n\n"
 	"   :arg extension: The file extension of the hrtfs.\n"
 	"   :type extension: string\n"
@@ -125,7 +125,7 @@ HRTF_loadLeftHrtfSet(PyTypeObject* type, PyObject* args)
 }
 
 PyDoc_STRVAR(M_aud_HRTF_loadRightHrtfSet_doc,
-	".. method:: loadLeftHrtfSet(extension, directory)\n\n"
+	".. classmethod:: loadLeftHrtfSet(extension, directory)\n\n"
 	"   Loads all HRTFs from a directory.\n\n"
 	"   :arg extension: The file extension of the hrtfs.\n"
 	"   :type extension: string\n"

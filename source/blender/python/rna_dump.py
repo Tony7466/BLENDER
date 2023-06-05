@@ -123,4 +123,8 @@ for d in dir(bpy.types):
         seek(r, 'bpy.types.' + d + '.bl_rna', 0)
 '''
 
+# print dir(bpy)
+# import sys
+# sys.exit()
+
 print("iter over ", seek_count, "rna items")

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -13,18 +11,18 @@ NODE_STORAGE_FUNCS(NodeGeometrySeparateGeometry)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry");
-  b.add_input<decl::Bool>("Selection")
+  b.add_input<decl::Geometry>(N_("Geometry"));
+  b.add_input<decl::Bool>(N_("Selection"))
       .default_value(true)
       .hide_value()
       .field_on_all()
-      .description("The parts of the geometry that go into the first output");
-  b.add_output<decl::Geometry>("Selection")
+      .description(N_("The parts of the geometry that go into the first output"));
+  b.add_output<decl::Geometry>(N_("Selection"))
       .propagate_all()
-      .description("The parts of the geometry in the selection");
-  b.add_output<decl::Geometry>("Inverted")
+      .description(N_("The parts of the geometry in the selection"));
+  b.add_output<decl::Geometry>(N_("Inverted"))
       .propagate_all()
-      .description("The parts of the geometry not in the selection");
+      .description(N_("The parts of the geometry not in the selection"));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

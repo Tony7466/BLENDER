@@ -1,6 +1,5 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
-#
 # SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2006 Blender Foundation
 
 set(INC
   .
@@ -150,8 +149,6 @@ set(SRC
   intern/gpencil_legacy.c
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
-  intern/grease_pencil_convert_legacy.cc
-  intern/grease_pencil.cc
   intern/icons.cc
   intern/icons_rasterize.c
   intern/idprop.c
@@ -184,15 +181,14 @@ set(SRC
   intern/lib_remap.c
   intern/library.c
   intern/light.c
-  intern/light_linking.cc
   intern/lightprobe.cc
   intern/linestyle.cc
   intern/main.c
   intern/main_idmap.c
   intern/main_namemap.cc
-  intern/mask.cc
-  intern/mask_evaluate.cc
-  intern/mask_rasterize.cc
+  intern/mask.c
+  intern/mask_evaluate.c
+  intern/mask_rasterize.c
   intern/material.cc
   intern/mball.cc
   intern/mball_tessellate.cc
@@ -236,7 +232,6 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_field_inferencing.cc
   intern/node_tree_update.cc
-  intern/node_tree_zones.cc
   intern/object.cc
   intern/object_deform.c
   intern/object_dupli.cc
@@ -270,8 +265,6 @@ set(SRC
   intern/shader_fx.c
   intern/shrinkwrap.cc
   intern/simulation.cc
-  intern/simulation_state.cc
-  intern/simulation_state_serialize.cc
   intern/softbody.c
   intern/sound.c
   intern/speaker.c
@@ -396,8 +389,6 @@ set(SRC
   BKE_gpencil_legacy.h
   BKE_gpencil_modifier_legacy.h
   BKE_gpencil_update_cache_legacy.h
-  BKE_grease_pencil.h
-  BKE_grease_pencil.hh
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
@@ -420,7 +411,6 @@ set(SRC
   BKE_lib_remap.h
   BKE_library.h
   BKE_light.h
-  BKE_light_linking.h
   BKE_lightprobe.h
   BKE_linestyle.h
   BKE_main.h
@@ -450,10 +440,8 @@ set(SRC
   BKE_multires.h
   BKE_nla.h
   BKE_node.h
-  BKE_node.hh
   BKE_node_runtime.hh
   BKE_node_tree_update.h
-  BKE_node_tree_zones.hh
   BKE_object.h
   BKE_object_deform.h
   BKE_object_facemap.h
@@ -476,8 +464,6 @@ set(SRC
   BKE_shader_fx.h
   BKE_shrinkwrap.h
   BKE_simulation.h
-  BKE_simulation_state.hh
-  BKE_simulation_state_serialize.hh
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -841,7 +827,6 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
-    intern/grease_pencil_test.cc
   )
   set(TEST_INC
     ../editors/include

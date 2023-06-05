@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -157,7 +155,7 @@ class Instances {
    * Remove the indices that are not contained in the mask input, and remove unused instance
    * references afterwards.
    */
-  void remove(const blender::IndexMask &mask,
+  void remove(const blender::IndexMask mask,
               const blender::bke::AnonymousAttributePropagationInfo &propagation_info);
   /**
    * Get an id for every instance. These can be used for e.g. motion blur.

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
@@ -13,20 +11,33 @@ namespace blender::nodes::node_geo_mesh_topology_edges_of_vertex_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>("Vertex Index")
+  b.add_input<decl::Int>(N_("Vertex Index"))
       .implicit_field(implicit_field_inputs::index)
-      .description("The vertex to retrieve data from. Defaults to the vertex from the context");
-  b.add_input<decl::Float>("Weights").supports_field().hide_value().description(
-      "Values used to sort the edges connected to the vertex. Uses indices by default");
-  b.add_input<decl::Int>("Sort Index")
+      .description(
+          N_("The vertex to retrieve data from. Defaults to the vertex from the context"));
+  b.add_input<decl::Float>(N_("Weights"))
+      .supports_field()
+      .hide_value()
+      .description(
+          N_("Values used to sort the edges connected to the vertex. Uses indices by default"));
+  b.add_input<decl::Int>(N_("Sort Index"))
       .min(0)
       .supports_field()
-      .description("Which of the sorted edges to output");
-  b.add_output<decl::Int>("Edge Index")
+      .description(N_("Which of the sorted edges to output"));
+  b.add_output<decl::Int>(N_("Edge Index"))
       .field_source_reference_all()
-      .description("An edge connected to the face, chosen by the sort index");
-  b.add_output<decl::Int>("Total").field_source().reference_pass({0}).description(
-      "The number of edges connected to each vertex");
+      .description(N_("An edge connected to the face, chosen by the sort index"));
+  b.add_output<decl::Int>(N_("Total"))
+      .field_source()
+      .reference_pass({0})
+      .description(N_("The number of edges connected to each vertex"));
+}
+
+static void convert_span(const Span<int> src, MutableSpan<int64_t> dst)
+{
+  for (const int i : src.index_range()) {
+    dst[i] = src[i];
+  }
 }
 
 class EdgesOfVertInput final : public bke::MeshFieldInput {
@@ -46,14 +57,12 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask &mask) const final
+                                 const IndexMask mask) const final
   {
     const IndexRange vert_range(mesh.totvert);
     const Span<int2> edges = mesh.edges();
-    Array<int> map_offsets;
-    Array<int> map_indices;
-    const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
-        edges, mesh.totvert, map_offsets, map_indices);
+    const Array<Vector<int>> vert_to_edge_map = bke::mesh_topology::build_vert_to_edge_map(
+        edges, mesh.totvert);
 
     const bke::MeshFieldContext context{mesh, domain};
     fn::FieldEvaluator evaluator{context, &mask};
@@ -71,12 +80,13 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
     const bool use_sorting = !all_sort_weights.is_single();
 
     Array<int> edge_of_vertex(mask.min_array_size());
-    mask.foreach_segment(GrainSize(1024), [&](const IndexMaskSegment segment) {
+    threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
       /* Reuse arrays to avoid allocation. */
+      Array<int64_t> edge_indices;
       Array<float> sort_weights;
       Array<int> sort_indices;
 
-      for (const int selection_i : segment) {
+      for (const int selection_i : mask.slice(range)) {
         const int vert_i = vert_indices[selection_i];
         const int index_in_sort = indices_in_sort[selection_i];
         if (!vert_range.contains(vert_i)) {
@@ -92,10 +102,13 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
 
         const int index_in_sort_wrapped = mod_i(index_in_sort, edges.size());
         if (use_sorting) {
+          /* Retrieve the connected edge indices as 64 bit integers for #materialize_compressed. */
+          edge_indices.reinitialize(edges.size());
+          convert_span(edges, edge_indices);
+
           /* Retrieve a compressed array of weights for each edge. */
           sort_weights.reinitialize(edges.size());
-          IndexMaskMemory memory;
-          all_sort_weights.materialize_compressed(IndexMask::from_indices<int>(edges, memory),
+          all_sort_weights.materialize_compressed(IndexMask(edge_indices),
                                                   sort_weights.as_mutable_span());
 
           /* Sort a separate array of compressed indices corresponding to the compressed weights.
@@ -108,7 +121,7 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
             return sort_weights[a] < sort_weights[b];
           });
 
-          edge_of_vertex[selection_i] = edges[sort_indices[index_in_sort_wrapped]];
+          edge_of_vertex[selection_i] = edge_indices[sort_indices[index_in_sort_wrapped]];
         }
         else {
           edge_of_vertex[selection_i] = edges[index_in_sort_wrapped];
@@ -155,7 +168,7 @@ class EdgesOfVertCountInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};
@@ -193,7 +206,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> vert_index = params.extract_input<Field<int>>("Vertex Index");
   if (params.output_is_required("Total")) {
     params.set_output("Total",
-                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
+                      Field<int>(std::make_shared<FieldAtIndexInput>(
                           vert_index,
                           Field<int>(std::make_shared<EdgesOfVertCountInput>()),
                           ATTR_DOMAIN_POINT)));

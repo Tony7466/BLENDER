@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup nodes
@@ -22,7 +21,7 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 
@@ -38,7 +37,7 @@
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 #include "node_common.h"
-#include "node_util.hh"
+#include "node_util.h"
 
 using blender::Map;
 using blender::MultiValueMap;
@@ -71,13 +70,9 @@ bNodeSocket *node_group_find_output_socket(bNode *groupnode, const char *identif
   return find_matching_socket(groupnode->outputs, identifier);
 }
 
-void node_group_label(const bNodeTree * /*ntree*/,
-                      const bNode *node,
-                      char *label,
-                      int label_maxncpy)
+void node_group_label(const bNodeTree * /*ntree*/, const bNode *node, char *label, int maxlen)
 {
-  BLI_strncpy(
-      label, (node->id) ? node->id->name + 2 : IFACE_("Missing Data-Block"), label_maxncpy);
+  BLI_strncpy(label, (node->id) ? node->id->name + 2 : IFACE_("Missing Data-Block"), maxlen);
 }
 
 bool node_group_poll_instance(const bNode *node,
@@ -318,11 +313,11 @@ void register_node_type_frame()
   bNodeType *ntype = MEM_cnew<bNodeType>("frame node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  blender::bke::node_type_base(ntype, NODE_FRAME, "Frame", NODE_CLASS_LAYOUT);
+  node_type_base(ntype, NODE_FRAME, "Frame", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_frame_init;
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
   node_type_storage(ntype, "NodeFrame", node_free_standard_storage, node_copy_standard_storage);
-  blender::bke::node_type_size(ntype, 150, 100, 0);
+  node_type_size(ntype, 150, 100, 0);
   ntype->flag |= NODE_BACKGROUND;
 
   nodeRegisterType(ntype);
@@ -349,7 +344,7 @@ void register_node_type_reroute()
   bNodeType *ntype = MEM_cnew<bNodeType>("frame node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  blender::bke::node_type_base(ntype, NODE_REROUTE, "Reroute", NODE_CLASS_LAYOUT);
+  node_type_base(ntype, NODE_REROUTE, "Reroute", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_reroute_init;
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
 
@@ -439,15 +434,15 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
     bNodeSocket *output_socket = (bNodeSocket *)reroute_node->outputs.first;
 
     if (input_socket->typeinfo != socket_type) {
-      blender::bke::nodeModifySocketType(ntree, reroute_node, input_socket, socket_type->idname);
+      nodeModifySocketType(ntree, reroute_node, input_socket, socket_type->idname);
     }
     if (output_socket->typeinfo != socket_type) {
-      blender::bke::nodeModifySocketType(ntree, reroute_node, output_socket, socket_type->idname);
+      nodeModifySocketType(ntree, reroute_node, output_socket, socket_type->idname);
     }
   }
 }
 
-bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
+bool BKE_node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
 {
   ntree->ensure_topology_cache();
   Stack<const bNode *> nodes_to_check;
@@ -524,7 +519,7 @@ static bool group_input_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *li
     /* Don't connect to other "extend" sockets. */
     return false;
   }
-  const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(
+  const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(
       ntree, link->tonode, link->tosock);
   if (!io_socket) {
     return false;
@@ -545,7 +540,7 @@ static bool group_output_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *l
     /* Don't connect to other "extend" sockets. */
     return false;
   }
-  const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(
+  const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(
       ntree, link->fromnode, link->fromsock);
   if (!io_socket) {
     return false;
@@ -563,8 +558,8 @@ void register_node_type_group_input()
   bNodeType *ntype = MEM_cnew<bNodeType>("node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  blender::bke::node_type_base(ntype, NODE_GROUP_INPUT, "Group Input", NODE_CLASS_INTERFACE);
-  blender::bke::node_type_size(ntype, 140, 80, 400);
+  node_type_base(ntype, NODE_GROUP_INPUT, "Group Input", NODE_CLASS_INTERFACE);
+  node_type_size(ntype, 140, 80, 400);
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
   ntype->declare_dynamic = blender::nodes::group_input_declare_dynamic;
   ntype->insert_link = blender::nodes::group_input_insert_link;
@@ -589,8 +584,8 @@ void register_node_type_group_output()
   bNodeType *ntype = MEM_cnew<bNodeType>("node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  blender::bke::node_type_base(ntype, NODE_GROUP_OUTPUT, "Group Output", NODE_CLASS_INTERFACE);
-  blender::bke::node_type_size(ntype, 140, 80, 400);
+  node_type_base(ntype, NODE_GROUP_OUTPUT, "Group Output", NODE_CLASS_INTERFACE);
+  node_type_size(ntype, 140, 80, 400);
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
   ntype->declare_dynamic = blender::nodes::group_output_declare_dynamic;
   ntype->insert_link = blender::nodes::group_output_insert_link;

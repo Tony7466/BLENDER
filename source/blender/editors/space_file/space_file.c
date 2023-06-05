@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spfile
@@ -620,7 +619,7 @@ static void file_operatortypes(void)
 }
 
 /* NOTE: do not add .blend file reading on this level */
-static void file_keymap(wmKeyConfig *keyconf)
+static void file_keymap(struct wmKeyConfig *keyconf)
 {
   /* keys for all regions */
   WM_keymap_ensure(keyconf, "File Browser", SPACE_FILE, 0);

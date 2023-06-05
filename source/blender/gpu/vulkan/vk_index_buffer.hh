@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -34,9 +33,8 @@ class VKIndexBuffer : public IndexBuf {
 
  private:
   void strip_restart_indices() override;
-  void allocate();
+  void allocate(VKContext &context);
   void ensure_updated();
-  VKBufferWithOffset buffer_with_offset();
 };
 
 static inline VKIndexBuffer *unwrap(IndexBuf *index_buffer)

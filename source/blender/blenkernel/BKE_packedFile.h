@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 #pragma once
 
 /** \file
@@ -104,7 +103,8 @@ int BKE_packedfile_unpack_all_libraries(struct Main *bmain, struct ReportList *r
 int BKE_packedfile_write_to_file(struct ReportList *reports,
                                  const char *ref_file_name,
                                  const char *filepath,
-                                 struct PackedFile *pf);
+                                 struct PackedFile *pf,
+                                 bool guimode);
 
 /* Free. */
 

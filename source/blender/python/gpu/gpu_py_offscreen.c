@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2015 Blender Foundation. */
 
 /** \file
  * \ingroup bpygpu
@@ -318,8 +317,8 @@ static PyObject *pygpu_offscreen_draw_view3d(BPyGPUOffScreen *self, PyObject *ar
   PyObject *py_scene, *py_view_layer, *py_region, *py_view3d;
 
   struct Depsgraph *depsgraph;
-  Scene *scene;
-  ViewLayer *view_layer;
+  struct Scene *scene;
+  struct ViewLayer *view_layer;
   View3D *v3d;
   ARegion *region;
 
@@ -471,7 +470,7 @@ static PyGetSetDef pygpu_offscreen__tp_getseters[] = {
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
 };
 
-static PyMethodDef pygpu_offscreen__tp_methods[] = {
+static struct PyMethodDef pygpu_offscreen__tp_methods[] = {
     {"bind", (PyCFunction)pygpu_offscreen_bind, METH_NOARGS, pygpu_offscreen_bind_doc},
     {"unbind",
      (PyCFunction)pygpu_offscreen_unbind,

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "BLI_compiler_compat.h"
 
 #include "DNA_material_types.h"
@@ -69,7 +67,8 @@ bool BKE_paint_canvas_image_get(PaintModeSettings *settings,
   return *r_image != nullptr;
 }
 
-int BKE_paint_canvas_uvmap_layer_index_get(const PaintModeSettings *settings, Object *ob)
+int BKE_paint_canvas_uvmap_layer_index_get(const struct PaintModeSettings *settings,
+                                           struct Object *ob)
 {
   switch (settings->canvas_source) {
     case PAINT_CANVAS_SOURCE_COLOR_ATTRIBUTE:
@@ -105,7 +104,7 @@ int BKE_paint_canvas_uvmap_layer_index_get(const PaintModeSettings *settings, Ob
   return -1;
 }
 
-char *BKE_paint_canvas_key_get(PaintModeSettings *settings, Object *ob)
+char *BKE_paint_canvas_key_get(struct PaintModeSettings *settings, struct Object *ob)
 {
   std::stringstream ss;
   int active_uv_map_layer_index = BKE_paint_canvas_uvmap_layer_index_get(settings, ob);

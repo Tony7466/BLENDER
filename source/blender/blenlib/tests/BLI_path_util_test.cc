@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -50,12 +48,11 @@ static char *str_replace_char_strdup(const char *str, char src, char dst)
     if (SEP == '\\') { \
       str_replace_char_with_relative_exception(path, '/', '\\'); \
     } \
-    const int path_len_test = BLI_path_normalize(path); \
+    BLI_path_normalize(path); \
     if (SEP == '\\') { \
       BLI_str_replace_char(path, '\\', '/'); \
     } \
     EXPECT_STREQ(path, output_expect); \
-    EXPECT_EQ(path_len_test, strlen(path)); \
   } \
   ((void)0)
 
@@ -119,10 +116,6 @@ TEST(path_util, Normalize_UnbalancedAbsolute)
   NORMALIZE("/a/b/c/../../../../../d", "/d");
   NORMALIZE("/a/b/c/../../../../d", "/d");
   NORMALIZE("/a/b/c/../../../d", "/d");
-
-  /* Use a longer path as it may hit corner cases. */
-  NORMALIZE("/home/username/Downloads/../../../../../Users/Example/Desktop/test.jpg",
-            "/Users/Example/Desktop/test.jpg");
 }
 
 /* #BLI_path_normalize: with relative paths that result in leading "../". */
@@ -159,26 +152,6 @@ TEST(path_util, Normalize_UnbalancedRelativeTrailing)
 }
 
 #undef NORMALIZE
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Tests for: #BLI_path_cmp_normalized
- *
- * \note #BLI_path_normalize tests handle most of the corner cases.
- * \{ */
-
-TEST(path_util, CompareNormalized)
-{
-  /* Trailing slash should not matter. */
-  EXPECT_EQ(BLI_path_cmp_normalized("/tmp/", "/tmp"), 0);
-  /* Slash direction should not matter. */
-  EXPECT_EQ(BLI_path_cmp_normalized("c:\\tmp\\", "c:/tmp/"), 0);
-  /* Empty paths should be supported. */
-  EXPECT_EQ(BLI_path_cmp_normalized("", ""), 0);
-
-  EXPECT_NE(BLI_path_cmp_normalized("A", "B"), 0);
-}
 
 /** \} */
 
@@ -588,47 +561,6 @@ TEST(path_util, JoinRelativePrefix)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Tests for: #BLI_path_append
- * \{ */
-
-/* For systems with `/` path separator (non WIN32). */
-#define APPEND(str_expect, size, path, filename) \
-  { \
-    const char *expect = str_expect; \
-    char result[(size) + 1024] = path; \
-    char filename_native[] = filename; \
-    /* Check we don't write past the last byte. */ \
-    if (SEP == '\\') { \
-      BLI_str_replace_char(filename_native, '/', '\\'); \
-      BLI_str_replace_char(result, '/', '\\'); \
-    } \
-    BLI_path_append(result, size, filename_native); \
-    if (SEP == '\\') { \
-      BLI_str_replace_char(result, '\\', '/'); \
-    } \
-    EXPECT_STREQ(result, expect); \
-  } \
-  ((void)0)
-
-TEST(path_util, AppendFile)
-{
-  APPEND("a/b", 100, "a", "b");
-  APPEND("a/b", 100, "a/", "b");
-}
-
-TEST(path_util, AppendFile_Truncate)
-{
-  APPEND("/A", 3, "/", "ABC");
-  APPEND("/", 2, "/", "test");
-  APPEND("X", 2, "X", "ABC");
-  APPEND("X/", 3, "X/", "ABC");
-}
-
-#undef APPEND
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Tests for: #BLI_path_frame
  * \{ */
 
@@ -706,15 +638,6 @@ TEST(path_util, Frame)
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_-0100");
   }
-
-  /* Ensure very large ranges work. */
-  {
-    char path[FILE_MAX * 2];
-    memset(path, '#', sizeof(path));
-    path[sizeof(path) - 1] = '\0';
-    ret = BLI_path_frame(path, sizeof(path), 123456789, 0);
-    EXPECT_TRUE(BLI_str_endswith(path, "0123456789"));
-  }
 }
 
 /** \} */
@@ -788,7 +711,7 @@ TEST(path_util, SplitDirfile)
   { \
     char path[FILE_MAX]; \
     char ext[FILE_MAX]; \
-    STRNCPY(path, (input_path)); \
+    BLI_strncpy(path, (input_path), FILE_MAX); \
     BLI_path_frame_strip(path, ext, sizeof(ext)); \
     EXPECT_STREQ(path, expect_path); \
     EXPECT_STREQ(ext, expect_ext); \
@@ -891,7 +814,7 @@ TEST(path_util, ExtensionCheck)
   { \
     BLI_assert(maxlen <= FILE_MAX); \
     char path[FILE_MAX]; \
-    STRNCPY(path, input_path); \
+    BLI_strncpy(path, input_path, sizeof(path)); \
     const bool ret = BLI_path_extension_replace(path, maxlen, input_ext); \
     if (expect_result) { \
       EXPECT_TRUE(ret); \
@@ -962,7 +885,7 @@ TEST(path_util, ExtensionReplace_Overflow)
   { \
     BLI_assert(maxlen <= FILE_MAX); \
     char path[FILE_MAX]; \
-    STRNCPY(path, input_path); \
+    BLI_strncpy(path, input_path, sizeof(path)); \
     const bool ret = BLI_path_extension_ensure(path, maxlen, input_ext); \
     if (expect_result) { \
       EXPECT_TRUE(ret); \
@@ -1063,8 +986,8 @@ TEST(path_util, FrameCheckChars)
   { \
     char path[FILE_MAX]; \
     bool ret; \
-    STRNCPY(path, input_path); \
-    ret = BLI_path_frame_range(path, sizeof(path), sta, end, digits); \
+    BLI_strncpy(path, input_path, FILE_MAX); \
+    ret = BLI_path_frame_range(path, sta, end, digits); \
     if (expect_outpath == nullptr) { \
       EXPECT_FALSE(ret); \
     } \
@@ -1100,7 +1023,7 @@ TEST(path_util, FrameRange)
   { \
     char path[FILE_MAX]; \
     int out_frame = -1, out_numdigits = -1; \
-    STRNCPY(path, input_path); \
+    BLI_strncpy(path, input_path, FILE_MAX); \
     const bool ret = BLI_path_frame_get(path, &out_frame, &out_numdigits); \
     if (expect_pathisvalid) { \
       EXPECT_TRUE(ret); \
@@ -1213,7 +1136,7 @@ TEST(path_util, Suffix)
   { \
     char path[FILE_MAX]; \
     const char *ref_path_test = ref_path; \
-    STRNCPY(path, abs_path); \
+    BLI_strncpy(path, abs_path, sizeof(path)); \
     if (SEP == '\\') { \
       BLI_str_replace_char(path, '/', '\\'); \
       ref_path_test = str_replace_char_strdup(ref_path_test, '/', '\\'); \

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgizmolib
@@ -77,7 +75,7 @@ typedef struct MoveInteraction {
   } prev;
 
   /* We could have other snap contexts, for now only support 3D view. */
-  SnapObjectContext *snap_context_v3d;
+  struct SnapObjectContext *snap_context_v3d;
 
 } MoveInteraction;
 

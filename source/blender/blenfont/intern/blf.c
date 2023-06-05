@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup blf
@@ -24,7 +23,6 @@
 
 #include "BLI_fileops.h"
 #include "BLI_math.h"
-#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
 
@@ -115,7 +113,7 @@ static int blf_search_by_filepath(const char *filepath)
 {
   for (int i = 0; i < BLF_MAX_FONT; i++) {
     const FontBLF *font = global_font[i];
-    if (font && (BLI_path_cmp(font->filepath, filepath) == 0)) {
+    if (font && STREQ(font->filepath, filepath)) {
       return i;
     }
   }
@@ -251,7 +249,7 @@ void BLF_unload(const char *filepath)
       continue;
     }
 
-    if (BLI_path_cmp(font->filepath, filepath) == 0) {
+    if (STREQ(font->filepath, filepath)) {
       BLI_assert(font->reference_count > 0);
       font->reference_count--;
 
@@ -849,8 +847,13 @@ void BLF_shadow_offset(int fontid, int x, int y)
   }
 }
 
-void BLF_buffer(
-    int fontid, float *fbuf, uchar *cbuf, int w, int h, int nch, ColorManagedDisplay *display)
+void BLF_buffer(int fontid,
+                float *fbuf,
+                uchar *cbuf,
+                int w,
+                int h,
+                int nch,
+                struct ColorManagedDisplay *display)
 {
   FontBLF *font = blf_get(fontid);
 

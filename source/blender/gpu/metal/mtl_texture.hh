@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -186,7 +184,7 @@ class MTLTexture : public Texture {
 
   /* Texture Storage. */
   id<MTLBuffer> texture_buffer_ = nil;
-  size_t aligned_w_ = 0;
+  uint aligned_w_ = 0;
 
   /* Blit Frame-buffer. */
   GPUFrameBuffer *blit_fb_ = nullptr;
@@ -221,7 +219,6 @@ class MTLTexture : public Texture {
   MTLTextureSwizzleChannels mtl_swizzle_mask_;
   bool mip_range_dirty_ = false;
 
-  bool texture_view_stencil_ = false;
   int mip_texture_base_level_ = 0;
   int mip_texture_max_level_ = 1000;
   int mip_texture_base_layer_ = 0;
@@ -259,6 +256,9 @@ class MTLTexture : public Texture {
   void copy_to(Texture *dst) override;
   void clear(eGPUDataFormat format, const void *data) override;
   void swizzle_set(const char swizzle_mask[4]) override;
+  void stencil_texture_mode_set(bool use_stencil) override{
+      /* TODO(Metal): implement. */
+  };
   void mip_range_set(int min, int max) override;
   void *read(int mip, eGPUDataFormat type) override;
 
@@ -285,8 +285,7 @@ class MTLTexture : public Texture {
   bool init_internal(GPUVertBuf *vbo) override;
   bool init_internal(GPUTexture *src,
                      int mip_offset,
-                     int layer_offset,
-                     bool use_stencil) override; /* Texture View */
+                     int layer_offset) override; /* Texture View */
 
  private:
   /* Common Constructor, default initialization. */
@@ -315,7 +314,7 @@ class MTLTexture : public Texture {
                      int depth,
                      eGPUDataFormat desired_output_format,
                      int num_output_components,
-                     size_t debug_data_size,
+                     int debug_data_size,
                      void *r_data);
   void bake_mip_swizzle_view();
 
@@ -454,7 +453,7 @@ class MTLPixelBuffer : public PixelBuffer {
   void *map() override;
   void unmap() override;
   int64_t get_native_handle() override;
-  size_t get_size() override;
+  uint get_size() override;
 
   id<MTLBuffer> get_metal_buffer();
 
@@ -463,7 +462,7 @@ class MTLPixelBuffer : public PixelBuffer {
 
 /* Utility */
 MTLPixelFormat gpu_texture_format_to_metal(eGPUTextureFormat tex_format);
-size_t get_mtl_format_bytesize(MTLPixelFormat tex_format);
+int get_mtl_format_bytesize(MTLPixelFormat tex_format);
 int get_mtl_format_num_components(MTLPixelFormat tex_format);
 bool mtl_format_supports_blending(MTLPixelFormat format);
 
@@ -515,32 +514,6 @@ inline std::string tex_data_format_to_msl_texture_template_type(eGPUDataFormat t
       break;
   }
   return "";
-}
-
-/* Fetch Metal texture type from GPU texture type. */
-inline MTLTextureType to_metal_type(eGPUTextureType type)
-{
-  switch (type) {
-    case GPU_TEXTURE_1D:
-      return MTLTextureType1D;
-    case GPU_TEXTURE_2D:
-      return MTLTextureType2D;
-    case GPU_TEXTURE_3D:
-      return MTLTextureType3D;
-    case GPU_TEXTURE_CUBE:
-      return MTLTextureTypeCube;
-    case GPU_TEXTURE_BUFFER:
-      return MTLTextureTypeTextureBuffer;
-    case GPU_TEXTURE_1D_ARRAY:
-      return MTLTextureType1DArray;
-    case GPU_TEXTURE_2D_ARRAY:
-      return MTLTextureType2DArray;
-    case GPU_TEXTURE_CUBE_ARRAY:
-      return MTLTextureTypeCubeArray;
-    default:
-      BLI_assert_unreachable();
-  }
-  return MTLTextureType2D;
 }
 
 /* Determine whether format is writable or not. Use mtl_format_get_writeable_view_format(..) for
@@ -602,9 +575,7 @@ inline MTLTextureUsage mtl_usage_from_gpu(eGPUTextureUsage usage)
   if (usage == GPU_TEXTURE_USAGE_GENERAL) {
     return MTLTextureUsageUnknown;
   }
-  /* Host read implies general read support, as the compute-based host read routine requires
-   * reading of texture data. */
-  if (usage & GPU_TEXTURE_USAGE_SHADER_READ || usage & GPU_TEXTURE_USAGE_HOST_READ) {
+  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
     mtl_usage = mtl_usage | MTLTextureUsageShaderRead;
   }
   if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {

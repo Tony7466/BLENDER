@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edarmature
@@ -60,7 +59,7 @@ void ED_armature_edit_sync_selection(ListBase *edbo)
   }
 }
 
-void ED_armature_edit_validate_active(bArmature *arm)
+void ED_armature_edit_validate_active(struct bArmature *arm)
 {
   EditBone *ebone = arm->act_edbone;
 
@@ -467,7 +466,7 @@ static EditBone *make_boneList_recursive(ListBase *edbo,
      * Keep selection logic in sync with ED_armature_edit_sync_selection.
      */
     eBone->parent = parent;
-    STRNCPY(eBone->name, curBone->name);
+    BLI_strncpy(eBone->name, curBone->name, sizeof(eBone->name));
     eBone->flag = curBone->flag;
     eBone->inherit_scale_mode = curBone->inherit_scale_mode;
 
@@ -561,7 +560,7 @@ static EditBone *find_ebone_link(ListBase *edbo, Bone *link)
   return NULL;
 }
 
-EditBone *make_boneList(ListBase *edbo, ListBase *bones, Bone *actBone)
+EditBone *make_boneList(ListBase *edbo, ListBase *bones, struct Bone *actBone)
 {
   BLI_assert(!edbo->first && !edbo->last);
 
@@ -695,7 +694,7 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
     newBone = MEM_callocN(sizeof(Bone), "bone");
     eBone->temp.bone = newBone; /* Associate the real Bones with the EditBones */
 
-    STRNCPY(newBone->name, eBone->name);
+    BLI_strncpy(newBone->name, eBone->name, sizeof(newBone->name));
     copy_v3_v3(newBone->arm_head, eBone->head);
     copy_v3_v3(newBone->arm_tail, eBone->tail);
     newBone->arm_roll = eBone->roll;
@@ -786,7 +785,7 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
   DEG_id_tag_update(&arm->id, 0);
 }
 
-void ED_armature_edit_free(bArmature *arm)
+void ED_armature_edit_free(struct bArmature *arm)
 {
   EditBone *eBone;
 

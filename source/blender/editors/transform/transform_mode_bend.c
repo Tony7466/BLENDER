@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -225,19 +224,21 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    SNPRINTF(str,
-             TIP_("Bend Angle: %s Radius: %s Alt, Clamp %s"),
-             &c[0],
-             &c[NUM_STR_REP_LEN],
-             WM_bool_as_string(is_clamp));
+    BLI_snprintf(str,
+                 sizeof(str),
+                 TIP_("Bend Angle: %s Radius: %s Alt, Clamp %s"),
+                 &c[0],
+                 &c[NUM_STR_REP_LEN],
+                 WM_bool_as_string(is_clamp));
   }
   else {
     /* default header print */
-    SNPRINTF(str,
-             TIP_("Bend Angle: %.3f Radius: %.4f, Alt, Clamp %s"),
-             RAD2DEGF(values.angle),
-             values.scale * bend_data->warp_init_dist,
-             WM_bool_as_string(is_clamp));
+    BLI_snprintf(str,
+                 sizeof(str),
+                 TIP_("Bend Angle: %.3f Radius: %.4f, Alt, Clamp %s"),
+                 RAD2DEGF(values.angle),
+                 values.scale * bend_data->warp_init_dist,
+                 WM_bool_as_string(is_clamp));
   }
 
   values.angle *= -1.0f;
@@ -324,7 +325,7 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initBend(TransInfo *t, wmOperator *UNUSED(op))
+void initBend(TransInfo *t)
 {
   const float mval_fl[2] = {UNPACK2(t->mval)};
   const float *curs;
@@ -332,6 +333,8 @@ static void initBend(TransInfo *t, wmOperator *UNUSED(op))
   struct BendCustomData *data;
 
   t->mode = TFM_BEND;
+  t->transform = Bend;
+  t->handleEvent = handleEventBend;
 
   initMouseInputMode(t, &t->mouse, INPUT_ANGLE_SPRING);
 
@@ -345,6 +348,8 @@ static void initBend(TransInfo *t, wmOperator *UNUSED(op))
   t->num.unit_use_radians = (t->scene->unit.system_rotation == USER_UNIT_ROT_RADIANS);
   t->num.unit_type[0] = B_UNIT_ROTATION;
   t->num.unit_type[1] = B_UNIT_LENGTH;
+
+  t->flag |= T_NO_CONSTRAINT;
 
   // copy_v3_v3(t->center, ED_view3d_cursor3d_get(t->scene, t->view));
   if ((t->flag & T_OVERRIDE_CENTER) == 0) {
@@ -374,14 +379,3 @@ static void initBend(TransInfo *t, wmOperator *UNUSED(op))
 }
 
 /** \} */
-
-TransModeInfo TransMode_bend = {
-    /*flags*/ T_NO_CONSTRAINT,
-    /*init_fn*/ initBend,
-    /*transform_fn*/ Bend,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ handleEventBend,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

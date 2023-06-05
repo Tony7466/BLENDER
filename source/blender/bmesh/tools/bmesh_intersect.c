@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -944,7 +942,7 @@ static int isect_bvhtree_point_v3(BVHTree *tree, const float **looptris, const f
 #endif /* USE_BVH */
 
 bool BM_mesh_intersect(BMesh *bm,
-                       BMLoop *(*looptris)[3],
+                       struct BMLoop *(*looptris)[3],
                        const int looptris_tot,
                        int (*test_fn)(BMFace *f, void *user_data),
                        void *user_data,

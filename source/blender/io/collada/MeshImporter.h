@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -81,7 +79,7 @@ class MeshImporter : public MeshImporterBase {
 
   /* this structure is used to assign material indices to polygons
    * it holds a portion of Mesh faces and corresponds to a DAE primitive list
-   * (`<triangles>`, `<polylist>`, etc.) */
+   * (<triangles>, <polylist>, etc.) */
   struct Primitive {
     int poly_index;
     int *material_indices;
@@ -112,10 +110,7 @@ class MeshImporter : public MeshImporterBase {
   void print_index_list(COLLADAFW::IndexList &index_list);
 #endif
 
-  /**
-   * Checks if mesh has supported primitive types:
-   * `lines`, `polylist`, `triangles`, `triangle_fans`.
-   */
+  /** Checks if mesh has supported primitive types: lines, polylist, triangles, triangle_fans. */
   bool is_nice_mesh(COLLADAFW::Mesh *mesh);
 
   void read_vertices(COLLADAFW::Mesh *mesh, Mesh *me);

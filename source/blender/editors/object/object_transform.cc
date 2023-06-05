@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edobj
@@ -320,8 +319,8 @@ static int object_clear_transform_generic_exec(bContext *C,
                                             SCE_XFORM_SKIP_CHILDREN);
   const bool use_transform_data_origin = (scene->toolsettings->transform_flag &
                                           SCE_XFORM_DATA_ORIGIN);
-  XFormObjectSkipChild_Container *xcs = nullptr;
-  XFormObjectData_Container *xds = nullptr;
+  struct XFormObjectSkipChild_Container *xcs = nullptr;
+  struct XFormObjectData_Container *xds = nullptr;
 
   if (use_transform_skip_children) {
     BKE_scene_graph_evaluated_ensure(depsgraph, bmain);

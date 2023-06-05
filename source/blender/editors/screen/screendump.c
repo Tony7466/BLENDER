@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edscr
@@ -44,7 +43,7 @@
 #include "screen_intern.h"
 
 typedef struct ScreenshotData {
-  uint8_t *dumprect;
+  uint *dumprect;
   int dumpsx, dumpsy;
   rcti crop;
   bool use_crop;
@@ -62,7 +61,7 @@ static int screenshot_data_create(bContext *C, wmOperator *op, ScrArea *area)
   /* do redraw so we don't show popups/menus */
   WM_redraw_windows(C);
 
-  uint8_t *dumprect = WM_window_pixels_read(C, win, dumprect_size);
+  uint *dumprect = WM_window_pixels_read(C, win, dumprect_size);
 
   if (dumprect) {
     ScreenshotData *scd = MEM_callocN(sizeof(ScreenshotData), "screenshot");
@@ -112,19 +111,19 @@ static int screenshot_exec(bContext *C, wmOperator *op)
   if (scd) {
     if (scd->dumprect) {
       ImBuf *ibuf;
-      char filepath[FILE_MAX];
+      char path[FILE_MAX];
 
-      RNA_string_get(op->ptr, "filepath", filepath);
-      BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
+      RNA_string_get(op->ptr, "filepath", path);
+      BLI_path_abs(path, BKE_main_blendfile_path_from_global());
 
       /* operator ensures the extension */
       ibuf = IMB_allocImBuf(scd->dumpsx, scd->dumpsy, 24, 0);
-      IMB_assign_byte_buffer(ibuf, scd->dumprect, IB_DO_NOT_TAKE_OWNERSHIP);
+      ibuf->rect = scd->dumprect;
 
       /* crop to show only single editor */
       if (use_crop) {
         IMB_rect_crop(ibuf, &scd->crop);
-        scd->dumprect = ibuf->byte_buffer.data;
+        scd->dumprect = ibuf->rect;
       }
 
       if ((scd->im_format.planes == R_IMF_PLANES_BW) &&
@@ -133,7 +132,7 @@ static int screenshot_exec(bContext *C, wmOperator *op)
         /* bw screenshot? - users will notice if it fails! */
         IMB_color_to_bw(ibuf);
       }
-      if (BKE_imbuf_write(ibuf, filepath, &scd->im_format)) {
+      if (BKE_imbuf_write(ibuf, path, &scd->im_format)) {
         ok = true;
       }
       else {
@@ -171,7 +170,7 @@ static int screenshot_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     char filepath[FILE_MAX];
     const char *blendfile_path = BKE_main_blendfile_path_from_global();
     if (blendfile_path[0] != '\0') {
-      STRNCPY(filepath, blendfile_path);
+      BLI_strncpy(filepath, blendfile_path, sizeof(filepath));
       BLI_path_extension_strip(filepath); /* Strip `.blend`. */
     }
     else {

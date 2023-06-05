@@ -66,7 +66,7 @@ MTLDrawList::~MTLDrawList()
 
 void MTLDrawList::init()
 {
-  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = reinterpret_cast<MTLContext *>(GPU_context_active_get());
   BLI_assert(ctx);
   BLI_assert(MDI_ENABLED);
   BLI_assert(data_ == nullptr);
@@ -186,12 +186,9 @@ void MTLDrawList::submit()
 
   /* Bind Batch to setup render pipeline state. */
   BLI_assert(batch_ != nullptr);
-  id<MTLRenderCommandEncoder> rec = batch_->bind(0);
+  id<MTLRenderCommandEncoder> rec = batch_->bind(0, 0, 0, 0);
   if (rec == nil) {
     BLI_assert_msg(false, "A RenderCommandEncoder should always be available!\n");
-
-    /* Unbind batch. */
-    batch_->unbind(rec);
     return;
   }
 
@@ -275,7 +272,7 @@ void MTLDrawList::submit()
   }
 
   /* Unbind batch. */
-  batch_->unbind(rec);
+  batch_->unbind();
 
   /* Reset command offsets. */
   command_len_ = 0;

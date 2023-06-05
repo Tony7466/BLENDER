@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -446,7 +444,7 @@ CDataFileLayer *cdf_layer_add(CDataFile *cdf, int type, const char *name, size_t
   layer->datatype = CDF_DATA_FLOAT;
   layer->datasize = datasize;
   layer->type = type;
-  STRNCPY(layer->name, name);
+  BLI_strncpy(layer->name, name, CDF_LAYER_NAME_MAX);
 
   return layer;
 }

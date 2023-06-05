@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup mathutils
@@ -1098,7 +1096,7 @@ static PyMethodDef M_Noise_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyModuleDef M_Noise_module_def = {
+static struct PyModuleDef M_Noise_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "mathutils.noise",
     /*m_doc*/ M_Noise_doc,

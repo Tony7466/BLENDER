@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Tangent Animation. All rights reserved. */
 
 #include "usd_reader_light.h"
 

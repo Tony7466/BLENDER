@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -177,7 +176,8 @@ static void datadropper_id_sample_pt(
               id = (ID *)ob->data;
             }
             else {
-              SNPRINTF(ddr->name, "Incompatible, expected a %s", ddr->idcode_name);
+              BLI_snprintf(
+                  ddr->name, sizeof(ddr->name), "Incompatible, expected a %s", ddr->idcode_name);
             }
           }
 
@@ -185,7 +185,7 @@ static void datadropper_id_sample_pt(
           RNA_id_pointer_create(id, &idptr);
 
           if (id && RNA_property_pointer_poll(&ddr->ptr, ddr->prop, &idptr)) {
-            SNPRINTF(ddr->name, "%s: %s", ddr->idcode_name, id->name + 2);
+            BLI_snprintf(ddr->name, sizeof(ddr->name), "%s: %s", ddr->idcode_name, id->name + 2);
             *r_id = id;
           }
 

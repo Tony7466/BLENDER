@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -20,9 +18,9 @@
 #include "BKE_mesh.hh"
 #include "BKE_particle.h"
 
-#include "MOD_modifiertypes.hh"
+#include "MOD_modifiertypes.h"
 #include "MOD_solidify_util.hh" /* Own include. */
-#include "MOD_util.hh"
+#include "MOD_util.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -193,9 +191,9 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
   /* These might be null. */
   const float *orig_vert_bweight = static_cast<const float *>(
-      CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "bevel_weight_vert"));
+      CustomData_get_layer(&mesh->vdata, CD_BWEIGHT));
   const float *orig_edge_bweight = static_cast<const float *>(
-      CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge"));
+      CustomData_get_layer(&mesh->edata, CD_BWEIGHT));
   const float *orig_edge_crease = static_cast<const float *>(
       CustomData_get_layer(&mesh->edata, CD_CREASE));
 
@@ -1448,7 +1446,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
             if (smd->nonmanifold_offset_mode == MOD_SOLIDIFY_NONMANIFOLD_OFFSET_MODE_CONSTRAINTS) {
               NewEdgeRef *first_edge = nullptr;
               NewEdgeRef **edge_ptr = g->edges;
-              /* Contains normal and offset `[nx, ny, nz, ofs]`. */
+              /* Contains normal and offset [nx, ny, nz, ofs]. */
               float(*planes_queue)[4] = static_cast<float(*)[4]>(
                   MEM_malloc_arrayN(g->edges_len + 1, sizeof(*planes_queue), __func__));
               uint queue_index = 0;
@@ -2003,11 +2001,11 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   int *origindex_poly = static_cast<int *>(
       CustomData_get_layer_for_write(&result->pdata, CD_ORIGINDEX, result->totpoly));
 
-  float *result_edge_bweight = static_cast<float *>(CustomData_get_layer_named_for_write(
-      &result->edata, CD_PROP_FLOAT, "bevel_weight_edge", result->totedge));
+  float *result_edge_bweight = static_cast<float *>(
+      CustomData_get_layer_for_write(&result->edata, CD_BWEIGHT, result->totedge));
   if (bevel_convex != 0.0f || orig_vert_bweight != nullptr) {
-    result_edge_bweight = static_cast<float *>(CustomData_add_layer_named(
-        &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "bevel_weight_edge"));
+    result_edge_bweight = static_cast<float *>(
+        CustomData_add_layer(&result->edata, CD_BWEIGHT, CD_SET_DEFAULT, result->totedge));
   }
 
   /* Checks that result has dvert data. */

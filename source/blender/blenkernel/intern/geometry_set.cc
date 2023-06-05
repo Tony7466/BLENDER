@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
@@ -281,14 +279,6 @@ void GeometrySet::ensure_owns_direct_data()
     GeometryComponent &component_for_write = this->get_component_for_write(component_ptr->type());
     component_for_write.ensure_owns_direct_data();
   }
-}
-
-void GeometrySet::ensure_owns_all_data()
-{
-  if (Instances *instances = this->get_instances_for_write()) {
-    instances->ensure_geometry_instances();
-  }
-  this->ensure_owns_direct_data();
 }
 
 bool GeometrySet::owns_direct_data() const

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 /** \file
  * \ingroup bke
@@ -39,7 +38,6 @@
 #include "BKE_material.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_screen.h"
 #include "BKE_shrinkwrap.h"
 
 #include "DEG_depsgraph.h"
@@ -358,7 +356,7 @@ GpencilModifierData *BKE_gpencil_modifier_new(int type)
   GpencilModifierData *md = MEM_callocN(mti->struct_size, mti->struct_name);
 
   /* NOTE: this name must be made unique later. */
-  STRNCPY_UTF8(md->name, DATA_(mti->name));
+  BLI_strncpy(md->name, DATA_(mti->name), sizeof(md->name));
 
   md->type = type;
   md->mode = eGpencilModifierMode_Realtime | eGpencilModifierMode_Render;
@@ -449,7 +447,9 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
 void BKE_gpencil_modifierType_panel_id(GpencilModifierType type, char *r_idname)
 {
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
-  BLI_string_join(r_idname, BKE_ST_MAXNAME, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX, mti->name);
+
+  strcpy(r_idname, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX);
+  strcat(r_idname, mti->name);
 }
 
 void BKE_gpencil_modifier_panel_expand(GpencilModifierData *md)

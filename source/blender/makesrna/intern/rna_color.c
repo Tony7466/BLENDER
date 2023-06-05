@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -409,7 +407,7 @@ static void rna_ColorManagedDisplaySettings_display_device_set(struct PointerRNA
   const char *name = IMB_colormanagement_display_get_indexed_name(value);
 
   if (name) {
-    STRNCPY(display->display_device, name);
+    BLI_strncpy(display->display_device, name, sizeof(display->display_device));
   }
 }
 
@@ -471,7 +469,7 @@ static void rna_ColorManagedViewSettings_view_transform_set(PointerRNA *ptr, int
   const char *name = IMB_colormanagement_view_get_indexed_name(value);
 
   if (name) {
-    STRNCPY(view->view_transform, name);
+    BLI_strncpy(view->view_transform, name, sizeof(view->view_transform));
   }
 }
 
@@ -504,7 +502,7 @@ static void rna_ColorManagedViewSettings_look_set(PointerRNA *ptr, int value)
   const char *name = IMB_colormanagement_look_get_indexed_name(value);
 
   if (name) {
-    STRNCPY(view->look, name);
+    BLI_strncpy(view->look, name, sizeof(view->look));
   }
 }
 
@@ -574,7 +572,7 @@ static void rna_ColorManagedColorspaceSettings_colorspace_set(struct PointerRNA 
   const char *name = IMB_colormanagement_colorspace_get_indexed_name(value);
 
   if (name && name[0]) {
-    STRNCPY(colorspace->name, name);
+    BLI_strncpy(colorspace->name, name, sizeof(colorspace->name));
   }
 }
 
@@ -1137,7 +1135,7 @@ static void rna_def_scopes(BlenderRNA *brna)
       {SCOPES_WAVEFRM_RGB_PARADE, "PARADE", ICON_COLOR, "Parade", ""},
       {SCOPES_WAVEFRM_YCC_601, "YCBCR601", ICON_COLOR, "YCbCr (ITU 601)", ""},
       {SCOPES_WAVEFRM_YCC_709, "YCBCR709", ICON_COLOR, "YCbCr (ITU 709)", ""},
-      {SCOPES_WAVEFRM_YCC_JPEG, "YCBCRJPG", ICON_COLOR, "YCbCr (JPEG)", ""},
+      {SCOPES_WAVEFRM_YCC_JPEG, "YCBCRJPG", ICON_COLOR, "YCbCr (Jpeg)", ""},
       {SCOPES_WAVEFRM_RGB, "RGB", ICON_COLOR, "Red Green Blue", ""},
       {0, NULL, 0, NULL, NULL},
   };

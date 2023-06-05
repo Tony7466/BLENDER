@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup spseq
@@ -236,12 +235,12 @@ void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool desel
 
   if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE)) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_imagedir, seq->strip->dirpath, FILE_MAXDIR);
+      BLI_strncpy(ed->act_imagedir, seq->strip->dir, FILE_MAXDIR);
     }
   }
   else if (seq->type == SEQ_TYPE_SOUND_RAM) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_sounddir, seq->strip->dirpath, FILE_MAXDIR);
+      BLI_strncpy(ed->act_sounddir, seq->strip->dir, FILE_MAXDIR);
     }
   }
   seq->flag |= SELECT;
@@ -490,7 +489,7 @@ static int sequencer_de_select_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void SEQUENCER_OT_select_all(wmOperatorType *ot)
+void SEQUENCER_OT_select_all(struct wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "(De)select All";
@@ -542,7 +541,7 @@ static int sequencer_select_inverse_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void SEQUENCER_OT_select_inverse(wmOperatorType *ot)
+void SEQUENCER_OT_select_inverse(struct wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Select Inverse";
@@ -571,12 +570,12 @@ static void sequencer_select_set_active(Scene *scene, Sequence *seq)
 
   if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE)) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_imagedir, seq->strip->dirpath, FILE_MAXDIR);
+      BLI_strncpy(ed->act_imagedir, seq->strip->dir, FILE_MAXDIR);
     }
   }
   else if (seq->type == SEQ_TYPE_SOUND_RAM) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_sounddir, seq->strip->dirpath, FILE_MAXDIR);
+      BLI_strncpy(ed->act_sounddir, seq->strip->dir, FILE_MAXDIR);
     }
   }
   recurs_sel_seq(seq);
@@ -1894,7 +1893,7 @@ static bool select_grouped_data(SeqCollection *strips,
                                 const int channel)
 {
   bool changed = false;
-  const char *dirpath = actseq->strip ? actseq->strip->dirpath : NULL;
+  const char *dir = actseq->strip ? actseq->strip->dir : NULL;
 
   if (!SEQ_USE_DATA(actseq)) {
     return changed;
@@ -1902,10 +1901,10 @@ static bool select_grouped_data(SeqCollection *strips,
 
   Sequence *seq;
 
-  if (SEQ_HAS_PATH(actseq) && dirpath) {
+  if (SEQ_HAS_PATH(actseq) && dir) {
     SEQ_ITERATOR_FOREACH (seq, strips) {
       if (SEQ_CHANNEL_CHECK(seq, channel) && SEQ_HAS_PATH(seq) && seq->strip &&
-          STREQ(seq->strip->dirpath, dirpath))
+          STREQ(seq->strip->dir, dir))
       {
         seq->flag |= SELECT;
         changed = true;

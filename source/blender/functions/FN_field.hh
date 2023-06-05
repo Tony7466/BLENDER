@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -281,7 +279,7 @@ class FieldInput : public FieldNode {
    * should live at least as long as the passed in #scope. May return null.
    */
   virtual GVArray get_varray_for_context(const FieldContext &context,
-                                         const IndexMask &mask,
+                                         IndexMask mask,
                                          ResourceScope &scope) const = 0;
 
   virtual std::string socket_inspection_name() const;
@@ -327,7 +325,7 @@ class FieldContext {
   virtual ~FieldContext() = default;
 
   virtual GVArray get_varray_for_input(const FieldInput &field_input,
-                                       const IndexMask &mask,
+                                       IndexMask mask,
                                        ResourceScope &scope) const;
 };
 
@@ -345,7 +343,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
 
   ResourceScope scope_;
   const FieldContext &context_;
-  const IndexMask &mask_;
+  const IndexMask mask_;
   Vector<GField> fields_to_evaluate_;
   Vector<GVMutableArray> dst_varrays_;
   Vector<GVArray> evaluated_varrays_;
@@ -363,8 +361,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
   }
 
   /** Construct a field evaluator for all indices less than #size. */
-  FieldEvaluator(const FieldContext &context, const int64_t size)
-      : context_(context), mask_(scope_.construct<IndexMask>(size))
+  FieldEvaluator(const FieldContext &context, const int64_t size) : context_(context), mask_(size)
   {
   }
 
@@ -488,7 +485,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
  */
 Vector<GVArray> evaluate_fields(ResourceScope &scope,
                                 Span<GFieldRef> fields_to_evaluate,
-                                const IndexMask &mask,
+                                IndexMask mask,
                                 const FieldContext &context,
                                 Span<GVMutableArray> dst_varrays = {});
 
@@ -530,10 +527,10 @@ class IndexFieldInput final : public FieldInput {
  public:
   IndexFieldInput();
 
-  static GVArray get_index_varray(const IndexMask &mask);
+  static GVArray get_index_varray(IndexMask mask);
 
   GVArray get_varray_for_context(const FieldContext &context,
-                                 const IndexMask &mask,
+                                 IndexMask mask,
                                  ResourceScope &scope) const final;
 
   uint64_t hash() const override;

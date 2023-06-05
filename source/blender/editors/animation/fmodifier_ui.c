@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edanimation
@@ -44,7 +43,7 @@
 
 #include "DEG_depsgraph.h"
 
-typedef void (*PanelDrawFn)(const bContext *, Panel *);
+typedef void (*PanelDrawFn)(const bContext *, struct Panel *);
 static void fmodifier_panel_header(const bContext *C, Panel *panel);
 
 /* -------------------------------------------------------------------- */
@@ -163,9 +162,9 @@ static PanelType *fmodifier_panel_register(ARegionType *region_type,
 
   /* Intentionally leave the label field blank. The header is filled with buttons. */
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(type);
-  SNPRINTF(panel_type->idname, "%s_PT_%s", id_prefix, fmi->name);
-  STRNCPY(panel_type->category, "Modifiers");
-  STRNCPY(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  BLI_snprintf(panel_type->idname, BKE_ST_MAXNAME, "%s_PT_%s", id_prefix, fmi->name);
+  BLI_strncpy(panel_type->category, "Modifiers", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
 
   panel_type->draw_header = fmodifier_panel_header;
   panel_type->draw = draw;
@@ -199,10 +198,10 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
 {
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
 
-  SNPRINTF(panel_type->idname, "%s_%s", parent->idname, name);
-  STRNCPY(panel_type->label, label);
-  STRNCPY(panel_type->category, "Modifiers");
-  STRNCPY(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  BLI_snprintf(panel_type->idname, BKE_ST_MAXNAME, "%s_%s", parent->idname, name);
+  BLI_strncpy(panel_type->label, label, BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->category, "Modifiers", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
 
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
@@ -210,7 +209,7 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
   BLI_assert(parent != NULL);
-  STRNCPY(panel_type->parent_id, parent->idname);
+  BLI_strncpy(panel_type->parent_id, parent->idname, BKE_ST_MAXNAME);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
   BLI_addtail(&region_type->paneltypes, panel_type);
@@ -381,11 +380,11 @@ static void generator_panel_draw(const bContext *C, Panel *panel)
       char xval[32];
 
       /* The first value gets a "Coefficient" label. */
-      STRNCPY(xval, N_("Coefficient"));
+      BLI_strncpy(xval, N_("Coefficient"), sizeof(xval));
 
       for (int i = 0; i < data->arraysize; i++) {
         uiItemFullR(col, ptr, prop, i, 0, 0, IFACE_(xval), ICON_NONE);
-        SNPRINTF(xval, "x^%d", i + 1);
+        BLI_snprintf(xval, sizeof(xval), "x^%d", i + 1);
       }
       break;
     }
@@ -398,8 +397,8 @@ static void generator_panel_draw(const bContext *C, Panel *panel)
         uiLayoutColumn(split, false);
         uiLayout *title_col = uiLayoutColumn(split, false);
         uiLayout *title_row = uiLayoutRow(title_col, true);
-        uiItemL(title_row, CTX_IFACE_(BLT_I18NCONTEXT_ID_ACTION, "A"), ICON_NONE);
-        uiItemL(title_row, CTX_IFACE_(BLT_I18NCONTEXT_ID_ACTION, "B"), ICON_NONE);
+        uiItemL(title_row, IFACE_("A"), ICON_NONE);
+        uiItemL(title_row, IFACE_("B"), ICON_NONE);
       }
 
       uiLayout *first_row = uiLayoutRow(col, true);

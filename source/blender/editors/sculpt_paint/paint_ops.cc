@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -44,8 +42,8 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "curves_sculpt_intern.hh"
-#include "paint_intern.hh"
+#include "curves_sculpt_intern.h"
+#include "paint_intern.h"
 #include "sculpt_intern.hh"
 
 /* Brush operators */
@@ -230,7 +228,7 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 
     /* Capitalize Brush name first letter using the tool name. */
     char name[64];
-    STRNCPY(name, tool->runtime->data_block);
+    BLI_strncpy(name, tool->runtime->data_block, sizeof(name));
     BLI_str_tolower_ascii(name, sizeof(name));
     name[0] = BLI_toupper_ascii(name[0]);
 
@@ -474,7 +472,7 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
 
   ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
-  if (ibuf && ibuf->byte_buffer.data) {
+  if (ibuf && ibuf->rect) {
     /* Extract all colors. */
     const int range = int(pow(10.0f, threshold));
     for (int row = 0; row < ibuf->y; row++) {
@@ -1540,7 +1538,6 @@ void ED_operatortypes_paint(void)
   WM_operatortype_append(PAINT_OT_face_select_more);
   WM_operatortype_append(PAINT_OT_face_select_less);
   WM_operatortype_append(PAINT_OT_face_select_hide);
-  WM_operatortype_append(PAINT_OT_face_select_loop);
 
   WM_operatortype_append(PAINT_OT_face_vert_reveal);
 

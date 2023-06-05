@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -53,9 +51,7 @@ void BKE_mesh_foreach_mapped_subdiv_face_center(
     void *userData,
     MeshForeachFlag flag);
 
-void BKE_mesh_foreach_mapped_vert_coords_get(const struct Mesh *me_eval,
-                                             float (*r_cos)[3],
-                                             int totcos);
+void BKE_mesh_foreach_mapped_vert_coords_get(struct Mesh *me_eval, float (*r_cos)[3], int totcos);
 
 #ifdef __cplusplus
 }

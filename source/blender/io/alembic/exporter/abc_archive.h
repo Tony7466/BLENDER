@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup Alembic
@@ -36,7 +35,7 @@ class ABCArchive {
   ABCArchive(const Main *bmain,
              const Scene *scene,
              AlembicExportParams params,
-             std::string filepath);
+             std::string filename);
   ~ABCArchive();
 
   uint32_t time_sampling_index_transforms() const;

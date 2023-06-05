@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup editorui
@@ -179,9 +178,6 @@ typedef enum ThemeColorID {
   TH_NODE_DISTORT,
   TH_NODE_GEOMETRY,
   TH_NODE_ATTRIBUTE,
-
-  TH_NODE_ZONE_SIMULATION,
-  TH_SIMULATED_FRAMES,
 
   TH_CONSOLE_OUTPUT,
   TH_CONSOLE_INPUT,

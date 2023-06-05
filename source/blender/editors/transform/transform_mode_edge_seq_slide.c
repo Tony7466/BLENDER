@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -108,8 +107,11 @@ static void applySeqSlide(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initSeqSlide(TransInfo *t, wmOperator *UNUSED(op))
+void initSeqSlide(TransInfo *t)
 {
+  t->transform = applySeqSlide;
+  t->tsnap.snap_mode_apply_fn = transform_snap_sequencer_apply_translate;
+
   initMouseInputMode(t, &t->mouse, INPUT_VECTOR);
 
   t->idx_max = 1;
@@ -133,14 +135,3 @@ static void initSeqSlide(TransInfo *t, wmOperator *UNUSED(op))
 }
 
 /** \} */
-
-TransModeInfo TransMode_seqslide = {
-    /*flags*/ 0,
-    /*init_fn*/ initSeqSlide,
-    /*transform_fn*/ applySeqSlide,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ transform_snap_sequencer_apply_translate,
-    /*draw_fn*/ NULL,
-};

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -52,7 +50,7 @@ static PyObject *pygpu_select_load_id(PyObject *UNUSED(self), PyObject *value)
 /** \name Module
  * \{ */
 
-static PyMethodDef pygpu_select__tp_methods[] = {
+static struct PyMethodDef pygpu_select__tp_methods[] = {
     /* Manage Stack */
     {"load_id", (PyCFunction)pygpu_select_load_id, METH_O, pygpu_select_load_id_doc},
     {NULL, NULL, 0, NULL},

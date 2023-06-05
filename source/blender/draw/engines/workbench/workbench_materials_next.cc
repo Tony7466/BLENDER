@@ -1,12 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "workbench_private.hh"
 
 #include "BLI_hash.h"
 /* get_image */
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "DNA_node_types.h"
 #include "ED_uvedit.h"
 /* get_image */

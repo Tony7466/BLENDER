@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 /** \file
  * \ingroup DNA
  *
@@ -44,8 +43,7 @@ typedef struct StripAnim {
 } StripAnim;
 
 typedef struct StripElem {
-  /** File name concatenated onto #Strip::dirpath. */
-  char filename[256];
+  char name[256];
   /** Ignore when zeroed. */
   int orig_width, orig_height;
   float orig_fps;
@@ -84,10 +82,10 @@ typedef struct StripColorBalance {
 } StripColorBalance;
 
 typedef struct StripProxy {
-  /** Custom directory for index and proxy files (defaults to "BL_proxy"). */
-  char dirpath[768];
-  /** Custom file. */
-  char filename[256];
+  char dir[768]; /* custom directory for index and proxy files */
+                 /* (defaults to BL_proxy) */
+
+  char file[256];    /* custom file */
   struct anim *anim; /* custom proxy anim file */
 
   short tc; /* time code in use */
@@ -112,7 +110,7 @@ typedef struct Strip {
    * NULL for all other strip-types.
    */
   StripElem *stripdata;
-  char dirpath[768];
+  char dir[768];
   StripProxy *proxy;
   StripCrop *crop;
   StripTransform *transform;
@@ -122,19 +120,10 @@ typedef struct Strip {
   ColorManagedColorspaceSettings colorspace_settings;
 } Strip;
 
-typedef enum eSeqRetimingHandleFlag {
-  SPEED_TRANSITION = (1 << 0),
-  FREEZE_FRAME = (1 << 1),
-} eSeqRetimingHandleFlag;
-
 typedef struct SeqRetimingHandle {
   int strip_frame_index;
-  int flag; /* eSeqRetimingHandleFlag */
-  int _pad0;
+  int _pad0[2];
   float retiming_factor; /* Value between 0-1 mapped to original content range. */
-
-  int original_strip_frame_index; /* Used for transition handles only. */
-  float original_retiming_factor; /* Used for transition handles only. */
 } SeqRetimingHandle;
 
 typedef struct SequenceRuntime {
@@ -166,7 +155,7 @@ typedef struct Sequence {
   int len;
   /**
    * Start frame of contents of strip in absolute frame coordinates.
-   * For meta-strips start of first strip startdisp.
+   * For metastrips start of first strip startdisp.
    */
   float start;
   /**
@@ -189,9 +178,9 @@ typedef struct Sequence {
   float _pad1;
 
   short anim_preseek; /* UNUSED. */
-  /** Stream-index for movie or sound files with several streams. */
+  /** Streamindex for movie or sound files with several streams. */
   short streamindex;
-  /** For multi-camera source selection. */
+  /** For multicam source selection. */
   int multicam_source;
   /** MOVIECLIP render flags. */
   int clip_flag;

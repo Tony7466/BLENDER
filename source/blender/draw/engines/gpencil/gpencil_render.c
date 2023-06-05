@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -21,7 +20,7 @@
 
 void GPENCIL_render_init(GPENCIL_Data *vedata,
                          RenderEngine *engine,
-                         RenderLayer *render_layer,
+                         struct RenderLayer *render_layer,
                          const Depsgraph *depsgraph,
                          const rcti *rect)
 {
@@ -35,7 +34,7 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
   /* Set the perspective & view matrix. */
   float winmat[4][4], viewmat[4][4], viewinv[4][4];
 
-  Object *camera = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
+  struct Object *camera = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
   RE_GetCameraWindow(engine->re, camera, winmat);
   RE_GetCameraModelMatrix(engine->re, camera, viewinv);
 
@@ -50,8 +49,8 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
   RenderPass *rpass_z_src = RE_pass_find_by_name(render_layer, RE_PASSNAME_Z, viewname);
   RenderPass *rpass_col_src = RE_pass_find_by_name(render_layer, RE_PASSNAME_COMBINED, viewname);
 
-  float *pix_z = (rpass_z_src) ? rpass_z_src->buffer.data : NULL;
-  float *pix_col = (rpass_col_src) ? rpass_col_src->buffer.data : NULL;
+  float *pix_z = (rpass_z_src) ? rpass_z_src->rect : NULL;
+  float *pix_col = (rpass_col_src) ? rpass_col_src->rect : NULL;
 
   if (!pix_z || !pix_col) {
     RE_engine_set_error_message(engine,
@@ -140,8 +139,8 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
 
 /* render all objects and select only grease pencil */
 static void GPENCIL_render_cache(void *vedata,
-                                 Object *ob,
-                                 RenderEngine *UNUSED(engine),
+                                 struct Object *ob,
+                                 struct RenderEngine *UNUSED(engine),
                                  Depsgraph *UNUSED(depsgraph))
 {
   if (ob && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_LAMP)) {
@@ -151,7 +150,7 @@ static void GPENCIL_render_cache(void *vedata,
   }
 }
 
-static void GPENCIL_render_result_z(RenderLayer *rl,
+static void GPENCIL_render_result_z(struct RenderLayer *rl,
                                     const char *viewname,
                                     GPENCIL_Data *vedata,
                                     const rcti *rect)
@@ -161,7 +160,6 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
 
   if ((view_layer->passflag & SCE_PASS_Z) != 0) {
     RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_Z, viewname);
-    float *ro_buffer_data = rp->buffer.data;
 
     GPU_framebuffer_read_depth(vedata->fbl->render_fb,
                                rect->xmin,
@@ -169,7 +167,7 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
                                BLI_rcti_size_x(rect),
                                BLI_rcti_size_y(rect),
                                GPU_DATA_FLOAT,
-                               ro_buffer_data);
+                               rp->rect);
 
     float winmat[4][4];
     DRW_view_winmat_get(NULL, winmat, false);
@@ -179,12 +177,12 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
     /* Convert GPU depth [0..1] to view Z [near..far] */
     if (DRW_view_is_persp_get(NULL)) {
       for (int i = 0; i < pix_num; i++) {
-        if (ro_buffer_data[i] == 1.0f) {
-          ro_buffer_data[i] = 1e10f; /* Background */
+        if (rp->rect[i] == 1.0f) {
+          rp->rect[i] = 1e10f; /* Background */
         }
         else {
-          ro_buffer_data[i] = ro_buffer_data[i] * 2.0f - 1.0f;
-          ro_buffer_data[i] = winmat[3][2] / (ro_buffer_data[i] + winmat[2][2]);
+          rp->rect[i] = rp->rect[i] * 2.0f - 1.0f;
+          rp->rect[i] = winmat[3][2] / (rp->rect[i] + winmat[2][2]);
         }
       }
     }
@@ -195,18 +193,18 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
       float range = fabsf(far - near);
 
       for (int i = 0; i < pix_num; i++) {
-        if (ro_buffer_data[i] == 1.0f) {
-          ro_buffer_data[i] = 1e10f; /* Background */
+        if (rp->rect[i] == 1.0f) {
+          rp->rect[i] = 1e10f; /* Background */
         }
         else {
-          ro_buffer_data[i] = ro_buffer_data[i] * range - near;
+          rp->rect[i] = rp->rect[i] * range - near;
         }
       }
     }
   }
 }
 
-static void GPENCIL_render_result_combined(RenderLayer *rl,
+static void GPENCIL_render_result_combined(struct RenderLayer *rl,
                                            const char *viewname,
                                            GPENCIL_Data *vedata,
                                            const rcti *rect)
@@ -223,12 +221,12 @@ static void GPENCIL_render_result_combined(RenderLayer *rl,
                              4,
                              0,
                              GPU_DATA_FLOAT,
-                             rp->buffer.data);
+                             rp->rect);
 }
 
 void GPENCIL_render_to_image(void *ved,
                              RenderEngine *engine,
-                             RenderLayer *render_layer,
+                             struct RenderLayer *render_layer,
                              const rcti *rect)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;

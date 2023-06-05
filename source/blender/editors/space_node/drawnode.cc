@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup spnode
@@ -21,7 +20,7 @@
 #include "BKE_curve.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
@@ -221,13 +220,8 @@ static void node_buts_combsep_color(uiLayout *layout, bContext * /*C*/, PointerR
   uiItemR(layout, ptr, "mode", DEFAULT_FLAGS, "", ICON_NONE);
 }
 
-NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
-                                              const bNode *node,
-                                              const int x,
-                                              const int y)
+NodeResizeDirection node_get_resize_direction(const bNode *node, const int x, const int y)
 {
-  const float size = NODE_RESIZE_MARGIN * math::max(snode.runtime->aspect, 1.0f);
-
   if (node->type == NODE_FRAME) {
     NodeFrame *data = (NodeFrame *)node->storage;
 
@@ -239,6 +233,7 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
     NodeResizeDirection dir = NODE_RESIZE_NONE;
 
     const rctf &totr = node->runtime->totr;
+    const float size = NODE_RESIZE_MARGIN;
 
     if (x > totr.xmax - size && x <= totr.xmax && y >= totr.ymin && y < totr.ymax) {
       dir |= NODE_RESIZE_RIGHT;
@@ -267,6 +262,7 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
     return NODE_RESIZE_NONE;
   }
 
+  const float size = NODE_RESIZE_MARGIN;
   const rctf &totr = node->runtime->totr;
   NodeResizeDirection dir = NODE_RESIZE_NONE;
 
@@ -335,7 +331,7 @@ static void node_buts_image_user(uiLayout *layout,
 
     char numstr[32];
     const int framenr = BKE_image_user_frame_get(iuser, scene->r.cfra, nullptr);
-    SNPRINTF(numstr, IFACE_("Frame: %d"), framenr);
+    BLI_snprintf(numstr, sizeof(numstr), IFACE_("Frame: %d"), framenr);
     uiItemL(layout, numstr, ICON_NONE);
   }
 
@@ -508,6 +504,7 @@ static void node_shader_set_butfunc(bNodeType *ntype)
     case SH_NODE_VECTOR_DISPLACEMENT:
       ntype->draw_buttons = node_shader_buts_displacement;
       break;
+    case SH_NODE_BSDF_GLOSSY:
     case SH_NODE_BSDF_GLASS:
     case SH_NODE_BSDF_REFRACTION:
       ntype->draw_buttons = node_shader_buts_glossy;
@@ -1153,9 +1150,6 @@ void ED_node_init_butfuncs()
    * Defined in blenkernel, but not registered in type hashes.
    */
 
-  using blender::bke::NodeSocketTypeUndefined;
-  using blender::bke::NodeTypeUndefined;
-
   NodeTypeUndefined.draw_buttons = nullptr;
   NodeTypeUndefined.draw_buttons_ex = nullptr;
 
@@ -1298,9 +1292,8 @@ static void std_node_socket_draw(
     return;
   }
 
-  if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
-      ((sock->flag & SOCK_IS_LINKED) && !(sock->link->is_muted())))
-  {
+  if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_IS_LINKED) ||
+      (sock->flag & SOCK_HIDE_VALUE)) {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
     return;
   }
@@ -1503,23 +1496,6 @@ void ED_init_node_socket_type_virtual(bNodeSocketType *stype)
   using namespace blender::ed::space_node;
   stype->draw = node_socket_button_label;
   stype->draw_color = node_socket_virtual_draw_color;
-}
-
-void ED_node_type_draw_color(const char *idname, float *r_color)
-{
-  using namespace blender::ed::space_node;
-
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(idname);
-  if (!typeinfo || typeinfo->type == SOCK_CUSTOM) {
-    r_color[0] = 0.0f;
-    r_color[1] = 0.0f;
-    r_color[2] = 0.0f;
-    r_color[3] = 0.0f;
-    return;
-  }
-
-  BLI_assert(typeinfo->type < ARRAY_SIZE(std_node_socket_colors));
-  copy_v4_v4(r_color, std_node_socket_colors[typeinfo->type]);
 }
 
 namespace blender::ed::space_node {
@@ -2244,8 +2220,8 @@ void node_draw_link(const bContext &C,
   node_draw_link_bezier(C, v2d, snode, link, th_col1, th_col2, th_col3, selected);
 }
 
-std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
-                                                      const bNodeLink &link)
+static std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
+                                                             const bNodeLink &link)
 {
   const float2 cursor = snode.runtime->cursor * UI_SCALE_FAC;
   std::array<float2, 4> points;

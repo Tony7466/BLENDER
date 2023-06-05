@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spgraph
@@ -137,7 +136,7 @@ static void graph_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void graph_init(wmWindowManager *wm, ScrArea *area)
+static void graph_init(struct wmWindowManager *wm, ScrArea *area)
 {
   SpaceGraph *sipo = (SpaceGraph *)area->spacedata.first;
 
@@ -849,8 +848,8 @@ static void graph_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, Sp
   bDopeSheet *ads = sipo->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id, &ads->source);
-    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id->lib, &ads->source);
+    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
   }
 }
 

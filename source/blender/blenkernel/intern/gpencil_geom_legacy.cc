@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. */
 
 /** \file
  * \ingroup bke
@@ -1250,8 +1249,11 @@ bool BKE_gpencil_stroke_smooth_thickness(
 /** \name Stroke Smooth UV
  * \{ */
 
-bool BKE_gpencil_stroke_smooth_uv(
-    bGPDstroke *gps, int point_index, float influence, int iterations, bGPDstroke *r_gps)
+bool BKE_gpencil_stroke_smooth_uv(struct bGPDstroke *gps,
+                                  int point_index,
+                                  float influence,
+                                  int iterations,
+                                  struct bGPDstroke *r_gps)
 {
   /* If nothing to do, return early */
   if (gps->totpoints <= 2 || iterations <= 0) {
@@ -1705,7 +1707,7 @@ float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
   return total_length;
 }
 
-float BKE_gpencil_stroke_segment_length(const bGPDstroke *gps,
+float BKE_gpencil_stroke_segment_length(const struct bGPDstroke *gps,
                                         const int start_index,
                                         const int end_index,
                                         bool use_3d)
@@ -3654,11 +3656,11 @@ void BKE_gpencil_stroke_copy_to_keyframes(
  * \{ */
 
 struct tSamplePoint {
-  tSamplePoint *next, *prev;
+  struct tSamplePoint *next, *prev;
   float x, y, z;
   float pressure, strength, time;
   float vertex_color[4];
-  MDeformWeight *dw;
+  struct MDeformWeight *dw;
   int totweight;
 };
 
@@ -3870,7 +3872,7 @@ void BKE_gpencil_stroke_from_view_space(bGPDstroke *gps,
  * \{ */
 
 struct tPerimeterPoint {
-  tPerimeterPoint *next, *prev;
+  struct tPerimeterPoint *next, *prev;
   float x, y, z;
 };
 

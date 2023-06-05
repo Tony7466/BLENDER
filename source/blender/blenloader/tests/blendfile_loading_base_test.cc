@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 #include "blendfile_loading_base_test.h"
 
 #include "MEM_guardedalloc.h"
@@ -16,7 +15,7 @@
 #include "BKE_main.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_modifier.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_scene.h"
 #include "BKE_vfont.h"
 
@@ -117,7 +116,7 @@ bool BlendfileLoadingBaseTest::blendfile_load(const char *filepath)
     return false;
   }
 
-  char abspath[FILE_MAX];
+  char abspath[FILENAME_MAX];
   BLI_path_join(abspath, sizeof(abspath), test_assets_dir.c_str(), filepath);
 
   BlendFileReadReport bf_reports = {nullptr};

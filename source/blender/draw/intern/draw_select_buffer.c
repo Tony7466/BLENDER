@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -33,8 +32,11 @@
 /** \name Buffer of select ID's
  * \{ */
 
-uint *DRW_select_buffer_read(
-    Depsgraph *depsgraph, ARegion *region, View3D *v3d, const rcti *rect, uint *r_buf_len)
+uint *DRW_select_buffer_read(struct Depsgraph *depsgraph,
+                             struct ARegion *region,
+                             struct View3D *v3d,
+                             const rcti *rect,
+                             uint *r_buf_len)
 {
   uint *r_buf = NULL;
   uint buf_len = 0;
@@ -51,7 +53,7 @@ uint *DRW_select_buffer_read(
    * Some GPUs have problems reading pixels off limits. */
   rcti rect_clamp = *rect;
   if (BLI_rcti_isect(&r, &rect_clamp, &rect_clamp)) {
-    SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+    struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
     DRW_opengl_context_enable();
     /* Update the drawing. */
@@ -104,10 +106,13 @@ uint *DRW_select_buffer_read(
  *
  * \{ */
 
-uint *DRW_select_buffer_bitmap_from_rect(
-    Depsgraph *depsgraph, ARegion *region, View3D *v3d, const rcti *rect, uint *r_bitmap_len)
+uint *DRW_select_buffer_bitmap_from_rect(struct Depsgraph *depsgraph,
+                                         struct ARegion *region,
+                                         struct View3D *v3d,
+                                         const rcti *rect,
+                                         uint *r_bitmap_len)
 {
-  SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+  struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
   rcti rect_px = *rect;
   rect_px.xmax += 1;
@@ -140,14 +145,14 @@ uint *DRW_select_buffer_bitmap_from_rect(
   return bitmap_buf;
 }
 
-uint *DRW_select_buffer_bitmap_from_circle(Depsgraph *depsgraph,
-                                           ARegion *region,
-                                           View3D *v3d,
+uint *DRW_select_buffer_bitmap_from_circle(struct Depsgraph *depsgraph,
+                                           struct ARegion *region,
+                                           struct View3D *v3d,
                                            const int center[2],
                                            const int radius,
                                            uint *r_bitmap_len)
 {
-  SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+  struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
   const rcti rect = {
       .xmin = center[0] - radius,
@@ -204,15 +209,15 @@ static void drw_select_mask_px_cb(int x, int x_end, int y, void *user_data)
   } while (++x != x_end);
 }
 
-uint *DRW_select_buffer_bitmap_from_poly(Depsgraph *depsgraph,
-                                         ARegion *region,
-                                         View3D *v3d,
+uint *DRW_select_buffer_bitmap_from_poly(struct Depsgraph *depsgraph,
+                                         struct ARegion *region,
+                                         struct View3D *v3d,
                                          const int poly[][2],
                                          const int poly_len,
                                          const rcti *rect,
                                          uint *r_bitmap_len)
 {
-  SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+  struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
   rcti rect_px = *rect;
   rect_px.xmax += 1;
@@ -272,9 +277,9 @@ uint *DRW_select_buffer_bitmap_from_poly(Depsgraph *depsgraph,
  *
  * \{ */
 
-uint DRW_select_buffer_sample_point(Depsgraph *depsgraph,
-                                    ARegion *region,
-                                    View3D *v3d,
+uint DRW_select_buffer_sample_point(struct Depsgraph *depsgraph,
+                                    struct ARegion *region,
+                                    struct View3D *v3d,
                                     const int center[2])
 {
   uint ret = 0;
@@ -317,9 +322,9 @@ static bool select_buffer_test_fn(const void *__restrict value, void *__restrict
   return false;
 }
 
-uint DRW_select_buffer_find_nearest_to_point(Depsgraph *depsgraph,
-                                             ARegion *region,
-                                             View3D *v3d,
+uint DRW_select_buffer_find_nearest_to_point(struct Depsgraph *depsgraph,
+                                             struct ARegion *region,
+                                             struct View3D *v3d,
                                              const int center[2],
                                              const uint id_min,
                                              const uint id_max,
@@ -372,7 +377,7 @@ bool DRW_select_buffer_elem_get(const uint sel_id,
                                 uint *r_base_index,
                                 char *r_elem_type)
 {
-  SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+  struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
   char elem_type = 0;
   uint elem_id = 0;
@@ -420,7 +425,7 @@ uint DRW_select_buffer_context_offset_for_object_elem(Depsgraph *depsgraph,
                                                       Object *object,
                                                       char elem_type)
 {
-  SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+  struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, object);
 
@@ -454,7 +459,7 @@ uint DRW_select_buffer_context_offset_for_object_elem(Depsgraph *depsgraph,
 
 void DRW_select_buffer_context_create(Base **bases, const uint bases_len, short select_mode)
 {
-  SELECTID_Context *select_ctx = DRW_select_engine_context_get();
+  struct SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
   select_ctx->objects = MEM_reallocN(select_ctx->objects,
                                      sizeof(*select_ctx->objects) * bases_len);

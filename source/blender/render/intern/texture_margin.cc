@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup render
@@ -283,7 +282,7 @@ class TextureMarginMap {
 
   void build_tables()
   {
-    loop_to_poly_map_ = blender::bke::mesh::build_loop_to_poly_map(polys_);
+    loop_to_poly_map_ = blender::bke::mesh_topology::build_loop_to_poly_map(polys_);
 
     loop_adjacency_map_.resize(corner_edges_.size(), -1);
 
@@ -484,9 +483,6 @@ static void generate_margin(ImBuf *ibuf,
   Array<MLoopTri> looptris(poly_to_tri_count(polys.size(), corner_edges.size()));
   bke::mesh::looptris_calc(vert_positions, polys, corner_verts, looptris);
 
-  Array<int> looptri_polys(looptris.size());
-  bke::mesh::looptris_calc_poly_indices(polys, looptri_polys);
-
   TextureMarginMap map(ibuf->x, ibuf->y, uv_offset, edges_num, polys, corner_edges, mloopuv);
 
   bool draw_new_mask = false;
@@ -516,9 +512,9 @@ static void generate_margin(ImBuf *ibuf,
     }
 
     /* NOTE: we need the top bit for the dijkstra distance map. */
-    BLI_assert(looptri_polys[i] < 0x80000000);
+    BLI_assert(lt->poly < 0x80000000);
 
-    map.rasterize_tri(vec[0], vec[1], vec[2], looptri_polys[i], draw_new_mask ? mask : nullptr);
+    map.rasterize_tri(vec[0], vec[1], vec[2], lt->poly, draw_new_mask ? mask : nullptr);
   }
 
   char *tmpmask = (char *)MEM_dupallocN(mask);

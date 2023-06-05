@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -129,10 +127,10 @@ static void rna_ShaderFx_name_set(PointerRNA *ptr, const char *value)
   char oldname[sizeof(gmd->name)];
 
   /* make a copy of the old name first */
-  STRNCPY(oldname, gmd->name);
+  BLI_strncpy(oldname, gmd->name, sizeof(gmd->name));
 
   /* copy the new name into the name slot */
-  STRNCPY_UTF8(gmd->name, value);
+  BLI_strncpy_utf8(gmd->name, value, sizeof(gmd->name));
 
   /* make sure the name is truly unique */
   if (ptr->owner_id) {

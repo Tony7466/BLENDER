@@ -31,7 +31,8 @@ if(WIN32)
 else()
   set(OPENSUBDIV_EXTRA_ARGS
     ${OPENSUBDIV_EXTRA_ARGS}
-    -DTBB_LOCATION=${LIBDIR}/tbb
+    -DTBB_INCLUDE_DIR=${LIBDIR}/tbb/include
+    -DTBB_tbb_LIBRARY=${LIBDIR}/tbb/lib/${LIBPREFIX}tbb${SHAREDLIBEXT}
   )
 endif()
 

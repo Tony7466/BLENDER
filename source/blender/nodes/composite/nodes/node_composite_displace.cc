@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -10,6 +9,8 @@
 
 #include "GPU_shader.h"
 #include "GPU_texture.h"
+
+#include "BLT_translation.h"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -22,26 +23,26 @@ namespace blender::nodes::node_composite_displace_cc {
 
 static void cmp_node_displace_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image")
+  b.add_input<decl::Color>(N_("Image"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Vector>("Vector")
+  b.add_input<decl::Vector>(N_("Vector"))
       .default_value({1.0f, 1.0f, 1.0f})
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_TRANSLATION)
       .compositor_domain_priority(1);
-  b.add_input<decl::Float>("X Scale")
+  b.add_input<decl::Float>(N_("X Scale"))
       .default_value(0.0f)
       .min(-1000.0f)
       .max(1000.0f)
       .compositor_domain_priority(2);
-  b.add_input<decl::Float>("Y Scale")
+  b.add_input<decl::Float>(N_("Y Scale"))
       .default_value(0.0f)
       .min(-1000.0f)
       .max(1000.0f)
       .compositor_domain_priority(3);
-  b.add_output<decl::Color>("Image");
+  b.add_output<decl::Color>(N_("Image"));
 }
 
 using namespace blender::realtime_compositor;

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -411,41 +410,40 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
   const int cur_subdiv = tgpi->type == GP_STROKE_BOX ? tgpi->tot_edges - 1 : tgpi->tot_edges - 2;
 
   if (tgpi->type == GP_STROKE_LINE) {
-    BLI_strncpy(
-        msg_str,
-        TIP_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
-             "adjust subdivision number, Shift to align, Alt to center, E: extrude, G: grab"),
-        UI_MAX_DRAW_STR);
+    BLI_strncpy(msg_str,
+                TIP_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
+                     "adjust subdivision number, Shift to align, Alt to center, E: extrude"),
+                UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_POLYLINE) {
     BLI_strncpy(msg_str,
                 TIP_("Polyline: ESC to cancel, LMB to set, Enter/MMB to confirm, WHEEL/+- to "
-                     "adjust subdivision number, Shift to align, G: grab"),
+                     "adjust subdivision number, Shift to align"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_BOX) {
     BLI_strncpy(msg_str,
                 TIP_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
-                     "to adjust subdivision number, Shift to square, Alt to center, G: grab"),
+                     "to adjust subdivision number, Shift to square, Alt to center"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_CIRCLE) {
     BLI_strncpy(msg_str,
                 TIP_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
-                     "number, Shift to square, Alt to center, G: grab"),
+                     "number, Shift to square, Alt to center"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_ARC) {
     BLI_strncpy(
         msg_str,
         TIP_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, "
-             "Shift to square, Alt to center, M: Flip, E: extrude, G: grab"),
+             "Shift to square, Alt to center, M: Flip, E: extrude"),
         UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_CURVE) {
     BLI_strncpy(msg_str,
                 TIP_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
-                     "number, Shift to square, Alt to center, E: extrude, G: grab"),
+                     "number, Shift to square, Alt to center, E: extrude"),
                 UI_MAX_DRAW_STR);
   }
 
@@ -460,42 +458,50 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
       char str_ofs[NUM_STR_REP_LEN];
 
       outputNumInput(&tgpi->num, str_ofs, &scene->unit);
-      SNPRINTF(status_str, "%s: %s", msg_str, str_ofs);
+      BLI_snprintf(status_str, sizeof(status_str), "%s: %s", msg_str, str_ofs);
     }
     else {
       if (tgpi->flag == IN_PROGRESS) {
-        SNPRINTF(status_str,
-                 "%s: %d (%d, %d) (%d, %d)",
-                 msg_str,
-                 cur_subdiv,
-                 (int)tgpi->start[0],
-                 (int)tgpi->start[1],
-                 (int)tgpi->end[0],
-                 (int)tgpi->end[1]);
+        BLI_snprintf(status_str,
+                     sizeof(status_str),
+                     "%s: %d (%d, %d) (%d, %d)",
+                     msg_str,
+                     cur_subdiv,
+                     (int)tgpi->start[0],
+                     (int)tgpi->start[1],
+                     (int)tgpi->end[0],
+                     (int)tgpi->end[1]);
       }
       else {
-        SNPRINTF(status_str,
-                 "%s: %d (%d, %d)",
-                 msg_str,
-                 cur_subdiv,
-                 (int)tgpi->end[0],
-                 (int)tgpi->end[1]);
+        BLI_snprintf(status_str,
+                     sizeof(status_str),
+                     "%s: %d (%d, %d)",
+                     msg_str,
+                     cur_subdiv,
+                     (int)tgpi->end[0],
+                     (int)tgpi->end[1]);
       }
     }
   }
   else {
     if (tgpi->flag == IN_PROGRESS) {
-      SNPRINTF(status_str,
-               "%s: %d (%d, %d) (%d, %d)",
-               msg_str,
-               cur_subdiv,
-               (int)tgpi->start[0],
-               (int)tgpi->start[1],
-               (int)tgpi->end[0],
-               (int)tgpi->end[1]);
+      BLI_snprintf(status_str,
+                   sizeof(status_str),
+                   "%s: %d (%d, %d) (%d, %d)",
+                   msg_str,
+                   cur_subdiv,
+                   (int)tgpi->start[0],
+                   (int)tgpi->start[1],
+                   (int)tgpi->end[0],
+                   (int)tgpi->end[1]);
     }
     else {
-      SNPRINTF(status_str, "%s: (%d, %d)", msg_str, (int)tgpi->end[0], (int)tgpi->end[1]);
+      BLI_snprintf(status_str,
+                   sizeof(status_str),
+                   "%s: (%d, %d)",
+                   msg_str,
+                   (int)tgpi->end[0],
+                   (int)tgpi->end[1]);
     }
   }
   ED_workspace_status_text(C, status_str);
@@ -1620,7 +1626,7 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
   copy_v2fl_v2i(tgpi->mval, event->mval);
 
   if (tgpi->flag == IN_MOVE) {
-    bool is_mouse_event = true;
+
     switch (event->type) {
       case MOUSEMOVE: {
         gpencil_primitive_move(tgpi, false);
@@ -1641,14 +1647,8 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
         }
         break;
       }
-      default: {
-        is_mouse_event = false; /* Prevent overwriting `tgpi->mvalo`. */
-        break;
-      }
     }
-    if (is_mouse_event) {
-      copy_v2_v2(tgpi->mvalo, tgpi->mval);
-    }
+    copy_v2_v2(tgpi->mvalo, tgpi->mval);
     return OPERATOR_RUNNING_MODAL;
   }
 

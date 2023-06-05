@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -349,8 +348,8 @@ NlaTrack *BKE_nlatrack_new(void)
 }
 
 void BKE_nlatrack_insert_before(ListBase *nla_tracks,
-                                NlaTrack *next,
-                                NlaTrack *new_track,
+                                struct NlaTrack *next,
+                                struct NlaTrack *new_track,
                                 bool is_liboverride)
 {
 
@@ -378,8 +377,8 @@ void BKE_nlatrack_insert_before(ListBase *nla_tracks,
 }
 
 void BKE_nlatrack_insert_after(ListBase *nla_tracks,
-                               NlaTrack *prev,
-                               NlaTrack *new_track,
+                               struct NlaTrack *prev,
+                               struct NlaTrack *new_track,
                                const bool is_liboverride)
 {
   BLI_assert(nla_tracks);
@@ -418,7 +417,7 @@ void BKE_nlatrack_insert_after(ListBase *nla_tracks,
                  sizeof(new_track->name));
 }
 
-NlaTrack *BKE_nlatrack_new_before(ListBase *nla_tracks, NlaTrack *next, bool is_liboverride)
+NlaTrack *BKE_nlatrack_new_before(ListBase *nla_tracks, struct NlaTrack *next, bool is_liboverride)
 {
   NlaTrack *new_track = BKE_nlatrack_new();
 
@@ -427,7 +426,7 @@ NlaTrack *BKE_nlatrack_new_before(ListBase *nla_tracks, NlaTrack *next, bool is_
   return new_track;
 }
 
-NlaTrack *BKE_nlatrack_new_after(ListBase *nla_tracks, NlaTrack *prev, bool is_liboverride)
+NlaTrack *BKE_nlatrack_new_after(ListBase *nla_tracks, struct NlaTrack *prev, bool is_liboverride)
 {
   NlaTrack *new_track = BKE_nlatrack_new();
 
@@ -518,7 +517,7 @@ NlaStrip *BKE_nlastack_add_strip(AnimData *adt, bAction *act, const bool is_libo
     nlt = BKE_nlatrack_new_tail(&adt->nla_tracks, is_liboverride);
     BKE_nlatrack_set_active(&adt->nla_tracks, nlt);
     BKE_nlatrack_add_strip(nlt, strip, is_liboverride);
-    STRNCPY(nlt->name, act->id.name + 2);
+    BLI_strncpy(nlt->name, act->id.name + 2, sizeof(nlt->name));
   }
 
   /* automatically name it too */
@@ -579,13 +578,13 @@ void BKE_nla_strip_foreach_id(NlaStrip *strip, LibraryForeachIDData *data)
 
 /* Removing ------------------------------------------ */
 
-void BKE_nlatrack_remove(ListBase *tracks, NlaTrack *nlt)
+void BKE_nlatrack_remove(ListBase *tracks, struct NlaTrack *nlt)
 {
   BLI_assert(tracks);
   BLI_remlink(tracks, nlt);
 }
 
-void BKE_nlatrack_remove_and_free(ListBase *tracks, NlaTrack *nlt, bool do_id_user)
+void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user)
 {
   BKE_nlatrack_remove(tracks, nlt);
   BKE_nlatrack_free(nlt, do_id_user);
@@ -1358,7 +1357,7 @@ float BKE_nlastrip_compute_frame_to_next_strip(NlaStrip *strip)
   return limit_next;
 }
 
-NlaStrip *BKE_nlastrip_next_in_track(NlaStrip *strip, bool skip_transitions)
+NlaStrip *BKE_nlastrip_next_in_track(struct NlaStrip *strip, bool skip_transitions)
 {
   NlaStrip *next = strip->next;
   while (next != NULL) {
@@ -1372,7 +1371,7 @@ NlaStrip *BKE_nlastrip_next_in_track(NlaStrip *strip, bool skip_transitions)
   return NULL;
 }
 
-NlaStrip *BKE_nlastrip_prev_in_track(NlaStrip *strip, bool skip_transitions)
+NlaStrip *BKE_nlastrip_prev_in_track(struct NlaStrip *strip, bool skip_transitions)
 {
   NlaStrip *prev = strip->prev;
   while (prev != NULL) {
@@ -1799,16 +1798,18 @@ void BKE_nlastrip_validate_name(AnimData *adt, NlaStrip *strip)
   if (strip->name[0] == 0) {
     switch (strip->type) {
       case NLASTRIP_TYPE_CLIP: /* act-clip */
-        STRNCPY(strip->name, (strip->act) ? (strip->act->id.name + 2) : ("<No Action>"));
+        BLI_strncpy(strip->name,
+                    (strip->act) ? (strip->act->id.name + 2) : ("<No Action>"),
+                    sizeof(strip->name));
         break;
       case NLASTRIP_TYPE_TRANSITION: /* transition */
-        STRNCPY(strip->name, "Transition");
+        BLI_strncpy(strip->name, "Transition", sizeof(strip->name));
         break;
       case NLASTRIP_TYPE_META: /* meta */
-        STRNCPY(strip->name, "Meta");
+        BLI_strncpy(strip->name, "Meta", sizeof(strip->name));
         break;
       default:
-        STRNCPY(strip->name, "NLA Strip");
+        BLI_strncpy(strip->name, "NLA Strip", sizeof(strip->name));
         break;
     }
   }
@@ -2065,7 +2066,7 @@ bool BKE_nla_action_stash(AnimData *adt, const bool is_liboverride)
     BLI_addhead(&adt->nla_tracks, nlt);
   }
 
-  STRNCPY(nlt->name, STASH_TRACK_NAME);
+  BLI_strncpy(nlt->name, STASH_TRACK_NAME, sizeof(nlt->name));
   BLI_uniquename(
       &adt->nla_tracks, nlt, STASH_TRACK_NAME, '.', offsetof(NlaTrack, name), sizeof(nlt->name));
 
@@ -2388,7 +2389,7 @@ static void blend_lib_read_nla_strips(BlendLibReader *reader, ID *id, ListBase *
     BKE_fcurve_blend_read_lib(reader, id, &strip->fcurves);
 
     /* reassign the counted-reference to action */
-    BLO_read_id_address(reader, id, &strip->act);
+    BLO_read_id_address(reader, id->lib, &strip->act);
   }
 }
 
@@ -2445,7 +2446,7 @@ void BKE_nla_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *tracks)
   }
 }
 
-void BKE_nla_blend_read_expand(BlendExpander *expander, ListBase *tracks)
+void BKE_nla_blend_read_expand(struct BlendExpander *expander, struct ListBase *tracks)
 {
   /* nla-data - referenced actions */
   LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {

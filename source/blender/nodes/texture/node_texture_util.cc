@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup nodes
@@ -37,9 +36,9 @@ bool tex_node_poll_default(const bNodeType * /*ntype*/,
   return true;
 }
 
-void tex_node_type_base(bNodeType *ntype, int type, const char *name, short nclass)
+void tex_node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass)
 {
-  blender::bke::node_type_base(ntype, type, name, nclass);
+  node_type_base(ntype, type, name, nclass);
 
   ntype->poll = tex_node_poll_default;
   ntype->insert_link = node_insert_link_default;
@@ -137,7 +136,7 @@ void tex_output(bNode *node,
   dg->type = out->sockettype;
 }
 
-void ntreeTexCheckCyclics(bNodeTree *ntree)
+void ntreeTexCheckCyclics(struct bNodeTree *ntree)
 {
   bNode *node;
   for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {

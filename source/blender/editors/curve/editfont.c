@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edcurve
@@ -481,7 +480,7 @@ static bool font_paste_wchar(Object *obedit,
                              const char32_t *str,
                              const size_t str_len,
                              /* optional */
-                             CharInfo *str_info)
+                             struct CharInfo *str_info)
 {
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
@@ -663,7 +662,7 @@ static void txt_add_object(bContext *C,
   Curve *cu;
   Object *obedit;
   Object *object;
-  const TextLine *tmp;
+  const struct TextLine *tmp;
   int nchars = 0, nbytes = 0;
   char *s;
   int a;
@@ -1052,8 +1051,7 @@ static int paste_text_exec(bContext *C, wmOperator *op)
     int len;
   } clipboard_system = {NULL}, clipboard_vfont = {NULL};
 
-  /* No need for UTF8 validation as the conversion handles invalid sequences gracefully. */
-  clipboard_system.buf = WM_clipboard_text_get(selection, false, &clipboard_system.len);
+  clipboard_system.buf = WM_clipboard_text_get(selection, &clipboard_system.len);
 
   if (clipboard_system.buf == NULL) {
     return OPERATOR_CANCELLED;
@@ -1901,7 +1899,7 @@ static int font_selection_set_modal(bContext *C, wmOperator *UNUSED(op), const w
   return OPERATOR_RUNNING_MODAL;
 }
 
-void FONT_OT_selection_set(wmOperatorType *ot)
+void FONT_OT_selection_set(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Set Selection";
@@ -1922,19 +1920,9 @@ void FONT_OT_selection_set(wmOperatorType *ot)
 
 static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  Object *obedit = CTX_data_edit_object(C);
-  Curve *cu = obedit->data;
-  EditFont *ef = cu->editfont;
-
-  BLI_str_cursor_step_bounds_utf32(ef->textbuf, ef->len, ef->pos, &ef->selstart, &ef->selend);
-  ef->pos = ef->selend;
-
-  /* XXX: Text object selection start is 1-based, unlike text processing elsewhere in Blender. */
-  ef->selstart += 1;
-
-  font_select_update_primary_clipboard(obedit);
-  text_update_edited(C, obedit, FO_CURS);
-
+  move_cursor(C, NEXT_CHAR, false);
+  move_cursor(C, PREV_WORD, false);
+  move_cursor(C, NEXT_WORD, true);
   return OPERATOR_FINISHED;
 }
 
@@ -2233,7 +2221,7 @@ static void font_open_cancel(bContext *UNUSED(C), wmOperator *op)
 
 static int font_open_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
+  struct Main *bmain = CTX_data_main(C);
   VFont *font;
   PropertyPointerRNA *pprop;
   PointerRNA idptr;

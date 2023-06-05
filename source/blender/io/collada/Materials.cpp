@@ -2,9 +2,6 @@
 
 #include "Materials.h"
 
-#include "BKE_node.hh"
-
-#include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 
 MaterialNode::MaterialNode(bContext *C, Material *ma, KeyImageMap &key_image_map)
@@ -89,7 +86,7 @@ bNodeTree *MaterialNode::prepare_material_nodetree()
     return nullptr;
   }
 
-  blender::bke::ntreeAddTreeEmbedded(nullptr, &material->id, "Shader Nodetree", "ShaderNodeTree");
+  ntreeAddTreeEmbedded(nullptr, &material->id, "Shader Nodetree", "ShaderNodeTree");
   material->use_nodes = true;
   ntree = material->nodetree;
   return ntree;
@@ -250,24 +247,22 @@ void MaterialNode::set_diffuse(COLLADAFW::ColorOrTexture &cot)
 
 Image *MaterialNode::get_diffuse_image()
 {
-  ntree->ensure_topology_cache();
-  const blender::Span<const bNode *> nodes = ntree->nodes_by_type("ShaderNodeBsdfPrincipled");
-  if (nodes.is_empty()) {
+  bNode *shader = ntreeFindType(ntree, SH_NODE_BSDF_PRINCIPLED);
+  if (shader == nullptr) {
     return nullptr;
   }
-  const bNode *shader = nodes.first();
 
-  const bNodeSocket *in_socket = nodeFindSocket(shader, SOCK_IN, "Base Color");
+  bNodeSocket *in_socket = nodeFindSocket(shader, SOCK_IN, "Base Color");
   if (in_socket == nullptr) {
     return nullptr;
   }
 
-  const bNodeLink *link = in_socket->link;
+  bNodeLink *link = in_socket->link;
   if (link == nullptr) {
     return nullptr;
   }
 
-  const bNode *texture = link->fromnode;
+  bNode *texture = link->fromnode;
   if (texture == nullptr) {
     return nullptr;
   }

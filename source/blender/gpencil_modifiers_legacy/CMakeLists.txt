@@ -1,6 +1,5 @@
-# SPDX-FileCopyrightText: 2018 Blender Foundation
-#
 # SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2018 Blender Foundation
 
 set(INC
   .
@@ -32,6 +31,7 @@ set(INC_SYS
 set(SRC
   intern/MOD_gpencil_legacy_ui_common.c
 
+  intern/MOD_gpencil_legacy_util.c
   intern/MOD_gpencil_legacy_armature.c
   intern/MOD_gpencil_legacy_array.c
   intern/MOD_gpencil_legacy_build.c
@@ -56,7 +56,6 @@ set(SRC
   intern/MOD_gpencil_legacy_thick.c
   intern/MOD_gpencil_legacy_time.c
   intern/MOD_gpencil_legacy_tint.c
-  intern/MOD_gpencil_legacy_util.c
   intern/MOD_gpencil_legacy_weight_angle.c
   intern/MOD_gpencil_legacy_weight_proximity.c
 

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -40,12 +39,12 @@ typedef struct TransDataNla {
   ID *id;
 
   /** Original NLA-Track that the strip belongs to. */
-  NlaTrack *oldTrack;
+  struct NlaTrack *oldTrack;
   /** Current NLA-Track that the strip belongs to. */
-  NlaTrack *nlt;
+  struct NlaTrack *nlt;
 
   /** NLA-strip this data represents. */
-  NlaStrip *strip;
+  struct NlaStrip *strip;
 
   /* dummy values for transform to write in - must have 3 elements... */
   /** start handle. */
@@ -78,9 +77,8 @@ static bool nlastrip_is_overlap(const NlaStrip *strip_a,
                     strip_b->end + offset_b);
 }
 
-/**
- * Assumes strips to horizontally translate (shuffle) are tagged with
- * #NLASTRIP_FLAG_INVALID_LOCATION.
+/** Assumes strips to horizontally translate (shuffle) are tagged with
+ * NLASTRIP_FLAG_INVALID_LOCATION.
  *
  * \returns The total sided offset that results in no overlaps between tagged strips and non-tagged
  * strips.
@@ -124,9 +122,8 @@ static float transdata_get_time_shuffle_offset_side(ListBase *trans_datas, const
   return total_offset;
 }
 
-/**
- * Assumes strips to horizontally translate (shuffle) are tagged with
- * #NLASTRIP_FLAG_INVALID_LOCATION.
+/** Assumes strips to horizontally translate (shuffle) are tagged with
+ * NLASTRIP_FLAG_INVALID_LOCATION.
  *
  * \returns The minimal total signed offset that results in no overlaps between tagged strips and
  * non-tagged strips.

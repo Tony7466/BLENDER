@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation.
+ */
 
 /** \file
  * \ingroup eevee
@@ -90,7 +89,7 @@ class Sampling {
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
-    /* Storage Buffer. */
+    /* Storage Buf. */
     pass->bind_ssbo(SAMPLING_BUF_SLOT, &data_);
   }
 

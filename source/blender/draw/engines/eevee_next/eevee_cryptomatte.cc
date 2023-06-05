@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation. */
 #include "BKE_cryptomatte.hh"
 
 #include "GPU_material.h"
@@ -46,7 +45,6 @@ void Cryptomatte::begin_sync()
   if (!(enabled_passes &
         (EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT | EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET)))
   {
-    /* Ensure dummy buffer for API validation. */
     cryptomatte_object_buf.resize(16);
   }
 }

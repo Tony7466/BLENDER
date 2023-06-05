@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -181,10 +180,10 @@ FreestyleLineSet *BKE_freestyle_lineset_add(struct Main *bmain,
   lineset->exclude_edge_types = 0;
   lineset->group = NULL;
   if (name) {
-    STRNCPY(lineset->name, name);
+    BLI_strncpy(lineset->name, name, sizeof(lineset->name));
   }
   else if (lineset_index > 0) {
-    SNPRINTF(lineset->name, "LineSet %i", lineset_index + 1);
+    BLI_snprintf(lineset->name, sizeof(lineset->name), "LineSet %i", lineset_index + 1);
   }
   else {
     strcpy(lineset->name, "LineSet");

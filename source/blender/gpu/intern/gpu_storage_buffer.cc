@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -34,7 +33,7 @@ StorageBuf::StorageBuf(size_t size, const char *name)
 
   size_in_bytes_ = size;
 
-  STRNCPY(name_, name);
+  BLI_strncpy(name_, name, sizeof(name_));
 }
 
 StorageBuf::~StorageBuf()

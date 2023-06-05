@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -266,18 +264,16 @@ static void rna_trackingTrack_name_set(PointerRNA *ptr, const char *value)
                                                                             track);
   /* Store old name, for the animation fix later. */
   char old_name[sizeof(track->name)];
-  STRNCPY(old_name, track->name);
+  BLI_strncpy(old_name, track->name, sizeof(track->name));
   /* Update the name, */
-  STRNCPY(track->name, value);
+  BLI_strncpy(track->name, value, sizeof(track->name));
   BKE_tracking_track_unique_name(&tracking_object->tracks, track);
   /* Fix animation paths. */
   AnimData *adt = BKE_animdata_from_id(&clip->id);
   if (adt != NULL) {
-    char rna_path_prefix[MAX_NAME * 2 + 64];
-    BKE_tracking_get_rna_path_prefix_for_track(
-        &clip->tracking, track, rna_path_prefix, sizeof(rna_path_prefix));
-    BKE_animdata_fix_paths_rename(
-        &clip->id, adt, NULL, rna_path_prefix, old_name, track->name, 0, 0, 1);
+    char rna_path[MAX_NAME * 2 + 64];
+    BKE_tracking_get_rna_path_prefix_for_track(&clip->tracking, track, rna_path, sizeof(rna_path));
+    BKE_animdata_fix_paths_rename(&clip->id, adt, NULL, rna_path, old_name, track->name, 0, 0, 1);
   }
 }
 
@@ -354,9 +350,9 @@ static void rna_trackingPlaneTrack_name_set(PointerRNA *ptr, const char *value)
                                                                                   plane_track);
   /* Store old name, for the animation fix later. */
   char old_name[sizeof(plane_track->name)];
-  STRNCPY(old_name, plane_track->name);
+  BLI_strncpy(old_name, plane_track->name, sizeof(plane_track->name));
   /* Update the name, */
-  STRNCPY(plane_track->name, value);
+  BLI_strncpy(plane_track->name, value, sizeof(plane_track->name));
   BKE_tracking_plane_track_unique_name(&tracking_object->plane_tracks, plane_track);
   /* Fix animation paths. */
   AnimData *adt = BKE_animdata_from_id(&clip->id);
@@ -575,7 +571,7 @@ static void rna_trackingObject_name_set(PointerRNA *ptr, const char *value)
   MovieClip *clip = (MovieClip *)ptr->owner_id;
   MovieTrackingObject *tracking_object = (MovieTrackingObject *)ptr->data;
 
-  STRNCPY(tracking_object->name, value);
+  BLI_strncpy(tracking_object->name, value, sizeof(tracking_object->name));
 
   BKE_tracking_object_unique_name(&clip->tracking, tracking_object);
 }
@@ -674,7 +670,7 @@ static MovieTrackingTrack *add_track_to_base(
   track = BKE_tracking_track_add(tracking, tracksbase, 0, 0, frame, width, height);
 
   if (name && name[0]) {
-    STRNCPY(track->name, name);
+    BLI_strncpy(track->name, name, sizeof(track->name));
     BKE_tracking_track_unique_name(tracksbase, track);
   }
 

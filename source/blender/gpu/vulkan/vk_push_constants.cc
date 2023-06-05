@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup gpu
@@ -49,16 +48,15 @@ uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
 }
 
 VKPushConstants::StorageType VKPushConstants::Layout::determine_storage_type(
-    const shader::ShaderCreateInfo &info, const VKDevice &device)
+    const shader::ShaderCreateInfo &info, const VkPhysicalDeviceLimits &vk_physical_device_limits)
 {
   if (info.push_constants_.is_empty()) {
     return StorageType::NONE;
   }
 
-  uint32_t max_push_constants_size =
-      device.physical_device_properties_get().limits.maxPushConstantsSize;
   uint32_t size = struct_size<Std430>(info.push_constants_);
-  return size <= max_push_constants_size ? STORAGE_TYPE_DEFAULT : STORAGE_TYPE_FALLBACK;
+  return size <= vk_physical_device_limits.maxPushConstantsSize ? STORAGE_TYPE_DEFAULT :
+                                                                  STORAGE_TYPE_FALLBACK;
 }
 
 template<typename LayoutT>

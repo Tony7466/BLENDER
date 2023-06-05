@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -428,7 +426,7 @@ static BMOpDefine bmo_pointmerge_facedata_def = {
 };
 
 /*
- * Average Vertices Face-vert Data.
+ * Average Vertices Facevert Data.
  *
  * Merge uv/vcols associated with the input vertices at
  * the bounding box center. (I know, it's not averaging but

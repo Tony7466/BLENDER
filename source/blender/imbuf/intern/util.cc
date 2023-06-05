@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
@@ -89,8 +88,8 @@ const char *imb_ext_audio[] = {
     nullptr,
 };
 
-/* OIIO will validate the entire header of some files and DPX requires 2048 */
-#define HEADER_SIZE 2048
+/* Increased from 32 to 64 because of the bitmaps header size. */
+#define HEADER_SIZE 64
 
 static ssize_t imb_ispic_read_header_from_filepath(const char *filepath, uchar buf[HEADER_SIZE])
 {
@@ -197,7 +196,7 @@ static void ffmpeg_log_callback(void *ptr, int level, const char *format, va_lis
     va_list args_cpy;
 
     va_copy(args_cpy, arg);
-    n = VSNPRINTF(ffmpeg_last_error, format, args_cpy);
+    n = BLI_vsnprintf(ffmpeg_last_error, sizeof(ffmpeg_last_error), format, args_cpy);
     va_end(args_cpy);
 
     /* strip trailing \n */

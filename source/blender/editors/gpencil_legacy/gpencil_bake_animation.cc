@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -66,7 +65,9 @@ const EnumPropertyItem rna_gpencil_reproject_type_items[] = {
 };
 
 /* Check frame_end is always > start frame! */
-static void gpencil_bake_set_frame_end(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
+static void gpencil_bake_set_frame_end(struct Main * /*main*/,
+                                       struct Scene * /*scene*/,
+                                       struct PointerRNA *ptr)
 {
   int frame_start = RNA_int_get(ptr, "frame_start");
   int frame_end = RNA_int_get(ptr, "frame_end");
@@ -95,7 +96,7 @@ static bool gpencil_bake_grease_pencil_animation_poll(bContext *C)
 }
 
 struct GpBakeOb {
-  GpBakeOb *next, *prev;
+  struct GpBakeOb *next, *prev;
   Object *ob;
 };
 

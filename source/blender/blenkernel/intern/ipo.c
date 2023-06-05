@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -145,7 +144,7 @@ static void ipo_blend_read_lib(BlendLibReader *reader, ID *id)
 
   LISTBASE_FOREACH (IpoCurve *, icu, &ipo->curve) {
     if (icu->driver) {
-      BLO_read_id_address(reader, id, &icu->driver->ob);
+      BLO_read_id_address(reader, ipo->id.lib, &icu->driver->ob);
     }
   }
 }
@@ -446,7 +445,7 @@ static char *shapekey_adrcodes_to_paths(ID *id, int adrcode, int *UNUSED(array_i
   /* block will be attached to ID_KE block... */
   if (adrcode == 0) {
     /* adrcode=0 was the misnamed "speed" curve (now "evaluation time") */
-    STRNCPY(buf, "eval_time");
+    BLI_strncpy(buf, "eval_time", sizeof(buf));
   }
   else {
     /* Find the name of the ShapeKey (i.e. KeyBlock) to look for */
@@ -458,11 +457,11 @@ static char *shapekey_adrcodes_to_paths(ID *id, int adrcode, int *UNUSED(array_i
       /* Use the keyblock name, escaped, so that path lookups for this will work */
       char kb_name_esc[sizeof(kb->name) * 2];
       BLI_str_escape(kb_name_esc, kb->name, sizeof(kb_name_esc));
-      SNPRINTF(buf, "key_blocks[\"%s\"].value", kb_name_esc);
+      BLI_snprintf(buf, sizeof(buf), "key_blocks[\"%s\"].value", kb_name_esc);
     }
     else {
       /* Fallback - Use the adrcode as index directly, so that this can be manually fixed */
-      SNPRINTF(buf, "key_blocks[%d].value", adrcode);
+      BLI_snprintf(buf, sizeof(buf), "key_blocks[%d].value", adrcode);
     }
   }
   return buf;
@@ -581,7 +580,7 @@ static const char *mtex_adrcodes_to_paths(int adrcode, int *UNUSED(array_index))
 
   /* only build and return path if there's a property */
   if (prop) {
-    SNPRINTF(buf, "%s.%s", base, prop);
+    BLI_snprintf(buf, 128, "%s.%s", base, prop);
     return buf;
   }
 
@@ -1155,7 +1154,8 @@ static char *get_rna_access(ID *id,
     char constname_esc[sizeof(((bConstraint *)NULL)->name) * 2];
     BLI_str_escape(actname_esc, actname, sizeof(actname_esc));
     BLI_str_escape(constname_esc, constname, sizeof(constname_esc));
-    SNPRINTF(buf, "pose.bones[\"%s\"].constraints[\"%s\"]", actname_esc, constname_esc);
+    BLI_snprintf(
+        buf, sizeof(buf), "pose.bones[\"%s\"].constraints[\"%s\"]", actname_esc, constname_esc);
   }
   else if (actname && actname[0]) {
     if ((blocktype == ID_OB) && STREQ(actname, "Object")) {
@@ -1171,20 +1171,20 @@ static char *get_rna_access(ID *id,
       /* Pose-Channel */
       char actname_esc[sizeof(((bActionChannel *)NULL)->name) * 2];
       BLI_str_escape(actname_esc, actname, sizeof(actname_esc));
-      SNPRINTF(buf, "pose.bones[\"%s\"]", actname_esc);
+      BLI_snprintf(buf, sizeof(buf), "pose.bones[\"%s\"]", actname_esc);
     }
   }
   else if (constname && constname[0]) {
     /* Constraint in Object */
     char constname_esc[sizeof(((bConstraint *)NULL)->name) * 2];
     BLI_str_escape(constname_esc, constname, sizeof(constname_esc));
-    SNPRINTF(buf, "constraints[\"%s\"]", constname_esc);
+    BLI_snprintf(buf, sizeof(buf), "constraints[\"%s\"]", constname_esc);
   }
   else if (seq) {
     /* Sequence names in Scene */
     char seq_name_esc[(sizeof(seq->name) - 2) * 2];
     BLI_str_escape(seq_name_esc, seq->name + 2, sizeof(seq_name_esc));
-    SNPRINTF(buf, "sequence_editor.sequences_all[\"%s\"]", seq_name_esc);
+    BLI_snprintf(buf, sizeof(buf), "sequence_editor.sequences_all[\"%s\"]", seq_name_esc);
   }
   else {
     buf[0] = '\0'; /* empty string */
@@ -1202,7 +1202,7 @@ static char *get_rna_access(ID *id,
 
   /* if there was no array index pointer provided, add it to the path */
   if (array_index == NULL) {
-    SNPRINTF(buf, "[\"%d\"]", dummy_index);
+    BLI_snprintf(buf, sizeof(buf), "[\"%d\"]", dummy_index);
     BLI_dynstr_append(path, buf);
   }
 
@@ -1261,7 +1261,7 @@ static ChannelDriver *idriver_to_cdriver(IpoDriver *idriver)
     /* FIXME: expression will be useless due to API changes, but at least not totally lost */
     cdriver->type = DRIVER_TYPE_PYTHON;
     if (idriver->name[0]) {
-      STRNCPY(cdriver->expression, idriver->name);
+      BLI_strncpy(cdriver->expression, idriver->name, sizeof(cdriver->expression));
     }
   }
   else {
@@ -1283,7 +1283,7 @@ static ChannelDriver *idriver_to_cdriver(IpoDriver *idriver)
         dtar->id = (ID *)idriver->ob;
         dtar->idtype = ID_OB;
         if (idriver->name[0]) {
-          STRNCPY(dtar->pchan_name, idriver->name);
+          BLI_strncpy(dtar->pchan_name, idriver->name, sizeof(dtar->pchan_name));
         }
 
         /* second bone target (name was stored in same var as the first one) */
@@ -1291,7 +1291,8 @@ static ChannelDriver *idriver_to_cdriver(IpoDriver *idriver)
         dtar->id = (ID *)idriver->ob;
         dtar->idtype = ID_OB;
         if (idriver->name[0]) { /* XXX: for safety. */
-          STRNCPY(dtar->pchan_name, idriver->name + DRIVER_NAME_OFFS);
+          BLI_strncpy(
+              dtar->pchan_name, idriver->name + DRIVER_NAME_OFFS, sizeof(dtar->pchan_name));
         }
       }
       else {
@@ -1304,7 +1305,7 @@ static ChannelDriver *idriver_to_cdriver(IpoDriver *idriver)
         dtar->id = (ID *)idriver->ob;
         dtar->idtype = ID_OB;
         if (idriver->name[0]) {
-          STRNCPY(dtar->pchan_name, idriver->name);
+          BLI_strncpy(dtar->pchan_name, idriver->name, sizeof(dtar->pchan_name));
         }
         dtar->transChan = adrcode_to_dtar_transchan(idriver->adrcode);
         dtar->flag |= DTAR_FLAG_LOCALSPACE; /* old drivers took local space */
@@ -1361,7 +1362,7 @@ static void fcurve_add_to_list(
         agrp->flag |= AGRP_MUTED;
       }
 
-      STRNCPY(agrp->name, grpname);
+      BLI_strncpy(agrp->name, grpname, sizeof(agrp->name));
 
       BLI_addtail(&tmp_act.groups, agrp);
       BLI_uniquename(&tmp_act.groups,
@@ -1875,7 +1876,7 @@ static void ipo_to_animdata(
     if (adt->action == NULL) {
       char nameBuf[MAX_ID_NAME];
 
-      SNPRINTF(nameBuf, "CDA:%s", ipo->id.name + 2);
+      BLI_snprintf(nameBuf, sizeof(nameBuf), "CDA:%s", ipo->id.name + 2);
 
       adt->action = BKE_action_add(bmain, nameBuf);
       if (G.debug & G_DEBUG) {

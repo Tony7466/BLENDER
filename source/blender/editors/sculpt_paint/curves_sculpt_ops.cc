@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_kdtree.h"
 #include "BLI_rand.hh"
@@ -39,8 +37,9 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+#include "curves_sculpt_intern.h"
 #include "curves_sculpt_intern.hh"
-#include "paint_intern.hh"
+#include "paint_intern.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -164,7 +163,7 @@ static bool stroke_get_location(bContext *C,
   return true;
 }
 
-static bool stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
+static bool stroke_test_start(bContext *C, struct wmOperator *op, const float mouse[2])
 {
   UNUSED_VARS(C, op, mouse);
   return true;
@@ -256,7 +255,7 @@ static void sculpt_curves_stroke_cancel(bContext *C, wmOperator *op)
   }
 }
 
-static void SCULPT_CURVES_OT_brush_stroke(wmOperatorType *ot)
+static void SCULPT_CURVES_OT_brush_stroke(struct wmOperatorType *ot)
 {
   ot->name = "Stroke Curves Sculpt";
   ot->idname = "SCULPT_CURVES_OT_brush_stroke";
@@ -529,8 +528,8 @@ namespace select_grow {
 
 struct GrowOperatorDataPerCurve : NonCopyable, NonMovable {
   Curves *curves_id;
-  IndexMaskMemory selected_points_memory;
-  IndexMaskMemory unselected_points_memory;
+  Vector<int64_t> selected_point_indices;
+  Vector<int64_t> unselected_point_indices;
   IndexMask selected_points;
   IndexMask unselected_points;
   Array<float> distances_to_selected;
@@ -550,24 +549,36 @@ static void update_points_selection(const GrowOperatorDataPerCurve &data,
                                     MutableSpan<float> points_selection)
 {
   if (distance > 0.0f) {
-    data.unselected_points.foreach_index(
-        GrainSize(256), [&](const int point_i, const int index_pos) {
-          const float distance_to_selected = data.distances_to_selected[index_pos];
-          const float selection = distance_to_selected <= distance ? 1.0f : 0.0f;
-          points_selection[point_i] = selection;
+    threading::parallel_for(
+        data.unselected_points.index_range(), 256, [&](const IndexRange range) {
+          for (const int i : range) {
+            const int point_i = data.unselected_points[i];
+            const float distance_to_selected = data.distances_to_selected[i];
+            const float selection = distance_to_selected <= distance ? 1.0f : 0.0f;
+            points_selection[point_i] = selection;
+          }
         });
-    data.selected_points.foreach_index(
-        GrainSize(512), [&](const int point_i) { points_selection[point_i] = 1.0f; });
+    threading::parallel_for(data.selected_points.index_range(), 512, [&](const IndexRange range) {
+      for (const int point_i : data.selected_points.slice(range)) {
+        points_selection[point_i] = 1.0f;
+      }
+    });
   }
   else {
-    data.selected_points.foreach_index(
-        GrainSize(256), [&](const int point_i, const int index_pos) {
-          const float distance_to_unselected = data.distances_to_unselected[index_pos];
-          const float selection = distance_to_unselected <= -distance ? 0.0f : 1.0f;
-          points_selection[point_i] = selection;
+    threading::parallel_for(data.selected_points.index_range(), 256, [&](const IndexRange range) {
+      for (const int i : range) {
+        const int point_i = data.selected_points[i];
+        const float distance_to_unselected = data.distances_to_unselected[i];
+        const float selection = distance_to_unselected <= -distance ? 0.0f : 1.0f;
+        points_selection[point_i] = selection;
+      }
+    });
+    threading::parallel_for(
+        data.unselected_points.index_range(), 512, [&](const IndexRange range) {
+          for (const int point_i : data.unselected_points.slice(range)) {
+            points_selection[point_i] = 0.0f;
+          }
         });
-    data.unselected_points.foreach_index(
-        GrainSize(512), [&](const int point_i) { points_selection[point_i] = 0.0f; });
   }
 }
 
@@ -636,9 +647,9 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
 
   /* Find indices of selected and unselected points. */
   curve_op_data.selected_points = curves::retrieve_selected_points(
-      curves_id, curve_op_data.selected_points_memory);
-  curve_op_data.unselected_points = curve_op_data.selected_points.complement(
-      curves.points_range(), curve_op_data.unselected_points_memory);
+      curves_id, curve_op_data.selected_point_indices);
+  curve_op_data.unselected_points = curve_op_data.selected_points.invert(
+      curves.points_range(), curve_op_data.unselected_point_indices);
 
   threading::parallel_invoke(
       1024 < curve_op_data.selected_points.size() + curve_op_data.unselected_points.size(),
@@ -646,10 +657,10 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
         /* Build KD-tree for the selected points. */
         KDTree_3d *kdtree = BLI_kdtree_3d_new(curve_op_data.selected_points.size());
         BLI_SCOPED_DEFER([&]() { BLI_kdtree_3d_free(kdtree); });
-        curve_op_data.selected_points.foreach_index([&](const int point_i) {
+        for (const int point_i : curve_op_data.selected_points) {
           const float3 &position = positions[point_i];
           BLI_kdtree_3d_insert(kdtree, point_i, position);
-        });
+        }
         BLI_kdtree_3d_balance(kdtree);
 
         /* For each unselected point, compute the distance to the closest selected point. */
@@ -669,10 +680,10 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
         /* Build KD-tree for the unselected points. */
         KDTree_3d *kdtree = BLI_kdtree_3d_new(curve_op_data.unselected_points.size());
         BLI_SCOPED_DEFER([&]() { BLI_kdtree_3d_free(kdtree); });
-        curve_op_data.unselected_points.foreach_index([&](const int point_i) {
+        for (const int point_i : curve_op_data.unselected_points) {
           const float3 &position = positions[point_i];
           BLI_kdtree_3d_insert(kdtree, point_i, position);
-        });
+        }
         BLI_kdtree_3d_balance(kdtree);
 
         /* For each selected point, compute the distance to the closest unselected point. */

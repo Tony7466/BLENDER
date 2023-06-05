@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -1426,7 +1425,7 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
       attrs[attrs_num].type = eCustomDataType(layer->type);
       attrs[attrs_num].domain = domain;
 
-      STRNCPY(attrs[attrs_num].name, layer->name);
+      BLI_strncpy(attrs[attrs_num].name, layer->name, sizeof(attrs[attrs_num].name));
       attrs_num++;
     }
   }
@@ -1438,7 +1437,7 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
 
       attrs[attrs_num].type = CD_PROP_FLOAT2;
       attrs[attrs_num].domain = ATTR_DOMAIN_CORNER;
-      STRNCPY(attrs[attrs_num].name, layer->name);
+      BLI_strncpy(attrs[attrs_num].name, layer->name, sizeof(attrs[attrs_num].name));
 
       attrs_num++;
     }
@@ -1484,7 +1483,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
 
     attrs[attrs_i].type = req->cd_type;
     attrs[attrs_i].domain = req->domain;
-    STRNCPY(attrs[attrs_i].name, req->attribute_name);
+    BLI_strncpy(attrs[attrs_i].name, req->attribute_name, sizeof(PBVHAttrReq::name));
     attrs_i++;
   }
 
@@ -1499,7 +1498,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
       if (layer) {
         attrs[attrs_i].type = CD_PROP_FLOAT2;
         attrs[attrs_i].domain = ATTR_DOMAIN_CORNER;
-        STRNCPY(attrs[attrs_i].name, layer->name);
+        BLI_strncpy(attrs[attrs_i].name, layer->name, sizeof(PBVHAttrReq::name));
         attrs_i++;
       }
     }
@@ -2415,7 +2414,7 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
   DRWPass *pass = static_cast<DRWPass *>(BLI_memblock_alloc(DST.vmempool->passes));
   pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
   if (G.debug & G_DEBUG_GPU) {
-    STRNCPY(pass->name, name);
+    BLI_strncpy(pass->name, name, MAX_PASS_NAME);
   }
 
   pass->shgroups.first = nullptr;

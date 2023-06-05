@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_disjoint_set.hh"
@@ -23,21 +21,20 @@ namespace blender::nodes::node_geo_scale_elements_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry").supported_type(GEO_COMPONENT_TYPE_MESH);
-  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Float>("Scale", "Scale").default_value(1.0f).min(0.0f).field_on_all();
-  b.add_input<decl::Vector>("Center")
+  b.add_input<decl::Geometry>(N_("Geometry")).supported_type(GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Float>(N_("Scale"), "Scale").default_value(1.0f).min(0.0f).field_on_all();
+  b.add_input<decl::Vector>(N_("Center"))
       .subtype(PROP_TRANSLATION)
       .implicit_field_on_all(implicit_field_inputs::position)
-      .description(
-          "Origin of the scaling for each element. If multiple elements are connected, their "
-          "center is averaged");
-  b.add_input<decl::Vector>("Axis")
+      .description(N_("Origin of the scaling for each element. If multiple elements are "
+                      "connected, their center is averaged"));
+  b.add_input<decl::Vector>(N_("Axis"))
       .default_value({1.0f, 0.0f, 0.0f})
       .field_on_all()
-      .description("Direction in which to scale the element")
+      .description(N_("Direction in which to scale the element"))
       .make_available([](bNode &node) { node.custom2 = GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS; });
-  b.add_output<decl::Geometry>("Geometry").propagate_all();
+  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 };
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -63,7 +60,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const GeometryNodeScaleElementsMode mode = GeometryNodeScaleElementsMode(node->custom2);
   const bool use_single_axis = mode == GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS;
 
-  bke::nodeSetSocketAvailability(ntree, axis_socket, use_single_axis);
+  nodeSetSocketAvailability(ntree, axis_socket, use_single_axis);
 }
 
 struct UniformScaleFields {
@@ -240,15 +237,14 @@ static void scale_vertex_islands_on_axis(Mesh &mesh,
   BKE_mesh_tag_positions_changed(&mesh);
 }
 
-static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
-                                                  const IndexMask &face_selection)
+static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexMask face_selection)
 {
   const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
   DisjointSet<int> disjoint_set(mesh.totvert);
-  face_selection.foreach_index([&](const int poly_index) {
+  for (const int poly_index : face_selection) {
     const Span<int> poly_verts = corner_verts.slice(polys[poly_index]);
     for (const int loop_index : poly_verts.index_range().drop_back(1)) {
       const int v1 = poly_verts[loop_index];
@@ -256,7 +252,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
       disjoint_set.join(v1, v2);
     }
     disjoint_set.join(poly_verts.first(), poly_verts.last());
-  });
+  }
 
   VectorSet<int> island_ids;
   Vector<ElementIsland> islands;
@@ -264,7 +260,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
   islands.reserve(face_selection.size());
 
   /* Gather all of the face indices in each island into separate vectors. */
-  face_selection.foreach_index([&](const int poly_index) {
+  for (const int poly_index : face_selection) {
     const Span<int> poly_verts = corner_verts.slice(polys[poly_index]);
     const int island_id = disjoint_set.find_root(poly_verts[0]);
     const int island_index = island_ids.index_of_or_add(island_id);
@@ -273,7 +269,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
     }
     ElementIsland &island = islands[island_index];
     island.element_indices.append(poly_index);
-  });
+  }
 
   return islands;
 }
@@ -332,17 +328,16 @@ static void scale_faces_uniformly(Mesh &mesh, const UniformScaleFields &fields)
   scale_vertex_islands_uniformly(mesh, island, params, get_face_verts);
 }
 
-static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh,
-                                                  const IndexMask &edge_selection)
+static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh, const IndexMask edge_selection)
 {
   const Span<int2> edges = mesh.edges();
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
   DisjointSet<int> disjoint_set(mesh.totvert);
-  edge_selection.foreach_index([&](const int edge_index) {
+  for (const int edge_index : edge_selection) {
     const int2 &edge = edges[edge_index];
     disjoint_set.join(edge[0], edge[1]);
-  });
+  }
 
   VectorSet<int> island_ids;
   Vector<ElementIsland> islands;
@@ -350,7 +345,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh,
   islands.reserve(edge_selection.size());
 
   /* Gather all of the edge indices in each island into separate vectors. */
-  edge_selection.foreach_index([&](const int edge_index) {
+  for (const int edge_index : edge_selection) {
     const int2 &edge = edges[edge_index];
     const int island_id = disjoint_set.find_root(edge[0]);
     const int island_index = island_ids.index_of_or_add(island_id);
@@ -359,7 +354,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh,
     }
     ElementIsland &island = islands[island_index];
     island.element_indices.append(edge_index);
-  });
+  }
 
   return islands;
 }

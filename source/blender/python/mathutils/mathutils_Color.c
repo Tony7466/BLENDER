@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pymathutils
@@ -1053,7 +1051,7 @@ static PyGetSetDef Color_getseters[] = {
 /** \name Color Type: Method Definitions
  * \{ */
 
-static PyMethodDef Color_methods[] = {
+static struct PyMethodDef Color_methods[] = {
     {"copy", (PyCFunction)Color_copy, METH_NOARGS, Color_copy_doc},
     {"__copy__", (PyCFunction)Color_copy, METH_NOARGS, Color_copy_doc},
     {"__deepcopy__", (PyCFunction)Color_deepcopy, METH_VARARGS, Color_copy_doc},

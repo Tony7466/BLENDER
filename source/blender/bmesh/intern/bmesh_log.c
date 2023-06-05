@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -34,7 +32,7 @@
 #include "BLI_strict_flags.h"
 
 struct BMLogEntry {
-  BMLogEntry *next, *prev;
+  struct BMLogEntry *next, *prev;
 
   /* The following #GHash members map from an element ID to one of the log types above. */
 
@@ -65,7 +63,7 @@ struct BMLogEntry {
 
 struct BMLog {
   /** Tree of free IDs */
-  RangeTreeUInt *unused_ids;
+  struct RangeTreeUInt *unused_ids;
 
   /**
    * Mapping from unique IDs to vertices and faces

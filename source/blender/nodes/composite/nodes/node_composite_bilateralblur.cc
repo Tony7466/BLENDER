@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -26,13 +25,13 @@ NODE_STORAGE_FUNCS(NodeBilateralBlurData)
 
 static void cmp_node_bilateralblur_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image")
+  b.add_input<decl::Color>(N_("Image"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Color>("Determinator")
+  b.add_input<decl::Color>(N_("Determinator"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(1);
-  b.add_output<decl::Color>("Image");
+  b.add_output<decl::Color>(N_("Image"));
 }
 
 static void node_composit_init_bilateralblur(bNodeTree * /*ntree*/, bNode *node)

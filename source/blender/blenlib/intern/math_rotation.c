@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -352,16 +351,7 @@ void mat3_normalized_to_quat_fast(float q[4], const float mat[3][3])
   }
 
   BLI_assert(!(q[0] < 0.0f));
-
-  /* Sometimes normalization is necessary due to round-off errors in the above
-   * calculations. The comparison here uses tighter tolerances than
-   * BLI_ASSERT_UNIT_QUAT(), so it's likely that even after a few more
-   * transformations the quaternion will still be considered unit-ish. */
-  const float q_len_squared = dot_qtqt(q, q);
-  const float threshold = 0.0002f /* BLI_ASSERT_UNIT_EPSILON */ * 3;
-  if (fabs(q_len_squared - 1.0f) >= threshold) {
-    normalize_qt(q);
-  }
+  BLI_ASSERT_UNIT_QUAT(q);
 }
 
 static void mat3_normalized_to_quat_with_checks(float q[4], float mat[3][3])

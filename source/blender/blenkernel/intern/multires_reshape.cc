@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -19,7 +18,6 @@
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
-#include "BKE_object.h"
 #include "BKE_subdiv.h"
 #include "BKE_subsurf.h"
 #include "BLI_math_vector.h"
@@ -61,14 +59,9 @@ bool multiresModifier_reshapeFromObject(Depsgraph *depsgraph,
                                         Object *dst,
                                         Object *src)
 {
-  const Object *ob_eval = DEG_get_evaluated_object(depsgraph, src);
-  if (!ob_eval) {
-    return false;
-  }
-  const Mesh *src_mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
-  if (!src_mesh_eval) {
-    return false;
-  }
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Object *src_eval = DEG_get_evaluated_object(depsgraph, src);
+  Mesh *src_mesh_eval = mesh_get_eval_final(depsgraph, scene_eval, src_eval, &CD_MASK_BAREMESH);
 
   int num_deformed_verts;
   float(*deformed_verts)[3] = BKE_mesh_vert_coords_alloc(src_mesh_eval, &num_deformed_verts);

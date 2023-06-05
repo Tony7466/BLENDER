@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -994,7 +993,7 @@ int WM_generic_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   return op->type->modal(C, op, event);
 }
 
-void WM_operator_view3d_unit_defaults(bContext *C, wmOperator *op)
+void WM_operator_view3d_unit_defaults(struct bContext *C, struct wmOperator *op)
 {
   if (op->flag & OP_IS_INVOKE) {
     Scene *scene = CTX_data_scene(C);
@@ -1223,13 +1222,13 @@ int WM_operator_filesel(bContext *C, wmOperator *op, const wmEvent *UNUSED(event
   return OPERATOR_RUNNING_MODAL;
 }
 
-bool WM_operator_filesel_ensure_ext_imtype(wmOperator *op, const ImageFormatData *im_format)
+bool WM_operator_filesel_ensure_ext_imtype(wmOperator *op, const struct ImageFormatData *im_format)
 {
   char filepath[FILE_MAX];
   /* Don't NULL check prop, this can only run on ops with a 'filepath'. */
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
   RNA_property_string_get(op->ptr, prop, filepath);
-  if (BKE_image_path_ext_from_imformat_ensure(filepath, sizeof(filepath), im_format)) {
+  if (BKE_image_path_ensure_ext_from_imformat(filepath, im_format)) {
     RNA_property_string_set(op->ptr, prop, filepath);
     /* NOTE: we could check for and update 'filename' here,
      * but so far nothing needs this. */
@@ -1283,7 +1282,7 @@ void WM_operator_last_properties_ensure(wmOperatorType *ot, PointerRNA *ptr)
   RNA_pointer_create(G_MAIN->wm.first, ot->srna, props, ptr);
 }
 
-ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
+ID *WM_operator_drop_load_path(struct bContext *C, wmOperator *op, const short idcode)
 {
   Main *bmain = CTX_data_main(C);
   ID *id = NULL;
@@ -1291,15 +1290,15 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
   /* check input variables */
   if (RNA_struct_property_is_set(op->ptr, "filepath")) {
     const bool is_relative_path = RNA_boolean_get(op->ptr, "relative_path");
-    char filepath[FILE_MAX];
+    char path[FILE_MAX];
     bool exists = false;
 
-    RNA_string_get(op->ptr, "filepath", filepath);
+    RNA_string_get(op->ptr, "filepath", path);
 
     errno = 0;
 
     if (idcode == ID_IM) {
-      id = (ID *)BKE_image_load_exists_ex(bmain, filepath, &exists);
+      id = (ID *)BKE_image_load_exists_ex(bmain, path, &exists);
     }
     else {
       BLI_assert_unreachable();
@@ -1310,7 +1309,7 @@ ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
                   RPT_ERROR,
                   "Cannot read %s '%s': %s",
                   BKE_idtype_idcode_to_name(idcode),
-                  filepath,
+                  path,
                   errno ? strerror(errno) : TIP_("unsupported format"));
       return NULL;
     }
@@ -1517,7 +1516,7 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *userDa
   return block;
 }
 
-static void wm_operator_ui_popup_cancel(bContext *C, void *userData)
+static void wm_operator_ui_popup_cancel(struct bContext *C, void *userData)
 {
   wmOpPopUp *data = userData;
   wmOperator *op = data->op;
@@ -1535,7 +1534,7 @@ static void wm_operator_ui_popup_cancel(bContext *C, void *userData)
   MEM_freeN(data);
 }
 
-static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
+static void wm_operator_ui_popup_ok(struct bContext *C, void *arg, int retval)
 {
   wmOpPopUp *data = arg;
   wmOperator *op = data->op;
@@ -1562,8 +1561,7 @@ int WM_operator_ui_popup(bContext *C, wmOperator *op, int width)
 /**
  * For use by #WM_operator_props_popup_call, #WM_operator_props_popup only.
  *
- * \note operator menu needs undo flag enabled, for redo callback.
- */
+ * \note operator menu needs undo flag enabled, for redo callback */
 static int wm_operator_props_popup_ex(bContext *C,
                                       wmOperator *op,
                                       const bool do_call,
@@ -2215,29 +2213,33 @@ static void radial_control_update_header(wmOperator *op, bContext *C)
   if (hasNumInput(&rc->num_input)) {
     char num_str[NUM_STR_REP_LEN];
     outputNumInput(&rc->num_input, num_str, &scene->unit);
-    SNPRINTF(msg, "%s: %s", RNA_property_ui_name(rc->prop), num_str);
+    BLI_snprintf(msg, sizeof(msg), "%s: %s", RNA_property_ui_name(rc->prop), num_str);
   }
   else {
     const char *ui_name = RNA_property_ui_name(rc->prop);
     switch (rc->subtype) {
       case PROP_NONE:
       case PROP_DISTANCE:
-        SNPRINTF(msg, "%s: %0.4f", ui_name, rc->current_value);
+        BLI_snprintf(msg, sizeof(msg), "%s: %0.4f", ui_name, rc->current_value);
         break;
       case PROP_PIXEL:
-        SNPRINTF(msg, "%s: %d", ui_name, (int)rc->current_value); /* XXX: round to nearest? */
+        BLI_snprintf(msg,
+                     sizeof(msg),
+                     "%s: %d",
+                     ui_name,
+                     (int)rc->current_value); /* XXX: round to nearest? */
         break;
       case PROP_PERCENTAGE:
-        SNPRINTF(msg, "%s: %3.1f%%", ui_name, rc->current_value);
+        BLI_snprintf(msg, sizeof(msg), "%s: %3.1f%%", ui_name, rc->current_value);
         break;
       case PROP_FACTOR:
-        SNPRINTF(msg, "%s: %1.3f", ui_name, rc->current_value);
+        BLI_snprintf(msg, sizeof(msg), "%s: %1.3f", ui_name, rc->current_value);
         break;
       case PROP_ANGLE:
-        SNPRINTF(msg, "%s: %3.2f", ui_name, RAD2DEGF(rc->current_value));
+        BLI_snprintf(msg, sizeof(msg), "%s: %3.2f", ui_name, RAD2DEGF(rc->current_value));
         break;
       default:
-        SNPRINTF(msg, "%s", ui_name); /* XXX: No value? */
+        BLI_snprintf(msg, sizeof(msg), "%s", ui_name); /* XXX: No value? */
         break;
     }
   }
@@ -2313,12 +2315,12 @@ static void radial_control_set_tex(RadialControl *rc)
                                             GPU_R8,
                                             GPU_TEXTURE_USAGE_SHADER_READ |
                                                 GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                            ibuf->float_buffer.data);
+                                            ibuf->rect_float);
 
         GPU_texture_filter_mode(rc->texture, true);
         GPU_texture_swizzle_set(rc->texture, "111r");
 
-        MEM_freeN(ibuf->float_buffer.data);
+        MEM_freeN(ibuf->rect_float);
         MEM_freeN(ibuf);
       }
       break;
@@ -2446,7 +2448,7 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
            WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
       r2 = tex_radius = WM_RADIAL_CONTROL_DISPLAY_SIZE;
       rmin = WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
-      SNPRINTF(str, "%3.1f%%", rc->current_value);
+      BLI_snprintf(str, WM_RADIAL_MAX_STR, "%3.1f%%", rc->current_value);
       strdrawlen = BLI_strlen_utf8(str);
       tex_radius = r1;
       alpha = 0.75;
@@ -2457,14 +2459,14 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
       r2 = tex_radius = WM_RADIAL_CONTROL_DISPLAY_SIZE;
       rmin = WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
       alpha = rc->current_value / 2.0f + 0.5f;
-      SNPRINTF(str, "%1.3f", rc->current_value);
+      BLI_snprintf(str, WM_RADIAL_MAX_STR, "%1.3f", rc->current_value);
       strdrawlen = BLI_strlen_utf8(str);
       break;
     case PROP_ANGLE:
       r1 = r2 = tex_radius = WM_RADIAL_CONTROL_DISPLAY_SIZE;
       alpha = 0.75;
       rmin = WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
-      SNPRINTF(str, "%3.2f", RAD2DEGF(rc->current_value));
+      BLI_snprintf(str, WM_RADIAL_MAX_STR, "%3.2f", RAD2DEGF(rc->current_value));
       strdrawlen = BLI_strlen_utf8(str);
       break;
     default:
@@ -3834,7 +3836,7 @@ void wm_operatortypes_register(void)
   WM_operatortype_append(GIZMOGROUP_OT_gizmo_tweak);
 }
 
-/* Circle-select-like modal operators. */
+/* circleselect-like modal operators */
 static void gesture_circle_modal_keymap(wmKeyConfig *keyconf)
 {
   static const EnumPropertyItem modal_items[] = {

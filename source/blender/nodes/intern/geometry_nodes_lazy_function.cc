@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -107,33 +105,42 @@ static void lazy_function_interface_from_node(const bNode &node,
   }
 }
 
-NodeAnonymousAttributeID::NodeAnonymousAttributeID(const Object &object,
-                                                   const ComputeContext &compute_context,
-                                                   const bNode &bnode,
-                                                   const StringRef identifier,
-                                                   const StringRef name)
-    : socket_name_(name)
-{
-  const ComputeContextHash &hash = compute_context.hash();
-  {
-    std::stringstream ss;
-    ss << hash << "_" << object.id.name << "_" << bnode.identifier << "_" << identifier;
-    long_name_ = ss.str();
-  }
-  {
-    uint64_t hash_result[2];
-    BLI_hash_md5_buffer(long_name_.data(), long_name_.size(), hash_result);
-    std::stringstream ss;
-    ss << ".a_" << std::hex << hash_result[0] << hash_result[1];
-    name_ = ss.str();
-    BLI_assert(name_.size() < MAX_CUSTOMDATA_LAYER_NAME);
-  }
-}
+/**
+ * An anonymous attribute created by a node.
+ */
+class NodeAnonymousAttributeID : public AnonymousAttributeID {
+  std::string long_name_;
+  std::string socket_name_;
 
-std::string NodeAnonymousAttributeID::user_name() const
-{
-  return socket_name_;
-}
+ public:
+  NodeAnonymousAttributeID(const Object &object,
+                           const ComputeContext &compute_context,
+                           const bNode &bnode,
+                           const StringRef identifier,
+                           const StringRef name)
+      : socket_name_(name)
+  {
+    const ComputeContextHash &hash = compute_context.hash();
+    {
+      std::stringstream ss;
+      ss << hash << "_" << object.id.name << "_" << bnode.identifier << "_" << identifier;
+      long_name_ = ss.str();
+    }
+    {
+      uint64_t hash_result[2];
+      BLI_hash_md5_buffer(long_name_.data(), long_name_.size(), hash_result);
+      std::stringstream ss;
+      ss << ".a_" << std::hex << hash_result[0] << hash_result[1];
+      name_ = ss.str();
+      BLI_assert(name_.size() < MAX_CUSTOMDATA_LAYER_NAME);
+    }
+  }
+
+  std::string user_name() const override
+  {
+    return socket_name_;
+  }
+};
 
 /**
  * Used for most normal geometry nodes like Subdivision Surface and Set Position.
@@ -226,7 +233,6 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     Storage *storage = static_cast<Storage *>(context.storage);
     GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
     BLI_assert(user_data != nullptr);
-    const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
 
     /* Lazily create the required anonymous attribute ids. */
     auto get_output_attribute_id = [&](const int output_bsocket_index) -> AnonymousAttributeIDPtr {
@@ -302,9 +308,10 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     node_.typeinfo->geometry_node_execute(geo_params);
     geo_eval_log::TimePoint end_time = geo_eval_log::Clock::now();
 
-    if (local_user_data.tree_logger) {
-      local_user_data.tree_logger->node_execution_times.append(
-          {node_.identifier, start_time, end_time});
+    if (geo_eval_log::GeoModifierLog *modifier_log = user_data->modifier_data->eval_log) {
+      geo_eval_log::GeoTreeLogger &tree_logger = modifier_log->get_local_tree_logger(
+          *user_data->compute_context);
+      tree_logger.node_execution_times.append({node_.identifier, start_time, end_time});
     }
   }
 
@@ -373,7 +380,7 @@ class LazyFunctionForMultiInput : public LazyFunction {
     const bNodeTree &btree = socket.owner_tree();
     for (const bNodeLink *link : socket.directly_linked_links()) {
       if (link->is_muted() || !link->fromsock->is_available() ||
-          bke::nodeIsDanglingReroute(&btree, link->fromnode))
+          nodeIsDanglingReroute(&btree, link->fromnode))
       {
         continue;
       }
@@ -504,8 +511,7 @@ static void execute_multi_function_on_value_or_field(
   }
   else {
     /* In this case, the multi-function is evaluated directly. */
-    const IndexMask mask(1);
-    mf::ParamsBuilder params{fn, &mask};
+    mf::ParamsBuilder params{fn, 1};
     mf::ContextBuilder context;
 
     for (const int i : input_types.index_range()) {
@@ -522,7 +528,7 @@ static void execute_multi_function_on_value_or_field(
       type.value.destruct(value);
       params.add_uninitialized_single_output(GMutableSpan{type.value, value, 1});
     }
-    fn.call(mask, params, context);
+    fn.call(IndexRange(1), params, context);
   }
 }
 
@@ -741,8 +747,8 @@ class LazyFunctionForViewerNode : public LazyFunction {
         continue;
       }
       const Span<const bNodeLink *> links = bsocket->directly_linked_links();
-      if (links.is_empty() ||
-          bke::nodeIsDanglingReroute(&bnode.owner_tree(), links.first()->fromnode)) {
+      if (links.is_empty() || nodeIsDanglingReroute(&bnode.owner_tree(), links.first()->fromnode))
+      {
         use_field_input_ = false;
         inputs_.pop_last();
         r_lf_index_by_bsocket[bsocket->index_in_tree()] = -1;
@@ -752,8 +758,12 @@ class LazyFunctionForViewerNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
-    if (local_user_data.tree_logger == nullptr) {
+    GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
+    BLI_assert(user_data != nullptr);
+    if (user_data->modifier_data == nullptr) {
+      return;
+    }
+    if (user_data->modifier_data->eval_log == nullptr) {
       return;
     }
 
@@ -801,7 +811,9 @@ class LazyFunctionForViewerNode : public LazyFunction {
       }
     }
 
-    local_user_data.tree_logger->log_viewer_node(bnode_, std::move(geometry));
+    geo_eval_log::GeoTreeLogger &tree_logger =
+        user_data->modifier_data->eval_log->get_local_tree_logger(*user_data->compute_context);
+    tree_logger.log_viewer_node(bnode_, std::move(geometry));
   }
 };
 
@@ -831,28 +843,6 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
 
     const bool viewer_is_used = nodes_with_side_effects.contains(&lf_viewer_node_);
     params.set_output(0, viewer_is_used);
-  }
-};
-
-class LazyFunctionForSimulationInputsUsage : public LazyFunction {
-
- public:
-  LazyFunctionForSimulationInputsUsage()
-  {
-    debug_name_ = "Simulation Inputs Usage";
-    outputs_.append_as("Is Initialization", CPPType::get<bool>());
-    outputs_.append_as("Do Simulation Step", CPPType::get<bool>());
-  }
-
-  void execute_impl(lf::Params &params, const lf::Context &context) const override
-  {
-    const GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
-
-    params.set_output(0,
-                      modifier_data.current_simulation_state_for_write != nullptr &&
-                          modifier_data.prev_simulation_state == nullptr);
-    params.set_output(1, modifier_data.current_simulation_state_for_write != nullptr);
   }
 };
 
@@ -973,10 +963,9 @@ class LazyFunctionForGroupNode : public LazyFunction {
           compute_context.hash());
     }
 
-    GeoNodesLFLocalUserData group_local_user_data{group_user_data};
-
-    lf::Context group_context{
-        storage->graph_executor_storage, &group_user_data, &group_local_user_data};
+    lf::Context group_context = context;
+    group_context.user_data = &group_user_data;
+    group_context.storage = storage->graph_executor_storage;
 
     graph_executor_->execute(params, group_context);
   }
@@ -1381,10 +1370,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    * All group input nodes are combined into one dummy node in the lazy-function graph.
    */
   lf::DummyNode *group_input_lf_node_;
-  /**
-   * A #LazyFunctionForSimulationInputsUsage for each simulation zone.
-   */
-  Map<const bNode *, lf::Node *> simulation_inputs_usage_nodes_;
 
   friend class UsedSocketVisualizeOptions;
 
@@ -1523,14 +1508,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           this->handle_viewer_node(*bnode);
           break;
         }
-        case GEO_NODE_SIMULATION_INPUT: {
-          this->handle_simulation_input_node(btree_, *bnode);
-          break;
-        }
-        case GEO_NODE_SIMULATION_OUTPUT: {
-          this->handle_simulation_output_node(*bnode);
-          break;
-        }
         case GEO_NODE_SWITCH: {
           this->handle_switch_node(*bnode);
           break;
@@ -1546,7 +1523,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             this->handle_multi_function_node(*bnode, fn_item);
             break;
           }
-          if (node_type == &bke::NodeTypeUndefined) {
+          if (node_type == &NodeTypeUndefined) {
             this->handle_undefined_node(*bnode);
             break;
           }
@@ -1808,60 +1785,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->viewer_node_map.add(&bnode, &lf_node);
   }
 
-  void handle_simulation_input_node(const bNodeTree &node_tree, const bNode &bnode)
-  {
-    const NodeGeometrySimulationInput *storage = static_cast<const NodeGeometrySimulationInput *>(
-        bnode.storage);
-    if (node_tree.node_by_id(storage->output_node_id) == nullptr) {
-      return;
-    }
-
-    std::unique_ptr<LazyFunction> lazy_function = get_simulation_input_lazy_function(
-        node_tree, bnode, *lf_graph_info_);
-    lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
-    lf_graph_info_->functions.append(std::move(lazy_function));
-
-    for (const int i : bnode.input_sockets().index_range().drop_back(1)) {
-      const bNodeSocket &bsocket = bnode.input_socket(i);
-      lf::InputSocket &lf_socket = lf_node.input(
-          mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      input_socket_map_.add(&bsocket, &lf_socket);
-      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
-    }
-    for (const int i : bnode.output_sockets().index_range().drop_back(1)) {
-      const bNodeSocket &bsocket = bnode.output_socket(i);
-      lf::OutputSocket &lf_socket = lf_node.output(
-          mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      output_socket_map_.add(&bsocket, &lf_socket);
-      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
-    }
-  }
-
-  void handle_simulation_output_node(const bNode &bnode)
-  {
-    std::unique_ptr<LazyFunction> lazy_function = get_simulation_output_lazy_function(
-        bnode, *lf_graph_info_);
-    lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
-    lf_graph_info_->functions.append(std::move(lazy_function));
-
-    for (const int i : bnode.input_sockets().index_range().drop_back(1)) {
-      const bNodeSocket &bsocket = bnode.input_socket(i);
-      lf::InputSocket &lf_socket = lf_node.input(
-          mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      input_socket_map_.add(&bsocket, &lf_socket);
-      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
-    }
-    for (const int i : bnode.output_sockets().index_range().drop_back(1)) {
-      const bNodeSocket &bsocket = bnode.output_socket(i);
-      lf::OutputSocket &lf_socket = lf_node.output(
-          mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      output_socket_map_.add(&bsocket, &lf_socket);
-      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
-    }
-
-    mapping_->sim_output_node_map.add(&bnode, &lf_node);
-  }
-
   void handle_switch_node(const bNode &bnode)
   {
     std::unique_ptr<LazyFunction> lazy_function = get_switch_node_lazy_function(bnode);
@@ -1896,9 +1819,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNodeSocket *bsocket : bnode.output_sockets()) {
       const int lf_index = mapping_->lf_index_by_bsocket[bsocket->index_in_tree()];
-      if (lf_index == -1) {
-        continue;
-      }
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
       output_socket_map_.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
@@ -1914,7 +1834,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void insert_links_from_socket(const bNodeSocket &from_bsocket, lf::OutputSocket &from_lf_socket)
   {
-    if (bke::nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
+    if (nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
       return;
     }
 
@@ -1980,7 +1900,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
               break;
             }
             if (multi_input_link->is_muted() || !multi_input_link->fromsock->is_available() ||
-                bke::nodeIsDanglingReroute(&btree_, multi_input_link->fromnode))
+                nodeIsDanglingReroute(&btree_, multi_input_link->fromnode))
             {
               continue;
             }
@@ -2216,14 +2136,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           this->build_viewer_node_socket_usage(*bnode);
           break;
         }
-        case GEO_NODE_SIMULATION_INPUT: {
-          this->build_simulation_input_socket_usage(*bnode);
-          break;
-        }
-        case GEO_NODE_SIMULATION_OUTPUT: {
-          this->build_simulation_output_socket_usage(*bnode);
-          break;
-        }
         case NODE_GROUP:
         case NODE_CUSTOM_GROUP: {
           this->build_group_node_socket_usage(*bnode, or_socket_usages_cache);
@@ -2382,43 +2294,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         socket_is_used_map_[bsocket->index_in_tree()] = &lf_node.output(0);
       }
     }
-  }
-
-  void build_simulation_input_socket_usage(const bNode &bnode)
-  {
-    const NodeGeometrySimulationInput *storage = static_cast<const NodeGeometrySimulationInput *>(
-        bnode.storage);
-    const bNode *sim_output_node = btree_.node_by_id(storage->output_node_id);
-    if (sim_output_node == nullptr) {
-      return;
-    }
-    lf::Node &lf_node = this->get_simulation_inputs_usage_node(*sim_output_node);
-    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
-      if (bsocket->is_available()) {
-        socket_is_used_map_[bsocket->index_in_tree()] = &lf_node.output(0);
-      }
-    }
-  }
-
-  void build_simulation_output_socket_usage(const bNode &bnode)
-  {
-    lf::Node &lf_node = this->get_simulation_inputs_usage_node(bnode);
-    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
-      if (bsocket->is_available()) {
-        socket_is_used_map_[bsocket->index_in_tree()] = &lf_node.output(1);
-      }
-    }
-  }
-
-  lf::Node &get_simulation_inputs_usage_node(const bNode &sim_output_bnode)
-  {
-    BLI_assert(sim_output_bnode.type == GEO_NODE_SIMULATION_OUTPUT);
-    return *simulation_inputs_usage_nodes_.lookup_or_add_cb(&sim_output_bnode, [&]() {
-      auto lazy_function = std::make_unique<LazyFunctionForSimulationInputsUsage>();
-      lf::Node &lf_node = lf_graph_->add_function(*lazy_function);
-      lf_graph_info_->functions.append(std::move(lazy_function));
-      return &lf_node;
-    });
   }
 
   void build_group_node_socket_usage(const bNode &bnode,
@@ -3196,12 +3071,13 @@ void GeometryNodesLazyFunctionLogger::log_socket_value(
     const GPointer value,
     const fn::lazy_function::Context &context) const
 {
-  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-  if (!user_data.log_socket_values) {
+  /* In this context we expect only a single kind of user data, so use `static_cast`. */
+  GeoNodesLFUserData *user_data = static_cast<GeoNodesLFUserData *>(context.user_data);
+  BLI_assert(dynamic_cast<GeoNodesLFUserData *>(context.user_data) != nullptr);
+  if (!user_data->log_socket_values) {
     return;
   }
-  auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
-  if (local_user_data.tree_logger == nullptr) {
+  if (user_data->modifier_data->eval_log == nullptr) {
     return;
   }
 
@@ -3211,6 +3087,8 @@ void GeometryNodesLazyFunctionLogger::log_socket_value(
     return;
   }
 
+  geo_eval_log::GeoTreeLogger &tree_logger =
+      user_data->modifier_data->eval_log->get_local_tree_logger(*user_data->compute_context);
   for (const bNodeSocket *bsocket : bsockets) {
     /* Avoid logging to some sockets when the same value will also be logged to a linked socket.
      * This reduces the number of logged values without losing information. */
@@ -3221,7 +3099,7 @@ void GeometryNodesLazyFunctionLogger::log_socket_value(
     if (bnode.is_reroute()) {
       continue;
     }
-    local_user_data.tree_logger->log_value(bsocket->owner_node(), *bsocket, value);
+    tree_logger.log_value(bsocket->owner_node(), *bsocket, value);
   }
 }
 
@@ -3286,10 +3164,13 @@ GeometryNodesLazyFunctionGraphInfo::~GeometryNodesLazyFunctionGraphInfo()
   static thread_local const int thread_id = thread_id_source.fetch_add(1);
   static thread_local const std::string thread_id_str = "Thread: " + std::to_string(thread_id);
 
-  const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
-  if (local_user_data.tree_logger == nullptr) {
+  GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
+  BLI_assert(user_data != nullptr);
+  if (user_data->modifier_data->eval_log == nullptr) {
     return;
   }
+  geo_eval_log::GeoTreeLogger &tree_logger =
+      user_data->modifier_data->eval_log->get_local_tree_logger(*user_data->compute_context);
 
   /* Find corresponding node based on the socket mapping. */
   auto check_sockets = [&](const Span<const lf::Socket *> lf_sockets) {
@@ -3299,7 +3180,7 @@ GeometryNodesLazyFunctionGraphInfo::~GeometryNodesLazyFunctionGraphInfo()
       if (!bsockets.is_empty()) {
         const bNodeSocket &bsocket = *bsockets[0];
         const bNode &bnode = bsocket.owner_node();
-        local_user_data.tree_logger->debug_messages.append({bnode.identifier, thread_id_str});
+        tree_logger.debug_messages.append({bnode.identifier, thread_id_str});
         return true;
       }
     }
@@ -3319,19 +3200,6 @@ void GeometryNodesLazyFunctionLogger::log_before_node_execute(const lf::Function
   /* Enable this to see the threads that invoked a node. */
   if constexpr (false) {
     add_thread_id_debug_message(lf_graph_info_, node, context);
-  }
-}
-
-destruct_ptr<lf::LocalUserData> GeoNodesLFUserData::get_local(LinearAllocator<> &allocator)
-{
-  return allocator.construct<GeoNodesLFLocalUserData>(*this);
-}
-
-GeoNodesLFLocalUserData::GeoNodesLFLocalUserData(GeoNodesLFUserData &user_data)
-{
-  if (user_data.modifier_data->eval_log != nullptr) {
-    this->tree_logger = &user_data.modifier_data->eval_log->get_local_tree_logger(
-        *user_data.compute_context);
   }
 }
 

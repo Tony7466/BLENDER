@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -173,7 +171,7 @@ void ui_but_anim_decorate_update_from_flag(uiButDecorator *but)
   but->flag = (but->flag & ~flag_copy) | (flag & flag_copy);
 }
 
-bool ui_but_anim_expression_get(uiBut *but, char *str, size_t str_maxncpy)
+bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
 {
   FCurve *fcu;
   ChannelDriver *driver;
@@ -186,7 +184,7 @@ bool ui_but_anim_expression_get(uiBut *but, char *str, size_t str_maxncpy)
 
     if (driver && driver->type == DRIVER_TYPE_PYTHON) {
       if (str) {
-        BLI_strncpy(str, driver->expression, str_maxncpy);
+        BLI_strncpy(str, driver->expression, maxlen);
       }
       return true;
     }
@@ -209,7 +207,7 @@ bool ui_but_anim_expression_set(uiBut *but, const char *str)
     if (driver && (driver->type == DRIVER_TYPE_PYTHON)) {
       bContext *C = static_cast<bContext *>(but->block->evil_C);
 
-      STRNCPY_UTF8(driver->expression, str);
+      BLI_strncpy_utf8(driver->expression, str, sizeof(driver->expression));
 
       /* tag driver as needing to be recompiled */
       BKE_driver_invalidate_expression(driver, true, false);
@@ -283,7 +281,7 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
 
       /* set the expression */
       /* TODO: need some way of identifying variables used */
-      STRNCPY_UTF8(driver->expression, str);
+      BLI_strncpy_utf8(driver->expression, str, sizeof(driver->expression));
 
       /* updates */
       BKE_driver_invalidate_expression(driver, true, false);

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -85,7 +83,6 @@ void register_node_type_geo_input_radius();
 void register_node_type_geo_input_scene_time();
 void register_node_type_geo_input_shade_smooth();
 void register_node_type_geo_input_shortest_edge_paths();
-void register_node_type_geo_input_signed_distance();
 void register_node_type_geo_input_spline_cyclic();
 void register_node_type_geo_input_spline_length();
 void register_node_type_geo_input_spline_resolution();
@@ -113,7 +110,6 @@ void register_node_type_geo_mesh_to_curve();
 void register_node_type_geo_mesh_to_points();
 void register_node_type_geo_mesh_to_sdf_volume();
 void register_node_type_geo_mesh_to_volume();
-void register_node_type_geo_mesh_topology_corners_of_edge();
 void register_node_type_geo_mesh_topology_corners_of_face();
 void register_node_type_geo_mesh_topology_corners_of_vertex();
 void register_node_type_geo_mesh_topology_edges_of_corner();
@@ -137,7 +133,6 @@ void register_node_type_geo_sample_index();
 void register_node_type_geo_sample_nearest_surface();
 void register_node_type_geo_sample_nearest();
 void register_node_type_geo_sample_uv_surface();
-void register_node_type_geo_sample_volume();
 void register_node_type_geo_scale_elements();
 void register_node_type_geo_scale_instances();
 void register_node_type_geo_sdf_volume_sphere();
@@ -157,8 +152,6 @@ void register_node_type_geo_set_position();
 void register_node_type_geo_set_shade_smooth();
 void register_node_type_geo_set_spline_cyclic();
 void register_node_type_geo_set_spline_resolution();
-void register_node_type_geo_simulation_input();
-void register_node_type_geo_simulation_output();
 void register_node_type_geo_store_named_attribute();
 void register_node_type_geo_string_join();
 void register_node_type_geo_string_to_curves();

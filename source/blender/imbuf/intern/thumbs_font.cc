@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -21,15 +19,15 @@
 /* Only change if we need to update the previews in the on-disk cache. */
 #define FONT_THUMB_VERSION "1.0.1"
 
-ImBuf *IMB_thumb_load_font(const char *filename, uint x, uint y)
+struct ImBuf *IMB_thumb_load_font(const char *filename, uint x, uint y)
 {
-  ImBuf *ibuf = IMB_allocImBuf(x, y, 32, IB_rect | IB_metadata);
+  struct ImBuf *ibuf = IMB_allocImBuf(x, y, 32, IB_rect | IB_metadata);
 
   /* fill with white and zero alpha */
   const float col[4] = {1.0f, 1.0f, 1.0f, 0.0f};
   IMB_rectfill(ibuf, col);
 
-  if (!BLF_thumb_preview(filename, ibuf->byte_buffer.data, ibuf->x, ibuf->y, ibuf->channels)) {
+  if (!BLF_thumb_preview(filename, (uchar *)ibuf->rect, ibuf->x, ibuf->y, ibuf->channels)) {
     IMB_freeImBuf(ibuf);
     ibuf = nullptr;
   }

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -8,6 +7,8 @@
 
 #include "UI_interface.h"
 #include "UI_resources.h"
+
+#include "BLT_translation.h"
 
 #include "COM_node_operation.hh"
 
@@ -19,9 +20,9 @@ namespace blender::nodes::node_composite_double_edge_mask_cc {
 
 static void cmp_node_double_edge_mask_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Inner Mask").default_value(0.8f).min(0.0f).max(1.0f);
-  b.add_input<decl::Float>("Outer Mask").default_value(0.8f).min(0.0f).max(1.0f);
-  b.add_output<decl::Float>("Mask");
+  b.add_input<decl::Float>(N_("Inner Mask")).default_value(0.8f).min(0.0f).max(1.0f);
+  b.add_input<decl::Float>(N_("Outer Mask")).default_value(0.8f).min(0.0f).max(1.0f);
+  b.add_output<decl::Float>(N_("Mask"));
 }
 
 static void node_composit_buts_double_edge_mask(uiLayout *layout,

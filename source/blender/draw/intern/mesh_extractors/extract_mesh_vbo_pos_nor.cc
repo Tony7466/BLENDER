@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -112,12 +111,12 @@ static void extract_pos_nor_iter_poly_mesh(const MeshRenderData *mr,
 
 static void extract_pos_nor_iter_loose_edge_bm(const MeshRenderData *mr,
                                                const BMEdge *eed,
-                                               const int loose_edge_i,
+                                               const int ledge_index,
                                                void *_data)
 {
   MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
 
-  int l_index = mr->loop_len + loose_edge_i * 2;
+  int l_index = mr->loop_len + ledge_index * 2;
   PosNorLoop *vert = &data->vbo_data[l_index];
   copy_v3_v3(vert[0].pos, bm_vert_co_get(mr, eed->v1));
   copy_v3_v3(vert[1].pos, bm_vert_co_get(mr, eed->v2));
@@ -127,11 +126,11 @@ static void extract_pos_nor_iter_loose_edge_bm(const MeshRenderData *mr,
 
 static void extract_pos_nor_iter_loose_edge_mesh(const MeshRenderData *mr,
                                                  const int2 edge,
-                                                 const int loose_edge_i,
+                                                 const int ledge_index,
                                                  void *_data)
 {
   MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
-  const int ml_index = mr->loop_len + loose_edge_i * 2;
+  const int ml_index = mr->loop_len + ledge_index * 2;
   PosNorLoop *vert = &data->vbo_data[ml_index];
   copy_v3_v3(vert[0].pos, mr->vert_positions[edge[0]]);
   copy_v3_v3(vert[1].pos, mr->vert_positions[edge[1]]);
@@ -141,27 +140,27 @@ static void extract_pos_nor_iter_loose_edge_mesh(const MeshRenderData *mr,
 
 static void extract_pos_nor_iter_loose_vert_bm(const MeshRenderData *mr,
                                                const BMVert *eve,
-                                               const int loose_vert_i,
+                                               const int lvert_index,
                                                void *_data)
 {
   MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
   const int offset = mr->loop_len + (mr->edge_loose_len * 2);
 
-  const int l_index = offset + loose_vert_i;
+  const int l_index = offset + lvert_index;
   PosNorLoop *vert = &data->vbo_data[l_index];
   copy_v3_v3(vert->pos, bm_vert_co_get(mr, eve));
   vert->nor = data->normals[BM_elem_index_get(eve)].low;
 }
 
 static void extract_pos_nor_iter_loose_vert_mesh(const MeshRenderData *mr,
-                                                 const int loose_vert_i,
+                                                 const int lvert_index,
                                                  void *_data)
 {
   MeshExtract_PosNor_Data *data = static_cast<MeshExtract_PosNor_Data *>(_data);
   const int offset = mr->loop_len + (mr->edge_loose_len * 2);
 
-  const int ml_index = offset + loose_vert_i;
-  const int v_index = mr->loose_verts[loose_vert_i];
+  const int ml_index = offset + lvert_index;
+  const int v_index = mr->loose_verts[lvert_index];
   PosNorLoop *vert = &data->vbo_data[ml_index];
   copy_v3_v3(vert->pos, mr->vert_positions[v_index]);
   vert->nor = data->normals[v_index].low;
@@ -487,11 +486,11 @@ static void extract_pos_nor_hq_iter_poly_mesh(const MeshRenderData *mr,
 
 static void extract_pos_nor_hq_iter_loose_edge_bm(const MeshRenderData *mr,
                                                   const BMEdge *eed,
-                                                  const int loose_edge_i,
+                                                  const int ledge_index,
                                                   void *_data)
 {
   MeshExtract_PosNorHQ_Data *data = static_cast<MeshExtract_PosNorHQ_Data *>(_data);
-  int l_index = mr->loop_len + loose_edge_i * 2;
+  int l_index = mr->loop_len + ledge_index * 2;
   PosNorHQLoop *vert = &data->vbo_data[l_index];
   copy_v3_v3(vert[0].pos, bm_vert_co_get(mr, eed->v1));
   copy_v3_v3(vert[1].pos, bm_vert_co_get(mr, eed->v2));
@@ -503,11 +502,11 @@ static void extract_pos_nor_hq_iter_loose_edge_bm(const MeshRenderData *mr,
 
 static void extract_pos_nor_hq_iter_loose_edge_mesh(const MeshRenderData *mr,
                                                     const int2 edge,
-                                                    const int loose_edge_i,
+                                                    const int ledge_index,
                                                     void *_data)
 {
   MeshExtract_PosNorHQ_Data *data = static_cast<MeshExtract_PosNorHQ_Data *>(_data);
-  const int ml_index = mr->loop_len + loose_edge_i * 2;
+  const int ml_index = mr->loop_len + ledge_index * 2;
   PosNorHQLoop *vert = &data->vbo_data[ml_index];
   copy_v3_v3(vert[0].pos, mr->vert_positions[edge[0]]);
   copy_v3_v3(vert[1].pos, mr->vert_positions[edge[1]]);
@@ -519,13 +518,13 @@ static void extract_pos_nor_hq_iter_loose_edge_mesh(const MeshRenderData *mr,
 
 static void extract_pos_nor_hq_iter_loose_vert_bm(const MeshRenderData *mr,
                                                   const BMVert *eve,
-                                                  const int loose_vert_i,
+                                                  const int lvert_index,
                                                   void *_data)
 {
   MeshExtract_PosNorHQ_Data *data = static_cast<MeshExtract_PosNorHQ_Data *>(_data);
   const int offset = mr->loop_len + (mr->edge_loose_len * 2);
 
-  const int l_index = offset + loose_vert_i;
+  const int l_index = offset + lvert_index;
   PosNorHQLoop *vert = &data->vbo_data[l_index];
   copy_v3_v3(vert->pos, bm_vert_co_get(mr, eve));
   copy_v3_v3_short(vert->nor, data->normals[BM_elem_index_get(eve)].high);
@@ -533,14 +532,14 @@ static void extract_pos_nor_hq_iter_loose_vert_bm(const MeshRenderData *mr,
 }
 
 static void extract_pos_nor_hq_iter_loose_vert_mesh(const MeshRenderData *mr,
-                                                    const int loose_vert_i,
+                                                    const int lvert_index,
                                                     void *_data)
 {
   MeshExtract_PosNorHQ_Data *data = static_cast<MeshExtract_PosNorHQ_Data *>(_data);
   const int offset = mr->loop_len + (mr->edge_loose_len * 2);
 
-  const int ml_index = offset + loose_vert_i;
-  const int v_index = mr->loose_verts[loose_vert_i];
+  const int ml_index = offset + lvert_index;
+  const int v_index = mr->loose_verts[lvert_index];
   PosNorHQLoop *vert = &data->vbo_data[ml_index];
   copy_v3_v3(vert->pos, mr->vert_positions[v_index]);
   copy_v3_v3_short(vert->nor, data->normals[v_index].high);

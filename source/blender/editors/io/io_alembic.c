@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation */
 
 /** \file
  * \ingroup editor/io
@@ -89,12 +88,12 @@ static int wm_alembic_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 static int wm_alembic_export_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
 
-  char filepath[FILE_MAX];
-  RNA_string_get(op->ptr, "filepath", filepath);
+  char filename[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filename);
 
   struct AlembicExportParams params = {
       .frame_start = RNA_int_get(op->ptr, "start"),
@@ -140,7 +139,7 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
   }
 
   const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
-  bool ok = ABC_export(scene, C, filepath, &params, as_background_job);
+  bool ok = ABC_export(scene, C, filename, &params, as_background_job);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -494,37 +493,37 @@ static int cmp_frame(const void *a, const void *b)
   return 0;
 }
 
-static int get_sequence_len(const char *filepath, int *ofs)
+static int get_sequence_len(const char *filename, int *ofs)
 {
   int frame;
   int numdigit;
 
-  if (!BLI_path_frame_get(filepath, &frame, &numdigit)) {
+  if (!BLI_path_frame_get(filename, &frame, &numdigit)) {
     return 1;
   }
 
-  char dirpath[FILE_MAX];
-  BLI_path_split_dir_part(filepath, dirpath, FILE_MAX);
+  char path[FILE_MAX];
+  BLI_path_split_dir_part(filename, path, FILE_MAX);
 
-  if (dirpath[0] == '\0') {
-    /* The `filepath` had no directory component, so just use the blend files directory. */
-    BLI_path_split_dir_part(BKE_main_blendfile_path_from_global(), dirpath, sizeof(dirpath));
+  if (path[0] == '\0') {
+    /* The filename had no path, so just use the blend file path. */
+    BLI_path_split_dir_part(BKE_main_blendfile_path_from_global(), path, FILE_MAX);
   }
   else {
-    BLI_path_abs(dirpath, BKE_main_blendfile_path_from_global());
+    BLI_path_abs(path, BKE_main_blendfile_path_from_global());
   }
 
-  DIR *dir = opendir(dirpath);
+  DIR *dir = opendir(path);
   if (dir == NULL) {
     fprintf(stderr,
             "Error opening directory '%s': %s\n",
-            dirpath,
+            path,
             errno ? strerror(errno) : "unknown error");
     return -1;
   }
 
   const char *ext = ".abc";
-  const char *basename = BLI_path_basename(filepath);
+  const char *basename = BLI_path_basename(filename);
   const int len = strlen(basename) - (numdigit + strlen(ext));
 
   ListBase frames;
@@ -614,12 +613,12 @@ static int wm_alembic_import_invoke(bContext *C, wmOperator *op, const wmEvent *
 static int wm_alembic_import_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
 
-  char filepath[FILE_MAX];
-  RNA_string_get(op->ptr, "filepath", filepath);
+  char filename[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filename);
 
   const float scale = RNA_float_get(op->ptr, "scale");
   const bool is_sequence = RNA_boolean_get(op->ptr, "is_sequence");
@@ -632,7 +631,7 @@ static int wm_alembic_import_exec(bContext *C, wmOperator *op)
   int sequence_len = 1;
 
   if (is_sequence) {
-    sequence_len = get_sequence_len(filepath, &offset);
+    sequence_len = get_sequence_len(filename, &offset);
     if (sequence_len < 0) {
       BKE_report(op->reports, RPT_ERROR, "Unable to determine ABC sequence length");
       return OPERATOR_CANCELLED;
@@ -654,7 +653,7 @@ static int wm_alembic_import_exec(bContext *C, wmOperator *op)
   params.validate_meshes = validate_meshes;
   params.always_add_cache_reader = always_add_cache_reader;
 
-  bool ok = ABC_import(C, filepath, &params, as_background_job);
+  bool ok = ABC_import(C, filename, &params, as_background_job);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }

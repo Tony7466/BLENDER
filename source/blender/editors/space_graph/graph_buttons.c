@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup spgraph
@@ -725,8 +724,6 @@ static void driver_dvar_invalid_name_query_cb(bContext *C, void *dvar_v, void *U
 /* callback to reset the driver's flags */
 static void driver_update_flags_cb(bContext *UNUSED(C), void *fcu_v, void *UNUSED(arg))
 {
-  return;
-
   FCurve *fcu = (FCurve *)fcu_v;
   ChannelDriver *driver = fcu->driver;
 
@@ -1030,7 +1027,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
     /* value of driver */
     row = uiLayoutRow(col, true);
     uiItemL(row, IFACE_("Driver Value:"), ICON_NONE);
-    SNPRINTF(valBuf, "%.3f", driver->curval);
+    BLI_snprintf(valBuf, sizeof(valBuf), "%.3f", driver->curval);
     uiItemL(row, valBuf, ICON_NONE);
   }
 
@@ -1262,10 +1259,11 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
                 DTAR_TRANSCHAN_ROTW) &&
            dvar->targets[0].rotation_mode != DTAR_ROTMODE_QUATERNION))
       {
-        SNPRINTF(valBuf, "%.3f (%4.1f°)", dvar->curval, RAD2DEGF(dvar->curval));
+        BLI_snprintf(
+            valBuf, sizeof(valBuf), "%.3f (%4.1f°)", dvar->curval, RAD2DEGF(dvar->curval));
       }
       else {
-        SNPRINTF(valBuf, "%.3f", dvar->curval);
+        BLI_snprintf(valBuf, sizeof(valBuf), "%.3f", dvar->curval);
       }
 
       uiItemL(row, valBuf, ICON_NONE);
@@ -1445,7 +1443,8 @@ static void graph_panel_modifiers(const bContext *C, Panel *panel)
     /* this is an operator button which calls a 'add modifier' operator...
      * a menu might be nicer but would be tricky as we need some custom filtering
      */
-    uiItemMenuEnumO(row, C, "GRAPH_OT_fmodifier_add", "type", IFACE_("Add Modifier"), ICON_NONE);
+    uiItemMenuEnumO(
+        row, (bContext *)C, "GRAPH_OT_fmodifier_add", "type", IFACE_("Add Modifier"), ICON_NONE);
 
     /* copy/paste (as sub-row) */
     row = uiLayoutRow(row, true);

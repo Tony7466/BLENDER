@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -18,15 +17,15 @@ namespace blender::nodes::node_composite_posterize_cc {
 
 static void cmp_node_posterize_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image")
+  b.add_input<decl::Color>(N_("Image"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Float>("Steps")
+  b.add_input<decl::Float>(N_("Steps"))
       .default_value(8.0f)
       .min(2.0f)
       .max(1024.0f)
       .compositor_domain_priority(1);
-  b.add_output<decl::Color>("Image");
+  b.add_output<decl::Color>(N_("Image"));
 }
 
 using namespace blender::realtime_compositor;

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -8,7 +6,6 @@
 
 #include "DNA_curve_types.h"
 #include "DNA_curves_types.h"
-#include "DNA_grease_pencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
@@ -890,7 +887,7 @@ GPUBatch *DRW_cache_object_face_wireframe_get(Object *ob)
   }
 }
 
-GPUBatch *DRW_cache_object_loose_edges_get(Object *ob)
+GPUBatch *DRW_cache_object_loose_edges_get(struct Object *ob)
 {
   switch (ob->type) {
     case OB_MESH:
@@ -923,7 +920,7 @@ GPUVertBuf *DRW_cache_object_pos_vertbuf_get(Object *ob)
   }
 }
 
-int DRW_cache_object_material_count_get(Object *ob)
+int DRW_cache_object_material_count_get(struct Object *ob)
 {
   short type = ob->type;
 
@@ -956,8 +953,8 @@ int DRW_cache_object_material_count_get(Object *ob)
   }
 }
 
-GPUBatch **DRW_cache_object_surface_material_get(Object *ob,
-                                                 GPUMaterial **gpumat_array,
+GPUBatch **DRW_cache_object_surface_material_get(struct Object *ob,
+                                                 struct GPUMaterial **gpumat_array,
                                                  uint gpumat_array_len)
 {
   switch (ob->type) {
@@ -2466,7 +2463,7 @@ static float x_axis_name[4][2] = {
     {-0.9f * S_X, 1.0f * S_Y},
     {1.0f * S_X, -1.0f * S_Y},
 };
-#define X_LEN (ARRAY_SIZE(x_axis_name))
+#define X_LEN (sizeof(x_axis_name) / sizeof(float[2]))
 #undef S_X
 #undef S_Y
 
@@ -2480,7 +2477,7 @@ static float y_axis_name[6][2] = {
     {0.0f * S_X, -0.1f * S_Y},
     {0.0f * S_X, -1.0f * S_Y},
 };
-#define Y_LEN (ARRAY_SIZE(y_axis_name))
+#define Y_LEN (sizeof(y_axis_name) / sizeof(float[2]))
 #undef S_X
 #undef S_Y
 
@@ -2498,7 +2495,7 @@ static float z_axis_name[10][2] = {
     {-1.00f * S_X, -1.00f * S_Y},
     {1.00f * S_X, -1.00f * S_Y},
 };
-#define Z_LEN (ARRAY_SIZE(z_axis_name))
+#define Z_LEN (sizeof(z_axis_name) / sizeof(float[2]))
 #undef S_X
 #undef S_Y
 
@@ -2525,7 +2522,7 @@ static float axis_marker[8][2] = {
     {-S_X, 0.0f}
 #endif
 };
-#define MARKER_LEN (ARRAY_SIZE(axis_marker))
+#define MARKER_LEN (sizeof(axis_marker) / sizeof(float[2]))
 #define MARKER_FILL_LAYER 6
 #undef S_X
 #undef S_Y
@@ -2883,7 +2880,7 @@ GPUBatch *DRW_cache_mesh_surface_edges_get(Object *ob)
 }
 
 GPUBatch **DRW_cache_mesh_surface_shaded_get(Object *ob,
-                                             GPUMaterial **gpumat_array,
+                                             struct GPUMaterial **gpumat_array,
                                              uint gpumat_array_len)
 {
   BLI_assert(ob->type == OB_MESH);
@@ -2947,21 +2944,21 @@ GPUBatch *DRW_cache_mesh_surface_viewer_attribute_get(Object *ob)
 GPUBatch *DRW_cache_curve_edge_wire_get(Object *ob)
 {
   BLI_assert(ob->type == OB_CURVES_LEGACY);
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_wire_edge(cu);
 }
 
 GPUBatch *DRW_cache_curve_edge_wire_viewer_attribute_get(Object *ob)
 {
   BLI_assert(ob->type == OB_CURVES_LEGACY);
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_wire_edge_viewer_attribute(cu);
 }
 
 GPUBatch *DRW_cache_curve_edge_normal_get(Object *ob)
 {
   BLI_assert(ob->type == OB_CURVES_LEGACY);
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_normal_edge(cu);
 }
 
@@ -2969,7 +2966,7 @@ GPUBatch *DRW_cache_curve_edge_overlay_get(Object *ob)
 {
   BLI_assert(ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF));
 
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_edit_edges(cu);
 }
 
@@ -2977,7 +2974,7 @@ GPUBatch *DRW_cache_curve_vert_overlay_get(Object *ob)
 {
   BLI_assert(ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF));
 
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_edit_verts(cu);
 }
 
@@ -2990,7 +2987,7 @@ GPUBatch *DRW_cache_curve_vert_overlay_get(Object *ob)
 GPUBatch *DRW_cache_text_edge_wire_get(Object *ob)
 {
   BLI_assert(ob->type == OB_FONT);
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_wire_edge(cu);
 }
 
@@ -3003,7 +3000,7 @@ GPUBatch *DRW_cache_text_edge_wire_get(Object *ob)
 GPUBatch *DRW_cache_surf_edge_wire_get(Object *ob)
 {
   BLI_assert(ob->type == OB_SURF);
-  Curve *cu = ob->data;
+  struct Curve *cu = ob->data;
   return DRW_curve_batch_cache_get_wire_edge(cu);
 }
 
@@ -3017,7 +3014,7 @@ GPUBatch *DRW_cache_lattice_verts_get(Object *ob)
 {
   BLI_assert(ob->type == OB_LATTICE);
 
-  Lattice *lt = ob->data;
+  struct Lattice *lt = ob->data;
   return DRW_lattice_batch_cache_get_all_verts(lt);
 }
 
@@ -3039,7 +3036,7 @@ GPUBatch *DRW_cache_lattice_vert_overlay_get(Object *ob)
 {
   BLI_assert(ob->type == OB_LATTICE);
 
-  Lattice *lt = ob->data;
+  struct Lattice *lt = ob->data;
   return DRW_lattice_batch_cache_get_edit_verts(lt);
 }
 
@@ -3301,8 +3298,6 @@ void drw_batch_cache_validate(Object *ob)
     case OB_VOLUME:
       DRW_volume_batch_cache_validate((Volume *)ob->data);
       break;
-    case OB_GREASE_PENCIL:
-      DRW_grease_pencil_batch_cache_validate((GreasePencil *)ob->data);
     default:
       break;
   }
@@ -3411,11 +3406,11 @@ void DRW_cdlayer_attr_aliases_add(GPUVertFormat *format,
   GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
   /* Attribute layer name. */
-  SNPRINTF(attr_name, "%s%s", base_name, attr_safe_name);
+  BLI_snprintf(attr_name, sizeof(attr_name), "%s%s", base_name, attr_safe_name);
   GPU_vertformat_alias_add(format, attr_name);
 
   /* Auto layer name. */
-  SNPRINTF(attr_name, "a%s", attr_safe_name);
+  BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
   GPU_vertformat_alias_add(format, attr_name);
 
   /* Active render layer name. */
@@ -3425,7 +3420,7 @@ void DRW_cdlayer_attr_aliases_add(GPUVertFormat *format,
 
   /* Active display layer name. */
   if (is_active_layer) {
-    SNPRINTF(attr_name, "a%s", base_name);
+    BLI_snprintf(attr_name, sizeof(attr_name), "a%s", base_name);
     GPU_vertformat_alias_add(format, attr_name);
   }
 }

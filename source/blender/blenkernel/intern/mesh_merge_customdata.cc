@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -115,10 +113,10 @@ void BKE_mesh_merge_customdata_for_apply_modifier(Mesh *me)
     return;
   }
 
-  Array<int> vert_to_loop_offsets;
-  Array<int> vert_to_loop_indices;
-  const GroupedSpan<int> vert_to_loop = bke::mesh::build_vert_to_loop_map(
-      me->corner_verts(), me->totvert, vert_to_loop_offsets, vert_to_loop_indices);
+  int *vert_map_mem;
+  struct MeshElemMap *vert_to_loop;
+  BKE_mesh_vert_loop_map_create(
+      &vert_to_loop, &vert_map_mem, me->polys(), me->corner_verts().data(), me->totvert);
 
   Vector<float2 *> mloopuv_layers;
   mloopuv_layers.reserve(mloopuv_layers_num);
@@ -132,7 +130,12 @@ void BKE_mesh_merge_customdata_for_apply_modifier(Mesh *me)
 
   threading::parallel_for(IndexRange(me->totvert), 1024, [&](IndexRange range) {
     for (const int64_t v_index : range) {
-      merge_uvs_for_vertex(vert_to_loop[v_index], mloopuv_layers_as_span);
+      MeshElemMap &loops_for_vert = vert_to_loop[v_index];
+      Span<int> loops_for_vert_span(loops_for_vert.indices, loops_for_vert.count);
+      merge_uvs_for_vertex(loops_for_vert_span, mloopuv_layers_as_span);
     }
   });
+
+  MEM_freeN(vert_to_loop);
+  MEM_freeN(vert_map_mem);
 }

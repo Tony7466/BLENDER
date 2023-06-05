@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -98,7 +96,7 @@ static bGPDpalette *BKE_gpencil_palette_addnew(bGPdata *gpd, const char *name)
 
   /* set basic settings */
   /* auto-name */
-  STRNCPY(palette->info, name);
+  BLI_strncpy(palette->info, name, sizeof(palette->info));
   BLI_uniquename(&gpd->palettes,
                  palette,
                  DATA_("GP_Palette"),
@@ -131,7 +129,7 @@ static bGPDpalettecolor *BKE_gpencil_palettecolor_addnew(bGPDpalette *palette, c
   ARRAY_SET_ITEMS(palcolor->fill, 1.0f, 1.0f, 1.0f);
 
   /* auto-name */
-  STRNCPY(palcolor->info, name);
+  BLI_strncpy(palcolor->info, name, sizeof(palcolor->info));
   BLI_uniquename(&palette->colors,
                  palcolor,
                  DATA_("Color"),
@@ -327,7 +325,9 @@ static void do_versions_compositor_render_passes_storage(bNode *node)
     if (sock->storage == NULL) {
       NodeImageLayer *sockdata = MEM_callocN(sizeof(NodeImageLayer), "node image layer");
       sock->storage = sockdata;
-      STRNCPY(sockdata->pass_name, node_cmp_rlayers_sock_to_pass(pass_index));
+      BLI_strncpy(sockdata->pass_name,
+                  node_cmp_rlayers_sock_to_pass(pass_index),
+                  sizeof(sockdata->pass_name));
 
       if (pass_index == 0) {
         sockname = "Image";
@@ -338,7 +338,7 @@ static void do_versions_compositor_render_passes_storage(bNode *node)
       else {
         sockname = node_cmp_rlayers_sock_to_pass(pass_index);
       }
-      STRNCPY(sock->name, sockname);
+      BLI_strncpy(sock->name, sockname, sizeof(sock->name));
     }
   }
 }
@@ -610,7 +610,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         sce->r.bake.normal_swizzle[0] = R_BAKE_POSX;
         sce->r.bake.normal_swizzle[1] = R_BAKE_POSY;
         sce->r.bake.normal_swizzle[2] = R_BAKE_POSZ;
-        STRNCPY(sce->r.bake.filepath, U.renderdir);
+        BLI_strncpy(sce->r.bake.filepath, U.renderdir, sizeof(sce->r.bake.filepath));
 
         sce->r.bake.im_format.planes = R_IMF_PLANES_RGBA;
         sce->r.bake.im_format.imtype = R_IMF_IMTYPE_PNG;
@@ -930,11 +930,11 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
       BKE_scene_add_render_view(scene, STEREO_LEFT_NAME);
       srv = scene->r.views.first;
-      STRNCPY(srv->suffix, STEREO_LEFT_SUFFIX);
+      BLI_strncpy(srv->suffix, STEREO_LEFT_SUFFIX, sizeof(srv->suffix));
 
       BKE_scene_add_render_view(scene, STEREO_RIGHT_NAME);
       srv = scene->r.views.last;
-      STRNCPY(srv->suffix, STEREO_RIGHT_SUFFIX);
+      BLI_strncpy(srv->suffix, STEREO_RIGHT_SUFFIX, sizeof(srv->suffix));
 
       if (scene->ed) {
         SEQ_for_each_callback(&scene->ed->seqbase, seq_update_proxy_cb, NULL);
@@ -979,7 +979,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         BLI_addtail(&ima->packedfiles, imapf);
 
         imapf->packedfile = ima->packedfile;
-        STRNCPY(imapf->filepath, ima->filepath);
+        BLI_strncpy(imapf->filepath, ima->filepath, FILE_MAX);
         ima->packedfile = NULL;
       }
     }
@@ -1372,7 +1372,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
               LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
                 LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
                   /* set stroke to palette and force recalculation */
-                  STRNCPY(gps->colorname, gpl->info);
+                  BLI_strncpy(gps->colorname, gpl->info, sizeof(gps->colorname));
                   gps->thickness = gpl->thickness;
 
                   /* set alpha strength to 1 */

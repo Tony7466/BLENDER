@@ -385,17 +385,11 @@ void PathTraceWorkGPU::enqueue_reset()
 
   queue_->enqueue(DEVICE_KERNEL_INTEGRATOR_RESET, max_num_paths_, args);
   queue_->zero_to_device(integrator_queue_counter_);
-  if (integrator_shader_sort_counter_.size() != 0) {
-    queue_->zero_to_device(integrator_shader_sort_counter_);
-  }
-  if (device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE &&
-      integrator_shader_raytrace_sort_counter_.size() != 0)
-  {
+  queue_->zero_to_device(integrator_shader_sort_counter_);
+  if (device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) {
     queue_->zero_to_device(integrator_shader_raytrace_sort_counter_);
   }
-  if (device_scene_->data.kernel_features & KERNEL_FEATURE_MNEE &&
-      integrator_shader_mnee_sort_counter_.size() != 0)
-  {
+  if (device_scene_->data.kernel_features & KERNEL_FEATURE_MNEE) {
     queue_->zero_to_device(integrator_shader_mnee_sort_counter_);
   }
 
@@ -508,8 +502,7 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
 
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW:
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
-    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
-    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT: {
+    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK: {
       /* Ray intersection kernels with integrator state. */
       DeviceKernelArguments args(&d_path_index, &work_size);
 
@@ -522,8 +515,7 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
-    case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME:
-    case DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT: {
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME: {
       /* Shading kernels with integrator state and render buffer. */
       DeviceKernelArguments args(&d_path_index, &buffers_->buffer.device_pointer, &work_size);
 
@@ -1179,8 +1171,7 @@ bool PathTraceWorkGPU::kernel_creates_shadow_paths(DeviceKernel kernel)
   return (kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE ||
           kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
           kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE ||
-          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME ||
-          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT);
+          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME);
 }
 
 bool PathTraceWorkGPU::kernel_creates_ao_paths(DeviceKernel kernel)

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -36,8 +35,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.hh"
-#include "MOD_util.hh"
+#include "MOD_modifiertypes.h"
+#include "MOD_util.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -165,7 +164,7 @@ void MOD_previous_vcos_store(ModifierData *md, const float (*vert_coords)[3])
 }
 
 Mesh *MOD_deform_mesh_eval_get(Object *ob,
-                               BMEditMesh *em,
+                               struct BMEditMesh *em,
                                Mesh *mesh,
                                const float (*vertexCos)[3],
                                const int verts_num,
@@ -223,7 +222,7 @@ Mesh *MOD_deform_mesh_eval_get(Object *ob,
 }
 
 void MOD_get_vgroup(
-    Object *ob, Mesh *mesh, const char *name, const MDeformVert **dvert, int *defgrp_index)
+    Object *ob, struct Mesh *mesh, const char *name, const MDeformVert **dvert, int *defgrp_index)
 {
   if (mesh) {
     *defgrp_index = BKE_id_defgroup_name_index(&mesh->id, name);
@@ -245,7 +244,7 @@ void MOD_get_vgroup(
   }
 }
 
-void MOD_depsgraph_update_object_bone_relation(DepsNodeHandle *node,
+void MOD_depsgraph_update_object_bone_relation(struct DepsNodeHandle *node,
                                                Object *object,
                                                const char *bonename,
                                                const char *description)

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation. */
 
 /** \file
  * \ingroup edarmature
@@ -87,9 +86,8 @@ typedef struct PoseBlendData {
   char headerstr[UI_MAX_DRAW_STR];
 } PoseBlendData;
 
-/**
- * Return the bAction that should be blended.
- * This is either `pbd->act` or `pbd->act_flipped`, depending on `is_flipped`.
+/** Return the bAction that should be blended.
+ * This is either pbd->act or pbd->act_flipped, depending on is_flipped.
  */
 static bAction *poselib_action_to_blend(PoseBlendData *pbd)
 {
@@ -179,7 +177,7 @@ static void poselib_blend_apply(bContext *C, wmOperator *op)
   }
 
   /* Perform the actual blending. */
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph, 0.0f);
   bAction *to_blend = poselib_action_to_blend(pbd);
   BKE_pose_apply_action_blend(pbd->ob, to_blend, &anim_eval_context, pbd->blend_factor);
@@ -368,9 +366,9 @@ static bool poselib_blend_init_data(bContext *C, wmOperator *op, const wmEvent *
     pbd->slider = ED_slider_create(C);
     ED_slider_init(pbd->slider, event);
     ED_slider_factor_set(pbd->slider, pbd->blend_factor);
-    ED_slider_allow_overshoot_set(pbd->slider, true, true);
+    ED_slider_allow_overshoot_set(pbd->slider, true);
     ED_slider_allow_increments_set(pbd->slider, false);
-    ED_slider_factor_bounds_set(pbd->slider, -1, 1);
+    ED_slider_is_bidirectional_set(pbd->slider, true);
   }
 
   if (pbd->release_confirm_info.use_release_confirm) {
@@ -503,7 +501,11 @@ static int poselib_blend_modal(bContext *C, wmOperator *op, const wmEvent *event
       strcpy(tab_string, TIP_("[Tab] - Show blended pose"));
     }
 
-    SNPRINTF(status_string, "%s | %s | [Ctrl] - Flip Pose", tab_string, slider_string);
+    BLI_snprintf(status_string,
+                 sizeof(status_string),
+                 "%s | %s | [Ctrl] - Flip Pose",
+                 tab_string,
+                 slider_string);
     ED_workspace_status_text(C, status_string);
 
     poselib_blend_apply(C, op);

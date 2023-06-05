@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -193,7 +192,7 @@ void WM_gizmo_unlink(ListBase *gizmolist, wmGizmoMap *gzmap, wmGizmo *gz, bConte
  *
  * \{ */
 
-wmGizmoOpElem *WM_gizmo_operator_get(wmGizmo *gz, int part_index)
+struct wmGizmoOpElem *WM_gizmo_operator_get(wmGizmo *gz, int part_index)
 {
   if (gz->op_data && ((part_index >= 0) && (part_index < gz->op_data_len))) {
     return &gz->op_data[part_index];
@@ -346,7 +345,7 @@ void WM_gizmo_set_color_highlight(wmGizmo *gz, const float color_hi[4])
 /** \name Gizmo Callback Assignment
  * \{ */
 
-void WM_gizmo_set_fn_custom_modal(wmGizmo *gz, wmGizmoFnModal fn)
+void WM_gizmo_set_fn_custom_modal(struct wmGizmo *gz, wmGizmoFnModal fn)
 {
   gz->custom_modal = fn;
 }
@@ -414,8 +413,11 @@ bool wm_gizmo_select_and_highlight(bContext *C, wmGizmoMap *gzmap, wmGizmo *gz)
   return false;
 }
 
-void WM_gizmo_modal_set_from_setup(
-    wmGizmoMap *gzmap, bContext *C, wmGizmo *gz, int part_index, const wmEvent *event)
+void WM_gizmo_modal_set_from_setup(struct wmGizmoMap *gzmap,
+                                   struct bContext *C,
+                                   struct wmGizmo *gz,
+                                   int part_index,
+                                   const wmEvent *event)
 {
   gz->highlight_part = part_index;
   WM_gizmo_highlight_set(gzmap, gz);
@@ -428,9 +430,9 @@ void WM_gizmo_modal_set_from_setup(
   }
 }
 
-void WM_gizmo_modal_set_while_modal(wmGizmoMap *gzmap,
-                                    bContext *C,
-                                    wmGizmo *gz,
+void WM_gizmo_modal_set_while_modal(struct wmGizmoMap *gzmap,
+                                    struct bContext *C,
+                                    struct wmGizmo *gz,
                                     const wmEvent *event)
 {
   if (gzmap->gzmap_context.modal) {
@@ -720,7 +722,7 @@ void WM_gizmo_properties_free(PointerRNA *ptr)
 /** \name General Utilities
  * \{ */
 
-bool WM_gizmo_context_check_drawstep(const bContext *C, eWM_GizmoFlagMapDrawStep step)
+bool WM_gizmo_context_check_drawstep(const struct bContext *C, eWM_GizmoFlagMapDrawStep step)
 {
   switch (step) {
     case WM_GIZMOMAP_DRAWSTEP_2D: {

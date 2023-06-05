@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
 
 /** \file
  * \ingroup spnla
@@ -649,7 +648,7 @@ static void nla_draw_strip_text(AnimData *adt,
     str_len = BLI_snprintf_rlen(str, sizeof(str), "Temp-Meta");
   }
   else {
-    str_len = STRNCPY_RLEN(str, strip->name);
+    str_len = BLI_strncpy_rlen(str, strip->name, sizeof(str));
   }
 
   /* set text color - if colors (see above) are light, draw black text, otherwise draw white */
@@ -702,11 +701,11 @@ static void nla_draw_strip_frames_text(
    *   while also preserving some accuracy, since we do use floats
    */
   /* start frame */
-  numstr_len = SNPRINTF_RLEN(numstr, "%.1f", strip->start);
+  numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%.1f", strip->start);
   UI_view2d_text_cache_add(v2d, strip->start - 1.0f, ymaxc + ytol, numstr, numstr_len, col);
 
   /* end frame */
-  numstr_len = SNPRINTF_RLEN(numstr, "%.1f", strip->end);
+  numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%.1f", strip->end);
   UI_view2d_text_cache_add(v2d, strip->end, ymaxc + ytol, numstr, numstr_len, col);
 }
 

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup texnodes
@@ -52,8 +51,8 @@ void register_node_type_tex_curve_time()
   static bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_CURVE_TIME, "Time", NODE_CLASS_INPUT);
-  blender::bke::node_type_socket_templates(&ntype, nullptr, time_outputs);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  node_type_socket_templates(&ntype, nullptr, time_outputs);
+  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
   ntype.initfunc = time_init;
   node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
   ntype.init_exec_fn = node_initexec_curves;
@@ -102,8 +101,8 @@ void register_node_type_tex_curve_rgb()
   static bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_CURVE_RGB, "RGB Curves", NODE_CLASS_OP_COLOR);
-  blender::bke::node_type_socket_templates(&ntype, rgb_inputs, rgb_outputs);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  node_type_socket_templates(&ntype, rgb_inputs, rgb_outputs);
+  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
   ntype.initfunc = rgb_init;
   node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
   ntype.init_exec_fn = node_initexec_curves;

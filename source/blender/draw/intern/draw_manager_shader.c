@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -486,7 +485,7 @@ GPUShader *DRW_shader_create_fullscreen_with_shaderlib_ex(const char *frag,
 }
 
 GPUMaterial *DRW_shader_from_world(World *wo,
-                                   bNodeTree *ntree,
+                                   struct bNodeTree *ntree,
                                    const uint64_t shader_id,
                                    const bool is_volume_shader,
                                    bool deferred,
@@ -518,7 +517,7 @@ GPUMaterial *DRW_shader_from_world(World *wo,
 }
 
 GPUMaterial *DRW_shader_from_material(Material *ma,
-                                      bNodeTree *ntree,
+                                      struct bNodeTree *ntree,
                                       const uint64_t shader_id,
                                       const bool is_volume_shader,
                                       bool deferred,
@@ -695,7 +694,7 @@ void DRW_shader_library_add_file(DRWShaderLibrary *lib, const char *lib_code, co
 
   if (index > -1) {
     lib->libs[index] = lib_code;
-    STRNCPY(lib->libs_name[index], lib_name);
+    BLI_strncpy(lib->libs_name[index], lib_name, MAX_LIB_NAME);
     lib->libs_deps[index] = drw_shader_dependencies_get(
         lib, "BLENDER_REQUIRE(", lib_code, lib_name);
   }

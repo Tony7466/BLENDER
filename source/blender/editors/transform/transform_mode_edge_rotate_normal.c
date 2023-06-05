@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -108,9 +107,10 @@ static void applyNormalRotation(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initNormalRotation(TransInfo *t, struct wmOperator *UNUSED(op))
+void initNormalRotation(TransInfo *t)
 {
   t->mode = TFM_NORMAL_ROTATION;
+  t->transform = applyNormalRotation;
 
   initMouseInputMode(t, &t->mouse, INPUT_ANGLE);
 
@@ -138,14 +138,3 @@ static void initNormalRotation(TransInfo *t, struct wmOperator *UNUSED(op))
 }
 
 /** \} */
-
-TransModeInfo TransMode_rotatenormal = {
-    /*flags*/ 0,
-    /*init_fn*/ initNormalRotation,
-    /*transform_fn*/ applyNormalRotation,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

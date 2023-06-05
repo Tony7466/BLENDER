@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -100,14 +98,15 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
                                &sce->unit,
                                true);
     }
-    SNPRINTF(msg,
-             str,
-             flts_str,
-             flts_str + NUM_STR_REP_LEN,
-             WM_bool_as_string(opdata->modify_depth),
-             WM_bool_as_string(RNA_boolean_get(op->ptr, "use_outset")),
-             WM_bool_as_string(RNA_boolean_get(op->ptr, "use_boundary")),
-             WM_bool_as_string(RNA_boolean_get(op->ptr, "use_individual")));
+    BLI_snprintf(msg,
+                 sizeof(msg),
+                 str,
+                 flts_str,
+                 flts_str + NUM_STR_REP_LEN,
+                 WM_bool_as_string(opdata->modify_depth),
+                 WM_bool_as_string(RNA_boolean_get(op->ptr, "use_outset")),
+                 WM_bool_as_string(RNA_boolean_get(op->ptr, "use_boundary")),
+                 WM_bool_as_string(RNA_boolean_get(op->ptr, "use_individual")));
 
     ED_area_status_text(area, msg);
   }

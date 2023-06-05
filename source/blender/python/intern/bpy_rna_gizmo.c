@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -398,7 +396,7 @@ static PyObject *bpy_gizmo_target_set_handler(PyObject *UNUSED(self), PyObject *
 
   WM_gizmo_target_property_def_func_ptr(gz,
                                         gz_prop_type,
-                                        &(const wmGizmoPropertyFnParams){
+                                        &(const struct wmGizmoPropertyFnParams){
                                             .value_get_fn = py_rna_gizmo_handler_get_cb,
                                             .value_set_fn = py_rna_gizmo_handler_set_cb,
                                             .range_get_fn = py_rna_gizmo_handler_range_get_cb,

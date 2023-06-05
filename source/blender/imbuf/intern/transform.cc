@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
@@ -222,12 +221,11 @@ class PixelPointer {
                           NumChannels;
 
     if constexpr (std::is_same_v<StorageType, float>) {
-      pointer = image_buffer->float_buffer.data + offset;
+      pointer = image_buffer->rect_float + offset;
     }
     else if constexpr (std::is_same_v<StorageType, uchar>) {
       pointer = const_cast<uchar *>(
-          static_cast<const uchar *>(static_cast<const void *>(image_buffer->byte_buffer.data)) +
-          offset);
+          static_cast<const uchar *>(static_cast<const void *>(image_buffer->rect)) + offset);
     }
     else {
       pointer = nullptr;
@@ -403,7 +401,7 @@ class Sampler {
     }
     else if constexpr (Filter == IMB_FILTER_BILINEAR && std::is_same_v<StorageType, float>) {
       if constexpr (std::is_same_v<UVWrapping, WrapRepeatUV>) {
-        BLI_bilinear_interpolation_wrap_fl(source->float_buffer.data,
+        BLI_bilinear_interpolation_wrap_fl(source->rect_float,
                                            r_sample.data(),
                                            source->x,
                                            source->y,
@@ -414,7 +412,7 @@ class Sampler {
       }
       else {
         const double2 wrapped_uv = uv_wrapper.modify_uv(source, uv);
-        BLI_bilinear_interpolation_fl(source->float_buffer.data,
+        BLI_bilinear_interpolation_fl(source->rect_float,
                                       r_sample.data(),
                                       source->x,
                                       source->y,
@@ -450,7 +448,7 @@ class Sampler {
     }
 
     const size_t offset = (size_t(source->x) * y1 + x1) * NumChannels;
-    const float *dataF = source->float_buffer.data + offset;
+    const float *dataF = source->rect_float + offset;
     for (int i = 0; i < NumChannels; i++) {
       r_sample[i] = dataF[i];
     }
@@ -703,10 +701,10 @@ static void transform_threaded(TransformUserData *user_data, const eIMBTransform
 {
   ScanlineThreadFunc scanline_func = nullptr;
 
-  if (user_data->dst->float_buffer.data && user_data->src->float_buffer.data) {
+  if (user_data->dst->rect_float && user_data->src->rect_float) {
     scanline_func = get_scanline_function<Filter>(user_data, mode);
   }
-  else if (user_data->dst->byte_buffer.data && user_data->src->byte_buffer.data) {
+  else if (user_data->dst->rect && user_data->src->rect) {
     /* Number of channels is always 4 when using uchar buffers (sRGB + straight alpha). */
     scanline_func = get_scanline_function<Filter, uchar, 4, 4>(mode);
   }
@@ -726,13 +724,13 @@ extern "C" {
 
 using namespace blender::imbuf::transform;
 
-void IMB_transform(const ImBuf *src,
-                   ImBuf *dst,
+void IMB_transform(const struct ImBuf *src,
+                   struct ImBuf *dst,
                    const eIMBTransformMode mode,
                    const eIMBInterpolationFilterMode filter,
                    const int num_subsamples,
                    const float transform_matrix[4][4],
-                   const rctf *src_crop)
+                   const struct rctf *src_crop)
 {
   BLI_assert_msg(mode != IMB_TRANSFORM_MODE_CROP_SRC || src_crop != nullptr,
                  "No source crop rect given, but crop source is requested. Or source crop rect "

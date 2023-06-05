@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edobj
@@ -1132,14 +1131,14 @@ static void vgroup_duplicate(Object *ob)
   }
 
   if (!strstr(dg->name, "_copy")) {
-    SNPRINTF(name, "%s_copy", dg->name);
+    BLI_snprintf(name, sizeof(name), "%s_copy", dg->name);
   }
   else {
-    STRNCPY(name, dg->name);
+    BLI_strncpy(name, dg->name, sizeof(name));
   }
 
   cdg = BKE_defgroup_duplicate(dg);
-  STRNCPY(cdg->name, name);
+  BLI_strncpy(cdg->name, name, sizeof(cdg->name));
   BKE_object_defgroup_unique_name(cdg, ob);
 
   BLI_addtail(defbase, cdg);
@@ -1570,6 +1569,9 @@ static void vgroup_smooth_subset(Object *ob,
   BMesh *bm = em ? em->bm : nullptr;
   Mesh *me = em ? nullptr : static_cast<Mesh *>(ob->data);
 
+  MeshElemMap *emap;
+  int *emap_mem;
+
   float *weight_accum_prev;
   float *weight_accum_curr;
 
@@ -1583,16 +1585,15 @@ static void vgroup_smooth_subset(Object *ob,
   ED_vgroup_parray_alloc(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot, false);
   vgroup_subset_weights.fill(0.0f);
 
-  blender::Array<int> vert_to_edge_offsets;
-  blender::Array<int> vert_to_edge_indices;
-  blender::GroupedSpan<int> emap;
   if (bm) {
     BM_mesh_elem_table_ensure(bm, BM_VERT);
     BM_mesh_elem_index_ensure(bm, BM_VERT);
+
+    emap = nullptr;
+    emap_mem = nullptr;
   }
   else {
-    emap = blender::bke::mesh::build_vert_to_edge_map(
-        me->edges(), me->totvert, vert_to_edge_offsets, vert_to_edge_indices);
+    BKE_mesh_vert_edge_map_create(&emap, &emap_mem, me->edges().data(), me->totvert, me->totedge);
   }
 
   weight_accum_prev = static_cast<float *>(
@@ -1638,8 +1639,8 @@ static void vgroup_smooth_subset(Object *ob,
     const blender::Span<int2> edges = me->edges();
     for (int i = 0; i < dvert_tot; i++) {
       if (IS_ME_VERT_WRITE(i)) {
-        for (int j = 0; j < emap[i].size(); j++) {
-          const int2 &edge = edges[emap[i][j]];
+        for (int j = 0; j < emap[i].count; j++) {
+          const int2 &edge = edges[emap[i].indices[j]];
           const int i_other = (edge[0] == i) ? edge[1] : edge[0];
           if (IS_ME_VERT_READ(i_other)) {
             STACK_PUSH(verts_used, i);
@@ -1717,8 +1718,8 @@ static void vgroup_smooth_subset(Object *ob,
           /* checked already */
           BLI_assert(IS_ME_VERT_WRITE(i));
 
-          for (j = 0; j < emap[i].size(); j++) {
-            const int2 &edge = edges[emap[i][j]];
+          for (j = 0; j < emap[i].count; j++) {
+            const int2 &edge = edges[emap[i].indices[j]];
             const int i_other = (edge[0] == i ? edge[1] : edge[0]);
             if (IS_ME_VERT_READ(i_other)) {
               WEIGHT_ACCUMULATE;
@@ -1752,6 +1753,14 @@ static void vgroup_smooth_subset(Object *ob,
   MEM_freeN(weight_accum_curr);
   MEM_freeN(weight_accum_prev);
   MEM_freeN(verts_used);
+
+  if (bm) {
+    /* pass */
+  }
+  else {
+    MEM_freeN(emap);
+    MEM_freeN(emap_mem);
+  }
 
   if (dvert_array) {
     MEM_freeN(dvert_array);
@@ -2787,7 +2796,7 @@ static int vertex_group_copy_exec(bContext *C, wmOperator * /*op*/)
 void OBJECT_OT_vertex_group_copy(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Duplicate Vertex Group";
+  ot->name = "Copy Vertex Group";
   ot->idname = "OBJECT_OT_vertex_group_copy";
   ot->description = "Make a copy of the active vertex group";
 

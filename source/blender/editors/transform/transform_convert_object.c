@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -92,7 +91,7 @@ static void trans_obdata_in_obmode_update_all(TransInfo *t)
     return;
   }
 
-  Main *bmain = CTX_data_main(t->context);
+  struct Main *bmain = CTX_data_main(t->context);
   ED_object_data_xform_container_update_all(tdo->xds, bmain, t->depsgraph);
 }
 
@@ -115,7 +114,7 @@ static void trans_obchild_in_obmode_update_all(TransInfo *t)
     return;
   }
 
-  Main *bmain = CTX_data_main(t->context);
+  struct Main *bmain = CTX_data_main(t->context);
   ED_object_xform_skip_child_container_update_all(tdo->xcs, bmain, t->depsgraph);
 }
 
@@ -422,7 +421,7 @@ static int count_proportional_objects(TransInfo *t)
   int total = 0;
   ViewLayer *view_layer = t->view_layer;
   View3D *v3d = t->view;
-  Main *bmain = CTX_data_main(t->context);
+  struct Main *bmain = CTX_data_main(t->context);
   Scene *scene = t->scene;
   Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
   /* Clear all flags we need. It will be used to detect dependencies. */

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2010 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2010 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -482,7 +481,9 @@ static void bmbvh_find_face_closest_cb(void *userdata,
   }
 }
 
-BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *bmtree, const float co[3], const float dist_max)
+struct BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *bmtree,
+                                           const float co[3],
+                                           const float dist_max)
 {
   BVHTreeNearest hit;
   struct FaceSearchUserData bmcb_data;

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -54,7 +52,7 @@ AssetMetaData::~AssetMetaData()
 static AssetTag *asset_metadata_tag_add(AssetMetaData *asset_data, const char *const name)
 {
   AssetTag *tag = (AssetTag *)MEM_callocN(sizeof(*tag), __func__);
-  STRNCPY(tag->name, name);
+  BLI_strncpy(tag->name, name, sizeof(tag->name));
 
   BLI_addtail(&asset_data->tags, tag);
   asset_data->tot_tags++;
@@ -71,9 +69,10 @@ AssetTag *BKE_asset_metadata_tag_add(AssetMetaData *asset_data, const char *name
   return tag;
 }
 
-AssetTagEnsureResult BKE_asset_metadata_tag_ensure(AssetMetaData *asset_data, const char *name)
+struct AssetTagEnsureResult BKE_asset_metadata_tag_ensure(AssetMetaData *asset_data,
+                                                          const char *name)
 {
-  AssetTagEnsureResult result = {nullptr};
+  struct AssetTagEnsureResult result = {nullptr};
   if (!name[0]) {
     return result;
   }
@@ -107,13 +106,13 @@ void BKE_asset_library_reference_init_default(AssetLibraryReference *library_ref
   memcpy(library_ref, DNA_struct_default_get(AssetLibraryReference), sizeof(*library_ref));
 }
 
-void BKE_asset_metadata_catalog_id_clear(AssetMetaData *asset_data)
+void BKE_asset_metadata_catalog_id_clear(struct AssetMetaData *asset_data)
 {
   asset_data->catalog_id = BLI_uuid_nil();
   asset_data->catalog_simple_name[0] = '\0';
 }
 
-void BKE_asset_metadata_catalog_id_set(AssetMetaData *asset_data,
+void BKE_asset_metadata_catalog_id_set(struct AssetMetaData *asset_data,
                                        const ::bUUID catalog_id,
                                        const char *catalog_simple_name)
 {

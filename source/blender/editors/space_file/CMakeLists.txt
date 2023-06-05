@@ -1,5 +1,3 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
-#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -19,7 +17,6 @@ set(INC
   ../../windowmanager
   ../../../../intern/atomic
   ../../../../intern/guardedalloc
-  ../../../../extern/fmtlib/include
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../../makesdna/intern
@@ -51,7 +48,6 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  extern_fmtlib
 )
 
 if(WIN32)

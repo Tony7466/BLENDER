@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -712,10 +710,10 @@ static void rna_Modifier_name_set(PointerRNA *ptr, const char *value)
   char oldname[sizeof(md->name)];
 
   /* make a copy of the old name first */
-  STRNCPY(oldname, md->name);
+  BLI_strncpy(oldname, md->name, sizeof(md->name));
 
   /* copy the new name into the name slot */
-  STRNCPY_UTF8(md->name, value);
+  BLI_strncpy_utf8(md->name, value, sizeof(md->name));
 
   /* make sure the name is truly unique */
   if (ptr->owner_id) {
@@ -953,7 +951,7 @@ static void rna_HookModifier_subtarget_set(PointerRNA *ptr, const char *value)
   Object *owner = (Object *)ptr->owner_id;
   HookModifierData *hmd = ptr->data;
 
-  STRNCPY(hmd->subtarget, value);
+  BLI_strncpy(hmd->subtarget, value, sizeof(hmd->subtarget));
   BKE_object_modifier_hook_reset(owner, hmd);
 }
 
@@ -1086,7 +1084,7 @@ static void rna_MultiresModifier_filepath_get(PointerRNA *ptr, char *value)
   Object *ob = (Object *)ptr->owner_id;
   CustomDataExternal *external = ((Mesh *)ob->data)->ldata.external;
 
-  strcpy(value, (external) ? external->filepath : "");
+  BLI_strncpy(value, (external) ? external->filepath : "", sizeof(external->filepath));
 }
 
 static void rna_MultiresModifier_filepath_set(PointerRNA *ptr, const char *value)
@@ -1095,7 +1093,7 @@ static void rna_MultiresModifier_filepath_set(PointerRNA *ptr, const char *value
   CustomDataExternal *external = ((Mesh *)ob->data)->ldata.external;
 
   if (external && !STREQ(external->filepath, value)) {
-    STRNCPY(external->filepath, value);
+    BLI_strncpy(external->filepath, value, sizeof(external->filepath));
     multires_force_external_reload(ob);
   }
 }
@@ -1349,22 +1347,16 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
     Object *ob_src = dtmd->ob_source;
 
     if (ob_src) {
+      Mesh *me_eval;
       int num_data, i;
 
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-      const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_src);
-      if (!ob_eval) {
-        RNA_enum_item_end(&item, &totitem);
-        *r_free = true;
-        return item;
-      }
-      const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
-      if (!me_eval) {
-        RNA_enum_item_end(&item, &totitem);
-        *r_free = true;
-        return item;
-      }
+      Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+      Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
 
+      CustomData_MeshMasks cddata_masks = CD_MASK_BAREMESH;
+      cddata_masks.lmask |= CD_MASK_PROP_FLOAT2;
+      me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_src_eval, &cddata_masks);
       num_data = CustomData_number_of_layers(&me_eval->ldata, CD_PROP_FLOAT2);
 
       RNA_enum_item_add_separator(&item, &totitem);
@@ -1388,25 +1380,21 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
                                ATTR_DOMAIN_CORNER;
 
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-      const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_src);
-      if (!ob_eval) {
-        RNA_enum_item_end(&item, &totitem);
-        *r_free = true;
-        return item;
-      }
-      const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
-      if (!mesh_eval) {
-        RNA_enum_item_end(&item, &totitem);
-        *r_free = true;
-        return item;
-      }
+      Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+      Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
 
-      const CustomData *cdata;
+      CustomData_MeshMasks cddata_masks = CD_MASK_BAREMESH;
+      CustomData *cdata;
+
+      Mesh *me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_src_eval, &cddata_masks);
+
       if (domain == ATTR_DOMAIN_POINT) {
-        cdata = &mesh_eval->vdata;
+        cddata_masks.vmask |= CD_MASK_COLOR_ALL;
+        cdata = &me_eval->vdata;
       }
       else {
-        cdata = &mesh_eval->ldata;
+        cddata_masks.lmask |= CD_MASK_COLOR_ALL;
+        cdata = &me_eval->ldata;
       }
 
       eCustomDataType types[2] = {CD_PROP_COLOR, CD_PROP_BYTE_COLOR};
@@ -2443,7 +2431,7 @@ static void rna_def_modifier_wave(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Time Offset",
-      "Either the starting frame (for positive speed) or ending frame (for negative speed)");
+      "Either the starting frame (for positive speed) or ending frame (for negative speed.)");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "lifetime", PROP_FLOAT, PROP_TIME);
@@ -3348,7 +3336,7 @@ static void rna_def_modifier_correctivesmooth(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "lambda");
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 5, 3);
-  RNA_def_property_ui_text(prop, "Lambda Factor", "Smooth effect factor");
+  RNA_def_property_ui_text(prop, "Lambda Factor", "Smooth factor effect");
   RNA_def_property_update(prop, 0, "rna_CorrectiveSmoothModifier_update");
 
   prop = RNA_def_property(srna, "iterations", PROP_INT, PROP_NONE);
@@ -3452,7 +3440,7 @@ static void rna_def_modifier_laplaciansmooth(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "lambda");
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_range(prop, -1000.0, 1000.0, 5, 3);
-  RNA_def_property_ui_text(prop, "Lambda Factor", "Smooth effect factor");
+  RNA_def_property_ui_text(prop, "Lambda Factor", "Smooth factor effect");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "lambda_border", PROP_FLOAT, PROP_NONE);
@@ -4003,7 +3991,6 @@ static void rna_def_modifier_dynamic_paint(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
   RNA_def_property_enum_items(prop, rna_enum_prop_dynamicpaint_type_items);
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SIMULATION);
   RNA_def_property_ui_text(prop, "Type", "");
 
   RNA_define_lib_overridable(false);
@@ -4512,7 +4499,6 @@ static void rna_def_modifier_simpledeform(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "mode");
   RNA_def_property_enum_items(prop, simple_deform_mode_items);
   RNA_def_property_ui_text(prop, "Mode", "");
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
@@ -4780,7 +4766,7 @@ static void rna_def_modifier_solidify(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_SOLIDIFY_NONMANIFOLD_FLAT_FACES);
   RNA_def_property_ui_text(prop,
                            "Flat Faces",
-                           "Make faces use the minimal vertex weight assigned to their vertices "
+                           "Make faces use the minimal vertex weight assigned to their vertices"
                            "(ensures new faces remain parallel to their original ones, slow, "
                            "disable when not needed)");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -7048,11 +7034,6 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_NodesModifier_node_group_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, 0, "rna_NodesModifier_node_group_update");
-
-  prop = RNA_def_property(srna, "simulation_bake_directory", PROP_STRING, PROP_DIRPATH);
-  RNA_def_property_ui_text(
-      prop, "Simulation Bake Directory", "Location on disk where the bake data is stored");
-  RNA_def_property_update(prop, 0, NULL);
 
   RNA_define_lib_overridable(false);
 }

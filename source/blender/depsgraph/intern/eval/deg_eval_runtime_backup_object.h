@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -13,7 +12,6 @@
 
 #include "BLI_session_uuid.h"
 
-#include "intern/depsgraph_type.h"
 #include "intern/eval/deg_eval_runtime_backup_modifier.h"
 #include "intern/eval/deg_eval_runtime_backup_pose.h"
 
@@ -41,7 +39,6 @@ class ObjectRuntimeBackup {
   void restore_pose_channel_runtime_data(Object *object);
 
   Object_Runtime runtime;
-  optional<LightLinkingRuntime> light_linking_runtime;
   short base_flag;
   unsigned short base_local_view_bits;
   Map<SessionUUID, ModifierDataBackup> modifier_runtime_data;

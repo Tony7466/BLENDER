@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 by Nicholas Bishop. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -1385,9 +1384,8 @@ struct AutomaskingNodeData {
   bool have_orig_data;
 };
 
-/**
- * Call before PBVH vertex iteration.
- * \param automask_data: pointer to an uninitialized #AutomaskingNodeData struct.
+/** Call before PBVH vertex iteration.
+ * \param automask_data: pointer to an uninitialized AutomaskingNodeData struct.
  */
 void SCULPT_automasking_node_begin(Object *ob,
                                    const SculptSession *ss,
@@ -1674,7 +1672,6 @@ void SCULPT_OT_project_line_gesture(wmOperatorType *ot);
 
 void SCULPT_OT_face_sets_randomize_colors(wmOperatorType *ot);
 void SCULPT_OT_face_sets_change_visibility(wmOperatorType *ot);
-void SCULPT_OT_face_sets_invert_visibility(wmOperatorType *ot);
 void SCULPT_OT_face_sets_init(wmOperatorType *ot);
 void SCULPT_OT_face_sets_create(wmOperatorType *ot);
 void SCULPT_OT_face_sets_edit(wmOperatorType *ot);

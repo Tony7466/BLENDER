@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -84,7 +82,7 @@ PyObject *BPY_app_opensubdiv_struct(void)
   /* prevent user from creating new instances */
   BlenderAppOpenSubdivType.tp_init = NULL;
   BlenderAppOpenSubdivType.tp_new = NULL;
-  /* Without this we can't do `set(sys.modules)` #29635. */
+  /* without this we can't do set(sys.modules) #29635. */
   BlenderAppOpenSubdivType.tp_hash = (hashfunc)_Py_HashPointer;
 
   return ret;

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pygen
@@ -749,7 +747,7 @@ static PyObject *BPy_IDPropertyUIManager_update_from(BPy_IDPropertyUIManager *se
 /** \name UI Data Manager Definition
  * \{ */
 
-static PyMethodDef BPy_IDPropertyUIManager_methods[] = {
+static struct PyMethodDef BPy_IDPropertyUIManager_methods[] = {
     {"update",
      (PyCFunction)BPy_IDPropertyUIManager_update,
      METH_VARARGS | METH_KEYWORDS,

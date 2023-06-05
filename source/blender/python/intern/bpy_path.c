@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -22,7 +20,7 @@ extern const char *imb_ext_movie[];
 extern const char *imb_ext_audio[];
 
 /*----------------------------MODULE INIT-------------------------*/
-static PyModuleDef _bpy_path_module_def = {
+static struct PyModuleDef _bpy_path_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "_bpy_path",
     /*m_doc*/ NULL,

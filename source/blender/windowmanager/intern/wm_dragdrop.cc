@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2010 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2010 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -70,7 +69,7 @@ static void wm_drag_free_path_data(wmDragPath **path_data);
 /* when editors become configurable, they can add own dropbox definitions */
 
 struct wmDropBoxMap {
-  wmDropBoxMap *next, *prev;
+  struct wmDropBoxMap *next, *prev;
 
   ListBase dropboxes;
   short spaceid, regionid;
@@ -88,7 +87,7 @@ ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid)
   }
 
   wmDropBoxMap *dm = MEM_cnew<wmDropBoxMap>(__func__);
-  STRNCPY(dm->idname, idname);
+  BLI_strncpy(dm->idname, idname, KMAP_MAX_NAME);
   dm->spaceid = spaceid;
   dm->regionid = regionid;
   BLI_addtail(&dropboxes, dm);
@@ -178,8 +177,7 @@ static void wm_dropbox_invoke(bContext *C, wmDrag *drag)
   }
 }
 
-wmDrag *WM_drag_data_create(
-    bContext *C, int icon, eWM_DragDataType type, void *poin, double value, uint flags)
+wmDrag *WM_drag_data_create(bContext *C, int icon, int type, void *poin, double value, uint flags)
 {
   wmDrag *drag = MEM_cnew<wmDrag>(__func__);
 
@@ -234,8 +232,7 @@ void WM_event_start_prepared_drag(bContext *C, wmDrag *drag)
   wm_dropbox_invoke(C, drag);
 }
 
-void WM_event_start_drag(
-    bContext *C, int icon, eWM_DragDataType type, void *poin, double value, uint flags)
+void WM_event_start_drag(bContext *C, int icon, int type, void *poin, double value, uint flags)
 {
   wmDrag *drag = WM_drag_data_create(C, icon, type, poin, value, flags);
   WM_event_start_prepared_drag(C, drag);
@@ -291,7 +288,7 @@ void WM_event_drag_image(wmDrag *drag, ImBuf *imb, float scale)
   drag->imbuf_scale = scale;
 }
 
-void WM_drag_data_free(eWM_DragDataType dragtype, void *poin)
+void WM_drag_data_free(int dragtype, void *poin)
 {
   /* Don't require all the callers to have a nullptr-check, just allow passing nullptr. */
   if (!poin) {
@@ -570,7 +567,7 @@ wmDragAsset *WM_drag_create_asset_data(const AssetHandle *asset, const char *pat
 {
   wmDragAsset *asset_drag = MEM_new<wmDragAsset>(__func__);
 
-  STRNCPY(asset_drag->name, ED_asset_handle_get_name(asset));
+  BLI_strncpy(asset_drag->name, ED_asset_handle_get_name(asset), sizeof(asset_drag->name));
   asset_drag->metadata = ED_asset_handle_get_metadata(asset);
   asset_drag->path = path;
   asset_drag->id_type = ED_asset_handle_get_id_type(asset);
@@ -832,7 +829,7 @@ const char *WM_drag_get_item_name(wmDrag *drag)
   switch (drag->type) {
     case WM_DRAG_ID: {
       ID *id = WM_drag_get_local_ID(drag, 0);
-      bool single = BLI_listbase_is_single(&drag->ids);
+      bool single = (BLI_listbase_count_at_most(&drag->ids, 2) == 1);
 
       if (single) {
         return id->name + 2;
@@ -852,8 +849,6 @@ const char *WM_drag_get_item_name(wmDrag *drag)
     }
     case WM_DRAG_NAME:
       return static_cast<const char *>(drag->poin);
-    default:
-      break;
   }
   return "";
 }
@@ -890,7 +885,7 @@ static void wm_drag_draw_icon(bContext * /*C*/, wmWindow * /*win*/, wmDrag *drag
                                   drag->imb->y,
                                   GPU_RGBA8,
                                   false,
-                                  drag->imb->byte_buffer.data,
+                                  drag->imb->rect,
                                   drag->imbuf_scale,
                                   drag->imbuf_scale,
                                   1.0f,

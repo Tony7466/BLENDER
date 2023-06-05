@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -259,7 +257,7 @@ static void object_defgroup_remove_common(Object *ob, bDeformGroup *dg, const in
     BKE_object_defgroup_active_index_set(ob, active_index - 1);
   }
 
-  /* Remove all deform-verts. */
+  /* remove all dverts */
   if (BLI_listbase_is_empty(defbase)) {
     if (ob->type == OB_MESH) {
       Mesh *me = ob->data;
@@ -383,7 +381,7 @@ void BKE_object_defgroup_remove(Object *ob, bDeformGroup *defgroup)
   }
 }
 
-void BKE_object_defgroup_remove_all_ex(Object *ob, bool only_unlocked)
+void BKE_object_defgroup_remove_all_ex(struct Object *ob, bool only_unlocked)
 {
   ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
 
@@ -406,8 +404,8 @@ void BKE_object_defgroup_remove_all_ex(Object *ob, bool only_unlocked)
       dg = next_dg;
     }
   }
-  else { /* `defbase` is empty. */
-    /* Remove all deform-verts. */
+  else { /* defbase is empty... */
+    /* remove all dverts */
     if (ob->type == OB_MESH) {
       Mesh *me = ob->data;
       CustomData_free_layer_active(&me->vdata, CD_MDEFORMVERT, me->totvert);
@@ -421,7 +419,7 @@ void BKE_object_defgroup_remove_all_ex(Object *ob, bool only_unlocked)
   }
 }
 
-void BKE_object_defgroup_remove_all(Object *ob)
+void BKE_object_defgroup_remove_all(struct Object *ob)
 {
   BKE_object_defgroup_remove_all_ex(ob, false);
 }
@@ -694,7 +692,7 @@ void BKE_object_defgroup_split_locked_validmap(
   }
 }
 
-void BKE_object_defgroup_mirror_selection(Object *ob,
+void BKE_object_defgroup_mirror_selection(struct Object *ob,
                                           int defbase_tot,
                                           const bool *dg_selection,
                                           bool *dg_flags_sel,

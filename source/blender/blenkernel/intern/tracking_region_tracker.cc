@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -81,13 +80,13 @@ static float *track_get_search_floatbuf(ImBuf *ibuf,
 
   gray_pixels = MEM_cnew_array<float>(width * height, "tracking floatBuf");
 
-  if (searchibuf->float_buffer.data) {
+  if (searchibuf->rect_float) {
     float_rgba_to_gray(
-        searchibuf->float_buffer.data, gray_pixels, width * height, 0.2126f, 0.7152f, 0.0722f);
+        searchibuf->rect_float, gray_pixels, width * height, 0.2126f, 0.7152f, 0.0722f);
   }
   else {
     uint8_rgba_to_float_gray(
-        searchibuf->byte_buffer.data, gray_pixels, width * height, 0.2126f, 0.7152f, 0.0722f);
+        (uchar *)searchibuf->rect, gray_pixels, width * height, 0.2126f, 0.7152f, 0.0722f);
   }
 
   IMB_freeImBuf(searchibuf);

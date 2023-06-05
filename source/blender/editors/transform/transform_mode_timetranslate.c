@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -119,12 +118,14 @@ static void applyTimeTranslate(TransInfo *t, const int mval[2])
   ED_area_status_text(t->area, str);
 }
 
-static void initTimeTranslate(TransInfo *t, struct wmOperator *UNUSED(op))
+void initTimeTranslate(TransInfo *t)
 {
   /* this tool is only really available in the Action Editor... */
   if (!ELEM(t->spacetype, SPACE_ACTION, SPACE_SEQ)) {
     t->state = TRANS_CANCEL;
   }
+
+  t->transform = applyTimeTranslate;
 
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
 
@@ -143,14 +144,3 @@ static void initTimeTranslate(TransInfo *t, struct wmOperator *UNUSED(op))
 }
 
 /** \} */
-
-TransModeInfo TransMode_timetranslate = {
-    /*flags*/ 0,
-    /*init_fn*/ initTimeTranslate,
-    /*transform_fn*/ applyTimeTranslate,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

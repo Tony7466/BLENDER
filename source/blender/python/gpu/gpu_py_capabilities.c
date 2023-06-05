@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -234,7 +232,7 @@ static PyObject *pygpu_shader_image_load_store_support_get(PyObject *UNUSED(self
 /** \name Module
  * \{ */
 
-static PyMethodDef pygpu_capabilities__tp_methods[] = {
+static struct PyMethodDef pygpu_capabilities__tp_methods[] = {
     {"max_texture_size_get",
      (PyCFunction)pygpu_max_texture_size_get,
      METH_NOARGS,

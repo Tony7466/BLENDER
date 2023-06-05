@@ -51,11 +51,11 @@ void MetalDevice::set_error(const string &error)
 
   Device::set_error(error);
 
-  if (!has_error) {
+  if (first_error) {
     fprintf(stderr, "\nRefer to the Cycles GPU rendering documentation for possible solutions:\n");
     fprintf(stderr,
             "https://docs.blender.org/manual/en/latest/render/cycles/gpu_rendering.html\n\n");
-    has_error = true;
+    first_error = false;
   }
 }
 
@@ -345,9 +345,7 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
     case METAL_GPU_APPLE:
       global_defines += "#define __KERNEL_METAL_APPLE__\n";
 #  ifdef WITH_NANOVDB
-      if (DebugFlags().metal.use_nanovdb) {
-        global_defines += "#define WITH_NANOVDB\n";
-      }
+      global_defines += "#define WITH_NANOVDB\n";
 #  endif
       break;
   }

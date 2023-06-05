@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -4456,12 +4455,12 @@ void BKE_fluid_particle_system_create(Main *bmain,
   part->phystype = PART_PHYS_NO; /* No physics needed, part system only used to display data. */
   psys->part = part;
   psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
-  STRNCPY(psys->name, parts_name);
+  BLI_strncpy(psys->name, parts_name, sizeof(psys->name));
   BLI_addtail(&ob->particlesystem, psys);
 
   /* add modifier */
   pfmd = (ParticleSystemModifierData *)BKE_modifier_new(eModifierType_ParticleSystem);
-  STRNCPY(pfmd->modifier.name, psys_name);
+  BLI_strncpy(pfmd->modifier.name, psys_name, sizeof(pfmd->modifier.name));
   pfmd->psys = psys;
   BLI_addtail(&ob->modifiers, pfmd);
   BKE_modifier_unique_name(&ob->modifiers, (ModifierData *)pfmd);
@@ -4969,7 +4968,7 @@ void BKE_fluid_modifier_copy(const FluidModifierData *fmd, FluidModifierData *tf
     tfds->cache_data_format = fds->cache_data_format;
     tfds->cache_particle_format = fds->cache_particle_format;
     tfds->cache_noise_format = fds->cache_noise_format;
-    STRNCPY(tfds->cache_directory, fds->cache_directory);
+    BLI_strncpy(tfds->cache_directory, fds->cache_directory, sizeof(tfds->cache_directory));
 
     /* time options */
     tfds->time_scale = fds->time_scale;
@@ -5057,7 +5056,7 @@ void BKE_fluid_modifier_copy(const FluidModifierData *fmd, FluidModifierData *tf
     /* texture control */
     tffs->texture_size = ffs->texture_size;
     tffs->texture_offset = ffs->texture_offset;
-    STRNCPY(tffs->uvlayer_name, ffs->uvlayer_name);
+    BLI_strncpy(tffs->uvlayer_name, ffs->uvlayer_name, sizeof(tffs->uvlayer_name));
     tffs->vgroup_density = ffs->vgroup_density;
 
     tffs->type = ffs->type;

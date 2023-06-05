@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -23,20 +22,20 @@ NODE_STORAGE_FUNCS(NodeTranslateData)
 
 static void cmp_node_translate_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image")
+  b.add_input<decl::Color>(N_("Image"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Float>("X")
+  b.add_input<decl::Float>(N_("X"))
       .default_value(0.0f)
       .min(-10000.0f)
       .max(10000.0f)
       .compositor_expects_single_value();
-  b.add_input<decl::Float>("Y")
+  b.add_input<decl::Float>(N_("Y"))
       .default_value(0.0f)
       .min(-10000.0f)
       .max(10000.0f)
       .compositor_expects_single_value();
-  b.add_output<decl::Color>("Image");
+  b.add_output<decl::Color>(N_("Image"));
 }
 
 static void node_composit_init_translate(bNodeTree * /*ntree*/, bNode *node)

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -33,8 +31,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.hh"
-#include "MOD_ui_common.hh"
+#include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include "RE_texture.h"
 
@@ -86,7 +84,7 @@ static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void 
   walk(userData, ob, md, "texture");
 }
 
-static bool dependsOnTime(Scene * /*scene*/, ModifierData *md)
+static bool dependsOnTime(struct Scene * /*scene*/, ModifierData *md)
 {
   VolumeDisplaceModifierData *vdmd = reinterpret_cast<VolumeDisplaceModifierData *>(md);
   if (vdmd->texture) {

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edphys
@@ -1147,7 +1146,7 @@ static bool copy_particle_systems_to_object(const bContext *C,
     /* push on top of the stack, no use trying to reproduce old stack order */
     BLI_addtail(&ob_to->modifiers, md);
 
-    SNPRINTF(md->name, "ParticleSystem %i", i);
+    BLI_snprintf(md->name, sizeof(md->name), "ParticleSystem %i", i);
     BKE_modifier_unique_name(&ob_to->modifiers, (ModifierData *)psmd);
 
     psmd->psys = psys;

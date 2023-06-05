@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -138,7 +136,7 @@ static void workspace_blend_read_lib(BlendLibReader *reader, ID *id)
     workspace->pin_scene = nullptr;
   }
   else {
-    BLO_read_id_address(reader, id, &workspace->pin_scene);
+    BLO_read_id_address(reader, nullptr, &workspace->pin_scene);
   }
 
   /* Restore proper 'parent' pointers to relevant data, and clean up unused/invalid entries. */
@@ -157,7 +155,7 @@ static void workspace_blend_read_lib(BlendLibReader *reader, ID *id)
   }
 
   LISTBASE_FOREACH_MUTABLE (WorkSpaceLayout *, layout, &workspace->layouts) {
-    BLO_read_id_address(reader, id, &layout->screen);
+    BLO_read_id_address(reader, id->lib, &layout->screen);
 
     if (layout->screen) {
       if (ID_IS_LINKED(id)) {
@@ -175,7 +173,7 @@ static void workspace_blend_read_lib(BlendLibReader *reader, ID *id)
     }
   }
 
-  BKE_viewer_path_blend_read_lib(reader, id, &workspace->viewer_path);
+  BKE_viewer_path_blend_read_lib(reader, id->lib, &workspace->viewer_path);
 }
 
 static void workspace_blend_read_expand(BlendExpander *expander, ID *id)
@@ -226,7 +224,7 @@ static void workspace_layout_name_set(WorkSpace *workspace,
                                       WorkSpaceLayout *layout,
                                       const char *new_name)
 {
-  STRNCPY(layout->name, new_name);
+  BLI_strncpy(layout->name, new_name, sizeof(layout->name));
   BLI_uniquename(&workspace->layouts,
                  layout,
                  "Layout",
@@ -508,7 +506,7 @@ WorkSpaceLayout *BKE_workspace_layout_iter_circular(const WorkSpace *workspace,
   return nullptr;
 }
 
-void BKE_workspace_tool_remove(WorkSpace *workspace, bToolRef *tref)
+void BKE_workspace_tool_remove(struct WorkSpace *workspace, struct bToolRef *tref)
 {
   if (tref->runtime) {
     MEM_freeN(tref->runtime);
@@ -520,7 +518,7 @@ void BKE_workspace_tool_remove(WorkSpace *workspace, bToolRef *tref)
   MEM_freeN(tref);
 }
 
-void BKE_workspace_tool_id_replace_table(WorkSpace *workspace,
+void BKE_workspace_tool_id_replace_table(struct WorkSpace *workspace,
                                          const int space_type,
                                          const int mode,
                                          const char *idname_prefix_skip,

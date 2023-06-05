@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation. */
 
 /** \file
  * \ingroup bke
@@ -28,7 +27,6 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_object.h"
-#include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
 #include "DEG_depsgraph.h"
@@ -67,7 +65,7 @@ ShaderFxData *BKE_shaderfx_new(int type)
   ShaderFxData *fx = MEM_callocN(fxi->struct_size, fxi->struct_name);
 
   /* NOTE: this name must be made unique later. */
-  STRNCPY_UTF8(fx->name, DATA_(fxi->name));
+  BLI_strncpy(fx->name, DATA_(fxi->name), sizeof(fx->name));
 
   fx->type = type;
   fx->mode = eShaderFxMode_Realtime | eShaderFxMode_Render;
@@ -158,7 +156,9 @@ bool BKE_shaderfx_is_nonlocal_in_liboverride(const Object *ob, const ShaderFxDat
 void BKE_shaderfxType_panel_id(ShaderFxType type, char *r_idname)
 {
   const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(type);
-  BLI_string_join(r_idname, BKE_ST_MAXNAME, SHADERFX_TYPE_PANEL_PREFIX, fxi->name);
+
+  strcpy(r_idname, SHADERFX_TYPE_PANEL_PREFIX);
+  strcat(r_idname, fxi->name);
 }
 
 void BKE_shaderfx_panel_expand(ShaderFxData *fx)

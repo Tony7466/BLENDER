@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 #include "node_geometry_util.hh"
 
@@ -23,13 +22,13 @@ NODE_STORAGE_FUNCS(NodeGeometryImageTexture)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Image>("Image").hide_label();
-  b.add_input<decl::Vector>("Vector")
+  b.add_input<decl::Image>(N_("Image")).hide_label();
+  b.add_input<decl::Vector>(N_("Vector"))
       .implicit_field(implicit_field_inputs::position)
       .description("Texture coordinates from 0 to 1");
-  b.add_input<decl::Int>("Frame").min(0).max(MAXFRAMEF);
-  b.add_output<decl::Color>("Color").no_muted_links().dependent_field().reference_pass_all();
-  b.add_output<decl::Float>("Alpha").no_muted_links().dependent_field().reference_pass_all();
+  b.add_input<decl::Int>(N_("Frame")).min(0).max(MAXFRAMEF);
+  b.add_output<decl::Color>(N_("Color")).no_muted_links().dependent_field().reference_pass_all();
+  b.add_output<decl::Float>(N_("Alpha")).no_muted_links().dependent_field().reference_pass_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -80,15 +79,15 @@ class ImageFieldsFunction : public mf::MultiFunction {
       throw std::runtime_error("cannot acquire image buffer");
     }
 
-    if (image_buffer_->float_buffer.data == nullptr) {
+    if (image_buffer_->rect_float == nullptr) {
       BLI_thread_lock(LOCK_IMAGE);
-      if (!image_buffer_->float_buffer.data) {
+      if (!image_buffer_->rect_float) {
         IMB_float_from_rect(image_buffer_);
       }
       BLI_thread_unlock(LOCK_IMAGE);
     }
 
-    if (image_buffer_->float_buffer.data == nullptr) {
+    if (image_buffer_->rect_float == nullptr) {
       BKE_image_release_ibuf(&image_, image_buffer_, image_lock_);
       throw std::runtime_error("cannot get float buffer");
     }
@@ -127,7 +126,7 @@ class ImageFieldsFunction : public mf::MultiFunction {
     if (px < 0 || py < 0 || px >= ibuf.x || py >= ibuf.y) {
       return float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
-    return ((const float4 *)ibuf.float_buffer.data)[px + py * ibuf.x];
+    return ((const float4 *)ibuf.rect_float)[px + py * ibuf.x];
   }
 
   static float frac(const float x, int *ix)
@@ -317,7 +316,7 @@ class ImageFieldsFunction : public mf::MultiFunction {
     }
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &vectors = params.readonly_single_input<float3>(0, "Vector");
     MutableSpan<ColorGeometry4f> r_color = params.uninitialized_single_output<ColorGeometry4f>(
@@ -329,23 +328,23 @@ class ImageFieldsFunction : public mf::MultiFunction {
     /* Sample image texture. */
     switch (interpolation_) {
       case SHD_INTERP_LINEAR:
-        mask.foreach_index([&](const int64_t i) {
+        for (const int64_t i : mask) {
           const float3 p = vectors[i];
           color_data[i] = image_linear_texture_lookup(*image_buffer_, p.x, p.y, extension_);
-        });
+        }
         break;
       case SHD_INTERP_CLOSEST:
-        mask.foreach_index([&](const int64_t i) {
+        for (const int64_t i : mask) {
           const float3 p = vectors[i];
           color_data[i] = image_closest_texture_lookup(*image_buffer_, p.x, p.y, extension_);
-        });
+        }
         break;
       case SHD_INTERP_CUBIC:
       case SHD_INTERP_SMART:
-        mask.foreach_index([&](const int64_t i) {
+        for (const int64_t i : mask) {
           const float3 p = vectors[i];
           color_data[i] = image_cubic_texture_lookup(*image_buffer_, p.x, p.y, extension_);
-        });
+        }
         break;
     }
 
@@ -357,7 +356,9 @@ class ImageFieldsFunction : public mf::MultiFunction {
     switch (alpha_mode) {
       case IMA_ALPHA_STRAIGHT: {
         /* #ColorGeometry expects premultiplied alpha, so convert from straight to that. */
-        mask.foreach_index([&](const int64_t i) { straight_to_premul_v4(color_data[i]); });
+        for (int64_t i : mask) {
+          straight_to_premul_v4(color_data[i]);
+        }
         break;
       }
       case IMA_ALPHA_PREMUL: {
@@ -370,13 +371,17 @@ class ImageFieldsFunction : public mf::MultiFunction {
       }
       case IMA_ALPHA_IGNORE: {
         /* The image should be treated as being opaque. */
-        mask.foreach_index([&](const int64_t i) { color_data[i].w = 1.0f; });
+        for (int64_t i : mask) {
+          color_data[i].w = 1.0f;
+        }
         break;
       }
     }
 
     if (!r_alpha.is_empty()) {
-      mask.foreach_index([&](const int64_t i) { r_alpha[i] = r_color[i].a; });
+      for (int64_t i : mask) {
+        r_alpha[i] = r_color[i].a;
+      }
     }
   }
 };
@@ -430,7 +435,7 @@ void register_node_type_geo_image_texture()
   ntype.initfunc = file_ns::node_init;
   node_type_storage(
       &ntype, "NodeGeometryImageTexture", node_free_standard_storage, node_copy_standard_storage);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
   ntype.geometry_node_execute = file_ns::node_geo_exec;
 
   nodeRegisterType(&ntype);

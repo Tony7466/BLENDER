@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -660,7 +658,7 @@ static void rna_Fluid_cache_directory_set(struct PointerRNA *ptr, const char *va
     return;
   }
 
-  STRNCPY(settings->cache_directory, value);
+  BLI_strncpy(settings->cache_directory, value, sizeof(settings->cache_directory));
 
   /* TODO(sebbas): Read cache state in order to set cache bake flags and cache pause frames
    * correctly. */

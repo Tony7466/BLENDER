@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -51,21 +50,21 @@ typedef struct EXTERNAL_Storage {
 } EXTERNAL_Storage;
 
 typedef struct EXTERNAL_StorageList {
-  EXTERNAL_Storage *storage;
+  struct EXTERNAL_Storage *storage;
   struct EXTERNAL_PrivateData *g_data;
 } EXTERNAL_StorageList;
 
 typedef struct EXTERNAL_FramebufferList {
-  GPUFrameBuffer *depth_buffer_fb;
+  struct GPUFrameBuffer *depth_buffer_fb;
 } EXTERNAL_FramebufferList;
 
 typedef struct EXTERNAL_TextureList {
   /* default */
-  GPUTexture *depth_buffer_tx;
+  struct GPUTexture *depth_buffer_tx;
 } EXTERNAL_TextureList;
 
 typedef struct EXTERNAL_PassList {
-  DRWPass *depth_pass;
+  struct DRWPass *depth_pass;
 } EXTERNAL_PassList;
 
 typedef struct EXTERNAL_Data {
@@ -83,7 +82,7 @@ typedef struct EXTERNAL_Data {
 
 static struct {
   /* Depth Pre Pass */
-  GPUShader *depth_sh;
+  struct GPUShader *depth_sh;
 } e_data = {NULL}; /* Engine data */
 
 typedef struct EXTERNAL_PrivateData {
@@ -216,12 +215,12 @@ static void external_cache_populate(void *vedata, Object *ob)
       const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
 
       if (draw_as == PART_DRAW_PATH) {
-        GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, NULL);
+        struct GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, NULL);
         DRW_shgroup_call(stl->g_data->depth_shgrp, hairs, NULL);
       }
     }
   }
-  GPUBatch *geom = DRW_cache_object_surface_get(ob);
+  struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
     /* Depth Pre-pass. */
     DRW_shgroup_call(stl->g_data->depth_shgrp, geom, ob);
@@ -272,7 +271,7 @@ static void external_draw_scene_do_v3d(void *vedata)
   /* Set render info. */
   EXTERNAL_Data *data = vedata;
   if (rv3d->render_engine->text[0] != '\0') {
-    STRNCPY(data->info, rv3d->render_engine->text);
+    BLI_strncpy(data->info, rv3d->render_engine->text, sizeof(data->info));
   }
   else {
     data->info[0] = '\0';
@@ -290,7 +289,7 @@ static void external_image_space_matrix_set(const RenderEngine *engine)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const DRWView *view = DRW_view_get_active();
-  SpaceImage *space_image = (SpaceImage *)draw_ctx->space_data;
+  struct SpaceImage *space_image = (struct SpaceImage *)draw_ctx->space_data;
 
   /* Apply current view as transformation matrix.
    * This will configure drawing for normalized space with current zoom and pan applied. */
@@ -488,7 +487,7 @@ bool DRW_engine_external_acquire_for_image_editor(void)
     return false;
   }
 
-  SpaceImage *space_image = (SpaceImage *)space_data;
+  struct SpaceImage *space_image = (struct SpaceImage *)space_data;
   const Image *image = ED_space_image(space_image);
   if (image == NULL || image->type != IMA_TYPE_R_RESULT) {
     return false;

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edobj
@@ -90,7 +89,6 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_lightprobe_add);
   WM_operatortype_append(OBJECT_OT_drop_named_image);
   WM_operatortype_append(OBJECT_OT_gpencil_add);
-  WM_operatortype_append(OBJECT_OT_grease_pencil_add);
   WM_operatortype_append(OBJECT_OT_light_add);
   WM_operatortype_append(OBJECT_OT_camera_add);
   WM_operatortype_append(OBJECT_OT_speaker_add);
@@ -262,9 +260,6 @@ void ED_operatortypes_object(void)
 
   WM_operatortype_append(OBJECT_OT_bake_image);
   WM_operatortype_append(OBJECT_OT_bake);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_calculate_to_frame);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_bake);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_delete);
   WM_operatortype_append(OBJECT_OT_drop_named_material);
   WM_operatortype_append(OBJECT_OT_drop_geometry_nodes);
   WM_operatortype_append(OBJECT_OT_unlink_data);
@@ -284,18 +279,6 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_voxel_size_edit);
 
   WM_operatortype_append(OBJECT_OT_quadriflow_remesh);
-
-  /* Light linking. */
-
-  WM_operatortype_append(OBJECT_OT_light_linking_receiver_collection_new);
-  WM_operatortype_append(OBJECT_OT_light_linking_receivers_select);
-  WM_operatortype_append(OBJECT_OT_light_linking_receivers_link);
-
-  WM_operatortype_append(OBJECT_OT_light_linking_blocker_collection_new);
-  WM_operatortype_append(OBJECT_OT_light_linking_blockers_select);
-  WM_operatortype_append(OBJECT_OT_light_linking_blockers_link);
-
-  WM_operatortype_append(OBJECT_OT_light_linking_unlink_from_collection);
 }
 
 void ED_operatormacros_object(void)

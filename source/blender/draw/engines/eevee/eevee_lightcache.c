@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -139,8 +138,8 @@ typedef struct EEVEE_LightBake {
   LightProbe **cube_prb;
 
   /* Dummy Textures */
-  GPUTexture *dummy_color, *dummy_depth;
-  GPUTexture *dummy_layer_color;
+  struct GPUTexture *dummy_color, *dummy_depth;
+  struct GPUTexture *dummy_layer_color;
 
   int total, done; /* to compute progress */
   bool *stop, *do_update;
@@ -231,25 +230,29 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
     }
 
     if (lcache->cube_tx.tex_size[2] > GPU_max_texture_layers()) {
-      STRNCPY(eevee->light_cache_info,
-              TIP_("Error: Light cache is too big for the GPU to be loaded"));
+      BLI_strncpy(eevee->light_cache_info,
+                  TIP_("Error: Light cache is too big for the GPU to be loaded"),
+                  sizeof(eevee->light_cache_info));
       return;
     }
 
     if (lcache->flag & LIGHTCACHE_INVALID) {
-      STRNCPY(eevee->light_cache_info,
-              TIP_("Error: Light cache dimensions not supported by the GPU"));
+      BLI_strncpy(eevee->light_cache_info,
+                  TIP_("Error: Light cache dimensions not supported by the GPU"),
+                  sizeof(eevee->light_cache_info));
       return;
     }
 
     if (lcache->flag & LIGHTCACHE_BAKING) {
-      STRNCPY(eevee->light_cache_info, TIP_("Baking light cache"));
+      BLI_strncpy(
+          eevee->light_cache_info, TIP_("Baking light cache"), sizeof(eevee->light_cache_info));
       return;
     }
 
     if (!eevee_lightcache_can_be_saved(lcache)) {
-      STRNCPY(eevee->light_cache_info,
-              TIP_("Error: LightCache is too large and will not be saved to disk"));
+      BLI_strncpy(eevee->light_cache_info,
+                  TIP_("Error: LightCache is too large and will not be saved to disk"),
+                  sizeof(eevee->light_cache_info));
       return;
     }
 
@@ -258,14 +261,17 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
 
     int irr_samples = eevee_lightcache_irradiance_sample_count(lcache);
 
-    SNPRINTF(eevee->light_cache_info,
-             TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
-             lcache->cube_len - 1,
-             irr_samples,
-             formatted_mem);
+    BLI_snprintf(eevee->light_cache_info,
+                 sizeof(eevee->light_cache_info),
+                 TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
+                 lcache->cube_len - 1,
+                 irr_samples,
+                 formatted_mem);
   }
   else {
-    STRNCPY(eevee->light_cache_info, TIP_("No light cache in this scene"));
+    BLI_strncpy(eevee->light_cache_info,
+                TIP_("No light cache in this scene"),
+                sizeof(eevee->light_cache_info));
   }
 }
 
@@ -748,11 +754,11 @@ static void eevee_lightbake_create_resources(EEVEE_LightBake *lbake)
   lbake->lcache->cube_len = 1;
 }
 
-wmJob *EEVEE_lightbake_job_create(wmWindowManager *wm,
-                                  wmWindow *win,
+wmJob *EEVEE_lightbake_job_create(struct wmWindowManager *wm,
+                                  struct wmWindow *win,
                                   struct Main *bmain,
-                                  ViewLayer *view_layer,
-                                  Scene *scene,
+                                  struct ViewLayer *view_layer,
+                                  struct Scene *scene,
                                   int delay,
                                   int frame)
 {
@@ -818,8 +824,11 @@ wmJob *EEVEE_lightbake_job_create(wmWindowManager *wm,
   return wm_job;
 }
 
-void *EEVEE_lightbake_job_data_alloc(
-    struct Main *bmain, ViewLayer *view_layer, Scene *scene, bool run_as_job, int frame)
+void *EEVEE_lightbake_job_data_alloc(struct Main *bmain,
+                                     struct ViewLayer *view_layer,
+                                     struct Scene *scene,
+                                     bool run_as_job,
+                                     int frame)
 {
   BLI_assert(BLI_thread_is_main());
 

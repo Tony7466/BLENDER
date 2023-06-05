@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -48,7 +47,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
@@ -195,8 +194,8 @@ static void texture_blend_read_data(BlendDataReader *reader, ID *id)
 static void texture_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Tex *tex = (Tex *)id;
-  BLO_read_id_address(reader, id, &tex->ima);
-  BLO_read_id_address(reader, id, &tex->ipo); /* XXX deprecated - old animation system */
+  BLO_read_id_address(reader, tex->id.lib, &tex->ima);
+  BLO_read_id_address(reader, tex->id.lib, &tex->ipo); /* XXX deprecated - old animation system */
 }
 
 static void texture_blend_read_expand(BlendExpander *expander, ID *id)
@@ -676,7 +675,7 @@ void BKE_texture_pointdensity_free(PointDensity *pd)
 }
 /* ------------------------------------------------------------------------- */
 
-bool BKE_texture_is_image_user(const Tex *tex)
+bool BKE_texture_is_image_user(const struct Tex *tex)
 {
   switch (tex->type) {
     case TEX_IMAGE: {
@@ -687,7 +686,7 @@ bool BKE_texture_is_image_user(const Tex *tex)
   return false;
 }
 
-bool BKE_texture_dependsOnTime(const Tex *texture)
+bool BKE_texture_dependsOnTime(const struct Tex *texture)
 {
   if (texture->ima && BKE_image_is_animated(texture->ima)) {
     return true;
@@ -709,7 +708,7 @@ void BKE_texture_get_value_ex(const Scene *scene,
                               Tex *texture,
                               const float *tex_co,
                               TexResult *texres,
-                              ImagePool *pool,
+                              struct ImagePool *pool,
                               bool use_color_management)
 {
   int result_type;
@@ -743,7 +742,9 @@ void BKE_texture_get_value(const Scene *scene,
   BKE_texture_get_value_ex(scene, texture, tex_co, texres, nullptr, use_color_management);
 }
 
-static void texture_nodes_fetch_images_for_pool(Tex *texture, bNodeTree *ntree, ImagePool *pool)
+static void texture_nodes_fetch_images_for_pool(Tex *texture,
+                                                bNodeTree *ntree,
+                                                struct ImagePool *pool)
 {
   for (bNode *node : ntree->all_nodes()) {
     if (node->type == SH_NODE_TEX_IMAGE && node->id != nullptr) {
@@ -758,7 +759,7 @@ static void texture_nodes_fetch_images_for_pool(Tex *texture, bNodeTree *ntree, 
   }
 }
 
-void BKE_texture_fetch_images_for_pool(Tex *texture, ImagePool *pool)
+void BKE_texture_fetch_images_for_pool(Tex *texture, struct ImagePool *pool)
 {
   if (texture->nodetree != nullptr) {
     texture_nodes_fetch_images_for_pool(texture, texture->nodetree, pool);

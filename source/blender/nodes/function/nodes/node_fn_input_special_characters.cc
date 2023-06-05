@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_function_util.hh"
 
@@ -8,8 +6,9 @@ namespace blender::nodes::node_fn_input_special_characters_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::String>("Line Break");
-  b.add_output<decl::String>("Tab").translation_context(BLT_I18NCONTEXT_ID_TEXT);
+  b.add_output<decl::String>(N_("Line Break"));
+  b.add_output<decl::String>(CTX_N_(BLT_I18NCONTEXT_ID_TEXT, "Tab"))
+      .translation_context(BLT_I18NCONTEXT_ID_TEXT);
 }
 
 class MF_SpecialCharacters : public mf::MultiFunction {
@@ -26,15 +25,15 @@ class MF_SpecialCharacters : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     MutableSpan<std::string> lb = params.uninitialized_single_output<std::string>(0, "Line Break");
     MutableSpan<std::string> tab = params.uninitialized_single_output<std::string>(1, "Tab");
 
-    mask.foreach_index([&](const int64_t i) {
+    for (const int i : mask) {
       new (&lb[i]) std::string("\n");
       new (&tab[i]) std::string("\t");
-    });
+    }
   }
 };
 

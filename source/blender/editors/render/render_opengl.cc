@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup render
@@ -194,9 +193,17 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
       RenderView *rv_del = rv->next;
       BLI_remlink(&rr->views, rv_del);
 
-      RE_RenderBuffer_data_free(&rv_del->combined_buffer);
-      RE_RenderBuffer_data_free(&rv_del->z_buffer);
-      RE_RenderByteBuffer_data_free(&rv_del->byte_buffer);
+      if (rv_del->rectf) {
+        MEM_freeN(rv_del->rectf);
+      }
+
+      if (rv_del->rectz) {
+        MEM_freeN(rv_del->rectz);
+      }
+
+      if (rv_del->rect32) {
+        MEM_freeN(rv_del->rect32);
+      }
 
       MEM_freeN(rv_del);
     }
@@ -220,9 +227,17 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 
         BLI_remlink(&rr->views, rv_del);
 
-        RE_RenderBuffer_data_free(&rv_del->combined_buffer);
-        RE_RenderBuffer_data_free(&rv_del->z_buffer);
-        RE_RenderByteBuffer_data_free(&rv_del->byte_buffer);
+        if (rv_del->rectf) {
+          MEM_freeN(rv_del->rectf);
+        }
+
+        if (rv_del->rectz) {
+          MEM_freeN(rv_del->rectz);
+        }
+
+        if (rv_del->rect32) {
+          MEM_freeN(rv_del->rect32);
+        }
 
         MEM_freeN(rv_del);
       }
@@ -239,7 +254,7 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 
       if (rv == nullptr) {
         rv = MEM_cnew<RenderView>("new opengl render view");
-        STRNCPY(rv->name, srv->name);
+        BLI_strncpy(rv->name, srv->name, sizeof(rv->name));
         BLI_addtail(&rr->views, rv);
       }
     }
@@ -271,7 +286,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 
   if (oglrender->is_sequencer) {
     SpaceSeq *sseq = oglrender->sseq;
-    bGPdata *gpd = (sseq && (sseq->flag & SEQ_PREVIEW_SHOW_GPENCIL)) ? sseq->gpd : nullptr;
+    struct bGPdata *gpd = (sseq && (sseq->flag & SEQ_PREVIEW_SHOW_GPENCIL)) ? sseq->gpd : nullptr;
 
     /* use pre-calculated ImBuf (avoids deadlock), see: */
     ImBuf *ibuf = oglrender->seq_data.ibufs_arr[oglrender->view_id];
@@ -286,7 +301,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
        * TODO(sergey): In the case of output to float container (EXR)
        * it actually makes sense to keep float buffer instead.
        */
-      if (ibuf_result->float_buffer.data != nullptr) {
+      if (ibuf_result->rect_float != nullptr) {
         IMB_rect_from_float(ibuf_result);
         imb_freerectfloatImBuf(ibuf_result);
       }
@@ -300,7 +315,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
     if (gpd) {
       int i;
       uchar *gp_rect;
-      uchar *render_rect = ibuf_result->byte_buffer.data;
+      uchar *render_rect = (uchar *)ibuf_result->rect;
 
       DRW_opengl_context_enable();
       GPU_offscreen_bind(oglrender->ofs, true);
@@ -389,11 +404,11 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
     if ((scene->r.stamp & R_STAMP_ALL) && (scene->r.stamp & R_STAMP_DRAW)) {
       float *rectf = nullptr;
       uchar *rect = nullptr;
-      if (ibuf_result->float_buffer.data) {
-        rectf = ibuf_result->float_buffer.data;
+      if (ibuf_result->rect_float) {
+        rectf = ibuf_result->rect_float;
       }
       else {
-        rect = ibuf_result->byte_buffer.data;
+        rect = (uchar *)ibuf_result->rect;
       }
       BKE_image_stamp_buf(scene, camera, nullptr, rect, rectf, rr->rectx, rr->recty, 4);
     }
@@ -569,11 +584,11 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
   }
   ID *id = *id_p;
 
-  ID *self_id = cb_data->self_id;
+  ID *id_self = cb_data->id_self;
   const int cb_flag = cb_data->cb_flag;
-  if (cb_flag == IDWALK_CB_LOOPBACK || id == self_id) {
+  if (cb_flag == IDWALK_CB_LOOPBACK || id == id_self) {
     /* IDs may end up referencing themselves one way or the other, and those
-     * (the self_id ones) have always already been processed. */
+     * (the id_self ones) have always already been processed. */
     return IDWALK_RET_STOP_RECURSION;
   }
 
@@ -636,9 +651,6 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
       /* In addition to regular ID's animdata, GreasePencil uses a specific frame-based animation
        * system that requires specific handling here. */
       gather_frames_to_render_for_grease_pencil(oglrender, (bGPdata *)id);
-      break;
-    case ID_GP:
-      /* TODO: gather frames. */
       break;
   }
 
@@ -1308,9 +1320,9 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *screen_opengl_render_description(bContext * /*C*/,
-                                              wmOperatorType * /*ot*/,
-                                              PointerRNA *ptr)
+static char *screen_opengl_render_description(struct bContext * /*C*/,
+                                              struct wmOperatorType * /*ot*/,
+                                              struct PointerRNA *ptr)
 {
   if (!RNA_boolean_get(ptr, "animation")) {
     return nullptr;

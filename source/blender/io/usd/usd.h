@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation */
 
 #pragma once
 
@@ -51,7 +50,6 @@ struct USDExportParams {
   bool export_textures;
   bool overwrite_textures;
   bool relative_paths;
-  char root_prim_path[1024]; /* FILE_MAX */
 };
 
 struct USDImportParams {

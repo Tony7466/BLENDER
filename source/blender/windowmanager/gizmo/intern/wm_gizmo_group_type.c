@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -98,7 +96,7 @@ static void wm_gizmogrouptype_append__end(wmGizmoGroupType *gzgt)
   BLI_ghash_insert(global_gizmogrouptype_hash, (void *)gzgt->idname, gzgt);
 }
 
-wmGizmoGroupType *WM_gizmogrouptype_append(void (*wtfunc)(wmGizmoGroupType *))
+wmGizmoGroupType *WM_gizmogrouptype_append(void (*wtfunc)(struct wmGizmoGroupType *))
 {
   wmGizmoGroupType *gzgt = wm_gizmogrouptype_append__begin();
   wtfunc(gzgt);
@@ -106,7 +104,7 @@ wmGizmoGroupType *WM_gizmogrouptype_append(void (*wtfunc)(wmGizmoGroupType *))
   return gzgt;
 }
 
-wmGizmoGroupType *WM_gizmogrouptype_append_ptr(void (*wtfunc)(wmGizmoGroupType *, void *),
+wmGizmoGroupType *WM_gizmogrouptype_append_ptr(void (*wtfunc)(struct wmGizmoGroupType *, void *),
                                                void *userdata)
 {
   wmGizmoGroupType *gzgt = wm_gizmogrouptype_append__begin();
@@ -116,7 +114,7 @@ wmGizmoGroupType *WM_gizmogrouptype_append_ptr(void (*wtfunc)(wmGizmoGroupType *
 }
 
 wmGizmoGroupTypeRef *WM_gizmogrouptype_append_and_link(wmGizmoMapType *gzmap_type,
-                                                       void (*wtfunc)(wmGizmoGroupType *))
+                                                       void (*wtfunc)(struct wmGizmoGroupType *))
 {
   wmGizmoGroupType *gzgt = WM_gizmogrouptype_append(wtfunc);
 

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup blenloader
@@ -95,14 +94,7 @@ typedef struct FileData {
 
   struct OldNewMap *datamap;
   struct OldNewMap *globmap;
-
-  /**
-   * Store mapping from old ID pointers (the values they have in the .blend file) to new ones,
-   * typically from value in `bhead->old` to address in memory where the ID was read.
-   * Used during library-linking process (see #lib_link_all).
-   */
   struct OldNewMap *libmap;
-
   struct OldNewMap *packedmap;
   struct BLOCacheStorage *cache_storage;
 
@@ -115,10 +107,7 @@ typedef struct FileData {
   ListBase *mainlist;
   /** Used for undo. */
   ListBase *old_mainlist;
-  /**
-   * IDMap using UUID's as keys of all the old IDs in the old bmain. Used during undo to find a
-   * matching old data when reading a new ID. */
-  struct IDNameLib_Map *old_idmap_uuid;
+  struct IDNameLib_Map *old_idmap;
 
   struct BlendFileReadReport *reports;
 } FileData;
@@ -130,7 +119,7 @@ struct Main;
 void blo_join_main(ListBase *mainlist);
 void blo_split_main(ListBase *mainlist, struct Main *main);
 
-struct BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath);
+BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath);
 
 /**
  * On each new library added, it now checks for the current #FileData and expands relativeness
@@ -202,10 +191,8 @@ void blo_do_versions_oldnewmap_insert(struct OldNewMap *onm,
 /**
  * Only library data.
  */
-void *blo_do_versions_newlibadr(struct FileData *fd,
-                                ID *self_id,
-                                const bool is_linked_only,
-                                const void *adr);
+void *blo_do_versions_newlibadr(struct FileData *fd, const void *lib, const void *adr);
+void *blo_do_versions_newlibadr_us(struct FileData *fd, const void *lib, const void *adr);
 
 /**
  * \note this version patch is intended for versions < 2.52.2,
@@ -235,7 +222,6 @@ void do_versions_after_linking_270(struct Main *bmain);
 void do_versions_after_linking_280(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_290(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_300(struct FileData *fd, struct Main *bmain);
-void do_versions_after_linking_400(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_cycles(struct Main *bmain);
 
 /**

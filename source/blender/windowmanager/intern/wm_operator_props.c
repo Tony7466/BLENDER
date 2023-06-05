@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -146,7 +145,7 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
       ot->srna, "filter_movie", (filter & FILE_TYPE_MOVIE) != 0, "Filter movie files", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
-      ot->srna, "filter_python", (filter & FILE_TYPE_PYSCRIPT) != 0, "Filter Python files", "");
+      ot->srna, "filter_python", (filter & FILE_TYPE_PYSCRIPT) != 0, "Filter python files", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
       ot->srna, "filter_font", (filter & FILE_TYPE_FTFONT) != 0, "Filter font files", "");
@@ -393,7 +392,7 @@ void WM_operator_properties_border(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
-void WM_operator_properties_border_to_rcti(wmOperator *op, rcti *rect)
+void WM_operator_properties_border_to_rcti(struct wmOperator *op, rcti *rect)
 {
   rect->xmin = RNA_int_get(op->ptr, "xmin");
   rect->ymin = RNA_int_get(op->ptr, "ymin");
@@ -401,7 +400,7 @@ void WM_operator_properties_border_to_rcti(wmOperator *op, rcti *rect)
   rect->ymax = RNA_int_get(op->ptr, "ymax");
 }
 
-void WM_operator_properties_border_to_rctf(wmOperator *op, rctf *rect)
+void WM_operator_properties_border_to_rctf(struct wmOperator *op, rctf *rect)
 {
   rcti rect_i;
   WM_operator_properties_border_to_rcti(op, &rect_i);
@@ -632,7 +631,7 @@ void WM_operator_properties_checker_interval(wmOperatorType *ot, bool nth_can_di
               100);
 }
 
-void WM_operator_properties_checker_interval_from_op(wmOperator *op,
+void WM_operator_properties_checker_interval_from_op(struct wmOperator *op,
                                                      struct CheckerIntervalParams *op_params)
 {
   const int nth = RNA_int_get(op->ptr, "nth");

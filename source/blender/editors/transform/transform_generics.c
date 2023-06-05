@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -186,7 +185,8 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   copy_v2_v2_int(t->mouse.imval, mval);
   copy_v2_v2_int(t->con.imval, mval);
 
-  t->mode_info = NULL;
+  t->transform = NULL;
+  t->handleEvent = NULL;
 
   t->data_len_all = 0;
 
@@ -629,19 +629,21 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     t->options |= CTX_NO_PET;
   }
 
-  if (op && (prop = RNA_struct_find_property(op->ptr, "use_automerge_and_split")) &&
-      RNA_property_is_set(op->ptr, prop))
-  {
-    if (RNA_property_boolean_get(op->ptr, prop)) {
-      t->flag |= T_AUTOMERGE | T_AUTOSPLIT;
+  if (t->obedit_type == OB_MESH) {
+    if (op && (prop = RNA_struct_find_property(op->ptr, "use_automerge_and_split")) &&
+        RNA_property_is_set(op->ptr, prop))
+    {
+      if (RNA_property_boolean_get(op->ptr, prop)) {
+        t->flag |= T_AUTOMERGE | T_AUTOSPLIT;
+      }
     }
-  }
-  else if (t->obedit_type == OB_MESH) {
-    char automerge = t->scene->toolsettings->automerge;
-    if (automerge & AUTO_MERGE) {
-      t->flag |= T_AUTOMERGE;
-      if (automerge & AUTO_MERGE_AND_SPLIT) {
-        t->flag |= T_AUTOSPLIT;
+    else {
+      char automerge = t->scene->toolsettings->automerge;
+      if (automerge & AUTO_MERGE) {
+        t->flag |= T_AUTOMERGE;
+        if (automerge & AUTO_MERGE_AND_SPLIT) {
+          t->flag |= T_AUTOSPLIT;
+        }
       }
     }
   }
@@ -658,16 +660,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     t->flag |= T_NO_CURSOR_WRAP;
   }
 
-  if (op && (t->flag & T_MODAL) && !(t->flag & T_RELEASE_CONFIRM) &&
-      (prop = RNA_struct_find_property(op->ptr, "allow_navigation")) &&
-      RNA_property_boolean_get(op->ptr, prop))
-  {
-    t->vod = ED_view3d_navigation_init(C);
-  }
-
   setTransformViewMatrices(t);
-  calculateCenter2D(t);
-  calculateCenterLocal(t, t->center_global);
   initNumInput(&t->num);
 
   transform_gizmo_3d_model_from_constraint_and_mode_init(t);
@@ -777,10 +770,6 @@ void postTrans(bContext *C, TransInfo *t)
   }
 
   freeSnapping(t);
-
-  if (t->vod) {
-    ED_view3d_navigation_free(C, t->vod);
-  }
 }
 
 void applyTransObjects(TransInfo *t)
@@ -1338,7 +1327,7 @@ void calculatePropRatio(TransInfo *t)
     }
 
     if (pet_id) {
-      STRNCPY_UTF8(t->proptext, IFACE_(pet_id));
+      BLI_strncpy(t->proptext, IFACE_(pet_id), sizeof(t->proptext));
     }
   }
   else {

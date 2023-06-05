@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -174,10 +173,10 @@ bool BKE_id_attribute_rename(ID *id,
    * is clamped to it's maximum length, otherwise assigning an over-long name multiple times
    * will add `.001` suffix unnecessarily. */
   {
-    const int new_name_maxncpy = CustomData_name_max_length_calc(new_name);
+    const int maxlength = CustomData_name_max_length_calc(new_name);
     /* NOTE: A function that performs a clamped comparison without copying would be handy here. */
     char new_name_clamped[MAX_CUSTOMDATA_LAYER_NAME];
-    BLI_strncpy_utf8(new_name_clamped, new_name, new_name_maxncpy);
+    BLI_strncpy_utf8(new_name_clamped, new_name, maxlength);
     if (STREQ(old_name, new_name_clamped)) {
       return false;
     }
@@ -218,7 +217,7 @@ bool BKE_id_attribute_rename(ID *id,
     BKE_id_attributes_default_color_set(id, result_name);
   }
 
-  STRNCPY_UTF8(layer->name, result_name);
+  BLI_strncpy_utf8(layer->name, result_name, sizeof(layer->name));
 
   return true;
 }
@@ -255,14 +254,19 @@ static bool unique_name_cb(void *arg, const char *name)
 bool BKE_id_attribute_calc_unique_name(ID *id, const char *name, char *outname)
 {
   AttrUniqueData data{id};
-  const int name_maxncpy = CustomData_name_max_length_calc(name);
+  const int maxlength = CustomData_name_max_length_calc(name);
 
   /* Set default name if none specified.
    * NOTE: We only call IFACE_() if needed to avoid locale lookup overhead. */
-  BLI_strncpy_utf8(outname, (name && name[0]) ? name : IFACE_("Attribute"), name_maxncpy);
+  if (!name || name[0] == '\0') {
+    BLI_strncpy(outname, IFACE_("Attribute"), maxlength);
+  }
+  else {
+    BLI_strncpy_utf8(outname, name, maxlength);
+  }
 
   const char *defname = ""; /* Dummy argument, never used as `name` is never zero length. */
-  return BLI_uniquename_cb(unique_name_cb, &data, defname, '.', outname, name_maxncpy);
+  return BLI_uniquename_cb(unique_name_cb, &data, defname, '.', outname, maxlength);
 }
 
 CustomDataLayer *BKE_id_attribute_new(ID *id,
@@ -766,8 +770,7 @@ CustomDataLayer *BKE_id_attribute_from_index(ID *id,
   return nullptr;
 }
 
-/**
- * Get list of domain types but with ATTR_DOMAIN_FACE and
+/** Get list of domain types but with ATTR_DOMAIN_FACE and
  * ATTR_DOMAIN_CORNER swapped.
  */
 static void get_domains_types(eAttrDomain domains[ATTR_DOMAIN_NUM])

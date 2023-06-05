@@ -1,13 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
  */
 
 #include "vk_shader_interface.hh"
-#include "vk_backend.hh"
 #include "vk_context.hh"
 
 namespace blender::gpu {
@@ -49,9 +47,9 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 
   /* Reserve 1 uniform buffer for push constants fallback. */
   size_t names_size = info.interface_names_size_;
-  const VKDevice &device = VKBackend::get().device_get();
+  VKContext &context = *VKContext::get();
   const VKPushConstants::StorageType push_constants_storage_type =
-      VKPushConstants::Layout::determine_storage_type(info, device);
+      VKPushConstants::Layout::determine_storage_type(info, context.physical_device_limits_get());
   if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     ubo_len_++;
     names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
@@ -85,7 +83,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Uniform blocks */
   for (const ShaderCreateInfo::Resource &res : all_resources) {
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
-      copy_input_name(input, res.uniformbuf.name, name_buffer_, name_buffer_offset);
+      copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = input->binding = res.slot;
       input++;
     }
@@ -197,13 +195,11 @@ const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
   return descriptor_set_location(shader_input);
 }
 
-const std::optional<VKDescriptorSet::Location> VKShaderInterface::descriptor_set_location(
+const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
     const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const
 {
   const ShaderInput *shader_input = shader_input_get(bind_type, binding);
-  if (shader_input == nullptr) {
-    return std::nullopt;
-  }
+  BLI_assert(shader_input);
   return descriptor_set_location(shader_input);
 }
 

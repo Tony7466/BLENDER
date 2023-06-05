@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -12,6 +11,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -112,7 +113,7 @@ static void cmp_node_image_add_pass_output(bNodeTree *ntree,
 
   NodeImageLayer *sockdata = (NodeImageLayer *)sock->storage;
   if (sockdata) {
-    STRNCPY(sockdata->pass_name, passname);
+    BLI_strncpy(sockdata->pass_name, passname, sizeof(sockdata->pass_name));
   }
 
   /* Reorder sockets according to order that passes are added. */
@@ -374,7 +375,7 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
     sock_next = sock->next;
     if (BLI_linklist_index(available_sockets.list, sock) >= 0) {
       sock->flag &= ~SOCK_HIDDEN;
-      blender::bke::nodeSetSocketAvailability(ntree, sock, true);
+      nodeSetSocketAvailability(ntree, sock, true);
     }
     else {
       bNodeLink *link;
@@ -388,7 +389,7 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
         nodeRemoveSocket(ntree, node, sock);
       }
       else {
-        blender::bke::nodeSetSocketAvailability(ntree, sock, false);
+        nodeSetSocketAvailability(ntree, sock, false);
       }
     }
   }
@@ -709,7 +710,9 @@ static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
     NodeImageLayer *sockdata = MEM_cnew<NodeImageLayer>(__func__);
     sock->storage = sockdata;
 
-    STRNCPY(sockdata->pass_name, node_cmp_rlayers_sock_to_pass(sock_index));
+    BLI_strncpy(sockdata->pass_name,
+                node_cmp_rlayers_sock_to_pass(sock_index),
+                sizeof(sockdata->pass_name));
   }
 }
 
@@ -917,7 +920,7 @@ void register_node_type_cmp_rlayers()
   static bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_R_LAYERS, "Render Layers", NODE_CLASS_INPUT);
-  blender::bke::node_type_socket_templates(&ntype, nullptr, cmp_node_rlayers_out);
+  node_type_socket_templates(&ntype, nullptr, cmp_node_rlayers_out);
   ntype.draw_buttons = file_ns::node_composit_buts_viewlayers;
   ntype.initfunc_api = file_ns::node_composit_init_rlayers;
   ntype.poll = file_ns::node_composit_poll_rlayers;
@@ -929,7 +932,7 @@ void register_node_type_cmp_rlayers()
       &ntype, nullptr, file_ns::node_composit_free_rlayers, file_ns::node_composit_copy_rlayers);
   ntype.updatefunc = file_ns::cmp_node_rlayers_update;
   ntype.initfunc = node_cmp_rlayers_outputs;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
 
   nodeRegisterType(&ntype);
 }

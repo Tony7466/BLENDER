@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -176,7 +175,7 @@ static void applyMirror(TransInfo *t, const int UNUSED(mval[2]))
       special_axis = bitscan_forward_i(special_axis_bitmap);
     }
 
-    SNPRINTF(str, TIP_("Mirror%s"), t->con.text);
+    BLI_snprintf(str, sizeof(str), TIP_("Mirror%s"), t->con.text);
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       TransData *td = tc->data;
@@ -216,20 +215,12 @@ static void applyMirror(TransInfo *t, const int UNUSED(mval[2]))
   }
 }
 
-static void initMirror(TransInfo *t, struct wmOperator *UNUSED(op))
+void initMirror(TransInfo *t)
 {
+  t->transform = applyMirror;
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
+
+  t->flag |= T_NULL_ONE;
 }
 
 /** \} */
-
-TransModeInfo TransMode_mirror = {
-    /*flags*/ T_NULL_ONE,
-    /*init_fn*/ initMirror,
-    /*transform_fn*/ applyMirror,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
-};

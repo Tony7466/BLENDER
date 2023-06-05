@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -43,14 +41,14 @@ typedef struct BoxVert {
   uint _pad : 23;
   uint index;
 
-  BoxPack *trb; /* top right box */
-  BoxPack *blb; /* bottom left box */
-  BoxPack *brb; /* bottom right box */
-  BoxPack *tlb; /* top left box */
+  struct BoxPack *trb; /* top right box */
+  struct BoxPack *blb; /* bottom left box */
+  struct BoxPack *brb; /* bottom right box */
+  struct BoxPack *tlb; /* top left box */
 
   /* Store last intersecting boxes here
    * speedup intersection testing */
-  BoxPack *isect_cache[4];
+  struct BoxPack *isect_cache[4];
 
 #ifdef USE_PACK_BIAS
   float bias;

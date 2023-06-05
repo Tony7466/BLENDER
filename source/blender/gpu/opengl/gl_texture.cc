@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -179,7 +178,7 @@ bool GLTexture::init_internal(GPUVertBuf *vbo)
   return true;
 }
 
-bool GLTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil)
+bool GLTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset)
 {
   BLI_assert(GLContext::texture_storage_support);
 
@@ -197,11 +196,6 @@ bool GLTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset,
                 this->layer_count());
 
   debug::object_label(GL_TEXTURE, tex_id_, name_);
-
-  /* Stencil view support. */
-  if (ELEM(format_, GPU_DEPTH24_STENCIL8, GPU_DEPTH32F_STENCIL8)) {
-    stencil_texture_mode_set(use_stencil);
-  }
 
   return true;
 }
@@ -527,7 +521,7 @@ void GLTexture::mip_range_set(int min, int max)
   }
 }
 
-GPUFrameBuffer *GLTexture::framebuffer_get()
+struct GPUFrameBuffer *GLTexture::framebuffer_get()
 {
   if (framebuffer_) {
     return framebuffer_;
@@ -603,7 +597,7 @@ void GLTexture::samplers_init()
         glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, min_filter);
         glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, mag_filter);
 
-        /* Other states are left to default:
+        /** Other states are left to default:
          * - GL_TEXTURE_BORDER_COLOR is {0, 0, 0, 0}.
          * - GL_TEXTURE_MIN_LOD is -1000.
          * - GL_TEXTURE_MAX_LOD is 1000.
@@ -892,7 +886,7 @@ int64_t GLPixelBuffer::get_native_handle()
   return int64_t(gl_id_);
 }
 
-size_t GLPixelBuffer::get_size()
+uint GLPixelBuffer::get_size()
 {
   return size_;
 }

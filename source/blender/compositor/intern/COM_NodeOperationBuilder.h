@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. */
 
 #pragma once
 
@@ -64,9 +63,9 @@ class NodeOperationBuilder {
 
   Node *current_node_;
 
-  /**
-   * Operation that will be writing to the viewer image
-   * Only one operation can occupy this place at a time, to avoid race conditions.
+  /** Operation that will be writing to the viewer image
+   *  Only one operation can occupy this place at a time,
+   *  to avoid race conditions
    */
   ViewerOperation *active_viewer_;
 

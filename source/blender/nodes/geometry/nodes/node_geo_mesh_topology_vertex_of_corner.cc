@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_mesh.hh"
 
@@ -12,12 +10,13 @@ namespace blender::nodes::node_geo_mesh_topology_vertex_of_corner_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>("Corner Index")
+  b.add_input<decl::Int>(N_("Corner Index"))
       .implicit_field(implicit_field_inputs::index)
-      .description("The corner to retrieve data from. Defaults to the corner from the context");
-  b.add_output<decl::Int>("Vertex Index")
+      .description(
+          N_("The corner to retrieve data from. Defaults to the corner from the context"));
+  b.add_output<decl::Int>(N_("Vertex Index"))
       .field_source_reference_all()
-      .description("The vertex the corner is attached to");
+      .description(N_("The vertex the corner is attached to"));
 }
 
 class CornerVertFieldInput final : public bke::MeshFieldInput {
@@ -29,7 +28,7 @@ class CornerVertFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_CORNER) {
       return {};
@@ -59,7 +58,7 @@ class CornerVertFieldInput final : public bke::MeshFieldInput {
 static void node_geo_exec(GeoNodeExecParams params)
 {
   params.set_output("Vertex Index",
-                    Field<int>(std::make_shared<EvaluateAtIndexInput>(
+                    Field<int>(std::make_shared<FieldAtIndexInput>(
                         params.extract_input<Field<int>>("Corner Index"),
                         Field<int>(std::make_shared<CornerVertFieldInput>()),
                         ATTR_DOMAIN_CORNER)));

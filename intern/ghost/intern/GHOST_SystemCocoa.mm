@@ -429,7 +429,8 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 - (void)applicationWillTerminate:(NSNotification *)aNotification
 {
 #if 0
-  WM_exit(C, EXIT_SUCCESS);
+  G.is_break = false; /* Let Cocoa perform the termination at the end. */
+  WM_exit(C);
 #endif
 }
 
@@ -1260,7 +1261,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
               ![bitmapImage isPlanar])
           {
             /* Try a fast copy if the image is a meshed RGBA 32bit bitmap. */
-            toIBuf = ibuf->byte_buffer.data;
+            toIBuf = (uint8_t *)ibuf->rect;
             rasterRGB = (uint8_t *)[bitmapImage bitmapData];
             for (y = 0; y < imgSize.height; y++) {
               to_i = (imgSize.height - y - 1) * imgSize.width;
@@ -1337,7 +1338,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
             }
 
             /* Copy the image to ibuf, flipping it vertically. */
-            toIBuf = ibuf->byte_buffer.data;
+            toIBuf = (uint8_t *)ibuf->rect;
             for (y = 0; y < imgSize.height; y++) {
               for (x = 0; x < imgSize.width; x++) {
                 to_i = (imgSize.height - y - 1) * imgSize.width + x;

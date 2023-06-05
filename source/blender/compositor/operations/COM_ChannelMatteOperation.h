@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation. */
 
 #pragma once
 
@@ -25,8 +24,7 @@ class ChannelMatteOperation : public MultiThreadedOperation {
 
   float limit_range_;
 
-  /**
-   * ids to use for the operations (max and simple)
+  /** ids to use for the operations (max and simple)
    * alpha = in[ids[0]] - MAX2(in[ids[1]], in[ids[2]])
    * the simple operation is using:
    * alpha = in[ids[0]] - in[ids[1]]

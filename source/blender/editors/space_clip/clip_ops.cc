@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup spclip
@@ -156,9 +155,9 @@ static void sclip_zoom_set_factor_exec(bContext *C, const wmEvent *event, float 
 /** \name Open Clip Operator
  * \{ */
 
-static void clip_filesel(bContext *C, wmOperator *op, const char *dirpath)
+static void clip_filesel(bContext *C, wmOperator *op, const char *path)
 {
-  RNA_string_set(op->ptr, "directory", dirpath);
+  RNA_string_set(op->ptr, "directory", path);
 
   WM_event_add_fileselect(C, op);
 }
@@ -185,7 +184,7 @@ static int open_exec(bContext *C, wmOperator *op)
   PropertyPointerRNA *pprop;
   PointerRNA idptr;
   MovieClip *clip = nullptr;
-  char filepath[FILE_MAX];
+  char str[FILE_MAX];
 
   if (!RNA_collection_is_empty(op->ptr, "files")) {
     PointerRNA fileptr;
@@ -202,7 +201,7 @@ static int open_exec(bContext *C, wmOperator *op)
     RNA_property_collection_lookup_int(op->ptr, prop, 0, &fileptr);
     RNA_string_get(&fileptr, "name", file_only);
 
-    BLI_path_join(filepath, sizeof(filepath), dir_only, file_only);
+    BLI_path_join(str, sizeof(str), dir_only, file_only);
   }
   else {
     BKE_report(op->reports, RPT_ERROR, "No files selected to be opened");
@@ -214,7 +213,7 @@ static int open_exec(bContext *C, wmOperator *op)
 
   errno = 0;
 
-  clip = BKE_movieclip_file_add_exists(bmain, filepath);
+  clip = BKE_movieclip_file_add_exists(bmain, str);
 
   if (!clip) {
     if (op->customdata) {
@@ -224,7 +223,7 @@ static int open_exec(bContext *C, wmOperator *op)
     BKE_reportf(op->reports,
                 RPT_ERROR,
                 "Cannot read '%s': %s",
-                filepath,
+                str,
                 errno ? strerror(errno) : TIP_("unsupported movie clip format"));
 
     return OPERATOR_CANCELLED;
@@ -261,7 +260,7 @@ static int open_exec(bContext *C, wmOperator *op)
 static int open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);
-  char dirpath[FILE_MAX];
+  char path[FILE_MAX];
   MovieClip *clip = nullptr;
 
   if (sc) {
@@ -269,13 +268,13 @@ static int open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
   }
 
   if (clip) {
-    STRNCPY(dirpath, clip->filepath);
+    BLI_strncpy(path, clip->filepath, sizeof(path));
 
-    BLI_path_abs(dirpath, CTX_data_main(C)->filepath);
-    BLI_path_parent_dir(dirpath);
+    BLI_path_abs(path, CTX_data_main(C)->filepath);
+    BLI_path_parent_dir(path);
   }
   else {
-    STRNCPY(dirpath, U.textudir);
+    BLI_strncpy(path, U.textudir, sizeof(path));
   }
 
   if (RNA_struct_property_is_set(op->ptr, "files")) {
@@ -288,7 +287,7 @@ static int open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 
   open_init(C, op);
 
-  clip_filesel(C, op, dirpath);
+  clip_filesel(C, op, path);
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -1170,11 +1169,11 @@ void CLIP_OT_change_frame(wmOperatorType *ot)
 
 typedef struct ProxyBuildJob {
   Scene *scene;
-  Main *main;
+  struct Main *main;
   MovieClip *clip;
   int clip_flag;
   bool stop;
-  IndexBuildContext *index_context;
+  struct IndexBuildContext *index_context;
 } ProxyJob;
 
 static void proxy_freejob(void *pjv)
@@ -1226,7 +1225,7 @@ static void do_movie_proxy(void *pjv,
 {
   ProxyJob *pj = static_cast<ProxyJob *>(pjv);
   MovieClip *clip = pj->clip;
-  MovieDistortion *distortion = nullptr;
+  struct MovieDistortion *distortion = nullptr;
 
   if (pj->index_context) {
     IMB_anim_index_rebuild(pj->index_context, stop, do_update, progress);
@@ -1293,7 +1292,7 @@ typedef struct ProxyQueue {
 
 typedef struct ProxyThread {
   MovieClip *clip;
-  MovieDistortion *distortion;
+  struct MovieDistortion *distortion;
   int *build_sizes, build_count;
   int *build_undistort_sizes, build_undistort_count;
 } ProxyThread;

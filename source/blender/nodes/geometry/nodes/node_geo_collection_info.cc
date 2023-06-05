@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.h"
 
@@ -22,15 +20,15 @@ NODE_STORAGE_FUNCS(NodeGeometryCollectionInfo)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Collection>("Collection").hide_label();
-  b.add_input<decl::Bool>("Separate Children")
+  b.add_input<decl::Collection>(N_("Collection")).hide_label();
+  b.add_input<decl::Bool>(N_("Separate Children"))
       .description(
-          "Output each child of the collection as a separate instance, sorted alphabetically");
-  b.add_input<decl::Bool>("Reset Children")
+          N_("Output each child of the collection as a separate instance, sorted alphabetically"));
+  b.add_input<decl::Bool>(N_("Reset Children"))
       .description(
-          "Reset the transforms of every child instance in the output. Only used when Separate "
-          "Children is enabled");
-  b.add_output<decl::Geometry>("Instances");
+          N_("Reset the transforms of every child instance in the output. Only used when Separate "
+             "Children is enabled"));
+  b.add_output<decl::Geometry>(N_("Instances"));
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

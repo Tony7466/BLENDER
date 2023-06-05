@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -127,7 +126,7 @@ void workbench_shadow_cache_init(WORKBENCH_Data *data)
 {
   WORKBENCH_PassList *psl = data->psl;
   WORKBENCH_PrivateData *wpd = data->stl->wpd;
-  GPUShader *sh;
+  struct GPUShader *sh;
   DRWShadingGroup *grp;
 
   if (SHADOW_ENABLED(wpd)) {

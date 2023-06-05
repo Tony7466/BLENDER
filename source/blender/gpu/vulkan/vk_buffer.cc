@@ -1,20 +1,19 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
  */
 
 #include "vk_buffer.hh"
-#include "vk_backend.hh"
 #include "vk_context.hh"
 
 namespace blender::gpu {
 
 VKBuffer::~VKBuffer()
 {
-  free();
+  VKContext &context = *VKContext::get();
+  free(context);
 }
 
 bool VKBuffer::is_allocated() const
@@ -42,32 +41,26 @@ static VmaAllocationCreateFlagBits vma_allocation_flags(GPUUsageType usage)
                                                   VMA_ALLOCATION_CREATE_MAPPED_BIT);
 }
 
-bool VKBuffer::create(int64_t size_in_bytes,
+bool VKBuffer::create(VKContext &context,
+                      int64_t size_in_bytes,
                       GPUUsageType usage,
                       VkBufferUsageFlagBits buffer_usage)
 {
   BLI_assert(!is_allocated());
-  BLI_assert(vk_buffer_ == VK_NULL_HANDLE);
-  BLI_assert(mapped_memory_ == nullptr);
 
   size_in_bytes_ = size_in_bytes;
-  const VKDevice &device = VKBackend::get().device_get();
 
-  VmaAllocator allocator = device.mem_allocator_get();
+  VmaAllocator allocator = context.mem_allocator_get();
   VkBufferCreateInfo create_info = {};
   create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   create_info.flags = 0;
-  /*
-   * Vulkan doesn't allow empty buffers but some areas (DrawManager Instance data, PyGPU) create
-   * them.
-   */
-  create_info.size = max_ii(size_in_bytes, 1);
+  create_info.size = size_in_bytes;
   create_info.usage = buffer_usage;
   /* We use the same command queue for the compute and graphics pipeline, so it is safe to use
    * exclusive resource handling. */
   create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   create_info.queueFamilyIndexCount = 1;
-  create_info.pQueueFamilyIndices = device.queue_family_ptr_get();
+  create_info.pQueueFamilyIndices = context.queue_family_ptr_get();
 
   VmaAllocationCreateInfo vma_create_info = {};
   vma_create_info.flags = vma_allocation_flags(usage);
@@ -81,7 +74,7 @@ bool VKBuffer::create(int64_t size_in_bytes,
   }
 
   /* All buffers are mapped to virtual memory. */
-  return map();
+  return map(context);
 }
 
 void VKBuffer::update(const void *data) const
@@ -89,9 +82,9 @@ void VKBuffer::update(const void *data) const
   BLI_assert_msg(is_mapped(), "Cannot update a non-mapped buffer.");
   memcpy(mapped_memory_, data, size_in_bytes_);
 
-  const VKDevice &device = VKBackend::get().device_get();
-  VmaAllocator allocator = device.mem_allocator_get();
-  vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
+  VKContext &context = *VKContext::get();
+  VmaAllocator mem_allocator = context.mem_allocator_get();
+  vmaFlushAllocation(mem_allocator, allocation_, 0, VK_WHOLE_SIZE);
 }
 
 void VKBuffer::clear(VKContext &context, uint32_t clear_value)
@@ -117,32 +110,29 @@ bool VKBuffer::is_mapped() const
   return mapped_memory_ != nullptr;
 }
 
-bool VKBuffer::map()
+bool VKBuffer::map(VKContext &context)
 {
   BLI_assert(!is_mapped());
-  const VKDevice &device = VKBackend::get().device_get();
-  VmaAllocator allocator = device.mem_allocator_get();
+  VmaAllocator allocator = context.mem_allocator_get();
   VkResult result = vmaMapMemory(allocator, allocation_, &mapped_memory_);
   return result == VK_SUCCESS;
 }
 
-void VKBuffer::unmap()
+void VKBuffer::unmap(VKContext &context)
 {
   BLI_assert(is_mapped());
-  const VKDevice &device = VKBackend::get().device_get();
-  VmaAllocator allocator = device.mem_allocator_get();
+  VmaAllocator allocator = context.mem_allocator_get();
   vmaUnmapMemory(allocator, allocation_);
   mapped_memory_ = nullptr;
 }
 
-bool VKBuffer::free()
+bool VKBuffer::free(VKContext &context)
 {
   if (is_mapped()) {
-    unmap();
+    unmap(context);
   }
 
-  const VKDevice &device = VKBackend::get().device_get();
-  VmaAllocator allocator = device.mem_allocator_get();
+  VmaAllocator allocator = context.mem_allocator_get();
   vmaDestroyBuffer(allocator, vk_buffer_, allocation_);
   return true;
 }

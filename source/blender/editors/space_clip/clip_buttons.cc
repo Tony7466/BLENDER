@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup spclip
@@ -803,7 +802,7 @@ void uiTemplateMovieclipInformation(uiLayout *layout,
   ofs += BLI_snprintf_rlen(str + ofs, sizeof(str) - ofs, TIP_("%d x %d"), width, height);
 
   if (ibuf) {
-    if (ibuf->float_buffer.data) {
+    if (ibuf->rect_float) {
       if (ibuf->channels != 4) {
         ofs += BLI_snprintf_rlen(
             str + ofs, sizeof(str) - ofs, TIP_(", %d float channel(s)"), ibuf->channels);
@@ -842,10 +841,10 @@ void uiTemplateMovieclipInformation(uiLayout *layout,
   /* Display current frame number. */
   int framenr = BKE_movieclip_remap_scene_to_clip_frame(clip, user->framenr);
   if (framenr <= clip->len) {
-    SNPRINTF(str, TIP_("Frame: %d / %d"), framenr, clip->len);
+    BLI_snprintf(str, sizeof(str), TIP_("Frame: %d / %d"), framenr, clip->len);
   }
   else {
-    SNPRINTF(str, TIP_("Frame: - / %d"), clip->len);
+    BLI_snprintf(str, sizeof(str), TIP_("Frame: - / %d"), clip->len);
   }
   uiItemL(col, str, ICON_NONE);
 
@@ -856,13 +855,13 @@ void uiTemplateMovieclipInformation(uiLayout *layout,
 
     if (framenr <= clip->len) {
       BKE_movieclip_filepath_for_frame(clip, user, filepath);
-      file = BLI_path_basename(filepath);
+      file = BLI_path_slash_rfind(filepath);
     }
     else {
       file = "-";
     }
 
-    SNPRINTF(str, TIP_("File: %s"), file);
+    BLI_snprintf(str, sizeof(str), TIP_("File: %s"), file);
 
     uiItemL(col, str, ICON_NONE);
   }

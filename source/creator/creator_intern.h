@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -21,17 +19,8 @@ extern "C" {
 
 /* creator_args.c */
 
-/**
- * \param all: When enabled, all arguments are initialized
- * even for configurations that don't apply to the current system.
- * Used for documentation (see Python API: `bpy.app.help_text(all=True)`).
- */
-void main_args_setup(struct bContext *C, struct bArgs *ba, bool all);
-/**
- * Handler for loading blend files.
- * \note arguments that cannot be parsed are assumed to be blend files.
- */
-int main_args_handle_load_file(int argc, const char **argv, void *data);
+void main_args_setup(struct bContext *C, struct bArgs *ba);
+void main_args_setup_post(struct bContext *C, struct bArgs *ba);
 
 /* creator_signals.c */
 
@@ -69,12 +58,7 @@ enum {
   /** Currently use for audio devices. */
   ARG_PASS_SETTINGS_FORCE = 4,
 
-  /**
-   * Actions & fall back to loading blend file.
-   *
-   * \note arguments in the final pass must use #WM_exit instead of `exit()`  environment is
-   * properly shut-down (temporary directory deleted, etc).
-   */
+  /** Actions & fall back to loading blend file. */
   ARG_PASS_FINAL = 5,
 };
 

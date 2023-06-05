@@ -14,6 +14,7 @@ PassAccessorGPU::PassAccessorGPU(DeviceQueue *queue,
                                  float exposure,
                                  int num_samples)
     : PassAccessor(pass_access_info, exposure, num_samples), queue_(queue)
+
 {
 }
 

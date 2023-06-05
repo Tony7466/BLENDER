@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 #pragma once
 
 /** \file
@@ -51,10 +50,7 @@ void BKE_image_free_gputextures(struct Image *ima);
  */
 void BKE_image_free_data(struct Image *image);
 
-typedef void(StampCallback)(void *data,
-                            const char *propname,
-                            char *propvalue,
-                            int propvalue_maxncpy);
+typedef void(StampCallback)(void *data, const char *propname, char *propvalue, int len);
 
 void BKE_render_result_stamp_info(struct Scene *scene,
                                   struct Object *camera,
@@ -349,12 +345,11 @@ bool BKE_image_has_opengl_texture(struct Image *ima);
 
 /**
  * Get tile index for tiled images.
- * \return The string length.
  */
-int BKE_image_get_tile_label(const struct Image *ima,
-                             const struct ImageTile *tile,
-                             char *label,
-                             int label_maxncpy);
+void BKE_image_get_tile_label(struct Image *ima,
+                              struct ImageTile *tile,
+                              char *label,
+                              int len_label);
 
 /**
  * Checks whether the given filepath refers to a UDIM tiled texture.

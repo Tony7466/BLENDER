@@ -72,9 +72,6 @@ struct ToNanoOp {
       catch (const std::exception &e) {
         VLOG_WARNING << "Error converting OpenVDB to NanoVDB grid: " << e.what();
       }
-      catch (...) {
-        VLOG_WARNING << "Error converting OpenVDB to NanoVDB grid: Unknown error";
-      }
       return true;
     }
     else {

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <utility>
 
@@ -448,7 +446,7 @@ bool BuiltinCustomDataLayerProvider::try_create(void *owner,
 
   const int element_num = custom_data_access_.get_element_num(owner);
   if (stored_as_named_attribute_) {
-    if (CustomData_has_layer_named(custom_data, data_type_, name_.c_str())) {
+    if (CustomData_get_layer_named(custom_data, data_type_, name_.c_str())) {
       /* Exists already. */
       return false;
     }
@@ -471,7 +469,7 @@ bool BuiltinCustomDataLayerProvider::exists(const void *owner) const
     return false;
   }
   if (stored_as_named_attribute_) {
-    return CustomData_has_layer_named(custom_data, stored_type_, name_.c_str());
+    return CustomData_get_layer_named(custom_data, stored_type_, name_.c_str()) != nullptr;
   }
   return CustomData_get_layer(custom_data, stored_type_) != nullptr;
 }
@@ -982,9 +980,11 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
           return true;
         }
 
-        const GVArray src = *src_attributes.lookup(id, meta_data.domain);
+        GVArray src = *src_attributes.lookup(id, meta_data.domain);
+        BLI_assert(src);
         bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
             id, meta_data.domain, meta_data.data_type);
+        BLI_assert(dst);
         attributes.append({std::move(src), meta_data, std::move(dst)});
 
         return true;
@@ -993,106 +993,5 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
 }
 
 /** \} */
-
-void gather_attributes(const AttributeAccessor src_attributes,
-                       const eAttrDomain domain,
-                       const AnonymousAttributePropagationInfo &propagation_info,
-                       const Set<std::string> &skip,
-                       const IndexMask &selection,
-                       MutableAttributeAccessor dst_attributes)
-{
-  const int src_size = src_attributes.domain_size(domain);
-  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != domain) {
-      return true;
-    }
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
-      return true;
-    }
-    if (skip.contains(id.name())) {
-      return true;
-    }
-    const bke::GAttributeReader src = src_attributes.lookup(id, domain);
-    if (selection.size() == src_size && src.sharing_info && src.varray.is_span()) {
-      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
-                                          *src.sharing_info);
-      if (dst_attributes.add(id, domain, meta_data.data_type, init)) {
-        return true;
-      }
-    }
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
-    array_utils::gather(src.varray, selection, dst.span);
-    dst.finish();
-    return true;
-  });
-}
-
-template<typename T>
-static void gather_group_to_group(const OffsetIndices<int> src_offsets,
-                                  const OffsetIndices<int> dst_offsets,
-                                  const IndexMask &selection,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
-{
-  selection.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    dst.slice(dst_offsets[dst_i]).copy_from(src.slice(src_offsets[src_i]));
-  });
-}
-
-static void gather_group_to_group(const OffsetIndices<int> src_offsets,
-                                  const OffsetIndices<int> dst_offsets,
-                                  const IndexMask &selection,
-                                  const GSpan src,
-                                  GMutableSpan dst)
-{
-  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    gather_group_to_group(src_offsets, dst_offsets, selection, src.typed<T>(), dst.typed<T>());
-  });
-}
-
-void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
-                                      const eAttrDomain domain,
-                                      const AnonymousAttributePropagationInfo &propagation_info,
-                                      const Set<std::string> &skip,
-                                      const OffsetIndices<int> src_offsets,
-                                      const OffsetIndices<int> dst_offsets,
-                                      const IndexMask &selection,
-                                      MutableAttributeAccessor dst_attributes)
-{
-  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != domain) {
-      return true;
-    }
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
-      return true;
-    }
-    if (skip.contains(id.name())) {
-      return true;
-    }
-    const GVArraySpan src = *src_attributes.lookup(id, domain);
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
-    gather_group_to_group(src_offsets, dst_offsets, selection, src, dst.span);
-    dst.finish();
-    return true;
-  });
-}
-
-void copy_attributes(const AttributeAccessor src_attributes,
-                     const eAttrDomain domain,
-                     const AnonymousAttributePropagationInfo &propagation_info,
-                     const Set<std::string> &skip,
-                     MutableAttributeAccessor dst_attributes)
-{
-  BLI_assert(src_attributes.domain_size(domain) == dst_attributes.domain_size(domain));
-  return gather_attributes(src_attributes,
-                           domain,
-                           propagation_info,
-                           skip,
-                           IndexMask(src_attributes.domain_size(domain)),
-                           dst_attributes);
-}
 
 }  // namespace blender::bke

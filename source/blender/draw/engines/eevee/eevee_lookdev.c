@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -61,7 +60,7 @@ static void eevee_lookdev_hdri_preview_init(EEVEE_Data *vedata, EEVEE_ViewLayerD
   {
     Material *ma = EEVEE_material_default_diffuse_get();
     GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, ma, NULL, mat_options);
-    GPUShader *sh = GPU_material_get_shader(gpumat);
+    struct GPUShader *sh = GPU_material_get_shader(gpumat);
 
     DRW_PASS_CREATE(psl->lookdev_diffuse_pass, state);
     grp = DRW_shgroup_create(sh, psl->lookdev_diffuse_pass);
@@ -72,7 +71,7 @@ static void eevee_lookdev_hdri_preview_init(EEVEE_Data *vedata, EEVEE_ViewLayerD
   {
     Material *ma = EEVEE_material_default_glossy_get();
     GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, ma, NULL, mat_options);
-    GPUShader *sh = GPU_material_get_shader(gpumat);
+    struct GPUShader *sh = GPU_material_get_shader(gpumat);
 
     DRW_PASS_CREATE(psl->lookdev_glossy_pass, state);
     grp = DRW_shgroup_create(sh, psl->lookdev_glossy_pass);

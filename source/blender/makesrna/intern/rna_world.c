@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -89,16 +87,12 @@ static void rna_World_use_nodes_update(bContext *C, PointerRNA *ptr)
 
 void rna_World_lightgroup_get(PointerRNA *ptr, char *value)
 {
-  LightgroupMembership *lgm = ((World *)ptr->owner_id)->lightgroup;
-  char value_buf[sizeof(lgm->name)];
-  int len = BKE_lightgroup_membership_get(lgm, value_buf);
-  memcpy(value, value_buf, len + 1);
+  BKE_lightgroup_membership_get(((World *)ptr->owner_id)->lightgroup, value);
 }
 
 int rna_World_lightgroup_length(PointerRNA *ptr)
 {
-  LightgroupMembership *lgm = ((World *)ptr->owner_id)->lightgroup;
-  return BKE_lightgroup_membership_length(lgm);
+  return BKE_lightgroup_membership_length(((World *)ptr->owner_id)->lightgroup);
 }
 
 void rna_World_lightgroup_set(PointerRNA *ptr, const char *value)

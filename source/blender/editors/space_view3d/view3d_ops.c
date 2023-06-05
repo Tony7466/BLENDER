@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spview3d
@@ -41,25 +40,12 @@
 #  include "BLI_math_base.h" /* M_PI */
 #endif
 
-/* -------------------------------------------------------------------- */
-/** \name Local Utilities
- * \{ */
-
-static void view3d_copybuffer_filepath_get(char filepath[FILE_MAX], size_t filepath_maxncpy)
-{
-  BLI_path_join(filepath, filepath_maxncpy, BKE_tempdir_base(), "copybuffer.blend");
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Viewport Copy Operator
- * \{ */
+/* ************************** copy paste ***************************** */
 
 static int view3d_copybuffer_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  char filepath[FILE_MAX];
+  char str[FILE_MAX];
   int num_copied = 0;
 
   BKE_copybuffer_copy_begin(bmain);
@@ -73,8 +59,8 @@ static int view3d_copybuffer_exec(bContext *C, wmOperator *op)
   }
   CTX_DATA_END;
 
-  view3d_copybuffer_filepath_get(filepath, sizeof(filepath));
-  BKE_copybuffer_copy_end(bmain, filepath, op->reports);
+  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
+  BKE_copybuffer_copy_end(bmain, str, op->reports);
 
   BKE_reportf(op->reports, RPT_INFO, "Copied %d selected object(s)", num_copied);
 
@@ -93,15 +79,9 @@ static void VIEW3D_OT_copybuffer(wmOperatorType *ot)
   ot->poll = ED_operator_scene;
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Viewport Paste Operator
- * \{ */
-
 static int view3d_pastebuffer_exec(bContext *C, wmOperator *op)
 {
-  char filepath[FILE_MAX];
+  char str[FILE_MAX];
   short flag = 0;
 
   if (RNA_boolean_get(op->ptr, "autoselect")) {
@@ -111,9 +91,9 @@ static int view3d_pastebuffer_exec(bContext *C, wmOperator *op)
     flag |= FILE_ACTIVE_COLLECTION;
   }
 
-  view3d_copybuffer_filepath_get(filepath, sizeof(filepath));
+  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
 
-  const int num_pasted = BKE_copybuffer_paste(C, filepath, flag, op->reports, FILTER_ID_OB);
+  const int num_pasted = BKE_copybuffer_paste(C, str, flag, op->reports, FILTER_ID_OB);
   if (num_pasted == 0) {
     BKE_report(op->reports, RPT_INFO, "No objects to paste");
     return OPERATOR_CANCELLED;
@@ -150,11 +130,7 @@ static void VIEW3D_OT_pastebuffer(wmOperatorType *ot)
                   "Put pasted objects in the active collection");
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Registration
- * \{ */
+/* ************************** registration **********************************/
 
 void view3d_operatortypes(void)
 {
@@ -246,5 +222,3 @@ void view3d_keymap(wmKeyConfig *keyconf)
   viewdolly_modal_keymap(keyconf);
   viewplace_modal_keymap(keyconf);
 }
-
-/** \} */

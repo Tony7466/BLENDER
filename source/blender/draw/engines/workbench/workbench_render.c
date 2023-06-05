@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -29,9 +28,9 @@
 #include "workbench_private.h"
 
 static void workbench_render_cache(void *vedata,
-                                   Object *ob,
-                                   RenderEngine *UNUSED(engine),
-                                   Depsgraph *UNUSED(depsgraph))
+                                   struct Object *ob,
+                                   struct RenderEngine *UNUSED(engine),
+                                   struct Depsgraph *UNUSED(depsgraph))
 {
   workbench_cache_populate(vedata, ob);
 }
@@ -39,7 +38,7 @@ static void workbench_render_cache(void *vedata,
 static void workbench_render_matrices_init(RenderEngine *engine, Depsgraph *depsgraph)
 {
   /* TODO(sergey): Shall render hold pointer to an evaluated camera instead? */
-  Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
+  struct Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
 
   /* Set the perspective, view and window matrix. */
   float winmat[4][4], viewmat[4][4], viewinv[4][4];
@@ -96,7 +95,9 @@ static bool workbench_render_framebuffers_init(void)
   return ok;
 }
 
-static void workbench_render_result_z(RenderLayer *rl, const char *viewname, const rcti *rect)
+static void workbench_render_result_z(struct RenderLayer *rl,
+                                      const char *viewname,
+                                      const rcti *rect)
 {
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -104,7 +105,6 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
 
   if ((view_layer->passflag & SCE_PASS_Z) != 0) {
     RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_Z, viewname);
-    float *rp_buffer_data = rp->buffer.data;
 
     GPU_framebuffer_bind(dfbl->default_fb);
     GPU_framebuffer_read_depth(dfbl->default_fb,
@@ -113,7 +113,7 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
                                BLI_rcti_size_x(rect),
                                BLI_rcti_size_y(rect),
                                GPU_DATA_FLOAT,
-                               rp_buffer_data);
+                               rp->rect);
 
     float winmat[4][4];
     DRW_view_winmat_get(NULL, winmat, false);
@@ -123,12 +123,12 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
     /* Convert GPU depth [0..1] to view Z [near..far] */
     if (DRW_view_is_persp_get(NULL)) {
       for (int i = 0; i < pix_num; i++) {
-        if (rp_buffer_data[i] == 1.0f) {
-          rp_buffer_data[i] = 1e10f; /* Background */
+        if (rp->rect[i] == 1.0f) {
+          rp->rect[i] = 1e10f; /* Background */
         }
         else {
-          rp_buffer_data[i] = rp_buffer_data[i] * 2.0f - 1.0f;
-          rp_buffer_data[i] = winmat[3][2] / (rp_buffer_data[i] + winmat[2][2]);
+          rp->rect[i] = rp->rect[i] * 2.0f - 1.0f;
+          rp->rect[i] = winmat[3][2] / (rp->rect[i] + winmat[2][2]);
         }
       }
     }
@@ -139,11 +139,11 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
       float range = fabsf(far - near);
 
       for (int i = 0; i < pix_num; i++) {
-        if (rp_buffer_data[i] == 1.0f) {
-          rp_buffer_data[i] = 1e10f; /* Background */
+        if (rp->rect[i] == 1.0f) {
+          rp->rect[i] = 1e10f; /* Background */
         }
         else {
-          rp_buffer_data[i] = rp_buffer_data[i] * range - near;
+          rp->rect[i] = rp->rect[i] * range - near;
         }
       }
     }
@@ -208,7 +208,7 @@ void workbench_render(void *ved, RenderEngine *engine, RenderLayer *render_layer
                              4,
                              0,
                              GPU_DATA_FLOAT,
-                             rp->buffer.data);
+                             rp->rect);
 
   workbench_render_result_z(render_layer, viewname, rect);
 }

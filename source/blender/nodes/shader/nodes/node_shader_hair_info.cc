@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -8,12 +7,12 @@ namespace blender::nodes::node_shader_hair_info_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>("Is Strand");
-  b.add_output<decl::Float>("Intercept");
-  b.add_output<decl::Float>("Length");
-  b.add_output<decl::Float>("Thickness");
-  b.add_output<decl::Vector>("Tangent Normal");
-  b.add_output<decl::Float>("Random");
+  b.add_output<decl::Float>(N_("Is Strand"));
+  b.add_output<decl::Float>(N_("Intercept"));
+  b.add_output<decl::Float>(N_("Length"));
+  b.add_output<decl::Float>(N_("Thickness"));
+  b.add_output<decl::Vector>(N_("Tangent Normal"));
+  b.add_output<decl::Float>(N_("Random"));
 }
 
 static int node_shader_gpu_hair_info(GPUMaterial *mat,

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -343,7 +342,8 @@ uiBut *uiDefAutoButR(uiBlock *block,
     }
     case PROP_COLLECTION: {
       char text[256];
-      SNPRINTF(text, IFACE_("%d items"), RNA_property_collection_length(ptr, prop));
+      BLI_snprintf(
+          text, sizeof(text), IFACE_("%d items"), RNA_property_collection_length(ptr, prop));
       but = uiDefBut(
           block, UI_BTYPE_LABEL, 0, text, x, y, width, height, nullptr, 0, 0, 0, 0, nullptr);
       UI_but_flag_enable(but, UI_BUT_DISABLED);
@@ -464,7 +464,7 @@ void UI_but_func_identity_compare_set(uiBut *but, uiButIdentityCompareFunc cmp_f
 /* *** RNA collection search menu *** */
 
 struct CollItemSearch {
-  CollItemSearch *next, *prev;
+  struct CollItemSearch *next, *prev;
   void *data;
   char *name;
   int index;
@@ -614,7 +614,7 @@ void ui_rna_collection_search_update_fn(
         [](void *user_data, const StringPropertySearchVisitParams *visit_params) {
           const bool show_extra_info = (G.debug_value == 102);
 
-          SearchVisitUserData *search_data = (SearchVisitUserData *)user_data;
+          SearchVisitUserData *search_data = (struct SearchVisitUserData *)user_data;
           CollItemSearch *cis = MEM_cnew<CollItemSearch>(search_data->func_id);
           cis->data = nullptr;
           if (visit_params->info && show_extra_info) {
@@ -953,13 +953,13 @@ void UI_but_ensure_in_view(const bContext *C, ARegion *region, const uiBut *but)
  * \{ */
 
 struct uiButStore {
-  uiButStore *next, *prev;
+  struct uiButStore *next, *prev;
   uiBlock *block;
   ListBase items;
 };
 
 struct uiButStoreElem {
-  uiButStoreElem *next, *prev;
+  struct uiButStoreElem *next, *prev;
   uiBut **but_p;
 };
 
@@ -1134,7 +1134,7 @@ const char *UI_key_event_operator_string(const bContext *C,
                                          IDProperty *properties,
                                          const bool is_strict,
                                          char *result,
-                                         const int result_maxncpy)
+                                         const int result_len)
 {
   /* NOTE: currently only actions on UI Lists are supported (for the asset manager).
    * Other kinds of events can be supported as needed. */
@@ -1196,7 +1196,7 @@ const char *UI_key_event_operator_string(const bContext *C,
 
   if ((event_val != KM_NOTHING) && (event_type != KM_NOTHING)) {
     WM_keymap_item_raw_to_string(
-        false, false, false, false, 0, event_val, event_type, false, result, result_maxncpy);
+        false, false, false, false, 0, event_val, event_type, false, result, result_len);
     return result;
   }
 

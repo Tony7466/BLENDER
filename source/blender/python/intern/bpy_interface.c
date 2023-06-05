@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -412,7 +410,7 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
       else {
         /* Set to `sys.executable = None` below (we can't do before Python is initialized). */
         fprintf(stderr,
-                "Unable to find the Python binary, "
+                "Unable to find the python binary, "
                 "the multiprocessing module may not be functional!\n");
       }
     }
@@ -429,7 +427,7 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
         if (strchr(py_path_bundle, ':')) {
           fprintf(stderr,
                   "Warning! Blender application is located in a path containing ':' or '/' chars\n"
-                  "This may make Python import function fail\n");
+                  "This may make python import function fail\n");
         }
 #  endif /* __APPLE__ */
 
@@ -461,18 +459,14 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
   Py_DECREF(PyImport_ImportModule("threading"));
 #  endif
 
-#else /* WITH_PYTHON_MODULE */
+#else
   (void)argc;
   (void)argv;
 
-  /* NOTE(ideasman42): unfortunately the `inittab` can only be used
-   * before Python has been initialized.
-   * When built as a Python module, Python will have been initialized
-   * and using the `inittab` isn't supported.
-   * So it's necessary to load all modules as soon as `bpy` is imported. */
+  /* must run before python initializes */
+  /* broken in py3.3, load explicitly below */
   // PyImport_ExtendInittab(bpy_internal_modules);
-
-#endif /* WITH_PYTHON_MODULE */
+#endif
 
   bpy_intern_string_init();
 
@@ -662,7 +656,7 @@ void BPY_modules_load_user(bContext *C)
       if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
         if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
           G.f |= G_FLAG_SCRIPT_AUTOEXEC_FAIL;
-          SNPRINTF(G.autoexec_fail, "Text '%s'", text->id.name + 2);
+          BLI_snprintf(G.autoexec_fail, sizeof(G.autoexec_fail), "Text '%s'", text->id.name + 2);
 
           printf("scripts disabled for \"%s\", skipping '%s'\n",
                  BKE_main_blendfile_path(bmain),
@@ -809,7 +803,7 @@ static void bpy_module_delay_init(PyObject *bpy_proxy)
   const char *filepath_rel = PyUnicode_AsUTF8(filepath_obj); /* can be relative */
   char filepath_abs[1024];
 
-  STRNCPY(filepath_abs, filepath_rel);
+  BLI_strncpy(filepath_abs, filepath_rel, sizeof(filepath_abs));
   BLI_path_abs_from_cwd(filepath_abs, sizeof(filepath_abs));
   Py_DECREF(filepath_obj);
 

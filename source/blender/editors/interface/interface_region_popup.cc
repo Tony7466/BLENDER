@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -743,10 +742,10 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   /* checks which buttons are visible, sets flags to prevent draw (do after region init) */
   ui_popup_block_scrolltest(block);
 
-  /* Adds sub-window. */
+  /* adds subwindow */
   ED_region_floating_init(region);
 
-  /* Get `winmat` now that we actually have the sub-window. */
+  /* get winmat now that we actually have the subwindow */
   wmGetProjectionMatrix(block->winmat, &region->winrct);
 
   /* notify change and redraw */

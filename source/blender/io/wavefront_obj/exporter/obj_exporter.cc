@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -291,7 +289,7 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
       BLI_path_split_dir_part(export_params.filepath, dest_dir, PATH_MAX);
     }
     else {
-      STRNCPY(dest_dir, export_params.file_base_for_tests);
+      BLI_strncpy(dest_dir, export_params.file_base_for_tests, PATH_MAX);
     }
     BLI_path_slash_native(dest_dir);
     BLI_path_normalize(dest_dir);

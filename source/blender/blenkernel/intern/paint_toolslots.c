@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -71,7 +69,7 @@ static void paint_toolslots_init_with_runtime(Main *bmain, ToolSettings *ts, Pai
   paint_toolslots_init(bmain, paint);
 }
 
-void BKE_paint_toolslots_init_from_main(Main *bmain)
+void BKE_paint_toolslots_init_from_main(struct Main *bmain)
 {
   for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
     ToolSettings *ts = scene->toolsettings;

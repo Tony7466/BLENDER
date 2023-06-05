@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -288,7 +286,7 @@ static void id_release_weakref(struct ID *id)
 
 #endif /* USE_PYRNA_INVALIDATE_WEAKREF */
 
-void BPY_id_release(ID *id)
+void BPY_id_release(struct ID *id)
 {
 #ifdef USE_PYRNA_INVALIDATE_GC
   id_release_gc(id);
@@ -4071,7 +4069,7 @@ PyDoc_STRVAR(pyrna_struct_bl_rna_get_subclass_doc,
              "   :rtype: :class:`bpy.types.Struct` subclass\n");
 static PyObject *pyrna_struct_bl_rna_get_subclass(PyObject *cls, PyObject *args)
 {
-  const char *id;
+  char *id;
   PyObject *ret_default = Py_None;
 
   if (!PyArg_ParseTuple(args, "s|O:bl_rna_get_subclass", &id, &ret_default)) {
@@ -4088,9 +4086,6 @@ static PyObject *pyrna_struct_bl_rna_get_subclass(PyObject *cls, PyObject *args)
 
   PointerRNA ptr;
   if (srna_base == &RNA_Node) {
-    /* If the given idname is an alias, translate it to the proper idname. */
-    id = nodeTypeFindAlias(id);
-
     bNodeType *nt = nodeTypeFind(id);
     if (nt) {
       RNA_pointer_create(NULL, &RNA_Struct, nt->rna_ext.srna, &ptr);
@@ -4380,15 +4375,13 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
     else {
       PointerRNA newptr;
       ListBase newlb;
-      PropertyRNA *newprop;
-      int newindex;
       short newtype;
 
       /* An empty string is used to implement #CTX_data_dir_get,
        * without this check `getattr(context, "")` succeeds. */
       eContextResult done;
       if (name[0]) {
-        done = CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype);
+        done = CTX_data_get(C, name, &newptr, &newlb, &newtype);
       }
       else {
         /* Fall through to built-in `getattr`. */
@@ -4414,27 +4407,6 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
 
             for (link = newlb.first; link; link = link->next) {
               PyList_APPEND(ret, pyrna_struct_CreatePyObject(&link->ptr));
-            }
-            break;
-          }
-          case CTX_DATA_TYPE_PROPERTY: {
-            if (newprop != NULL) {
-              /* Create pointer to parent ID, and path from ID to property. */
-              PointerRNA idptr;
-              RNA_id_pointer_create(newptr.owner_id, &idptr);
-              char *path_str = RNA_path_from_ID_to_property(&newptr, newprop);
-
-              ret = PyTuple_New(3);
-              PyTuple_SET_ITEMS(ret,
-                                pyrna_struct_CreatePyObject(&idptr),
-                                PyUnicode_FromString(path_str),
-                                PyLong_FromLong(newindex));
-
-              MEM_freeN(path_str);
-            }
-            else {
-              ret = Py_None;
-              Py_INCREF(ret);
             }
             break;
           }
@@ -4630,12 +4602,9 @@ static int pyrna_struct_setattro(BPy_StructRNA *self, PyObject *pyname, PyObject
 
     PointerRNA newptr;
     ListBase newlb;
-    PropertyRNA *newprop;
-    int newindex;
     short newtype;
 
-    const eContextResult done = CTX_data_get(
-        C, name, &newptr, &newlb, &newprop, &newindex, &newtype);
+    const eContextResult done = CTX_data_get(C, name, &newptr, &newlb, &newtype);
 
     if (done == CTX_RESULT_OK) {
       PyErr_Format(
@@ -5803,7 +5772,7 @@ static PyObject *pyrna_prop_collection_iter(BPy_PropertyRNA *self)
 }
 #endif /* # !USE_PYRNA_ITER */
 
-static PyMethodDef pyrna_struct_methods[] = {
+static struct PyMethodDef pyrna_struct_methods[] = {
 
     /* Only for PointerRNA's with ID'props. */
     {"keys", (PyCFunction)pyrna_struct_keys, METH_NOARGS, pyrna_struct_keys_doc},
@@ -5906,7 +5875,7 @@ static PyMethodDef pyrna_struct_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyMethodDef pyrna_prop_methods[] = {
+static struct PyMethodDef pyrna_prop_methods[] = {
     {"path_from_id",
      (PyCFunction)pyrna_prop_path_from_id,
      METH_NOARGS,
@@ -5917,7 +5886,7 @@ static PyMethodDef pyrna_prop_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyMethodDef pyrna_prop_array_methods[] = {
+static struct PyMethodDef pyrna_prop_array_methods[] = {
     {"foreach_get",
      (PyCFunction)pyrna_prop_array_foreach_get,
      METH_VARARGS,
@@ -5930,7 +5899,7 @@ static PyMethodDef pyrna_prop_array_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyMethodDef pyrna_prop_collection_methods[] = {
+static struct PyMethodDef pyrna_prop_collection_methods[] = {
     {"foreach_get",
      (PyCFunction)pyrna_prop_collection_foreach_get,
      METH_VARARGS,
@@ -5955,7 +5924,7 @@ static PyMethodDef pyrna_prop_collection_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyMethodDef pyrna_prop_collection_idprop_methods[] = {
+static struct PyMethodDef pyrna_prop_collection_idprop_methods[] = {
     {"add", (PyCFunction)pyrna_prop_collection_idprop_add, METH_NOARGS, NULL},
     {"remove", (PyCFunction)pyrna_prop_collection_idprop_remove, METH_O, NULL},
     {"clear", (PyCFunction)pyrna_prop_collection_idprop_clear, METH_NOARGS, NULL},
@@ -7781,14 +7750,14 @@ static PyObject *bpy_types_module_dir(PyObject *self)
   return ret;
 }
 
-static PyMethodDef bpy_types_module_methods[] = {
+static struct PyMethodDef bpy_types_module_methods[] = {
     {"__getattr__", (PyCFunction)bpy_types_module_getattro, METH_O, NULL},
     {"__dir__", (PyCFunction)bpy_types_module_dir, METH_NOARGS, NULL},
     {NULL, NULL, 0, NULL},
 };
 
 PyDoc_STRVAR(bpy_types_module_doc, "Access to internal Blender types");
-static PyModuleDef bpy_types_module_def = {
+static struct PyModuleDef bpy_types_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bpy.types",
     /*m_doc*/ bpy_types_module_doc,
@@ -9153,7 +9122,9 @@ static PyObject *pyrna_unregister_class(PyObject *UNUSED(self), PyObject *py_cla
   Py_RETURN_NONE;
 }
 
-void pyrna_struct_type_extend_capi(StructRNA *srna, PyMethodDef *method, PyGetSetDef *getset)
+void pyrna_struct_type_extend_capi(struct StructRNA *srna,
+                                   struct PyMethodDef *method,
+                                   struct PyGetSetDef *getset)
 {
   /* See 'add_methods' in Python's 'typeobject.c'. */
   PyTypeObject *type = (PyTypeObject *)pyrna_srna_Subtype(srna);

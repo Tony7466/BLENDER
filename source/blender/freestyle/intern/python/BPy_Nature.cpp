@@ -61,7 +61,7 @@ static PyNumberMethods nature_as_number = {
     /*nb_inplace_matrix_multiply*/ nullptr,
 };
 
-/*-----------------------BPy_Nature doc-string -----------------------------------*/
+/*-----------------------BPy_Nature docstring ------------------------------------*/
 
 PyDoc_STRVAR(Nature_doc,
              "Class hierarchy: int > :class:`Nature`\n"

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Kévin Dietrich. All rights reserved. */
 
 /** \file
  * \ingroup balembic
@@ -63,7 +62,7 @@ static IArchive open_archive(const std::string &filename,
   return IArchive();
 }
 
-ArchiveReader *ArchiveReader::get(Main *bmain, const std::vector<const char *> &filenames)
+ArchiveReader *ArchiveReader::get(struct Main *bmain, const std::vector<const char *> &filenames)
 {
   std::vector<ArchiveReader *> readers;
 
@@ -103,24 +102,24 @@ ArchiveReader::ArchiveReader(const std::vector<ArchiveReader *> &readers) : m_re
   m_archive = IArchive(arPtr, kWrapExisting, ErrorHandler::kThrowPolicy);
 }
 
-ArchiveReader::ArchiveReader(Main *bmain, const char *filename)
+ArchiveReader::ArchiveReader(struct Main *bmain, const char *filename)
 {
-  char abs_filepath[FILE_MAX];
-  STRNCPY(abs_filepath, filename);
-  BLI_path_abs(abs_filepath, BKE_main_blendfile_path(bmain));
+  char abs_filename[FILE_MAX];
+  BLI_strncpy(abs_filename, filename, FILE_MAX);
+  BLI_path_abs(abs_filename, BKE_main_blendfile_path(bmain));
 
 #ifdef WIN32
-  UTF16_ENCODE(abs_filepath);
-  std::wstring wstr(abs_filepath_16);
+  UTF16_ENCODE(abs_filename);
+  std::wstring wstr(abs_filename_16);
   m_infile.open(wstr.c_str(), std::ios::in | std::ios::binary);
-  UTF16_UN_ENCODE(abs_filepath);
+  UTF16_UN_ENCODE(abs_filename);
 #else
-  m_infile.open(abs_filepath, std::ios::in | std::ios::binary);
+  m_infile.open(abs_filename, std::ios::in | std::ios::binary);
 #endif
 
   m_streams.push_back(&m_infile);
 
-  m_archive = open_archive(abs_filepath, m_streams);
+  m_archive = open_archive(abs_filename, m_streams);
 }
 
 ArchiveReader::~ArchiveReader()

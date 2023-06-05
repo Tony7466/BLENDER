@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -278,7 +276,7 @@ static void rna_LineStyleColorModifier_name_set(PointerRNA *ptr, const char *val
   FreestyleLineStyle *linestyle = (FreestyleLineStyle *)ptr->owner_id;
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
-  STRNCPY_UTF8(m->name, value);
+  BLI_strncpy_utf8(m->name, value, sizeof(m->name));
   BLI_uniquename(&linestyle->color_modifiers,
                  m,
                  "ColorModifier",
@@ -292,7 +290,7 @@ static void rna_LineStyleAlphaModifier_name_set(PointerRNA *ptr, const char *val
   FreestyleLineStyle *linestyle = (FreestyleLineStyle *)ptr->owner_id;
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
-  STRNCPY_UTF8(m->name, value);
+  BLI_strncpy_utf8(m->name, value, sizeof(m->name));
   BLI_uniquename(&linestyle->alpha_modifiers,
                  m,
                  "AlphaModifier",
@@ -306,7 +304,7 @@ static void rna_LineStyleThicknessModifier_name_set(PointerRNA *ptr, const char 
   FreestyleLineStyle *linestyle = (FreestyleLineStyle *)ptr->owner_id;
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
-  STRNCPY_UTF8(m->name, value);
+  BLI_strncpy_utf8(m->name, value, sizeof(m->name));
   BLI_uniquename(&linestyle->thickness_modifiers,
                  m,
                  "ThicknessModifier",
@@ -320,7 +318,7 @@ static void rna_LineStyleGeometryModifier_name_set(PointerRNA *ptr, const char *
   FreestyleLineStyle *linestyle = (FreestyleLineStyle *)ptr->owner_id;
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
-  STRNCPY_UTF8(m->name, value);
+  BLI_strncpy_utf8(m->name, value, sizeof(m->name));
   BLI_uniquename(&linestyle->geometry_modifiers,
                  m,
                  "GeometryModifier",

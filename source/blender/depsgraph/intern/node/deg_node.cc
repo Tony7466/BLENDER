@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -66,8 +65,6 @@ const char *nodeTypeAsString(NodeType type)
       return "COPY_ON_WRITE";
     case NodeType::OBJECT_FROM_LAYER:
       return "OBJECT_FROM_LAYER";
-    case NodeType::HIERARCHY:
-      return "HIERARCHY";
     /* **** Evaluation-Related Outer Types (with Subdata) **** */
     case NodeType::EVAL_POSE:
       return "EVAL_POSE";
@@ -143,7 +140,6 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::LAYER_COLLECTIONS:
     case NodeType::COPY_ON_WRITE:
     case NodeType::OBJECT_FROM_LAYER:
-    case NodeType::HIERARCHY:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:
@@ -227,7 +223,6 @@ eDepsObjectComponentType nodeTypeToObjectComponent(NodeType type)
     case NodeType::LAYER_COLLECTIONS:
     case NodeType::COPY_ON_WRITE:
     case NodeType::OBJECT_FROM_LAYER:
-    case NodeType::HIERARCHY:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:

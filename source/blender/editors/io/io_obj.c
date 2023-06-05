@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editor/io
@@ -70,7 +68,7 @@ static int wm_obj_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
 static int wm_obj_export_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
   struct OBJExportParams export_params;
@@ -223,7 +221,7 @@ static bool wm_obj_export_check(bContext *C, wmOperator *op)
   return changed;
 }
 
-void WM_OT_obj_export(wmOperatorType *ot)
+void WM_OT_obj_export(struct wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -416,7 +414,7 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
     OBJ_import(C, &import_params);
   }
   else {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
 
@@ -462,7 +460,7 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
   ui_obj_import_settings(op->layout, &ptr);
 }
 
-void WM_OT_obj_import(wmOperatorType *ot)
+void WM_OT_obj_import(struct wmOperatorType *ot)
 {
   PropertyRNA *prop;
 

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup nodes
@@ -33,14 +32,14 @@
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_texture.h"
 
 #include "NOD_texture.h"
 
 #include "node_texture_register.hh"
-#include "node_util.hh"
+#include "node_util.h"
 
 #include "BLT_translation.h"
 

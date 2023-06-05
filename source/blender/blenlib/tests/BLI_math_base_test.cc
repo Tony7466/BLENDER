@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -156,13 +154,6 @@ TEST(math_base, Midpoint)
 TEST(math_base, InterpolateInt)
 {
   EXPECT_EQ(math::interpolate(100, 200, 0.4f), 140);
-}
-
-TEST(math_base, ModFPositive)
-{
-  EXPECT_FLOAT_EQ(mod_f_positive(3.27f, 1.57f), 0.12999988f);
-  EXPECT_FLOAT_EQ(mod_f_positive(327.f, 47.f), 45.f);
-  EXPECT_FLOAT_EQ(mod_f_positive(-0.1f, 1.0f), 0.9f);
 }
 
 }  // namespace blender::tests

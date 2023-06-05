@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pygen
@@ -1438,7 +1436,7 @@ BGL_Wrap(TexImage3DMultisample,
 /** \name Module Definition
  * \{ */
 
-static PyModuleDef BGL_module_def = {
+static struct PyModuleDef BGL_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bgl",
     /*m_doc*/ NULL,
@@ -2653,17 +2651,11 @@ PyObject *BPyInit_bgl(void)
     return NULL; /* should never happen */
   }
 
-  /* Building as a Python module loads all modules
-   * (see code comment around #PyImport_ExtendInittab usage).
-   * The result of this is the `bgl` warning would always show when importing `bpy`.
-   * In the case of Blender as a Python module, suppress the warning. */
-#ifndef WITH_PYTHON_MODULE
   if (GPU_backend_get_type() != GPU_BACKEND_OPENGL) {
     CLOG_WARN(&LOG,
               "'bgl' imported without an OpenGL backend. Please update your add-ons to use the "
               "'gpu' module. In Blender 4.0 'bgl' will be removed.");
   }
-#endif
 
   PyModule_AddObject(submodule, "Buffer", (PyObject *)&BGL_bufferType);
   Py_INCREF((PyObject *)&BGL_bufferType);

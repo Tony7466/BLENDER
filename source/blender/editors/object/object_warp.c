@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup edobj
@@ -241,7 +240,7 @@ static int object_warp_verts_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void TRANSFORM_OT_vertex_warp(wmOperatorType *ot)
+void TRANSFORM_OT_vertex_warp(struct wmOperatorType *ot)
 {
   PropertyRNA *prop;
 

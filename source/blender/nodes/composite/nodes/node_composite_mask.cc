@@ -1,12 +1,11 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
  */
 
-#include "BLI_string_utf8.h"
+#include "BLT_translation.h"
 
 #include "DNA_mask_types.h"
 
@@ -27,7 +26,7 @@ NODE_STORAGE_FUNCS(NodeMask)
 
 static void cmp_node_mask_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>("Mask");
+  b.add_output<decl::Float>(N_("Mask"));
 }
 
 static void node_composit_init_mask(bNodeTree * /*ntree*/, bNode *node)
@@ -43,9 +42,14 @@ static void node_composit_init_mask(bNodeTree * /*ntree*/, bNode *node)
 static void node_mask_label(const bNodeTree * /*ntree*/,
                             const bNode *node,
                             char *label,
-                            int label_maxncpy)
+                            int maxlen)
 {
-  BLI_strncpy_utf8(label, node->id ? node->id->name + 2 : IFACE_("Mask"), label_maxncpy);
+  if (node->id != nullptr) {
+    BLI_strncpy(label, node->id->name + 2, maxlen);
+  }
+  else {
+    BLI_strncpy(label, IFACE_("Mask"), maxlen);
+  }
 }
 
 static void node_composit_buts_mask(uiLayout *layout, bContext *C, PointerRNA *ptr)

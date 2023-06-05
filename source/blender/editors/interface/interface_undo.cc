@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -23,7 +22,7 @@
  * \{ */
 
 struct uiUndoStack_Text_State {
-  uiUndoStack_Text_State *next, *prev;
+  struct uiUndoStack_Text_State *next, *prev;
   int cursor_index;
   char text[0];
 };

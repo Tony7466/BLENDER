@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -59,7 +57,7 @@ bool BKE_memfile_undo_decode(MemFileUndoData *mfu,
   char mainstr[sizeof(bmain->filepath)];
   int success = 0, fileflags;
 
-  STRNCPY(mainstr, BKE_main_blendfile_path(bmain)); /* temporal store */
+  BLI_strncpy(mainstr, BKE_main_blendfile_path(bmain), sizeof(mainstr)); /* temporal store */
 
   fileflags = G.fileflags;
   G.fileflags |= G_FILE_NO_UI;
@@ -67,20 +65,21 @@ bool BKE_memfile_undo_decode(MemFileUndoData *mfu,
   if (UNDO_DISK) {
     const BlendFileReadParams params{};
     BlendFileReadReport bf_reports{};
-    BlendFileData *bfd = BKE_blendfile_read(mfu->filepath, &params, &bf_reports);
+    struct BlendFileData *bfd = BKE_blendfile_read(mfu->filepath, &params, &bf_reports);
     if (bfd != nullptr) {
       BKE_blendfile_read_setup(C, bfd, &params, &bf_reports);
       success = true;
     }
   }
   else {
-    BlendFileReadParams params = {0};
+    struct BlendFileReadParams params = {0};
     params.undo_direction = undo_direction;
     if (!use_old_bmain_data) {
       params.skip_flags |= BLO_READ_SKIP_UNDO_OLD_MAIN;
     }
     BlendFileReadReport blend_file_read_report{};
-    BlendFileData *bfd = BKE_blendfile_read_from_memfile(bmain, &mfu->memfile, &params, nullptr);
+    struct BlendFileData *bfd = BKE_blendfile_read_from_memfile(
+        bmain, &mfu->memfile, &params, nullptr);
     if (bfd != nullptr) {
       BKE_blendfile_read_setup(C, bfd, &params, &blend_file_read_report);
       success = true;
@@ -117,14 +116,14 @@ MemFileUndoData *BKE_memfile_undo_encode(Main *bmain, MemFileUndoData *mfu_prev)
     counter++;
     counter = counter % U.undosteps;
 
-    SNPRINTF(numstr, "%d.blend", counter);
+    BLI_snprintf(numstr, sizeof(numstr), "%d.blend", counter);
     BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_session(), numstr);
 
     const BlendFileWriteParams blend_file_write_params{};
     /* success = */ /* UNUSED */ BLO_write_file(
         bmain, filepath, fileflags, &blend_file_write_params, nullptr);
 
-    STRNCPY(mfu->filepath, filepath);
+    BLI_strncpy(mfu->filepath, filepath, sizeof(mfu->filepath));
   }
   else {
     MemFile *prevfile = (mfu_prev) ? &(mfu_prev->memfile) : nullptr;

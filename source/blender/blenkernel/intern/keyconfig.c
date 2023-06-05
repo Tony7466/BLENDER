@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -188,7 +186,7 @@ void BKE_keyconfig_keymap_filter_item(wmKeyMap *keymap,
   }
 }
 
-void BKE_keyconfig_pref_filter_items(UserDef *userdef,
+void BKE_keyconfig_pref_filter_items(struct UserDef *userdef,
                                      const struct wmKeyConfigFilterItemParams *params,
                                      bool (*filter_fn)(wmKeyMapItem *kmi, void *user_data),
                                      void *user_data)

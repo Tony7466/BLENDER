@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -8,7 +7,7 @@ namespace blender::nodes::node_shader_output_light_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Shader>("Surface");
+  b.add_input<decl::Shader>(N_("Surface"));
 }
 
 static int node_shader_gpu_output_light(GPUMaterial *mat,

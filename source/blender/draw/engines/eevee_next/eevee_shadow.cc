@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation.
+ */
 
 /** \file
  * \ingroup eevee
@@ -148,8 +147,7 @@ ShadowTileMapPool::ShadowTileMapPool()
   extent.x = min_ii(SHADOW_MAX_TILEMAP, maps_per_row) * ShadowTileMap::tile_map_resolution;
   extent.y = (SHADOW_MAX_TILEMAP / maps_per_row) * ShadowTileMap::tile_map_resolution;
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                           GPU_TEXTURE_USAGE_ATTACHMENT;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   tilemap_tx.ensure_2d(GPU_R32UI, extent, usage);
   tilemap_tx.clear(uint4(0));
 }

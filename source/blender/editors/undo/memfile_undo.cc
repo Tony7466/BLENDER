@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edundo
@@ -27,7 +25,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_scene.h"
 #include "BKE_undo_system.h"
 
@@ -72,7 +70,9 @@ static bool memfile_undosys_poll(bContext *C)
   return true;
 }
 
-static bool memfile_undosys_step_encode(bContext * /*C*/, Main *bmain, UndoStep *us_p)
+static bool memfile_undosys_step_encode(struct bContext * /*C*/,
+                                        struct Main *bmain,
+                                        UndoStep *us_p)
 {
   MemFileUndoStep *us = (MemFileUndoStep *)us_p;
 
@@ -99,16 +99,15 @@ static bool memfile_undosys_step_encode(bContext * /*C*/, Main *bmain, UndoStep 
 
 static int memfile_undosys_step_id_reused_cb(LibraryIDLinkCallbackData *cb_data)
 {
-  ID *self_id = cb_data->self_id;
+  ID *id_self = cb_data->id_self;
   ID **id_pointer = cb_data->id_pointer;
-  BLI_assert((self_id->tag & LIB_TAG_UNDO_OLD_ID_REUSED_UNCHANGED) != 0);
+  BLI_assert((id_self->tag & LIB_TAG_UNDO_OLD_ID_REUSED) != 0);
 
   ID *id = *id_pointer;
-  if (id != nullptr && !ID_IS_LINKED(id) && (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED_UNCHANGED) == 0)
-  {
+  if (id != nullptr && !ID_IS_LINKED(id) && (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED) == 0) {
     bool do_stop_iter = true;
-    if (GS(self_id->name) == ID_OB) {
-      Object *ob_self = (Object *)self_id;
+    if (GS(id_self->name) == ID_OB) {
+      Object *ob_self = (Object *)id_self;
       if (ob_self->type == OB_ARMATURE) {
         if (ob_self->data == id) {
           BLI_assert(GS(id->name) == ID_AR);
@@ -157,8 +156,11 @@ static void memfile_undosys_unfinished_id_previews_restart(ID *id)
   }
 }
 
-static void memfile_undosys_step_decode(
-    bContext *C, Main *bmain, UndoStep *us_p, const eUndoStepDir undo_direction, bool /*is_final*/)
+static void memfile_undosys_step_decode(struct bContext *C,
+                                        struct Main *bmain,
+                                        UndoStep *us_p,
+                                        const eUndoStepDir undo_direction,
+                                        bool /*is_final*/)
 {
   BLI_assert(undo_direction != STEP_INVALID);
 
@@ -232,7 +234,7 @@ static void memfile_undosys_step_decode(
      * data-blocks, at least COW evaluated copies need to be updated... */
     ID *id = nullptr;
     FOREACH_MAIN_ID_BEGIN (bmain, id) {
-      if (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED_UNCHANGED) {
+      if (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED) {
         BKE_library_foreach_ID_link(
             bmain, id, memfile_undosys_step_id_reused_cb, nullptr, IDWALK_READONLY);
       }
@@ -280,7 +282,7 @@ static void memfile_undosys_step_decode(
 
     FOREACH_MAIN_ID_BEGIN (bmain, id) {
       /* Clear temporary tag. */
-      id->tag &= ~(LIB_TAG_UNDO_OLD_ID_REUSED_UNCHANGED | LIB_TAG_UNDO_OLD_ID_REREAD_IN_PLACE);
+      id->tag &= ~(LIB_TAG_UNDO_OLD_ID_REUSED | LIB_TAG_UNDO_OLD_ID_REREAD_IN_PLACE);
 
       /* We only start accumulating from this point, any tags set up to here
        * are already part of the current undo state. This is done in a second
@@ -350,13 +352,13 @@ void ED_memfile_undosys_type(UndoType *ut)
  * Ideally we wouldn't need to export global undo internals,
  * there are some cases where it's needed though.
  */
-static MemFile *ed_undosys_step_get_memfile(UndoStep *us_p)
+static struct MemFile *ed_undosys_step_get_memfile(UndoStep *us_p)
 {
   MemFileUndoStep *us = (MemFileUndoStep *)us_p;
   return &us->data->memfile;
 }
 
-MemFile *ED_undosys_stack_memfile_get_active(UndoStack *ustack)
+struct MemFile *ED_undosys_stack_memfile_get_active(UndoStack *ustack)
 {
   UndoStep *us = BKE_undosys_stack_active_with_type(ustack, BKE_UNDOSYS_TYPE_MEMFILE);
   if (us) {

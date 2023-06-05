@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Global parameters. */
 #define MTL_SSBO_VERTEX_FETCH_MAX_VBOS 6 /* buffer bind 0..5 */

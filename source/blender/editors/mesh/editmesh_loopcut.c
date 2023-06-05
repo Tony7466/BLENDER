@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup edmesh
@@ -230,7 +229,7 @@ static void ringsel_finish(bContext *C, wmOperator *op)
        *     in editmesh_select.cc (around line 1000)... */
       /* sets as active, useful for other tools */
       if (em->selectmode & SCE_SELECT_VERTEX) {
-        /* low priority TODO: get vertex close to mouse. */
+        /* low priority TODO: get vertrex close to mouse. */
         BM_select_history_store(em->bm, lcd->eed->v1);
       }
       if (em->selectmode & SCE_SELECT_EDGE) {
@@ -684,8 +683,11 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
       BLI_snprintf(str_rep, NUM_STR_REP_LEN, "%d", (int)lcd->cuts);
       BLI_snprintf(str_rep + NUM_STR_REP_LEN, NUM_STR_REP_LEN, "%.2f", smoothness);
     }
-    SNPRINTF(
-        buf, TIP_("Number of Cuts: %s, Smooth: %s (Alt)"), str_rep, str_rep + NUM_STR_REP_LEN);
+    BLI_snprintf(buf,
+                 sizeof(buf),
+                 TIP_("Number of Cuts: %s, Smooth: %s (Alt)"),
+                 str_rep,
+                 str_rep + NUM_STR_REP_LEN);
     ED_workspace_status_text(C, buf);
   }
 
@@ -756,7 +758,7 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   prop = RNA_def_property(ot->srna, "falloff", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_proportional_falloff_curve_only_items);
   RNA_def_property_enum_default(prop, PROP_INVSQUARE);
-  RNA_def_property_ui_text(prop, "Falloff", "Falloff type of the feather");
+  RNA_def_property_ui_text(prop, "Falloff", "Falloff type the feather");
   RNA_def_property_translation_context(prop,
                                        BLT_I18NCONTEXT_ID_CURVE_LEGACY); /* Abusing id_curve :/ */
 

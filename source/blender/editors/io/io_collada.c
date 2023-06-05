@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup collada
@@ -85,7 +84,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   int sample_animations;
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
 
@@ -219,7 +218,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   }
 
   char buff[100];
-  SNPRINTF(buff, "Exported %d Objects", export_count);
+  BLI_snprintf(buff, sizeof(buff), "Exported %d Objects", export_count);
   BKE_report(op->reports, RPT_INFO, buff);
   return OPERATOR_FINISHED;
 }
@@ -679,7 +678,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
 
 static int wm_collada_import_exec(bContext *C, wmOperator *op)
 {
-  char filepath[FILE_MAX];
+  char filename[FILE_MAX];
   int import_units;
   int find_chains;
   int auto_connect;
@@ -691,7 +690,7 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
   ImportSettings import_settings;
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
 
@@ -706,9 +705,9 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
 
   min_chain_length = RNA_int_get(op->ptr, "min_chain_length");
 
-  RNA_string_get(op->ptr, "filepath", filepath);
+  RNA_string_get(op->ptr, "filepath", filename);
 
-  import_settings.filepath = filepath;
+  import_settings.filepath = filename;
   import_settings.import_units = import_units != 0;
   import_settings.custom_normals = custom_normals != 0;
   import_settings.auto_connect = auto_connect != 0;

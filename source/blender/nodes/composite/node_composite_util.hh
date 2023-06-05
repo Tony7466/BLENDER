@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup nodes
@@ -11,8 +10,10 @@
 #include "DNA_ID.h"
 #include "DNA_node_types.h"
 
+#include "BLT_translation.h"
+
 #include "node_composite_register.hh"
-#include "node_util.hh"
+#include "node_util.h"
 
 #include "NOD_composite.h"
 #include "NOD_socket.h"

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -300,7 +298,7 @@ static SnapData_EditMesh *snap_object_data_editmesh_get(SnapObjectContext *sctx,
     else if (sod->mesh_runtime) {
       if (sod->mesh_runtime != snap_object_data_editmesh_runtime_get(ob_eval)) {
         if (G.moving) {
-          /* WORKAROUND: avoid updating while transforming. */
+          /* Hack to avoid updating while transforming. */
           BLI_assert(!sod->treedata_editmesh.cached && !sod->cached[0] && !sod->cached[1]);
           sod->mesh_runtime = snap_object_data_editmesh_runtime_get(ob_eval);
         }
@@ -383,12 +381,11 @@ static BVHTreeFromEditMesh *snap_object_data_editmesh_treedata_get(SnapObjectCon
                                     em,
                                     4,
                                     BVHTREE_FROM_EM_LOOPTRI,
-                                    /* WORKAROUND: avoid updating while transforming. */
-                                    G.moving ? nullptr : &sod->mesh_runtime->bvh_cache,
+                                    &sod->mesh_runtime->bvh_cache,
                                     &sod->mesh_runtime->eval_mutex);
     }
   }
-  if (treedata->tree == nullptr) {
+  if (treedata == nullptr || treedata->tree == nullptr) {
     return nullptr;
   }
 
@@ -752,8 +749,6 @@ static bool raycastMesh(SnapObjectContext *sctx,
   BVHTreeFromMesh treedata;
   snap_object_data_mesh_get(sctx, ob_eval, me_eval, use_hide, &treedata);
 
-  const blender::Span<int> looptri_polys = me_eval->looptri_polys();
-
   if (treedata.tree == nullptr) {
     return retval;
   }
@@ -814,7 +809,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
         retval = true;
 
         if (r_index) {
-          *r_index = looptri_polys[hit.index];
+          *r_index = treedata.looptri[hit.index].poly;
         }
       }
     }
@@ -1148,7 +1143,7 @@ static void nearest_world_tree_co(BVHTree *tree,
 }
 
 static bool nearest_world_tree(SnapObjectContext * /*sctx*/,
-                               const SnapObjectParams *params,
+                               const struct SnapObjectParams *params,
                                BVHTree *tree,
                                BVHTree_NearestPointCallback nearest_cb,
                                void *treedata,
@@ -1221,7 +1216,7 @@ static bool nearest_world_tree(SnapObjectContext * /*sctx*/,
 }
 
 static bool nearest_world_mesh(SnapObjectContext *sctx,
-                               const SnapObjectParams *params,
+                               const struct SnapObjectParams *params,
                                Object *ob_eval,
                                const Mesh *me_eval,
                                const float (*obmat)[4],
@@ -1254,7 +1249,7 @@ static bool nearest_world_mesh(SnapObjectContext *sctx,
 }
 
 static bool nearest_world_editmesh(SnapObjectContext *sctx,
-                                   const SnapObjectParams *params,
+                                   const struct SnapObjectParams *params,
                                    Object *ob_eval,
                                    BMEditMesh *em,
                                    const float (*obmat)[4],
@@ -1266,7 +1261,7 @@ static bool nearest_world_editmesh(SnapObjectContext *sctx,
                                    int *r_index)
 {
   BVHTreeFromEditMesh *treedata = snap_object_data_editmesh_treedata_get(sctx, ob_eval, em);
-  if (treedata == nullptr) {
+  if (treedata == nullptr || treedata->tree == nullptr) {
     return false;
   }
 
@@ -1292,7 +1287,7 @@ static eSnapMode nearest_world_object_fn(SnapObjectContext *sctx,
                                          bool use_hide,
                                          void *data)
 {
-  NearestWorldObjUserData *dt = static_cast<NearestWorldObjUserData *>(data);
+  struct NearestWorldObjUserData *dt = static_cast<NearestWorldObjUserData *>(data);
 
   bool retval = false;
   bool is_edit = false;
@@ -1367,7 +1362,7 @@ static eSnapMode nearest_world_object_fn(SnapObjectContext *sctx,
  * \param prev_co: Current location of source point after transformation but before snapping.
  */
 static bool nearestWorldObjects(SnapObjectContext *sctx,
-                                const SnapObjectParams *params,
+                                const struct SnapObjectParams *params,
                                 const float init_co[3],
                                 const float curr_co[3])
 {
@@ -2768,8 +2763,7 @@ static eSnapMode snapEditMesh(SnapObjectContext *sctx,
                                       em,
                                       2,
                                       BVHTREE_FROM_EM_VERTS,
-                                      /* WORKAROUND: avoid updating while transforming. */
-                                      G.moving ? nullptr : &sod->mesh_runtime->bvh_cache,
+                                      &sod->mesh_runtime->bvh_cache,
                                       &sod->mesh_runtime->eval_mutex);
       }
       sod->bvhtree[0] = treedata.tree;
@@ -2798,8 +2792,7 @@ static eSnapMode snapEditMesh(SnapObjectContext *sctx,
                                       em,
                                       2,
                                       BVHTREE_FROM_EM_EDGES,
-                                      /* WORKAROUND: avoid updating while transforming. */
-                                      G.moving ? nullptr : &sod->mesh_runtime->bvh_cache,
+                                      &sod->mesh_runtime->bvh_cache,
                                       &sod->mesh_runtime->eval_mutex);
       }
       sod->bvhtree[1] = treedata.tree;
@@ -3068,27 +3061,11 @@ void ED_transform_snap_object_context_set_editmesh_callbacks(
     bool (*test_face_fn)(BMFace *, void *user_data),
     void *user_data)
 {
-  bool is_cache_dirty = false;
-  if (sctx->callbacks.edit_mesh.test_vert_fn != test_vert_fn) {
-    sctx->callbacks.edit_mesh.test_vert_fn = test_vert_fn;
-    is_cache_dirty = true;
-  }
-  if (sctx->callbacks.edit_mesh.test_edge_fn != test_edge_fn) {
-    sctx->callbacks.edit_mesh.test_edge_fn = test_edge_fn;
-    is_cache_dirty = true;
-  }
-  if (sctx->callbacks.edit_mesh.test_face_fn != test_face_fn) {
-    sctx->callbacks.edit_mesh.test_face_fn = test_face_fn;
-    is_cache_dirty = true;
-  }
-  if (sctx->callbacks.edit_mesh.user_data != user_data) {
-    sctx->callbacks.edit_mesh.user_data = user_data;
-    is_cache_dirty = true;
-  }
+  sctx->callbacks.edit_mesh.test_vert_fn = test_vert_fn;
+  sctx->callbacks.edit_mesh.test_edge_fn = test_edge_fn;
+  sctx->callbacks.edit_mesh.test_face_fn = test_face_fn;
 
-  if (is_cache_dirty) {
-    sctx->editmesh_caches.clear();
-  }
+  sctx->callbacks.edit_mesh.user_data = user_data;
 }
 
 bool ED_transform_snap_object_project_ray_ex(SnapObjectContext *sctx,

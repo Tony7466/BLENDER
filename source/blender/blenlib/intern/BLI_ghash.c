@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -86,7 +85,7 @@ struct GHash {
   GHashCmpFP cmpfp;
 
   Entry **buckets;
-  BLI_mempool *entrypool;
+  struct BLI_mempool *entrypool;
   uint nbuckets;
   uint limit_grow, limit_shrink;
 #ifdef GHASH_USE_MODULO_BUCKETS

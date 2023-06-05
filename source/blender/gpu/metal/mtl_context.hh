@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -48,7 +46,6 @@ namespace blender::gpu {
 class MTLContext;
 class MTLCommandBufferManager;
 class MTLUniformBuf;
-class MTLStorageBuf;
 
 /* Structs containing information on current binding state for textures and samplers. */
 struct MTLTextureBinding {
@@ -88,7 +85,7 @@ struct BufferBindingCached {
    * or an MTLBuffer. */
   bool is_bytes;
   id<MTLBuffer> metal_buffer;
-  uint64_t offset;
+  int offset;
 };
 
 /* Caching of CommandEncoder textures bindings. */
@@ -146,10 +143,10 @@ class MTLRenderPassState {
                              uint slot);
 
   /* Buffer binding (RenderCommandEncoder). */
-  void bind_vertex_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index);
-  void bind_fragment_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index);
-  void bind_vertex_bytes(void *bytes, uint64_t length, uint index);
-  void bind_fragment_bytes(void *bytes, uint64_t length, uint index);
+  void bind_vertex_buffer(id<MTLBuffer> buffer, uint buffer_offset, uint index);
+  void bind_fragment_buffer(id<MTLBuffer> buffer, uint buffer_offset, uint index);
+  void bind_vertex_bytes(void *bytes, uint length, uint index);
+  void bind_fragment_bytes(void *bytes, uint length, uint index);
 };
 
 /* Metal Context Compute Pass State -- Used to track active ComputeCommandEncoder state. */
@@ -184,10 +181,10 @@ class MTLComputeState {
                             uint slot);
   /* Buffer binding (ComputeCommandEncoder). */
   void bind_compute_buffer(id<MTLBuffer> buffer,
-                           uint64_t buffer_offset,
+                           uint buffer_offset,
                            uint index,
                            bool writeable = false);
-  void bind_compute_bytes(void *bytes, uint64_t length, uint index);
+  void bind_compute_bytes(void *bytes, uint length, uint index);
 };
 
 /* Depth Stencil State */
@@ -439,11 +436,6 @@ struct MTLUniformBufferBinding {
   MTLUniformBuf *ubo;
 };
 
-struct MTLStorageBufferBinding {
-  bool bound;
-  MTLStorageBuf *ssbo;
-};
-
 struct MTLContextGlobalShaderPipelineState {
   bool initialised;
 
@@ -463,17 +455,11 @@ struct MTLContextGlobalShaderPipelineState {
   MTLShader *active_shader;
 
   /* Global Uniform Buffers. */
-  MTLUniformBufferBinding ubo_bindings[MTL_MAX_BUFFER_BINDINGS];
-
-  /* Storage buffer. */
-  MTLStorageBufferBinding ssbo_bindings[MTL_MAX_BUFFER_BINDINGS];
+  MTLUniformBufferBinding ubo_bindings[MTL_MAX_UNIFORM_BUFFER_BINDINGS];
 
   /* Context Texture bindings. */
   MTLTextureBinding texture_bindings[MTL_MAX_TEXTURE_SLOTS];
   MTLSamplerBinding sampler_bindings[MTL_MAX_SAMPLER_SLOTS];
-
-  /* Image bindings. */
-  MTLTextureBinding image_bindings[MTL_MAX_TEXTURE_SLOTS];
 
   /*** --- Render Pipeline State --- ***/
   /* Track global render pipeline state for the current context. The functions in GPU_state.h
@@ -538,6 +524,10 @@ class MTLCommandBufferManager {
   friend class MTLContext;
 
  public:
+  /* Event to coordinate sequential execution across all "main" command buffers. */
+  static id<MTLEvent> sync_event;
+  static uint64_t event_signal_val;
+
   /* Counter for active command buffers. */
   static int num_active_cmd_bufs;
 
@@ -576,13 +566,6 @@ class MTLCommandBufferManager {
   int encoder_count_ = 0;
   int vertex_submitted_count_ = 0;
   bool empty_ = true;
-
-  /** Debug groups. */
-  /* Stack tracking all calls to push_debug_group. */
-  std::vector<std::string> debug_group_stack;
-  /* Stack tracking calls resulting in active API calls to pushDebugGroup on the current command
-   * buffer. */
-  std::vector<std::string> debug_group_pushed_stack;
 
  public:
   MTLCommandBufferManager(MTLContext &context)
@@ -648,9 +631,6 @@ class MTLCommandBufferManager {
   id<MTLCommandBuffer> ensure_begin();
 
   void register_encoder_counters();
-
-  /* Debug group management. */
-  void unfold_pending_debug_groups();
 };
 
 /** MTLContext -- Core render loop and state management. **/
@@ -791,10 +771,10 @@ class MTLContext : public Context {
   MTLFrameBuffer *get_default_framebuffer();
 
   /* Context Global-State Texture Binding. */
-  void texture_bind(gpu::MTLTexture *mtl_texture, uint texture_unit, bool is_image);
+  void texture_bind(gpu::MTLTexture *mtl_texture, uint texture_unit);
   void sampler_bind(MTLSamplerState, uint sampler_unit);
-  void texture_unbind(gpu::MTLTexture *mtl_texture, bool is_image);
-  void texture_unbind_all(bool is_image);
+  void texture_unbind(gpu::MTLTexture *mtl_texture);
+  void texture_unbind_all();
   void sampler_state_cache_init();
   id<MTLSamplerState> get_sampler_from_state(MTLSamplerState state);
   id<MTLSamplerState> get_default_sampler_state();
@@ -818,12 +798,14 @@ class MTLContext : public Context {
    * `ensure_render_pipeline_state` will return false if the state is
    * invalid and cannot be applied. This should cancel a draw call. */
   bool ensure_render_pipeline_state(MTLPrimitiveType prim_type);
-  bool ensure_buffer_bindings(id<MTLRenderCommandEncoder> rec,
-                              const MTLShaderInterface *shader_interface,
-                              const MTLRenderPipelineStateInstance *pipeline_state_instance);
-  bool ensure_buffer_bindings(id<MTLComputeCommandEncoder> rec,
-                              const MTLShaderInterface *shader_interface,
-                              const MTLComputePipelineStateInstance &pipeline_state_instance);
+  bool ensure_uniform_buffer_bindings(
+      id<MTLRenderCommandEncoder> rec,
+      const MTLShaderInterface *shader_interface,
+      const MTLRenderPipelineStateInstance *pipeline_state_instance);
+  bool ensure_uniform_buffer_bindings(
+      id<MTLComputeCommandEncoder> rec,
+      const MTLShaderInterface *shader_interface,
+      const MTLComputePipelineStateInstance &pipeline_state_instance);
   void ensure_texture_bindings(id<MTLRenderCommandEncoder> rec,
                                MTLShaderInterface *shader_interface,
                                const MTLRenderPipelineStateInstance *pipeline_state_instance);
@@ -840,7 +822,6 @@ class MTLContext : public Context {
   /* Compute. */
   bool ensure_compute_pipeline_state();
   void compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
-  void compute_dispatch_indirect(StorageBuf *indirect_buf);
 
   /* State assignment. */
   void set_viewport(int origin_x, int origin_y, int width, int height);

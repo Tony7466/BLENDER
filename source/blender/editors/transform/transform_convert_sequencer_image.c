@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup edtransform
@@ -36,7 +35,7 @@
 
 /** Used for sequencer transform. */
 typedef struct TransDataSeq {
-  Sequence *seq;
+  struct Sequence *seq;
   float orig_origin_position[2];
   float orig_translation[2];
   float orig_scale[2];

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spview3d
@@ -381,7 +380,7 @@ void ED_view3d_draw_setup_view(const wmWindowManager *wm,
  * \{ */
 
 static void view3d_camera_border(const Scene *scene,
-                                 Depsgraph *depsgraph,
+                                 struct Depsgraph *depsgraph,
                                  const ARegion *region,
                                  const View3D *v3d,
                                  const RegionView3D *rv3d,
@@ -853,15 +852,15 @@ float ED_scene_grid_scale(const Scene *scene, const char **r_grid_unit)
   return 1.0f;
 }
 
-float ED_view3d_grid_scale(const Scene *scene, const View3D *v3d, const char **r_grid_unit)
+float ED_view3d_grid_scale(const Scene *scene, View3D *v3d, const char **r_grid_unit)
 {
   return v3d->grid * ED_scene_grid_scale(scene, r_grid_unit);
 }
 
 #define STEPS_LEN 8
 static void view3d_grid_steps_ex(const Scene *scene,
-                                 const View3D *v3d,
-                                 const RegionView3D *rv3d,
+                                 View3D *v3d,
+                                 RegionView3D *rv3d,
                                  float r_grid_steps[STEPS_LEN],
                                  void const **r_usys_pt,
                                  int *r_len)
@@ -913,8 +912,8 @@ static void view3d_grid_steps_ex(const Scene *scene,
 }
 
 void ED_view3d_grid_steps(const Scene *scene,
-                          const View3D *v3d,
-                          const RegionView3D *rv3d,
+                          View3D *v3d,
+                          RegionView3D *rv3d,
                           float r_grid_steps[STEPS_LEN])
 {
   view3d_grid_steps_ex(scene, v3d, rv3d, r_grid_steps, nullptr, nullptr);
@@ -1454,7 +1453,7 @@ static void draw_grid_unit_name(
       char numstr[32] = "";
       UI_FontThemeColor(font_id, TH_TEXT_HI);
       if (v3d->grid != 1.0f) {
-        SNPRINTF(numstr, "%s x %.4g", grid_unit, v3d->grid);
+        BLI_snprintf(numstr, sizeof(numstr), "%s x %.4g", grid_unit, v3d->grid);
       }
 
       *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
@@ -1664,7 +1663,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
 
   /* Store `orig` variables. */
   struct {
-    bThemeState theme_state;
+    struct bThemeState theme_state;
 
     /* #View3D */
     eDrawType v3d_shading_type;
@@ -1678,7 +1677,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
      * Needed so the value won't be left overwritten,
      * Without this the #wmPaintCursor can't use the pixel size & view matrices for drawing.
      */
-    RV3DMatrixStore *rv3d_mats;
+    struct RV3DMatrixStore *rv3d_mats;
   } orig{};
   orig.v3d_shading_type = eDrawType(v3d->shading.type);
   orig.region_winx = region->winx;
@@ -1974,7 +1973,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
    * When using workbench the color differences haven't been reported as a bug. But users also use
    * the viewport rendering to render Eevee scenes. In the later situation the saved colors are
    * totally wrong. */
-  const bool do_color_management = (ibuf->float_buffer.data == nullptr);
+  const bool do_color_management = (ibuf->rect_float == nullptr);
   ED_view3d_draw_offscreen(depsgraph,
                            scene,
                            drawtype,
@@ -1992,11 +1991,11 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                            ofs,
                            nullptr);
 
-  if (ibuf->float_buffer.data) {
-    GPU_offscreen_read_color(ofs, GPU_DATA_FLOAT, ibuf->float_buffer.data);
+  if (ibuf->rect_float) {
+    GPU_offscreen_read_color(ofs, GPU_DATA_FLOAT, ibuf->rect_float);
   }
-  else if (ibuf->byte_buffer.data) {
-    GPU_offscreen_read_color(ofs, GPU_DATA_UBYTE, ibuf->byte_buffer.data);
+  else if (ibuf->rect) {
+    GPU_offscreen_read_color(ofs, GPU_DATA_UBYTE, ibuf->rect);
   }
 
   /* unbind */
@@ -2012,7 +2011,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
     GPU_framebuffer_bind(old_fb);
   }
 
-  if (ibuf->float_buffer.data && ibuf->byte_buffer.data) {
+  if (ibuf->rect_float && ibuf->rect) {
     IMB_rect_from_float(ibuf);
   }
 
@@ -2163,7 +2162,7 @@ bool ED_view3d_clipping_test(const RegionView3D *rv3d, const float co[3], const 
 /**
  * \note Only use in object mode.
  */
-static void validate_object_select_id(Depsgraph *depsgraph,
+static void validate_object_select_id(struct Depsgraph *depsgraph,
                                       const Scene *scene,
                                       ViewLayer *view_layer,
                                       ARegion *region,
@@ -2350,7 +2349,7 @@ void ED_view3d_depth_override(Depsgraph *depsgraph,
       return;
     }
   }
-  bThemeState theme_state;
+  struct bThemeState theme_state;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
@@ -2514,9 +2513,9 @@ struct RV3DMatrixStore {
   float pixsize;
 };
 
-RV3DMatrixStore *ED_view3d_mats_rv3d_backup(RegionView3D *rv3d)
+struct RV3DMatrixStore *ED_view3d_mats_rv3d_backup(struct RegionView3D *rv3d)
 {
-  RV3DMatrixStore *rv3dmat = static_cast<RV3DMatrixStore *>(
+  struct RV3DMatrixStore *rv3dmat = static_cast<RV3DMatrixStore *>(
       MEM_mallocN(sizeof(*rv3dmat), __func__));
   copy_m4_m4(rv3dmat->winmat, rv3d->winmat);
   copy_m4_m4(rv3dmat->viewmat, rv3d->viewmat);
@@ -2528,9 +2527,9 @@ RV3DMatrixStore *ED_view3d_mats_rv3d_backup(RegionView3D *rv3d)
   return rv3dmat;
 }
 
-void ED_view3d_mats_rv3d_restore(RegionView3D *rv3d, RV3DMatrixStore *rv3dmat_pt)
+void ED_view3d_mats_rv3d_restore(struct RegionView3D *rv3d, struct RV3DMatrixStore *rv3dmat_pt)
 {
-  RV3DMatrixStore *rv3dmat = rv3dmat_pt;
+  struct RV3DMatrixStore *rv3dmat = rv3dmat_pt;
   copy_m4_m4(rv3d->winmat, rv3dmat->winmat);
   copy_m4_m4(rv3d->viewmat, rv3dmat->viewmat);
   copy_m4_m4(rv3d->persmat, rv3dmat->persmat);
@@ -2579,11 +2578,11 @@ void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset)
   /* Is this more than half a frame behind? */
   if (fps + 0.5f < float(FPS)) {
     UI_FontThemeColor(font_id, TH_REDALERT);
-    SNPRINTF(printable, IFACE_("fps: %.2f"), fps);
+    BLI_snprintf(printable, sizeof(printable), IFACE_("fps: %.2f"), fps);
   }
   else {
     UI_FontThemeColor(font_id, TH_TEXT_HI);
-    SNPRINTF(printable, IFACE_("fps: %i"), int(fps + 0.5f));
+    BLI_snprintf(printable, sizeof(printable), IFACE_("fps: %i"), int(fps + 0.5f));
   }
 
   BLF_enable(font_id, BLF_SHADOW);

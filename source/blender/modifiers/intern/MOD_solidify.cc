@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -27,8 +26,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.hh"
-#include "MOD_ui_common.hh"
+#include "MOD_modifiertypes.h"
+#include "MOD_ui_common.h"
 
 #include "MOD_solidify_util.hh"
 
@@ -58,7 +57,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 {
   SolidifyModifierData *smd = (SolidifyModifierData *)md;
 
-  /* Ask for vertex-groups if we need them. */
+  /* ask for vertexgroups if we need them */
   if (smd->defgrp_name[0] != '\0' || smd->shell_defgrp_name[0] != '\0' ||
       smd->rim_defgrp_name[0] != '\0')
   {

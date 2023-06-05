@@ -1,13 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
 #include "BKE_context.h"
 #include "BKE_idtype.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_object.h"
 #include "DEG_depsgraph.h"
 #include "RNA_define.h"

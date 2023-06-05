@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -20,16 +19,16 @@ namespace blender::nodes::node_composite_huecorrect_cc {
 
 static void cmp_node_huecorrect_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Fac")
+  b.add_input<decl::Float>(N_("Fac"))
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .compositor_domain_priority(1);
-  b.add_input<decl::Color>("Image")
+  b.add_input<decl::Color>(N_("Image"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_output<decl::Color>("Image");
+  b.add_output<decl::Color>(N_("Image"));
 }
 
 static void node_composit_init_huecorrect(bNodeTree * /*ntree*/, bNode *node)
@@ -106,7 +105,7 @@ void register_node_type_cmp_huecorrect()
 
   cmp_node_type_base(&ntype, CMP_NODE_HUECORRECT, "Hue Correct", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::cmp_node_huecorrect_declare;
-  blender::bke::node_type_size(&ntype, 320, 140, 500);
+  node_type_size(&ntype, 320, 140, 500);
   ntype.initfunc = file_ns::node_composit_init_huecorrect;
   node_type_storage(&ntype, "CurveMapping", node_free_curves, node_copy_curves);
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 #include "BKE_action.h"
 
@@ -161,8 +160,8 @@ void add_keyframe(FCurve *fcu, float x, float y)
 
 TEST(action_assets, BKE_action_has_single_frame)
 {
-  /* Null action. */
-  EXPECT_FALSE(BKE_action_has_single_frame(nullptr)) << "Null Action cannot have a single frame.";
+  /* NULL action. */
+  EXPECT_FALSE(BKE_action_has_single_frame(nullptr)) << "NULL Action cannot have a single frame.";
 
   /* No FCurves. */
   {

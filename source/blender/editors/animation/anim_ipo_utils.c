@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edanimation
@@ -154,10 +153,10 @@ int getname_anim_fcurve(char *name, ID *id, FCurve *fcu)
 
         /* we need to write the index to a temp buffer (in py syntax) */
         if (c) {
-          SNPRINTF(arrayindbuf, "%c ", c);
+          BLI_snprintf(arrayindbuf, sizeof(arrayindbuf), "%c ", c);
         }
         else {
-          SNPRINTF(arrayindbuf, "[%d]", fcu->array_index);
+          BLI_snprintf(arrayindbuf, sizeof(arrayindbuf), "[%d]", fcu->array_index);
         }
 
         arrayname = &arrayindbuf[0];

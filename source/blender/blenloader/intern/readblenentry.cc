@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup blenloader
@@ -18,7 +17,6 @@
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_path_util.h" /* Only for assertions. */
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -175,7 +173,7 @@ LinkNode *BLO_blendhandle_get_datablock_info(BlendHandle *bh,
       if (skip_datablock) {
         continue;
       }
-      BLODataBlockInfo *info = static_cast<BLODataBlockInfo *>(
+      struct BLODataBlockInfo *info = static_cast<BLODataBlockInfo *>(
           MEM_mallocN(sizeof(*info), __func__));
 
       /* Lastly, read asset data from the following blocks. */
@@ -402,9 +400,6 @@ BlendFileData *BLO_read_from_file(const char *filepath,
                                   eBLOReadSkip skip_flags,
                                   BlendFileReadReport *reports)
 {
-  BLI_assert(!BLI_path_is_rel(filepath));
-  BLI_assert(BLI_path_is_abs_from_cwd(filepath));
-
   BlendFileData *bfd = nullptr;
   FileData *fd;
 
@@ -441,7 +436,7 @@ BlendFileData *BLO_read_from_memory(const void *mem,
 BlendFileData *BLO_read_from_memfile(Main *oldmain,
                                      const char *filepath,
                                      MemFile *memfile,
-                                     const BlendFileReadParams *params,
+                                     const struct BlendFileReadParams *params,
                                      ReportList *reports)
 {
   BlendFileData *bfd = nullptr;
@@ -453,7 +448,7 @@ BlendFileData *BLO_read_from_memfile(Main *oldmain,
   fd = blo_filedata_from_memfile(memfile, params, &bf_reports);
   if (fd) {
     fd->skip_flags = eBLOReadSkip(params->skip_flags);
-    STRNCPY(fd->relabase, filepath);
+    BLI_strncpy(fd->relabase, filepath, sizeof(fd->relabase));
 
     /* separate libraries from old main */
     blo_split_main(&old_mainlist, oldmain);

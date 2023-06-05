@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -8,10 +7,13 @@ namespace blender::nodes::node_shader_gamma_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Color").default_value({1.0f, 1.0f, 1.0f, 1.0f});
-  b.add_input<decl::Float>("Gamma").default_value(1.0f).min(0.001f).max(10.0f).subtype(
-      PROP_UNSIGNED);
-  b.add_output<decl::Color>("Color");
+  b.add_input<decl::Color>(N_("Color")).default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  b.add_input<decl::Float>(N_("Gamma"))
+      .default_value(1.0f)
+      .min(0.001f)
+      .max(10.0f)
+      .subtype(PROP_UNSIGNED);
+  b.add_output<decl::Color>(N_("Color"));
 }
 
 static int node_shader_gpu_gamma(GPUMaterial *mat,

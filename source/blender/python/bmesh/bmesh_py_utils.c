@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation */
 
 /** \file
  * \ingroup pybmesh
@@ -758,7 +757,7 @@ static PyObject *bpy_bm_utils_loop_separate(PyObject *UNUSED(self), BPy_BMLoop *
   Py_RETURN_NONE;
 }
 
-static PyMethodDef BPy_BM_utils_methods[] = {
+static struct PyMethodDef BPy_BM_utils_methods[] = {
     {"vert_collapse_edge",
      (PyCFunction)bpy_bm_utils_vert_collapse_edge,
      METH_VARARGS,
@@ -809,7 +808,7 @@ static PyMethodDef BPy_BM_utils_methods[] = {
 };
 
 PyDoc_STRVAR(BPy_BM_utils_doc, "This module provides access to blenders bmesh data structures.");
-static PyModuleDef BPy_BM_utils_module_def = {
+static struct PyModuleDef BPy_BM_utils_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bmesh.utils",
     /*m_doc*/ BPy_BM_utils_doc,

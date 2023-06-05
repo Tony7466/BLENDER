@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -23,7 +22,6 @@ struct Mesh;
 struct PointCloud;
 struct Volume;
 struct bGPdata;
-struct GreasePencil;
 
 #include "BKE_mesh_types.h"
 
@@ -64,10 +62,6 @@ void DRW_pointcloud_batch_cache_free(struct PointCloud *pointcloud);
 void DRW_volume_batch_cache_dirty_tag(struct Volume *volume, int mode);
 void DRW_volume_batch_cache_validate(struct Volume *volume);
 void DRW_volume_batch_cache_free(struct Volume *volume);
-
-void DRW_grease_pencil_batch_cache_dirty_tag(struct GreasePencil *grase_pencil, int mode);
-void DRW_grease_pencil_batch_cache_validate(struct GreasePencil *grase_pencil);
-void DRW_grease_pencil_batch_cache_free(struct GreasePencil *grase_pencil);
 
 /** \} */
 

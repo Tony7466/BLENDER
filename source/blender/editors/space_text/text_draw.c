@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup sptext
@@ -713,7 +712,7 @@ static void text_update_drawcache(SpaceText *st, ARegion *region)
   drawcache->valid_tail = 0;
 }
 
-void text_drawcache_tag_update(SpaceText *st, const bool full)
+void text_drawcache_tag_update(SpaceText *st, int full)
 {
   /* This happens if text editor ops are called from Python. */
   if (st == NULL) {
@@ -1698,7 +1697,11 @@ void draw_text_main(SpaceText *st, ARegion *region)
     if (st->showlinenrs && !wrap_skip) {
       /* Draw line number. */
       UI_FontThemeColor(tdc.font_id, (tmp == text->sell) ? TH_HILITE : TH_LINENUMBERS);
-      SNPRINTF(linenr, "%*d", st->runtime.line_number_display_digits, i + linecount + 1);
+      BLI_snprintf(linenr,
+                   sizeof(linenr),
+                   "%*d",
+                   st->runtime.line_number_display_digits,
+                   i + linecount + 1);
       text_font_draw(&tdc, TXT_NUMCOL_PAD * st->runtime.cwidth_px, y, linenr);
       /* Change back to text color. */
       UI_FontThemeColor(tdc.font_id, TH_TEXT);

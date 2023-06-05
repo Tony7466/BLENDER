@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -303,7 +302,7 @@ static bool uniform_attr_list_cmp(const void *a, const void *b)
   return attr_a || attr_b;
 }
 
-GHash *GPU_uniform_attr_list_hash_new(const char *info)
+struct GHash *GPU_uniform_attr_list_hash_new(const char *info)
 {
   return BLI_ghash_new(uniform_attr_list_hash, uniform_attr_list_cmp, info);
 }
@@ -476,8 +475,8 @@ static GPULayerAttr *gpu_node_graph_add_layer_attribute(GPUNodeGraph *graph, con
 static GPUMaterialTexture *gpu_node_graph_add_texture(GPUNodeGraph *graph,
                                                       Image *ima,
                                                       ImageUser *iuser,
-                                                      GPUTexture **colorband,
-                                                      GPUTexture **sky,
+                                                      struct GPUTexture **colorband,
+                                                      struct GPUTexture **sky,
                                                       bool is_tiled,
                                                       GPUSamplerState sampler_state)
 {
@@ -504,9 +503,10 @@ static GPUMaterialTexture *gpu_node_graph_add_texture(GPUNodeGraph *graph,
     tex->colorband = colorband;
     tex->sky = sky;
     tex->sampler_state = sampler_state;
-    SNPRINTF(tex->sampler_name, "samp%d", num_textures);
+    BLI_snprintf(tex->sampler_name, sizeof(tex->sampler_name), "samp%d", num_textures);
     if (is_tiled) {
-      SNPRINTF(tex->tiled_mapping_name, "tsamp%d", num_textures);
+      BLI_snprintf(
+          tex->tiled_mapping_name, sizeof(tex->tiled_mapping_name), "tsamp%d", num_textures);
     }
     BLI_addtail(&graph->textures, tex);
   }
@@ -644,7 +644,7 @@ GPUNodeLink *GPU_image_sky(GPUMaterial *mat,
                            float *layer,
                            GPUSamplerState sampler_state)
 {
-  GPUTexture **sky = gpu_material_sky_texture_layer_set(mat, width, height, pixels, layer);
+  struct GPUTexture **sky = gpu_material_sky_texture_layer_set(mat, width, height, pixels, layer);
 
   GPUNodeGraph *graph = gpu_material_node_graph(mat);
   GPUNodeLink *link = gpu_node_link_create();
@@ -655,8 +655,8 @@ GPUNodeLink *GPU_image_sky(GPUMaterial *mat,
 }
 
 void GPU_image_tiled(GPUMaterial *mat,
-                     Image *ima,
-                     ImageUser *iuser,
+                     struct Image *ima,
+                     struct ImageUser *iuser,
                      GPUSamplerState sampler_state,
                      GPUNodeLink **r_image_tiled_link,
                      GPUNodeLink **r_image_tiled_mapping_link)
@@ -676,7 +676,7 @@ void GPU_image_tiled(GPUMaterial *mat,
 
 GPUNodeLink *GPU_color_band(GPUMaterial *mat, int size, float *pixels, float *row)
 {
-  GPUTexture **colorband = gpu_material_ramp_texture_row_set(mat, size, pixels, row);
+  struct GPUTexture **colorband = gpu_material_ramp_texture_row_set(mat, size, pixels, row);
   MEM_freeN(pixels);
 
   GPUNodeGraph *graph = gpu_material_node_graph(mat);

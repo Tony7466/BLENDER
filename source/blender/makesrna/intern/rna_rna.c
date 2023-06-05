@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -3161,7 +3159,7 @@ static void rna_def_function(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "No Self",
-      "Function does not pass itself as an argument (becomes a static method in Python)");
+      "Function does not pass itself as an argument (becomes a static method in python)");
 
   prop = RNA_def_property(srna, "use_self_type", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -3169,7 +3167,7 @@ static void rna_def_function(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Use Self Type",
                            "Function passes itself type as an argument (becomes a class method "
-                           "in Python if use_self is false)");
+                           "in python if use_self is false)");
 }
 
 static void rna_def_number_property(StructRNA *srna, PropertyType type)

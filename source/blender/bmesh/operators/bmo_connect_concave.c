@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -70,7 +68,7 @@ static bool bm_face_split_by_concave(BMesh *bm,
                                      const float eps,
 
                                      MemArena *pf_arena,
-                                     Heap *pf_heap)
+                                     struct Heap *pf_heap)
 {
   const int f_base_len = f_base->len;
   int faces_array_tot = f_base_len - 3;

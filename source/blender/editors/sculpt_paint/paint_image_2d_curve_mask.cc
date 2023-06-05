@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup ed
@@ -14,7 +13,7 @@
 
 #include "BKE_brush.h"
 
-#include "paint_intern.hh"
+#include "paint_intern.h"
 
 namespace blender::ed::sculpt_paint {
 

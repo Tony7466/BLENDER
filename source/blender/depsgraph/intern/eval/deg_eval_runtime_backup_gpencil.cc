@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -31,7 +30,7 @@ void GPencilBackup::restore_to_gpencil(bGPdata *gpd)
     BKE_gpencil_free_update_cache(gpd_orig);
   }
   /* Doing a copy-on-write copies the update cache pointer. Make sure to reset it
-   * to null as we should never use the update cache from eval data. */
+   * to NULL as we should never use the update cache from eval data. */
   gpd->runtime.update_cache = nullptr;
   /* Make sure to update the original runtime pointers in the eval data. */
   BKE_gpencil_data_update_orig_pointers(gpd_orig, gpd);

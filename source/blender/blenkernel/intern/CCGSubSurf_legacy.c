@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -336,7 +334,7 @@ static void ccgSubSurf__calcVertNormals(CCGSubSurf *ss,
         0, numEffectedF, &data, ccgSubSurf__calcVertNormals_faces_accumulate_cb, &settings);
   }
 
-  /* XXX can I reduce the number of normalization calls here? */
+  /* XXX can I reduce the number of normalisations here? */
   for (ptrIdx = 0; ptrIdx < numEffectedV; ptrIdx++) {
     CCGVert *v = (CCGVert *)effectedV[ptrIdx];
     float *no = VERT_getNo(v, lvl);

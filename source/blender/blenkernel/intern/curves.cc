@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -139,9 +137,9 @@ static void curves_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Curves *curves = (Curves *)id;
   for (int a = 0; a < curves->totcol; a++) {
-    BLO_read_id_address(reader, id, &curves->mat[a]);
+    BLO_read_id_address(reader, curves->id.lib, &curves->mat[a]);
   }
-  BLO_read_id_address(reader, id, &curves->surface);
+  BLO_read_id_address(reader, curves->id.lib, &curves->surface);
 }
 
 static void curves_blend_read_expand(BlendExpander *expander, ID *id)
@@ -228,8 +226,8 @@ Curves *BKE_curves_copy_for_eval(Curves *curves_src)
       BKE_id_copy_ex(nullptr, &curves_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
 }
 
-static void curves_evaluate_modifiers(Depsgraph *depsgraph,
-                                      Scene *scene,
+static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
+                                      struct Scene *scene,
                                       Object *object,
                                       GeometrySet &geometry_set)
 {
@@ -265,7 +263,7 @@ static void curves_evaluate_modifiers(Depsgraph *depsgraph,
   }
 }
 
-void BKE_curves_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
+void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
 {
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);

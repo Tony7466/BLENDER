@@ -32,14 +32,20 @@ const char *kernel_type_as_string(MetalPipelineType pso_type)
   return "";
 }
 
+bool kernel_has_intersection(DeviceKernel device_kernel)
+{
+  return (device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
+          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW ||
+          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE ||
+          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK ||
+          device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
+          device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE);
+}
+
 struct ShaderCache {
   ShaderCache(id<MTLDevice> _mtlDevice) : mtlDevice(_mtlDevice)
   {
     /* Initialize occupancy tuning LUT. */
-
-    // TODO: Look into tuning for DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT and
-    // DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT.
-
     if (MetalInfo::get_device_vendor(mtlDevice) == METAL_GPU_APPLE) {
       switch (MetalInfo::get_apple_gpu_architecture(mtlDevice)) {
         default:
@@ -337,7 +343,7 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
 
 MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const MetalDevice *device)
 {
-  while (running && !device->has_error) {
+  while (running) {
     /* Search all loaded pipelines with matching kernels_md5 checksums. */
     MetalKernelPipeline *best_match = nullptr;
     {
@@ -385,11 +391,6 @@ bool MetalKernelPipeline::should_use_binary_archive() const
       if (gpu_vendor != METAL_GPU_APPLE) {
         return false;
       }
-    }
-
-    if (use_metalrt && device_kernel_has_intersection(device_kernel)) {
-      /* Binary linked functions aren't supported in binary archives. */
-      return false;
     }
 
     if (pso_type == PSO_GENERIC) {
@@ -580,7 +581,7 @@ void MetalKernelPipeline::compile()
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL_PRIM]];
 
-    if (device_kernel_has_intersection(device_kernel)) {
+    if (kernel_has_intersection(device_kernel)) {
       linked_functions = [[NSArray arrayWithArray:[unique_functions allObjects]]
           sortedArrayUsingComparator:^NSComparisonResult(id<MTLFunction> f1, id<MTLFunction> f2) {
             return [f1.label compare:f2.label];
@@ -681,7 +682,7 @@ void MetalKernelPipeline::compile()
     __block bool compilation_finished = false;
     __block string error_str;
 
-    if (loading_existing_archive || !DebugFlags().metal.use_async_pso_creation) {
+    if (loading_existing_archive) {
       /* Use the blocking variant of newComputePipelineStateWithDescriptor if an archive exists on
        * disk. It should load almost instantaneously, and will fail gracefully when loading a
        * corrupt archive (unlike the async variant). */
@@ -694,6 +695,29 @@ void MetalKernelPipeline::compile()
       error_str = err ? err : "nil";
     }
     else {
+      /* TODO / MetalRT workaround:
+       * Workaround for a crash when addComputePipelineFunctionsWithDescriptor is called *after*
+       * newComputePipelineStateWithDescriptor with linked functions (i.e. with MetalRT enabled).
+       * Ideally we would like to call newComputePipelineStateWithDescriptor (async) first so we
+       * can bail out if needed, but we can stop the crash by flipping the order when there are
+       * linked functions. However when addComputePipelineFunctionsWithDescriptor is called first
+       * it will block while it builds the pipeline, offering no way of bailing out. */
+      auto addComputePipelineFunctionsWithDescriptor = [&]() {
+        if (creating_new_archive && ShaderCache::running) {
+          NSError *error;
+          if (![archive addComputePipelineFunctionsWithDescriptor:computePipelineStateDescriptor
+                                                            error:&error])
+          {
+            NSString *errStr = [error localizedDescription];
+            metal_printf("Failed to add PSO to archive:\n%s\n",
+                         errStr ? [errStr UTF8String] : "nil");
+          }
+        }
+      };
+      if (linked_functions) {
+        addComputePipelineFunctionsWithDescriptor();
+      }
+
       /* Use the async variant of newComputePipelineStateWithDescriptor if no archive exists on
        * disk. This allows us to respond to app shutdown. */
       [mtlDevice
@@ -721,16 +745,10 @@ void MetalKernelPipeline::compile()
       while (ShaderCache::running && !compilation_finished) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
-    }
 
-    if (creating_new_archive && pipeline) {
-      /* Add pipeline into the new archive. */
-      NSError *error;
-      if (![archive addComputePipelineFunctionsWithDescriptor:computePipelineStateDescriptor
-                                                        error:&error])
-      {
-        NSString *errStr = [error localizedDescription];
-        metal_printf("Failed to add PSO to archive:\n%s\n", errStr ? [errStr UTF8String] : "nil");
+      /* Add pipeline into the new archive (unless we did it earlier). */
+      if (pipeline && !linked_functions) {
+        addComputePipelineFunctionsWithDescriptor();
       }
     }
 

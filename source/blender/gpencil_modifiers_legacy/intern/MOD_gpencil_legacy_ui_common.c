@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -354,9 +352,9 @@ PanelType *gpencil_modifier_panel_register(ARegionType *region_type,
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
 
   BKE_gpencil_modifierType_panel_id(type, panel_type->idname);
-  STRNCPY(panel_type->label, "");
-  STRNCPY(panel_type->context, "modifier");
-  STRNCPY(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  BLI_strncpy(panel_type->label, "", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->context, "modifier", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
 
   panel_type->draw_header = gpencil_modifier_panel_header;
   panel_type->draw = draw;
@@ -383,10 +381,10 @@ PanelType *gpencil_modifier_subpanel_register(ARegionType *region_type,
 {
   PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
 
-  SNPRINTF(panel_type->idname, "%s_%s", parent->idname, name);
-  STRNCPY(panel_type->label, label);
-  STRNCPY(panel_type->context, "modifier");
-  STRNCPY(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  BLI_snprintf(panel_type->idname, BKE_ST_MAXNAME, "%s_%s", parent->idname, name);
+  BLI_strncpy(panel_type->label, label, BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->context, "modifier", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
 
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
@@ -394,7 +392,7 @@ PanelType *gpencil_modifier_subpanel_register(ARegionType *region_type,
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
   BLI_assert(parent != NULL);
-  STRNCPY(panel_type->parent_id, parent->idname);
+  BLI_strncpy(panel_type->parent_id, parent->idname, BKE_ST_MAXNAME);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
   BLI_addtail(&region_type->paneltypes, panel_type);

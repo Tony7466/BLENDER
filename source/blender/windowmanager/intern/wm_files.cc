@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup wm
@@ -289,7 +288,7 @@ static void wm_window_match_keep_current_wm(const bContext *C,
   bScreen *screen = nullptr;
 
   /* match oldwm to new dbase, only old files */
-  wm->init_flag &= ~WM_INIT_FLAG_WINDOW;
+  wm->initialized &= ~WM_WINDOW_IS_INIT;
 
   /* when loading without UI, no matching needed */
   if (load_ui && (screen = CTX_wm_screen(C))) {
@@ -300,7 +299,7 @@ static void wm_window_match_keep_current_wm(const bContext *C,
       BKE_workspace_active_set(win->workspace_hook, workspace);
       win->scene = CTX_data_scene(C);
 
-      /* All windows get active screen from file. */
+      /* all windows get active screen from file */
       if (screen->winid == 0) {
         WM_window_set_active_screen(win, workspace, screen);
       }
@@ -384,7 +383,7 @@ static void wm_window_match_replace_by_file_wm(bContext *C,
   oldwm->userconf = nullptr;
 
   /* ensure making new keymaps and set space types */
-  wm->init_flag = 0;
+  wm->initialized = 0;
   wm->winactive = nullptr;
 
   /* Clearing drawable of before deleting any context
@@ -677,7 +676,7 @@ struct wmFileReadPost_Params {
  * Logic shared between #WM_file_read & #wm_homefile_read,
  * updates to make after reading a file.
  */
-static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
+static void wm_file_read_post(bContext *C, const struct wmFileReadPost_Params *params)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
 
@@ -815,33 +814,6 @@ static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
       /* Ensure tools are registered. */
       WM_toolsystem_init(C);
     }
-  }
-}
-
-static void wm_read_callback_pre_wrapper(bContext *C, const char *filepath)
-{
-  /* NOTE: either #BKE_CB_EVT_LOAD_POST or #BKE_CB_EVT_LOAD_POST_FAIL must run.
-   * Runs at the end of this function, don't return beforehand. */
-  BKE_callback_exec_string(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE, filepath);
-}
-
-static void wm_read_callback_post_wrapper(bContext *C, const char *filepath, const bool success)
-{
-  Main *bmain = CTX_data_main(C);
-  /* Temporarily set the window context as this was once supported, see: #107759.
-   * If the window is already set, don't change it. */
-  bool has_window = CTX_wm_window(C) != nullptr;
-  if (!has_window) {
-    wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-    wmWindow *win = static_cast<wmWindow *>(wm->windows.first);
-    CTX_wm_window_set(C, win);
-  }
-  BKE_callback_exec_string(
-      bmain, success ? BKE_CB_EVT_LOAD_POST : BKE_CB_EVT_LOAD_POST_FAIL, filepath);
-
-  /* This function should leave the window null when the function entered. */
-  if (!has_window) {
-    CTX_wm_window_set(C, nullptr);
   }
 }
 
@@ -989,8 +961,9 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   const bool use_data = true;
   const bool use_userdef = false;
 
-  /* NOTE: a matching #wm_read_callback_post_wrapper must be called. */
-  wm_read_callback_pre_wrapper(C, filepath);
+  /* NOTE: either #BKE_CB_EVT_LOAD_POST or #BKE_CB_EVT_LOAD_POST_FAIL must run.
+   * Runs at the end of this function, don't return beforehand. */
+  BKE_callback_exec_string(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE, filepath);
 
   /* so we can get the error message */
   errno = 0;
@@ -1014,7 +987,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     BlendFileReadReport bf_reports{};
     bf_reports.reports = reports;
     bf_reports.duration.whole = PIL_check_seconds_timer();
-    BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
+    struct BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
     if (bfd != nullptr) {
       wm_file_read_pre(use_data, use_userdef);
 
@@ -1098,9 +1071,11 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
   WM_cursor_wait(false);
 
-  wm_read_callback_post_wrapper(C, filepath, success);
+  Main *bmain = CTX_data_main(C);
+  BKE_callback_exec_string(
+      bmain, success ? BKE_CB_EVT_LOAD_POST : BKE_CB_EVT_LOAD_POST_FAIL, filepath);
 
-  BLI_assert(BKE_main_namemap_validate(CTX_data_main(C)));
+  BLI_assert(BKE_main_namemap_validate(bmain));
 
   return success;
 }
@@ -1134,9 +1109,9 @@ const char *WM_init_state_app_template_get(void)
  * \{ */
 
 void wm_homefile_read_ex(bContext *C,
-                         const wmHomeFileRead_Params *params_homefile,
+                         const struct wmHomeFileRead_Params *params_homefile,
                          ReportList *reports,
-                         wmFileReadPost_Params **r_params_file_read_post)
+                         struct wmFileReadPost_Params **r_params_file_read_post)
 {
 #if 0 /* UNUSED, keep as this may be needed later & the comment below isn't self evident. */
   /* Context does not always have valid main pointer here. */
@@ -1231,9 +1206,9 @@ void wm_homefile_read_ex(bContext *C,
   }
 
   if (use_data) {
-    /* NOTE: a matching #wm_read_callback_post_wrapper must be called.
+    /* NOTE: either #BKE_CB_EVT_LOAD_POST or #BKE_CB_EVT_LOAD_POST_FAIL must run.
      * This runs from #wm_homefile_read_post. */
-    wm_read_callback_pre_wrapper(C, "");
+    BKE_callback_exec_string(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE, "");
   }
 
   /* For regular file loading this only runs after the file is successfully read.
@@ -1265,7 +1240,7 @@ void wm_homefile_read_ex(bContext *C,
     }
 
     if (filepath_startup_override) {
-      STRNCPY(filepath_startup, filepath_startup_override);
+      BLI_strncpy(filepath_startup, filepath_startup_override, FILE_MAX);
       filepath_startup_is_factory = false;
     }
   }
@@ -1330,7 +1305,7 @@ void wm_homefile_read_ex(bContext *C,
       params.skip_flags = skip_flags | BLO_READ_SKIP_USERDEF;
       BlendFileReadReport bf_reports{};
       bf_reports.reports = reports;
-      BlendFileData *bfd = BKE_blendfile_read(filepath_startup, &params, &bf_reports);
+      struct BlendFileData *bfd = BKE_blendfile_read(filepath_startup, &params, &bf_reports);
 
       if (bfd != nullptr) {
         BKE_blendfile_read_setup_ex(
@@ -1360,7 +1335,7 @@ void wm_homefile_read_ex(bContext *C,
     BlendFileReadParams read_file_params{};
     read_file_params.is_startup = true;
     read_file_params.skip_flags = skip_flags;
-    BlendFileData *bfd = BKE_blendfile_read_from_memory(
+    struct BlendFileData *bfd = BKE_blendfile_read_from_memory(
         datatoc_startup_blend, datatoc_startup_blend_size, &read_file_params, nullptr);
     if (bfd != nullptr) {
       BlendFileReadReport read_report{};
@@ -1412,7 +1387,7 @@ void wm_homefile_read_ex(bContext *C,
   }
 
   if (app_template_override) {
-    STRNCPY(U.app_template, app_template_override);
+    BLI_strncpy(U.app_template, app_template_override, sizeof(U.app_template));
   }
 
   Main *bmain = CTX_data_main(C);
@@ -1470,18 +1445,22 @@ void wm_homefile_read_ex(bContext *C,
 }
 
 void wm_homefile_read(bContext *C,
-                      const wmHomeFileRead_Params *params_homefile,
+                      const struct wmHomeFileRead_Params *params_homefile,
                       ReportList *reports)
 {
   wm_homefile_read_ex(C, params_homefile, reports, nullptr);
 }
 
-void wm_homefile_read_post(bContext *C, const wmFileReadPost_Params *params_file_read_post)
+void wm_homefile_read_post(struct bContext *C,
+                           const struct wmFileReadPost_Params *params_file_read_post)
 {
   wm_file_read_post(C, params_file_read_post);
 
   if (params_file_read_post->use_data) {
-    wm_read_callback_post_wrapper(C, "", params_file_read_post->success);
+    BKE_callback_exec_string(CTX_data_main(C),
+                             params_file_read_post->success ? BKE_CB_EVT_LOAD_POST :
+                                                              BKE_CB_EVT_LOAD_POST_FAIL,
+                             "");
   }
 
   if (params_file_read_post->is_alloc) {
@@ -1517,7 +1496,7 @@ void wm_history_file_read(void)
     const char *line = static_cast<const char *>(l->link);
     /* don't check if files exist, causes slow startup for remote/external drives */
     if (line[0]) {
-      RecentFile *recent = (RecentFile *)MEM_mallocN(sizeof(RecentFile), "RecentFile");
+      struct RecentFile *recent = (RecentFile *)MEM_mallocN(sizeof(RecentFile), "RecentFile");
       BLI_addtail(&(G.recent_files), recent);
       recent->filepath = BLI_strdup(line);
       num++;
@@ -1669,7 +1648,7 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
   int win_size[2];
   /* NOTE: always read from front-buffer as drawing a window can cause problems while saving,
    * even if this means the thumbnail from the screen-shot fails to be created, see: #98462. */
-  uint8_t *buffer = WM_window_pixels_read_from_frontbuffer(wm, win, win_size);
+  uint *buffer = WM_window_pixels_read_from_frontbuffer(wm, win, win_size);
   ImBuf *ibuf = IMB_allocFromBufferOwn(buffer, nullptr, win_size[0], win_size[1], 24);
 
   if (ibuf) {
@@ -1822,7 +1801,7 @@ bool write_crash_blend(void)
 {
   char filepath[FILE_MAX];
 
-  STRNCPY(filepath, BKE_main_blendfile_path_from_global());
+  BLI_strncpy(filepath, BKE_main_blendfile_path_from_global(), sizeof(filepath));
   BLI_path_extension_replace(filepath, sizeof(filepath), "_crash.blend");
   BlendFileWriteParams params{};
   const bool success = BLO_write_file(G_MAIN, filepath, G.fileflags, &params, nullptr);
@@ -2026,10 +2005,10 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   if (blendfile_path && (blendfile_path[0] != '\0')) {
     const char *basename = BLI_path_basename(blendfile_path);
     int len = strlen(basename) - 6;
-    SNPRINTF(filename, "%.*s_%d_autosave.blend", len, basename, pid);
+    BLI_snprintf(filename, sizeof(filename), "%.*s_%d_autosave.blend", len, basename, pid);
   }
   else {
-    SNPRINTF(filename, "%d_autosave.blend", pid);
+    BLI_snprintf(filename, sizeof(filename), "%d_autosave.blend", pid);
   }
 
   const char *tempdir_base = BKE_tempdir_base();
@@ -2136,15 +2115,15 @@ void wm_autosave_delete(void)
   wm_autosave_location(filepath);
 
   if (BLI_exists(filepath)) {
-    char filepath_quit[FILE_MAX];
-    BLI_path_join(filepath_quit, sizeof(filepath_quit), BKE_tempdir_base(), BLENDER_QUIT_FILE);
+    char str[FILE_MAX];
+    BLI_path_join(str, sizeof(str), BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
     /* For global undo; remove temporarily saved file, otherwise rename. */
     if (U.uiflag & USER_GLOBALUNDO) {
       BLI_delete(filepath, false, false);
     }
     else {
-      BLI_rename_overwrite(filepath, filepath_quit);
+      BLI_rename(filepath, str);
     }
   }
 }
@@ -2797,7 +2776,6 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   bool success;
 
   RNA_string_get(op->ptr, "filepath", filepath);
-  BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   /* re-use last loaded setting so we can reload a file without changing */
   wm_open_init_load_ui(op, false);
@@ -2842,9 +2820,9 @@ static int wm_open_mainfile_exec(bContext *C, wmOperator *op)
   return wm_open_mainfile__open(C, op);
 }
 
-static char *wm_open_mainfile_description(bContext * /*C*/,
-                                          wmOperatorType * /*op*/,
-                                          PointerRNA *params)
+static char *wm_open_mainfile_description(struct bContext * /*C*/,
+                                          struct wmOperatorType * /*op*/,
+                                          struct PointerRNA *params)
 {
   if (!RNA_struct_property_is_set(params, "filepath")) {
     return nullptr;
@@ -2865,7 +2843,7 @@ static char *wm_open_mainfile_description(bContext * /*C*/,
   BLI_filelist_entry_datetime_to_string(
       nullptr, int64_t(stats.st_mtime), false, time_st, date_st, &is_today, &is_yesterday);
   if (is_today || is_yesterday) {
-    STRNCPY(date_st, is_today ? TIP_("Today") : TIP_("Yesterday"));
+    BLI_strncpy(date_st, is_today ? TIP_("Today") : TIP_("Yesterday"), sizeof(date_st));
   }
 
   /* Size. */
@@ -2885,11 +2863,12 @@ static char *wm_open_mainfile_description(bContext * /*C*/,
 struct FileRuntime {
   bool is_untrusted;
 };
-BLI_STATIC_ASSERT(sizeof(FileRuntime) <= sizeof(void *), "Struct must not exceed pointer size");
+BLI_STATIC_ASSERT(sizeof(struct FileRuntime) <= sizeof(void *),
+                  "Struct must not exceed pointer size");
 
 static bool wm_open_mainfile_check(bContext * /*C*/, wmOperator *op)
 {
-  FileRuntime *file_info = (FileRuntime *)&op->customdata;
+  struct FileRuntime *file_info = (struct FileRuntime *)&op->customdata;
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "use_scripts");
   bool is_untrusted = false;
   char filepath[FILE_MAX];
@@ -2919,7 +2898,7 @@ static bool wm_open_mainfile_check(bContext * /*C*/, wmOperator *op)
 
 static void wm_open_mainfile_ui(bContext * /*C*/, wmOperator *op)
 {
-  FileRuntime *file_info = (FileRuntime *)&op->customdata;
+  struct FileRuntime *file_info = (struct FileRuntime *)&op->customdata;
   uiLayout *layout = op->layout;
   const char *autoexec_text;
 
@@ -2997,7 +2976,7 @@ static int wm_revert_mainfile_exec(bContext *C, wmOperator *op)
 
   SET_FLAG_FROM_TEST(G.f, RNA_boolean_get(op->ptr, "use_scripts"), G_FLAG_SCRIPT_AUTOEXEC);
 
-  STRNCPY(filepath, BKE_main_blendfile_path(bmain));
+  BLI_strncpy(filepath, BKE_main_blendfile_path(bmain), sizeof(filepath));
   success = wm_file_read_opwrap(C, filepath, op->reports);
 
   if (success) {
@@ -3101,7 +3080,6 @@ static int wm_recover_auto_save_exec(bContext *C, wmOperator *op)
   bool success;
 
   RNA_string_get(op->ptr, "filepath", filepath);
-  BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   wm_open_init_use_scripts(op, true);
   SET_FLAG_FROM_TEST(G.f, RNA_boolean_get(op->ptr, "use_scripts"), G_FLAG_SCRIPT_AUTOEXEC);
@@ -3243,7 +3221,6 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
   const bool is_filepath_set = RNA_struct_property_is_set(op->ptr, "filepath");
   if (is_filepath_set) {
     RNA_string_get(op->ptr, "filepath", filepath);
-    BLI_path_canonicalize_native(filepath, sizeof(filepath));
   }
   else {
     STRNCPY(filepath, BKE_main_blendfile_path(bmain));
@@ -3256,29 +3233,17 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (RNA_boolean_get(op->ptr, "incremental")) {
-    char head[FILE_MAXFILE], tail[FILE_MAXFILE];
-    ushort digits;
-    int num = BLI_path_sequence_decode(filepath, head, sizeof(head), tail, sizeof(tail), &digits);
-    /* Numbers greater than INT_MAX return 0, resulting in always appending "1" to the name. */
-    if (num == 0 && digits == 0) {
-      /* This does nothing if there are no numbers at the end of the head. */
-      BLI_str_rstrip_digits(head);
-    }
-
-    const int tries_limit = 1000;
-    int tries = 0;
-    bool in_use = true;
-    do {
-      num++;
-      tries++;
-      BLI_path_sequence_encode(filepath, sizeof(filepath), head, tail, digits, num);
-      in_use = BLI_exists(filepath);
-    } while (in_use && tries < tries_limit && num < INT_MAX);
-    if (in_use) {
-      BKE_report(op->reports, RPT_ERROR, "Unable to find an available incremented file name");
-      return OPERATOR_CANCELLED;
-    }
+  /* NOTE(@ideasman42): only check this for file-path properties so saving an already
+   * saved file never fails with an error.
+   * Even though this should never happen, there may be some corner case where a malformed
+   * path is stored in `G.main->filepath`: when the file path is initialized from recovering
+   * a blend file - for example, so in this case failing to save isn't ideal. */
+  if (is_filepath_set && !BLI_path_is_abs_from_cwd(filepath)) {
+    BKE_reportf(op->reports,
+                RPT_ERROR,
+                "The \"filepath\" property was not an absolute path: \"%s\"",
+                filepath);
+    return OPERATOR_CANCELLED;
   }
 
   const int fileflags_orig = G.fileflags;
@@ -3415,18 +3380,6 @@ static int wm_save_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * 
   return ret;
 }
 
-static char *wm_save_mainfile_get_description(bContext * /*C*/,
-                                              wmOperatorType * /*ot*/,
-                                              PointerRNA *ptr)
-{
-  if (RNA_boolean_get(ptr, "incremental")) {
-    return BLI_strdup(
-        TIP_("Save the current Blender file with a numerically incremented name that does not "
-             "overwrite any existing files"));
-  }
-  return nullptr;
-}
-
 void WM_OT_save_mainfile(wmOperatorType *ot)
 {
   ot->name = "Save Blender File";
@@ -3436,7 +3389,6 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
   ot->invoke = wm_save_mainfile_invoke;
   ot->exec = wm_save_as_mainfile_exec;
   ot->check = wm_save_mainfile_check;
-  ot->get_description = wm_save_mainfile_get_description;
   /* Omit window poll so this can work in background mode. */
 
   PropertyRNA *prop;
@@ -3455,14 +3407,6 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
                   "Remap relative paths when saving to a different directory");
 
   prop = RNA_def_boolean(ot->srna, "exit", false, "Exit", "Exit Blender after saving");
-  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
-
-  prop = RNA_def_boolean(ot->srna,
-                         "incremental",
-                         false,
-                         "Incremental",
-                         "Save the current Blender file with a numerically incremented name that "
-                         "does not overwrite any existing files");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
@@ -3518,7 +3462,9 @@ static void wm_block_autorun_warning_enable_scripts(bContext *C, void *arg_block
 }
 
 /* Build the autorun warning dialog UI */
-static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void * /*arg1*/)
+static uiBlock *block_create_autorun_warning(struct bContext *C,
+                                             struct ARegion *region,
+                                             void * /*arg1*/)
 {
   const char *blendfile_path = BKE_main_blendfile_path_from_global();
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -3803,7 +3749,9 @@ static void save_catalogs_when_file_is_closed_set_fn(bContext * /*C*/, void *arg
   ED_asset_catalogs_set_save_catalogs_when_file_is_saved(*save_catalogs_when_file_is_closed != 0);
 }
 
-static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, void *arg1)
+static uiBlock *block_create__close_file_dialog(struct bContext *C,
+                                                struct ARegion *region,
+                                                void *arg1)
 {
   wmGenericCallback *post_action = (wmGenericCallback *)arg1;
   Main *bmain = CTX_data_main(C);
@@ -3863,7 +3811,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
   /* Modified Images Checkbox. */
   if (modified_images_count > 0) {
     char message[64];
-    SNPRINTF(message, "Save %u modified image(s)", modified_images_count);
+    BLI_snprintf(message, sizeof(message), "Save %u modified image(s)", modified_images_count);
     /* Only the first checkbox should get extra separation. */
     if (!has_extra_checkboxes) {
       uiItemS(layout);

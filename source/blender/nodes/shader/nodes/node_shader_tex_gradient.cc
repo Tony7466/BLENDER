@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Gradienter Foundation. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Gradienter Foundation. All rights reserved. */
 
 #include "node_shader_util.hh"
 
@@ -12,9 +11,11 @@ namespace blender::nodes::node_shader_tex_gradient_cc {
 static void sh_node_tex_gradient_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>("Vector").hide_value().implicit_field(implicit_field_inputs::position);
-  b.add_output<decl::Color>("Color").no_muted_links();
-  b.add_output<decl::Float>("Fac").no_muted_links();
+  b.add_input<decl::Vector>(N_("Vector"))
+      .hide_value()
+      .implicit_field(implicit_field_inputs::position);
+  b.add_output<decl::Color>(N_("Color")).no_muted_links();
+  b.add_output<decl::Float>(N_("Fac")).no_muted_links();
 }
 
 static void node_shader_buts_tex_gradient(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -64,7 +65,7 @@ class GradientFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &vector = params.readonly_single_input<float3>(0, "Vector");
 
@@ -76,57 +77,62 @@ class GradientFunction : public mf::MultiFunction {
 
     switch (gradient_type_) {
       case SHD_BLEND_LINEAR: {
-        mask.foreach_index([&](const int64_t i) { fac[i] = vector[i].x; });
+        for (int64_t i : mask) {
+          fac[i] = vector[i].x;
+        }
         break;
       }
       case SHD_BLEND_QUADRATIC: {
-        mask.foreach_index([&](const int64_t i) {
+        for (int64_t i : mask) {
           const float r = std::max(vector[i].x, 0.0f);
           fac[i] = r * r;
-        });
+        }
         break;
       }
       case SHD_BLEND_EASING: {
-        mask.foreach_index([&](const int64_t i) {
+        for (int64_t i : mask) {
           const float r = std::min(std::max(vector[i].x, 0.0f), 1.0f);
           const float t = r * r;
           fac[i] = (3.0f * t - 2.0f * t * r);
-        });
+        }
         break;
       }
       case SHD_BLEND_DIAGONAL: {
-        mask.foreach_index([&](const int64_t i) { fac[i] = (vector[i].x + vector[i].y) * 0.5f; });
+        for (int64_t i : mask) {
+          fac[i] = (vector[i].x + vector[i].y) * 0.5f;
+        }
         break;
       }
       case SHD_BLEND_RADIAL: {
-        mask.foreach_index([&](const int64_t i) {
+        for (int64_t i : mask) {
           fac[i] = atan2f(vector[i].y, vector[i].x) / (M_PI * 2.0f) + 0.5f;
-        });
+        }
         break;
       }
       case SHD_BLEND_QUADRATIC_SPHERE: {
-        mask.foreach_index([&](const int64_t i) {
+        for (int64_t i : mask) {
           /* Bias a little bit for the case where input is a unit length vector,
            * to get exactly zero instead of a small random value depending
            * on float precision. */
           const float r = std::max(0.999999f - math::length(vector[i]), 0.0f);
           fac[i] = r * r;
-        });
+        }
         break;
       }
       case SHD_BLEND_SPHERICAL: {
-        mask.foreach_index([&](const int64_t i) {
+        for (int64_t i : mask) {
           /* Bias a little bit for the case where input is a unit length vector,
            * to get exactly zero instead of a small random value depending
            * on float precision. */
           fac[i] = std::max(0.999999f - math::length(vector[i]), 0.0f);
-        });
+        }
         break;
       }
     }
     if (compute_color) {
-      mask.foreach_index(
-          [&](const int64_t i) { r_color[i] = ColorGeometry4f(fac[i], fac[i], fac[i], 1.0f); });
+      for (int64_t i : mask) {
+        r_color[i] = ColorGeometry4f(fac[i], fac[i], fac[i], 1.0f);
+      }
     }
   }
 };

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2010 Peter Schlaile <peter [at] schlaile [dot] de>.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2010 Peter Schlaile <peter [at] schlaile [dot] de>. */
 
 /** \file
  * \ingroup bke
@@ -74,18 +73,18 @@
 
 typedef struct SeqCache {
   Main *bmain;
-  GHash *hash;
+  struct GHash *hash;
   ThreadMutex iterator_mutex;
-  BLI_mempool *keys_pool;
-  BLI_mempool *items_pool;
-  SeqCacheKey *last_key;
+  struct BLI_mempool *keys_pool;
+  struct BLI_mempool *items_pool;
+  struct SeqCacheKey *last_key;
   struct SeqDiskCache *disk_cache;
   int thumbnail_count;
 } SeqCache;
 
 typedef struct SeqCacheItem {
-  SeqCache *cache_owner;
-  ImBuf *ibuf;
+  struct SeqCache *cache_owner;
+  struct ImBuf *ibuf;
 } SeqCacheItem;
 
 static ThreadMutex cache_create_lock = BLI_MUTEX_INITIALIZER;
@@ -728,7 +727,10 @@ void seq_cache_thumbnail_cleanup(Scene *scene, rctf *view_area_safe)
   cache->last_key = NULL;
 }
 
-ImBuf *seq_cache_get(const SeqRenderData *context, Sequence *seq, float timeline_frame, int type)
+struct ImBuf *seq_cache_get(const SeqRenderData *context,
+                            Sequence *seq,
+                            float timeline_frame,
+                            int type)
 {
 
   if (context->skip_cache || context->is_proxy_render || !seq) {
@@ -894,10 +896,10 @@ void seq_cache_put(
 }
 
 void SEQ_cache_iterate(
-    Scene *scene,
+    struct Scene *scene,
     void *userdata,
     bool callback_init(void *userdata, size_t item_count),
-    bool callback_iter(void *userdata, Sequence *seq, int timeline_frame, int cache_type))
+    bool callback_iter(void *userdata, struct Sequence *seq, int timeline_frame, int cache_type))
 {
   SeqCache *cache = seq_cache_get_from_scene(scene);
   if (!cache) {

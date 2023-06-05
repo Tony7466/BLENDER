@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -39,7 +37,7 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_override.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
@@ -1763,18 +1761,6 @@ int RNA_enum_from_identifier(const EnumPropertyItem *item, const char *identifie
   return -1;
 }
 
-bool RNA_enum_value_from_identifier(const EnumPropertyItem *item,
-                                    const char *identifier,
-                                    int *r_value)
-{
-  const int i = RNA_enum_from_identifier(item, identifier);
-  if (i == -1) {
-    return false;
-  }
-  *r_value = item[i].value;
-  return true;
-}
-
 int RNA_enum_from_name(const EnumPropertyItem *item, const char *name)
 {
   int i = 0;
@@ -3342,10 +3328,6 @@ void RNA_property_string_get(PointerRNA *ptr, PropertyRNA *prop, char *value)
 char *RNA_property_string_get_alloc(
     PointerRNA *ptr, PropertyRNA *prop, char *fixedbuf, int fixedlen, int *r_len)
 {
-  if (fixedbuf) {
-    BLI_string_debug_size(fixedbuf, fixedlen);
-  }
-
   char *buf;
   int length;
 
@@ -3470,7 +3452,7 @@ void RNA_property_string_set_bytes(PointerRNA *ptr, PropertyRNA *prop, const cha
   }
 }
 
-void RNA_property_string_get_default(PropertyRNA *prop, char *value, const int value_maxncpy)
+void RNA_property_string_get_default(PropertyRNA *prop, char *value, const int max_len)
 {
   StringPropertyRNA *sprop = (StringPropertyRNA *)rna_ensure_property(prop);
 
@@ -3479,7 +3461,7 @@ void RNA_property_string_get_default(PropertyRNA *prop, char *value, const int v
     if (idprop->ui_data) {
       BLI_assert(idprop->type == IDP_STRING);
       const IDPropertyUIDataString *ui_data = (const IDPropertyUIDataString *)idprop->ui_data;
-      BLI_strncpy(value, ui_data->default_value, value_maxncpy);
+      BLI_strncpy(value, ui_data->default_value, max_len);
       return;
     }
 
@@ -6977,7 +6959,7 @@ static char rna_struct_state_owner[64];
 void RNA_struct_state_owner_set(const char *name)
 {
   if (name) {
-    STRNCPY(rna_struct_state_owner, name);
+    BLI_strncpy(rna_struct_state_owner, name, sizeof(rna_struct_state_owner));
   }
   else {
     rna_struct_state_owner[0] = '\0';

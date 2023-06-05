@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -192,15 +191,8 @@ static void ui_popup_menu_create_block(bContext *C,
   if (!pup->but) {
     pup->block->flag |= UI_BLOCK_NO_FLIP;
   }
-  /* A title is only provided when a Menu has a label, this is not always the case, see e.g.
-   * `VIEW3D_MT_edit_mesh_context_menu` -- this specifies its own label inside the draw function
-   * depending on vertex/edge/face mode. We still want to flag the uiBlock (but only insert into
-   * the `puphash` if we have a title provided). Choosing an entry in a menu will still handle
-   * `puphash` later (see `button_activate_exit`) though multiple menus without a label might fight
-   * for the same storage of the menu memory. Using idname instead (or in combination with the
-   * label) for the hash could be looked at to solve this. */
-  pup->block->flag |= UI_BLOCK_POPUP_MEMORY;
   if (title && title[0]) {
+    pup->block->flag |= UI_BLOCK_POPUP_MEMORY;
     pup->block->puphash = ui_popup_menu_hash(title);
   }
   pup->layout = UI_block_layout(
@@ -457,7 +449,7 @@ static void create_title_button(uiLayout *layout, const char *title, int icon)
   char titlestr[256];
 
   if (icon) {
-    SNPRINTF(titlestr, " %s", title);
+    BLI_snprintf(titlestr, sizeof(titlestr), " %s", title);
     uiDefIconTextBut(block,
                      UI_BTYPE_LABEL,
                      0,
@@ -511,7 +503,7 @@ uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
   return UI_popup_menu_begin_ex(C, title, __func__, icon);
 }
 
-void UI_popup_menu_but_set(uiPopupMenu *pup, ARegion *butregion, uiBut *but)
+void UI_popup_menu_but_set(uiPopupMenu *pup, struct ARegion *butregion, uiBut *but)
 {
   pup->but = but;
   pup->butregion = butregion;
@@ -585,7 +577,7 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
 
     if (pup == nullptr) {
       char title[UI_MAX_DRAW_STR];
-      SNPRINTF(title, "%s: %s", IFACE_("Report"), report->typestr);
+      BLI_snprintf(title, sizeof(title), "%s: %s", IFACE_("Report"), report->typestr);
       /* popup_menu stuff does just what we need (but pass meaningful block name) */
       pup = UI_popup_menu_begin_ex(C, title, __func__, ICON_NONE);
       layout = UI_popup_menu_layout(pup);

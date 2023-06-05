@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -46,7 +45,7 @@ struct CDDerivedMesh {
   int *corner_edges;
 
   /* Cached */
-  PBVH *pbvh;
+  struct PBVH *pbvh;
   bool pbvh_draw;
 
   /* Mesh connectivity */

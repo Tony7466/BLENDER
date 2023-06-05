@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Use a define instead of `#pragma once` because of `rna_internal.h` */
 #ifndef __RNA_ACCESS_H__
@@ -218,9 +216,6 @@ bool RNA_enum_name(const EnumPropertyItem *item, int value, const char **r_name)
 bool RNA_enum_description(const EnumPropertyItem *item, int value, const char **description);
 int RNA_enum_from_value(const EnumPropertyItem *item, int value);
 int RNA_enum_from_identifier(const EnumPropertyItem *item, const char *identifier);
-bool RNA_enum_value_from_identifier(const EnumPropertyItem *item,
-                                    const char *identifier,
-                                    int *r_value);
 /**
  * Take care using this with translated enums,
  * prefer #RNA_enum_from_identifier where possible.
@@ -382,7 +377,7 @@ void RNA_property_string_search(const struct bContext *C,
  * \return the length without `\0` terminator.
  */
 int RNA_property_string_length(PointerRNA *ptr, PropertyRNA *prop);
-void RNA_property_string_get_default(PropertyRNA *prop, char *value, int value_maxncpy);
+void RNA_property_string_get_default(PropertyRNA *prop, char *value, int max_len);
 char *RNA_property_string_get_default_alloc(
     PointerRNA *ptr, PropertyRNA *prop, char *fixedbuf, int fixedlen, int *r_len);
 /**

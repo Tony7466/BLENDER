@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -29,7 +28,7 @@
 
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -79,9 +78,6 @@ void DepsgraphNodeBuilder::build_view_layer(Scene *scene,
   /* Scene ID block. */
   IDNode *id_node = add_id_node(&scene->id);
   id_node->linked_state = linked_state;
-
-  add_operation_node(&scene->id, NodeType::HIERARCHY, OperationCode::HIERARCHY);
-
   /* Time source. */
   add_time_source();
   /* Setup currently building context. */

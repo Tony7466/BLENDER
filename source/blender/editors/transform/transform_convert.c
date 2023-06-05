@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -329,9 +328,6 @@ static bool pchan_autoik_adjust(bPoseChannel *pchan, short chainlen)
 
   /* check if pchan has ik-constraint */
   for (con = pchan->constraints.first; con; con = con->next) {
-    if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
-      continue;
-    }
     if (con->type == CONSTRAINT_TYPE_KINEMATIC && (con->enforce != 0.0f)) {
       bKinematicConstraint *data = con->data;
 
@@ -465,7 +461,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
   BLI_LINKSTACK_FREE(queue);
 }
 
-TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, BezTriple *bezt)
+TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt)
 {
   TransDataCurveHandleFlags *hdata;
   td->flag |= TD_BEZTRIPLE;
@@ -556,7 +552,7 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list)
   if (list) {
     for (con = list->first; con; con = con->next) {
       /* only consider constraint if it is enabled, and has influence on result */
-      if ((con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) == 0 && (con->enforce != 0.0f)) {
+      if ((con->flag & CONSTRAINT_DISABLE) == 0 && (con->enforce != 0.0f)) {
         /* (affirmative) returns for specific constraints here... */
         /* constraints that require this regardless. */
         if (ELEM(con->type,
@@ -1167,7 +1163,7 @@ void transform_convert_clip_mirror_modifier_apply(TransDataContainer *tc)
   }
 }
 
-void animrecord_check_state(TransInfo *t, ID *id)
+void animrecord_check_state(TransInfo *t, struct ID *id)
 {
   Scene *scene = t->scene;
   wmTimer *animtimer = t->animtimer;

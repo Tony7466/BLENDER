@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup nodes
@@ -21,13 +20,15 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_texture.h"
 
 #include "DNA_ID.h"
@@ -55,7 +56,7 @@
 #include "NOD_socket_declarations.hh"
 
 #include "node_shader_register.hh"
-#include "node_util.hh"
+#include "node_util.h"
 
 #include "RE_pipeline.h"
 #include "RE_texture.h"

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. */
 
 #include "COM_Debug.h"
 
@@ -306,7 +305,7 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
 
     for (NodeOperation *operation : group->operations_) {
 
-      SNPRINTF(strbuf, "_%p", group);
+      BLI_snprintf(strbuf, sizeof(strbuf), "_%p", group);
       op_groups[operation].push_back(std::string(strbuf));
 
       len += graphviz_operation(
@@ -424,10 +423,10 @@ void DebugInfo::graphviz(const ExecutionSystem *system, StringRefNull name)
     char filepath[FILE_MAX];
 
     if (name.is_empty()) {
-      SNPRINTF(basename, "compositor_%d.dot", file_index_);
+      BLI_snprintf(basename, sizeof(basename), "compositor_%d.dot", file_index_);
     }
     else {
-      STRNCPY(basename, (name + ".dot").c_str());
+      BLI_strncpy(basename, (name + ".dot").c_str(), sizeof(basename));
     }
     BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_session(), basename);
     file_index_++;
@@ -453,7 +452,7 @@ void DebugInfo::export_operation(const NodeOperation *op, MemoryBuffer *render)
   const int num_channels = render->get_num_channels();
 
   ImBuf *ibuf = IMB_allocImBuf(width, height, 8 * num_channels, IB_rectfloat);
-  MemoryBuffer mem_ibuf(ibuf->float_buffer.data, 4, width, height);
+  MemoryBuffer mem_ibuf(ibuf->rect_float, 4, width, height);
   mem_ibuf.copy_from(render, render->get_rect(), 0, num_channels, 0);
 
   const std::string file_name = operation_class_name(op) + "_" + std::to_string(op->get_id()) +
@@ -468,7 +467,7 @@ void DebugInfo::delete_operation_exports()
 {
   const std::string dir = get_operations_export_dir();
   if (BLI_exists(dir.c_str())) {
-    direntry *file_list;
+    struct direntry *file_list;
     int file_list_num = BLI_filelist_dir_contents(dir.c_str(), &file_list);
     for (int i = 0; i < file_list_num; i++) {
       direntry *file = &file_list[i];

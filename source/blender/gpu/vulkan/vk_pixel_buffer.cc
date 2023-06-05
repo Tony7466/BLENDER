@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -14,11 +13,12 @@ namespace blender::gpu {
 
 VKPixelBuffer::VKPixelBuffer(int64_t size) : PixelBuffer(size)
 {
-  buffer_.create(size,
+  VKContext &context = *VKContext::get();
+  buffer_.create(context,
+                 size,
                  GPU_USAGE_STATIC,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
                                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-  debug::object_label(buffer_.vk_handle(), "PixelBuffer");
 }
 
 void *VKPixelBuffer::map()
@@ -37,7 +37,7 @@ int64_t VKPixelBuffer::get_native_handle()
   return int64_t(buffer_.vk_handle());
 }
 
-size_t VKPixelBuffer::get_size()
+uint VKPixelBuffer::get_size()
 {
   return size_;
 }

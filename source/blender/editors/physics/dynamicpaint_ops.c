@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edphys
@@ -202,7 +200,6 @@ void DPAINT_OT_type_toggle(wmOperatorType *ot)
                       MOD_DYNAMICPAINT_TYPE_CANVAS,
                       "Type",
                       "");
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SIMULATION);
   ot->prop = prop;
 }
 
@@ -291,7 +288,7 @@ typedef struct DynamicPaintBakeJob {
   bool *stop, *do_update;
   float *progress;
 
-  Main *bmain;
+  struct Main *bmain;
   Scene *scene;
   Depsgraph *depsgraph;
   Object *ob;
@@ -356,7 +353,7 @@ static void dynamicPaint_bakeImageSequence(DynamicPaintBakeJob *job)
 
   frames = surface->end_frame - surface->start_frame + 1;
   if (frames <= 0) {
-    STRNCPY(canvas->error, N_("No frames to bake"));
+    BLI_strncpy(canvas->error, N_("No frames to bake"), sizeof(canvas->error));
     return;
   }
 
@@ -459,7 +456,7 @@ static void dpaint_bake_startjob(void *customdata, bool *stop, bool *do_update, 
 /*
  * Bake Dynamic Paint image sequence surface
  */
-static int dynamicpaint_bake_exec(bContext *C, wmOperator *op)
+static int dynamicpaint_bake_exec(struct bContext *C, struct wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob_ = ED_object_context(C);

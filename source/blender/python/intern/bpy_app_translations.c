@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -269,7 +267,7 @@ const char *BPY_app_translations_py_pgettext(const char *msgctxt, const char *ms
   if (!STREQ(tmp, locale) || !_translations_cache) {
     PyGILState_STATE _py_state;
 
-    STRNCPY(locale, tmp);
+    BLI_strncpy(locale, tmp, STATIC_LOCALE_SIZE);
 
     /* Locale changed or cache does not exist, refresh the whole cache! */
     /* This func may be called from C (i.e. outside of python interpreter 'context'). */
@@ -861,7 +859,7 @@ PyObject *BPY_app_translations_struct(void)
 
   /* prevent user from creating new instances */
   BlenderAppTranslationsType.tp_new = NULL;
-  /* Without this we can't do `set(sys.modules)` #29635. */
+  /* without this we can't do set(sys.modules) #29635. */
   BlenderAppTranslationsType.tp_hash = (hashfunc)_Py_HashPointer;
 
   return ret;

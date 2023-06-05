@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -16,14 +14,13 @@ namespace blender::nodes::node_geo_input_mesh_island_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Int>("Island Index")
+  b.add_output<decl::Int>(N_("Island Index"))
       .field_source()
-      .description(
-          "The index of the each vertex's island. Indices are based on the "
-          "lowest vertex index contained in each island");
-  b.add_output<decl::Int>("Island Count")
+      .description(N_("The index of the each vertex's island. Indices are based on the "
+                      "lowest vertex index contained in each island"));
+  b.add_output<decl::Int>(N_("Island Count"))
       .field_source()
-      .description("The total number of mesh islands");
+      .description(N_("The total number of mesh islands"));
 }
 
 class IslandFieldInput final : public bke::MeshFieldInput {
@@ -35,7 +32,7 @@ class IslandFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     const Span<int2> edges = mesh.edges();
 
@@ -79,7 +76,7 @@ class IslandCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     const Span<int2> edges = mesh.edges();
 

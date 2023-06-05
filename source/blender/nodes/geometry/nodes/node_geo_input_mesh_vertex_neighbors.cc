@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -13,14 +11,13 @@ namespace blender::nodes::node_geo_input_mesh_vertex_neighbors_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Int>("Vertex Count")
+  b.add_output<decl::Int>(N_("Vertex Count"))
       .field_source()
-      .description(
-          "The number of vertices connected to this vertex with an edge, "
-          "equal to the number of connected edges");
-  b.add_output<decl::Int>("Face Count")
+      .description(N_("The number of vertices connected to this vertex with an edge, "
+                      "equal to the number of connected edges"));
+  b.add_output<decl::Int>(N_("Face Count"))
       .field_source()
-      .description("Number of faces that contain the vertex");
+      .description(N_("Number of faces that contain the vertex"));
 }
 
 static VArray<int> construct_vertex_count_gvarray(const Mesh &mesh, const eAttrDomain domain)
@@ -46,7 +43,7 @@ class VertexCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     return construct_vertex_count_gvarray(mesh, domain);
   }
@@ -90,7 +87,7 @@ class VertexFaceCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask /*mask*/) const final
   {
     return construct_face_count_gvarray(mesh, domain);
   }

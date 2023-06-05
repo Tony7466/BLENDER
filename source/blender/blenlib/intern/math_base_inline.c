@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -388,16 +387,6 @@ MINLINE int mod_i(int i, int n)
   return (i % n + n) % n;
 }
 
-MINLINE float mod_f_positive(const float f, const float n)
-{
-  const float modulo = fmodf(f, n);
-  if (modulo < 0) {
-    /* fmodf returns a value in the interval (-n, n). */
-    return modulo + n;
-  }
-  return modulo;
-}
-
 MINLINE float fractf(float a)
 {
   return a - floorf(a);
@@ -554,15 +543,6 @@ MINLINE unsigned long long min_ulul(unsigned long long a, unsigned long long b)
 MINLINE unsigned long long max_ulul(unsigned long long a, unsigned long long b)
 {
   return (b < a) ? a : b;
-}
-
-MINLINE double min_ddd(double a, double b, double c)
-{
-  return min_dd(min_dd(a, b), c);
-}
-MINLINE double max_ddd(double a, double b, double c)
-{
-  return max_dd(max_dd(a, b), c);
 }
 
 MINLINE float min_fff(float a, float b, float c)

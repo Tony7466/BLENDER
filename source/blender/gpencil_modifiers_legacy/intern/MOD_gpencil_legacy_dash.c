@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation. */
 
 /** \file
  * \ingroup modifiers
@@ -12,7 +11,6 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -59,7 +57,7 @@ static void initData(GpencilModifierData *md)
 
   DashGpencilModifierSegment *ds = DNA_struct_default_alloc(DashGpencilModifierSegment);
   ds->dmd = dmd;
-  STRNCPY_UTF8(ds->name, DATA_("Segment"));
+  BLI_strncpy(ds->name, DATA_("Segment"), sizeof(ds->name));
 
   dmd->segments = ds;
 }
@@ -278,13 +276,13 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void segment_list_item(uiList *UNUSED(ui_list),
-                              const bContext *UNUSED(C),
-                              uiLayout *layout,
-                              PointerRNA *UNUSED(idataptr),
-                              PointerRNA *itemptr,
+static void segment_list_item(struct uiList *UNUSED(ui_list),
+                              const struct bContext *UNUSED(C),
+                              struct uiLayout *layout,
+                              struct PointerRNA *UNUSED(idataptr),
+                              struct PointerRNA *itemptr,
                               int UNUSED(icon),
-                              PointerRNA *UNUSED(active_dataptr),
+                              struct PointerRNA *UNUSED(active_dataptr),
                               const char *UNUSED(active_propname),
                               int UNUSED(index),
                               int UNUSED(flt_flag))

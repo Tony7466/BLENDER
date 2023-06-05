@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup shdnodes
@@ -15,23 +14,26 @@ namespace blender::nodes::node_shader_mapping_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Vector").default_value({0.0f, 0.0f, 0.0f}).min(-FLT_MAX).max(FLT_MAX);
-  b.add_input<decl::Vector>("Location")
+  b.add_input<decl::Vector>(N_("Vector"))
+      .default_value({0.0f, 0.0f, 0.0f})
+      .min(-FLT_MAX)
+      .max(FLT_MAX);
+  b.add_input<decl::Vector>(N_("Location"))
       .default_value({0.0f, 0.0f, 0.0f})
       .min(-FLT_MAX)
       .max(FLT_MAX)
       .subtype(PROP_TRANSLATION);
-  b.add_input<decl::Vector>("Rotation")
+  b.add_input<decl::Vector>(N_("Rotation"))
       .default_value({0.0f, 0.0f, 0.0f})
       .min(-FLT_MAX)
       .max(FLT_MAX)
       .subtype(PROP_EULER);
-  b.add_input<decl::Vector>("Scale")
+  b.add_input<decl::Vector>(N_("Scale"))
       .default_value({1.0f, 1.0f, 1.0f})
       .min(-FLT_MAX)
       .max(FLT_MAX)
       .subtype(PROP_XYZ);
-  b.add_output<decl::Vector>("Vector");
+  b.add_output<decl::Vector>(N_("Vector"));
 }
 
 static void node_shader_buts_mapping(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -70,7 +72,7 @@ static int gpu_shader_mapping(GPUMaterial *mat,
 static void node_shader_update_mapping(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *sock = nodeFindSocket(node, SOCK_IN, "Location");
-  bke::nodeSetSocketAvailability(
+  nodeSetSocketAvailability(
       ntree, sock, ELEM(node->custom1, NODE_MAPPING_TYPE_POINT, NODE_MAPPING_TYPE_TEXTURE));
 }
 

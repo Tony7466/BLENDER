@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -226,7 +224,7 @@ static void setup_app_userdef(BlendFileData *bfd)
  */
 static void setup_app_data(bContext *C,
                            BlendFileData *bfd,
-                           const BlendFileReadParams *params,
+                           const struct BlendFileReadParams *params,
                            BlendFileReadReport *reports)
 {
   Main *bmain = G_MAIN;
@@ -444,9 +442,6 @@ static void setup_app_data(bContext *C,
    * linked libraries. */
   if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 1)) {
     BKE_lib_override_library_main_proxy_convert(bmain, reports);
-    /* Currently liboverride code can generate invalid namemap. This is a known issue, requires
-     * #107847 to be properly fixed. */
-    BKE_main_namemap_validate_and_fix(bmain);
   }
 
   if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 3)) {
@@ -525,7 +520,7 @@ static void setup_app_data(bContext *C,
 
 static void setup_app_blend_file_data(bContext *C,
                                       BlendFileData *bfd,
-                                      const BlendFileReadParams *params,
+                                      const struct BlendFileReadParams *params,
                                       BlendFileReadReport *reports)
 {
   if ((params->skip_flags & BLO_READ_SKIP_USERDEF) == 0) {
@@ -552,7 +547,7 @@ static void handle_subversion_warning(Main *main, BlendFileReadReport *reports)
 
 void BKE_blendfile_read_setup_ex(bContext *C,
                                  BlendFileData *bfd,
-                                 const BlendFileReadParams *params,
+                                 const struct BlendFileReadParams *params,
                                  BlendFileReadReport *reports,
                                  /* Extra args. */
                                  const bool startup_update_defaults,
@@ -576,15 +571,15 @@ void BKE_blendfile_read_setup_ex(bContext *C,
 
 void BKE_blendfile_read_setup(bContext *C,
                               BlendFileData *bfd,
-                              const BlendFileReadParams *params,
+                              const struct BlendFileReadParams *params,
                               BlendFileReadReport *reports)
 {
   BKE_blendfile_read_setup_ex(C, bfd, params, reports, false, nullptr);
 }
 
-BlendFileData *BKE_blendfile_read(const char *filepath,
-                                  const BlendFileReadParams *params,
-                                  BlendFileReadReport *reports)
+struct BlendFileData *BKE_blendfile_read(const char *filepath,
+                                         const struct BlendFileReadParams *params,
+                                         BlendFileReadReport *reports)
 {
   /* Don't print startup file loading. */
   if (params->is_startup == false) {
@@ -605,10 +600,10 @@ BlendFileData *BKE_blendfile_read(const char *filepath,
   return bfd;
 }
 
-BlendFileData *BKE_blendfile_read_from_memory(const void *filebuf,
-                                              int filelength,
-                                              const BlendFileReadParams *params,
-                                              ReportList *reports)
+struct BlendFileData *BKE_blendfile_read_from_memory(const void *filebuf,
+                                                     int filelength,
+                                                     const struct BlendFileReadParams *params,
+                                                     ReportList *reports)
 {
   BlendFileData *bfd = BLO_read_from_memory(
       filebuf, filelength, eBLOReadSkip(params->skip_flags), reports);
@@ -625,10 +620,10 @@ BlendFileData *BKE_blendfile_read_from_memory(const void *filebuf,
   return bfd;
 }
 
-BlendFileData *BKE_blendfile_read_from_memfile(Main *bmain,
-                                               MemFile *memfile,
-                                               const BlendFileReadParams *params,
-                                               ReportList *reports)
+struct BlendFileData *BKE_blendfile_read_from_memfile(Main *bmain,
+                                                      struct MemFile *memfile,
+                                                      const struct BlendFileReadParams *params,
+                                                      ReportList *reports)
 {
   BlendFileData *bfd = BLO_read_from_memfile(
       bmain, BKE_main_blendfile_path(bmain), memfile, params, reports);
@@ -751,10 +746,12 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
     const char *addons[] = {
         "io_anim_bvh",
         "io_curve_svg",
+        "io_mesh_ply",
         "io_mesh_stl",
         "io_mesh_uv_layout",
         "io_scene_fbx",
         "io_scene_gltf2",
+        "io_scene_obj",
         "io_scene_x3d",
         "cycles",
         "pose_library",
@@ -970,32 +967,18 @@ void BKE_blendfile_workspace_config_data_free(WorkspaceConfigFileData *workspace
 /** \name Blend File Write (Partial)
  * \{ */
 
-static void blendfile_write_partial_clear_flags(Main *bmain_src)
+void BKE_blendfile_write_partial_begin(Main *bmain_src)
 {
-  ListBase *lbarray[INDEX_ID_MAX];
-  int a = set_listbasepointers(bmain_src, lbarray);
-  while (a--) {
-    LISTBASE_FOREACH (ID *, id, lbarray[a]) {
-      id->tag &= ~(LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT);
-      id->flag &= ~(LIB_CLIPBOARD_MARK);
-    }
-  }
-}
-
-void BKE_blendfile_write_partial_begin(Main *bmain)
-{
-  blendfile_write_partial_clear_flags(bmain);
+  BKE_main_id_tag_all(bmain_src, LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT, false);
 }
 
 void BKE_blendfile_write_partial_tag_ID(ID *id, bool set)
 {
   if (set) {
     id->tag |= LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT;
-    id->flag |= LIB_CLIPBOARD_MARK;
   }
   else {
     id->tag &= ~(LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT);
-    id->flag &= ~LIB_CLIPBOARD_MARK;
   }
 }
 
@@ -1094,7 +1077,7 @@ bool BKE_blendfile_write_partial(Main *bmain_src,
 
 void BKE_blendfile_write_partial_end(Main *bmain_src)
 {
-  blendfile_write_partial_clear_flags(bmain_src);
+  BKE_main_id_tag_all(bmain_src, LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT, false);
 }
 
 /** \} */

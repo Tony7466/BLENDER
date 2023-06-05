@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edscr
@@ -560,7 +559,7 @@ int screen_area_join(bContext *C, bScreen *screen, ScrArea *sa1, ScrArea *sa2)
   return screen_area_join_ex(C, screen, sa1, sa2, false);
 }
 
-bool screen_area_close(bContext *C, bScreen *screen, ScrArea *area)
+bool screen_area_close(struct bContext *C, bScreen *screen, ScrArea *area)
 {
   if (area == NULL) {
     return false;
@@ -1446,7 +1445,7 @@ static bScreen *screen_state_to_nonnormal(bContext *C,
   bScreen *oldscreen = WM_window_get_active_screen(win);
 
   oldscreen->state = state;
-  SNPRINTF(newname, "%s-%s", oldscreen->id.name + 2, "nonnormal");
+  BLI_snprintf(newname, sizeof(newname), "%s-%s", oldscreen->id.name + 2, "nonnormal");
 
   layout_new = ED_workspace_layout_add(bmain, workspace, win, newname);
 
@@ -1741,10 +1740,10 @@ void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)
     sad->from_anim_edit = ELEM(spacetype, SPACE_GRAPH, SPACE_ACTION, SPACE_NLA);
 
     screen->animtimer->customdata = sad;
-
-    /* Seek audio to ensure playback in preview range with AV sync. */
-    DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
   }
+
+  /* Seek audio to ensure playback in preview range with AV sync. */
+  DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
 
   /* Notifier caught by top header, for button. */
   WM_event_add_notifier(C, NC_SCREEN | ND_ANIMPLAY, NULL);
@@ -1887,7 +1886,7 @@ bool ED_screen_stereo3d_required(const bScreen *screen, const Scene *scene)
 
 Scene *ED_screen_scene_find_with_window(const bScreen *screen,
                                         const wmWindowManager *wm,
-                                        wmWindow **r_window)
+                                        struct wmWindow **r_window)
 {
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (WM_window_get_active_screen(win) == screen) {

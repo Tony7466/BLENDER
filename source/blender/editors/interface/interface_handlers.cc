@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -400,7 +399,7 @@ struct uiHandleButtonData {
 
   /* text selection/editing */
   /* size of 'str' (including terminator) */
-  int str_maxncpy;
+  int maxlen;
   /* Button text selection:
    * extension direction, selextend, inside ui_do_but_TEX */
   int sel_pos_init;
@@ -2436,21 +2435,19 @@ static void ui_apply_but(
 /** \name Button Copy & Paste
  * \{ */
 
-static void ui_but_get_pasted_text_from_clipboard(const bool ensure_utf8,
-                                                  char **r_buf_paste,
-                                                  int *r_buf_len)
+static void ui_but_get_pasted_text_from_clipboard(char **buf_paste, int *buf_len)
 {
   /* get only first line even if the clipboard contains multiple lines */
   int length;
-  char *text = WM_clipboard_text_get_firstline(false, ensure_utf8, &length);
+  char *text = WM_clipboard_text_get_firstline(false, &length);
 
   if (text) {
-    *r_buf_paste = text;
-    *r_buf_len = length;
+    *buf_paste = text;
+    *buf_len = length;
   }
   else {
-    *r_buf_paste = static_cast<char *>(MEM_callocN(sizeof(char), __func__));
-    *r_buf_len = 0;
+    *buf_paste = static_cast<char *>(MEM_callocN(sizeof(char), __func__));
+    *buf_len = 0;
   }
 }
 
@@ -2834,7 +2831,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 
   int buf_paste_len = 0;
   char *buf_paste;
-  ui_but_get_pasted_text_from_clipboard(UI_but_is_utf8(but), &buf_paste, &buf_paste_len);
+  ui_but_get_pasted_text_from_clipboard(&buf_paste, &buf_paste_len);
 
   const bool has_required_data = !(but->poin == nullptr && but->rnapoin.data == nullptr);
 
@@ -3009,17 +3006,14 @@ void ui_but_active_string_clear_and_exit(bContext *C, uiBut *but)
   button_activate_state(C, but, BUTTON_STATE_EXIT);
 }
 
-static void ui_textedit_string_ensure_max_length(uiBut *but,
-                                                 uiHandleButtonData *data,
-                                                 int str_maxncpy)
+static void ui_textedit_string_ensure_max_length(uiBut *but, uiHandleButtonData *data, int maxlen)
 {
   BLI_assert(data->is_str_dynamic);
   BLI_assert(data->str == but->editstr);
 
-  if (str_maxncpy > data->str_maxncpy) {
-    data->str = but->editstr = static_cast<char *>(
-        MEM_reallocN(data->str, sizeof(char) * str_maxncpy));
-    data->str_maxncpy = str_maxncpy;
+  if (maxlen > data->maxlen) {
+    data->str = but->editstr = static_cast<char *>(MEM_reallocN(data->str, sizeof(char) * maxlen));
+    data->maxlen = maxlen;
   }
 }
 
@@ -3030,10 +3024,10 @@ static void ui_textedit_string_set(uiBut *but, uiHandleButtonData *data, const c
   }
 
   if (UI_but_is_utf8(but)) {
-    BLI_strncpy_utf8(data->str, str, data->str_maxncpy);
+    BLI_strncpy_utf8(data->str, str, data->maxlen);
   }
   else {
-    BLI_strncpy(data->str, str, data->str_maxncpy);
+    BLI_strncpy(data->str, str, data->maxlen);
   }
 }
 
@@ -3136,14 +3130,14 @@ static bool ui_textedit_insert_buf(uiBut *but,
                                    int buf_len)
 {
   int len = strlen(data->str);
-  const int str_maxncpy_new = len - (but->selend - but->selsta) + 1;
+  const int len_new = len - (but->selend - but->selsta) + 1;
   bool changed = false;
 
   if (data->is_str_dynamic) {
-    ui_textedit_string_ensure_max_length(but, data, str_maxncpy_new + buf_len);
+    ui_textedit_string_ensure_max_length(but, data, len_new + buf_len);
   }
 
-  if (str_maxncpy_new <= data->str_maxncpy) {
+  if (len_new <= data->maxlen) {
     char *str = data->str;
     size_t step = buf_len;
 
@@ -3153,17 +3147,17 @@ static bool ui_textedit_insert_buf(uiBut *but,
       len = strlen(str);
     }
 
-    if ((len + step >= data->str_maxncpy) && (data->str_maxncpy - (len + 1) > 0)) {
+    if ((len + step >= data->maxlen) && (data->maxlen - (len + 1) > 0)) {
       if (UI_but_is_utf8(but)) {
         /* Shorten 'step' to a utf8 aligned size that fits. */
-        BLI_strnlen_utf8_ex(buf, data->str_maxncpy - (len + 1), &step);
+        BLI_strnlen_utf8_ex(buf, data->maxlen - (len + 1), &step);
       }
       else {
-        step = data->str_maxncpy - (len + 1);
+        step = data->maxlen - (len + 1);
       }
     }
 
-    if (step && (len + step < data->str_maxncpy)) {
+    if (step && (len + step < data->maxlen)) {
       memmove(&str[but->pos + step], &str[but->pos], (len + 1) - but->pos);
       memcpy(&str[but->pos], buf, step * sizeof(char));
       but->pos += step;
@@ -3313,9 +3307,13 @@ static bool ui_textedit_copypaste(uiBut *but, uiHandleButtonData *data, const in
   if (mode == UI_TEXTEDIT_PASTE) {
     /* extract the first line from the clipboard */
     int buf_len;
-    char *pbuf = WM_clipboard_text_get_firstline(false, UI_but_is_utf8(but), &buf_len);
+    char *pbuf = WM_clipboard_text_get_firstline(false, &buf_len);
 
     if (pbuf) {
+      if (UI_but_is_utf8(but)) {
+        buf_len -= BLI_str_utf8_invalid_strip(pbuf, size_t(buf_len));
+      }
+
       ui_textedit_insert_buf(but, data, pbuf, buf_len);
 
       changed = true;
@@ -3417,17 +3415,17 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 #endif
 
   /* retrieve string */
-  data->str_maxncpy = ui_but_string_get_max_length(but);
-  if (data->str_maxncpy != 0) {
-    data->str = static_cast<char *>(MEM_callocN(sizeof(char) * data->str_maxncpy, "textedit str"));
+  data->maxlen = ui_but_string_get_max_length(but);
+  if (data->maxlen != 0) {
+    data->str = static_cast<char *>(MEM_callocN(sizeof(char) * data->maxlen, "textedit str"));
     /* We do not want to truncate precision to default here, it's nice to show value,
      * not to edit it - way too much precision is lost then. */
     ui_but_string_get_ex(
-        but, data->str, data->str_maxncpy, UI_PRECISION_FLOAT_MAX, true, &no_zero_strip);
+        but, data->str, data->maxlen, UI_PRECISION_FLOAT_MAX, true, &no_zero_strip);
   }
   else {
     data->is_str_dynamic = true;
-    data->str = ui_but_string_get_dynamic(but, &data->str_maxncpy);
+    data->str = ui_but_string_get_dynamic(but, &data->maxlen);
   }
 
   if (ui_but_is_float(but) && !ui_but_is_unit(but) &&
@@ -3438,7 +3436,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   if (is_num_but) {
     BLI_assert(data->is_str_dynamic == false);
-    ui_but_convert_to_unit_alt_name(but, data->str, data->str_maxncpy);
+    ui_but_convert_to_unit_alt_name(but, data->str, data->maxlen);
 
     ui_numedit_begin_set_values(but, data);
   }
@@ -3507,12 +3505,9 @@ static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
   if (but) {
     if (UI_but_is_utf8(but)) {
       const int strip = BLI_str_utf8_invalid_strip(but->editstr, strlen(but->editstr));
-      /* Strip non-UTF8 characters unless buttons support this.
-       * This should never happen as all text input should be valid UTF8,
-       * there is a small chance existing data contains invalid sequences.
-       * This could check could be made into an assertion if `but->editstr`
-       * is valid UTF8 when #ui_textedit_begin assigns the string. */
+      /* not a file?, strip non utf-8 chars */
       if (strip) {
+        /* won't happen often so isn't that annoying to keep it here for a while */
         printf("%s: invalid utf8 - stripped chars %d\n", __func__, strip);
       }
     }
@@ -3632,28 +3627,6 @@ static void ui_textedit_prev_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
   }
 }
 
-/**
- * Return the jump type used for cursor motion & back-space/delete actions.
- */
-static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
-{
-/* TODO: Do not enable these Apple-specific modifiers until we also support them in
- * text objects, console, and text editor to keep everything consistent - Harley. */
-#if defined(__APPLE__) && 0
-  if (event->modifier & KM_OSKEY) {
-    return STRCUR_JUMP_ALL;
-  }
-  if (event->modifier & KM_ALT) {
-    return STRCUR_JUMP_DELIM;
-  }
-#else
-  if (event->modifier & KM_CTRL) {
-    return STRCUR_JUMP_DELIM;
-  }
-#endif
-  return STRCUR_JUMP_NONE;
-}
-
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
@@ -3754,11 +3727,8 @@ static void ui_do_but_textedit(
 
       /* only select a word in button if there was no selection before */
       if (event->val == KM_DBL_CLICK && had_selection == false) {
-        int selsta, selend;
-        BLI_str_cursor_step_bounds_utf8(data->str, strlen(data->str), but->pos, &selsta, &selend);
-        but->pos = short(selend);
-        but->selsta = short(selsta);
-        but->selend = short(selend);
+        ui_textedit_move(but, data, STRCUR_DIR_PREV, false, STRCUR_JUMP_DELIM);
+        ui_textedit_move(but, data, STRCUR_DIR_NEXT, true, STRCUR_JUMP_DELIM);
         retval = WM_UI_HANDLER_BREAK;
         changed = true;
       }
@@ -3799,15 +3769,21 @@ static void ui_do_but_textedit(
         }
         break;
       case EVT_RIGHTARROWKEY:
-      case EVT_LEFTARROWKEY: {
-        const eStrCursorJumpDirection direction = (event->type == EVT_RIGHTARROWKEY) ?
-                                                      STRCUR_DIR_NEXT :
-                                                      STRCUR_DIR_PREV;
-        const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        ui_textedit_move(but, data, direction, event->modifier & KM_SHIFT, jump);
+        ui_textedit_move(but,
+                         data,
+                         STRCUR_DIR_NEXT,
+                         event->modifier & KM_SHIFT,
+                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
         retval = WM_UI_HANDLER_BREAK;
         break;
-      }
+      case EVT_LEFTARROWKEY:
+        ui_textedit_move(but,
+                         data,
+                         STRCUR_DIR_PREV,
+                         event->modifier & KM_SHIFT,
+                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+        retval = WM_UI_HANDLER_BREAK;
+        break;
       case WHEELDOWNMOUSE:
       case EVT_DOWNARROWKEY:
         if (data->searchbox) {
@@ -3848,14 +3824,22 @@ static void ui_do_but_textedit(
         retval = WM_UI_HANDLER_BREAK;
         break;
       case EVT_DELKEY:
-      case EVT_BACKSPACEKEY: {
-        const eStrCursorJumpDirection direction = (event->type == EVT_DELKEY) ? STRCUR_DIR_NEXT :
-                                                                                STRCUR_DIR_PREV;
-        const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        changed = ui_textedit_delete(but, data, direction, jump);
+        changed = ui_textedit_delete(but,
+                                     data,
+                                     STRCUR_DIR_NEXT,
+                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
+                                                                   STRCUR_JUMP_NONE);
         retval = WM_UI_HANDLER_BREAK;
         break;
-      }
+
+      case EVT_BACKSPACEKEY:
+        changed = ui_textedit_delete(but,
+                                     data,
+                                     STRCUR_DIR_PREV,
+                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
+                                                                   STRCUR_JUMP_NONE);
+        retval = WM_UI_HANDLER_BREAK;
+        break;
 
       case EVT_AKEY:
 
@@ -5088,13 +5072,14 @@ static bool ui_numedit_but_NUM(uiButNumber *but,
           break;
         }
         case PROP_SCALE_LOG: {
-          const float startvalue = max_ff(float(data->startvalue), log_min);
           if (tempf < log_min) {
-            data->dragstartx -= logf(log_min / startvalue) / fac - float(mx - data->dragstartx);
+            data->dragstartx -= logf(log_min / float(data->startvalue)) / fac -
+                                float(mx - data->dragstartx);
             tempf = softmin;
           }
           else if (tempf > softmax) {
-            data->dragstartx -= logf(softmax / startvalue) / fac - float(mx - data->dragstartx);
+            data->dragstartx -= logf(softmax / float(data->startvalue)) / fac -
+                                float(mx - data->dragstartx);
             tempf = softmax;
           }
           break;
@@ -5494,13 +5479,9 @@ static int ui_do_but_NUM(
 
         double value_step;
         if (scale_type == PROP_SCALE_LOG) {
-          double precision = (roundf(log10f(data->value) + UI_PROP_SCALE_LOG_SNAP_OFFSET) - 1.0f) +
-                             log10f(number_but->step_size);
-          /* Non-finite when `data->value` is zero. */
-          if (UNLIKELY(!isfinite(precision))) {
-            precision = -FLT_MAX; /* Ignore this value. */
-          }
-          value_step = powf(10.0f, max_ff(precision, -number_but->precision));
+          value_step = powf(10.0f,
+                            (roundf(log10f(data->value) + UI_PROP_SCALE_LOG_SNAP_OFFSET) - 1.0f) +
+                                log10f(number_but->step_size));
         }
         else {
           value_step = double(number_but->step_size * UI_PRECISION_FLOAT_SCALE);
@@ -8857,7 +8838,7 @@ uiBut *UI_region_active_but_prop_get(const ARegion *region,
   else {
     memset(r_ptr, 0, sizeof(*r_ptr));
     *r_prop = nullptr;
-    *r_index = -1;
+    *r_index = 0;
   }
 
   return activebut;

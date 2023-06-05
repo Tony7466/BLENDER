@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editorui
@@ -31,8 +29,6 @@
 
 #include "UI_interface.hh"
 
-#include "WM_types.h"
-
 struct bContext;
 struct uiBlock;
 struct uiLayout;
@@ -47,8 +43,7 @@ class AbstractViewItem;
 class AbstractViewItemDropTarget;
 class AbstractViewItemDragController;
 
-/**
- * The view drop target can share logic with the view item drop target for now, so just an alias.
+/** The view drop target can share logic with the view item drop target for now, so just an alias.
  */
 using AbstractViewDropTarget = AbstractViewItemDropTarget;
 
@@ -249,7 +244,7 @@ class AbstractViewItemDragController {
   AbstractViewItemDragController(AbstractView &view);
   virtual ~AbstractViewItemDragController() = default;
 
-  virtual eWM_DragDataType get_drag_type() const = 0;
+  virtual int get_drag_type() const = 0;
   virtual void *create_drag_data() const = 0;
   virtual void on_drag_start();
 

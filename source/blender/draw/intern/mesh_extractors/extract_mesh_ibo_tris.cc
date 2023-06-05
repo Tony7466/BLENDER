@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -47,7 +46,7 @@ static void extract_tris_iter_poly_bm(const MeshRenderData *mr,
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
   int tri_first_index_real = poly_to_tri_count(f_index, BM_elem_index_get(f->l_first));
 
-  BMLoop *(*looptris)[3] = mr->edit_bmesh->looptris;
+  struct BMLoop *(*looptris)[3] = mr->edit_bmesh->looptris;
   int tri_len = f->len - 2;
   for (int offs = 0; offs < tri_len; offs++) {
     BMLoop **elt = looptris[tri_first_index_real + offs];
@@ -191,8 +190,7 @@ static void extract_tris_single_mat_iter_looptri_mesh(const MeshRenderData *mr,
                                                       void *_data)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
-  const int poly_i = mr->looptri_polys[mlt_index];
-  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[poly_i];
+  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[mlt->poly];
   if (hidden) {
     GPU_indexbuf_set_tri_restart(elb, mlt_index);
   }

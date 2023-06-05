@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -131,7 +130,7 @@ int EEVEE_bloom_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 
 static DRWShadingGroup *eevee_create_bloom_pass(const char *name,
                                                 EEVEE_EffectsInfo *effects,
-                                                GPUShader *sh,
+                                                struct GPUShader *sh,
                                                 DRWPass **pass,
                                                 bool upsample,
                                                 bool resolve,
@@ -250,7 +249,7 @@ void EEVEE_bloom_draw(EEVEE_Data *vedata)
 
   /* Bloom */
   if ((effects->enabled_effects & EFFECT_BLOOM) != 0) {
-    GPUTexture *last;
+    struct GPUTexture *last;
 
     /* Extract bright pixels */
     copy_v2_v2(effects->unf_source_texel_size, effects->source_texel_size);

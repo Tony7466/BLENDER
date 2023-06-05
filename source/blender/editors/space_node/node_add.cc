@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup spnode
@@ -24,7 +23,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
@@ -457,9 +456,9 @@ static int node_add_group_asset_invoke(bContext *C, wmOperator *op, const wmEven
   return OPERATOR_FINISHED;
 }
 
-static char *node_add_group_asset_get_description(bContext *C,
-                                                  wmOperatorType * /*op*/,
-                                                  PointerRNA * /*values*/)
+static char *node_add_group_asset_get_description(struct bContext *C,
+                                                  struct wmOperatorType * /*op*/,
+                                                  struct PointerRNA * /*values*/)
 {
   const AssetRepresentation *asset = CTX_wm_asset(C);
   if (!asset) {

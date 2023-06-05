@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup spfile
@@ -64,12 +63,12 @@ static FSMenu *g_fsmenu = NULL;
 FSMenu *ED_fsmenu_get(void)
 {
   if (!g_fsmenu) {
-    g_fsmenu = MEM_callocN(sizeof(FSMenu), "fsmenu");
+    g_fsmenu = MEM_callocN(sizeof(struct FSMenu), "fsmenu");
   }
   return g_fsmenu;
 }
 
-FSMenuEntry *ED_fsmenu_get_category(FSMenu *fsmenu, FSMenuCategory category)
+struct FSMenuEntry *ED_fsmenu_get_category(struct FSMenu *fsmenu, FSMenuCategory category)
 {
   FSMenuEntry *fsm_head = NULL;
 
@@ -178,7 +177,7 @@ static void fsmenu_xdg_user_dirs_free(GHash *xdg_map)
  * \param default_path: Directory name to check in $HOME, also used for the menu entry name.
  */
 static void fsmenu_xdg_insert_entry(GHash *xdg_map,
-                                    FSMenu *fsmenu,
+                                    struct FSMenu *fsmenu,
                                     const char *key,
                                     const char *default_path,
                                     int icon,
@@ -196,7 +195,7 @@ static void fsmenu_xdg_insert_entry(GHash *xdg_map,
 
 /** \} */
 
-void ED_fsmenu_set_category(FSMenu *fsmenu, FSMenuCategory category, FSMenuEntry *fsm_head)
+void ED_fsmenu_set_category(struct FSMenu *fsmenu, FSMenuCategory category, FSMenuEntry *fsm_head)
 {
   switch (category) {
     case FS_CATEGORY_SYSTEM:
@@ -217,7 +216,7 @@ void ED_fsmenu_set_category(FSMenu *fsmenu, FSMenuCategory category, FSMenuEntry
   }
 }
 
-int ED_fsmenu_get_nentries(FSMenu *fsmenu, FSMenuCategory category)
+int ED_fsmenu_get_nentries(struct FSMenu *fsmenu, FSMenuCategory category)
 {
   FSMenuEntry *fsm_iter;
   int count = 0;
@@ -229,7 +228,7 @@ int ED_fsmenu_get_nentries(FSMenu *fsmenu, FSMenuCategory category)
   return count;
 }
 
-FSMenuEntry *ED_fsmenu_get_entry(FSMenu *fsmenu, FSMenuCategory category, int idx)
+FSMenuEntry *ED_fsmenu_get_entry(struct FSMenu *fsmenu, FSMenuCategory category, int idx)
 {
   FSMenuEntry *fsm_iter;
 
@@ -242,12 +241,12 @@ FSMenuEntry *ED_fsmenu_get_entry(FSMenu *fsmenu, FSMenuCategory category, int id
   return fsm_iter;
 }
 
-char *ED_fsmenu_entry_get_path(FSMenuEntry *fsentry)
+char *ED_fsmenu_entry_get_path(struct FSMenuEntry *fsentry)
 {
   return fsentry->path;
 }
 
-void ED_fsmenu_entry_set_path(FSMenuEntry *fsentry, const char *path)
+void ED_fsmenu_entry_set_path(struct FSMenuEntry *fsentry, const char *path)
 {
   if ((!fsentry->path || !path || !STREQ(path, fsentry->path)) && (fsentry->path != path)) {
     char tmp_name[FILE_MAXFILE];
@@ -264,17 +263,17 @@ void ED_fsmenu_entry_set_path(FSMenuEntry *fsentry, const char *path)
   }
 }
 
-int ED_fsmenu_entry_get_icon(FSMenuEntry *fsentry)
+int ED_fsmenu_entry_get_icon(struct FSMenuEntry *fsentry)
 {
   return (fsentry->icon) ? fsentry->icon : ICON_FILE_FOLDER;
 }
 
-void ED_fsmenu_entry_set_icon(FSMenuEntry *fsentry, const int icon)
+void ED_fsmenu_entry_set_icon(struct FSMenuEntry *fsentry, const int icon)
 {
   fsentry->icon = icon;
 }
 
-static void fsmenu_entry_generate_name(FSMenuEntry *fsentry, char *name, size_t name_size)
+static void fsmenu_entry_generate_name(struct FSMenuEntry *fsentry, char *name, size_t name_size)
 {
   int offset = 0;
   int len = name_size;
@@ -291,7 +290,7 @@ static void fsmenu_entry_generate_name(FSMenuEntry *fsentry, char *name, size_t 
   }
 }
 
-char *ED_fsmenu_entry_get_name(FSMenuEntry *fsentry)
+char *ED_fsmenu_entry_get_name(struct FSMenuEntry *fsentry)
 {
   if (fsentry->name[0]) {
     return fsentry->name;
@@ -305,7 +304,7 @@ char *ED_fsmenu_entry_get_name(FSMenuEntry *fsentry)
   return name;
 }
 
-void ED_fsmenu_entry_set_name(FSMenuEntry *fsentry, const char *name)
+void ED_fsmenu_entry_set_name(struct FSMenuEntry *fsentry, const char *name)
 {
   if (!STREQ(name, fsentry->name)) {
     char tmp_name[FILE_MAXFILE];
@@ -317,7 +316,7 @@ void ED_fsmenu_entry_set_name(FSMenuEntry *fsentry, const char *name)
       fsentry->name[0] = '\0';
     }
     else {
-      STRNCPY(fsentry->name, name);
+      BLI_strncpy(fsentry->name, name, sizeof(fsentry->name));
     }
 
     BLI_path_join(tmp_name,
@@ -328,7 +327,7 @@ void ED_fsmenu_entry_set_name(FSMenuEntry *fsentry, const char *name)
   }
 }
 
-void fsmenu_entry_refresh_valid(FSMenuEntry *fsentry)
+void fsmenu_entry_refresh_valid(struct FSMenuEntry *fsentry)
 {
   if (fsentry->path && fsentry->path[0]) {
 #ifdef WIN32
@@ -353,7 +352,7 @@ void fsmenu_entry_refresh_valid(FSMenuEntry *fsentry)
   }
 }
 
-short fsmenu_can_save(FSMenu *fsmenu, FSMenuCategory category, int idx)
+short fsmenu_can_save(struct FSMenu *fsmenu, FSMenuCategory category, int idx)
 {
   FSMenuEntry *fsm_iter;
 
@@ -366,7 +365,7 @@ short fsmenu_can_save(FSMenu *fsmenu, FSMenuCategory category, int idx)
   return fsm_iter ? fsm_iter->save : 0;
 }
 
-void fsmenu_insert_entry(FSMenu *fsmenu,
+void fsmenu_insert_entry(struct FSMenu *fsmenu,
                          FSMenuCategory category,
                          const char *path,
                          const char *name,
@@ -458,7 +457,7 @@ void fsmenu_insert_entry(FSMenu *fsmenu,
   }
 
   if (name && name[0]) {
-    STRNCPY(fsm_iter->name, name);
+    BLI_strncpy(fsm_iter->name, name, sizeof(fsm_iter->name));
   }
   else {
     fsm_iter->name[0] = '\0';
@@ -489,7 +488,7 @@ void fsmenu_insert_entry(FSMenu *fsmenu,
   }
 }
 
-void fsmenu_remove_entry(FSMenu *fsmenu, FSMenuCategory category, int idx)
+void fsmenu_remove_entry(struct FSMenu *fsmenu, FSMenuCategory category, int idx)
 {
   FSMenuEntry *fsm_prev = NULL;
   FSMenuEntry *fsm_iter;
@@ -522,7 +521,7 @@ void fsmenu_remove_entry(FSMenu *fsmenu, FSMenuCategory category, int idx)
   }
 }
 
-bool fsmenu_write_file(FSMenu *fsmenu, const char *filepath)
+bool fsmenu_write_file(struct FSMenu *fsmenu, const char *filepath)
 {
   FSMenuEntry *fsm_iter = NULL;
   char fsm_name[FILE_MAX];
@@ -564,7 +563,7 @@ bool fsmenu_write_file(FSMenu *fsmenu, const char *filepath)
   return !has_error;
 }
 
-void fsmenu_read_bookmarks(FSMenu *fsmenu, const char *filepath)
+void fsmenu_read_bookmarks(struct FSMenu *fsmenu, const char *filepath)
 {
   char line[FILE_MAXDIR];
   char name[FILE_MAXFILE];
@@ -591,7 +590,7 @@ void fsmenu_read_bookmarks(FSMenu *fsmenu, const char *filepath)
         if (line[len - 1] == '\n') {
           line[len - 1] = '\0';
         }
-        STRNCPY(name, line + 1);
+        BLI_strncpy(name, line + 1, sizeof(name));
       }
     }
     else {
@@ -636,7 +635,7 @@ static void fsmenu_add_windows_folder(struct FSMenu *fsmenu,
 }
 #endif
 
-void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
+void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
 {
   char line[FILE_MAXDIR];
 #ifdef WIN32
@@ -792,7 +791,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
     const char *home = BLI_getenv("HOME");
     if (home) {
 #  define FS_MACOS_PATH(path, name, icon) \
-    SNPRINTF(line, path, home); \
+    BLI_snprintf(line, sizeof(line), path, home); \
     fsmenu_insert_entry(fsmenu, FS_CATEGORY_OTHER, line, name, icon, FS_INSERT_LAST);
 
       FS_MACOS_PATH("%s/", NULL, ICON_HOME)
@@ -1008,7 +1007,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
                 const char *label_test = label + 6;
                 label = *label_test ? label_test : dirname;
               }
-              SNPRINTF(line, "%s%s", filepath, dirname);
+              BLI_snprintf(line, sizeof(line), "%s%s", filepath, dirname);
               fsmenu_insert_entry(
                   fsmenu, FS_CATEGORY_SYSTEM, line, label, ICON_NETWORK_DRIVE, FS_INSERT_SORTED);
               found = 1;
@@ -1057,7 +1056,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
 #undef FS_UDIR_PATH
 }
 
-static void fsmenu_free_category(FSMenu *fsmenu, FSMenuCategory category)
+static void fsmenu_free_category(struct FSMenu *fsmenu, FSMenuCategory category)
 {
   FSMenuEntry *fsm_iter = ED_fsmenu_get_category(fsmenu, category);
 
@@ -1073,7 +1072,7 @@ static void fsmenu_free_category(FSMenu *fsmenu, FSMenuCategory category)
   }
 }
 
-void fsmenu_refresh_system_category(FSMenu *fsmenu)
+void fsmenu_refresh_system_category(struct FSMenu *fsmenu)
 {
   fsmenu_free_category(fsmenu, FS_CATEGORY_SYSTEM);
   ED_fsmenu_set_category(fsmenu, FS_CATEGORY_SYSTEM, NULL);
@@ -1104,8 +1103,8 @@ void fsmenu_free(void)
   fsmenu_free_ex(&g_fsmenu);
 }
 
-static void fsmenu_copy_category(FSMenu *fsmenu_dst,
-                                 FSMenu *fsmenu_src,
+static void fsmenu_copy_category(struct FSMenu *fsmenu_dst,
+                                 struct FSMenu *fsmenu_src,
                                  const FSMenuCategory category)
 {
   FSMenuEntry *fsm_dst_prev = NULL, *fsm_dst_head = NULL;
@@ -1142,7 +1141,7 @@ static FSMenu *fsmenu_copy(FSMenu *fsmenu)
   return fsmenu_copy;
 }
 
-int fsmenu_get_active_indices(FSMenu *fsmenu, enum FSMenuCategory category, const char *dir)
+int fsmenu_get_active_indices(struct FSMenu *fsmenu, enum FSMenuCategory category, const char *dir)
 {
   FSMenuEntry *fsm_iter = ED_fsmenu_get_category(fsmenu, category);
   int i;

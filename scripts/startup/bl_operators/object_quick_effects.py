@@ -9,10 +9,7 @@ from bpy.props import (
     FloatProperty,
     IntProperty,
 )
-from bpy.app.translations import (
-    pgettext_tip as tip_,
-    pgettext_data as data_,
-)
+from bpy.app.translations import pgettext_tip as tip_
 
 
 def object_ensure_material(obj, mat_name):
@@ -122,7 +119,7 @@ class QuickFur(ObjectModeOperator, Operator):
         noise_group = bpy.data.node_groups["Hair Curves Noise"] if self.use_noise else None
         frizz_group = bpy.data.node_groups["Frizz Hair Curves"] if self.use_frizz else None
 
-        material = bpy.data.materials.new(data_("Fur Material"))
+        material = bpy.data.materials.new("Fur Material")
 
         mesh_with_zero_area = False
         mesh_missing_uv_map = False
@@ -149,7 +146,7 @@ class QuickFur(ObjectModeOperator, Operator):
             else:
                 density = count / area
 
-            generate_modifier = curves_object.modifiers.new(name=data_("Generate"), type='NODES')
+            generate_modifier = curves_object.modifiers.new(name="Generate", type='NODES')
             generate_modifier.node_group = generate_group
             generate_modifier["Input_2"] = mesh_object
             generate_modifier["Input_18_attribute_name"] = curves.surface_uv_map
@@ -158,11 +155,11 @@ class QuickFur(ObjectModeOperator, Operator):
             generate_modifier["Input_22"] = material
             generate_modifier["Input_15"] = density * 0.01
 
-            radius_modifier = curves_object.modifiers.new(name=data_("Set Hair Curve Profile"), type='NODES')
+            radius_modifier = curves_object.modifiers.new(name="Set Hair Curve Profile", type='NODES')
             radius_modifier.node_group = radius_group
             radius_modifier["Input_3"] = self.radius
 
-            interpolate_modifier = curves_object.modifiers.new(name=data_("Interpolate Hair Curves"), type='NODES')
+            interpolate_modifier = curves_object.modifiers.new(name="Interpolate Hair Curves", type='NODES')
             interpolate_modifier.node_group = interpolate_group
             interpolate_modifier["Input_2"] = mesh_object
             interpolate_modifier["Input_18_attribute_name"] = curves.surface_uv_map
@@ -172,11 +169,11 @@ class QuickFur(ObjectModeOperator, Operator):
             interpolate_modifier["Input_24"] = True
 
             if noise_group:
-                noise_modifier = curves_object.modifiers.new(name=data_("Hair Curves Noise"), type='NODES')
+                noise_modifier = curves_object.modifiers.new(name="Hair Curves Noise", type='NODES')
                 noise_modifier.node_group = noise_group
 
             if frizz_group:
-                frizz_modifier = curves_object.modifiers.new(name=data_("Frizz Hair Curves"), type='NODES')
+                frizz_modifier = curves_object.modifiers.new(name="Frizz Hair Curves", type='NODES')
                 frizz_modifier.node_group = frizz_group
 
             if self.apply_hair_guides:
@@ -256,7 +253,7 @@ class QuickExplode(ObjectModeOperator, Operator):
     )
 
     def execute(self, context):
-        context_override = context.copy()
+        fake_context = context.copy()
         obj_act = context.active_object
 
         if obj_act is None or obj_act.type != 'MESH':
@@ -288,9 +285,8 @@ class QuickExplode(ObjectModeOperator, Operator):
             to_obj = mesh_objects[0]
 
         for obj in mesh_objects:
-            context_override["object"] = obj
-            with context.temp_override(**context_override):
-                bpy.ops.object.particle_system_add()
+            fake_context["object"] = obj
+            bpy.ops.object.particle_system_add(fake_context)
 
             settings = obj.particle_systems[-1].settings
             settings.count = self.amount
@@ -371,10 +367,9 @@ class QuickExplode(ObjectModeOperator, Operator):
 
                 psys = obj.particle_systems[-1]
 
-                context_override["particle_system"] = obj.particle_systems[-1]
-                with context.temp_override(**context_override):
-                    bpy.ops.particle.new_target()
-                    bpy.ops.particle.new_target()
+                fake_context["particle_system"] = obj.particle_systems[-1]
+                bpy.ops.particle.new_target(fake_context)
+                bpy.ops.particle.new_target(fake_context)
 
                 if obj == from_obj:
                     psys.targets[1].object = to_obj
@@ -438,7 +433,7 @@ class QuickSmoke(ObjectModeOperator, Operator):
             self.report({'ERROR'}, "Built without Fluid modifier")
             return {'CANCELLED'}
 
-        context_override = context.copy()
+        fake_context = context.copy()
         mesh_objects = [obj for obj in context.selected_objects
                         if obj.type == 'MESH']
         min_co = Vector((100000.0, 100000.0, 100000.0))
@@ -449,10 +444,9 @@ class QuickSmoke(ObjectModeOperator, Operator):
             return {'CANCELLED'}
 
         for obj in mesh_objects:
-            context_override["object"] = obj
+            fake_context["object"] = obj
             # make each selected object a smoke flow
-            with context.temp_override(**context_override):
-                bpy.ops.object.modifier_add(type='FLUID')
+            bpy.ops.object.modifier_add(fake_context, type='FLUID')
             obj.modifiers[-1].fluid_type = 'FLOW'
 
             # set type
@@ -544,7 +538,7 @@ class QuickLiquid(Operator):
             self.report({'ERROR'}, "Built without Fluid modifier")
             return {'CANCELLED'}
 
-        context_override = context.copy()
+        fake_context = context.copy()
         mesh_objects = [obj for obj in context.selected_objects
                         if obj.type == 'MESH']
         min_co = Vector((100000.0, 100000.0, 100000.0))
@@ -562,10 +556,9 @@ class QuickLiquid(Operator):
                         space.shading.type = 'WIREFRAME'
 
         for obj in mesh_objects:
-            context_override["object"] = obj
+            fake_context["object"] = obj
             # make each selected object a liquid flow
-            with context.temp_override(**context_override):
-                bpy.ops.object.modifier_add(type='FLUID')
+            bpy.ops.object.modifier_add(fake_context, type='FLUID')
             obj.modifiers[-1].fluid_type = 'FLOW'
 
             # set type

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -93,8 +91,8 @@ class GSpan {
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
-    BLI_assert(start + size <= size_ || size == 0);
-    return GSpan(type_, POINTER_OFFSET(data_, type_->size() * start), size);
+    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
+    return GSpan(type_, POINTER_OFFSET(data_, type_->size() * start), new_size);
   }
 
   GSpan slice(const IndexRange range) const
@@ -220,8 +218,8 @@ class GMutableSpan {
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
-    BLI_assert(start + size <= size_ || size == 0);
-    return GMutableSpan(type_, POINTER_OFFSET(data_, type_->size() * start), size);
+    const int64_t new_size = std::max<int64_t>(0, std::min(size, size_ - start));
+    return GMutableSpan(*type_, POINTER_OFFSET(data_, type_->size() * start), new_size);
   }
 
   GMutableSpan slice(IndexRange range) const

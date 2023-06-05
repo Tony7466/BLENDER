@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -66,7 +65,7 @@ IDProperty *IDP_NewIDPArray(const char *name)
   IDProperty *prop = MEM_callocN(sizeof(IDProperty), "IDProperty prop array");
   prop->type = IDP_IDPARRAY;
   prop->len = 0;
-  STRNCPY(prop->name, name);
+  BLI_strncpy(prop->name, name, MAX_IDPROP_NAME);
 
   return prop;
 }
@@ -301,7 +300,7 @@ static IDProperty *idp_generic_copy(const IDProperty *prop, const int UNUSED(fla
 {
   IDProperty *newp = MEM_callocN(sizeof(IDProperty), __func__);
 
-  STRNCPY(newp->name, prop->name);
+  BLI_strncpy(newp->name, prop->name, MAX_IDPROP_NAME);
   newp->type = prop->type;
   newp->flag = prop->flag;
   newp->data.val = prop->data.val;
@@ -370,7 +369,7 @@ IDProperty *IDP_NewStringMaxSize(const char *st, const char *name, int maxncpy)
   }
 
   prop->type = IDP_STRING;
-  STRNCPY(prop->name, name);
+  BLI_strncpy(prop->name, name, MAX_IDPROP_NAME);
 
   return prop;
 }
@@ -415,6 +414,28 @@ void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, int maxncpy)
 void IDP_AssignString(IDProperty *prop, const char *st)
 {
   IDP_AssignStringMaxSize(prop, st, 0);
+}
+
+void IDP_ConcatStringC(IDProperty *prop, const char *st)
+{
+  BLI_assert(prop->type == IDP_STRING);
+
+  int newlen = prop->len + (int)strlen(st);
+  /* We have to remember that prop->len includes the null byte for strings.
+   * so there's no need to add +1 to the resize function. */
+  IDP_ResizeArray(prop, newlen);
+  strcat(prop->data.pointer, st);
+}
+
+void IDP_ConcatString(IDProperty *str1, IDProperty *append)
+{
+  BLI_assert(append->type == IDP_STRING);
+
+  /* Since ->len for strings includes the NULL byte, we have to subtract one or
+   * we'll get an extra null byte after each concatenation operation. */
+  int newlen = str1->len + append->len - 1;
+  IDP_ResizeArray(str1, newlen);
+  strcat(str1->data.pointer, append->data.pointer);
 }
 
 void IDP_FreeString(IDProperty *prop)
@@ -984,7 +1005,7 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
   }
 
   prop->type = type;
-  STRNCPY(prop->name, name);
+  BLI_strncpy(prop->name, name, MAX_IDPROP_NAME);
 
   return prop;
 }
@@ -1474,7 +1495,7 @@ void IDP_BlendReadData_impl(BlendDataReader *reader, IDProperty **prop, const ch
   }
 }
 
-void IDP_BlendReadLib(BlendLibReader *reader, ID *self_id, IDProperty *prop)
+void IDP_BlendReadLib(BlendLibReader *reader, Library *lib, IDProperty *prop)
 {
   if (!prop) {
     return;
@@ -1483,8 +1504,7 @@ void IDP_BlendReadLib(BlendLibReader *reader, ID *self_id, IDProperty *prop)
   switch (prop->type) {
     case IDP_ID: /* PointerProperty */
     {
-      void *newaddr = BLO_read_get_new_id_address(
-          reader, self_id, ID_IS_LINKED(self_id), IDP_Id(prop));
+      void *newaddr = BLO_read_get_new_id_address(reader, lib, IDP_Id(prop));
       if (IDP_Id(prop) && !newaddr && G.debug) {
         printf("Error while loading \"%s\". Data not found in file!\n", prop->name);
       }
@@ -1495,14 +1515,14 @@ void IDP_BlendReadLib(BlendLibReader *reader, ID *self_id, IDProperty *prop)
     {
       IDProperty *idp_array = IDP_IDPArray(prop);
       for (int i = 0; i < prop->len; i++) {
-        IDP_BlendReadLib(reader, self_id, &(idp_array[i]));
+        IDP_BlendReadLib(reader, lib, &(idp_array[i]));
       }
       break;
     }
     case IDP_GROUP: /* PointerProperty */
     {
       LISTBASE_FOREACH (IDProperty *, loop, &prop->data.group) {
-        IDP_BlendReadLib(reader, self_id, loop);
+        IDP_BlendReadLib(reader, lib, loop);
       }
       break;
     }
@@ -1511,7 +1531,7 @@ void IDP_BlendReadLib(BlendLibReader *reader, ID *self_id, IDProperty *prop)
   }
 }
 
-void IDP_BlendReadExpand(BlendExpander *expander, IDProperty *prop)
+void IDP_BlendReadExpand(struct BlendExpander *expander, IDProperty *prop)
 {
   if (!prop) {
     return;

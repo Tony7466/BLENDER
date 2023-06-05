@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spconsole
@@ -24,7 +22,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
-#include "BKE_report.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -36,18 +33,6 @@
 #include "RNA_define.h"
 
 #include "console_intern.h"
-
-/* TODO: Text operations not yet supported for console:
- * Mac KM_OSKEY-arrow to beginning/end of line
- * Mac KM_OSKEY-backspace to start of line
- * Mac KM_OSKEY-delete to end of line
- * Text cursor insertion by mouse
- * Mouse drag to select does not change text cursor position.
- * Shift-ctrl-arrow to select word
- * ctrl-x to copy to clipboard and delete.
- * ctrl-a to select all
- * ctrl-z，shift-crtrl-z undo/redo
- */
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities
@@ -305,15 +290,18 @@ static void console_line_verify_length(ConsoleLine *ci, int len)
   }
 }
 
-static void console_line_insert(ConsoleLine *ci, const char *str, int len)
+static int console_line_insert(ConsoleLine *ci, char *str)
 {
-  if (len == 0) {
-    return;
+  int len = strlen(str);
+
+  if (len > 0 && str[len - 1] == '\n') { /* stop new lines being pasted at the end of lines */
+    str[len - 1] = '\0';
+    len--;
   }
 
-  BLI_assert(len <= strlen(str));
-  /* The caller must delimit new-lines. */
-  BLI_assert(str[len - 1] != '\n');
+  if (len == 0) {
+    return 0;
+  }
 
   console_line_verify_length(ci, len + ci->len);
 
@@ -322,6 +310,8 @@ static void console_line_insert(ConsoleLine *ci, const char *str, int len)
 
   ci->len += len;
   ci->cursor += len;
+
+  return len;
 }
 
 /**
@@ -456,25 +446,8 @@ static int console_insert_exec(bContext *C, wmOperator *op)
     memset(str, ' ', len);
     str[len] = '\0';
   }
-  else {
-    len = strlen(str);
-  }
 
-  /* Allow trailing newlines (but strip them). */
-  while (len > 0 && str[len - 1] == '\n') {
-    len--;
-    str[len] = '\0';
-  }
-
-  if (strchr(str, '\n')) {
-    BKE_report(op->reports, RPT_ERROR, "New lines unsupported, call this operator multiple times");
-    /* Force cancel. */
-    len = 0;
-  }
-
-  if (len != 0) {
-    console_line_insert(ci, str, len);
-  }
+  len = console_line_insert(ci, str);
 
   MEM_freeN(str);
 
@@ -1089,28 +1062,31 @@ static int console_paste_exec(bContext *C, wmOperator *op)
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
   ConsoleLine *ci = console_history_verify(C);
-  int buf_str_len;
+  int buf_len;
 
-  char *buf_str = WM_clipboard_text_get(selection, true, &buf_str_len);
+  char *buf_str = WM_clipboard_text_get(selection, &buf_len);
+  char *buf_step, *buf_next;
+
   if (buf_str == NULL) {
     return OPERATOR_CANCELLED;
   }
-  if (*buf_str == '\0') {
-    MEM_freeN(buf_str);
-    return OPERATOR_CANCELLED;
-  }
-  const char *buf_step = buf_str;
-  do {
-    const char *buf = buf_step;
-    buf_step = (char *)BLI_strchr_or_end(buf, '\n');
-    const int buf_len = buf_step - buf;
-    if (buf != buf_str) {
+
+  buf_step = buf_str;
+
+  while ((buf_next = buf_step) && buf_next[0] != '\0') {
+    buf_step = strchr(buf_next, '\n');
+    if (buf_step) {
+      *buf_step = '\0';
+      buf_step++;
+    }
+
+    if (buf_next != buf_str) {
       WM_operator_name_call(C, "CONSOLE_OT_execute", WM_OP_EXEC_DEFAULT, NULL, NULL);
       ci = console_history_verify(C);
     }
-    console_line_insert(ci, buf, buf_len);
-    console_select_offset(sc, buf_len);
-  } while (*buf_step ? ((void)buf_step++, true) : false);
+
+    console_select_offset(sc, console_line_insert(ci, buf_next));
+  }
 
   MEM_freeN(buf_str);
 
@@ -1282,7 +1258,9 @@ static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const 
   if (console_line_column_from_index(sc, pos, &cl, &offset, &n)) {
     int sel[2] = {n, n};
 
-    BLI_str_cursor_step_bounds_utf8(cl->line, cl->len, n, &sel[1], &sel[0]);
+    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
+
+    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
 
     sel[0] = offset - sel[0];
     sel[1] = offset - sel[1];

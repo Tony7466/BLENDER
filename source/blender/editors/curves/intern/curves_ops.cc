@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
@@ -10,6 +8,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_devirtualize_parameters.hh"
+#include "BLI_index_mask_ops.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_rand.hh"
@@ -269,9 +268,9 @@ static void try_convert_single_object(Object &curves_ob,
   BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh); });
 
   const Span<float3> positions_cu = curves.positions();
-  const Span<int> looptri_polys = surface_me.looptri_polys();
+  const Span<MLoopTri> looptris = surface_me.looptris();
 
-  if (looptri_polys.is_empty()) {
+  if (looptris.is_empty()) {
     *r_could_not_convert_some_curves = true;
   }
 
@@ -339,7 +338,8 @@ static void try_convert_single_object(Object &curves_ob,
     BLI_assert(nearest.index >= 0);
 
     const int looptri_i = nearest.index;
-    const int poly_i = looptri_polys[looptri_i];
+    const MLoopTri &looptri = looptris[looptri_i];
+    const int poly_i = looptri.poly;
 
     const int mface_i = find_mface_for_root_position(
         positions, mfaces, poly_to_mface_map[poly_i], root_pos_su);

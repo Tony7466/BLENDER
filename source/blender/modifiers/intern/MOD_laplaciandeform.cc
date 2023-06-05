@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -40,8 +39,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_ui_common.hh"
-#include "MOD_util.hh"
+#include "MOD_ui_common.h"
+#include "MOD_util.h"
 
 #include "eigen_capi.h"
 
@@ -110,7 +109,7 @@ static LaplacianSystem *initLaplacianSystem(int verts_num,
   sys->tris_num = tris_num;
   sys->anchors_num = anchors_num;
   sys->repeat = iterations;
-  STRNCPY(sys->anchor_grp_name, defgrpName);
+  BLI_strncpy(sys->anchor_grp_name, defgrpName, sizeof(sys->anchor_grp_name));
   sys->co = static_cast<float(*)[3]>(MEM_malloc_arrayN(verts_num, sizeof(float[3]), __func__));
   sys->no = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(float[3]), __func__));
   sys->delta = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(float[3]), __func__));

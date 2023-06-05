@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005-2007 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005-2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -173,7 +172,7 @@ void WM_cursor_set(wmWindow *win, int curs)
   }
 }
 
-bool WM_cursor_set_from_tool(wmWindow *win, const ScrArea *area, const ARegion *region)
+bool WM_cursor_set_from_tool(struct wmWindow *win, const ScrArea *area, const ARegion *region)
 {
   if (region && !ELEM(region->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_PREVIEW)) {
     return false;

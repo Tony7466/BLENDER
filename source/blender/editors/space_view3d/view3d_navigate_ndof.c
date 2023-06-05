@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -89,7 +87,7 @@ static float view3d_ndof_pan_speed_calc(RegionView3D *rv3d)
  * \param has_zoom: zoom, otherwise dolly,
  * often `!rv3d->is_persp` since it doesn't make sense to dolly in ortho.
  */
-static void view3d_ndof_pan_zoom(const wmNDOFMotionData *ndof,
+static void view3d_ndof_pan_zoom(const struct wmNDOFMotionData *ndof,
                                  ScrArea *area,
                                  ARegion *region,
                                  const bool has_translate,
@@ -153,7 +151,7 @@ static void view3d_ndof_pan_zoom(const wmNDOFMotionData *ndof,
   }
 }
 
-static void view3d_ndof_orbit(const wmNDOFMotionData *ndof,
+static void view3d_ndof_orbit(const struct wmNDOFMotionData *ndof,
                               ScrArea *area,
                               ARegion *region,
                               ViewOpsData *vod,
@@ -481,7 +479,7 @@ static int ndof_orbit_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_FINISHED;
 }
 
-void VIEW3D_OT_ndof_orbit(wmOperatorType *ot)
+void VIEW3D_OT_ndof_orbit(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "NDOF Orbit View";
@@ -601,7 +599,7 @@ static int ndof_orbit_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   return OPERATOR_FINISHED;
 }
 
-void VIEW3D_OT_ndof_orbit_zoom(wmOperatorType *ot)
+void VIEW3D_OT_ndof_orbit_zoom(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "NDOF Orbit View with Zoom";
@@ -673,7 +671,7 @@ static int ndof_pan_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *e
   return OPERATOR_FINISHED;
 }
 
-void VIEW3D_OT_ndof_pan(wmOperatorType *ot)
+void VIEW3D_OT_ndof_pan(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "NDOF Pan View";
@@ -712,7 +710,7 @@ static int ndof_all_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   return ret;
 }
 
-void VIEW3D_OT_ndof_all(wmOperatorType *ot)
+void VIEW3D_OT_ndof_all(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "NDOF Transform View";

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GEO_mesh_primitive_cuboid.hh"
 
@@ -10,10 +8,10 @@ namespace blender::nodes::node_geo_bounding_box_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Geometry");
-  b.add_output<decl::Geometry>("Bounding Box");
-  b.add_output<decl::Vector>("Min");
-  b.add_output<decl::Vector>("Max");
+  b.add_input<decl::Geometry>(N_("Geometry"));
+  b.add_output<decl::Geometry>(N_("Bounding Box"));
+  b.add_output<decl::Vector>(N_("Min"));
+  b.add_output<decl::Vector>(N_("Max"));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

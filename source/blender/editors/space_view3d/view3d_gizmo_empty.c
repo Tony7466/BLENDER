@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -176,7 +174,7 @@ static void WIDGETGROUP_empty_image_refresh(const bContext *C, wmGizmoGroup *gzg
 
   WM_gizmo_target_property_def_func(gz,
                                     "matrix",
-                                    &(const wmGizmoPropertyFnParams){
+                                    &(const struct wmGizmoPropertyFnParams){
                                         .value_get_fn = gizmo_empty_image_prop_matrix_get,
                                         .value_set_fn = gizmo_empty_image_prop_matrix_set,
                                         .range_get_fn = NULL,

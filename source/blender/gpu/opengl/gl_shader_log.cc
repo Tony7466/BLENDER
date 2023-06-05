@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -12,7 +11,7 @@
 
 namespace blender::gpu {
 
-const char *GLLogParser::parse_line(const char *log_line, GPULogItem &log_item)
+char *GLLogParser::parse_line(char *log_line, GPULogItem &log_item)
 {
   /* Skip ERROR: or WARNING:. */
   log_line = skip_severity_prefix(log_line, log_item);
@@ -20,7 +19,7 @@ const char *GLLogParser::parse_line(const char *log_line, GPULogItem &log_item)
 
   /* Parse error line & char numbers. */
   if (at_number(log_line)) {
-    const char *error_line_number_end;
+    char *error_line_number_end;
     log_item.cursor.row = parse_number(log_line, &error_line_number_end);
     /* Try to fetch the error character (not always available). */
     if (at_any(error_line_number_end, "(:") && at_number(&error_line_number_end[1])) {
@@ -71,14 +70,14 @@ const char *GLLogParser::parse_line(const char *log_line, GPULogItem &log_item)
   return log_line;
 }
 
-const char *GLLogParser::skip_severity_prefix(const char *log_line, GPULogItem &log_item)
+char *GLLogParser::skip_severity_prefix(char *log_line, GPULogItem &log_item)
 {
-  return skip_severity(log_line, log_item, "ERROR", "WARNING", "NOTE");
+  return skip_severity(log_line, log_item, "ERROR", "WARNING");
 }
 
-const char *GLLogParser::skip_severity_keyword(const char *log_line, GPULogItem &log_item)
+char *GLLogParser::skip_severity_keyword(char *log_line, GPULogItem &log_item)
 {
-  return skip_severity(log_line, log_item, "error", "warning", "note");
+  return skip_severity(log_line, log_item, "error", "warning");
 }
 
 }  // namespace blender::gpu

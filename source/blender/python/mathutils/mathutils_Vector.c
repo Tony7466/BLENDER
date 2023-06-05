@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pymathutils
@@ -477,7 +475,7 @@ static PyObject *Vector_resize(VectorObject *self, PyObject *value)
   if (self->flag & BASE_MATH_FLAG_IS_WRAP) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize(): "
-                    "cannot resize wrapped data - only Python vectors");
+                    "cannot resize wrapped data - only python vectors");
     return NULL;
   }
   if (self->cb_user) {
@@ -561,7 +559,7 @@ static PyObject *Vector_resize_2d(VectorObject *self)
   if (self->flag & BASE_MATH_FLAG_IS_WRAP) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_2d(): "
-                    "cannot resize wrapped data - only Python vectors");
+                    "cannot resize wrapped data - only python vectors");
     return NULL;
   }
   if (self->cb_user) {
@@ -592,7 +590,7 @@ static PyObject *Vector_resize_3d(VectorObject *self)
   if (self->flag & BASE_MATH_FLAG_IS_WRAP) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_3d(): "
-                    "cannot resize wrapped data - only Python vectors");
+                    "cannot resize wrapped data - only python vectors");
     return NULL;
   }
   if (self->cb_user) {
@@ -627,7 +625,7 @@ static PyObject *Vector_resize_4d(VectorObject *self)
   if (self->flag & BASE_MATH_FLAG_IS_WRAP) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_4d(): "
-                    "cannot resize wrapped data - only Python vectors");
+                    "cannot resize wrapped data - only python vectors");
     return NULL;
   }
   if (self->cb_user) {
@@ -2642,7 +2640,7 @@ static PyObject *Vector_swizzle_get(VectorObject *self, void *closure)
  * Set the items of this vector using a swizzle.
  * - If value is a vector or list this operates like an array copy, except that
  *   the destination is effectively re-ordered as defined by the swizzle. At
- *   most `min(len(source), len(destination))` values will be copied.
+ *   most min(len(source), len(dest)) values will be copied.
  * - If the value is scalar, it is copied to all axes listed in the swizzle.
  * - If an axis appears more than once in the swizzle, the final occurrence is
  *   the one that determines its value.
@@ -3135,7 +3133,7 @@ static PyGetSetDef Vector_getseters[] = {
 /** \name Vector Type: Method Definitions
  * \{ */
 
-static PyMethodDef Vector_methods[] = {
+static struct PyMethodDef Vector_methods[] = {
     /* Class Methods */
     {"Fill", (PyCFunction)C_Vector_Fill, METH_VARARGS | METH_CLASS, C_Vector_Fill_doc},
     {"Range", (PyCFunction)C_Vector_Range, METH_VARARGS | METH_CLASS, C_Vector_Range_doc},

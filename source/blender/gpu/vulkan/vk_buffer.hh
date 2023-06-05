@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -32,11 +31,14 @@ class VKBuffer {
   /** Has this buffer been allocated? */
   bool is_allocated() const;
 
-  bool create(int64_t size, GPUUsageType usage, VkBufferUsageFlagBits buffer_usage);
+  bool create(VKContext &context,
+              int64_t size,
+              GPUUsageType usage,
+              VkBufferUsageFlagBits buffer_usage);
   void clear(VKContext &context, uint32_t clear_value);
   void update(const void *data) const;
   void read(void *data) const;
-  bool free();
+  bool free(VKContext &context);
 
   int64_t size_in_bytes() const
   {
@@ -58,21 +60,8 @@ class VKBuffer {
  private:
   /** Check if this buffer is mapped. */
   bool is_mapped() const;
-  bool map();
-  void unmap();
-};
-
-/**
- * Helper struct to enable buffers to be bound with an offset.
- *
- * VKImmediate mode uses a single VKBuffer with multiple vertex layouts. Those layouts are send to
- * the command buffer containing an offset.
- *
- * VKIndexBuffer uses this when it is a subrange of another buffer.
- */
-struct VKBufferWithOffset {
-  VKBuffer &buffer;
-  VkDeviceSize offset;
+  bool map(VKContext &context);
+  void unmap(VKContext &context);
 };
 
 }  // namespace blender::gpu

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #pragma once
 
@@ -73,8 +72,7 @@ class NodeOperationInput {
  private:
   NodeOperation *operation_;
 
-  /**
-   * Datatype of this socket. Is used for automatically data transformation.
+  /** Datatype of this socket. Is used for automatically data transformation.
    * \section data-conversion
    */
   DataType datatype_;
@@ -137,8 +135,7 @@ class NodeOperationOutput {
  private:
   NodeOperation *operation_;
 
-  /**
-   * Datatype of this socket. Is used for automatically data transformation.
+  /** Datatype of this socket. Is used for automatically data transformation.
    * \section data-conversion
    */
   DataType datatype_;

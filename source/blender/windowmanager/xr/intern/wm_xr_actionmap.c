@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -48,7 +46,7 @@ XrActionMapBinding *WM_xr_actionmap_binding_new(XrActionMapItem *ami,
   }
 
   XrActionMapBinding *amb = MEM_callocN(sizeof(XrActionMapBinding), __func__);
-  STRNCPY(amb->name, name);
+  BLI_strncpy(amb->name, name, MAX_NAME);
   if (amb_prev) {
     WM_xr_actionmap_binding_ensure_unique(ami, amb);
   }
@@ -80,14 +78,14 @@ void WM_xr_actionmap_binding_ensure_unique(XrActionMapItem *ami, XrActionMapBind
   size_t baselen;
   size_t idx = 0;
 
-  STRNCPY(name, amb->name);
+  BLI_strncpy(name, amb->name, MAX_NAME);
   baselen = BLI_strnlen(name, MAX_NAME);
   suffix = &name[baselen];
 
   while (wm_xr_actionmap_binding_find_except(ami, name, amb)) {
     if ((baselen + 1) + (log10(++idx) + 1) > MAX_NAME) {
       /* Use default base name. */
-      STRNCPY(name, WM_XR_ACTIONMAP_BINDING_STR_DEFAULT);
+      BLI_strncpy(name, WM_XR_ACTIONMAP_BINDING_STR_DEFAULT, MAX_NAME);
       baselen = BLI_strnlen(name, MAX_NAME);
       suffix = &name[baselen];
       idx = 0;
@@ -97,7 +95,7 @@ void WM_xr_actionmap_binding_ensure_unique(XrActionMapItem *ami, XrActionMapBind
     }
   }
 
-  STRNCPY(amb->name, name);
+  BLI_strncpy(amb->name, name, MAX_NAME);
 }
 
 static XrActionMapBinding *wm_xr_actionmap_binding_copy(XrActionMapBinding *amb_src)
@@ -252,7 +250,7 @@ XrActionMapItem *WM_xr_actionmap_item_new(XrActionMap *actionmap,
   }
 
   XrActionMapItem *ami = MEM_callocN(sizeof(XrActionMapItem), __func__);
-  STRNCPY(ami->name, name);
+  BLI_strncpy(ami->name, name, MAX_NAME);
   if (ami_prev) {
     WM_xr_actionmap_item_ensure_unique(actionmap, ami);
   }
@@ -284,14 +282,14 @@ void WM_xr_actionmap_item_ensure_unique(XrActionMap *actionmap, XrActionMapItem 
   size_t baselen;
   size_t idx = 0;
 
-  STRNCPY(name, ami->name);
+  BLI_strncpy(name, ami->name, MAX_NAME);
   baselen = BLI_strnlen(name, MAX_NAME);
   suffix = &name[baselen];
 
   while (wm_xr_actionmap_item_find_except(actionmap, name, ami)) {
     if ((baselen + 1) + (log10(++idx) + 1) > MAX_NAME) {
       /* Use default base name. */
-      STRNCPY(name, WM_XR_ACTIONMAP_ITEM_STR_DEFAULT);
+      BLI_strncpy(name, WM_XR_ACTIONMAP_ITEM_STR_DEFAULT, MAX_NAME);
       baselen = BLI_strnlen(name, MAX_NAME);
       suffix = &name[baselen];
       idx = 0;
@@ -301,7 +299,7 @@ void WM_xr_actionmap_item_ensure_unique(XrActionMap *actionmap, XrActionMapItem 
     }
   }
 
-  STRNCPY(ami->name, name);
+  BLI_strncpy(ami->name, name, MAX_NAME);
 }
 
 static XrActionMapItem *wm_xr_actionmap_item_copy(XrActionMapItem *ami_src)
@@ -392,8 +390,8 @@ XrActionMap *WM_xr_actionmap_new(wmXrRuntimeData *runtime, const char *name, boo
     return am_prev;
   }
 
-  XrActionMap *am = MEM_callocN(sizeof(XrActionMap), __func__);
-  STRNCPY(am->name, name);
+  XrActionMap *am = MEM_callocN(sizeof(struct XrActionMap), __func__);
+  BLI_strncpy(am->name, name, MAX_NAME);
   if (am_prev) {
     WM_xr_actionmap_ensure_unique(runtime, am);
   }
@@ -423,14 +421,14 @@ void WM_xr_actionmap_ensure_unique(wmXrRuntimeData *runtime, XrActionMap *action
   size_t baselen;
   size_t idx = 0;
 
-  STRNCPY(name, actionmap->name);
+  BLI_strncpy(name, actionmap->name, MAX_NAME);
   baselen = BLI_strnlen(name, MAX_NAME);
   suffix = &name[baselen];
 
   while (wm_xr_actionmap_find_except(runtime, name, actionmap)) {
     if ((baselen + 1) + (log10(++idx) + 1) > MAX_NAME) {
       /* Use default base name. */
-      STRNCPY(name, WM_XR_ACTIONMAP_STR_DEFAULT);
+      BLI_strncpy(name, WM_XR_ACTIONMAP_STR_DEFAULT, MAX_NAME);
       baselen = BLI_strnlen(name, MAX_NAME);
       suffix = &name[baselen];
       idx = 0;
@@ -440,7 +438,7 @@ void WM_xr_actionmap_ensure_unique(wmXrRuntimeData *runtime, XrActionMap *action
     }
   }
 
-  STRNCPY(actionmap->name, name);
+  BLI_strncpy(actionmap->name, name, MAX_NAME);
 }
 
 static XrActionMap *wm_xr_actionmap_copy(XrActionMap *am_src)

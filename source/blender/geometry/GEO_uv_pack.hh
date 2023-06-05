@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_heap.h"
 #include "BLI_math_matrix.hh"
@@ -28,17 +26,6 @@ enum eUVPackIsland_MarginMethod {
   ED_UVPACK_MARGIN_FRACTION,
 };
 
-enum eUVPackIsland_RotationMethod {
-  /** No rotation. */
-  ED_UVPACK_ROTATION_NONE = 0,
-  /** Rotated to a minimal rectangle, either vertical or horizontal. */
-  ED_UVPACK_ROTATION_AXIS_ALIGNED,
-  /** Only 90 degree rotations are allowed. */
-  ED_UVPACK_ROTATION_CARDINAL,
-  /** Any angle. */
-  ED_UVPACK_ROTATION_ANY,
-};
-
 enum eUVPackIsland_ShapeMethod {
   /** Use Axis-Aligned Bounding-Boxes. */
   ED_UVPACK_SHAPE_AABB = 0,
@@ -46,15 +33,6 @@ enum eUVPackIsland_ShapeMethod {
   ED_UVPACK_SHAPE_CONVEX,
   /** Use concave hull. */
   ED_UVPACK_SHAPE_CONCAVE,
-};
-
-enum eUVPackIsland_PinMethod {
-  ED_UVPACK_PIN_IGNORE = 0,
-  ED_UVPACK_PIN_PACK,
-  ED_UVPACK_PIN_LOCK_ROTATION,
-  ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
-  ED_UVPACK_PIN_LOCK_SCALE,
-  ED_UVPACK_PIN_LOCK_ALL, /* Lock translation, rotation and scale. */
 };
 
 namespace blender::geometry {
@@ -67,10 +45,9 @@ class UVPackIsland_Params {
 
   void setFromUnwrapOptions(const UnwrapOptions &options);
   void setUDIMOffsetFromSpaceImage(const SpaceImage *sima);
-  bool isCancelled() const;
 
-  /** Restrictions around island rotation. */
-  eUVPackIsland_RotationMethod rotate_method;
+  /** Islands can be rotated to improve packing. */
+  bool rotate;
   /** Resize islands to fill the unit square. */
   bool scale_to_fit;
   /** (In UV Editor) only pack islands which have one or more selected UVs. */
@@ -81,8 +58,8 @@ class UVPackIsland_Params {
   bool use_seams;
   /** (In 3D Viewport or UV Editor) use aspect ratio from face. */
   bool correct_aspect;
-  /** How will pinned islands be treated. */
-  eUVPackIsland_PinMethod pin_method;
+  /** Ignore islands which have any pinned UVs. */
+  bool ignore_pinned;
   /** Treat unselected UVs as if they were pinned. */
   bool pin_unselected;
   /** Overlapping islands stick together. */
@@ -93,18 +70,10 @@ class UVPackIsland_Params {
   eUVPackIsland_MarginMethod margin_method;
   /** Additional translation for bottom left corner. */
   float udim_base_offset[2];
-  /** Target vertical extent. Should be 1.0f for the unit square. */
-  float target_extent;
   /** Target aspect ratio. */
   float target_aspect_y;
   /** Which shape to use when packing. */
   eUVPackIsland_ShapeMethod shape_method;
-
-  /** Abandon packing early when set by the job system. */
-  bool *stop;
-  bool *do_update;
-  /** How much progress we have made. From wmJob. */
-  float *progress;
 };
 
 class uv_phi;
@@ -114,8 +83,6 @@ class PackIsland {
 
   /** Aspect ratio, required for rotation. */
   float aspect_y;
-  /** Are any of the UVs pinned? */
-  bool pinned;
   /** Output pre-translation. */
   float2 pre_translate;
   /** Output angle in radians. */
@@ -126,9 +93,9 @@ class PackIsland {
   void add_triangle(const float2 uv0, const float2 uv1, const float2 uv2);
   void add_polygon(const blender::Span<float2> uvs, MemArena *arena, Heap *heap);
 
-  void build_transformation(const float scale, const double rotation, float r_matrix[2][2]) const;
+  void build_transformation(const float scale, const float rotation, float r_matrix[2][2]) const;
   void build_inverse_transformation(const float scale,
-                                    const double rotation,
+                                    const float rotation,
                                     float r_matrix[2][2]) const;
 
   float2 get_diagonal_support(const float scale, const float rotation, const float margin) const;
@@ -144,10 +111,6 @@ class PackIsland {
 
   void place_(const float scale, const uv_phi phi);
   void finalize_geometry_(const UVPackIsland_Params &params, MemArena *arena, Heap *heap);
-
-  bool can_rotate_(const UVPackIsland_Params &params) const;
-  bool can_scale_(const UVPackIsland_Params &params) const;
-  bool can_translate_(const UVPackIsland_Params &params) const;
 
   blender::Vector<float2> triangle_vertices_;
 

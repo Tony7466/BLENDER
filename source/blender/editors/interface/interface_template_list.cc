@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -89,13 +87,13 @@ struct TemplateListVisualInfo {
   int end_idx;      /* Index of last item to display + 1. */
 };
 
-static void uilist_draw_item_default(uiList *ui_list,
-                                     const bContext * /*C*/,
-                                     uiLayout *layout,
-                                     PointerRNA * /*dataptr*/,
-                                     PointerRNA *itemptr,
+static void uilist_draw_item_default(struct uiList *ui_list,
+                                     const struct bContext * /*C*/,
+                                     struct uiLayout *layout,
+                                     struct PointerRNA * /*dataptr*/,
+                                     struct PointerRNA *itemptr,
                                      int icon,
-                                     PointerRNA * /*active_dataptr*/,
+                                     struct PointerRNA * /*active_dataptr*/,
                                      const char * /*active_propname*/,
                                      int /*index*/,
                                      int /*flt_flag*/)
@@ -120,7 +118,9 @@ static void uilist_draw_item_default(uiList *ui_list,
   }
 }
 
-static void uilist_draw_filter_default(uiList *ui_list, const bContext * /*C*/, uiLayout *layout)
+static void uilist_draw_filter_default(struct uiList *ui_list,
+                                       const struct bContext * /*C*/,
+                                       struct uiLayout *layout)
 {
   PointerRNA listptr;
   RNA_pointer_create(nullptr, &RNA_UIList, ui_list, &listptr);
@@ -272,7 +272,7 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
 
       if (do_order) {
         names[order_idx].org_idx = order_idx;
-        STRNCPY(names[order_idx++].name, name);
+        BLI_strncpy(names[order_idx++].name, name, MAX_IDPROP_NAME);
       }
 
       /* free name */
@@ -308,9 +308,9 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
 /**
  * Default UI List filtering: Filter by name.
  */
-static void uilist_filter_items_default(uiList *ui_list,
-                                        const bContext *C,
-                                        PointerRNA *dataptr,
+static void uilist_filter_items_default(struct uiList *ui_list,
+                                        const struct bContext *C,
+                                        struct PointerRNA *dataptr,
                                         const char *propname)
 {
   if (ui_list->filter_byname[0]) {
@@ -644,12 +644,7 @@ static void *uilist_item_use_dynamic_tooltip(PointerRNA *itemptr, const char *pr
 static char *uilist_item_tooltip_func(bContext * /*C*/, void *argN, const char *tip)
 {
   char *dyn_tooltip = static_cast<char *>(argN);
-  std::string tooltip_string = dyn_tooltip;
-  if (tip && tip[0]) {
-    tooltip_string += '\n';
-    tooltip_string += tip;
-  }
-  return BLI_strdupn(tooltip_string.c_str(), tooltip_string.size());
+  return BLI_sprintfN("%s - %s", tip, dyn_tooltip);
 }
 
 /**
@@ -678,7 +673,7 @@ static uiList *ui_list_ensure(const bContext *C,
 
   if (!ui_list) {
     ui_list = static_cast<uiList *>(MEM_callocN(sizeof(uiList), "uiList"));
-    STRNCPY(ui_list->list_id, full_list_id);
+    BLI_strncpy(ui_list->list_id, full_list_id, sizeof(ui_list->list_id));
     BLI_addtail(&region->ui_lists, ui_list);
     ui_list->list_grip = -UI_LIST_AUTO_SIZE_THRESHOLD; /* Force auto size by default. */
     if (sort_reverse) {
@@ -750,9 +745,6 @@ static void ui_template_list_layout_draw(const bContext *C,
 
       int i = 0;
       if (input_data->dataptr.data && input_data->prop) {
-
-        const bool editable = (RNA_property_flag(input_data->prop) & PROP_EDITABLE);
-
         /* create list items */
         for (i = visual_info.start_idx; i < visual_info.end_idx; i++) {
           PointerRNA *itemptr = &items->item_vec[i].item;
@@ -783,7 +775,7 @@ static void ui_template_list_layout_draw(const bContext *C,
                                org_i,
                                0,
                                0,
-                               editable ? TIP_("Double click to rename") : "");
+                               TIP_("Double click to rename"));
           if ((dyntip_data = uilist_item_use_dynamic_tooltip(itemptr,
                                                              input_data->item_dyntip_propname))) {
             UI_but_func_tooltip_set(but, uilist_item_tooltip_func, dyntip_data, MEM_freeN);
@@ -873,7 +865,7 @@ static void ui_template_list_layout_draw(const bContext *C,
       }
 
       /* next/prev button */
-      SNPRINTF(numstr, "%d :", dyn_data->items_shown);
+      BLI_snprintf(numstr, sizeof(numstr), "%d :", dyn_data->items_shown);
       but = uiDefIconTextButR_prop(block,
                                    UI_BTYPE_NUM,
                                    0,

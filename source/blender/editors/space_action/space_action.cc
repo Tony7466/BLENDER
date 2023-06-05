@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spaction
@@ -68,9 +67,11 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
 
   saction->ads.filterflag |= ADS_FILTER_SUMMARY;
 
-  saction->cache_display = TIME_CACHE_DISPLAY | TIME_CACHE_SOFTBODY | TIME_CACHE_PARTICLES |
-                           TIME_CACHE_CLOTH | TIME_CACHE_SMOKE | TIME_CACHE_DYNAMICPAINT |
-                           TIME_CACHE_RIGIDBODY | TIME_CACHE_SIMULATION_NODES;
+  /* enable all cache display */
+  saction->cache_display |= TIME_CACHE_DISPLAY;
+  saction->cache_display |= (TIME_CACHE_SOFTBODY | TIME_CACHE_PARTICLES);
+  saction->cache_display |= (TIME_CACHE_CLOTH | TIME_CACHE_SMOKE | TIME_CACHE_DYNAMICPAINT);
+  saction->cache_display |= TIME_CACHE_RIGIDBODY;
 
   /* header */
   region = MEM_cnew<ARegion>("header for action");
@@ -866,11 +867,11 @@ static void action_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, S
   bDopeSheet *ads = &saction->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id, &ads->source);
-    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id->lib, &ads->source);
+    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
   }
 
-  BLO_read_id_address(reader, parent_id, &saction->action);
+  BLO_read_id_address(reader, parent_id->lib, &saction->action);
 }
 
 static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)

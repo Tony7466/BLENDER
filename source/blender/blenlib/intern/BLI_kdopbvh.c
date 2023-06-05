@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2006 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -105,7 +104,7 @@ typedef struct BVHOverlapData_Shared {
 
 typedef struct BVHOverlapData_Thread {
   BVHOverlapData_Shared *shared;
-  BLI_Stack *overlap; /* store BVHTreeOverlap */
+  struct BLI_Stack *overlap; /* store BVHTreeOverlap */
   uint max_interactions;
   /* use for callbacks */
   int thread;
@@ -156,7 +155,7 @@ typedef struct BVHNearestProjectedData {
 typedef struct BVHIntersectPlaneData {
   const BVHTree *tree;
   float plane[4];
-  BLI_Stack *intersect; /* Store indexes. */
+  struct BLI_Stack *intersect; /* Store indexes. */
 } BVHIntersectPlaneData;
 
 /** \} */
@@ -303,8 +302,7 @@ static BVHNode *bvh_medianof3(BVHNode **a, int lo, int mid, int hi, int axis)
 /**
  * \note after a call to this function you can expect one of:
  * - every node to left of a[n] are smaller or equal to it
- * - every node to the right of a[n] are greater or equal to it.
- */
+ * - every node to the right of a[n] are greater or equal to it */
 static void partition_nth_element(BVHNode **a, int begin, int end, const int n, const int axis)
 {
   while (end - begin > 3) {
@@ -402,9 +400,8 @@ static void refit_kdop_hull(const BVHTree *tree, BVHNode *node, int start, int e
 }
 
 /**
- * Only supports x,y,z axis in the moment
- * but we should use a plain and simple function here for speed sake.
- */
+ * only supports x,y,z axis in the moment
+ * but we should use a plain and simple function here for speed sake */
 static char get_largest_axis(const float *bv)
 {
   float middle_point[3];
@@ -426,8 +423,7 @@ static char get_largest_axis(const float *bv)
 
 /**
  * bottom-up update of bvh node BV
- * join the children on the parent BV.
- */
+ * join the children on the parent BV */
 static void node_join(BVHTree *tree, BVHNode *node)
 {
   int i;

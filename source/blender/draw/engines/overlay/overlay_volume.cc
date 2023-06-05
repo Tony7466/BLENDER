@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -38,7 +36,7 @@ void OVERLAY_volume_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const bool is_select = DRW_state_is_select();
 
   if (is_select) {
-    GPUBatch *geom = DRW_cache_volume_selection_surface_get(ob);
+    struct GPUBatch *geom = DRW_cache_volume_selection_surface_get(ob);
     if (geom != nullptr) {
       DRW_shgroup_call(pd->volume_selection_surface_grp, geom, ob);
     }

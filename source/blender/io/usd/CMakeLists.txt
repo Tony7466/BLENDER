@@ -1,6 +1,5 @@
-# SPDX-FileCopyrightText: 2019 Blender Foundation
-#
 # SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2019 Blender Foundation
 
 # This suppresses the warning "This file includes at least one deprecated or antiquated
 # header which may be removed without further notice at a future date", which is caused
@@ -49,7 +48,6 @@ set(INC
   ../../blenkernel
   ../../blenlib
   ../../blenloader
-  ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../editors/include
@@ -76,7 +74,6 @@ set(SRC
   intern/usd_hierarchy_iterator.cc
   intern/usd_writer_abstract.cc
   intern/usd_writer_camera.cc
-  intern/usd_writer_curves.cc
   intern/usd_writer_hair.cc
   intern/usd_writer_light.cc
   intern/usd_writer_material.cc
@@ -106,7 +103,6 @@ set(SRC
   intern/usd_hierarchy_iterator.h
   intern/usd_writer_abstract.h
   intern/usd_writer_camera.h
-  intern/usd_writer_curves.h
   intern/usd_writer_hair.h
   intern/usd_writer_light.h
   intern/usd_writer_material.h
@@ -158,7 +154,6 @@ blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 if(WITH_GTESTS)
   set(TEST_SRC
-    tests/usd_curves_test.cc
     tests/usd_export_test.cc
     tests/usd_stage_creation_test.cc
     tests/usd_tests_common.cc

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 
@@ -8,9 +6,9 @@ namespace blender::nodes::node_geo_string_join_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::String>("Delimiter");
-  b.add_input<decl::String>("Strings").multi_input().hide_value();
-  b.add_output<decl::String>("String");
+  b.add_input<decl::String>(N_("Delimiter"));
+  b.add_input<decl::String>(N_("Strings")).multi_input().hide_value();
+  b.add_output<decl::String>(N_("String"));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

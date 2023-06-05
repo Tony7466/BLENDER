@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -31,7 +30,7 @@ namespace blender::gpu {
 FrameBuffer::FrameBuffer(const char *name)
 {
   if (name) {
-    STRNCPY(name_, name);
+    BLI_strncpy(name_, name, sizeof(name_));
   }
   else {
     name_[0] = '\0';
@@ -680,10 +679,10 @@ GPUOffScreen *GPU_offscreen_create(int width,
   if ((depth && !ofs->depth) || !ofs->color) {
     const char error[] = "GPUTexture: Texture allocation failed.";
     if (err_out) {
-      BLI_strncpy(err_out, error, 256);
+      BLI_snprintf(err_out, 256, error);
     }
     else {
-      fprintf(stderr, "%s", error);
+      fprintf(stderr, error);
     }
     GPU_offscreen_free(ofs);
     return nullptr;

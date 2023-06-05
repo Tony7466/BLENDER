@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
 
@@ -10,31 +8,31 @@ namespace blender::nodes::node_geo_curve_primitive_spiral_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>("Resolution")
+  b.add_input<decl::Int>(N_("Resolution"))
       .default_value(32)
       .min(1)
       .max(1024)
       .subtype(PROP_UNSIGNED)
-      .description("Number of points in one rotation of the spiral");
-  b.add_input<decl::Float>("Rotations")
+      .description(N_("Number of points in one rotation of the spiral"));
+  b.add_input<decl::Float>(N_("Rotations"))
       .default_value(2.0f)
       .min(0.0f)
-      .description("Number of times the spiral makes a full rotation");
-  b.add_input<decl::Float>("Start Radius")
+      .description(N_("Number of times the spiral makes a full rotation"));
+  b.add_input<decl::Float>(N_("Start Radius"))
       .default_value(1.0f)
       .subtype(PROP_DISTANCE)
-      .description("Horizontal Distance from the Z axis at the start of the spiral");
-  b.add_input<decl::Float>("End Radius")
+      .description(N_("Horizontal Distance from the Z axis at the start of the spiral"));
+  b.add_input<decl::Float>(N_("End Radius"))
       .default_value(2.0f)
       .subtype(PROP_DISTANCE)
-      .description("Horizontal Distance from the Z axis at the end of the spiral");
-  b.add_input<decl::Float>("Height")
+      .description(N_("Horizontal Distance from the Z axis at the end of the spiral"));
+  b.add_input<decl::Float>(N_("Height"))
       .default_value(2.0f)
       .subtype(PROP_DISTANCE)
-      .description("The height perpendicular to the base of the spiral");
-  b.add_input<decl::Bool>("Reverse").description(
-      "Switch the direction from clockwise to counterclockwise");
-  b.add_output<decl::Geometry>("Curve");
+      .description(N_("The height perpendicular to the base of the spiral"));
+  b.add_input<decl::Bool>(N_("Reverse"))
+      .description(N_("Switch the direction from clockwise to counterclockwise"));
+  b.add_output<decl::Geometry>(N_("Curve"));
 }
 
 static Curves *create_spiral_curve(const float rotations,

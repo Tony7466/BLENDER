@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2004-2005 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2004-2005 Blender Foundation */
 
 /** \file
  * \ingroup DNA
@@ -206,9 +205,10 @@ typedef struct SoftBody {
   /** Softbody mass of *vertex*. */
   float nodemass;
   /**
-   * Along with it introduce mass painting starting to fix old bug .. nastiness that VG are indexes
-   * rather find them by name tag to find it -> jow20090613. #MAX_VGROUP_NAME size.
-   */
+   * Along with it introduce mass painting
+   * starting to fix old bug .. nastiness that VG are indexes
+   * rather find them by name tag to find it -> jow20090613.
+   * MAX_VGROUP_NAME */
   char namedVG_Mass[64];
   /** Softbody amount of gravitation to apply. */
   float grav;
@@ -233,8 +233,8 @@ typedef struct SoftBody {
   short vertgroup;
   /**
    * Starting to fix old bug .. nastiness that VG are indexes
-   * rather find them by name tag to find it -> jow20090613. #MAX_VGROUP_NAME size.
-   */
+   * rather find them by name tag to find it -> jow20090613.
+   * MAX_VGROUP_NAME */
   char namedVG_Softgoal[64];
 
   short fuzzyness;

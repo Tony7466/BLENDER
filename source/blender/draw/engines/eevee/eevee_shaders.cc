@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -9,7 +8,7 @@
 #include "DRW_render.h"
 
 #include "BKE_lib_id.h"
-#include "BKE_node.hh"
+#include "BKE_node.h"
 
 #include "BLI_dynstr.h"
 #include "BLI_string_utils.h"
@@ -30,108 +29,107 @@
 
 static struct {
   /* Lookdev */
-  GPUShader *studiolight_probe_sh;
-  GPUShader *studiolight_background_sh;
+  struct GPUShader *studiolight_probe_sh;
+  struct GPUShader *studiolight_background_sh;
 
   /* Probes */
-  GPUShader *probe_grid_display_sh;
-  GPUShader *probe_cube_display_sh;
-  GPUShader *probe_planar_display_sh;
-  GPUShader *probe_filter_glossy_sh;
-  GPUShader *probe_filter_diffuse_sh;
-  GPUShader *probe_filter_visibility_sh;
-  GPUShader *probe_grid_fill_sh;
-  GPUShader *probe_planar_downsample_sh;
+  struct GPUShader *probe_grid_display_sh;
+  struct GPUShader *probe_cube_display_sh;
+  struct GPUShader *probe_planar_display_sh;
+  struct GPUShader *probe_filter_glossy_sh;
+  struct GPUShader *probe_filter_diffuse_sh;
+  struct GPUShader *probe_filter_visibility_sh;
+  struct GPUShader *probe_grid_fill_sh;
+  struct GPUShader *probe_planar_downsample_sh;
 
   /* Velocity Resolve */
-  GPUShader *velocity_resolve_sh;
+  struct GPUShader *velocity_resolve_sh;
 
   /* Temporal Anti Aliasing */
-  GPUShader *taa_resolve_sh;
-  GPUShader *taa_resolve_reproject_sh;
+  struct GPUShader *taa_resolve_sh;
+  struct GPUShader *taa_resolve_reproject_sh;
 
   /* Bloom */
-  GPUShader *bloom_blit_sh[2];
-  GPUShader *bloom_downsample_sh[2];
-  GPUShader *bloom_upsample_sh[2];
-  GPUShader *bloom_resolve_sh[2];
+  struct GPUShader *bloom_blit_sh[2];
+  struct GPUShader *bloom_downsample_sh[2];
+  struct GPUShader *bloom_upsample_sh[2];
+  struct GPUShader *bloom_resolve_sh[2];
 
   /* Depth Of Field */
-  GPUShader *dof_bokeh_sh;
-  GPUShader *dof_setup_sh;
-  GPUShader *dof_flatten_tiles_sh;
-  GPUShader *dof_dilate_tiles_sh[2];
-  GPUShader *dof_downsample_sh;
-  GPUShader *dof_reduce_sh[2];
-  GPUShader *dof_gather_sh[DOF_GATHER_MAX_PASS][2];
-  GPUShader *dof_filter_sh;
-  GPUShader *dof_scatter_sh[2][2];
-  GPUShader *dof_resolve_sh[2][2];
+  struct GPUShader *dof_bokeh_sh;
+  struct GPUShader *dof_setup_sh;
+  struct GPUShader *dof_flatten_tiles_sh;
+  struct GPUShader *dof_dilate_tiles_sh[2];
+  struct GPUShader *dof_downsample_sh;
+  struct GPUShader *dof_reduce_sh[2];
+  struct GPUShader *dof_gather_sh[DOF_GATHER_MAX_PASS][2];
+  struct GPUShader *dof_filter_sh;
+  struct GPUShader *dof_scatter_sh[2][2];
+  struct GPUShader *dof_resolve_sh[2][2];
 
   /* General purpose Shaders. */
-  GPUShader *lookdev_background;
-  GPUShader *update_noise_sh;
+  struct GPUShader *lookdev_background;
+  struct GPUShader *update_noise_sh;
 
   /* Down-sample Depth */
-  GPUShader *minz_downlevel_sh;
-  GPUShader *maxz_downlevel_sh;
-  GPUShader *minz_downdepth_sh;
-  GPUShader *maxz_downdepth_sh;
-  GPUShader *minz_downdepth_layer_sh;
-  GPUShader *maxz_downdepth_layer_sh;
-  GPUShader *maxz_copydepth_layer_sh;
-  GPUShader *minz_copydepth_sh;
-  GPUShader *maxz_copydepth_sh;
+  struct GPUShader *minz_downlevel_sh;
+  struct GPUShader *maxz_downlevel_sh;
+  struct GPUShader *minz_downdepth_sh;
+  struct GPUShader *maxz_downdepth_sh;
+  struct GPUShader *minz_downdepth_layer_sh;
+  struct GPUShader *maxz_downdepth_layer_sh;
+  struct GPUShader *maxz_copydepth_layer_sh;
+  struct GPUShader *minz_copydepth_sh;
+  struct GPUShader *maxz_copydepth_sh;
 
   /* Simple Down-sample. */
-  GPUShader *color_copy_sh;
-  GPUShader *downsample_sh;
-  GPUShader *downsample_cube_sh;
+  struct GPUShader *color_copy_sh;
+  struct GPUShader *downsample_sh;
+  struct GPUShader *downsample_cube_sh;
 
   /* Mist */
-  GPUShader *mist_sh;
+  struct GPUShader *mist_sh;
 
   /* Motion Blur */
-  GPUShader *motion_blur_sh;
-  GPUShader *motion_blur_object_sh;
-  GPUShader *motion_blur_hair_sh;
-  GPUShader *velocity_tiles_sh;
-  GPUShader *velocity_tiles_expand_sh;
+  struct GPUShader *motion_blur_sh;
+  struct GPUShader *motion_blur_object_sh;
+  struct GPUShader *motion_blur_hair_sh;
+  struct GPUShader *velocity_tiles_sh;
+  struct GPUShader *velocity_tiles_expand_sh;
 
   /* Ground Truth Ambient Occlusion */
-  GPUShader *gtao_sh;
-  GPUShader *gtao_layer_sh;
-  GPUShader *gtao_debug_sh;
+  struct GPUShader *gtao_sh;
+  struct GPUShader *gtao_layer_sh;
+  struct GPUShader *gtao_debug_sh;
 
   /* GGX LUT */
-  GPUShader *ggx_lut_sh;
-  GPUShader *ggx_refraction_lut_sh;
+  struct GPUShader *ggx_lut_sh;
+  struct GPUShader *ggx_refraction_lut_sh;
 
   /* Render Passes */
-  GPUShader *rpass_accumulate_sh;
-  GPUShader *postprocess_sh;
-  GPUShader *cryptomatte_sh[2];
+  struct GPUShader *postprocess_sh;
+  struct GPUShader *cryptomatte_sh[2];
 
   /* Screen Space Reflection */
-  GPUShader *reflection_trace;
-  GPUShader *reflection_resolve;
-  GPUShader *reflection_resolve_probe;
-  GPUShader *reflection_resolve_raytrace;
+  struct GPUShader *reflection_trace;
+  struct GPUShader *reflection_resolve;
+  struct GPUShader *reflection_resolve_probe;
+  struct GPUShader *reflection_resolve_raytrace;
 
   /* Shadows */
-  GPUShader *shadow_sh;
-  GPUShader *shadow_accum_sh;
+  struct GPUShader *shadow_sh;
+  struct GPUShader *shadow_accum_sh;
 
   /* Subsurface */
-  GPUShader *sss_sh[3];
+  struct GPUShader *sss_sh[3];
 
   /* Volume */
-  GPUShader *volumetric_clear_sh;
-  GPUShader *scatter_sh;
-  GPUShader *scatter_with_lights_sh;
-  GPUShader *volumetric_integration_sh;
-  GPUShader *volumetric_resolve_sh[2];
-  GPUShader *volumetric_accum_sh;
+  struct GPUShader *volumetric_clear_sh;
+  struct GPUShader *scatter_sh;
+  struct GPUShader *scatter_with_lights_sh;
+  struct GPUShader *volumetric_integration_sh;
+  struct GPUShader *volumetric_resolve_sh[2];
+  struct GPUShader *volumetric_accum_sh;
 
   /* Shader strings */
   char *surface_lit_frag;
@@ -301,7 +299,7 @@ GPUShader *EEVEE_shaders_probe_filter_visibility_sh_get(void)
 {
   if (e_data.probe_filter_visibility_sh == nullptr) {
     e_data.probe_filter_visibility_sh = DRW_shader_create_from_info_name(
-        "eevee_legacy_probe_filter_visibility");
+        "eevee_legacy_probe_filter_visiblity");
   }
   return e_data.probe_filter_visibility_sh;
 }
@@ -607,15 +605,6 @@ GPUShader *EEVEE_shaders_effect_ambient_occlusion_debug_sh_get(void)
 /** \name Render Passes
  * \{ */
 
-GPUShader *EEVEE_shaders_renderpasses_accumulate_sh_get(void)
-{
-  if (e_data.rpass_accumulate_sh == nullptr) {
-    e_data.rpass_accumulate_sh = DRW_shader_create_from_info_name(
-        "eevee_legacy_renderpass_accumulate");
-  }
-  return e_data.rpass_accumulate_sh;
-}
-
 GPUShader *EEVEE_shaders_renderpasses_post_process_sh_get(void)
 {
   if (e_data.postprocess_sh == nullptr) {
@@ -653,7 +642,7 @@ GPUShader *EEVEE_shaders_cryptomatte_sh_get(bool is_hair)
 /** \name Raytraced Reflections
  * \{ */
 
-GPUShader *EEVEE_shaders_effect_reflection_trace_sh_get(void)
+struct GPUShader *EEVEE_shaders_effect_reflection_trace_sh_get(void)
 {
   if (e_data.reflection_trace == nullptr) {
     e_data.reflection_trace = DRW_shader_create_from_info_name(
@@ -662,7 +651,7 @@ GPUShader *EEVEE_shaders_effect_reflection_trace_sh_get(void)
   return e_data.reflection_trace;
 }
 
-GPUShader *EEVEE_shaders_effect_reflection_resolve_sh_get(void)
+struct GPUShader *EEVEE_shaders_effect_reflection_resolve_sh_get(void)
 {
   if (e_data.reflection_resolve == nullptr) {
     e_data.reflection_resolve = DRW_shader_create_from_info_name(
@@ -671,7 +660,7 @@ GPUShader *EEVEE_shaders_effect_reflection_resolve_sh_get(void)
   return e_data.reflection_resolve;
 }
 
-GPUShader *EEVEE_shaders_effect_reflection_resolve_probe_sh_get(void)
+struct GPUShader *EEVEE_shaders_effect_reflection_resolve_probe_sh_get(void)
 {
   if (e_data.reflection_resolve_probe == nullptr) {
     e_data.reflection_resolve_probe = DRW_shader_create_from_info_name(
@@ -680,7 +669,7 @@ GPUShader *EEVEE_shaders_effect_reflection_resolve_probe_sh_get(void)
   return e_data.reflection_resolve_probe;
 }
 
-GPUShader *EEVEE_shaders_effect_reflection_resolve_refl_sh_get(void)
+struct GPUShader *EEVEE_shaders_effect_reflection_resolve_refl_sh_get(void)
 {
   if (e_data.reflection_resolve_raytrace == nullptr) {
     e_data.reflection_resolve_raytrace = DRW_shader_create_from_info_name(
@@ -695,7 +684,7 @@ GPUShader *EEVEE_shaders_effect_reflection_resolve_refl_sh_get(void)
 /** \name Shadows
  * \{ */
 
-GPUShader *EEVEE_shaders_shadow_sh_get()
+struct GPUShader *EEVEE_shaders_shadow_sh_get()
 {
   if (e_data.shadow_sh == nullptr) {
     e_data.shadow_sh = DRW_shader_create_from_info_name("eevee_legacy_shader_shadow");
@@ -703,7 +692,7 @@ GPUShader *EEVEE_shaders_shadow_sh_get()
   return e_data.shadow_sh;
 }
 
-GPUShader *EEVEE_shaders_shadow_accum_sh_get()
+struct GPUShader *EEVEE_shaders_shadow_accum_sh_get()
 {
   if (e_data.shadow_accum_sh == nullptr) {
     e_data.shadow_accum_sh = DRW_shader_create_from_info_name("eevee_legacy_shader_shadow_accum");
@@ -717,7 +706,7 @@ GPUShader *EEVEE_shaders_shadow_accum_sh_get()
 /** \name Subsurface
  * \{ */
 
-GPUShader *EEVEE_shaders_subsurface_first_pass_sh_get()
+struct GPUShader *EEVEE_shaders_subsurface_first_pass_sh_get()
 {
   if (e_data.sss_sh[0] == nullptr) {
     e_data.sss_sh[0] = DRW_shader_create_from_info_name(
@@ -726,7 +715,7 @@ GPUShader *EEVEE_shaders_subsurface_first_pass_sh_get()
   return e_data.sss_sh[0];
 }
 
-GPUShader *EEVEE_shaders_subsurface_second_pass_sh_get()
+struct GPUShader *EEVEE_shaders_subsurface_second_pass_sh_get()
 {
   if (e_data.sss_sh[1] == nullptr) {
 
@@ -736,7 +725,7 @@ GPUShader *EEVEE_shaders_subsurface_second_pass_sh_get()
   return e_data.sss_sh[1];
 }
 
-GPUShader *EEVEE_shaders_subsurface_translucency_sh_get()
+struct GPUShader *EEVEE_shaders_subsurface_translucency_sh_get()
 {
   if (e_data.sss_sh[2] == nullptr) {
     e_data.sss_sh[2] = DRW_shader_create_from_info_name(
@@ -751,7 +740,7 @@ GPUShader *EEVEE_shaders_subsurface_translucency_sh_get()
 /** \name Volumes
  * \{ */
 
-GPUShader *EEVEE_shaders_volumes_clear_sh_get()
+struct GPUShader *EEVEE_shaders_volumes_clear_sh_get()
 {
   if (e_data.volumetric_clear_sh == nullptr) {
     e_data.volumetric_clear_sh = DRW_shader_create_from_info_name("eevee_legacy_volumes_clear");
@@ -759,7 +748,7 @@ GPUShader *EEVEE_shaders_volumes_clear_sh_get()
   return e_data.volumetric_clear_sh;
 }
 
-GPUShader *EEVEE_shaders_volumes_scatter_sh_get()
+struct GPUShader *EEVEE_shaders_volumes_scatter_sh_get()
 {
   if (e_data.scatter_sh == nullptr) {
     e_data.scatter_sh = DRW_shader_create_from_info_name("eevee_legacy_volumes_scatter");
@@ -767,7 +756,7 @@ GPUShader *EEVEE_shaders_volumes_scatter_sh_get()
   return e_data.scatter_sh;
 }
 
-GPUShader *EEVEE_shaders_volumes_scatter_with_lights_sh_get()
+struct GPUShader *EEVEE_shaders_volumes_scatter_with_lights_sh_get()
 {
   if (e_data.scatter_with_lights_sh == nullptr) {
     e_data.scatter_with_lights_sh = DRW_shader_create_from_info_name(
@@ -776,7 +765,7 @@ GPUShader *EEVEE_shaders_volumes_scatter_with_lights_sh_get()
   return e_data.scatter_with_lights_sh;
 }
 
-GPUShader *EEVEE_shaders_volumes_integration_sh_get()
+struct GPUShader *EEVEE_shaders_volumes_integration_sh_get()
 {
   if (e_data.volumetric_integration_sh == nullptr) {
     e_data.volumetric_integration_sh = DRW_shader_create_from_info_name(
@@ -786,7 +775,7 @@ GPUShader *EEVEE_shaders_volumes_integration_sh_get()
   return e_data.volumetric_integration_sh;
 }
 
-GPUShader *EEVEE_shaders_volumes_resolve_sh_get(bool accum)
+struct GPUShader *EEVEE_shaders_volumes_resolve_sh_get(bool accum)
 {
   const int index = accum ? 1 : 0;
   if (e_data.volumetric_resolve_sh[index] == nullptr) {
@@ -796,7 +785,7 @@ GPUShader *EEVEE_shaders_volumes_resolve_sh_get(bool accum)
   return e_data.volumetric_resolve_sh[index];
 }
 
-GPUShader *EEVEE_shaders_volumes_accum_sh_get()
+struct GPUShader *EEVEE_shaders_volumes_accum_sh_get()
 {
   if (e_data.volumetric_accum_sh == nullptr) {
     e_data.volumetric_accum_sh = DRW_shader_create_from_info_name("eevee_legacy_volumes_accum");
@@ -1040,7 +1029,7 @@ Material *EEVEE_material_default_diffuse_get(void)
   if (!e_data.diffuse_mat) {
     Material *ma = static_cast<Material *>(BKE_id_new_nomain(ID_MA, "EEVEEE default diffuse"));
 
-    bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
+    bNodeTree *ntree = ntreeAddTreeEmbedded(
         nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
     ma->use_nodes = true;
 
@@ -1067,7 +1056,7 @@ Material *EEVEE_material_default_glossy_get(void)
   if (!e_data.glossy_mat) {
     Material *ma = static_cast<Material *>(BKE_id_new_nomain(ID_MA, "EEVEEE default metal"));
 
-    bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
+    bNodeTree *ntree = ntreeAddTreeEmbedded(
         nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
     ma->use_nodes = true;
 
@@ -1096,7 +1085,7 @@ Material *EEVEE_material_default_error_get(void)
   if (!e_data.error_mat) {
     Material *ma = static_cast<Material *>(BKE_id_new_nomain(ID_MA, "EEVEEE default error"));
 
-    bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
+    bNodeTree *ntree = ntreeAddTreeEmbedded(
         nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
     ma->use_nodes = true;
 
@@ -1119,7 +1108,7 @@ Material *EEVEE_material_default_error_get(void)
   return e_data.error_mat;
 }
 
-bNodeTree *EEVEE_shader_default_surface_nodetree(Material *ma)
+struct bNodeTree *EEVEE_shader_default_surface_nodetree(Material *ma)
 {
   /* WARNING: This function is not threadsafe. Which is not a problem for the moment. */
   if (!e_data.surface.ntree) {
@@ -1150,7 +1139,7 @@ bNodeTree *EEVEE_shader_default_surface_nodetree(Material *ma)
   return e_data.surface.ntree;
 }
 
-bNodeTree *EEVEE_shader_default_world_nodetree(World *wo)
+struct bNodeTree *EEVEE_shader_default_world_nodetree(World *wo)
 {
   /* WARNING: This function is not threadsafe. Which is not a problem for the moment. */
   if (!e_data.world.ntree) {
@@ -1372,8 +1361,8 @@ static void eevee_material_post_eval(void * /*thunk*/, GPUMaterial *mat, GPUCode
   MEM_SAFE_FREE(frag);
 }
 
-static GPUMaterial *eevee_material_get_ex(
-    Scene * /*scene*/, Material *ma, World *wo, int options, bool deferred)
+static struct GPUMaterial *eevee_material_get_ex(
+    struct Scene * /*scene*/, Material *ma, World *wo, int options, bool deferred)
 {
   BLI_assert(ma || wo);
   const bool is_volume = (options & VAR_MAT_VOLUME) != 0;
@@ -1393,7 +1382,7 @@ static GPUMaterial *eevee_material_get_ex(
   return mat;
 }
 
-GPUMaterial *EEVEE_material_default_get(Scene *scene, Material *ma, int options)
+struct GPUMaterial *EEVEE_material_default_get(struct Scene *scene, Material *ma, int options)
 {
   Material *def_ma = (ma && (options & VAR_MAT_VOLUME)) ? BKE_material_default_volume() :
                                                           BKE_material_default_surface();
@@ -1402,8 +1391,8 @@ GPUMaterial *EEVEE_material_default_get(Scene *scene, Material *ma, int options)
   return eevee_material_get_ex(scene, def_ma, nullptr, options, false);
 }
 
-GPUMaterial *EEVEE_material_get(
-    EEVEE_Data *vedata, Scene *scene, Material *ma, World *wo, int options)
+struct GPUMaterial *EEVEE_material_get(
+    EEVEE_Data *vedata, struct Scene *scene, Material *ma, World *wo, int options)
 {
   if ((ma && (!ma->use_nodes || !ma->nodetree)) || (wo && (!wo->use_nodes || !wo->nodetree))) {
     options |= VAR_DEFAULT;
@@ -1478,7 +1467,6 @@ void EEVEE_shaders_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gtao_layer_sh);
   DRW_SHADER_FREE_SAFE(e_data.gtao_debug_sh);
   DRW_SHADER_FREE_SAFE(e_data.velocity_resolve_sh);
-  DRW_SHADER_FREE_SAFE(e_data.rpass_accumulate_sh);
   DRW_SHADER_FREE_SAFE(e_data.postprocess_sh);
   DRW_SHADER_FREE_SAFE(e_data.shadow_sh);
   DRW_SHADER_FREE_SAFE(e_data.shadow_accum_sh);

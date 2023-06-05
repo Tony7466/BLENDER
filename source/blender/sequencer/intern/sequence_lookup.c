@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup sequencer
@@ -33,7 +32,7 @@ typedef struct SequenceLookup {
   eSequenceLookupTag tag;
 } SequenceLookup;
 
-static void seq_sequence_lookup_init(SequenceLookup *lookup)
+static void seq_sequence_lookup_init(struct SequenceLookup *lookup)
 {
   lookup->seq_by_name = BLI_ghash_str_new(__func__);
   lookup->meta_by_seq = BLI_ghash_ptr_new(__func__);
@@ -43,7 +42,7 @@ static void seq_sequence_lookup_init(SequenceLookup *lookup)
 
 static void seq_sequence_lookup_append_effect(Sequence *input,
                                               Sequence *effect,
-                                              SequenceLookup *lookup)
+                                              struct SequenceLookup *lookup)
 {
   if (input == NULL) {
     return;
@@ -58,7 +57,7 @@ static void seq_sequence_lookup_append_effect(Sequence *input,
   SEQ_collection_append_strip(effect, effects);
 }
 
-static void seq_sequence_lookup_build_effect(Sequence *seq, SequenceLookup *lookup)
+static void seq_sequence_lookup_build_effect(Sequence *seq, struct SequenceLookup *lookup)
 {
   if ((seq->type & SEQ_TYPE_EFFECT) == 0) {
     return;
@@ -70,7 +69,7 @@ static void seq_sequence_lookup_build_effect(Sequence *seq, SequenceLookup *look
 
 static void seq_sequence_lookup_build_from_seqbase(Sequence *parent_meta,
                                                    const ListBase *seqbase,
-                                                   SequenceLookup *lookup)
+                                                   struct SequenceLookup *lookup)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     BLI_ghash_insert(lookup->seq_by_name, seq->name + 2, seq);
@@ -83,7 +82,7 @@ static void seq_sequence_lookup_build_from_seqbase(Sequence *parent_meta,
   }
 }
 
-static void seq_sequence_lookup_build(const Scene *scene, SequenceLookup *lookup)
+static void seq_sequence_lookup_build(const struct Scene *scene, struct SequenceLookup *lookup)
 {
   Editing *ed = SEQ_editing_get(scene);
   seq_sequence_lookup_build_from_seqbase(NULL, &ed->seqbase, lookup);
@@ -97,7 +96,7 @@ static SequenceLookup *seq_sequence_lookup_new(void)
   return lookup;
 }
 
-static void seq_sequence_lookup_free(SequenceLookup **lookup)
+static void seq_sequence_lookup_free(struct SequenceLookup **lookup)
 {
   if (*lookup == NULL) {
     return;
@@ -113,19 +112,20 @@ static void seq_sequence_lookup_free(SequenceLookup **lookup)
   *lookup = NULL;
 }
 
-static void seq_sequence_lookup_rebuild(const Scene *scene, SequenceLookup **lookup)
+static void seq_sequence_lookup_rebuild(const struct Scene *scene, struct SequenceLookup **lookup)
 {
   seq_sequence_lookup_free(lookup);
   *lookup = seq_sequence_lookup_new();
   seq_sequence_lookup_build(scene, *lookup);
 }
 
-static bool seq_sequence_lookup_is_valid(const SequenceLookup *lookup)
+static bool seq_sequence_lookup_is_valid(const struct SequenceLookup *lookup)
 {
   return (lookup->tag & SEQ_LOOKUP_TAG_INVALID) == 0;
 }
 
-static void seq_sequence_lookup_update_if_needed(const Scene *scene, SequenceLookup **lookup)
+static void seq_sequence_lookup_update_if_needed(const struct Scene *scene,
+                                                 struct SequenceLookup **lookup)
 {
   if (!scene->ed) {
     return;

@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_scene.h"
 
@@ -12,8 +10,8 @@ namespace blender::nodes::node_geo_input_scene_time_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>("Seconds");
-  b.add_output<decl::Float>("Frame");
+  b.add_output<decl::Float>(N_("Seconds"));
+  b.add_output<decl::Float>(N_("Frame"));
 }
 
 static void node_exec(GeoNodeExecParams params)

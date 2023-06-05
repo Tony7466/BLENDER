@@ -1,6 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -121,7 +119,7 @@ static void undosys_id_ref_store(void * /*user_data*/, UndoRefID *id_ref)
 {
   BLI_assert(id_ref->name[0] == '\0');
   if (id_ref->ptr) {
-    STRNCPY(id_ref->name, id_ref->ptr->name);
+    BLI_strncpy(id_ref->name, id_ref->ptr->name, sizeof(id_ref->name));
     /* Not needed, just prevents stale data access. */
     id_ref->ptr = nullptr;
   }
@@ -326,7 +324,7 @@ static void undosys_stack_clear_all_first(UndoStack *ustack, UndoStep *us, UndoS
   }
 }
 
-static bool undosys_stack_push_main(UndoStack *ustack, const char *name, Main *bmain)
+static bool undosys_stack_push_main(UndoStack *ustack, const char *name, struct Main *bmain)
 {
   UNDO_NESTED_ASSERT(false);
   BLI_assert(ustack->step_init == nullptr);
@@ -339,7 +337,7 @@ static bool undosys_stack_push_main(UndoStack *ustack, const char *name, Main *b
   return (ret & UNDO_PUSH_RET_SUCCESS);
 }
 
-void BKE_undosys_stack_init_from_main(UndoStack *ustack, Main *bmain)
+void BKE_undosys_stack_init_from_main(UndoStack *ustack, struct Main *bmain)
 {
   UNDO_NESTED_ASSERT(false);
   undosys_stack_push_main(ustack, IFACE_("Original"), bmain);
@@ -458,7 +456,7 @@ UndoStep *BKE_undosys_step_push_init_with_type(UndoStack *ustack,
 
     UndoStep *us = static_cast<UndoStep *>(MEM_callocN(ut->step_size, __func__));
     if (name != nullptr) {
-      STRNCPY(us->name, name);
+      BLI_strncpy(us->name, name, sizeof(us->name));
     }
     us->type = ut;
     ustack->step_init = us;
@@ -543,7 +541,7 @@ eUndoPushReturn BKE_undosys_step_push_with_type(UndoStack *ustack,
                        static_cast<UndoStep *>(MEM_callocN(ut->step_size, __func__));
     ustack->step_init = nullptr;
     if (us->name[0] == '\0') {
-      STRNCPY(us->name, name);
+      BLI_strncpy(us->name, name, sizeof(us->name));
     }
     us->type = ut;
     /* True by default, code needs to explicitly set it to false if necessary. */

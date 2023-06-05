@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation */
 
 /** \file
  * \ingroup pybmesh

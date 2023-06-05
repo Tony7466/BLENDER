@@ -1,10 +1,9 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. */
 
 #include "COM_PreviewOperation.h"
 
-#include "BKE_node.hh"
+#include "BKE_node.h"
 #include "IMB_colormanagement.h"
 
 namespace blender::compositor {
@@ -33,7 +32,7 @@ void PreviewOperation::verify_preview(bNodeInstanceHash *previews, bNodeInstance
   /* Size (0, 0) ensures the preview rect is not allocated in advance,
    * this is set later in init_execution once the resolution is determined.
    */
-  preview_ = blender::bke::node_preview_verify(previews, key, 0, 0, true);
+  preview_ = BKE_node_preview_verify(previews, key, 0, 0, true);
 }
 
 void PreviewOperation::init_execution()
@@ -66,7 +65,7 @@ void PreviewOperation::execute_region(rcti *rect, uint /*tile_number*/)
 {
   int offset;
   float color[4];
-  ColormanageProcessor *cm_processor;
+  struct ColormanageProcessor *cm_processor;
 
   cm_processor = IMB_colormanagement_display_processor_new(view_settings_, display_settings_);
 
@@ -160,7 +159,7 @@ void PreviewOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/,
                                                     Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *input = inputs[0];
-  ColormanageProcessor *cm_processor = IMB_colormanagement_display_processor_new(
+  struct ColormanageProcessor *cm_processor = IMB_colormanagement_display_processor_new(
       view_settings_, display_settings_);
 
   rcti buffer_area;

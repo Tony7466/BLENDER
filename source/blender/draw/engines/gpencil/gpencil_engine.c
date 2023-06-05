@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -343,7 +342,7 @@ typedef struct gpIterPopulateData {
   int stroke_index_last;
   int stroke_index_offset;
   /* Infos for call batching. */
-  GPUBatch *geom;
+  struct GPUBatch *geom;
   int vfirst, vcount;
 } gpIterPopulateData;
 
@@ -364,7 +363,7 @@ static void gpencil_drawcall_flush(gpIterPopulateData *iter)
 
 /* Group draw-calls that are consecutive and with the same type. Reduces GPU driver overhead. */
 static void gpencil_drawcall_add(gpIterPopulateData *iter,
-                                 GPUBatch *geom,
+                                 struct GPUBatch *geom,
                                  int v_first,
                                  int v_count)
 {
@@ -398,7 +397,7 @@ static void gpencil_sbuffer_cache_populate(gpIterPopulateData *iter)
    * Remember, sbuffer stroke indices start from 0. So we add last index to avoid
    * masking issues. */
   iter->grp = DRW_shgroup_create_sub(iter->grp);
-  DRW_shgroup_uniform_block(iter->grp, "gp_materials", iter->ubo_mat);
+  DRW_shgroup_uniform_block(iter->grp, "materials", iter->ubo_mat);
   DRW_shgroup_uniform_float_copy(iter->grp, "gpStrokeIndexOffset", iter->stroke_index_last);
 
   const DRWContextState *ctx = DRW_context_state_get();
@@ -446,8 +445,8 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
 
   /* Iterator dependent uniforms. */
   DRWShadingGroup *grp = iter->grp = tgp_layer->base_shgrp;
-  DRW_shgroup_uniform_block(grp, "gp_lights", iter->ubo_lights);
-  DRW_shgroup_uniform_block(grp, "gp_materials", iter->ubo_mat);
+  DRW_shgroup_uniform_block(grp, "lights", iter->ubo_lights);
+  DRW_shgroup_uniform_block(grp, "materials", iter->ubo_mat);
   DRW_shgroup_uniform_texture(grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_int_copy(grp, "gpMaterialOffset", iter->mat_ofs);
@@ -494,7 +493,7 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
 
     iter->grp = DRW_shgroup_create_sub(iter->grp);
     if (iter->ubo_mat != ubo_mat) {
-      DRW_shgroup_uniform_block(iter->grp, "gp_materials", ubo_mat);
+      DRW_shgroup_uniform_block(iter->grp, "materials", ubo_mat);
       iter->ubo_mat = ubo_mat;
     }
     if (tex_fill) {

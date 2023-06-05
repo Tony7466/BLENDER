@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spinfo
@@ -79,7 +78,7 @@ static void info_free(SpaceLink *UNUSED(sl))
 }
 
 /* spacetype; init callback */
-static void info_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
+static void info_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
@@ -167,7 +166,7 @@ static void info_operatortypes(void)
   WM_operatortype_append(INFO_OT_report_copy);
 }
 
-static void info_keymap(wmKeyConfig *keyconf)
+static void info_keymap(struct wmKeyConfig *keyconf)
 {
   WM_keymap_ensure(keyconf, "Window", 0, 0);
   WM_keymap_ensure(keyconf, "Info", SPACE_INFO, 0);

@@ -1,6 +1,5 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -211,7 +210,7 @@ void BLI_linklist_append_pool(LinkNodePair *list_pair, void *ptr, BLI_mempool *m
   BLI_linklist_append_nlink(list_pair, ptr, nlink);
 }
 
-void *BLI_linklist_pop(LinkNode **listp)
+void *BLI_linklist_pop(struct LinkNode **listp)
 {
   /* intentionally no NULL check */
   void *link = (*listp)->link;
@@ -223,7 +222,7 @@ void *BLI_linklist_pop(LinkNode **listp)
   return link;
 }
 
-void *BLI_linklist_pop_pool(LinkNode **listp, BLI_mempool *mempool)
+void *BLI_linklist_pop_pool(struct LinkNode **listp, struct BLI_mempool *mempool)
 {
   /* intentionally no NULL check */
   void *link = (*listp)->link;
@@ -266,7 +265,7 @@ void BLI_linklist_free(LinkNode *list, LinkNodeFreeFP freefunc)
   }
 }
 
-void BLI_linklist_free_pool(LinkNode *list, LinkNodeFreeFP freefunc, BLI_mempool *mempool)
+void BLI_linklist_free_pool(LinkNode *list, LinkNodeFreeFP freefunc, struct BLI_mempool *mempool)
 {
   while (list) {
     LinkNode *next = list->next;
