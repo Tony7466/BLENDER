@@ -7424,9 +7424,15 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "gi_irradiance_samples", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Diffuse Samples",
-                           "Number of rays direction to evaluate when baking a single "
-                           "bounce of indirect lighting");
-  RNA_def_property_range(prop, 0, INT_MAX);
+                           "Number of rays direction to evaluate when baking irradiance caching");
+  RNA_def_property_range(prop, 1, INT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  prop = RNA_def_property(srna, "gi_surfel_density", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_text(prop,
+                           "Surfel Density",
+                           "Number of surfels per unit distance (higher values improve quality)");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 
   prop = RNA_def_property(srna, "gi_cubemap_resolution", PROP_ENUM, PROP_NONE);

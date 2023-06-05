@@ -3,8 +3,8 @@ void main()
 {
   Surfel surfel = surfels_buf[surfel_index];
 
-  vec3 radiance = gl_FrontFacing ? surfel.radiance_direct.front.rgb :
-                                   surfel.radiance_direct.back.rgb;
+  vec3 radiance = vec3(0.0);
+  radiance += gl_FrontFacing ? surfel.radiance_direct.front.rgb : surfel.radiance_direct.back.rgb;
   radiance += gl_FrontFacing ? surfel.radiance_indirect[1].front.rgb :
                                surfel.radiance_indirect[1].back.rgb;
 

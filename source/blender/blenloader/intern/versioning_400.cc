@@ -137,7 +137,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_samples")) {
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        scene->eevee.gi_irradiance_samples = 512;
+        scene->eevee.gi_irradiance_samples = 2048;
+        scene->eevee.gi_surfel_density = 1.0f;
       }
     }
   }

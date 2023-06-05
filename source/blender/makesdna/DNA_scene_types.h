@@ -1792,6 +1792,8 @@ typedef struct SceneEEVEE {
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
+  float gi_surfel_density;
+  char _pad0[4];
 
   float gi_cubemap_draw_size;
   float gi_irradiance_draw_size;
