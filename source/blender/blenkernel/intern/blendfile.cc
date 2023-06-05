@@ -652,7 +652,7 @@ static void wm_data_consistency_ensure(wmWindowManager *curwm,
  */
 static void setup_app_data(bContext *C,
                            BlendFileData *bfd,
-                           const struct BlendFileReadParams *params,
+                           const BlendFileReadParams *params,
                            BlendFileReadWMSetupData *wm_setup_data,
                            BlendFileReadReport *reports)
 {
@@ -963,7 +963,7 @@ static void setup_app_data(bContext *C,
 
 static void setup_app_blend_file_data(bContext *C,
                                       BlendFileData *bfd,
-                                      const struct BlendFileReadParams *params,
+                                      const BlendFileReadParams *params,
                                       BlendFileReadWMSetupData *wm_setup_data,
                                       BlendFileReadReport *reports)
 {
@@ -991,7 +991,7 @@ static void handle_subversion_warning(Main *main, BlendFileReadReport *reports)
 
 void BKE_blendfile_read_setup_readfile(bContext *C,
                                        BlendFileData *bfd,
-                                       const struct BlendFileReadParams *params,
+                                       const BlendFileReadParams *params,
                                        BlendFileReadWMSetupData *wm_setup_data,
                                        BlendFileReadReport *reports,
                                        /* Extra args. */
@@ -1016,15 +1016,15 @@ void BKE_blendfile_read_setup_readfile(bContext *C,
 
 void BKE_blendfile_read_setup_undo(bContext *C,
                                    BlendFileData *bfd,
-                                   const struct BlendFileReadParams *params,
+                                   const BlendFileReadParams *params,
                                    BlendFileReadReport *reports)
 {
   BKE_blendfile_read_setup_readfile(C, bfd, params, nullptr, reports, false, nullptr);
 }
 
-struct BlendFileData *BKE_blendfile_read(const char *filepath,
-                                         const struct BlendFileReadParams *params,
-                                         BlendFileReadReport *reports)
+BlendFileData *BKE_blendfile_read(const char *filepath,
+                                  const BlendFileReadParams *params,
+                                  BlendFileReadReport *reports)
 {
   /* Don't print startup file loading. */
   if (params->is_startup == false) {
@@ -1045,10 +1045,10 @@ struct BlendFileData *BKE_blendfile_read(const char *filepath,
   return bfd;
 }
 
-struct BlendFileData *BKE_blendfile_read_from_memory(const void *filebuf,
-                                                     int filelength,
-                                                     const struct BlendFileReadParams *params,
-                                                     ReportList *reports)
+BlendFileData *BKE_blendfile_read_from_memory(const void *filebuf,
+                                              int filelength,
+                                              const BlendFileReadParams *params,
+                                              ReportList *reports)
 {
   BlendFileData *bfd = BLO_read_from_memory(
       filebuf, filelength, eBLOReadSkip(params->skip_flags), reports);
@@ -1065,10 +1065,10 @@ struct BlendFileData *BKE_blendfile_read_from_memory(const void *filebuf,
   return bfd;
 }
 
-struct BlendFileData *BKE_blendfile_read_from_memfile(Main *bmain,
-                                                      struct MemFile *memfile,
-                                                      const struct BlendFileReadParams *params,
-                                                      ReportList *reports)
+BlendFileData *BKE_blendfile_read_from_memfile(Main *bmain,
+                                               MemFile *memfile,
+                                               const BlendFileReadParams *params,
+                                               ReportList *reports)
 {
   BlendFileData *bfd = BLO_read_from_memfile(
       bmain, BKE_main_blendfile_path(bmain), memfile, params, reports);
