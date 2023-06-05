@@ -284,7 +284,7 @@ template<typename TextureMethod> class ScreenSpaceDrawingMode : public AbstractD
   void add_shgroups(const IMAGE_InstanceData *instance_data) const
   {
     const ShaderParameters &sh_params = instance_data->sh_params;
-    GPUShader *shader = IMAGE_shader_image_get();
+    GPUShader *shader = IMAGE_shader_color_get();
     DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
     DRWShadingGroup *shgrp = DRW_shgroup_create(shader, instance_data->passes.image_pass);

@@ -34,3 +34,15 @@ GPU_SHADER_CREATE_INFO(image_engine_depth_shader)
     .additional_info("draw_modelmat")
     .depth_write(DepthWrite::ANY)
     .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(image_engine_image_shader)
+    .vertex_in(0, Type::VEC2, "pos")
+    .vertex_out(image_engine_depth_iface)
+    .push_constant(Type::VEC2, "tile_offset")
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .vertex_source("image_engine_image_vert.glsl")
+    .fragment_source("image_engine_image_frag.glsl")
+    .sampler(0, ImageType::FLOAT_2D, "imageTexture")
+    .additional_info("draw_modelmat")
+    .depth_write(DepthWrite::ANY)
+    .do_static_compilation(true);

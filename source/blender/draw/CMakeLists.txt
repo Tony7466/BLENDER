@@ -302,7 +302,8 @@ set(SRC
   engines/external/external_engine.h
   engines/image/image_batches.hh
   engines/image/image_buffer_cache.hh
-  engines/image/image_drawing_mode.hh
+  engines/image/image_drawing_mode_image_space.hh
+  engines/image/image_drawing_mode_screen_space.hh
   engines/image/image_engine.h
   engines/image/image_enums.hh
   engines/image/image_instance_data.hh
@@ -750,6 +751,8 @@ set(GLSL_SRC
   engines/image/shaders/image_engine_color_vert.glsl
   engines/image/shaders/image_engine_depth_frag.glsl
   engines/image/shaders/image_engine_depth_vert.glsl
+  engines/image/shaders/image_engine_image_frag.glsl
+  engines/image/shaders/image_engine_image_vert.glsl
 )
 
 set(GLSL_C)
