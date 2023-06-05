@@ -728,7 +728,12 @@ static void rna_ID_asset_clear(ID *id)
 static void rna_ID_asset_data_set(PointerRNA *ptr, PointerRNA value, struct ReportList *reports)
 {
   ID *destination = ptr->data;
+
   const AssetMetaData *asset_data = value.data;
+  if (asset_data == NULL) {
+    rna_ID_asset_clear(destination);
+    return;
+  }
 
   const bool dest_already_was_asset = (destination->asset_data != NULL);
   const bool assigned_ok = ED_asset_copy_to_id(asset_data, destination);
