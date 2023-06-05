@@ -4501,6 +4501,9 @@ def km_grease_pencil_edit(params):
         {"items": items},
     )
 
+    items.extend([
+        *_template_items_select_actions(params, "grease_pencil.select_all"),
+    ])
 
     return keymap
 
