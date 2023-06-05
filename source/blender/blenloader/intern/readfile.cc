@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -183,7 +184,7 @@ static BHead *find_bhead_from_code_name(FileData *fd, const short idcode, const 
 static BHead *find_bhead_from_idname(FileData *fd, const char *idname);
 
 struct BHeadN {
-  struct BHeadN *next, *prev;
+  BHeadN *next, *prev;
 #ifdef USE_BHEAD_READ_ON_DEMAND
   /** Use to read the data from the file directly into memory as needed. */
   off64_t file_offset;
@@ -191,7 +192,7 @@ struct BHeadN {
   bool has_data;
 #endif
   bool is_memchunk_identical;
-  struct BHead bhead;
+  BHead bhead;
 };
 
 #define BHEADN_FROM_BHEAD(bh) ((BHeadN *)POINTER_OFFSET(bh, -int(offsetof(BHeadN, bhead))))
@@ -2902,6 +2903,8 @@ static const char *dataname(short id_code)
       return "Data from VO";
     case ID_SIM:
       return "Data from SIM";
+    case ID_GP:
+      return "Data from GP";
   }
   return "Data from Lib Block";
 }
@@ -3137,7 +3140,7 @@ static void read_libblock_undo_restore_at_old_address(FileData *fd, Main *main, 
 
   /* We do need remapping of internal pointers to the ID itself here.
    *
-   * Passing a NULL BMain means that not all potential runtime data (like collections' parent
+   * Passing a null #Main means that not all potential runtime data (like collections' parent
    * pointers etc.) will be up-to-date. However, this should not be a problem here, since these
    * data are re-generated later in file-read process anyway. */
   BKE_lib_id_swap_full(nullptr,
@@ -3492,7 +3495,7 @@ static void do_versions(FileData *fd, Library *lib, Main *main)
   if (G.debug & G_DEBUG) {
     char build_commit_datetime[32];
     time_t temp_time = main->build_commit_timestamp;
-    struct tm *tm = (temp_time) ? gmtime(&temp_time) : nullptr;
+    tm *tm = (temp_time) ? gmtime(&temp_time) : nullptr;
     if (LIKELY(tm)) {
       strftime(build_commit_datetime, sizeof(build_commit_datetime), "%Y-%m-%d %H:%M", tm);
     }
