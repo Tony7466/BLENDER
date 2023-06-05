@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -40,7 +42,7 @@ bool operator==(const CachedTextureKey &a, const CachedTextureKey &b);
  * Cached Texture.
  *
  * A cached resource that computes and caches a GPU texture containing the result of evaluating the
- * given texture ID on a space that spans the given size, parametrized by the given parameters. */
+ * given texture ID on a space that spans the given size, parameterized by the given parameters. */
 class CachedTexture : public CachedResource {
  private:
   GPUTexture *color_texture_ = nullptr;

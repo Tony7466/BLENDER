@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -873,7 +874,7 @@ static void gpencil_duplicate_points(bGPdata *gpd,
         gpsd = BKE_gpencil_stroke_duplicate((bGPDstroke *)gps, false, true);
 
         /* saves original layer name */
-        BLI_strncpy(gpsd->runtime.tmp_layerinfo, layername, sizeof(gpsd->runtime.tmp_layerinfo));
+        STRNCPY(gpsd->runtime.tmp_layerinfo, layername);
 
         /* now, make a new points array, and copy of the relevant parts */
         gpsd->points = MEM_mallocN(sizeof(bGPDspoint) * len, "gps stroke points copy");
@@ -951,8 +952,7 @@ static int gpencil_duplicate_exec(bContext *C, wmOperator *op)
             /* make direct copies of the stroke and its points */
             gpsd = BKE_gpencil_stroke_duplicate(gps, true, true);
 
-            BLI_strncpy(
-                gpsd->runtime.tmp_layerinfo, gpl->info, sizeof(gpsd->runtime.tmp_layerinfo));
+            STRNCPY(gpsd->runtime.tmp_layerinfo, gpl->info);
 
             /* Initialize triangle information. */
             BKE_gpencil_stroke_geometry_update(gpd, gpsd);
@@ -1522,8 +1522,7 @@ static int gpencil_strokes_copy_exec(bContext *C, wmOperator *op)
                 gpsd = BKE_gpencil_stroke_duplicate(gps, false, true);
 
                 /* saves original layer name */
-                BLI_strncpy(
-                    gpsd->runtime.tmp_layerinfo, gpl->info, sizeof(gpsd->runtime.tmp_layerinfo));
+                STRNCPY(gpsd->runtime.tmp_layerinfo, gpl->info);
                 gpsd->points = MEM_dupallocN(gps->points);
                 if (gps->dvert != NULL) {
                   gpsd->dvert = MEM_dupallocN(gps->dvert);
@@ -5753,7 +5752,7 @@ void GPENCIL_OT_stroke_cutter(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "flat_caps", 0, "Flat Caps", "");
 }
 
-bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
+bool ED_object_gpencil_exit(Main *bmain, Object *ob)
 {
   bool ok = false;
   if (ob) {

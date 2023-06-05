@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,7 +25,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 
 Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mmd,
                                                           const Mesh *mesh,
@@ -84,7 +85,7 @@ Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mm
   return result;
 }
 
-void BKE_mesh_mirror_apply_mirror_on_axis(struct Main *bmain,
+void BKE_mesh_mirror_apply_mirror_on_axis(Main *bmain,
                                           Mesh *mesh,
                                           const int axis,
                                           const float dist)
@@ -390,7 +391,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     CustomData *ldata = &result->ldata;
     blender::short2 *clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, result->totloop));
-    MLoopNorSpaceArray lnors_spacearr = {nullptr};
+    blender::bke::mesh::CornerNormalSpaceArray lnors_spacearr;
 
     /* The transform matrix of a normal must be
      * the transpose of inverse of transform matrix of the geometry... */
@@ -430,14 +431,18 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
         if (j > src_poly.start()) {
           mirrorj += result_polys[mirror_i].size() - (j - src_poly.start());
         }
+
+        const blender::float3 orig_normal = loop_normals[mirrorj];
         copy_v3_v3(loop_normals[mirrorj], loop_normals[j]);
         mul_m4_v3(mtx_nor, loop_normals[mirrorj]);
-        BKE_lnor_space_custom_normal_to_data(
-            lnors_spacearr.lspacearr[mirrorj], loop_normals[mirrorj], clnors[mirrorj]);
+
+        const int space_index = lnors_spacearr.corner_space_indices[mirrorj];
+        blender::bke::mesh::lnor_space_custom_normal_to_data(&lnors_spacearr.spaces[space_index],
+                                                             orig_normal,
+                                                             loop_normals[mirrorj],
+                                                             clnors[mirrorj]);
       }
     }
-
-    BKE_lnor_spacearr_free(&lnors_spacearr);
   }
 
   /* handle vgroup stuff */

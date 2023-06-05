@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editorui
@@ -2619,6 +2620,10 @@ void uiTemplateAssetView(struct uiLayout *layout,
                          const char *drag_opname,
                          struct PointerRNA *r_drag_op_properties);
 
+void uiTemplateLightLinkingCollection(struct uiLayout *layout,
+                                      struct PointerRNA *ptr,
+                                      const char *propname);
+
 /**
  * \return: A RNA pointer for the operator properties.
  */
@@ -2891,21 +2896,21 @@ void uiItemMenuF(uiLayout *layout, const char *name, int icon, uiMenuCreateFunc 
  */
 void uiItemMenuFN(uiLayout *layout, const char *name, int icon, uiMenuCreateFunc func, void *argN);
 void uiItemMenuEnumFullO_ptr(uiLayout *layout,
-                             struct bContext *C,
+                             const struct bContext *C,
                              struct wmOperatorType *ot,
                              const char *propname,
                              const char *name,
                              int icon,
                              struct PointerRNA *r_opptr);
 void uiItemMenuEnumFullO(uiLayout *layout,
-                         struct bContext *C,
+                         const struct bContext *C,
                          const char *opname,
                          const char *propname,
                          const char *name,
                          int icon,
                          struct PointerRNA *r_opptr);
 void uiItemMenuEnumO(uiLayout *layout,
-                     struct bContext *C,
+                     const struct bContext *C,
                      const char *opname,
                      const char *propname,
                      const char *name,
@@ -3175,7 +3180,7 @@ const char *UI_key_event_operator_string(const struct bContext *C,
                                          IDProperty *properties,
                                          const bool is_strict,
                                          char *result,
-                                         const int result_len);
+                                         const int result_maxncpy);
 
 /* ui_interface_region_tooltip.c */
 

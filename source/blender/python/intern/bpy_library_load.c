@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -241,8 +243,8 @@ static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *k
 
   ret = PyObject_New(BPy_Library, &bpy_lib_Type);
 
-  BLI_strncpy(ret->relpath, filepath, sizeof(ret->relpath));
-  BLI_strncpy(ret->abspath, filepath, sizeof(ret->abspath));
+  STRNCPY(ret->relpath, filepath);
+  STRNCPY(ret->abspath, filepath);
   BLI_path_abs(ret->abspath, BKE_main_blendfile_path(bmain));
 
   ret->bmain = bmain;
@@ -324,8 +326,8 @@ static PyObject *bpy_lib_enter(BPy_Library *self)
 
   /* create a dummy */
   self_from = PyObject_New(BPy_Library, &bpy_lib_Type);
-  BLI_strncpy(self_from->relpath, self->relpath, sizeof(self_from->relpath));
-  BLI_strncpy(self_from->abspath, self->abspath, sizeof(self_from->abspath));
+  STRNCPY(self_from->relpath, self->relpath);
+  STRNCPY(self_from->abspath, self->abspath);
 
   self_from->blo_handle = NULL;
   self_from->flag = 0;
@@ -458,7 +460,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
 
   /* here appending/linking starts */
   const int id_tag_extra = self->bmain_is_temp ? LIB_TAG_TEMP_MAIN : 0;
-  struct LibraryLink_Params liblink_params;
+  LibraryLink_Params liblink_params;
   BLO_library_link_params_init(&liblink_params, bmain, self->flag, id_tag_extra);
 
   BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(

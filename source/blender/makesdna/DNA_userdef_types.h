@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -253,7 +254,7 @@ typedef struct ThemeSpace {
   unsigned char button_text[4];
   unsigned char button_text_hi[4];
 
-  /* listview regions */
+  /* List-view regions. */
   /** Region background. */
   unsigned char list[4];
   /** Panel title. */
@@ -343,6 +344,9 @@ typedef struct ThemeSpace {
   unsigned char nodeclass_shader[4], nodeclass_script[4];
   unsigned char nodeclass_pattern[4], nodeclass_layout[4];
   unsigned char nodeclass_geometry[4], nodeclass_attribute[4];
+
+  unsigned char node_zone_simulation[4];
+  unsigned char simulated_frames[4];
 
   /** For sequence editor. */
   unsigned char movie[4], movieclip[4], mask[4], image[4], scene[4], audio[4];
@@ -486,7 +490,7 @@ typedef struct bTheme {
   ThemeUI tui;
 
   /**
-   * Individual Spacetypes:
+   * Individual Space-types:
    * \note Ensure #UI_THEMESPACE_END is updated when adding.
    */
   ThemeSpace space_properties;
@@ -562,6 +566,7 @@ typedef struct bUserMenuItem_Op {
   bUserMenuItem item;
   char op_idname[64];
   struct IDProperty *prop;
+  char op_prop_enum[64];
   char opcontext; /* #wmOperatorCallContext */
   char _pad0[7];
 } bUserMenuItem_Op;
@@ -589,8 +594,8 @@ enum {
 typedef struct bUserAssetLibrary {
   struct bUserAssetLibrary *next, *prev;
 
-  char name[64];   /* MAX_NAME */
-  char path[1024]; /* FILE_MAX */
+  char name[64];      /* MAX_NAME */
+  char dirpath[1024]; /* FILE_MAX */
 
   short import_method; /* eAssetImportMethod */
   short flag;          /* eAssetLibrary_Flag */
@@ -671,9 +676,11 @@ typedef struct UserDef_Experimental {
   char use_override_templates;
   char enable_eevee_next;
   char use_sculpt_texture_paint;
+  char use_grease_pencil_version3;
+  char enable_overlay_next;
   char enable_workbench_next;
   char use_new_volume_nodes;
-  char _pad[6];
+  char _pad[4];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -1138,7 +1145,7 @@ typedef enum eUserpref_UI_Flag {
   USER_UIFLAG_UNUSED_3 = (1 << 19), /* Cleared. */
   USER_ZOOM_TO_MOUSEPOS = (1 << 20),
   USER_SHOW_FPS = (1 << 21),
-  USER_UIFLAG_UNUSED_22 = (1 << 22), /* cleared */
+  USER_REGISTER_ALL_USERS = (1 << 22),
   USER_MENUFIXEDORDER = (1 << 23),
   USER_CONTINUOUS_MOUSE = (1 << 24),
   USER_ZOOM_INVERT = (1 << 25),

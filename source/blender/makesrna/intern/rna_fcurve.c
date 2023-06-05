@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -452,7 +454,7 @@ void rna_DriverVariable_name_set(PointerRNA *ptr, const char *value)
 {
   DriverVar *data = (DriverVar *)(ptr->data);
 
-  BLI_strncpy_utf8(data->name, value, 64);
+  STRNCPY_UTF8(data->name, value);
   driver_variable_name_validate(data);
   driver_variable_unique_name(data);
 }
@@ -536,7 +538,7 @@ static void rna_FKeyframe_ctrlpoint_ui_set(PointerRNA *ptr, const float *values)
   const float frame_delta = values[0] - bezt->vec[1][0];
   const float value_delta = values[1] - bezt->vec[1][1];
 
-  /** To match the behavior of transforming the keyframe Co using the Graph Editor
+  /* To match the behavior of transforming the keyframe Co using the Graph Editor
    * (transform_convert_graph.c) flushTransGraphData(), we will also move the handles by
    * the same amount as the Co delta. */
 
@@ -2148,7 +2150,7 @@ static void rna_def_channeldriver(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Simple Expression",
-      "The scripted expression can be evaluated without using the full python interpreter");
+      "The scripted expression can be evaluated without using the full Python interpreter");
 
   /* Functions */
   RNA_api_drivers(srna);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -537,7 +539,7 @@ wmOperatorTypeMacro *WM_operatortype_macro_define(wmOperatorType *ot, const char
 {
   wmOperatorTypeMacro *otmacro = MEM_callocN(sizeof(wmOperatorTypeMacro), "wmOperatorTypeMacro");
 
-  BLI_strncpy(otmacro->idname, idname, OP_MAX_TYPENAME);
+  STRNCPY(otmacro->idname, idname);
 
   /* do this on first use, since operatordefinitions might have been not done yet */
   WM_operator_properties_alloc(&(otmacro->ptr), &(otmacro->properties), idname);
@@ -568,7 +570,7 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
   BLI_freelistN(&ot->macro);
 }
 
-const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *properties)
+const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
 {
   const char *name = NULL;
 
@@ -579,9 +581,7 @@ const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *p
   return (name && name[0]) ? name : RNA_struct_ui_name(ot->srna);
 }
 
-char *WM_operatortype_description(struct bContext *C,
-                                  struct wmOperatorType *ot,
-                                  struct PointerRNA *properties)
+char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   if (ot->get_description && properties) {
     char *description = ot->get_description(C, ot, properties);
@@ -601,9 +601,7 @@ char *WM_operatortype_description(struct bContext *C,
   return NULL;
 }
 
-char *WM_operatortype_description_or_name(struct bContext *C,
-                                          struct wmOperatorType *ot,
-                                          struct PointerRNA *properties)
+char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   char *text = WM_operatortype_description(C, ot, properties);
   if (text == NULL) {

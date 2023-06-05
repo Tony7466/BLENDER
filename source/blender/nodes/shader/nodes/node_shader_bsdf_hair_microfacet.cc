@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
 
@@ -11,16 +12,16 @@ namespace blender::nodes::node_shader_bsdf_hair_microfacet_cc {
 /* Color, melanin and absorption coefficient default to approximately same brownish hair. */
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Color"))
+  b.add_input<decl::Color>("Color")
       .default_value({0.017513f, 0.005763f, 0.002059f, 1.0f})
       .description("The RGB color of the strand. Only used in Direct Coloring");
-  b.add_input<decl::Float>(N_("Melanin"))
+  b.add_input<decl::Float>("Melanin")
       .default_value(0.8f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("Hair pigment. Specify its absolute quantity between 0 and 1");
-  b.add_input<decl::Float>(N_("Melanin Redness"))
+  b.add_input<decl::Float>("Melanin Redness")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -28,14 +29,14 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Fraction of pheomelanin in melanin, gives yellowish to reddish color, as opposed to "
           "the brownish to black color of eumelanin");
-  b.add_input<decl::Color>(N_("Tint"))
+  b.add_input<decl::Color>("Tint")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .description("Additional color used for dyeing the hair.");
-  b.add_input<decl::Vector>(N_("Absorption Coefficient"))
+  b.add_input<decl::Vector>("Absorption Coefficient")
       .default_value({0.245531f, 0.52f, 1.365f})
       .min(0.0f)
       .max(1000.0f);
-  b.add_input<decl::Float>(N_("Aspect Ratio"))
+  b.add_input<decl::Float>("Aspect Ratio")
       .default_value(0.85f)
       .min(0.0f)
       .max(1.0f)
@@ -45,17 +46,17 @@ static void node_declare(NodeDeclarationBuilder &b)
           "the major axis (the major axis is aligned with the curve normal). Recommended values "
           "are 0.8~1 for Asian hair, 0.65~0.9 for Caucasian hair, 0.5~0.65 for African hair. Set "
           "this to 1 for circular cross-section");
-  b.add_input<decl::Float>(N_("Roughness"), "Hair Roughness")
+  b.add_input<decl::Float>("Roughness", "Hair Roughness")
       .default_value(0.3f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("Microfacet roughness");
-  b.add_input<decl::Float>(N_("IOR")).default_value(1.55f).min(0.0f).max(1000.0f).description(
+  b.add_input<decl::Float>("IOR").default_value(1.55f).min(0.0f).max(1000.0f).description(
       "Index of refraction determines how much the ray is bent. At 1.0 rays pass straight through "
       "like in a transparent material; higher values cause larger deflection in angle. Default "
       "value is 1.55 (the IOR of keratin)");
-  b.add_input<decl::Float>(N_("Offset"))
+  b.add_input<decl::Float>("Offset")
       .default_value(2.0f * ((float)M_PI) / 180.0f)
       .min(-M_PI_2)
       .max(M_PI_2)
@@ -63,21 +64,21 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "The tilt angle of the cuticle scales (the outermost part of the hair). They are always "
           "tilted towards the hair root. The value is usually between 2 and 4 for human hair");
-  b.add_input<decl::Float>(N_("Random Color"))
+  b.add_input<decl::Float>("Random Color")
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("Vary the melanin concentration for each strand");
-  b.add_input<decl::Float>(N_("Random Roughness"))
+  b.add_input<decl::Float>("Random Roughness")
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("Vary roughness values for each strand");
-  b.add_input<decl::Float>(N_("Random")).hide_value();
-  b.add_input<decl::Float>(N_("Weight")).unavailable();
-  b.add_input<decl::Float>(N_("Reflection"), "R lobe")
+  b.add_input<decl::Float>("Random").hide_value();
+  b.add_input<decl::Float>("Weight").unavailable();
+  b.add_input<decl::Float>("Reflection", "R lobe")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -85,7 +86,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Optional factor for modulating the first light bounce off the hair surface. The color "
           "of this component is always white. Keep this 1.0 for physical correctness");
-  b.add_input<decl::Float>(N_("Transmission"), "TT lobe")
+  b.add_input<decl::Float>("Transmission", "TT lobe")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -93,7 +94,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Optional factor for modulating the transmission component. Picks up the color of the "
           "pigment inside the hair. Keep this 1.0 for physical correctness");
-  b.add_input<decl::Float>(N_("Secondary Reflection"), "TRT lobe")
+  b.add_input<decl::Float>("Secondary Reflection", "TRT lobe")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -103,7 +104,7 @@ static void node_declare(NodeDeclarationBuilder &b)
           "reflected off the backside of the hair and then transmitted out of the hair. This "
           "component is oriented approximately around the incoming direction, and picks up the "
           "color of the pigment inside the hair. Keep this 1.0 for physical correctness");
-  b.add_output<decl::Shader>(N_("BSDF"));
+  b.add_output<decl::Shader>("BSDF");
 }
 
 static void node_shader_buts_microfacet_hair(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -132,26 +133,27 @@ static void node_shader_update_hair_microfacet(bNodeTree *ntree, bNode *node)
 
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (STREQ(sock->name, "Color")) {
-      nodeSetSocketAvailability(ntree, sock, parametrization == SHD_MICROFACET_HAIR_REFLECTANCE);
+      bke::nodeSetSocketAvailability(
+          ntree, sock, parametrization == SHD_MICROFACET_HAIR_REFLECTANCE);
     }
     else if (STREQ(sock->name, "Melanin")) {
-      nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_MICROFACET_HAIR_PIGMENT_CONCENTRATION);
     }
     else if (STREQ(sock->name, "Melanin Redness")) {
-      nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_MICROFACET_HAIR_PIGMENT_CONCENTRATION);
     }
     else if (STREQ(sock->name, "Tint")) {
-      nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_MICROFACET_HAIR_PIGMENT_CONCENTRATION);
     }
     else if (STREQ(sock->name, "Absorption Coefficient")) {
-      nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_MICROFACET_HAIR_DIRECT_ABSORPTION);
     }
     else if (STREQ(sock->name, "Random Color")) {
-      nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_MICROFACET_HAIR_PIGMENT_CONCENTRATION);
     }
   }
@@ -179,7 +181,7 @@ void register_node_type_sh_bsdf_hair_microfacet()
       &ntype, SH_NODE_BSDF_HAIR_MICROFACET, "Microfacet Hair BSDF", NODE_CLASS_SHADER);
   ntype.declare = file_ns::node_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_microfacet_hair;
-  node_type_size_preset(&ntype, NODE_SIZE_LARGE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
   ntype.initfunc = file_ns::node_shader_init_hair_microfacet;
   ntype.updatefunc = file_ns::node_shader_update_hair_microfacet;
   ntype.gpu_fn = file_ns::node_shader_gpu_hair_microfacet;

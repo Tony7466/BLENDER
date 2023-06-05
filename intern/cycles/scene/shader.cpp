@@ -14,7 +14,6 @@
 #include "scene/procedural.h"
 #include "scene/scene.h"
 #include "scene/shader.h"
-#include "scene/shader.tables"
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include "scene/svm.h"
@@ -29,6 +28,8 @@
 #  include <OpenColorIO/OpenColorIO.h>
 namespace OCIO = OCIO_NAMESPACE;
 #endif
+
+#include "scene/shader.tables"
 
 CCL_NAMESPACE_BEGIN
 
@@ -565,22 +566,14 @@ void ShaderManager::device_update_common(Device * /*device*/,
 
   dscene->shaders.copy_to_device();
 
-  /* multi ggx lookup tables */
+  /* lookup tables */
   KernelTables *ktables = &dscene->data.tables;
-
-  auto bsdf_table = [&](int *offset_entry, const float *data, size_t size, string name) {
-    if (!(bsdf_lookup_tables.count(name))) {
-      vector<float> entries(data, data + size);
-      bsdf_lookup_tables[name] = scene->lookup_tables->add_table(dscene, entries);
-    }
-    *offset_entry = bsdf_lookup_tables[name];
-  };
-  bsdf_table(
-      &ktables->ggx_glass_E_offset, &table_ggx_glass_E[0][0][0], 16 * 16 * 16, "ggx_glass_E");
-  bsdf_table(&ktables->ggx_glass_inv_E_offset,
-             &table_ggx_glass_inv_E[0][0][0],
-             16 * 16 * 16,
-             "ggx_glass_inv_E");
+  ktables->ggx_E = ensure_bsdf_table(dscene, scene, table_ggx_E);
+  ktables->ggx_Eavg = ensure_bsdf_table(dscene, scene, table_ggx_Eavg);
+  ktables->ggx_glass_E = ensure_bsdf_table(dscene, scene, table_ggx_glass_E);
+  ktables->ggx_glass_Eavg = ensure_bsdf_table(dscene, scene, table_ggx_glass_Eavg);
+  ktables->ggx_glass_inv_E = ensure_bsdf_table(dscene, scene, table_ggx_glass_inv_E);
+  ktables->ggx_glass_inv_Eavg = ensure_bsdf_table(dscene, scene, table_ggx_glass_inv_Eavg);
 
   /* integrator */
   KernelIntegrator *kintegrator = &dscene->data.integrator;
@@ -603,10 +596,11 @@ void ShaderManager::device_update_common(Device * /*device*/,
 
 void ShaderManager::device_free_common(Device * /*device*/, DeviceScene *dscene, Scene *scene)
 {
-  for (auto &entry : bsdf_lookup_tables) {
+  for (auto &entry : bsdf_tables) {
     scene->lookup_tables->remove_table(&entry.second);
   }
-  bsdf_lookup_tables.clear();
+  bsdf_tables.clear();
+
   dscene->shaders.free();
 }
 
@@ -909,6 +903,19 @@ void ShaderManager::init_xyz_transforms()
   rec709_to_b = float4_to_float3(rec709_to_rgb.z);
   is_rec709 = transform_equal_threshold(xyz_to_rgb, xyz_to_rec709, 0.0001f);
 #endif
+}
+
+size_t ShaderManager::ensure_bsdf_table_impl(DeviceScene *dscene,
+                                             Scene *scene,
+                                             const float *table,
+                                             size_t n)
+{
+  /* Since the BSDF tables are static arrays, we can use their address to identify them. */
+  if (!(bsdf_tables.count(table))) {
+    vector<float> entries(table, table + n);
+    bsdf_tables[table] = scene->lookup_tables->add_table(dscene, entries);
+  }
+  return bsdf_tables[table];
 }
 
 CCL_NAMESPACE_END

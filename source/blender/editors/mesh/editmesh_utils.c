@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -555,7 +556,7 @@ UvMapVert *BM_uv_vert_map_at_index(UvVertMap *vmap, uint v)
   return vmap->vert[v];
 }
 
-struct UvElement **BM_uv_element_map_ensure_head_table(struct UvElementMap *element_map)
+UvElement **BM_uv_element_map_ensure_head_table(UvElementMap *element_map)
 {
   if (element_map->head_table) {
     return element_map->head_table;
@@ -581,7 +582,7 @@ struct UvElement **BM_uv_element_map_ensure_head_table(struct UvElementMap *elem
   return element_map->head_table;
 }
 
-int *BM_uv_element_map_ensure_unique_index(struct UvElementMap *element_map)
+int *BM_uv_element_map_ensure_unique_index(UvElementMap *element_map)
 {
   if (!element_map->unique_index_table) {
     element_map->unique_index_table = MEM_callocN(
@@ -610,7 +611,7 @@ int *BM_uv_element_map_ensure_unique_index(struct UvElementMap *element_map)
   return element_map->unique_index_table;
 }
 
-int BM_uv_element_get_unique_index(struct UvElementMap *element_map, struct UvElement *child)
+int BM_uv_element_get_unique_index(UvElementMap *element_map, UvElement *child)
 {
   int *unique_index = BM_uv_element_map_ensure_unique_index(element_map);
   int index = child - element_map->storage;
@@ -686,8 +687,8 @@ static int bm_uv_edge_select_build_islands(UvElementMap *element_map,
 
         /* Scan forwards around the BMFace that contains element->l. */
         if (!uv_selected || uvedit_edge_select_test(scene, element->l, offsets)) {
-          UvElement *next = BM_uv_element_get(element_map, element->l->next->f, element->l->next);
-          if (next->island == INVALID_ISLAND) {
+          UvElement *next = BM_uv_element_get(element_map, element->l->next);
+          if (next && next->island == INVALID_ISLAND) {
             UvElement *tail = element_map->head_table[next - element_map->storage];
             stack_uv[stacksize_uv++] = tail;
             while (tail) {
@@ -702,8 +703,8 @@ static int bm_uv_edge_select_build_islands(UvElementMap *element_map,
 
         /* Scan backwards around the BMFace that contains element->l. */
         if (!uv_selected || uvedit_edge_select_test(scene, element->l->prev, offsets)) {
-          UvElement *prev = BM_uv_element_get(element_map, element->l->prev->f, element->l->prev);
-          if (prev->island == INVALID_ISLAND) {
+          UvElement *prev = BM_uv_element_get(element_map, element->l->prev);
+          if (prev && prev->island == INVALID_ISLAND) {
             UvElement *tail = element_map->head_table[prev - element_map->storage];
             stack_uv[stacksize_uv++] = tail;
             while (tail) {
@@ -1186,11 +1187,11 @@ void BM_uv_element_map_free(UvElementMap *element_map)
   }
 }
 
-UvElement *BM_uv_element_get(const UvElementMap *element_map, const BMFace *efa, const BMLoop *l)
+UvElement *BM_uv_element_get(const UvElementMap *element_map, const BMLoop *l)
 {
   UvElement *element = element_map->vertex[BM_elem_index_get(l->v)];
   while (element) {
-    if (element->l->f == efa) {
+    if (element->l == l) {
       return element;
     }
     element = element->next;
@@ -1696,7 +1697,7 @@ void EDBM_update(Mesh *mesh, const struct EDBMUpdate_Params *params)
 #endif
 }
 
-void EDBM_update_extern(struct Mesh *me, const bool do_tessellation, const bool is_destructive)
+void EDBM_update_extern(Mesh *me, const bool do_tessellation, const bool is_destructive)
 {
   EDBM_update(me,
               &(const struct EDBMUpdate_Params){
@@ -1831,7 +1832,7 @@ BMElem *EDBM_elem_from_index_any_multi(const Scene *scene,
  * \{ */
 
 static BMFace *edge_ray_cast(
-    struct BMBVHTree *tree, const float co[3], const float dir[3], float *r_hitout, BMEdge *e)
+    BMBVHTree *tree, const float co[3], const float dir[3], float *r_hitout, BMEdge *e)
 {
   BMFace *f = BKE_bmbvh_ray_cast(tree, co, dir, 0.0f, NULL, r_hitout, NULL);
 
@@ -1849,12 +1850,8 @@ static void scale_point(float c1[3], const float p[3], const float s)
   add_v3_v3(c1, p);
 }
 
-bool BMBVH_EdgeVisible(struct BMBVHTree *tree,
-                       BMEdge *e,
-                       struct Depsgraph *depsgraph,
-                       ARegion *region,
-                       View3D *v3d,
-                       Object *obedit)
+bool BMBVH_EdgeVisible(
+    BMBVHTree *tree, BMEdge *e, Depsgraph *depsgraph, ARegion *region, View3D *v3d, Object *obedit)
 {
   BMFace *f;
   float co1[3], co2[3], co3[3], dir1[3], dir2[3], dir3[3];
@@ -1928,7 +1925,7 @@ void EDBM_project_snap_verts(
   ED_view3d_init_mats_rv3d(obedit, region->regiondata);
 
   Scene *scene = CTX_data_scene(C);
-  struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create(scene, 0);
+  SnapObjectContext *snap_context = ED_transform_snap_object_context_create(scene, 0);
 
   eSnapTargetOP target_op = SCE_SNAP_TARGET_NOT_ACTIVE;
   const int snap_flag = scene->toolsettings->snap_flag;

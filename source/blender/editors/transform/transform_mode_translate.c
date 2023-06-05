@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -174,17 +175,17 @@ static void transdata_elem_translate_fn(void *__restrict iter_data_v,
  * \{ */
 
 static void translate_dist_to_str(char *r_str,
-                                  const int len_max,
+                                  const int r_str_maxncpy,
                                   const float val,
                                   const UnitSettings *unit)
 {
   if (unit) {
     BKE_unit_value_as_string(
-        r_str, len_max, val * unit->scale_length, 4, B_UNIT_LENGTH, unit, false);
+        r_str, r_str_maxncpy, val * unit->scale_length, 4, B_UNIT_LENGTH, unit, false);
   }
   else {
     /* Check range to prevent string buffer overflow. */
-    BLI_snprintf(r_str, len_max, IN_RANGE_INCL(val, -1e10f, 1e10f) ? "%.4f" : "%.4e", val);
+    BLI_snprintf(r_str, r_str_maxncpy, IN_RANGE_INCL(val, -1e10f, 1e10f) ? "%.4f" : "%.4e", val);
   }
 }
 
@@ -609,7 +610,6 @@ static void applyTranslation(TransInfo *t, const int UNUSED(mval[2]))
       add_v3_v3(global_dir, values_ofs);
     }
 
-    t->tsnap.snapElem = SCE_SNAP_MODE_NONE;
     transform_snap_mixed_apply(t, global_dir);
     translate_snap_grid(t, global_dir);
 
@@ -666,7 +666,7 @@ static void applyTranslationMatrix(TransInfo *t, float mat_xform[4][4])
   add_v3_v3(mat_xform[3], delta);
 }
 
-void initTranslation(TransInfo *t)
+static void initTranslation(TransInfo *t, wmOperator *UNUSED(op))
 {
   if (t->spacetype == SPACE_ACTION) {
     /* this space uses time translate */
@@ -675,12 +675,8 @@ void initTranslation(TransInfo *t)
                "Use 'Time_Translate' transform mode instead of 'Translation' mode "
                "for translating keyframes in Dope Sheet Editor");
     t->state = TRANS_CANCEL;
+    return;
   }
-
-  t->transform = applyTranslation;
-  t->transform_matrix = applyTranslationMatrix;
-  t->tsnap.snap_mode_apply_fn = ApplySnapTranslation;
-  t->tsnap.snap_mode_distance_fn = transform_snap_distance_len_squared_fn;
 
   initMouseInputMode(t, &t->mouse, INPUT_VECTOR);
 
@@ -716,3 +712,14 @@ void initTranslation(TransInfo *t)
 }
 
 /** \} */
+
+TransModeInfo TransMode_translate = {
+    /*flags*/ 0,
+    /*init_fn*/ initTranslation,
+    /*transform_fn*/ applyTranslation,
+    /*transform_matrix_fn*/ applyTranslationMatrix,
+    /*handle_event_fn*/ NULL,
+    /*snap_distance_fn*/ transform_snap_distance_len_squared_fn,
+    /*snap_apply_fn*/ ApplySnapTranslation,
+    /*draw_fn*/ NULL,
+};

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edrend
@@ -35,7 +36,7 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -81,7 +82,7 @@ struct RenderJob {
    */
   Depsgraph *depsgraph;
   Render *re;
-  struct Object *camera_override;
+  Object *camera_override;
   bool v3d_override;
   bool anim, write_still;
   Image *image;
@@ -207,11 +208,11 @@ static void image_buffer_rect_update(RenderJob *rj,
     rv = RE_RenderViewGetById(rr, view_id);
 
     /* find current float rect for display, first case is after composite... still weak */
-    if (rv->rectf) {
-      rectf = rv->rectf;
+    if (rv->combined_buffer.data) {
+      rectf = rv->combined_buffer.data;
     }
     else {
-      if (rv->rect32) {
+      if (rv->byte_buffer.data) {
         /* special case, currently only happens with sequencer rendering,
          * which updates the whole frame, so we can only mark display buffer
          * as invalid here (sergey)
@@ -234,7 +235,7 @@ static void image_buffer_rect_update(RenderJob *rj,
     linear_offset_y = offset_y;
   }
   else {
-    rectf = ibuf->rect_float;
+    rectf = ibuf->float_buffer.data;
     linear_stride = ibuf->x;
     linear_offset_x = 0;
     linear_offset_y = 0;
@@ -311,7 +312,7 @@ static int screen_render_exec(bContext *C, wmOperator *op)
   Main *mainp = CTX_data_main(C);
   const bool is_animation = RNA_boolean_get(op->ptr, "animation");
   const bool is_write_still = RNA_boolean_get(op->ptr, "write_still");
-  struct Object *camera_override = v3d ? V3D_CAMERA_LOCAL(v3d) : nullptr;
+  Object *camera_override = v3d ? V3D_CAMERA_LOCAL(v3d) : nullptr;
 
   /* Cannot do render if there is not this function. */
   if (re_type->render == nullptr) {
@@ -938,7 +939,7 @@ static int screen_render_invoke(bContext *C, wmOperator *op, const wmEvent *even
   const bool is_write_still = RNA_boolean_get(op->ptr, "write_still");
   const bool use_viewport = RNA_boolean_get(op->ptr, "use_viewport");
   View3D *v3d = use_viewport ? CTX_wm_view3d(C) : nullptr;
-  struct Object *camera_override = v3d ? V3D_CAMERA_LOCAL(v3d) : nullptr;
+  Object *camera_override = v3d ? V3D_CAMERA_LOCAL(v3d) : nullptr;
   const char *name;
   ScrArea *area;
 

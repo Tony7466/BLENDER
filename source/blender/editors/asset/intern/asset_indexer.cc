@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -388,8 +390,7 @@ static void init_indexer_entry_from_value(FileIndexerEntry &indexer_entry,
   indexer_entry.idcode = entry.get_idcode();
 
   const std::string name = entry.get_name();
-  BLI_strncpy(
-      indexer_entry.datablock_info.name, name.c_str(), sizeof(indexer_entry.datablock_info.name));
+  STRNCPY(indexer_entry.datablock_info.name, name.c_str());
 
   AssetMetaData *asset_data = BKE_asset_metadata_create();
   indexer_entry.datablock_info.asset_data = asset_data;
@@ -421,9 +422,7 @@ static void init_indexer_entry_from_value(FileIndexerEntry &indexer_entry,
   }
 
   const StringRefNull catalog_name = entry.get_catalog_name();
-  BLI_strncpy(asset_data->catalog_simple_name,
-              catalog_name.c_str(),
-              sizeof(asset_data->catalog_simple_name));
+  STRNCPY(asset_data->catalog_simple_name, catalog_name.c_str());
 
   asset_data->catalog_id = entry.get_catalog_id();
 
@@ -549,10 +548,10 @@ struct AssetLibraryIndex {
     if (!BLI_is_dir(index_path)) {
       return;
     }
-    struct direntry *dir_entries = nullptr;
+    direntry *dir_entries = nullptr;
     const int dir_entries_num = BLI_filelist_dir_contents(index_path, &dir_entries);
     for (int i = 0; i < dir_entries_num; i++) {
-      struct direntry *entry = &dir_entries[i];
+      direntry *entry = &dir_entries[i];
       if (BLI_str_endswith(entry->relname, ".index.json")) {
         preexisting_file_indices.add_as(std::string(entry->path));
       }
@@ -900,10 +899,10 @@ static void update_index(const char *filename, FileIndexerEntries *entries, void
   asset_index_file.write_contents(content);
 }
 
-static void *init_user_data(const char *root_directory, size_t root_directory_maxlen)
+static void *init_user_data(const char *root_directory, size_t root_directory_maxncpy)
 {
   AssetLibraryIndex *library_index = MEM_new<AssetLibraryIndex>(
-      __func__, StringRef(root_directory, BLI_strnlen(root_directory, root_directory_maxlen)));
+      __func__, StringRef(root_directory, BLI_strnlen(root_directory, root_directory_maxncpy)));
   library_index->collect_preexisting_file_indices();
   library_index->remove_broken_index_files();
   return library_index;

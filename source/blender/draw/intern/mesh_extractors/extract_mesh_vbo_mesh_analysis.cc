@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -162,8 +163,8 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
     BMesh *bm = em->bm;
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-    struct BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
-    struct BMLoop *(*looptris)[3] = em->looptris;
+    BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
+    BMLoop *(*looptris)[3] = em->looptris;
     for (int i = 0; i < mr->tri_len; i++) {
       BMLoop **ltri = looptris[i];
       const int index = BM_elem_index_get(ltri[0]->f);
@@ -214,8 +215,9 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
 
     BVHTree *tree = BKE_bvhtree_from_mesh_get(&treeData, mr->me, BVHTREE_FROM_LOOPTRI, 4);
     const Span<MLoopTri> looptris = mr->looptris;
+    const Span<int> looptri_polys = mr->looptri_polys;
     for (const int i : looptris.index_range()) {
-      const int index = looptris[i].poly;
+      const int index = looptri_polys[i];
       const float *cos[3] = {mr->vert_positions[mr->corner_verts[looptris[i].tri[0]]],
                              mr->vert_positions[mr->corner_verts[looptris[i].tri[1]]],
                              mr->vert_positions[mr->corner_verts[looptris[i].tri[2]]]};
@@ -261,19 +263,20 @@ struct BVHTree_OverlapData {
   Span<float3> positions;
   Span<int> corner_verts;
   Span<MLoopTri> looptris;
+  Span<int> looptri_polys;
   float epsilon;
 };
 
 static bool bvh_overlap_cb(void *userdata, int index_a, int index_b, int /*thread*/)
 {
-  struct BVHTree_OverlapData *data = static_cast<struct BVHTree_OverlapData *>(userdata);
+  BVHTree_OverlapData *data = static_cast<BVHTree_OverlapData *>(userdata);
+
+  if (UNLIKELY(data->looptri_polys[index_a] == data->looptri_polys[index_b])) {
+    return false;
+  }
 
   const MLoopTri *tri_a = &data->looptris[index_a];
   const MLoopTri *tri_b = &data->looptris[index_b];
-
-  if (UNLIKELY(tri_a->poly == tri_b->poly)) {
-    return false;
-  }
 
   const float *tri_a_co[3] = {data->positions[data->corner_verts[tri_a->tri[0]]],
                               data->positions[data->corner_verts[tri_a->tri[1]]],
@@ -311,7 +314,7 @@ static void statvis_calc_intersect(const MeshRenderData *mr, float *r_intersect)
 
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-    struct BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
+    BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
     BVHTreeOverlap *overlap = BKE_bmbvh_overlap_self(bmtree, &overlap_len);
 
     if (overlap) {
@@ -340,18 +343,19 @@ static void statvis_calc_intersect(const MeshRenderData *mr, float *r_intersect)
 
     BVHTree *tree = BKE_bvhtree_from_mesh_get(&treeData, mr->me, BVHTREE_FROM_LOOPTRI, 4);
 
-    struct BVHTree_OverlapData data = {};
+    BVHTree_OverlapData data = {};
     data.positions = mr->vert_positions;
     data.corner_verts = mr->corner_verts;
     data.looptris = mr->looptris;
+    data.looptri_polys = mr->looptri_polys;
     data.epsilon = BLI_bvhtree_get_epsilon(tree);
 
     BVHTreeOverlap *overlap = BLI_bvhtree_overlap_self(tree, &overlap_len, bvh_overlap_cb, &data);
     if (overlap) {
       for (int i = 0; i < overlap_len; i++) {
 
-        for (const IndexRange f_hit : {mr->polys[mr->looptris[overlap[i].indexA].poly],
-                                       mr->polys[mr->looptris[overlap[i].indexB].poly]})
+        for (const IndexRange f_hit : {mr->polys[mr->looptri_polys[overlap[i].indexA]],
+                                       mr->polys[mr->looptri_polys[overlap[i].indexB]]})
         {
           int l_index = f_hit.start();
           for (int k = 0; k < f_hit.size(); k++, l_index++) {

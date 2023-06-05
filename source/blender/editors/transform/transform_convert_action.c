@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -233,7 +234,8 @@ static int GPLayerToTransData(TransData *td,
 
   /* check for select frames on right side of current frame */
   for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
-    if (is_prop_edit || (gpf->flag & GP_FRAME_SELECT)) {
+    const bool is_selected = (gpf->flag & GP_FRAME_SELECT) != 0;
+    if (is_prop_edit || is_selected) {
       if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
         tfd->val = (float)gpf->framenum;
         tfd->sdata = &gpf->framenum;
@@ -243,6 +245,10 @@ static int GPLayerToTransData(TransData *td,
 
         td->center[0] = td->ival;
         td->center[1] = ypos;
+
+        if (is_selected) {
+          td->flag = TD_SELECTED;
+        }
 
         /* Advance `td` now. */
         td++;
@@ -776,7 +782,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
   bAnimContext ac;
 
   const bool canceled = (t->state == TRANS_CANCEL);
-  const bool duplicate = (t->mode == TFM_TIME_DUPLICATE);
+  const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
 
   /* initialize relevant anim-context 'context' data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {

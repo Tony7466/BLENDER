@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -115,11 +116,12 @@ static void extract_lines_adjacency_iter_looptri_bm(const MeshRenderData * /*mr*
 
 static void extract_lines_adjacency_iter_looptri_mesh(const MeshRenderData *mr,
                                                       const MLoopTri *mlt,
-                                                      const int /*elt_index*/,
+                                                      const int elt_index,
                                                       void *_data)
 {
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
-  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[mlt->poly];
+  const int poly_i = mr->looptri_polys[elt_index];
+  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[poly_i];
   if (hidden) {
     return;
   }

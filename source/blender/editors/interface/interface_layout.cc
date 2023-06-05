@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -791,7 +793,7 @@ static void ui_item_enum_expand_elem_exec(uiLayout *layout,
   }
 
   if (RNA_property_flag(prop) & PROP_ENUM_FLAG) {
-    /* If this is set, assert since we're clobbering someone elses callback. */
+    /* If this is set, assert since we're clobbering someone else's callback. */
     /* Buttons get their block's func by default, so we cannot assert in that case either. */
     BLI_assert(ELEM(but->func, nullptr, block->func));
     UI_but_func_set(but, ui_item_enum_expand_handle, but, POINTER_FROM_INT(value));
@@ -3170,8 +3172,7 @@ void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop,
     /* Decorators have own RNA data, using the normal #uiBut RNA members has many side-effects. */
     but->decorated_rnapoin = *ptr;
     but->decorated_rnaprop = prop;
-    /* ui_def_but_rna() sets non-array buttons to have a RNA index of 0. */
-    but->decorated_rnaindex = (!is_array || is_expand) ? i : index;
+    but->decorated_rnaindex = (!is_array) ? -1 : (is_expand) ? i : index;
   }
 }
 
@@ -3550,7 +3551,7 @@ static void menu_item_enum_opname_menu(bContext * /*C*/, uiLayout *layout, void 
 }
 
 void uiItemMenuEnumFullO_ptr(uiLayout *layout,
-                             bContext *C,
+                             const bContext *C,
                              wmOperatorType *ot,
                              const char *propname,
                              const char *name,
@@ -3569,8 +3570,8 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
   }
 
   MenuItemLevel *lvl = MEM_cnew<MenuItemLevel>("MenuItemLevel");
-  BLI_strncpy(lvl->opname, ot->idname, sizeof(lvl->opname));
-  BLI_strncpy(lvl->propname, propname, sizeof(lvl->propname));
+  STRNCPY(lvl->opname, ot->idname);
+  STRNCPY(lvl->propname, propname);
   lvl->opcontext = layout->root->opcontext;
 
   uiBut *but = ui_item_menu(
@@ -3597,7 +3598,7 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
 }
 
 void uiItemMenuEnumFullO(uiLayout *layout,
-                         bContext *C,
+                         const bContext *C,
                          const char *opname,
                          const char *propname,
                          const char *name,
@@ -3618,7 +3619,7 @@ void uiItemMenuEnumFullO(uiLayout *layout,
 }
 
 void uiItemMenuEnumO(uiLayout *layout,
-                     bContext *C,
+                     const bContext *C,
                      const char *opname,
                      const char *propname,
                      const char *name,
@@ -3648,7 +3649,7 @@ void uiItemMenuEnumR_prop(
 
   MenuItemLevel *lvl = MEM_cnew<MenuItemLevel>("MenuItemLevel");
   lvl->rnapoin = *ptr;
-  BLI_strncpy(lvl->propname, RNA_property_identifier(prop), sizeof(lvl->propname));
+  STRNCPY(lvl->propname, RNA_property_identifier(prop));
   lvl->opcontext = layout->root->opcontext;
 
   ui_item_menu(layout,

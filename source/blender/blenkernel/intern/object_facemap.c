@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -100,7 +101,7 @@ bFaceMap *BKE_object_facemap_add_name(Object *ob, const char *name)
 
   fmap = MEM_callocN(sizeof(bFaceMap), __func__);
 
-  BLI_strncpy(fmap->name, name, sizeof(fmap->name));
+  STRNCPY(fmap->name, name);
 
   BLI_addtail(&ob->fmaps, fmap);
 

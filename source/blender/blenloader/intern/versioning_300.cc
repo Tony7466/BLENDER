@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -65,8 +67,9 @@
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_screen.h"
+#include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.h"
@@ -497,44 +500,6 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
   return true;
 }
 
-static bNodeLink *find_connected_link(bNodeTree *ntree, bNodeSocket *in_socket)
-{
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    if (link->tosock == in_socket) {
-      return link;
-    }
-  }
-  return nullptr;
-}
-
-static void add_realize_instances_before_socket(bNodeTree *ntree,
-                                                bNode *node,
-                                                bNodeSocket *geometry_socket)
-{
-  BLI_assert(geometry_socket->type == SOCK_GEOMETRY);
-  bNodeLink *link = find_connected_link(ntree, geometry_socket);
-  if (link == nullptr) {
-    return;
-  }
-
-  /* If the realize instances node is already before this socket, no need to continue. */
-  if (link->fromnode->type == GEO_NODE_REALIZE_INSTANCES) {
-    return;
-  }
-
-  bNode *realize_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
-  realize_node->parent = node->parent;
-  realize_node->locx = node->locx - 100;
-  realize_node->locy = node->locy;
-  nodeAddLink(ntree,
-              link->fromnode,
-              link->fromsock,
-              realize_node,
-              static_cast<bNodeSocket *>(realize_node->inputs.first));
-  link->fromnode = realize_node;
-  link->fromsock = static_cast<bNodeSocket *>(realize_node->outputs.first);
-}
-
 /**
  * If a node used to realize instances implicitly and will no longer do so in 3.0, add a "Realize
  * Instances" node in front of it to avoid changing behavior. Don't do this if the node will be
@@ -682,6 +647,11 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
       seq_speed_factor_fix_rna_path(seq, &scene->adt->drivers);
     }
 
+    /* Pitch value of 0 has been found in some files. This would cause problems. */
+    if (seq->pitch <= 0.0f) {
+      seq->pitch = 1.0f;
+    }
+
     seq->speed_factor = seq->pitch;
   }
   else {
@@ -704,7 +674,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
-  seq->speed_factor = 0.0f;
+  seq->speed_factor = 1.0f;
 
   return true;
 }
@@ -923,7 +893,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
         store_attribute_name_input->default_value);
     const char *uv_map_name = node->type == GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE ? "UVMap" :
                                                                                  "uv_map";
-    BLI_strncpy(name_value->value, uv_map_name, sizeof(name_value->value));
+    STRNCPY(name_value->value, uv_map_name);
 
     nodeAddLink(&ntree,
                 node,
@@ -940,7 +910,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -1074,7 +1044,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -1397,7 +1367,7 @@ static void version_switch_node_input_prefix(Main *bmain)
 
             /* Replace "A" and "B", but keep the unique number suffix at the end. */
             char number_suffix[8];
-            BLI_strncpy(number_suffix, socket->identifier + 1, sizeof(number_suffix));
+            STRNCPY(number_suffix, socket->identifier + 1);
             BLI_string_join(
                 socket->identifier, sizeof(socket->identifier), socket->name, number_suffix);
           }
@@ -1576,22 +1546,14 @@ static void version_geometry_nodes_add_attribute_input_settings(NodesModifierDat
     }
 
     char use_attribute_prop_name[MAX_IDPROP_NAME];
-    BLI_snprintf(use_attribute_prop_name,
-                 sizeof(use_attribute_prop_name),
-                 "%s%s",
-                 property->name,
-                 "_use_attribute");
+    SNPRINTF(use_attribute_prop_name, "%s%s", property->name, "_use_attribute");
 
     IDPropertyTemplate idprop = {0};
     IDProperty *use_attribute_prop = IDP_New(IDP_INT, &idprop, use_attribute_prop_name);
     IDP_AddToGroup(nmd->settings.properties, use_attribute_prop);
 
     char attribute_name_prop_name[MAX_IDPROP_NAME];
-    BLI_snprintf(attribute_name_prop_name,
-                 sizeof(attribute_name_prop_name),
-                 "%s%s",
-                 property->name,
-                 "_attribute_name");
+    SNPRINTF(attribute_name_prop_name, "%s%s", property->name, "_attribute_name");
 
     IDProperty *attribute_prop = IDP_New(IDP_STRING, &idprop, attribute_name_prop_name);
     IDP_AddToGroup(nmd->settings.properties, attribute_prop);
@@ -1791,6 +1753,18 @@ static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_da
   {
     seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
   }
+  return true;
+}
+
+static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->type != SEQ_TYPE_SOUND_RAM || seq->speed_factor != 0.0f) {
+    return true;
+  }
+
+  seq->speed_factor = 1.0f;
+  SEQ_retiming_data_clear(seq);
+  seq->startofs = 0.0f;
   return true;
 }
 
@@ -2210,6 +2184,46 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
   }
 }
 
+static void versioning_replace_legacy_glossy_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_BSDF_GLOSSY_LEGACY) {
+      strcpy(node->idname, "ShaderNodeBsdfAnisotropic");
+      node->type = SH_NODE_BSDF_GLOSSY;
+    }
+  }
+}
+
+static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
+{
+  /* Find all glossy, glass and refraction BSDF nodes that have their distribution
+   * set to SHARP and set them to GGX, disconnect any link to the Roughness input
+   * and set its value to zero. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (!ELEM(node->type, SH_NODE_BSDF_GLOSSY, SH_NODE_BSDF_GLASS, SH_NODE_BSDF_REFRACTION)) {
+      continue;
+    }
+    if (node->custom1 != SHD_GLOSSY_SHARP_DEPRECATED) {
+      continue;
+    }
+
+    node->custom1 = SHD_GLOSSY_GGX;
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+      if (!STREQ(socket->identifier, "Roughness")) {
+        continue;
+      }
+
+      if (socket->link != nullptr) {
+        nodeRemLink(ntree, socket->link);
+      }
+      bNodeSocketValueFloat *socket_value = (bNodeSocketValueFloat *)socket->default_value;
+      socket_value->value = 0.0f;
+
+      break;
+    }
+  }
+}
+
 static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
 {
   /* Fix bug where curves in image format were not properly copied to file output
@@ -2308,6 +2322,73 @@ static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
 
       break;
     }
+  }
+}
+
+/**
+ * Change override RNA path from `frame_{start,end}` to `frame_{start,end}_raw`.
+ * See #102662.
+ */
+static void version_liboverride_nla_strip_frame_start_end(IDOverrideLibrary *liboverride,
+                                                          const char *parent_rna_path,
+                                                          NlaStrip *strip)
+{
+  if (!strip) {
+    return;
+  }
+
+  /* Escape the strip name for inclusion in the RNA path. */
+  char name_esc_strip[sizeof(strip->name) * 2];
+  BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
+
+  const std::string rna_path_strip = std::string(parent_rna_path) + ".strips[\"" + name_esc_strip +
+                                     "\"]";
+
+  { /* Rename .frame_start -> .frame_start_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
+
+  { /* Rename .frame_end -> .frame_end_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
+
+  { /* Remove .frame_start_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
+
+  { /* Remove .frame_end_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
+
+  /* Handle meta-strip contents. */
+  LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
+    version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_strip.c_str(), substrip);
+  }
+}
+
+/** Fix the `frame_start` and `frame_end` overrides on NLA strips. See #102662. */
+static void version_liboverride_nla_frame_start_end(ID *id, AnimData *adt, void * /*user_data*/)
+{
+  IDOverrideLibrary *liboverride = id->override_library;
+  if (!liboverride) {
+    return;
+  }
+
+  int track_index;
+  LISTBASE_FOREACH_INDEX (NlaTrack *, track, &adt->nla_tracks, track_index) {
+    char *rna_path_track = BLI_sprintfN("animation_data.nla_tracks[%d]", track_index);
+
+    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips) {
+      version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_track, strip);
+    }
+
+    MEM_freeN(rna_path_track);
   }
 }
 
@@ -3241,20 +3322,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
             snode->overlay.flag |= SN_OVERLAY_SHOW_PATH;
           }
         }
-      }
-    }
-  }
-
-  if (!MAIN_VERSION_ATLEAST(bmain, 301, 5)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type != NTREE_GEOMETRY) {
-        continue;
-      }
-      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        if (node->type != GEO_NODE_REALIZE_INSTANCES) {
-          continue;
-        }
-        node->custom1 |= GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR;
       }
     }
   }
@@ -4344,6 +4411,56 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
   }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 8)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      ob->flag |= OB_FLAG_USE_SIMULATION_CACHE;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 9)) {
+    /* Fix sound strips with speed factor set to 0. See #107289. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_ACTION) {
+            SpaceAction *saction = reinterpret_cast<SpaceAction *>(sl);
+            saction->cache_display |= TIME_CACHE_SIMULATION_NODES;
+          }
+        }
+      }
+    }
+
+    /* Enable the iTaSC ITASC_TRANSLATE_ROOT_BONES flag for backward compatibility.
+     * See #104606. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_ARMATURE || ob->pose == nullptr) {
+        continue;
+      }
+      bPose *pose = ob->pose;
+      if (pose->iksolver != IKSOLVER_ITASC || pose->ikparam == nullptr) {
+        continue;
+      }
+      bItasc *ikparam = (bItasc *)pose->ikparam;
+      ikparam->flag |= ITASC_TRANSLATE_ROOT_BONES;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 10)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Set default values for new members. */
+      scene->toolsettings->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      scene->toolsettings->plane_axis = 2;
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -4355,5 +4472,51 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Convert anisotropic BSDF node to glossy BSDF. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_replace_legacy_glossy_node(ntree);
+      versioning_remove_microfacet_sharp_distribution(ntree);
+    }
+    FOREACH_NODETREE_END;
+
+    BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, nullptr);
+
+    /* Store simulation bake directory in geometry nodes modifier. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+        if (md->type != eModifierType_Nodes) {
+          continue;
+        }
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        if (nmd->simulation_bake_directory) {
+          continue;
+        }
+        const std::string bake_dir = blender::bke::sim::get_default_modifier_bake_directory(
+            *bmain, *ob, *md);
+        nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          /* #107870: Movie Clip Editor hangs in "Clip" view */
+          if (sl->spacetype == SPACE_CLIP) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            ARegion *region_main = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                       RGN_TYPE_WINDOW);
+            region_main->flag &= ~RGN_FLAG_HIDDEN;
+            ARegion *region_tools = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                        RGN_TYPE_TOOLS);
+            region_tools->alignment = RGN_ALIGN_LEFT;
+            if (!(region_tools->flag & RGN_FLAG_HIDDEN_BY_USER)) {
+              region_tools->flag &= ~RGN_FLAG_HIDDEN;
+            }
+          }
+        }
+      }
+    }
   }
 }

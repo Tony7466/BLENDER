@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -191,6 +193,11 @@ struct GeometrySet {
    * access to their data, which might be freed later if this geometry set outlasts the data.
    */
   void ensure_owns_direct_data();
+  /**
+   * Same as #ensure_owns_direct_data but also turns object/collection instances into geometry
+   * instances so that they can be owned.
+   */
+  void ensure_owns_all_data();
 
   using AttributeForeachCallback =
       blender::FunctionRef<void(const blender::bke::AttributeIDRef &attribute_id,
