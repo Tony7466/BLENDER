@@ -593,10 +593,18 @@ class NODE_PT_active_node_generic(Panel):
 
     def draw(self, context):
         layout = self.layout
+        layout.use_property_split = True
+
         node = context.active_node
 
-        layout.prop(node, "name", icon='NODE')
-        layout.prop(node, "label", icon='NODE')
+        col = layout.column()
+        col.prop(node, "name", icon='NODE')
+
+        col = layout.column()
+        col.prop(node, "label", icon='NODE')
+
+        col = layout.column()
+        layout.prop(node, "mute")
 
 
 class NODE_PT_active_node_color(Panel):
