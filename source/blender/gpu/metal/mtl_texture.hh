@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -184,7 +186,7 @@ class MTLTexture : public Texture {
 
   /* Texture Storage. */
   id<MTLBuffer> texture_buffer_ = nil;
-  uint aligned_w_ = 0;
+  size_t aligned_w_ = 0;
 
   /* Blit Frame-buffer. */
   GPUFrameBuffer *blit_fb_ = nullptr;
@@ -313,7 +315,7 @@ class MTLTexture : public Texture {
                      int depth,
                      eGPUDataFormat desired_output_format,
                      int num_output_components,
-                     int debug_data_size,
+                     size_t debug_data_size,
                      void *r_data);
   void bake_mip_swizzle_view();
 
@@ -452,7 +454,7 @@ class MTLPixelBuffer : public PixelBuffer {
   void *map() override;
   void unmap() override;
   int64_t get_native_handle() override;
-  uint get_size() override;
+  size_t get_size() override;
 
   id<MTLBuffer> get_metal_buffer();
 
@@ -461,7 +463,7 @@ class MTLPixelBuffer : public PixelBuffer {
 
 /* Utility */
 MTLPixelFormat gpu_texture_format_to_metal(eGPUTextureFormat tex_format);
-int get_mtl_format_bytesize(MTLPixelFormat tex_format);
+size_t get_mtl_format_bytesize(MTLPixelFormat tex_format);
 int get_mtl_format_num_components(MTLPixelFormat tex_format);
 bool mtl_format_supports_blending(MTLPixelFormat format);
 
@@ -600,7 +602,9 @@ inline MTLTextureUsage mtl_usage_from_gpu(eGPUTextureUsage usage)
   if (usage == GPU_TEXTURE_USAGE_GENERAL) {
     return MTLTextureUsageUnknown;
   }
-  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
+  /* Host read implies general read support, as the compute-based host read routine requires
+   * reading of texture data. */
+  if (usage & GPU_TEXTURE_USAGE_SHADER_READ || usage & GPU_TEXTURE_USAGE_HOST_READ) {
     mtl_usage = mtl_usage | MTLTextureUsageShaderRead;
   }
   if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {

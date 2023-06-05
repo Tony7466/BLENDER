@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -320,7 +321,7 @@ static bool check_tree_for_time_node(const bNodeTree &tree, Set<const bNodeTree 
   return false;
 }
 
-static bool dependsOnTime(struct Scene * /*scene*/, ModifierData *md)
+static bool dependsOnTime(Scene * /*scene*/, ModifierData *md)
 {
   const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
   const bNodeTree *tree = nmd->node_group;
@@ -358,7 +359,7 @@ static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void 
   walk(userData, ob, md, "texture");
 }
 
-static bool isDisabled(const struct Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
+static bool isDisabled(const Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
 
@@ -1921,6 +1922,8 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+
+  uiItemR(layout, ptr, "simulation_bake_directory", 0, "Bake", ICON_NONE);
 
   geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
   if (tree_log == nullptr) {
