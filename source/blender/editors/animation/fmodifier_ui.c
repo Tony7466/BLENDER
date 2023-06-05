@@ -137,20 +137,12 @@ static void fmodifier_reorder(bContext *C, Panel *panel, int new_index)
   DEG_id_tag_update(owner_id, ID_RECALC_ANIMATION);
 }
 
-static short get_fmodifier_expand_flag(const bContext *UNUSED(C), Panel *panel)
+static uint64_t *get_fmodifier_expand_flag(const bContext *UNUSED(C), Panel *panel)
 {
   PointerRNA *ptr = fmodifier_get_pointers(NULL, panel, NULL);
   FModifier *fcm = (FModifier *)ptr->data;
 
-  return fcm->ui_expand_flag;
-}
-
-static void set_fmodifier_expand_flag(const bContext *UNUSED(C), Panel *panel, short expand_flag)
-{
-  PointerRNA *ptr = fmodifier_get_pointers(NULL, panel, NULL);
-  FModifier *fcm = (FModifier *)ptr->data;
-
-  fcm->ui_expand_flag = expand_flag;
+  return (uint64_t *)(&fcm->ui_expand_flag);
 }
 
 static PanelType *fmodifier_panel_register(ARegionType *region_type,
@@ -176,7 +168,6 @@ static PanelType *fmodifier_panel_register(ARegionType *region_type,
   panel_type->flag = PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED;
   panel_type->reorder = fmodifier_reorder;
   panel_type->get_list_data_expand_flag = get_fmodifier_expand_flag;
-  panel_type->set_list_data_expand_flag = set_fmodifier_expand_flag;
 
   BLI_addtail(&region_type->paneltypes, panel_type);
 

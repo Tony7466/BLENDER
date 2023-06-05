@@ -317,22 +317,13 @@ static void filter_reorder(bContext *C, Panel *panel, int new_index)
   BLI_listbase_link_move(row_filters, filter, new_index - current_index);
 }
 
-static short get_filter_expand_flag(const bContext * /*C*/, Panel *panel)
+static uint64_t *get_filter_expand_flag(const bContext * /*C*/, Panel *panel)
 {
   PointerRNA *filter_ptr = UI_panel_custom_data_get(panel);
   SpreadsheetRowFilter *filter = (SpreadsheetRowFilter *)filter_ptr->data;
 
-  return short(filter->flag) & SPREADSHEET_ROW_FILTER_UI_EXPAND;
-}
-
-static void set_filter_expand_flag(const bContext * /*C*/, Panel *panel, short expand_flag)
-{
-  PointerRNA *filter_ptr = UI_panel_custom_data_get(panel);
-  SpreadsheetRowFilter *filter = (SpreadsheetRowFilter *)filter_ptr->data;
-
-  SET_FLAG_FROM_TEST(filter->flag,
-                     expand_flag & SPREADSHEET_ROW_FILTER_UI_EXPAND,
-                     SPREADSHEET_ROW_FILTER_UI_EXPAND);
+  /* Only first bit of the filter flag is used for expand state. */
+  return reinterpret_cast<uint64_t *>(&filter->flag);
 }
 
 void register_row_filter_panels(ARegionType &region_type)
@@ -358,7 +349,6 @@ void register_row_filter_panels(ARegionType &region_type)
     panel_type->draw_header = spreadsheet_filter_panel_draw_header;
     panel_type->draw = spreadsheet_filter_panel_draw;
     panel_type->get_list_data_expand_flag = get_filter_expand_flag;
-    panel_type->set_list_data_expand_flag = set_filter_expand_flag;
     panel_type->reorder = filter_reorder;
     BLI_addtail(&region_type.paneltypes, panel_type);
   }

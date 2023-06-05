@@ -289,15 +289,9 @@ typedef struct PanelType {
    * data item. Called on draw updates.
    * \note Sub-panels are indexed in depth first order,
    * the visual order you would see if all panels were expanded.
+   * \return Pointer to bit array with at least one bit for the panel and for each child panel.
    */
-  short (*get_list_data_expand_flag)(const struct bContext *C, struct Panel *pa);
-  /**
-   * Set the expansion bit-field from the closed / open state of this panel and its sub-panels.
-   * Called when the expansion state of the panel changes with user input.
-   * \note Sub-panels are indexed in depth first order,
-   * the visual order you would see if all panels were expanded.
-   */
-  void (*set_list_data_expand_flag)(const struct bContext *C, struct Panel *pa, short expand_flag);
+  uint64_t *(*get_list_data_expand_flag)(const struct bContext *C, struct Panel *pa);
 
   /* sub panels */
   struct PanelType *parent;

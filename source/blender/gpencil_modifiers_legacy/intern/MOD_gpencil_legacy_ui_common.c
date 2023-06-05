@@ -66,20 +66,11 @@ static void gpencil_modifier_reorder(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_free(&props_ptr);
 }
 
-static short get_gpencil_modifier_expand_flag(const bContext *UNUSED(C), Panel *panel)
+static uint64_t *get_gpencil_modifier_expand_flag(const bContext *UNUSED(C), Panel *panel)
 {
   PointerRNA *md_ptr = UI_panel_custom_data_get(panel);
   GpencilModifierData *md = (GpencilModifierData *)md_ptr->data;
-  return md->ui_expand_flag;
-}
-
-static void set_gpencil_modifier_expand_flag(const bContext *UNUSED(C),
-                                             Panel *panel,
-                                             short expand_flag)
-{
-  PointerRNA *md_ptr = UI_panel_custom_data_get(panel);
-  GpencilModifierData *md = (GpencilModifierData *)md_ptr->data;
-  md->ui_expand_flag = expand_flag;
+  return (uint64_t *)(&md->ui_expand_flag);
 }
 
 /** \} */
@@ -367,7 +358,6 @@ PanelType *gpencil_modifier_panel_register(ARegionType *region_type,
   panel_type->flag = PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED;
   panel_type->reorder = gpencil_modifier_reorder;
   panel_type->get_list_data_expand_flag = get_gpencil_modifier_expand_flag;
-  panel_type->set_list_data_expand_flag = set_gpencil_modifier_expand_flag;
 
   BLI_addtail(&region_type->paneltypes, panel_type);
 
