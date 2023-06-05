@@ -66,6 +66,7 @@ void IrradianceCache::init()
     }
 
     if (irradiance_atlas_tx_.is_valid()) {
+      /* Clear the pool to avoid any interpolation to undefined values. */
       irradiance_atlas_tx_.clear(float4(0.0f));
     }
   }
@@ -107,9 +108,9 @@ void IrradianceCache::bricks_free(Vector<IrradianceBrickPacked> &bricks)
 void IrradianceCache::set_view(View & /*view*/)
 {
   Vector<IrradianceGrid *> grid_updates;
+  Vector<IrradianceGrid *> grid_loaded;
 
   /* First allocate the needed bricks and populate the brick buffer. */
-  int grids_len = 0;
   bricks_infos_buf_.clear();
   for (IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
     LightProbeGridCacheFrame *cache = grid.cache ? grid.cache->grid_static_cache : nullptr;
@@ -131,7 +132,7 @@ void IrradianceCache::set_view(View & /*view*/)
     /* TODO frustum cull and only load visible grids. */
 
     /* Note that we reserve 1 slot for the world irradiance. */
-    if (grids_len >= IRRADIANCE_GRID_MAX - 1) {
+    if (grid_loaded.size() >= IRRADIANCE_GRID_MAX - 1) {
       inst_.info = "Error: Too many grid visible";
       continue;
     }
@@ -164,33 +165,36 @@ void IrradianceCache::set_view(View & /*view*/)
 
     grid.world_to_grid_transposed = float3x4(math::transpose(math::invert(grid_to_world)));
     grid.grid_size = grid_size;
-    grid.grid_index = grids_len;
-    grids_infos_buf_[grids_len++] = grid;
+    grid_loaded.append(&grid);
   }
 
+  /* Then create brick & grid infos UBOs content. */
   {
     /* Stable sorting of grids. */
-    MutableSpan<IrradianceGridData> grid_span(grids_infos_buf_.data(), grids_len);
-
-    std::sort(grid_span.begin(),
-              grid_span.end(),
-              [](const IrradianceGridData &a, const IrradianceGridData &b) {
-                float volume_a = math::determinant(float3x3(a.world_to_grid_transposed));
-                float volume_b = math::determinant(float3x3(b.world_to_grid_transposed));
+    std::sort(grid_loaded.begin(),
+              grid_loaded.end(),
+              [](const IrradianceGrid *a, const IrradianceGrid *b) {
+                float volume_a = math::determinant(float3x3(a->world_to_grid_transposed));
+                float volume_b = math::determinant(float3x3(b->world_to_grid_transposed));
                 if (volume_a != volume_b) {
                   /* Smallest first. */
                   return volume_a > volume_b;
                 }
                 /* Volumes are identical. Any arbitrary criteria can be used to sort them.
                  * Use position to avoid unstable result caused by depsgraph non deterministic eval
-                 * order. This could also become a parameter. */
-                return a.world_to_grid_transposed[0][0] < a.world_to_grid_transposed[0][0] ||
-                       a.world_to_grid_transposed[0][1] < a.world_to_grid_transposed[0][1] ||
-                       a.world_to_grid_transposed[0][2] < a.world_to_grid_transposed[0][2];
+                 * order. This could also become a priority parameter. */
+                return a->world_to_grid_transposed[0][0] < b->world_to_grid_transposed[0][0] ||
+                       a->world_to_grid_transposed[0][1] < b->world_to_grid_transposed[0][1] ||
+                       a->world_to_grid_transposed[0][2] < b->world_to_grid_transposed[0][2];
               });
-  }
 
-  {
+    /* Insert grids in UBO in sorted order. */
+    int grids_len = 0;
+    for (IrradianceGrid *grid : grid_loaded) {
+      grid->grid_index = grids_len;
+      grids_infos_buf_[grids_len++] = *grid;
+    }
+
     /* Insert world grid last. */
     IrradianceGridData grid;
     grid.world_to_grid_transposed = float3x4::identity();
@@ -198,15 +202,15 @@ void IrradianceCache::set_view(View & /*view*/)
     grid.brick_offset = bricks_infos_buf_.size();
     grids_infos_buf_[grids_len++] = grid;
     bricks_infos_buf_.append(world_brick_index_);
-  }
 
-  if (grids_len < IRRADIANCE_GRID_MAX) {
-    /* Tag last grid as invalid to stop the iteration. */
-    grids_infos_buf_[grids_len].grid_size = int3(-1);
-  }
+    if (grids_len < IRRADIANCE_GRID_MAX) {
+      /* Tag last grid as invalid to stop the iteration. */
+      grids_infos_buf_[grids_len].grid_size = int3(-1);
+    }
 
-  bricks_infos_buf_.push_update();
-  grids_infos_buf_.push_update();
+    bricks_infos_buf_.push_update();
+    grids_infos_buf_.push_update();
+  }
 
   /* Upload data for each grid that need to be inserted in the atlas. */
   for (IrradianceGrid *grid : grid_updates) {
@@ -238,11 +242,12 @@ void IrradianceCache::set_view(View & /*view*/)
 
     if (irradiance_a_tx.is_valid() == false) {
       inst_.info = "Error: Could not allocate irradiance staging texture";
-      /* Avoid undefined behavior with uninitialized values. */
-      irradiance_a_tx.clear(float4(0.0f));
-      irradiance_b_tx.clear(float4(0.0f));
-      irradiance_c_tx.clear(float4(0.0f));
-      irradiance_d_tx.clear(float4(0.0f));
+      /* Avoid undefined behavior with uninitialized values. Still load a clear texture. */
+      float4 zero(0.0f);
+      irradiance_a_tx.ensure_3d(GPU_RGB16F, int3(1), usage, zero);
+      irradiance_b_tx.ensure_3d(GPU_RGB16F, int3(1), usage, zero);
+      irradiance_c_tx.ensure_3d(GPU_RGB16F, int3(1), usage, zero);
+      irradiance_d_tx.ensure_3d(GPU_RGB16F, int3(1), usage, zero);
     }
 
     grid_upload_ps_.init();
