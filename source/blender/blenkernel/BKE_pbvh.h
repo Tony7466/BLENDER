@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -35,7 +37,6 @@ struct DMFlagMat;
 struct IsectRayPrecalc;
 struct MLoopTri;
 struct Mesh;
-struct MeshElemMap;
 struct PBVH;
 struct PBVHBatches;
 struct PBVHNode;
@@ -45,7 +46,6 @@ struct SubdivCCG;
 struct TaskParallelSettings;
 struct Image;
 struct ImageUser;
-struct MeshElemMap;
 
 typedef struct PBVH PBVH;
 typedef struct PBVHNode PBVHNode;
@@ -713,14 +713,14 @@ typedef struct PBVHFaceIter {
   bool *hide_poly_;
   int *face_sets_;
   const int *poly_offsets_;
-  const struct MLoopTri *looptri_;
+  const int *looptri_polys_;
   const int *corner_verts_;
   int prim_index_;
   const struct SubdivCCG *subdiv_ccg_;
   const struct BMesh *bm;
   CCGKey subdiv_key_;
 
-  int last_face_index_;
+  int last_poly_index_;
 } PBVHFaceIter;
 
 void BKE_pbvh_face_iter_init(PBVH *pbvh, PBVHNode *node, PBVHFaceIter *fd);
@@ -728,7 +728,8 @@ void BKE_pbvh_face_iter_step(PBVHFaceIter *fd);
 bool BKE_pbvh_face_iter_done(PBVHFaceIter *fd);
 void BKE_pbvh_face_iter_finish(PBVHFaceIter *fd);
 
-/** Iterate over faces inside a PBVHNode.  These are either base mesh faces
+/**
+ * Iterate over faces inside a #PBVHNode. These are either base mesh faces
  * (for PBVH_FACES and PBVH_GRIDS) or BMesh faces (for PBVH_BMESH).
  */
 #define BKE_pbvh_face_iter_begin(pbvh, node, fd) \
@@ -808,7 +809,6 @@ void BKE_pbvh_is_drawing_set(PBVH *pbvh, bool val);
 void BKE_pbvh_node_num_loops(PBVH *pbvh, PBVHNode *node, int *r_totloop);
 
 void BKE_pbvh_update_active_vcol(PBVH *pbvh, const struct Mesh *mesh);
-void BKE_pbvh_pmap_set(PBVH *pbvh, const struct MeshElemMap *pmap);
 
 void BKE_pbvh_vertex_color_set(PBVH *pbvh, PBVHVertRef vertex, const float color[4]);
 void BKE_pbvh_vertex_color_get(const PBVH *pbvh, PBVHVertRef vertex, float r_color[4]);
@@ -818,6 +818,7 @@ bool BKE_pbvh_draw_cache_invalid(const PBVH *pbvh);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 
 #ifdef __cplusplus
+void BKE_pbvh_pmap_set(PBVH *pbvh, blender::GroupedSpan<int> pmap);
 }
 
 namespace blender::bke::pbvh {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -366,7 +367,7 @@ bool ED_gpencil_anim_copybuf_copy(bAnimContext *ac)
       BLI_assert(copied_frames.first == NULL);
 
       /* make a copy of the layer's name - for name-based matching later... */
-      BLI_strncpy(new_layer->info, gpl->info, sizeof(new_layer->info));
+      STRNCPY(new_layer->info, gpl->info);
     }
   }
 

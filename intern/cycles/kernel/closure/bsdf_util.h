@@ -77,10 +77,15 @@ ccl_device Spectrum fresnel_conductor(float cosi, const Spectrum eta, const Spec
   return (Rparl2 + Rperp2) * 0.5f;
 }
 
-ccl_device float ior_from_F0(Spectrum f0)
+ccl_device float ior_from_F0(float f0)
 {
-  const float sqrt_f0 = sqrtf(clamp(average(f0), 0.0f, 0.99f));
+  const float sqrt_f0 = sqrtf(clamp(f0, 0.0f, 0.99f));
   return (1.0f + sqrt_f0) / (1.0f - sqrt_f0);
+}
+
+ccl_device float F0_from_ior(float ior)
+{
+  return sqr((ior - 1.0f) / (ior + 1.0f));
 }
 
 ccl_device float schlick_fresnel(float u)
@@ -98,7 +103,7 @@ ccl_device_forceinline Spectrum interpolate_fresnel_color(float3 L,
 {
   /* Compute the real Fresnel term and remap it from real_F0..1 to F0..1.
    * The reason why we use this remapping instead of directly doing the
-   * Schlick approximation lerp(F0, 1.0, (1.0-cosLH)^5) is that for cases
+   * Schlick approximation mix(F0, 1.0, (1.0-cosLH)^5) is that for cases
    * with similar IORs (e.g. ice in water), the relative IOR can be close
    * enough to 1.0 that the Schlick approximation becomes inaccurate. */
   float real_F = fresnel_dielectric_cos(dot(L, H), ior);
@@ -193,22 +198,6 @@ ccl_device float3 maybe_ensure_valid_specular_reflection(ccl_private ShaderData 
     return N;
   }
   return ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
-}
-
-/* Albedo correction. */
-
-ccl_device_forceinline float microfacet_ggx_glass_E(KernelGlobals kg,
-                                                    float mu,
-                                                    float rough,
-                                                    float ior)
-{
-  bool inv_table = (ior < 1.0f);
-  int offset = inv_table ? kernel_data.tables.ggx_glass_inv_E_offset :
-                           kernel_data.tables.ggx_glass_E_offset;
-
-  float x = mu, y = 1 - rough;
-  float z = sqrtf(0.5f * ((inv_table ? 1.0f / ior : ior) - 1.0f));
-  return lookup_table_read_3D(kg, x, y, z, offset, 16, 16, 16);
 }
 
 CCL_NAMESPACE_END

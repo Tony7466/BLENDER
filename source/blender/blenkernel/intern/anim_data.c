@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -136,14 +137,13 @@ bool BKE_animdata_set_action(ReportList *reports, ID *id, bAction *act)
     return false;
   }
 
-  /* Reduce user-count for current action. */
+  /* Unassign current action. */
   if (adt->action) {
     id_us_min((ID *)adt->action);
+    adt->action = NULL;
   }
 
   if (act == NULL) {
-    /* Just clearing the action. */
-    adt->action = NULL;
     return true;
   }
 
@@ -235,7 +235,7 @@ void BKE_animdata_free(ID *id, const bool do_id_user)
   }
 }
 
-bool BKE_animdata_id_is_animated(const struct ID *id)
+bool BKE_animdata_id_is_animated(const ID *id)
 {
   if (id == NULL) {
     return false;
@@ -375,9 +375,9 @@ void BKE_animdata_copy_id_action(Main *bmain, ID *id)
   animdata_copy_id_action(bmain, id, false, !is_id_liboverride);
 }
 
-void BKE_animdata_duplicate_id_action(struct Main *bmain,
-                                      struct ID *id,
-                                      const eDupli_ID_Flags duplicate_flags)
+void BKE_animdata_duplicate_id_action(Main *bmain,
+                                      ID *id,
+                                      const /*eDupli_ID_Flags*/ uint duplicate_flags)
 {
   if (duplicate_flags & USER_DUP_ACT) {
     animdata_copy_id_action(bmain, id, true, (duplicate_flags & USER_DUP_LINKED_ID) != 0);
@@ -767,7 +767,7 @@ static bool fcurves_path_rename_fix(ID *owner_id,
       bActionGroup *agrp = fcu->grp;
       is_changed = true;
       if (oldName != NULL && (agrp != NULL) && STREQ(oldName, agrp->name)) {
-        BLI_strncpy(agrp->name, newName, sizeof(agrp->name));
+        STRNCPY(agrp->name, newName);
       }
     }
   }
@@ -819,7 +819,7 @@ static bool drivers_path_rename_fix(ID *owner_id,
               (dtar->pchan_name[0]) && STREQ(oldName, dtar->pchan_name))
           {
             is_changed = true;
-            BLI_strncpy(dtar->pchan_name, newName, sizeof(dtar->pchan_name));
+            STRNCPY(dtar->pchan_name, newName);
           }
         }
       }
@@ -1421,7 +1421,7 @@ void BKE_animdata_fix_paths_rename_all_ex(Main *bmain,
 
 /* .blend file API -------------------------------------------- */
 
-void BKE_animdata_blend_write(BlendWriter *writer, struct AnimData *adt)
+void BKE_animdata_blend_write(BlendWriter *writer, AnimData *adt)
 {
   /* firstly, just write the AnimData block */
   BLO_write_struct(writer, AnimData, adt);
@@ -1479,8 +1479,8 @@ void BKE_animdata_blend_read_lib(BlendLibReader *reader, ID *id, AnimData *adt)
   }
 
   /* link action data */
-  BLO_read_id_address(reader, id->lib, &adt->action);
-  BLO_read_id_address(reader, id->lib, &adt->tmpact);
+  BLO_read_id_address(reader, id, &adt->action);
+  BLO_read_id_address(reader, id, &adt->tmpact);
 
   /* link drivers */
   BKE_fcurve_blend_read_lib(reader, id, &adt->drivers);
@@ -1491,7 +1491,7 @@ void BKE_animdata_blend_read_lib(BlendLibReader *reader, ID *id, AnimData *adt)
   BKE_nla_blend_read_lib(reader, id, &adt->nla_tracks);
 }
 
-void BKE_animdata_blend_read_expand(struct BlendExpander *expander, AnimData *adt)
+void BKE_animdata_blend_read_expand(BlendExpander *expander, AnimData *adt)
 {
   /* own action */
   BLO_expand(expander, adt->action);

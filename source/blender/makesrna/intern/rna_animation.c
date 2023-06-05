@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -440,7 +442,7 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
           for (agrp = adt->action->groups.first; agrp; agrp = agrp->next) {
             if (STREQ(ks->name, agrp->name)) {
               /* there should only be one of these in the action, so can stop... */
-              BLI_strncpy(agrp->name, value, sizeof(agrp->name));
+              STRNCPY(agrp->name, value);
               break;
             }
           }
@@ -450,7 +452,7 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
   }
 
   /* finally, update name to new value */
-  BLI_strncpy(ks->name, value, sizeof(ks->name));
+  STRNCPY(ks->name, value);
 }
 
 static int rna_KeyingSet_active_ksPath_editable(PointerRNA *ptr, const char **UNUSED(r_info))

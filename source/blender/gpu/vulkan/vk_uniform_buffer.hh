@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -25,6 +26,7 @@ class VKUniformBuffer : public UniformBuf, NonCopyable {
   void clear_to_zero() override;
   void bind(int slot) override;
   void bind_as_ssbo(int slot) override;
+  void bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type);
   void unbind() override;
 
   VkBuffer vk_handle() const
@@ -38,8 +40,7 @@ class VKUniformBuffer : public UniformBuf, NonCopyable {
   }
 
  private:
-  void allocate(VKContext &context);
-  void bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type);
+  void allocate();
 };
 
 }  // namespace blender::gpu

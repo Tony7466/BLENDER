@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -23,7 +24,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
@@ -31,6 +32,8 @@
 #include "BKE_workspace.h"
 
 #include "BLI_set.hh"
+#include "BLI_string_utf8.h"
+
 #include "BLT_translation.h"
 
 #include "DEG_depsgraph.h"
@@ -65,6 +68,7 @@
 #include "NOD_composite.h"
 #include "NOD_geometry.h"
 #include "NOD_shader.h"
+#include "NOD_socket.h"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -203,7 +207,7 @@ static void compo_freejob(void *cjv)
   CompoJob *cj = (CompoJob *)cjv;
 
   if (cj->localtree) {
-    ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
   }
   if (cj->compositor_depsgraph != nullptr) {
     DEG_graph_free(cj->compositor_depsgraph);
@@ -459,7 +463,7 @@ void ED_node_tree_propagate_change(const bContext *C, Main *bmain, bNodeTree *ro
 void ED_node_set_tree_type(SpaceNode *snode, bNodeTreeType *typeinfo)
 {
   if (typeinfo) {
-    BLI_strncpy(snode->tree_idname, typeinfo->idname, sizeof(snode->tree_idname));
+    STRNCPY(snode->tree_idname, typeinfo->idname);
   }
   else {
     snode->tree_idname[0] = '\0';
@@ -503,10 +507,10 @@ void ED_node_shader_default(const bContext *C, ID *id)
       ma_default = BKE_material_default_surface();
     }
 
-    ma->nodetree = ntreeCopyTree(bmain, ma_default->nodetree);
+    ma->nodetree = blender::bke::ntreeCopyTree(bmain, ma_default->nodetree);
     ma->nodetree->owner_id = &ma->id;
     for (bNode *node_iter : ma->nodetree->all_nodes()) {
-      BLI_strncpy(node_iter->name, DATA_(node_iter->name), NODE_MAXSTR);
+      STRNCPY_UTF8(node_iter->name, DATA_(node_iter->name));
       nodeUniqueName(ma->nodetree, node_iter);
     }
 
@@ -514,7 +518,7 @@ void ED_node_shader_default(const bContext *C, ID *id)
   }
   else if (ELEM(GS(id->name), ID_WO, ID_LA)) {
     /* Emission */
-    bNodeTree *ntree = ntreeAddTreeEmbedded(
+    bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
         nullptr, id, "Shader Nodetree", ntreeType_Shader->idname);
     bNode *shader, *output;
 
@@ -565,7 +569,7 @@ void ED_node_composit_default(const bContext *C, Scene *sce)
     return;
   }
 
-  sce->nodetree = ntreeAddTreeEmbedded(
+  sce->nodetree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &sce->id, "Compositing Nodetree", ntreeType_Composite->idname);
 
   sce->nodetree->chunksize = 256;
@@ -598,7 +602,7 @@ void ED_node_texture_default(const bContext *C, Tex *tex)
     return;
   }
 
-  tex->nodetree = ntreeAddTreeEmbedded(
+  tex->nodetree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &tex->id, "Texture Nodetree", ntreeType_Texture->idname);
 
   bNode *out = nodeAddStaticNode(C, tex->nodetree, TEX_NODE_OUTPUT);
@@ -1025,7 +1029,7 @@ static int node_resize_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   int2 mval;
   WM_event_drag_start_mval(event, region, mval);
   UI_view2d_region_to_view(&region->v2d, mval.x, mval.y, &cursor.x, &cursor.y);
-  const NodeResizeDirection dir = node_get_resize_direction(node, cursor.x, cursor.y);
+  const NodeResizeDirection dir = node_get_resize_direction(*snode, node, cursor.x, cursor.y);
   if (dir == NODE_RESIZE_NONE) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
@@ -1077,7 +1081,7 @@ bool node_has_hidden_sockets(bNode *node)
   return false;
 }
 
-void node_set_hidden_sockets(SpaceNode *snode, bNode *node, int set)
+void node_set_hidden_sockets(bNode *node, int set)
 {
   if (set == 0) {
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
@@ -1095,7 +1099,7 @@ void node_set_hidden_sockets(SpaceNode *snode, bNode *node, int set)
       }
     }
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-      if (nodeCountSocketLinks(snode->edittree, sock) == 0) {
+      if ((sock->flag & SOCK_IS_LINKED) == 0) {
         sock->flag |= SOCK_HIDDEN;
       }
     }
@@ -1250,6 +1254,33 @@ static void node_duplicate_reparent_recursive(bNodeTree *ntree,
   }
 }
 
+static void remap_pairing(bNodeTree &dst_tree, const Map<bNode *, bNode *> &node_map)
+{
+  /* We don't have the old tree for looking up output nodes by ID,
+   * so we have to build a map first to find copied output nodes in the new tree. */
+  Map<uint32_t, bNode *> dst_output_node_map;
+  for (const auto &item : node_map.items()) {
+    if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
+      dst_output_node_map.add_new(item.key->identifier, item.value);
+    }
+  }
+
+  for (bNode *dst_node : node_map.values()) {
+    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
+      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+          dst_node->storage);
+      if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                        nullptr)) {
+        data->output_node_id = output_node->identifier;
+      }
+      else {
+        data->output_node_id = 0;
+        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+      }
+    }
+  }
+}
+
 static int node_duplicate_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -1323,6 +1354,10 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
     }
   }
 
+  for (bNode *node : node_map.values()) {
+    blender::bke::nodeDeclarationEnsure(ntree, node);
+  }
+
   /* Clear flags for recursive depth-first iteration. */
   for (bNode *node : ntree->all_nodes()) {
     node->flag &= ~NODE_TEST;
@@ -1333,6 +1368,8 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
       node_duplicate_reparent_recursive(ntree, node_map, node);
     }
   }
+
+  remap_pairing(*ntree, node_map);
 
   /* Deselect old nodes, select the copies instead. */
   for (const auto item : node_map.items()) {
@@ -1689,7 +1726,7 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
 
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
-      node_set_hidden_sockets(snode, node, !hidden);
+      node_set_hidden_sockets(node, !hidden);
     }
   }
 
@@ -1767,6 +1804,9 @@ static int node_delete_exec(bContext *C, wmOperator * /*op*/)
   SpaceNode *snode = CTX_wm_space_node(C);
 
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
+
+  /* Delete paired nodes as well. */
+  node_select_paired(*snode->edittree);
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
     if (node->flag & SELECT) {
@@ -1855,9 +1895,12 @@ static int node_delete_reconnect_exec(bContext *C, wmOperator * /*op*/)
 
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
+  /* Delete paired nodes as well. */
+  node_select_paired(*snode->edittree);
+
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
     if (node->flag & SELECT) {
-      nodeInternalRelink(snode->edittree, node);
+      blender::bke::nodeInternalRelink(snode->edittree, node);
       nodeRemoveNode(bmain, snode->edittree, node, true);
     }
   }
@@ -2144,7 +2187,7 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
   bNodeSocket *sock;
   if (active_sock) {
     /* Insert a copy of the active socket right after it. */
-    sock = ntreeInsertSocketInterface(
+    sock = blender::bke::ntreeInsertSocketInterface(
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
@@ -2262,7 +2305,7 @@ static int ntree_socket_change_type_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  nodeModifySocketType(ntree, nullptr, iosock, socket_type->idname);
+  blender::bke::nodeModifySocketType(ntree, nullptr, iosock, socket_type->idname);
 
   /* Need the extra update here because the loop above does not check for valid links in the node
    * group we're currently editing. */

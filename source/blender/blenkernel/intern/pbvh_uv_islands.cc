@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.hh"
 
@@ -542,7 +544,6 @@ struct FanSegment {
   void print_debug(const MeshData &mesh_data) const
   {
     std::stringstream ss;
-    ss << "# p:" << primitive->poly;
     ss << " v1:" << mesh_data.corner_verts[primitive->tri[vert_order[0]]];
     ss << " v2:" << mesh_data.corner_verts[primitive->tri[vert_order[1]]];
     ss << " v3:" << mesh_data.corner_verts[primitive->tri[vert_order[2]]];

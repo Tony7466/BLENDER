@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -39,7 +40,7 @@
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_report.h"
@@ -674,7 +675,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   BLI_mempool *ts = space_outliner->treestore;
   TreeStoreElem *tselem = static_cast<TreeStoreElem *>(tsep);
 
@@ -719,7 +720,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 
         BKE_library_filepath_set(bmain, lib, lib->filepath);
 
-        BLI_strncpy(expanded, lib->filepath, sizeof(expanded));
+        STRNCPY(expanded, lib->filepath);
         BLI_path_abs(expanded, BKE_main_blendfile_path(bmain));
         if (!BLI_exists(expanded)) {
           BKE_reportf(CTX_wm_reports(C),
@@ -763,8 +764,8 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
             char newname[sizeof(ebone->name)];
 
             /* restore bone name */
-            BLI_strncpy(newname, ebone->name, sizeof(ebone->name));
-            BLI_strncpy(ebone->name, oldname, sizeof(ebone->name));
+            STRNCPY(newname, ebone->name);
+            STRNCPY(ebone->name, oldname);
             ED_armature_bone_rename(bmain, arm, oldname, newname);
             WM_msg_publish_rna_prop(mbus, &arm->id, ebone, EditBone, name);
             WM_event_add_notifier(C, NC_OBJECT | ND_POSE, nullptr);
@@ -785,8 +786,8 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           tree_element_activate(C, &tvc, te, OL_SETSEL_NORMAL, true);
 
           /* restore bone name */
-          BLI_strncpy(newname, bone->name, sizeof(bone->name));
-          BLI_strncpy(bone->name, oldname, sizeof(bone->name));
+          STRNCPY(newname, bone->name);
+          STRNCPY(bone->name, oldname);
           ED_armature_bone_rename(bmain, arm, oldname, newname);
           WM_msg_publish_rna_prop(mbus, &arm->id, bone, Bone, name);
           WM_event_add_notifier(C, NC_OBJECT | ND_POSE, nullptr);
@@ -808,8 +809,8 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           BLI_assert(ob->type == OB_ARMATURE);
 
           /* restore bone name */
-          BLI_strncpy(newname, pchan->name, sizeof(pchan->name));
-          BLI_strncpy(pchan->name, oldname, sizeof(pchan->name));
+          STRNCPY(newname, pchan->name);
+          STRNCPY(pchan->name, oldname);
           ED_armature_bone_rename(bmain, static_cast<bArmature *>(ob->data), oldname, newname);
           WM_msg_publish_rna_prop(mbus, &arm->id, pchan->bone, Bone, name);
           WM_event_add_notifier(C, NC_OBJECT | ND_POSE, nullptr);
@@ -855,8 +856,8 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 
           /* Restore old name. */
           char newname[sizeof(view_layer->name)];
-          BLI_strncpy(newname, view_layer->name, sizeof(view_layer->name));
-          BLI_strncpy(view_layer->name, oldname, sizeof(view_layer->name));
+          STRNCPY(newname, view_layer->name);
+          STRNCPY(view_layer->name, oldname);
 
           /* Rename, preserving animation and compositing data. */
           BKE_view_layer_rename(bmain, scene, view_layer, newname);
@@ -2367,6 +2368,8 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
           return ICON_OUTLINER_OB_EMPTY;
         }
       case OB_GPENCIL_LEGACY:
+        return ICON_OUTLINER_OB_GREASEPENCIL;
+      case OB_GREASE_PENCIL:
         return ICON_OUTLINER_OB_GREASEPENCIL;
     }
 
