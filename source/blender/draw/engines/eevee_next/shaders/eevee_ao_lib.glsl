@@ -352,8 +352,8 @@ float diffuse_occlusion(
 
 /**
  * Approximate the area of intersection of two spherical caps
- * radius1 : First cap’s radius (arc length in radians)
- * radius2 : Second caps’ radius (in radians)
+ * radius1 : First cap radius (arc length in radians)
+ * radius2 : Second cap radius (in radians)
  * dist : Distance between caps (radians between centers of caps)
  * NOTE: Result is divided by pi to save one multiply.
  */

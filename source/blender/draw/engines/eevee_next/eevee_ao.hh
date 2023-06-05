@@ -5,6 +5,10 @@
  *
  * Ground Truth Ambient Occlusion
  *
+ * Based on Practical Realtime Strategies for Accurate Indirect Occlusion
+ * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pdf
+ * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pptx
+ *
  */
 
 #pragma once
@@ -30,10 +34,10 @@ class AmbientOcclusion {
   Texture dummy_horizons_tx_;
   Texture horizons_tx_;
 
-  Framebuffer fb_ = {"GTAO"};
+  Framebuffer fb_ = {"AO"};
 
-  PassSimple horizons_search_ps_ = {"GTAO Horizons Search"};
-  PassSimple render_pass_ps_ = {"GTAO Render Pass"};
+  PassSimple horizons_search_ps_ = {"AO Horizons Search"};
+  PassSimple render_pass_ps_ = {"AO Render Pass"};
 
   /* Used as pointers for texture views in the AO Render Pass. */
   GPUTexture *rp_normal_tx_ = nullptr;
