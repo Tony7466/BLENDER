@@ -1685,7 +1685,7 @@ void OBJECT_OT_lightprobe_cache_bake(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake Light Cache";
   ot->idname = "OBJECT_OT_lightprobe_cache_bake";
-  ot->description = "Bake the active view layer lighting";
+  ot->description = "Bake irradiance volume light cache";
 
   /* api callbacks */
   ot->invoke = lightprobe_cache_bake_invoke;

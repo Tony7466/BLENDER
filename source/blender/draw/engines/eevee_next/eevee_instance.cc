@@ -506,6 +506,8 @@ void Instance::light_bake_irradiance(
     context_disable();
   };
 
+  irradiance_cache.bake.init(probe);
+
   custom_pipeline_wrapper([&]() {
     /* TODO: lightprobe visibility group option. */
     manager->begin_sync();
@@ -516,7 +518,7 @@ void Instance::light_bake_irradiance(
     irradiance_cache.bake.surfels_lights_eval();
   });
 
-  sampling.init(scene);
+  sampling.init(probe);
   while (!sampling.finished()) {
     context_wrapper([&]() {
       /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context

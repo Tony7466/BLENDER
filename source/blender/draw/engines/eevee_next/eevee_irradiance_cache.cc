@@ -408,10 +408,14 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
 /** \name Baking
  * \{ */
 
+void IrradianceBake::init(const Object &probe_object)
+{
+  const ::LightProbe *lightprobe = static_cast<::LightProbe *>(probe_object.data);
+  surfel_density_ = lightprobe->surfel_density;
+}
+
 void IrradianceBake::sync()
 {
-  surfel_density_ = inst_.scene->eevee.gi_surfel_density;
-
   {
     PassSimple &pass = surfel_light_eval_ps_;
     pass.init();

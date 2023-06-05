@@ -15,6 +15,7 @@
 #include "BLI_set.hh"
 
 #include "DNA_genfile.h"
+#include "DNA_lightprobe_types.h"
 #include "DNA_movieclip_types.h"
 
 #include "BKE_main.h"
@@ -137,10 +138,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   {
     /* Keep this block, even when empty. */
 
-    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_samples")) {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        scene->eevee.gi_irradiance_samples = 2048;
-        scene->eevee.gi_surfel_density = 1.0f;
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_sample_count")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->grid_bake_samples = 2048;
+        lightprobe->surfel_density = 1.0f;
       }
     }
   }

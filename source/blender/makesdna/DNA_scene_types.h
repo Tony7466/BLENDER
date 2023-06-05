@@ -1787,13 +1787,11 @@ typedef struct SceneDisplay {
 typedef struct SceneEEVEE {
   int flag;
   int gi_diffuse_bounces;
-  int gi_irradiance_samples;
   int gi_cubemap_resolution;
   int gi_visibility_resolution;
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
-  float gi_surfel_density;
   char _pad0[4];
 
   float gi_cubemap_draw_size;

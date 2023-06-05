@@ -165,14 +165,12 @@
 #define _DNA_DEFAULT_SceneEEVEE \
   { \
     .gi_diffuse_bounces = 3, \
-    .gi_irradiance_samples = 2048, \
     .gi_cubemap_resolution = 512, \
     .gi_visibility_resolution = 32, \
     .gi_cubemap_draw_size = 0.3f, \
     .gi_irradiance_draw_size = 0.1f, \
     .gi_irradiance_smoothing = 0.1f, \
     .gi_filter_quality = 3.0f, \
-    .gi_surfel_density = 1.0f, \
  \
     .taa_samples = 16, \
     .taa_render_samples = 64, \

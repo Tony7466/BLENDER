@@ -90,8 +90,6 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
 
         probe = context.lightprobe
 
-#        layout.prop(probe, "type")
-
         if probe.type == 'GRID':
             col = layout.column()
 
@@ -100,8 +98,15 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             sub.prop(probe, "grid_resolution_y", text="Y")
             sub.prop(probe, "grid_resolution_z", text="Z")
 
+            col.separator()
+
             col.operator("object.lightprobe_cache_bake").subset = "ACTIVE"
             col.operator("object.lightprobe_cache_free").subset = "ACTIVE"
+
+            col.separator()
+
+            col.prop(probe, "grid_bake_samples")
+            col.prop(probe, "surfel_density")
 
         elif probe.type == 'PLANAR':
             # Currently unsupported

@@ -67,6 +67,7 @@ class Sampling {
   ~Sampling(){};
 
   void init(const Scene *scene);
+  void init(const Object &probe_object);
   void end_sync();
   void step();
 

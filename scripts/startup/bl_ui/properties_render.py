@@ -588,13 +588,8 @@ class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
         props = scene.eevee
 
         col = layout.column()
-        col.operator("object.lightprobe_cache_bake", text="Bake Irradiance Volumes", icon='RENDER_STILL').subset = "ALL"
-        col.operator("object.lightprobe_cache_free", text="Delete Lighting Cache").subset = "ALL"
-
-        col.separator()
-
-        col.prop(props, "gi_irradiance_samples")
-        col.prop(props, "gi_surfel_density")
+        col.operator("object.lightprobe_cache_bake", text="Bake Light Caches", icon='RENDER_STILL').subset = "ALL"
+        col.operator("object.lightprobe_cache_free", text="Delete Light Caches").subset = "ALL"
 
 
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):

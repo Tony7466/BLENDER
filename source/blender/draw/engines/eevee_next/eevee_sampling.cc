@@ -25,14 +25,7 @@ namespace blender::eevee {
 
 void Sampling::init(const Scene *scene)
 {
-  if (inst_.is_baking()) {
-    sample_count_ = max_ii(1, scene->eevee.gi_irradiance_samples);
-    sample_ = 0;
-  }
-  else {
-    sample_count_ = inst_.is_viewport() ? scene->eevee.taa_samples :
-                                          scene->eevee.taa_render_samples;
-  }
+  sample_count_ = inst_.is_viewport() ? scene->eevee.taa_samples : scene->eevee.taa_render_samples;
 
   if (sample_count_ == 0) {
     BLI_assert(inst_.is_viewport());
@@ -62,6 +55,15 @@ void Sampling::init(const Scene *scene)
 
   /* Only multiply after to have full the full DoF web pattern for each time steps. */
   sample_count_ *= motion_blur_steps_;
+}
+
+void Sampling::init(const Object &probe_object)
+{
+  BLI_assert(inst_.is_baking());
+  const ::LightProbe *lightprobe = static_cast<::LightProbe *>(probe_object.data);
+
+  sample_count_ = max_ii(1, lightprobe->grid_bake_samples);
+  sample_ = 0;
 }
 
 void Sampling::end_sync()

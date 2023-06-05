@@ -99,6 +99,7 @@ class IrradianceBake {
  public:
   IrradianceBake(Instance &inst) : inst_(inst){};
 
+  void init(const Object &probe_object);
   void sync();
 
   /** Create the views used to rasterize the scene into surfel representation. */
