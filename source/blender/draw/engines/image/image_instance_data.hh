@@ -47,6 +47,9 @@ struct IMAGE_InstanceData {
     DRWPass *depth_pass;
   } passes;
 
+  /**
+   * Current drawing mode (only valid during drawing).
+   */
   AbstractDrawingMode *drawing_mode = nullptr;
 
   /**
