@@ -6632,7 +6632,7 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object *ob)
 static void default_paint_slot_color_get(int layer_type, Material *ma, float color[4])
 {
   if ((!ma) || (!ma->nodetree)) {
-    color[0] = color[1] = color[2] = color[3] = 1.0f;
+    rgba_float_args_set(color, 1.0f, 1.0f, 1.0f, 1.0f);
     return;
   }
   switch (layer_type) {
