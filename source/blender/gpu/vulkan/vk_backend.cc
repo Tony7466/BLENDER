@@ -174,6 +174,17 @@ shaderc::Compiler &VKBackend::get_shaderc_compiler()
   return shaderc_compiler_;
 }
 
+VKWorkarounds VKBackend::workarounds_;
+
+void VKBackend::workarounds_init(const VKDevice &device)
+{
+  workarounds_.triangle_fan = false;
+
+  const VkPhysicalDevicePortabilitySubsetFeaturesKHR &portability_features =
+      device.portability_features_get();
+  workarounds_.triangle_fan = !portability_features.triangleFans;
+}
+
 void VKBackend::capabilities_init(const VKDevice &device)
 {
   const VkPhysicalDeviceProperties &properties = device.physical_device_properties_get();
@@ -205,6 +216,8 @@ void VKBackend::capabilities_init(const VKDevice &device)
   GCaps.max_varying_floats = limits.maxVertexOutputComponents;
   GCaps.max_shader_storage_buffer_bindings = limits.maxPerStageDescriptorStorageBuffers;
   GCaps.max_compute_shader_storage_blocks = limits.maxPerStageDescriptorStorageBuffers;
+
+  workarounds_init(device);
 }
 
 }  // namespace blender::gpu

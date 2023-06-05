@@ -63,6 +63,12 @@ void VKDevice::init_physical_device_properties()
 {
   BLI_assert(vk_physical_device_ != VK_NULL_HANDLE);
   vkGetPhysicalDeviceProperties(vk_physical_device_, &vk_physical_device_properties_);
+
+  portability_features_.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
+  VkPhysicalDeviceFeatures2 device_features{};
+  device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  device_features.pNext = &portability_features_;
+  vkGetPhysicalDeviceFeatures2(vk_physical_device_, &device_features);
 }
 
 void VKDevice::init_memory_allocator()

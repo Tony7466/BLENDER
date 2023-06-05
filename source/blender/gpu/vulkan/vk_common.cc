@@ -8,6 +8,7 @@
 
 #include "BLI_utildefines.h"
 
+#include "vk_backend.hh"
 #include "vk_common.hh"
 
 namespace blender::gpu {
@@ -718,8 +719,12 @@ VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type)
       return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
     case GPU_PRIM_TRI_STRIP:
       return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-    case GPU_PRIM_TRI_FAN:
+    case GPU_PRIM_TRI_FAN: {
+      if (VKBackend::get().workaround_get().triangle_fan) {
+        return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+      }
       return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+    }
     case GPU_PRIM_LINES_ADJ:
       return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
     case GPU_PRIM_TRIS_ADJ:

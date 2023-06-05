@@ -25,6 +25,10 @@ class VKContext;
 class VKDescriptorSet;
 class VKDescriptorSetTracker;
 
+struct VKWorkarounds {
+  bool triangle_fan = false;
+};
+
 class VKBackend : public GPUBackend {
  private:
   shaderc::Compiler shaderc_compiler_;
@@ -33,6 +37,8 @@ class VKBackend : public GPUBackend {
 #endif
   /* Global instance to device handles. */
   VKDevice device_;
+
+  static VKWorkarounds workarounds_;
 
  public:
   VKBackend()
@@ -90,9 +96,15 @@ class VKBackend : public GPUBackend {
   static void platform_init(const VKDevice &device);
   static void capabilities_init(const VKDevice &device);
 
+  static VKWorkarounds workaround_get()
+  {
+    return workarounds_;
+  }
+
  private:
   static void platform_init();
   static void platform_exit();
+  static void workarounds_init(const VKDevice &device);
 
   /* These classes are allowed to modify the global device. */
   friend class VKContext;

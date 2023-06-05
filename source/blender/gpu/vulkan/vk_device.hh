@@ -31,6 +31,7 @@ class VKDevice : public NonCopyable {
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceProperties vk_physical_device_properties_ = {};
+  VkPhysicalDevicePortabilitySubsetFeaturesKHR portability_features_ = {};
 
   /** Functions of vk_ext_debugutils for this device/instance. */
   debug::VKDebuggingTools debugging_tools_;
@@ -44,6 +45,11 @@ class VKDevice : public NonCopyable {
   const VkPhysicalDeviceProperties &physical_device_properties_get() const
   {
     return vk_physical_device_properties_;
+  }
+
+  const VkPhysicalDevicePortabilitySubsetFeaturesKHR &portability_features_get() const
+  {
+    return portability_features_;
   }
 
   VkInstance instance_get() const
