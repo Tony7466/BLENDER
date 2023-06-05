@@ -731,6 +731,9 @@ static void rna_ID_asset_data_set(PointerRNA *ptr, PointerRNA value, struct Repo
 
   const AssetMetaData *asset_data = value.data;
   if (asset_data == NULL) {
+    /* `id.asset_data = None` is now a way to clear the 'is asset' status. This makes the
+     * assignment symmetrical, as `id.asset_data = some_other_data` can be used to actually
+     * mark the ID as asset. */
     rna_ID_asset_clear(destination);
     return;
   }
