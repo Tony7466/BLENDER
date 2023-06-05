@@ -6631,19 +6631,18 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object *ob)
  */
 static void default_paint_slot_color_get(int layer_type, Material *ma, float color[4])
 {
-  if ((!ma) || (!ma->nodetree)) {
-    rgba_float_args_set(color, 1.0f, 1.0f, 1.0f, 1.0f);
-    return;
-  }
   switch (layer_type) {
     case LAYER_BASE_COLOR:
     case LAYER_SPECULAR:
     case LAYER_ROUGHNESS:
     case LAYER_METALLIC: {
       bNodeTree *ntree = nullptr;
-      ma->nodetree->ensure_topology_cache();
-      const blender::Span<bNode *> nodes = ma->nodetree->nodes_by_type("ShaderNodeBsdfPrincipled");
-      bNode *in_node = nodes.is_empty() ? nullptr : nodes.first();
+      bNode *in_node = nullptr;
+      if (ma && ma->nodetree) {
+        ma->nodetree->ensure_topology_cache();
+        const blender::Span<bNode *> nodes = ma->nodetree->nodes_by_type("ShaderNodeBsdfPrincipled");
+        nodes.is_empty() ? nullptr : nodes.first();
+      }
       if (!in_node) {
         /* An existing material or Principled BSDF node could not be found.
          * Copy default color values from a default Principled BSDF instead. */
