@@ -649,7 +649,7 @@ static bool pack_islands_optimal_pack_table(const int table_count,
                                             const char * /* unused_comment */,
                                             int64_t island_count,
                                             const float large_uv,
-                                            const Span<UVAABBIsland *> aabbs,
+                                            const Span<std::unique_ptr<UVAABBIsland>> aabbs,
                                             const UVPackIsland_Params &params,
                                             MutableSpan<uv_phi> r_phis,
                                             rctf *r_extent)
