@@ -1517,7 +1517,8 @@ void SCENE_OT_light_cache_bake(wmOperatorType *ot)
 
 /* NOTE: New version destined to replace the old lightcache bake operator. */
 
-static blender::Vector<Object *> lightprobe_cache_bake_start(bContext *C, wmOperator *op)
+static blender::Vector<Object *> lightprobe_cache_irradiance_volume_subset_get(bContext *C,
+                                                                               wmOperator *op)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Scene *scene = CTX_data_scene(C);
@@ -1595,7 +1596,7 @@ static int lightprobe_cache_bake_invoke(bContext *C, wmOperator *op, const wmEve
   Scene *scene = CTX_data_scene(C);
   int delay = RNA_int_get(op->ptr, "delay");
 
-  blender::Vector<Object *> probes = lightprobe_cache_bake_start(C, op);
+  blender::Vector<Object *> probes = lightprobe_cache_irradiance_volume_subset_get(C, op);
 
   if (probes.is_empty()) {
     return OPERATOR_CANCELLED;
@@ -1651,7 +1652,7 @@ static int lightprobe_cache_bake_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  blender::Vector<Object *> probes = lightprobe_cache_bake_start(C, op);
+  blender::Vector<Object *> probes = lightprobe_cache_irradiance_volume_subset_get(C, op);
 
   /* TODO: abort if selected engine is not eevee. */
   void *rj = EEVEE_NEXT_lightbake_job_data_alloc(bmain, view_layer, scene, probes, scene->r.cfra);
@@ -1759,29 +1760,23 @@ void SCENE_OT_light_cache_free(wmOperatorType *ot)
 
 /* NOTE: New version destined to replace the old lightcache bake operator. */
 
-static bool lightprobe_cache_free_poll(bContext *C)
-{
-  Object *object = CTX_data_active_object(C);
-
-  return object && object->lightprobe_cache != nullptr;
-}
-
-static int lightprobe_cache_free_exec(bContext *C, wmOperator * /*op*/)
+static int lightprobe_cache_free_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  Object *object = CTX_data_active_object(C);
 
   /* Kill potential bake job first (see #57011). */
   wmWindowManager *wm = CTX_wm_manager(C);
   WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_LIGHT_BAKE);
 
-  if (object->lightprobe_cache == nullptr) {
-    return OPERATOR_CANCELLED;
+  blender::Vector<Object *> probes = lightprobe_cache_irradiance_volume_subset_get(C, op);
+
+  for (Object *object : probes) {
+    if (object->lightprobe_cache == nullptr) {
+      continue;
+    }
+    BKE_lightprobe_cache_free(object);
+    DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE);
   }
-
-  BKE_lightprobe_cache_free(object);
-
-  DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, scene);
 
@@ -1790,14 +1785,40 @@ static int lightprobe_cache_free_exec(bContext *C, wmOperator * /*op*/)
 
 void OBJECT_OT_lightprobe_cache_free(wmOperatorType *ot)
 {
+  static const EnumPropertyItem lightprobe_subset_items[] = {
+      {LIGHTCACHE_SUBSET_ALL,
+       "ALL",
+       0,
+       "All Light Probes",
+       "Delete all light probes baked lighting data"},
+      {LIGHTCACHE_SUBSET_SELECTED,
+       "SELECTED",
+       0,
+       "Selected Only",
+       "Only delete selected light probes baked lighting data"},
+      {LIGHTCACHE_SUBSET_ACTIVE,
+       "ACTIVE",
+       0,
+       "Active Only",
+       "Only delete the active light probe baked lighting data"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   /* identifiers */
   ot->name = "Delete Light Cache";
   ot->idname = "OBJECT_OT_lightprobe_cache_free";
   ot->description = "Delete cached indirect lighting";
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* api callbacks */
   ot->exec = lightprobe_cache_free_exec;
-  ot->poll = lightprobe_cache_free_poll;
+
+  ot->prop = RNA_def_enum(ot->srna,
+                          "subset",
+                          lightprobe_subset_items,
+                          LIGHTCACHE_SUBSET_SELECTED,
+                          "Subset",
+                          "Subset of probes to update");
 }
 
 /** \} */

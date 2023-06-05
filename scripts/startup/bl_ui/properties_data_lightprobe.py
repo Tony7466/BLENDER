@@ -101,7 +101,7 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             sub.prop(probe, "grid_resolution_z", text="Z")
 
             col.operator("object.lightprobe_cache_bake").subset = "ACTIVE"
-            col.operator("object.lightprobe_cache_free")
+            col.operator("object.lightprobe_cache_free").subset = "ACTIVE"
 
         elif probe.type == 'PLANAR':
             # Currently unsupported

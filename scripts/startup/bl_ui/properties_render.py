@@ -589,7 +589,7 @@ class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
 
         col = layout.column()
         col.operator("object.lightprobe_cache_bake", text="Bake Irradiance Volumes", icon='RENDER_STILL').subset = "ALL"
-        # col.operator("object.lightprobe_cache_free", text="Delete Lighting Cache").subset = "ALL" # TODO
+        col.operator("object.lightprobe_cache_free", text="Delete Lighting Cache").subset = "ALL"
 
         col.separator()
 
