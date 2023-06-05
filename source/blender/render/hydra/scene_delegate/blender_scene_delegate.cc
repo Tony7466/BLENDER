@@ -426,7 +426,7 @@ void BlenderSceneDelegate::check_updates()
   ITER_BEGIN (DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id)
   {
     CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
-              2,
+              0,
               "Update: %s [%s]",
               id->name,
               std::bitset<32>(id->recalc).to_string().c_str());

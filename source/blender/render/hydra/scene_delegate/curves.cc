@@ -21,7 +21,7 @@ CurvesData::CurvesData(BlenderSceneDelegate *scene_delegate,
 
 void CurvesData::init()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
 
   Object *object = (Object *)id;
   write_curves((Curves *)object->data);
@@ -31,7 +31,7 @@ void CurvesData::init()
 
 void CurvesData::insert()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().InsertRprim(
       pxr::HdPrimTypeTokens->basisCurves, scene_delegate_, prim_id);
 }
@@ -64,7 +64,7 @@ void CurvesData::update()
   }
 
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(prim_id, bits);
-  ID_LOG(2, "");
+  ID_LOG(1, "");
 }
 
 pxr::VtValue CurvesData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
@@ -88,7 +88,7 @@ bool CurvesData::update_visibility()
   if (ret) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
         prim_id, pxr::HdChangeTracker::DirtyVisibility);
-    ID_LOG(2, "");
+    ID_LOG(1, "");
   }
   return ret;
 }

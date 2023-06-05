@@ -61,19 +61,19 @@ bool InstancerData::is_visible(BlenderSceneDelegate *scene_delegate, Object *obj
 
 void InstancerData::init()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   write_instances();
 }
 
 void InstancerData::insert()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().InsertInstancer(scene_delegate_, prim_id);
 }
 
 void InstancerData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
   for (auto &m_inst : mesh_instances_.values()) {
     m_inst.data->remove();
   }
@@ -87,7 +87,7 @@ void InstancerData::remove()
 
 void InstancerData::update()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   Object *object = (Object *)id;
   if (id->recalc & ID_RECALC_GEOMETRY ||
       (object->data && ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) ||
@@ -116,6 +116,7 @@ bool InstancerData::update_visibility()
   bool ret = visible != prev_visible;
 
   if (ret) {
+    ID_LOG(1, "");
     auto &change_tracker = scene_delegate_->GetRenderIndex().GetChangeTracker();
     change_tracker.MarkInstancerDirty(prim_id, pxr::HdChangeTracker::DirtyVisibility);
     for (auto &m_inst : mesh_instances_.values()) {

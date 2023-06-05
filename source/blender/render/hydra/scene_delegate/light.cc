@@ -24,7 +24,7 @@ LightData::LightData(BlenderSceneDelegate *scene_delegate,
 
 void LightData::init()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
 
   Light *light = (Light *)((Object *)id)->data;
   data_.clear();
@@ -99,19 +99,19 @@ void LightData::init()
 
 void LightData::insert()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().InsertSprim(prim_type_, scene_delegate_, prim_id);
 }
 
 void LightData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveSprim(prim_type_, prim_id);
 }
 
 void LightData::update()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
 
   Object *object = (Object *)id;
   Light *light = (Light *)object->data;
@@ -138,6 +138,7 @@ void LightData::update()
 
 pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
 {
+  ID_LOG(3, "%s", key.GetText());
   pxr::VtValue ret;
   auto it = data_.find(key);
   if (it != data_.end()) {
@@ -163,6 +164,7 @@ bool LightData::update_visibility()
   if (ret) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                         pxr::HdLight::DirtyParams);
+    ID_LOG(1, "");
   }
   return ret;
 }

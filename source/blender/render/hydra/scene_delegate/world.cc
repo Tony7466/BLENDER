@@ -37,7 +37,7 @@ WorldData::WorldData(BlenderSceneDelegate *scene_delegate,
 
 void WorldData::init()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
 
   write_transform();
 
@@ -104,20 +104,20 @@ void WorldData::init()
 
 void WorldData::insert()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().InsertSprim(
       pxr::HdPrimTypeTokens->domeLight, scene_delegate_, prim_id);
 }
 
 void WorldData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, prim_id);
 }
 
 void WorldData::update()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
   init();
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                       pxr::HdLight::AllDirty);
@@ -135,6 +135,7 @@ pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
   auto it = data_.find(key);
   if (it != data_.end()) {
     ret = it->second;
+    ID_LOG(3, "%s", key.GetText());
   }
   return ret;
 }

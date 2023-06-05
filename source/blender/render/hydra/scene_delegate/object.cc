@@ -98,7 +98,7 @@ void ObjectData::update_parent()
 {
   Object *object = (Object *)id;
   if (parent_ != object->parent) {
-    ID_LOG(2, "");
+    ID_LOG(1, "");
     parent_ = object->parent;
 
     /* Looking for corresponded instancer and update it as parent */

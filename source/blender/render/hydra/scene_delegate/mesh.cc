@@ -23,7 +23,7 @@ MeshData::MeshData(BlenderSceneDelegate *scene_delegate,
 
 void MeshData::init()
 {
-  ID_LOG(2, "");
+  ID_LOG(1, "");
 
   Object *object = (Object *)id;
   if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
@@ -52,7 +52,7 @@ void MeshData::remove()
 {
   for (int i = 0; i < submeshes_.size(); ++i) {
     scene_delegate_->GetRenderIndex().RemoveRprim(submesh_prim_id(i));
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s: %d", prim_id.GetText(), i);
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s: %d", prim_id.GetText(), i);
   }
 }
 
@@ -80,7 +80,7 @@ void MeshData::update()
 
   for (int i = 0; i < submeshes_.size(); ++i) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(submesh_prim_id(i), bits);
-    ID_LOG(2, "%d", i);
+    ID_LOG(1, "%d", i);
   }
 }
 
@@ -106,7 +106,7 @@ bool MeshData::update_visibility()
     for (int i = 0; i < submeshes_.size(); ++i) {
       scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
           submesh_prim_id(i), pxr::HdChangeTracker::DirtyVisibility);
-      ID_LOG(2, "%d", i);
+      ID_LOG(1, "%d", i);
     }
   }
   return ret;
@@ -168,7 +168,7 @@ void MeshData::update_double_sided(MaterialData *mat_data)
     if (submeshes_[i].mat_data == mat_data) {
       scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
           submesh_prim_id(i), pxr::HdChangeTracker::DirtyDoubleSided);
-      ID_LOG(2, "%d", i);
+      ID_LOG(1, "%d", i);
     }
   }
 }
@@ -278,16 +278,16 @@ void MeshData::write_submeshes(Mesh *mesh)
     pxr::SdfPath p = submesh_prim_id(i);
     if (i < sub_meshes_prev_count) {
       render_index.GetChangeTracker().MarkRprimDirty(p, pxr::HdChangeTracker::AllDirty);
-      ID_LOG(2, "Update %d", i);
+      ID_LOG(1, "Update %d", i);
     }
     else {
       render_index.InsertRprim(pxr::HdPrimTypeTokens->mesh, scene_delegate_, p);
-      ID_LOG(2, "Insert %d", i);
+      ID_LOG(1, "Insert %d", i);
     }
   }
   for (; i < sub_meshes_prev_count; ++i) {
     render_index.RemoveRprim(submesh_prim_id(i));
-    ID_LOG(2, "Remove %d", i);
+    ID_LOG(1, "Remove %d", i);
   }
 }
 

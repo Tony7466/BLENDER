@@ -41,13 +41,15 @@ static std::string cache_image_file(Image *image,
   if (BKE_image_save_options_init(&opts, main, scene_delegate->scene, image, iuser, true, false)) {
     STRNCPY(opts.filepath, file_path.c_str());
     ReportList reports;
-    if (!BKE_image_save(&reports, main, image, iuser, &opts)) {
+    if (BKE_image_save(&reports, main, image, iuser, &opts)) {
+      CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
+    }
+    else {
       file_path = "";
-    };
+    }
   }
   BKE_image_save_options_free(&opts);
 
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s -> %s", image->id.name, file_path.c_str());
   return file_path;
 }
 
@@ -71,7 +73,7 @@ std::string cache_or_get_image_file(Image *image,
     }
   }
 
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s -> %s", image->id.name, file_path.c_str());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
   return file_path;
 }
 
