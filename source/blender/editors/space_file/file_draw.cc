@@ -413,7 +413,7 @@ static void file_draw_preview(const FileDirEntry *file,
       UI_GetThemeColor4fv(TH_ICON_FOLDER, document_img_col);
     }
     else {
-      UI_GetThemeColor4fv(is_loading ? TH_BACK : TH_TEXT, document_img_col);
+      UI_GetThemeColor4fv(TH_TEXT, document_img_col);
     }
   }
   else if (file->typeflag & FILE_TYPE_FTFONT) {
@@ -460,6 +460,12 @@ static void file_draw_preview(const FileDirEntry *file,
       icon_color[1] = 255;
       icon_color[2] = 255;
     }
+
+    if (is_loading) {
+      /* Contrast with background since we are not showing the large document image. */
+      UI_GetThemeColor4ubv(TH_TEXT, icon_color);
+    }
+
     icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
     icon_y = yco + (ey / 2.0f) - (icon_size * ((file->typeflag & FILE_TYPE_DIR) ? 0.78f : 0.75f));
     UI_icon_draw_ex(icon_x,
