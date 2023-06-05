@@ -6631,6 +6631,10 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object *ob)
  */
 static void default_paint_slot_color_get(int layer_type, Material *ma, float color[4])
 {
+  if ((!ma) || (!ma->nodetree)) {
+    color[0] = color[1] = color[2] = color[3] = 1.0f;
+    return;
+  }
   switch (layer_type) {
     case LAYER_BASE_COLOR:
     case LAYER_SPECULAR:
@@ -6872,10 +6876,8 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
 
   /* Set default color. Copy the color from nodes, so it matches the existing material.
    * Material could be null so we should have a default color. */
-  float color[4]={1.0f, 1.0f, 1.0f, 1.0f};
-  if(ma) {
-    default_paint_slot_color_get(type, ma, color);
-  }
+  float color[4];
+  default_paint_slot_color_get(type, ma, color);
   RNA_float_set_array(op->ptr, "color", color);
 
   return WM_operator_props_dialog_popup(C, op, 300);
