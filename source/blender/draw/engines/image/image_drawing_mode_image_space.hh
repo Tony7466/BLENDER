@@ -37,15 +37,20 @@ struct ImageDrawingMode {
       tile_user = *image_user;
     }
     LISTBASE_FOREACH (ImageTile *, image_tile_ptr, &image->tiles) {
-      const ImageTileWrapper image_tile(image_tile_ptr);
+      const bke::image::ImageTileWrapper image_tile(image_tile_ptr);
       const int tile_x = image_tile.get_tile_x_offset();
       const int tile_y = image_tile.get_tile_y_offset();
       tile_user.tile = image_tile.get_tile_number();
       GPUTexture *texture = BKE_image_get_gpu_texture(image, &tile_user, nullptr);
 
+      ShaderParameters &sh_params = instance_data.sh_params;
       DRWShadingGroup *grp = DRW_shgroup_create(shader, instance_data.passes.image_pass);
       DRW_shgroup_uniform_vec2_copy(grp, "tile_offset", float2(tile_x, tile_y));
       DRW_shgroup_uniform_texture(grp, "imageTexture", texture);
+      DRW_shgroup_uniform_vec2_copy(grp, "farNearDistances", sh_params.far_near);
+      DRW_shgroup_uniform_vec4_copy(grp, "shuffle", sh_params.shuffle);
+      DRW_shgroup_uniform_int_copy(grp, "drawFlags", static_cast<int32_t>(sh_params.flags));
+      DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", sh_params.use_premul_alpha);
       DRW_shgroup_call(grp, geom, nullptr);
     }
   }
