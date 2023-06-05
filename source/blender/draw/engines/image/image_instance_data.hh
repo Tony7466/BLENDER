@@ -21,6 +21,7 @@
 #include "DRW_render.h"
 
 namespace blender::draw::image_engine {
+class AbstractDrawingMode;
 
 struct IMAGE_InstanceData {
   struct Image *image;
@@ -45,6 +46,8 @@ struct IMAGE_InstanceData {
     DRWPass *image_pass;
     DRWPass *depth_pass;
   } passes;
+
+  AbstractDrawingMode *drawing_mode = nullptr;
 
   /**
    * Cache containing the float buffers when drawing byte images.

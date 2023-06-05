@@ -50,19 +50,11 @@ static std::unique_ptr<AbstractSpaceAccessor> space_accessor_from_context(
   return nullptr;
 }
 
-template<
-    /** \brief Drawing mode to use.
-     *
-     * Useful during development to switch between drawing implementations.
-     */
-    typename DrawingMode = ImageDrawingMode>
-// ScreenSpaceDrawingMode<OneTexture>>
 class ImageEngine {
  private:
   const DRWContextState *draw_ctx;
   IMAGE_Data *vedata;
   std::unique_ptr<AbstractSpaceAccessor> space;
-  DrawingMode drawing_mode;
 
  public:
   ImageEngine(const DRWContextState *draw_ctx, IMAGE_Data *vedata)
@@ -72,66 +64,100 @@ class ImageEngine {
 
   virtual ~ImageEngine() = default;
 
-  void begin_sync()
+  void init()
   {
     IMAGE_InstanceData *instance_data = vedata->instance_data;
-    drawing_mode.begin_sync(vedata);
 
-    /* Setup full screen view matrix. */
-    const ARegion *region = draw_ctx->region;
-    float winmat[4][4], viewmat[4][4];
-    orthographic_m4(viewmat, 0.0, region->winx, 0.0, region->winy, 0.0, 1.0);
-    unit_m4(winmat);
-    instance_data->view = DRW_view_create(viewmat, winmat, nullptr, nullptr, nullptr);
-  }
-
-  void image_sync()
-  {
-    IMAGE_InstanceData *instance_data = vedata->instance_data;
     Main *bmain = CTX_data_main(draw_ctx->evil_C);
     instance_data->image = space->get_image(bmain);
-    if (instance_data->image == nullptr) {
-      /* Early exit, nothing to draw. */
-      return;
+    float image_offset[2] = {0.0f, 0.0f};
+    float image_resolution[2] = {1024.0f, 1024.0f};
+
+    if (instance_data->image) {
+      instance_data->flags.do_tile_drawing = instance_data->image->source != IMA_SRC_TILED &&
+                                             space->use_tile_drawing();
+      image_offset[0] = float(instance_data->image->offset_x);
+      image_offset[1] = float(instance_data->image->offset_y);
+
+      ImageUser *iuser = space->get_image_user();
+      if (instance_data->image->rr != nullptr) {
+        BKE_image_multilayer_index(instance_data->image->rr, iuser);
+      }
+      else {
+        BKE_image_multiview_index(instance_data->image, iuser);
+      }
     }
-    instance_data->flags.do_tile_drawing = instance_data->image->source != IMA_SRC_TILED &&
-                                           space->use_tile_drawing();
+    else {
+      instance_data->flags.do_tile_drawing = false;
+    }
+
     void *lock;
     ImBuf *image_buffer = space->acquire_image_buffer(instance_data->image, &lock);
 
     /* Setup the matrix to go from screen UV coordinates to UV texture space coordinates. */
-    float image_resolution[2] = {image_buffer ? image_buffer->x : 1024.0f,
-                                 image_buffer ? image_buffer->y : 1024.0f};
-    float image_offset[2] = {float(instance_data->image->offset_x),
-                             float(instance_data->image->offset_y)};
+    if (image_buffer) {
+      image_resolution[0] = image_buffer->x;
+      image_resolution[1] = image_buffer->y;
+    }
     space->init_ss_to_texture_matrix(
         draw_ctx->region, image_offset, image_resolution, instance_data->ss_to_texture);
 
     const Scene *scene = DRW_context_state_get()->scene;
     instance_data->sh_params.update(space.get(), scene, instance_data->image, image_buffer);
     space->release_buffer(instance_data->image, image_buffer, lock);
+    /* Setup full screen view matrix. */
+    const ARegion *region = draw_ctx->region;
+    float winmat[4][4], viewmat[4][4];
+    orthographic_m4(viewmat, 0.0, region->winx, 0.0, region->winy, 0.0, 1.0);
+    unit_m4(winmat);
+    instance_data->view = DRW_view_create(viewmat, winmat, nullptr, nullptr, nullptr);
 
-    ImageUser *iuser = space->get_image_user();
-    if (instance_data->image->rr != nullptr) {
-      BKE_image_multilayer_index(instance_data->image->rr, iuser);
+    select_drawing_mode(image_resolution);
+  }
+
+  void select_drawing_mode(float2 image_resolution)
+  {
+    IMAGE_InstanceData *instance_data = vedata->instance_data;
+    if (instance_data->flags.do_tile_drawing || image_resolution.x > 8192 ||
+        image_resolution.y > 8192) {
+      instance_data->drawing_mode = MEM_new<ScreenSpaceDrawingMode<OneTexture>>(__func__);
     }
     else {
-      BKE_image_multiview_index(instance_data->image, iuser);
+      instance_data->drawing_mode = MEM_new<ImageDrawingMode>(__func__);
     }
-    drawing_mode.image_sync(vedata, instance_data->image, iuser);
+  }
+
+  void begin_sync()
+  {
+    IMAGE_InstanceData *instance_data = vedata->instance_data;
+    instance_data->drawing_mode->begin_sync(vedata);
+  }
+
+  void image_sync()
+  {
+    IMAGE_InstanceData *instance_data = vedata->instance_data;
+    if (instance_data->image == nullptr) {
+      /* Early exit, nothing to draw. */
+      return;
+    }
+    ImageUser *iuser = space->get_image_user();
+    instance_data->drawing_mode->image_sync(vedata, instance_data->image, iuser);
   }
 
   void draw_finish()
   {
-    drawing_mode.draw_finish(vedata);
-
     IMAGE_InstanceData *instance_data = vedata->instance_data;
+    instance_data->drawing_mode->draw_finish(vedata);
+
     instance_data->image = nullptr;
+    MEM_delete(instance_data->drawing_mode);
+    instance_data->drawing_mode = nullptr;
   }
 
   void draw_viewport()
   {
-    drawing_mode.draw_viewport(vedata);
+    IMAGE_InstanceData *instance_data = vedata->instance_data;
+    instance_data->drawing_mode->draw_viewport(vedata);
   }
 };
 
@@ -145,6 +171,9 @@ static void IMAGE_engine_init(void *ved)
   if (vedata->instance_data == nullptr) {
     vedata->instance_data = MEM_new<IMAGE_InstanceData>(__func__);
   }
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  ImageEngine image_engine(draw_ctx, static_cast<IMAGE_Data *>(vedata));
+  image_engine.init();
 }
 
 static void IMAGE_cache_init(void *vedata)

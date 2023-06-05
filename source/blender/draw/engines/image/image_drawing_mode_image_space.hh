@@ -17,16 +17,18 @@ namespace blender::draw::image_engine {
  * Each GPU has a max texture size. Textures larger than this size aren't able to be allocated on
  * the GPU. For large textures use #ScreenSpaceDrawingMode.
  */
-struct ImageDrawingMode {
-  void begin_sync(IMAGE_Data *vedata)
+class ImageDrawingMode : public AbstractDrawingMode {
+ public:
+  void begin_sync(IMAGE_Data *vedata) const override
   {
     IMAGE_InstanceData &instance_data = *vedata->instance_data;
     instance_data.passes.image_pass = DRW_pass_create(
         "image_ps", DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
 
     instance_data.passes.depth_pass = nullptr;
-  }
-  void image_sync(IMAGE_Data *vedata, Image *image, ImageUser *image_user)
+  }  // namespace blender::draw::image_engine
+
+  void image_sync(IMAGE_Data *vedata, Image *image, ImageUser *image_user) const override
   {
     IMAGE_InstanceData &instance_data = *vedata->instance_data;
     GPUBatch *geom = DRW_cache_quad_get();
@@ -55,14 +57,14 @@ struct ImageDrawingMode {
     }
   }
 
-  void draw_viewport(IMAGE_Data *vedata)
+  void draw_viewport(IMAGE_Data *vedata) const override
   {
     IMAGE_InstanceData &instance_data = *vedata->instance_data;
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     GPU_framebuffer_clear_color_depth(dfbl->default_fb, float4(0.0), 1.0f);
     DRW_draw_pass(instance_data.passes.image_pass);
   }
-  void draw_finish(IMAGE_Data *vedata) {}
-};
 
+  void draw_finish(IMAGE_Data *vedata) const override {}
+};
 };  // namespace blender::draw::image_engine
