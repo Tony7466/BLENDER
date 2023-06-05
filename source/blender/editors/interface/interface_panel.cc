@@ -18,6 +18,7 @@
 
 #include "PIL_time.h"
 
+#include "BLI_bit_span.hh"
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -521,16 +522,17 @@ static void reorder_instanced_panel_list(bContext *C, ARegion *region, Panel *dr
  *
  * \return Whether the closed flag for the panel or any sub-panels changed.
  */
-static bool panel_set_expand_from_list_data_recursive(Panel *panel, short flag, short *flag_index)
+static bool panel_set_expand_from_list_data_recursive(Panel *panel,
+                                                      blender::bits::BitIterator &expand_flag)
 {
-  const bool open = (flag & (1 << *flag_index));
+  const bool open = *expand_flag;
   bool changed = (open == UI_panel_is_closed(panel));
 
   SET_FLAG_FROM_TEST(panel->flag, !open, PNL_CLOSED);
 
   LISTBASE_FOREACH (Panel *, child, &panel->children) {
-    *flag_index = *flag_index + 1;
-    changed |= panel_set_expand_from_list_data_recursive(child, flag, flag_index);
+    ++expand_flag;
+    changed |= panel_set_expand_from_list_data_recursive(child, expand_flag);
   }
   return changed;
 }
@@ -549,12 +551,11 @@ static void panel_set_expansion_from_list_data(const bContext *C, Panel *panel)
     return;
   }
 
-  const short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
-  /* If panel is a child, take offset in the parent list into account. */
-  short flag_index = 0;
+  uint64_t *expand_flag = panel->type->get_list_data_expand_flag(C, panel);
   if (panel->type) {
     /* Start panel animation if the open state was changed. */
-    if (panel_set_expand_from_list_data_recursive(panel, expand_flag, &flag_index)) {
+    blender::bits::BitIterator expand_flag_iter(expand_flag, 0);
+    if (panel_set_expand_from_list_data_recursive(panel, expand_flag_iter)) {
       panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
     }
   }
@@ -578,14 +579,16 @@ static void region_panels_set_expansion_from_list_data(const bContext *C, ARegio
 /**
  * Recursive implementation for #set_panels_list_data_expand_flag.
  */
-static void get_panel_expand_flag(const Panel *panel, short *flag, short *flag_index)
+static void get_panel_expand_flag_recursive(const Panel *panel,
+                                            blender::bits::MutableBitIterator expand_flag)
 {
   const bool open = !(panel->flag & PNL_CLOSED);
-  SET_FLAG_FROM_TEST(*flag, open, (1 << *flag_index));
+
+  (*expand_flag).set(open);
 
   LISTBASE_FOREACH (const Panel *, child, &panel->children) {
-    *flag_index = *flag_index + 1;
-    get_panel_expand_flag(child, flag, flag_index);
+    ++expand_flag;
+    get_panel_expand_flag_recursive(child, expand_flag);
   }
 }
 
@@ -607,11 +610,10 @@ static void set_panels_list_data_expand_flag(const bContext *C, const ARegion *r
 
     /* Check for #PANEL_ACTIVE so we only set the expand flag for active panels. */
     if (panel_type->flag & PANEL_TYPE_INSTANCED && panel->runtime_flag & PANEL_ACTIVE) {
-      short expand_flag;
-      short flag_index = 0;
-      get_panel_expand_flag(panel, &expand_flag, &flag_index);
-      if (panel->type->set_list_data_expand_flag) {
-        panel->type->set_list_data_expand_flag(C, panel, expand_flag);
+      if (panel->type->get_list_data_expand_flag) {
+        uint64_t *expand_flag = panel->type->get_list_data_expand_flag(C, panel);
+        blender::bits::MutableBitIterator expand_flag_iter(expand_flag, 0);
+        get_panel_expand_flag_recursive(panel, expand_flag_iter);
       }
     }
   }
@@ -691,7 +693,8 @@ static void panels_collapse_all(ARegion *region, const Panel *from_panel)
     if (pt && from_pt && !(pt->flag & PANEL_TYPE_NO_HEADER)) {
       if (!pt->context[0] || !from_pt->context[0] || STREQ(pt->context, from_pt->context)) {
         if ((panel->flag & PNL_PIN) || !category || !pt->category[0] ||
-            STREQ(pt->category, category)) {
+            STREQ(pt->category, category))
+        {
           panel->flag |= PNL_CLOSED;
         }
       }
@@ -2233,7 +2236,8 @@ static void ui_panel_category_active_set(ARegion *region, const char *idname, bo
     while ((pc_act = pc_act_next)) {
       pc_act_next = pc_act->next;
       if (!BLI_findstring(
-              &region->type->paneltypes, pc_act->idname, offsetof(PanelType, category))) {
+              &region->type->paneltypes, pc_act->idname, offsetof(PanelType, category)))
+      {
         BLI_remlink(lb, pc_act);
         MEM_freeN(pc_act);
       }
@@ -2426,7 +2430,8 @@ int ui_handler_panel_region(bContext *C,
       /* The panel collapse / expand key "A" is special as it takes priority over
        * active button handling. */
       if (event->type == EVT_AKEY &&
-          ((event->modifier & (KM_SHIFT | KM_CTRL | KM_ALT | KM_OSKEY)) == 0)) {
+          ((event->modifier & (KM_SHIFT | KM_CTRL | KM_ALT | KM_OSKEY)) == 0))
+      {
         retval = WM_UI_HANDLER_BREAK;
         ui_handle_panel_header(
             C, block, mx, event->type, event->modifier & KM_CTRL, event->modifier & KM_SHIFT);

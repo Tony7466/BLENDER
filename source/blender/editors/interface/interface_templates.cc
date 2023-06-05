@@ -2408,22 +2408,12 @@ static void constraint_reorder(bContext *C, Panel *panel, int new_index)
 /**
  * Get the expand flag from the active constraint to use for the panel.
  */
-static short get_constraint_expand_flag(const bContext * /*C*/, Panel *panel)
+static uint64_t *get_constraint_expand_flag(const bContext * /*C*/, Panel *panel)
 {
   PointerRNA *con_ptr = UI_panel_custom_data_get(panel);
   bConstraint *con = (bConstraint *)con_ptr->data;
 
-  return con->ui_expand_flag;
-}
-
-/**
- * Save the expand flag for the panel and sub-panels to the constraint.
- */
-static void set_constraint_expand_flag(const bContext * /*C*/, Panel *panel, short expand_flag)
-{
-  PointerRNA *con_ptr = UI_panel_custom_data_get(panel);
-  bConstraint *con = (bConstraint *)con_ptr->data;
-  con->ui_expand_flag = expand_flag;
+  return (uint64_t *)(&con->ui_expand_flag);
 }
 
 /**
@@ -2505,7 +2495,6 @@ void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_con
 
       if (new_panel) {
         /* Set the list panel functionality function pointers since we don't do it with python. */
-        new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
         new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
         new_panel->type->reorder = constraint_reorder;
       }
@@ -2799,7 +2788,8 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
         (layout_flags & UI_TEMPLATE_OP_PROPS_COMPACT));
 
     if ((return_info & UI_PROP_BUTS_NONE_ADDED) &&
-        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY)) {
+        (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_EMPTY))
+    {
       uiItemL(layout, IFACE_("No Properties"), ICON_NONE);
     }
   }
@@ -2910,7 +2900,8 @@ static bool ui_layout_operator_properties_only_booleans(const bContext *C,
         continue;
       }
       if (op->type->poll_property &&
-          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data)) {
+          !ui_layout_operator_buts_poll_property(&ptr, prop, &user_data))
+      {
         continue;
       }
       if (RNA_property_type(prop) != PROP_BOOLEAN) {
@@ -4824,7 +4815,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
                       TIP_("Auto Handle"));
     UI_but_func_set(bt, curvemap_tools_handle_auto, cumap, nullptr);
     if (((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
-        ((cmp->flag & CUMA_HANDLE_VECTOR) == false)) {
+        ((cmp->flag & CUMA_HANDLE_VECTOR) == false))
+    {
       bt->flag |= UI_SELECT_DRAW;
     }
 
