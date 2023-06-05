@@ -272,15 +272,17 @@ class VIEWLAYER_PT_layer_dependency_graph(Panel):
         layout = self.layout
 
         depsgraph = context.view_layer.depsgraph
-        is_viewport = (depsgraph is None) or (depsgraph.mode == 'VIEWPORT')
+        is_depsgraph_mode_in_viewport_mode = (depsgraph is None) or (depsgraph.mode == 'VIEWPORT')
 
-        if is_viewport:
-            layout.operator("scene.view_layer_evaluation_mode_set", text="Set Render Evaluation Mode").mode = 'RENDER'
+        col = layout.column()
+
+        if is_depsgraph_mode_in_viewport_mode:
+            col.operator("scene.view_layer_evaluation_mode_set", text="Switch to Render Resolution").mode = 'RENDER'
         else:
-            layout.operator(
+            col.alert = True
+            col.operator(
                 "scene.view_layer_evaluation_mode_set",
-                text="Set Viewport Evaluation Mode").mode = 'VIEWPORT'
-            layout.label(text="Confusing Mode Engaged!", icon='ERROR')
+                text="Switch to Viewport Resolution").mode = 'VIEWPORT'
 
 
 classes = (
