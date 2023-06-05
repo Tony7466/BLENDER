@@ -33,6 +33,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_DerivedMesh.h"
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
@@ -51,10 +52,9 @@
 using blender::float3;
 using blender::Span;
 
-Mesh *BKE_mesh_wrapper_from_editmesh_with_coords(BMEditMesh *em,
-                                                 const CustomData_MeshMasks *cd_mask_extra,
-                                                 const float (*vert_coords)[3],
-                                                 const Mesh *me_settings)
+Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
+                                     const CustomData_MeshMasks *cd_mask_extra,
+                                     const Mesh *me_settings)
 {
   Mesh *me = static_cast<Mesh *>(BKE_id_new_nomain(ID_ME, nullptr));
   BKE_mesh_copy_parameters_for_eval(me, me_settings);
@@ -84,16 +84,7 @@ Mesh *BKE_mesh_wrapper_from_editmesh_with_coords(BMEditMesh *em,
   me->totloop = 0;
 #endif
 
-  EditMeshData *edit_data = me->runtime->edit_data;
-  edit_data->vertexCos = vert_coords;
   return me;
-}
-
-Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
-                                     const CustomData_MeshMasks *cd_mask_extra,
-                                     const Mesh *me_settings)
-{
-  return BKE_mesh_wrapper_from_editmesh_with_coords(em, cd_mask_extra, nullptr, me_settings);
 }
 
 void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
@@ -134,7 +125,13 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
 
         EditMeshData *edit_data = me->runtime->edit_data;
         if (edit_data->vertexCos) {
+          /* Avoid freeing the edit data SoA vertex position array, since it
+           * may be referenced elsewhere and ensuring mesh data shouldn't free it. */
           BKE_mesh_vert_coords_apply(me, edit_data->vertexCos);
+          CustomData_free_layer_named(&me->vdata, "position", me->totvert);
+          CustomData_add_layer_named_with_data(
+              &me->vdata, CD_PROP_FLOAT3, edit_data->vertexCos, me->totvert, "position", nullptr);
+          edit_data->vertexCos = nullptr;
           me->runtime->is_original_bmesh = false;
         }
         break;
@@ -167,6 +164,21 @@ bool BKE_mesh_wrapper_minmax(const Mesh *me, float min[3], float max[3])
 /* -------------------------------------------------------------------- */
 /** \name Mesh Coordinate Access
  * \{ */
+
+float (*BKE_mesh_wrapper_vert_coords_for_write(Mesh *mesh))[3]
+{
+  switch (mesh->runtime->wrapper_type) {
+    case ME_WRAPPER_TYPE_BMESH:
+      if (mesh->runtime->edit_data->vertexCos) {
+        mesh->runtime->edit_data->vertexCos = editbmesh_vert_coords_alloc(mesh->edit_mesh);
+      }
+      return mesh->runtime->edit_data->vertexCos;
+    case ME_WRAPPER_TYPE_MDATA:
+    case ME_WRAPPER_TYPE_SUBD:
+      return reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data());
+  }
+  return nullptr;
+}
 
 void BKE_mesh_wrapper_vert_coords_copy(const Mesh *me,
                                        float (*vert_coords)[3],
