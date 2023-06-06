@@ -1415,7 +1415,7 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(
       prop, NULL, "rna_AnimData_tmpact_set", NULL, "rna_Action_id_poll");
   RNA_def_property_ui_text(
-      prop, "Tweak Mode Action Storage", "Slot to hold the main action while in tweak mode");
+      prop, "Tweak Mode Action Storage", "Slot to temporarily hold the main action while in tweak mode");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
 
   /* Drivers */
