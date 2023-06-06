@@ -1,1 +1,2 @@
 Referenced by pull request #107260, I18n: Use fmt::format() to replace string concatenation in nodes
+Referenced by commit 708dfbb91b374560e0fd292aed9b5c5823859305, Fix: Compile error in main after recent fmt usage
