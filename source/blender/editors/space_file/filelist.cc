@@ -1627,8 +1627,9 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   /* If we know this is an external ID without a preview, skip loading the preview. Can save quite
    * some time in heavy files, because otherwise for each missing preview and for each preview
    * reload, we'd reopen the .blend to look for the preview. */
-  if ((entry->typeflag & FILE_TYPE_BLENDERLIB) &&
-      (entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW)) {
+  if (entry->typeflag & FILE_TYPE_BLENDERLIB &&
+      ((entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW) || (entry->typeflag & FILE_TYPE_DIR)))
+  {
     return;
   }
 
