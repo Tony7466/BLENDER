@@ -7,7 +7,6 @@
  */
 
 #include "DNA_ID.h"
-#include "DNA_meta_types.h"
 #include "DNA_space_types.h"
 
 #include "BLI_listbase_wrapper.hh"

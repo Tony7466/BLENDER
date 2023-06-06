@@ -10,6 +10,8 @@
 
 #include "tree_element_id.hh"
 
+struct MetaBall;
+
 namespace blender::ed::outliner {
 
 class TreeElementIDMetaBall final : public TreeElementID {
