@@ -469,7 +469,7 @@ def scripts_submodules_update(args: argparse.Namespace, branch: Optional[str]) -
     """Update working trees of addons and addons_contrib within the scripts/ directory"""
     msg = ""
 
-    msg += external_scripts_update(args, "blender-addons", "addons", branch)
+    msg += external_scripts_update(args, "blender-addons", "addons", "pr/poselib-blender-addons-104673")
     msg += external_scripts_update(args, "blender-addons-contrib", "addons_contrib", branch)
 
     return msg
