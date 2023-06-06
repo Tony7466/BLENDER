@@ -3189,7 +3189,7 @@ static void rna_NodeSocketInterface_category_set(PointerRNA *ptr,
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
 
   const size_t index = category - ntree->socket_categories_array;
-  if (index < 0 || index >= ntree->socket_categories_num) {
+  if (index >= ntree->socket_categories_num) {
     BKE_report(reports, RPT_ERROR, "Category is not in the node tree interface");
     return;
   }
