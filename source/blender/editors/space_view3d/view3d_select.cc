@@ -53,6 +53,7 @@
 #include "BKE_crazyspace.hh"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_layer.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
@@ -4028,6 +4029,19 @@ static bool do_pose_box_select(bContext *C,
   return changed_multi;
 }
 
+static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const eSelectOp sel_op)
+{
+  Scene *scene = vc->scene;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(scene->r.cfra, [&](GreasePencilDrawing &drawing) {
+    changed |= blender::ed::curves::select_box(
+        *vc, drawing.geometry.wrap(), ATTR_DOMAIN_POINT, *rect, sel_op);
+  });
+  return changed;
+}
+
 static int view3d_box_select_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
@@ -4111,6 +4125,10 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
             DEG_id_tag_update(static_cast<ID *>(vc.obedit->data), ID_RECALC_GEOMETRY);
             WM_event_add_notifier(C, NC_GEOM | ND_DATA, vc.obedit->data);
           }
+          break;
+        }
+        case OB_GREASE_PENCIL: {
+          changed = do_grease_pencil_box_select(&vc, &rect, sel_op);
           break;
         }
         default:
