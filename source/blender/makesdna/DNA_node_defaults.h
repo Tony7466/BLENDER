@@ -15,7 +15,7 @@
 
 #define _DNA_DEFAULT_bNodeSocket \
   { \
-    .category_index = -1, \
+    .category_id = -1, \
   }
 
 /** \} */

@@ -567,17 +567,23 @@ void ntreeSetSocketInterfaceCategory(bNodeTree *ntree,
  * \{ */
 
 /**
+ * Find a socket category by its unique ID.
+ * \param id: Unique ID of the category within the node tree.
+ */
+bNodeSocketCategory *ntreeFindSocketCategoryByID(bNodeTree *ntree, int id);
+
+/**
  * Add a new socket category to the node tree.
- * \param name Name of the new category.
- * \param name Flags of the new category.
+ * \param name: Name of the new category.
+ * \param flag: Flags of the new category.
  */
 bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, int flag);
 
 /**
  * Insert a new socket category in the node tree.
- * \param name Name of the new category.
- * \param name Flags of the new category.
- * \param index Index at which to insert the category.
+ * \param name: Name of the new category.
+ * \param flag: Flags of the new category.
+ * \param index: Index at which to insert the category.
  */
 bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
                                                const char *name,
