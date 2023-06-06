@@ -3843,7 +3843,7 @@ bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, 
   bNodeSocketCategory *old_categories_array = ntree->socket_categories_array;
   const Span<bNodeSocketCategory> old_categories = ntree->socket_categories();
   ntree->socket_categories_array = MEM_cnew_array<bNodeSocketCategory>(
-      ntree->socket_categories_num + 1, "socket categories");
+      ntree->socket_categories_num + 1, __func__);
   ++ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
@@ -3872,7 +3872,7 @@ bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
   bNodeSocketCategory *old_categories_array = ntree->socket_categories_array;
   const Span<bNodeSocketCategory> old_categories = ntree->socket_categories();
   ntree->socket_categories_array = MEM_cnew_array<bNodeSocketCategory>(
-      ntree->socket_categories_num + 1, "socket categories");
+      ntree->socket_categories_num + 1, __func__);
   ++ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
@@ -3902,7 +3902,7 @@ void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category)
   bNodeSocketCategory *old_categories_array = ntree->socket_categories_array;
   const Span<bNodeSocketCategory> old_categories = ntree->socket_categories();
   ntree->socket_categories_array = MEM_cnew_array<bNodeSocketCategory>(
-      ntree->socket_categories_num - 1, "socket categories");
+      ntree->socket_categories_num - 1, __func__);
   --ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
