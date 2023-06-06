@@ -909,7 +909,7 @@ static void setup_app_data(bContext *C,
                     RPT_WARNING,
                     "Found legacy grease pencil object (%s), converting to new data type. Expect "
                     "loss of data!",
-                    ob->id.name);
+                    ob->id.name + 2);
         bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
         GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
@@ -920,6 +920,10 @@ static void setup_app_data(bContext *C,
         id_us_min(&gpd->id);
         ob->data = new_grease_pencil;
         ob->type = OB_GREASE_PENCIL;
+
+        if (ob->mode == OB_MODE_EDIT_GPENCIL) {
+          ob->mode = OB_MODE_EDIT;
+        }
       }
     }
   }
