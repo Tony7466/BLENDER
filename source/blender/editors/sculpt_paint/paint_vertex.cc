@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -756,17 +757,19 @@ static void multipaint_apply_change(MDeformVert *dvert,
  * Variables stored both for 'active' and 'mirror' sides.
  */
 struct WeightPaintGroupData {
-  /** index of active group or its mirror
+  /**
+   * Index of active group or its mirror:
    *
    * - 'active' is always `ob->actdef`.
    * - 'mirror' is -1 when 'ME_EDIT_MIRROR_X' flag id disabled,
    *   otherwise this will be set to the mirror or the active group (if the group isn't mirrored).
    */
   int index;
-  /** lock that includes the 'index' as locked too
+  /**
+   * Lock that includes the 'index' as locked too:
    *
-   * - 'active' is set of locked or active/selected groups
-   * - 'mirror' is set of locked or mirror groups
+   * - 'active' is set of locked or active/selected groups.
+   * - 'mirror' is set of locked or mirror groups.
    */
   const bool *lock;
 };
@@ -1180,7 +1183,7 @@ static void vertex_paint_init_session(Depsgraph *depsgraph,
   BKE_sculpt_toolsettings_data_ensure(scene);
 
   BLI_assert(ob->sculpt == nullptr);
-  ob->sculpt = (SculptSession *)MEM_callocN(sizeof(SculptSession), "sculpt session");
+  ob->sculpt = MEM_new<SculptSession>(__func__);
   ob->sculpt->mode_type = object_mode;
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
 
@@ -1447,7 +1450,7 @@ void ED_object_wpaintmode_exit(bContext *C)
 static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   Object *ob = CTX_data_active_object(C);
   const int mode_flag = OB_MODE_WEIGHT_PAINT;
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
@@ -2722,7 +2725,7 @@ void PAINT_OT_weight_paint(wmOperatorType *ot)
 static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   Object *ob = CTX_data_active_object(C);
   const int mode_flag = OB_MODE_VERTEX_PAINT;
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
@@ -2814,7 +2817,7 @@ struct VPaintData : public VPaintDataBase {
 
   Color paintcol;
 
-  struct VertProjHandle *vp_handle;
+  VertProjHandle *vp_handle;
   CoNo *vertexcosnos;
 
   bool is_texbrush;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -1418,7 +1420,7 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
         });
       },
       [&]() {
-        /* Update all normals connected to affected faces faces, even if not explicitly tagged. */
+        /* Update all normals connected to affected faces, even if not explicitly tagged. */
         verts_to_update.reserve(polys_to_update.size());
         for (const int poly : polys_to_update) {
           verts_to_update.add_multiple(corner_verts.slice(polys[poly]));
