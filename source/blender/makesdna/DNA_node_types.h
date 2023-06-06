@@ -168,8 +168,8 @@ typedef struct bNodeSocket {
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
 
-  /* UI category index of the socket. */
-  int category_index;
+  /* ID of the UI category of the socket. */
+  int category_id;
   int _pad2;
 
   bNodeSocketRuntimeHandle *runtime;
@@ -538,7 +538,7 @@ typedef struct bNodeLink {
 typedef struct bNodeSocketCategory {
   char *name;
   int flag;
-  int _pad;
+  int identifier;
 } bNodeSocketCategory;
 
 /* the basis for a Node tree, all links and nodes reside internal here */
@@ -608,6 +608,8 @@ typedef struct bNodeTree {
   struct bNodeSocketCategory *socket_categories_array;
   int socket_categories_num;
   int active_socket_category;
+  int next_socket_category_identifier;
+  char _pad2[4];
 
   bNodeTreeRuntimeHandle *runtime;
 

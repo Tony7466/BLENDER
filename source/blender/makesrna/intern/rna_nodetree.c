@@ -3168,12 +3168,8 @@ static PointerRNA rna_NodeSocketInterface_category_get(PointerRNA *ptr)
 {
   bNodeSocket *socket = (bNodeSocket *)ptr->data;
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
-  const int index = socket->category_index;
 
-  bNodeSocketCategory *category = NULL;
-  if (index >= 0 && index < ntree->socket_categories_num) {
-    category = &ntree->socket_categories_array[index];
-  }
+  bNodeSocketCategory *category = ntreeFindSocketCategoryByID(ntree, socket->category_id);
 
   PointerRNA r_ptr;
   RNA_pointer_create(&ntree->id, &RNA_NodeSocketCategory, category, &r_ptr);
@@ -3188,10 +3184,12 @@ static void rna_NodeSocketInterface_category_set(PointerRNA *ptr,
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
 
-  const size_t index = category - ntree->socket_categories_array;
-  if (index >= ntree->socket_categories_num) {
-    BKE_report(reports, RPT_ERROR, "Category is not in the node tree interface");
-    return;
+  if (category != NULL) {
+    const int64_t index = category - ntree->socket_categories_array;
+    if (index < 0 || index >= ntree->socket_categories_num) {
+      BKE_report(reports, RPT_ERROR, "Category is not in the node tree interface");
+      return;
+    }
   }
 
   ntreeSetSocketInterfaceCategory(ntree, socket, category);
@@ -3206,7 +3204,7 @@ static bool rna_NodeSocketInterface_category_poll(PointerRNA *ptr, PointerRNA va
     return true;
   }
 
-  const int index = category - ntree->socket_categories_array;
+  const int64_t index = category - ntree->socket_categories_array;
   if (index < 0 || index >= ntree->socket_categories_num) {
     return false;
   }

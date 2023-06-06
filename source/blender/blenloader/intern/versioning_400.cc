@@ -138,13 +138,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   {
     /* Keep this block, even when empty. */
 
-    if (!DNA_struct_elem_find(fd->filesdna, "bNodeSocket", "int", "category_index")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "bNodeSocket", "int", "category_id")) {
       FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
         LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
-          socket->category_index = -1;
+          socket->category_id = -1;
         }
         LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
-          socket->category_index = -1;
+          socket->category_id = -1;
         }
       }
       FOREACH_NODETREE_END;

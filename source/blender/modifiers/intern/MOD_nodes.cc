@@ -1875,7 +1875,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     int socket_index;
     LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &nmd->node_group->inputs, socket_index) {
-      if (socket->category_index >= 0) {
+      if (ntreeFindSocketCategoryByID(nmd->node_group, socket->category_id) != nullptr) {
         continue;
       }
 
@@ -2013,10 +2013,13 @@ static void socket_category_panel_draw_header(const bContext * /*C*/, Panel *pan
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
-  const int category_index = panel->runtime.custom_data_int[0];
-  if (nmd->node_group->socket_categories().index_range().contains(category_index)) {
-    const bNodeSocketCategory *category = &nmd->node_group->socket_categories()[category_index];
-    uiItemL(layout, category->name, ICON_NONE);
+  const int category_id = panel->runtime.custom_data_int[0];
+  if (category_id >= 0) {
+    const bNodeSocketCategory *category = ntreeFindSocketCategoryByID(nmd->node_group,
+                                                                      category_id);
+    if (category != nullptr) {
+      uiItemL(layout, category->name, ICON_NONE);
+    }
   }
 }
 
@@ -2031,11 +2034,11 @@ static void socket_category_panel_draw(const bContext *C, Panel *panel)
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
   if (nmd->node_group) {
-    const int category_index = panel->runtime.custom_data_int[0];
+    const int category_id = panel->runtime.custom_data_int[0];
 
     for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
       const bNodeSocket *socket = nmd->node_group->interface_inputs()[socket_index];
-      if (socket->category_index != category_index) {
+      if (socket->category_id != category_id) {
         continue;
       }
       if (socket->flag & SOCK_HIDE_IN_MODIFIER) {
@@ -2106,10 +2109,10 @@ static void addChildPanelInstances(ModifierData *md,
                   parent_idname,
                   "_internal_dependencies");
 
-  for (const int category_index : nmd->node_group->socket_categories().index_range()) {
+  for (const bNodeSocketCategory &category : nmd->node_group->socket_categories()) {
     Panel *category_panel = UI_panel_add_instanced(
         C, region, child_panels, socket_category_panel_idname, custom_data);
-    category_panel->runtime.custom_data_int[0] = category_index;
+    category_panel->runtime.custom_data_int[0] = category.identifier;
   }
 
   UI_panel_add_instanced(C, region, child_panels, output_attributes_panel_idname, custom_data);
@@ -2144,14 +2147,14 @@ static bool childPanelInstancesMatchData(ModifierData *md, const Panel *parent)
                   "_internal_dependencies");
 
   const Panel *current_subpanel = static_cast<const Panel *>(parent->children.first);
-  for (const int category_index : nmd->node_group->socket_categories().index_range()) {
+  for (const bNodeSocketCategory &category : nmd->node_group->socket_categories()) {
     if (current_subpanel == nullptr ||
         !STREQ(socket_category_panel_idname, current_subpanel->type->idname))
     {
       /* Fewer panels than expected. */
       return false;
     }
-    if (current_subpanel->runtime.custom_data_int[0] != category_index) {
+    if (current_subpanel->runtime.custom_data_int[0] != category.identifier) {
       /* Panel has wrong category. */
       return false;
     }
