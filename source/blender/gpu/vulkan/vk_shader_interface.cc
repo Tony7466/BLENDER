@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -50,7 +51,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   size_t names_size = info.interface_names_size_;
   const VKDevice &device = VKBackend::get().device_get();
   const VKPushConstants::StorageType push_constants_storage_type =
-      VKPushConstants::Layout::determine_storage_type(info, device.physical_device_limits_get());
+      VKPushConstants::Layout::determine_storage_type(info, device);
   if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     ubo_len_++;
     names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
@@ -196,11 +197,13 @@ const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
   return descriptor_set_location(shader_input);
 }
 
-const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
+const std::optional<VKDescriptorSet::Location> VKShaderInterface::descriptor_set_location(
     const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const
 {
   const ShaderInput *shader_input = shader_input_get(bind_type, binding);
-  BLI_assert(shader_input);
+  if (shader_input == nullptr) {
+    return std::nullopt;
+  }
   return descriptor_set_location(shader_input);
 }
 

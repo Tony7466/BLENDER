@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -312,6 +313,7 @@ typedef enum eScenePassType {
 #define RE_PASSNAME_FREESTYLE "Freestyle"
 #define RE_PASSNAME_BLOOM "BloomCol"
 #define RE_PASSNAME_VOLUME_LIGHT "VolumeDir"
+#define RE_PASSNAME_TRANSPARENT "Transp"
 
 #define RE_PASSNAME_CRYPTOMATTE_OBJECT "CryptoObject"
 #define RE_PASSNAME_CRYPTOMATTE_ASSET "CryptoAsset"
@@ -1694,6 +1696,13 @@ typedef struct ToolSettings {
   struct CurveProfile *custom_bevel_profile_preset;
 
   struct SequencerToolSettings *sequencer_tool_settings;
+
+  short snap_mode_tools; /* If SCE_SNAP_MODE_NONE, use #ToolSettings::snap_mode. #eSnapMode. */
+  char plane_axis;       /* X, Y or Z. */
+  char plane_depth;      /* #eV3DPlaceDepth. */
+  char plane_orient;     /* #eV3DPlaceOrient. */
+  char use_plane_axis_auto;
+  char _pad7[2];
 
 } ToolSettings;
 

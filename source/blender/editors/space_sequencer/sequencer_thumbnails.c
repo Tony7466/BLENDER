@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spseq
@@ -241,7 +242,7 @@ static void sequencer_thumbnail_init_job(const bContext *C,
     tj = MEM_callocN(sizeof(ThumbnailDrawJob), "Thumbnail cache job");
 
     /* Duplicate value of v2d->cur and v2d->tot to have module separation. */
-    rctf *view_area = MEM_callocN(sizeof(struct rctf), "viewport area");
+    rctf *view_area = MEM_callocN(sizeof(rctf), "viewport area");
     view_area->xmax = v2d->cur.xmax;
     view_area->xmin = v2d->cur.xmin;
     view_area->ymax = v2d->cur.ymax;
@@ -369,7 +370,7 @@ static int sequencer_thumbnail_closest_previous_frame_get(int timeline_frame,
   return best_frame;
 }
 
-static int sequencer_thumbnail_closest_guaranteed_frame_get(struct Scene *scene,
+static int sequencer_thumbnail_closest_guaranteed_frame_get(Scene *scene,
                                                             Sequence *seq,
                                                             int timeline_frame)
 {
@@ -541,14 +542,14 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     /* Transparency on overlap. */
     if (seq->flag & SEQ_OVERLAP) {
       GPU_blend(GPU_BLEND_ALPHA);
-      if (ibuf->rect) {
-        uchar *buf = (uchar *)ibuf->rect;
+      if (ibuf->byte_buffer.data) {
+        uchar *buf = ibuf->byte_buffer.data;
         for (int pixel = ibuf->x * ibuf->y; pixel--; buf += 4) {
           buf[3] = OVERLAP_ALPHA;
         }
       }
-      else if (ibuf->rect_float) {
-        float *buf = (float *)ibuf->rect_float;
+      else if (ibuf->float_buffer.data) {
+        float *buf = ibuf->float_buffer.data;
         for (int pixel = ibuf->x * ibuf->y; pixel--; buf += ibuf->channels) {
           buf[3] = (OVERLAP_ALPHA / 255.0f);
         }

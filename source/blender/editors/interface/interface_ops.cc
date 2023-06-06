@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -31,7 +32,7 @@
 #include "BKE_lib_override.h"
 #include "BKE_lib_remap.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_text.h"
@@ -1396,7 +1397,6 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
   Main *bmain = CTX_data_main(C);
   PointerRNA ptr, lptr;
   PropertyRNA *prop, *lprop;
-  bool success = false;
   int index;
 
   /* try to reset the nominated setting to its default value */
@@ -1407,36 +1407,31 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
     return false;
   }
 
+  bool success = false;
   char *path = nullptr;
   bool use_path_from_id;
   ListBase lb = {nullptr};
 
-  if (!UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
-    return false;
-  }
-  if (BLI_listbase_is_empty(&lb)) {
-    MEM_SAFE_FREE(path);
-    return false;
-  }
+  if (UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
+    LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
+      if (link->ptr.data == ptr.data) {
+        continue;
+      }
 
-  LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
-    if (link->ptr.data == ptr.data) {
-      continue;
-    }
+      if (!UI_context_copy_to_selected_check(
+              &ptr, &link->ptr, prop, path, use_path_from_id, &lptr, &lprop))
+      {
+        continue;
+      }
 
-    if (!UI_context_copy_to_selected_check(
-            &ptr, &link->ptr, prop, path, use_path_from_id, &lptr, &lprop))
-    {
-      continue;
-    }
-
-    if (poll) {
-      success = true;
-      break;
-    }
-    if (RNA_property_copy(bmain, &lptr, &ptr, prop, (all) ? -1 : index)) {
-      RNA_property_update(C, &lptr, prop);
-      success = true;
+      if (poll) {
+        success = true;
+        break;
+      }
+      if (RNA_property_copy(bmain, &lptr, &ptr, prop, (all) ? -1 : index)) {
+        RNA_property_update(C, &lptr, prop);
+        success = true;
+      }
     }
   }
 
@@ -2156,7 +2151,7 @@ static void UI_OT_button_string_clear(wmOperatorType *ot)
 /** \name Drop Color Operator
  * \{ */
 
-bool UI_drop_color_poll(struct bContext *C, wmDrag *drag, const wmEvent * /*event*/)
+bool UI_drop_color_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 {
   /* should only return true for regions that include buttons, for now
    * return true always */

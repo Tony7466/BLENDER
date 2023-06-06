@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -162,7 +163,7 @@ static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
                                                  const float (*poly_normals)[3])
 {
   MemArena *pf_arena = nullptr;
-  uint tri_index = 0;
+  uint looptri_i = 0;
 
   if (poly_normals != nullptr) {
     for (const int64_t i : polys.index_range()) {
@@ -170,17 +171,17 @@ static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
                                                   polys,
                                                   positions,
                                                   uint(i),
-                                                  &mlooptri[tri_index],
+                                                  &mlooptri[looptri_i],
                                                   &pf_arena,
                                                   poly_normals[i]);
-      tri_index += uint(polys[i].size() - 2);
+      looptri_i += uint(polys[i].size() - 2);
     }
   }
   else {
     for (const int64_t i : polys.index_range()) {
       mesh_calc_tessellation_for_face(
-          corner_verts, polys, positions, uint(i), &mlooptri[tri_index], &pf_arena);
-      tri_index += uint(polys[i].size() - 2);
+          corner_verts, polys, positions, uint(i), &mlooptri[looptri_i], &pf_arena);
+      looptri_i += uint(polys[i].size() - 2);
     }
   }
 
@@ -188,7 +189,7 @@ static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
     BLI_memarena_free(pf_arena);
     pf_arena = nullptr;
   }
-  BLI_assert(tri_index == uint(poly_to_tri_count(int(polys.size()), int(corner_verts.size()))));
+  BLI_assert(looptri_i == uint(poly_to_tri_count(int(polys.size()), int(corner_verts.size()))));
 }
 
 struct TessellationUserData {
@@ -213,12 +214,12 @@ static void mesh_calc_tessellation_for_face_fn(void *__restrict userdata,
 {
   const TessellationUserData *data = static_cast<const TessellationUserData *>(userdata);
   TessellationUserTLS *tls_data = static_cast<TessellationUserTLS *>(tls->userdata_chunk);
-  const int tri_index = poly_to_tri_count(index, int(data->polys[index].start()));
+  const int looptri_i = poly_to_tri_count(index, int(data->polys[index].start()));
   mesh_calc_tessellation_for_face_impl(data->corner_verts,
                                        data->polys,
                                        data->positions,
                                        uint(index),
-                                       &data->mlooptri[tri_index],
+                                       &data->mlooptri[looptri_i],
                                        &tls_data->pf_arena,
                                        false,
                                        nullptr);
@@ -230,12 +231,12 @@ static void mesh_calc_tessellation_for_face_with_normal_fn(void *__restrict user
 {
   const TessellationUserData *data = static_cast<const TessellationUserData *>(userdata);
   TessellationUserTLS *tls_data = static_cast<TessellationUserTLS *>(tls->userdata_chunk);
-  const int tri_index = poly_to_tri_count(index, int(data->polys[index].start()));
+  const int looptri_i = poly_to_tri_count(index, int(data->polys[index].start()));
   mesh_calc_tessellation_for_face_impl(data->corner_verts,
                                        data->polys,
                                        data->positions,
                                        uint(index),
-                                       &data->mlooptri[tri_index],
+                                       &data->mlooptri[looptri_i],
                                        &tls_data->pf_arena,
                                        true,
                                        data->poly_normals[index]);
@@ -264,10 +265,9 @@ static void looptris_calc_all(const Span<float3> positions,
                                          reinterpret_cast<const float(*)[3]>(poly_normals.data()));
     return;
   }
-  struct TessellationUserTLS tls_data_dummy = {nullptr};
+  TessellationUserTLS tls_data_dummy = {nullptr};
 
-  struct TessellationUserData data {
-  };
+  TessellationUserData data{};
   data.corner_verts = corner_verts;
   data.polys = polys;
   data.positions = positions;

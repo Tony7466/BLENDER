@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -129,7 +131,12 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
         km_id = "Grease Pencil Stroke Paint Mode";
         break;
       case CTX_MODE_EDIT_GPENCIL:
-        km_id = "Grease Pencil Stroke Edit Mode";
+        if (U.experimental.use_grease_pencil_version3) {
+          km_id = "Grease Pencil Edit Mode";
+        }
+        else {
+          km_id = "Grease Pencil Stroke Edit Mode";
+        }
         break;
       case CTX_MODE_SCULPT_GPENCIL:
         km_id = "Grease Pencil Stroke Sculpt Mode";
@@ -210,6 +217,9 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   else if (STRPREFIX(opname, "GPENCIL_OT")) {
     km = WM_keymap_find_all(wm, "Grease Pencil", 0, 0);
   }
+  else if (STRPREFIX(opname, "GREASE_PENCIL_OT")) {
+    km = WM_keymap_find_all(wm, "Grease Pencil", 0, 0);
+  }
   /* Markers */
   else if (STRPREFIX(opname, "MARKER_OT")) {
     km = WM_keymap_find_all(wm, "Markers", 0, 0);
@@ -280,7 +290,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   else if (STRPREFIX(opname, "MBALL_OT")) {
     km = WM_keymap_find_all(wm, "Metaball", 0, 0);
 
-    /* some mball operators are active in object mode too, like add-prim */
+    /* Some meta-ball operators are active in object mode too, like add-primitive. */
     if (km && !WM_keymap_poll((bContext *)C, km)) {
       km = WM_keymap_find_all(wm, "Object Mode", 0, 0);
     }

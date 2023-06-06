@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -20,7 +21,7 @@
 #include "BKE_curve.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
@@ -220,8 +221,13 @@ static void node_buts_combsep_color(uiLayout *layout, bContext * /*C*/, PointerR
   uiItemR(layout, ptr, "mode", DEFAULT_FLAGS, "", ICON_NONE);
 }
 
-NodeResizeDirection node_get_resize_direction(const bNode *node, const int x, const int y)
+NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
+                                              const bNode *node,
+                                              const int x,
+                                              const int y)
 {
+  const float size = NODE_RESIZE_MARGIN * math::max(snode.runtime->aspect, 1.0f);
+
   if (node->type == NODE_FRAME) {
     NodeFrame *data = (NodeFrame *)node->storage;
 
@@ -233,7 +239,6 @@ NodeResizeDirection node_get_resize_direction(const bNode *node, const int x, co
     NodeResizeDirection dir = NODE_RESIZE_NONE;
 
     const rctf &totr = node->runtime->totr;
-    const float size = NODE_RESIZE_MARGIN;
 
     if (x > totr.xmax - size && x <= totr.xmax && y >= totr.ymin && y < totr.ymax) {
       dir |= NODE_RESIZE_RIGHT;
@@ -262,7 +267,6 @@ NodeResizeDirection node_get_resize_direction(const bNode *node, const int x, co
     return NODE_RESIZE_NONE;
   }
 
-  const float size = NODE_RESIZE_MARGIN;
   const rctf &totr = node->runtime->totr;
   NodeResizeDirection dir = NODE_RESIZE_NONE;
 
@@ -504,7 +508,6 @@ static void node_shader_set_butfunc(bNodeType *ntype)
     case SH_NODE_VECTOR_DISPLACEMENT:
       ntype->draw_buttons = node_shader_buts_displacement;
       break;
-    case SH_NODE_BSDF_GLOSSY:
     case SH_NODE_BSDF_GLASS:
     case SH_NODE_BSDF_REFRACTION:
       ntype->draw_buttons = node_shader_buts_glossy;
@@ -1150,6 +1153,9 @@ void ED_node_init_butfuncs()
    * Defined in blenkernel, but not registered in type hashes.
    */
 
+  using blender::bke::NodeSocketTypeUndefined;
+  using blender::bke::NodeTypeUndefined;
+
   NodeTypeUndefined.draw_buttons = nullptr;
   NodeTypeUndefined.draw_buttons_ex = nullptr;
 
@@ -1292,8 +1298,9 @@ static void std_node_socket_draw(
     return;
   }
 
-  if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_IS_LINKED) ||
-      (sock->flag & SOCK_HIDE_VALUE)) {
+  if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
+      ((sock->flag & SOCK_IS_LINKED) && !all_links_muted(*sock)))
+  {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
     return;
   }
