@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -1587,7 +1588,7 @@ void NODE_OT_links_cut(wmOperatorType *ot)
 /** \name Mute Links Operator
  * \{ */
 
-static bool all_links_muted(const bNodeSocket &socket)
+bool all_links_muted(const bNodeSocket &socket)
 {
   for (const bNodeLink *link : socket.directly_linked_links()) {
     if (!(link->flag & NODE_LINK_MUTED)) {

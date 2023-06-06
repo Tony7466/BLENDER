@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 add_subdirectory(composite)
 add_subdirectory(function)
@@ -29,6 +30,7 @@ set(INC
   ../makesrna
   ../render
   ../windowmanager
+  ../../../extern/fmtlib/include
   ../../../intern/guardedalloc
 
   # dna_type_offsets.h

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blt
@@ -65,7 +66,8 @@ const char *BLT_pgettext(const char *msgctxt, const char *msgid)
 bool BLT_translate(void)
 {
 #ifdef WITH_INTERNATIONAL
-  return BLI_thread_is_main();
+  return true;
+  /* return BLI_thread_is_main(); */
 #else
   return false;
 #endif
