@@ -729,26 +729,31 @@ static void rna_ID_asset_data_set(PointerRNA *ptr, PointerRNA value, struct Repo
 {
   ID *destination = ptr->data;
 
-  const AssetMetaData *asset_data = value.data;
-  if (asset_data == NULL) {
-    /* `id.asset_data = None` is now a way to clear the 'is asset' status. This makes the
-     * assignment symmetrical, as `id.asset_data = some_other_data` can be used to actually
-     * mark the ID as asset. */
-    rna_ID_asset_clear(destination);
+  /* Avoid marking as asset by assigning. This should be done wiht .asset_mark(). This is just for
+   * clarity of the API, and to accomodate future changes. */
+  if (destination->asset_data == NULL) {
+    BKE_report(reports,
+               RPT_ERROR,
+               "Asset data can only be assigned to assets. Use asset_mark() to mark as an asset");
     return;
   }
 
-  const bool dest_already_was_asset = (destination->asset_data != NULL);
-  const bool assigned_ok = ED_asset_copy_to_id(asset_data, destination);
+  const AssetMetaData *asset_data = value.data;
+  if (asset_data == NULL) {
+    /* Avoid clearing the asset data on assets. Un-marking as asset should be done with
+     * .asset_clear(). This is just for clarity of the API, and to accomodate future changes. */
+    BKE_report(reports, RPT_ERROR, "Asset data cannot be None");
+    return;
+  }
 
+  const bool assigned_ok = ED_asset_copy_to_id(asset_data, destination);
   if (!assigned_ok) {
     BKE_reportf(
         reports, RPT_ERROR, "'%s' is of a type that cannot be an asset", destination->name + 2);
     return;
   }
 
-  const int classification = dest_already_was_asset ? NA_EDITED : NA_ADDED;
-  WM_main_add_notifier(NC_ASSET | classification, NULL);
+  WM_main_add_notifier(NC_ASSET | NA_EDITED, NULL);
   WM_main_add_notifier(NC_ID | NA_EDITED, NULL);
 }
 
