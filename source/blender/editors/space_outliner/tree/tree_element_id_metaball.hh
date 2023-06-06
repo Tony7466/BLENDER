@@ -14,14 +14,14 @@ namespace blender::ed::outliner {
 
 class TreeElementIDMetaBall final : public TreeElementID {
   MetaBall &metaball_;
-  
-public:
+
+ public:
   TreeElementIDMetaBall(TreeElement &legacy_te, MetaBall &metaball);
-  
+
   void expand(SpaceOutliner &) const override;
   bool isExpandValid() const override;
-  
-private:
+
+ private:
   void expandMaterials(SpaceOutliner &) const;
 };
 

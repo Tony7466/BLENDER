@@ -17,7 +17,7 @@
 namespace blender::ed::outliner {
 
 TreeElementIDMetaBall::TreeElementIDMetaBall(TreeElement &legacy_te, MetaBall &metaball)
-  : TreeElementID(legacy_te, metaball.id), metaball_(metaball)
+    : TreeElementID(legacy_te, metaball.id), metaball_(metaball)
 {
 }
 
@@ -29,14 +29,15 @@ bool TreeElementIDMetaBall::isExpandValid() const
 void TreeElementIDMetaBall::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, metaball_.adt);
-  
+
   expandMaterials(space_outliner);
 }
 
 void TreeElementIDMetaBall::expandMaterials(SpaceOutliner &space_outliner) const
 {
   for (int a = 0; a < metaball_.totcol; a++) {
-    outliner_add_element(&space_outliner, &legacy_te_.subtree, metaball_.mat[a], &legacy_te_, TSE_SOME_ID, a);
+    outliner_add_element(
+        &space_outliner, &legacy_te_.subtree, metaball_.mat[a], &legacy_te_, TSE_SOME_ID, a);
   }
 }
 
