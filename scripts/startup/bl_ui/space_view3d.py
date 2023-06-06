@@ -1985,9 +1985,42 @@ class VIEW3D_MT_paint_gpencil(Menu):
 class VIEW3D_MT_select_edit_gpencil(Menu):
     bl_label = "Select"
 
+    def draw_legacy(self, context):
+        layout = self.layout
+
+        layout.operator("gpencil.select_all", text="All").action = 'SELECT'
+        layout.operator("gpencil.select_all", text="None").action = 'DESELECT'
+        layout.operator("gpencil.select_all", text="Invert").action = 'INVERT'
+
+        layout.separator()
+
+        layout.operator("gpencil.select_box")
+        layout.operator("gpencil.select_circle")
+        layout.operator_menu_enum("gpencil.select_lasso", "mode")
+
+        layout.separator()
+
+        layout.operator("gpencil.select_linked", text="Linked")
+        layout.operator("gpencil.select_alternate")
+        layout.operator("gpencil.select_random")
+        layout.operator_menu_enum("gpencil.select_grouped", "type", text="Grouped")
+
+        if context.mode == 'VERTEX_GPENCIL':
+            layout.operator("gpencil.select_vertex_color", text="Color Attribute")
+
+        layout.separator()
+
+        layout.operator("gpencil.select_first")
+        layout.operator("gpencil.select_last")
+
+        layout.separator()
+
+        layout.operator("gpencil.select_more")
+        layout.operator("gpencil.select_less")
+
     def draw(self, context):
         layout = self.layout
-        
+
         if context.preferences.experimental.use_grease_pencil_version3:
             layout.operator("grease_pencil.select_all", text="All").action = 'SELECT'
             layout.operator("grease_pencil.select_all", text="None").action = 'DESELECT'
@@ -1995,35 +2028,7 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
 
             layout.separator()
         else:
-            layout.operator("gpencil.select_all", text="All").action = 'SELECT'
-            layout.operator("gpencil.select_all", text="None").action = 'DESELECT'
-            layout.operator("gpencil.select_all", text="Invert").action = 'INVERT'
-
-            layout.separator()
-
-            layout.operator("gpencil.select_box")
-            layout.operator("gpencil.select_circle")
-            layout.operator_menu_enum("gpencil.select_lasso", "mode")
-
-            layout.separator()
-
-            layout.operator("gpencil.select_linked", text="Linked")
-            layout.operator("gpencil.select_alternate")
-            layout.operator("gpencil.select_random")
-            layout.operator_menu_enum("gpencil.select_grouped", "type", text="Grouped")
-
-            if context.mode == 'VERTEX_GPENCIL':
-                layout.operator("gpencil.select_vertex_color", text="Color Attribute")
-
-            layout.separator()
-
-            layout.operator("gpencil.select_first")
-            layout.operator("gpencil.select_last")
-
-            layout.separator()
-
-            layout.operator("gpencil.select_more")
-            layout.operator("gpencil.select_less")
+            self.draw_legacy(self, context)
 
 
 class VIEW3D_MT_select_paint_mask(Menu):

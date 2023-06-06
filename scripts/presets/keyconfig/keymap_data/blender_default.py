@@ -4493,6 +4493,7 @@ def km_grease_pencil_stroke_vertex_replace(_params):
 
     return keymap
 
+
 def km_grease_pencil_edit(params):
     items = []
     keymap = (
@@ -4506,6 +4507,7 @@ def km_grease_pencil_edit(params):
     ])
 
     return keymap
+
 
 def km_face_mask(params):
     items = []
@@ -8230,7 +8232,7 @@ def generate_keymaps(params=None):
         km_animation_channels(params),
 
         # Modes.
-        km_grease_pencil(params), # TODO: Rename to km_annotate
+        km_grease_pencil(params),  # TODO: Rename to km_annotate
         km_grease_pencil_stroke_curve_edit_mode(params),
         km_grease_pencil_stroke_edit_mode(params),
         km_grease_pencil_stroke_paint_mode(params),
