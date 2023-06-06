@@ -126,6 +126,7 @@
 #include "DNA_meta_defaults.h"
 #include "DNA_modifier_defaults.h"
 #include "DNA_movieclip_defaults.h"
+#include "DNA_node_defaults.h"
 #include "DNA_object_defaults.h"
 #include "DNA_particle_defaults.h"
 #include "DNA_pointcloud_defaults.h"

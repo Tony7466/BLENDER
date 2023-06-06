@@ -542,12 +542,59 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \name Node Tree Interface
  * \{ */
 
+/**
+ * Run this after relevant changes to categories
+ * to ensure sockets remain sorted by category.
+ */
+void ntreeEnsureSocketCategoryOrder(bNodeTree *ntree);
+
 void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
 
 struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             eNodeSocketInOut in_out,
                                             const char *idname,
                                             const char *name);
+
+/** Set the category of the interface socket. */
+void ntreeSetSocketInterfaceCategory(bNodeTree *ntree,
+                                     bNodeSocket *sock,
+                                     bNodeSocketCategory *category);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Node Tree Socket Categories
+ * \{ */
+
+/**
+ * Add a new socket category to the node tree.
+ * \param name Name of the new category.
+ * \param name Flags of the new category.
+ */
+bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, int flag);
+
+/**
+ * Insert a new socket category in the node tree.
+ * \param name Name of the new category.
+ * \param name Flags of the new category.
+ * \param index Index at which to insert the category.
+ */
+bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
+                                               const char *name,
+                                               int flag,
+                                               int index);
+
+/** Remove a socket category from the node tree. */
+void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category);
+
+/** Remove all socket categories from the node tree. */
+void ntreeClearSocketCategories(bNodeTree *ntree);
+
+/**
+ * Move a socket category up or down in the node tree.
+ * \param index Index to which to move the category.
+ */
+void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index);
 
 /** \} */
 
@@ -867,16 +914,16 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 
 /* NOTE: types are needed to restore callbacks, don't change values. */
 
-//#define SH_NODE_MATERIAL  100
+// #define SH_NODE_MATERIAL  100
 #define SH_NODE_RGB 101
 #define SH_NODE_VALUE 102
 #define SH_NODE_MIX_RGB_LEGACY 103
 #define SH_NODE_VALTORGB 104
 #define SH_NODE_RGBTOBW 105
 #define SH_NODE_SHADERTORGB 106
-//#define SH_NODE_TEXTURE       106
+// #define SH_NODE_TEXTURE       106
 #define SH_NODE_NORMAL 107
-//#define SH_NODE_GEOMETRY  108
+// #define SH_NODE_GEOMETRY  108
 #define SH_NODE_MAPPING 109
 #define SH_NODE_CURVE_VEC 110
 #define SH_NODE_CURVE_RGB 111
@@ -884,7 +931,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_MATH 115
 #define SH_NODE_VECTOR_MATH 116
 #define SH_NODE_SQUEEZE 117
-//#define SH_NODE_MATERIAL_EXT  118
+// #define SH_NODE_MATERIAL_EXT  118
 #define SH_NODE_INVERT 119
 #define SH_NODE_SEPRGB_LEGACY 120
 #define SH_NODE_COMBRGB_LEGACY 121

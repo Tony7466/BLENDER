@@ -12,6 +12,8 @@
 
 #include "DNA_movieclip_types.h"
 
+#include "DNA_genfile.h"
+
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_set.hh"
@@ -101,7 +103,7 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
   }
 }
 
-void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
+void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
@@ -135,5 +137,17 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "bNodeSocket", "int", "category_index")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
+          socket->category_index = -1;
+        }
+        LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
+          socket->category_index = -1;
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
   }
 }
