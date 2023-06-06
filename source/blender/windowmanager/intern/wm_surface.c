@@ -54,7 +54,7 @@ void wm_surfaces_do_depsgraph(bContext *C)
 void wm_surface_clear_drawable(void)
 {
   if (g_drawable) {
-    WM_opengl_context_release(g_drawable->ghost_ctx);
+    WM_system_gpu_context_release(g_drawable->ghost_ctx);
     GPU_context_active_set(NULL);
 
     if (g_drawable->deactivate) {
@@ -74,7 +74,7 @@ void wm_surface_set_drawable(wmSurface *surface, bool activate)
     if (surface->activate) {
       surface->activate();
     }
-    WM_opengl_context_activate(surface->ghost_ctx);
+    WM_system_gpu_context_activate(surface->ghost_ctx);
   }
 
   GPU_context_active_set(surface->gpu_ctx);

@@ -176,7 +176,7 @@ void WM_init_opengl(void)
   }
 
   /* Needs to be first to have an OpenGL context bound. */
-  DRW_opengl_context_create();
+  DRW_gpu_context_create();
 
   GPU_init();
 
@@ -665,12 +665,12 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
   /* Delete GPU resources and context. The UI also uses GPU resources and so
    * is also deleted with the context active. */
   if (opengl_is_init) {
-    DRW_opengl_context_enable_ex(false);
+    DRW_gpu_context_enable_ex(false);
     UI_exit();
     GPU_pass_cache_free();
     GPU_exit();
-    DRW_opengl_context_disable_ex(false);
-    DRW_opengl_context_destroy();
+    DRW_gpu_context_disable_ex(false);
+    DRW_gpu_context_destroy();
   }
   else {
     UI_exit();

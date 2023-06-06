@@ -661,17 +661,17 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                       bool is_dialog)
 {
   /* A new window is created when page-flip mode is required for a window. */
-  GHOST_GLSettings glSettings = {0};
+  GHOST_GPUSettings gpuSettings = {0};
   if (win->stereo3d_format->display_mode == S3D_DISPLAY_PAGEFLIP) {
-    glSettings.flags |= GHOST_glStereoVisual;
+    gpuSettings.flags |= GHOST_gpuStereoVisual;
   }
 
   if (G.debug & G_DEBUG_GPU) {
-    glSettings.flags |= GHOST_glDebugContext;
+    gpuSettings.flags |= GHOST_gpuDebugContext;
   }
 
   eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
-  glSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
 
   int scr_w, scr_h;
   wm_get_desktopsize(&scr_w, &scr_h);
@@ -690,7 +690,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                                    win->sizey,
                                                    (GHOST_TWindowState)win->windowstate,
                                                    is_dialog,
-                                                   glSettings);
+                                                   gpuSettings);
 
   if (ghostwin) {
     win->gpuctx = GPU_context_create(ghostwin, NULL);
@@ -2624,10 +2624,10 @@ void wm_window_IME_end(wmWindow *win)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Direct OpenGL Context Management
+/** \name Direct GPU Context Management
  * \{ */
 
-void *WM_opengl_context_create(void)
+void *WM_system_gpu_context_create(void)
 {
   /* On Windows there is a problem creating contexts that share resources (almost any object,
    * including legacy display lists, but also textures) with a context which is current in another
@@ -2641,31 +2641,31 @@ void *WM_opengl_context_create(void)
   BLI_assert(BLI_thread_is_main());
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
 
-  GHOST_GLSettings glSettings = {0};
+  GHOST_GPUSettings gpuSettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
-  glSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
   if (G.debug & G_DEBUG_GPU) {
-    glSettings.flags |= GHOST_glDebugContext;
+    gpuSettings.flags |= GHOST_gpuDebugContext;
   }
-  return GHOST_CreateOpenGLContext(g_system, glSettings);
+  return GHOST_CreateGPUContext(g_system, gpuSettings);
 }
 
-void WM_opengl_context_dispose(void *context)
+void WM_system_gpu_context_dispose(void *context)
 {
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
-  GHOST_DisposeOpenGLContext(g_system, (GHOST_ContextHandle)context);
+  GHOST_DisposeGPUContext(g_system, (GHOST_ContextHandle)context);
 }
 
-void WM_opengl_context_activate(void *context)
+void WM_system_gpu_context_activate(void *context)
 {
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
-  GHOST_ActivateOpenGLContext((GHOST_ContextHandle)context);
+  GHOST_ActivateGPUContext((GHOST_ContextHandle)context);
 }
 
-void WM_opengl_context_release(void *context)
+void WM_system_gpu_context_release(void *context)
 {
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
-  GHOST_ReleaseOpenGLContext((GHOST_ContextHandle)context);
+  GHOST_ReleaseGPUContext((GHOST_ContextHandle)context);
 }
 
 void WM_ghost_show_message_box(const char *title,
