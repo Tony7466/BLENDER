@@ -42,7 +42,7 @@ const EnumPropertyItem rna_enum_attribute_type_items[] = {
     {CD_PROP_FLOAT2, "FLOAT2", 0, "2D Vector", "2D vector with floating-point values"},
     {CD_PROP_INT8, "INT8", 0, "8-Bit Integer", "Smaller integer with a range from -128 to 127"},
     {CD_PROP_INT32_2D, "INT32_2D", 0, "2D Integer Vector", "32-bit signed integer vector"},
-    {CD_PROP_QUATERNION, "QUATERNION", 0, "Rotation", "Floating point quaternion rotation"},
+    {CD_PROP_QUATERNION, "QUATERNION", 0, "Quaternion", "Floating point quaternion rotation"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -71,7 +71,7 @@ const EnumPropertyItem rna_enum_attribute_type_with_auto_items[] = {
     {CD_PROP_FLOAT2, "FLOAT2", 0, "2D Vector", "2D vector with floating-point values"},
     {CD_PROP_FLOAT2, "FLOAT2", 0, "2D Vector", "2D vector with floating-point values"},
     {CD_PROP_INT32_2D, "INT32_2D", 0, "2D Integer Vector", "32-bit signed integer vector"},
-    {CD_PROP_QUATERNION, "QUATERNION", 0, "Rotation", "Floating point quaternion rotation"},
+    {CD_PROP_QUATERNION, "QUATERNION", 0, "Quaternion", "Floating point quaternion rotation"},
     {0, NULL, 0, NULL, NULL},
 };
 
