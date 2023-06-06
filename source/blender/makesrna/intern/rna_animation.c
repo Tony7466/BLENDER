@@ -1409,13 +1409,13 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, "rna_AnimData_update"); /* this will do? */
 
   /* Temporary action slot for tweak mode. */
-  prop = RNA_def_property(srna, "action_tweak_stow", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "action_tweak_storage", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "tmpact");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_pointer_funcs(
       prop, NULL, "rna_AnimData_tmpact_set", NULL, "rna_Action_id_poll");
   RNA_def_property_ui_text(
-      prop, "Tweak Mode Action Stow", "Slot to hold the main action while in tweak mode");
+      prop, "Tweak Mode Action Storage", "Slot to hold the main action while in tweak mode");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
 
   /* Drivers */
