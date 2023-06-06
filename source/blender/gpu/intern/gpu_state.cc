@@ -248,6 +248,12 @@ eGPUStencilTest GPU_stencil_test_get()
   return (eGPUStencilTest)state.stencil_test;
 }
 
+void GPU_depth_range_get(float dists[2])
+{
+  const GPUStateMutable &state = Context::get()->state_manager->mutable_state;
+  copy_v2_v2(dists, state.depth_range);
+}
+
 float GPU_line_width_get()
 {
   const GPUStateMutable &state = Context::get()->state_manager->mutable_state;
@@ -257,6 +263,11 @@ float GPU_line_width_get()
 void GPU_scissor_get(int coords[4])
 {
   Context::get()->active_fb->scissor_get(coords);
+}
+
+bool GPU_scissor_test_get()
+{
+  return Context::get()->active_fb->scissor_test_get();
 }
 
 void GPU_viewport_size_get_f(float coords[4])

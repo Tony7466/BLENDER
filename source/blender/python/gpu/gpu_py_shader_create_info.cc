@@ -23,6 +23,7 @@
 //#define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
 
 using blender::gpu::shader::DualBlend;
+using blender::gpu::shader::DepthWrite;
 using blender::gpu::shader::Frequency;
 using blender::gpu::shader::ImageType;
 using blender::gpu::shader::ShaderCreateInfo;
@@ -152,6 +153,14 @@ static const struct PyC_StringEnumItems pygpu_dualblend_items[] = {
     {int(DualBlend::NONE), "NONE"},
     {int(DualBlend::SRC_0), "SRC_0"},
     {int(DualBlend::SRC_1), "SRC_1"},
+    {0, nullptr},
+};
+
+static const struct PyC_StringEnumItems pygpu_depthwrite_items[] = {
+    {int(DepthWrite::UNCHANGED), "UNCHANGED"},
+    {int(DepthWrite::ANY), "ANY"},
+    {int(DepthWrite::GREATER), "GREATER"},
+    {int(DepthWrite::LESS), "LESS"},
     {0, nullptr},
 };
 
@@ -516,6 +525,30 @@ static PyObject *pygpu_shader_info_fragment_out(BPyGPUShaderCreateInfo *self,
 
   Py_RETURN_NONE;
 }
+
+PyDoc_STRVAR(pygpu_shader_info_depth_write_doc,
+             ".. method:: depth_write(mode)\n"
+             "\n"
+             "   Specify whether depth will be written to a framebuffer.\n"
+             "\n"
+             "   :arg mode: Depth writing mode. It can be 'UNCHANGED', 'ANY', 'GREATER' or 'LESS'.\n"
+             "   :type mode: str\n");
+static PyObject *pygpu_shader_info_depth_write(BPyGPUShaderCreateInfo *self,
+                                                PyObject *args)
+{
+  struct PyC_StringEnum depthwrite = {pygpu_depthwrite_items, int(DepthWrite::UNCHANGED)};
+
+  if (!PyArg_ParseTuple(args, "O&:depth_write", PyC_ParseStringEnum, &depthwrite))
+  {
+    return nullptr;
+  }
+
+  ShaderCreateInfo *info = reinterpret_cast<ShaderCreateInfo *>(self->info);
+  info->depth_write((DepthWrite)depthwrite.value_found);
+
+  Py_RETURN_NONE;
+}
+//  .depth_write(DepthWrite::ANY))
 
 PyDoc_STRVAR(
     pygpu_shader_info_uniform_buf_doc,
@@ -934,7 +967,7 @@ PyDoc_STRVAR(pygpu_shader_info_define_doc,
              "\n"
              ".. code-block:: glsl\n"
              "\n"
-             "   #define name value\n"
+             "   \"#define name value\"\n"
              "\n"
              "   :arg name: Token name.\n"
              "   :type name: str\n"
@@ -980,6 +1013,10 @@ static struct PyMethodDef pygpu_shader_info__tp_methods[] = {
      (PyCFunction)(void *)pygpu_shader_info_fragment_out,
      METH_VARARGS | METH_KEYWORDS,
      pygpu_shader_info_fragment_out_doc},
+    {"depth_write",
+     (PyCFunction)(void *)pygpu_shader_info_depth_write,
+     METH_VARARGS,
+     pygpu_shader_info_depth_write_doc},
     {"uniform_buf",
      (PyCFunction)(void *)pygpu_shader_info_uniform_buf,
      METH_VARARGS,

@@ -295,6 +295,57 @@ static PyObject *pygpu_state_scissor_test_set(PyObject *UNUSED(self), PyObject *
   Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(pygpu_state_scissor_test_get_doc,
+             ".. function:: scissor_test_get()\n"
+             "\n"
+             "   Retrieve whether scissor testing is enabled on the active framebuffer.\n"
+             "\n"
+             "   :return: True if scissor test is enabled.\n"
+             "   :type enable: bool\n");
+static PyObject *pygpu_state_scissor_test_get(PyObject *UNUSED(self))
+{
+  return PyBool_FromLong(GPU_scissor_test_get());
+}
+
+PyDoc_STRVAR(pygpu_state_depth_range_set_doc,
+             ".. function:: depth_range_set(near, far)\n"
+             "\n"
+             "   Specify the mapping of depth values from normalized device coordinates to window coordinates.\n"
+             "\n"
+             "   :arg near, far: Specifies the mapping of the near and far clipping plane to window coordinates.\n"
+             "   :type mode: float\n");
+static PyObject *pygpu_state_depth_range_set(PyObject *UNUSED(self), PyObject *args)
+{
+  float near, far;
+  if (!PyArg_ParseTuple(args, "pp:depth_range_set", &near, &far)) {
+    return NULL;
+  }
+
+  GPU_depth_range(near, far);
+  Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(pygpu_state_depth_range_get_doc,
+             ".. function:: depth_range_get()\n"
+             "\n"
+             "   Current mapping of depth values from normalized device coordinates to window coordinates.\n"
+             "\n"
+             "   :return: The depth range as a tuple\n"
+             "        (near, far).\n"
+             "        near, far: Mapping of the near and far.\n"
+             "   :rtype: tuple(float, float)\n");
+static PyObject *pygpu_state_depth_range_get(PyObject *UNUSED(self))
+{
+  float dists[2];
+  GPU_depth_range_get(dists);
+
+  PyObject *ret = PyTuple_New(2);
+  PyTuple_SET_ITEMS(ret,
+                    PyFloat_FromDouble(dists[0]),
+                    PyFloat_FromDouble(dists[1]));
+  return ret;
+}
+
 PyDoc_STRVAR(pygpu_state_line_width_set_doc,
              ".. function:: line_width_set(width)\n"
              "\n"
@@ -474,6 +525,18 @@ static struct PyMethodDef pygpu_state__tp_methods[] = {
      (PyCFunction)pygpu_state_scissor_test_set,
      METH_O,
      pygpu_state_scissor_test_set_doc},
+    {"scissor_test_get",
+     (PyCFunction)pygpu_state_scissor_test_get,
+     METH_NOARGS,
+     pygpu_state_scissor_test_get_doc},
+    {"depth_range_set",
+     (PyCFunction)pygpu_state_depth_range_set,
+     METH_VARARGS,
+     pygpu_state_depth_range_set_doc},
+    {"depth_range_get",
+     (PyCFunction)pygpu_state_depth_range_get,
+     METH_NOARGS,
+     pygpu_state_depth_range_get_doc},
     {"line_width_set",
      (PyCFunction)pygpu_state_line_width_set,
      METH_O,
