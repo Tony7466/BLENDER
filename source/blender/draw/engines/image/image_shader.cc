@@ -19,6 +19,7 @@ namespace blender::draw::image_engine {
 
 struct IMAGE_Shaders {
   GPUShader *image_sh;
+  GPUShader *image_tiled_sh;
   GPUShader *color_sh;
   GPUShader *depth_sh;
 };
@@ -52,6 +53,15 @@ GPUShader *IMAGE_shader_image_get()
     sh_data->image_sh = GPU_shader_create_from_info_name("image_engine_image_shader");
   }
   return sh_data->image_sh;
+}
+
+GPUShader *IMAGE_shader_image_tiled_get()
+{
+  IMAGE_Shaders *sh_data = &e_data.shaders;
+  if (sh_data->image_tiled_sh == nullptr) {
+    sh_data->image_tiled_sh = GPU_shader_create_from_info_name("image_engine_image_tiled_shader");
+  }
+  return sh_data->image_tiled_sh;
 }
 
 void IMAGE_shader_free()

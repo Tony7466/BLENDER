@@ -32,27 +32,44 @@ class ImageDrawingMode : public AbstractDrawingMode {
   {
     IMAGE_InstanceData &instance_data = *vedata->instance_data;
     GPUBatch *geom = DRW_cache_quad_get();
-    GPUShader *shader = IMAGE_shader_image_get();
+    const bool is_tiled = image->source == IMA_SRC_TILED;
+    GPUShader *shader = is_tiled ? IMAGE_shader_image_tiled_get() : IMAGE_shader_image_get();
 
     ImageUser tile_user = {0};
     if (image_user) {
       tile_user = *image_user;
     }
+
+    GPUTexture *tiles = nullptr;
+    GPUTexture *tile_data = nullptr;
+    if (is_tiled) {
+      tiles = BKE_image_get_gpu_tiles(image, &tile_user, nullptr);
+      tile_data = BKE_image_get_gpu_tilemap(image, &tile_user, nullptr);
+    }
+
     LISTBASE_FOREACH (ImageTile *, image_tile_ptr, &image->tiles) {
       const bke::image::ImageTileWrapper image_tile(image_tile_ptr);
       const int tile_x = image_tile.get_tile_x_offset();
       const int tile_y = image_tile.get_tile_y_offset();
       tile_user.tile = image_tile.get_tile_number();
-      GPUTexture *texture = BKE_image_get_gpu_texture(image, &tile_user, nullptr);
 
       ShaderParameters &sh_params = instance_data.sh_params;
       DRWShadingGroup *grp = DRW_shgroup_create(shader, instance_data.passes.image_pass);
       DRW_shgroup_uniform_vec2_copy(grp, "tile_offset", float2(tile_x, tile_y));
-      DRW_shgroup_uniform_texture(grp, "imageTexture", texture);
       DRW_shgroup_uniform_vec2_copy(grp, "farNearDistances", sh_params.far_near);
       DRW_shgroup_uniform_vec4_copy(grp, "shuffle", sh_params.shuffle);
       DRW_shgroup_uniform_int_copy(grp, "drawFlags", static_cast<int32_t>(sh_params.flags));
       DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", sh_params.use_premul_alpha);
+
+      if (is_tiled) {
+        DRW_shgroup_uniform_texture(grp, "imageTileArray", tiles);
+        DRW_shgroup_uniform_texture(grp, "imageTileData", tile_data);
+      }
+      else {
+        GPUTexture *texture = BKE_image_get_gpu_texture(image, &tile_user, nullptr);
+        DRW_shgroup_uniform_texture(grp, "imageTexture", texture);
+      }
+
       DRW_shgroup_call(grp, geom, nullptr);
     }
   }

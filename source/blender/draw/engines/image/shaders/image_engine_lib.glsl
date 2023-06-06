@@ -35,3 +35,28 @@ vec4 image_engine_apply_parameters(vec4 color,
   }
   return result;
 }
+
+bool node_tex_tile_lookup(inout vec3 co, sampler2DArray ima, sampler1DArray map)
+{
+  vec2 tile_pos = floor(co.xy);
+
+  if (tile_pos.x < 0 || tile_pos.y < 0 || tile_pos.x >= 10) {
+    return false;
+  }
+
+  float tile = 10.0 * tile_pos.y + tile_pos.x;
+  if (tile >= textureSize(map, 0).x) {
+    return false;
+  }
+
+  /* Fetch tile information. */
+  float tile_layer = texelFetch(map, ivec2(tile, 0), 0).x;
+  if (tile_layer < 0.0) {
+    return false;
+  }
+
+  vec4 tile_info = texelFetch(map, ivec2(tile, 1), 0);
+
+  co = vec3(((co.xy - tile_pos) * tile_info.zw) + tile_info.xy, tile_layer);
+  return true;
+}

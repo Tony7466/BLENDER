@@ -35,7 +35,7 @@ GPU_SHADER_CREATE_INFO(image_engine_depth_shader)
     .depth_write(DepthWrite::ANY)
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(image_engine_image_shader)
+GPU_SHADER_CREATE_INFO(image_engine_image_base)
     .vertex_in(0, Type::VEC2, "pos")
     .vertex_out(image_engine_depth_iface)
     .push_constant(Type::VEC2, "tile_offset")
@@ -46,7 +46,17 @@ GPU_SHADER_CREATE_INFO(image_engine_image_shader)
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("image_engine_image_vert.glsl")
     .fragment_source("image_engine_image_frag.glsl")
-    .sampler(0, ImageType::FLOAT_2D, "imageTexture")
     .additional_info("draw_modelmat")
-    .depth_write(DepthWrite::ANY)
+    .depth_write(DepthWrite::ANY);
+
+GPU_SHADER_CREATE_INFO(image_engine_image_shader)
+    .additional_info("image_engine_image_base")
+    .sampler(0, ImageType::FLOAT_2D, "imageTexture")
+    .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(image_engine_image_tiled_shader)
+    .additional_info("image_engine_image_base")
+    .sampler(0, ImageType::FLOAT_2D_ARRAY, "imageTileArray", Frequency::PASS)
+    .sampler(1, ImageType::FLOAT_1D_ARRAY, "imageTileData", Frequency::PASS)
+    .define("IMAGE_TILED")
     .do_static_compilation(true);
