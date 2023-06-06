@@ -4044,8 +4044,14 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, drawing_index);
         changed |= ed::curves::select_box(
-            *vc, drawing.geometry.wrap(), deformation, ATTR_DOMAIN_POINT, *rect, sel_op);
+            *vc, drawing.geometry.wrap(), deformation.positions, ATTR_DOMAIN_POINT, *rect, sel_op);
       });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(vc->C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
   return changed;
 }
 
