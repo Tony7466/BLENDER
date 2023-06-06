@@ -70,11 +70,18 @@ static void modifier_reorder(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_free(&props_ptr);
 }
 
-static uint64_t *get_modifier_expand_flag(const bContext * /*C*/, Panel *panel)
+static short get_modifier_expand_flag(const bContext * /*C*/, Panel *panel)
 {
   PointerRNA *md_ptr = UI_panel_custom_data_get(panel);
   ModifierData *md = (ModifierData *)md_ptr->data;
-  return (uint64_t *)(&md->ui_expand_flag);
+  return md->ui_expand_flag;
+}
+
+static void set_modifier_expand_flag(const bContext * /*C*/, Panel *panel, short expand_flag)
+{
+  PointerRNA *md_ptr = UI_panel_custom_data_get(panel);
+  ModifierData *md = (ModifierData *)md_ptr->data;
+  md->ui_expand_flag = expand_flag;
 }
 
 /** \} */
@@ -465,6 +472,7 @@ PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, 
   panel_type->flag = PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED;
   panel_type->reorder = modifier_reorder;
   panel_type->get_list_data_expand_flag = get_modifier_expand_flag;
+  panel_type->set_list_data_expand_flag = set_modifier_expand_flag;
 
   BLI_addtail(&region_type->paneltypes, panel_type);
 

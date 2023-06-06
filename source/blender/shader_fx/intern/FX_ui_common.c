@@ -60,11 +60,21 @@ static void shaderfx_reorder(bContext *C, Panel *panel, int new_index)
 /**
  * Get the expand flag from the active effect to use for the panel.
  */
-static uint64_t *get_shaderfx_expand_flag(const bContext *UNUSED(C), Panel *panel)
+static short get_shaderfx_expand_flag(const bContext *UNUSED(C), Panel *panel)
 {
   PointerRNA *fx_ptr = UI_panel_custom_data_get(panel);
   ShaderFxData *fx = (ShaderFxData *)fx_ptr->data;
-  return (uint64_t *)(&fx->ui_expand_flag);
+  return fx->ui_expand_flag;
+}
+
+/**
+ * Save the expand flag for the panel and sub-panels to the effect.
+ */
+static void set_shaderfx_expand_flag(const bContext *UNUSED(C), Panel *panel, short expand_flag)
+{
+  PointerRNA *fx_ptr = UI_panel_custom_data_get(panel);
+  ShaderFxData *fx = (ShaderFxData *)fx_ptr->data;
+  fx->ui_expand_flag = expand_flag;
 }
 
 /** \} */
@@ -228,6 +238,7 @@ PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, 
   panel_type->flag = PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED;
   panel_type->reorder = shaderfx_reorder;
   panel_type->get_list_data_expand_flag = get_shaderfx_expand_flag;
+  panel_type->set_list_data_expand_flag = set_shaderfx_expand_flag;
 
   BLI_addtail(&region_type->paneltypes, panel_type);
 

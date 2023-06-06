@@ -18,7 +18,6 @@
 
 #include "PIL_time.h"
 
-#include "BLI_bit_span.hh"
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -522,17 +521,16 @@ static void reorder_instanced_panel_list(bContext *C, ARegion *region, Panel *dr
  *
  * \return Whether the closed flag for the panel or any sub-panels changed.
  */
-static bool panel_set_expand_from_list_data_recursive(Panel *panel,
-                                                      blender::bits::BitIterator &expand_flag)
+static bool panel_set_expand_from_list_data_recursive(Panel *panel, short flag, short *flag_index)
 {
-  const bool open = *expand_flag;
+  const bool open = (flag & (1 << *flag_index));
   bool changed = (open == UI_panel_is_closed(panel));
 
   SET_FLAG_FROM_TEST(panel->flag, !open, PNL_CLOSED);
 
   LISTBASE_FOREACH (Panel *, child, &panel->children) {
-    ++expand_flag;
-    changed |= panel_set_expand_from_list_data_recursive(child, expand_flag);
+    *flag_index = *flag_index + 1;
+    changed |= panel_set_expand_from_list_data_recursive(child, flag, flag_index);
   }
   return changed;
 }
@@ -551,10 +549,10 @@ static void panel_set_expansion_from_list_data(const bContext *C, Panel *panel)
     return;
   }
 
-  uint64_t *expand_flag = panel->type->get_list_data_expand_flag(C, panel);
+  const short expand_flag = panel->type->get_list_data_expand_flag(C, panel);
+  short flag_index = 0;
   /* Start panel animation if the open state was changed. */
-  blender::bits::BitIterator expand_flag_iter(expand_flag, 0);
-  if (panel_set_expand_from_list_data_recursive(panel, expand_flag_iter)) {
+  if (panel_set_expand_from_list_data_recursive(panel, expand_flag, &flag_index)) {
     panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
   }
 }
@@ -577,16 +575,14 @@ static void region_panels_set_expansion_from_list_data(const bContext *C, ARegio
 /**
  * Recursive implementation for #set_panels_list_data_expand_flag.
  */
-static void get_panel_expand_flag_recursive(const Panel *panel,
-                                            blender::bits::MutableBitIterator expand_flag)
+static void get_panel_expand_flag(const Panel *panel, short *flag, short *flag_index)
 {
   const bool open = !(panel->flag & PNL_CLOSED);
-
-  (*expand_flag).set(open);
+  SET_FLAG_FROM_TEST(*flag, open, (1 << *flag_index));
 
   LISTBASE_FOREACH (const Panel *, child, &panel->children) {
-    ++expand_flag;
-    get_panel_expand_flag_recursive(child, expand_flag);
+    *flag_index = *flag_index + 1;
+    get_panel_expand_flag(child, flag, flag_index);
   }
 }
 
@@ -608,10 +604,11 @@ static void set_panels_list_data_expand_flag(const bContext *C, const ARegion *r
 
     /* Check for #PANEL_ACTIVE so we only set the expand flag for active panels. */
     if (panel_type->flag & PANEL_TYPE_INSTANCED && panel->runtime_flag & PANEL_ACTIVE) {
-      if (panel->type->get_list_data_expand_flag) {
-        uint64_t *expand_flag = panel->type->get_list_data_expand_flag(C, panel);
-        blender::bits::MutableBitIterator expand_flag_iter(expand_flag, 0);
-        get_panel_expand_flag_recursive(panel, expand_flag_iter);
+      short expand_flag;
+      short flag_index = 0;
+      get_panel_expand_flag(panel, &expand_flag, &flag_index);
+      if (panel->type->set_list_data_expand_flag) {
+        panel->type->set_list_data_expand_flag(C, panel, expand_flag);
       }
     }
   }

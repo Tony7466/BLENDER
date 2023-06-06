@@ -2408,12 +2408,22 @@ static void constraint_reorder(bContext *C, Panel *panel, int new_index)
 /**
  * Get the expand flag from the active constraint to use for the panel.
  */
-static uint64_t *get_constraint_expand_flag(const bContext * /*C*/, Panel *panel)
+static short get_constraint_expand_flag(const bContext * /*C*/, Panel *panel)
 {
   PointerRNA *con_ptr = UI_panel_custom_data_get(panel);
   bConstraint *con = (bConstraint *)con_ptr->data;
 
-  return (uint64_t *)(&con->ui_expand_flag);
+  return con->ui_expand_flag;
+}
+
+/**
+ * Save the expand flag for the panel and sub-panels to the constraint.
+ */
+static void set_constraint_expand_flag(const bContext * /*C*/, Panel *panel, short expand_flag)
+{
+  PointerRNA *con_ptr = UI_panel_custom_data_get(panel);
+  bConstraint *con = (bConstraint *)con_ptr->data;
+  con->ui_expand_flag = expand_flag;
 }
 
 /**
@@ -2495,6 +2505,7 @@ void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_con
 
       if (new_panel) {
         /* Set the list panel functionality function pointers since we don't do it with python. */
+        new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
         new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
         new_panel->type->reorder = constraint_reorder;
       }
