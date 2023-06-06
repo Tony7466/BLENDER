@@ -552,12 +552,10 @@ static void panel_set_expansion_from_list_data(const bContext *C, Panel *panel)
   }
 
   uint64_t *expand_flag = panel->type->get_list_data_expand_flag(C, panel);
-  if (panel->type) {
-    /* Start panel animation if the open state was changed. */
-    blender::bits::BitIterator expand_flag_iter(expand_flag, 0);
-    if (panel_set_expand_from_list_data_recursive(panel, expand_flag_iter)) {
-      panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
-    }
+  /* Start panel animation if the open state was changed. */
+  blender::bits::BitIterator expand_flag_iter(expand_flag, 0);
+  if (panel_set_expand_from_list_data_recursive(panel, expand_flag_iter)) {
+    panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
   }
 }
 
