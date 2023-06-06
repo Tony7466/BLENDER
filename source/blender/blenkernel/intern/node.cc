@@ -254,8 +254,6 @@ static void ntree_free_data(ID *id)
         ntreeTexEndExecTree(ntree->runtime->execdata);
         ntree->runtime->execdata = nullptr;
         break;
-      default:
-        break;
     }
   }
 
@@ -4259,8 +4257,6 @@ void node_type_base(bNodeType *ntype, const int type, const char *name, const sh
 
   switch (type) {
 #include "NOD_static_types.h"
-    default:
-      break;
   }
 
   /* make sure we have a valid type (everything registered) */
@@ -4389,8 +4385,6 @@ void node_type_size_preset(bNodeType *ntype, const eNodeSizePreset size)
       break;
     case eNodeSizePreset::LARGE:
       node_type_size(ntype, 240, 140, NODE_DEFAULT_MAX_WIDTH);
-      break;
-    default:
       break;
   }
 }
