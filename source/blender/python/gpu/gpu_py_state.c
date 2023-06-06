@@ -317,7 +317,7 @@ PyDoc_STRVAR(pygpu_state_depth_range_set_doc,
 static PyObject *pygpu_state_depth_range_set(PyObject *UNUSED(self), PyObject *args)
 {
   float near, far;
-  if (!PyArg_ParseTuple(args, "pp:depth_range_set", &near, &far)) {
+  if (!PyArg_ParseTuple(args, "ff:depth_range_set", &near, &far)) {
     return NULL;
   }
 
