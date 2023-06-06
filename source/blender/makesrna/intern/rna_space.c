@@ -2056,6 +2056,7 @@ static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSE
       }
       continue;
     }
+
     RNA_enum_items_add_value(&item, &totitem_added, buttons_context_items, context_tabs_array[i]);
     add_separator = true;
 
