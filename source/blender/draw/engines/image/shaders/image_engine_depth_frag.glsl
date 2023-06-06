@@ -1,7 +1,5 @@
 #pragma BLENDER_REQUIRE(common_colormanagement_lib.glsl)
-
-#define Z_DEPTH_BORDER 1.0
-#define Z_DEPTH_IMAGE 0.75
+#pragma BLENDER_REQUIRE(image_engine_lib.glsl)
 
 bool is_border(vec2 uv)
 {
