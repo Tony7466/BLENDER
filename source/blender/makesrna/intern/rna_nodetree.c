@@ -3199,7 +3199,6 @@ static void rna_NodeSocketInterface_category_set(PointerRNA *ptr,
 
 static bool rna_NodeSocketInterface_category_poll(PointerRNA *ptr, PointerRNA value)
 {
-  bNodeSocket *socket = (bNodeSocket *)ptr->data;
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
 
