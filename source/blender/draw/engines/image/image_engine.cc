@@ -125,14 +125,14 @@ class ImageEngine {
       use_image_drawing_mode = false;
     }
 
-    /* Don't use cached GPU textures when the user has set the resource limit. ImageDrawingMode
-     * uses these cached versions, but it is expected to use the final resolution. */
-    if (U.glreslimit != 0) {
-      use_image_drawing_mode = false;
-    }
-
+    /* Don't use cached GPU textures when the original resolution of the image exceeds the resource
+     * limit. In this case the cached GPUTextures are scaled down versions, but we display every
+     * pixel. */
     /* Although drivers report that they support 16K images it is not guaranteed that they will
      * allocate it as it depends on the actual used data type. */
+    const int MAX_RESOLUTION_SAFE = 12000;
+    const int max_resolution = U.glreslimit ? U.glreslimit : MAX_RESOLUTION_SAFE;
+
     if (use_image_drawing_mode && instance_data->image) {
       ImageUser tile_user = {0};
       ImageUser *image_user = space->get_image_user();
@@ -147,11 +147,10 @@ class ImageEngine {
         if (tile_buffer == nullptr) {
           continue;
         }
-        int max_resolution = max_ii(tile_buffer->x, tile_buffer->y);
+        int resolution = max_ii(tile_buffer->x, tile_buffer->y);
         BKE_image_release_ibuf(instance_data->image, tile_buffer, nullptr);
 
-        const int MAX_RESOLUTION_SAFE = 12000.0f;
-        if (max_resolution > MAX_RESOLUTION_SAFE) {
+        if (resolution > max_resolution) {
           use_image_drawing_mode = false;
           break;
         }
