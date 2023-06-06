@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editor/io
@@ -61,7 +63,7 @@ static int wm_ply_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
 static int wm_ply_export_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
   struct PLYExportParams export_params = {"\0"};
@@ -144,7 +146,7 @@ static bool wm_ply_export_check(bContext *UNUSED(C), wmOperator *op)
   return changed;
 }
 
-void WM_OT_ply_export(struct wmOperatorType *ot)
+void WM_OT_ply_export(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -259,7 +261,7 @@ static int wm_ply_import_execute(bContext *C, wmOperator *op)
     PLY_import(C, &params, op);
   }
   else {
-    BKE_report(op->reports, RPT_ERROR, "No filename given");
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
@@ -272,7 +274,7 @@ static int wm_ply_import_execute(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void WM_OT_ply_import(struct wmOperatorType *ot)
+void WM_OT_ply_import(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 

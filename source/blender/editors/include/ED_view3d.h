@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -1285,11 +1286,11 @@ bool ED_view3d_distance_set_from_location(struct RegionView3D *rv3d,
  */
 float ED_scene_grid_scale(const struct Scene *scene, const char **r_grid_unit);
 float ED_view3d_grid_scale(const struct Scene *scene,
-                           struct View3D *v3d,
+                           const struct View3D *v3d,
                            const char **r_grid_unit);
 void ED_view3d_grid_steps(const struct Scene *scene,
-                          struct View3D *v3d,
-                          struct RegionView3D *rv3d,
+                          const struct View3D *v3d,
+                          const struct RegionView3D *rv3d,
                           float r_grid_steps[8]);
 /**
  * Simulates the grid scale that is actually viewed.
@@ -1331,7 +1332,7 @@ void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrAr
 #define OVERLAY_RETOPOLOGY_ENABLED(overlay) \
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)
 #ifdef __APPLE__
-/* Apple silicon tile depth test requires a higher value to reduce drawing artifacts.*/
+/* Apple silicon tile depth test requires a higher value to reduce drawing artifacts. */
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED 0.0015f
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0015f
 #else

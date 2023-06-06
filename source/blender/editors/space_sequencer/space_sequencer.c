@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spseq
@@ -231,7 +232,7 @@ static void sequencer_free(SpaceLink *sl)
 }
 
 /* Space-type init callback. */
-static void sequencer_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
+static void sequencer_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
 
 static void sequencer_refresh(const bContext *C, ScrArea *area)
 {
@@ -1048,7 +1049,7 @@ void ED_spacetype_sequencer(void)
                     ED_KEYMAP_GPENCIL;
   BLI_addhead(&st->regiontypes, art);
 
-  /* Listview/buttons. */
+  /* List-view/buttons. */
   art = MEM_callocN(sizeof(ARegionType), "spacetype sequencer region");
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = UI_SIDEBAR_PANEL_WIDTH * 1.3f;

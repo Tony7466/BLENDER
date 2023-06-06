@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -108,7 +109,7 @@ typedef struct RenderLayer {
 
   int rectx, recty;
 
-  /** Optional saved endresult on disk. */
+  /** Optional saved end-result on disk. */
   void *exrhandle;
 
   ListBase passes;
@@ -509,7 +510,7 @@ RenderBuffer RE_RenderBuffer_new(float *data);
 void RE_RenderBuffer_assign_data(RenderBuffer *render_buffer, float *data);
 
 /**
- * Effectively `lhs = rhs`. The ths will share the same buffer as the ths (with an increased user
+ * Effectively `lhs = rhs`. The lhs will share the same buffer as the rhs (with an increased user
  * counter).
  *
  * The current content of the lhs is freed.
@@ -527,7 +528,7 @@ void RE_RenderBuffer_assign_shared(RenderBuffer *lhs, const RenderBuffer *rhs);
 void RE_RenderBuffer_data_free(RenderBuffer *render_buffer);
 
 /* Implementation of above, but for byte buffer. */
-/* TODO(sergey): Once everything is C++ we can remove the duplicated API.  */
+/* TODO(sergey): Once everything is C++ we can remove the duplicated API. */
 RenderByteBuffer RE_RenderByteBuffer_new(uint8_t *data);
 void RE_RenderByteBuffer_assign_data(RenderByteBuffer *render_buffer, uint8_t *data);
 void RE_RenderByteBuffer_assign_shared(RenderByteBuffer *lhs, const RenderByteBuffer *rhs);
