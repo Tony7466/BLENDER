@@ -2019,16 +2019,16 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
         layout.operator("gpencil.select_less")
 
     def draw(self, context):
+        if not context.preferences.experimental.use_grease_pencil_version3:
+            self.draw_legacy(context)
+
         layout = self.layout
 
-        if context.preferences.experimental.use_grease_pencil_version3:
-            layout.operator("grease_pencil.select_all", text="All").action = 'SELECT'
-            layout.operator("grease_pencil.select_all", text="None").action = 'DESELECT'
-            layout.operator("grease_pencil.select_all", text="Invert").action = 'INVERT'
+        layout.operator("grease_pencil.select_all", text="All").action = 'SELECT'
+        layout.operator("grease_pencil.select_all", text="None").action = 'DESELECT'
+        layout.operator("grease_pencil.select_all", text="Invert").action = 'INVERT'
 
-            layout.separator()
-        else:
-            self.draw_legacy(self, context)
+        layout.separator()     
 
 
 class VIEW3D_MT_select_paint_mask(Menu):
