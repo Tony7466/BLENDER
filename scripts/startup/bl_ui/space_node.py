@@ -604,7 +604,8 @@ class NODE_PT_active_node_generic(Panel):
         col.prop(node, "label", icon='NODE')
 
         col = layout.column()
-        layout.prop(node, "mute")
+        if node.mute_supported:
+            layout.prop(node, "mute")
 
 
 class NODE_PT_active_node_color(Panel):

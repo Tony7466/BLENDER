@@ -12661,8 +12661,13 @@ static void rna_def_node(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", NODE_MUTED);
-  RNA_def_property_ui_text(prop, "Mute", "");
+  RNA_def_property_ui_text(prop, "Mute", "Skip the node's operation and output one of the inputs directly");
   RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "mute_supported", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "typeinfo->no_muting", 0);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Mute Supported", "");
 
   prop = RNA_def_property(srna, "show_texture", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", NODE_ACTIVE_TEXTURE);
