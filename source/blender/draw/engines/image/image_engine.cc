@@ -117,14 +117,52 @@ class ImageEngine {
 
   void select_drawing_mode(float2 image_resolution)
   {
+    bool use_image_drawing_mode = true;
+
     IMAGE_InstanceData *instance_data = vedata->instance_data;
-    if (instance_data->flags.do_tile_drawing || image_resolution.x > 8192 ||
-        image_resolution.y > 8192) {
-      instance_data->drawing_mode = MEM_new<ScreenSpaceDrawingMode<OneTexture>>(__func__);
+    /* Tile drawing isn't supported by ImageDrawingMode */
+    if (instance_data->flags.do_tile_drawing) {
+      use_image_drawing_mode = false;
     }
-    else {
-      instance_data->drawing_mode = MEM_new<ImageDrawingMode>(__func__);
+
+    /* Don't use cached GPU textures when the user has set the resource limit. ImageDrawingMode
+     * uses these cached versions, but it is expected to use the final resolution. */
+    if (U.glreslimit != 0) {
+      use_image_drawing_mode = false;
     }
+
+    /* Although drivers report that they support 16K images it is not guaranteed that they will
+     * allocate it as it depends on the actual used data type. */
+    if (use_image_drawing_mode && instance_data->image) {
+      ImageUser tile_user = {0};
+      ImageUser *image_user = space->get_image_user();
+      if (image_user) {
+        tile_user = *image_user;
+      }
+
+      LISTBASE_FOREACH (ImageTile *, tile, &instance_data->image->tiles) {
+        ImageTileWrapper image_tile(tile);
+        tile_user.tile = image_tile.get_tile_number();
+        ImBuf *tile_buffer = BKE_image_acquire_ibuf(instance_data->image, &tile_user, nullptr);
+        if (tile_buffer == nullptr) {
+          continue;
+        }
+        int max_resolution = max_ii(tile_buffer->x, tile_buffer->y);
+        BKE_image_release_ibuf(instance_data->image, tile_buffer, nullptr);
+
+        const int MAX_RESOLUTION_SAFE = 12000.0f;
+        if (max_resolution > MAX_RESOLUTION_SAFE) {
+          use_image_drawing_mode = false;
+          break;
+        }
+      }
+    }
+
+    instance_data->drawing_mode = use_image_drawing_mode ?
+                                      static_cast<AbstractDrawingMode *>(
+                                          MEM_new<ImageDrawingMode>(__func__)) :
+                                      static_cast<AbstractDrawingMode *>(
+                                          MEM_new<ScreenSpaceDrawingMode<OneTexture>>(__func__));
   }
 
   void begin_sync()
