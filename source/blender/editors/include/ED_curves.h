@@ -54,11 +54,12 @@ int *ED_curves_offsets_for_write(struct Curves *curves_id);
 #ifdef __cplusplus
 
 #  include "BKE_attribute.hh"
+#  include "BKE_crazyspace.hh"
+#  include "BKE_curves.hh"
+
 #  include "BLI_index_mask.hh"
 #  include "BLI_vector.hh"
 #  include "BLI_vector_set.hh"
-
-#  include "BKE_curves.hh"
 
 #  include "ED_select_utils.h"
 
@@ -189,18 +190,21 @@ struct FindClosestData {
  *
  * \return A new point or curve closer than the \a initial input, if one exists.
  */
-std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext &vc,
-                                                              const Object &object,
-                                                              bke::CurvesGeometry &curves,
-                                                              eAttrDomain domain,
-                                                              int2 coord,
-                                                              const FindClosestData &initial);
+std::optional<FindClosestData> closest_elem_find_screen_space(
+    const ViewContext &vc,
+    const Object &object,
+    bke::CurvesGeometry &curves,
+    const bke::crazyspace::GeometryDeformation &deformation,
+    eAttrDomain domain,
+    int2 coord,
+    const FindClosestData &initial);
 
 /**
  * Select points or curves in a (screen-space) rectangle.
  */
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
+                const bke::crazyspace::GeometryDeformation &deformation,
                 eAttrDomain selection_domain,
                 const rcti &rect,
                 eSelectOp sel_op);
@@ -210,6 +214,7 @@ bool select_box(const ViewContext &vc,
  */
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
+                  const bke::crazyspace::GeometryDeformation &deformation,
                   eAttrDomain selection_domain,
                   Span<int2> coords,
                   eSelectOp sel_op);
@@ -219,6 +224,7 @@ bool select_lasso(const ViewContext &vc,
  */
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
+                   const bke::crazyspace::GeometryDeformation &deformation,
                    eAttrDomain selection_domain,
                    int2 coord,
                    float radius,

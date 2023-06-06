@@ -439,20 +439,17 @@ void apply_selection_operation_at_index(GMutableSpan selection,
 }
 
 static std::optional<FindClosestData> find_closest_point_to_screen_co(
-    const Depsgraph &depsgraph,
     const ARegion *region,
     const RegionView3D *rv3d,
     const Object &object,
     const bke::CurvesGeometry &curves,
+    const bke::crazyspace::GeometryDeformation &deformation,
     float2 mouse_pos,
     float radius,
     const FindClosestData &initial_closest)
 {
   float4x4 projection;
   ED_view3d_ob_project_mat_get(rv3d, &object, projection.ptr());
-
-  const bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_curves_deformation(depsgraph, object);
 
   const float radius_sq = pow2f(radius);
   const FindClosestData new_closest_data = threading::parallel_reduce(
@@ -498,20 +495,17 @@ static std::optional<FindClosestData> find_closest_point_to_screen_co(
 }
 
 static std::optional<FindClosestData> find_closest_curve_to_screen_co(
-    const Depsgraph &depsgraph,
     const ARegion *region,
     const RegionView3D *rv3d,
     const Object &object,
     const bke::CurvesGeometry &curves,
+    const bke::crazyspace::GeometryDeformation &deformation,
     float2 mouse_pos,
     float radius,
     const FindClosestData &initial_closest)
 {
   float4x4 projection;
   ED_view3d_ob_project_mat_get(rv3d, &object, projection.ptr());
-
-  const bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_curves_deformation(depsgraph, object);
 
   const float radius_sq = pow2f(radius);
 
@@ -591,26 +585,27 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
     const ViewContext &vc,
     const Object &object,
     bke::CurvesGeometry &curves,
+    const bke::crazyspace::GeometryDeformation &deformation,
     const eAttrDomain domain,
     const int2 coord,
     const FindClosestData &initial_closest)
 {
   switch (domain) {
     case ATTR_DOMAIN_POINT:
-      return find_closest_point_to_screen_co(*vc.depsgraph,
-                                             vc.region,
+      return find_closest_point_to_screen_co(vc.region,
                                              vc.rv3d,
                                              object,
                                              curves,
+                                             deformation,
                                              float2(coord),
                                              ED_view3d_select_dist_px(),
                                              initial_closest);
     case ATTR_DOMAIN_CURVE:
-      return find_closest_curve_to_screen_co(*vc.depsgraph,
-                                             vc.region,
+      return find_closest_curve_to_screen_co(vc.region,
                                              vc.rv3d,
                                              object,
                                              curves,
+                                             deformation,
                                              float2(coord),
                                              ED_view3d_select_dist_px(),
                                              initial_closest);
@@ -622,6 +617,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
 
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
+                const bke::crazyspace::GeometryDeformation &deformation,
                 const eAttrDomain selection_domain,
                 const rcti &rect,
                 const eSelectOp sel_op)
@@ -638,8 +634,6 @@ bool select_box(const ViewContext &vc,
   float4x4 projection;
   ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
 
-  const bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
   const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == ATTR_DOMAIN_POINT) {
     threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
@@ -692,6 +686,7 @@ bool select_box(const ViewContext &vc,
 
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
+                  const bke::crazyspace::GeometryDeformation &deformation,
                   const eAttrDomain selection_domain,
                   const Span<int2> coords,
                   const eSelectOp sel_op)
@@ -712,8 +707,6 @@ bool select_lasso(const ViewContext &vc,
   float4x4 projection;
   ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
 
-  const bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
   const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == ATTR_DOMAIN_POINT) {
     threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
@@ -783,6 +776,7 @@ bool select_lasso(const ViewContext &vc,
 
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
+                   const bke::crazyspace::GeometryDeformation &deformation,
                    const eAttrDomain selection_domain,
                    const int2 coord,
                    const float radius,
@@ -801,8 +795,6 @@ bool select_circle(const ViewContext &vc,
   float4x4 projection;
   ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
 
-  const bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
   const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == ATTR_DOMAIN_POINT) {
     threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
