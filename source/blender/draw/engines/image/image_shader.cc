@@ -31,7 +31,7 @@ GPUShader *IMAGE_shader_color_get()
 {
   IMAGE_Shaders *sh_data = &e_data.shaders;
   if (sh_data->color_sh == nullptr) {
-    sh_data->color_sh = GPU_shader_create_from_info_name("image_engine_image_shader");
+    sh_data->color_sh = GPU_shader_create_from_info_name("image_engine_color_shader");
   }
   return sh_data->color_sh;
 }
@@ -48,10 +48,10 @@ GPUShader *IMAGE_shader_depth_get()
 GPUShader *IMAGE_shader_image_get()
 {
   IMAGE_Shaders *sh_data = &e_data.shaders;
-  if (sh_data->depth_sh == nullptr) {
-    sh_data->depth_sh = GPU_shader_create_from_info_name("image_engine_image_shader");
+  if (sh_data->image_sh == nullptr) {
+    sh_data->image_sh = GPU_shader_create_from_info_name("image_engine_image_shader");
   }
-  return sh_data->depth_sh;
+  return sh_data->image_sh;
 }
 
 void IMAGE_shader_free()
