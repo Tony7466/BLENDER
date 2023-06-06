@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -113,10 +114,10 @@ void BKE_library_filepath_set(Main *bmain, Library *lib, const char *filepath)
   /* in some cases this is used to update the absolute path from the
    * relative */
   if (lib->filepath != filepath) {
-    BLI_strncpy(lib->filepath, filepath, sizeof(lib->filepath));
+    STRNCPY(lib->filepath, filepath);
   }
 
-  BLI_strncpy(lib->filepath_abs, filepath, sizeof(lib->filepath_abs));
+  STRNCPY(lib->filepath_abs, filepath);
 
   /* Not essential but set `filepath_abs` is an absolute copy of value which
    * is more useful if its kept in sync. */

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
@@ -372,7 +374,7 @@ typedef struct BVHCallbackUserData {
 
 static void bvh_callback(void *userdata, int index, const BVHTreeRay *ray, BVHTreeRayHit *hit)
 {
-  BVHCallbackUserData *data = (struct BVHCallbackUserData *)userdata;
+  BVHCallbackUserData *data = (BVHCallbackUserData *)userdata;
   const MLoopTri *lt = &data->sys->heat.mlooptri[index];
   const blender::Span<int> corner_verts = data->sys->heat.corner_verts;
   float(*verts)[3] = data->sys->heat.verts;
@@ -880,7 +882,7 @@ typedef struct MDefBoundIsect {
 } MDefBoundIsect;
 
 typedef struct MDefBindInfluence {
-  struct MDefBindInfluence *next;
+  MDefBindInfluence *next;
   float weight;
   int vertex;
 } MDefBindInfluence;
@@ -996,7 +998,7 @@ static MDefBoundIsect *meshdeform_ray_tree_intersect(MeshDeformBind *mdb,
 {
   BVHTreeRayHit hit;
   MeshDeformIsect isect_mdef;
-  struct MeshRayCallbackData data = {
+  MeshRayCallbackData data = {
       mdb,
       &isect_mdef,
   };
@@ -1553,11 +1555,7 @@ static void meshdeform_matrix_solve(MeshDeformModifierData *mmd, MeshDeformBind 
       break;
     }
 
-    BLI_snprintf(message,
-                 sizeof(message),
-                 "Mesh deform solve %d / %d       |||",
-                 a + 1,
-                 mdb->cage_verts_num);
+    SNPRINTF(message, "Mesh deform solve %d / %d       |||", a + 1, mdb->cage_verts_num);
     progress_bar(float(a + 1) / float(mdb->cage_verts_num), message);
   }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 by Bastien Montagne. All rights reserved. */
+/* SPDX-FileCopyrightText: 2011 by Bastien Montagne. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -145,8 +146,8 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
      */
     t_map.texture = texture;
     t_map.map_object = tex_map_object;
-    BLI_strncpy(t_map.map_bone, text_map_bone, sizeof(t_map.map_bone));
-    BLI_strncpy(t_map.uvlayer_name, tex_uvlayer_name, sizeof(t_map.uvlayer_name));
+    STRNCPY(t_map.map_bone, text_map_bone);
+    STRNCPY(t_map.uvlayer_name, tex_uvlayer_name);
     t_map.texmapping = tex_mapping;
 
     tex_co = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(*tex_co), __func__));
@@ -212,7 +213,7 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
     /* Get vgroup idx from its name. */
 
     /* Proceed only if vgroup is valid, else use constant factor. */
-    /* Get actual dverts (ie vertex group data). */
+    /* Get actual deform-verts (ie vertex group data). */
     const MDeformVert *dvert = static_cast<const MDeformVert *>(
         CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT));
     /* Proceed only if vgroup is valid, else assume factor = O. */

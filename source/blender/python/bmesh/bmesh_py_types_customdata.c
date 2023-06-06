@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pybmesh
@@ -87,8 +88,6 @@ PyDoc_STRVAR(bpy_bmlayeraccess_collection__deform_doc,
 PyDoc_STRVAR(
     bpy_bmlayeraccess_collection__shape_doc,
     "Vertex shapekey absolute location (as a 3D Vector).\n\n:type: :class:`BMLayerCollection`");
-PyDoc_STRVAR(bpy_bmlayeraccess_collection__bevel_weight_doc,
-             "Bevel weight float in [0 - 1].\n\n:type: :class:`BMLayerCollection`");
 PyDoc_STRVAR(bpy_bmlayeraccess_collection__crease_doc,
              "Crease for subdivision surface - float in [0 - 1].\n\n:type: "
              ":class:`BMLayerCollection`");
@@ -205,11 +204,6 @@ static PyGetSetDef bpy_bmlayeraccess_vert_getseters[] = {
      (setter)NULL,
      bpy_bmlayeraccess_collection__shape_doc,
      (void *)CD_SHAPEKEY},
-    {"bevel_weight",
-     (getter)bpy_bmlayeraccess_collection_get,
-     (setter)NULL,
-     bpy_bmlayeraccess_collection__bevel_weight_doc,
-     (void *)CD_BWEIGHT},
     {"crease",
      (getter)bpy_bmlayeraccess_collection_get,
      (setter)NULL,
@@ -261,11 +255,6 @@ static PyGetSetDef bpy_bmlayeraccess_edge_getseters[] = {
      bpy_bmlayeraccess_collection__string_doc,
      (void *)CD_PROP_STRING},
 
-    {"bevel_weight",
-     (getter)bpy_bmlayeraccess_collection_get,
-     (setter)NULL,
-     bpy_bmlayeraccess_collection__bevel_weight_doc,
-     (void *)CD_BWEIGHT},
     {"crease",
      (getter)bpy_bmlayeraccess_collection_get,
      (setter)NULL,
@@ -558,7 +547,7 @@ PyDoc_STRVAR(bpy_bmlayercollection_keys_doc,
              ".. method:: keys()\n"
              "\n"
              "   Return the identifiers of collection members\n"
-             "   (matching pythons dict.keys() functionality).\n"
+             "   (matching Python's dict.keys() functionality).\n"
              "\n"
              "   :return: the identifiers for each member of this collection.\n"
              "   :rtype: list of strings\n");
@@ -593,7 +582,7 @@ PyDoc_STRVAR(bpy_bmlayercollection_items_doc,
              ".. method:: items()\n"
              "\n"
              "   Return the identifiers of collection members\n"
-             "   (matching pythons dict.items() functionality).\n"
+             "   (matching Python's dict.items() functionality).\n"
              "\n"
              "   :return: (key, value) pairs for each member of this collection.\n"
              "   :rtype: list of tuples\n");
@@ -628,7 +617,7 @@ PyDoc_STRVAR(bpy_bmlayercollection_values_doc,
              ".. method:: values()\n"
              "\n"
              "   Return the values of collection\n"
-             "   (matching pythons dict.values() functionality).\n"
+             "   (matching Python's dict.values() functionality).\n"
              "\n"
              "   :return: the members of this collection.\n"
              "   :rtype: list\n");
@@ -660,7 +649,7 @@ PyDoc_STRVAR(bpy_bmlayercollection_get_doc,
              ".. method:: get(key, default=None)\n"
              "\n"
              "   Returns the value of the layer matching the key or default\n"
-             "   when not found (matches pythons dictionary function of the same name).\n"
+             "   when not found (matches Python's dictionary function of the same name).\n"
              "\n"
              "   :arg key: The key associated with the layer.\n"
              "   :type key: string\n"
@@ -691,12 +680,12 @@ static PyObject *bpy_bmlayercollection_get(BPy_BMLayerCollection *self, PyObject
   return Py_INCREF_RET(def);
 }
 
-static struct PyMethodDef bpy_bmlayeritem_methods[] = {
+static PyMethodDef bpy_bmlayeritem_methods[] = {
     {"copy_from", (PyCFunction)bpy_bmlayeritem_copy_from, METH_O, bpy_bmlayeritem_copy_from_doc},
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmelemseq_methods[] = {
+static PyMethodDef bpy_bmelemseq_methods[] = {
     {"verify",
      (PyCFunction)bpy_bmlayercollection_verify,
      METH_NOARGS,
@@ -929,7 +918,7 @@ PyDoc_STRVAR(bpy_bmlayeraccess_type_doc, "Exposes custom-data layer attributes."
 
 PyDoc_STRVAR(bpy_bmlayercollection_type_doc,
              "Gives access to a collection of custom-data layers of the same type and behaves "
-             "like python dictionaries, "
+             "like Python dictionaries, "
              "except for the ability to do list like index access.");
 
 PyDoc_STRVAR(bpy_bmlayeritem_type_doc,
@@ -1160,10 +1149,6 @@ PyObject *BPy_BMLayerItem_GetItem(BPy_BMElem *py_ele, BPy_BMLayerItem *py_layer)
       ret = Vector_CreatePyObject_wrap((float *)value, 3, NULL);
       break;
     }
-    case CD_BWEIGHT: {
-      ret = PyFloat_FromDouble(*(float *)value);
-      break;
-    }
     case CD_CREASE: {
       ret = PyFloat_FromDouble(*(float *)value);
       break;
@@ -1272,18 +1257,6 @@ int BPy_BMLayerItem_SetItem(BPy_BMElem *py_ele, BPy_BMLayerItem *py_layer, PyObj
       }
       else {
         copy_v3_v3((float *)value, tmp_val);
-      }
-      break;
-    }
-    case CD_BWEIGHT: {
-      const float tmp_val = PyFloat_AsDouble(py_value);
-      if (UNLIKELY(tmp_val == -1 && PyErr_Occurred())) {
-        PyErr_Format(
-            PyExc_TypeError, "expected a float, not a %.200s", Py_TYPE(py_value)->tp_name);
-        ret = -1;
-      }
-      else {
-        *(float *)value = clamp_f(tmp_val, 0.0f, 1.0f);
       }
       break;
     }

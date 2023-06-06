@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -208,7 +210,7 @@ static void mesh_attributes_copy_to_bmesh_block(CustomData &data,
   }
 }
 
-void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshParams *params)
+void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const BMeshFromMeshParams *params)
 {
   if (!me) {
     /* Sanity check. */
@@ -964,18 +966,18 @@ static void bm_to_mesh_shape(BMesh *bm,
 static void assert_bmesh_has_no_mesh_only_attributes(const BMesh &bm)
 {
   (void)bm; /* Unused in the release builds. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_edge") == nullptr);
+  BLI_assert(!CustomData_has_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position"));
+  BLI_assert(!CustomData_has_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_vert"));
+  BLI_assert(!CustomData_has_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_edge"));
 
   /* The "hide" attributes are stored as flags on #BMesh. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".hide_edge") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".hide_poly") == nullptr);
+  BLI_assert(!CustomData_has_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert"));
+  BLI_assert(!CustomData_has_layer_named(&bm.edata, CD_PROP_BOOL, ".hide_edge"));
+  BLI_assert(!CustomData_has_layer_named(&bm.pdata, CD_PROP_BOOL, ".hide_poly"));
   /* The "selection" attributes are stored as flags on #BMesh. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".select_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".select_edge") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".select_poly") == nullptr);
+  BLI_assert(!CustomData_has_layer_named(&bm.vdata, CD_PROP_BOOL, ".select_vert"));
+  BLI_assert(!CustomData_has_layer_named(&bm.edata, CD_PROP_BOOL, ".select_edge"));
+  BLI_assert(!CustomData_has_layer_named(&bm.pdata, CD_PROP_BOOL, ".select_poly"));
 }
 
 static void bmesh_to_mesh_calc_object_remap(Main &bmain,
@@ -1109,7 +1111,6 @@ static void bm_vert_table_build(BMesh &bm,
     BM_elem_index_set(vert, i); /* set_inline */
     table[i] = vert;
     hflag |= vert->head.hflag;
-    BM_CHECK_ELEMENT(vert);
   }
   need_select_vert = (hflag & BM_ELEM_SELECT) != 0;
   need_hide_vert = (hflag & BM_ELEM_HIDDEN) != 0;
@@ -1131,7 +1132,6 @@ static void bm_edge_table_build(BMesh &bm,
     table[i] = edge;
     hflag |= edge->head.hflag;
     need_sharp_edge |= (edge->head.hflag & BM_ELEM_SMOOTH) == 0;
-    BM_CHECK_ELEMENT(edge);
   }
   need_select_edge = (hflag & BM_ELEM_SELECT) != 0;
   need_hide_edge = (hflag & BM_ELEM_HIDDEN) != 0;
@@ -1197,7 +1197,6 @@ static void bm_face_loop_table_build(BMesh &bm,
     hflag |= face->head.hflag;
     need_sharp_face |= (face->head.hflag & BM_ELEM_SMOOTH) == 0;
     need_material_index |= face->mat_nr != 0;
-    BM_CHECK_ELEMENT(face);
 
     BMLoop *loop = BM_FACE_FIRST_LOOP(face);
     for ([[maybe_unused]] const int i : IndexRange(face->len)) {
@@ -1218,7 +1217,6 @@ static void bm_face_loop_table_build(BMesh &bm,
           need_pin[i] = true;
         }
       }
-      BM_CHECK_ELEMENT(loop);
       loop = loop->next;
       loop_i++;
     }
@@ -1266,11 +1264,18 @@ static void bm_to_mesh_verts(const BMesh &bm,
   CustomData_add_layer_named(&mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh.totvert, "position");
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.vdata, mesh.vdata);
   MutableSpan<float3> dst_vert_positions = mesh.vert_positions_for_write();
+
+  std::atomic<bool> any_loose_vert = false;
   threading::parallel_for(dst_vert_positions.index_range(), 1024, [&](const IndexRange range) {
+    bool any_loose_vert_local = false;
     for (const int vert_i : range) {
       const BMVert &src_vert = *bm_verts[vert_i];
       copy_v3_v3(dst_vert_positions[vert_i], src_vert.co);
       bmesh_block_copy_to_mesh_attributes(info, vert_i, src_vert.head.data);
+      any_loose_vert_local = any_loose_vert_local || src_vert.e == nullptr;
+    }
+    if (any_loose_vert_local) {
+      any_loose_vert.store(true, std::memory_order_relaxed);
     }
     if (!select_vert.is_empty()) {
       for (const int vert_i : range) {
@@ -1283,6 +1288,10 @@ static void bm_to_mesh_verts(const BMesh &bm,
       }
     }
   });
+
+  if (!any_loose_vert) {
+    mesh.tag_loose_verts_none();
+  }
 }
 
 static void bm_to_mesh_edges(const BMesh &bm,
@@ -1297,11 +1306,18 @@ static void bm_to_mesh_edges(const BMesh &bm,
       &mesh.edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.edata, mesh.edata);
   MutableSpan<int2> dst_edges = mesh.edges_for_write();
+
+  std::atomic<bool> any_loose_edge = false;
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
+    bool any_loose_edge_local = false;
     for (const int edge_i : range) {
       const BMEdge &src_edge = *bm_edges[edge_i];
       dst_edges[edge_i] = int2(BM_elem_index_get(src_edge.v1), BM_elem_index_get(src_edge.v2));
       bmesh_block_copy_to_mesh_attributes(info, edge_i, src_edge.head.data);
+      any_loose_edge_local |= BM_edge_is_wire(&src_edge);
+    }
+    if (any_loose_edge_local) {
+      any_loose_edge.store(true, std::memory_order_relaxed);
     }
     if (!select_edge.is_empty()) {
       for (const int edge_i : range) {
@@ -1324,6 +1340,10 @@ static void bm_to_mesh_edges(const BMesh &bm,
       }
     }
   });
+
+  if (!any_loose_edge) {
+    mesh.tag_loose_edges_none();
+  }
 }
 
 static void bm_to_mesh_faces(const BMesh &bm,
@@ -1385,7 +1405,7 @@ static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loop
 
 }  // namespace blender
 
-void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMeshParams *params)
+void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const BMeshToMeshParams *params)
 {
   using namespace blender;
   const int old_verts_num = me->totvert;

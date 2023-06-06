@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -24,7 +25,9 @@ namespace blender::gpu {
 
 VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
 VkFormat to_vk_format(const eGPUTextureFormat format);
-VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size);
+VkFormat to_vk_format(const GPUVertCompType type,
+                      const uint32_t size,
+                      const GPUVertFetchMode fetch_mode);
 VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat format);
 VkImageViewType to_vk_image_view_type(const eGPUTextureType type);
 VkImageType to_vk_image_type(const eGPUTextureType type);
@@ -32,6 +35,7 @@ VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const voi
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
 VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
+const char *to_string(VkObjectType type);
 
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {
@@ -94,5 +98,8 @@ template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 #undef VK_EQ_TYPEID
   return VK_OBJECT_TYPE_UNKNOWN;
 }
+
+#define NOT_YET_IMPLEMENTED \
+  printf("%s:%d `%s` not implemented yet\n", __FILE__, __LINE__, __func__);
 
 }  // namespace blender::gpu

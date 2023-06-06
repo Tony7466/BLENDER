@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -51,7 +52,7 @@
 #include "bmesh.h"
 #include "tools/bmesh_boolean.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 /* For undo push. */
 #include "sculpt_intern.hh"

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spgraph
@@ -931,7 +932,7 @@ void GRAPH_OT_select_box(wmOperatorType *ot)
       "use_curve_selection",
       1,
       "Select Curves",
-      "Allow selecting all the keyframes of a curve by selecting the calculated fcurve");
+      "Allow selecting all the keyframes of a curve by selecting the calculated F-curve");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   WM_operator_properties_gesture_box(ot);

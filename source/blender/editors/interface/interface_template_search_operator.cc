@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -73,7 +75,7 @@ static void operator_search_update_fn(const bContext *C,
         const int len = strlen(ot_ui_name);
 
         /* display name for menu, can hold hotkey */
-        BLI_strncpy(name, ot_ui_name, sizeof(name));
+        STRNCPY(name, ot_ui_name);
 
         /* check for hotkey */
         if (len < sizeof(name) - 6) {
