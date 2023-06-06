@@ -4031,14 +4031,21 @@ static bool do_pose_box_select(bContext *C,
 
 static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const eSelectOp sel_op)
 {
+  using namespace blender;
   Scene *scene = vc->scene;
+  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
+                                                   const_cast<Object *>(vc->obedit));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(scene->r.cfra, [&](GreasePencilDrawing &drawing) {
-    changed |= blender::ed::curves::select_box(
-        *vc, drawing.geometry.wrap(), ATTR_DOMAIN_POINT, *rect, sel_op);
-  });
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
+        bke::crazyspace::GeometryDeformation deformation =
+            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+                ob_eval, *vc->obedit, drawing_index);
+        changed |= ed::curves::select_box(
+            *vc, drawing.geometry.wrap(), deformation, ATTR_DOMAIN_POINT, *rect, sel_op);
+      });
   return changed;
 }
 
