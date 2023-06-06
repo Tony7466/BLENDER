@@ -81,14 +81,16 @@ void main()
   vec3 sky_L = cameraVec(surfel.position);
 
   if (surfel.next > -1) {
-    radiance_transfer_surfel(surfel, surfel_buf[surfel.next]);
+    Surfel surfel_next = surfel_buf[surfel.next];
+    radiance_transfer_surfel(surfel, surfel_next);
   }
   else {
     radiance_transfer_sky(surfel, sky_L);
   }
 
   if (surfel.prev > -1) {
-    radiance_transfer_surfel(surfel, surfel_buf[surfel.prev]);
+    Surfel surfel_prev = surfel_buf[surfel.prev];
+    radiance_transfer_surfel(surfel, surfel_prev);
   }
   else {
     radiance_transfer_sky(surfel, -sky_L);
