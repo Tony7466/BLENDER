@@ -42,7 +42,7 @@ static int wm_stl_import_execute(bContext *C, wmOperator *op)
   int files_len = RNA_collection_length(op->ptr, "files");
 
   if (files_len) {
-    PointerRNA fileptr{nullptr};
+    PointerRNA fileptr;
     PropertyRNA *prop;
     char dir_only[FILE_MAX], file_only[FILE_MAX];
 

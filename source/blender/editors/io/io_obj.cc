@@ -180,7 +180,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr{nullptr};
+  PointerRNA ptr;
   RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
   ui_obj_export_settings(op->layout, &ptr);
 }
@@ -397,7 +397,7 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   int files_len = RNA_collection_length(op->ptr, "files");
   if (files_len) {
     /* Importing multiple files: loop over them and import one by one. */
-    PointerRNA fileptr{nullptr};
+    PointerRNA fileptr;
     PropertyRNA *prop;
     char dir_only[FILE_MAX], file_only[FILE_MAX];
 
@@ -457,7 +457,7 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr{nullptr};
+  PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
   ui_obj_import_settings(op->layout, &ptr);

@@ -124,7 +124,7 @@ static void ui_ply_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_ply_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr{nullptr};
+  PointerRNA ptr;
   RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
   ui_ply_export_settings(op->layout, &ptr);
 }
@@ -243,7 +243,7 @@ static int wm_ply_import_execute(bContext *C, wmOperator *op)
   int files_len = RNA_collection_length(op->ptr, "files");
 
   if (files_len) {
-    PointerRNA fileptr{nullptr};
+    PointerRNA fileptr;
     PropertyRNA *prop;
     char dir_only[FILE_MAX], file_only[FILE_MAX];
 
