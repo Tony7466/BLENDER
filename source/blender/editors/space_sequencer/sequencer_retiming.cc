@@ -450,8 +450,9 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
   Sequence *seq = ed->act_seq;
+  MutableSpan handles = SEQ_retiming_handles_get(seq);
+  SeqRetimingHandle *handle = &handles[RNA_int_get(op->ptr, "handle_index")];
 
-  SeqRetimingHandle *handle = (SeqRetimingHandle *)op->customdata;
   SEQ_retiming_handle_speed_set(scene, seq, handle, RNA_float_get(op->ptr, "speed"));
   SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -487,14 +488,15 @@ static int sequencer_retiming_segment_speed_set_invoke(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  op->customdata = handle;
-  return WM_operator_props_popup_confirm(C, op, event);
+  RNA_float_set(op->ptr, "speed", SEQ_retiming_handle_speed_get(seq, handle) * 100.0f);
+  RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
+  return WM_operator_props_popup(C, op, event);
 }
 
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Set Retimed Segment Speed";
+  ot->name = "Set Speed";
   ot->description = "Set speed of retimed segment";
   ot->idname = "SEQUENCER_OT_retiming_segment_speed_set";
 
