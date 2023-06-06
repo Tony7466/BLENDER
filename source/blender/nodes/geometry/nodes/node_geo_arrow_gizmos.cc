@@ -29,6 +29,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  printf(">>> %p;\n", &params.node());
   bke::GizmosGeometry *gizmo = new bke::GizmosGeometry("value",
                                                        const_cast<bNode *>(&params.node()));
 
