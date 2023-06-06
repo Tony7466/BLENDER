@@ -14,6 +14,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -39,6 +40,7 @@
 #include "BKE_colorband.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
 #include "BKE_ipo.h"
 #include "BKE_keyconfig.h"
@@ -895,6 +897,31 @@ static void setup_app_data(bContext *C,
 
   if (mode != LOAD_UNDO && !blendfile_or_libraries_versions_atleast(bmain, 302, 3)) {
     BKE_lib_override_library_main_hierarchy_root_ensure(bmain);
+  }
+
+  /* Convert all `OB_GPENCIL_LEGACY` to `OB_GREASE_PENCIL`. */
+  if (mode != LOAD_UNDO && U.experimental.use_grease_pencil_version3 &&
+      !blendfile_or_libraries_versions_atleast(bmain, 400, 3))
+  {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type == OB_GPENCIL_LEGACY) {
+        BKE_reportf(reports->reports,
+                    RPT_WARNING,
+                    "Found legacy grease pencil object (%s), converting to new data type. Expect "
+                    "loss of data!",
+                    ob->id.name);
+        bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+
+        GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
+            BKE_id_new(bmain, ID_GP, ob->id.name + 2));
+        blender::bke::greasepencil::convert::legacy_gpencil_to_grease_pencil(
+            *bmain, *new_grease_pencil, *gpd);
+
+        id_us_min(&gpd->id);
+        ob->data = new_grease_pencil;
+        ob->type = OB_GREASE_PENCIL;
+      }
+    }
   }
 
   bmain->recovered = false;
