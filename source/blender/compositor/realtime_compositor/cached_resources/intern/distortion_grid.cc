@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstdint>
 #include <memory>
@@ -36,13 +38,14 @@ DistortionGridKey::DistortionGridKey(MovieTrackingCamera camera,
 
 uint64_t DistortionGridKey::hash() const
 {
-  return get_default_hash_4(BKE_tracking_camera_hash(&camera), size, type, calibration_size);
+  return get_default_hash_4(
+      BKE_tracking_camera_distortion_hash(&camera), size, type, calibration_size);
 }
 
 bool operator==(const DistortionGridKey &a, const DistortionGridKey &b)
 {
-  return BKE_tracking_camera_equal(&a.camera, &b.camera) && a.size == b.size && a.type == b.type &&
-         a.calibration_size == b.calibration_size;
+  return BKE_tracking_camera_distortion_equal(&a.camera, &b.camera) && a.size == b.size &&
+         a.type == b.type && a.calibration_size == b.calibration_size;
 }
 
 /* --------------------------------------------------------------------

@@ -2201,7 +2201,8 @@ void BKE_tracking_camera_principal_point_pixel_set(MovieClip *clip,
       principal_point_pixel, frame_width, frame_height, camera->principal_point);
 }
 
-bool BKE_tracking_camera_equal(const MovieTrackingCamera *a, const MovieTrackingCamera *b)
+bool BKE_tracking_camera_distortion_equal(const MovieTrackingCamera *a,
+                                          const MovieTrackingCamera *b)
 {
   if (a->pixel_aspect != b->pixel_aspect || a->focal != b->focal ||
       !equals_v2v2(a->principal_point, b->principal_point))
@@ -2224,38 +2225,41 @@ bool BKE_tracking_camera_equal(const MovieTrackingCamera *a, const MovieTracking
       return a->brown_k1 == b->brown_k1 && a->brown_k2 == b->brown_k2 &&
              a->brown_k3 == b->brown_k3 && a->brown_k4 == b->brown_k4 &&
              a->brown_p1 == b->brown_p1 && a->brown_p2 == b->brown_p2;
-    default:
-      BLI_assert_unreachable();
-      return false;
   }
+
+  BLI_assert_unreachable();
+  return false;
 }
 
-uint64_t BKE_tracking_camera_hash(const MovieTrackingCamera *camera)
+uint64_t BKE_tracking_camera_distortion_hash(const MovieTrackingCamera *camera)
 {
   using namespace blender;
   switch (camera->distortion_model) {
     case TRACKING_DISTORTION_MODEL_POLYNOMIAL:
-      return get_default_hash_3(float2(camera->pixel_aspect, camera->focal),
+      return get_default_hash_4(camera->distortion_model,
+                                float2(camera->pixel_aspect, camera->focal),
                                 float2(camera->principal_point),
                                 float3(camera->k1, camera->k2, camera->k3));
     case TRACKING_DISTORTION_MODEL_DIVISION:
-      return get_default_hash_3(float2(camera->pixel_aspect, camera->focal),
+      return get_default_hash_4(camera->distortion_model,
+                                float2(camera->pixel_aspect, camera->focal),
                                 float2(camera->principal_point),
                                 float2(camera->division_k1, camera->division_k2));
     case TRACKING_DISTORTION_MODEL_NUKE:
-      return get_default_hash_3(float2(camera->pixel_aspect, camera->focal),
+      return get_default_hash_4(camera->distortion_model,
+                                float2(camera->pixel_aspect, camera->focal),
                                 float2(camera->principal_point),
                                 float2(camera->nuke_k1, camera->nuke_k2));
     case TRACKING_DISTORTION_MODEL_BROWN:
       return get_default_hash_4(
           float2(camera->pixel_aspect, camera->focal),
           float2(camera->principal_point),
-          float4(camera->brown_k1 && camera->brown_k2 && camera->brown_k3 && camera->brown_k4),
+          float4(camera->brown_k1, camera->brown_k2, camera->brown_k3, camera->brown_k4),
           float2(camera->brown_p1, camera->brown_p2));
-    default:
-      BLI_assert_unreachable();
-      return 0;
   }
+
+  BLI_assert_unreachable();
+  return 0;
 }
 /* --------------------------------------------------------------------
  * (Un)distortion.
