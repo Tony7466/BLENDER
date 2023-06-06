@@ -81,6 +81,8 @@ class ShapeCache {
   BatchPtr empty_capsule_body;
   BatchPtr empty_capsule_cap;
 
+  BatchPtr sphere_solid;
+
   BatchPtr quad;
   BatchPtr grid;
 

@@ -1220,6 +1220,11 @@ ShapeCache::ShapeCache()
   empty_capsule_body = batch_ptr(empty_capsule_body_verts());
   empty_capsule_cap = batch_ptr(empty_capsule_cap_verts());
 
+  /** TODO(Miguel Pozo): Fix. This copies the batch, since the unique ptr releases it. */
+  GPUBatch *sphere_solid_batch = GPU_batch_calloc();
+  GPU_batch_copy(sphere_solid_batch, DRW_cache_sphere_get(DRW_LOD_LOW));
+  sphere_solid = BatchPtr(sphere_solid_batch);
+
   quad = batch_ptr(quad_verts(), GPU_PRIM_TRI_STRIP);
   grid = batch_ptr(grid_verts(), GPU_PRIM_TRIS);
 
@@ -1246,7 +1251,7 @@ ShapeCache::ShapeCache()
   camera_volume = batch_ptr(camera_volume_verts());
   camera_volume_wire = batch_ptr(camera_volume_wire_verts());
   camera_tria_wire = batch_ptr(camera_tria_wire_verts());
-  camera_tria = batch_ptr(camera_tria_verts());
+  camera_tria = batch_ptr(camera_tria_verts(), GPU_PRIM_TRIS);
   camera_distances = batch_ptr(camera_distances_verts());
 
   field_wind = batch_ptr(field_wind_verts());
