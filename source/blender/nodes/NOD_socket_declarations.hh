@@ -72,7 +72,7 @@ class Vector : public SocketDeclaration {
   float3 default_value = {0, 0, 0};
   float soft_min_value = -FLT_MAX;
   float soft_max_value = FLT_MAX;
-  PropertySubType subtype = PROP_XYZ;
+  PropertySubType subtype = PROP_NONE;
 
   friend VectorBuilder;
 
