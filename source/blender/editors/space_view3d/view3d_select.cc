@@ -1376,7 +1376,7 @@ static bool view3d_lasso_select(bContext *C,
           changed = ed::curves::select_lasso(
               *vc,
               curves,
-              deformation,
+              deformation.positions,
               eAttrDomain(curves_id.selection_domain),
               Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
               sel_op);
@@ -3039,7 +3039,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
               ed::curves::closest_elem_find_screen_space(vc,
                                                          curves_ob,
                                                          curves_id.geometry.wrap(),
-                                                         deformation,
+                                                         deformation.positions,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
@@ -4099,8 +4099,12 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
-          changed = ed::curves::select_box(
-              vc, curves, deformation, eAttrDomain(curves_id.selection_domain), rect, sel_op);
+          changed = ed::curves::select_box(vc,
+                                           curves,
+                                           deformation.positions,
+                                           eAttrDomain(curves_id.selection_domain),
+                                           rect,
+                                           sel_op);
           if (changed) {
             /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
              * generic attribute for now. */
@@ -4871,8 +4875,13 @@ static bool obedit_circle_select(bContext *C,
       bke::CurvesGeometry &curves = curves_id.geometry.wrap();
       bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
-      changed = ed::curves::select_circle(
-          *vc, curves, deformation, eAttrDomain(curves_id.selection_domain), mval, rad, sel_op);
+      changed = ed::curves::select_circle(*vc,
+                                          curves,
+                                          deformation.positions,
+                                          eAttrDomain(curves_id.selection_domain),
+                                          mval,
+                                          rad,
+                                          sel_op);
       if (changed) {
         /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
          * generic attribute for now. */
