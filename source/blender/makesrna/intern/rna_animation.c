@@ -194,7 +194,7 @@ bool rna_AnimData_tweakmode_override_apply(Main *UNUSED(bmain),
   AnimData *anim_data_dst = (AnimData *)ptr_dst->data;
   AnimData *anim_data_src = (AnimData *)ptr_src->data;
 
-  anim_data_dst->flag |= anim_data_src->flag & ADT_NLA_EDIT_ON;
+  anim_data_dst->flag =(anim_data_dst->flag & ~ADT_NLA_EDIT_ON) | (anim_data_src->flag & ADT_NLA_EDIT_ON);
   return true;
 }
 
