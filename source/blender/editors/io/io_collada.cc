@@ -48,41 +48,6 @@ static int wm_collada_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 static int wm_collada_export_exec(bContext *C, wmOperator *op)
 {
   char filepath[FILE_MAX];
-  int apply_modifiers;
-  int global_forward;
-  int global_up;
-  int apply_global_orientation;
-  int export_mesh_type;
-  int selected;
-  int include_children;
-  int include_armatures;
-  int include_shapekeys;
-  int deform_bones_only;
-
-  int include_animations;
-  int include_all_actions;
-  int sampling_rate;
-  int keep_smooth_curves;
-  int keep_keyframes;
-  int keep_flat_curves;
-
-  int export_animation_type;
-  int use_texture_copies;
-  int active_uv_only;
-
-  int triangulate;
-  int use_object_instantiation;
-  int use_blender_profile;
-  int sort_by_name;
-  int export_object_transformation_type;
-  int export_animation_transformation_type;
-
-  int open_sim;
-  int limit_precision;
-  int keep_bind_info;
-
-  int export_count;
-  int sample_animations;
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
@@ -107,47 +72,55 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  ExportSettings export_settings{};
+
   /* Now the exporter can create and write the export file */
 
   /* Options panel */
-  apply_modifiers = RNA_boolean_get(op->ptr, "apply_modifiers");
-  export_mesh_type = RNA_enum_get(op->ptr, "export_mesh_type_selection");
-  global_forward = RNA_enum_get(op->ptr, "export_global_forward_selection");
-  global_up = RNA_enum_get(op->ptr, "export_global_up_selection");
-  apply_global_orientation = RNA_boolean_get(op->ptr, "apply_global_orientation");
+  export_settings.apply_modifiers = RNA_boolean_get(op->ptr, "apply_modifiers");
+  export_settings.export_mesh_type = BC_export_mesh_type(
+      RNA_enum_get(op->ptr, "export_mesh_type_selection"));
+  export_settings.global_forward = BC_global_forward_axis(
+      RNA_enum_get(op->ptr, "export_global_forward_selection"));
+  export_settings.global_up = BC_global_up_axis(
+      RNA_enum_get(op->ptr, "export_global_up_selection"));
+  export_settings.apply_global_orientation = RNA_boolean_get(op->ptr, "apply_global_orientation");
 
-  selected = RNA_boolean_get(op->ptr, "selected");
-  include_children = RNA_boolean_get(op->ptr, "include_children");
-  include_armatures = RNA_boolean_get(op->ptr, "include_armatures");
-  include_shapekeys = RNA_boolean_get(op->ptr, "include_shapekeys");
+  export_settings.selected = RNA_boolean_get(op->ptr, "selected");
+  export_settings.include_children = RNA_boolean_get(op->ptr, "include_children");
+  export_settings.include_armatures = RNA_boolean_get(op->ptr, "include_armatures");
+  export_settings.include_shapekeys = RNA_boolean_get(op->ptr, "include_shapekeys");
 
-  include_animations = RNA_boolean_get(op->ptr, "include_animations");
-  include_all_actions = RNA_boolean_get(op->ptr, "include_all_actions");
-  export_animation_type = RNA_enum_get(op->ptr, "export_animation_type_selection");
-  sample_animations = (export_animation_type == BC_ANIMATION_EXPORT_SAMPLES);
-  sampling_rate = (sample_animations) ? RNA_int_get(op->ptr, "sampling_rate") : 0;
-  keep_smooth_curves = RNA_boolean_get(op->ptr, "keep_smooth_curves");
-  keep_keyframes = RNA_boolean_get(op->ptr, "keep_keyframes");
-  keep_flat_curves = RNA_boolean_get(op->ptr, "keep_flat_curves");
+  export_settings.include_animations = RNA_boolean_get(op->ptr, "include_animations");
+  export_settings.include_all_actions = RNA_boolean_get(op->ptr, "include_all_actions");
+  export_settings.export_animation_type = BC_export_animation_type(
+      RNA_enum_get(op->ptr, "export_animation_type_selection"));
+  const bool sample_animations = export_settings.export_animation_type ==
+                                 BC_ANIMATION_EXPORT_SAMPLES;
+  export_settings.sampling_rate = sample_animations ? RNA_int_get(op->ptr, "sampling_rate") : 0;
+  export_settings.keep_smooth_curves = RNA_boolean_get(op->ptr, "keep_smooth_curves");
+  export_settings.keep_keyframes = RNA_boolean_get(op->ptr, "keep_keyframes") ||
+                                   export_settings.sampling_rate < 1;
+  export_settings.keep_flat_curves = RNA_boolean_get(op->ptr, "keep_flat_curves");
 
-  deform_bones_only = RNA_boolean_get(op->ptr, "deform_bones_only");
+  export_settings.deform_bones_only = RNA_boolean_get(op->ptr, "deform_bones_only");
 
-  use_texture_copies = RNA_boolean_get(op->ptr, "use_texture_copies");
-  active_uv_only = RNA_boolean_get(op->ptr, "active_uv_only");
+  export_settings.use_texture_copies = RNA_boolean_get(op->ptr, "use_texture_copies");
+  export_settings.active_uv_only = RNA_boolean_get(op->ptr, "active_uv_only");
 
-  triangulate = RNA_boolean_get(op->ptr, "triangulate");
-  use_object_instantiation = RNA_boolean_get(op->ptr, "use_object_instantiation");
-  use_blender_profile = RNA_boolean_get(op->ptr, "use_blender_profile");
-  sort_by_name = RNA_boolean_get(op->ptr, "sort_by_name");
+  export_settings.triangulate = RNA_boolean_get(op->ptr, "triangulate");
+  export_settings.use_object_instantiation = RNA_boolean_get(op->ptr, "use_object_instantiation");
+  export_settings.use_blender_profile = RNA_boolean_get(op->ptr, "use_blender_profile");
+  export_settings.sort_by_name = RNA_boolean_get(op->ptr, "sort_by_name");
 
-  export_object_transformation_type = RNA_enum_get(op->ptr,
-                                                   "export_object_transformation_type_selection");
-  export_animation_transformation_type = RNA_enum_get(
-      op->ptr, "export_animation_transformation_type_selection");
+  export_settings.object_transformation_type = BC_export_transformation_type(
+      RNA_enum_get(op->ptr, "export_object_transformation_type_selection"));
+  export_settings.animation_transformation_type = BC_export_transformation_type(
+      RNA_enum_get(op->ptr, "export_animation_transformation_type_selection"));
 
-  open_sim = RNA_boolean_get(op->ptr, "open_sim");
-  limit_precision = RNA_boolean_get(op->ptr, "limit_precision");
-  keep_bind_info = RNA_boolean_get(op->ptr, "keep_bind_info");
+  export_settings.open_sim = RNA_boolean_get(op->ptr, "open_sim");
+  export_settings.limit_precision = RNA_boolean_get(op->ptr, "limit_precision");
+  export_settings.keep_bind_info = RNA_boolean_get(op->ptr, "keep_bind_info");
 
   Main *bmain = CTX_data_main(C);
 
@@ -156,42 +129,9 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
 
   // Scene *scene = CTX_data_scene(C);
 
-  ExportSettings export_settings{};
-
   export_settings.filepath = filepath;
 
-  export_settings.apply_modifiers = apply_modifiers != 0;
-  export_settings.global_forward = BC_global_forward_axis(global_forward);
-  export_settings.global_up = BC_global_up_axis(global_up);
-  export_settings.apply_global_orientation = apply_global_orientation != 0;
-
-  export_settings.export_mesh_type = BC_export_mesh_type(export_mesh_type);
-  export_settings.selected = selected != 0;
-  export_settings.include_children = include_children != 0;
-  export_settings.include_armatures = include_armatures != 0;
-  export_settings.include_shapekeys = include_shapekeys != 0;
-  export_settings.deform_bones_only = deform_bones_only != 0;
-  export_settings.include_animations = include_animations != 0;
-  export_settings.include_all_actions = include_all_actions != 0;
-  export_settings.sampling_rate = sampling_rate;
-  export_settings.keep_keyframes = keep_keyframes != 0 || sampling_rate < 1;
-  export_settings.keep_flat_curves = keep_flat_curves != 0;
-
-  export_settings.active_uv_only = active_uv_only != 0;
-  export_settings.export_animation_type = BC_export_animation_type(export_animation_type);
-  export_settings.use_texture_copies = use_texture_copies != 0;
-
-  export_settings.triangulate = triangulate != 0;
-  export_settings.use_object_instantiation = use_object_instantiation != 0;
-  export_settings.use_blender_profile = use_blender_profile != 0;
-  export_settings.sort_by_name = sort_by_name != 0;
-  export_settings.object_transformation_type = BC_export_transformation_type(
-      export_object_transformation_type);
-  export_settings.animation_transformation_type = BC_export_transformation_type(
-      export_animation_transformation_type);
-  export_settings.keep_smooth_curves = keep_smooth_curves != 0;
-
-  if (export_animation_type != BC_ANIMATION_EXPORT_SAMPLES) {
+  if (export_settings.export_animation_type != BC_ANIMATION_EXPORT_SAMPLES) {
     /* When curves are exported then we can not export as matrix. */
     export_settings.animation_transformation_type = BC_TRANSFORMATION_TYPE_DECOMPOSED;
   }
@@ -201,15 +141,11 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
     export_settings.keep_smooth_curves = false;
   }
 
-  if (include_animations) {
+  if (export_settings.include_animations) {
     export_settings.object_transformation_type = export_settings.animation_transformation_type;
   }
 
-  export_settings.open_sim = open_sim != 0;
-  export_settings.limit_precision = limit_precision != 0;
-  export_settings.keep_bind_info = keep_bind_info != 0;
-
-  export_count = collada_export(C, &export_settings);
+  const int export_count = collada_export(C, &export_settings);
 
   if (export_count == 0) {
     BKE_report(op->reports, RPT_WARNING, "No objects selected -- Created empty export file");
@@ -681,43 +617,28 @@ void WM_OT_collada_export(wmOperatorType *ot)
 
 static int wm_collada_import_exec(bContext *C, wmOperator *op)
 {
-  char filepath[FILE_MAX];
-  int import_units;
-  int find_chains;
-  int auto_connect;
-  int fix_orientation;
-  int min_chain_length;
-
-  int keep_bind_info;
-  int custom_normals;
-  ImportSettings import_settings{};
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
 
+  ImportSettings import_settings{};
+
   /* Options panel */
-  import_units = RNA_boolean_get(op->ptr, "import_units");
-  custom_normals = RNA_boolean_get(op->ptr, "custom_normals");
-  find_chains = RNA_boolean_get(op->ptr, "find_chains");
-  auto_connect = RNA_boolean_get(op->ptr, "auto_connect");
-  fix_orientation = RNA_boolean_get(op->ptr, "fix_orientation");
+  import_settings.import_units = RNA_boolean_get(op->ptr, "import_units");
+  import_settings.custom_normals = RNA_boolean_get(op->ptr, "custom_normals");
+  import_settings.find_chains = RNA_boolean_get(op->ptr, "find_chains");
+  import_settings.auto_connect = RNA_boolean_get(op->ptr, "auto_connect");
+  import_settings.fix_orientation = RNA_boolean_get(op->ptr, "fix_orientation");
 
-  keep_bind_info = RNA_boolean_get(op->ptr, "keep_bind_info");
+  import_settings.keep_bind_info = RNA_boolean_get(op->ptr, "keep_bind_info");
 
-  min_chain_length = RNA_int_get(op->ptr, "min_chain_length");
+  import_settings.min_chain_length = RNA_int_get(op->ptr, "min_chain_length");
 
+  char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
-
   import_settings.filepath = filepath;
-  import_settings.import_units = import_units != 0;
-  import_settings.custom_normals = custom_normals != 0;
-  import_settings.auto_connect = auto_connect != 0;
-  import_settings.find_chains = find_chains != 0;
-  import_settings.fix_orientation = fix_orientation != 0;
-  import_settings.min_chain_length = min_chain_length;
-  import_settings.keep_bind_info = keep_bind_info != 0;
 
   if (collada_import(C, &import_settings)) {
     DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS);
