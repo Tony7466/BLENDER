@@ -69,7 +69,7 @@ typedef struct tGraphSliderOp {
   struct tSlider *slider;
 
   /* Each operator has a specific update function. */
-  void (*modal_update)(struct bContext *, struct wmOperator *);
+  void (*modal_update)(bContext *, wmOperator *);
 
   /* If an operator stores custom data, it also needs to provide the function to clean it up. */
   void *operator_data;
@@ -645,6 +645,8 @@ static int blend_to_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent *
   gso->modal_update = blend_to_neighbor_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Neighbor");
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -685,12 +687,12 @@ void GRAPH_OT_blend_to_neighbor(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       1.0f / 3.0f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Blend",
-                       "The blend factor with 0.5 being the current frame",
-                       0.0f,
+                       "The blend factor with 0 being the current frame",
+                       -1.0f,
                        1.0f);
 }
 
@@ -730,6 +732,8 @@ static int breakdown_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = breakdown_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Breakdown");
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -770,12 +774,12 @@ void GRAPH_OT_breakdown(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       1.0f / 3.0f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Factor",
                        "Favor either the left or the right key",
-                       0.0f,
+                       -1.0f,
                        1.0f);
 }
 
@@ -835,6 +839,7 @@ static int blend_to_default_invoke(bContext *C, wmOperator *op, const wmEvent *e
   gso->modal_update = blend_to_default_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Default Value");
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -875,7 +880,7 @@ void GRAPH_OT_blend_to_default(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       1.0f / 3.0f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Factor",
@@ -919,6 +924,8 @@ static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Ease Keys");
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -960,12 +967,12 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.5f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
-                       0.0f,
+                       -1.0f,
                        1.0f);
 }
 
