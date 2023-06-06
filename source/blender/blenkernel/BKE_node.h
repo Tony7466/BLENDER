@@ -542,10 +542,7 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \name Node Tree Interface
  * \{ */
 
-/**
- * Run this after relevant changes to categories
- * to ensure sockets remain sorted by category.
- */
+/** Run this after relevant changes to categories to ensure sockets remain sorted by category. */
 void ntreeEnsureSocketCategoryOrder(bNodeTree *ntree);
 
 void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
@@ -598,7 +595,7 @@ void ntreeClearSocketCategories(bNodeTree *ntree);
 
 /**
  * Move a socket category up or down in the node tree.
- * \param index Index to which to move the category.
+ * \param index: Index to which to move the category.
  */
 void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index);
 

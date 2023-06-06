@@ -269,7 +269,7 @@ class NODE_OT_socket_category_add(NodeSocketCategoryOperator, Operator):
         tree = snode.edit_tree
         categories = tree.socket_categories
 
-        # Remember index to move the item
+        # Remember index to move the item.
         dst_index = min(categories.active_index + 1, len(categories))
         categories.new("Category")
         categories.move(len(categories) - 1, dst_index)
