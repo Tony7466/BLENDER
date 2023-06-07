@@ -1598,18 +1598,17 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    Mesh *mesh = reinterpret_cast<Mesh *>(data);
     bool changed = false;
     if (ob->type == OB_MESH) {
-      BKE_mesh_smooth_flag_set(mesh, use_smooth);
+      BKE_mesh_smooth_flag_set(static_cast<Mesh *>(ob->data), use_smooth);
       if (use_smooth) {
         const bool use_auto_smooth = RNA_boolean_get(op->ptr, "use_auto_smooth");
         if (use_auto_smooth) {
           const float auto_smooth_angle = RNA_float_get(op->ptr, "auto_smooth_angle");
-          BKE_mesh_sharp_edges_set_from_angle(mesh, auto_smooth_angle);
+          BKE_mesh_sharp_edges_set_from_angle(static_cast<Mesh *>(ob->data), auto_smooth_angle);
         }
       }
-      BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
+      BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
       changed = true;
     }
     else if (ELEM(ob->type, OB_SURF, OB_CURVES_LEGACY)) {

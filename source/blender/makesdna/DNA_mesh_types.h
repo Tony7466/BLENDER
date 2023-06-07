@@ -342,10 +342,9 @@ typedef struct Mesh {
    * normals are enough. With a combination of sharp and smooth, normals may be "split",
    * requiring face corner storage.
    *
-   * Depending on the sharp edge and face tags and custom normals, sometimes a less complex
-   * domain is enough. When possible, it's preferred to use face normals over vertex normals and
-   * vertex normals over face corner normals, since there is a 2-4x performance cost increase for
-   * each step.
+   * When possible, it's preferred to use face normals over vertex normals and vertex normals over
+   * face corner normals, since there is a 2-4x performance cost increase for each more complex
+   * domain.
    */
   eAttrDomain normal_domain_all_info() const;
   /**

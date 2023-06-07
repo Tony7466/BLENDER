@@ -260,14 +260,15 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
 
   if (subdiv_cache->use_custom_loop_normals) {
     const Mesh *coarse_mesh = subdiv_cache->mesh;
+    const Span<float3> corner_normals = coarse_mesh->corner_normals();
 
     GPUVertBuf *src_custom_normals = GPU_vertbuf_calloc();
     GPU_vertbuf_init_with_format(src_custom_normals, get_custom_normals_format());
     GPU_vertbuf_data_alloc(src_custom_normals, coarse_mesh->totloop);
 
     memcpy(GPU_vertbuf_get_data(src_custom_normals),
-           coarse_mesh->corner_normals().data(),
-           sizeof(float[3]) * coarse_mesh->totloop);
+           corner_normals.data(),
+           corner_normals.size_in_bytes());
 
     GPUVertBuf *dst_custom_normals = GPU_vertbuf_calloc();
     GPU_vertbuf_init_build_on_device(
