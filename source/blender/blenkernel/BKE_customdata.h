@@ -17,6 +17,7 @@
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"
 #  include "BLI_vector.hh"
+#  include <functional>
 #endif
 
 #include "DNA_customdata_types.h"
@@ -59,6 +60,20 @@ typedef struct BMUVOffsets {
 typedef struct {
   unsigned char data[64];
 } CDBlockBytes;
+
+#ifdef __cplusplus
+struct CDCopyInfo {
+  struct CDPair {
+    const CustomDataLayer *source;
+    CustomDataLayer *dest;
+  };
+
+  blender::Vector<CDPair, 32> layers;
+
+  /* Layers in dest but not source.*/
+  blender::Vector<CustomDataLayer *, 32> dest_layers_other;
+};
+#endif
 
 extern const CustomData_MeshMasks CD_MASK_BAREMESH;
 extern const CustomData_MeshMasks CD_MASK_BAREMESH_ORIGINDEX;
@@ -817,6 +832,15 @@ void CustomData_debug_info_from_layers(const struct CustomData *data,
 
 #ifdef __cplusplus
 #  include "BLI_cpp_type.hh"
+
+namespace blender::bke::customdata {
+CDCopyInfo get_copyinfo(const CustomData *source,
+                        CustomData *dest,
+                        eCustomDataMask mask_exclude,
+                        bool respect_nocopy_flag,
+                        std::function<bool(const CustomDataLayer &)> filter_cb);
+
+}  // namespace blender::bke::customdata
 
 namespace blender::bke {
 const CPPType *custom_data_type_to_cpp_type(eCustomDataType type);
