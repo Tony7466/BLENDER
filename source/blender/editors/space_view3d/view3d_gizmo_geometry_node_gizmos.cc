@@ -23,6 +23,7 @@
 #include "ED_screen.h"
 
 #include "RNA_access.h"
+#include "RNA_path.h"
 #include "RNA_prototypes.h"
 
 #include "UI_resources.h"
@@ -41,6 +42,13 @@ struct GeometryNodeGizmoWrapper {
   GeometryNodeGizmoWrapper(const bke::GizmosGeometry &gizmos_geometry_source)
       : gizmos_geometry(gizmos_geometry_source), gizmos_objects(gizmos_geometry.gizmos_num())
   {
+  }
+
+  ~GeometryNodeGizmoWrapper() = default;
+
+  static void free(void *this_)
+  {
+    static_cast<GeometryNodeGizmoWrapper *>(this_)->~GeometryNodeGizmoWrapper();
   }
 };
 
@@ -92,6 +100,7 @@ static void geometry_node_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   GeometryNodeGizmoWrapper &gzgroup_data = *(new GeometryNodeGizmoWrapper(*gizmos));
   gzgroup->customdata = &gzgroup_data;
+  gzgroup->customdata_free = GeometryNodeGizmoWrapper::free;
 
   for (const int index : IndexRange(gizmos->gizmos_num())) {
     wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, NULL);
@@ -107,30 +116,31 @@ static void geometry_node_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Object *object = BKE_view_layer_active_object_get(view_layer);
-  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(
-      gzgroup->customdata);
+  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(gzgroup->customdata);
 
   const bke::GizmosGeometry *gizmos_geometry = gizmos_from_context_try(C);
-
-  const Span<bNode *> nodes = gizmos_geometry->nodes();
-  const Span<bNodeTree *> trees = gizmos_geometry->trees();
   const Span<std::string> pathes = gizmos_geometry->pathes();
-
   const Span<int> paths_mapping = gizmos_geometry->paths_mapping();
   for (const int index : paths_mapping.index_range()) {
-    PointerRNA node_ptr;
-
-    bNode *node = nodes[index];
-    printf("> %p;\n", node);
-    bNodeTree *tree = trees[index];
-    const StringRefNull rna_path = pathes[index];
-    RNA_pointer_create(&tree->id, &RNA_Node, node, &node_ptr);
-
     wmGizmo *gizmo = gzgroup_data.gizmos_objects[index];
+
+    const StringRefNull rna_path = pathes[index];
+
+    PointerRNA blender_data_pointer;
+    RNA_pointer_create(NULL, &RNA_BlendData, CTX_data_main(C), &blender_data_pointer);
+
+    PointerRNA node_ptr;
+    PropertyRNA *value_prop;
+    BLI_assert(RNA_path_resolve_full(&blender_data_pointer,
+                           rna_path.data(),
+                           &node_ptr,
+                           &value_prop,
+                           nullptr));
+
     const float3 normal = {1.0f, 0.0f, 0.0f};
     WM_gizmo_set_matrix_rotation_from_z_axis(gizmo, normal);
     WM_gizmo_set_matrix_location(gizmo, object->object_to_world[3]);
-    WM_gizmo_target_property_def_rna(gizmo, "offset", &node_ptr, rna_path.data(), -1);
+    WM_gizmo_target_property_def_rna(gizmo, "offset", &node_ptr, "value", -1);
   }
 }
 

@@ -15,8 +15,6 @@ namespace blender::bke {
 class GizmosGeometry {
  private:
   blender::VectorSet<std::string> paths_;
-  blender::VectorSet<bNode *> nodes_;
-  blender::VectorSet<bNodeTree *> trees_;
   blender::Array<int> mapping;
 
   CustomDataAttributes attributes_;
@@ -24,13 +22,6 @@ class GizmosGeometry {
  public:
   GizmosGeometry() = default;
   GizmosGeometry(std::string path);
-  GizmosGeometry(std::string path, bNode *node)
-      : paths_{std::move(path)},
-        nodes_{node},
-        trees_{const_cast<bNodeTree *>(&node->owner_tree())},
-        mapping(1, 0){};
-  // GizmosGeometry(int pathes, int gizmos);
-  // GizmosGeometry(const GizmosGeometry &other);
 
   GizmosGeometry *copy() const;
 
@@ -42,16 +33,6 @@ class GizmosGeometry {
   const Span<std::string> pathes() const
   {
     return paths_;
-  }
-
-  const Span<bNode *> nodes() const
-  {
-    return nodes_;
-  }
-
-  const Span<bNodeTree *> trees() const
-  {
-    return trees_;
   }
 
   Span<int> paths_mapping() const

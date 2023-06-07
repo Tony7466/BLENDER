@@ -2,6 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#define FMT_HEADER_ONLY
+#include <fmt/format.h>
+
 #include "BKE_gizmos.hh"
 
 #include "node_geometry_util.hh"
@@ -13,6 +16,7 @@ NODE_STORAGE_FUNCS(NodeGeometryArrowGizmo)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Geometry>("Gizmo");
+  b.add_output<decl::Float>("Value");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -29,11 +33,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  printf(">>> %p;\n", &params.node());
-  bke::GizmosGeometry *gizmo = new bke::GizmosGeometry("value",
-                                                       const_cast<bNode *>(&params.node()));
-
+  const bNode &node = params.node();
+  const bNodeTree &tree = node.owner_tree();
+  std::string gizmos_value_path_str = fmt::format(TIP_("node_groups[\"{}\"].nodes[\"{}\"]"), tree.id.name + 2, node.name);
+  bke::GizmosGeometry *gizmo = new bke::GizmosGeometry(std::move(gizmos_value_path_str));
   params.set_output("Gizmo", GeometrySet::create_with_gizmos(gizmo));
+
+  const NodeGeometryArrowGizmo &storage = node_storage(node);
+  params.set_output("Value", storage.value);
 }
 
 }  // namespace blender::nodes::node_geo_arrow_gizmo_cc
