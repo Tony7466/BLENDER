@@ -28,7 +28,6 @@ set(INC_SYS
 )
 
 set(SRC
-  io_utils.cc
   io_alembic.c
   io_cache.c
   io_collada.c
@@ -40,9 +39,7 @@ set(SRC
   io_ply_ops.c
   io_stl_ops.c
   io_usd.c
-  io_ops_dropbox.cc
 
-  io_utils.hh
   io_alembic.h
   io_cache.h
   io_collada.h
@@ -52,7 +49,6 @@ set(SRC
   io_ply_ops.h
   io_stl_ops.h
   io_usd.h
-  io_ops_dropbox.h
 )
 
 set(LIB
