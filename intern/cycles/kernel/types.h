@@ -1549,6 +1549,12 @@ typedef struct KernelWorkTile {
   /* Precalculated parameters used by init_from_camera kernel on GPU. */
   int path_index_offset;
   int work_size;
+
+  /* slice details */
+  uint slice_start_y;
+  uint slice_height;
+  uint slice_stride;
+  
 } KernelWorkTile;
 
 /* Shader Evaluation.

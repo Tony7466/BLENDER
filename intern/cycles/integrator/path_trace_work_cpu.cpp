@@ -92,6 +92,9 @@ void PathTraceWorkCPU::render_samples_impl(RenderStatistics &statistics,
       work_tile.num_samples = 1;
       work_tile.offset = effective_buffer_params_.offset;
       work_tile.stride = effective_buffer_params_.stride;
+      work_tile.slice_start_y = effective_buffer_params_.slice_start_y;
+      work_tile.slice_height = effective_buffer_params_.slice_height;
+      work_tile.slice_stride = effective_buffer_params_.slice_stride;
 
       CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
 

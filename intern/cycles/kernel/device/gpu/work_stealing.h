@@ -30,13 +30,19 @@ ccl_device_inline void get_work_pixel(ccl_global const KernelWorkTile *tile,
     sample_offset = global_work_index % tile->num_samples;
     pixel_offset = global_work_index / tile->num_samples;
   }
-
   uint y_offset = pixel_offset / tile->w;
   uint x_offset = pixel_offset - y_offset * tile->w;
 
   *x = tile->x + x_offset;
   *y = tile->y + y_offset;
   *sample = tile->start_sample + sample_offset;
+
+  /* int tile_y = y - tile->slice_start_y; */
+  /* int slice_count = tile_y/tile->slice_height; */
+  /* tile_y =  tile_y - slice_count*tile->slice_height; */
+  /* tile_y = tile->slice_stride*slice_count + tile_y + tile->slice_start_y; */
+  /* *ix = x; */
+  /* *iy = tile_y; */
 }
 
 CCL_NAMESPACE_END

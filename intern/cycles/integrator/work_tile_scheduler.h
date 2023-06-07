@@ -32,7 +32,10 @@ class WorkTileScheduler {
              int sample_start,
              int samples_num,
              int sample_offset,
-             float scrambling_distance);
+             float scrambling_distance,
+	     int slice_start_y,
+	     int slice_height,
+	     int slice_stride);
 
   /* Get work for a device.
    * Returns true if there is still work to be done and initialize the work tile to all
@@ -75,6 +78,11 @@ class WorkTileScheduler {
   int samples_num_ = 0;
   int sample_offset_ = 0;
 
+  /* Slice parameters */
+  int slice_height_; /* number of scanlines in a slice */
+  int slice_stride_; /* stride between slices */
+  int slice_start_y_; /* starting y of slice */
+  
   /* Tile size which be scheduled for rendering. */
   TileSize tile_size_;
 

@@ -310,7 +310,10 @@ void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
                              start_sample,
                              samples_num,
                              sample_offset,
-                             device_scene_->data.integrator.scrambling_distance);
+                             device_scene_->data.integrator.scrambling_distance,
+			     effective_buffer_params_.slice_start_y,
+			     effective_buffer_params_.slice_height,
+			     effective_buffer_params_.slice_stride);
 
   enqueue_reset();
 
@@ -787,6 +790,7 @@ bool PathTraceWorkGPU::enqueue_work_tiles(bool &finished)
       KernelWorkTile work_tile;
       if (work_tile_scheduler_.get_work(&work_tile, max_num_camera_paths - num_paths)) {
         work_tiles.push_back(work_tile);
+	//VLOG_INFO << "{ [" << work_tile.x << " " << work_tile.y << "] <" << work_tile.w << " " << work_tile.h << "> }";
         num_paths += work_tile.w * work_tile.h * work_tile.num_samples;
       }
       else {

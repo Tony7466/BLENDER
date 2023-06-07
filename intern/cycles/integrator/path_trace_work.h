@@ -180,7 +180,7 @@ class PathTraceWork {
   void set_render_buffers_in_work_set(const BufferParams&, int i, size_t offset);
   void set_effective_buffer_params_in_work_set(const BufferParams&, int i, size_t offset);
   void set_current_work_set(int i);
-
+  void set_slices_effective_params();
  protected:
   PathTraceWork(Device *device,
                 Film *film,
@@ -217,7 +217,8 @@ class PathTraceWork {
   BufferParams effective_full_params_;
   BufferParams effective_big_tile_params_;
   BufferParams& effective_buffer_params_;
-
+  BufferParams slices_buffer_params_;
+  
   WorkSet work_set_;
 
   bool *cancel_requested_flag_ = nullptr;

@@ -27,7 +27,10 @@ void WorkTileScheduler::reset(const BufferParams &buffer_params,
                               int sample_start,
                               int samples_num,
                               int sample_offset,
-                              float scrambling_distance)
+                              float scrambling_distance,
+			      int slice_start_y,
+			      int slice_height,
+			      int slice_stride)
 {
   /* Image buffer parameters. */
   image_full_offset_px_.x = buffer_params.full_x;
@@ -44,6 +47,11 @@ void WorkTileScheduler::reset(const BufferParams &buffer_params,
   samples_num_ = samples_num;
   sample_offset_ = sample_offset;
 
+  /* Slice parameters */
+  slice_start_y_ = slice_start_y;
+  slice_height_ = slice_height;
+  slice_stride_ = slice_stride;
+  
   /* Initialize new scheduling. */
   reset_scheduler_state();
 }
@@ -103,7 +111,7 @@ bool WorkTileScheduler::get_work(KernelWorkTile *work_tile_, const int max_work_
   const int tile_index = work_index / num_tiles_per_sample_range_;
   const int tile_y = tile_index / num_tiles_x_;
   const int tile_x = tile_index - tile_y * num_tiles_x_;
-
+  
   KernelWorkTile work_tile;
   work_tile.x = tile_x * tile_size_.width;
   work_tile.y = tile_y * tile_size_.height;
@@ -115,6 +123,11 @@ bool WorkTileScheduler::get_work(KernelWorkTile *work_tile_, const int max_work_
   work_tile.offset = offset_;
   work_tile.stride = stride_;
 
+  /* Add slice stride and height */
+  work_tile.slice_start_y = slice_start_y_;
+  work_tile.slice_height = slice_height_;
+  work_tile.slice_stride = slice_stride_;
+  
   work_tile.w = min(work_tile.w, image_size_px_.x - work_tile.x);
   work_tile.h = min(work_tile.h, image_size_px_.y - work_tile.y);
 

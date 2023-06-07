@@ -92,6 +92,11 @@ class BufferParams : public Node {
   /* Runtime fields, only valid after `update_passes()`. */
   int pass_stride = -1;
 
+  /* Slice details */
+  int slice_stride;
+  int slice_height;
+  int slice_start_y;
+
   /* Properties which are used for accessing buffer pixels outside of scene graph. */
   vector<BufferPass> passes;
   ustring layer;

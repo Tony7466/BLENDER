@@ -108,19 +108,36 @@ void PathTraceWork::set_current_work_set(int i)
   effective_buffer_params_ = work_set_.effective_buffer_params_set_[i];
 }
 
+/*
+   Deteremines a full buffer and parameters from the work_set_
+ */
+void PathTraceWork::set_slices_effective_params() {
+  int height = 0;
+  slices_buffer_params_ = work_set_.effective_buffer_params_set_[0];
+  for (int i = 0; i < work_set_.size(); i++) {
+    height += work_set_.effective_buffer_params_set_[i].height;
+  }
+  slices_buffer_params_.height = height;
+  VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << std::endl;
+  master_buffers_->params = slices_buffer_params_;
+  buffers_ = master_buffers_.get();
+  effective_buffer_params_ = slices_buffer_params_;
+}
+
 void PathTraceWork::render_samples(RenderStatistics &statistics,
                               int start_sample,
                               int samples_num,
                               int sample_offset)
 {
   SCOPED_MARKER(device_, "render_samples");
-  for (int i = 0; i < work_set_.size(); i++) {
-    SCOPED_MARKER(device_, "render_samples_work_set");
-  set_current_work_set(i);
+  set_slices_effective_params();
+  // for (int i = 0; i < work_set_.size(); i++) {
+  //   SCOPED_MARKER(device_, "render_samples_work_set");
+  // set_current_work_set(i);
   if(effective_buffer_params_.height > 0) {
   render_samples_impl(statistics, start_sample, samples_num, sample_offset);
   }
-  }
+  // }
 }
 
 void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)

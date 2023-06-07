@@ -253,19 +253,51 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   int current_y = 0;
 
   const double device_scale = 1.0/ (double)(device_scale_factor);
+
+  /* Pre calculate the sizes of each work items slice */
+  int sizes[num_works];
+  int total = 0;
+  /* Assign a size to each slice based on its weight */
+  VLOG_INFO << "Initial Slice sizes";
+  for(int i = 0;i < num_works;i++) {
+    const double weight = work_balance_infos[i].weight * device_scale;
+    sizes[i] = std::max((int)std::floor(window_height * weight), 1);
+    VLOG_INFO << "<" << i << "> " << sizes[i] << " " << work_balance_infos[i].weight << std::endl;
+    total += sizes[i];
+  }
+  const int slice_height = window_height/device_scale_factor;
+  VLOG_INFO << "total:" << total << " slice:" <<  slice_height << std::endl;
+  VLOG_INFO << "window:" << window_height << " slice:" << (window_height/device_scale_factor) << std::endl;
+  /* Spread the difference over the workers if there is one */
+  VLOG_INFO << "Final Slice sizes";
+  int error = slice_height - total;
+  for(int i = 0;i < num_works;i++) {
+    sizes[i] += (error > 0) ? 1 : 0;
+    error--;
+    VLOG_INFO << "<" << i << "> " << sizes[i] << " " << work_balance_infos[i].weight << std::endl;
+  }
+  
   size_t offsets[num_works] = { 0 };
   int work_item = 0;
   for (int j = 0; j < device_scale_factor; j++) {
   for (int i = 0; i < num_works; ++i) {
     const double weight = work_balance_infos[i].weight * device_scale;
     const int slice_window_full_y = buffer_params.full_y + buffer_params.window_y + current_y;
-    const int slice_window_height = max(lround(window_height * weight), 1);
+    const int slice_window_height = sizes[i]; //max(lround(window_height * weight), 1);
 
     /* Disallow negative values to deal with situations when there are more compute devices than
      * scan-lines. */
     const int remaining_window_height = max(0, window_height - current_y);
     BufferParams slice_params = buffer_params;
 
+    /* Fill in the slice details */
+    slice_params.slice_stride = slice_height;
+    slice_params.slice_height = sizes[i];
+    slice_params.slice_start_y = current_y;
+    VLOG_INFO << "slice start_y:" << slice_params.slice_start_y
+	      << " height:" << slice_params.slice_height
+      	      << " stride:" << slice_params.slice_stride;
+    
     slice_params.full_y = max(slice_window_full_y - overscan, buffer_params.full_y);
     slice_params.window_y = slice_window_full_y - slice_params.full_y;
 

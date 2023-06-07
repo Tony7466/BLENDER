@@ -56,6 +56,8 @@ ccl_device bool integrator_init_from_camera(KernelGlobals kg,
                                             ccl_global float *render_buffer,
                                             const int x,
                                             const int y,
+					    /*const int ix,
+					      const int iy,*/
                                             const int scheduled_sample)
 {
   PROFILING_INIT(kg, PROFILING_RAY_SETUP);
@@ -82,7 +84,11 @@ ccl_device bool integrator_init_from_camera(KernelGlobals kg,
   {
     /* Generate camera ray. */
     Ray ray;
-    integrate_camera_sample(kg, sample, x, y, rng_hash, &ray);
+    int tile_y = y - tile->slice_start_y;
+    int slice_count = tile_y/tile->slice_height;
+    tile_y =  tile_y - slice_count*tile->slice_height;
+    tile_y = tile->slice_stride*slice_count + tile_y + tile->slice_start_y;
+    integrate_camera_sample(kg, sample, x, tile_y, rng_hash, &ray);
     if (ray.tmax == 0.0f) {
       return true;
     }
