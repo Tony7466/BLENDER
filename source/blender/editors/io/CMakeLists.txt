@@ -36,9 +36,11 @@ set(SRC
   io_gpencil_utils.cc
   io_obj.cc
   io_ops.cc
+  io_ops_dropbox.cc
   io_ply_ops.cc
   io_stl_ops.cc
   io_usd.cc
+  io_utils.cc
 
   io_alembic.hh
   io_cache.hh
@@ -46,9 +48,11 @@ set(SRC
   io_gpencil.hh
   io_obj.hh
   io_ops.h
+  io_ops_dropbox.h
   io_ply_ops.hh
   io_stl_ops.hh
   io_usd.hh
+  io_utils.hh
 )
 
 set(LIB
