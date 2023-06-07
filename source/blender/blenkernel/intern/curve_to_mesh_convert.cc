@@ -4,6 +4,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation_legacy.hh"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
@@ -165,14 +166,14 @@ static void mark_bezier_vector_edges_sharp(const int profile_point_num,
   }
 }
 
-static void fill_mesh_positions(const int main_point_num,
-                                const int profile_point_num,
-                                const Span<float3> main_positions,
-                                const Span<float3> profile_positions,
-                                const Span<float3> tangents,
-                                const Span<float3> normals,
-                                const Span<float> radii,
-                                MutableSpan<float3> mesh_positions)
+static void fill_mesh_positions_default(const int main_point_num,
+                                        const int profile_point_num,
+                                        const Span<float3> main_positions,
+                                        const Span<float3> profile_positions,
+                                        const Span<float3> tangents,
+                                        const Span<float3> normals,
+                                        const Span<float> radii,
+                                        MutableSpan<float3> mesh_positions)
 {
   if (profile_point_num == 1) {
     for (const int i_ring : IndexRange(main_point_num)) {
@@ -646,6 +647,194 @@ static void copy_curve_domain_attribute_to_mesh(const ResultOffsets &mesh_offset
   });
 }
 
+/* ------------------------------------------------------- */
+/** \name Even Thickness / Miter Joints
+ *
+ * Addresses T80979 Account for curvature in curve to mesh node
+ *
+ * Encapsulates info and methods to calculate profiles for the 'Even Thickness'
+ * option of the `Curve to Mesh` node
+ *
+ * NOTE: `EvenThicknessInfo::fill_mesh_positions_even_thickness()` is the entry point called from
+ * `curve_to_mesh_sweep()`
+ *
+ * \{ */
+class EvenThicknessInfo {
+ private:
+  static constexpr float SHEAR_EPSILON = 0.000001f;
+  int id_;      // Keeps track of which main position we're at.
+  float3 pos_;  // Curve point position.
+  float3 tangent_;
+  float3 ih_;  // Forward vector of Miter Joint basis.
+  float3 kh_;  // Up vector of Miter Joint basis.
+  float tilt_;
+  float radius_;
+  /**************************/
+  EvenThicknessInfo(const int i_ring,
+                    const int main_point_num,
+                    const Span<float3> main_positions,
+                    const Span<float3> tangents,
+                    const Span<float3> normals,
+                    const Span<float> radii,
+                    const Span<float> tilts,
+                    const bool is_cyclic,
+                    const float3 prev_ih)
+  {
+    id_ = i_ring;
+    pos_ = main_positions[id_];
+    tangent_ = tangents[id_];
+    kh_ = calculate_kh(id_, main_point_num, main_positions, is_cyclic);
+    tilt_ = tilts.is_empty() || id_ >= tilts.size() ? 0.f : tilts[id_];
+    ih_ = id_ == 0 ? calculate_first_ih(normals[id_], kh_, tilt_) :
+                     calculate_ih_from_prev_pt(prev_ih, tangents[id_ - 1]);
+    radius_ = radii.is_empty() ? 1.f : radii[i_ring];
+  };
+
+ public:
+  /**************************/
+  static void fill_mesh_positions_even_thickness(const int main_point_num,
+                                                 const int profile_point_num,
+                                                 const Span<float3> main_positions,
+                                                 const Span<float3> profile_positions,
+                                                 const Span<float3> tangents,
+                                                 const Span<float3> normals,
+                                                 const Span<float> radii,
+                                                 const Span<float> tilts,
+                                                 const bool is_cyclic,
+                                                 MutableSpan<float3> mesh_positions)
+  {
+    float3 prev_ih;
+    for (const int i_ring : IndexRange(main_point_num)) {
+      const EvenThicknessInfo info(i_ring,
+                                   main_point_num,
+                                   main_positions,
+                                   tangents,
+                                   normals,
+                                   radii,
+                                   tilts,
+                                   is_cyclic,
+                                   prev_ih);
+      float4x4 matrix = info.calculate_orientation_and_scale_matrix();
+      matrix *= info.calculate_tilt_and_shear_matrix();
+      const int ring_vert_start = i_ring * profile_point_num;
+      for (const int i_profile : IndexRange(profile_point_num)) {
+        mesh_positions[ring_vert_start + i_profile] = math::transform_point(
+            matrix, profile_positions[i_profile]);
+      }
+      prev_ih = info.ih_;
+    }
+  }
+#ifdef DEBUG
+  /***************************/
+  friend std::ostream &operator<<(std::ostream &os, const EvenThicknessInfo &c)
+  {
+    return os << "{ /*EvenThicknessInfo*/\n"
+              << "  id: " << c.id_ << ",\n"
+              << "  pos: " << c.pos_ << ",\n"
+              << "  tan: " << c.tangent_ << ",\n"
+              << "  ih: " << c.ih_ << ",\n"
+              << "  kh: " << c.kh_ << ",\n"
+              << "  tilt: " << c.tilt_ << ",\n"
+              << "  radius: " << c.radius_ << ",\n"
+              << "}\n";
+  }
+#endif
+ private:
+  /**************************/
+  static const float3 calculate_first_ih(const float3 normal, const float3 kh, const float tilt)
+  {
+    // The `ih/forward` axis for the first point in curve is the perpendicular to kh_/UP in the
+    // `kh/Normal` plane.
+    const float3 nih = math::normalize(normal - kh * math::dot(normal, kh));
+    // Compensates for tilt which is already applied by the default evaluated normal (to let
+    // tilt be re-applied later by the rotation matrix).
+    return math::rotate_direction_around_axis(nih, kh, -tilt);
+  }
+  /**************************/
+  static const float3 calculate_ih_from_prev_pt(const float3 prev_ih, const float3 prev_tangent)
+  {
+    // Calculates `new ih` from reflection of `previous ih` mirrored over the previous tangent
+    // plane.
+    float new_ih[3];
+    reflect_v3_v3v3(new_ih, prev_ih, prev_tangent);
+    return float3(new_ih);
+  }
+  /**************************/
+  static const float3 calculate_kh(const int i_ring,
+                                   const int main_point_num,
+                                   const Span<float3> main_positions,
+                                   const bool is_cyclic)
+  {
+    const float3 current_pos = main_positions[i_ring];
+    const float3 prev_pos = is_cyclic ?
+                                main_positions[i_ring > 0 ? i_ring - 1 : main_point_num - 1] :
+                                main_positions[std::max(i_ring - 1, 0)];
+    if (i_ring > 0) {
+      return math::normalize(current_pos - prev_pos);
+    }
+    const float3 next_pos = is_cyclic ?
+                                main_positions[i_ring < main_point_num - 1 ? i_ring + 1 : 0] :
+                                main_positions[std::min(i_ring + 1, main_point_num - 1)];
+    return is_cyclic ? math::normalize(current_pos - prev_pos) :
+                       math::normalize(next_pos - current_pos);
+  }
+  /**************************/
+  const float4x4 calculate_orientation_and_scale_matrix() const
+  {
+    float4x4 orientation_matrix = math::from_orthonormal_axes<float4x4>(pos_, ih_, kh_);
+    if (radius_ != 1.f) {
+      orientation_matrix = math::scale(orientation_matrix, float3(radius_));
+    }
+    return orientation_matrix;
+  };
+  /**************************/
+  const float4x4 calculate_tilt_and_shear_matrix() const
+  {
+    const float3 jh = math::normalize(math::cross(kh_, ih_));
+    const float dot_ti = math::dot(tangent_, ih_);
+    const float dot_tj = math::dot(tangent_, jh);
+    const float dot_tk = math::dot(tangent_, kh_);
+    // Shear values
+    // Shear to change `khat = f(distance from ihat)`.
+    const float tan_alpha = std::abs(dot_tk) > SHEAR_EPSILON ? dot_ti / dot_tk : 0.f;
+    // Shear to change `khat = f(distance from jhat)`.
+    const float tan_omega = std::abs(dot_tk) > SHEAR_EPSILON ? dot_tj / dot_tk : 0.f;
+    // Shear to change `ihat = f(distance from jhat)`.
+    const float tan_beta = std::abs(dot_ti) > SHEAR_EPSILON ? dot_tj / dot_ti : 0.f;
+    const float a = tan_alpha;
+    const float b = tan_beta;
+    const float o = tan_omega;
+    if (tilt_ == 0.f) {
+      // clang-format off
+      // Returns shear-only matrix:
+      const float shear_m4[4][4] = {{1,  0, -a, 0},
+                                    {0,  1, -o, 0},
+                                    {0, -b,  1, 0},
+                                    {0,  0,  0, 1}};
+      return float4x4(shear_m4);
+      // clang-format on
+    }
+    const float c = std::cos(-tilt_);
+    const float s = std::sin(-tilt_);
+    // clang-format off
+    // NOTE: this matrix 4x4 is left commented for reference only
+    // and represents the rotation on the Z/UP-axis that's combined with the shear matrix just above:
+    //
+    // const float4x4 rotz_matrix((float[4][4]){{  c, -s,  0, 0},
+    //                                          {  s,  c,  0, 0},
+    //                                          {  0,  0,  1, 0},
+    //                                          {  0,  0,  0, 1}});
+    // The combo result matrix is the result of shear * rotz_matrix:
+    const float combo[4][4] = {{ c, -s,  s*o-c*a, 0},
+                               { s,  c, -s*a-c*o, 0},
+                               { 0, -b,        1, 0},
+                               { 0,  0,        0, 1}};
+    // clang-format on
+    return float4x4(combo);
+  }
+};
+/** \} */
+
 static void write_sharp_bezier_edges(const CurvesInfo &curves_info,
                                      const ResultOffsets &offsets,
                                      MutableAttributeAccessor mesh_attributes,
@@ -683,6 +872,7 @@ static void write_sharp_bezier_edges(const CurvesInfo &curves_info,
 Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                           const CurvesGeometry &profile,
                           const bool fill_caps,
+                          const bool even_thickness,
                           const AnonymousAttributePropagationInfo &propagation_info)
 {
   const CurvesInfo curves_info = get_curves_info(main, profile);
@@ -756,16 +946,43 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                 .typed<float>();
   }
 
-  foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
-    fill_mesh_positions(info.main_points.size(),
-                        info.profile_points.size(),
-                        main_positions.slice(info.main_points),
-                        profile_positions.slice(info.profile_points),
-                        tangents.slice(info.main_points),
-                        normals.slice(info.main_points),
-                        radii.is_empty() ? radii : radii.slice(info.main_points),
-                        positions.slice(info.vert_range));
-  });
+  if (!even_thickness) {
+    foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
+      fill_mesh_positions_default(info.main_points.size(),
+                                  info.profile_points.size(),
+                                  main_positions.slice(info.main_points),
+                                  profile_positions.slice(info.profile_points),
+                                  tangents.slice(info.main_points),
+                                  normals.slice(info.main_points),
+                                  radii.is_empty() ? radii : radii.slice(info.main_points),
+                                  positions.slice(info.vert_range));
+    });
+  }
+  else {
+    Vector<std::byte> eval_buffer_tilts;
+    Span<float> tilts = {};
+    if (main_attributes.contains("tilt")) {
+      tilts = evaluated_attribute_if_necessary(
+                  *main_attributes.lookup_or_default<float>("tilt", ATTR_DOMAIN_POINT, 0.0f),
+                  main,
+                  main.curve_type_counts(),
+                  eval_buffer_tilts)
+                  .typed<float>();
+    }
+    foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
+      EvenThicknessInfo::fill_mesh_positions_even_thickness(
+          info.main_points.size(),
+          info.profile_points.size(),
+          main_positions.slice(info.main_points),
+          profile_positions.slice(info.profile_points),
+          tangents.slice(info.main_points),
+          normals.slice(info.main_points),
+          radii.is_empty() ? radii : radii.slice(info.main_points),
+          tilts.is_empty() ? tilts : tilts.slice(info.main_points),
+          info.main_cyclic,
+          positions.slice(info.vert_range));
+    });
+  }
 
   if (!offsets.any_single_point_main) {
     /* If there are no single point curves, every combination will have at least loose edges. */
@@ -892,7 +1109,7 @@ Mesh *curve_to_wire_mesh(const CurvesGeometry &curve,
                          const AnonymousAttributePropagationInfo &propagation_info)
 {
   static const CurvesGeometry vert_curve = get_curve_single_vert();
-  return curve_to_mesh_sweep(curve, vert_curve, false, propagation_info);
+  return curve_to_mesh_sweep(curve, vert_curve, false, false, propagation_info);
 }
 
 }  // namespace blender::bke

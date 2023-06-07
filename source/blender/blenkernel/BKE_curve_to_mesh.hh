@@ -28,6 +28,7 @@ class AnonymousAttributePropagationInfo;
 Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                           const CurvesGeometry &profile,
                           bool fill_caps,
+                          bool even_thickness,
                           const AnonymousAttributePropagationInfo &propagation_info);
 /**
  * Create a loose-edge mesh based on the evaluated path of the curve's splines.

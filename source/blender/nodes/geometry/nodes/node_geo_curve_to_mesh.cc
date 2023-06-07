@@ -22,12 +22,17 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Fill Caps")
       .description(
           "If the profile spline is cyclic, fill the ends of the generated mesh with N-gons");
+  b.add_input<decl::Bool>("Even Thickness")
+      .description(
+          "Keeps the extruded profile at a constant size along the curve segments and uses miter "
+          "joints at segment elbows");
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
 static void geometry_set_curve_to_mesh(GeometrySet &geometry_set,
                                        const GeometrySet &profile_set,
                                        const bool fill_caps,
+                                       const bool even_thickness,
                                        const AnonymousAttributePropagationInfo &propagation_info)
 {
   const Curves &curves = *geometry_set.get_curves_for_read();
@@ -40,8 +45,11 @@ static void geometry_set_curve_to_mesh(GeometrySet &geometry_set,
     geometry_set.replace_mesh(mesh);
   }
   else {
-    Mesh *mesh = bke::curve_to_mesh_sweep(
-        curves.geometry.wrap(), profile_curves->geometry.wrap(), fill_caps, propagation_info);
+    Mesh *mesh = bke::curve_to_mesh_sweep(curves.geometry.wrap(),
+                                          profile_curves->geometry.wrap(),
+                                          fill_caps,
+                                          even_thickness,
+                                          propagation_info);
     geometry_set.replace_mesh(mesh);
   }
 }
@@ -51,11 +59,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet curve_set = params.extract_input<GeometrySet>("Curve");
   GeometrySet profile_set = params.extract_input<GeometrySet>("Profile Curve");
   const bool fill_caps = params.extract_input<bool>("Fill Caps");
+  const bool even_thickness = params.extract_input<bool>("Even Thickness");
 
   curve_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (geometry_set.has_curves()) {
-      geometry_set_curve_to_mesh(
-          geometry_set, profile_set, fill_caps, params.get_output_propagation_info("Mesh"));
+      geometry_set_curve_to_mesh(geometry_set,
+                                 profile_set,
+                                 fill_caps,
+                                 even_thickness,
+                                 params.get_output_propagation_info("Mesh"));
     }
     geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
   });
