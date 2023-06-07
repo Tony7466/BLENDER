@@ -173,15 +173,14 @@ class Context : public realtime_compositor::Context {
               if (input_texture) {
                 /* TODO: conversion could be done as part of GPU upload somehow? */
                 const float *rgb_buffer = rpass->buffer.data;
-                float *rgba_buffer = MEM_cnew_array<float>(4 * size.x * size.y, __func__);
+                Vector<float> rgba_buffer(4 * size.x * size.y);
                 for (size_t i = 0; (size_t)size.x * (size_t)size.y; i++) {
                   rgba_buffer[i * 4 + 0] = rgb_buffer[i * 3 + 0];
                   rgba_buffer[i * 4 + 1] = rgb_buffer[i * 3 + 1];
                   rgba_buffer[i * 4 + 2] = rgb_buffer[i * 3 + 2];
                   rgba_buffer[i * 4 + 3] = 1.0f;
                 }
-                GPU_texture_update(input_texture, GPU_DATA_FLOAT, rgba_buffer);
-                MEM_freeN(rgba_buffer);
+                GPU_texture_update(input_texture, GPU_DATA_FLOAT, rgba_buffer.data());
               }
             }
             else if (rpass->channels == 4) {
