@@ -144,12 +144,12 @@ class PlayRenderedAnim(Operator):
             opts = ["-fps", str(rd.fps), "-play"]
             if scene.use_preview_range:
                 opts += [
-                    "%s" % file.replace("#", "", file.count('#')-1),
+                    "%s" % file.replace("#", "", file.count('#') - 1),
                     "%d-%d" % (frame_start, frame_end),
                 ]
             else:
                 opts.append(file)
-            
+
             cmd.extend(opts)
         elif preset == 'MPLAYER':
             opts = []
