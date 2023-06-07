@@ -1568,7 +1568,6 @@ void BKE_shrinkwrap_mesh_nearest_surface_deform(bContext *C, Object *ob_source, 
 void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object *ob_target)
 {
   ShrinkwrapModifierData ssmd = {{nullptr}};
-  int totvert;
 
   ssmd.target = ob_target;
   ssmd.shrinkType = MOD_SHRINKWRAP_PROJECT;
@@ -1581,13 +1580,11 @@ void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object 
   const float projLimitTolerance = 5.0f;
   ssmd.projLimit = target_me->remesh_voxel_size * projLimitTolerance;
 
-  float(*vertexCos)[3] = BKE_mesh_vert_coords_alloc(src_me, &totvert);
-
   ShrinkwrapCalcData calc = NULL_ShrinkwrapCalcData;
 
   calc.smd = &ssmd;
   calc.numVerts = src_me->totvert;
-  calc.vertexCos = vertexCos;
+  calc.vertexCos = BKE_mesh_vert_positions_for_write(src_me);
   calc.vert_normals = src_me->vert_normals();
   calc.vgroup = -1;
   calc.target = target_me;
@@ -1602,7 +1599,5 @@ void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object 
     BKE_shrinkwrap_free_tree(&tree);
   }
 
-  BKE_mesh_vert_coords_apply(src_me, vertexCos);
-
-  MEM_freeN(vertexCos);
+  BKE_mesh_tag_positions_changed(src_me);
 }
