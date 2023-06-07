@@ -15,13 +15,11 @@ namespace blender::draw::overlay {
 
 class Prepass {
  private:
-  const SelectionType selection_type_;
-
   PassMain prepass_ps_ = {"prepass"};
   PassMain prepass_in_front_ps_ = {"prepass_in_front"};
 
  public:
-  Prepass(const SelectionType selection_type) : selection_type_(selection_type){};
+  Prepass(){};
 
   void begin_sync(Resources &res, const State &state)
   {

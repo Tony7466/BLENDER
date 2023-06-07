@@ -39,6 +39,7 @@ struct State {
   const Base *active_base;
   View3DOverlay overlay;
   float pixelsize;
+  SelectionType selection_type;
   enum eSpace_Type space_type;
   enum eContextObjectMode ctx_mode;
   enum eObjectMode object_mode;
@@ -277,6 +278,19 @@ struct Resources : public select::SelectMap {
   {
     ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
     return object_wire_color(ob_ref, theme_id);
+  }
+
+  float4 background_blend_color(ThemeColorID theme_id) const
+  {
+    float4 color;
+    UI_GetThemeColorBlendShade4fv(theme_id, TH_BACK, 0.5, 0, color);
+    return color;
+  }
+
+  float4 object_background_blend_color(const ObjectRef &ob_ref, const State &state) const
+  {
+    ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
+    return background_blend_color(theme_id);
   }
 };
 

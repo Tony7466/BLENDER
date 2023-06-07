@@ -17,16 +17,16 @@ class Metaballs {
   using SphereOutlineInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
 
  private:
-  const SelectionType selection_type_;
-
   PassSimple metaball_ps_ = {"MetaBalls"};
   PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
 
-  SphereOutlineInstanceBuf circle_buf_ = {selection_type_, "metaball_data_buf"};
-  SphereOutlineInstanceBuf circle_in_front_buf_ = {selection_type_, "metaball_data_buf"};
+  SphereOutlineInstanceBuf circle_buf_;
+  SphereOutlineInstanceBuf circle_in_front_buf_;
 
  public:
-  Metaballs(const SelectionType selection_type) : selection_type_(selection_type){};
+  Metaballs(const SelectionType selection_type)
+      : circle_buf_(selection_type, "metaball_data_buf"),
+        circle_in_front_buf_(selection_type, "metaball_in_front_data_buf"){};
 
   void begin_sync()
   {

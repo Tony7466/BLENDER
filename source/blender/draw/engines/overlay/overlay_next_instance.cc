@@ -10,6 +10,14 @@
 
 #include "overlay_next_instance.hh"
 
+#include "overlay_next_bounds.hh"
+#include "overlay_next_camera.hh"
+#include "overlay_next_collision.hh"
+#include "overlay_next_empty.hh"
+#include "overlay_next_force_field.hh"
+#include "overlay_next_light.hh"
+#include "overlay_next_light_probe.hh"
+
 namespace blender::draw::overlay {
 
 void Instance::init()
@@ -28,6 +36,7 @@ void Instance::init()
   state.object_mode = ctx->object_mode;
 
   state.pixelsize = U.pixelsize;
+  state.selection_type = selection_type_;
   state.ctx_mode = CTX_data_mode_enum_ex(ctx->object_edit, ctx->obact, ctx->object_mode);
   state.space_type = state.v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
   if (state.v3d != nullptr) {

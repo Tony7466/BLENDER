@@ -12,12 +12,10 @@ namespace blender::draw::overlay {
 
 class Background {
  private:
-  const SelectionType selection_type_;
-
   PassSimple bg_ps_ = {"Background"};
 
  public:
-  Background(const SelectionType selection_type) : selection_type_(selection_type){};
+  Background(){};
 
   void begin_sync(Resources &res, const State &state)
   {

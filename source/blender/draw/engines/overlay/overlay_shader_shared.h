@@ -211,6 +211,11 @@ struct ExtraInstanceData {
     this->matrix[3][3] = draw_size;
   };
 
+  ExtraInstanceData(const Object *object, const float4 &color)
+      : ExtraInstanceData(float4x4(object->object_to_world),
+                          color,
+                          object->type == OB_EMPTY ? object->empty_drawsize : 1.0f){};
+
   ExtraInstanceData with_matrix(const float4x4 &matrix) const
   {
     ExtraInstanceData copy = *this;
