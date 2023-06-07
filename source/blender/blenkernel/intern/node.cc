@@ -3847,9 +3847,7 @@ bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, 
   ++ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
-  for (const int i : new_categories.index_range().drop_back(1)) {
-    new_categories[i] = old_categories[i];
-  }
+  std::copy(old_categories.begin(), old_categories.end(), new_categories.data());
   bNodeSocketCategory &new_category = new_categories[new_categories.size() - 1];
   new_category = {BLI_strdup(name), flag, ntree->next_socket_category_identifier++};
 
@@ -3876,12 +3874,12 @@ bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
   ++ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
-  for (const int i : new_categories.index_range().take_front(index)) {
-    new_categories[i] = old_categories[i];
-  }
-  for (const int i : new_categories.index_range().drop_front(index)) {
-    new_categories[i + 1] = old_categories[i];
-  }
+  Span old_categories_front = old_categories.take_front(index);
+  Span old_categories_back = old_categories.drop_front(index);
+  std::copy(old_categories_front.begin(), old_categories_front.end(), new_categories.data());
+  std::copy(old_categories_back.begin(),
+            old_categories_back.end(),
+            new_categories.drop_front(index + 1).data());
   bNodeSocketCategory &new_category = new_categories[index];
   new_category = {BLI_strdup(name), flag, ntree->next_socket_category_identifier++};
 
@@ -3906,12 +3904,12 @@ void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category)
   --ntree->socket_categories_num;
   const MutableSpan<bNodeSocketCategory> new_categories = ntree->socket_categories_for_write();
 
-  for (const int i : new_categories.index_range().take_front(index)) {
-    new_categories[i] = old_categories[i];
-  }
-  for (const int i : new_categories.index_range().drop_front(index)) {
-    new_categories[i] = old_categories[i + 1];
-  }
+  Span old_categories_front = old_categories.take_front(index);
+  Span old_categories_back = old_categories.drop_front(index + 1);
+  std::copy(old_categories_front.begin(), old_categories_front.end(), new_categories.data());
+  std::copy(old_categories_back.begin(),
+            old_categories_back.end(),
+            new_categories.drop_front(index).data());
 
   MEM_SAFE_FREE(old_categories_array);
 
@@ -3929,28 +3927,30 @@ void ntreeClearSocketCategories(bNodeTree *ntree)
 
 void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index)
 {
-  const int old_index = category - ntree->socket_categories_array;
   if (!ntree->socket_categories().contains_ptr(category)) {
     return;
   }
 
   const MutableSpan<bNodeSocketCategory> categories = ntree->socket_categories_for_write();
-
+  const int old_index = category - ntree->socket_categories_array;
   if (old_index == new_index) {
     return;
   }
   else if (old_index < new_index) {
+    const Span<bNodeSocketCategory> moved_categories = categories.slice(old_index + 1,
+                                                                        new_index - old_index);
     const bNodeSocketCategory tmp = categories[old_index];
-    for (int i = old_index; i < new_index; ++i) {
-      categories[i] = categories[i + 1];
-    }
+    std::copy(
+        moved_categories.begin(), moved_categories.end(), categories.drop_front(old_index).data());
     categories[new_index] = tmp;
   }
   else /* old_index > new_index */ {
+    const Span<bNodeSocketCategory> moved_categories = categories.slice(new_index,
+                                                                        old_index - new_index);
     const bNodeSocketCategory tmp = categories[old_index];
-    for (int i = old_index; i > new_index; --i) {
-      categories[i] = categories[i - 1];
-    }
+    std::copy_backward(moved_categories.begin(),
+                       moved_categories.end(),
+                       categories.drop_front(old_index + 1).data());
     categories[new_index] = tmp;
   }
 
