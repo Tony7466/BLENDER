@@ -378,7 +378,6 @@ static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
   return OPERATOR_RUNNING_MODAL;
 }
 
-
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
   struct OBJImportParams import_params;
@@ -470,12 +469,12 @@ void WM_OT_obj_import(wmOperatorType *ot)
   ot->name = "Import Wavefront OBJ";
   ot->description = "Load a Wavefront OBJ scene";
   ot->idname = "WM_OT_obj_import";
-  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
 
   ot->invoke = wm_obj_import_invoke;
   ot->exec = wm_obj_import_exec;
   ot->poll = WM_operator_winactive;
-  ot->ui = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;;
+  ot->ui = wm_obj_import_draw;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER,
