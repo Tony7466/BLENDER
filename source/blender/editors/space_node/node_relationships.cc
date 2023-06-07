@@ -1588,7 +1588,7 @@ void NODE_OT_links_cut(wmOperatorType *ot)
 /** \name Mute Links Operator
  * \{ */
 
-static bool all_links_muted(const bNodeSocket &socket)
+bool all_links_muted(const bNodeSocket &socket)
 {
   for (const bNodeLink *link : socket.directly_linked_links()) {
     if (!(link->flag & NODE_LINK_MUTED)) {
@@ -2222,7 +2222,7 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 static int get_main_socket_priority(const bNodeSocket *socket)
 {
   switch ((eNodeSocketDatatype)socket->type) {
-    case __SOCK_MESH:
+    case SOCK_MESH_DEPRECATED:
       return -1;
     case SOCK_CUSTOM:
       return 0;

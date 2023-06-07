@@ -10,6 +10,7 @@ from bpy.app.translations import (
     pgettext_iface as iface_,
     pgettext_tip as tip_,
 )
+from bl_ui.utils import PresetPanel
 
 
 # -----------------------------------------------------------------------------
@@ -1393,6 +1394,13 @@ class USERPREF_PT_file_paths_render(FilePathsPanel, Panel):
         col.prop(paths, "render_cache_directory", text="Render Cache")
 
 
+class USERPREF_PT_text_editor_presets(PresetPanel, Panel):
+    bl_label = "Text Editor Presets"
+    preset_subdir = "text_editor"
+    preset_operator = "script.execute_preset"
+    preset_add_operator = "text_editor.preset_add"
+
+
 class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
     bl_label = "Applications"
 
@@ -1408,6 +1416,25 @@ class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
         col.prop(paths, "animation_player_preset", text="Animation Player")
         if paths.animation_player_preset == 'CUSTOM':
             col.prop(paths, "animation_player", text="Player")
+
+
+class USERPREF_PT_text_editor(FilePathsPanel, Panel):
+    bl_label = "Text Editor"
+    bl_parent_id = "USERPREF_PT_file_paths_applications"
+
+    def draw_header_preset(self, _context):
+        USERPREF_PT_text_editor_presets.draw_panel_header(self.layout)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        paths = context.preferences.filepaths
+
+        col = layout.column()
+        col.prop(paths, "text_editor", text="Program")
+        col.prop(paths, "text_editor_args", text="Arguments")
 
 
 class USERPREF_PT_file_paths_development(FilePathsPanel, Panel):
@@ -2504,6 +2531,8 @@ classes = (
     USERPREF_PT_file_paths_script_directories,
     USERPREF_PT_file_paths_render,
     USERPREF_PT_file_paths_applications,
+    USERPREF_PT_text_editor,
+    USERPREF_PT_text_editor_presets,
     USERPREF_PT_file_paths_development,
     USERPREF_PT_file_paths_asset_libraries,
 

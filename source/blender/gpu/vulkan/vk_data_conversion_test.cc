@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
 #include "testing/testing.h"
 
 #include "vk_data_conversion.hh"
@@ -86,6 +88,13 @@ TEST(VulkanDataConversion, infinity_upper)
   EXPECT_EQ(f10_inf, f10_inf_expected);
 }
 
-// TODO: add test case for Nan, Inf, -Inf, Clamping
+TEST(VulkanDataConversion, infinity_lower)
+{
+  const uint32_t f32_inf = 0b11111111100000000000000000000000;
+
+  const uint32_t f16_inf_expected = 0b1111110000000000;
+  const uint32_t f16_inf = convert_float_formats<FormatF16, FormatF32, true>(f32_inf);
+  EXPECT_EQ(f16_inf, f16_inf_expected);
+}
 
 }  // namespace blender::gpu::tests
