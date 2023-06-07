@@ -14,16 +14,15 @@ namespace blender::ed::outliner {
 
 class TreeElementIDTex final : public TreeElementID {
   Tex &tex_;
-  
-public:
+
+ public:
   TreeElementIDTex(TreeElement &legacy_te, Tex &tex);
-  
+
   void expand(SpaceOutliner &) const override;
   bool isExpandValid() const override;
-  
-private:
+
+ private:
   void expandImage(SpaceOutliner &) const;
-  
 };
 
 }  // namespace blender::ed::outliner

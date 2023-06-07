@@ -17,7 +17,7 @@
 namespace blender::ed::outliner {
 
 TreeElementIDTex::TreeElementIDTex(TreeElement &legacy_te, Tex &tex)
-: TreeElementID(legacy_te, tex.id), tex_(tex)
+    : TreeElementID(legacy_te, tex.id), tex_(tex)
 {
 }
 
@@ -29,14 +29,14 @@ bool TreeElementIDTex::isExpandValid() const
 void TreeElementIDTex::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, tex_.adt);
-  
+
   expandImage(space_outliner);
 }
 
 void TreeElementIDTex::expandImage(SpaceOutliner &space_outliner) const
 {
-  outliner_add_element(&space_outliner, &legacy_te_.subtree, tex_.ima, &legacy_te_, TSE_SOME_ID, 0);
+  outliner_add_element(
+      &space_outliner, &legacy_te_.subtree, tex_.ima, &legacy_te_, TSE_SOME_ID, 0);
 }
 
 }  // namespace blender::ed::outliner
-
