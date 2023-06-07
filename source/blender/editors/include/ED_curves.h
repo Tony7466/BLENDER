@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -52,11 +54,12 @@ int *ED_curves_offsets_for_write(struct Curves *curves_id);
 #ifdef __cplusplus
 
 #  include "BKE_attribute.hh"
+#  include "BKE_crazyspace.hh"
+#  include "BKE_curves.hh"
+
 #  include "BLI_index_mask.hh"
 #  include "BLI_vector.hh"
 #  include "BLI_vector_set.hh"
-
-#  include "BKE_curves.hh"
 
 #  include "ED_select_utils.h"
 
@@ -117,14 +120,14 @@ bool has_anything_selected(const VArray<bool> &varray, IndexRange range_to_check
  * Find curves that have any point selected (a selection factor greater than zero),
  * or curves that have their own selection factor greater than zero.
  */
-IndexMask retrieve_selected_curves(const Curves &curves_id, Vector<int64_t> &r_indices);
+IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &memory);
 
 /**
  * Find points that are selected (a selection factor greater than zero),
  * or points in curves with a selection factor greater than zero).
  */
-IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, Vector<int64_t> &r_indices);
-IndexMask retrieve_selected_points(const Curves &curves_id, Vector<int64_t> &r_indices);
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory);
+IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory);
 
 /**
  * If the ".selection" attribute doesn't exist, create it with the requested type (bool or float).
@@ -190,6 +193,7 @@ struct FindClosestData {
 std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext &vc,
                                                               const Object &object,
                                                               bke::CurvesGeometry &curves,
+                                                              Span<float3> deformed_positions,
                                                               eAttrDomain domain,
                                                               int2 coord,
                                                               const FindClosestData &initial);
@@ -199,6 +203,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext 
  */
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
+                Span<float3> deformed_positions,
                 eAttrDomain selection_domain,
                 const rcti &rect,
                 eSelectOp sel_op);
@@ -208,6 +213,7 @@ bool select_box(const ViewContext &vc,
  */
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
+                  Span<float3> deformed_positions,
                   eAttrDomain selection_domain,
                   Span<int2> coords,
                   eSelectOp sel_op);
@@ -217,6 +223,7 @@ bool select_lasso(const ViewContext &vc,
  */
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
+                   Span<float3> deformed_positions,
                    eAttrDomain selection_domain,
                    int2 coord,
                    float radius,

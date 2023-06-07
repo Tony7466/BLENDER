@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -229,7 +230,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_RGBA = 2,
   SOCK_SHADER = 3,
   SOCK_BOOLEAN = 4,
-  __SOCK_MESH = 5, /* deprecated */
+  SOCK_MESH_DEPRECATED = 5,
   SOCK_INT = 6,
   SOCK_STRING = 7,
   SOCK_OBJECT = 8,
@@ -1518,11 +1519,6 @@ typedef struct NodeGeometryRaycast {
 
   /* eCustomDataType. */
   int8_t data_type;
-
-  /* Deprecated input types in new Ray-cast node. Can be removed when legacy nodes are no longer
-   * supported. */
-  uint8_t input_type_ray_direction;
-  uint8_t input_type_ray_length;
 } NodeGeometryRaycast;
 
 typedef struct NodeGeometryCurveFill {
@@ -1641,6 +1637,13 @@ typedef struct NodeGeometryDistributePointsInVolume {
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
 
+typedef struct NodeGeometrySampleVolume {
+  /* eCustomDataType. */
+  int8_t grid_type;
+  /* GeometryNodeSampleVolumeInterpolationMode */
+  int8_t interpolation_mode;
+} NodeGeometrySampleVolume;
+
 typedef struct NodeFunctionCompare {
   /* NodeCompareOperation */
   int8_t operation;
@@ -1696,7 +1699,7 @@ typedef struct NodeShaderMix {
 
 /* glossy distributions */
 #define SHD_GLOSSY_BECKMANN 0
-#define SHD_GLOSSY_SHARP 1
+#define SHD_GLOSSY_SHARP_DEPRECATED 1 /* deprecated */
 #define SHD_GLOSSY_GGX 2
 #define SHD_GLOSSY_ASHIKHMIN_SHIRLEY 3
 #define SHD_GLOSSY_MULTI_GGX 4
@@ -2435,14 +2438,16 @@ typedef enum GeometryNodeDeleteGeometryMode {
   GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE = 2,
 } GeometryNodeDeleteGeometryMode;
 
-typedef enum GeometryNodeRealizeInstancesFlag {
-  GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR = (1 << 0),
-} GeometryNodeRealizeInstancesFlag;
-
 typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
+
+typedef enum GeometryNodeSampleVolumeInterpolationMode {
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST = 0,
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
+} GeometryNodeSampleVolumeInterpolationMode;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,

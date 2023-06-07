@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_writer_material.h"
 
@@ -8,7 +10,7 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
 #include "IMB_colormanagement.h"
@@ -39,6 +41,7 @@ namespace usdtokens {
 static const pxr::TfToken clearcoat("clearcoat", pxr::TfToken::Immortal);
 static const pxr::TfToken clearcoatRoughness("clearcoatRoughness", pxr::TfToken::Immortal);
 static const pxr::TfToken diffuse_color("diffuseColor", pxr::TfToken::Immortal);
+static const pxr::TfToken emissive_color("emissiveColor", pxr::TfToken::Immortal);
 static const pxr::TfToken metallic("metallic", pxr::TfToken::Immortal);
 static const pxr::TfToken preview_shader("previewShader", pxr::TfToken::Immortal);
 static const pxr::TfToken preview_surface("UsdPreviewSurface", pxr::TfToken::Immortal);
@@ -109,9 +112,9 @@ static void export_texture(bNode *node,
                            const bool allow_overwrite = false);
 static bNode *find_bsdf_node(Material *material);
 static void get_absolute_path(Image *ima, char *r_path);
-static std::string get_tex_image_asset_path(bNode *node,
-                                            const pxr::UsdStageRefPtr stage,
-                                            const USDExportParams &export_params);
+static std::string get_tex_image_asset_filepath(bNode *node,
+                                                const pxr::UsdStageRefPtr stage,
+                                                const USDExportParams &export_params);
 static InputSpecMap &preview_surface_input_map();
 static bNodeLink *traverse_channel(bNodeSocket *input, short target_type);
 
@@ -277,6 +280,8 @@ void create_usd_viewport_material(const USDExporterContext &usd_export_context,
   shader.CreateIdAttr(pxr::VtValue(usdtokens::preview_surface));
   shader.CreateInput(usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f)
       .Set(pxr::GfVec3f(material->r, material->g, material->b));
+  shader.CreateInput(usdtokens::emissive_color, pxr::SdfValueTypeNames->Color3f)
+      .Set(pxr::GfVec3f(material->r, material->g, material->b));
   shader.CreateInput(usdtokens::roughness, pxr::SdfValueTypeNames->Float).Set(material->roughness);
   shader.CreateInput(usdtokens::metallic, pxr::SdfValueTypeNames->Float).Set(material->metallic);
 
@@ -289,6 +294,7 @@ static InputSpecMap &preview_surface_input_map()
 {
   static InputSpecMap input_map = {
       {"Base Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
+      {"Emission", {usdtokens::emissive_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Roughness", {usdtokens::roughness, pxr::SdfValueTypeNames->Float, true}},
       {"Metallic", {usdtokens::metallic, pxr::SdfValueTypeNames->Float, true}},
@@ -576,7 +582,7 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
   }
 
   /* For texture image nodes we set the image path and color space. */
-  std::string imagePath = get_tex_image_asset_path(
+  std::string imagePath = get_tex_image_asset_filepath(
       node, usd_export_context.stage, usd_export_context.export_params);
   if (!imagePath.empty()) {
     shader.CreateInput(usdtokens::file, pxr::SdfValueTypeNames->Asset)
@@ -591,7 +597,7 @@ static pxr::UsdShadeShader create_usd_preview_shader(const USDExporterContext &u
   return shader;
 }
 
-static std::string get_tex_image_asset_path(Image *ima)
+static std::string get_tex_image_asset_filepath(Image *ima)
 {
   char filepath[FILE_MAX];
   get_absolute_path(ima, filepath);
@@ -606,9 +612,9 @@ static std::string get_tex_image_asset_path(Image *ima)
  * generated based on the image name for in-memory textures when exporting textures.
  * This function may return an empty string if the image does not have a filepath
  * assigned and no asset path could be determined. */
-static std::string get_tex_image_asset_path(bNode *node,
-                                            const pxr::UsdStageRefPtr stage,
-                                            const USDExportParams &export_params)
+static std::string get_tex_image_asset_filepath(bNode *node,
+                                                const pxr::UsdStageRefPtr stage,
+                                                const USDExportParams &export_params)
 {
   Image *ima = reinterpret_cast<Image *>(node->id);
   if (!ima) {
@@ -619,7 +625,7 @@ static std::string get_tex_image_asset_path(bNode *node,
 
   if (strlen(ima->filepath) > 0) {
     /* Get absolute path. */
-    path = get_tex_image_asset_path(ima);
+    path = get_tex_image_asset_filepath(ima);
   }
   else if (export_params.export_textures) {
     /* Image has no filepath, but since we are exporting textures,

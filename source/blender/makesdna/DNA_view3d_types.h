@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -675,6 +676,18 @@ enum {
   V3D_GIZMO_SHOW_CAMERA_LENS = (1 << 0),
   V3D_GIZMO_SHOW_CAMERA_DOF_DIST = (1 << 2),
 };
+
+/** #ToolSettings.plane_depth */
+typedef enum {
+  V3D_PLACE_DEPTH_SURFACE = 0,
+  V3D_PLACE_DEPTH_CURSOR_PLANE = 1,
+  V3D_PLACE_DEPTH_CURSOR_VIEW = 2,
+} eV3DPlaceDepth;
+/** #ToolSettings.plane_orient */
+typedef enum {
+  V3D_PLACE_ORIENT_SURFACE = 0,
+  V3D_PLACE_ORIENT_DEFAULT = 1,
+} eV3DPlaceOrient;
 
 #define RV3D_CAMZOOM_MIN -30
 #define RV3D_CAMZOOM_MAX 600

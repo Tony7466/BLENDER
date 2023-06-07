@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -33,7 +34,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
@@ -682,7 +683,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleColorModifier_DistanceFromObject *cm =
             (LineStyleColorModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &cm->target);
+        BLO_read_id_address(reader, id, &cm->target);
         break;
       }
     }
@@ -692,7 +693,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleAlphaModifier_DistanceFromObject *am =
             (LineStyleAlphaModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &am->target);
+        BLO_read_id_address(reader, id, &am->target);
         break;
       }
     }
@@ -702,7 +703,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleThicknessModifier_DistanceFromObject *tm =
             (LineStyleThicknessModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &tm->target);
+        BLO_read_id_address(reader, id, &tm->target);
         break;
       }
     }
@@ -710,8 +711,8 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
   for (int a = 0; a < MAX_MTEX; a++) {
     MTex *mtex = linestyle->mtex[a];
     if (mtex) {
-      BLO_read_id_address(reader, linestyle->id.lib, &mtex->tex);
-      BLO_read_id_address(reader, linestyle->id.lib, &mtex->object);
+      BLO_read_id_address(reader, id, &mtex->tex);
+      BLO_read_id_address(reader, id, &mtex->object);
     }
   }
 }
@@ -788,7 +789,7 @@ void BKE_linestyle_init(FreestyleLineStyle *linestyle)
   linestyle_init_data(&linestyle->id);
 }
 
-FreestyleLineStyle *BKE_linestyle_new(struct Main *bmain, const char *name)
+FreestyleLineStyle *BKE_linestyle_new(Main *bmain, const char *name)
 {
   FreestyleLineStyle *linestyle;
 
@@ -2038,7 +2039,8 @@ void BKE_linestyle_default_shader(const bContext *C, FreestyleLineStyle *linesty
 
   BLI_assert(linestyle->nodetree == nullptr);
 
-  ntree = ntreeAddTreeEmbedded(nullptr, &linestyle->id, "stroke_shader", "ShaderNodeTree");
+  ntree = blender::bke::ntreeAddTreeEmbedded(
+      nullptr, &linestyle->id, "stroke_shader", "ShaderNodeTree");
 
   uv_along_stroke = nodeAddStaticNode(C, ntree, SH_NODE_UVALONGSTROKE);
   uv_along_stroke->locx = 0.0f;

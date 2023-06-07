@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -779,6 +780,9 @@ static bConstraint *edit_constraint_property_get(bContext *C, wmOperator *op, Ob
 
   if (owner == EDIT_CONSTRAINT_OWNER_BONE) {
     list = ED_object_pose_constraint_list(C);
+    if (!list) {
+      return NULL;
+    }
   }
   else {
     list = &ob->constraints;
@@ -2632,7 +2636,7 @@ void POSE_OT_constraint_add_with_targets(wmOperatorType *ot)
  * \note Only for pose-channels.
  * \{ */
 
-/* TODO: should these be here, or back in editors/armature/poseobject.c again? */
+/* TODO: should these be here, or back in `editors/armature/poseobject.c` again? */
 
 /* present menu with options + validation for targets to use */
 static int pose_ik_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))

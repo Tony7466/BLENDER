@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
  */
 
 #pragma once
+
+#include <functional>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_rect.h"
@@ -249,8 +252,7 @@ struct uiBut {
 
   ListBase extra_op_icons = {nullptr, nullptr}; /** #uiButExtraOpIcon */
 
-  /* Drag-able data, type is WM_DRAG_... */
-  char dragtype = WM_DRAG_ID;
+  eWM_DragDataType dragtype = WM_DRAG_ID;
   short dragflag = 0;
   void *dragpoin = nullptr;
   ImBuf *imb = nullptr;
@@ -266,8 +268,7 @@ struct uiBut {
   double *editval = nullptr;
   float *editvec = nullptr;
 
-  uiButPushedStateFunc pushed_state_func = nullptr;
-  const void *pushed_state_arg = nullptr;
+  std::function<bool(const uiBut &)> pushed_state_func;
 
   /** Little indicator (e.g., counter) displayed on top of some icons. */
   IconTextOverlay icon_overlay_text = {};
@@ -325,7 +326,8 @@ struct uiButSearch : public uiBut {
   bool results_are_suggestions = false;
 };
 
-/** Derived struct for #UI_BTYPE_DECORATOR
+/**
+ * Derived struct for #UI_BTYPE_DECORATOR
  * Decorators have own RNA data, using the normal #uiBut RNA members has many side-effects.
  */
 struct uiButDecorator : public uiBut {
