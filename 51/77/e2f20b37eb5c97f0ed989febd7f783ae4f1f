@@ -1,3 +1,4 @@
 Referenced by commit 64aa96d421df8857dcf8d54e8613ff3cdb6c8a9b, Fix failure to paste material color alpha & paste line-art
 Referenced by pull request #108496, Fix #108495: Pasting a material crashes
 Referenced by pull request #108567, Fix #108495: Pasting a material crashes (back-port from main)
+Referenced by commit 64ead920a19201aa6f5cbca1a1a47fdba279cdd7, Fix #108495: Pasting a material crashes
