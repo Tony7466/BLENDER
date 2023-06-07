@@ -241,20 +241,8 @@ static void tree_element_viewlayer_activate(bContext *C, TreeElement *te)
 static void do_outliner_object_select_recursive(const Scene *scene,
                                                 ViewLayer *view_layer,
                                                 Object *ob_parent,
-                                                ListBase *lb,
-                                                const bool sync_select,
                                                 bool select)
 {
-  if (!sync_select) {
-    tree_iterator::all(*lb, [&](TreeElement *te) {
-      TreeStoreElem *tselem = TREESTORE(te);
-      if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_OB)) {
-        tselem->flag |= TSE_SELECTED;
-      }
-    });
-    return;
-  }
-
   BKE_view_layer_synced_ensure(scene, view_layer);
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
     Object *ob = base->object;
@@ -397,7 +385,7 @@ static void tree_element_object_activate(bContext *C,
     if (recursive) {
       /* Recursive select/deselect for Object hierarchies */
       do_outliner_object_select_recursive(
-          scene, view_layer, ob, NULL, true, (base->flag & BASE_SELECTED) != 0);
+          scene, view_layer, ob, (base->flag & BASE_SELECTED) != 0);
     }
 
     if (set != OL_SETSEL_NONE) {
@@ -1438,7 +1426,12 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   }
   else if (recursive && !(space_outliner->flag & SO_SYNC_SELECT)) {
     /* Selection of child objects in hierarchy when sync-selection is OFF. */
-    do_outliner_object_select_recursive(NULL, NULL, NULL, &te->subtree, false, true);
+    tree_iterator::all(te->subtree, [&](TreeElement *te) {
+      TreeStoreElem *tselem = TREESTORE(te);
+      if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_OB)) {
+        tselem->flag |= TSE_SELECTED;
+      }
+    });
   }
 
   if (tselem->type == TSE_SOME_ID) { /* The lib blocks. */
