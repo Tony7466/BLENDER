@@ -163,6 +163,11 @@ struct RealizeCurveInfo {
   Span<float> nurbs_weight;
 };
 
+struct GizmosRealizeInfo {
+  bke::GizmosComponent *gizmos;
+  int size;
+};
+
 /** Start indices in the final output curves data-block. */
 struct CurvesElementStartIndices {
   int point = 0;
@@ -222,6 +227,18 @@ struct AllCurvesInfo {
   bool create_nurbs_weight_attribute = false;
 };
 
+struct AllGizmosInfo {
+  /** Ordering of all attributes that are propagated to the output gimos generically. */
+  OrderedAttributes attributes;
+  /** Ordering of the original gizmos that are joined. */
+  VectorSet<const bke::GizmosGeometry *> order;
+  /** Preprocessed data about every original gizmos. This is ordered by #order. */
+  Array<GizmosRealizeInfo> realize_info;
+  /** Ordered materials on the output mesh. */
+  VectorSet<StringRef> pahts;
+  //bool create_id_attribute = false;
+};
+
 /** Collects all tasks that need to be executed to realize all instances. */
 struct GatherTasks {
   Vector<RealizePointCloudTask> pointcloud_tasks;
@@ -237,6 +254,7 @@ struct GatherTasks {
 /** Current offsets while during the gather operation. */
 struct GatherOffsets {
   int pointcloud_offset = 0;
+  int gizmos_offset = 0;
   MeshElementStartIndices mesh_offsets;
   CurvesElementStartIndices curves_offsets;
 };
@@ -246,6 +264,7 @@ struct GatherTasksInfo {
   const AllPointCloudsInfo &pointclouds;
   const AllMeshesInfo &meshes;
   const AllCurvesInfo &curves;
+  const AllGizmosInfo &gizmos;
   bool create_id_attribute_on_any_component = false;
 
   /**
@@ -272,13 +291,16 @@ struct InstanceContext {
   AttributeFallbacksArray meshes;
   /** Ordered by #AllCurvesInfo.attributes. */
   AttributeFallbacksArray curves;
+  /** Ordered by #AllGizmosInfo.attributes. */
+  AttributeFallbacksArray gizmos;
   /** Id mixed from all parent instances. */
   uint32_t id = 0;
 
   InstanceContext(const GatherTasksInfo &gather_info)
       : pointclouds(gather_info.pointclouds.attributes.size()),
         meshes(gather_info.meshes.attributes.size()),
-        curves(gather_info.curves.attributes.size())
+        curves(gather_info.curves.attributes.size()),
+        gizmos(gather_info.gizmos.attributes.size())
   {
   }
 };
@@ -623,6 +645,23 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         if (!gather_info.r_tasks.first_edit_data) {
           edit_component->add_user();
           gather_info.r_tasks.first_edit_data = edit_component;
+        }
+        break;
+      }
+      case GEO_COMPONENT_TYPE_GIZMO: {
+        const GizmosComponent &gizmos_component =
+            *static_cast<const GizmosComponent *>(component);
+        const bke::GizmosComponent *gizmos = gizmos_component.get_for_read();
+        if (gizmos != nullptr && !gizmos->is_empty()) {
+          const int gizmos_index = gather_info.gizmos.order.index_of(gizmos);
+          const GizmosRealizeInfo &gizmos_info =
+              gather_info.gizmos.realize_info[gizmos_index];
+          gather_info.r_tasks.gizmos_tasks.append({gather_info.r_offsets.gizmos_offset,
+                                                       &gizmos_info,
+                                                       base_transform,
+                                                       base_instance_context.gizmos,
+                                                       base_instance_context.id});
+          gather_info.r_offsets.gizmos_offset += gizmos->pathes_num();
         }
         break;
       }
@@ -1482,6 +1521,334 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Gizmos
+ * \{ */
+
+static OrderedAttributes gather_generic_gizmos_attributes_to_propagate(
+    const GeometrySet &in_geometry_set, const RealizeInstancesOptions &options)
+{
+  Vector<GeometryComponentType> src_component_types;
+  src_component_types.append(GEO_COMPONENT_TYPE_GIZMO);
+  if (options.realize_instance_attributes) {
+    src_component_types.append(GEO_COMPONENT_TYPE_INSTANCES);
+  }
+
+  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  in_geometry_set.gather_attributes_for_propagation(src_component_types,
+                                                    GEO_COMPONENT_TYPE_GIZMO,
+                                                    true,
+                                                    options.propagation_info,
+                                                    attributes_to_propagate);
+  //attributes_to_propagate.remove("position");
+  OrderedAttributes ordered_attributes;
+  for (const auto item : attributes_to_propagate.items()) {
+    ordered_attributes.ids.add_new(item.key);
+    ordered_attributes.kinds.append(item.value);
+  }
+  return ordered_attributes;
+}
+
+static void gather_gizmos_to_realize(const GeometrySet &geometry_set,
+                                     VectorSet<const bke::GizmosGeometry *> &r_gizmos)
+{
+  if (const GizmosGeometry *gizmos = geometry_set.get_gizmos_for_read()) {
+    if (!gizmos->is_empty()) {
+      gizmos.add(curves);
+    }
+  }
+  if (const Instances *instances = geometry_set.get_instances_for_read()) {
+    instances->foreach_referenced_geometry([&](const GeometrySet &instance_geometry_set) {
+      gather_gizmos_to_realize(instance_geometry_set, r_gizmos);
+    });
+  }
+}
+
+/*
+static AllGizmosInfo preprocess_gizmos(const GeometrySet &geometry_set,
+                                       const RealizeInstancesOptions &options)
+{
+  AllGizmosInfo info;
+  info.attributes = gather_generic_gizmos_attributes_to_propagate(
+      geometry_set, options);
+
+  gather_gizmos_to_realize(geometry_set, info.order);
+  info.realize_info.reinitialize(info.order.size());
+  for (const int gizmos_index : info.realize_info.index_range()) {
+    GizmosRealizeInfo &gizmo_info = info.realize_info[gizmos_index];
+    const bke::GizmoGeometry *gizmo = info.order[gizmos_index];
+    gizmo_info.gizmo = gizmo;
+
+    /* Access attributes. *//*
+    bke::AttributeAccessor attributes = gizmo.attributes();
+    gizmo_info.attributes.reinitialize(info.attributes.size());
+    for (const int attribute_index : info.attributes.index_range()) {
+      const eAttrDomain domain = ATTR_DOMAIN_POINT;
+      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
+      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
+      if (attributes.contains(attribute_id)) {
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
+        curve_info.attributes[attribute_index].emplace(std::move(attribute));
+      }
+    }
+    if (info.create_id_attribute) {
+      bke::GAttributeReader id_attribute = attributes.lookup("id");
+      if (id_attribute) {
+        curve_info.stored_ids = id_attribute.varray.get_internal_span().typed<int>();
+      }
+    }
+
+    if (attributes.contains("radius")) {
+      curve_info.radius =
+          attributes.lookup<float>("radius", ATTR_DOMAIN_POINT).varray.get_internal_span();
+      info.create_radius_attribute = true;
+    }
+    if (attributes.contains("nurbs_weight")) {
+      curve_info.nurbs_weight =
+          attributes.lookup<float>("nurbs_weight", ATTR_DOMAIN_POINT).varray.get_internal_span();
+      info.create_nurbs_weight_attribute = true;
+    }
+    curve_info.resolution = curves.resolution();
+    if (attributes.contains("resolution")) {
+      info.create_resolution_attribute = true;
+    }
+    if (attributes.contains("handle_right")) {
+      curve_info.handle_left =
+          attributes.lookup<float3>("handle_left", ATTR_DOMAIN_POINT).varray.get_internal_span();
+      curve_info.handle_right =
+          attributes.lookup<float3>("handle_right", ATTR_DOMAIN_POINT).varray.get_internal_span();
+      info.create_handle_postion_attributes = true;
+    }
+  }
+  return info;
+}
+*/
+
+static AllGizmosInfo preprocess_gizmos(const GeometrySet &geometry_set,
+                                       const RealizeInstancesOptions &options)
+{
+  AllGizmosInfo info;
+  info.attributes = gather_generic_gizmos_attributes_to_propagate(geometry_set, options);
+
+  gather_gizmos_to_realize(geometry_set, info.order);
+  info.realize_info.reinitialize(info.order.size());
+  for (const int gizmos_index : info.realize_info.index_range()) {
+    GizmosRealizeInfo &gizmos_info = info.realize_info[gizmos_index];
+    const bke::GizmosGeometry *gizmos = info.order[gizmos_index];
+    gizmos_info.gizmos = gizmos;
+
+    /* Access attributes. */
+    bke::AttributeAccessor attributes = gizmos->attributes();
+    gizmos_info.attributes.reinitialize(info.attributes.size());
+    for (const int attribute_index : info.attributes.index_range()) {
+      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
+      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
+      const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
+      if (attributes.contains(attribute_id)) {
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
+        gizmos_info.attributes[attribute_index].emplace(std::move(attribute));
+      }
+    }
+    const VArray<float3> position_attribute = *attributes.lookup_or_default<float3>("position", ATTR_DOMAIN_POINT, float3(0));
+    gizmos_info.positions = position_attribute.get_internal_span();
+  }
+  return info;
+}
+
+static void execute_realize_gizmos_task(const RealizeInstancesOptions &options,
+                                       const AllCurvesInfo &all_curves_info,
+                                       const RealizeCurveTask &task,
+                                       const OrderedAttributes &ordered_attributes,
+                                       bke::CurvesGeometry &dst_curves,
+                                       MutableSpan<GSpanAttributeWriter> dst_attribute_writers,
+                                       MutableSpan<int> all_dst_ids,
+                                       MutableSpan<float3> all_handle_left,
+                                       MutableSpan<float3> all_handle_right,
+                                       MutableSpan<float> all_radii,
+                                       MutableSpan<float> all_nurbs_weights,
+                                       MutableSpan<int> all_resolutions)
+{
+  const RealizeCurveInfo &curves_info = *task.curve_info;
+  const Curves &curves_id = *curves_info.curves;
+  const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+
+  const IndexRange dst_point_range{task.start_indices.point, curves.points_num()};
+  const IndexRange dst_curve_range{task.start_indices.curve, curves.curves_num()};
+
+  copy_transformed_positions(
+      curves.positions(), task.transform, dst_curves.positions_for_write().slice(dst_point_range));
+
+  /* Copy and transform handle positions if necessary. */
+  if (all_curves_info.create_handle_postion_attributes) {
+    if (curves_info.handle_left.is_empty()) {
+      all_handle_left.slice(dst_point_range).fill(float3(0));
+    }
+    else {
+      copy_transformed_positions(
+          curves_info.handle_left, task.transform, all_handle_left.slice(dst_point_range));
+    }
+    if (curves_info.handle_right.is_empty()) {
+      all_handle_right.slice(dst_point_range).fill(float3(0));
+    }
+    else {
+      copy_transformed_positions(
+          curves_info.handle_right, task.transform, all_handle_right.slice(dst_point_range));
+    }
+  }
+
+  auto copy_point_span_with_default =
+      [&](const Span<float> src, MutableSpan<float> all_dst, const float value) {
+        if (src.is_empty()) {
+          all_dst.slice(dst_point_range).fill(value);
+        }
+        else {
+          all_dst.slice(dst_point_range).copy_from(src);
+        }
+      };
+  if (all_curves_info.create_radius_attribute) {
+    copy_point_span_with_default(curves_info.radius, all_radii, 1.0f);
+  }
+  if (all_curves_info.create_nurbs_weight_attribute) {
+    copy_point_span_with_default(curves_info.nurbs_weight, all_nurbs_weights, 1.0f);
+  }
+
+  if (all_curves_info.create_resolution_attribute) {
+    curves_info.resolution.materialize(all_resolutions.slice(dst_curve_range));
+  }
+
+  /* Copy curve offsets. */
+  const Span<int> src_offsets = curves.offsets();
+  const MutableSpan<int> dst_offsets = dst_curves.offsets_for_write().slice(dst_curve_range);
+  threading::parallel_for(curves.curves_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      dst_offsets[i] = task.start_indices.point + src_offsets[i];
+    }
+  });
+
+  if (!all_dst_ids.is_empty()) {
+    create_result_ids(
+        options, curves_info.stored_ids, task.id, all_dst_ids.slice(dst_point_range));
+  }
+
+  copy_generic_attributes_to_result(
+      curves_info.attributes,
+      task.attribute_fallbacks,
+      ordered_attributes,
+      [&](const eAttrDomain domain) {
+        switch (domain) {
+          case ATTR_DOMAIN_POINT:
+            return IndexRange(task.start_indices.point, curves.points_num());
+          case ATTR_DOMAIN_CURVE:
+            return IndexRange(task.start_indices.curve, curves.curves_num());
+          default:
+            BLI_assert_unreachable();
+            return IndexRange();
+        }
+      },
+      dst_attribute_writers);
+}
+
+static void execute_realize_gizmos_tasks(const RealizeInstancesOptions &options,
+                                        const AllGizmosInfo &all_gizmos_info,
+                                        const Span<RealizeGizmosTask> tasks,
+                                        const OrderedAttributes &ordered_attributes,
+                                        GeometrySet &r_realized_geometry)
+{
+  if (tasks.is_empty()) {
+    return;
+  }
+
+  const RealizeGizmosTask &last_task = tasks.last();
+  const bke::GizmosGeometry &last_gizmos = *last_task.gizmos_info->gizmos;
+  const int points_num = last_task.gizmos_offset + last_gizmos.pathes_num();
+
+  bke::GizmosGeometry *dst_gizmos = bke::Gizmos(points_num);
+  GizmosComponent &dst_component = r_realized_geometry.get_component_for_write<GizmosComponent>();
+  dst_component.replace(dst_gizmos);
+  bke::MutableAttributeAccessor dst_attributes = dst_gizmos->attributes_for_write();
+
+  /* Copy settings from the first input geometry set with curves. */
+  const RealizeGizmosTask &first_task = tasks.first();
+  const bke::GizmosGeometry &first_gizmos = *first_task.gizmos_info->gizmos;
+  //bke::gizmos_copy_parameters(first_gizmos, *dst_curves_id);
+
+  /* Prepare generic output attributes. */
+  Vector<GSpanAttributeWriter> dst_attribute_writers;
+  for (const int attribute_index : ordered_attributes.index_range()) {
+    const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
+    const eAttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
+    const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
+    dst_attribute_writers.append(
+        dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
+  }
+
+  /* Prepare handle position attributes if necessary. */
+  SpanAttributeWriter<float3> handle_left;
+  SpanAttributeWriter<float3> handle_right;
+  if (all_gizmos_info.create_handle_postion_attributes) {
+    handle_left = dst_attributes.lookup_or_add_for_write_only_span<float3>("handle_left",
+                                                                           ATTR_DOMAIN_POINT);
+    handle_right = dst_attributes.lookup_or_add_for_write_only_span<float3>("handle_right",
+                                                                            ATTR_DOMAIN_POINT);
+  }
+
+  SpanAttributeWriter<float> radius;
+  if (all_gizmos_info.create_radius_attribute) {
+    radius = dst_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
+  }
+  SpanAttributeWriter<float> nurbs_weight;
+  if (all_gizmos_info.create_nurbs_weight_attribute) {
+    nurbs_weight = dst_attributes.lookup_or_add_for_write_only_span<float>("nurbs_weight",
+                                                                           ATTR_DOMAIN_POINT);
+  }
+  SpanAttributeWriter<int> resolution;
+  if (all_curves_info.create_resolution_attribute) {
+    resolution = dst_attributes.lookup_or_add_for_write_only_span<int>("resolution",
+                                                                       ATTR_DOMAIN_CURVE);
+  }
+
+  /* Actually execute all tasks. */
+  threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
+    for (const int task_index : task_range) {
+      const RealizeCurveTask &task = tasks[task_index];
+      execute_realize_curve_task(options,
+                                 all_curves_info,
+                                 task,
+                                 ordered_attributes,
+                                 dst_curves,
+                                 dst_attribute_writers,
+                                 point_ids.span,
+                                 handle_left.span,
+                                 handle_right.span,
+                                 radius.span,
+                                 nurbs_weight.span,
+                                 resolution.span);
+    }
+  });
+
+  /* Type counts have to be updated eagerly. */
+  dst_curves.runtime->type_counts.fill(0);
+  for (const RealizeCurveTask &task : tasks) {
+    for (const int i : IndexRange(CURVE_TYPES_NUM)) {
+      dst_curves.runtime->type_counts[i] +=
+          task.curve_info->curves->geometry.runtime->type_counts[i];
+    }
+  }
+
+  /* Tag modified attributes. */
+  for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
+    dst_attribute.finish();
+  }
+  point_ids.finish();
+  radius.finish();
+  resolution.finish();
+  nurbs_weight.finish();
+  handle_left.finish();
+  handle_right.finish();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Realize Instances
  * \{ */
 
@@ -1514,6 +1881,7 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
   AllPointCloudsInfo all_pointclouds_info = preprocess_pointclouds(geometry_set, options);
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options);
+  AllGizmosInfo all_gizmos_info = preprocess_gizmos(geometry_set, options);
 
   Vector<std::unique_ptr<GArray<>>> temporary_arrays;
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
@@ -1522,6 +1890,7 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
   GatherTasksInfo gather_info = {all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
+                                 all_gizmos_info,
                                  create_id_attribute,
                                  temporary_arrays};
   const float4x4 transform = float4x4::identity();
@@ -1534,6 +1903,11 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
                                    gather_info.r_tasks.pointcloud_tasks,
                                    all_pointclouds_info.attributes,
                                    new_geometry_set);
+  execute_realize_gizmos_tasks(options,
+                               all_gizmos_info,
+                               gather_info.r_tasks.gizmos_tasks,
+                               all_gizmos_info.attributes,
+                               new_geometry_set);
   execute_realize_mesh_tasks(options,
                              all_meshes_info,
                              gather_info.r_tasks.mesh_tasks,
