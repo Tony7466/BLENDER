@@ -364,9 +364,8 @@ static void file_draw_preview(const FileDirEntry *file,
   float scaledx, scaledy;
   float scale;
   int ex, ey;
-  bool show_outline = !is_icon &&
-                      (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
+  const bool is_loading = file->flags & FILE_ENTRY_PREVIEW_LOADING;
 
   BLI_assert(imb != nullptr);
 
@@ -402,8 +401,6 @@ static void file_draw_preview(const FileDirEntry *file,
   xco = tile_draw_rect->xmin + int(dx);
   yco = tile_draw_rect->ymax - layout->prv_h + int(dy);
 
-  GPU_blend(GPU_BLEND_ALPHA);
-
   /* the large image */
 
   float document_img_col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -423,25 +420,44 @@ static void file_draw_preview(const FileDirEntry *file,
     document_img_col[3] *= 0.3f;
   }
 
+  if (!is_icon && file->typeflag & FILE_TYPE_IMAGE) {
+    /* Draw checker pattern behind image previews in case they have transparency. */
+    imm_draw_box_checker_2d(float(xco), float(yco), float(xco + ex), float(yco + ey));
+  }
+
+  if ((!is_icon && file->typeflag & (FILE_TYPE_FTFONT | FILE_TYPE_BLENDER |
+                                     FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_ASSET)) ||
+      (icon && is_icon && is_loading))
+  {
+    rctf rect = {float(xco), float(xco + ex), float(yco), float(yco + ey)};
+    const float colv[4] = {0.0f, 0.0f, 0.0f, 0.15f};
+    UI_draw_roundbox_4fv_ex(&rect, colv, nullptr, 1.0f, colv, U.pixelsize, 2.0f);
+  }
+
+  GPU_blend(GPU_BLEND_ALPHA);
+
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
     /* Datablock preview images use premultiplied alpha. */
     GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   }
 
-  IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
-  immDrawPixelsTexTiled_scaling(&state,
-                                float(xco),
-                                float(yco),
-                                imb->x,
-                                imb->y,
-                                GPU_RGBA8,
-                                true,
-                                imb->byte_buffer.data,
-                                scale,
-                                scale,
-                                1.0f,
-                                1.0f,
-                                document_img_col);
+  if (!is_loading) {
+    /* Don't show outer document image if loading - too flashy. */
+    IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
+    immDrawPixelsTexTiled_scaling(&state,
+                                  float(xco),
+                                  float(yco),
+                                  imb->x,
+                                  imb->y,
+                                  GPU_RGBA8,
+                                  true,
+                                  imb->byte_buffer.data,
+                                  scale,
+                                  scale,
+                                  1.0f,
+                                  1.0f,
+                                  document_img_col);
+  }
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -456,11 +472,17 @@ static void file_draw_preview(const FileDirEntry *file,
       icon_color[1] = 255;
       icon_color[2] = 255;
     }
+
+    if (is_loading) {
+      /* Contrast with background since we are not showing the large document image. */
+      UI_GetThemeColor4ubv(TH_TEXT, icon_color);
+    }
+
     icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
     icon_y = yco + (ey / 2.0f) - (icon_size * ((file->typeflag & FILE_TYPE_DIR) ? 0.78f : 0.75f));
     UI_icon_draw_ex(icon_x,
                     icon_y,
-                    icon,
+                    is_loading ? ICON_TEMP : icon,
                     icon_aspect / UI_SCALE_FAC,
                     icon_opacity,
                     0.0f,
@@ -515,7 +537,7 @@ static void file_draw_preview(const FileDirEntry *file,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
   }
-  else if (icon && !is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) {
+  else if (icon && ((!is_icon || is_loading) && !(file->typeflag & FILE_TYPE_FTFONT))) {
     /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
     float icon_x, icon_y;
     const uchar dark[4] = {0, 0, 0, 255};
@@ -559,24 +581,6 @@ static void file_draw_preview(const FileDirEntry *file,
                     light,
                     false,
                     UI_NO_ICON_OVERLAY_TEXT);
-  }
-
-  /* Contrasting outline around some preview types. */
-  if (show_outline) {
-    GPUVertFormat *format = immVertexFormat();
-    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    float border_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
-    float bgcolor[4];
-    UI_GetThemeColor4fv(TH_BACK, bgcolor);
-    if (rgb_to_grayscale(bgcolor) > 0.5f) {
-      border_color[0] = 0.0f;
-      border_color[1] = 0.0f;
-      border_color[2] = 0.0f;
-    }
-    immUniformColor4fv(border_color);
-    imm_draw_box_wire_2d(pos, float(xco), float(yco), float(xco + ex), float(yco + ey));
-    immUnbindProgram();
   }
 
   GPU_blend(GPU_BLEND_NONE);
