@@ -5,7 +5,6 @@
 
 #include "DNA_space_types.h"
 
-
 #include "RNA_access.h"
 #include "RNA_define.h"
 
@@ -24,7 +23,7 @@ void files_drop_copy(bContext * /* C */, wmDrag *drag, wmDropBox *drop)
   // TODO(@guishe): Add support for multiple drag&drop files import
   char dir[FILE_MAX], file[FILE_MAX];
   BLI_path_split_dir_file(WM_drag_get_path(drag), dir, sizeof(dir), file, sizeof(file));
-  
+
   RNA_string_set(drop->ptr, "directory", dir);
 
   PointerRNA itemptr{};
@@ -46,7 +45,7 @@ void add_drag_path_dropbox(ListBase *lb, const char *operator_name)
     return false;
   };
 
-  WM_dropbox_add(lb, operator_name, poll, files_drop_copy, nullptr,nullptr);
+  WM_dropbox_add(lb, operator_name, poll, files_drop_copy, nullptr, nullptr);
 }
 
 void ED_dropboxes_io(void)

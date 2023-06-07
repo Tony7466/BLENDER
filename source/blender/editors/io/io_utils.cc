@@ -62,7 +62,7 @@ void skip_save_import_paths_props(wmOperatorType *ot, const eFileSel_Flag flag)
   }
 }
 
-void files_drop_label_draw(bContext *C, wmOperator *op, int icon, char *extension)
+void files_drop_label_draw(bContext *C, wmOperator *op, int icon, const char *extension)
 {
   ScrArea *area = CTX_wm_area(C);
 
