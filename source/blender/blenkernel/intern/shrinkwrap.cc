@@ -513,7 +513,7 @@ static void shrinkwrap_calc_normal_projection_cb_ex(void *__restrict userdata,
 
   const float proj_limit_squared = calc->smd->projLimit * calc->smd->projLimit;
   float *co = calc->vertexCos[i];
-  float tmp_co[3], tmp_no[3];
+  const float *tmp_co, *tmp_no;
   float weight = BKE_defvert_array_find_weight_safe(calc->dvert, i, calc->vgroup);
 
   if (calc->invert_vgroup) {
@@ -530,12 +530,12 @@ static void shrinkwrap_calc_normal_projection_cb_ex(void *__restrict userdata,
     /* These coordinates are deformed by vertexCos only for normal projection
      * (to get correct normals) for other cases calc->verts contains undeformed coordinates and
      * vertexCos should be used */
-    copy_v3_v3(tmp_co, calc->vert_positions[i]);
-    copy_v3_v3(tmp_no, calc->vert_normals[i]);
+    tmp_co = calc->vert_positions[i];
+    tmp_no = calc->vert_normals[i];
   }
   else {
-    copy_v3_v3(tmp_co, co);
-    copy_v3_v3(tmp_no, proj_axis);
+    tmp_co = co;
+    tmp_no = proj_axis;
   }
 
   hit->index = -1;
