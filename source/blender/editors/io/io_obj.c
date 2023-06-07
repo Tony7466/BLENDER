@@ -484,7 +484,6 @@ void WM_OT_obj_import(wmOperatorType *ot)
                                      WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
-
   RNA_def_float(
       ot->srna,
       "global_scale",
