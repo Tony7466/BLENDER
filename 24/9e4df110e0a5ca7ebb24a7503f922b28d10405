@@ -8,3 +8,4 @@ Referenced by commit f63c3075cb3340c89b3f2d04de8ba9a5577381be, Outliner: Port me
 Referenced by commit 8374208a5702cb582187984b45fc6a6dcd309ac0, Outliner: Port curve elements to new tree-element code design
 Referenced by pull request #108654, Outliner: Port metaball elements to new tree-element code design
 Referenced by commit c5ddf63a4ae2d97aa0b56aeaca6462c24022ef87, Outliner: Port metaball elements to new tree-element code design
+Referenced by pull request #108697, Outliner: Port texture elements to new tree-element code design
