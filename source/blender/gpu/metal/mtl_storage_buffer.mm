@@ -228,7 +228,7 @@ void MTLStorageBuf::clear(uint32_t clear_value)
 void MTLStorageBuf::copy_sub(VertBuf *src_, uint dst_offset, uint src_offset, uint copy_size)
 {
   /* TODO(Metal): Support Copy sub operation. */
-  MTL_LOG_WARNING("MTLStorageBuf::copy_sub not yet supported.\n");
+  MTL_LOG_WARNING("MTLStorageBuf::copy_sub not yet supported.");
 }
 
 void MTLStorageBuf::read(void *data)
@@ -296,7 +296,7 @@ id<MTLBuffer> MTLStorageBuf::get_metal_buffer()
   return source_buffer->get_metal_buffer();
 }
 
-int MTLStorageBuf::get_size()
+size_t MTLStorageBuf::get_size()
 {
   BLI_assert(this);
   return size_in_bytes_;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -276,7 +277,13 @@ static void ui_selectcontext_apply(bContext *C,
                                    const double value,
                                    const double value_orig);
 
-#  define IS_ALLSELECT_EVENT(event) (((event)->modifier & KM_ALT) != 0)
+/**
+ * Only respond to events which are expected to be used for multi button editing,
+ * e.g. ALT is also used for button array pasting, see #108096.
+ */
+#  define IS_ALLSELECT_EVENT(event) \
+    (((event)->modifier & KM_ALT) != 0 && \
+     (ISMOUSE((event)->type) || ELEM((event)->type, EVT_RETKEY, EVT_PADENTER)))
 
 /** just show a tinted color so users know its activated */
 #  define UI_BUT_IS_SELECT_CONTEXT UI_BUT_NODE_ACTIVE
@@ -3329,7 +3336,9 @@ static bool ui_textedit_copypaste(uiBut *but, uiHandleButtonData *data, const in
     char *buf = static_cast<char *>(
         MEM_mallocN(sizeof(char) * (sellen + 1), "ui_textedit_copypaste"));
 
-    BLI_strncpy(buf, data->str + but->selsta, sellen + 1);
+    memcpy(buf, data->str + but->selsta, sellen);
+    buf[sellen] = '\0';
+
     WM_clipboard_text_set(buf, false);
     MEM_freeN(buf);
 
@@ -3631,6 +3640,28 @@ static void ui_textedit_prev_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
   }
 }
 
+/**
+ * Return the jump type used for cursor motion & back-space/delete actions.
+ */
+static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
+{
+/* TODO: Do not enable these Apple-specific modifiers until we also support them in
+ * text objects, console, and text editor to keep everything consistent - Harley. */
+#if defined(__APPLE__) && 0
+  if (event->modifier & KM_OSKEY) {
+    return STRCUR_JUMP_ALL;
+  }
+  if (event->modifier & KM_ALT) {
+    return STRCUR_JUMP_DELIM;
+  }
+#else
+  if (event->modifier & KM_CTRL) {
+    return STRCUR_JUMP_DELIM;
+  }
+#endif
+  return STRCUR_JUMP_NONE;
+}
+
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
@@ -3776,21 +3807,15 @@ static void ui_do_but_textedit(
         }
         break;
       case EVT_RIGHTARROWKEY:
-        ui_textedit_move(but,
-                         data,
-                         STRCUR_DIR_NEXT,
-                         event->modifier & KM_SHIFT,
-                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+      case EVT_LEFTARROWKEY: {
+        const eStrCursorJumpDirection direction = (event->type == EVT_RIGHTARROWKEY) ?
+                                                      STRCUR_DIR_NEXT :
+                                                      STRCUR_DIR_PREV;
+        const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
+        ui_textedit_move(but, data, direction, event->modifier & KM_SHIFT, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
-      case EVT_LEFTARROWKEY:
-        ui_textedit_move(but,
-                         data,
-                         STRCUR_DIR_PREV,
-                         event->modifier & KM_SHIFT,
-                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
+      }
       case WHEELDOWNMOUSE:
       case EVT_DOWNARROWKEY:
         if (data->searchbox) {
@@ -3831,22 +3856,14 @@ static void ui_do_but_textedit(
         retval = WM_UI_HANDLER_BREAK;
         break;
       case EVT_DELKEY:
-        changed = ui_textedit_delete(but,
-                                     data,
-                                     STRCUR_DIR_NEXT,
-                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
-                                                                   STRCUR_JUMP_NONE);
+      case EVT_BACKSPACEKEY: {
+        const eStrCursorJumpDirection direction = (event->type == EVT_DELKEY) ? STRCUR_DIR_NEXT :
+                                                                                STRCUR_DIR_PREV;
+        const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
+        changed = ui_textedit_delete(but, data, direction, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
-
-      case EVT_BACKSPACEKEY:
-        changed = ui_textedit_delete(but,
-                                     data,
-                                     STRCUR_DIR_PREV,
-                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
-                                                                   STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
+      }
 
       case EVT_AKEY:
 
@@ -5079,14 +5096,13 @@ static bool ui_numedit_but_NUM(uiButNumber *but,
           break;
         }
         case PROP_SCALE_LOG: {
+          const float startvalue = max_ff(float(data->startvalue), log_min);
           if (tempf < log_min) {
-            data->dragstartx -= logf(log_min / float(data->startvalue)) / fac -
-                                float(mx - data->dragstartx);
+            data->dragstartx -= logf(log_min / startvalue) / fac - float(mx - data->dragstartx);
             tempf = softmin;
           }
           else if (tempf > softmax) {
-            data->dragstartx -= logf(softmax / float(data->startvalue)) / fac -
-                                float(mx - data->dragstartx);
+            data->dragstartx -= logf(softmax / startvalue) / fac - float(mx - data->dragstartx);
             tempf = softmax;
           }
           break;
@@ -5486,9 +5502,13 @@ static int ui_do_but_NUM(
 
         double value_step;
         if (scale_type == PROP_SCALE_LOG) {
-          value_step = powf(10.0f,
-                            (roundf(log10f(data->value) + UI_PROP_SCALE_LOG_SNAP_OFFSET) - 1.0f) +
-                                log10f(number_but->step_size));
+          double precision = (roundf(log10f(data->value) + UI_PROP_SCALE_LOG_SNAP_OFFSET) - 1.0f) +
+                             log10f(number_but->step_size);
+          /* Non-finite when `data->value` is zero. */
+          if (UNLIKELY(!isfinite(precision))) {
+            precision = -FLT_MAX; /* Ignore this value. */
+          }
+          value_step = powf(10.0f, max_ff(precision, -number_but->precision));
         }
         else {
           value_step = double(number_but->step_size * UI_PRECISION_FLOAT_SCALE);

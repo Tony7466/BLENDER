@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup sptext
@@ -355,12 +356,12 @@ static int text_open_exec(bContext *C, wmOperator *op)
   Text *text;
   PropertyPointerRNA *pprop;
   PointerRNA idptr;
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
   const bool internal = RNA_boolean_get(op->ptr, "internal");
 
-  RNA_string_get(op->ptr, "filepath", str);
+  RNA_string_get(op->ptr, "filepath", filepath);
 
-  text = BKE_text_load_ex(bmain, str, BKE_main_blendfile_path(bmain), internal);
+  text = BKE_text_load_ex(bmain, filepath, BKE_main_blendfile_path(bmain), internal);
 
   if (!text) {
     if (op->customdata) {
@@ -703,18 +704,18 @@ static int text_save_as_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Text *text = CTX_data_edit_text(C);
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
 
   if (!text) {
     return OPERATOR_CANCELLED;
   }
 
-  RNA_string_get(op->ptr, "filepath", str);
+  RNA_string_get(op->ptr, "filepath", filepath);
 
   if (text->filepath) {
     MEM_freeN(text->filepath);
   }
-  text->filepath = BLI_strdup(str);
+  text->filepath = BLI_strdup(filepath);
   text->flags &= ~TXT_ISMEM;
 
   txt_write_file(bmain, text, op->reports);
@@ -729,23 +730,23 @@ static int text_save_as_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 {
   Main *bmain = CTX_data_main(C);
   Text *text = CTX_data_edit_text(C);
-  const char *str;
 
   if (RNA_struct_property_is_set(op->ptr, "filepath")) {
     return text_save_as_exec(C, op);
   }
 
+  const char *filepath;
   if (text->filepath) {
-    str = text->filepath;
+    filepath = text->filepath;
   }
   else if (text->flags & TXT_ISMEM) {
-    str = text->id.name + 2;
+    filepath = text->id.name + 2;
   }
   else {
-    str = BKE_main_blendfile_path(bmain);
+    filepath = BKE_main_blendfile_path(bmain);
   }
 
-  RNA_string_set(op->ptr, "filepath", str);
+  RNA_string_set(op->ptr, "filepath", filepath);
   WM_event_add_fileselect(C, op);
 
   return OPERATOR_RUNNING_MODAL;
@@ -3831,6 +3832,77 @@ void TEXT_OT_replace_set_selected(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Jump to File at Point (Internal)
+ *
+ * \note This is the internal implementation, typically `TEXT_OT_jump_to_file_at_point`
+ * should be used because it respects the "External Editor" preference.
+ * \{ */
+
+static int text_jump_to_file_at_point_internal_exec(bContext *C, wmOperator *op)
+{
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
+  const int line = RNA_int_get(op->ptr, "line");
+  const int column = RNA_int_get(op->ptr, "column");
+
+  Main *bmain = CTX_data_main(C);
+  Text *text = NULL;
+
+  LISTBASE_FOREACH (Text *, text_iter, &bmain->texts) {
+    if (text_iter->filepath && BLI_path_cmp(text_iter->filepath, filepath) == 0) {
+      text = text_iter;
+      break;
+    }
+  }
+
+  if (text == NULL) {
+    text = BKE_text_load(bmain, filepath, BKE_main_blendfile_path(bmain));
+  }
+
+  if (text == NULL) {
+    BKE_reportf(op->reports, RPT_WARNING, "File '%s' cannot be opened", filepath);
+    return OPERATOR_CANCELLED;
+  }
+
+  txt_move_to(text, line, column, false);
+
+  /* naughty!, find text area to set, not good behavior
+   * but since this is a developer tool lets allow it - campbell */
+  if (!ED_text_activate_in_screen(C, text)) {
+    BKE_reportf(op->reports, RPT_INFO, "See '%s' in the text editor", text->id.name + 2);
+  }
+
+  WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
+
+  return OPERATOR_FINISHED;
+}
+
+void TEXT_OT_jump_to_file_at_point_internal(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Jump to File at Point (Internal)";
+  ot->idname = "TEXT_OT_jump_to_file_at_point_internal";
+  ot->description = "Jump to a file for the internal text editor";
+
+  /* api callbacks */
+  ot->exec = text_jump_to_file_at_point_internal_exec;
+
+  /* flags */
+  ot->flag = 0;
+
+  prop = RNA_def_string(ot->srna, "filepath", NULL, FILE_MAX, "Filepath", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_int(ot->srna, "line", 0, 0, INT_MAX, "Line", "Line to jump to", 1, 10000);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_int(ot->srna, "column", 0, 0, INT_MAX, "Column", "Column to jump to", 1, 10000);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 /** \} */

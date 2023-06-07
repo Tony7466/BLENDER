@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -73,7 +74,7 @@ class EmitterData {
   static constexpr int MAX_COLLECTION_ID = 63;
 
   /* Mask of a light linking collection this emitter uses in its configuration.
-   * A single bit is set in this bitfield which corresponds to an identifier of a light linking
+   * A single bit is set in this bit-field which corresponds to an identifier of a light linking
    * collection in the scene. */
   uint64_t collection_mask = 0;
 
@@ -121,7 +122,7 @@ class EmitterDataMap {
   }
 
  private:
-  /* Get linked collection depending on whether this is emitter information os for light or shadow
+  /* Get linked collection depending on whether this is emitter information for light or shadow
    * linking. */
   /* TODO(sergey): Check whether template specialization is preferred here. */
   inline const Collection *get_collection(const Object &emitter) const
@@ -275,13 +276,5 @@ class Cache {
   LinkingData light_linking_{LIGHT_LINKING_RECEIVER};
   LinkingData shadow_linking_{LIGHT_LINKING_BLOCKER};
 };
-
-/* Check whether object can be linked to an emitter without causing feedback loop. */
-inline bool can_link_to_emitter(const Object &object)
-{
-  return object.light_linking == nullptr ||
-         (object.light_linking->receiver_collection == nullptr &&
-          object.light_linking->blocker_collection == nullptr);
-}
 
 }  // namespace blender::deg::light_linking

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -448,7 +449,9 @@ class OutputFileOperation : public NodeOperation {
 
   void execute() override
   {
-    context().set_info_message("Viewport compositor setup not fully supported");
+    if (context().use_file_output()) {
+      context().set_info_message("Viewport compositor setup not fully supported");
+    }
   }
 };
 

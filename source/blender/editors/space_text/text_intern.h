@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup sptext
@@ -163,6 +164,7 @@ void TEXT_OT_find(struct wmOperatorType *ot);
 void TEXT_OT_find_set_selected(struct wmOperatorType *ot);
 void TEXT_OT_replace(struct wmOperatorType *ot);
 void TEXT_OT_replace_set_selected(struct wmOperatorType *ot);
+void TEXT_OT_jump_to_file_at_point_internal(struct wmOperatorType *ot);
 
 /* text_find = open properties, activate search button */
 void TEXT_OT_start_find(struct wmOperatorType *ot);

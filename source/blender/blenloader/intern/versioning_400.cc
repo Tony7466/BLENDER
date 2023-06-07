@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -119,6 +121,18 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         version_geometry_nodes_add_realize_instance_nodes(ntree);
       }
+    }
+  }
+
+  /* 400 4 did not require any do_version here. */
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 5)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+#define SCE_SNAP_PROJECT (1 << 3)
+      if (scene->toolsettings->snap_flag & SCE_SNAP_PROJECT) {
+        scene->toolsettings->snap_mode |= SCE_SNAP_MODE_FACE_RAYCAST;
+      }
+#undef SCE_SNAP_PROJECT
     }
   }
 

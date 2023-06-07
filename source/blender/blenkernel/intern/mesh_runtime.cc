@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -315,7 +316,7 @@ void BKE_mesh_runtime_verttri_from_looptri(MVertTri *r_verttri,
   }
 }
 
-bool BKE_mesh_runtime_ensure_edit_data(struct Mesh *mesh)
+bool BKE_mesh_runtime_ensure_edit_data(Mesh *mesh)
 {
   if (mesh->runtime->edit_data != nullptr) {
     return false;
@@ -365,7 +366,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   }
 }
 
-void BKE_mesh_tag_edges_split(struct Mesh *mesh)
+void BKE_mesh_tag_edges_split(Mesh *mesh)
 {
   /* Triangulation didn't change because vertex positions and loop vertex indices didn't change.
    * Face normals didn't change either, but tag those anyway, since there is no API function to
@@ -422,7 +423,7 @@ void BKE_mesh_tag_positions_changed_uniformly(Mesh *mesh)
   mesh->runtime->bounds_cache.tag_dirty();
 }
 
-void BKE_mesh_tag_topology_changed(struct Mesh *mesh)
+void BKE_mesh_tag_topology_changed(Mesh *mesh)
 {
   BKE_mesh_runtime_clear_geometry(mesh);
 }
@@ -432,7 +433,7 @@ bool BKE_mesh_is_deformed_only(const Mesh *mesh)
   return mesh->runtime->deformed_only;
 }
 
-eMeshWrapperType BKE_mesh_wrapper_type(const struct Mesh *mesh)
+eMeshWrapperType BKE_mesh_wrapper_type(const Mesh *mesh)
 {
   return mesh->runtime->wrapper_type;
 }
