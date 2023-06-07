@@ -78,16 +78,18 @@ ccl_device bool integrator_init_from_camera(KernelGlobals kg,
   const int sample = film_write_sample(
       kg, state, render_buffer, scheduled_sample, tile->sample_offset);
 
+  /* Map the buffer coordinates to the image coordinates */
+  int tile_y = y - tile->slice_start_y;
+  int slice_count = tile_y/tile->slice_height;
+  tile_y =  tile_y - slice_count*tile->slice_height;
+  tile_y = tile->slice_stride*slice_count + tile_y + tile->slice_start_y;
+    
   /* Initialize random number seed for path. */
-  const uint rng_hash = path_rng_hash_init(kg, sample, x, y);
+  const uint rng_hash = path_rng_hash_init(kg, sample, x, tile_y);
 
   {
     /* Generate camera ray. */
     Ray ray;
-    int tile_y = y - tile->slice_start_y;
-    int slice_count = tile_y/tile->slice_height;
-    tile_y =  tile_y - slice_count*tile->slice_height;
-    tile_y = tile->slice_stride*slice_count + tile_y + tile->slice_start_y;
     integrate_camera_sample(kg, sample, x, tile_y, rng_hash, &ray);
     if (ray.tmax == 0.0f) {
       return true;
