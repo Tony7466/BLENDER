@@ -456,7 +456,7 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
   PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
-  files_drop_label_draw(C, op, ICON_FILE_3D);
+  files_drop_label_draw(C, op, ICON_FILE_3D, ".obj");
   ui_obj_import_settings(op->layout, &ptr);
 }
 

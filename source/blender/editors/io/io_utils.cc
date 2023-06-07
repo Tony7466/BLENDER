@@ -28,49 +28,57 @@ int wm_io_import_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */
 {
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
+
   if (filepath[0]) {
     return WM_operator_props_dialog_popup(C, op, 300);
   }
+
   WM_event_add_fileselect(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
 
 void skip_save_import_paths_props(wmOperatorType *ot, const eFileSel_Flag flag)
 {
+  PropertyRNA *prop;
   if (flag & WM_FILESEL_FILEPATH) {
-    RNA_def_property_flag(RNA_struct_type_find_property(ot->srna, "filepath"), PROP_SKIP_SAVE);
+    prop = RNA_struct_type_find_property(ot->srna, "filepath");
+    RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   }
   if (flag & WM_FILESEL_FILENAME) {
-    RNA_def_property_flag(RNA_struct_type_find_property(ot->srna, "filename"), PROP_SKIP_SAVE);
+    prop = RNA_struct_type_find_property(ot->srna, "filename");
+    RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   }
   if (flag & WM_FILESEL_DIRECTORY) {
-    RNA_def_property_flag(RNA_struct_type_find_property(ot->srna, "directory"), PROP_SKIP_SAVE);
+    prop = RNA_struct_type_find_property(ot->srna, "directory");
+    RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   }
   if (flag & WM_FILESEL_FILES) {
-    RNA_def_property_flag(RNA_struct_type_find_property(ot->srna, "files"), PROP_SKIP_SAVE);
+    prop = RNA_struct_type_find_property(ot->srna, "files");
+    RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   }
   if (flag & WM_FILESEL_RELPATH) {
-    RNA_def_property_flag(RNA_struct_type_find_property(ot->srna, "relative_path"),
-                          PROP_SKIP_SAVE);
+    prop = RNA_struct_type_find_property(ot->srna, "relative_path");
+    RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   }
 }
 
-void files_drop_label_draw(bContext *C, wmOperator *op, int icon)
+void files_drop_label_draw(bContext *C, wmOperator *op, int icon, char *extension)
 {
   ScrArea *area = CTX_wm_area(C);
+
   if (area->spacetype == SPACE_FILE) {
     return;
   }
+
   char label[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", label);
 
   if (RNA_struct_find_property(op->ptr, "directory") &&
       RNA_collection_length(op->ptr, "files") > 1)
   {
-    char ext[FILE_MAX];
-    BLI_strncpy(ext, BLI_path_extension(label), sizeof(ext));
-    sprintf(label, "%d %s files dropped.", RNA_collection_length(op->ptr, "files"), ext);
+    sprintf(label, "%d %s files dropped.", RNA_collection_length(op->ptr, "files"), extension);
   }
+
   uiLayout *box = uiLayoutBox(op->layout);
   uiItemL(box, label, icon);
 }
