@@ -450,7 +450,7 @@ static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *me
     /* Compute loop normals (NOTE: will compute poly and vert normals as well, if needed!). In case
      * of deferred CPU subdivision, this will be computed when the wrapper is generated. */
     if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
-      BKE_mesh_corner_normals_ensure(mesh_final);
+      mesh_final->corner_normals();
     }
   }
   else {
@@ -1068,7 +1068,7 @@ static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
     /* Compute loop normals. In case of deferred CPU subdivision, this will be computed when the
      * wrapper is generated. */
     if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
-      BKE_mesh_corner_normals_ensure(mesh_final);
+      mesh_final->corner_normals();
     }
   }
   else {
