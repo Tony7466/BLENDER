@@ -15,6 +15,7 @@
 #include "vk_descriptor_pools.hh"
 
 namespace blender::gpu {
+class VKBackend;
 
 class VKDevice : public NonCopyable {
  private:
@@ -34,6 +35,13 @@ class VKDevice : public NonCopyable {
 
   /** Functions of vk_ext_debugutils for this device/instance. */
   debug::VKDebuggingTools debugging_tools_;
+
+  /* Workarounds */
+  struct {
+    bool depth_component_24 = false;
+    bool texture_format_rgb16f = false;
+
+  } workarounds_;
 
  public:
   VkPhysicalDevice physical_device_get() const
@@ -95,11 +103,24 @@ class VKDevice : public NonCopyable {
   std::string vendor_name() const;
   std::string driver_version() const;
 
+  /**
+   * Some devices don't support `GPU_DEPTH_COMPONENT_24` texture formats.
+   *
+   * Check with this function if the workaround should be used to work around this issue.
+   */
+  bool get_component_24_workaround() const
+  {
+    return workarounds_.depth_component_24;
+  }
+
  private:
   void init_physical_device_properties();
   void init_debug_callbacks();
   void init_memory_allocator();
   void init_descriptor_pools();
+
+  /* During initialization the backend requires access to update the workarounds. */
+  friend VKBackend;
 };
 
 }  // namespace blender::gpu

@@ -73,6 +73,16 @@ void VKBackend::platform_init(const VKDevice &device)
            driver_version.c_str());
 }
 
+void VKBackend::detect_workarounds(VKDevice &device)
+{
+  device.workarounds_.depth_component_24 = false;
+
+  /* AMD GPUs don't support texture formats that use 24 bits. */
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    device.workarounds_.depth_component_24 = true;
+  }
+}
+
 void VKBackend::platform_exit()
 {
   GPG.clear();
@@ -174,7 +184,7 @@ shaderc::Compiler &VKBackend::get_shaderc_compiler()
   return shaderc_compiler_;
 }
 
-void VKBackend::capabilities_init(const VKDevice &device)
+void VKBackend::capabilities_init(VKDevice &device)
 {
   const VkPhysicalDeviceProperties &properties = device.physical_device_properties_get();
   const VkPhysicalDeviceLimits &limits = properties.limits;
@@ -205,6 +215,8 @@ void VKBackend::capabilities_init(const VKDevice &device)
   GCaps.max_varying_floats = limits.maxVertexOutputComponents;
   GCaps.max_shader_storage_buffer_bindings = limits.maxPerStageDescriptorStorageBuffers;
   GCaps.max_compute_shader_storage_blocks = limits.maxPerStageDescriptorStorageBuffers;
+
+  detect_workarounds(device);
 }
 
 }  // namespace blender::gpu
