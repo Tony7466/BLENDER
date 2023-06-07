@@ -40,6 +40,7 @@
 
 #include "BKE_action.h"
 #include "BKE_blendfile.h"
+#include "BKE_cachefile.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
@@ -65,6 +66,7 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_fileselect.h"
 #include "ED_object.h"
@@ -6801,8 +6803,16 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
   Scene *scene = CTX_data_scene(C);
   const bool engine_supports_procedural = RE_engine_supports_alembic_procedural(engine_type,
                                                                                 scene);
+  CacheFile *cache_file = static_cast<CacheFile *>(fileptr->data);
+  CacheFile *cache_file_eval = reinterpret_cast<CacheFile *>(
+      DEG_get_evaluated_id(CTX_data_depsgraph_pointer(C), &cache_file->id));
+  bool is_alembic = cache_file_eval->type == CACHEFILE_TYPE_ALEMBIC;
 
-  if (!engine_supports_procedural) {
+  if (!is_alembic) {
+    row = uiLayoutRow(layout, false);
+    uiItemL(row, TIP_("Only Alembic Procedurals supported"), ICON_INFO);
+  }
+  else if (!engine_supports_procedural) {
     row = uiLayoutRow(layout, false);
     /* For Cycles, verify that experimental features are enabled. */
     if (BKE_scene_uses_cycles(scene) && !BKE_scene_uses_cycles_experimental_features(scene)) {
