@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -244,7 +246,7 @@ enum {
   /* *** End of keyboard codes. *** */
 
   /* NDOF (from "Space Navigator" & friends)
-   * These must be kept in sync with `GHOST_NDOFManager.h`.
+   * These must be kept in sync with `GHOST_NDOFManager.hh`.
    * Ordering matters, exact values do not. */
 
   /**

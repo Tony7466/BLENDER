@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -346,7 +347,8 @@ bool ED_view3d_clipping_clamp_minmax(const RegionView3D *rv3d, float min[3], flo
   const float eps_coplanar = 1e-4f;
   const float eps_isect = 1e-6f;
   if (isect_planes_v3_fn(
-          planes, planes_len, eps_coplanar, eps_isect, points_in_planes_minmax_fn, &user_data)) {
+          planes, planes_len, eps_coplanar, eps_isect, points_in_planes_minmax_fn, &user_data))
+  {
     copy_v3_v3(min, user_data.min);
     copy_v3_v3(max, user_data.max);
     return true;
@@ -577,7 +579,8 @@ bool ED_view3d_camera_lock_sync(const Depsgraph *depsgraph, View3D *v3d, RegionV
     Object *root_parent;
 
     if (v3d->camera->transflag & OB_TRANSFORM_ADJUST_ROOT_PARENT_FOR_VIEW_LOCK &&
-        (root_parent = v3d->camera->parent)) {
+        (root_parent = v3d->camera->parent))
+    {
       Object *ob_update;
       float tmat[4][4];
       float imat[4][4];
@@ -628,11 +631,8 @@ bool ED_view3d_camera_lock_sync(const Depsgraph *depsgraph, View3D *v3d, RegionV
   return false;
 }
 
-bool ED_view3d_camera_autokey(const Scene *scene,
-                              ID *id_key,
-                              struct bContext *C,
-                              const bool do_rotate,
-                              const bool do_translate)
+bool ED_view3d_camera_autokey(
+    const Scene *scene, ID *id_key, bContext *C, const bool do_rotate, const bool do_translate)
 {
   if (autokeyframe_cfra_can_key(scene, id_key)) {
     const float cfra = (float)scene->r.cfra;
@@ -647,11 +647,11 @@ bool ED_view3d_camera_autokey(const Scene *scene,
      *    TODO: need to check in future that frame changed before doing this
      */
     if (do_rotate) {
-      struct KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_ROTATION_ID);
+      KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_ROTATION_ID);
       ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, cfra);
     }
     if (do_translate) {
-      struct KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_LOCATION_ID);
+      KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_LOCATION_ID);
       ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, cfra);
     }
 
@@ -663,11 +663,8 @@ bool ED_view3d_camera_autokey(const Scene *scene,
   return false;
 }
 
-bool ED_view3d_camera_lock_autokey(View3D *v3d,
-                                   RegionView3D *rv3d,
-                                   struct bContext *C,
-                                   const bool do_rotate,
-                                   const bool do_translate)
+bool ED_view3d_camera_lock_autokey(
+    View3D *v3d, RegionView3D *rv3d, bContext *C, const bool do_rotate, const bool do_translate)
 {
   /* similar to ED_view3d_cameracontrol_update */
   if (ED_view3d_camera_lock_check(v3d, rv3d)) {
@@ -675,7 +672,8 @@ bool ED_view3d_camera_lock_autokey(View3D *v3d,
     ID *id_key;
     Object *root_parent;
     if (v3d->camera->transflag & OB_TRANSFORM_ADJUST_ROOT_PARENT_FOR_VIEW_LOCK &&
-        (root_parent = v3d->camera->parent)) {
+        (root_parent = v3d->camera->parent))
+    {
       while (root_parent->parent) {
         root_parent = root_parent->parent;
       }
@@ -690,9 +688,7 @@ bool ED_view3d_camera_lock_autokey(View3D *v3d,
   return false;
 }
 
-bool ED_view3d_camera_lock_undo_test(const View3D *v3d,
-                                     const RegionView3D *rv3d,
-                                     struct bContext *C)
+bool ED_view3d_camera_lock_undo_test(const View3D *v3d, const RegionView3D *rv3d, bContext *C)
 {
   if (ED_view3d_camera_lock_check(v3d, rv3d)) {
     if (ED_undo_is_memfile_compatible(C)) {
@@ -713,7 +709,7 @@ bool ED_view3d_camera_lock_undo_test(const View3D *v3d,
 static bool view3d_camera_lock_undo_ex(const char *str,
                                        const View3D *v3d,
                                        const RegionView3D *rv3d,
-                                       struct bContext *C,
+                                       bContext *C,
                                        const bool undo_group)
 {
   if (ED_view3d_camera_lock_undo_test(v3d, rv3d, C)) {
@@ -871,7 +867,8 @@ static void view3d_boxview_sync_axis(RegionView3D *rv3d_dst, RegionView3D *rv3d_
 
   /* we could use rv3d->viewinv, but better not depend on view matrix being updated */
   if (UNLIKELY(ED_view3d_quat_from_axis_view(rv3d_src->view, rv3d_src->view_axis_roll, viewinv) ==
-               false)) {
+               false))
+  {
     return;
   }
   invert_qt_normalized(viewinv);
@@ -879,17 +876,19 @@ static void view3d_boxview_sync_axis(RegionView3D *rv3d_dst, RegionView3D *rv3d_
   mul_qt_v3(viewinv, view_src_y);
 
   if (UNLIKELY(ED_view3d_quat_from_axis_view(rv3d_dst->view, rv3d_dst->view_axis_roll, viewinv) ==
-               false)) {
+               false))
+  {
     return;
   }
   invert_qt_normalized(viewinv);
   mul_qt_v3(viewinv, view_dst_x);
   mul_qt_v3(viewinv, view_dst_y);
 
-  /* check source and dest have a matching axis */
+  /* Check source and destination have a matching axis. */
   for (i = 0; i < 3; i++) {
     if (((fabsf(view_src_x[i]) > axis_eps) || (fabsf(view_src_y[i]) > axis_eps)) &&
-        ((fabsf(view_dst_x[i]) > axis_eps) || (fabsf(view_dst_y[i]) > axis_eps))) {
+        ((fabsf(view_dst_x[i]) > axis_eps) || (fabsf(view_dst_y[i]) > axis_eps)))
+    {
       rv3d_dst->ofs[i] = rv3d_src->ofs[i];
     }
   }
@@ -1228,7 +1227,7 @@ float ED_view3d_radius_to_dist_ortho(const float lens, const float radius)
 
 float ED_view3d_radius_to_dist(const View3D *v3d,
                                const ARegion *region,
-                               const struct Depsgraph *depsgraph,
+                               const Depsgraph *depsgraph,
                                const char persp,
                                const bool use_aspect,
                                const float radius)
@@ -1450,9 +1449,11 @@ bool ED_view3d_quat_to_axis_view(const float quat[4],
     /* Under 45 degrees, just pick the closest value. */
     for (int view = RV3D_VIEW_FRONT; view <= RV3D_VIEW_BOTTOM; view++) {
       for (int view_axis_roll = RV3D_VIEW_AXIS_ROLL_0; view_axis_roll <= RV3D_VIEW_AXIS_ROLL_270;
-           view_axis_roll++) {
+           view_axis_roll++)
+      {
         if (fabsf(angle_signed_qtqt(
-                quat, view3d_quat_axis[view - RV3D_VIEW_FRONT][view_axis_roll])) < epsilon) {
+                quat, view3d_quat_axis[view - RV3D_VIEW_FRONT][view_axis_roll])) < epsilon)
+        {
           *r_view = view;
           *r_view_axis_roll = view_axis_roll;
           return true;
@@ -1465,7 +1466,8 @@ bool ED_view3d_quat_to_axis_view(const float quat[4],
     float delta_best = FLT_MAX;
     for (int view = RV3D_VIEW_FRONT; view <= RV3D_VIEW_BOTTOM; view++) {
       for (int view_axis_roll = RV3D_VIEW_AXIS_ROLL_0; view_axis_roll <= RV3D_VIEW_AXIS_ROLL_270;
-           view_axis_roll++) {
+           view_axis_roll++)
+      {
         const float delta_test = fabsf(
             angle_signed_qtqt(quat, view3d_quat_axis[view - RV3D_VIEW_FRONT][view_axis_roll]));
         if (delta_best > delta_test) {
@@ -1616,7 +1618,8 @@ static bool view3d_camera_to_view_selected_impl(struct Main *bmain,
   float scale; /* only for ortho cameras */
 
   if (BKE_camera_view_frame_fit_to_scene(
-          depsgraph, scene, camera_ob_eval, co, &scale, r_clip_start, r_clip_end)) {
+          depsgraph, scene, camera_ob_eval, co, &scale, r_clip_start, r_clip_end))
+  {
     ObjectTfmProtectedChannels obtfm;
     float obmat_new[4][4];
     bool is_ortho_camera = false;
@@ -1663,7 +1666,8 @@ bool ED_view3d_camera_to_view_selected_with_set_clipping(struct Main *bmain,
   float clip_start;
   float clip_end;
   if (view3d_camera_to_view_selected_impl(
-          bmain, depsgraph, scene, camera_ob, &clip_start, &clip_end)) {
+          bmain, depsgraph, scene, camera_ob, &clip_start, &clip_end))
+  {
 
     ((Camera *)camera_ob->data)->clip_start = clip_start;
     ((Camera *)camera_ob->data)->clip_end = clip_end;

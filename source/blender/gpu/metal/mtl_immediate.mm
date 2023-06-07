@@ -66,12 +66,13 @@ void MTLImmediate::end()
 
     /* Skip draw if Metal shader is not valid. */
     if (active_mtl_shader == nullptr || !active_mtl_shader->is_valid() ||
-        active_mtl_shader->get_interface() == nullptr) {
+        active_mtl_shader->get_interface() == nullptr)
+    {
 
       const char *ptr = (active_mtl_shader) ? active_mtl_shader->name_get() : nullptr;
       MTL_LOG_WARNING(
           "MTLImmediate::end -- cannot perform draw as active shader is NULL or invalid (likely "
-          "unimplemented) (shader %p '%s')\n",
+          "unimplemented) (shader %p '%s')",
           active_mtl_shader,
           ptr);
       return;
@@ -161,7 +162,7 @@ void MTLImmediate::end()
       if (attr == nullptr) {
         MTL_LOG_ERROR(
             "MTLImmediate::end Could not find matching attribute '%s' from Shader Interface in "
-            "Vertex Format! - TODO: Bind Dummy attribute\n",
+            "Vertex Format! - TODO: Bind Dummy attribute",
             interface->get_name_at_offset(mtl_shader_attribute.name_offset));
         return;
       }
@@ -321,7 +322,7 @@ void MTLImmediate::end()
             @autoreleasepool {
 
               id<MTLBuffer> index_buffer_mtl = nil;
-              uint32_t index_buffer_offset = 0;
+              uint64_t index_buffer_offset = 0;
 
               /* Region of scratch buffer used for topology emulation element data.
                * NOTE(Metal): We do not need to manually flush as the entire scratch
@@ -381,7 +382,8 @@ void MTLImmediate::end()
 
           /* SSBO vertex fetch - Nullify elements buffer. */
           if (rps.cached_vertex_buffer_bindings[MTL_SSBO_VERTEX_FETCH_IBO_INDEX].metal_buffer ==
-              nil) {
+              nil)
+          {
             rps.bind_vertex_buffer(null_buffer, 0, MTL_SSBO_VERTEX_FETCH_IBO_INDEX);
           }
 
@@ -422,4 +424,4 @@ void MTLImmediate::end()
   }
 }
 
-}  // blender::gpu
+}  // namespace blender::gpu

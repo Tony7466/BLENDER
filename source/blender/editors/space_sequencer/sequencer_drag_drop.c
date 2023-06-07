@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spseq
@@ -227,7 +228,7 @@ static void sequencer_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
       Image *ima = (Image *)id;
       PointerRNA itemptr;
       char dir[FILE_MAX], file[FILE_MAX];
-      BLI_split_dirfile(ima->filepath, dir, file, sizeof(dir), sizeof(file));
+      BLI_path_split_dir_file(ima->filepath, dir, sizeof(dir), file, sizeof(file));
       RNA_string_set(drop->ptr, "directory", dir);
       RNA_collection_clear(drop->ptr, "files");
       RNA_collection_add(drop->ptr, "files", &itemptr);
@@ -257,7 +258,7 @@ static void sequencer_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
       PointerRNA itemptr;
       char dir[FILE_MAX], file[FILE_MAX];
 
-      BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+      BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
 
       RNA_string_set(drop->ptr, "directory", dir);
 
@@ -457,7 +458,7 @@ static void draw_seq_in_view(bContext *C, wmWindow *UNUSED(win), wmDrag *drag, c
     get_drag_path(drag, path);
 
     if (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_NAME) {
-      BLI_split_file_part(path, filename, FILE_MAX);
+      BLI_path_split_file_part(path, filename, FILE_MAX);
       text_array[len_text_arr++] = filename;
     }
 
@@ -492,7 +493,7 @@ static void draw_seq_in_view(bContext *C, wmWindow *UNUSED(win), wmDrag *drag, c
   UI_view2d_text_cache_draw(region);
 }
 
-static bool generic_drop_draw_handling(struct wmDropBox *drop)
+static bool generic_drop_draw_handling(wmDropBox *drop)
 {
   SeqDropCoords *coords = drop->draw_data;
   if (coords && coords->in_use) {
@@ -506,6 +507,10 @@ static bool generic_drop_draw_handling(struct wmDropBox *drop)
 }
 
 typedef struct DropJobData {
+  /**
+   * This is practically always a `filepath`, however that isn't a requirement
+   * for drag-and-drop, so keep the name generic.
+   */
   char path[FILE_MAX];
   bool only_audio;
   float scene_fps;
@@ -609,21 +614,21 @@ static void audio_prefetch(bContext *C, wmDrag *drag)
   }
 }
 
-static void movie_drop_draw_activate(struct wmDropBox *drop, wmDrag *UNUSED(drag))
+static void movie_drop_draw_activate(wmDropBox *drop, wmDrag *UNUSED(drag))
 {
   if (generic_drop_draw_handling(drop)) {
     return;
   }
 }
 
-static void sound_drop_draw_activate(struct wmDropBox *drop, wmDrag *UNUSED(drag))
+static void sound_drop_draw_activate(wmDropBox *drop, wmDrag *UNUSED(drag))
 {
   if (generic_drop_draw_handling(drop)) {
     return;
   }
 }
 
-static void image_drop_draw_activate(struct wmDropBox *drop, wmDrag *UNUSED(drag))
+static void image_drop_draw_activate(wmDropBox *drop, wmDrag *UNUSED(drag))
 {
   if (generic_drop_draw_handling(drop)) {
     return;
@@ -634,7 +639,7 @@ static void image_drop_draw_activate(struct wmDropBox *drop, wmDrag *UNUSED(drag
   coords->channel_len = 1;
 }
 
-static void sequencer_drop_draw_deactivate(struct wmDropBox *drop, wmDrag *UNUSED(drag))
+static void sequencer_drop_draw_deactivate(wmDropBox *drop, wmDrag *UNUSED(drag))
 {
   SeqDropCoords *coords = drop->draw_data;
   if (coords) {
@@ -657,7 +662,7 @@ static void nop_draw_droptip_fn(bContext *UNUSED(C),
 /* This region dropbox definition. */
 static void sequencer_dropboxes_add_to_lb(ListBase *lb)
 {
-  struct wmDropBox *drop;
+  wmDropBox *drop;
   drop = WM_dropbox_add(
       lb, "SEQUENCER_OT_image_strip_add", image_drop_poll, sequencer_drop_copy, NULL, NULL);
   drop->draw_droptip = nop_draw_droptip_fn;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -340,7 +341,6 @@ struct FaceIsland {
   struct FaceIsland *prev;
   struct BMFace **faces;
   int faces_len;
-  rctf bounds_rect;
   /**
    * \note While this is duplicate information,
    * it allows islands from multiple meshes to be stored in the same list.

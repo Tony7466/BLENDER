@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -15,6 +16,7 @@
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_task.h"
+#include "BLI_task.hh"
 
 #include "BKE_mesh.hh"
 
@@ -35,7 +37,7 @@ namespace blender::bke::mesh {
  * \param face_normal: This will be optimized out as a constant.
  */
 BLI_INLINE void mesh_calc_tessellation_for_face_impl(const Span<int> corner_verts,
-                                                     const Span<MPoly> polys,
+                                                     const blender::OffsetIndices<int> polys,
                                                      const Span<float3> positions,
                                                      uint poly_index,
                                                      MLoopTri *mlt,
@@ -43,14 +45,13 @@ BLI_INLINE void mesh_calc_tessellation_for_face_impl(const Span<int> corner_vert
                                                      const bool face_normal,
                                                      const float normal_precalc[3])
 {
-  const uint mp_loopstart = uint(polys[poly_index].loopstart);
-  const uint mp_totloop = uint(polys[poly_index].totloop);
+  const uint mp_loopstart = uint(polys[poly_index].start());
+  const uint mp_totloop = uint(polys[poly_index].size());
 
   auto create_tri = [&](uint i1, uint i2, uint i3) {
     mlt->tri[0] = mp_loopstart + i1;
     mlt->tri[1] = mp_loopstart + i2;
     mlt->tri[2] = mp_loopstart + i3;
-    mlt->poly = poly_index;
   };
 
   switch (mp_totloop) {
@@ -63,20 +64,11 @@ BLI_INLINE void mesh_calc_tessellation_for_face_impl(const Span<int> corner_vert
       MLoopTri *mlt_a = mlt++;
       create_tri(0, 2, 3);
       MLoopTri *mlt_b = mlt;
-
-      if (UNLIKELY(face_normal ? is_quad_flip_v3_first_third_fast_with_normal(
-                                     /* Simpler calculation (using the normal). */
-                                     positions[corner_verts[mlt_a->tri[0]]],
-                                     positions[corner_verts[mlt_a->tri[1]]],
-                                     positions[corner_verts[mlt_a->tri[2]]],
-                                     positions[corner_verts[mlt_b->tri[2]]],
-                                     normal_precalc) :
-                                 is_quad_flip_v3_first_third_fast(
-                                     /* Expensive calculation (no normal). */
-                                     positions[corner_verts[mlt_a->tri[0]]],
-                                     positions[corner_verts[mlt_a->tri[1]]],
-                                     positions[corner_verts[mlt_a->tri[2]]],
-                                     positions[corner_verts[mlt_b->tri[2]]]))) {
+      if (UNLIKELY(is_quad_flip_v3_first_third_fast(positions[corner_verts[mlt_a->tri[0]]],
+                                                    positions[corner_verts[mlt_a->tri[1]]],
+                                                    positions[corner_verts[mlt_a->tri[2]]],
+                                                    positions[corner_verts[mlt_b->tri[2]]])))
+      {
         /* Flip out of degenerate 0-2 state. */
         mlt_a->tri[2] = mlt_b->tri[2];
         mlt_b->tri[0] = mlt_a->tri[1];
@@ -142,7 +134,7 @@ BLI_INLINE void mesh_calc_tessellation_for_face_impl(const Span<int> corner_vert
 }
 
 static void mesh_calc_tessellation_for_face(const Span<int> corner_verts,
-                                            const Span<MPoly> polys,
+                                            const blender::OffsetIndices<int> polys,
                                             const Span<float3> positions,
                                             uint poly_index,
                                             MLoopTri *mlt,
@@ -153,7 +145,7 @@ static void mesh_calc_tessellation_for_face(const Span<int> corner_verts,
 }
 
 static void mesh_calc_tessellation_for_face_with_normal(const Span<int> corner_verts,
-                                                        const Span<MPoly> polys,
+                                                        const blender::OffsetIndices<int> polys,
                                                         const Span<float3> positions,
                                                         uint poly_index,
                                                         MLoopTri *mlt,
@@ -165,34 +157,31 @@ static void mesh_calc_tessellation_for_face_with_normal(const Span<int> corner_v
 }
 
 static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
-                                                 const Span<MPoly> polys,
+                                                 const blender::OffsetIndices<int> polys,
                                                  const Span<float3> positions,
-                                                 int totloop,
-                                                 int totpoly,
                                                  MLoopTri *mlooptri,
                                                  const float (*poly_normals)[3])
 {
   MemArena *pf_arena = nullptr;
-  const MPoly *poly = polys.data();
-  uint tri_index = 0;
+  uint looptri_i = 0;
 
   if (poly_normals != nullptr) {
-    for (uint poly_index = 0; poly_index < uint(totpoly); poly_index++, poly++) {
+    for (const int64_t i : polys.index_range()) {
       mesh_calc_tessellation_for_face_with_normal(corner_verts,
                                                   polys,
                                                   positions,
-                                                  poly_index,
-                                                  &mlooptri[tri_index],
+                                                  uint(i),
+                                                  &mlooptri[looptri_i],
                                                   &pf_arena,
-                                                  poly_normals[poly_index]);
-      tri_index += uint(poly->totloop - 2);
+                                                  poly_normals[i]);
+      looptri_i += uint(polys[i].size() - 2);
     }
   }
   else {
-    for (uint poly_index = 0; poly_index < uint(totpoly); poly_index++, poly++) {
+    for (const int64_t i : polys.index_range()) {
       mesh_calc_tessellation_for_face(
-          corner_verts, polys, positions, poly_index, &mlooptri[tri_index], &pf_arena);
-      tri_index += uint(poly->totloop - 2);
+          corner_verts, polys, positions, uint(i), &mlooptri[looptri_i], &pf_arena);
+      looptri_i += uint(polys[i].size() - 2);
     }
   }
 
@@ -200,13 +189,12 @@ static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
     BLI_memarena_free(pf_arena);
     pf_arena = nullptr;
   }
-  BLI_assert(tri_index == uint(poly_to_tri_count(totpoly, totloop)));
-  UNUSED_VARS_NDEBUG(totloop);
+  BLI_assert(looptri_i == uint(poly_to_tri_count(int(polys.size()), int(corner_verts.size()))));
 }
 
 struct TessellationUserData {
   Span<int> corner_verts;
-  Span<MPoly> polys;
+  blender::OffsetIndices<int> polys;
   Span<float3> positions;
 
   /** Output array. */
@@ -226,12 +214,12 @@ static void mesh_calc_tessellation_for_face_fn(void *__restrict userdata,
 {
   const TessellationUserData *data = static_cast<const TessellationUserData *>(userdata);
   TessellationUserTLS *tls_data = static_cast<TessellationUserTLS *>(tls->userdata_chunk);
-  const int tri_index = poly_to_tri_count(index, data->polys[index].loopstart);
+  const int looptri_i = poly_to_tri_count(index, int(data->polys[index].start()));
   mesh_calc_tessellation_for_face_impl(data->corner_verts,
                                        data->polys,
                                        data->positions,
                                        uint(index),
-                                       &data->mlooptri[tri_index],
+                                       &data->mlooptri[looptri_i],
                                        &tls_data->pf_arena,
                                        false,
                                        nullptr);
@@ -243,12 +231,12 @@ static void mesh_calc_tessellation_for_face_with_normal_fn(void *__restrict user
 {
   const TessellationUserData *data = static_cast<const TessellationUserData *>(userdata);
   TessellationUserTLS *tls_data = static_cast<TessellationUserTLS *>(tls->userdata_chunk);
-  const int tri_index = poly_to_tri_count(index, data->polys[index].loopstart);
+  const int looptri_i = poly_to_tri_count(index, int(data->polys[index].start()));
   mesh_calc_tessellation_for_face_impl(data->corner_verts,
                                        data->polys,
                                        data->positions,
                                        uint(index),
-                                       &data->mlooptri[tri_index],
+                                       &data->mlooptri[looptri_i],
                                        &tls_data->pf_arena,
                                        true,
                                        data->poly_normals[index]);
@@ -264,7 +252,7 @@ static void mesh_calc_tessellation_for_face_free_fn(const void *__restrict /*use
 }
 
 static void looptris_calc_all(const Span<float3> positions,
-                              const Span<MPoly> polys,
+                              const blender::OffsetIndices<int> polys,
                               const Span<int> corner_verts,
                               const Span<float3> poly_normals,
                               MutableSpan<MLoopTri> looptris)
@@ -273,16 +261,13 @@ static void looptris_calc_all(const Span<float3> positions,
     mesh_recalc_looptri__single_threaded(corner_verts,
                                          polys,
                                          positions,
-                                         int(corner_verts.size()),
-                                         int(polys.size()),
                                          looptris.data(),
                                          reinterpret_cast<const float(*)[3]>(poly_normals.data()));
     return;
   }
-  struct TessellationUserTLS tls_data_dummy = {nullptr};
+  TessellationUserTLS tls_data_dummy = {nullptr};
 
-  struct TessellationUserData data {
-  };
+  TessellationUserData data{};
   data.corner_verts = corner_verts;
   data.polys = polys;
   data.positions = positions;
@@ -306,27 +291,41 @@ static void looptris_calc_all(const Span<float3> positions,
 }
 
 void looptris_calc(const Span<float3> vert_positions,
-                   const Span<MPoly> polys,
+                   const OffsetIndices<int> polys,
                    const Span<int> corner_verts,
                    MutableSpan<MLoopTri> looptris)
 {
   looptris_calc_all(vert_positions, polys, corner_verts, {}, looptris);
 }
 
+void looptris_calc_poly_indices(const OffsetIndices<int> polys, MutableSpan<int> looptri_polys)
+{
+  threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const IndexRange poly = polys[i];
+      const int start = poly_to_tri_count(int(i), int(poly.start()));
+      const int num = ME_POLY_TRI_TOT(int(poly.size()));
+      looptri_polys.slice(start, num).fill(int(i));
+    }
+  });
+}
+
 void looptris_calc_with_normals(const Span<float3> vert_positions,
-                                const Span<MPoly> polys,
+                                const OffsetIndices<int> polys,
                                 const Span<int> corner_verts,
                                 const Span<float3> poly_normals,
                                 MutableSpan<MLoopTri> looptris)
 {
-  BLI_assert(!poly_normals.is_empty() || polys.is_empty());
+  BLI_assert(!poly_normals.is_empty() || polys.size() == 0);
   looptris_calc_all(vert_positions, polys, corner_verts, poly_normals, looptris);
 }
+
+/** \} */
 
 }  // namespace blender::bke::mesh
 
 void BKE_mesh_recalc_looptri(const int *corner_verts,
-                             const MPoly *polys,
+                             const int *poly_offsets,
                              const float (*vert_positions)[3],
                              int totvert,
                              int totloop,
@@ -335,9 +334,7 @@ void BKE_mesh_recalc_looptri(const int *corner_verts,
 {
   blender::bke::mesh::looptris_calc(
       {reinterpret_cast<const blender::float3 *>(vert_positions), totvert},
-      {polys, totpoly},
+      blender::Span(poly_offsets, totpoly + 1),
       {corner_verts, totloop},
       {mlooptri, poly_to_tri_count(totpoly, totloop)});
 }
-
-/** \} */

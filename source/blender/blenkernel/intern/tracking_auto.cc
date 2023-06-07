@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -65,7 +66,7 @@ typedef struct AutoTrackMarker {
  * On failure marker's frame number is initialized to frame number where it was attempted to be
  * tracked to. The position and other fields of tracked marker are the same as the input. */
 typedef struct AutoTrackTrackingResult {
-  struct AutoTrackTrackingResult *next, *prev;
+  AutoTrackTrackingResult *next, *prev;
 
   bool success;
   libmv_Marker libmv_marker;
@@ -116,7 +117,7 @@ typedef struct AutoTrackContext {
   /* Auto-track context.
    *
    * NOTE: Is accessed from multiple threads at once. */
-  struct libmv_AutoTrack *autotrack;
+  libmv_AutoTrack *autotrack;
 
   /* Markers from the current frame which will be tracked to the next frame upon the tracking
    * context step.
@@ -300,7 +301,8 @@ static bool tracking_check_marker_margin(const libmv_Marker *libmv_marker,
   if (libmv_marker->center[0] < margin_left ||
       libmv_marker->center[0] > frame_width - margin_right ||
       libmv_marker->center[1] < margin_bottom ||
-      libmv_marker->center[1] > frame_height - margin_top) {
+      libmv_marker->center[1] > frame_height - margin_top)
+  {
     return false;
   }
 
@@ -644,7 +646,8 @@ static void autotrack_context_step_cb(void *__restrict userdata,
 
   /* Check whether marker is going outside of allowed frame margin. */
   if (!tracking_check_marker_margin(
-          libmv_current_marker, track->margin, autotrack_clip->width, autotrack_clip->height)) {
+          libmv_current_marker, track->margin, autotrack_clip->width, autotrack_clip->height))
+  {
     return;
   }
 

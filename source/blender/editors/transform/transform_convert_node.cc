@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -14,7 +15,7 @@
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
@@ -27,6 +28,8 @@
 #include "transform.h"
 #include "transform_convert.h"
 #include "transform_snap.h"
+
+#include "WM_api.h"
 
 struct TransCustomDataNode {
   View2DEdgePanData edgepan_data;
@@ -48,11 +51,11 @@ static void create_transform_data_for_node(TransData &td,
 
   /* account for parents (nested nodes) */
   if (node.parent) {
-    nodeToView(node.parent,
-               node.locx + roundf(node.offsetx),
-               node.locy + roundf(node.offsety),
-               &locx,
-               &locy);
+    blender::bke::nodeToView(node.parent,
+                             node.locx + roundf(node.offsetx),
+                             node.locy + roundf(node.offsety),
+                             &locx,
+                             &locy);
   }
   else {
     locx = node.locx + roundf(node.offsetx);
@@ -161,7 +164,8 @@ static void node_snap_grid_apply(TransInfo *t)
   using namespace blender;
 
   if (!(transform_snap_is_active(t) &&
-        (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)))) {
+        (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID))))
+  {
     return;
   }
 
@@ -248,11 +252,11 @@ static void flushTransNodes(TransInfo *t)
 
       /* account for parents (nested nodes) */
       if (node->parent) {
-        nodeFromView(node->parent,
-                     loc[0] - roundf(node->offsetx),
-                     loc[1] - roundf(node->offsety),
-                     &node->locx,
-                     &node->locy);
+        blender::bke::nodeFromView(node->parent,
+                                   loc[0] - roundf(node->offsetx),
+                                   loc[1] - roundf(node->offsety),
+                                   &node->locx,
+                                   &node->locy);
       }
       else {
         node->locx = loc[0] - roundf(node->offsetx);
@@ -307,6 +311,13 @@ static void special_aftertrans_update__node(bContext *C, TransInfo *t)
   }
 
   space_node::node_insert_on_link_flags_clear(*ntree);
+
+  wmOperatorType *ot = WM_operatortype_find("NODE_OT_insert_offset", true);
+  BLI_assert(ot);
+  PointerRNA ptr;
+  WM_operator_properties_create_ptr(&ptr, ot);
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &ptr, nullptr);
+  WM_operator_properties_free(&ptr);
 }
 
 /** \} */

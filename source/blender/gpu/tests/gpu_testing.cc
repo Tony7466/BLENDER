@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -18,7 +20,7 @@ namespace blender::gpu {
 void GPUTest::SetUp()
 {
   prev_g_debug_ = G.debug;
-  G.debug |= G_DEBUG_GPU;
+  G.debug |= G_DEBUG_GPU | G_DEBUG_GPU_RENDERDOC;
 
   CLG_init();
   GPU_backend_type_selection_set(gpu_backend_type);
@@ -30,6 +32,8 @@ void GPUTest::SetUp()
   GHOST_ActivateOpenGLContext(ghost_context);
   context = GPU_context_create(nullptr, ghost_context);
   GPU_init();
+
+  BLI_init_srgb_conversion();
 
   GPU_context_begin_frame(context);
   GPU_debug_capture_begin();

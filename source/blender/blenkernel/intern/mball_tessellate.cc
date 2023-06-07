@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -50,7 +51,7 @@
 typedef struct corner {
   int i, j, k;        /* (i, j, k) is index within lattice */
   float co[3], value; /* location and function value */
-  struct corner *next;
+  corner *next;
 } CORNER;
 
 /** Partitioning cell (cube). */
@@ -61,33 +62,33 @@ typedef struct cube {
 
 /** Linked list of cubes acting as stack. */
 typedef struct cubes {
-  CUBE cube;          /* a single cube */
-  struct cubes *next; /* remaining elements */
+  CUBE cube;   /* a single cube */
+  cubes *next; /* remaining elements */
 } CUBES;
 
 /** List of cube locations. */
 typedef struct centerlist {
-  int i, j, k;             /* cube location */
-  struct centerlist *next; /* remaining elements */
+  int i, j, k;      /* cube location */
+  centerlist *next; /* remaining elements */
 } CENTERLIST;
 
 /** List of edges. */
 typedef struct edgelist {
   int i1, j1, k1, i2, j2, k2; /* edge corner ids */
   int vid;                    /* vertex id */
-  struct edgelist *next;      /* remaining elements */
+  edgelist *next;             /* remaining elements */
 } EDGELIST;
 
 /** List of integers. */
 typedef struct intlist {
-  int i;                /* an integer */
-  struct intlist *next; /* remaining elements */
+  int i;         /* an integer */
+  intlist *next; /* remaining elements */
 } INTLIST;
 
 /** List of list of integers. */
 typedef struct intlists {
-  INTLIST *list;         /* a list of integers */
-  struct intlists *next; /* remaining elements */
+  INTLIST *list;  /* a list of integers */
+  intlists *next; /* remaining elements */
 } INTLISTS;
 
 /** An AABB with pointer to metal-elem. */
@@ -98,7 +99,7 @@ typedef struct Box {
 
 typedef struct MetaballBVHNode { /* BVH node */
   Box bb[2];                     /* AABB of children */
-  struct MetaballBVHNode *child[2];
+  MetaballBVHNode *child[2];
 } MetaballBVHNode;
 
 /** Parameters, storage. */
@@ -417,7 +418,8 @@ static float metaball(PROCESS *process, float x, float y, float z)
 
     for (int i = 0; i < 2; i++) {
       if ((node->bb[i].min[0] <= x) && (node->bb[i].max[0] >= x) && (node->bb[i].min[1] <= y) &&
-          (node->bb[i].max[1] >= y) && (node->bb[i].min[2] <= z) && (node->bb[i].max[2] >= z)) {
+          (node->bb[i].max[1] >= y) && (node->bb[i].min[2] <= z) && (node->bb[i].max[2] >= z))
+      {
         if (node->child[i]) {
           process->bvh_queue[front++] = node->child[i];
         }
@@ -1181,7 +1183,7 @@ static void init_meta(Depsgraph *depsgraph, PROCESS *process, Scene *scene, Obje
              ob->object_to_world); /* to cope with duplicators from BKE_scene_base_iter_next */
   invert_m4_m4(obinv, ob->object_to_world);
 
-  BLI_split_name_num(obname, &obnr, ob->id.name + 2, '.');
+  BLI_string_split_name_number(ob->id.name + 2, '.', obname, &obnr);
 
   /* make main array */
   BKE_scene_base_iter_next(depsgraph, &iter, &sce_iter, 0, nullptr, nullptr);
@@ -1194,7 +1196,8 @@ static void init_meta(Depsgraph *depsgraph, PROCESS *process, Scene *scene, Obje
        * the instancer is visible too. */
       if ((base->flag_legacy & OB_FROMDUPLI) == 0 && ob->parent != nullptr &&
           (ob->parent->transflag & parenting_dupli_transflag) != 0 &&
-          (BKE_object_visibility(ob->parent, deg_eval_mode) & OB_VISIBLE_SELF) == 0) {
+          (BKE_object_visibility(ob->parent, deg_eval_mode) & OB_VISIBLE_SELF) == 0)
+      {
         continue;
       }
 
@@ -1212,7 +1215,7 @@ static void init_meta(Depsgraph *depsgraph, PROCESS *process, Scene *scene, Obje
         char name[MAX_ID_NAME];
         int nr;
 
-        BLI_split_name_num(name, &nr, bob->id.name + 2, '.');
+        BLI_string_split_name_number(bob->id.name + 2, '.', name, &nr);
         if (STREQ(obname, name)) {
           mb = static_cast<MetaBall *>(bob->data);
 
@@ -1231,7 +1234,7 @@ static void init_meta(Depsgraph *depsgraph, PROCESS *process, Scene *scene, Obje
         zero_size = 1;
       }
       else if (bob->parent) {
-        struct Object *pob = bob->parent;
+        Object *pob = bob->parent;
         while (pob) {
           if (has_zero_axis_m4(pob->object_to_world)) {
             zero_size = 1;
@@ -1438,7 +1441,8 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
    * the open movie "Sintel", using 0.00001f. */
   if (ob->scale[0] < 0.00001f * (process.allbb.max[0] - process.allbb.min[0]) ||
       ob->scale[1] < 0.00001f * (process.allbb.max[1] - process.allbb.min[1]) ||
-      ob->scale[2] < 0.00001f * (process.allbb.max[2] - process.allbb.min[2])) {
+      ob->scale[2] < 0.00001f * (process.allbb.max[2] - process.allbb.min[2]))
+  {
     freepolygonize(&process);
     return nullptr;
   }
@@ -1451,26 +1455,24 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
 
   freepolygonize(&process);
 
-  Mesh *mesh = (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)ob->data)->name + 2);
+  int corners_num = 0;
+  for (uint i = 0; i < process.curindex; i++) {
+    const int *indices = process.indices[i];
+    const int count = indices[2] != indices[3] ? 4 : 3;
+    corners_num += count;
+  }
 
-  mesh->totvert = int(process.co.size());
-  CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh->totvert, "position");
+  Mesh *mesh = BKE_mesh_new_nomain(int(process.co.size()), 0, int(process.curindex), corners_num);
   mesh->vert_positions_for_write().copy_from(process.co);
-
-  mesh->totpoly = int(process.curindex);
-  MPoly *polys = static_cast<MPoly *>(
-      CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_CONSTRUCT, mesh->totpoly));
-  int *corner_verts = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh->totpoly * 4, ".corner_vert"));
+  blender::MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+  blender::MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
   int loop_offset = 0;
   for (int i = 0; i < mesh->totpoly; i++) {
     const int *indices = process.indices[i];
 
     const int count = indices[2] != indices[3] ? 4 : 3;
-    polys[i].loopstart = loop_offset;
-    polys[i].totloop = count;
+    poly_offsets[i] = loop_offset;
 
     corner_verts[loop_offset] = indices[0];
     corner_verts[loop_offset + 1] = indices[1];
@@ -1490,8 +1492,6 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
          process.no.data(),
          sizeof(float[3]) * size_t(mesh->totvert));
   BKE_mesh_vert_normals_clear_dirty(mesh);
-
-  mesh->totloop = loop_offset;
 
   BKE_mesh_calc_edges(mesh, false, false);
 

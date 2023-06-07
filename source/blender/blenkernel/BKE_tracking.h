@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -776,11 +777,11 @@ struct MovieTrackingObject *BKE_tracking_find_object_for_plane_track(
 void BKE_tracking_get_rna_path_for_track(const struct MovieTracking *tracking,
                                          const struct MovieTrackingTrack *track,
                                          char *rna_path,
-                                         size_t rna_path_len);
+                                         size_t rna_path_maxncpy);
 void BKE_tracking_get_rna_path_prefix_for_track(const struct MovieTracking *tracking,
                                                 const struct MovieTrackingTrack *track,
                                                 char *rna_path,
-                                                size_t rna_path_len);
+                                                size_t rna_path_maxncpy);
 void BKE_tracking_get_rna_path_for_plane_track(const struct MovieTracking *tracking,
                                                const struct MovieTrackingPlaneTrack *plane_track,
                                                char *rna_path,
@@ -789,7 +790,7 @@ void BKE_tracking_get_rna_path_prefix_for_plane_track(
     const struct MovieTracking *tracking,
     const struct MovieTrackingPlaneTrack *plane_track,
     char *rna_path,
-    size_t rna_path_len);
+    size_t rna_path_maxncpy);
 
 /* --------------------------------------------------------------------
  * Utility macros.

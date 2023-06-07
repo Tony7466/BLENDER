@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <set>
 #include <unordered_set>
@@ -582,8 +584,8 @@ TEST(set, RemoveIf)
   for (const int64_t i : IndexRange(100)) {
     set.add(i * i);
   }
-  set.remove_if([](const int64_t key) { return key > 100; });
-  EXPECT_EQ(set.size(), 11);
+  const int64_t removed = set.remove_if([](const int64_t key) { return key > 100; });
+  EXPECT_EQ(set.size() + removed, 100);
   for (const int64_t i : IndexRange(100)) {
     EXPECT_EQ(set.contains(i * i), i <= 10);
   }

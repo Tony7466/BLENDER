@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -1840,7 +1841,8 @@ bool is_uniform_scaled_m3(const float m[3][3])
   l6 = len_squared_v3(t[2]);
 
   if (fabsf(l2 - l1) <= eps && fabsf(l3 - l1) <= eps && fabsf(l4 - l1) <= eps &&
-      fabsf(l5 - l1) <= eps && fabsf(l6 - l1) <= eps) {
+      fabsf(l5 - l1) <= eps && fabsf(l6 - l1) <= eps)
+  {
     return true;
   }
 
@@ -2728,7 +2730,7 @@ void svd_m4(float U[4][4], float s[4], float V[4][4], float A_[4][4])
         e[k + 1] += 1.0f;
       }
       e[k] = -e[k];
-      if ((k + 1 < m) & (e[k] != 0.0f)) {
+      if ((k + 1 < m) && (e[k] != 0.0f)) {
         float invek1;
 
         /* Apply the transformation. */
@@ -2812,7 +2814,7 @@ void svd_m4(float U[4][4], float s[4], float V[4][4], float A_[4][4])
   /* If required, generate V. */
 
   for (k = n - 1; k >= 0; k--) {
-    if ((k < nrt) & (e[k] != 0.0f)) {
+    if ((k < nrt) && (e[k] != 0.0f)) {
       for (j = k + 1; j < nu; j++) {
         float t = 0;
         for (i = k + 1; i < n; i++) {

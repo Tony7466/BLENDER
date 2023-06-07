@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -85,7 +86,7 @@ static bool modifiers_disable_subsurf_temporary(Object *ob, const int cageIndex)
   return changed;
 }
 
-float (*BKE_crazyspace_get_mapped_editverts(struct Depsgraph *depsgraph, Object *obedit))[3]
+float (*BKE_crazyspace_get_mapped_editverts(Depsgraph *depsgraph, Object *obedit))[3]
 {
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
   Object *obedit_eval = DEG_get_evaluated_object(depsgraph, obedit);
@@ -142,7 +143,8 @@ void BKE_crazyspace_set_quats_editmesh(BMEditMesh *em,
     do {
       if (BM_elem_flag_test(l_iter->v, BM_ELEM_HIDDEN) ||
           BM_elem_flag_test(l_iter->v, BM_ELEM_TAG) ||
-          (use_select && !BM_elem_flag_test(l_iter->v, BM_ELEM_SELECT))) {
+          (use_select && !BM_elem_flag_test(l_iter->v, BM_ELEM_SELECT)))
+      {
         continue;
       }
 
@@ -189,16 +191,16 @@ void BKE_crazyspace_set_quats_mesh(Mesh *me,
 
   /* first store two sets of tangent vectors in vertices, we derive it just from the face-edges */
   const Span<float3> positions = me->vert_positions();
-  const Span<MPoly> polys = me->polys();
+  const OffsetIndices polys = me->polys();
   const Span<int> corner_verts = me->corner_verts();
 
   for (int i = 0; i < me->totpoly; i++) {
-    const MPoly &poly = polys[i];
-    const int *corner_vert_next = &corner_verts[poly.loopstart];
-    const int *corner_vert_curr = &corner_vert_next[poly.totloop - 1];
-    const int *corner_vert_prev = &corner_vert_next[poly.totloop - 2];
+    const IndexRange poly = polys[i];
+    const int *corner_vert_next = &corner_verts[poly.start()];
+    const int *corner_vert_curr = &corner_vert_next[poly.size() - 1];
+    const int *corner_vert_prev = &corner_vert_next[poly.size() - 2];
 
-    for (int j = 0; j < poly.totloop; j++) {
+    for (int j = 0; j < poly.size(); j++) {
       if (!BLI_BITMAP_TEST(vert_tag, *corner_vert_curr)) {
         const float *co_prev, *co_curr, *co_next; /* orig */
         const float *vd_prev, *vd_curr, *vd_next; /* deform */
@@ -234,7 +236,7 @@ void BKE_crazyspace_set_quats_mesh(Mesh *me,
   MEM_freeN(vert_tag);
 }
 
-int BKE_crazyspace_get_first_deform_matrices_editbmesh(struct Depsgraph *depsgraph,
+int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
                                                        Scene *scene,
                                                        Object *ob,
                                                        BMEditMesh *em,
@@ -291,7 +293,8 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(struct Depsgraph *depsgra
 
   for (; md && i <= cageIndex; md = md->next, i++) {
     if (editbmesh_modifier_is_enabled(scene, ob, md, me != nullptr) &&
-        BKE_modifier_is_correctable_deformed(md)) {
+        BKE_modifier_is_correctable_deformed(md))
+    {
       modifiers_left_num++;
     }
   }
@@ -313,7 +316,7 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(struct Depsgraph *depsgra
  *
  * Similar to #BKE_object_eval_reset(), but does not modify the actual evaluated object.
  */
-static void crazyspace_init_object_for_eval(struct Depsgraph *depsgraph,
+static void crazyspace_init_object_for_eval(Depsgraph *depsgraph,
                                             Object *object,
                                             Object *object_crazy)
 {
@@ -353,7 +356,7 @@ static bool crazyspace_modifier_supports_deform(ModifierData *md)
   return (mti->type == eModifierTypeType_OnlyDeform);
 }
 
-int BKE_sculpt_get_first_deform_matrices(struct Depsgraph *depsgraph,
+int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
                                          Scene *scene,
                                          Object *object,
                                          float (**deformmats)[3][3],
@@ -389,7 +392,7 @@ int BKE_sculpt_get_first_deform_matrices(struct Depsgraph *depsgraph,
       if (defmats == nullptr) {
         /* NOTE: Evaluated object is re-set to its original un-deformed state. */
         Mesh *me = static_cast<Mesh *>(object_eval.data);
-        me_eval = BKE_mesh_copy_for_eval(me, true);
+        me_eval = BKE_mesh_copy_for_eval(me);
         crazyspace_init_verts_and_matrices(me_eval, &defmats, &deformedVerts);
       }
 
@@ -425,7 +428,7 @@ int BKE_sculpt_get_first_deform_matrices(struct Depsgraph *depsgraph,
   return modifiers_left_num;
 }
 
-void BKE_crazyspace_build_sculpt(struct Depsgraph *depsgraph,
+void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
                                  Scene *scene,
                                  Object *object,
                                  float (**deformmats)[3][3],
@@ -470,7 +473,7 @@ void BKE_crazyspace_build_sculpt(struct Depsgraph *depsgraph,
         }
 
         if (mesh_eval == nullptr) {
-          mesh_eval = BKE_mesh_copy_for_eval(mesh, true);
+          mesh_eval = BKE_mesh_copy_for_eval(mesh);
         }
 
         mti->deformVerts(md, &mectx, mesh_eval, deformedVerts, mesh_eval->totvert);
@@ -519,10 +522,11 @@ void BKE_crazyspace_build_sculpt(struct Depsgraph *depsgraph,
 void BKE_crazyspace_api_eval(Depsgraph *depsgraph,
                              Scene *scene,
                              Object *object,
-                             struct ReportList *reports)
+                             ReportList *reports)
 {
   if (object->runtime.crazyspace_deform_imats != nullptr ||
-      object->runtime.crazyspace_deform_cos != nullptr) {
+      object->runtime.crazyspace_deform_cos != nullptr)
+  {
     return;
   }
 
@@ -542,8 +546,8 @@ void BKE_crazyspace_api_eval(Depsgraph *depsgraph,
                               &object->runtime.crazyspace_deform_cos);
 }
 
-void BKE_crazyspace_api_displacement_to_deformed(struct Object *object,
-                                                 struct ReportList *reports,
+void BKE_crazyspace_api_displacement_to_deformed(Object *object,
+                                                 ReportList *reports,
                                                  int vertex_index,
                                                  float displacement[3],
                                                  float r_displacement_deformed[3])
@@ -562,8 +566,8 @@ void BKE_crazyspace_api_displacement_to_deformed(struct Object *object,
               displacement);
 }
 
-void BKE_crazyspace_api_displacement_to_original(struct Object *object,
-                                                 struct ReportList *reports,
+void BKE_crazyspace_api_displacement_to_original(Object *object,
+                                                 ReportList *reports,
                                                  int vertex_index,
                                                  float displacement_deformed[3],
                                                  float r_displacement[3])

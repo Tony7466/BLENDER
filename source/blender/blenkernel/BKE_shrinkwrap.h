@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -30,7 +31,6 @@ struct BVHTree;
 struct MDeformVert;
 struct Mesh;
 struct ModifierEvalContext;
-struct MPoly;
 struct Object;
 struct ShrinkwrapGpencilModifierData;
 struct ShrinkwrapModifierData;
@@ -73,7 +73,7 @@ typedef struct ShrinkwrapTreeData {
   BVHTree *bvh;
   BVHTreeFromMesh treeData;
 
-  const struct MPoly *polys;
+  const int *poly_offsets;
   const float (*vert_normals)[3];
   const int *corner_edges;
   const float (*poly_normals)[3];

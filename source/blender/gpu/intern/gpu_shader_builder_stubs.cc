@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -17,7 +18,7 @@
 #include "BKE_global.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_subdiv_ccg.h"
@@ -119,7 +120,9 @@ eAttrDomain BKE_id_attribute_domain(const struct ID * /*id*/,
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BKE_paint.h
  * \{ */
-bool paint_is_face_hidden(const struct MLoopTri * /*lt*/, const bool * /*hide_poly*/)
+bool paint_is_face_hidden(const int * /*looptri_polys*/,
+                          const bool * /*hide_poly*/,
+                          int /*tri_index*/)
 {
   BLI_assert_unreachable();
   return false;
@@ -164,30 +167,30 @@ void BKE_material_defaults_free_gpu()
 /** \name Stubs of BKE_customdata.h
  * \{ */
 
-int CustomData_get_offset(const struct CustomData * /*data*/, int /*type*/)
+int CustomData_get_offset(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   BLI_assert_unreachable();
   return 0;
 }
 
 int CustomData_get_named_layer_index(const struct CustomData * /*data*/,
-                                     int /*type*/,
+                                     eCustomDataType /*type*/,
                                      const char * /*name*/)
 {
   return -1;
 }
 
-int CustomData_get_active_layer_index(const struct CustomData * /*data*/, int /*type*/)
+int CustomData_get_active_layer_index(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return -1;
 }
 
-int CustomData_get_render_layer_index(const struct CustomData * /*data*/, int /*type*/)
+int CustomData_get_render_layer_index(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return -1;
 }
 
-bool CustomData_has_layer(const struct CustomData * /*data*/, int /*type*/)
+bool CustomData_has_layer(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return false;
 }

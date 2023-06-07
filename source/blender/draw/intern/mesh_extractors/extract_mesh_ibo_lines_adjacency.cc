@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -115,11 +116,12 @@ static void extract_lines_adjacency_iter_looptri_bm(const MeshRenderData * /*mr*
 
 static void extract_lines_adjacency_iter_looptri_mesh(const MeshRenderData *mr,
                                                       const MLoopTri *mlt,
-                                                      const int /*elt_index*/,
+                                                      const int elt_index,
                                                       void *_data)
 {
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
-  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[mlt->poly];
+  const int poly_i = mr->looptri_polys[elt_index];
+  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[poly_i];
   if (hidden) {
     return;
   }
@@ -142,7 +144,7 @@ static void extract_lines_adjacency_finish(const MeshRenderData * /*mr*/,
   /* Create edges for remaining non manifold edges. */
   EdgeHashIterator *ehi = BLI_edgehashIterator_new(data->eh);
   for (; !BLI_edgehashIterator_isDone(ehi); BLI_edgehashIterator_step(ehi)) {
-    uint v2, v3, l1, l2, l3;
+    int v2, v3, l1, l2, l3;
     int v_data = POINTER_AS_INT(BLI_edgehashIterator_getValue(ehi));
     if (v_data != NO_EDGE) {
       BLI_edgehashIterator_getKey(ehi, &v2, &v3);
@@ -216,7 +218,7 @@ static void extract_lines_adjacency_iter_subdiv_mesh(const DRWSubdivCache *subdi
                                                      const MeshRenderData *mr,
                                                      void *_data,
                                                      uint subdiv_quad_index,
-                                                     const MPoly * /*coarse_quad*/)
+                                                     const int /*coarse_quad_index*/)
 {
   extract_lines_adjacency_iter_subdiv(subdiv_cache, mr, _data, subdiv_quad_index);
 }

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -31,7 +33,7 @@ set(SRC
   transform_convert_cursor.c
   transform_convert_curve.c
   transform_convert_curves.cc
-  transform_convert_gpencil.c
+  transform_convert_gpencil_legacy.c
   transform_convert_graph.c
   transform_convert_lattice.c
   transform_convert_mask.c
@@ -82,6 +84,7 @@ set(SRC
   transform_mode_shear.c
   transform_mode_shrink_fatten.c
   transform_mode_skin_resize.c
+  transform_mode_snapsource.c
   transform_mode_tilt.c
   transform_mode_timescale.c
   transform_mode_timeslide.c

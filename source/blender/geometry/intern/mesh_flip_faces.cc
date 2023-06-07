@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GEO_mesh_flip_faces.hh"
 
@@ -18,19 +20,17 @@ void flip_faces(Mesh &mesh, const IndexMask &selection)
     return;
   }
 
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
 
-  threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : selection.slice(range)) {
-      const IndexRange poly(polys[i].loopstart, polys[i].totloop);
-      for (const int j : IndexRange(poly.size() / 2)) {
-        const int a = poly[j + 1];
-        const int b = poly.last(j);
-        std::swap(corner_verts[a], corner_verts[b]);
-        std::swap(corner_edges[a - 1], corner_edges[b]);
-      }
+  selection.foreach_index(GrainSize(1024), [&](const int i) {
+    const IndexRange poly = polys[i];
+    for (const int j : IndexRange(poly.size() / 2)) {
+      const int a = poly[j + 1];
+      const int b = poly.last(j);
+      std::swap(corner_verts[a], corner_verts[b]);
+      std::swap(corner_edges[a - 1], corner_edges[b]);
     }
   });
 
@@ -47,21 +47,18 @@ void flip_faces(Mesh &mesh, const IndexMask &selection)
           return true;
         }
         bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(attribute_id);
-        attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
+        bke::attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
           using T = decltype(dummy);
           MutableSpan<T> dst_span = attribute.span.typed<T>();
-          threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
-            for (const int i : selection.slice(range)) {
-              const IndexRange poly(polys[i].loopstart, polys[i].totloop);
-              dst_span.slice(poly.drop_front(1)).reverse();
-            }
+          selection.foreach_index(GrainSize(1024), [&](const int i) {
+            dst_span.slice(polys[i].drop_front(1)).reverse();
           });
         });
         attribute.finish();
         return true;
       });
 
-  BKE_mesh_tag_topology_changed(&mesh);
+  BKE_mesh_tag_face_winding_changed(&mesh);
 }
 
 }  // namespace blender::geometry

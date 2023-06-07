@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_subdiv_modifier.h"
 
@@ -170,12 +171,9 @@ Subdiv *BKE_subsurf_modifier_subdiv_descriptor_ensure(SubsurfRuntimeData *runtim
     return runtime_data->subdiv_gpu = BKE_subdiv_update_from_mesh(
                runtime_data->subdiv_gpu, &runtime_data->settings, mesh);
   }
-  else {
-    runtime_data->used_cpu = 2;
-
-    return runtime_data->subdiv_cpu = BKE_subdiv_update_from_mesh(
-               runtime_data->subdiv_cpu, &runtime_data->settings, mesh);
-  }
+  runtime_data->used_cpu = 2;
+  return runtime_data->subdiv_cpu = BKE_subdiv_update_from_mesh(
+             runtime_data->subdiv_cpu, &runtime_data->settings, mesh);
 }
 
 int BKE_subsurf_modifier_eval_required_mode(bool is_final_render, bool is_edit_mode)

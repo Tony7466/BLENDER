@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -117,19 +118,19 @@ static Mesh *remesh_quadriflow(const Mesh *input_mesh,
   }
 
   /* Construct the new output mesh */
-  Mesh *mesh = BKE_mesh_new_nomain(qrd.out_totverts, 0, qrd.out_totfaces * 4, qrd.out_totfaces);
+  Mesh *mesh = BKE_mesh_new_nomain(qrd.out_totverts, 0, qrd.out_totfaces, qrd.out_totfaces * 4);
   BKE_mesh_copy_parameters(mesh, input_mesh);
-  MutableSpan<MPoly> polys = mesh->polys_for_write();
+  MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
+
+  poly_offsets.fill(4);
+  blender::offset_indices::accumulate_counts_to_offsets(poly_offsets);
 
   mesh->vert_positions_for_write().copy_from(
       Span(reinterpret_cast<float3 *>(qrd.out_verts), qrd.out_totverts));
 
   for (const int i : IndexRange(qrd.out_totfaces)) {
-    MPoly &poly = polys[i];
     const int loopstart = i * 4;
-    poly.loopstart = loopstart;
-    poly.totloop = 4;
     corner_verts[loopstart] = qrd.out_faces[loopstart];
     corner_verts[loopstart + 1] = qrd.out_faces[loopstart + 1];
     corner_verts[loopstart + 2] = qrd.out_faces[loopstart + 2];
@@ -222,20 +223,23 @@ static Mesh *remesh_voxel_volume_to_mesh(const openvdb::FloatGrid::Ptr level_set
       *level_set_grid, vertices, tris, quads, isovalue, adaptivity, relax_disoriented_triangles);
 
   Mesh *mesh = BKE_mesh_new_nomain(
-      vertices.size(), 0, quads.size() * 4 + tris.size() * 3, quads.size() + tris.size());
+      vertices.size(), 0, quads.size() + tris.size(), quads.size() * 4 + tris.size() * 3);
   MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
-  MutableSpan<MPoly> mesh_polys = mesh->polys_for_write();
+  MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
   MutableSpan<int> mesh_corner_verts = mesh->corner_verts_for_write();
+
+  if (!poly_offsets.is_empty()) {
+    poly_offsets.take_front(quads.size()).fill(4);
+    poly_offsets.drop_front(quads.size()).fill(3);
+    blender::offset_indices::accumulate_counts_to_offsets(poly_offsets);
+  }
 
   for (const int i : vert_positions.index_range()) {
     vert_positions[i] = float3(vertices[i].x(), vertices[i].y(), vertices[i].z());
   }
 
   for (const int i : IndexRange(quads.size())) {
-    MPoly &poly = mesh_polys[i];
     const int loopstart = i * 4;
-    poly.loopstart = loopstart;
-    poly.totloop = 4;
     mesh_corner_verts[loopstart] = quads[i][0];
     mesh_corner_verts[loopstart + 1] = quads[i][3];
     mesh_corner_verts[loopstart + 2] = quads[i][2];
@@ -244,10 +248,7 @@ static Mesh *remesh_voxel_volume_to_mesh(const openvdb::FloatGrid::Ptr level_set
 
   const int triangle_loop_start = quads.size() * 4;
   for (const int i : IndexRange(tris.size())) {
-    MPoly &poly = mesh_polys[quads.size() + i];
     const int loopstart = triangle_loop_start + i * 3;
-    poly.loopstart = loopstart;
-    poly.totloop = 3;
     mesh_corner_verts[loopstart] = tris[i][2];
     mesh_corner_verts[loopstart + 1] = tris[i][1];
     mesh_corner_verts[loopstart + 2] = tris[i][0];
@@ -316,11 +317,10 @@ void BKE_remesh_reproject_sculpt_face_sets(Mesh *target, const Mesh *source)
   const AttributeAccessor src_attributes = source->attributes();
   MutableAttributeAccessor dst_attributes = target->attributes_for_write();
   const Span<float3> target_positions = target->vert_positions();
-  const Span<MPoly> target_polys = target->polys();
+  const OffsetIndices target_polys = target->polys();
   const Span<int> target_corner_verts = target->corner_verts();
 
-  const VArray<int> src_face_sets = src_attributes.lookup<int>(".sculpt_face_set",
-                                                               ATTR_DOMAIN_FACE);
+  const VArray src_face_sets = *src_attributes.lookup<int>(".sculpt_face_set", ATTR_DOMAIN_FACE);
   if (!src_face_sets) {
     return;
   }
@@ -333,7 +333,7 @@ void BKE_remesh_reproject_sculpt_face_sets(Mesh *target, const Mesh *source)
   const VArraySpan<int> src(src_face_sets);
   MutableSpan<int> dst = dst_face_sets.span;
 
-  const blender::Span<MLoopTri> looptris = source->looptris();
+  const blender::Span<int> looptri_polys = source->looptri_polys();
   BVHTreeFromMesh bvhtree = {nullptr};
   BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_LOOPTRI, 2);
 
@@ -342,13 +342,12 @@ void BKE_remesh_reproject_sculpt_face_sets(Mesh *target, const Mesh *source)
       BVHTreeNearest nearest;
       nearest.index = -1;
       nearest.dist_sq = FLT_MAX;
-      const MPoly &poly = target_polys[i];
-      const float3 from_co = mesh::poly_center_calc(
-          target_positions, target_corner_verts.slice(poly.loopstart, poly.totloop));
+      const float3 from_co = mesh::poly_center_calc(target_positions,
+                                                    target_corner_verts.slice(target_polys[i]));
       BLI_bvhtree_find_nearest(
           bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
       if (nearest.index != -1) {
-        dst[i] = src[looptris[nearest.index].poly];
+        dst[i] = src[looptri_polys[nearest.index]];
       }
       else {
         dst[i] = 1;
@@ -367,13 +366,17 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   int i = 0;
   const CustomDataLayer *layer;
 
-  MeshElemMap *source_lmap = nullptr;
-  int *source_lmap_mem = nullptr;
-  MeshElemMap *target_lmap = nullptr;
-  int *target_lmap_mem = nullptr;
+  Array<int> source_vert_to_loop_offsets;
+  Array<int> source_vert_to_loop_indices;
+  blender::GroupedSpan<int> source_lmap;
+
+  Array<int> target_vert_to_loop_offsets;
+  Array<int> target_vert_to_loop_indices;
+  blender::GroupedSpan<int> target_lmap;
 
   while ((layer = BKE_id_attribute_from_index(
-              const_cast<ID *>(&source->id), i++, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL))) {
+              const_cast<ID *>(&source->id), i++, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL)))
+  {
     eAttrDomain domain = BKE_id_attribute_domain(&source->id, layer);
     const eCustomDataType type = eCustomDataType(layer->type);
 
@@ -413,22 +416,15 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     }
     else {
       /* Lazily init vertex -> loop maps. */
-      if (!source_lmap) {
-        BKE_mesh_vert_loop_map_create(&source_lmap,
-                                      &source_lmap_mem,
-                                      source->polys().data(),
-                                      source->corner_verts().data(),
-                                      source->totvert,
-                                      source->totpoly,
-                                      source->totloop);
-
-        BKE_mesh_vert_loop_map_create(&target_lmap,
-                                      &target_lmap_mem,
-                                      target->polys().data(),
-                                      target->corner_verts().data(),
-                                      target->totvert,
-                                      target->totpoly,
-                                      target->totloop);
+      if (source_lmap.is_empty()) {
+        source_lmap = blender::bke::mesh::build_vert_to_loop_map(source->corner_verts(),
+                                                                 source->totvert,
+                                                                 source_vert_to_loop_offsets,
+                                                                 source_vert_to_loop_indices);
+        target_lmap = blender::bke::mesh::build_vert_to_loop_map(target->corner_verts(),
+                                                                 target->totvert,
+                                                                 target_vert_to_loop_offsets,
+                                                                 target_vert_to_loop_indices);
       }
 
       blender::threading::parallel_for(
@@ -444,10 +440,10 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
                 continue;
               }
 
-              MeshElemMap *source_loops = source_lmap + nearest.index;
-              MeshElemMap *target_loops = target_lmap + i;
+              const Span<int> source_loops = source_lmap[nearest.index];
+              const Span<int> target_loops = target_lmap[i];
 
-              if (target_loops->count == 0 || source_loops->count == 0) {
+              if (target_loops.size() == 0 || source_loops.size() == 0) {
                 continue;
               }
 
@@ -458,18 +454,17 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 
               CustomData_interp(source_cdata,
                                 target_cdata,
-                                source_loops->indices,
+                                source_loops.data(),
                                 nullptr,
                                 nullptr,
-                                source_loops->count,
-                                target_loops->indices[0]);
+                                source_loops.size(),
+                                target_loops[0]);
 
-              void *elem = POINTER_OFFSET(target_data,
-                                          size_t(target_loops->indices[0]) * data_size);
+              void *elem = POINTER_OFFSET(target_data, size_t(target_loops[0]) * data_size);
 
               /* Copy to rest of target loops. */
-              for (int j = 1; j < target_loops->count; j++) {
-                memcpy(POINTER_OFFSET(target_data, size_t(target_loops->indices[j]) * data_size),
+              for (int j = 1; j < target_loops.size(); j++) {
+                memcpy(POINTER_OFFSET(target_data, size_t(target_loops[j]) * data_size),
                        elem,
                        data_size);
               }
@@ -488,14 +483,10 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     target->default_color_attribute = BLI_strdup(source->default_color_attribute);
   }
 
-  MEM_SAFE_FREE(source_lmap);
-  MEM_SAFE_FREE(source_lmap_mem);
-  MEM_SAFE_FREE(target_lmap);
-  MEM_SAFE_FREE(target_lmap_mem);
   free_bvhtree_from_mesh(&bvhtree);
 }
 
-struct Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
+Mesh *BKE_mesh_remesh_voxel_fix_poles(const Mesh *mesh)
 {
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(mesh);
 

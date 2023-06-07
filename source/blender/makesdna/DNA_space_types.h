@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 /** \file
  * \ingroup DNA
  *
@@ -1980,6 +1981,7 @@ typedef struct SpreadsheetRowFilter {
   char _pad0[2];
 
   int value_int;
+  int value_int2[2];
   char *value_string;
   float value_float;
   float threshold;
@@ -2025,6 +2027,7 @@ typedef enum eSpreadsheetColumnValueType {
   SPREADSHEET_VALUE_TYPE_STRING = 7,
   SPREADSHEET_VALUE_TYPE_BYTE_COLOR = 8,
   SPREADSHEET_VALUE_TYPE_INT8 = 9,
+  SPREADSHEET_VALUE_TYPE_INT32_2D = 10,
 } eSpreadsheetColumnValueType;
 
 /**

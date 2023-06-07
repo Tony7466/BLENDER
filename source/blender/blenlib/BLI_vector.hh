@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -816,14 +818,17 @@ class Vector {
   }
 
   /**
-   * Remove all values for which the given predicate is true.
+   * Remove all values for which the given predicate is true and return the number of values
+   * removed.
    *
    * This is similar to std::erase_if.
    */
-  template<typename Predicate> void remove_if(Predicate &&predicate)
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
+    const T *prev_end = this->end();
     end_ = std::remove_if(this->begin(), this->end(), predicate);
     UPDATE_VECTOR_SIZE(this);
+    return int64_t(prev_end - end_);
   }
 
   /**

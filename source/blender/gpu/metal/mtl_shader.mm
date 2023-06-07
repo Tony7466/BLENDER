@@ -30,6 +30,7 @@
 #include "mtl_shader.hh"
 #include "mtl_shader_generator.hh"
 #include "mtl_shader_interface.hh"
+#include "mtl_shader_log.hh"
 #include "mtl_texture.hh"
 #include "mtl_vertex_buffer.hh"
 
@@ -40,6 +41,21 @@ using namespace blender::gpu;
 using namespace blender::gpu::shader;
 
 namespace blender::gpu {
+
+const char *to_string(ShaderStage stage)
+{
+  switch (stage) {
+    case ShaderStage::VERTEX:
+      return "Vertex Shader";
+    case ShaderStage::FRAGMENT:
+      return "Fragment Shader";
+    case ShaderStage::COMPUTE:
+      return "Compute Shader";
+    case ShaderStage::ANY:
+      break;
+  }
+  return "Unknown Shader Stage";
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Creation / Destruction.
@@ -172,7 +188,7 @@ void MTLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
 
 void MTLShader::geometry_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  MTL_LOG_ERROR("MTLShader::geometry_shader_from_glsl - Geometry shaders unsupported!\n");
+  MTL_LOG_ERROR("MTLShader::geometry_shader_from_glsl - Geometry shaders unsupported!");
 }
 
 void MTLShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
@@ -213,7 +229,7 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
 {
   /* Check if Shader has already been finalized. */
   if (this->is_valid()) {
-    MTL_LOG_ERROR("Shader (%p) '%s' has already been finalized!\n", this, this->name_get());
+    MTL_LOG_ERROR("Shader (%p) '%s' has already been finalized!", this, this->name_get());
   }
 
   /* Compute shaders. */
@@ -291,8 +307,8 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
                                    shd_builder_->msl_source_frag_);
 
       /* Transform feedback, skip compilation. */
-      if (src_stage == ShaderStage::FRAGMENT &&
-          (transform_feedback_type_ != GPU_SHADER_TFB_NONE)) {
+      if (src_stage == ShaderStage::FRAGMENT && (transform_feedback_type_ != GPU_SHADER_TFB_NONE))
+      {
         shader_library_frag_ = nil;
         break;
       }
@@ -322,11 +338,17 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
       if (error) {
         /* Only exit out if genuine error and not warning. */
         if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
-            NSNotFound) {
-          NSLog(@"Compile Error - Metal Shader Library (Stage: %hhu), error %@ \n",
-                src_stage,
-                error);
-          BLI_assert(false);
+            NSNotFound)
+        {
+          const char *errors_c_str = [[error localizedDescription] UTF8String];
+          const char *sources_c_str = shd_builder_->glsl_fragment_source_.c_str();
+
+          MTLLogParser parser;
+          print_log(Span<const char *>(&sources_c_str, 1),
+                    errors_c_str,
+                    to_string(src_stage),
+                    true,
+                    &parser);
 
           /* Release temporary compilation resources. */
           delete shd_builder_;
@@ -386,7 +408,7 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
     valid_ = true;
 
     /* Prepare backing data storage for local uniforms. */
-    const MTLShaderUniformBlock &push_constant_block = mtl_interface->get_push_constant_block();
+    const MTLShaderBufferBlock &push_constant_block = mtl_interface->get_push_constant_block();
     if (push_constant_block.size > 0) {
       push_constant_data_ = MEM_callocN(push_constant_block.size, __func__);
       this->push_constant_bindstate_mark_dirty(true);
@@ -451,7 +473,7 @@ void MTLShader::bind()
   if (interface == nullptr || !this->is_valid()) {
     MTL_LOG_WARNING(
         "MTLShader::bind - Shader '%s' has no valid implementation in Metal, draw calls will be "
-        "skipped.\n",
+        "skipped.",
         this->name_get());
   }
   ctx->pipeline_state.active_shader = this;
@@ -471,7 +493,7 @@ void MTLShader::uniform_float(int location, int comp_len, int array_size, const 
   }
   MTLShaderInterface *mtl_interface = get_interface();
   if (location < 0 || location >= mtl_interface->get_total_uniforms()) {
-    MTL_LOG_WARNING("Uniform location %d is not valid in Shader %s\n", location, this->name_get());
+    MTL_LOG_WARNING("Uniform location %d is not valid in Shader %s", location, this->name_get());
     return;
   }
 
@@ -576,17 +598,17 @@ void MTLShader::uniform_int(int location, int comp_len, int array_size, const in
    * Metal, as we cannot point a texture binding at a different slot. */
   MTLShaderInterface *mtl_interface = this->get_interface();
   if (location >= mtl_interface->get_total_uniforms() &&
-      location < (mtl_interface->get_total_uniforms() + mtl_interface->get_total_textures())) {
+      location < (mtl_interface->get_total_uniforms() + mtl_interface->get_total_textures()))
+  {
     MTL_LOG_WARNING(
         "Texture uniform location re-mapping unsupported in Metal. (Possibly also bad uniform "
-        "location %d)\n",
+        "location %d)",
         location);
     return;
   }
 
   if (location < 0 || location >= mtl_interface->get_total_uniforms()) {
-    MTL_LOG_WARNING(
-        "Uniform is not valid at location %d - Shader %s\n", location, this->name_get());
+    MTL_LOG_WARNING("Uniform is not valid at location %d - Shader %s", location, this->name_get());
     return;
   }
 
@@ -624,7 +646,7 @@ void MTLShader::warm_cache(int limit)
 {
   if (parent_shader_ != nullptr) {
     MTLContext *ctx = MTLContext::get();
-    MTLShader *parent_mtl = reinterpret_cast<MTLShader *>(parent_shader_);
+    MTLShader *parent_mtl = static_cast<MTLShader *>(parent_shader_);
 
     /* Extract PSO descriptors from parent shader. */
     blender::Vector<MTLRenderPipelineStateDescriptor> descriptors;
@@ -855,7 +877,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
     }
     else {
       for (const uint i :
-           IndexRange(pipeline_descriptor.vertex_descriptor.max_attribute_value + 1)) {
+           IndexRange(pipeline_descriptor.vertex_descriptor.max_attribute_value + 1))
+      {
 
         /* Metal back-end attribute descriptor state. */
         const MTLVertexAttributeDescriptorPSO &attribute_desc =
@@ -876,7 +899,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
           /* If attributes are non-contiguous, we can skip over gaps. */
           MTL_LOG_WARNING(
               "MTLShader: baking pipeline state for '%s'- skipping input attribute at "
-              "index '%d' but none was specified in the current vertex state\n",
+              "index '%d' but none was specified in the current vertex state",
               mtl_interface->get_name(),
               i);
 
@@ -893,7 +916,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
                             type:MTLDataTypeInt
                         withName:[NSString stringWithFormat:@"MTL_AttributeConvert%d", i]];
         if (MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT_UNIT ||
-            MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT) {
+            MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT)
+        {
           shader_debug_printf(
               "TODO(Metal): Shader %s needs to support internal format conversion\n",
               mtl_interface->name);
@@ -926,7 +950,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
       /* Mark empty attribute conversion. */
       for (int i = pipeline_descriptor.vertex_descriptor.max_attribute_value + 1;
            i < GPU_VERT_ATTR_MAX_LEN;
-           i++) {
+           i++)
+      {
         int MTL_attribute_conversion_mode = 0;
         [values setConstantValue:&MTL_attribute_conversion_mode
                             type:MTLDataTypeInt
@@ -971,7 +996,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
             }
             using_null_buffer = true;
 #if MTL_DEBUG_SHADER_ATTRIBUTES == 1
-            MTL_LOG_INFO("Setting up buffer binding for null attribute with buffer index %d\n",
+            MTL_LOG_INFO("Setting up buffer binding for null attribute with buffer index %d",
                          null_buffer_index);
 #endif
           }
@@ -987,6 +1012,19 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
                         type:MTLDataTypeInt
                     withName:@"MTL_uniform_buffer_base_index"];
 
+    /* Storage buffer bind index.
+     * This is always relative to MTL_uniform_buffer_base_index, plus the number of active buffers,
+     * and an additional space for the push constant block.
+     * If the shader does not have any uniform blocks, then we can place directly after the push
+     * constant block. As we do not need an extra spot for the UBO at index '0'. */
+    int MTL_storage_buffer_base_index = MTL_uniform_buffer_base_index + 1 +
+                                        ((mtl_interface->get_total_uniform_blocks() > 0) ?
+                                             mtl_interface->get_total_uniform_blocks() :
+                                             0);
+    [values setConstantValue:&MTL_storage_buffer_base_index
+                        type:MTLDataTypeInt
+                    withName:@"MTL_storage_buffer_base_index"];
+
     /* Transform feedback constant.
      * Ensure buffer is placed after existing buffers, including default buffers. */
     int MTL_transform_feedback_buffer_index = -1;
@@ -994,9 +1032,10 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
       /* If using argument buffers, insert index after argument buffer index. Otherwise, insert
        * after uniform buffer bindings. */
       MTL_transform_feedback_buffer_index =
-          (mtl_interface->uses_argument_buffer_for_samplers()) ?
-              (mtl_interface->get_argument_buffer_bind_index(ShaderStage::VERTEX) + 1) :
-              (MTL_uniform_buffer_base_index + mtl_interface->get_max_ubo_index() + 2);
+          MTL_uniform_buffer_base_index +
+          ((mtl_interface->uses_argument_buffer_for_samplers()) ?
+               (mtl_interface->get_argument_buffer_bind_index(ShaderStage::VERTEX) + 1) :
+               (mtl_interface->get_max_buffer_index() + 2));
     }
 
     if (this->transform_feedback_type_ != GPU_SHADER_TFB_NONE) {
@@ -1032,7 +1071,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
     bool null_pointsize = true;
     float MTL_pointsize = pipeline_descriptor.point_size;
     if (pipeline_descriptor.vertex_descriptor.prim_topology_class ==
-        MTLPrimitiveTopologyClassPoint) {
+        MTLPrimitiveTopologyClassPoint)
+    {
       /* `if pointsize is > 0.0`, PROGRAM_POINT_SIZE is enabled, and `gl_PointSize` shader keyword
        * overrides the value. Otherwise, if < 0.0, use global constant point size. */
       if (MTL_pointsize < 0.0) {
@@ -1057,12 +1097,19 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
                                                      constantValues:values
                                                               error:&error];
     if (error) {
-      NSLog(@"Compile Error - Metal Shader vertex function, error %@", error);
+      bool has_error = (
+          [[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
+          NSNotFound);
+
+      const char *errors_c_str = [[error localizedDescription] UTF8String];
+      const char *sources_c_str = shd_builder_->glsl_fragment_source_.c_str();
+
+      MTLLogParser parser;
+      print_log(
+          Span<const char *>(&sources_c_str, 1), errors_c_str, "VertShader", has_error, &parser);
 
       /* Only exit out if genuine error and not warning */
-      if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
-          NSNotFound) {
-        BLI_assert(false);
+      if (has_error) {
         return nullptr;
       }
     }
@@ -1073,12 +1120,19 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
                                                          constantValues:values
                                                                   error:&error];
       if (error) {
-        NSLog(@"Compile Error - Metal Shader fragment function, error %@", error);
+        bool has_error = (
+            [[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
+            NSNotFound);
+
+        const char *errors_c_str = [[error localizedDescription] UTF8String];
+        const char *sources_c_str = shd_builder_->glsl_fragment_source_.c_str();
+
+        MTLLogParser parser;
+        print_log(
+            Span<const char *>(&sources_c_str, 1), errors_c_str, "FragShader", has_error, &parser);
 
         /* Only exit out if genuine error and not warning */
-        if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
-            NSNotFound) {
-          BLI_assert(false);
+        if (has_error) {
           return nullptr;
         }
       }
@@ -1090,7 +1144,8 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
 
     /* Setup pixel format state */
     for (int color_attachment = 0; color_attachment < GPU_FB_MAX_COLOR_ATTACHMENT;
-         color_attachment++) {
+         color_attachment++)
+    {
       /* Fetch color attachment pixel format in back-end pipeline state. */
       MTLPixelFormat pixel_format = pipeline_descriptor.color_attachment_format[color_attachment];
       /* Populate MTL API PSO attachment descriptor. */
@@ -1129,10 +1184,10 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
      * We need to ensure that the PSO will have valid bind-point ranges, or is using the
      * appropriate bindless fallback path if any bind limits are exceeded. */
 #ifdef NDEBUG
-    /* Ensure UBO and PushConstantBlock bindings are within range. */
+    /* Ensure Buffer bindings are within range. */
     BLI_assert_msg((MTL_uniform_buffer_base_index + get_max_ubo_index() + 2) <
                        MTL_MAX_BUFFER_BINDINGS,
-                   "UBO bindings exceed the fragment bind table limit.");
+                   "UBO and SSBO bindings exceed the fragment bind table limit.");
 
     /* Transform feedback buffer. */
     if (transform_feedback_type_ != GPU_SHADER_TFB_NONE) {
@@ -1176,6 +1231,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
     pso_inst->frag = desc.fragmentFunction;
     pso_inst->pso = pso;
     pso_inst->base_uniform_buffer_index = MTL_uniform_buffer_base_index;
+    pso_inst->base_storage_buffer_index = MTL_storage_buffer_base_index;
     pso_inst->null_attribute_buffer_index = (using_null_buffer) ? null_buffer_index : -1;
     pso_inst->transform_feedback_buffer_index = MTL_transform_feedback_buffer_index;
     pso_inst->prim_type = prim_type;
@@ -1280,6 +1336,8 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
 {
   /* NOTE(Metal): Bakes and caches a PSO for compute. */
   BLI_assert(this);
+  MTLShaderInterface *mtl_interface = this->get_interface();
+  BLI_assert(mtl_interface);
   BLI_assert(this->is_valid());
   BLI_assert(shader_library_compute_ != nil);
 
@@ -1301,7 +1359,19 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
                         type:MTLDataTypeInt
                     withName:@"MTL_uniform_buffer_base_index"];
 
-    /* TODO: SSBO binding base index. */
+    /* Storage buffer bind index.
+     * This is always relative to MTL_uniform_buffer_base_index, plus the number of active buffers,
+     * and an additional space for the push constant block.
+     * If the shader does not have any uniform blocks, then we can place directly after the push
+     * constant block. As we do not need an extra spot for the UBO at index '0'. */
+    int MTL_storage_buffer_base_index = MTL_uniform_buffer_base_index + 1 +
+                                        ((mtl_interface->get_total_uniform_blocks() > 0) ?
+                                             mtl_interface->get_total_uniform_blocks() :
+                                             0);
+
+    [values setConstantValue:&MTL_storage_buffer_base_index
+                        type:MTLDataTypeInt
+                    withName:@"MTL_storage_buffer_base_index"];
 
     /* Compile compute function. */
     NSError *error = nullptr;
@@ -1309,21 +1379,31 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
         newFunctionWithName:compute_function_name_
              constantValues:values
                       error:&error];
+    compute_function.label = [NSString stringWithUTF8String:this->name];
+
     if (error) {
       NSLog(@"Compile Error - Metal Shader compute function, error %@", error);
 
       /* Only exit out if genuine error and not warning */
       if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
-          NSNotFound) {
+          NSNotFound)
+      {
         BLI_assert(false);
         return false;
       }
     }
 
     /* Compile PSO. */
+    MTLComputePipelineDescriptor *desc = [[MTLComputePipelineDescriptor alloc] init];
+    desc.maxTotalThreadsPerThreadgroup = 1024;
+    desc.computeFunction = compute_function;
+
     id<MTLComputePipelineState> pso = [ctx->device
-        newComputePipelineStateWithFunction:compute_function
-                                      error:&error];
+        newComputePipelineStateWithDescriptor:desc
+                                      options:MTLPipelineOptionNone
+                                   reflection:nullptr
+                                        error:&error];
+
     if (error) {
       NSLog(@"Failed to create PSO for compute shader: %s error %@\n", this->name, error);
       BLI_assert(false);
@@ -1347,8 +1427,7 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
     compute_pso_instance_.compute = [compute_function retain];
     compute_pso_instance_.pso = [pso retain];
     compute_pso_instance_.base_uniform_buffer_index = MTL_uniform_buffer_base_index;
-    /* TODO: Add SSBO base buffer index support. */
-    compute_pso_instance_.base_ssbo_buffer_index = -1;
+    compute_pso_instance_.base_storage_buffer_index = MTL_storage_buffer_base_index;
   }
   return true;
 }
@@ -1485,7 +1564,7 @@ void MTLShader::ssbo_vertex_fetch_bind_attributes_end(id<MTLRenderCommandEncoder
         MTL_LOG_WARNING(
             "SSBO Vertex Fetch missing attribute with index: %d. Shader: %s, Attr "
             "Name: "
-            "%s - Null buffer bound\n",
+            "%s - Null buffer bound",
             i,
             this->name_get(),
             mtl_shader_attribute->name);
@@ -1496,7 +1575,7 @@ void MTLShader::ssbo_vertex_fetch_bind_attributes_end(id<MTLRenderCommandEncoder
         ssbo_vertex_fetch_bind_attribute(ssbo_attr);
         MTL_LOG_WARNING(
             "Unassigned Shader attribute: %s, Attr Name: %s -- Binding NULL BUFFER to "
-            "slot %d\n",
+            "slot %d",
             this->name_get(),
             mtl_interface->get_name_at_offset(mtl_shader_attribute->name_offset),
             null_attr_buffer_slot);
@@ -1504,7 +1583,7 @@ void MTLShader::ssbo_vertex_fetch_bind_attributes_end(id<MTLRenderCommandEncoder
     }
 
     /* Bind NULL buffer to given VBO slot. */
-    MTLContext *ctx = reinterpret_cast<MTLContext *>(GPU_context_active_get());
+    MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
     id<MTLBuffer> null_buf = ctx->get_null_attribute_buffer();
     BLI_assert(null_buf);
 
@@ -1531,4 +1610,4 @@ bool MTLShader::has_transform_feedback_varying(std::string str)
           tf_output_name_list_.end());
 }
 
-}  // blender::gpu::shdaer
+}  // namespace blender::gpu

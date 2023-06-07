@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -32,6 +34,7 @@ void ED_asset_handle_get_full_library_path(
     /* `1090` for #FILE_MAX_LIBEXTRA,
      * rely on warnings to let us know if this gets out of sync. */
     char r_full_lib_path[1090]);
+bool ED_asset_handle_get_use_relative_path(const struct AssetHandle *asset);
 
 #ifdef __cplusplus
 }

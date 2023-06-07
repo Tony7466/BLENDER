@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "workbench_private.hh"
 
@@ -60,7 +62,7 @@ void MeshPass::draw(ObjectRef &ref,
                     ResourceHandle handle,
                     uint material_index,
                     ::Image *image /* = nullptr */,
-                    eGPUSamplerState sampler_state /* = GPU_SAMPLER_DEFAULT */,
+                    GPUSamplerState sampler_state /* = GPUSamplerState::default_sampler() */,
                     ImageUser *iuser /* = nullptr */)
 {
   is_empty_ = false;

@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 set(INC
   .
@@ -12,7 +13,7 @@ set(INC
   ../depsgraph
   ../draw
   ../functions
-  ../gpencil_modifiers
+  ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
   ../imbuf
@@ -36,6 +37,7 @@ set(INC
   ../../../intern/mikktspace
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
+  ../../../extern/fmtlib/include
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
@@ -144,11 +146,13 @@ set(SRC
   intern/geometry_fields.cc
   intern/geometry_set.cc
   intern/geometry_set_instances.cc
-  intern/gpencil_legacy.c
   intern/gpencil_curve_legacy.c
   intern/gpencil_geom_legacy.cc
+  intern/gpencil_legacy.c
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
+  intern/grease_pencil_convert_legacy.cc
+  intern/grease_pencil.cc
   intern/icons.cc
   intern/icons_rasterize.c
   intern/idprop.c
@@ -181,14 +185,15 @@ set(SRC
   intern/lib_remap.c
   intern/library.c
   intern/light.c
-  intern/lightprobe.c
+  intern/light_linking.cc
+  intern/lightprobe.cc
   intern/linestyle.cc
   intern/main.c
   intern/main_idmap.c
   intern/main_namemap.cc
-  intern/mask.c
-  intern/mask_evaluate.c
-  intern/mask_rasterize.c
+  intern/mask.cc
+  intern/mask_evaluate.cc
+  intern/mask_rasterize.cc
   intern/material.cc
   intern/mball.cc
   intern/mball_tessellate.cc
@@ -232,6 +237,7 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_field_inferencing.cc
   intern/node_tree_update.cc
+  intern/node_tree_zones.cc
   intern/object.cc
   intern/object_deform.c
   intern/object_dupli.cc
@@ -265,6 +271,8 @@ set(SRC
   intern/shader_fx.c
   intern/shrinkwrap.cc
   intern/simulation.cc
+  intern/simulation_state.cc
+  intern/simulation_state_serialize.cc
   intern/softbody.c
   intern/sound.c
   intern/speaker.c
@@ -384,11 +392,13 @@ set(SRC
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.h
-  BKE_gpencil_legacy.h
   BKE_gpencil_curve_legacy.h
   BKE_gpencil_geom_legacy.h
+  BKE_gpencil_legacy.h
   BKE_gpencil_modifier_legacy.h
   BKE_gpencil_update_cache_legacy.h
+  BKE_grease_pencil.h
+  BKE_grease_pencil.hh
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
@@ -411,6 +421,7 @@ set(SRC
   BKE_lib_remap.h
   BKE_library.h
   BKE_light.h
+  BKE_light_linking.h
   BKE_lightprobe.h
   BKE_linestyle.h
   BKE_main.h
@@ -440,8 +451,10 @@ set(SRC
   BKE_multires.h
   BKE_nla.h
   BKE_node.h
+  BKE_node.hh
   BKE_node_runtime.hh
   BKE_node_tree_update.h
+  BKE_node_tree_zones.hh
   BKE_object.h
   BKE_object_deform.h
   BKE_object_facemap.h
@@ -464,6 +477,8 @@ set(SRC
   BKE_shader_fx.h
   BKE_shrinkwrap.h
   BKE_simulation.h
+  BKE_simulation_state.hh
+  BKE_simulation_state_serialize.hh
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -506,7 +521,7 @@ set(SRC
   intern/lib_intern.h
   intern/multires_inline.h
   intern/multires_reshape.hh
-  intern/multires_unsubdivide.h
+  intern/multires_unsubdivide.hh
   intern/ocean_intern.h
   intern/pbvh_intern.hh
   intern/pbvh_pixels_copy.hh
@@ -525,7 +540,7 @@ set(LIB
   bf_depsgraph
   bf_draw
   bf_functions
-  bf_gpencil_modifiers
+  bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
   bf_imbuf
@@ -540,6 +555,7 @@ set(LIB
   bf_rna
   bf_shader_fx
   bf_simulation
+  extern_fmtlib
 
   # For `vfontdata_freetype.c`.
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
@@ -594,24 +610,12 @@ if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()
 
-if(WITH_IMAGE_TIFF)
-  add_definitions(-DWITH_TIFF)
-endif()
-
 if(WITH_IMAGE_OPENJPEG)
   add_definitions(-DWITH_OPENJPEG)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
-endif()
-
-if(WITH_IMAGE_HDR)
-  add_definitions(-DWITH_HDR)
 endif()
 
 if(WITH_IMAGE_WEBP)
@@ -839,6 +843,7 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
+    intern/grease_pencil_test.cc
   )
   set(TEST_INC
     ../editors/include
