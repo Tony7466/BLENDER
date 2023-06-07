@@ -101,10 +101,9 @@ class Extra {
 
     /* Helpers for when we're transforming origins. */
     if (draw_xform) {
-      /* TODO
-      const float color_xform[4] = {0.15f, 0.15f, 0.15f, 0.7f};
-      DRW_buffer_add_entry(cb->origin_xform, color_xform, ob->object_to_world);
-      */
+      /* TODO(Miguel Pozo): What's this? */
+      const float4 color_xform = {0.15f, 0.15f, 0.15f, 0.7f};
+      passes.origin_xform.append(data.with_color(color_xform), select_id);
     }
     if (ob->pd && ob->pd->forcefield) {
       force_field_sync(ob_ref, select_id, res, state, passes, data);

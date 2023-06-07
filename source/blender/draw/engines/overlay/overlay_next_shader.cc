@@ -79,6 +79,15 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.vertex_inputs_.pop_last();
     info.vertex_inputs_.pop_last();
   });
+
+  extra_groundline = selectable_shader(
+      "overlay_extra_groundline", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "float4", "data_buf[]");
+        info.define("inst_pos", "data_buf[gl_InstanceID].xyz");
+        info.vertex_inputs_.pop_last();
+        /* Use the same vertex layout for all shapes. */
+        info.vertex_in(1, gpu::shader::Type::INT, "vclass");
+      });
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)

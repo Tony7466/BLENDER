@@ -31,10 +31,7 @@ static void probe_sync(const ObjectRef &ob_ref,
     data.matrix[3][3] = show_clipping ? probe->clipend : -1.0;
 
     passes.probe_cube.append(data, select_id);
-
-    passes.groundline.append(
-        data.with_matrix(math::translate(float4x4::identity(), data.matrix.location())),
-        select_id);
+    passes.groundline.append(float4(data.matrix.location()), select_id);
 
     if (show_influence) {
       float influence_start = probe->distinf * (1.0f - probe->falloff);

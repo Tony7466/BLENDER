@@ -43,8 +43,7 @@ static void light_sync(const ObjectRef &ob_ref,
     light_color = float4(la->r, la->g, la->b, 1.0f);
   }
 
-  passes.groundline.append(
-      data.with_matrix(math::translate(float4x4::identity(), data.matrix.location())), select_id);
+  passes.groundline.append(float4(data.matrix.location()), select_id);
 
   passes.light_icon_inner.append(data.with_color(light_color), select_id);
   passes.light_icon_outer.append(data, select_id);
