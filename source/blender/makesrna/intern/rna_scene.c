@@ -3197,8 +3197,8 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Face", "Direction and mode for faces");
 
   prop = RNA_def_property(srna, "viewport_facing_select_threshold", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_range(prop, -0.99, 1.0);
-  RNA_def_property_ui_range(prop, -0.99, 1.0, 1.0, 2);
+  RNA_def_property_range(prop, -0.999, 0.999);
+  RNA_def_property_ui_range(prop, -0.999, 0.999, 1.0, 3);
   RNA_def_property_ui_text(
       prop,
       "Threshold",
