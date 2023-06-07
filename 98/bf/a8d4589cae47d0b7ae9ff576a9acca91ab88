@@ -1,2 +1,3 @@
 Referenced by commit f94599c0958a557709a8ef60dc119254e8f82966, Fix #106478: Missing xray check in snapping
 Referenced by issue #108665, Regression : 3D Cursor Geometry Surface Project stopped working in X-Ray mode
+Referenced by commit 981dd12394371d47eaedb9469fb763125af05b06, Fix #108665: Project 3D cursor on Geometry not working in X-ray
