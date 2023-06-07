@@ -32,6 +32,7 @@
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
+#  include "BLI_vector.hh"
 
 #  include "BLT_translation.h"
 
@@ -519,7 +520,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
   const char *basename = BLI_path_basename(filepath);
   const int len = strlen(basename) - (numdigit + strlen(ext));
 
-  std::vector<CacheFrame> frames{};
+  blender::Vector<CacheFrame> frames{};
 
   dirent *fname;
   while ((fname = readdir(dir)) != nullptr) {
@@ -536,7 +537,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
 
     BLI_path_frame_get(fname->d_name, &cache_frame.framenr, &numdigit);
 
-    frames.push_back(cache_frame);
+    frames.append(cache_frame);
   }
 
   closedir(dir);
@@ -547,7 +548,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
     int frame_curr = frames[0].framenr;
     (*ofs) = frame_curr;
 
-    for (CacheFrame & cache_frame : frames) {
+    for (CacheFrame &cache_frame : frames) {
       if (cache_frame.framenr != frame_curr) {
         break;
       }
