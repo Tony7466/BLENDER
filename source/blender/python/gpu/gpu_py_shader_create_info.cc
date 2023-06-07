@@ -548,7 +548,6 @@ static PyObject *pygpu_shader_info_depth_write(BPyGPUShaderCreateInfo *self,
 
   Py_RETURN_NONE;
 }
-//  .depth_write(DepthWrite::ANY))
 
 PyDoc_STRVAR(
     pygpu_shader_info_uniform_buf_doc,
@@ -846,7 +845,7 @@ PyDoc_STRVAR(
     "\n"
     "   .. code-block:: python\n"
     "\n"
-    "      \"void main {gl_Position = vec4(pos, 1.0);}\"\n"
+    "      void main {gl_Position = vec4(pos, 1.0);}\n"
     "\n"
     "   :arg source: The vertex shader source code.\n"
     "   :type source: str\n"
@@ -887,7 +886,7 @@ PyDoc_STRVAR(
     "\n"
     "   .. code-block:: python\n"
     "\n"
-    "      \"void main {fragColor = vec4(0.0, 0.0, 0.0, 1.0);}\"\n"
+    "      void main {fragColor = vec4(0.0, 0.0, 0.0, 1.0);}\n"
     "\n"
     "   :arg source: The fragment shader source code.\n"
     "   :type source: str\n"
@@ -926,9 +925,9 @@ PyDoc_STRVAR(pygpu_shader_info_typedef_source_doc,
              "\n"
              "   Example:\n"
              "\n"
-             ".. code-block:: python\n"
+             "   .. code-block:: python\n"
              "\n"
-             "   \"struct MyType {int foo; float bar;};\"\n"
+             "      struct MyType {int foo; float bar;};\n"
              "\n"
              "   :arg source: The source code defining types.\n"
              "   :type source: str\n");
@@ -965,9 +964,9 @@ PyDoc_STRVAR(pygpu_shader_info_define_doc,
              "\n"
              "   Add a preprocessing define directive. In GLSL it would be something like:\n"
              "\n"
-             ".. code-block:: glsl\n"
+             "   .. code-block:: glsl\n"
              "\n"
-             "   \"#define name value\"\n"
+             "      #define name value\n"
              "\n"
              "   :arg name: Token name.\n"
              "   :type name: str\n"
