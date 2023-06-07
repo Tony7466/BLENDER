@@ -3168,7 +3168,6 @@ static PointerRNA rna_NodeSocketInterface_category_get(PointerRNA *ptr)
 {
   bNodeSocket *socket = (bNodeSocket *)ptr->data;
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
-
   bNodeSocketCategory *category = ntreeFindSocketCategoryByID(ntree, socket->category_id);
 
   PointerRNA r_ptr;
@@ -3199,7 +3198,6 @@ static bool rna_NodeSocketInterface_category_poll(PointerRNA *ptr, PointerRNA va
 {
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocketCategory *category = (bNodeSocketCategory *)value.data;
-
   if (category == NULL) {
     return true;
   }
