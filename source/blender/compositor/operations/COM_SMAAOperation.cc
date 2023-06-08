@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_SMAAOperation.h"
+#include "BKE_node.hh"
 #include "COM_SMAAAreaTexture.h"
 
-#include "BKE_node.hh"
+extern "C" {
 #include "IMB_colormanagement.h"
+}
 
 namespace blender::compositor {
 
