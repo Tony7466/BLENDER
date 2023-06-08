@@ -20,7 +20,18 @@
 /* *** POV Keywords (for format_line) *** */
 
 /* MSVC workaround. */
-extern "C" {
+#ifdef _MSC_VER
+#  define MSVC_WORKAROUND_INIT(i) \
+    char _keep_me; \
+    i = -1
+#  define MSVC_WORKAROUND_IMPL(i) \
+    } \
+    ((void)_keep_me); \
+    if (i != -1) {
+#else
+#  define MSVC_WORKAROUND_INIT(i) ((void)0)
+#  define MSVC_WORKAROUND_IMPL(i)
+#endif
 
 /**
  * Checks the specified source string for a POV keyword (minus boolean & 'nil').
@@ -91,6 +102,7 @@ static int txtfmt_pov_find_reserved_keywords(const char *string)
 
   /* Keep aligned args for readability. */
   /* clang-format off */
+  MSVC_WORKAROUND_INIT(i);
 
   /* Float Functions */
   if        (STR_LITERAL_STARTSWITH(string, "conserve_energy",    len)) { i = len;
@@ -188,6 +200,7 @@ static int txtfmt_pov_find_reserved_keywords(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "sky",                len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "up",                 len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "ln",                 len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Color Identifiers */
   } else if (STR_LITERAL_STARTSWITH(string, "transmit",            len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "filter",              len)) { i = len;
@@ -251,6 +264,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
 
   /* Keep aligned args for readability. */
   /* clang-format off */
+  MSVC_WORKAROUND_INIT(i);
 
   /* Language Keywords */
   if        (STR_LITERAL_STARTSWITH(string, "reflection_exponent", len)) { i = len;
@@ -322,6 +336,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "now",                 len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "pot",                 len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "type",                len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Animation Options */
   } else if (STR_LITERAL_STARTSWITH(string, "global_settings",     len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "input_file_name",     len)) { i = len;
@@ -335,6 +350,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "clock_delta",         len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "clock_on",            len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "clock",               len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Spline Identifiers */
   } else if (STR_LITERAL_STARTSWITH(string, "extended_x_spline",   len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "general_x_spline",    len)) { i = len;
@@ -350,6 +366,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "linear_sweep",        len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "conic_sweep",         len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "b_spline",            len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Patterns */
   } else if (STR_LITERAL_STARTSWITH(string, "pigment_pattern",     len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "image_pattern",       len)) { i = len;
@@ -402,6 +419,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "wood",                len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "agate",               len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "aoi",                 len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Objects */
   } else if (STR_LITERAL_STARTSWITH(string, "superellipsoid",      len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "bicubic_patch",       len)) { i = len;
@@ -491,6 +509,8 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
 static int txtfmt_pov_find_specialvar(const char *string)
 {
   int i, len;
+
+  MSVC_WORKAROUND_INIT(i);
   /* Modifiers */
   if        (STR_LITERAL_STARTSWITH(string, "dispersion_samples", len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "projected_through",  len)) { i = len;
@@ -582,6 +602,7 @@ static int txtfmt_pov_find_specialvar(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "distance",           len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "autostop",           len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "caustics",           len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   } else if (STR_LITERAL_STARTSWITH(string, "octaves",            len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "aa_level",           len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "frequency",          len)) { i = len;
@@ -636,6 +657,7 @@ static int txtfmt_pov_find_specialvar(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "ratio",              len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "open",               len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "ior",                len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Light Types and options. */
   } else if (STR_LITERAL_STARTSWITH(string, "area_light",         len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "looks_like",         len)) { i = len;
@@ -646,6 +668,7 @@ static int txtfmt_pov_find_specialvar(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "point_at",           len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "falloff",            len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "radius",             len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* Camera Types and options. */
   } else if (STR_LITERAL_STARTSWITH(string, "omni_directional_stereo",  len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "lambert_cylindrical",      len)) { i = len;
@@ -746,7 +769,6 @@ static int txtfmt_pov_find_bool(const char *string)
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
-};
 
 static char txtfmt_pov_format_identifier(const char *str)
 {

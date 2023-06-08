@@ -19,6 +19,19 @@
 
 /* *** POV INI Keywords (for format_line) *** */
 
+#ifdef _MSC_VER
+#  define MSVC_WORKAROUND_IMPL(i) \
+    } \
+    ((void)_keep_me); \
+    if (i != -1) {
+#  define MSVC_WORKAROUND_INIT(i) \
+    char _keep_me; \
+    i = -1
+#else
+#  define MSVC_WORKAROUND_IMPL(i)
+#  define MSVC_WORKAROUND_INIT(i) ((void)0)
+#endif
+
 /**
  * Checks the specified source string for a POV INI keyword (minus boolean & 'nil').
  * This name must start at the beginning of the source string and must be
@@ -33,6 +46,8 @@
 static int txtfmt_ini_find_keyword(const char *string)
 {
   int i, len;
+
+  MSVC_WORKAROUND_INIT(i);
 
   /* Keep aligned args for readability. */
   /* clang-format off */
@@ -89,12 +104,11 @@ static int txtfmt_ini_find_keyword(const char *string)
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 
-/* MSVC workaround. */
-extern "C" {
-
 static int txtfmt_ini_find_reserved(const char *string)
 {
   int i, len;
+
+  MSVC_WORKAROUND_INIT(i);
 
   /* Keep aligned args for readability. */
   /* clang-format off */
@@ -161,6 +175,7 @@ static int txtfmt_ini_find_reserved(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "Bounding_Method",              len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "Create_Ini",                   len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "Display_Gamma",                len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   } else if (STR_LITERAL_STARTSWITH(string, "Display",                      len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "Version",                      len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "Pause_When_Done",              len)) { i = len;
@@ -211,6 +226,7 @@ static int txtfmt_ini_find_reserved(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "WarningColour",                len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "ErrorColour",                  len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "BackgroundColour",             len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   } else if (STR_LITERAL_STARTSWITH(string, "DropToEditor",                 len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "LastRenderName",               len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "LastRenderPath",               len)) { i = len;
@@ -271,6 +287,7 @@ static int txtfmt_ini_find_reserved(const char *string)
   } else if (STR_LITERAL_STARTSWITH(string, "Dither",                       len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "Flags",                        len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "Font",                         len)) { i = len;
+  MSVC_WORKAROUND_IMPL(i)
   /* File-types. */
   } else if (STR_LITERAL_STARTSWITH(string, "df3",                          len)) { i = len;
   } else if (STR_LITERAL_STARTSWITH(string, "exr",                          len)) { i = len;
@@ -304,7 +321,6 @@ static int txtfmt_ini_find_reserved(const char *string)
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
-};
 
 static int txtfmt_ini_find_bool(const char *string)
 {
