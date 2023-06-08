@@ -423,7 +423,6 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   if (!corner_ids.is_empty()) {
     Array<int> src_indices(target->totloop);
     array_utils::gather<int>(nearest_src_verts, target->corner_verts(), src_indices);
-
     for (const AttributeIDRef &id : corner_ids) {
       const GVArraySpan src = *src_attributes.lookup(id, ATTR_DOMAIN_CORNER);
 
