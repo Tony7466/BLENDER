@@ -26,6 +26,10 @@ class VKTexture : public Texture {
    * can be done. */
   VkImageLayout current_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
 
+  const int IMAGE_VIEW_DIRTY = (1 << 0);
+
+  int flags_ = IMAGE_VIEW_DIRTY;
+
  public:
   VKTexture(const char *name) : Texture(name) {}
 
@@ -57,11 +61,6 @@ class VKTexture : public Texture {
   {
     BLI_assert(vk_image_ != VK_NULL_HANDLE);
     return vk_image_;
-  }
-  VkImageView vk_image_view_handle() const
-  {
-    BLI_assert(is_allocated());
-    return vk_image_view_;
   }
 
   void ensure_allocated();
@@ -121,6 +120,24 @@ class VKTexture : public Texture {
                      IndexRange mipmap_range,
                      VkImageLayout current_layout,
                      VkImageLayout requested_layout);
+
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
+  /** \name Mipmapping
+   * \{ */
+ public:
+  VkImageView vk_image_view_handle()
+  {
+    vk_image_view_ensure();
+    return vk_image_view_;
+  }
+
+ private:
+  IndexRange mip_map_range() const;
+  void vk_image_view_ensure();
+  void vk_image_view_free();
+  void vk_image_view_create();
 
   /** \} */
 };

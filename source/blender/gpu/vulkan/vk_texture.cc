@@ -83,6 +83,9 @@ void VKTexture::generate_mipmap()
                         *this,
                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                         Span<VkImageBlit>(&image_blit, 1));
+    /* TODO: Until we do actual command encoding we need to submit each transfer operation
+     * individually. */
+    command_buffer.submit();
   }
   /* Ensure that all mipmap levels are in `VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL`. All miplevels are
    * except the last one. */
@@ -148,9 +151,12 @@ void VKTexture::swizzle_set(const char /*swizzle_mask*/[4])
   NOT_YET_IMPLEMENTED;
 }
 
-void VKTexture::mip_range_set(int /*min*/, int /*max*/)
+void VKTexture::mip_range_set(int min, int max)
 {
-  NOT_YET_IMPLEMENTED;
+  mip_min_ = min;
+  mip_max_ = max;
+
+  flags_ |= IMAGE_VIEW_DIRTY;
 }
 
 void VKTexture::read_sub(int mip, eGPUDataFormat format, const int area[4], void *r_data)
@@ -430,20 +436,6 @@ bool VKTexture::allocate()
   /* Promote image to the correct layout. */
   layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
 
-  VK_ALLOCATION_CALLBACKS
-  VkImageViewCreateInfo image_view_info = {};
-  image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  image_view_info.image = vk_image_;
-  image_view_info.viewType = to_vk_image_view_type(type_);
-  image_view_info.format = to_vk_format(format_);
-  image_view_info.components = to_vk_component_mapping(format_);
-  image_view_info.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format_);
-  image_view_info.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-  image_view_info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-
-  result = vkCreateImageView(
-      device.device_get(), &image_view_info, vk_allocation_callbacks, &vk_image_view_);
-  debug::object_label(vk_image_view_, name_);
   return result == VK_SUCCESS;
 }
 
@@ -525,6 +517,59 @@ void VKTexture::layout_ensure(VKContext &context,
   barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
   context.command_buffer_get().pipeline_barrier(Span<VkImageMemoryBarrier>(&barrier, 1));
 }
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Mipmapping
+ * \{ */
+
+void VKTexture::vk_image_view_ensure()
+{
+  if (flags_ & IMAGE_VIEW_DIRTY) {
+    vk_image_view_free();
+    vk_image_view_create();
+    flags_ &= ~IMAGE_VIEW_DIRTY;
+  }
+  BLI_assert(vk_image_view_ != VK_NULL_HANDLE);
+}
+
+void VKTexture::vk_image_view_free()
+{
+  if (vk_image_view_ != VK_NULL_HANDLE) {
+    VK_ALLOCATION_CALLBACKS
+    const VKDevice &device = VKBackend::get().device_get();
+    vkDestroyImageView(device.device_get(), vk_image_view_, vk_allocation_callbacks);
+    vk_image_view_ = VK_NULL_HANDLE;
+  }
+}
+
+void VKTexture::vk_image_view_create()
+{
+  BLI_assert(vk_image_view_ == VK_NULL_HANDLE);
+  VK_ALLOCATION_CALLBACKS
+  VkImageViewCreateInfo image_view_info = {};
+  image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  image_view_info.image = vk_image_;
+  image_view_info.viewType = to_vk_image_view_type(type_);
+  image_view_info.format = to_vk_format(format_);
+  image_view_info.components = to_vk_component_mapping(format_);
+  image_view_info.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format_);
+  IndexRange mip_range = mip_map_range();
+  image_view_info.subresourceRange.baseMipLevel = mip_range.first();
+  image_view_info.subresourceRange.levelCount = mip_range.size();
+  image_view_info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+  const VKDevice &device = VKBackend::get().device_get();
+  vkCreateImageView(
+      device.device_get(), &image_view_info, vk_allocation_callbacks, &vk_image_view_);
+  debug::object_label(vk_image_view_, name_);
+}
+
+IndexRange VKTexture::mip_map_range() const
+{
+  return IndexRange(mip_min_, mip_max_ - mip_min_ + 1);
+}
+
 /** \} */
 
 }  // namespace blender::gpu

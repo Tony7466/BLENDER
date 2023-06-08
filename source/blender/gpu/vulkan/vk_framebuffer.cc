@@ -403,6 +403,7 @@ void VKFrameBuffer::render_pass_create()
       VKTexture &texture = *static_cast<VKTexture *>(unwrap(attachment.tex));
       texture.ensure_allocated();
       /* TODO: use image_view for attachment.mip */
+      // texture.mip_range_set(attachment.mip, attachment.mip);
       image_views[attachment_location] = texture.vk_image_view_handle();
 
       VkAttachmentDescription &attachment_description =
@@ -412,8 +413,8 @@ void VKFrameBuffer::render_pass_create()
       attachment_description.samples = VK_SAMPLE_COUNT_1_BIT;
       attachment_description.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachment_description.initialLayout = texture.current_layout_get();
       attachment_description.finalLayout = texture.current_layout_get();
 
@@ -468,8 +469,11 @@ void VKFrameBuffer::render_pass_create()
   render_pass_info.pSubpasses = &subpass;
 
   const VKDevice &device = VKBackend::get().device_get();
-  vkCreateRenderPass(
+  VkResult result = vkCreateRenderPass(
       device.device_get(), &render_pass_info, vk_allocation_callbacks, &vk_render_pass_);
+  if (result != VK_SUCCESS) {
+    BLI_assert_unreachable();
+  }
 
   /* We might want to split frame-buffer and render pass. */
   VkFramebufferCreateInfo framebuffer_create_info = {};
@@ -481,8 +485,11 @@ void VKFrameBuffer::render_pass_create()
   framebuffer_create_info.height = height_;
   framebuffer_create_info.layers = 1;
 
-  vkCreateFramebuffer(
+  result = vkCreateFramebuffer(
       device.device_get(), &framebuffer_create_info, vk_allocation_callbacks, &vk_framebuffer_);
+  if (result != VK_SUCCESS) {
+    BLI_assert_unreachable();
+  }
 }
 
 void VKFrameBuffer::render_pass_free()

@@ -243,6 +243,7 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RG32UI:
     case GPU_R32UI:
     case GPU_DEPTH_COMPONENT24:
+    case GPU_DEPTH24_STENCIL8:
       return ConversionType::PASS_THROUGH;
 
     case GPU_RGBA16UI:
@@ -284,7 +285,6 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGB10_A2:
     case GPU_RGB10_A2UI:
     case GPU_R11F_G11F_B10F:
-    case GPU_DEPTH24_STENCIL8:
     case GPU_SRGB8_A8:
     case GPU_RGBA8_SNORM:
     case GPU_RGBA16_SNORM:
