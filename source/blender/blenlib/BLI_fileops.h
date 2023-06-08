@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -204,8 +205,8 @@ eFileAttributes BLI_file_attributes(const char *path);
  * Usage of this function is strongly discouraged as it is not thread safe. It will likely cause
  * issues if there is an operation on another thread that does not expect the current working
  * directory to change. This has been added to support USDZ export, which has a problematic
- * "feature" described in this issue https://projects.blender.org/blender/blender/issues/99807. It
- * will be removed if it is possible to resolve that issue upstream in the USD library.
+ * "feature" described in this issue #99807. It will be removed if it is possible to resolve
+ * that issue upstream in the USD library.
  *
  * \return true on success, false otherwise.
  */

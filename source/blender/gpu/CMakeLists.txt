@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 # WITH_OPENGL limits the visibility of the opengl headers to just GPU and bg_gpu,
 # to more easily highlight code-paths in other libraries that need to be refactored,
@@ -29,6 +30,7 @@ set(INC
   # For *_info.hh includes.
   ../compositor/realtime_compositor
   ../draw/engines/eevee_next
+  ../draw/engines/gpencil
   ../draw/engines/select
   ../draw/engines/workbench
   ../draw/intern
@@ -53,7 +55,6 @@ endif()
 
 set(INC_SYS
   ${Epoxy_INCLUDE_DIRS}
-  ${IMATH_INCLUDE_DIR}
 )
 
 set(SRC
@@ -356,11 +357,6 @@ if(WITH_VULKAN_BACKEND)
   )
 
   add_definitions(-DWITH_VULKAN_BACKEND)
-  if(WIN32)
-    if(EXISTS ${LIBDIR}/imath/bin/imath.dll)
-      add_definitions(-DIMATH_DLL)
-    endif()
-  endif()
 endif()
 
 if(WITH_VULKAN_GUARDEDALLOC)
@@ -568,6 +564,7 @@ set(GLSL_SRC
 
 set(GLSL_SRC_TEST
   tests/shaders/gpu_math_test.glsl
+  tests/shaders/gpu_buffer_texture_test.glsl
   tests/shaders/gpu_compute_1d_test.glsl
   tests/shaders/gpu_compute_2d_test.glsl
   tests/shaders/gpu_compute_ibo_test.glsl
@@ -818,7 +815,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_blenlib
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
-    ${IMATH_LIBRARIES}
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -849,6 +845,7 @@ if(WITH_GTESTS)
     set(TEST_SRC
       tests/gpu_testing.cc
 
+      tests/buffer_texture_test.cc
       tests/framebuffer_test.cc
       tests/immediate_test.cc
       tests/index_buffer_test.cc
@@ -864,6 +861,7 @@ if(WITH_GTESTS)
     if(WITH_VULKAN_BACKEND)
       list(APPEND TEST_SRC
         tests/memory_layout_test.cc
+        vulkan/vk_data_conversion_test.cc
       )
     endif()
 

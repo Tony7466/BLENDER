@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -38,6 +39,7 @@ class VKTexture : public Texture {
   void swizzle_set(const char swizzle_mask[4]) override;
   void mip_range_set(int min, int max) override;
   void *read(int mip, eGPUDataFormat format) override;
+  void read_sub(int mip, eGPUDataFormat format, const int area[4], void *r_data);
   void update_sub(
       int mip, int offset[3], int extent[3], eGPUDataFormat format, const void *data) override;
   void update_sub(int offset[3],
@@ -108,6 +110,17 @@ class VKTexture : public Texture {
    * When texture is already in the requested layout, nothing will be done.
    */
   void layout_ensure(VKContext &context, VkImageLayout requested_layout);
+
+ private:
+  /**
+   * Internal function to ensure the layout of a single mipmap level. Note that the caller is
+   * responsible to update the current_layout of the image at the end of the operation and make
+   * sure that all mipmap levels are in that given layout.
+   */
+  void layout_ensure(VKContext &context,
+                     IndexRange mipmap_range,
+                     VkImageLayout current_layout,
+                     VkImageLayout requested_layout);
 
   /** \} */
 };

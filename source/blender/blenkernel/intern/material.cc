@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,6 +25,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -74,8 +76,6 @@
 #include "BLO_read_write.h"
 
 static CLG_LogRef LOG = {"bke.material"};
-
-static void material_clear_data(ID *id);
 
 static void material_init_data(ID *id)
 {
@@ -132,25 +132,6 @@ static void material_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const 
   BLI_listbase_clear(&material_dst->gpumaterial);
 
   /* TODO: Duplicate Engine Settings and set runtime to nullptr. */
-}
-
-/**
- * Ensure pointers to allocated memory is cleared
- * (the kind of data that would have to be copied).
- *
- * \note Keep in sync with #material_free_data.
- */
-static void material_clear_data(ID *id)
-{
-  Material *material = (Material *)id;
-
-  BLI_listbase_clear(&material->gpumaterial);
-  material->texpaintslot = nullptr;
-  material->gp_style = nullptr;
-  material->nodetree = nullptr;
-  material->preview = nullptr;
-
-  id->icon_id = 0;
 }
 
 static void material_free_data(ID *id)
@@ -375,6 +356,10 @@ Material ***BKE_object_material_array_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->mat);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array);
+  }
   return nullptr;
 }
 
@@ -408,6 +393,10 @@ short *BKE_object_material_len_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->totcol);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array_num);
+  }
   return nullptr;
 }
 
@@ -431,6 +420,8 @@ Material ***BKE_id_material_array_p(ID *id)
       return &(((PointCloud *)id)->mat);
     case ID_VO:
       return &(((Volume *)id)->mat);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array);
     default:
       break;
   }
@@ -457,6 +448,8 @@ short *BKE_id_material_len_p(ID *id)
       return &(((PointCloud *)id)->totcol);
     case ID_VO:
       return &(((Volume *)id)->totcol);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array_num);
     default:
       break;
   }
@@ -1096,10 +1089,7 @@ void BKE_object_material_assign(Main *bmain, Object *ob, Material *ma, short act
   object_material_assign(bmain, ob, ma, act, assign_type, true);
 }
 
-void BKE_object_material_assign_single_obdata(struct Main *bmain,
-                                              struct Object *ob,
-                                              struct Material *ma,
-                                              short act)
+void BKE_object_material_assign_single_obdata(Main *bmain, Object *ob, Material *ma, short act)
 {
   object_material_assign(bmain, ob, ma, act, BKE_MAT_ASSIGN_OBDATA, false);
 }
@@ -1217,11 +1207,8 @@ void BKE_object_material_from_eval_data(Main *bmain, Object *ob_orig, const ID *
   BKE_object_materials_test(bmain, ob_orig, data_orig);
 }
 
-void BKE_object_material_array_assign(Main *bmain,
-                                      struct Object *ob,
-                                      struct Material ***matar,
-                                      int totcol,
-                                      const bool to_object_only)
+void BKE_object_material_array_assign(
+    Main *bmain, Object *ob, Material ***matar, int totcol, const bool to_object_only)
 {
   int actcol_orig = ob->actcol;
 
@@ -1470,7 +1457,7 @@ struct FillTexPaintSlotsData {
 
 static bool fill_texpaint_slots_cb(bNode *node, void *userdata)
 {
-  struct FillTexPaintSlotsData *fill_data = static_cast<FillTexPaintSlotsData *>(userdata);
+  FillTexPaintSlotsData *fill_data = static_cast<FillTexPaintSlotsData *>(userdata);
 
   Material *ma = fill_data->ma;
   int index = fill_data->index;
@@ -1533,12 +1520,12 @@ static void fill_texpaint_slots_recursive(bNodeTree *nodetree,
                                           int slot_len,
                                           ePaintSlotFilter slot_filter)
 {
-  struct FillTexPaintSlotsData fill_data = {active_node, ob, ma, 0, slot_len};
+  FillTexPaintSlotsData fill_data = {active_node, ob, ma, 0, slot_len};
   ntree_foreach_texnode_recursive(nodetree, fill_texpaint_slots_cb, &fill_data, slot_filter);
 }
 
 /** Check which type of paint slots should be filled for the given object. */
-static ePaintSlotFilter material_paint_slot_filter(const struct Object *ob)
+static ePaintSlotFilter material_paint_slot_filter(const Object *ob)
 {
   ePaintSlotFilter slot_filter = PAINT_SLOT_IMAGE;
   if (ob->mode == OB_MODE_SCULPT && U.experimental.use_sculpt_texture_paint) {
@@ -1547,7 +1534,7 @@ static ePaintSlotFilter material_paint_slot_filter(const struct Object *ob)
   return slot_filter;
 }
 
-void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const struct Object *ob)
+void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const Object *ob)
 {
   if (!ma) {
     return;
@@ -1612,7 +1599,7 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const struct Ob
   MEM_SAFE_FREE(prev_texpaintslot);
 }
 
-void BKE_texpaint_slots_refresh_object(Scene *scene, struct Object *ob)
+void BKE_texpaint_slots_refresh_object(Scene *scene, Object *ob)
 {
   for (int i = 1; i < ob->totcol + 1; i++) {
     Material *ma = BKE_object_material_get(ob, i);
@@ -1627,7 +1614,7 @@ struct FindTexPaintNodeData {
 
 static bool texpaint_slot_node_find_cb(bNode *node, void *userdata)
 {
-  struct FindTexPaintNodeData *find_data = static_cast<FindTexPaintNodeData *>(userdata);
+  FindTexPaintNodeData *find_data = static_cast<FindTexPaintNodeData *>(userdata);
   if (find_data->slot->ima && node->type == SH_NODE_TEX_IMAGE) {
     Image *node_ima = (Image *)node->id;
     if (find_data->slot->ima == node_ima) {
@@ -1650,7 +1637,7 @@ static bool texpaint_slot_node_find_cb(bNode *node, void *userdata)
 bNode *BKE_texpaint_slot_material_find_node(Material *ma, short texpaint_slot)
 {
   TexPaintSlot *slot = &ma->texpaintslot[texpaint_slot];
-  struct FindTexPaintNodeData find_data = {slot, nullptr};
+  FindTexPaintNodeData find_data = {slot, nullptr};
   ntree_foreach_texnode_recursive(ma->nodetree,
                                   texpaint_slot_node_find_cb,
                                   &find_data,
@@ -1919,86 +1906,7 @@ void ramp_blend(int type, float r_col[3], const float fac, const float col[3])
   }
 }
 
-/**
- * \brief copy/paste buffer, if we had a proper py api that would be better
- * \note matcopybuf.nodetree does _NOT_ use ID's
- * \todo matcopybuf.nodetree's  node->id's are NOT validated, this will crash!
- */
-static Material matcopybuf;
-static short matcopied = 0;
-
-void BKE_material_copybuf_clear(void)
-{
-  if (matcopied) {
-    BKE_material_copybuf_free();
-  }
-  matcopybuf = blender::dna::shallow_zero_initialize();
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_free(void)
-{
-  BLI_assert(matcopybuf.id.icon_id == 0);
-  if (matcopybuf.nodetree) {
-    BLI_assert(!matcopybuf.nodetree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
-  }
-  material_free_data(&matcopybuf.id);
-  matcopied = 0;
-}
-
-void BKE_material_copybuf_copy(Main *bmain, Material *ma)
-{
-  if (matcopied) {
-    BKE_material_copybuf_free();
-  }
-
-  matcopybuf = blender::dna::shallow_copy(*ma);
-
-  /* Not essential, but we never want to use any ID values from the source,
-   * this ensures that never happens. */
-  memset(&matcopybuf.id, 0, sizeof(ID));
-
-  /* Ensure dangling pointers are never copied back into a material. */
-  material_clear_data(&matcopybuf.id);
-
-  if (ma->nodetree != nullptr) {
-    matcopybuf.nodetree = blender::bke::ntreeCopyTree_ex(ma->nodetree, bmain, false);
-  }
-
-  /* TODO: Duplicate Engine Settings and set runtime to nullptr. */
-  matcopied = 1;
-}
-
-void BKE_material_copybuf_paste(Main *bmain, Material *ma)
-{
-  ID id;
-
-  if (matcopied == 0) {
-    return;
-  }
-
-  const bool has_node_tree = (ma->nodetree || matcopybuf.nodetree);
-
-  /* Handles freeing nodes and and other run-time data (previews) for e.g. */
-  material_free_data(&ma->id);
-
-  id = (ma->id);
-  *ma = blender::dna::shallow_copy(matcopybuf);
-  (ma->id) = id;
-
-  if (matcopybuf.nodetree != nullptr) {
-    ma->nodetree = blender::bke::ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
-  }
-
-  if (has_node_tree) {
-    /* Important to run this when the embedded tree if freed,
-     * otherwise the depsgraph holds a reference to the (now freed) `ma->nodetree`.
-     * Also run this when a new node-tree is set to ensure it's accounted for. */
-    DEG_relations_tag_update(bmain);
-  }
-}
-
-void BKE_material_eval(struct Depsgraph *depsgraph, Material *material)
+void BKE_material_eval(Depsgraph *depsgraph, Material *material)
 {
   DEG_debug_print_eval(depsgraph, __func__, material->id.name, material);
   GPU_material_free(&material->gpumaterial);
