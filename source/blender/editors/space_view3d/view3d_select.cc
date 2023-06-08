@@ -1178,29 +1178,26 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
                                           const eSelectOp sel_op)
 {
   using namespace blender;
-  /* TODO: get deformation by modifiers.
-   * const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
-   *                                                  const_cast<Object *>(vc->obedit));
-   */
+  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
+                                                   const_cast<Object *>(vc->obedit));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
 
   bool changed = false;
-  grease_pencil.foreach_editable_drawing(vc->scene->r.cfra, [&](GreasePencilDrawing &drawing) {
-    /* TODO: get deformation by modifiers.
-     * bke::crazyspace::GeometryDeformation deformation =
-     *       bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-     *           ob_eval, *vc->obedit, drawing_index);
-     */
-    const Span<float3> deformation_positions = drawing.geometry.wrap().positions();
-    /* TODO: Support different selection domains. */
-    changed = ed::curves::select_lasso(
-        *vc,
-        drawing.geometry.wrap(),
-        deformation_positions, /* TODO: deformation.positions, */
-        ATTR_DOMAIN_POINT,
-        Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
-        sel_op);
-  });
+  grease_pencil.foreach_editable_drawing(
+      vc->scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
+        bke::crazyspace::GeometryDeformation deformation =
+            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+                ob_eval, *vc->obedit, drawing_index);
+
+        /* TODO: Support different selection domains. */
+        changed = ed::curves::select_lasso(
+            *vc,
+            drawing.geometry.wrap(),
+            deformation.positions,
+            ATTR_DOMAIN_POINT,
+            Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
+            sel_op);
+      });
 
   if (changed) {
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
