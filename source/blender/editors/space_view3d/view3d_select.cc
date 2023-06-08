@@ -50,8 +50,10 @@
 #include "BKE_armature.h"
 #include "BKE_attribute.hh"
 #include "BKE_context.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_layer.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
@@ -1370,9 +1372,12 @@ static bool view3d_lasso_select(bContext *C,
         case OB_CURVES: {
           Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+          bke::crazyspace::GeometryDeformation deformation =
+              bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
           changed = ed::curves::select_lasso(
               *vc,
               curves,
+              deformation.positions,
               eAttrDomain(curves_id.selection_domain),
               Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
               sel_op);
@@ -1624,7 +1629,7 @@ static bool object_mouse_select_menu(bContext *C,
   int base_count = 0;
 
   struct BaseRefWithDepth {
-    struct BaseRefWithDepth *next, *prev;
+    BaseRefWithDepth *next, *prev;
     Base *base;
     /** The scale isn't defined, simply use for sorting. */
     uint depth_id;
@@ -1835,7 +1840,7 @@ static bool bone_mouse_select_menu(bContext *C,
   int bone_count = 0;
 
   struct BoneRefWithDepth {
-    struct BoneRefWithDepth *next, *prev;
+    BoneRefWithDepth *next, *prev;
     Base *base;
     union {
       EditBone *ebone;
@@ -3029,10 +3034,13 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
         for (Base *base : bases.slice(range)) {
           Object &curves_ob = *base->object;
           Curves &curves_id = *static_cast<Curves *>(curves_ob.data);
+          bke::crazyspace::GeometryDeformation deformation =
+              bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
           std::optional<ed::curves::FindClosestData> new_closest_elem =
               ed::curves::closest_elem_find_screen_space(vc,
                                                          curves_ob,
                                                          curves_id.geometry.wrap(),
+                                                         deformation.positions,
                                                          selection_domain,
                                                          mval,
                                                          new_closest.elem);
@@ -3674,8 +3682,7 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
   if (ts->selectmode & SCE_SELECT_EDGE) {
     /* Does both use_zbuf and non-use_zbuf versions (need screen cos for both) */
-    struct BoxSelectUserData_ForMeshEdge cb_data {
-    };
+    BoxSelectUserData_ForMeshEdge cb_data{};
     cb_data.data = &data;
     cb_data.esel = use_zbuf ? esel : nullptr;
     cb_data.backbuf_offset = use_zbuf ? DRW_select_buffer_context_offset_for_object_elem(
@@ -4022,6 +4029,32 @@ static bool do_pose_box_select(bContext *C,
   return changed_multi;
 }
 
+static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const eSelectOp sel_op)
+{
+  using namespace blender;
+  Scene *scene = vc->scene;
+  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
+                                                   const_cast<Object *>(vc->obedit));
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
+        bke::crazyspace::GeometryDeformation deformation =
+            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+                ob_eval, *vc->obedit, drawing_index);
+        changed |= ed::curves::select_box(
+            *vc, drawing.geometry.wrap(), deformation.positions, ATTR_DOMAIN_POINT, *rect, sel_op);
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(vc->C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return changed;
+}
+
 static int view3d_box_select_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
@@ -4091,14 +4124,24 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
         case OB_CURVES: {
           Curves &curves_id = *static_cast<Curves *>(vc.obedit->data);
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-          changed = ed::curves::select_box(
-              vc, curves, eAttrDomain(curves_id.selection_domain), rect, sel_op);
+          bke::crazyspace::GeometryDeformation deformation =
+              bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
+          changed = ed::curves::select_box(vc,
+                                           curves,
+                                           deformation.positions,
+                                           eAttrDomain(curves_id.selection_domain),
+                                           rect,
+                                           sel_op);
           if (changed) {
             /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
              * generic attribute for now. */
             DEG_id_tag_update(static_cast<ID *>(vc.obedit->data), ID_RECALC_GEOMETRY);
             WM_event_add_notifier(C, NC_GEOM | ND_DATA, vc.obedit->data);
           }
+          break;
+        }
+        case OB_GREASE_PENCIL: {
+          changed = do_grease_pencil_box_select(&vc, &rect, sel_op);
           break;
         }
         default:
@@ -4861,8 +4904,15 @@ static bool obedit_circle_select(bContext *C,
     case OB_CURVES: {
       Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
       bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-      changed = ed::curves::select_circle(
-          *vc, curves, eAttrDomain(curves_id.selection_domain), mval, rad, sel_op);
+      bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_curves_deformation(*vc->depsgraph, *vc->obedit);
+      changed = ed::curves::select_circle(*vc,
+                                          curves,
+                                          deformation.positions,
+                                          eAttrDomain(curves_id.selection_domain),
+                                          mval,
+                                          rad,
+                                          sel_op);
       if (changed) {
         /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
          * generic attribute for now. */
