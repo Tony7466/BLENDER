@@ -16,7 +16,6 @@ VKPipelineStateManager::VKPipelineStateManager()
   rasterization_state = {};
   rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
   rasterization_state.lineWidth = 1.0f;
-  rasterization_state.depthClampEnable = VK_FALSE;
 
   pipeline_color_blend_state = {};
   pipeline_color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;

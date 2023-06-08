@@ -518,10 +518,10 @@ void VKTexture::layout_ensure(VKContext &context,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Mipmapping
+/** \name Image Views
  * \{ */
 
-void VKTexture::vk_image_view_ensure()
+void VKTexture::image_view_ensure()
 {
   if (flags_ & IMAGE_VIEW_DIRTY) {
     image_view_update();

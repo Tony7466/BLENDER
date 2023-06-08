@@ -128,18 +128,18 @@ class VKTexture : public Texture {
   /** \} */
 
   /* -------------------------------------------------------------------- */
-  /** \name Mipmapping
+  /** \name Image Views
    * \{ */
  public:
   VKImageView &image_view_get()
   {
-    vk_image_view_ensure();
+    image_view_ensure();
     return *image_view_;
   }
 
  private:
   IndexRange mip_map_range() const;
-  void vk_image_view_ensure();
+  void image_view_ensure();
   void image_view_update();
 
   /** \} */
