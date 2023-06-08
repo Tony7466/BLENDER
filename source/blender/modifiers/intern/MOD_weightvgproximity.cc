@@ -72,7 +72,7 @@
 
 struct Vert2GeomData {
   /* Read-only data */
-  float (*v_cos)[3];
+  const float (*v_cos)[3];
 
   const SpaceTransform *loc2trgt;
 
@@ -145,7 +145,7 @@ static void vert2geom_task_cb_ex(void *__restrict userdata,
  * Find nearest vertex and/or edge and/or face, for each vertex (adapted from shrinkwrap.c).
  */
 static void get_vert2geom_distance(int verts_num,
-                                   float (*v_cos)[3],
+                                   const float (*v_cos)[3],
                                    float *dist_v,
                                    float *dist_e,
                                    float *dist_f,
@@ -216,7 +216,7 @@ static void get_vert2geom_distance(int verts_num,
  * Note that it works in final world space (i.e. with constraints etc. applied).
  */
 static void get_vert2ob_distance(
-    int verts_num, float (*v_cos)[3], float *dist, Object *ob, Object *obr)
+    int verts_num, const float (*v_cos)[3], float *dist, Object *ob, Object *obr)
 {
   /* Vertex and ref object coordinates. */
   float v_wco[3];
@@ -421,7 +421,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
   MDeformWeight **dw, **tdw;
-  float(*v_cos)[3] = nullptr; /* The vertices coordinates. */
+  const float(*v_cos)[3] = nullptr; /* The vertices coordinates. */
   Object *ob = ctx->object;
   Object *obr = nullptr; /* Our target object. */
   int defgrp_index;
@@ -516,16 +516,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   MEM_freeN(tidx);
 
   /* Get our vertex coordinates. */
-  if (index_num != verts_num) {
-    const float(*tv_cos)[3] = BKE_mesh_vert_positions(mesh);
-    v_cos = static_cast<float(*)[3]>(MEM_malloc_arrayN(index_num, sizeof(float[3]), __func__));
-    for (i = 0; i < index_num; i++) {
-      copy_v3_v3(v_cos[i], tv_cos[indices[i]]);
-    }
-  }
-  else {
-    v_cos = BKE_mesh_vert_coords_alloc(mesh, nullptr);
-  }
+  v_cos = BKE_mesh_vert_positions(mesh);
 
   /* Compute wanted distances. */
   if (wmd->proximity_mode == MOD_WVG_PROXIMITY_OBJECT) {
@@ -632,7 +623,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   MEM_freeN(org_w);
   MEM_freeN(new_w);
   MEM_freeN(dw);
-  MEM_freeN(v_cos);
   MEM_SAFE_FREE(indices);
 
 #ifdef USE_TIMEIT
