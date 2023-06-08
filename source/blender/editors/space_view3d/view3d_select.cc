@@ -3098,7 +3098,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
   return true;
 }
 
-struct ClosestCurvesGeometryDataBlock {
+struct ClosestGreasePencilDrawing {
   GreasePencilDrawing *drawing = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3132,12 +3132,12 @@ static bool ed_grease_pencil_select_pick(bContext *C,
   /* TODO: Support different selection domains. */
   const eAttrDomain selection_domain = ATTR_DOMAIN_POINT;
 
-  const ClosestCurvesGeometryDataBlock closest = threading::parallel_reduce(
+  const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
       drawings.index_range(),
       1L,
-      ClosestCurvesGeometryDataBlock(),
-      [&](const IndexRange range, const ClosestCurvesGeometryDataBlock &init) {
-        ClosestCurvesGeometryDataBlock new_closest = init;
+      ClosestGreasePencilDrawing(),
+      [&](const IndexRange range, const ClosestGreasePencilDrawing &init) {
+        ClosestGreasePencilDrawing new_closest = init;
         for (const int i : range) {
           /* Get deformation by modifiers. */
           bke::crazyspace::GeometryDeformation deformation =
@@ -3158,7 +3158,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         }
         return new_closest;
       },
-      [](const ClosestCurvesGeometryDataBlock &a, const ClosestCurvesGeometryDataBlock &b) {
+      [](const ClosestGreasePencilDrawing &a, const ClosestGreasePencilDrawing &b) {
         return (a.elem.distance < b.elem.distance) ? a : b;
       });
 
