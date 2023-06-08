@@ -2,11 +2,9 @@
  * Copyright 2023 Blender Foundation. */
 
 #include "COM_KuwaharaAnisotropicOperation.h"
+#include "BLI_math_base.hh"
 #include "BLI_vector.hh"
-
-extern "C" {
 #include "IMB_colormanagement.h"
-}
 
 namespace blender::compositor {
 
@@ -80,11 +78,16 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
                               0 :
                               (lambda1 - lambda2) / (lambda1 + lambda2);
 
+  Vector<double> mean(n_div_);
+  Vector<double> sum(n_div_);
+  Vector<double> var(n_div_);
+  Vector<double> weight(n_div_);
+
   for (int ch = 0; ch < 3; ch++) {
-    Vector<double> mean(n_div_, 0.0f);
-    Vector<double> sum(n_div_, 0.0f);
-    Vector<double> var(n_div_, 0.0f);
-    Vector<double> weight(n_div_, 0.0f);
+    mean.fill(0.0);
+    sum.fill(0.0);
+    var.fill(0.0);
+    weight.fill(0.0);
 
     double sx = 1.0f / (strength + 1.0f);
     double sy = (1.0f + strength) / 1.0f;
@@ -98,22 +101,10 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
         /* Rotate and scale the kernel. This is the "anisotropic" part. */
         int dx2 = int(sx * (cos(theta) * dx - sin(theta) * dy));
         int dy2 = int(sy * (sin(theta) * dx + cos(theta) * dy));
-        int xx = x + dx2;
-        int yy = y + dy2;
 
         /* Clamp image to avoid artefacts at borders. */
-        if (xx < 0) {
-          xx = 0;
-        }
-        if (xx >= width) {
-          xx = width - 1;
-        }
-        if (yy < 0) {
-          yy = 0;
-        }
-        if (yy >= height) {
-          yy = height - 1;
-        }
+        const int xx = math::clamp(int(x) + dx2, 0, width - 1);
+        const int yy = math::clamp(int(y) + dy2, 0, height - 1);
 
         const double ddx2 = double(dx2);
         const double ddy2 = double(dy2);
@@ -229,12 +220,16 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
                                 0 :
                                 (lambda1 - lambda2) / (lambda1 + lambda2);
 
-    for (int ch = 0; ch < 3; ch++) {
+    Vector<double> mean(n_div_);
+    Vector<double> sum(n_div_);
+    Vector<double> var(n_div_);
+    Vector<double> weight(n_div_);
 
-      Vector<double> mean(n_div_, 0.0f);
-      Vector<double> sum(n_div_, 0.0f);
-      Vector<double> var(n_div_, 0.0f);
-      Vector<double> weight(n_div_, 0.0f);
+    for (int ch = 0; ch < 3; ch++) {
+      mean.fill(0.0);
+      sum.fill(0.0);
+      var.fill(0.0);
+      weight.fill(0.0);
 
       double sx = 1.0f / (strength + 1.0f);
       double sy = (1.0f + strength) / 1.0f;
@@ -248,22 +243,10 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
           /* Rotate and scale the kernel. This is the "anisotropic" part. */
           int dx2 = int(sx * (cos(theta) * dx - sin(theta) * dy));
           int dy2 = int(sy * (sin(theta) * dx + cos(theta) * dy));
-          int xx = x + dx2;
-          int yy = y + dy2;
 
           /* Clamp image to avoid artefacts at borders. */
-          if (xx < 0) {
-            xx = 0;
-          }
-          if (xx >= width) {
-            xx = width - 1;
-          }
-          if (yy < 0) {
-            yy = 0;
-          }
-          if (yy >= height) {
-            yy = height - 1;
-          }
+          const int xx = math::clamp(x + dx2, 0, width - 1);
+          const int yy = math::clamp(y + dy2, 0, height - 1);
 
           const double ddx2 = double(dx2);
           const double ddy2 = double(dy2);

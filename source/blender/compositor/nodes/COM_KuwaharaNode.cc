@@ -24,7 +24,8 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_operation(operation);
       converter.map_input_socket(get_input_socket(0), operation->get_input_socket(0));
       converter.map_output_socket(get_output_socket(0), operation->get_output_socket());
-    } break;
+      break;
+    }
 
     case CMP_NODE_KUWAHARA_ANISOTROPIC: {
       /* Edge detection */
