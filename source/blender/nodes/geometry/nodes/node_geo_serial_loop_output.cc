@@ -17,6 +17,8 @@ namespace blender::nodes::node_geo_serial_loop_output_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.add_input<decl::Bool>(N_("Break")).hide_value();
+  b.add_input<decl::Bool>(N_("Output Previous"));
   b.add_input<decl::Geometry>(N_("Geometry"));
   b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
