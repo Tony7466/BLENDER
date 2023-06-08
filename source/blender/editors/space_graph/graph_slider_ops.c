@@ -1491,12 +1491,12 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
 
   RNA_def_int(ot->srna,
               "blend_in_out",
-              4,
+              1,
               0,
               INT_MAX,
               "Blend In/Out",
-              "Smoothly blend to the original data at the start and end for this duration",
+              "Linearly blend the smooth data to the border frames of the selection",
               0,
-              INT_MAX);
+              128);
 }
 /** \} */
