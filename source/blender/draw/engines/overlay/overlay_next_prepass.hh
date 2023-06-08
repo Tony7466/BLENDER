@@ -33,7 +33,10 @@ class Prepass {
     init_pass(prepass_in_front_ps_);
   }
 
-  void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res)
+  void object_sync(Manager &manager,
+                   const ObjectRef &ob_ref,
+                   const select::ID select_id,
+                   Resources &res)
   {
     PassMain &pass = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ? prepass_in_front_ps_ :
                                                                     prepass_ps_;
@@ -43,7 +46,7 @@ class Prepass {
     GPUBatch *geom = DRW_cache_object_surface_get(ob_ref.object);
     if (geom) {
       ResourceHandle res_handle = manager.resource_handle(ob_ref);
-      pass.draw(geom, res_handle, res.select_id(ob_ref).get());
+      pass.draw(geom, res_handle, select_id.get());
     }
   }
 

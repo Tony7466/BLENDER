@@ -33,14 +33,15 @@ class Extra {
     passes_in_front_.begin_sync();
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref,
+                   const select::ID select_id,
+                   Resources &res,
+                   const State &state)
   {
     ExtraInstancePasses &passes = ob_ref.object->dtx & OB_DRAW_IN_FRONT ? passes_in_front_ :
                                                                           passes_;
 
     ExtraInstanceData data(ob_ref.object, res.object_wire_color(ob_ref, state));
-
-    const select::ID select_id = res.select_id(ob_ref);
 
     switch (ob_ref.object->type) {
       case OB_CAMERA:
@@ -111,11 +112,6 @@ class Extra {
 
     /* don't show object extras in set's */
     if (!from_dupli) {
-      if (draw_obcenters) {
-        /* TODO
-        OVERLAY_object_center(cb, ob, pd, scene, view_layer);
-        */
-      }
       if (draw_relations) {
         /* TODO
         OVERLAY_relationship_lines(cb, draw_ctx->depsgraph, draw_ctx->scene, ob);

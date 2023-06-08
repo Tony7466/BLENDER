@@ -62,7 +62,10 @@ class Metaballs {
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref,
+                   const select::ID select_id,
+                   Resources &res,
+                   const State &state)
   {
     SphereOutlineInstanceBuf &circle_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
                                                circle_in_front_buf_ :
@@ -70,7 +73,6 @@ class Metaballs {
     MetaBall *mb = static_cast<MetaBall *>(ob_ref.object->data);
 
     const float4 &color = res.object_wire_color(ob_ref, state);
-    const select::ID select_id = res.select_id(ob_ref);
 
     LISTBASE_FOREACH (MetaElem *, ml, &mb->elems) {
       /* Draw radius only. */

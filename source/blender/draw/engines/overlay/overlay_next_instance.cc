@@ -92,6 +92,12 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
   const bool needs_prepass = true; /* TODO */
 
+  if (!needs_prepass || state.hide_overlays) {
+    return;
+  }
+
+  const select::ID select_id = resources.select_id(ob_ref);
+
   if (needs_prepass) {
     switch (ob_ref.object->type) {
       case OB_MESH:
@@ -99,7 +105,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_CURVES:
       case OB_FONT:
       case OB_CURVES_LEGACY:
-        prepass.object_sync(manager, ob_ref, resources);
+        prepass.object_sync(manager, ob_ref, select_id, resources);
         break;
     }
   }
@@ -127,13 +133,13 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   }
 
   if (!state.hide_overlays) {
-    extras.object_sync(ob_ref, resources, state);
+    extras.object_sync(ob_ref, select_id, resources, state);
     switch (ob_ref.object->type) {
       case OB_ARMATURE:
         break;
       case OB_MBALL:
         if (!in_edit_mode) {
-          metaballs.object_sync(ob_ref, resources, state);
+          metaballs.object_sync(ob_ref, select_id, resources, state);
         }
         break;
       case OB_GPENCIL_LEGACY:

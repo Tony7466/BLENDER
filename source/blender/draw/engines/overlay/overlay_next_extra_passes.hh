@@ -56,13 +56,13 @@ class ExtraInstancePasses {
   const ShapeCache &shapes;
 
   PassSimple pass;
-  Vector<ExtraInstanceBuf *> pass_buffers[ExtraType::MAX] = {{}};
+  Vector<ExtraInstanceBuf *> extra_buffers[ExtraType::MAX] = {{}};
 
   ExtraInstanceBuf extra_buf(const char *name,
                              const BatchPtr &shape_ptr,
                              ExtraType pass_type = DEFAULT)
   {
-    Vector<ExtraInstanceBuf *> &vector = pass_buffers[pass_type];
+    Vector<ExtraInstanceBuf *> &vector = extra_buffers[pass_type];
     return {name, shape_ptr.get(), selection_type, vector};
   };
 
@@ -135,17 +135,11 @@ class ExtraInstancePasses {
   ExtraInstanceBuf loose_points = extra_buf("loose_points", nullptr, LOOSE_POINTS);
 
   ExtraInstanceBuf points = extra_buf("points", nullptr, POINTS);
-
-  ExtraInstanceBuf center_active = extra_buf("center_active", nullptr, CENTER);
-  ExtraInstanceBuf center_selected = extra_buf("center_selected", nullptr, CENTER);
-  ExtraInstanceBuf center_deselected = extra_buf("center_deselected", nullptr, CENTER);
-  ExtraInstanceBuf center_selected_lib = extra_buf("center_selected_lib", nullptr, CENTER);
-  ExtraInstanceBuf center_deselected_lib = extra_buf("center_deselected_lib", nullptr, CENTER);
   */
 
   void begin_sync()
   {
-    for (Vector<ExtraInstanceBuf *> &vector : pass_buffers) {
+    for (Vector<ExtraInstanceBuf *> &vector : extra_buffers) {
       for (ExtraInstanceBuf *buf : vector) {
         buf->clear();
       }
@@ -177,7 +171,7 @@ class ExtraInstancePasses {
         [&](const char *name, ExtraType type, ShaderPtr &shader, DRWState drw_state) {
           PassSimple::Sub *ps = sub_pass(name, shader, drw_state);
           if (ps) {
-            for (ExtraInstanceBuf *buf : pass_buffers[type]) {
+            for (ExtraInstanceBuf *buf : extra_buffers[type]) {
               buf->end_sync(*ps, buf->shape);
             }
           }
