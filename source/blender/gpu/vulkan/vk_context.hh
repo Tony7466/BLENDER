@@ -26,9 +26,6 @@ class VKContext : public Context, NonCopyable {
 
   void *ghost_context_;
 
-  /** Workarounds. */
-  static bool component_24_workaround;
-
  public:
   VKContext(void *ghost_window, void *ghost_context);
   virtual ~VKContext();
@@ -73,8 +70,6 @@ class VKContext : public Context, NonCopyable {
 
   const VKStateManager &state_manager_get() const;
   VKStateManager &state_manager_get();
-
-  static bool get_component_24_workaround();
 };
 
 }  // namespace blender::gpu
