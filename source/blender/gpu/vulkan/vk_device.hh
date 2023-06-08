@@ -17,6 +17,16 @@
 namespace blender::gpu {
 class VKBackend;
 
+struct VKWorkarounds {
+  /**
+   * Some devices don't support pixel formats that are aligned to 24 and 48 bits.
+   * In this case we need to use a different texture format.
+   *
+   * If set to true we should work around this issue by using a different texture format.
+   */
+  bool not_aligned_pixel_formats = false;
+};
+
 class VKDevice : public NonCopyable {
  private:
   /** Copies of the handles owned by the GHOST context. */
@@ -37,11 +47,7 @@ class VKDevice : public NonCopyable {
   debug::VKDebuggingTools debugging_tools_;
 
   /* Workarounds */
-  struct {
-    bool depth_component_24 = false;
-    bool texture_format_rgb16f = false;
-
-  } workarounds_;
+  VKWorkarounds workarounds_;
 
  public:
   VkPhysicalDevice physical_device_get() const
@@ -103,14 +109,9 @@ class VKDevice : public NonCopyable {
   std::string vendor_name() const;
   std::string driver_version() const;
 
-  /**
-   * Some devices don't support `GPU_DEPTH_COMPONENT_24` texture formats.
-   *
-   * Check with this function if the workaround should be used to work around this issue.
-   */
-  bool get_component_24_workaround() const
+  const VKWorkarounds &workarounds_get() const
   {
-    return workarounds_.depth_component_24;
+    return workarounds_;
   }
 
  private:
