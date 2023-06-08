@@ -3996,11 +3996,11 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         # Selection
         *_grease_pencil_selection(params, use_select_mouse=(not params.use_fallback_tool_select_mouse)),
         # Selection mode
-        ("wm.context_toggle", {"type": '1', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_point')]}),
-        ("wm.context_toggle", {"type": '2', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_stroke')]}),
-        ("wm.context_toggle", {"type": '3', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_segment')]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
@@ -4351,11 +4351,11 @@ def km_grease_pencil_stroke_vertex_mode(params):
         # Selection
         *_grease_pencil_selection(params, use_select_mouse=(not params.use_fallback_tool_select_mouse)),
         # Selection mode
-        ("wm.context_toggle", {"type": '1', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_point')]}),
-        ("wm.context_toggle", {"type": '2', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_stroke')]}),
-        ("wm.context_toggle", {"type": '3', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_segment')]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
@@ -5081,7 +5081,7 @@ def km_image_paint(params):
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
         ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
-        ("wm.context_toggle", {"type": '1', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'image_paint_object.data.use_paint_mask')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.image_paint.brush.use_smooth_stroke')]}),
@@ -5129,7 +5129,7 @@ def km_vertex_paint(params):
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
         ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
-        ("wm.context_toggle", {"type": '1', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'vertex_paint_object.data.use_paint_mask')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.use_smooth_stroke')]}),
@@ -5143,7 +5143,7 @@ def km_vertex_paint(params):
         items.extend(_template_items_legacy_tools_from_numbers())
     else:
         items.append(
-            ("wm.context_toggle", {"type": '2', "value": 'PRESS'},
+            ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
              {"properties": [("data_path", 'vertex_paint_object.data.use_paint_mask_vertex')]})
         )
 
@@ -5174,9 +5174,9 @@ def km_weight_paint(params):
          radial_control_properties("weight_paint", 'weight', 'use_unified_weight')),
         ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
-        ("wm.context_toggle", {"type": '1', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask')]}),
-        ("wm.context_toggle", {"type": '2', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask_vertex')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.weight_paint.brush.use_smooth_stroke')]}),
