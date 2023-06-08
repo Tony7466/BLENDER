@@ -3188,9 +3188,12 @@ static void rna_NodeSocketInterface_panel_set(PointerRNA *ptr,
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocketPanel *panel = (bNodeSocketPanel *)value.data;
 
-  if (panel && BLI_findindex(&ntree->socket_panels, panel) < 0) {
-    BKE_report(reports, RPT_ERROR, "Panel is not in the node tree interface");
-    return;
+  if (panel != NULL) {
+    const int64_t index = panel - ntree->socket_panels_array;
+    if (index < 0 || index >= ntree->socket_panels_num) {
+      BKE_report(reports, RPT_ERROR, "Panel is not in the node tree interface");
+      return;
+    }
   }
 
   ntreeSetSocketInterfacePanel(ntree, socket, panel);
@@ -3204,7 +3207,8 @@ static bool rna_NodeSocketInterface_panel_poll(PointerRNA *ptr, PointerRNA value
     return true;
   }
 
-  if (BLI_findindex(&ntree->socket_panels, panel) < 0) {
+  const int64_t index = panel - ntree->socket_panels_array;
+  if (index < 0 || index >= ntree->socket_panels_num) {
     return false;
   }
 
@@ -3383,7 +3387,13 @@ static void rna_NodeTree_socket_panels_move(bNodeTree *ntree,
                                                 int from_index,
                                                 int to_index)
 {
-  ntreeMoveSocketPanel(ntree, from_index, to_index);
+  if (from_index < 0 || from_index >= ntree->socket_panels_num || to_index < 0 ||
+      to_index >= ntree->socket_panels_num)
+  {
+    return;
+  }
+
+  ntreeMoveSocketPanel(ntree, &ntree->socket_panels_array[from_index], to_index);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
@@ -3393,7 +3403,12 @@ static void rna_NodeTree_socket_panels_move(bNodeTree *ntree,
 static PointerRNA rna_NodeTree_active_socket_panel_get(PointerRNA *ptr)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->data;
-  bNodeSocketPanel *panel = BLI_findlink(&ntree->socket_panels, ntree->active_socket_panel);
+  bNodeSocketPanel *panel = NULL;
+  if (ntree->active_socket_panel >= 0 &&
+      ntree->active_socket_panel < ntree->socket_panels_num)
+  {
+    panel = &ntree->socket_panels_array[ntree->active_socket_panel];
+  }
 
   PointerRNA r_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_NodeSocketPanel, panel, &r_ptr);
@@ -3406,7 +3421,7 @@ static void rna_NodeTree_active_socket_panel_set(PointerRNA *ptr,
 {
   bNodeSocketPanel *panel = (bNodeSocketPanel *)value.data;
   bNodeTree *ntree = (bNodeTree *)ptr->data;
-  ntree->active_socket_panel = BLI_findindex(&ntree->socket_panels, panel);
+  ntree->active_socket_panel = panel - ntree->socket_panels_array;
 }
 
 /* ******** Node Types ******** */
@@ -13335,7 +13350,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE, NULL);
 
   prop = RNA_def_property(srna, "socket_panels", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "socket_panels", NULL);
+  RNA_def_property_collection_sdna(prop, NULL, "socket_panels_array", "socket_panels_num");
   RNA_def_property_struct_type(prop, "NodeSocketPanel");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(

@@ -516,6 +516,16 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
   return this->runtime->root_frames;
 }
 
+inline blender::Span<bNodeSocketPanel> bNodeTree::socket_panels() const
+{
+  return blender::Span(socket_panels_array, socket_panels_num);
+}
+
+inline blender::MutableSpan<bNodeSocketPanel> bNodeTree::socket_panels_for_write()
+{
+  return blender::MutableSpan(socket_panels_array, socket_panels_num);
+}
+
 /* -------------------------------------------------------------------- */
 /** \name #bNode Inline Methods
  * \{ */
