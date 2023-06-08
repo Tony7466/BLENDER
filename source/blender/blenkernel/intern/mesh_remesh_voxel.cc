@@ -476,6 +476,8 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 
   MEM_SAFE_FREE(source_lmap);
   MEM_SAFE_FREE(source_lmap_mem);
+  MEM_SAFE_FREE(target_lmap);
+  MEM_SAFE_FREE(target_lmap_mem);
   free_bvhtree_from_mesh(&bvhtree);
 }
 
