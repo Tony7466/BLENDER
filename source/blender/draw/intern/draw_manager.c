@@ -1905,7 +1905,7 @@ static void DRW_render_gpencil_to_image(RenderEngine *engine,
 void DRW_render_gpencil(RenderEngine *engine, Depsgraph *depsgraph)
 {
   /* This function should only be called if there are grease pencil objects,
-   * especially important to avoid failing in background renders without OpenGL context. */
+   * especially important to avoid failing in background renders without GPU context. */
   BLI_assert(DRW_render_check_grease_pencil(depsgraph));
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -2964,7 +2964,7 @@ bool DRW_state_is_scene_render(void)
   return DST.options.is_scene_render;
 }
 
-bool DRW_state_is_opengl_render(void)
+bool DRW_state_is_viewport_image_render(void)
 {
   return DST.options.is_image_render && !DST.options.is_scene_render;
 }
@@ -3158,7 +3158,7 @@ void DRW_engines_free(void)
 void DRW_render_context_enable(Render *render)
 {
   if (G.background && DST.system_gpu_context == NULL) {
-    WM_init_opengl();
+    WM_init_gpu();
   }
 
   GPU_render_begin();
@@ -3212,7 +3212,7 @@ void DRW_render_context_disable(Render *render)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Init/Exit (DRW_opengl_ctx)
+/** \name Init/Exit (DRW_gpu_ctx)
  * \{ */
 
 void DRW_gpu_context_create(void)
@@ -3286,7 +3286,7 @@ void DRW_gpu_context_enable(void)
   /* TODO: should be replace by a more elegant alternative. */
 
   if (G.background && DST.system_gpu_context == NULL) {
-    WM_init_opengl();
+    WM_init_gpu();
   }
   DRW_gpu_context_enable_ex(true);
 }
@@ -3331,10 +3331,10 @@ void DRW_blender_gpu_render_context_disable(void *UNUSED(re_gpu_context))
 
 #ifdef WITH_XR_OPENXR
 
-void *DRW_xr_opengl_context_get(void)
+void *DRW_system_gpu_context_get(void)
 {
   /* XXX: There should really be no such getter, but for VR we currently can't easily avoid it.
-   * OpenXR needs some low level info for the OpenGL context that will be used for submitting the
+   * OpenXR needs some low level info for the GPU context that will be used for submitting the
    * final frame-buffer. VR could in theory create its own context, but that would mean we have to
    * switch to it just to submit the final frame, which has notable performance impact.
    *
@@ -3345,23 +3345,23 @@ void *DRW_xr_opengl_context_get(void)
   return DST.system_gpu_context;
 }
 
-void *DRW_xr_gpu_context_get(void)
+void *DRW_xr_blender_gpu_context_get(void)
 {
-  /* XXX: See comment on #DRW_xr_opengl_context_get(). */
+  /* XXX: See comment on #DRW_system_gpu_context_get(). */
 
   return DST.blender_gpu_context;
 }
 
 void DRW_xr_drawing_begin(void)
 {
-  /* XXX: See comment on #DRW_xr_opengl_context_get(). */
+  /* XXX: See comment on #DRW_system_gpu_context_get(). */
 
   BLI_ticket_mutex_lock(DST.system_gpu_context_mutex);
 }
 
 void DRW_xr_drawing_end(void)
 {
-  /* XXX: See comment on #DRW_xr_opengl_context_get(). */
+  /* XXX: See comment on #DRW_system_gpu_context_get(). */
 
   BLI_ticket_mutex_unlock(DST.system_gpu_context_mutex);
 }
@@ -3388,8 +3388,8 @@ void DRW_draw_state_init_gtests(eGPUShaderConfig sh_cfg)
 /* -------------------------------------------------------------------- */
 /** \name Draw manager context release/activation
  *
- * These functions are used in cases when an OpenGL context creation is needed during the draw.
- * This happens, for example, when an external engine needs to create its own OpenGL context from
+ * These functions are used in cases when an GPU context creation is needed during the draw.
+ * This happens, for example, when an external engine needs to create its own GPU context from
  * the engine initialization.
  *
  * Example of context creation:
@@ -3407,9 +3407,9 @@ void DRW_draw_state_init_gtests(eGPUShaderConfig sh_cfg)
  *
  *
  * NOTE: Will only perform context modification when on main thread. This way these functions can
- * be used in an engine without check on whether it is a draw manager which manages OpenGL context
- * on the current thread. The downside of this is that if the engine performs OpenGL creation from
- * a non-main thread, that thread is supposed to not have OpenGL context ever bound by Blender.
+ * be used in an engine without check on whether it is a draw manager which manages GPU context
+ * on the current thread. The downside of this is that if the engine performs GPU creation from
+ * a non-main thread, that thread is supposed to not have GPU context ever bound by Blender.
  *
  * \{ */
 

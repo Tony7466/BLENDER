@@ -272,8 +272,6 @@ void RE_engines_init_experimental(void);
 void RE_engines_exit(void);
 void RE_engines_register(RenderEngineType *render_type);
 
-bool RE_engine_is_opengl(RenderEngineType *render_type);
-
 /**
  * Return true if the RenderEngineType has native support for direct loading of Alembic data. For
  * Cycles, this also checks that the experimental feature set is enabled.

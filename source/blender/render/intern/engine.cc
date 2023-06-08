@@ -115,13 +115,6 @@ bool RE_engine_is_external(const Render *re)
   return (re->engine && re->engine->type && re->engine->type->render);
 }
 
-bool RE_engine_is_opengl(RenderEngineType *render_type)
-{
-  /* TODO: refine? Can we have OpenGL render engine without OpenGL render pipeline? */
-  return (render_type->draw_engine != nullptr) &&
-         DRW_engine_render_support(render_type->draw_engine);
-}
-
 bool RE_engine_supports_alembic_procedural(const RenderEngineType *render_type, Scene *scene)
 {
   if ((render_type->flag & RE_USE_ALEMBIC_PROCEDURAL) == 0) {
@@ -1271,7 +1264,7 @@ void RE_engine_tile_highlight_clear_all(RenderEngine *engine)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name OpenGL context manipulation.
+/** \name GPU context manipulation.
  *
  * GPU context for engine to create and update GPU resources in its own thread,
  * without blocking the main thread. Used by Cycles' display driver to create
@@ -1295,12 +1288,12 @@ bool RE_engine_gpu_context_create(RenderEngine *engine)
   engine->wm_blender_gpu_context = WM_system_gpu_context_create();
 
   if (engine->wm_blender_gpu_context) {
-    /* Activate new OpenGL Context for GPUContext creation. */
+    /* Activate new GPU Context for GPUContext creation. */
     WM_system_gpu_context_activate(engine->wm_blender_gpu_context);
     /* Requires GPUContext for usage of GPU Module for displaying results. */
     engine->blender_gpu_context = GPU_context_create(nullptr, engine->wm_blender_gpu_context);
     GPU_context_active_set(nullptr);
-    /* Deactivate newly created OpenGL Context, as it is not needed until
+    /* Deactivate newly created GPU Context, as it is not needed until
      * `RE_engine_gpu_context_enable` is called. */
     WM_system_gpu_context_release(engine->wm_blender_gpu_context);
   }
@@ -1345,11 +1338,11 @@ bool RE_engine_gpu_context_enable(RenderEngine *engine)
   }
   if (engine->wm_blender_gpu_context) {
     BLI_mutex_lock(&engine->blender_gpu_context_mutex);
-    /* If a previous OpenGL/GPUContext was active (DST.blender_gpu_context), we should later
+    /* If a previous GPU/GPUContext was active (DST.blender_gpu_context), we should later
      * restore this when disabling the RenderEngine context. */
     engine->gpu_restore_context = DRW_gpu_context_release();
 
-    /* Activate RenderEngine OpenGL and GPU Context. */
+    /* Activate RenderEngine System and Blender GPU Context. */
     WM_system_gpu_context_activate(engine->wm_blender_gpu_context);
     if (engine->blender_gpu_context) {
       GPU_context_active_set(engine->blender_gpu_context);

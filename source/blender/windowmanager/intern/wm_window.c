@@ -207,7 +207,7 @@ static void wm_ghostwindow_destroy(wmWindowManager *wm, wmWindow *win)
     wm->winactive = NULL;
   }
 
-  /* We need this window's opengl context active to discard it. */
+  /* We need this window's GPU context active to discard it. */
   GHOST_ActivateWindowDrawingContext(win->ghostwin);
   GPU_context_active_set(win->gpuctx);
 

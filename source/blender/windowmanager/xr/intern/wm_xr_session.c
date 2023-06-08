@@ -1469,8 +1469,8 @@ static wmSurface *wm_xr_session_surface_create(void)
   surface->activate = DRW_xr_drawing_begin;
   surface->deactivate = DRW_xr_drawing_end;
 
-  surface->ghost_ctx = DRW_xr_opengl_context_get();
-  surface->gpu_ctx = DRW_xr_gpu_context_get();
+  surface->ghost_ctx = DRW_system_gpu_context_get();
+  surface->gpu_ctx = DRW_xr_blender_gpu_context_get();
 
   data->controller_art->regionid = RGN_TYPE_XR;
   surface->customdata = data;

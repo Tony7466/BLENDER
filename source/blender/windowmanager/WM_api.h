@@ -144,7 +144,7 @@ void WM_init_splash_on_startup(struct bContext *C);
  */
 void WM_init_splash(struct bContext *C);
 
-void WM_init_opengl(void);
+void WM_init_gpu(void);
 
 /**
  * Return an identifier for the underlying GHOST implementation.
