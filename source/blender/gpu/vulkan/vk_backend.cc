@@ -75,11 +75,11 @@ void VKBackend::platform_init(const VKDevice &device)
 
 void VKBackend::detect_workarounds(VKDevice &device)
 {
-  device.workarounds_.depth_component_24 = false;
+  device.workarounds_.not_aligned_pixel_formats = false;
 
   /* AMD GPUs don't support texture formats that use 24 bits. */
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
-    device.workarounds_.depth_component_24 = true;
+    device.workarounds_.not_aligned_pixel_formats = true;
   }
 }
 

@@ -221,10 +221,11 @@ bool VKTexture::init_internal()
    * allocation of the texture on the device. */
 
   const VKDevice &device = VKBackend::get().device_get();
-  if (format_ == GPU_DEPTH_COMPONENT24 && device.get_component_24_workaround()) {
+  const VKWorkarounds &workarounds = device.workarounds_get();
+  if (format_ == GPU_DEPTH_COMPONENT24 && workarounds.not_aligned_pixel_formats) {
     format_ = GPU_DEPTH_COMPONENT32F;
   }
-  if (format_ == GPU_DEPTH24_STENCIL8 && device.get_component_24_workaround()) {
+  if (format_ == GPU_DEPTH24_STENCIL8 && workarounds.not_aligned_pixel_formats) {
     format_ = GPU_DEPTH32F_STENCIL8;
   }
 
