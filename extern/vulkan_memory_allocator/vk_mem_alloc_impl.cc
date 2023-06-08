@@ -8,9 +8,6 @@
 #endif
 
 #define VMA_IMPLEMENTATION
-#ifdef DEBUG
-#define VMA_ASSERT(test) 
-#endif
 
 /* 
  * Disabling internal asserts of VMA. 
