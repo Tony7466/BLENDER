@@ -66,7 +66,7 @@ typedef struct AutoTrackMarker {
  * On failure marker's frame number is initialized to frame number where it was attempted to be
  * tracked to. The position and other fields of tracked marker are the same as the input. */
 typedef struct AutoTrackTrackingResult {
-  struct AutoTrackTrackingResult *next, *prev;
+  AutoTrackTrackingResult *next, *prev;
 
   bool success;
   libmv_Marker libmv_marker;
@@ -117,7 +117,7 @@ typedef struct AutoTrackContext {
   /* Auto-track context.
    *
    * NOTE: Is accessed from multiple threads at once. */
-  struct libmv_AutoTrack *autotrack;
+  libmv_AutoTrack *autotrack;
 
   /* Markers from the current frame which will be tracked to the next frame upon the tracking
    * context step.
@@ -669,7 +669,7 @@ static void autotrack_context_step_cb(void *__restrict userdata,
                              &libmv_reference_marker);
   }
   else {
-    BLI_assert(track->pattern_match == TRACK_MATCH_PREVIOS_FRAME);
+    BLI_assert(track->pattern_match == TRACK_MATCH_PREVIOUS_FRAME);
     autotrack_result->libmv_marker.reference_frame = libmv_current_marker->frame;
     libmv_reference_marker = *libmv_current_marker;
   }
