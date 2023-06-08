@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_KuwaharaAnisotropicOperation.h"
+
 #include "BLI_math_base.hh"
 #include "BLI_vector.hh"
 #include "IMB_colormanagement.h"
@@ -57,8 +58,8 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
   const float q = 3.0;
   const float EPS = 1.0e-10;
 
-  /* For now use green channel to compute orientation */
-  /* todo: convert to HSV and compute orientation and strength on luminance channel */
+  /* For now use green channel to compute orientation. */
+  /* TODO: convert to HSV and compute orientation and strength on luminance channel */
   float tmp[4];
   s_xx_reader_->read(tmp, x, y, nullptr);
   const float a = tmp[1];
@@ -67,13 +68,13 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
   s_yy_reader_->read(tmp, x, y, nullptr);
   const float c = tmp[1];
 
-  /* Compute egenvalues of structure tensor */
+  /* Compute egenvalues of structure tensor. */
   const double tr = a + c;
   const double discr = sqrt((a - b) * (a - b) + 4 * b * c);
   const double lambda1 = (tr + discr) / 2;
   const double lambda2 = (tr - discr) / 2;
 
-  /* Compute orientation and its strength based on structure tensor */
+  /* Compute orientation and its strength based on structure tensor. */
   const double orientation = 0.5 * atan2(2 * b, a - c);
   const double strength = (lambda1 == 0 && lambda2 == 0) ?
                               0 :
@@ -146,7 +147,7 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
     output[ch] = val;
   }
 
-  /* No changes for alpha channel */
+  /* No changes for alpha channel. */
   image_reader_->read_sampled(tmp, x, y, sampler);
   output[3] = tmp[3];
 }
@@ -172,12 +173,10 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
                                                                 const rcti &area,
                                                                 Span<MemoryBuffer *> inputs)
 {
-  /*
-   Implementation based on Kyprianidis, Jan & Kang, Henry & Döllner, Jürgen. (2009).
-   "Image and Video Abstraction by Anisotropic Kuwahara Filtering".
-   Comput. Graph. Forum. 28. 1955-1963. 10.1111/j.1467-8659.2009.01574.x.
-   Used reference implementation from lime image processing library (MIT license).
-   */
+  /* Implementation based on Kyprianidis, Jan & Kang, Henry & Döllner, Jürgen. (2009).
+   * "Image and Video Abstraction by Anisotropic Kuwahara Filtering".
+   * Comput. Graph. Forum. 28. 1955-1963. 10.1111/j.1467-8659.2009.01574.x.
+   * Used reference implementation from lime image processing library (MIT license). */
 
   MemoryBuffer *image = inputs[0];
   MemoryBuffer *s_xx = inputs[1];
@@ -203,8 +202,8 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     const int x = it.x;
     const int y = it.y;
 
-    /* For now use green channel to compute orientation */
-    /* todo: convert to HSV and compute orientation and strength on luminance channel */
+    /* For now use green channel to compute orientation. */
+    /* TODO: convert to HSV and compute orientation and strength on luminance channel. */
     const float a = s_xx->get_value(x, y, 1);
     const float b = s_xy->get_value(x, y, 1);
     const float c = s_yy->get_value(x, y, 1);
@@ -215,7 +214,7 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     const double lambda1 = (tr + discr) / 2;
     const double lambda2 = (tr - discr) / 2;
 
-    /* Compute orientation and its strength based on structure tensor */
+    /* Compute orientation and its strength based on structure tensor. */
     const double orientation = 0.5 * atan2(2 * b, a - c);
     const double strength = (lambda1 == 0 && lambda2 == 0) ?
                                 0 :
@@ -258,9 +257,9 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
           const double v = image->get_value(xx, yy, ch);
           float color[4];
           image->read_elem(xx, yy, color);
-          /* todo(zazizizou): only compute lum once per region */
+          /* TODO(zazizizou): only compute lum once per region. */
           const float lum = IMB_colormanagement_get_luminance(color);
-          /* todo(zazizizou): only compute mean for the selected region */
+          /* TODO(zazizizou): only compute mean for the selected region. */
           mean[t] += g * v;
           sum[t] += g * lum;
           var[t] += g * lum * lum;
@@ -268,7 +267,7 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
         }
       }
 
-      /* Calculate weighted average */
+      /* Calculate weighted average. */
       double de = 0.0;
       double nu = 0.0;
       for (int i = 0; i < n_div_; i++) {
@@ -288,7 +287,7 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
       it.out[ch] = val;
     }
 
-    /* No changes for alpha channel */
+    /* No changes for alpha channel. */
     it.out[3] = image->get_value(x, y, 3);
   }
 }

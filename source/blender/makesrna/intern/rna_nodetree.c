@@ -9397,7 +9397,7 @@ static void def_cmp_kuwahara(StructRNA *srna)
   prop = RNA_def_property(srna, "variation", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "variation");
   RNA_def_property_enum_items(prop, variation_items);
-  RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use.");
+  RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "smoothing", PROP_INT, PROP_NONE);

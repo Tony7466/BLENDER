@@ -4,9 +4,7 @@
 
 #include "COM_KuwaharaClassicOperation.h"
 
-extern "C" {
 #include "IMB_colormanagement.h"
-}
 
 namespace blender::compositor {
 
@@ -40,7 +38,7 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
     float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     int cnt[4] = {0, 0, 0, 0};
 
-    /* Split surroundings of pixel into 4 overlapping regions */
+    /* Split surroundings of pixel into 4 overlapping regions. */
     for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
       for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
 
@@ -83,7 +81,7 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
       }
     }
 
-    /* Compute region variances */
+    /* Compute region variances. */
     for (int i = 0; i < 4; i++) {
       mean[i] = cnt[i] != 0 ? mean[i] / cnt[i] : 0.0f;
       sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
@@ -92,7 +90,7 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
       var[i] = var[i] > temp ? sqrt(var[i] - temp) : 0.0f;
     }
 
-    /* Choose the region with lowest variance */
+    /* Choose the region with lowest variance. */
     float min_var = FLT_MAX;
     int min_index = 0;
     for (int i = 0; i < 4; i++) {
@@ -132,7 +130,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
       float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       int cnt[4] = {0, 0, 0, 0};
 
-      /* Split surroundings of pixel into 4 overlapping regions */
+      /* Split surroundings of pixel into 4 overlapping regions. */
       for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
         for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
 
@@ -175,7 +173,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
         }
       }
 
-      /* Compute region variances */
+      /* Compute region variances. */
       for (int i = 0; i < 4; i++) {
         mean[i] = cnt[i] != 0 ? mean[i] / cnt[i] : 0.0f;
         sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
@@ -184,7 +182,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
         var[i] = var[i] > temp ? sqrt(var[i] - temp) : 0.0f;
       }
 
-      /* Choose the region with lowest variance */
+      /* Choose the region with lowest variance. */
       float min_var = FLT_MAX;
       int min_index = 0;
       for (int i = 0; i < 4; i++) {

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_KuwaharaNode.h"
+
 #include "COM_FastGaussianBlurOperation.h"
 #include "COM_KuwaharaAnisotropicOperation.h"
 #include "COM_KuwaharaClassicOperation.h"
@@ -82,7 +83,7 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_link(sobel_yy->get_output_socket(0), blur_sobel_yy->get_input_socket(0));
       converter.add_link(sobel_xy->get_output_socket(0), blur_sobel_xy->get_input_socket(0));
 
-      /* Apply anisotropic Kuwahara filter */
+      /* Apply anisotropic Kuwahara filter. */
       KuwaharaAnisotropicOperation *aniso = new KuwaharaAnisotropicOperation();
       aniso->set_kernel_size(data->size + 4);
       converter.map_input_socket(get_input_socket(0), aniso->get_input_socket(0));
