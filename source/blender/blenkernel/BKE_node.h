@@ -574,12 +574,6 @@ bool ntreeContainsSocketPanel(const bNodeTree *ntree, const bNodeSocketPanel *pa
 int ntreeGetSocketPanelIndex(const bNodeTree *ntree, const bNodeSocketPanel *panel);
 
 /**
- * Find a socket panel by its unique ID.
- * \param id: Unique ID of the panel within the node tree.
- */
-bNodeSocketPanel *ntreeFindSocketPanelByID(bNodeTree *ntree, int id);
-
-/**
  * Add a new socket panel to the node tree.
  * \param name: Name of the new panel.
  * \param flag: Flags of the new panel.

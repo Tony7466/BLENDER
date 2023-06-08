@@ -537,7 +537,7 @@ typedef struct bNodeLink {
 typedef struct bNodeSocketPanel {
   char *name;
   int flag;
-  int identifier;
+  int _pad;
 } bNodeSocketPanel;
 
 /* the basis for a Node tree, all links and nodes reside internal here */

@@ -3813,16 +3813,6 @@ int ntreeGetSocketPanelIndex(const bNodeTree *ntree, const bNodeSocketPanel *pan
   return ntree->socket_panels().first_index_try(const_cast<bNodeSocketPanel *>(panel));
 }
 
-bNodeSocketPanel *ntreeFindSocketPanelByID(bNodeTree *ntree, int id)
-{
-  for (bNodeSocketPanel *panel : ntree->socket_panels_for_write()) {
-    if (panel->identifier == id) {
-      return panel;
-    }
-  }
-  return nullptr;
-}
-
 bNodeSocketPanel *ntreeAddSocketPanel(bNodeTree *ntree, const char *name, int flag)
 {
   bNodeSocketPanel **old_panels_array = ntree->socket_panels_array;
