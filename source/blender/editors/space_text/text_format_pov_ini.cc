@@ -20,16 +20,16 @@
 /* *** POV INI Keywords (for format_line) *** */
 
 #ifdef _MSC_VER
+#  define MSVC_WORKAROUND_INIT(i) \
+    char _keep_me; \
+    i = -1
 #  define MSVC_WORKAROUND_IMPL(i) \
     } \
     ((void)_keep_me); \
     if (i != -1) {
-#  define MSVC_WORKAROUND_INIT(i) \
-    char _keep_me; \
-    i = -1
 #else
-#  define MSVC_WORKAROUND_IMPL(i)
 #  define MSVC_WORKAROUND_INIT(i) ((void)0)
+#  define MSVC_WORKAROUND_IMPL(i)
 #endif
 
 /**
