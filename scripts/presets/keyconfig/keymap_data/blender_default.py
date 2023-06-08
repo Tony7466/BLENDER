@@ -179,7 +179,7 @@ class Params:
             if self.legacy:
                 self.context_menu_event = {"type": 'W', "value": 'PRESS'}
             else:
-                self.context_menu_event = {"type": 'RIGHTMOUSE', "value": 'PRESS'}
+                self.context_menu_event = {"type": 'RIGHTMOUSE', "value": 'CLICK'}
 
             self.cursor_set_event = {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}
             self.cursor_tweak_event = {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True}
@@ -304,7 +304,7 @@ def op_tool_optional(op_args, tool_pair, params):
 def _template_items_context_menu(menu, key_args_primary):
     return [
         op_menu(menu, kmi_args)
-        for kmi_args in (key_args_primary, {"type": 'APP', "value": 'CLICK_DRAG'})
+        for kmi_args in (key_args_primary, {"type": 'APP', "value": 'PRESS'})
     ]
 
 
