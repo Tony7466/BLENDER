@@ -5182,9 +5182,9 @@ def km_weight_paint(params):
     items.extend([
         ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
-        ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', 'ctrl': True},
+        ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),
-        ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', 'shift': True},
+        ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
         ("paint.weight_sample", {"type": 'X', "value": 'PRESS', "shift": True}, None),
         ("paint.weight_sample_group", {"type": 'X', "value": 'PRESS', "ctrl": True, "shift": True}, None),
@@ -5200,7 +5200,7 @@ def km_weight_paint(params):
         *_template_paint_radial_control("weight_paint"),
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
          radial_control_properties("weight_paint", 'weight', 'use_unified_weight')),
-        ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', 'alt': True},
+        ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', "alt": True},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
         ("wm.context_toggle", {"type": 'M', "value": 'PRESS'},
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask')]}),
@@ -5308,10 +5308,10 @@ def km_sculpt(params):
          {"properties": [("mode", 'SHRINK')]}),
         # Subdivision levels
         *_template_items_object_subdivision_set(),
-        ("object.subdivision_set", {"type": '2', "value": 'PRESS', 'alt': True, "repeat": True},
-         {"properties": [("level", 1), ("relative", True)]}),
-        ("object.subdivision_set", {"type": '1', "value": 'PRESS', 'alt': True, "repeat": True},
+        ("object.subdivision_set", {"type": 'ONE', "value": 'PRESS', "alt": True, "repeat": True},
          {"properties": [("level", -1), ("relative", True)]}),
+        ("object.subdivision_set", {"type": 'TWO', "value": 'PRESS', "alt": True, "repeat": True},
+         {"properties": [("level", 1), ("relative", True)]}),
         # Mask
         ("paint.mask_flood_fill", {"type": 'M', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'VALUE'), ("value", 0.0)]}),
@@ -5353,6 +5353,9 @@ def km_sculpt(params):
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
         ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
+        # Sculpt Session Pivot Point
+        #("sculpt.set_pivot_position", {"type": 'RIGHTMOUSE', 'value': 'PRESS', "shift": True},
+         #{"properties": [("mode", 'SURFACE')]}),
         # Tools
         ("paint.brush_select", {"type": 'X', "value": 'PRESS'},
          {"properties": [("sculpt_tool", 'DRAW')]}),
@@ -5377,7 +5380,7 @@ def km_sculpt(params):
         ("paint.brush_select", {"type": 'M', "value": 'PRESS'},
          {"properties": [("sculpt_tool", 'MASK'), ("toggle", True), ("create_missing", True)]}),
         # Menus
-        ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', 'alt': True},
+        ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', "alt": True},
          {"properties": [("data_path", 'tool_settings.sculpt.brush.stroke_method')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.sculpt.brush.use_smooth_stroke')]}),
