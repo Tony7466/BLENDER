@@ -28,7 +28,7 @@ static int txtfmt_osl_find_builtinfunc(const char *string)
   /* list is from
    * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
    */
-  constexpr keyword_info keywords[]{
+  constexpr KeywordInfo keywords[]{
       KEYWORD_INFO("break"),    KEYWORD_INFO("closure"),     KEYWORD_INFO("color"),
       KEYWORD_INFO("continue"), KEYWORD_INFO("do"),          KEYWORD_INFO("else"),
       KEYWORD_INFO("emit"),     KEYWORD_INFO("float"),       KEYWORD_INFO("for"),
@@ -57,7 +57,7 @@ static int txtfmt_osl_find_reserved(const char *string)
   /* list is from...
    * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
    */
-  constexpr keyword_info keywords[]{
+  constexpr KeywordInfo keywords[]{
       KEYWORD_INFO("bool"),      KEYWORD_INFO("case"),     KEYWORD_INFO("catch"),
       KEYWORD_INFO("char"),      KEYWORD_INFO("const"),    KEYWORD_INFO("delete"),
       KEYWORD_INFO("default"),   KEYWORD_INFO("double"),   KEYWORD_INFO("enum"),
@@ -95,7 +95,7 @@ static int txtfmt_osl_find_specialvar(const char *string)
   /* Keep aligned args for readability. */
 
   /* OSL shader types */
-  constexpr keyword_info keywords[]{
+  constexpr KeywordInfo keywords[]{
       KEYWORD_INFO("shader"),
       KEYWORD_INFO("surface"),
       KEYWORD_INFO("volume"),

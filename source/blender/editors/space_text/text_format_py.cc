@@ -59,7 +59,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr keyword_info keywords[]{
+  constexpr KeywordInfo keywords[]{
       KEYWORD_INFO("and"),     KEYWORD_INFO("assert"),   KEYWORD_INFO("async"),
       KEYWORD_INFO("as"),      KEYWORD_INFO("await"),    KEYWORD_INFO("break"),
       KEYWORD_INFO("case"),    KEYWORD_INFO("continue"), KEYWORD_INFO("del"),
@@ -94,7 +94,7 @@ static int txtfmt_py_find_specialvar(const char *string)
   int i;
 
   /* Keep aligned args for readability. */
-  constexpr keyword_info keywords[]{
+  constexpr KeywordInfo keywords[]{
       KEYWORD_INFO("def"),
       KEYWORD_INFO("class"),
   };
@@ -133,7 +133,7 @@ static int txtfmt_py_find_bool(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr keyword_info keywords[]{
+  constexpr KeywordInfo keywords[]{
       KEYWORD_INFO("None"),
       KEYWORD_INFO("True"),
       KEYWORD_INFO("False"),

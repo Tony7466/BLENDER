@@ -116,7 +116,7 @@ void ED_text_format_register_lua();
 void ED_text_format_register_pov();
 void ED_text_format_register_pov_ini();
 
-struct keyword_info {
+struct KeywordInfo {
   const char *keyword;
   const int length;
 };
@@ -126,9 +126,9 @@ struct keyword_info {
     str_literal, sizeof(str_literal) - 1 \
   }
 
-template<size_t N> int find_keyword_length(const keyword_info (&keywords)[N], const char *string)
+template<size_t N> int find_keyword_length(const KeywordInfo (&keywords)[N], const char *string)
 {
-  for (const keyword_info &keyword : keywords) {
+  for (const KeywordInfo &keyword : keywords) {
     if (strncmp(string, keyword.keyword, keyword.length) == 0) {
       return keyword.length;
     }
