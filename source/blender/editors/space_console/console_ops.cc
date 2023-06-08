@@ -35,7 +35,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "console_intern.h"
+#include "console_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities
@@ -51,7 +51,7 @@ static char *console_select_to_buffer(SpaceConsole *sc)
   console_scrollback_prompt_begin(sc, &cl_dummy);
 
   int offset = 0;
-  for (ConsoleLine *cl = sc->scrollback.first; cl; cl = cl->next) {
+  for (ConsoleLine *cl = static_cast<ConsoleLine *>(sc->scrollback.first); cl; cl = cl->next) {
     offset += cl->len + 1;
   }
 
@@ -60,7 +60,7 @@ static char *console_select_to_buffer(SpaceConsole *sc)
     offset -= 1;
     int sel[2] = {offset - sc->sel_end, offset - sc->sel_start};
     DynStr *buf_dyn = BLI_dynstr_new();
-    for (ConsoleLine *cl = sc->scrollback.first; cl; cl = cl->next) {
+    for (ConsoleLine *cl = static_cast<ConsoleLine *>(sc->scrollback.first); cl; cl = cl->next) {
       if (sel[0] <= cl->len && sel[1] >= 0) {
         int sta = max_ii(sel[0], 0);
         int end = min_ii(sel[1], cl->len);
@@ -142,7 +142,7 @@ static void console_scrollback_limit(SpaceConsole *sc)
   int tot;
 
   for (tot = BLI_listbase_count(&sc->scrollback); tot > U.scrollback; tot--) {
-    console_scrollback_free(sc, sc->scrollback.first);
+    console_scrollback_free(sc, static_cast<ConsoleLine *>(sc->scrollback.first));
   }
 }
 
@@ -150,7 +150,7 @@ static ConsoleLine *console_history_find(SpaceConsole *sc, const char *str, Cons
 {
   ConsoleLine *cl;
 
-  for (cl = sc->history.last; cl; cl = cl->prev) {
+  for (cl = static_cast<ConsoleLine *>(sc->history.last); cl; cl = cl->prev) {
     if (cl == cl_ignore) {
       continue;
     }
@@ -208,7 +208,8 @@ static void console_history_debug(const bContext *C)
 
 static ConsoleLine *console_lb_add__internal(ListBase *lb, ConsoleLine *from)
 {
-  ConsoleLine *ci = MEM_callocN(sizeof(ConsoleLine), "ConsoleLine Add");
+  ConsoleLine *ci = static_cast<ConsoleLine *>(
+      MEM_callocN(sizeof(ConsoleLine), "ConsoleLine Add"));
 
   if (from) {
     BLI_assert(strlen(from->line) == from->len);
@@ -218,7 +219,7 @@ static ConsoleLine *console_lb_add__internal(ListBase *lb, ConsoleLine *from)
     ci->type = from->type;
   }
   else {
-    ci->line = MEM_callocN(64, "console-in-line");
+    ci->line = static_cast<char *>(MEM_callocN(64, "console-in-line"));
     ci->len_alloc = 64;
     ci->len = 0;
   }
@@ -243,7 +244,8 @@ static ConsoleLine *console_scrollback_add(const bContext *C, ConsoleLine *from)
 
 static ConsoleLine *console_lb_add_str__internal(ListBase *lb, char *str, bool own)
 {
-  ConsoleLine *ci = MEM_callocN(sizeof(ConsoleLine), "ConsoleLine Add");
+  ConsoleLine *ci = static_cast<ConsoleLine *>(
+      MEM_callocN(sizeof(ConsoleLine), "ConsoleLine Add"));
   if (own) {
     ci->line = str;
   }
@@ -270,7 +272,7 @@ ConsoleLine *console_scrollback_add_str(SpaceConsole *sc, char *str, bool own)
 ConsoleLine *console_history_verify(const bContext *C)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
-  ConsoleLine *ci = sc->history.last;
+  ConsoleLine *ci = static_cast<ConsoleLine *>(sc->history.last);
   if (ci == NULL) {
     ci = console_history_add(sc, NULL);
   }
@@ -288,7 +290,7 @@ static void console_line_verify_length(ConsoleLine *ci, int len)
 #else
     int new_len = (len + 1) * 2;
 #endif
-    ci->line = MEM_recallocN_id(ci->line, new_len, "console line");
+    ci->line = static_cast<char *>(MEM_recallocN_id(ci->line, new_len, "console line"));
     ci->len_alloc = new_len;
   }
 }
@@ -323,7 +325,7 @@ static bool console_line_column_from_index(
   ConsoleLine *cl;
   int offset = 0;
 
-  for (cl = sc->scrollback.last; cl; cl = cl->prev) {
+  for (cl = static_cast<ConsoleLine *>(sc->scrollback.last); cl; cl = cl->prev) {
     offset += cl->len + 1;
     if (offset >= pos) {
       break;
@@ -440,7 +442,7 @@ static int console_insert_exec(bContext *C, wmOperator *op)
   if (str[0] == '\t' && str[1] == '\0') {
     len = TAB_LENGTH;
     MEM_freeN(str);
-    str = MEM_mallocN(len + 1, "insert_exec");
+    str = static_cast<char *>(MEM_mallocN(len + 1, "insert_exec"));
     memset(str, ' ', len);
     str[len] = '\0';
   }
@@ -526,7 +528,7 @@ void CONSOLE_OT_insert(wmOperatorType *ot)
 /** \name Indent or Autocomplete Operator
  * \{ */
 
-static int console_indent_or_autocomplete_exec(bContext *C, wmOperator *UNUSED(op))
+static int console_indent_or_autocomplete_exec(bContext *C, wmOperator * /*op*/)
 {
   ConsoleLine *ci = console_history_verify(C);
   bool text_before_cursor = false;
@@ -571,7 +573,7 @@ void CONSOLE_OT_indent_or_autocomplete(wmOperatorType *ot)
 /** \name Indent Operator
  * \{ */
 
-static int console_indent_exec(bContext *C, wmOperator *UNUSED(op))
+static int console_indent_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
@@ -618,7 +620,7 @@ void CONSOLE_OT_indent(wmOperatorType *ot)
 
 /** \} */
 
-static int console_unindent_exec(bContext *C, wmOperator *UNUSED(op))
+static int console_unindent_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
@@ -773,7 +775,7 @@ void CONSOLE_OT_delete(wmOperatorType *ot)
                "Which part of the text to delete");
 }
 
-static int console_clear_line_exec(bContext *C, wmOperator *UNUSED(op))
+static int console_clear_line_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
@@ -821,13 +823,13 @@ static int console_clear_exec(bContext *C, wmOperator *op)
 
   if (scrollback) { /* Last item in history. */
     while (sc->scrollback.first) {
-      console_scrollback_free(sc, sc->scrollback.first);
+      console_scrollback_free(sc, static_cast<ConsoleLine *>(sc->scrollback.first));
     }
   }
 
   if (history) {
     while (sc->history.first) {
-      console_history_free(sc, sc->history.first);
+      console_history_free(sc, static_cast<ConsoleLine *>(sc->history.first));
     }
     console_history_verify(C);
   }
@@ -876,12 +878,12 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
   }
 
   if (reverse) { /* last item in history */
-    ci = sc->history.last;
+    ci = static_cast<ConsoleLine *>(sc->history.last);
     BLI_remlink(&sc->history, ci);
     BLI_addhead(&sc->history, ci);
   }
   else {
-    ci = sc->history.first;
+    ci = static_cast<ConsoleLine *>(sc->history.first);
     BLI_remlink(&sc->history, ci);
     BLI_addtail(&sc->history, ci);
   }
@@ -895,7 +897,7 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
     console_history_add(sc, (ConsoleLine *)sc->history.last);
   }
 
-  ci = sc->history.last;
+  ci = static_cast<ConsoleLine *>(sc->history.last);
   console_select_offset(sc, ci->len - prev_len);
 
   /* could be wrapped so update scroll rect */
@@ -1044,7 +1046,7 @@ void CONSOLE_OT_scrollback_append(wmOperatorType *ot)
                "Console output type");
 }
 
-static int console_copy_exec(bContext *C, wmOperator *UNUSED(op))
+static int console_copy_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   char *buf = console_select_to_buffer(sc);
@@ -1138,7 +1140,7 @@ typedef struct SetConsoleCursor {
 
 /* TODO: cursor placement without selection. */
 static void console_cursor_set_to_pos(
-    SpaceConsole *sc, ARegion *region, SetConsoleCursor *scu, const int mval[2], int UNUSED(sel))
+    SpaceConsole *sc, ARegion *region, SetConsoleCursor *scu, const int mval[2], int /*sel*/)
 {
   int pos;
   pos = console_char_pick(sc, region, mval);
@@ -1166,7 +1168,7 @@ static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEven
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
-  SetConsoleCursor *scu = op->customdata;
+  SetConsoleCursor *scu = static_cast<SetConsoleCursor *>(op->customdata);
   int mval[2];
   int sel_prev[2];
 
@@ -1187,7 +1189,7 @@ static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEven
 static void console_cursor_set_exit(bContext *C, wmOperator *op)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
-  SetConsoleCursor *scu = op->customdata;
+  SetConsoleCursor *scu = static_cast<SetConsoleCursor *>(op->customdata);
 
   console_select_update_primary_clipboard(sc);
 
@@ -1201,7 +1203,7 @@ static int console_modal_select_invoke(bContext *C, wmOperator *op, const wmEven
   SetConsoleCursor *scu;
 
   op->customdata = MEM_callocN(sizeof(SetConsoleCursor), "SetConsoleCursor");
-  scu = op->customdata;
+  scu = static_cast<SetConsoleCursor *>(op->customdata);
 
   scu->sel_old[0] = sc->sel_start;
   scu->sel_old[1] = sc->sel_end;
@@ -1253,7 +1255,7 @@ void CONSOLE_OT_select_set(wmOperatorType *ot)
   ot->poll = ED_operator_console_active;
 }
 
-static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int console_selectword_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);

@@ -32,29 +32,29 @@
 
 #include "BLO_read_write.h"
 
-#include "console_intern.h" /* own include */
+#include "console_intern.hh" /* own include */
 
 /* ******************** default callbacks for console space ***************** */
 
-static SpaceLink *console_create(const ScrArea *UNUSED(area), const Scene *UNUSED(scene))
+static SpaceLink *console_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
   ARegion *region;
   SpaceConsole *sconsole;
 
-  sconsole = MEM_callocN(sizeof(SpaceConsole), "initconsole");
+  sconsole = static_cast<SpaceConsole *>(MEM_callocN(sizeof(SpaceConsole), "initconsole"));
   sconsole->spacetype = SPACE_CONSOLE;
 
   sconsole->lheight = 14;
 
   /* header */
-  region = MEM_callocN(sizeof(ARegion), "header for console");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "header for console"));
 
   BLI_addtail(&sconsole->regionbase, region);
   region->regiontype = RGN_TYPE_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
   /* main region */
-  region = MEM_callocN(sizeof(ARegion), "main region for text");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "main region for text"));
 
   BLI_addtail(&sconsole->regionbase, region);
   region->regiontype = RGN_TYPE_WINDOW;
@@ -79,20 +79,20 @@ static void console_free(SpaceLink *sl)
   SpaceConsole *sc = (SpaceConsole *)sl;
 
   while (sc->scrollback.first) {
-    console_scrollback_free(sc, sc->scrollback.first);
+    console_scrollback_free(sc, static_cast<ConsoleLine *>(sc->scrollback.first));
   }
 
   while (sc->history.first) {
-    console_history_free(sc, sc->history.first);
+    console_history_free(sc, static_cast<ConsoleLine *>(sc->history.first));
   }
 }
 
 /* spacetype; init callback */
-static void console_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
+static void console_init(wmWindowManager * /*wm*/, ScrArea * /*area*/) {}
 
 static SpaceLink *console_duplicate(SpaceLink *sl)
 {
-  SpaceConsole *sconsolen = MEM_dupallocN(sl);
+  SpaceConsole *sconsolen = static_cast<SpaceConsole *>(MEM_dupallocN(sl));
 
   /* clear or remove stuff from old */
 
@@ -138,7 +138,7 @@ static void console_main_region_init(wmWindowManager *wm, ARegion *region)
 }
 
 /* same as 'text_cursor' */
-static void console_cursor(wmWindow *win, ScrArea *UNUSED(area), ARegion *region)
+static void console_cursor(wmWindow *win, ScrArea * /*area*/, ARegion *region)
 {
   int wmcursor = WM_CURSOR_TEXT_EDIT;
   const wmEvent *event = win->eventstate;
@@ -151,12 +151,12 @@ static void console_cursor(wmWindow *win, ScrArea *UNUSED(area), ARegion *region
 
 /* ************* dropboxes ************* */
 
-static bool id_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
+static bool id_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
 {
   return WM_drag_get_local_ID(drag, 0) != NULL;
 }
 
-static void id_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
+static void id_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   ID *id = WM_drag_get_local_ID(drag, 0);
 
@@ -166,12 +166,12 @@ static void id_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
   MEM_freeN(text);
 }
 
-static bool path_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
+static bool path_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
 {
   return (drag->type == WM_DRAG_PATH);
 }
 
-static void path_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
+static void path_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   char pathname[FILE_MAX + 2];
   SNPRINTF(pathname, "\"%s\"", WM_drag_get_path(drag));
@@ -249,7 +249,7 @@ static void console_keymap(wmKeyConfig *keyconf)
 /****************** header region ******************/
 
 /* add handlers, stuff you only do once or on area/region changes */
-static void console_header_region_init(wmWindowManager *UNUSED(wm), ARegion *region)
+static void console_header_region_init(wmWindowManager * /*wm*/, ARegion *region)
 {
   ED_region_header_init(region);
 }
@@ -272,7 +272,7 @@ static void console_main_region_listener(const wmRegionListenerParams *params)
         if (wmn->action == NA_EDITED) {
           if ((wmn->reference && area) && (wmn->reference == area->spacedata.first)) {
             /* we've modified the geometry (font size), re-calculate rect */
-            console_textview_update_rect(wmn->reference, region);
+            console_textview_update_rect(static_cast<SpaceConsole *>(wmn->reference), region);
             ED_region_tag_redraw(region);
           }
         }
@@ -323,7 +323,7 @@ static void console_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_console(void)
 {
-  SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype console");
+  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype console"));
   ARegionType *art;
 
   st->spaceid = SPACE_CONSOLE;
@@ -340,7 +340,7 @@ void ED_spacetype_console(void)
   st->blend_write = console_space_blend_write;
 
   /* regions: main window */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype console region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype console region"));
   art->regionid = RGN_TYPE_WINDOW;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D;
 
@@ -353,7 +353,7 @@ void ED_spacetype_console(void)
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype console region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype console region"));
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_HEADER;

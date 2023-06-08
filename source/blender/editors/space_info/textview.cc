@@ -22,7 +22,7 @@
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
 
-#include "textview.h"
+#include "textview.hh"
 
 static void textview_font_begin(const int font_id, const int lheight)
 {
@@ -30,7 +30,7 @@ static void textview_font_begin(const int font_id, const int lheight)
   BLF_size(font_id, 0.8f * lheight);
 }
 
-typedef struct TextViewDrawState {
+struct TextViewDrawState {
   int font_id;
   int cwidth;
   int lheight;
@@ -50,7 +50,7 @@ typedef struct TextViewDrawState {
   int *mval_pick_offset;
   const int *mval;  // [2]
   bool do_draw;
-} TextViewDrawState;
+};
 
 BLI_INLINE void textview_step_sel(TextViewDrawState *tds, const int step)
 {
@@ -99,10 +99,10 @@ static int textview_wrap_offsets(
 
   *r_lines = 1;
 
-  *r_offsets = MEM_callocN(
+  *r_offsets = static_cast<int *>(MEM_callocN(
       sizeof(**r_offsets) *
           (str_len * BLI_UTF8_WIDTH_MAX / MAX2(1, width - (BLI_UTF8_WIDTH_MAX - 1)) + 1),
-      __func__);
+      __func__));
   (*r_offsets)[0] = 0;
 
   for (i = 0, end = width, j = 0; j < str_len && str[j]; j += BLI_str_utf8_size_safe(str + j)) {
@@ -213,16 +213,14 @@ static bool textview_draw_string(TextViewDrawState *tds,
 
     rgba_uchar_to_float(col, icon_bg);
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(
-        &(const rctf){
-            .xmin = hpadding,
-            .xmax = bg_size + hpadding,
-            .ymin = line_top - bg_size - vpadding,
-            .ymax = line_top - vpadding,
-        },
-        true,
-        4 * UI_SCALE_FAC,
-        col);
+
+    rctf roundbox_rect;
+    roundbox_rect.xmin = hpadding;
+    roundbox_rect.xmax = bg_size + hpadding;
+    roundbox_rect.ymin = line_top - bg_size - vpadding;
+    roundbox_rect.ymax = line_top - vpadding;
+
+    UI_draw_roundbox_4fv(&roundbox_rect, true, 4 * UI_SCALE_FAC, col);
   }
 
   if (icon) {

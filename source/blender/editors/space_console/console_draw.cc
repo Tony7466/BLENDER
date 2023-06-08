@@ -22,18 +22,18 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "console_intern.h"
+#include "console_intern.hh"
 
-#include "../space_info/textview.h"
+#include "../space_info/textview.hh"
 
 static enum eTextViewContext_LineFlag console_line_data(TextViewContext *tvc,
                                                         uchar fg[4],
-                                                        uchar UNUSED(bg[4]),
-                                                        int *UNUSED(icon),
-                                                        uchar UNUSED(icon_fg[4]),
-                                                        uchar UNUSED(icon_bg[4]))
+                                                        uchar /*bg*/[4],
+                                                        int * /*icon*/,
+                                                        uchar /*icon_fg*/[4],
+                                                        uchar /*icon_bg*/[4])
 {
-  const ConsoleLine *cl_iter = tvc->iter;
+  const ConsoleLine *cl_iter = static_cast<const ConsoleLine *>(tvc->iter);
   int fg_id = TH_TEXT;
 
   switch (cl_iter->type) {
@@ -58,13 +58,13 @@ static enum eTextViewContext_LineFlag console_line_data(TextViewContext *tvc,
 void console_scrollback_prompt_begin(SpaceConsole *sc, ConsoleLine *cl_dummy)
 {
   /* fake the edit line being in the scroll buffer */
-  ConsoleLine *cl = sc->history.last;
+  ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
   int prompt_len = strlen(sc->prompt);
 
   cl_dummy->type = CONSOLE_LINE_INPUT;
   cl_dummy->len = prompt_len + cl->len;
   cl_dummy->len_alloc = cl_dummy->len + 1;
-  cl_dummy->line = MEM_mallocN(cl_dummy->len_alloc, "cl_dummy");
+  cl_dummy->line = static_cast<char *>(MEM_mallocN(cl_dummy->len_alloc, "cl_dummy"));
   memcpy(cl_dummy->line, sc->prompt, prompt_len);
   memcpy(cl_dummy->line + prompt_len, cl->line, cl->len + 1);
   BLI_addtail(&sc->scrollback, cl_dummy);
@@ -101,7 +101,7 @@ static int console_textview_step(TextViewContext *tvc)
 
 static void console_textview_line_get(TextViewContext *tvc, const char **r_line, int *r_len)
 {
-  const ConsoleLine *cl = tvc->iter;
+  const ConsoleLine *cl = static_cast<const ConsoleLine *>(tvc->iter);
   *r_line = cl->line;
   *r_len = cl->len;
   // printf("'%s' %d\n", *line, cl->len);
@@ -160,7 +160,7 @@ static void console_textview_draw_cursor(TextViewContext *tvc, int cwidth, int c
   immUnbindProgram();
 }
 
-static void console_textview_const_colors(TextViewContext *UNUSED(tvc), uchar bg_sel[4])
+static void console_textview_const_colors(TextViewContext * /*tvc*/, uchar bg_sel[4])
 {
   UI_GetThemeColor4ubv(TH_CONSOLE_SELECT, bg_sel);
 }

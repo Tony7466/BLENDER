@@ -39,7 +39,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "info_intern.h"
+#include "info_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Pack Blend File Libraries Operator
@@ -87,7 +87,7 @@ static int unpack_libraries_exec(bContext *C, wmOperator *op)
 /** \name Unpack Blend File Libraries Operator
  * \{ */
 
-static int unpack_libraries_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int unpack_libraries_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   return WM_operator_confirm_message(
       C, op, "Unpack Linked Libraries - creates directories, all new paths should work");
@@ -158,13 +158,15 @@ static int pack_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Main *bmain = CTX_data_main(C);
   Image *ima;
 
   /* First check for dirty images. */
-  for (ima = bmain->images.first; ima; ima = ima->id.next) {
+  for (ima = static_cast<Image *>(bmain->images.first); ima;
+       ima = static_cast<Image *>(ima->id.next))
+  {
     if (BKE_image_is_dirty(ima)) {
       break;
     }
@@ -225,7 +227,7 @@ static const EnumPropertyItem unpack_all_method_items[] = {
 static int unpack_all_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  int method = RNA_enum_get(op->ptr, "method");
+  ePF_FileStatus method = ePF_FileStatus(RNA_enum_get(op->ptr, "method"));
 
   if (method != PF_KEEP) {
     WM_cursor_wait(true);
@@ -237,7 +239,7 @@ static int unpack_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int unpack_all_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int unpack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Main *bmain = CTX_data_main(C);
   uiPopupMenu *pup;
@@ -323,7 +325,7 @@ static int unpack_item_exec(bContext *C, wmOperator *op)
   ID *id;
   char idname[MAX_ID_NAME - 2];
   int type = RNA_int_get(op->ptr, "id_type");
-  int method = RNA_enum_get(op->ptr, "method");
+  ePF_FileStatus method = ePF_FileStatus(RNA_enum_get(op->ptr, "method"));
 
   RNA_string_get(op->ptr, "id_name", idname);
   id = BKE_libblock_find_name(bmain, type, idname);
@@ -344,7 +346,7 @@ static int unpack_item_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int unpack_item_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int unpack_item_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   uiPopupMenu *pup;
   uiLayout *layout;
@@ -353,7 +355,12 @@ static int unpack_item_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED
   layout = UI_popup_menu_layout(pup);
 
   uiLayoutSetOperatorContext(layout, WM_OP_EXEC_DEFAULT);
-  uiItemsFullEnumO(layout, op->type->idname, "method", op->ptr->data, WM_OP_EXEC_REGION_WIN, 0);
+  uiItemsFullEnumO(layout,
+                   op->type->idname,
+                   "method",
+                   static_cast<IDProperty *>(op->ptr->data),
+                   WM_OP_EXEC_REGION_WIN,
+                   0);
 
   UI_popup_menu_end(C, pup);
 
@@ -514,7 +521,7 @@ static int find_missing_files_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int find_missing_files_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int find_missing_files_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   /* XXX file open button text "Find Missing Files" */
   WM_event_add_fileselect(C, op);
@@ -568,7 +575,7 @@ void FILE_OT_find_missing_files(wmOperatorType *ot)
 #define FLASH_TIMEOUT 1.0f
 #define COLLAPSE_TIMEOUT 0.25f
 #define BRIGHTEN_AMOUNT 0.1f
-static int update_reports_display_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int update_reports_display_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   ReportList *reports = CTX_wm_reports(C);
