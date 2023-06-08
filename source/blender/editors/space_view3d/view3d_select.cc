@@ -3108,29 +3108,26 @@ struct ClosestCurvesGeometryDataBlock {
  *
  * \returns true if the selection changed.
  */
-static bool ed_grease_pencil_select_pick(bContext &C,
+static bool ed_grease_pencil_select_pick(bContext *C,
                                          const int mval[2],
                                          const SelectPick_Params &params)
 {
   using namespace blender;
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(&C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
   /* Setup view context for argument to callbacks. */
-  ED_view3d_viewcontext_init(&C, &vc, depsgraph);
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   /* Collect editable drawings. */
+  const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, const_cast<Object *>(vc.obedit));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc.obedit->data);
-  uint drawing_count = 0;
-  grease_pencil.foreach_editable_drawing(
-      vc.scene->r.cfra, [&](GreasePencilDrawing /*&drawing*/) { drawing_count++; });
-  GreasePencilDrawing **drawings_ptr = MEM_cnew_array<GreasePencilDrawing *>(drawing_count,
-                                                                             __func__);
-  drawing_count = 0;
-  grease_pencil.foreach_editable_drawing(vc.scene->r.cfra, [&](GreasePencilDrawing &drawing) {
-    drawings_ptr[drawing_count] = &drawing;
-    drawing_count++;
-  });
-  Span<GreasePencilDrawing *> drawings(drawings_ptr, drawing_count);
+  Vector<GreasePencilDrawing *> drawings;
+  Vector<int> drawing_indices;
+  grease_pencil.foreach_editable_drawing(vc.scene->r.cfra,
+                                         [&](int drawing_index, GreasePencilDrawing &drawing) {
+                                           drawings.append(&drawing);
+                                           drawing_indices.append(drawing_index);
+                                         });
 
   /* TODO: Support different selection domains. */
   const eAttrDomain selection_domain = ATTR_DOMAIN_POINT;
@@ -3141,25 +3138,22 @@ static bool ed_grease_pencil_select_pick(bContext &C,
       ClosestCurvesGeometryDataBlock(),
       [&](const IndexRange range, const ClosestCurvesGeometryDataBlock &init) {
         ClosestCurvesGeometryDataBlock new_closest = init;
-        for (GreasePencilDrawing *drawing : drawings.slice(range)) {
-          /* TODO: Get deformation by modifiers, like `do_grease_pencil_box_select`
-           * bke::crazyspace::GeometryDeformation deformation =
-           *     bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-           *         *vc.depsgraph, *vc.obedit, drawing_index);
-           */
-          const Span<float3> deformation_positions = drawing->geometry.wrap().positions();
+        for (const int i : range) {
+          /* Get deformation by modifiers. */
+          bke::crazyspace::GeometryDeformation deformation =
+              bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+                  ob_eval, *vc.obedit, drawing_indices[i]);
           std::optional<ed::curves::FindClosestData> new_closest_elem =
-              ed::curves::closest_elem_find_screen_space(
-                  vc,
-                  *vc.obedit,
-                  drawing->geometry.wrap(),
-                  deformation_positions, /* TODO: deformation.positions, */
-                  selection_domain,
-                  mval,
-                  new_closest.elem);
+              ed::curves::closest_elem_find_screen_space(vc,
+                                                         *vc.obedit,
+                                                         drawings[i]->geometry.wrap(),
+                                                         deformation.positions,
+                                                         selection_domain,
+                                                         mval,
+                                                         new_closest.elem);
           if (new_closest_elem) {
             new_closest.elem = *new_closest_elem;
-            new_closest.drawing = drawing;
+            new_closest.drawing = drawings[i];
           }
         }
         return new_closest;
@@ -3171,8 +3165,8 @@ static bool ed_grease_pencil_select_pick(bContext &C,
   std::atomic<bool> deselected = false;
   if (params.deselect_all || params.sel_op == SEL_OP_SET) {
     threading::parallel_for(drawings.index_range(), 1L, [&](const IndexRange range) {
-      for (GreasePencilDrawing *drawing : drawings.slice(range)) {
-        bke::CurvesGeometry &curves = drawing->geometry.wrap();
+      for (const int i : range) {
+        bke::CurvesGeometry &curves = drawings[i]->geometry.wrap();
         if (ed::curves::has_anything_selected(curves)) {
           bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
               curves, selection_domain, CD_PROP_BOOL);
@@ -3184,14 +3178,13 @@ static bool ed_grease_pencil_select_pick(bContext &C,
           /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
            * generic attribute for now. */
           DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-          WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+          WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
         }
       }
     });
   }
 
   if (!closest.drawing) {
-    MEM_freeN(drawings_ptr);
     return deselected;
   }
 
@@ -3205,10 +3198,8 @@ static bool ed_grease_pencil_select_pick(bContext &C,
    * generic attribute for now. */
   if (!deselected) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
   }
-
-  MEM_freeN(drawings_ptr);
 
   return true;
 }
@@ -3310,7 +3301,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
       changed = ed_curves_select_pick(*C, mval, params);
     }
     else if (obedit->type == OB_GREASE_PENCIL) {
-      changed = ed_grease_pencil_select_pick(*C, mval, params);
+      changed = ed_grease_pencil_select_pick(C, mval, params);
     }
   }
   else if (obact && obact->mode & OB_MODE_PARTICLE_EDIT) {
