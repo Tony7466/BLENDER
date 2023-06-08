@@ -515,6 +515,7 @@ void VKTexture::layout_ensure(VKContext &context,
   barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
   context.command_buffer_get().pipeline_barrier(Span<VkImageMemoryBarrier>(&barrier, 1));
 }
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
