@@ -972,7 +972,7 @@ static void draw_fcurve_curve_bezts(
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
       int resolution = calculate_bezt_draw_resolution(
           bezt, prevbezt, max_bezt_resolution, fcu->driver != NULL);
-      draw_bezt(bezt, prevbezt, max_bezt_resolution, pos);
+      draw_bezt(bezt, prevbezt, resolution, pos);
     }
 
     /* Get next pointers. */
