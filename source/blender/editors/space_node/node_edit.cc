@@ -2191,8 +2191,8 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
-    /* Inherit socket category from the active socket interface. */
-    sock->category_id = active_sock->category_id;
+    /* Inherit socket panel from the active socket interface. */
+    sock->panel_id = active_sock->panel_id;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2584,7 +2584,7 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
     }
   }
 
-  ntreeEnsureSocketCategoryOrder(ntree);
+  ntreeEnsureSocketInterfacePanelOrder(ntree);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

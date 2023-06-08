@@ -542,8 +542,8 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \name Node Tree Interface
  * \{ */
 
-/** Run this after relevant changes to categories to ensure sockets remain sorted by category. */
-void ntreeEnsureSocketCategoryOrder(bNodeTree *ntree);
+/** Run this after relevant changes to panels to ensure sockets remain sorted by panel. */
+void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree);
 
 void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
 
@@ -552,52 +552,47 @@ struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             const char *idname,
                                             const char *name);
 
-/** Set the category of the interface socket. */
-void ntreeSetSocketInterfaceCategory(bNodeTree *ntree,
-                                     bNodeSocket *sock,
-                                     bNodeSocketCategory *category);
+/** Set the panel of the interface socket. */
+void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodeSocketPanel *panel);
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Node Tree Socket Categories
+/** \name Node Tree Socket Panels
  * \{ */
 
 /**
- * Find a socket category by its unique ID.
- * \param id: Unique ID of the category within the node tree.
+ * Find a socket panel by its unique ID.
+ * \param id: Unique ID of the panel within the node tree.
  */
-bNodeSocketCategory *ntreeFindSocketCategoryByID(bNodeTree *ntree, int id);
+bNodeSocketPanel *ntreeFindSocketPanelByID(bNodeTree *ntree, int id);
 
 /**
- * Add a new socket category to the node tree.
- * \param name: Name of the new category.
- * \param flag: Flags of the new category.
+ * Add a new socket panel to the node tree.
+ * \param name: Name of the new panel.
+ * \param flag: Flags of the new panel.
  */
-bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, int flag);
+bNodeSocketPanel *ntreeAddSocketPanel(bNodeTree *ntree, const char *name, int flag);
 
 /**
- * Insert a new socket category in the node tree.
- * \param name: Name of the new category.
- * \param flag: Flags of the new category.
- * \param index: Index at which to insert the category.
+ * Insert a new socket panel in the node tree.
+ * \param name: Name of the new panel.
+ * \param flag: Flags of the new panel.
+ * \param index: Index at which to insert the panel.
  */
-bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
-                                               const char *name,
-                                               int flag,
-                                               int index);
+bNodeSocketPanel *ntreeInsertSocketPanel(bNodeTree *ntree, const char *name, int flag, int index);
 
-/** Remove a socket category from the node tree. */
-void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category);
+/** Remove a socket panel from the node tree. */
+void ntreeRemoveSocketPanel(bNodeTree *ntree, bNodeSocketPanel *panel);
 
-/** Remove all socket categories from the node tree. */
-void ntreeClearSocketCategories(bNodeTree *ntree);
+/** Remove all socket panels from the node tree. */
+void ntreeClearSocketPanels(bNodeTree *ntree);
 
 /**
- * Move a socket category up or down in the node tree.
- * \param index: Index to which to move the category.
+ * Move a socket panel up or down in the node tree.
+ * \param index: Index to which to move the panel.
  */
-void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index);
+void ntreeMoveSocketPanel(bNodeTree *ntree, bNodeSocketPanel *panel, int new_index);
 
 /** \} */
 

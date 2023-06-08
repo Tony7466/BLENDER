@@ -954,17 +954,17 @@ class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
         self.draw_socket_list(context, "OUT", "outputs", "active_output")
 
 
-class NODE_UL_socket_categories(bpy.types.UIList):
+class NODE_UL_socket_panels(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
         row = layout.row(align=True)
         row.prop(item, "name", text="", emboss=False, icon_value=icon)
 
 
-class NODE_PT_socket_categories(Panel):
+class NODE_PT_socket_panels(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Group"
-    bl_label = "Socket Categories"
+    bl_label = "Socket Panels"
 
     @classmethod
     def poll(cls, context):
@@ -986,30 +986,30 @@ class NODE_PT_socket_categories(Panel):
         split = layout.row()
 
         split.template_list(
-            "NODE_UL_socket_categories",
+            "NODE_UL_socket_panels",
             "",
             tree,
-            "socket_categories",
-            tree.socket_categories,
+            "socket_panels",
+            tree.socket_panels,
             "active_index")
 
         ops_col = split.column()
 
         add_remove_col = ops_col.column(align=True)
-        add_remove_col.operator("node.function_parameter_add", icon='ADD', text="")
-        add_remove_col.operator("node.function_parameter_remove", icon='REMOVE', text="")
+        add_remove_col.operator("node.socket_panel_add", icon='ADD', text="")
+        add_remove_col.operator("node.socket_panel_remove", icon='REMOVE', text="")
 
         ops_col.separator()
 
         up_down_col = ops_col.column(align=True)
-        props = up_down_col.operator("node.function_parameter_move", icon='TRIA_UP', text="")
+        props = up_down_col.operator("node.socket_panel_move", icon='TRIA_UP', text="")
         props.direction = 'UP'
-        props = up_down_col.operator("node.function_parameter_move", icon='TRIA_DOWN', text="")
+        props = up_down_col.operator("node.socket_panel_move", icon='TRIA_DOWN', text="")
         props.direction = 'DOWN'
 
-        active_category = tree.socket_categories.active
-        if active_category is not None:
-            layout.prop(active_category, "name")
+        active_panel = tree.socket_panels.active
+        if active_panel is not None:
+            layout.prop(active_panel, "name")
 
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
@@ -1155,8 +1155,8 @@ classes = (
     NODE_UL_interface_sockets,
     NODE_PT_node_tree_interface_inputs,
     NODE_PT_node_tree_interface_outputs,
-    NODE_UL_socket_categories,
-    NODE_PT_socket_categories,
+    NODE_UL_socket_panels,
+    NODE_PT_socket_panels,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
 

@@ -15,7 +15,7 @@
 
 #define _DNA_DEFAULT_bNodeSocket \
   { \
-    .category_id = -1, \
+    .panel_id = -1, \
   }
 
 /** \} */

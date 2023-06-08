@@ -1481,7 +1481,7 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
     uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
   }
 
-  uiItemPointerR(col, ptr, "category", &tree_ptr, "socket_categories", nullptr, 0);
+  uiItemPointerR(col, ptr, "panel", &tree_ptr, "socket_panels", nullptr, 0);
 }
 
 static void node_socket_virtual_draw_color(bContext * /*C*/,

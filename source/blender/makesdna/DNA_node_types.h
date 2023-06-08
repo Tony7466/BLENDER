@@ -168,8 +168,8 @@ typedef struct bNodeSocket {
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
 
-  /* ID of the UI category of the socket. */
-  int category_id;
+  /* ID of the UI panel of the socket. */
+  int panel_id;
   int _pad2;
 
   bNodeSocketRuntimeHandle *runtime;
@@ -535,11 +535,12 @@ typedef struct bNodeLink {
 #define NTREE_CHUNKSIZE_512 512
 #define NTREE_CHUNKSIZE_1024 1024
 
-typedef struct bNodeSocketCategory {
+/** Panel in node tree for grouping sockets. */
+typedef struct bNodeSocketPanel {
   char *name;
   int flag;
   int identifier;
-} bNodeSocketCategory;
+} bNodeSocketPanel;
 
 /* the basis for a Node tree, all links and nodes reside internal here */
 /* only re-usable node trees are in the library though,
@@ -604,11 +605,11 @@ typedef struct bNodeTree {
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
 
-  /* UI categories for sockets */
-  struct bNodeSocketCategory *socket_categories_array;
-  int socket_categories_num;
-  int active_socket_category;
-  int next_socket_category_identifier;
+  /* UI panels for sockets */
+  struct bNodeSocketPanel *socket_panels_array;
+  int socket_panels_num;
+  int active_socket_panel;
+  int next_socket_panel_identifier;
   char _pad2[4];
 
   bNodeTreeRuntimeHandle *runtime;
@@ -675,8 +676,8 @@ typedef struct bNodeTree {
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<bNodeSocketCategory> socket_categories() const;
-  blender::MutableSpan<bNodeSocketCategory> socket_categories_for_write();
+  blender::Span<bNodeSocketPanel> socket_panels() const;
+  blender::MutableSpan<bNodeSocketPanel> socket_panels_for_write();
 #endif
 } bNodeTree;
 
