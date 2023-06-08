@@ -34,10 +34,12 @@ const UserDef U_default = {
     .renderdir = "//",
     .render_cachedir = "",
     .textudir = "//",
-    .pythondir = "",
+    .script_directories = {NULL, NULL},
     .sounddir = "//",
     .i18ndir = "",
     .image_editor = "",
+    .text_editor = "",
+    .text_editor_args = "",
     .anim_player = "",
     .anim_player_preset = 0,
     .v2d_min_gridsize = 45,
@@ -66,8 +68,8 @@ const UserDef U_default = {
 
     /** Default so DPI is detected automatically. */
     .dpi = 0,
-    .dpi_fac = 0.0,
-    .inv_dpi_fac = 0.0, /* run-time. */
+    .scale_factor = 0.0,
+    .inv_scale_factor = 0.0, /* run-time. */
     .pixelsize = 1,
     .virtual_pixel = 0,
 
@@ -128,7 +130,7 @@ const UserDef U_default = {
     .pad_rot_angle = 15,
     .rvisize = 25,
     .rvibright = 8,
-    .recent_files = 10,
+    .recent_files = 20,
     .smooth_viewtx = 200,
     .glreslimit = 0,
     .color_picker_type = USER_CP_CIRCLE_HSV,

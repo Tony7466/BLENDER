@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4e3286478670')\n"
+"Project-Id-Version: Blender 3.6.0 Beta (b'de4fb0e570b4')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-06 08:08:35\n"
+"POT-Creation-Date: 2023-06-05 09:47:30\n"
 "PO-Revision-Date: 2012-10-31 17:00-0800\n"
 "Last-Translator: Amin Babaeipanah <translate@leomoon.com>\n"
 "Language-Team: LeoMoon Studios <blender@leomoon.com>\n"
@@ -428,10 +428,6 @@ msgid "Weight"
 msgstr "ﻥﺯﻭ"
 
 
-msgid "Grease Pencil"
-msgstr "ﯽﻨﻏﻭﺭ ﺩﺍﺪﻣ"
-
-
 msgid "Particles"
 msgstr "ﺕﺍﺭﺫ"
 
@@ -608,16 +604,16 @@ msgid "Marker"
 msgstr "ﺮﮕﻧﺎﺸﻧ"
 
 
-msgid "Smooth"
-msgstr "ﻑﺎﺻ"
-
-
 msgid "Draw"
 msgstr "ﺩﺍﺯﺁ ﯽﺷﺎﻘﻧ"
 
 
 msgid "Blur"
 msgstr "ﯽﮔﺮﯿﺗ"
+
+
+msgid "Smooth"
+msgstr "ﻑﺎﺻ"
 
 
 msgid "Hue"
@@ -750,10 +746,6 @@ msgstr "ﺱﺃﺭ ﻩﻭﺮﮔ ﻥﺪﺷ ﻢﺧ ﯽﺘﺨﺳ"
 
 msgid "Vertex group for fine control over bending stiffness"
 msgstr "ﻥﺪﺷ ﻢﺧ ﯽﺘﺨﺳ ﯼﻭﺭ ﻖﯿﻗﺩ ﻝﺮﺘﻨﮐ ﯼﺍﺮﺑ ﺱﺃﺭ ﻩﻭﺮﮔ"
-
-
-msgid "Mass Vertex Group"
-msgstr "ﺱﺃﺭ ﯽﻌﻤﺟ ﯼﺎﻫ ﻩﻭﺮﮔ"
 
 
 msgid "Vertex Group for pinning of vertices"
@@ -1408,6 +1400,10 @@ msgid "Modifiers"
 msgstr "ﺎﻫ‌ﺮﮕﺣﻼ﻿ﺻﺍ"
 
 
+msgid "Sample Rate"
+msgstr "ﻪﻧﻮﻤﻧ ﺖﻋﺮﺳ"
+
+
 msgid "MPEG-2"
 msgstr "MPEG-2"
 
@@ -1482,6 +1478,10 @@ msgstr "ﻪﻧﺍﺩ"
 
 msgid "Size"
 msgstr "ﻩﺯﺍﺪﻧﺍ"
+
+
+msgid "Grease Pencil"
+msgstr "ﯽﻨﻏﻭﺭ ﺩﺍﺪﻣ"
 
 
 msgid "Save"
@@ -1734,10 +1734,6 @@ msgstr "ﻪﻄﻘﻧ ﻩﺯﺍﺪﻧﺍ"
 
 msgid "Cube"
 msgstr "ﺐﻌﮑﻣ"
-
-
-msgid "Wire Size"
-msgstr "ﻢﯿﺳ ﻩﺯﺍﺪﻧﺍ"
 
 
 msgid "Nodes"
@@ -2420,10 +2416,6 @@ msgid "Add Shader"
 msgstr "ﻥﺯ ﻪﯾﺎﺳ ﻥﺩﻭﺰﻓﺍ"
 
 
-msgid "Bright Contrast"
-msgstr "ﻦﺷﻭﺭ ﺖﺳﺍﺮﺘﻨﮐ"
-
-
 msgid "Reflection"
 msgstr "ﺱﺎﮑﻌﻧﺍ"
 
@@ -2799,6 +2791,10 @@ msgid "Open"
 msgstr "ﻥﺩﺮﮐ‌ﺯﺎﺑ"
 
 
+msgid "Play"
+msgstr "ﺶﺨﭘ"
+
+
 msgid "Limit"
 msgstr "ﻥﺩﺮﮐ ﺩﻭﺪﺤﻣ"
 
@@ -3108,6 +3104,10 @@ msgid "All UVs"
 msgstr "ﺎﻫUV ﻪﻤﻫ"
 
 
+msgid "Pack"
+msgstr "ﻪﺘﺴﺑ"
+
+
 msgctxt "Operator"
 msgid "Reset"
 msgstr "ﯽﻧﺎﺸﻧﺯﺎﺑ"
@@ -3181,10 +3181,6 @@ msgstr "ﻪﻨﯿﻤﮐ ﻥﺎﻣﺯ"
 
 msgid "Render Delay"
 msgstr "ﺭﺪﻧﺭ ﺮﯿﺧﺎﺗ"
-
-
-msgid "Play"
-msgstr "ﺶﺨﭘ"
 
 
 msgid "Random Order"
@@ -3517,6 +3513,10 @@ msgid "Gray Scale"
 msgstr "ﯼﺮﺘﺴﮐﺎﺧ ﺱﺎﯿﻘﻣ"
 
 
+msgid "Mass Vertex Group"
+msgstr "ﺱﺃﺭ ﯽﻌﻤﺟ ﯼﺎﻫ ﻩﻭﺮﮔ"
+
+
 msgid "Lock to Selection"
 msgstr "ﻩﺪﺷ ﺏﺎﺨﺘﻧﺍ ﻪﺑ ﻞﻔﻗ"
 
@@ -3709,10 +3709,6 @@ msgid "Pivot Offset"
 msgstr "ﺭﻮﺤﻣ ﺖﺴﻓﺍ"
 
 
-msgid "Out"
-msgstr "ﯽﺟﻭﺮﺧ"
-
-
 msgid "Not Set"
 msgstr "ﻩﺪﺸﻧ ﺺﺨﺸﻣ"
 
@@ -3733,16 +3729,8 @@ msgid "Transform:"
 msgstr "ﻞﯾﺪﺒﺗ:"
 
 
-msgid "Old"
-msgstr "ﯽﻤﯾﺪﻗ"
-
-
 msgid "Date"
 msgstr "ﺦﯾﺭﺎﺗ"
-
-
-msgid "Sample Rate"
-msgstr "ﻪﻧﻮﻤﻧ ﺖﻋﺮﺳ"
 
 
 msgid "Roughness End"
@@ -3775,10 +3763,6 @@ msgstr "ﺮﯾﻮﺼﺗ*"
 
 msgid "Aspect Ratio"
 msgstr "ﺮﯾﻮﺼﺗ ﺖﺒﺴﻧ"
-
-
-msgid "Pack"
-msgstr "ﻪﺘﺴﺑ"
 
 
 msgid "Text: External"
@@ -3819,10 +3803,6 @@ msgstr "ﻞﯾﺎﻓ:"
 
 msgid "Author:"
 msgstr "ﻩﺪﻨﺴﯾﻮﻧ:"
-
-
-msgid "author"
-msgstr "ﻩﺪﻨﺴﯾﻮﻧ"
 
 
 msgid "Version:"
@@ -3880,6 +3860,10 @@ msgstr "ﺶﯾﺍﺮﯾﻭ ﻥﺩﺮﮐ‌ﻝﺎﻌﻓ ﯼﺍﺮﺑ ﻪﻈﻓﺎ
 
 msgid "IK"
 msgstr "(IK) ﺱﻮﮑﻌﻣ ﺖﮐﺮﺣ"
+
+
+msgid "Out"
+msgstr "ﯽﺟﻭﺮﺧ"
 
 
 msgid "Nothing selected"
@@ -4200,6 +4184,10 @@ msgid "On"
 msgstr "ﻦﺷﻭﺭ"
 
 
+msgid "Old"
+msgstr "ﯽﻤﯾﺪﻗ"
+
+
 msgid "Blender File View"
 msgstr "ﺭﺪﻨﻠﺑ ﻞﯾﺎﻓ ﺶﯾﺎﻤﻧ"
 
@@ -4218,10 +4206,6 @@ msgstr "(English) ﯽﺴﯿﻠﮕﻧﺍ"
 
 msgid "Japanese (日本語)"
 msgstr "(日本語) ﯽﻨﭘﺍﮊ"
-
-
-msgid "Dutch (Nederlandse taal)"
-msgstr "(Nederlandse taal) ﯼﺪﻨﻠﻫ"
 
 
 msgid "Italian (Italiano)"

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
@@ -7,7 +9,8 @@
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_lib_id.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 
 #include "GEO_mesh_merge_by_distance.hh"
@@ -17,52 +20,49 @@
 #include "ply_import_mesh.hh"
 
 namespace blender::io::ply {
-Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &params)
+Mesh *convert_ply_to_mesh(PlyData &data, const PLYImportParams &params)
 {
+  Mesh *mesh = BKE_mesh_new_nomain(
+      data.vertices.size(), data.edges.size(), data.face_sizes.size(), data.face_vertices.size());
 
-  /* Add vertices to the mesh. */
-  mesh->totvert = int(data.vertices.size());
-  CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, mesh->totvert, "position");
   mesh->vert_positions_for_write().copy_from(data.vertices);
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
 
   if (!data.edges.is_empty()) {
-    mesh->totedge = int(data.edges.size());
-    CustomData_add_layer(&mesh->edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, mesh->totedge);
-    MutableSpan<MEdge> edges = mesh->edges_for_write();
-    for (int i = 0; i < mesh->totedge; i++) {
-      edges[i].v1 = data.edges[i].first;
-      edges[i].v2 = data.edges[i].second;
+    MutableSpan<int2> edges = mesh->edges_for_write();
+    for (const int i : data.edges.index_range()) {
+      int32_t v1 = data.edges[i].first;
+      int32_t v2 = data.edges[i].second;
+      if (v1 >= mesh->totvert) {
+        fprintf(stderr, "Invalid PLY vertex index in edge %i/1: %d\n", i, v1);
+        v1 = 0;
+      }
+      if (v2 >= mesh->totvert) {
+        fprintf(stderr, "Invalid PLY vertex index in edge %i/2: %d\n", i, v2);
+        v2 = 0;
+      }
+      edges[i] = {v1, v2};
     }
   }
 
   /* Add faces to the mesh. */
-  if (!data.faces.is_empty()) {
-    /* Specify amount of total faces. */
-    mesh->totpoly = int(data.faces.size());
-    mesh->totloop = 0;
-    for (int i = 0; i < data.faces.size(); i++) {
-      /* Add number of loops from the vertex indices in the face. */
-      mesh->totloop += data.faces[i].size();
-    }
-    CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, mesh->totpoly);
-    CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, mesh->totloop);
-    MutableSpan<MPoly> polys = mesh->polys_for_write();
-    MutableSpan<MLoop> loops = mesh->loops_for_write();
+  if (!data.face_sizes.is_empty()) {
+    MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+    MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
-    int offset = 0;
-    /* Iterate over amount of faces. */
-    for (int i = 0; i < mesh->totpoly; i++) {
-      int size = int(data.faces[i].size());
-      /* Set the index from where this face starts and specify the amount of edges it has. */
-      polys[i].loopstart = offset;
-      polys[i].totloop = size;
-
+    /* Fill in face data. */
+    uint32_t offset = 0;
+    for (const int i : data.face_sizes.index_range()) {
+      uint32_t size = data.face_sizes[i];
+      poly_offsets[i] = offset;
       for (int j = 0; j < size; j++) {
-        /* Set the vertex index of the loop to the one in PlyData. */
-        loops[offset + j].v = data.faces[i][j];
+        uint32_t v = data.face_vertices[offset + j];
+        if (v >= mesh->totvert) {
+          fprintf(stderr, "Invalid PLY vertex index in face %i loop %i: %u\n", i, j, v);
+          v = 0;
+        }
+        corner_verts[offset + j] = data.face_vertices[offset + j];
       }
       offset += size;
     }
@@ -75,12 +75,12 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
         attributes.lookup_or_add_for_write_span<ColorGeometry4f>("Col", ATTR_DOMAIN_POINT);
 
     if (params.vertex_colors == PLY_VERTEX_COLOR_SRGB) {
-      for (int i = 0; i < data.vertex_colors.size(); i++) {
+      for (const int i : data.vertex_colors.index_range()) {
         srgb_to_linearrgb_v4(colors.span[i], data.vertex_colors[i]);
       }
     }
     else {
-      for (int i = 0; i < data.vertex_colors.size(); i++) {
+      for (const int i : data.vertex_colors.index_range()) {
         copy_v4_v4(colors.span[i], data.vertex_colors[i]);
       }
     }
@@ -93,12 +93,8 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
   if (!data.uv_coordinates.is_empty()) {
     bke::SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
         "UVMap", ATTR_DOMAIN_CORNER);
-    int counter = 0;
-    for (int i = 0; i < data.faces.size(); i++) {
-      for (int j = 0; j < data.faces[i].size(); j++) {
-        uv_map.span[counter] = data.uv_coordinates[data.faces[i][j]];
-        counter++;
-      }
+    for (const int i : data.face_vertices.index_range()) {
+      uv_map.span[i] = data.uv_coordinates[data.face_vertices[i]];
     }
     uv_map.finish();
   }
@@ -112,16 +108,17 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
         mesh, reinterpret_cast<float(*)[3]>(data.vertex_normals.data()));
   }
 
+  BKE_mesh_smooth_flag_set(mesh, false);
+
   /* Merge all vertices on the same location. */
   if (params.merge_verts) {
-    std::optional<Mesh *> return_value = blender::geometry::mesh_merge_by_distance_all(
+    std::optional<Mesh *> merged_mesh = blender::geometry::mesh_merge_by_distance_all(
         *mesh, IndexMask(mesh->totvert), 0.0001f);
-    if (return_value.has_value()) {
-      mesh = return_value.value();
+    if (merged_mesh) {
+      BKE_id_free(nullptr, &mesh->id);
+      mesh = *merged_mesh;
     }
   }
-
-  BKE_mesh_smooth_flag_set(mesh, false);
 
   return mesh;
 }

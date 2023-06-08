@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -239,7 +240,7 @@ static void gpu_material_sky_texture_build(GPUMaterial *mat)
                                              mat->sky_builder->current_layer,
                                              1,
                                              GPU_RGBA32F,
-                                             GPU_TEXTURE_USAGE_GENERAL,
+                                             GPU_TEXTURE_USAGE_SHADER_READ,
                                              (float *)mat->sky_builder->pixels);
 
   MEM_freeN(mat->sky_builder);
@@ -586,9 +587,9 @@ bool GPU_material_sss_profile_create(GPUMaterial *material, float radii[3])
   return true;
 }
 
-struct GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
-                                                   int sample_len,
-                                                   GPUTexture **tex_profile)
+GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
+                                            int sample_len,
+                                            GPUTexture **tex_profile)
 {
   if (!material->sss_enabled) {
     return NULL;
@@ -629,7 +630,7 @@ struct GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
   return material->sss_profile;
 }
 
-struct GPUUniformBuf *GPU_material_create_sss_profile_ubo(void)
+GPUUniformBuf *GPU_material_create_sss_profile_ubo(void)
 {
   return GPU_uniformbuf_create(sizeof(GPUSssKernelData));
 }
@@ -787,9 +788,10 @@ eGPUMaterialFlag GPU_material_flag(const GPUMaterial *mat)
   return mat->flag;
 }
 
-/* NOTE: Consumes the flags. */
 bool GPU_material_recalc_flag_get(GPUMaterial *mat)
 {
+  /* NOTE: Consumes the flags. */
+
   bool updated = (mat->flag & GPU_MATFLAG_UPDATED) != 0;
   mat->flag &= ~GPU_MATFLAG_UPDATED;
   return updated;
@@ -953,7 +955,7 @@ void GPU_material_compile(GPUMaterial *mat)
        * configurations to ensure compile time remains fast, as these first
        * entries will be the most commonly used PSOs. As not all PSOs are necessarily
        * required immediately, this limit should remain low (1-3 at most). */
-      if (mat->default_mat != NULL && mat->default_mat != mat) {
+      if (!ELEM(mat->default_mat, NULL, mat)) {
         if (mat->default_mat->pass != NULL) {
           GPUShader *parent_sh = GPU_pass_shader_get(mat->default_mat->pass);
           if (parent_sh) {

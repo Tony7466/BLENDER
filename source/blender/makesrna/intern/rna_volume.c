@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -156,9 +158,7 @@ static void rna_Volume_grids_next(CollectionPropertyIterator *iter)
   iter->valid = (iter->internal.count.item < num_grids);
 }
 
-static void rna_Volume_grids_end(CollectionPropertyIterator *UNUSED(iter))
-{
-}
+static void rna_Volume_grids_end(CollectionPropertyIterator *UNUSED(iter)) {}
 
 static PointerRNA rna_Volume_grids_get(CollectionPropertyIterator *iter)
 {

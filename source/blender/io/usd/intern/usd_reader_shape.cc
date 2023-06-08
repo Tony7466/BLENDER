@@ -1,8 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Nvidia. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Nvidia. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
@@ -142,23 +143,18 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
     return existing_mesh;
   }
 
-  MutableSpan<MPoly> polys = active_mesh->polys_for_write();
-  MutableSpan<MLoop> loops = active_mesh->loops_for_write();
+  MutableSpan<int> poly_offsets = active_mesh->poly_offsets_for_write();
+  for (const int i : IndexRange(active_mesh->totpoly)) {
+    poly_offsets[i] = face_counts[i];
+  }
+  offset_indices::accumulate_counts_to_offsets(poly_offsets);
 
   /* Don't smooth-shade cubes; we're not worrying about sharpness for Gprims. */
   BKE_mesh_smooth_flag_set(active_mesh, !prim_.IsA<pxr::UsdGeomCube>());
 
-  int loop_index = 0;
-  for (int i = 0; i < face_counts.size(); i++) {
-    const int face_size = face_counts[i];
-
-    MPoly &poly = polys[i];
-    poly.loopstart = loop_index;
-    poly.totloop = face_size;
-
-    for (int f = 0; f < face_size; ++f, ++loop_index) {
-      loops[loop_index].v = face_indices[loop_index];
-    }
+  MutableSpan<int> corner_verts = active_mesh->corner_verts_for_write();
+  for (const int i : corner_verts.index_range()) {
+    corner_verts[i] = face_indices[i];
   }
 
   BKE_mesh_calc_edges(active_mesh, false, false);
@@ -184,7 +180,7 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
   Mesh *active_mesh = nullptr;
   if (!position_counts_match || !poly_counts_match) {
     active_mesh = BKE_mesh_new_nomain_from_template(
-        existing_mesh, positions.size(), 0, face_indices.size(), face_counts.size());
+        existing_mesh, positions.size(), 0, face_counts.size(), face_indices.size());
   }
   else {
     active_mesh = existing_mesh;

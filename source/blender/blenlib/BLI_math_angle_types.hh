@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -14,6 +16,8 @@
  *
  * This design allows some function overloads to be more efficient with certain types.
  */
+
+#include <iostream>
 
 #include "BLI_math_base.hh"
 
@@ -309,7 +313,7 @@ template<typename T> struct AngleCartesianBase {
                                    math::sqrt((T(1) - a.cos_) / T(2))};
       /* Recover sign only for sine. Cosine of half angle is given to be positive or 0 since the
        * angle stored in #AngleCartesianBase is in the range [-pi..pi]. */
-      /* TODO(fclem): Could use copysign here. */
+      /* TODO(fclem): Could use `copysign` here. */
       if (a.sin_ < T(0)) {
         result.sin_ = -result.sin_;
       }
@@ -741,5 +745,3 @@ using AngleRadian = AngleRadianBase<float>;
 using AngleCartesian = AngleCartesianBase<float>;
 
 }  // namespace blender::math
-
-/** \} */

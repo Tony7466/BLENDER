@@ -325,7 +325,8 @@ static bool addGPULut1D2D(OCIO_GPUTextures &textures,
   const float *values;
   shader_desc->getTextureValues(index, values);
   if (texture_name == nullptr || sampler_name == nullptr || width == 0 || height == 0 ||
-      values == nullptr) {
+      values == nullptr)
+  {
     return false;
   }
 
@@ -349,7 +350,7 @@ static bool addGPULut1D2D(OCIO_GPUTextures &textures,
   }
 
   GPU_texture_filter_mode(lut.texture, interpolation != INTERP_NEAREST);
-  GPU_texture_wrap_mode(lut.texture, false, true);
+  GPU_texture_extend_mode(lut.texture, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 
   lut.sampler_name = sampler_name;
 
@@ -387,7 +388,7 @@ static bool addGPULut3D(OCIO_GPUTextures &textures,
   }
 
   GPU_texture_filter_mode(lut.texture, interpolation != INTERP_NEAREST);
-  GPU_texture_wrap_mode(lut.texture, false, true);
+  GPU_texture_extend_mode(lut.texture, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 
   lut.sampler_name = sampler_name;
 
@@ -453,7 +454,7 @@ static bool createGPUCurveMapping(OCIO_GPUCurveMappping &curvemap,
     curvemap.texture = GPU_texture_create_1d(
         "OCIOCurveMap", lut_size, 1, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
     GPU_texture_filter_mode(curvemap.texture, false);
-    GPU_texture_wrap_mode(curvemap.texture, false, true);
+    GPU_texture_extend_mode(curvemap.texture, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 
     curvemap.buffer = GPU_uniformbuf_create(sizeof(OCIO_GPUCurveMappingParameters));
 
@@ -574,9 +575,11 @@ static OCIO_GPUDisplayShader &getGPUDisplayShader(
   const bool use_curve_mapping = (curve_mapping_settings != nullptr);
   for (std::list<OCIO_GPUDisplayShader>::iterator it = SHADER_CACHE.begin();
        it != SHADER_CACHE.end();
-       it++) {
+       it++)
+  {
     if (it->input == input && it->view == view && it->display == display && it->look == look &&
-        it->use_curve_mapping == use_curve_mapping) {
+        it->use_curve_mapping == use_curve_mapping)
+    {
       /* Move to front of the cache to mark as most recently used. */
       if (it != SHADER_CACHE.begin()) {
         SHADER_CACHE.splice(SHADER_CACHE.begin(), SHADER_CACHE, it);
@@ -647,7 +650,8 @@ static OCIO_GPUDisplayShader &getGPUDisplayShader(
                         display_shader.textures,
                         shaderdesc_to_scene_linear,
                         shaderdesc_to_display,
-                        use_curve_mapping)) {
+                        use_curve_mapping))
+    {
       display_shader.valid = true;
     }
   }

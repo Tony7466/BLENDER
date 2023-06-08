@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+ * Copyright 2012 Blender Foundation */
 
 #ifndef __OCIO_IMPL_H__
 #define __OCIO_IMPL_H__
@@ -8,9 +8,7 @@
 
 class IOCIOImpl {
  public:
-  virtual ~IOCIOImpl()
-  {
-  }
+  virtual ~IOCIOImpl() {}
 
   virtual OCIO_ConstConfigRcPtr *getCurrentConfig(void) = 0;
   virtual void setCurrentConfig(const OCIO_ConstConfigRcPtr *config) = 0;
@@ -119,12 +117,8 @@ class IOCIOImpl {
   {
     return false;
   }
-  virtual void gpuDisplayShaderUnbind(void)
-  {
-  }
-  virtual void gpuCacheFree(void)
-  {
-  }
+  virtual void gpuDisplayShaderUnbind(void) {}
+  virtual void gpuCacheFree(void) {}
 
   virtual const char *getVersionString(void) = 0;
   virtual int getVersionHex(void) = 0;
@@ -132,9 +126,7 @@ class IOCIOImpl {
 
 class FallbackImpl : public IOCIOImpl {
  public:
-  FallbackImpl()
-  {
-  }
+  FallbackImpl() {}
 
   OCIO_ConstConfigRcPtr *getCurrentConfig(void);
   void setCurrentConfig(const OCIO_ConstConfigRcPtr *config);

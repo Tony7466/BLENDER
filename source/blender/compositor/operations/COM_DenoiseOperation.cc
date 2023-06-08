@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DenoiseOperation.h"
 #include "BLI_system.h"
@@ -89,25 +90,15 @@ class DenoiseFilter {
   }
 
 #else
-  void init_and_lock_denoiser(MemoryBuffer * /*output*/)
-  {
-  }
+  void init_and_lock_denoiser(MemoryBuffer * /*output*/) {}
 
-  void deinit_and_unlock_denoiser()
-  {
-  }
+  void deinit_and_unlock_denoiser() {}
 
-  void set_image(const StringRef /*name*/, MemoryBuffer * /*buffer*/)
-  {
-  }
+  void set_image(const StringRef /*name*/, MemoryBuffer * /*buffer*/) {}
 
-  template<typename T> void set(const StringRef /*option_name*/, T /*value*/)
-  {
-  }
+  template<typename T> void set(const StringRef /*option_name*/, T /*value*/) {}
 
-  void execute()
-  {
-  }
+  void execute() {}
 #endif
 };
 

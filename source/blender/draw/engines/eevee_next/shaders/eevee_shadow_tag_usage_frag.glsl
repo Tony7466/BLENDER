@@ -45,7 +45,7 @@ float pixel_size_at(float linear_depth)
   if (is_persp) {
     pixel_size *= max(0.01, linear_depth);
   }
-  return pixel_size * exp2(fb_lod);
+  return pixel_size * exp2(float(fb_lod));
 }
 
 void step_bounding_sphere(vec3 vs_near_plane,
@@ -82,7 +82,7 @@ void main()
 {
   vec2 screen_uv = gl_FragCoord.xy / vec2(fb_resolution);
 
-  float opaque_depth = texelFetch(hiz_tx, int2(gl_FragCoord.xy), fb_lod).r;
+  float opaque_depth = texelFetch(hiz_tx, ivec2(gl_FragCoord.xy), fb_lod).r;
   vec3 ws_opaque = get_world_space_from_depth(screen_uv, opaque_depth);
 
   vec3 ws_near_plane = get_world_space_from_depth(screen_uv, 0);
@@ -117,6 +117,7 @@ void main()
     step_bounding_sphere(vs_near_plane, vs_view_direction, t, t + step_size, P, step_radius);
     vec3 vP = point_world_to_view(P);
 
-    shadow_tag_usage(vP, P, ws_view_direction, step_radius, t, gl_FragCoord.xy * exp2(fb_lod));
+    shadow_tag_usage(
+        vP, P, ws_view_direction, step_radius, t, gl_FragCoord.xy * exp2(float(fb_lod)));
   }
 }

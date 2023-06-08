@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -310,7 +311,8 @@ void gpu_shader_create_info_init()
                           GPU_DRIVER_ANY,
                           GPU_BACKEND_OPENGL) ||
       GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
-      GPU_crappy_amd_driver()) {
+      GPU_crappy_amd_driver())
+  {
     draw_modelmat = draw_modelmat_legacy;
   }
 
@@ -433,7 +435,8 @@ bool gpu_shader_create_info_compile_all()
           (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
           (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
-          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage())) {
+          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage()))
+      {
         skipped++;
         continue;
       }
@@ -500,7 +503,6 @@ bool gpu_shader_create_info_compile_all()
   return success == total;
 }
 
-/* Runtime create infos are not registered in the dictionary and cannot be searched. */
 const GPUShaderCreateInfo *gpu_shader_create_info_get(const char *info_name)
 {
   if (g_create_infos->contains(info_name) == false) {

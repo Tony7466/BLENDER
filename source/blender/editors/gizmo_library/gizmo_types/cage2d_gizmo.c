@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2014 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgizmolib
@@ -589,7 +590,8 @@ static void cage2d_draw_rect_corner_handles(const rctf *r,
 {
   /* Only draw corner handles when hovering over the corners. */
   if (highlighted < ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MIN_Y ||
-      highlighted > ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MAX_Y) {
+      highlighted > ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MAX_Y)
+  {
     return;
   }
 
@@ -638,15 +640,15 @@ static void cage2d_draw_rect_edge_handles(const rctf *r,
     case ED_GIZMO_CAGE2D_PART_SCALE_MIN_X:
     case ED_GIZMO_CAGE2D_PART_SCALE_MAX_X: {
       const float rad[2] = {0.2f * margin[0], 0.4f * size[1]};
-      imm_draw_point_aspect_2d(pos, r->xmin, 0.f, rad[0], rad[1], solid);
-      imm_draw_point_aspect_2d(pos, r->xmax, 0.f, rad[0], rad[1], solid);
+      imm_draw_point_aspect_2d(pos, r->xmin, 0.0f, rad[0], rad[1], solid);
+      imm_draw_point_aspect_2d(pos, r->xmax, 0.0f, rad[0], rad[1], solid);
       break;
     }
     case ED_GIZMO_CAGE2D_PART_SCALE_MIN_Y:
     case ED_GIZMO_CAGE2D_PART_SCALE_MAX_Y: {
       const float rad[2] = {0.4f * size[0], 0.2f * margin[1]};
-      imm_draw_point_aspect_2d(pos, 0.f, r->ymin, rad[0], rad[1], solid);
-      imm_draw_point_aspect_2d(pos, 0.f, r->ymax, rad[0], rad[1], solid);
+      imm_draw_point_aspect_2d(pos, 0.0f, r->ymin, rad[0], rad[1], solid);
+      imm_draw_point_aspect_2d(pos, 0.0f, r->ymax, rad[0], rad[1], solid);
       break;
     }
   }
@@ -1013,7 +1015,8 @@ static int gizmo_cage2d_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
   WM_gizmo_calc_matrix_final_no_offset(gz, data->orig_matrix_final_no_offset);
 
   if (gizmo_window_project_2d(
-          C, gz, (const float[2]){UNPACK2(event->mval)}, 2, false, data->orig_mouse) == 0) {
+          C, gz, (const float[2]){UNPACK2(event->mval)}, 2, false, data->orig_mouse) == 0)
+  {
     zero_v2(data->orig_mouse);
   }
 

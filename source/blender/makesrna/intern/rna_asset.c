@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -578,6 +580,17 @@ static void rna_def_asset_handle(BlenderRNA *brna)
   rna_def_asset_handle_api(srna);
 }
 
+static void rna_def_asset_representation(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "AssetRepresentation", NULL);
+  RNA_def_struct_ui_text(srna,
+                         "Asset Representation",
+                         "Information about an entity that makes it possible for the asset system "
+                         "to deal with the entity as asset");
+}
+
 static void rna_def_asset_catalog_path(BlenderRNA *brna)
 {
   StructRNA *srna = RNA_def_struct(brna, "AssetCatalogPath", NULL);
@@ -591,7 +604,7 @@ static void rna_def_asset_library_reference(BlenderRNA *brna)
       srna, "Asset Library Reference", "Identifier to refer to the asset library");
 }
 
-PropertyRNA *rna_def_asset_library_reference_common(struct StructRNA *srna,
+PropertyRNA *rna_def_asset_library_reference_common(StructRNA *srna,
                                                     const char *get,
                                                     const char *set)
 {
@@ -610,6 +623,7 @@ void RNA_def_asset(BlenderRNA *brna)
   rna_def_asset_data(brna);
   rna_def_asset_library_reference(brna);
   rna_def_asset_handle(brna);
+  rna_def_asset_representation(brna);
   rna_def_asset_catalog_path(brna);
 
   RNA_define_animate_sdna(true);

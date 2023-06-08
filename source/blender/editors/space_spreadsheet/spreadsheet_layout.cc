@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <iomanip>
 #include <sstream>
@@ -137,6 +139,10 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       /* Right-align Integers. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
       UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
+    }
+    else if (data.type().is<int2>()) {
+      const int2 value = data.get<int2>(real_index);
+      this->draw_int_vector(params, Span(&value.x, 2));
     }
     else if (data.type().is<float>()) {
       const float value = data.get<float>(real_index);
@@ -289,6 +295,36 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       std::stringstream ss;
       const float value = values[i];
       ss << " " << std::fixed << std::setprecision(3) << value;
+      const std::string value_str = ss.str();
+      uiBut *but = uiDefIconTextBut(params.block,
+                                    UI_BTYPE_LABEL,
+                                    0,
+                                    ICON_NONE,
+                                    value_str.c_str(),
+                                    params.xmin + i * segment_width,
+                                    params.ymin,
+                                    segment_width,
+                                    params.height,
+                                    nullptr,
+                                    0,
+                                    0,
+                                    0,
+                                    0,
+                                    nullptr);
+      /* Right-align Floats. */
+      UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+      UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
+    }
+  }
+
+  void draw_int_vector(const CellDrawParams &params, const Span<int> values) const
+  {
+    BLI_assert(!values.is_empty());
+    const float segment_width = float(params.width) / values.size();
+    for (const int i : values.index_range()) {
+      std::stringstream ss;
+      const int value = values[i];
+      ss << " " << value;
       const std::string value_str = ss.str();
       uiBut *but = uiDefIconTextBut(params.block,
                                     UI_BTYPE_LABEL,
