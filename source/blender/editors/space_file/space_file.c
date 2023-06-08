@@ -358,8 +358,7 @@ static void file_listener(const wmSpaceTypeListenerParams *listener_params)
           ED_area_tag_refresh(area);
           break;
         case ND_SPACE_FILE_PREVIEW:
-          if (sfile->files) {
-            filelist_cache_previews_update(sfile->files);
+          if (sfile->files && filelist_cache_previews_update(sfile->files)) {
             ED_area_tag_refresh(area);
           }
           break;
