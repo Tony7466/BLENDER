@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -12,9 +14,11 @@
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
+#include "BLI_set.hh"
 
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
+#include "BKE_node.hh"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
@@ -24,6 +28,25 @@
 #include "versioning_common.h"
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
+
+void do_versions_after_linking_400(FileData * /*fd*/, Main * /*bmain*/)
+{
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - #blo_do_versions_400 in this file.
+   * - "versioning_cycles.cc", #blo_do_versions_cycles
+   * - "versioning_cycles.cc", #do_versions_after_linking_cycles
+   * - "versioning_userdef.c", #blo_do_versions_userdef
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
+  }
+}
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
 {
@@ -51,13 +74,6 @@ static void version_motion_tracking_legacy_camera_object(MovieClip &movieclip)
   MovieTrackingObject *tracking_camera_object = BKE_tracking_object_get_camera(&tracking);
 
   BLI_assert(tracking_camera_object != nullptr);
-
-  /* NOTE: The regular .blend file saving converts the new format to the legacy format, but the
-   * auto-save one does not do this. Likely, the regular saving clears the new storage before
-   * write, so it can be used to make a decision here.
-   *
-   * The idea is basically to not override the new storage if it exists. This is only supposed to
-   * happen for auto-save files. */
 
   if (BLI_listbase_is_empty(&tracking_camera_object->tracks)) {
     tracking_camera_object->tracks = tracking.tracks_legacy;
@@ -90,28 +106,110 @@ static void version_movieclips_legacy_camera_object(Main *bmain)
   }
 }
 
+static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+    if (STREQ(node->idname, "GeometryNodeMeshBoolean")) {
+      add_realize_instances_before_socket(ntree, node, nodeFindSocket(node, SOCK_IN, "Mesh 2"));
+    }
+  }
+}
+
+static void versioning_replace_legacy_glossy_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_BSDF_GLOSSY_LEGACY) {
+      strcpy(node->idname, "ShaderNodeBsdfAnisotropic");
+      node->type = SH_NODE_BSDF_GLOSSY;
+    }
+  }
+}
+
+static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
+{
+  /* Find all glossy, glass and refraction BSDF nodes that have their distribution
+   * set to SHARP and set them to GGX, disconnect any link to the Roughness input
+   * and set its value to zero. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (!ELEM(node->type, SH_NODE_BSDF_GLOSSY, SH_NODE_BSDF_GLASS, SH_NODE_BSDF_REFRACTION)) {
+      continue;
+    }
+    if (node->custom1 != SHD_GLOSSY_SHARP_DEPRECATED) {
+      continue;
+    }
+
+    node->custom1 = SHD_GLOSSY_GGX;
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+      if (!STREQ(socket->identifier, "Roughness")) {
+        continue;
+      }
+
+      if (socket->link != nullptr) {
+        nodeRemLink(ntree, socket->link);
+      }
+      bNodeSocketValueFloat *socket_value = (bNodeSocketValueFloat *)socket->default_value;
+      socket_value->value = 0.0f;
+
+      break;
+    }
+  }
+}
+
 void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 {
-  // if (!MAIN_VERSION_ATLEAST(bmain, 400, 0)) {
-  /* This is done here because we will continue to write with the old format until 4.0, so we need
-   * to convert even "current" files. Keep the check commented out for now so the versioning isn't
-   * turned off right after the 4.0 bump. */
-  LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-    version_mesh_legacy_to_struct_of_array_format(*mesh);
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
+    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+      version_mesh_legacy_to_struct_of_array_format(*mesh);
+    }
+    version_movieclips_legacy_camera_object(bmain);
   }
-  version_movieclips_legacy_camera_object(bmain);
-  // }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 2)) {
+    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+      BKE_mesh_legacy_bevel_weight_to_generic(mesh);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 3)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_geometry_nodes_add_realize_instance_nodes(ntree);
+      }
+    }
+  }
+
+  /* 400 4 did not require any do_version here. */
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 5)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+#define SCE_SNAP_PROJECT (1 << 3)
+      if (scene->toolsettings->snap_flag & SCE_SNAP_PROJECT) {
+        scene->toolsettings->snap_mode |= SCE_SNAP_MODE_FACE_RAYCAST;
+      }
+#undef SCE_SNAP_PROJECT
+    }
+  }
 
   /**
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
+   * - #do_versions_after_linking_400 in this file.
+   * - "versioning_cycles.cc", #blo_do_versions_cycles
+   * - "versioning_cycles.cc", #do_versions_after_linking_cycles
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
   {
+    /* Convert anisotropic BSDF node to glossy BSDF. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_replace_legacy_glossy_node(ntree);
+      versioning_remove_microfacet_sharp_distribution(ntree);
+    }
+    FOREACH_NODETREE_END;
+
     /* Keep this block, even when empty. */
   }
 }

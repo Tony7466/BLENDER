@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -15,6 +16,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
+#include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_search.h"
@@ -75,9 +77,9 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 #include "MOD_nodes.h"
-#include "MOD_ui_common.h"
+#include "MOD_ui_common.hh"
 
 #include "ED_object.h"
 #include "ED_screen.h"
@@ -319,7 +321,7 @@ static bool check_tree_for_time_node(const bNodeTree &tree, Set<const bNodeTree 
   return false;
 }
 
-static bool dependsOnTime(struct Scene * /*scene*/, ModifierData *md)
+static bool dependsOnTime(Scene * /*scene*/, ModifierData *md)
 {
   const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
   const bNodeTree *tree = nmd->node_group;
@@ -357,7 +359,7 @@ static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void 
   walk(userData, ob, md, "texture");
 }
 
-static bool isDisabled(const struct Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
+static bool isDisabled(const Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
 
@@ -1152,9 +1154,23 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
       if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked &&
           !bmain_path.is_empty())
       {
-        nmd_orig.simulation_cache->try_discover_bake(
-            bke::sim::get_meta_directory(*bmain, *ctx.object, nmd.modifier),
-            bke::sim::get_bdata_directory(*bmain, *ctx.object, nmd.modifier));
+        if (!StringRef(nmd.simulation_bake_directory).is_empty()) {
+          if (const char *base_path = ID_BLEND_PATH(bmain, &ctx.object->id)) {
+            char absolute_bake_dir[FILE_MAX];
+            STRNCPY(absolute_bake_dir, nmd.simulation_bake_directory);
+            BLI_path_abs(absolute_bake_dir, base_path);
+            nmd_orig.simulation_cache->try_discover_bake(absolute_bake_dir);
+          }
+        }
+      }
+    }
+
+    {
+      /* Invalidate cached data on user edits. */
+      if (nmd.modifier.flag & eModifierFlag_UserModified) {
+        if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+          nmd_orig.simulation_cache->invalidate();
+        }
       }
     }
 
@@ -1187,17 +1203,24 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
           }
         }
         else if (sim_states.prev != nullptr && sim_states.next == nullptr) {
-          const float delta_frames = float(current_frame) - float(sim_states.prev->frame);
-          if (delta_frames <= 1.0f) {
-            bke::sim::ModifierSimulationState &current_sim_state =
-                nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
-            exec_data.current_simulation_state_for_write = &current_sim_state;
-            const float delta_seconds = delta_frames / FPS;
-            exec_data.simulation_time_delta = delta_seconds;
+          const float max_delta_frames = 1.0f;
+          const float scene_delta_frames = float(current_frame) - float(sim_states.prev->frame);
+          const float delta_frames = std::min(max_delta_frames, scene_delta_frames);
+          if (delta_frames != scene_delta_frames) {
+            nmd_orig.simulation_cache->invalidate();
           }
+          bke::sim::ModifierSimulationState &current_sim_state =
+              nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
+          exec_data.current_simulation_state_for_write = &current_sim_state;
+          const float delta_seconds = delta_frames / FPS;
+          exec_data.simulation_time_delta = delta_seconds;
         }
       }
     }
+  }
+
+  if (nmd_orig.simulation_cache == nullptr) {
+    return;
   }
 
   /* Load read-only states to give nodes access to cached data. */
@@ -1316,9 +1339,9 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
     param_outputs[i] = {type, buffer};
   }
 
-  lf::Context lf_context;
-  lf_context.storage = graph_executor.init_storage(allocator);
-  lf_context.user_data = &user_data;
+  nodes::GeoNodesLFLocalUserData local_user_data(user_data);
+
+  lf::Context lf_context(graph_executor.init_storage(allocator), &user_data, &local_user_data);
   lf::BasicParams lf_params{graph_executor,
                             param_inputs,
                             param_outputs,
@@ -1342,6 +1365,14 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   if (logging_enabled(ctx)) {
     delete static_cast<geo_log::GeoModifierLog *>(nmd_orig->runtime_eval_log);
     nmd_orig->runtime_eval_log = eval_log.release();
+  }
+
+  if (DEG_is_active(ctx->depsgraph)) {
+    /* When caching is turned off, remove all states except the last which was just created in this
+     * evaluation. Check if active status to avoid changing original data in other depsgraphs. */
+    if (!(ctx->object->flag & OB_FLAG_USE_SIMULATION_CACHE)) {
+      nmd_orig->simulation_cache->clear_prev_states();
+    }
   }
 
   return output_geometry_set;
@@ -1747,7 +1778,7 @@ static void draw_property_for_socket(const bContext &C,
   BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
 
   char rna_path[sizeof(socket_id_esc) + 4];
-  BLI_snprintf(rna_path, ARRAY_SIZE(rna_path), "[\"%s\"]", socket_id_esc);
+  SNPRINTF(rna_path, "[\"%s\"]", socket_id_esc);
 
   uiLayout *row = uiLayoutRow(layout, true);
   uiLayoutSetPropDecorate(row, true);
@@ -1892,6 +1923,8 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
+  uiItemR(layout, ptr, "simulation_bake_directory", 0, "Bake", ICON_NONE);
+
   geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
   if (tree_log == nullptr) {
     return;
@@ -1980,6 +2013,8 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
 
   BLO_write_struct(writer, NodesModifierData, nmd);
 
+  BLO_write_string(writer, nmd->simulation_bake_directory);
+
   if (nmd->settings.properties != nullptr) {
     Map<IDProperty *, IDPropertyUIDataBool *> boolean_props;
     if (!BLO_write_is_undo(writer)) {
@@ -2018,6 +2053,7 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
 static void blendRead(BlendDataReader *reader, ModifierData *md)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+  BLO_read_data_address(reader, &nmd->simulation_bake_directory);
   if (nmd->node_group == nullptr) {
     nmd->settings.properties = nullptr;
   }
@@ -2038,6 +2074,9 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   tnmd->runtime_eval_log = nullptr;
   tnmd->simulation_cache = nullptr;
+  tnmd->simulation_bake_directory = nmd->simulation_bake_directory ?
+                                        BLI_strdup(nmd->simulation_bake_directory) :
+                                        nullptr;
 
   if (nmd->settings.properties != nullptr) {
     tnmd->settings.properties = IDP_CopyProperty_ex(nmd->settings.properties, flag);
@@ -2053,6 +2092,7 @@ static void freeData(ModifierData *md)
   }
 
   MEM_delete(nmd->simulation_cache);
+  MEM_SAFE_FREE(nmd->simulation_bake_directory);
 
   clear_runtime_data(nmd);
 }

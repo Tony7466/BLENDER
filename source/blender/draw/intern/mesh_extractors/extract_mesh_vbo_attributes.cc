@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -157,7 +158,7 @@ static void init_vbo_for_attribute(const MeshRenderData &mr,
   char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
   GPU_vertformat_safe_attr_name(request.attribute_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
   /* Attributes use auto-name. */
-  BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+  SNPRINTF(attr_name, "a%s", attr_safe_name);
 
   GPUVertFormat format = {0};
   GPU_vertformat_deinterleave(&format);

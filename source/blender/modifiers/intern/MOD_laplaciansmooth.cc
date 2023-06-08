@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -34,8 +35,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 #include "eigen_capi.h"
 
@@ -495,7 +496,7 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
 {
   LaplacianSmoothModifierData *smd = (LaplacianSmoothModifierData *)md;
 
-  /* ask for vertexgroups if we need them */
+  /* Ask for vertex-groups if we need them. */
   if (smd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
@@ -513,7 +514,7 @@ static void deformVerts(ModifierData *md,
     return;
   }
 
-  mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   laplaciansmoothModifier_do(
       (LaplacianSmoothModifierData *)md, ctx->object, mesh_src, vertexCos, verts_num);
@@ -536,7 +537,7 @@ static void deformVertsEM(ModifierData *md,
     return;
   }
 
-  mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr, verts_num, false);
+  mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {

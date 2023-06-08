@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation
 
 set(INC
   .
@@ -72,7 +73,8 @@ set(SRC
   intern/draw_attributes.cc
   intern/draw_cache_impl_curve.cc
   intern/draw_cache_impl_curves.cc
-  intern/draw_cache_impl_gpencil.cc
+  intern/draw_cache_impl_gpencil_legacy.cc
+  intern/draw_cache_impl_grease_pencil.cc
   intern/draw_cache_impl_lattice.c
   intern/draw_cache_impl_mesh.cc
   intern/draw_cache_impl_particles.c
@@ -91,7 +93,7 @@ set(SRC
   intern/draw_manager.cc
   intern/draw_manager_data.cc
   intern/draw_manager_exec.c
-  intern/draw_manager_profiling.c
+  intern/draw_manager_profiling.cc
   intern/draw_manager_shader.c
   intern/draw_manager_text.cc
   intern/draw_manager_texture.c
@@ -180,14 +182,17 @@ set(SRC
   engines/workbench/workbench_state.cc
   engines/workbench/workbench_transparent.c
   engines/workbench/workbench_volume.c
+  engines/workbench/workbench_volume_next.cc
   engines/external/external_engine.c
   engines/gpencil/gpencil_antialiasing.c
   engines/gpencil/gpencil_cache_utils.c
   engines/gpencil/gpencil_draw_data.c
   engines/gpencil/gpencil_engine.c
+  engines/gpencil/gpencil_engine.cc
   engines/gpencil/gpencil_engine.h
   engines/gpencil/gpencil_render.c
   engines/gpencil/gpencil_shader.c
+  engines/gpencil/gpencil_shader.cc
   engines/gpencil/gpencil_shader_fx.c
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
@@ -204,7 +209,8 @@ set(SRC
   engines/overlay/overlay_extra.cc
   engines/overlay/overlay_facing.cc
   engines/overlay/overlay_fade.cc
-  engines/overlay/overlay_gpencil.cc
+  engines/overlay/overlay_gpencil_legacy.cc
+  engines/overlay/overlay_grease_pencil.cc
   engines/overlay/overlay_grid.cc
   engines/overlay/overlay_image.cc
   engines/overlay/overlay_lattice.cc
@@ -247,7 +253,7 @@ set(SRC
   intern/draw_instance_data.h
   intern/draw_manager.h
   intern/draw_manager.hh
-  intern/draw_manager_profiling.h
+  intern/draw_manager_profiling.hh
   intern/draw_manager_testing.h
   intern/draw_manager_text.h
   intern/draw_pass.hh
@@ -277,6 +283,7 @@ set(SRC
   engines/eevee_next/eevee_depth_of_field.hh
   engines/eevee_next/eevee_engine.h
   engines/eevee_next/eevee_film.hh
+  engines/eevee_next/eevee_gbuffer.hh
   engines/eevee_next/eevee_hizbuffer.hh
   engines/eevee_next/eevee_instance.hh
   engines/eevee_next/eevee_irradiance_cache.hh
@@ -404,6 +411,7 @@ set(GLSL_SRC
   engines/eevee/shaders/bsdf_sampling_lib.glsl
   engines/eevee/shaders/random_lib.glsl
   engines/eevee/shaders/raytrace_lib.glsl
+  engines/eevee/shaders/renderpass_accumulate_frag.glsl
   engines/eevee/shaders/renderpass_lib.glsl
   engines/eevee/shaders/renderpass_postprocess_frag.glsl
   engines/eevee/shaders/cryptomatte_frag.glsl

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -88,9 +90,8 @@ static void asset_view_draw_item(uiList *ui_list,
 
   uiBlock *block = uiLayoutGetBlock(layout);
   const bool show_names = list_data->show_names;
-  /* TODO ED_fileselect_init_layout(). Share somehow? */
-  const float size_x = (96.0f / 20.0f) * UI_UNIT_X;
-  const float size_y = (96.0f / 20.0f) * UI_UNIT_Y - (show_names ? 0 : UI_UNIT_Y);
+  const float size_x = UI_preview_tile_size_x();
+  const float size_y = show_names ? UI_preview_tile_size_y() : UI_preview_tile_size_y_no_label();
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_PREVIEW_TILE,
                                 0,
@@ -110,6 +111,7 @@ static void asset_view_draw_item(uiList *ui_list,
                   ED_asset_handle_get_preview_icon_id(&asset_handle),
                   /* NOLINTNEXTLINE: bugprone-suspicious-enum-usage */
                   UI_HAS_ICON | UI_BUT_ICON_PREVIEW);
+  but->emboss = UI_EMBOSS_NONE;
   if (!ui_list->dyn_data->custom_drag_optype) {
     asset_view_item_but_drag_set(but, &asset_handle);
   }
@@ -144,9 +146,8 @@ static void asset_view_filter_items(uiList *ui_list,
       });
 }
 
-static void asset_view_listener(uiList *ui_list, wmRegionListenerParams *params)
+static void asset_view_listener(uiList * /*ui_list*/, wmRegionListenerParams *params)
 {
-  AssetViewListData *list_data = (AssetViewListData *)ui_list->dyn_data->customdata;
   const wmNotifier *notifier = params->notifier;
 
   switch (notifier->category) {
@@ -158,7 +159,7 @@ static void asset_view_listener(uiList *ui_list, wmRegionListenerParams *params)
     }
   }
 
-  if (ED_assetlist_listen(&list_data->asset_library_ref, params->notifier)) {
+  if (ED_assetlist_listen(params->notifier)) {
     ED_region_tag_redraw(params->region);
   }
 }
@@ -167,7 +168,7 @@ uiListType *UI_UL_asset_view()
 {
   uiListType *list_type = (uiListType *)MEM_callocN(sizeof(*list_type), __func__);
 
-  BLI_strncpy(list_type->idname, "UI_UL_asset_view", sizeof(list_type->idname));
+  STRNCPY(list_type->idname, "UI_UL_asset_view");
   list_type->draw_item = asset_view_draw_item;
   list_type->filter_items = asset_view_filter_items;
   list_type->listener = asset_view_listener;
@@ -268,9 +269,14 @@ void uiTemplateAssetView(uiLayout *layout,
     template_list_flags |= UI_TEMPLATE_LIST_NO_FILTER_OPTIONS;
   }
 
+  uiLayout *subcol = uiLayoutColumn(col, false);
+
+  uiLayoutSetScaleX(subcol, 0.8f);
+  uiLayoutSetScaleY(subcol, 0.8f);
+
   /* TODO can we have some kind of model-view API to handle referencing, filtering and lazy loading
    * (of previews) of the items? */
-  uiList *list = uiTemplateList_ex(col,
+  uiList *list = uiTemplateList_ex(subcol,
                                    C,
                                    "UI_UL_asset_view",
                                    list_id,

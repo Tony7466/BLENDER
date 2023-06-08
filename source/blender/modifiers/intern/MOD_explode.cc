@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -46,8 +47,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 static void initData(ModifierData *md)
 {

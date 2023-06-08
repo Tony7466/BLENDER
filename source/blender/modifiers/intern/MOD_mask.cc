@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -42,8 +43,8 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #include "BLI_array.hh"
 #include "BLI_listbase_wrapper.hh"
@@ -747,7 +748,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
   return result;
 }
 
-static bool isDisabled(const struct Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
+static bool isDisabled(const Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
 {
   MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(md);
 

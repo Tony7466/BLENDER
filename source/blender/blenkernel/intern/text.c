@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -428,7 +429,7 @@ bool BKE_text_reload(Text *text)
     return false;
   }
 
-  BLI_strncpy(filepath_abs, text->filepath, FILE_MAX);
+  STRNCPY(filepath_abs, text->filepath);
   BLI_path_abs(filepath_abs, ID_BLEND_PATH_FROM_GLOBAL(&text->id));
 
   buffer = BLI_file_read_text_as_mem(filepath_abs, 0, &buffer_len);
@@ -465,7 +466,7 @@ Text *BKE_text_load_ex(Main *bmain,
   char filepath_abs[FILE_MAX];
   BLI_stat_t st;
 
-  BLI_strncpy(filepath_abs, filepath, FILE_MAX);
+  STRNCPY(filepath_abs, filepath);
   BLI_path_abs(filepath_abs, relbase);
 
   buffer = BLI_file_read_text_as_mem(filepath_abs, 0, &buffer_len);
@@ -537,7 +538,7 @@ int BKE_text_file_modified_check(Text *text)
     return 0;
   }
 
-  BLI_strncpy(filepath, text->filepath, FILE_MAX);
+  STRNCPY(filepath, text->filepath);
   BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&text->id));
 
   if (!BLI_exists(filepath)) {
@@ -571,7 +572,7 @@ void BKE_text_file_modified_ignore(Text *text)
     return;
   }
 
-  BLI_strncpy(filepath, text->filepath, FILE_MAX);
+  STRNCPY(filepath, text->filepath);
   BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&text->id));
 
   if (!BLI_exists(filepath)) {
@@ -2169,7 +2170,7 @@ bool txt_unindent(Text *text)
   return txt_select_unprefix(text, prefix, false);
 }
 
-void txt_move_lines(struct Text *text, const int direction)
+void txt_move_lines(Text *text, const int direction)
 {
   TextLine *line_other;
 

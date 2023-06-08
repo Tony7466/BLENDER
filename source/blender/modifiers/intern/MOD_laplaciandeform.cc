@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -39,8 +40,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 #include "eigen_capi.h"
 
@@ -109,7 +110,7 @@ static LaplacianSystem *initLaplacianSystem(int verts_num,
   sys->tris_num = tris_num;
   sys->anchors_num = anchors_num;
   sys->repeat = iterations;
-  BLI_strncpy(sys->anchor_grp_name, defgrpName, sizeof(sys->anchor_grp_name));
+  STRNCPY(sys->anchor_grp_name, defgrpName);
   sys->co = static_cast<float(*)[3]>(MEM_malloc_arrayN(verts_num, sizeof(float[3]), __func__));
   sys->no = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(float[3]), __func__));
   sys->delta = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(float[3]), __func__));
@@ -748,7 +749,7 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   LaplacianDeformModifier_do(
       (LaplacianDeformModifierData *)md, ctx->object, mesh_src, vertexCos, verts_num);
@@ -765,8 +766,7 @@ static void deformVertsEM(ModifierData *md,
                           float (*vertexCos)[3],
                           int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(
-      ctx->object, editData, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {

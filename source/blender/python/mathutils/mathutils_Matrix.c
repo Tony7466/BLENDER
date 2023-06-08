@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pymathutils
@@ -2288,8 +2290,7 @@ static PyObject *Matrix_str(MatrixObject *self)
   for (col = 0; col < self->col_num; col++) {
     maxsize[col] = 0;
     for (row = 0; row < self->row_num; row++) {
-      const int size = BLI_snprintf_rlen(
-          dummy_buf, sizeof(dummy_buf), "%.4f", MATRIX_ITEM(self, row, col));
+      const int size = SNPRINTF_RLEN(dummy_buf, "%.4f", MATRIX_ITEM(self, row, col));
       maxsize[col] = max_ii(maxsize[col], size);
     }
   }
@@ -3253,7 +3254,7 @@ static PyGetSetDef Matrix_getseters[] = {
 /** \name Matrix Type: Method Definitions
  * \{ */
 
-static struct PyMethodDef Matrix_methods[] = {
+static PyMethodDef Matrix_methods[] = {
     /* Derived values. */
     {"determinant", (PyCFunction)Matrix_determinant, METH_NOARGS, Matrix_determinant_doc},
     {"decompose", (PyCFunction)Matrix_decompose, METH_NOARGS, Matrix_decompose_doc},

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -687,7 +689,7 @@ static void rna_AttributeGroup_default_color_name_get(PointerRNA *ptr, char *val
     value[0] = '\0';
     return;
   }
-  BLI_strncpy(value, name, MAX_CUSTOMDATA_LAYER_NAME);
+  strcpy(value, name);
 }
 
 static int rna_AttributeGroup_default_color_name_length(PointerRNA *ptr)
@@ -717,7 +719,7 @@ static void rna_AttributeGroup_active_color_name_get(PointerRNA *ptr, char *valu
     value[0] = '\0';
     return;
   }
-  BLI_strncpy(value, name, MAX_CUSTOMDATA_LAYER_NAME);
+  strcpy(value, name);
 }
 
 static int rna_AttributeGroup_active_color_name_length(PointerRNA *ptr)

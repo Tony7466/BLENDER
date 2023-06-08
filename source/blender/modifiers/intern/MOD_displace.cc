@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -43,8 +44,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 #include "RE_texture.h"
 
@@ -63,7 +64,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 {
   DisplaceModifierData *dmd = (DisplaceModifierData *)md;
 
-  /* ask for vertexgroups if we need them */
+  /* Ask for vertex-groups if we need them. */
   if (dmd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
@@ -193,8 +194,7 @@ static void displaceModifier_do_task(void *__restrict userdata,
   }
 
   if (data->tex_target) {
-    BKE_texture_get_value_ex(
-        data->scene, data->tex_target, tex_co[iter], &texres, data->pool, false);
+    BKE_texture_get_value_ex(data->tex_target, tex_co[iter], &texres, data->pool, false);
     delta = texres.tin - dmd->midlevel;
   }
   else {
@@ -372,7 +372,7 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   displaceModifier_do((DisplaceModifierData *)md, ctx, mesh_src, vertexCos, verts_num);
 
@@ -388,8 +388,7 @@ static void deformVertsEM(ModifierData *md,
                           float (*vertexCos)[3],
                           int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(
-      ctx->object, editData, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {

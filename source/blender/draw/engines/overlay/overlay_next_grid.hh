@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -30,8 +32,6 @@ class Grid {
   bool enabled_ = false;
 
  public:
-  Grid(){};
-
   void begin_sync(Resources &res, const State &state, const View &view)
   {
     this->update_ubo(state, view);

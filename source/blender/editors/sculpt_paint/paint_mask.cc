@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -51,7 +52,7 @@
 #include "bmesh.h"
 #include "tools/bmesh_boolean.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 /* For undo push. */
 #include "sculpt_intern.hh"
@@ -749,6 +750,9 @@ static void face_set_gesture_apply_task_cb(void *__restrict userdata,
   PBVHFaceIter fd;
   BKE_pbvh_face_iter_begin (sgcontext->ss->pbvh, node, fd) {
     if (sculpt_gesture_is_face_effected(sgcontext, &fd)) {
+      if (sgcontext->ss->hide_poly && sgcontext->ss->hide_poly[fd.face.i]) {
+        continue;
+      }
       SCULPT_face_set_set(sgcontext->ss, fd.face, face_set_operation->new_face_set_id);
       any_updated = true;
     }

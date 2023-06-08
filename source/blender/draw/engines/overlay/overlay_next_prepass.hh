@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -19,8 +21,6 @@ class Prepass {
   PassMain prepass_in_front_ps_ = {"prepass_in_front"};
 
  public:
-  Prepass(){};
-
   void begin_sync(Resources &res, const State &state)
   {
     auto init_pass = [&](PassMain &pass) {

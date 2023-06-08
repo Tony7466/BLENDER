@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup asset_system
@@ -132,6 +134,15 @@ const AssetLibrary &AssetRepresentation::owner_asset_library() const
 }  // namespace blender::asset_system
 
 using namespace blender;
+
+const StringRefNull AS_asset_representation_library_relative_identifier_get(
+    const AssetRepresentation *asset_handle)
+{
+  const asset_system::AssetRepresentation *asset =
+      reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
+  const asset_system::AssetIdentifier &identifier = asset->get_identifier();
+  return identifier.library_relative_identifier();
+}
 
 std::string AS_asset_representation_full_path_get(const AssetRepresentation *asset_handle)
 {

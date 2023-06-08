@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -55,8 +57,13 @@ std::optional<eAssetImportMethod> ED_asset_handle_get_import_method(
   return AS_asset_representation_import_method_get(asset_handle->file_data->asset);
 }
 
+blender::StringRefNull ED_asset_handle_get_library_relative_identifier(const AssetHandle &asset)
+{
+  return AS_asset_representation_library_relative_identifier_get(asset.file_data->asset);
+}
+
 void ED_asset_handle_get_full_library_path(const AssetHandle *asset_handle,
-                                           char r_full_lib_path[FILE_MAX_LIBEXTRA])
+                                           char r_full_lib_path[FILE_MAX])
 {
   *r_full_lib_path = '\0';
 

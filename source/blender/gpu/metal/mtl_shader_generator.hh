@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -247,7 +249,7 @@ struct MSLTextureResource {
   MSLTextureSamplerAccess access;
   /* Whether resource is a texture sampler or an image. */
   bool is_texture_sampler;
-  /* Index in shader bind table [[texture(N)]].*/
+  /* Index in shader bind table `[[texture(N)]]`. */
   uint slot;
   /* Explicit bind index provided by ShaderCreateInfo. */
   uint location;
@@ -564,8 +566,8 @@ inline bool is_builtin_type(std::string type)
   /* Add Types as needed. */
   /* TODO(Metal): Consider replacing this with a switch and `constexpr` hash and switch.
    * Though most efficient and maintainable approach to be determined.
-   * NOTE: Some duplicate types exit for Metal and GLSL representations, as generated typenames
-   * from createinfo may use GLSL signature. */
+   * NOTE: Some duplicate types exit for Metal and GLSL representations, as generated type-names
+   * from #shader::ShaderCreateInfo may use GLSL signature. */
   static std::map<std::string, eMTLDataType> glsl_builtin_types = {
       {"float", MTL_DATATYPE_FLOAT},
       {"vec2", MTL_DATATYPE_FLOAT2},

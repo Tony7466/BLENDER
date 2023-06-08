@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -31,7 +32,7 @@
 #include "BKE_lib_override.h"
 #include "BKE_lib_remap.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_text.h"
@@ -1396,7 +1397,6 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
   Main *bmain = CTX_data_main(C);
   PointerRNA ptr, lptr;
   PropertyRNA *prop, *lprop;
-  bool success = false;
   int index;
 
   /* try to reset the nominated setting to its default value */
@@ -1407,36 +1407,31 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
     return false;
   }
 
+  bool success = false;
   char *path = nullptr;
   bool use_path_from_id;
   ListBase lb = {nullptr};
 
-  if (!UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
-    return false;
-  }
-  if (BLI_listbase_is_empty(&lb)) {
-    MEM_SAFE_FREE(path);
-    return false;
-  }
+  if (UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
+    LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
+      if (link->ptr.data == ptr.data) {
+        continue;
+      }
 
-  LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
-    if (link->ptr.data == ptr.data) {
-      continue;
-    }
+      if (!UI_context_copy_to_selected_check(
+              &ptr, &link->ptr, prop, path, use_path_from_id, &lptr, &lprop))
+      {
+        continue;
+      }
 
-    if (!UI_context_copy_to_selected_check(
-            &ptr, &link->ptr, prop, path, use_path_from_id, &lptr, &lprop))
-    {
-      continue;
-    }
-
-    if (poll) {
-      success = true;
-      break;
-    }
-    if (RNA_property_copy(bmain, &lptr, &ptr, prop, (all) ? -1 : index)) {
-      RNA_property_update(C, &lptr, prop);
-      success = true;
+      if (poll) {
+        success = true;
+        break;
+      }
+      if (RNA_property_copy(bmain, &lptr, &ptr, prop, (all) ? -1 : index)) {
+        RNA_property_update(C, &lptr, prop);
+        success = true;
+      }
     }
   }
 
@@ -1722,7 +1717,7 @@ void UI_editsource_active_but_test(uiBut *but)
   PyC_FileAndNum_Safe(&fn, &line_number);
 
   if (line_number != -1) {
-    BLI_strncpy(but_store->py_dbg_fn, fn, sizeof(but_store->py_dbg_fn));
+    STRNCPY(but_store->py_dbg_fn, fn);
     but_store->py_dbg_line_number = line_number;
   }
   else {
@@ -1744,43 +1739,21 @@ void UI_editsource_but_replace(const uiBut *old_but, uiBut *new_but)
 }
 
 static int editsource_text_edit(bContext *C,
-                                wmOperator *op,
+                                wmOperator * /*op*/,
                                 const char filepath[FILE_MAX],
                                 const int line)
 {
-  Main *bmain = CTX_data_main(C);
-  Text *text = nullptr;
+  wmOperatorType *ot = WM_operatortype_find("TEXT_OT_jump_to_file_at_point", true);
+  PointerRNA op_props;
 
-  /* Developers may wish to copy-paste to an external editor. */
-  printf("%s:%d\n", filepath, line);
+  WM_operator_properties_create_ptr(&op_props, ot);
+  RNA_string_set(&op_props, "filepath", filepath);
+  RNA_int_set(&op_props, "line", line - 1);
+  RNA_int_set(&op_props, "column", 0);
 
-  LISTBASE_FOREACH (Text *, text_iter, &bmain->texts) {
-    if (text_iter->filepath && BLI_path_cmp(text_iter->filepath, filepath) == 0) {
-      text = text_iter;
-      break;
-    }
-  }
-
-  if (text == nullptr) {
-    text = BKE_text_load(bmain, filepath, BKE_main_blendfile_path(bmain));
-  }
-
-  if (text == nullptr) {
-    BKE_reportf(op->reports, RPT_WARNING, "File '%s' cannot be opened", filepath);
-    return OPERATOR_CANCELLED;
-  }
-
-  txt_move_toline(text, line - 1, false);
-
-  /* naughty!, find text area to set, not good behavior
-   * but since this is a developer tool lets allow it - campbell */
-  if (!ED_text_activate_in_screen(C, text)) {
-    BKE_reportf(op->reports, RPT_INFO, "See '%s' in the text editor", text->id.name + 2);
-  }
-
-  WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
-
-  return OPERATOR_FINISHED;
+  int result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &op_props, NULL);
+  WM_operator_properties_free(&op_props);
+  return result;
 }
 
 static int editsource_exec(bContext *C, wmOperator *op)
@@ -1868,13 +1841,13 @@ static void UI_OT_editsource(wmOperatorType *ot)
 static void edittranslation_find_po_file(const char *root,
                                          const char *uilng,
                                          char *path,
-                                         const size_t maxlen)
+                                         const size_t path_maxncpy)
 {
   char tstr[32]; /* Should be more than enough! */
 
   /* First, full lang code. */
-  BLI_snprintf(tstr, sizeof(tstr), "%s.po", uilng);
-  BLI_path_join(path, maxlen, root, uilng, tstr);
+  SNPRINTF(tstr, "%s.po", uilng);
+  BLI_path_join(path, path_maxncpy, root, uilng, tstr);
   if (BLI_is_file(path)) {
     return;
   }
@@ -1899,9 +1872,9 @@ static void edittranslation_find_po_file(const char *root,
         BLI_strncpy(tstr + szt, tc, sizeof(tstr) - szt);
       }
 
-      BLI_path_join(path, maxlen, root, tstr);
+      BLI_path_join(path, path_maxncpy, root, tstr);
       BLI_strncat(tstr, ".po", sizeof(tstr));
-      BLI_path_append(path, maxlen, tstr);
+      BLI_path_append(path, path_maxncpy, tstr);
       if (BLI_is_file(path)) {
         return;
       }
@@ -2156,7 +2129,7 @@ static void UI_OT_button_string_clear(wmOperatorType *ot)
 /** \name Drop Color Operator
  * \{ */
 
-bool UI_drop_color_poll(struct bContext *C, wmDrag *drag, const wmEvent * /*event*/)
+bool UI_drop_color_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 {
   /* should only return true for regions that include buttons, for now
    * return true always */

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edasset
@@ -107,6 +109,8 @@ class AssetList : NonCopyable {
   AssetList(AssetList &&other) = default;
   ~AssetList() = default;
 
+  static bool listen(const wmNotifier &notifier);
+
   void setup();
   void fetch(const bContext &C);
   void ensurePreviewsJob(const bContext *C);
@@ -118,7 +122,6 @@ class AssetList : NonCopyable {
   bool isLoaded() const;
   asset_system::AssetLibrary *asset_library() const;
   void iterate(AssetListIterFn fn) const;
-  bool listen(const wmNotifier &notifier) const;
   int size() const;
   void tagMainDataDirty() const;
   void remapID(ID *id_old, ID *id_new) const;
@@ -153,11 +156,11 @@ void AssetList::setup()
   const bool use_asset_indexer = !USER_EXPERIMENTAL_TEST(&U, no_asset_indexing);
   filelist_setindexer(files, use_asset_indexer ? &file_indexer_asset : &file_indexer_noop);
 
-  char path[FILE_MAXDIR] = "";
+  char dirpath[FILE_MAX_LIBEXTRA] = "";
   if (!asset_lib_path.empty()) {
-    BLI_strncpy(path, asset_lib_path.c_str(), sizeof(path));
+    STRNCPY(dirpath, asset_lib_path.c_str());
   }
-  filelist_setdir(files, path);
+  filelist_setdir(files, dirpath);
 }
 
 void AssetList::fetch(const bContext &C)
@@ -218,9 +221,10 @@ void AssetList::ensurePreviewsJob(const bContext *C)
   int numfiles = filelist_files_ensure(files);
 
   filelist_cache_previews_set(files, true);
-  filelist_file_cache_slidingwindow_set(files, 256);
   /* TODO fetch all previews for now. */
-  filelist_file_cache_block(files, numfiles / 2);
+  /* Add one extra entry to ensure nothing is lost because of integer division. */
+  filelist_file_cache_slidingwindow_set(files, numfiles / 2 + 1);
+  filelist_file_cache_block(files, 0);
   filelist_cache_previews_update(files);
 
   {
@@ -256,7 +260,7 @@ AssetHandle AssetList::asset_get_by_index(int index) const
 /**
  * \return True if the asset-list needs a UI redraw.
  */
-bool AssetList::listen(const wmNotifier &notifier) const
+bool AssetList::listen(const wmNotifier &notifier)
 {
   switch (notifier.category) {
     case NC_ID: {
@@ -496,14 +500,9 @@ ImBuf *ED_assetlist_asset_image_get(const AssetHandle *asset_handle)
   return filelist_geticon_image_ex(asset_handle->file_data);
 }
 
-bool ED_assetlist_listen(const AssetLibraryReference *library_reference,
-                         const wmNotifier *notifier)
+bool ED_assetlist_listen(const wmNotifier *notifier)
 {
-  AssetList *list = AssetListStorage::lookup_list(*library_reference);
-  if (list) {
-    return list->listen(*notifier);
-  }
-  return false;
+  return AssetList::listen(*notifier);
 }
 
 int ED_assetlist_size(const AssetLibraryReference *library_reference)

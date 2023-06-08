@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup mathutils
@@ -36,6 +38,7 @@
 #  include "BKE_lib_id.h"
 #  include "BKE_mesh.hh"
 #  include "BKE_mesh_runtime.h"
+#  include "BKE_object.h"
 
 #  include "DEG_depsgraph_query.h"
 
@@ -751,7 +754,7 @@ static PyObject *C_BVHTree_FromPolygons(PyObject * /*cls*/, PyObject *args, PyOb
     /* ngon support (much more involved) */
     const uint polys_len = uint(PySequence_Fast_GET_SIZE(py_tris_fast));
     struct PolyLink {
-      struct PolyLink *next;
+      PolyLink *next;
       uint len;
       uint poly[0];
     } *plink_first = nullptr, **p_plink_prev = &plink_first, *plink = nullptr;
@@ -1017,13 +1020,13 @@ static PyObject *C_BVHTree_FromBMesh(PyObject * /*cls*/, PyObject *args, PyObjec
 }
 
 /* return various derived meshes based on requested settings */
-static Mesh *bvh_get_mesh(const char *funcname,
-                          Depsgraph *depsgraph,
-                          Scene *scene,
-                          Object *ob,
-                          const bool use_deform,
-                          const bool use_cage,
-                          bool *r_free_mesh)
+static const Mesh *bvh_get_mesh(const char *funcname,
+                                Depsgraph *depsgraph,
+                                Scene *scene,
+                                Object *ob,
+                                const bool use_deform,
+                                const bool use_cage,
+                                bool *r_free_mesh)
 {
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   /* we only need minimum mesh data for topology and vertex locations */
@@ -1050,7 +1053,7 @@ static Mesh *bvh_get_mesh(const char *funcname,
         return mesh_get_eval_deform(depsgraph, scene, ob_eval, &data_masks);
       }
 
-      return mesh_get_eval_final(depsgraph, scene, ob_eval, &data_masks);
+      return BKE_object_get_evaluated_mesh(ob_eval);
     }
 
     PyErr_Format(PyExc_ValueError,
@@ -1108,7 +1111,7 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
   Object *ob;
   Depsgraph *depsgraph;
   Scene *scene;
-  Mesh *mesh;
+  const Mesh *mesh;
   bool use_deform = true;
   bool use_cage = false;
   bool free_mesh = false;
@@ -1142,6 +1145,7 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
 
   const blender::Span<int> corner_verts = mesh->corner_verts();
   const blender::Span<MLoopTri> looptris = mesh->looptris();
+  const blender::Span<int> looptri_polys = mesh->looptri_polys();
 
   /* Get data for tessellation */
 
@@ -1182,14 +1186,14 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
       copy_v3_v3(co[2], coords[tris[i][2]]);
 
       BLI_bvhtree_insert(tree, int(i), co[0], 3);
-      orig_index[i] = int(looptris[i].poly);
+      orig_index[i] = int(looptri_polys[i]);
     }
 
     BLI_bvhtree_balance(tree);
   }
 
   if (free_mesh) {
-    BKE_id_free(nullptr, mesh);
+    BKE_id_free(nullptr, const_cast<Mesh *>(mesh));
   }
 
   return bvhtree_CreatePyObject(tree,
