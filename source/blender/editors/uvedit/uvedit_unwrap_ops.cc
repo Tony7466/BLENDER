@@ -1598,7 +1598,7 @@ static const EnumPropertyItem pack_shape_method_items[] = {
 };
 
 static const EnumPropertyItem pinned_islands_method_items[] = {
-    /* NOTE: ED_UVPACK_PIN_LOCK_NONE is exposed as a boolean "pin". */
+    /* NOTE: #ED_UVPACK_PIN_NONE is exposed as a boolean "pin". */
     {ED_UVPACK_PIN_LOCK_SCALE, "SCALE", 0, "Lock Scale", "Pinned islands won't rescale"},
     {ED_UVPACK_PIN_LOCK_ROTATION, "ROTATION", 0, "Lock Rotation", "Pinned islands won't rotate"},
     {ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
@@ -1701,8 +1701,12 @@ void UV_OT_pack_islands(wmOperatorType *ot)
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
   RNA_def_boolean(ot->srna, "pin", false, "Pin", "Restrict packing of pinned islands");
-  RNA_def_enum(
-      ot->srna, "pin_method", pinned_islands_method_items, ED_UVPACK_PIN_IGNORE, "Pin Method", "");
+  RNA_def_enum(ot->srna,
+               "pin_method",
+               pinned_islands_method_items,
+               ED_UVPACK_PIN_LOCK_ALL,
+               "Pin Method",
+               "");
   RNA_def_enum(ot->srna,
                "shape_method",
                pack_shape_method_items,

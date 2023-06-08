@@ -54,7 +54,7 @@ enum eUVPackIsland_PinMethod {
   ED_UVPACK_PIN_LOCK_ROTATION,
   ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
   ED_UVPACK_PIN_LOCK_SCALE,
-  /** Lock translation, rotation and scale. */
+  /** Lock the island in-place (translation, rotation and scale). */
   ED_UVPACK_PIN_LOCK_ALL,
 };
 
