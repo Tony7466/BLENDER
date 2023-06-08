@@ -232,7 +232,7 @@ static void sequencer_free(SpaceLink *sl)
 }
 
 /* Space-type init callback. */
-static void sequencer_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
+static void sequencer_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
 
 static void sequencer_refresh(const bContext *C, ScrArea *area)
 {
@@ -1064,7 +1064,7 @@ void ED_spacetype_sequencer(void)
   /* Toolbar. */
   art = MEM_callocN(sizeof(ARegionType), "spacetype sequencer tools region");
   art->regionid = RGN_TYPE_TOOLS;
-  art->prefsizex = 58; /* XXX */
+  art->prefsizex = (int)UI_TOOLBAR_WIDTH;
   art->prefsizey = 50; /* XXX */
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->message_subscribe = ED_region_generic_tools_region_message_subscribe;
