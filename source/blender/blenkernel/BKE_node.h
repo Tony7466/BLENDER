@@ -590,9 +590,10 @@ void ntreeClearSocketPanels(bNodeTree *ntree);
 
 /**
  * Move a socket panel up or down in the node tree.
- * \param index: Index to which to move the panel.
+ * \param from_index: Current index of the poanel to move.
+ * \param to_index: Index to which to move the panel.
  */
-void ntreeMoveSocketPanel(bNodeTree *ntree, bNodeSocketPanel *panel, int new_index);
+void ntreeMoveSocketPanel(bNodeTree *ntree, int from_index, int to_index);
 
 /** \} */
 

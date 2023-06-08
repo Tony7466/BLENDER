@@ -536,6 +536,8 @@ typedef struct bNodeLink {
 
 /** Panel in node tree for grouping sockets. */
 typedef struct bNodeSocketPanel {
+  struct bNodeSocketPanel *next, *prev;
+
   char *name;
   int flag;
   int identifier;
@@ -605,11 +607,9 @@ typedef struct bNodeTree {
   struct PreviewImage *preview;
 
   /* UI panels for sockets */
-  struct bNodeSocketPanel *socket_panels_array;
-  int socket_panels_num;
+  ListBase socket_panels;
   int active_socket_panel;
   int next_socket_panel_identifier;
-  char _pad2[4];
 
   bNodeTreeRuntimeHandle *runtime;
 
@@ -674,9 +674,6 @@ typedef struct bNodeTree {
   /** Inputs and outputs of the entire node group. */
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
-
-  blender::Span<bNodeSocketPanel> socket_panels() const;
-  blender::MutableSpan<bNodeSocketPanel> socket_panels_for_write();
 #endif
 } bNodeTree;
 
