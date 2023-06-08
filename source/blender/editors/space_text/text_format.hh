@@ -116,24 +116,22 @@ void ED_text_format_register_lua();
 void ED_text_format_register_pov();
 void ED_text_format_register_pov_ini();
 
-#define STR_LITERAL_STARTSWITH(str, str_literal, len_var) \
-  (strncmp(str, str_literal, len_var = (sizeof(str_literal) - 1)) == 0)
+struct keyword_info {
+  const char *keyword;
+  const int length;
+};
 
-/* Workaround `C1061` with MSVC (looks like a bug),
- * this can be removed if the issue is resolved.
- *
- * Add #MSVC_WORKAROUND_BREAK to break up else-if's blocks to be under 128.
- * `_keep_me` just ensures #MSVC_WORKAROUND_BREAK follows an #MSVC_WORKAROUND_INIT. */
-#ifdef _MSC_VER
-#  define MSVC_WORKAROUND_INIT(i) \
-    char _keep_me = 0; \
-    i = -1; \
-    ((void)0)
-#  define MSVC_WORKAROUND_BREAK(i) \
-    } \
-    ((void)_keep_me); \
-    if (i != -1) {
-#else
-#  define MSVC_WORKAROUND_INIT(i) ((void)0)
-#  define MSVC_WORKAROUND_BREAK(i)
-#endif
+#define KEYWORD_INFO(str_literal) \
+  { \
+    str_literal, sizeof(str_literal) - 1 \
+  }
+
+template<size_t N> int find_keyword_length(const keyword_info (&keywords)[N], const char *string)
+{
+  for (const keyword_info &keyword : keywords) {
+    if (strncmp(string, keyword.keyword, keyword.length) == 0) {
+      return keyword.length;
+    }
+  }
+  return 0;
+}
