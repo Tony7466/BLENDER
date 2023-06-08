@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -104,11 +105,20 @@ typedef enum eWinOverrideFlag {
  * These values are typically set by command line arguments.
  */
 static struct WMInitStruct {
-  /* window geometry */
+  /**
+   * Window geometry:
+   * - Defaults to the main screen-size.
+   * - May be set by the `--window-geometry` argument,
+   *   which also forces these values to be used by setting #WIN_OVERRIDE_GEOM.
+   * - When #wmWindow::size_x is zero, these values are used as a fallback,
+   *   needed so the #BLENDER_STARTUP_FILE loads at the size of the users main-screen
+   *   instead of the size stored in the factory startup.
+   *   Otherwise the window geometry saved in the blend-file is used and these values are ignored.
+   */
   int size_x, size_y;
   int start_x, start_y;
 
-  int windowstate;
+  GHOST_TWindowState windowstate;
   eWinOverrideFlag override_flag;
 
   bool window_focus;
@@ -734,7 +744,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     /* Clear double buffer to avoids flickering of new windows on certain drivers. (See #97600) */
     GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
 
-    // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
     GPU_render_end();
   }
   else {
@@ -1234,7 +1243,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
     /* Ghost now can call this function for life resizes,
      * but it should return if WM didn't initialize yet.
      * Can happen on file read (especially full size window). */
-    if ((wm->initialized & WM_WINDOW_IS_INIT) == 0) {
+    if ((wm->init_flag & WM_INIT_FLAG_WINDOW) == 0) {
       return true;
     }
     if (!ghostwin) {
@@ -1677,7 +1686,7 @@ void wm_ghost_init(bContext *C)
     /* GHOST will have reported the back-ends that failed to load. */
     fprintf(stderr, "GHOST: unable to initialize, exiting!\n");
     /* This will leak memory, it's preferable to crashing. */
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 #if !(defined(WIN32) || defined(__APPLE__))
   g_system_backend_id = GHOST_SystemBackend();
@@ -1769,9 +1778,7 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
   return GHOST_kDrawingContextTypeNone;
 }
 
-static uiBlock *block_create_opengl_usage_warning(struct bContext *C,
-                                                  struct ARegion *region,
-                                                  void *UNUSED(arg1))
+static uiBlock *block_create_opengl_usage_warning(bContext *C, ARegion *region, void *UNUSED(arg1))
 {
   uiBlock *block = UI_block_begin(C, region, "autorun_warning_popup", UI_EMBOSS);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
@@ -2243,7 +2250,7 @@ wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mv
   return win_other;
 }
 
-wmWindow *WM_window_find_by_area(wmWindowManager *wm, const struct ScrArea *area)
+wmWindow *WM_window_find_by_area(wmWindowManager *wm, const ScrArea *area)
 {
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     bScreen *sc = WM_window_get_active_screen(win);
