@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-set(temp_LIBDIR ${msys2_LIBDIR})
-
 if(NOT WIN32)
+  set(temp_LIBDIR ${LIBDIR})
   set(LIBDIR_FLAG "-L")
 else()
+  set(temp_LIBDIR ${msys2_LIBDIR})
   set(LIBDIR_FLAG "-LIBPATH:")
 endif()
 
@@ -33,6 +33,8 @@ ${LIBDIR_FLAG}${temp_LIBDIR}/zlib/lib \
 ${LIBDIR_FLAG}${temp_LIBDIR}/aom/lib"
 )
 
+set(FFMPEG_PATCH_FILE)
+
 if(WIN32)
   set(FFMPEG_CFLAGS "\
   ${FFMPEG_CFLAGS} \
@@ -46,6 +48,16 @@ if(WIN32)
   ${FFMPEG_LDFLAGS} \
   ${LIBDIR_FLAG}${temp_LIBDIR}/openjpeg_msvc/lib \
   ucrt.lib")
+
+  # As we now use MSVC on windows, pkgconfig is not really a viable option for many packages
+  # so this patch removes those checks in favour of looking for the libs directly.
+  set(FFMPEG_PATCH_FILE ${PATCH_DIR}/ffmpeg_windows.diff)
+else()
+  # OpenJpeg is compiled with pthread support on Linux, which is all fine and is what we
+  # want for maximum runtime performance, but due to static nature of that library we
+  # need to force ffmpeg to link against pthread, otherwise test program used by autoconf
+  # will fail. This patch does that in a way that is compatible with multiple distributions.
+  set(FFMPEG_PATCH_FILE ${PATCH_DIR}/ffmpeg.diff)
 endif()
 
 set(FFMPEG_EXTRA_FLAGS
@@ -54,6 +66,7 @@ set(FFMPEG_EXTRA_FLAGS
   --extra-ldflags=${FFMPEG_LDFLAGS}
 )
 
+set(FFMPEG_ENV)
 if(NOT WIN32)
 set(FFMPEG_ENV "PKG_CONFIG_PATH=\
 ${temp_LIBDIR}/openjpeg/lib/pkgconfig:\
@@ -132,15 +145,11 @@ ExternalProject_Add(external_ffmpeg
   URL file://${PACKAGE_DIR}/${FFMPEG_FILE}
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
   URL_HASH ${FFMPEG_HASH_TYPE}=${FFMPEG_HASH}
-  # OpenJpeg is compiled with pthread support on Linux, which is all fine and is what we
-  # want for maximum runtime performance, but due to static nature of that library we
-  # need to force ffmpeg to link against pthread, otherwise test program used by autoconf
-  # will fail. This patch does that in a way that is compatible with multiple distributions.
-  PATCH_COMMAND ${PATCH_CMD} --verbose -p 1 -N -d ${BUILD_DIR}/ffmpeg/src/external_ffmpeg < ${PATCH_DIR}/ffmpeg.diff
+  PATCH_COMMAND ${PATCH_CMD} --verbose -p 1 -N -d ${BUILD_DIR}/ffmpeg/src/external_ffmpeg < ${FFMPEG_PATCH_FILE}
   PREFIX ${BUILD_DIR}/ffmpeg
   CONFIGURE_COMMAND ${FFMPEG_CONFIGURE_COMMAND} &&
     cd ${BUILD_DIR}/ffmpeg/src/external_ffmpeg/ &&
-    ${CONFIGURE_COMMAND_NO_TARGET} ${FFMPEG_EXTRA_FLAGS}
+    ${FFMPEG_ENV} ${CONFIGURE_COMMAND_NO_TARGET} ${FFMPEG_EXTRA_FLAGS}
     --disable-lzma
     --disable-avfilter
     --disable-vdpau
@@ -207,6 +216,7 @@ add_dependencies(
   external_vorbis
   external_ogg
   external_lame
+  external_aom
   external_sndfile
   external_flac
 )
