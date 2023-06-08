@@ -63,6 +63,9 @@ typedef struct {
 
 #ifdef __cplusplus
 struct CDCopyInfo {
+  const CustomData *source_data;
+  CustomData *dest_data;
+
   struct CDPair {
     const CustomDataLayer *source;
     CustomDataLayer *dest;
@@ -839,6 +842,8 @@ CDCopyInfo get_copyinfo(const CustomData *source,
                         eCustomDataMask mask_exclude,
                         bool respect_nocopy_flag,
                         std::function<bool(const CustomDataLayer &)> filter_cb);
+
+void bmesh_copy_data(CDCopyInfo &info, const void *source, void **dest);
 
 }  // namespace blender::bke::customdata
 

@@ -5424,6 +5424,9 @@ CDCopyInfo get_copyinfo(const CustomData *source,
 {
   CDCopyInfo info;
 
+  info.source_data = source;
+  info.dest_data = dest;
+
   for (const CustomDataLayer &layer_src : Span<CustomDataLayer>(source->layers, source->totlayer))
   {
     if (mask_exclude != 0ULL && !(CD_TYPE_AS_MASK(layer_src.type) & mask_exclude)) {
@@ -5460,5 +5463,32 @@ CDCopyInfo get_copyinfo(const CustomData *source,
   }
 
   return info;
+}
+void bmesh_copy_data(CDCopyInfo &info, const void *source, void **dest)
+{
+  if (info.dest_data->totsize == 0) {
+    return;
+  }
+
+  if (!*dest) {
+    *dest = BLI_mempool_calloc(info.dest_data->pool);
+  }
+
+  for (CDCopyInfo::CDPair &pair : info.layers) {
+    const LayerTypeInfo *type_info = layerType_getInfo(eCustomDataType(pair.source->type));
+    const void *source_ptr = POINTER_OFFSET(source, pair.source->offset);
+    void *dest_ptr = POINTER_OFFSET(*dest, pair.dest->offset);
+
+    if (type_info->copy) {
+      type_info->copy(source_ptr, dest_ptr, 1);
+    }
+    else {
+      memcpy(dest_ptr, source_ptr, type_info->size);
+    }
+  }
+
+  for (CustomDataLayer *layer : info.dest_layers_other) {
+    CustomData_bmesh_set_default_n(info.dest_data, dest, int(layer - info.dest_data->layers));
+  }
 }
 }  // namespace blender::bke::customdata
