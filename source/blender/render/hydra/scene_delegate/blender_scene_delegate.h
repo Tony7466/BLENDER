@@ -11,7 +11,7 @@
 
 #include "CLG_log.h"
 
-#include "BLI_set.hh"
+#include "BLI_map.hh"
 #include "curves.h"
 #include "instancer.h"
 #include "light.h"
@@ -34,6 +34,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
  public:
   struct Settings {
     pxr::TfToken mx_filename_key;
+    Map<pxr::TfToken, pxr::VtValue> render_tokens;
   };
 
   BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,

@@ -4,6 +4,7 @@
 #include <bitset>
 
 #include "BKE_object.h"
+#include "BLI_set.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_scene_types.h"
 
@@ -235,6 +236,9 @@ void BlenderSceneDelegate::set_setting(const std::string &key, const pxr::VtValu
 {
   if (key == "MaterialXFilenameKey") {
     settings.mx_filename_key = pxr::TfToken(val.Get<std::string>());
+  }
+  else {
+    settings.render_tokens.add_overwrite(pxr::TfToken(key), val);
   }
 }
 

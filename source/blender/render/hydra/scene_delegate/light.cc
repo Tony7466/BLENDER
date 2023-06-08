@@ -144,17 +144,12 @@ pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
   if (it != data_.end()) {
     return pxr::VtValue(it->second);
   }
-  else {
-    std::string n = key.GetString();
-    if (boost::algorithm::contains(n, "object:visibility:")) {
-      if (boost::algorithm::ends_with(n, "camera") || boost::algorithm::ends_with(n, "shadow")) {
-        return pxr::VtValue(false);
-      }
-      else {
-        return pxr::VtValue(true);
-      }
-    }
+
+  pxr::VtValue *ret_ptr = scene_delegate_->settings.render_tokens.lookup_ptr(key);
+  if (ret_ptr) {
+    return *ret_ptr;
   }
+
   return pxr::VtValue();
 }
 

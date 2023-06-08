@@ -17,6 +17,13 @@ template<> struct blender::DefaultHash<pxr::SdfPath> {
   }
 };
 
+template<> struct blender::DefaultHash<pxr::TfToken> {
+  uint64_t operator()(const pxr::TfToken &value) const
+  {
+    return pxr::TfHash()(value);
+  }
+};
+
 namespace blender::render::hydra {
 
 class BlenderSceneDelegate;
