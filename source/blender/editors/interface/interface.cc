@@ -52,6 +52,7 @@
 #include "BLT_translation.h"
 
 #include "UI_interface.h"
+#include "UI_interface.hh"
 #include "UI_interface_icons.h"
 #include "UI_view2d.h"
 
@@ -2204,7 +2205,7 @@ int ui_but_is_pushed_ex(uiBut *but, double *value)
 {
   int is_push = 0;
   if (but->pushed_state_func) {
-    return but->pushed_state_func(but, but->pushed_state_arg);
+    return but->pushed_state_func(*but);
   }
 
   if (but->bit) {
@@ -2551,7 +2552,7 @@ double ui_but_value_get(uiBut *but)
   if (but->rnaprop) {
     PropertyRNA *prop = but->rnaprop;
 
-    BLI_assert(RNA_property_array_check(prop) ? but->rnaindex != -1 : true);
+    BLI_assert(but->rnaindex != -1);
 
     switch (RNA_property_type(prop)) {
       case PROP_BOOLEAN:
@@ -4721,7 +4722,7 @@ static uiBut *ui_def_but_rna(uiBlock *block,
     but->rnaindex = index;
   }
   else {
-    but->rnaindex = -1;
+    but->rnaindex = 0;
   }
 
   if (icon) {
@@ -6089,10 +6090,9 @@ void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *arg, uiFre
   but->tip_arg_free = free_arg;
 }
 
-void UI_but_func_pushed_state_set(uiBut *but, uiButPushedStateFunc func, const void *arg)
+void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)> func)
 {
   but->pushed_state_func = func;
-  but->pushed_state_arg = arg;
   ui_but_update(but);
 }
 

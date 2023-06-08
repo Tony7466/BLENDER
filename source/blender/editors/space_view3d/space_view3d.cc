@@ -435,6 +435,13 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
   keymap = WM_keymap_ensure(wm->defaultconf, "Sculpt Curves", 0, 0);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
+  /* Note: Grease Pencil handlers used to be added using `ED_KEYMAP_GPENCIL` in
+   * `ed_default_handlers` because it needed to be added to multiple editors (as other editors use
+   * annotations.). But for OB_GREASE_PENCIL, we only need it to register the keymaps for the
+   * 3D View. */
+  keymap = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Edit Mode", 0, 0);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
   /* editfont keymap swallows all... */
   keymap = WM_keymap_ensure(wm->defaultconf, "Font", 0, 0);
   WM_event_add_keymap_handler(&region->handlers, keymap);
@@ -2165,7 +2172,7 @@ void ED_spacetype_view3d()
   /* regions: tool(bar) */
   art = MEM_cnew<ARegionType>("spacetype view3d tools region");
   art->regionid = RGN_TYPE_TOOLS;
-  art->prefsizex = 58; /* XXX */
+  art->prefsizex = int(UI_TOOLBAR_WIDTH);
   art->prefsizey = 50; /* XXX */
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->listener = view3d_buttons_region_listener;
