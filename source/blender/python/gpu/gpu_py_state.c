@@ -256,10 +256,9 @@ PyDoc_STRVAR(pygpu_state_scissor_get_doc,
              "   Retrieve the scissors of the active framebuffer.\n"
              "   Note: Only valid between 'scissor_set' and a framebuffer rebind.\n"
              "\n"
-             "   :return: The scissor of the active framebuffer as a tuple\n"
-             "        (x, y, xsize, ysize).\n"
-             "        x, y: lower left corner of the scissor rectangle, in pixels.\n"
-             "        xsize, ysize: width and height of the scissor rectangle.\n"
+             "   :return: The scissor (x, y, xsize, ysize) of the active framebuffer, where\n"
+             "       - x, y: lower left corner of the scissor rectangle, in pixels.\n"
+             "       - xsize, ysize: width and height of the scissor rectangle.\n"
              "   :rtype: tuple(int, int, int, int)\n");
 static PyObject *pygpu_state_scissor_get(PyObject *UNUSED(self), PyObject *UNUSED(args))
 {
@@ -334,9 +333,7 @@ PyDoc_STRVAR(pygpu_state_depth_range_get_doc,
              "\n"
              "   Current mapping of depth values from normalized device coordinates to window coordinates.\n"
              "\n"
-             "   :return: The depth range as a tuple\n"
-             "        (near, far).\n"
-             "        near, far: Mapping of the near and far.\n"
+             "   :return: The values (near, far) in window coordinates.\n"
              "   :rtype: tuple(float, float)\n");
 static PyObject *pygpu_state_depth_range_get(PyObject *UNUSED(self))
 {
