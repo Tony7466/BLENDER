@@ -56,9 +56,11 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
     ls->P = ls->Ng * klight->spot.radius + klight->co;
   }
 
-  const float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
+  const Transform itfm = klight->itfm;
+  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
+  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
+  ls->u = uv.y;
+  ls->v = 1.0f - uv.x - uv.y;
 
   return true;
 }
@@ -104,9 +106,11 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
     /* PDF does not change. */
   }
 
-  const float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
+  const Transform itfm = klight->itfm;
+  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
+  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
+  ls->u = uv.y;
+  ls->v = 1.0f - uv.x - uv.y;
 }
 
 ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *klight,
@@ -137,9 +141,11 @@ ccl_device_inline bool point_light_sample_from_intersection(
 
   ls->Ng = radius > 0 ? normalize(ls->P - klight->co) : -ray_D;
 
-  const float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
+  const Transform itfm = klight->itfm;
+  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
+  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
+  ls->u = uv.y;
+  ls->v = 1.0f - uv.x - uv.y;
 
   if (ls->t == FLT_MAX) {
     ls->pdf = 0.0f;
