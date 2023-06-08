@@ -29,6 +29,8 @@ static void test_eevee_shadow_shift_clear()
 {
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
+  ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
+  ShadowPageCacheBuf pages_cached_data_ = {"pages_cached_data_"};
 
   int tiles_index = 1;
   int tile_lod0 = tiles_index * SHADOW_TILEDATA_PER_TILEMAP + 5;
@@ -65,7 +67,9 @@ static void test_eevee_shadow_shift_clear()
   PassSimple pass("Test");
   pass.shader_set(sh);
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
+  pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
   pass.bind_ssbo("tiles_buf", tiles_data);
+  pass.bind_ssbo("pages_cached_buf", pages_cached_data_);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
 
   Manager manager;
@@ -92,6 +96,8 @@ static void test_eevee_shadow_shift()
 {
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
+  ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
+  ShadowPageCacheBuf pages_cached_data_ = {"pages_cached_data_"};
 
   {
     ShadowTileMapData tilemap = {};
@@ -126,7 +132,9 @@ static void test_eevee_shadow_shift()
   PassSimple pass("Test");
   pass.shader_set(sh);
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
+  pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
   pass.bind_ssbo("tiles_buf", tiles_data);
+  pass.bind_ssbo("pages_cached_buf", pages_cached_data_);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
 
   Manager manager;
@@ -459,6 +467,8 @@ class TestDefrag {
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
+  StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
 
  public:
   TestDefrag(int allocation_count,
@@ -527,6 +537,8 @@ class TestDefrag {
     pass.bind_ssbo("pages_infos_buf", pages_infos_data);
     pass.bind_ssbo("pages_free_buf", pages_free_data);
     pass.bind_ssbo("pages_cached_buf", pages_cached_data);
+    pass.bind_ssbo("statistics_buf", statistics_buf);
+    pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
     pass.dispatch(int3(1, 1, 1));
 
     Manager manager;
@@ -591,6 +603,7 @@ class TestAlloc {
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
+  ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
 
  public:
   TestAlloc(int page_free_count)
@@ -648,6 +661,7 @@ class TestAlloc {
     pass.bind_ssbo("pages_infos_buf", pages_infos_data);
     pass.bind_ssbo("pages_free_buf", pages_free_data);
     pass.bind_ssbo("pages_cached_buf", pages_cached_data);
+    pass.bind_ssbo("statistics_buf", statistics_buf);
     pass.dispatch(int3(1, 1, tilemaps_data.size()));
 
     Manager manager;
@@ -685,6 +699,8 @@ static void test_eevee_shadow_finalize()
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
+  ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
+  ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
 
   const uint lod0_len = SHADOW_TILEMAP_LOD0_LEN;
   const uint lod1_len = SHADOW_TILEMAP_LOD1_LEN;
@@ -767,7 +783,7 @@ static void test_eevee_shadow_finalize()
   Texture render_map_tx = {"ShadowRenderMap",
                            GPU_R32UI,
                            GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_SHADER_READ |
-                               GPU_TEXTURE_USAGE_SHADER_WRITE,
+                               GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
                            int2(SHADOW_TILEMAP_RES),
                            1, /* Only one layer for the test. */
                            nullptr,
@@ -789,6 +805,8 @@ static void test_eevee_shadow_finalize()
   pass.bind_ssbo("view_infos_buf", shadow_multi_view.matrices_ubo_get());
   pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
   pass.bind_ssbo("clear_page_buf", clear_page_buf);
+  pass.bind_ssbo("statistics_buf", statistics_buf);
+  pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
   pass.bind_image("render_map_lod0_img", render_map_tx.mip_view(0));
   pass.bind_image("render_map_lod1_img", render_map_tx.mip_view(1));
   pass.bind_image("render_map_lod2_img", render_map_tx.mip_view(2));
