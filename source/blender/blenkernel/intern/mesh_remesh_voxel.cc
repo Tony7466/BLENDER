@@ -361,6 +361,7 @@ void BKE_remesh_reproject_sculpt_face_sets(Mesh *target, const Mesh *source)
 
 void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   using namespace blender;
   using namespace blender::bke;
   const AttributeAccessor src_attributes = source->attributes();
@@ -384,8 +385,19 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     return;
   }
 
+  MeshElemMap *source_lmap = nullptr;
+  int *source_lmap_mem = nullptr;
   BVHTreeFromMesh bvhtree = {nullptr};
-  BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_VERTS, 2);
+  threading::parallel_invoke(
+      !corner_ids.is_empty(),
+      [&]() { BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_VERTS, 2); },
+      [&]() {
+        BKE_mesh_vert_loop_map_create(&source_lmap,
+                                      &source_lmap_mem,
+                                      source->polys(),
+                                      source->corner_verts().data(),
+                                      source->totvert);
+      });
 
   const Span<float3> target_positions = target->vert_positions();
   Array<int> nearest_src_verts(target_positions.size());
@@ -411,11 +423,36 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   if (!corner_ids.is_empty()) {
     Array<int> src_indices(target->totloop);
     array_utils::gather<int>(nearest_src_verts, target->corner_verts(), src_indices);
+
     for (const AttributeIDRef &id : corner_ids) {
-      const GVArraySpan src = *src_attributes.lookup(id, ATTR_DOMAIN_POINT);
+      const GVArraySpan src = *src_attributes.lookup(id, ATTR_DOMAIN_CORNER);
+
+      /* Manually interpolate domain from source corners to vertices to avoid single threaded
+       * interpolation in attribute API. */
+      GArray<> src_vert(src.type(), source->totvert);
+      threading::parallel_for(IndexRange(source->totvert), 1024, [&](const IndexRange range) {
+        src.type().to_static_type_tag<ColorGeometry4b, ColorGeometry4f>([&](auto type_tag) {
+          using T = typename decltype(type_tag)::type;
+          if constexpr (std::is_void_v<T>) {
+            BLI_assert_unreachable();
+          }
+          else {
+            const Span<T> src_typed = src.typed<T>();
+            MutableSpan<T> src_vert_typed = src_vert.as_mutable_span().typed<T>();
+            for (const int i : range) {
+
+              attribute_math::DefaultMixer<T> mixer(src_vert_typed.slice(i, 1));
+              for (const int corner : Span(source_lmap[i].indices, source_lmap[i].count)) {
+                mixer.mix_in(0, src_typed[corner]);
+              }
+            }
+          }
+        });
+      });
+
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
           id, ATTR_DOMAIN_CORNER, cpp_type_to_custom_data_type(src.type()));
-      attribute_math::gather(src, src_indices, dst.span);
+      attribute_math::gather(src_vert, src_indices, dst.span);
       dst.finish();
     }
   }
@@ -430,6 +467,8 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     target->default_color_attribute = BLI_strdup(source->default_color_attribute);
   }
 
+  MEM_SAFE_FREE(source_lmap);
+  MEM_SAFE_FREE(source_lmap_mem);
   free_bvhtree_from_mesh(&bvhtree);
 }
 
