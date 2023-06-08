@@ -218,13 +218,17 @@ void MTLStorageBuf::clear(uint32_t clear_value)
   }
 
   if (ctx) {
-    /* For byte values, we can use fillBuffer for fast clearing. */
-    if (clear_value <= 0xFF) {
+    /* If all 4 bytes within clear value are equal, use the builtin fast-path for clearing. */
+    uint clear_byte = clear_value & 0xFF;
+    bool clear_value_bytes_equal = (clear_byte == (clear_value >> 8) & 0xFF) &&
+                                   (clear_byte == (clear_value >> 16) & 0xFF) &&
+                                   (clear_byte == (clear_value >> 24) & 0xFF);
+    if (clear_value_bytes_equal) {
       id<MTLBlitCommandEncoder> blit_encoder =
           ctx->main_command_buffer.ensure_begin_blit_encoder();
       [blit_encoder fillBuffer:metal_buffer_->get_metal_buffer()
                          range:NSMakeRange(0, size_in_bytes_)
-                         value:clear_value];
+                         value:clear_byte];
     }
     else {
       /* We need a special compute routine to update 32 bit values efficiently. */
