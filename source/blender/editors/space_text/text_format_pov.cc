@@ -6,7 +6,7 @@
  * \ingroup sptext
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_blenlib.h"
 
@@ -15,7 +15,7 @@
 
 #include "BKE_text.h"
 
-#include "text_format.h"
+#include "text_format.hh"
 
 /* *** POV Keywords (for format_line) *** */
 
@@ -772,7 +772,7 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
   int len, i;
 
   /* Get continuation from previous line */
-  if (line->prev && line->prev->format != NULL) {
+  if (line->prev && line->prev->format != nullptr) {
     fmt = line->prev->format;
     cont = fmt[strlen(fmt) + 1]; /* Just after the null-terminator */
     BLI_assert((FMT_CONT_ALL & cont) == cont);
@@ -782,7 +782,7 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
   }
 
   /* Get original continuation from this line */
-  if (line->format != NULL) {
+  if (line->format != nullptr) {
     fmt = line->format;
     cont_orig = fmt[strlen(fmt) + 1]; /* Just after the null-terminator */
     BLI_assert((FMT_CONT_ALL & cont_orig) == cont_orig);
@@ -851,7 +851,7 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
       }
       /* Single line comment */
       else if (*str == '/' && *(str + 1) == '/') {
-        text_format_fill(&str, &fmt, FMT_TYPE_COMMENT, len - (int)(fmt - line->format));
+        text_format_fill(&str, &fmt, FMT_TYPE_COMMENT, len - int(fmt - line->format));
       }
       else if (ELEM(*str, '"', '\'')) {
         /* Strings */
@@ -931,10 +931,10 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
   flatten_string_free(&fs);
 }
 
-void ED_text_format_register_pov(void)
+void ED_text_format_register_pov()
 {
-  static TextFormatType tft = {NULL};
-  static const char *ext[] = {"pov", "inc", "mcr", "mac", NULL};
+  static TextFormatType tft = {nullptr};
+  static const char *ext[] = {"pov", "inc", "mcr", "mac", nullptr};
 
   tft.format_identifier = txtfmt_pov_format_identifier;
   tft.format_line = txtfmt_pov_format_line;
