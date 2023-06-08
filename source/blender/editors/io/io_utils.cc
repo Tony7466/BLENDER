@@ -74,8 +74,7 @@ void files_drop_label_draw(bContext *C, wmOperator *op, int icon, const char *ex
   RNA_string_get(op->ptr, "filepath", label);
 
   if (RNA_struct_find_property(op->ptr, "directory") &&
-      RNA_collection_length(op->ptr, "files") > 1)
-  {
+      RNA_collection_length(op->ptr, "files") > 1) {
     sprintf(label, "%d %s files dropped.", RNA_collection_length(op->ptr, "files"), extension);
   }
 

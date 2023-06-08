@@ -61,7 +61,6 @@
 #include "io_ops.h"
 #include "io_ops_dropbox.h"
 
-
 void ED_spacetypes_init(void)
 {
   /* UI unit is a variable, may be used in some space type initialization. */
