@@ -9,7 +9,9 @@
 #pragma once
 
 #include "gpu_texture_private.hh"
+
 #include "vk_context.hh"
+#include "vk_image_view.hh"
 
 namespace blender::gpu {
 
@@ -17,8 +19,10 @@ class VKSampler;
 
 class VKTexture : public Texture {
   VkImage vk_image_ = VK_NULL_HANDLE;
-  VkImageView vk_image_view_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
+
+  /* Image view when used in a shader. */
+  std::optional<VKImageView> image_view_;
 
   /* Last image layout of the texture. Frame-buffer and barriers can alter/require the actual
    * layout to be changed. During this it requires to set the current layout in order to know which
@@ -127,17 +131,16 @@ class VKTexture : public Texture {
   /** \name Mipmapping
    * \{ */
  public:
-  VkImageView vk_image_view_handle()
+  VKImageView &image_view_get()
   {
     vk_image_view_ensure();
-    return vk_image_view_;
+    return *image_view_;
   }
 
  private:
   IndexRange mip_map_range() const;
   void vk_image_view_ensure();
-  void vk_image_view_free();
-  void vk_image_view_create();
+  void image_view_update();
 
   /** \} */
 };

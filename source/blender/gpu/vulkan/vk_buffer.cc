@@ -131,7 +131,9 @@ void VKBuffer::unmap()
   BLI_assert(is_mapped());
   const VKDevice &device = VKBackend::get().device_get();
   VmaAllocator allocator = device.mem_allocator_get();
-  vmaUnmapMemory(allocator, allocation_);
+  if (allocator != VK_NULL_HANDLE) {
+    vmaUnmapMemory(allocator, allocation_);
+  }
   mapped_memory_ = nullptr;
 }
 
@@ -143,7 +145,9 @@ bool VKBuffer::free()
 
   const VKDevice &device = VKBackend::get().device_get();
   VmaAllocator allocator = device.mem_allocator_get();
-  vmaDestroyBuffer(allocator, vk_buffer_, allocation_);
+  if (allocator != VK_NULL_HANDLE) {
+    vmaDestroyBuffer(allocator, vk_buffer_, allocation_);
+  }
   return true;
 }
 

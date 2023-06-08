@@ -25,11 +25,9 @@ namespace blender::gpu {
 
 VKTexture::~VKTexture()
 {
-  VK_ALLOCATION_CALLBACKS
   if (is_allocated()) {
     const VKDevice &device = VKBackend::get().device_get();
     vmaDestroyImage(device.mem_allocator_get(), vk_image_, allocation_);
-    vkDestroyImageView(device.device_get(), vk_image_view_, vk_allocation_callbacks);
   }
 }
 
@@ -526,26 +524,13 @@ void VKTexture::layout_ensure(VKContext &context,
 void VKTexture::vk_image_view_ensure()
 {
   if (flags_ & IMAGE_VIEW_DIRTY) {
-    vk_image_view_free();
-    vk_image_view_create();
+    image_view_update();
     flags_ &= ~IMAGE_VIEW_DIRTY;
   }
-  BLI_assert(vk_image_view_ != VK_NULL_HANDLE);
 }
 
-void VKTexture::vk_image_view_free()
+void VKTexture::image_view_update()
 {
-  if (vk_image_view_ != VK_NULL_HANDLE) {
-    VK_ALLOCATION_CALLBACKS
-    const VKDevice &device = VKBackend::get().device_get();
-    vkDestroyImageView(device.device_get(), vk_image_view_, vk_allocation_callbacks);
-    vk_image_view_ = VK_NULL_HANDLE;
-  }
-}
-
-void VKTexture::vk_image_view_create()
-{
-  BLI_assert(vk_image_view_ == VK_NULL_HANDLE);
   VK_ALLOCATION_CALLBACKS
   VkImageViewCreateInfo image_view_info = {};
   image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -560,9 +545,10 @@ void VKTexture::vk_image_view_create()
   image_view_info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
   const VKDevice &device = VKBackend::get().device_get();
-  vkCreateImageView(
-      device.device_get(), &image_view_info, vk_allocation_callbacks, &vk_image_view_);
-  debug::object_label(vk_image_view_, name_);
+  VkImageView image_view = VK_NULL_HANDLE;
+  vkCreateImageView(device.device_get(), &image_view_info, vk_allocation_callbacks, &image_view);
+  debug::object_label(image_view, name_);
+  image_view_.emplace(image_view);
 }
 
 IndexRange VKTexture::mip_map_range() const
