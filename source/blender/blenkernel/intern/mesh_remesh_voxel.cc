@@ -361,7 +361,6 @@ void BKE_remesh_reproject_sculpt_face_sets(Mesh *target, const Mesh *source)
 
 void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   using namespace blender;
   using namespace blender::bke;
   const AttributeAccessor src_attributes = source->attributes();
@@ -445,6 +444,7 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
             const Span<T> src_typed = src.typed<T>();
             MutableSpan<T> dst_typed = dst.span.typed<T>();
             for (const int dst_vert : range) {
+              /* Find the average value at the corners of the closest vertex on the source mesh. */
               const int src_vert = nearest_src_verts[dst_vert];
               T value;
               attribute_math::DefaultMixer<T> mixer({&value, 1});
@@ -452,6 +452,7 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
                    Span(source_lmap[src_vert].indices, source_lmap[src_vert].count)) {
                 mixer.mix_in(0, src_typed[corner]);
               }
+
               const Span<int> dst_corners(target_lmap[dst_vert].indices,
                                           target_lmap[dst_vert].count);
               dst_typed.fill_indices(dst_corners, value);
