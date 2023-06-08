@@ -318,9 +318,9 @@ template<> struct TypeTraits<float> {
   using DoublePrecision = double;
 };
 
-/** \} */
-
 using Quaternion = QuaternionBase<float>;
 using DualQuaternion = DualQuaternionBase<float>;
+
+/** \} */
 
 }  // namespace blender::math
