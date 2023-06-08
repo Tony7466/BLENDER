@@ -390,7 +390,6 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   int *target_lmap_mem = nullptr;
   BVHTreeFromMesh bvhtree = {nullptr};
   threading::parallel_invoke(
-      !corner_ids.is_empty(),
       [&]() { BKE_bvhtree_from_mesh_get(&bvhtree, source, BVHTREE_FROM_VERTS, 2); },
       [&]() {
         BKE_mesh_vert_loop_map_create(&source_lmap,
