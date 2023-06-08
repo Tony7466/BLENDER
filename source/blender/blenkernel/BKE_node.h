@@ -562,6 +562,18 @@ void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodeSock
  * \{ */
 
 /**
+ * Check if a panel is part of the node tree.
+ * \return True if the panel is part of the node tree.
+ */
+bool ntreeContainsSocketPanel(const bNodeTree *ntree, const bNodeSocketPanel *panel);
+
+/**
+ * Index of a panel in the node tree.
+ * \return Index of the panel in the node tree or -1 if the tree does not contain the panel.
+ */
+int ntreeGetSocketPanelIndex(const bNodeTree *ntree, const bNodeSocketPanel *panel);
+
+/**
  * Find a socket panel by its unique ID.
  * \param id: Unique ID of the panel within the node tree.
  */

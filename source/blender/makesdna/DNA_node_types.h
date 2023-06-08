@@ -605,7 +605,7 @@ typedef struct bNodeTree {
   struct PreviewImage *preview;
 
   /* UI panels for sockets */
-  struct bNodeSocketPanel *socket_panels_array;
+  struct bNodeSocketPanel **socket_panels_array;
   int socket_panels_num;
   int active_socket_panel;
   int next_socket_panel_identifier;
@@ -675,8 +675,8 @@ typedef struct bNodeTree {
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<bNodeSocketPanel> socket_panels() const;
-  blender::MutableSpan<bNodeSocketPanel> socket_panels_for_write();
+  blender::Span<bNodeSocketPanel *> socket_panels() const;
+  blender::MutableSpan<bNodeSocketPanel *> socket_panels_for_write();
 #endif
 } bNodeTree;
 
