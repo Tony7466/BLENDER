@@ -131,13 +131,12 @@ void WorldData::update(World *world)
 
 pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
 {
-  pxr::VtValue ret;
   auto it = data_.find(key);
   if (it != data_.end()) {
-    ret = it->second;
     ID_LOG(3, "%s", key.GetText());
+    return pxr::VtValue(it->second);
   }
-  return ret;
+  return pxr::VtValue();
 }
 
 void WorldData::write_transform()

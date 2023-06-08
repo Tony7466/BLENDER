@@ -20,16 +20,6 @@
 
 namespace blender::render::hydra {
 
-static PyObject *init_func(PyObject * /*self*/, PyObject *args)
-{
-  CLOG_INFO(LOG_RENDER_HYDRA, 0, "Init");
-
-  pxr::PlugRegistry::GetInstance().RegisterPlugins(std::string(BKE_appdir_program_dir()) +
-                                                   "/blender.shared/usd");
-
-  Py_RETURN_NONE;
-}
-
 static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
 {
   PyObject *pyplugin_dirs;
@@ -62,41 +52,6 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
   CLOG_INFO(LOG_RENDER_HYDRA, 0, "Register %s", ss.str().c_str());
 
   Py_RETURN_NONE;
-}
-
-static PyObject *get_render_plugins_func(PyObject * /*self*/, PyObject *args)
-{
-  pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
-  pxr::TfTokenVector plugin_ids = pxr::UsdImagingGLEngine::GetRendererPlugins();
-  PyObject *ret = PyTuple_New(plugin_ids.size());
-  PyObject *val;
-  for (int i = 0; i < plugin_ids.size(); ++i) {
-    PyObject *descr = PyDict_New();
-
-    PyDict_SetItemString(descr, "id", val = PyUnicode_FromString(plugin_ids[i].GetText()));
-    Py_DECREF(val);
-
-    PyDict_SetItemString(
-        descr,
-        "name",
-        val = PyUnicode_FromString(
-            pxr::UsdImagingGLEngine::GetRendererDisplayName(plugin_ids[i]).c_str()));
-    Py_DECREF(val);
-
-    std::string plugin_name = plugin_ids[i];
-    plugin_name = plugin_name.substr(0, plugin_name.size() - 6);
-    plugin_name[0] = tolower(plugin_name[0]);
-    std::string path = "";
-    pxr::PlugPluginPtr plugin = registry.GetPluginWithName(plugin_name);
-    if (plugin) {
-      path = plugin->GetPath();
-    }
-    PyDict_SetItemString(descr, "path", val = PyUnicode_FromString(path.c_str()));
-    Py_DECREF(val);
-
-    PyTuple_SetItem(ret, i, descr);
-  }
-  return ret;
 }
 
 static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
@@ -267,9 +222,7 @@ static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *a
 }
 
 static PyMethodDef methods[] = {
-    {"init", init_func, METH_VARARGS, ""},
     {"register_plugins", register_plugins_func, METH_VARARGS, ""},
-    {"get_render_plugins", get_render_plugins_func, METH_VARARGS, ""},
 
     {"engine_create", engine_create_func, METH_VARARGS, ""},
     {"engine_free", engine_free_func, METH_VARARGS, ""},

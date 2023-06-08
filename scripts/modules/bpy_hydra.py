@@ -38,7 +38,6 @@ __all__ = (
     "HydraRenderEngine",
     "export_mtlx",
     "register_plugins",
-    "get_render_plugins",
 )
 
 import os
@@ -48,7 +47,7 @@ from pathlib import Path
 import bpy
 import _bpy_hydra
 
-from _bpy_hydra import register_plugins, get_render_plugins
+from _bpy_hydra import register_plugins
 
 
 class HydraRenderEngine(bpy.types.RenderEngine):
@@ -68,7 +67,6 @@ class HydraRenderEngine(bpy.types.RenderEngine):
 
     @classmethod
     def register(cls):
-        _bpy_hydra.init()
         root_folder = "blender.shared" if platform.system() == 'Windows' else "lib"
         os.environ['PXR_MTLX_STDLIB_SEARCH_PATHS'] = os.pathsep.join([
             str(Path(bpy.app.binary_path).parent / f"{root_folder}/materialx/libraries"),

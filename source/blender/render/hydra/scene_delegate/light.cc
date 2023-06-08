@@ -142,20 +142,20 @@ pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
   pxr::VtValue ret;
   auto it = data_.find(key);
   if (it != data_.end()) {
-    ret = it->second;
+    return pxr::VtValue(it->second);
   }
   else {
     std::string n = key.GetString();
     if (boost::algorithm::contains(n, "object:visibility:")) {
       if (boost::algorithm::ends_with(n, "camera") || boost::algorithm::ends_with(n, "shadow")) {
-        ret = false;
+        return pxr::VtValue(false);
       }
       else {
-        ret = true;
+        return pxr::VtValue(true);
       }
     }
   }
-  return ret;
+  return pxr::VtValue();
 }
 
 bool LightData::update_visibility()
@@ -171,38 +171,32 @@ bool LightData::update_visibility()
 
 pxr::TfToken LightData::prim_type(Light *light)
 {
-  pxr::TfToken ret;
   switch (light->type) {
     case LA_LOCAL:
     case LA_SPOT:
-      ret = pxr::HdPrimTypeTokens->sphereLight;
-      break;
+      return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
 
     case LA_SUN:
-      ret = pxr::HdPrimTypeTokens->distantLight;
-      break;
+      return pxr::TfToken(pxr::HdPrimTypeTokens->distantLight);
 
     case LA_AREA:
       switch (light->area_shape) {
         case LA_AREA_SQUARE:
         case LA_AREA_RECT:
-          ret = pxr::HdPrimTypeTokens->rectLight;
-          break;
+          return pxr::TfToken(pxr::HdPrimTypeTokens->rectLight);
 
         case LA_AREA_DISK:
         case LA_AREA_ELLIPSE:
-          ret = pxr::HdPrimTypeTokens->diskLight;
-          break;
+          return pxr::TfToken(pxr::HdPrimTypeTokens->diskLight);
 
         default:
-          ret = pxr::HdPrimTypeTokens->rectLight;
+          return pxr::TfToken(pxr::HdPrimTypeTokens->rectLight);
       }
       break;
 
     default:
-      ret = pxr::HdPrimTypeTokens->sphereLight;
+      return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
   }
-  return ret;
 }
 
 }  // namespace blender::render::hydra

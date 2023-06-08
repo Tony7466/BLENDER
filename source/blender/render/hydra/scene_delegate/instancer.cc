@@ -102,11 +102,10 @@ void InstancerData::update()
 pxr::VtValue InstancerData::get_data(pxr::TfToken const &key) const
 {
   ID_LOG(3, "%s", key.GetText());
-  pxr::VtValue ret;
   if (key == pxr::HdInstancerTokens->instanceTransform) {
-    ret = mesh_transforms_;
+    return pxr::VtValue(mesh_transforms_);
   }
-  return ret;
+  return pxr::VtValue();
 }
 
 bool InstancerData::update_visibility()
@@ -128,7 +127,7 @@ bool InstancerData::update_visibility()
     char name[16];
     for (auto &l_inst : light_instances_.values()) {
       for (int i = 0; i < l_inst.count; ++i) {
-        snprintf(name, 16, "L_%08x", i);
+        snprintf(name, sizeof(name), "L_%08x", i);
         change_tracker.MarkRprimDirty(l_inst.data->prim_id.AppendElementString(name),
                                       pxr::HdChangeTracker::DirtyVisibility);
       }
@@ -321,15 +320,15 @@ bool InstancerData::is_instance_visible(Object *object)
 pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
-  char str[32];
-  snprintf(str, 32, "O_%016llx", (uint64_t)object);
-  return prim_id.AppendElementString(str);
+  char name[32];
+  snprintf(name, sizeof(name), "O_%016llx", (uint64_t)object);
+  return prim_id.AppendElementString(name);
 }
 
 pxr::SdfPath InstancerData::light_prim_id(LightInstance const &inst, int index) const
 {
   char name[16];
-  snprintf(name, 16, "L_%08x", index);
+  snprintf(name, sizeof(name), "L_%08x", index);
   return inst.data->prim_id.AppendElementString(name);
 }
 

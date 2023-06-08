@@ -21,16 +21,13 @@ static std::string cache_image_file(Image *image,
                                     ImageUser *iuser,
                                     bool check_exist)
 {
-  std::string file_path(FILE_MAX, 0);
+  char file_path[FILE_MAX];
   char file_name[32];
-  snprintf(file_name, 32, "img_%016llx.hdr", (uintptr_t)image);
-  BLI_path_join(file_path.data(),
-                file_path.capacity(),
-                BKE_tempdir_session(),
-                "hydra_image_cache",
-                file_name);
+  snprintf(file_name, sizeof(file_name), "img_%016llx.hdr", (uintptr_t)image);
+  BLI_path_join(
+      file_path, sizeof(file_path), BKE_tempdir_session(), "hydra_image_cache", file_name);
 
-  if (check_exist && BLI_exists(file_path.c_str())) {
+  if (check_exist && BLI_exists(file_path)) {
     return file_path;
   }
 
@@ -38,18 +35,19 @@ static std::string cache_image_file(Image *image,
   ImageSaveOptions opts;
   opts.im_format.imtype = R_IMF_IMTYPE_RADHDR;
 
-  if (BKE_image_save_options_init(&opts, main, scene_delegate->scene, image, iuser, true, false)) {
-    STRNCPY(opts.filepath, file_path.c_str());
-    ReportList reports;
-    if (BKE_image_save(&reports, main, image, iuser, &opts)) {
-      CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
+  if (BKE_image_save_options_init(&opts, main, scene_delegate->scene, image, iuser, false, false))
+  {
+    STRNCPY(opts.filepath, file_path);
+    if (BKE_image_save(nullptr, main, image, iuser, &opts)) {
+      CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path);
     }
     else {
-      file_path = "";
+      memset(file_path, 0, sizeof(file_path));
     }
   }
   BKE_image_save_options_free(&opts);
 
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s -> %s", image->id.name, file_path);
   return file_path;
 }
 

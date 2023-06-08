@@ -11,7 +11,6 @@ void PreviewEngine::render(Depsgraph *depsgraph)
 
   {
     /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
     engine_->Execute(render_index_.get(), &tasks_);
   }
 

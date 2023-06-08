@@ -255,7 +255,6 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 
   {
     /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
     engine_->Execute(render_index_.get(), &tasks);
 
     if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {

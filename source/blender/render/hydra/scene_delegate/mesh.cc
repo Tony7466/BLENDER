@@ -26,18 +26,11 @@ void MeshData::init()
   ID_LOG(1, "");
 
   Object *object = (Object *)id;
-  if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
-      BLI_listbase_is_empty(&object->modifiers))
-  {
-    write_submeshes((Mesh *)object->data);
+  Mesh *mesh = BKE_object_to_mesh(nullptr, object, false);
+  if (mesh) {
+    write_submeshes(mesh);
   }
-  else {
-    Mesh *mesh = BKE_object_to_mesh(nullptr, object, false);
-    if (mesh) {
-      write_submeshes(mesh);
-    }
-    BKE_object_to_mesh_clear(object);
-  }
+  BKE_object_to_mesh_clear(object);
 
   write_transform();
   write_materials();
@@ -86,17 +79,16 @@ void MeshData::update()
 
 pxr::VtValue MeshData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
 {
-  pxr::VtValue ret;
   if (key == pxr::HdTokens->points) {
-    ret = vertices_;
+    return pxr::VtValue(vertices_);
   }
   else if (key == pxr::HdTokens->normals) {
-    ret = submesh(id).normals;
+    return pxr::VtValue(submesh(id).normals);
   }
   else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
-    ret = submesh(id).uvs;
+    return pxr::VtValue(submesh(id).uvs);
   }
-  return ret;
+  return pxr::VtValue();
 }
 
 bool MeshData::update_visibility()
@@ -194,7 +186,7 @@ pxr::SdfPathVector MeshData::submesh_paths() const
 pxr::SdfPath MeshData::submesh_prim_id(int index) const
 {
   char name[16];
-  snprintf(name, 16, "SM_%04x", index);
+  snprintf(name, sizeof(name), "SM_%04x", index);
   return prim_id.AppendElementString(name);
 }
 

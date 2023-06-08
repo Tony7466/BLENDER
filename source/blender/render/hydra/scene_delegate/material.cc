@@ -2,6 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include <Python.h>
+#include <unicodeobject.h>
 
 #include <pxr/imaging/hd/material.h>
 #include <pxr/imaging/hd/renderDelegate.h>
@@ -74,14 +75,13 @@ void MaterialData::update()
 
 pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
 {
-  pxr::VtValue ret;
   if (key == scene_delegate_->settings.mx_filename_key) {
-    if (!mtlx_path_.GetResolvedPath().empty()) {
-      ret = mtlx_path_;
-    }
     ID_LOG(3, "%s", key.GetText());
+    if (!mtlx_path_.GetResolvedPath().empty()) {
+      return pxr::VtValue(mtlx_path_);
+    }
   }
-  return ret;
+  return pxr::VtValue();
 }
 
 pxr::VtValue MaterialData::get_material_resource() const
@@ -112,7 +112,9 @@ void MaterialData::export_mtlx()
   std::string path;
 
   if (!PyErr_Occurred()) {
-    path = PyUnicode_AsUTF8(result);
+    if (PyUnicode_Check(result)) {
+      path = PyUnicode_AsUTF8(result);
+    }
     Py_DECREF(result);
   }
   else {

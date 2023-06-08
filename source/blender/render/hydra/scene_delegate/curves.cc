@@ -69,17 +69,16 @@ void CurvesData::update()
 
 pxr::VtValue CurvesData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
 {
-  pxr::VtValue ret;
   if (key == pxr::HdTokens->points) {
-    ret = vertices_;
+    return pxr::VtValue(vertices_);
   }
   else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
-    ret = uvs_;
+    return pxr::VtValue(uvs_);
   }
   else if (key == pxr::HdTokens->widths) {
-    ret = widths_;
+    return pxr::VtValue(widths_);
   }
-  return ret;
+  return pxr::VtValue();
 }
 
 bool CurvesData::update_visibility()
@@ -110,17 +109,15 @@ pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
     if (!vertices_.empty()) {
       primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
     }
+    if (!widths_.empty()) {
+      primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
+    }
   }
-  else if (interpolation == pxr::HdInterpolationFaceVarying) {
+  else if (interpolation == pxr::HdInterpolationConstant) {
     if (!uvs_.empty()) {
       primvars.emplace_back(pxr::HdPrimvarRoleTokens->textureCoordinate,
                             interpolation,
                             pxr::HdPrimvarRoleTokens->textureCoordinate);
-    }
-  }
-  else if (interpolation == pxr::HdInterpolationConstant) {
-    if (!widths_.empty()) {
-      primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
     }
   }
   return primvars;
@@ -160,14 +157,12 @@ void CurvesData::write_curves(Curves *curves)
     curve_vertex_counts_.push_back(num_points);
 
     /* Set radius similar to Cycles if isn't set */
-    widths_.push_back(radii ? radii[i] : 0.01f);
-
     for (int j = 0; j < num_points; j++) {
       int ind = first_point_index + j;
+      widths_.push_back(radii ? radii[ind] * 2 : 0.01f);
       vertices_.push_back(pxr::GfVec3f(positions[ind][0], positions[ind][1], positions[ind][2]));
     }
   }
-
   write_uv_maps(curves);
 }
 
@@ -188,8 +183,9 @@ void CurvesData::write_material()
 {
   Object *object = (Object *)id;
   Material *mat = nullptr;
+  /* TODO: Using only first material. Add support for multimaterial. */
   if (BKE_object_material_count_eval(object) > 0) {
-    mat = BKE_object_material_get_eval(object, object->actcol);
+    mat = BKE_object_material_get_eval(object, 0);
   }
 
   if (!mat) {
