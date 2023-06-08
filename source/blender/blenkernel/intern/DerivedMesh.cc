@@ -1197,9 +1197,10 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     set_rest_position(*mesh_final);
   }
 
+  bool non_deform_modifier_applied = false;
   for (int i = 0; md; i++, md = md->next, md_datamask = md_datamask->next) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md->type);
-    if (!editbmesh_modifier_is_enabled(scene, ob, md, i == 0)) {
+    if (!editbmesh_modifier_is_enabled(scene, ob, md, non_deform_modifier_applied)) {
       continue;
     }
 
@@ -1235,6 +1236,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
       }
     }
     else {
+      non_deform_modifier_applied = true;
       if (mesh_final == mesh_cage) {
         /* 'me' may be changed by this modifier, so we need to copy it. */
         mesh_final = BKE_mesh_copy_for_eval(mesh_final);
