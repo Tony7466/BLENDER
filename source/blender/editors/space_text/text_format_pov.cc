@@ -19,6 +19,9 @@
 
 /* *** POV Keywords (for format_line) *** */
 
+/* MSVC workaround. */
+extern "C" {
+
 /**
  * Checks the specified source string for a POV keyword (minus boolean & 'nil').
  * This name must start at the beginning of the source string and must be
@@ -743,6 +746,7 @@ static int txtfmt_pov_find_bool(const char *string)
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+};
 
 static char txtfmt_pov_format_identifier(const char *str)
 {

@@ -89,6 +89,9 @@ static int txtfmt_ini_find_keyword(const char *string)
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 
+/* MSVC workaround. */
+extern "C" {
+
 static int txtfmt_ini_find_reserved(const char *string)
 {
   int i, len;
@@ -301,6 +304,7 @@ static int txtfmt_ini_find_reserved(const char *string)
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+};
 
 static int txtfmt_ini_find_bool(const char *string)
 {
