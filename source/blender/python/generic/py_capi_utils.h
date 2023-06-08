@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pygen
@@ -15,12 +17,13 @@ extern "C" {
 #include "BLI_sys_types.h"
 #include "BLI_utildefines_variadic.h"
 
+/** Useful to print Python objects while debugging. */
 void PyC_ObSpit(const char *name, PyObject *var);
 /**
  * A version of #PyC_ObSpit that writes into a string (and doesn't take a name argument).
  * Use for logging.
  */
-void PyC_ObSpitStr(char *result, size_t result_len, PyObject *var);
+void PyC_ObSpitStr(char *result, size_t result_maxncpy, PyObject *var);
 void PyC_LineSpit(void);
 void PyC_StackSpit(void);
 PyObject *PyC_ExceptionBuffer(void);
@@ -105,14 +108,14 @@ void PyC_Tuple_Fill(PyObject *tuple, PyObject *value);
 void PyC_List_Fill(PyObject *list, PyObject *value);
 
 /* follow http://www.python.org/dev/peps/pep-0383/ */
-PyObject *PyC_UnicodeFromByte(const char *str);
-PyObject *PyC_UnicodeFromByteAndSize(const char *str, Py_ssize_t size);
-const char *PyC_UnicodeAsByte(PyObject *py_str, PyObject **coerce); /* coerce must be NULL */
+PyObject *PyC_UnicodeFromBytes(const char *str);
+PyObject *PyC_UnicodeFromBytesAndSize(const char *str, Py_ssize_t size);
+const char *PyC_UnicodeAsBytes(PyObject *py_str, PyObject **coerce); /* coerce must be NULL */
 /**
  * String conversion, escape non-unicode chars
  * \param coerce: must be set to NULL.
  */
-const char *PyC_UnicodeAsByteAndSize(PyObject *py_str, Py_ssize_t *size, PyObject **coerce);
+const char *PyC_UnicodeAsBytesAndSize(PyObject *py_str, Py_ssize_t *size, PyObject **coerce);
 
 /**
  * Description: This function creates a new Python dictionary object.
@@ -146,6 +149,9 @@ void PyC_MainModule_Restore(PyObject *main_mod);
 
 bool PyC_IsInterpreterActive(void);
 
+/**
+ * Generic function to avoid depending on RNA.
+ */
 void *PyC_RNA_AsPointer(PyObject *value, const char *type_name);
 
 /* flag / set --- interchange */
@@ -211,6 +217,9 @@ struct PyC_StringEnum {
 int PyC_ParseStringEnum(PyObject *o, void *p);
 const char *PyC_StringEnum_FindIDFromValue(const struct PyC_StringEnumItems *items, int value);
 
+/**
+ * Silly function, we don't use arg. just check its compatible with `__deepcopy__`.
+ */
 int PyC_CheckArgs_DeepCopy(PyObject *args);
 
 /* Integer parsing (with overflow checks), -1 on error. */

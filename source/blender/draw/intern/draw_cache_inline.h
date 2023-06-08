@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -71,7 +72,7 @@ BLI_INLINE void DRW_vbo_request(GPUBatch *batch, GPUVertBuf **vbo)
   }
   if (batch != NULL) {
     /* HACK we set VBO's that may not yet be valid. */
-    GPU_batch_vertbuf_add(batch, *vbo);
+    GPU_batch_vertbuf_add(batch, *vbo, false);
   }
 }
 

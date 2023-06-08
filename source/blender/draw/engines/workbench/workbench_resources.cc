@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "../eevee/eevee_lut.h" /* TODO: find somewhere to share blue noise Table. */
 #include "BKE_studiolight.h"
@@ -15,15 +17,15 @@ static bool get_matcap_tx(Texture &matcap_tx, StudioLight &studio_light)
                                   STUDIOLIGHT_MATCAP_SPECULAR_GPUTEXTURE);
   ImBuf *matcap_diffuse = studio_light.matcap_diffuse.ibuf;
   ImBuf *matcap_specular = studio_light.matcap_specular.ibuf;
-  if (matcap_diffuse && matcap_diffuse->rect_float) {
+  if (matcap_diffuse && matcap_diffuse->float_buffer.data) {
     int layers = 1;
-    float *buffer = matcap_diffuse->rect_float;
+    float *buffer = matcap_diffuse->float_buffer.data;
     Vector<float> combined_buffer = {};
 
-    if (matcap_specular && matcap_specular->rect_float) {
+    if (matcap_specular && matcap_specular->float_buffer.data) {
       int size = matcap_diffuse->x * matcap_diffuse->y * 4;
-      combined_buffer.extend(matcap_diffuse->rect_float, size);
-      combined_buffer.extend(matcap_specular->rect_float, size);
+      combined_buffer.extend(matcap_diffuse->float_buffer.data, size);
+      combined_buffer.extend(matcap_specular->float_buffer.data, size);
       buffer = combined_buffer.begin();
       layers++;
     }
@@ -56,7 +58,7 @@ static LightData get_light_data_from_studio_solidlight(const SolidLight *sl,
 {
   LightData light = {};
   if (sl && sl->flag) {
-    float3 direction = world_shading_rotation.ref_3x3() * float3(sl->vec);
+    float3 direction = math::transform_direction(world_shading_rotation, float3(sl->vec));
     light.direction = float4(direction, 0.0f);
     /* We should pre-divide the power by PI but that makes the lights really dim. */
     light.specular_color = float4(float3(sl->spec), 0.0f);

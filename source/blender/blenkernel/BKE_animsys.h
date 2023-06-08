@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -37,7 +38,7 @@ struct bActionGroup;
 /* Container for data required to do FCurve and Driver evaluation. */
 typedef struct AnimationEvalContext {
   /* For drivers, so that they have access to the dependency graph and the current view layer. See
-   * T77086. */
+   * #77086. */
   struct Depsgraph *depsgraph;
 
   /* FCurves and Drivers can be evaluated at a different time than the current scene time, for

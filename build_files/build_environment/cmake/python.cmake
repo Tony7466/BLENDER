@@ -35,7 +35,7 @@ if(WIN32)
     # regardless of the version actually in there.
     PATCH_COMMAND mkdir ${PYTHON_EXTERNALS_FOLDER_DOS} &&
       mklink /J ${PYTHON_EXTERNALS_FOLDER_DOS}\\zlib-1.2.13 ${ZLIB_SOURCE_FOLDER_DOS} &&
-      mklink /J ${PYTHON_EXTERNALS_FOLDER_DOS}\\openssl-1.1.1q ${SSL_SOURCE_FOLDER_DOS} &&
+      mklink /J ${PYTHON_EXTERNALS_FOLDER_DOS}\\openssl-1.1.1t ${SSL_SOURCE_FOLDER_DOS} &&
       ${CMAKE_COMMAND} -E copy ${ZLIB_SOURCE_FOLDER}/../external_zlib-build/zconf.h ${PYTHON_EXTERNALS_FOLDER}/zlib-1.2.13/zconf.h &&
       ${PATCH_CMD} --verbose -p1 -d ${BUILD_DIR}/python/src/external_python < ${PATCH_DIR}/python_windows.diff
     CONFIGURE_COMMAND echo "."
@@ -87,6 +87,19 @@ else()
     export CPPFLAGS=${PYTHON_CFLAGS} &&
     export LDFLAGS=${PYTHON_LDFLAGS} &&
     export PKG_CONFIG_PATH=${LIBDIR}/ffi/lib/pkgconfig)
+
+  # NOTE: untested on APPLE so far.
+  if(NOT APPLE)
+    set(PYTHON_CONFIGURE_EXTRA_ARGS
+      ${PYTHON_CONFIGURE_EXTRA_ARGS}
+      # Used on most release Linux builds (Fedora for e.g.),
+      # increases build times noticeably with the benefit of a modest speedup at runtime.
+      --enable-optimizations
+      # While LTO is OK when building on the same system, it's incompatible across GCC versions,
+      # making it impractical for developers to build against, so keep it disabled.
+      # `--with-lto`
+    )
+  endif()
 
   ExternalProject_Add(external_python
     URL file://${PACKAGE_DIR}/${PYTHON_FILE}

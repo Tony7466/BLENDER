@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -41,7 +42,7 @@
 #include "draw_view.h"
 
 #include "draw_debug.h"
-#include "draw_manager_profiling.h"
+#include "draw_manager_profiling.hh"
 #include "draw_state.h"
 #include "draw_view_data.h"
 
@@ -307,6 +308,7 @@ struct GPUMaterial *DRW_shader_from_material(struct Material *ma,
                                              bool deferred,
                                              GPUCodegenCallbackFn callback,
                                              void *thunk);
+void DRW_shader_queue_optimize_material(struct GPUMaterial *mat);
 void DRW_shader_free(struct GPUShader *shader);
 #define DRW_SHADER_FREE_SAFE(shader) \
   do { \
@@ -533,11 +535,11 @@ void DRW_shgroup_clear_framebuffer(DRWShadingGroup *shgroup,
 void DRW_shgroup_uniform_texture_ex(DRWShadingGroup *shgroup,
                                     const char *name,
                                     const struct GPUTexture *tex,
-                                    eGPUSamplerState sampler_state);
+                                    GPUSamplerState sampler_state);
 void DRW_shgroup_uniform_texture_ref_ex(DRWShadingGroup *shgroup,
                                         const char *name,
                                         GPUTexture **tex,
-                                        eGPUSamplerState sampler_state);
+                                        GPUSamplerState sampler_state);
 void DRW_shgroup_uniform_texture(DRWShadingGroup *shgroup,
                                  const char *name,
                                  const struct GPUTexture *tex);

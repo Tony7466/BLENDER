@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 if(CMAKE_COMPILER_IS_GNUCC)
   # add here so we fail early.
@@ -11,7 +12,7 @@ if(HAVE_MALLOC_STATS_H)
   add_definitions(-DHAVE_MALLOC_STATS_H)
 endif()
 
-# files rna_access.c rna_define.c makesrna.c intentionally excluded.
+# files rna_access.cc rna_define.c makesrna.c intentionally excluded.
 set(DEFSRC
   rna_ID.c
   rna_action.c
@@ -36,8 +37,8 @@ set(DEFSRC
   rna_dynamicpaint.c
   rna_fcurve.c
   rna_fluid.c
-  rna_gpencil.c
-  rna_gpencil_modifier.c
+  rna_gpencil_legacy.c
+  rna_gpencil_legacy_modifier.c
   rna_image.c
   rna_key.c
   rna_lattice.c
@@ -90,8 +91,10 @@ set(DEFSRC
 
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
+  add_definitions(-DWITH_GREASE_PENCIL_V3)
   list(APPEND DEFSRC
     rna_simulation.c
+    rna_grease_pencil.c
   )
 endif()
 
@@ -140,6 +143,9 @@ if(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
 endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   string(APPEND GENSRC_CFLAGS " -Wno-missing-variable-declarations")
+elseif(MSVC)
+  # Restore warn C4100 (unreferenced formal parameter) back to w4
+  remove_cc_flag(/w34100)
 endif()
 
 if(GENSRC_CFLAGS)
@@ -242,28 +248,12 @@ if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()
 
-if(WITH_OPENIMAGEIO)
-  add_definitions(-DWITH_OPENIMAGEIO)
-endif()
-
-if(WITH_IMAGE_TIFF)
-  add_definitions(-DWITH_TIFF)
-endif()
-
 if(WITH_IMAGE_OPENJPEG)
   add_definitions(-DWITH_OPENJPEG)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
-endif()
-
-if(WITH_IMAGE_HDR)
-  add_definitions(-DWITH_HDR)
 endif()
 
 if(WITH_IMAGE_WEBP)
@@ -390,6 +380,14 @@ if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
 endif()
 
+if(WITH_VULKAN_METAL)
+  add_definitions(-DWITH_VULKAN_METAL)
+endif()
+
+if(WITH_VULKAN_BACKEND)
+  add_definitions(-DWITH_VULKAN_BACKEND)
+endif()
+
 if(WITH_GMP)
   add_definitions(-DWITH_GMP)
 endif()
@@ -422,7 +420,7 @@ add_custom_command(
 
 # Build bf_rna
 set(SRC
-  rna_access.c
+  rna_access.cc
   rna_access_compare_override.c
   rna_path.cc
   ${GENSRC}
@@ -444,7 +442,7 @@ set(LIB
   bf_editor_curve
   bf_editor_curves
   bf_editor_gizmo_library
-  bf_editor_gpencil
+  bf_editor_gpencil_legacy
   bf_editor_io
   bf_editor_mesh
   bf_editor_object

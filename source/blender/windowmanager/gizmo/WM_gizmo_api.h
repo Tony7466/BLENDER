@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -86,6 +87,16 @@ void WM_gizmo_modal_set_from_setup(struct wmGizmoMap *gzmap,
                                    struct wmGizmo *gz,
                                    int part_index,
                                    const struct wmEvent *event);
+
+/**
+ * Replaces the current gizmo modal.
+ * The substitute gizmo start out interactive.
+ * It is similar to #WM_gizmo_modal_set_from_setup but without operator initialization.
+ */
+void WM_gizmo_modal_set_while_modal(struct wmGizmoMap *gzmap,
+                                    struct bContext *C,
+                                    struct wmGizmo *gz,
+                                    const struct wmEvent *event);
 
 struct wmGizmoOpElem *WM_gizmo_operator_get(struct wmGizmo *gz, int part_index);
 struct PointerRNA *WM_gizmo_operator_set(struct wmGizmo *gz,
@@ -208,7 +219,7 @@ struct wmGizmoGroupType *WM_gizmogrouptype_append_ptr(void (*wtfunc)(struct wmGi
 void WM_gizmogrouptype_iter(struct GHashIterator *ghi);
 
 /**
- * Append and insert into a gizmo typemap.
+ * Append and insert into a gizmo type-map.
  * This is most common for C gizmos which are enabled by default.
  */
 struct wmGizmoGroupTypeRef *WM_gizmogrouptype_append_and_link(

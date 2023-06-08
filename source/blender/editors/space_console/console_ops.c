@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spconsole
@@ -22,6 +24,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_report.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -33,6 +36,72 @@
 #include "RNA_define.h"
 
 #include "console_intern.h"
+
+/* -------------------------------------------------------------------- */
+/** \name Utilities
+ * \{ */
+
+static char *console_select_to_buffer(SpaceConsole *sc)
+{
+  if (sc->sel_start == sc->sel_end) {
+    return NULL;
+  }
+
+  ConsoleLine cl_dummy = {NULL};
+  console_scrollback_prompt_begin(sc, &cl_dummy);
+
+  int offset = 0;
+  for (ConsoleLine *cl = sc->scrollback.first; cl; cl = cl->next) {
+    offset += cl->len + 1;
+  }
+
+  char *buf_str = NULL;
+  if (offset != 0) {
+    offset -= 1;
+    int sel[2] = {offset - sc->sel_end, offset - sc->sel_start};
+    DynStr *buf_dyn = BLI_dynstr_new();
+    for (ConsoleLine *cl = sc->scrollback.first; cl; cl = cl->next) {
+      if (sel[0] <= cl->len && sel[1] >= 0) {
+        int sta = max_ii(sel[0], 0);
+        int end = min_ii(sel[1], cl->len);
+
+        if (BLI_dynstr_get_len(buf_dyn)) {
+          BLI_dynstr_append(buf_dyn, "\n");
+        }
+
+        BLI_dynstr_nappend(buf_dyn, cl->line + sta, end - sta);
+      }
+
+      sel[0] -= cl->len + 1;
+      sel[1] -= cl->len + 1;
+    }
+
+    buf_str = BLI_dynstr_get_cstring(buf_dyn);
+
+    BLI_dynstr_free(buf_dyn);
+  }
+  console_scrollback_prompt_end(sc, &cl_dummy);
+
+  return buf_str;
+}
+
+static void console_select_update_primary_clipboard(SpaceConsole *sc)
+{
+  if ((WM_capabilities_flag() & WM_CAPABILITY_PRIMARY_CLIPBOARD) == 0) {
+    return;
+  }
+  if (sc->sel_start == sc->sel_end) {
+    return;
+  }
+  char *buf = console_select_to_buffer(sc);
+  if (buf == NULL) {
+    return;
+  }
+  WM_clipboard_text_set(buf, true);
+  MEM_freeN(buf);
+}
+
+/** \} */
 
 /* so when we type - the view scrolls to the bottom */
 static void console_scroll_bottom(ARegion *region)
@@ -224,18 +293,15 @@ static void console_line_verify_length(ConsoleLine *ci, int len)
   }
 }
 
-static int console_line_insert(ConsoleLine *ci, char *str)
+static void console_line_insert(ConsoleLine *ci, const char *str, int len)
 {
-  int len = strlen(str);
-
-  if (len > 0 && str[len - 1] == '\n') { /* stop new lines being pasted at the end of lines */
-    str[len - 1] = '\0';
-    len--;
-  }
-
   if (len == 0) {
-    return 0;
+    return;
   }
+
+  BLI_assert(len <= strlen(str));
+  /* The caller must delimit new-lines. */
+  BLI_assert(str[len - 1] != '\n');
 
   console_line_verify_length(ci, len + ci->len);
 
@@ -244,8 +310,6 @@ static int console_line_insert(ConsoleLine *ci, char *str)
 
   ci->len += len;
   ci->cursor += len;
-
-  return len;
 }
 
 /**
@@ -380,8 +444,25 @@ static int console_insert_exec(bContext *C, wmOperator *op)
     memset(str, ' ', len);
     str[len] = '\0';
   }
+  else {
+    len = strlen(str);
+  }
 
-  len = console_line_insert(ci, str);
+  /* Allow trailing newlines (but strip them). */
+  while (len > 0 && str[len - 1] == '\n') {
+    len--;
+    str[len] = '\0';
+  }
+
+  if (strchr(str, '\n')) {
+    BKE_report(op->reports, RPT_ERROR, "New lines unsupported, call this operator multiple times");
+    /* Force cancel. */
+    len = 0;
+  }
+
+  if (len != 0) {
+    console_line_insert(ci, str, len);
+  }
 
   MEM_freeN(str);
 
@@ -404,10 +485,10 @@ static int console_insert_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   /* NOTE: the "text" property is always set from key-map,
    * so we can't use #RNA_struct_property_is_set, check the length instead. */
   if (!RNA_string_length(op->ptr, "text")) {
-    /* if alt/ctrl/super are pressed pass through except for utf8 character event
-     * (when input method are used for utf8 inputs, the user may assign key event
-     * including alt/ctrl/super like ctrl+m to commit utf8 string.  in such case,
-     * the modifiers in the utf8 character event make no sense.) */
+    /* If alt/control/super are pressed pass through except for UTF8 character event
+     * (when input method are used for UTF8 inputs, the user may assign key event
+     * including alt/control/super like control-m to commit UTF8 string.
+     * in such case, the modifiers in the UTF8 character event make no sense.) */
     if ((event->modifier & (KM_CTRL | KM_OSKEY)) && !event->utf8_buf[0]) {
       return OPERATOR_PASS_THROUGH;
     }
@@ -966,61 +1047,13 @@ void CONSOLE_OT_scrollback_append(wmOperatorType *ot)
 static int console_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
-
-  DynStr *buf_dyn;
-  char *buf_str;
-
-  ConsoleLine *cl;
-  int sel[2];
-  int offset = 0;
-
-  ConsoleLine cl_dummy = {NULL};
-
-  if (sc->sel_start == sc->sel_end) {
+  char *buf = console_select_to_buffer(sc);
+  if (buf == NULL) {
     return OPERATOR_CANCELLED;
   }
 
-  console_scrollback_prompt_begin(sc, &cl_dummy);
-
-  for (cl = sc->scrollback.first; cl; cl = cl->next) {
-    offset += cl->len + 1;
-  }
-
-  if (offset == 0) {
-    console_scrollback_prompt_end(sc, &cl_dummy);
-    return OPERATOR_CANCELLED;
-  }
-
-  buf_dyn = BLI_dynstr_new();
-  offset -= 1;
-  sel[0] = offset - sc->sel_end;
-  sel[1] = offset - sc->sel_start;
-
-  for (cl = sc->scrollback.first; cl; cl = cl->next) {
-    if (sel[0] <= cl->len && sel[1] >= 0) {
-      int sta = max_ii(sel[0], 0);
-      int end = min_ii(sel[1], cl->len);
-
-      if (BLI_dynstr_get_len(buf_dyn)) {
-        BLI_dynstr_append(buf_dyn, "\n");
-      }
-
-      BLI_dynstr_nappend(buf_dyn, cl->line + sta, end - sta);
-    }
-
-    sel[0] -= cl->len + 1;
-    sel[1] -= cl->len + 1;
-  }
-
-  buf_str = BLI_dynstr_get_cstring(buf_dyn);
-
-  BLI_dynstr_free(buf_dyn);
-  WM_clipboard_text_set(buf_str, 0);
-
-  MEM_freeN(buf_str);
-
-  console_scrollback_prompt_end(sc, &cl_dummy);
-
+  WM_clipboard_text_set(buf, 0);
+  MEM_freeN(buf);
   return OPERATOR_FINISHED;
 }
 
@@ -1038,36 +1071,34 @@ void CONSOLE_OT_copy(wmOperatorType *ot)
   /* properties */
 }
 
-static int console_paste_exec(bContext *C, wmOperator *UNUSED(op))
+static int console_paste_exec(bContext *C, wmOperator *op)
 {
+  const bool selection = RNA_boolean_get(op->ptr, "selection");
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
   ConsoleLine *ci = console_history_verify(C);
-  int buf_len;
+  int buf_str_len;
 
-  char *buf_str = WM_clipboard_text_get(false, &buf_len);
-  char *buf_step, *buf_next;
-
+  char *buf_str = WM_clipboard_text_get(selection, true, &buf_str_len);
   if (buf_str == NULL) {
     return OPERATOR_CANCELLED;
   }
-
-  buf_step = buf_str;
-
-  while ((buf_next = buf_step) && buf_next[0] != '\0') {
-    buf_step = strchr(buf_next, '\n');
-    if (buf_step) {
-      *buf_step = '\0';
-      buf_step++;
-    }
-
-    if (buf_next != buf_str) {
+  if (*buf_str == '\0') {
+    MEM_freeN(buf_str);
+    return OPERATOR_CANCELLED;
+  }
+  const char *buf_step = buf_str;
+  do {
+    const char *buf = buf_step;
+    buf_step = (char *)BLI_strchr_or_end(buf, '\n');
+    const int buf_len = buf_step - buf;
+    if (buf != buf_str) {
       WM_operator_name_call(C, "CONSOLE_OT_execute", WM_OP_EXEC_DEFAULT, NULL, NULL);
       ci = console_history_verify(C);
     }
-
-    console_select_offset(sc, console_line_insert(ci, buf_next));
-  }
+    console_line_insert(ci, buf, buf_len);
+    console_select_offset(sc, buf_len);
+  } while (*buf_step ? ((void)buf_step++, true) : false);
 
   MEM_freeN(buf_str);
 
@@ -1091,6 +1122,13 @@ void CONSOLE_OT_paste(wmOperatorType *ot)
   ot->exec = console_paste_exec;
 
   /* properties */
+  PropertyRNA *prop;
+  prop = RNA_def_boolean(ot->srna,
+                         "selection",
+                         0,
+                         "Selection",
+                         "Paste text selected elsewhere rather than copied (X11/Wayland only)");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 typedef struct SetConsoleCursor {
@@ -1146,18 +1184,12 @@ static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEven
   }
 }
 
-static void console_cursor_set_exit(bContext *UNUSED(C), wmOperator *op)
+static void console_cursor_set_exit(bContext *C, wmOperator *op)
 {
-  //  SpaceConsole *sc = CTX_wm_space_console(C);
+  SpaceConsole *sc = CTX_wm_space_console(C);
   SetConsoleCursor *scu = op->customdata;
 
-#if 0
-  if (txt_has_sel(text)) {
-    buffer = txt_sel_to_buf(text);
-    WM_clipboard_text_set(buffer, 1);
-    MEM_freeN(buffer);
-  }
-#endif
+  console_select_update_primary_clipboard(sc);
 
   MEM_freeN(scu);
 }
@@ -1238,9 +1270,7 @@ static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const 
   if (console_line_column_from_index(sc, pos, &cl, &offset, &n)) {
     int sel[2] = {n, n};
 
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
-
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+    BLI_str_cursor_step_bounds_utf8(cl->line, cl->len, n, &sel[1], &sel[0]);
 
     sel[0] = offset - sel[0];
     sel[1] = offset - sel[1];
@@ -1254,6 +1284,11 @@ static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const 
   }
 
   console_scrollback_prompt_end(sc, &cl_dummy);
+
+  if (ret & OPERATOR_FINISHED) {
+    console_select_update_primary_clipboard(sc);
+  }
+
   return ret;
 }
 

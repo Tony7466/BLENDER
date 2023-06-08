@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -26,14 +27,20 @@
 #include "DRW_render.h"
 
 #include "draw_cache_impl.h"
-#include "draw_curves_private.h"
+#include "draw_curves_private.hh"
 #include "draw_hair_private.h"
 #include "draw_manager.h"
 #include "draw_shader.h"
 
 BLI_INLINE eParticleRefineShaderType drw_curves_shader_type_get()
 {
-  if (GPU_compute_shader_support() && GPU_shader_storage_buffer_objects_support()) {
+  /* NOTE: Curve refine is faster using transform feedback via vertex processing pipeline with
+   * Metal and Apple Silicon GPUs. This is also because vertex work can more easily be executed in
+   * parallel with fragment work, whereas compute inserts an explicit dependency,
+   * due to switching of command encoder types. */
+  if (GPU_compute_shader_support() && GPU_shader_storage_buffer_objects_support() &&
+      (GPU_backend_get_type() != GPU_BACKEND_METAL))
+  {
     return PART_REFINE_SHADER_COMPUTE;
   }
   if (GPU_transform_feedback_support()) {
@@ -43,7 +50,7 @@ BLI_INLINE eParticleRefineShaderType drw_curves_shader_type_get()
 }
 
 struct CurvesEvalCall {
-  struct CurvesEvalCall *next;
+  CurvesEvalCall *next;
   GPUVertBuf *vbo;
   DRWShadingGroup *shgrp;
   uint vert_len;
@@ -55,7 +62,6 @@ static int g_tf_target_width;
 static int g_tf_target_height;
 
 static GPUVertBuf *g_dummy_vbo = nullptr;
-static GPUTexture *g_dummy_texture = nullptr;
 static DRWPass *g_tf_pass; /* XXX can be a problem with multiple DRWManager in the future */
 
 using CurvesInfosBuf = blender::draw::UniformBuffer<CurvesInfos>;
@@ -115,8 +121,6 @@ void DRW_curves_init(DRWData *drw_data)
     GPU_vertbuf_attr_fill(g_dummy_vbo, dummy_id, vert);
     /* Create vbo immediately to bind to texture buffer. */
     GPU_vertbuf_use(g_dummy_vbo);
-
-    g_dummy_texture = GPU_texture_create_from_vertbuf("hair_dummy_attr", g_dummy_vbo);
   }
 }
 
@@ -312,12 +316,12 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   DRWShadingGroup *shgrp = DRW_shgroup_create_sub(shgrp_parent);
 
-  /* Fix issue with certain driver not drawing anything if there is no texture bound to
+  /* Fix issue with certain driver not drawing anything if there is nothing bound to
    * "ac", "au", "u" or "c". */
-  DRW_shgroup_uniform_texture(shgrp, "u", g_dummy_texture);
-  DRW_shgroup_uniform_texture(shgrp, "au", g_dummy_texture);
-  DRW_shgroup_uniform_texture(shgrp, "c", g_dummy_texture);
-  DRW_shgroup_uniform_texture(shgrp, "ac", g_dummy_texture);
+  DRW_shgroup_buffer_texture(shgrp, "u", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "au", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
 
   /* TODO: Generalize radius implementation for curves data type. */
   float hair_rad_shape = 0.0f;
@@ -327,10 +331,9 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   /* Use the radius of the root and tip of the first curve for now. This is a workaround that we
    * use for now because we can't use a per-point radius yet. */
-  const blender::bke::CurvesGeometry &curves = blender::bke::CurvesGeometry::wrap(
-      curves_id.geometry);
+  const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
   if (curves.curves_num() >= 1) {
-    blender::VArray<float> radii = curves.attributes().lookup_or_default(
+    blender::VArray<float> radii = *curves.attributes().lookup_or_default(
         "radius", ATTR_DOMAIN_POINT, 0.005f);
     const blender::IndexRange first_curve_points = curves.points_by_curve()[0];
     const float first_radius = radii[first_curve_points.first()];
@@ -394,7 +397,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   DRW_shgroup_uniform_bool_copy(shgrp, "hairCloseTip", hair_close_tip);
   if (gpu_material) {
     /* NOTE: This needs to happen before the drawcall to allow correct attribute extraction.
-     * (see T101896) */
+     * (see #101896) */
     DRW_shgroup_add_material_resources(shgrp, gpu_material);
   }
   /* TODO(fclem): Until we have a better way to cull the curves and render with orco, bypass
@@ -410,10 +413,10 @@ void DRW_curves_update()
   /* Update legacy hair too, to avoid verbosity in callers. */
   DRW_hair_update();
 
-  if (!GPU_transform_feedback_support()) {
+  if (drw_curves_shader_type_get() == PART_REFINE_SHADER_TRANSFORM_FEEDBACK_WORKAROUND) {
     /**
      * Workaround to transform feedback not working on mac.
-     * On some system it crashes (see T58489) and on some other it renders garbage (see T60171).
+     * On some system it crashes (see #58489) and on some other it renders garbage (see #60171).
      *
      * So instead of using transform feedback we render to a texture,
      * read back the result to system memory and re-upload as VBO data.
@@ -533,5 +536,4 @@ void DRW_curves_free()
   DRW_hair_free();
 
   GPU_VERTBUF_DISCARD_SAFE(g_dummy_vbo);
-  DRW_TEXTURE_FREE_SAFE(g_dummy_texture);
 }

@@ -7,30 +7,18 @@
 
 CCL_NAMESPACE_BEGIN
 
-ccl_device float spot_light_attenuation(float3 dir,
-                                        float cos_half_spot_angle,
-                                        float spot_smooth,
-                                        float3 N)
+ccl_device float spot_light_attenuation(const ccl_global KernelSpotLight *spot, float3 ray)
 {
-  float attenuation = dot(dir, N);
+  const float3 scaled_ray = safe_normalize(
+      make_float3(dot(ray, spot->axis_u), dot(ray, spot->axis_v), dot(ray, spot->dir)) /
+      spot->len);
 
-  if (attenuation <= cos_half_spot_angle) {
-    attenuation = 0.0f;
-  }
-  else {
-    float t = attenuation - cos_half_spot_angle;
-
-    if (t < spot_smooth && spot_smooth != 0.0f)
-      attenuation *= smoothstepf(t / spot_smooth);
-  }
-
-  return attenuation;
+  return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) / spot->spot_smooth);
 }
 
 template<bool in_volume_segment>
 ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
-                                         const float randu,
-                                         const float randv,
+                                         const float2 rand,
                                          const float3 P,
                                          ccl_private LightSample *ls)
 {
@@ -44,7 +32,7 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
 
   if (radius > 0.0f) {
     /* disk light */
-    ls->P += disk_light_sample(lightN, randu, randv) * radius;
+    ls->P += disk_light_sample(lightN, rand) * radius;
   }
 
   const float invarea = klight->spot.invarea;
@@ -57,8 +45,7 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
   ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
 
   /* spot light attenuation */
-  ls->eval_fac *= spot_light_attenuation(
-      klight->spot.dir, klight->spot.cos_half_spot_angle, klight->spot.spot_smooth, -ls->D);
+  ls->eval_fac *= spot_light_attenuation(&klight->spot, -ls->D);
   if (!in_volume_segment && ls->eval_fac == 0.0f) {
     return false;
   }
@@ -71,9 +58,9 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
   return true;
 }
 
-ccl_device_forceinline void spot_light_update_position(const ccl_global KernelLight *klight,
-                                                       ccl_private LightSample *ls,
-                                                       const float3 P)
+ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global KernelLight *klight,
+                                                          ccl_private LightSample *ls,
+                                                          const float3 P)
 {
   ls->D = normalize_len(ls->P - P, &ls->t);
   ls->Ng = -ls->D;
@@ -84,11 +71,11 @@ ccl_device_forceinline void spot_light_update_position(const ccl_global KernelLi
 
   float invarea = klight->spot.invarea;
   ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
+  /* NOTE : preserve pdf in area measure. */
   ls->pdf = invarea;
 
   /* spot light attenuation */
-  ls->eval_fac *= spot_light_attenuation(
-      klight->spot.dir, klight->spot.cos_half_spot_angle, klight->spot.spot_smooth, ls->Ng);
+  ls->eval_fac *= spot_light_attenuation(&klight->spot, ls->Ng);
 }
 
 ccl_device_inline bool spot_light_intersect(const ccl_global KernelLight *klight,
@@ -129,8 +116,7 @@ ccl_device_inline bool spot_light_sample_from_intersection(
   ls->pdf = invarea;
 
   /* spot light attenuation */
-  ls->eval_fac *= spot_light_attenuation(
-      klight->spot.dir, klight->spot.cos_half_spot_angle, klight->spot.spot_smooth, -ls->D);
+  ls->eval_fac *= spot_light_attenuation(&klight->spot, -ls->D);
 
   if (ls->eval_fac == 0.0f) {
     return false;

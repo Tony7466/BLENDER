@@ -1,8 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
  */
+
+#include "BLI_task.hh"
 
 #include "BKE_context.h"
 #include "BKE_curves.hh"
@@ -60,7 +64,7 @@ static bool step_encode(bContext *C, Main *bmain, UndoStep *us_p)
       StepObject &object = us->objects[i];
 
       object.obedit_ref.ptr = ob;
-      object.geometry = bke::CurvesGeometry::wrap(curves_id.geometry);
+      object.geometry = curves_id.geometry.wrap();
     }
   });
   MEM_SAFE_FREE(objects);
@@ -86,7 +90,7 @@ static void step_decode(
     Curves &curves_id = *static_cast<Curves *>(object.obedit_ref.ptr->data);
 
     /* Overwrite the curves geometry. */
-    bke::CurvesGeometry::wrap(curves_id.geometry) = object.geometry;
+    curves_id.geometry.wrap() = object.geometry;
 
     DEG_id_tag_update(&curves_id.id, ID_RECALC_GEOMETRY);
   }

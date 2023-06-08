@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -41,6 +42,7 @@ struct TransDataContainer;
 struct TransInfo;
 struct TransSnap;
 struct ViewLayer;
+struct ViewOpsData;
 struct bContext;
 struct wmEvent;
 struct wmKeyConfig;
@@ -138,8 +140,11 @@ typedef enum {
 
   /** No cursor wrapping on region bounds */
   T_NO_CURSOR_WRAP = 1 << 23,
+
+  /** Do not display Xform gizmo even though it is available. */
+  T_NO_GIZMO = 1 << 24,
 } eTFlag;
-ENUM_OPERATORS(eTFlag, T_NO_CURSOR_WRAP);
+ENUM_OPERATORS(eTFlag, T_NO_GIZMO);
 
 #define T_ALL_RESTRICTIONS (T_NO_CONSTRAINT | T_NULL_ONE)
 #define T_PROP_EDIT_ALL (T_PROP_EDIT | T_PROP_CONNECTED | T_PROP_PROJECTED)
@@ -152,18 +157,19 @@ typedef enum {
   MOD_SNAP_INVERT = 1 << 3,
   MOD_CONSTRAINT_SELECT_PLANE = 1 << 4,
   MOD_NODE_ATTACH = 1 << 5,
+  MOD_SNAP_FORCED = 1 << 6,
+  MOD_EDIT_SNAP_SOURCE = 1 << 7,
 } eTModifier;
 ENUM_OPERATORS(eTModifier, MOD_NODE_ATTACH)
 
 /** #TransSnap.status */
 typedef enum eTSnap {
   SNAP_RESETTED = 0,
-  SNAP_FORCED = 1 << 0,
-  SNAP_SOURCE_FOUND = 1 << 1,
+  SNAP_SOURCE_FOUND = 1 << 0,
   /* Special flag for snap to grid. */
-  SNAP_TARGET_GRID_FOUND = 1 << 2,
-  SNAP_TARGET_FOUND = 1 << 3,
-  SNAP_MULTI_POINTS = 1 << 4,
+  SNAP_TARGET_GRID_FOUND = 1 << 1,
+  SNAP_TARGET_FOUND = 1 << 2,
+  SNAP_MULTI_POINTS = 1 << 3,
 } eTSnap;
 ENUM_OPERATORS(eTSnap, SNAP_MULTI_POINTS)
 
@@ -207,6 +213,12 @@ typedef enum {
   HLP_CARROW = 5,
   HLP_TRACKBALL = 6,
 } eTHelpline;
+
+typedef enum {
+  O_DEFAULT = 0,
+  O_SCENE,
+  O_SET,
+} eTOType;
 
 /** \} */
 
@@ -256,6 +268,13 @@ enum {
   TFM_MODAL_AUTOCONSTRAINTPLANE = 29,
 
   TFM_MODAL_PRECISION = 30,
+
+  TFM_MODAL_VERT_EDGE_SLIDE = 31,
+  TFM_MODAL_TRACKBALL = 32,
+  TFM_MODAL_ROTATE_NORMALS = 33,
+
+  TFM_MODAL_EDIT_SNAP_SOURCE_ON = 34,
+  TFM_MODAL_EDIT_SNAP_SOURCE_OFF = 35,
 };
 
 /** \} */
@@ -278,10 +297,6 @@ typedef struct TransSnap {
   eSnapSourceOP source_operation;
   /* Determines which objects are possible target */
   eSnapTargetOP target_operation;
-  bool align;
-  bool project;
-  bool peel;
-  bool use_backface_culling;
   short face_nearest_steps;
   eTSnap status;
   /* Snapped Element Type (currently for objects only). */
@@ -298,14 +313,6 @@ typedef struct TransSnap {
   double last;
   void (*snap_target_fn)(struct TransInfo *, float *);
   void (*snap_source_fn)(struct TransInfo *);
-  /**
-   * Get the transform distance between two points (used by Closest snap)
-   *
-   * \note Return value can be anything,
-   * where the smallest absolute value defines what's closest.
-   */
-  float (*snap_mode_distance_fn)(struct TransInfo *t, const float p1[3], const float p2[3]);
-  void (*snap_mode_apply_fn)(struct TransInfo *, float *);
 
   /**
    * Re-usable snap context data.
@@ -497,6 +504,11 @@ typedef struct TransInfo {
   /** TODO: It should be a member of #TransDataContainer. */
   struct TransConvertTypeInfo *data_type;
 
+  /** Mode indicator as set for the operator.
+   * NOTE: A same `mode_info` can have different `mode`s. */
+  eTfmMode mode;
+  struct TransModeInfo *mode_info;
+
   /** Current context/options for transform. */
   eTContext options;
   /** Generic flags for special behaviors. */
@@ -509,20 +521,6 @@ typedef struct TransInfo {
   eRedrawFlag redraw;
   /** Choice of custom cursor with or without a help line from the gizmo to the mouse position. */
   eTHelpline helpline;
-  /** Current mode. */
-  eTfmMode mode;
-
-  /** Main transform mode function. */
-  void (*transform)(struct TransInfo *, const int[2]);
-  /* Event handler function that determines whether the viewport needs to be redrawn. */
-  eRedrawFlag (*handleEvent)(struct TransInfo *, const struct wmEvent *);
-
-  /**
-   * Optional callback to transform a single matrix.
-   *
-   * \note used by the gizmo to transform the matrix used to position it.
-   */
-  void (*transform_matrix)(struct TransInfo *t, float mat_xform[4][4]);
 
   /** Constraint Data. */
   TransCon con;
@@ -604,11 +602,7 @@ typedef struct TransInfo {
     float matrix[3][3];
   } orient[3];
 
-  enum {
-    O_DEFAULT = 0,
-    O_SCENE,
-    O_SET,
-  } orient_curr;
+  eTOType orient_curr;
 
   /**
    * All values from `TransInfo.orient[].type` converted into a flag
@@ -668,6 +662,8 @@ typedef struct TransInfo {
   /** Currently only used for random curve of proportional editing. */
   struct RNG *rng;
 
+  struct ViewOpsData *vod;
+
   /** Typically for mode settings. */
   TransCustomDataContainer custom;
 
@@ -724,19 +720,6 @@ void transform_final_value_get(const TransInfo *t, float *value, int value_num);
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Gizmo
- * \{ */
-
-/* transform_gizmo.c */
-
-#define GIZMO_AXIS_LINE_WIDTH 2.0f
-
-bool gimbal_axis_pose(struct Object *ob, const struct bPoseChannel *pchan, float gmat[3][3]);
-bool gimbal_axis_object(struct Object *ob, float gmat[3][3]);
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name TransData Creation and General Handling
  * \{ */
 
@@ -773,6 +756,8 @@ void applyMouseInput(struct TransInfo *t,
                      const int mval[2],
                      float output[3]);
 void transform_input_update(TransInfo *t, const float fac);
+void transform_input_virtual_mval_reset(TransInfo *t);
+void transform_input_reset(TransInfo *t, const int mval[2]);
 
 void setCustomPoints(TransInfo *t, MouseInput *mi, const int start[2], const int end[2]);
 void setCustomPointsFromDirection(TransInfo *t, MouseInput *mi, const float dir[2]);
@@ -819,6 +804,10 @@ void calculateCenter2D(TransInfo *t);
 void calculateCenterLocal(TransInfo *t, const float center_global[3]);
 
 void calculateCenter(TransInfo *t);
+/**
+ * Called every time the view changes due to navigation.
+ * Adjusts the mouse position relative to the object.
+ */
 void tranformViewUpdate(TransInfo *t);
 
 /* API functions for getting center points */

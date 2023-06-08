@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -17,6 +19,7 @@ set(SRC
   intern/asset_catalog.cc
   intern/asset_catalog_path.cc
   intern/asset_catalog_tree.cc
+  intern/asset_essentials_library.cc
   intern/asset_identifier.cc
   intern/asset_library.cc
   intern/asset_library_loader.cc
@@ -34,6 +37,7 @@ set(SRC
   AS_asset_library_loader.hh
   AS_asset_representation.hh
   AS_asset_system_registry.hh
+  AS_essentials_library.hh
   intern/asset_library_service.hh
   intern/asset_storage.hh
   intern/utils.hh
@@ -43,6 +47,7 @@ set(SRC
 )
 
 set(LIB
+    bf_blenkernel
 )
 
 
@@ -55,6 +60,7 @@ if(WITH_GTESTS)
     tests/asset_catalog_tree_test.cc
     tests/asset_library_service_test.cc
     tests/asset_library_test.cc
+    tests/asset_representation_test.cc
 
     tests/asset_library_test_common.hh
   )
