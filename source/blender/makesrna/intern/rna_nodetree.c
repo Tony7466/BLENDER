@@ -3169,17 +3169,6 @@ static IDProperty **rna_NodeSocketInterface_idprops(PointerRNA *ptr)
   return &sock->prop;
 }
 
-static PointerRNA rna_NodeSocketInterface_panel_get(PointerRNA *ptr)
-{
-  bNodeSocket *socket = (bNodeSocket *)ptr->data;
-  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
-  bNodeSocketPanel *panel = ntreeFindSocketPanelByID(ntree, socket->panel_id);
-
-  PointerRNA r_ptr;
-  RNA_pointer_create(&ntree->id, &RNA_NodeSocketPanel, panel, &r_ptr);
-  return r_ptr;
-}
-
 static void rna_NodeSocketInterface_panel_set(PointerRNA *ptr,
                                                  PointerRNA value,
                                                  struct ReportList *reports)
@@ -11742,7 +11731,7 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "panel", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeSocketInterface_panel_get",
+                                 NULL,
                                  "rna_NodeSocketInterface_panel_set",
                                  NULL,
                                  "rna_NodeSocketInterface_panel_poll");

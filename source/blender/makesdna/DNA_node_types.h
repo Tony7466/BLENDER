@@ -168,9 +168,8 @@ typedef struct bNodeSocket {
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
 
-  /* ID of the UI panel of the socket. */
-  int panel_id;
-  int _pad2;
+  /* UI panel of the socket. */
+  struct bNodeSocketPanel *panel;
 
   bNodeSocketRuntimeHandle *runtime;
 

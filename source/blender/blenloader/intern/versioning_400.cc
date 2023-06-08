@@ -212,18 +212,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
     FOREACH_NODETREE_END;
 
-    if (!DNA_struct_elem_find(fd->filesdna, "bNodeSocket", "int", "panel_id")) {
-      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-        LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
-          socket->panel_id = -1;
-        }
-        LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
-          socket->panel_id = -1;
-        }
-      }
-      FOREACH_NODETREE_END;
-    }
-
     /* Keep this block, even when empty. */
   }
 }

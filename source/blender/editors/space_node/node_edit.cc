@@ -2199,7 +2199,7 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
     /* Inherit socket panel from the active socket interface. */
-    sock->panel_id = active_sock->panel_id;
+    sock->panel = active_sock->panel;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
