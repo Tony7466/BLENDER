@@ -91,7 +91,6 @@
 
 #include "node_intern.hh" /* own include */
 
-#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 namespace geo_log = blender::nodes::geo_eval_log;
@@ -3326,6 +3325,12 @@ static bool realtime_compositor_is_in_use(const bContext &context)
 
   if (!scene->nodetree) {
     return false;
+  }
+
+  if (U.experimental.use_full_frame_compositor &&
+      scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
+  {
+    return true;
   }
 
   const Main *main = CTX_data_main(&context);
