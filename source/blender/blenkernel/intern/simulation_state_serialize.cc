@@ -510,18 +510,29 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
   return mesh;
 }
 
-static Volume *try_load_volume(const DictionaryValue &io_geometry)
+static Volume *try_load_volume(const DictionaryValue &io_geometry, const BDataReader &vdb_reader)
 {
   const DictionaryValue *io_volume = io_geometry.lookup_dict("volume");
   if (!io_volume) {
     return nullptr;
   }
-  const std::optional<StringRefNull> vdb_path = io_volume->lookup_str("vdb_path");
-  if (!vdb_path) {
+
+  const std::optional<StringRefNull> vdb_name = io_volume->lookup_str("name");
+  if (!vdb_name) {
     return nullptr;
   }
+
+  const DiskBDataReader *disk_reader = dynamic_cast<const DiskBDataReader *>(&vdb_reader);
+
+  if (disk_reader == nullptr) {
+    return nullptr;
+  }
+
+  char vdb_path[FILE_MAX];
+  BLI_path_join(vdb_path, sizeof(vdb_path), disk_reader->dir().c_str(), vdb_name.value().c_str());
+
   Volume *volume = static_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
-  STRNCPY(volume->filepath, vdb_path.value().c_str());
+  STRNCPY(volume->filepath, vdb_path);
 
   auto cancel = [&]() {
     BKE_id_free(nullptr, volume);
@@ -603,7 +614,7 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
   geometry.replace_mesh(try_load_mesh(io_geometry, bdata_reader, bdata_sharing));
   geometry.replace_pointcloud(try_load_pointcloud(io_geometry, bdata_reader, bdata_sharing));
   geometry.replace_curves(try_load_curves(io_geometry, bdata_reader, bdata_sharing));
-  geometry.replace_volume(try_load_volume(io_geometry));
+  geometry.replace_volume(try_load_volume(io_geometry, bdata_reader));
   geometry.replace_instances(
       try_load_instances(io_geometry, bdata_reader, bdata_sharing).release());
   return geometry;
@@ -667,8 +678,8 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
 
 static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet &geometry,
                                                                BDataWriter &bdata_writer,
-                                                               BDataSharing &bdata_sharing,
-                                                               StringRef vdb_path)
+                                                               BDataWriter &vdb_writer,
+                                                               BDataSharing &bdata_sharing)
 {
   auto io_geometry = std::make_shared<DictionaryValue>();
   if (geometry.has_mesh()) {
@@ -743,12 +754,16 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
       grids.push_back(grid);
     }
 
-    BLI_file_ensure_parent_dir_exists(vdb_path.data());
-    std::ofstream ofile(vdb_path, std::ios_base::binary);
-    openvdb::io::Stream(ofile).write(grids);
+    try {
+      std::ostream &stream = vdb_writer.stream();
+      openvdb::io::Stream file(stream);
+      file.write(grids);
 
-    auto io_volume = io_geometry->append_dict("volume");
-    io_volume->append_str("vdb_path", vdb_path);
+      auto io_volume = io_geometry->append_dict("volume");
+      io_volume->append_str("name", vdb_writer.name());
+    }
+    catch (...) {
+    }
   }
 #endif
   if (geometry.has_instances()) {
@@ -760,8 +775,8 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
     auto io_references = io_instances->append_array("references");
     for (const bke::InstanceReference &reference : instances.references()) {
       BLI_assert(reference.type() == bke::InstanceReference::Type::GeometrySet);
-      io_references->append(
-          serialize_geometry_set(reference.geometry_set(), bdata_writer, bdata_sharing, nullptr));
+      io_references->append(serialize_geometry_set(
+          reference.geometry_set(), bdata_writer, vdb_writer, bdata_sharing));
     }
 
     io_instances->append("transforms",
@@ -840,8 +855,8 @@ static std::shared_ptr<io::serialize::Value> serialize_primitive_value(
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
+                                         BDataWriter &vdb_writer,
                                          BDataSharing &bdata_sharing,
-                                         StringRef vdb_path,
                                          DictionaryValue &r_io_root)
 {
   r_io_root.append_int("version", 1);
@@ -873,7 +888,8 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
         io_state_item->append_str("type", "GEOMETRY");
 
         const GeometrySet &geometry = geometry_state_item->geometry;
-        auto io_geometry = serialize_geometry_set(geometry, bdata_writer, bdata_sharing, vdb_path);
+        auto io_geometry = serialize_geometry_set(
+            geometry, bdata_writer, vdb_writer, bdata_sharing);
         io_state_item->append("data", io_geometry);
       }
       else if (const AttributeSimulationStateItem *attribute_state_item =
@@ -1172,6 +1188,11 @@ DiskBDataReader::DiskBDataReader(std::string bdata_dir) : bdata_dir_(std::move(b
   return true;
 }
 
+[[nodiscard]] const std::string &DiskBDataReader::dir() const
+{
+  return bdata_dir_;
+}
+
 DiskBDataWriter::DiskBDataWriter(std::string bdata_name,
                                  std::ostream &bdata_file,
                                  const int64_t current_offset)
@@ -1185,6 +1206,16 @@ BDataSlice DiskBDataWriter::write(const void *data, const int64_t size)
   bdata_file_.write(static_cast<const char *>(data), size);
   current_offset_ += size;
   return {bdata_name_, {old_offset, size}};
+}
+
+[[nodiscard]] std::ostream &DiskBDataWriter::stream()
+{
+  return bdata_file_;
+}
+
+[[nodiscard]] std::string &DiskBDataWriter::name()
+{
+  return bdata_name_;
 }
 
 BDataSharing::~BDataSharing()

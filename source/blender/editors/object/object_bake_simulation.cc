@@ -328,16 +328,19 @@ static void bake_simulation_job_startjob(void *customdata,
         BLI_path_join(vdb_path,
                       sizeof(vdb_path),
                       modifier_bake_data.absolute_bake_dir.c_str(),
-                      "vdb",
+                      "bdata",
                       vdb_file_name.c_str());
 
         BLI_file_ensure_parent_dir_exists(bdata_path);
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
         bke::sim::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
 
+        fstream vdb_file{vdb_path, std::ios::out | std::ios::binary};
+        bke::sim::DiskBDataWriter vdb_writer{vdb_file_name, vdb_file, 0};
+
         io::serialize::DictionaryValue io_root;
         bke::sim::serialize_modifier_simulation_state(
-            *sim_state, bdata_writer, *modifier_bake_data.bdata_sharing, vdb_path, io_root);
+            *sim_state, bdata_writer, vdb_writer, *modifier_bake_data.bdata_sharing, io_root);
 
         BLI_file_ensure_parent_dir_exists(meta_path);
         io::serialize::write_json_file(meta_path, io_root);

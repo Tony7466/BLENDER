@@ -53,6 +53,8 @@ class BDataWriter {
    * \return Slice where the data has been written to.
    */
   virtual BDataSlice write(const void *data, int64_t size) = 0;
+  [[nodiscard]] virtual std::ostream &stream() = 0;
+  [[nodiscard]] virtual std::string &name() = 0;
 };
 
 /**
@@ -124,6 +126,7 @@ class DiskBDataReader : public BDataReader {
  public:
   DiskBDataReader(std::string bdata_dir);
   [[nodiscard]] bool read(const BDataSlice &slice, void *r_data) const override;
+  [[nodiscard]] const std::string &dir() const;
 };
 
 /**
@@ -142,6 +145,8 @@ class DiskBDataWriter : public BDataWriter {
   DiskBDataWriter(std::string bdata_name, std::ostream &bdata_file, int64_t current_offset);
 
   BDataSlice write(const void *data, int64_t size) override;
+  [[nodiscard]] std::ostream &stream() override;
+  [[nodiscard]] std::string &name() override;
 };
 
 /**
@@ -157,8 +162,8 @@ std::string get_default_modifier_bake_directory(const Main &bmain,
  */
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
+                                         BDataWriter &vdb_writer,
                                          BDataSharing &bdata_sharing,
-                                         StringRef vdb_path,
                                          DictionaryValue &r_io_root);
 /**
  * Fill the simulation state by parsing the provided #DictionaryValue which also contains
