@@ -387,6 +387,8 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 
   MeshElemMap *source_lmap = nullptr;
   int *source_lmap_mem = nullptr;
+  MeshElemMap *target_lmap = nullptr;
+  int *target_lmap_mem = nullptr;
   BVHTreeFromMesh bvhtree = {nullptr};
   threading::parallel_invoke(
       !corner_ids.is_empty(),
@@ -397,6 +399,13 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
                                       source->polys(),
                                       source->corner_verts().data(),
                                       source->totvert);
+      },
+      [&]() {
+        BKE_mesh_vert_loop_map_create(&target_lmap,
+                                      &target_lmap_mem,
+                                      target->polys(),
+                                      target->corner_verts().data(),
+                                      target->totvert);
       });
 
   const Span<float3> target_positions = target->vert_positions();
@@ -421,15 +430,12 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   }
 
   if (!corner_ids.is_empty()) {
-    Array<int> src_indices(target->totloop);
-    array_utils::gather<int>(nearest_src_verts, target->corner_verts(), src_indices);
     for (const AttributeIDRef &id : corner_ids) {
       const GVArraySpan src = *src_attributes.lookup(id, ATTR_DOMAIN_CORNER);
+      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          id, ATTR_DOMAIN_CORNER, cpp_type_to_custom_data_type(src.type()));
 
-      /* Manually interpolate domain from source corners to vertices to avoid single threaded
-       * interpolation in attribute API. */
-      GArray<> src_vert(src.type(), source->totvert);
-      threading::parallel_for(IndexRange(source->totvert), 1024, [&](const IndexRange range) {
+      threading::parallel_for(target_positions.index_range(), 1024, [&](const IndexRange range) {
         src.type().to_static_type_tag<ColorGeometry4b, ColorGeometry4f>([&](auto type_tag) {
           using T = typename decltype(type_tag)::type;
           if constexpr (std::is_void_v<T>) {
@@ -437,21 +443,23 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
           }
           else {
             const Span<T> src_typed = src.typed<T>();
-            MutableSpan<T> src_vert_typed = src_vert.as_mutable_span().typed<T>();
-            for (const int i : range) {
-
-              attribute_math::DefaultMixer<T> mixer(src_vert_typed.slice(i, 1));
-              for (const int corner : Span(source_lmap[i].indices, source_lmap[i].count)) {
+            MutableSpan<T> dst_typed = dst.span.typed<T>();
+            for (const int dst_vert : range) {
+              const int src_vert = nearest_src_verts[dst_vert];
+              T value;
+              attribute_math::DefaultMixer<T> mixer({&value, 1});
+              for (const int corner :
+                   Span(source_lmap[src_vert].indices, source_lmap[src_vert].count)) {
                 mixer.mix_in(0, src_typed[corner]);
               }
+              const Span<int> dst_corners(target_lmap[dst_vert].indices,
+                                          target_lmap[dst_vert].count);
+              dst_typed.fill_indices(dst_corners, value);
             }
           }
         });
       });
 
-      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, ATTR_DOMAIN_CORNER, cpp_type_to_custom_data_type(src.type()));
-      attribute_math::gather(src_vert, src_indices, dst.span);
       dst.finish();
     }
   }
