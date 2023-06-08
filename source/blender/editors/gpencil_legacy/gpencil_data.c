@@ -65,6 +65,7 @@
 
 #include "ED_gpencil_legacy.h"
 #include "ED_object.h"
+#include "ED_view3d.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -330,6 +331,10 @@ static int gpencil_layer_remove_exec(bContext *C, wmOperator *op)
   }
   else {
     BKE_gpencil_layer_active_set(gpd, gpl->next);
+  }
+
+  if (gpl->flag & GP_LAYER_IS_RULER) {
+    ED_view3d_gizmo_ruler_remove_all(C);
   }
 
   /* delete the layer now... */

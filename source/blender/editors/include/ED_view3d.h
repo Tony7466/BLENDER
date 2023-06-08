@@ -1364,6 +1364,13 @@ void ED_view3d_gizmo_mesh_preselect_get_active(struct bContext *C,
                                                struct BMElem **r_ele);
 void ED_view3d_gizmo_mesh_preselect_clear(struct wmGizmo *gz);
 
+/* view3d_gizmo_ruler.cc */
+
+/**
+ * Remove all rulers when Annotation layer is removed.
+ */
+void ED_view3d_gizmo_ruler_remove_all(struct bContext *C);
+
 /* space_view3d.cc */
 
 void ED_view3d_buttons_region_layout_ex(const struct bContext *C,

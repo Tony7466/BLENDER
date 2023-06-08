@@ -621,6 +621,22 @@ static bool view3d_ruler_from_gpencil(const bContext *C, wmGizmoGroup *gzgroup)
   return changed;
 }
 
+void ED_view3d_gizmo_ruler_remove_all(bContext *C)
+{
+  ARegion *region = CTX_wm_region(C);
+  wmGizmoMap *gzmap = region->gizmo_map;
+  wmGizmoGroup *gzgroup = WM_gizmomap_group_find(gzmap, view3d_gzgt_ruler_id);
+
+  RulerItem *ruler_item;
+  for (ruler_item = gzgroup_ruler_item_first_get(gzgroup); ruler_item;
+       ruler_item = (RulerItem *)ruler_item->gz.next)
+  {
+    ruler_item_remove(C, gzgroup, ruler_item);
+  }
+
+  ED_region_tag_redraw_editor_overlays(region);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1189,7 +1205,9 @@ static void gizmo_ruler_exit(bContext *C, wmGizmo *gz, const bool cancel)
       ruler_state_set(ruler_info, RULER_STATE_NORMAL);
     }
     /* We could convert only the current gizmo, for now just re-generate. */
-    view3d_ruler_to_gpencil(C, gzgroup);
+    if (view3d_ruler_to_gpencil(C, gzgroup)) {
+      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, NULL);
+    }
   }
 
   MEM_SAFE_FREE(gz->interaction_data);
