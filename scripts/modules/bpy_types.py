@@ -597,6 +597,37 @@ class Mesh(bpy_types.ID):
     def edge_keys(self):
         return [ed.key for ed in self.edges]
 
+    @property
+    def vertex_creases(self):
+        """
+        Vertex crease values for subdivision surface, corresponding to the "crease_vert" attribute.
+        """
+        attributes = self.attributes
+        try:
+            creases = attributes["crease_vert"]
+            if creases.data_type != 'FLOAT':
+                return None
+            if creases.domain != 'POINT':
+                return None
+            return creases
+        except KeyError:
+            return None
+
+    @property
+    def edge_creases(self):
+        """
+        Edge crease values for subdivision surface, corresponding to the "crease_edge" attribute.
+        """
+        attributes = self.attributes
+        try:
+            creases = attributes["crease_edge"]
+            if creases.data_type != 'FLOAT':
+                return None
+            if creases.domain != 'EDGE':
+                return None
+            return creases
+        except KeyError:
+            return None
 
 class MeshEdge(StructRNA):
     __slots__ = ()
