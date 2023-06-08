@@ -30,7 +30,9 @@ class VKTexture : public Texture {
    * can be done. */
   VkImageLayout current_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
 
-  const int IMAGE_VIEW_DIRTY = (1 << 0);
+  enum eDirtyFlags {
+    IMAGE_VIEW_DIRTY = (1 << 0),
+  };
 
   int flags_ = IMAGE_VIEW_DIRTY;
 
