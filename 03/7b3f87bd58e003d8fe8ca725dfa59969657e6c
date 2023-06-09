@@ -1,3 +1,4 @@
 Referenced by issue #108122, Grease Pencil: Onion Skin overlay disappears after scrubbing in the timeline
 Referenced by commit 9692262b9d9bd8a56412b09def60ba5bc51e48b5, Fix #108122: onion skin disappears after scrubbing timeline
 Referenced by issue #108704, Viewport/Eevee: Scrubbing the timeline does not do proper sampling like regular frame-change does
+Referenced by commit b344e4ba61a4fc380ffc5f3431b3e90aa8b5e360, Fix #108704: missing redraw after timeline scrubbing with temporal denoise
