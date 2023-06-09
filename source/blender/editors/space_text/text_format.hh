@@ -135,6 +135,8 @@ int find_keyword_length(const Vector<StringRef> &keywords, const char *text);
 template<size_t N>
 void fill_keyword_vector(Vector<StringRef> &keywords, const char *(&text_keywords)[N])
 {
+  keywords.reserve(N);
+
   for (auto text_keyword : text_keywords) {
     keywords.append(text_keyword);
   }
