@@ -18,6 +18,8 @@
 
 #include "ED_text.h"
 
+#include "BKE_text.h"
+
 #include "text_format.hh"
 
 /****************** flatten string **********************/
@@ -239,4 +241,21 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
 
   /* The filename has a non-numerical extension that we could not highlight. */
   return false;
+}
+
+int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *string)
+{
+  int i = 0;
+  for (auto keyword : keywords) {
+    if (strncmp(string, keyword.keyword, keyword.length) == 0) {
+      i = keyword.length;
+      break;
+    }
+  }
+
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+
+  return i;
 }

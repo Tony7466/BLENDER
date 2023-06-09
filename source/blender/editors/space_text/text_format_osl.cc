@@ -17,69 +17,30 @@
 
 #include "text_format.hh"
 
+std::vector<KeywordInfo> osl_builtinfunc{};
+std::vector<KeywordInfo> osl_reserved{};
+std::vector<KeywordInfo> osl_specialvar{};
+
 /* *** Local Functions (for format_line) *** */
+/* list is from
+ * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
+ */
+const char *osl_builtinfunc_text[]{
+    "break", "closure", "color",       "continue",   "do",     "else",   "emit",   "float",
+    "for",   "if",      "illuminance", "illuminate", "int",    "matrix", "normal", "output",
+    "point", "public",  "return",      "string",     "struct", "vector", "void",   "while",
+};
 
-static int txtfmt_osl_find_builtinfunc(const char *string)
-{
-  int i;
-
-  /* Keep aligned args for readability. */
-
-  /* list is from
-   * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
-   */
-  constexpr char* keywords[]{
-      "break",    "closure",     "color",
-      "continue", "do",          "else",
-      "emit",     "float",       "for",
-      "if",       "illuminance", "illuminate",
-      "int",      "matrix",      "normal",
-      "output",   "point",       "public",
-      "return",   "string",      "struct",
-      "vector",   "void",        "while",
-  };
-
-  // i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
-
-static int txtfmt_osl_find_reserved(const char *string)
-{
-  int i;
-
-  /* Keep aligned args for readability. */
-
-  /* list is from...
-   * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
-   */
-  constexpr char* keywords[]{
-      "bool",      "case",     "catch",
-      "char",      "const",    "delete",
-      "default",   "double",   "enum",
-      "extern",    "false",    "friend",
-      "goto",      "inline",   "long",
-      "new",       "operator", "private",
-      "protected", "short",    "signed",
-      "sizeof",    "static",   "switch",
-      "template",  "this",     "throw",
-      "true",      "try",      "typedef",
-      "uniform",   "union",    "unsigned",
-      "varying",   "virtual",  "volatile",
-  };
-
-  // i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
+/* list is from...
+ * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
+ */
+const char *osl_reserved_text[]{
+    "bool",     "case",    "catch",     "char",     "const",  "delete",  "default", "double",
+    "enum",     "extern",  "false",     "friend",   "goto",   "inline",  "long",    "new",
+    "operator", "private", "protected", "short",    "signed", "sizeof",  "static",  "switch",
+    "template", "this",    "throw",     "true",     "try",    "typedef", "uniform", "union",
+    "unsigned", "varying", "virtual",   "volatile",
+};
 
 /* Checks the specified source string for a OSL special name. This name must
  * start at the beginning of the source string and must be followed by a non-
@@ -88,28 +49,13 @@ static int txtfmt_osl_find_reserved(const char *string)
  * If a special name is found, the length of the matching name is returned.
  * Otherwise, -1 is returned. */
 
-static int txtfmt_osl_find_specialvar(const char *string)
-{
-  int i;
-
-  /* Keep aligned args for readability. */
-
-  /* OSL shader types */
-  constexpr char *keywords[]{
-      "shader",
-      "surface",
-      "volume",
-      "displacement",
-  };
-
-  // i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
+/* OSL shader types */
+const char *osl_specialvar_text[]{
+    "shader",
+    "surface",
+    "volume",
+    "displacement",
+};
 
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)
@@ -135,9 +81,9 @@ static char txtfmt_osl_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (txtfmt_osl_find_specialvar(str)   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (txtfmt_osl_find_builtinfunc(str)  != -1) { fmt = FMT_TYPE_KEYWORD;
-  } else if (txtfmt_osl_find_reserved(str)     != -1) { fmt = FMT_TYPE_RESERVED;
+  if        (find_keyword_length(osl_specialvar,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (find_keyword_length(osl_builtinfunc,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  } else if (find_keyword_length(osl_reserved,str)     != -1) { fmt = FMT_TYPE_RESERVED;
   } else if (txtfmt_osl_find_preprocessor(str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
   } else                                              { fmt = FMT_TYPE_DEFAULT;
   }
@@ -271,9 +217,9 @@ static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_osl_format_identifier()`. */
-        if        ((i = txtfmt_osl_find_specialvar(str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = txtfmt_osl_find_builtinfunc(str))  != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = txtfmt_osl_find_reserved(str))     != -1) { prev = FMT_TYPE_RESERVED;
+        if        ((i = find_keyword_length(osl_specialvar,str))   != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = find_keyword_length(osl_builtinfunc,str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = find_keyword_length(osl_reserved,str))     != -1) { prev = FMT_TYPE_RESERVED;
         } else if ((i = txtfmt_osl_find_preprocessor(str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
@@ -322,4 +268,8 @@ void ED_text_format_register_osl()
   tft.comment_line = "//";
 
   ED_text_format_register(&tft);
+
+  fill_keyword_vector(osl_builtinfunc, osl_builtinfunc_text);
+  fill_keyword_vector(osl_reserved, osl_reserved_text);
+  fill_keyword_vector(osl_specialvar, osl_specialvar_text);
 }

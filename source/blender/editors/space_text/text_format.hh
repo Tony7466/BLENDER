@@ -121,17 +121,15 @@ struct KeywordInfo {
   const int length;
 };
 
-#define KEYWORD_INFO(str_literal) \
-  { \
-    str_literal, sizeof(str_literal) - 1 \
-  }
+#include <algorithm>
+#include <vector>
 
-template<size_t N> int find_keyword_length(const KeywordInfo (&keywords)[N], const char *string)
+int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *string);
+
+template<size_t N>
+void fill_keyword_vector(std::vector<KeywordInfo> &keywords, const char *(&plain_keywords)[N])
 {
-  for (const KeywordInfo &keyword : keywords) {
-    if (strncmp(string, keyword.keyword, keyword.length) == 0) {
-      return keyword.length;
-    }
+  for (auto key : plain_keywords) {
+    keywords.push_back({key, int(strlen(key))});
   }
-  return 0;
 }

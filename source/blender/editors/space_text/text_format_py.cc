@@ -30,57 +30,41 @@
  * See:
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
-static int txtfmt_py_find_builtinfunc(const char *string)
-{
-  int i;
-  /**
-   * The following items are derived from this list:
-   * \code{.py}
-   * ", ".join(['"%s"' % kw
-   *            for kw in sorted(__import__("keyword").kwlist + __import__("keyword").softkwlist)
-   *            if kw not in {"False", "None", "True", "def", "class", "_"}])
-   * \endcode
-   *
-   * The code below can be re-generated using:
-   * \code{.py}
-   * import keyword
-   * ignore = {"False", "None", "True", "def", "class", "_"}
-   * keywords = sorted(set(keyword.kwlist + keyword.softkwlist) - ignore)
-   * longest = max(len(kw) for kw in keywords)
-   * first  = 'if        (STR_LITERAL_STARTSWITH(string, "%s",%s len)) { i = len;'
-   * middle = '} else if (STR_LITERAL_STARTSWITH(string, "%s",%s len)) { i = len;'
-   * last   = '} else                                         %s       { i = 0;'
-   * print("\n".join([(first if i==0 else middle) % (kw, ' '*(longest - len(kw)))
-   *                 for (i, kw) in enumerate(keywords)]) + "\n" +
-   *       last % (' '*(longest-2)) + "\n" +
-   *       "}")
-   * \endcode
-   */
 
-  /* Keep aligned args for readability. */
+/**
+ * The following items are derived from this list:
+ * \code{.py}
+ * ", ".join(['"%s"' % kw
+ *            for kw in sorted(__import__("keyword").kwlist + __import__("keyword").softkwlist)
+ *            if kw not in {"False", "None", "True", "def", "class", "_"}])
+ * \endcode
+ *
+ * The code below can be re-generated using:
+ * \code{.py}
+ * import keyword
+ * ignore = {"False", "None", "True", "def", "class", "_"}
+ * keywords = sorted(set(keyword.kwlist + keyword.softkwlist) - ignore)
+ * longest = max(len(kw) for kw in keywords)
+ * first  = 'if        (STR_LITERAL_STARTSWITH(string, "%s",%s len)) { i = len;'
+ * middle = '} else if (STR_LITERAL_STARTSWITH(string, "%s",%s len)) { i = len;'
+ * last   = '} else                                         %s       { i = 0;'
+ * print("\n".join([(first if i==0 else middle) % (kw, ' '*(longest - len(kw)))
+ *                 for (i, kw) in enumerate(keywords)]) + "\n" +
+ *       last % (' '*(longest-2)) + "\n" +
+ *       "}")
+ * \endcode
+ */
 
-  constexpr char* keywords[]{
-      "and",     "assert",   "async",
-      "as",      "await",    "break",
-      "case",    "continue", "del",
-      "elif",    "else",     "except",
-      "finally", "for",      "from",
-      "global",  "if",       "import",
-      "in",      "is",       "lambda",
-      "match",   "nonlocal", "not",
-      "or",      "pass",     "raise",
-      "return",  "try",      "while",
-      "with",    "yield",
-  };
+std::vector<KeywordInfo> py_builtinfunc{};
+std::vector<KeywordInfo> py_specialvar{};
+std::vector<KeywordInfo> py_bool{};
 
-  //i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
+const char *py_builtinfunc_text[]{
+    "and", "assert", "async", "as",     "await",   "break", "case",     "continue",
+    "del", "elif",   "else",  "except", "finally", "for",   "from",     "global",
+    "if",  "import", "in",    "is",     "lambda",  "match", "nonlocal", "not",
+    "or",  "pass",   "raise", "return", "try",     "while", "with",     "yield",
+};
 
 /* Checks the specified source string for a Python special name. This name must
  * start at the beginning of the source string and must be followed by a non-
@@ -89,23 +73,10 @@ static int txtfmt_py_find_builtinfunc(const char *string)
  * If a special name is found, the length of the matching name is returned.
  * Otherwise, -1 is returned. */
 
-static int txtfmt_py_find_specialvar(const char *string)
-{
-  int i;
-
-  /* Keep aligned args for readability. */
-  constexpr char* keywords[]{
-      "def",
-      "class",
-  };
-  //i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
+const char *py_specialvar_text[]{
+    "def",
+    "class",
+};
 
 static int txtfmt_py_find_decorator(const char *string)
 {
@@ -127,26 +98,11 @@ static int txtfmt_py_find_decorator(const char *string)
   return i;
 }
 
-static int txtfmt_py_find_bool(const char *string)
-{
-  int i;
-
-  /* Keep aligned args for readability. */
-
-  constexpr char* keywords[]{
-      "None",
-      "True",
-      "False",
-  };
-
-  //i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
+const char *py_bool_text[]{
+    "None",
+    "True",
+    "False",
+};
 
 /* Numeral character matching. */
 #define TXTFMT_PY_NUMERAL_STRING_COUNT_IMPL(txtfmt_py_numeral_char_is_fn) \
@@ -294,8 +250,8 @@ static char txtfmt_py_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (txtfmt_py_find_specialvar(str)   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (txtfmt_py_find_builtinfunc(str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  if        (find_keyword_length(py_specialvar,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (find_keyword_length(py_builtinfunc,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
   } else if (txtfmt_py_find_decorator(str)    != -1) { fmt = FMT_TYPE_RESERVED;
   } else                                             { fmt = FMT_TYPE_DEFAULT;
   }
@@ -455,7 +411,7 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
         text_format_fill(&str, &fmt, FMT_TYPE_NUMERAL, i);
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT && (i = txtfmt_py_find_bool(str)) != -1) {
+      else if (prev != FMT_TYPE_DEFAULT && (i = find_keyword_length(py_bool, str)) != -1) {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -481,8 +437,8 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_py_format_identifier()`. */
-        if        ((i = txtfmt_py_find_specialvar(str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = txtfmt_py_find_builtinfunc(str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        if        ((i = find_keyword_length(py_specialvar,str))   != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = find_keyword_length(py_builtinfunc,str))  != -1) { prev = FMT_TYPE_KEYWORD;
         } else if ((i = txtfmt_py_find_decorator(str))    != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
@@ -531,4 +487,8 @@ void ED_text_format_register_py()
   tft.comment_line = "#";
 
   ED_text_format_register(&tft);
+
+  fill_keyword_vector(py_builtinfunc, py_builtinfunc_text);
+  fill_keyword_vector(py_specialvar, py_specialvar_text);
+  fill_keyword_vector(py_bool, py_bool_text);
 }

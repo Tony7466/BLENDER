@@ -17,6 +17,10 @@
 
 #include "text_format.hh"
 
+std::vector<KeywordInfo> ini_keyword{};
+std::vector<KeywordInfo> ini_reserved{};
+std::vector<KeywordInfo> ini_bool{};
+
 /* *** POV INI Keywords (for format_line) *** */
 
 /**
@@ -30,288 +34,245 @@
  * See:
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
-static int txtfmt_ini_find_keyword(const char *string)
-{
-  int i;
 
-  /* Keep aligned args for readability. */
+/* Language Directives */
+const char *ini_keyword_text[]{
+    "deprecated", "statistics", "declare", "default", "version", "warning", "include", "fclose",
+    "ifndef",     "append",     "elseif",  "debug",   "error",   "fopen",   "ifdef",   "local",
+    "macro",      "range",      "render",  "break",   "switch",  "undef",   "while",   "write",
+    "case",       "else",       "read",    "end",     "for",     "if",
 
-  /* Language Directives */
-  constexpr char* keywords[]{
-      "deprecated", "statistics", "declare",
-      "default",    "version",    "warning",
-      "include",    "fclose",     "ifndef",
-      "append",     "elseif",     "debug",
-      "error",      "fopen",      "ifdef",
-      "local",      "macro",      "range",
-      "render",     "break",      "switch",
-      "undef",      "while",      "write",
-      "case",       "else",       "read",
-      "end",        "for",        "if",
+    "I",          "S",          "A",       "Q",       "U",       "F",       "C",       "N",
+    "P",          "T",
+};
 
-      "I",          "S",          "A",
-      "Q",          "U",          "F",
-      "C",          "N",          "P",
-      "T",
-  };
+/* POV-Ray Built-in INI Variables
+ * list is from...
+ * http://www.povray.org/documentation/view/3.7.0/212/
+ */
+const char *ini_reserved_text[]{
+    "RenderCompleteSoundEnabled",
+    "Create_Continue_Trace_Log",
+    "ParseErrorSoundEnabled",
+    "RenderErrorSoundEnabled",
+    "HideWhenMainMinimized",
+    "Antialias_Confidence",
+    "RenderCompleteSound",
+    "ParseErrorSound",
+    "RenderErrorSound",
+    "UseExtensions",
+    "ReadWriteSourceDir",
+    "NormalPositionLeft",
+    "NormalPositionTop",
+    "NormalPositionRight",
+    "NormalPositionBottom",
+    "Pre_Scene_Command",
+    "Pre_Frame_Command",
+    "Post_Scene_Command",
+    "Post_Frame_Command",
+    "User_Abort_Command",
+    "Fatal_Error_Command",
+    "NormalPositionX",
+    "NormalPositionY",
+    "Pre_Scene_Return",
+    "Pre_Frame_Return",
+    "Post_Scene_Return",
+    "Post_Frame_Return",
+    "User_Abort_Return",
+    "Fatal_Error_Return",
+    "Antialias_Threshold",
+    "Antialias_Gamma",
+    "Antialias_Depth",
+    "input_file_name",
+    "Subset_Start_Frame",
+    "Subset_End_Frame",
+    "UseToolbar",
+    "UseTooltips",
+    "Frame_Step",
+    "Cyclic_Animation",
+    "Field_Render",
+    "Odd_Field",
+    "final_clock",
+    "final_frame",
+    "frame_number",
+    "initial_clock",
+    "initial_frame",
+    "image_height",
+    "image_width",
+    "Start_Column",
+    "Start_Row",
+    "End_Column",
+    "End_Row",
+    "Test_Abort_Count",
+    "Test_Abort",
+    "Continue_Trace",
+    "Bounding_Method",
+    "Create_Ini",
+    "Display_Gamma",
 
-  // i = find_keyword_length(keywords, string);
+    "Display",
+    "Version",
+    "Pause_When_Done",
+    "Verbose",
+    "Preview_Start_Size",
+    "Preview_End_Size",
+    "Output_to_File",
+    "Input_File_Name",
+    "Output_File_Name",
+    "Output_File_Type",
+    "Output_Alpha",
+    "Bits_Per_Color",
+    "Compression",
+    "Dither_Method",
+    "Include_Header",
+    "Library_Path",
+    "Debug_Console",
+    "Fatal_Console",
+    "Render_Console",
+    "Statistic_Console",
+    "Warning_Console",
+    "Warning_Level",
+    "All_Console",
+    "Debug_File",
+    "Fatal_File",
+    "Render_File",
+    "Statistic_File",
+    "Warning_File",
+    "All_File",
+    "Quality",
+    "Bounding_Threshold",
+    "Bounding",
+    "Light_Buffer",
+    "Vista_Buffer",
+    "Remove_Bounds",
+    "Split_Unions",
+    "Antialias",
+    "Glare_Desaturation",
+    "Sampling_Method",
+    "Stochastic_Seed",
+    "Jitter_Amount",
+    "Jitter",
+    "Antialias_Depth",
+    "CheckNewVersion",
+    "RunCount",
+    "CommandLine",
+    "TextColour",
+    "WarningColour",
+    "ErrorColour",
+    "BackgroundColour",
 
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
-}
+    "DropToEditor",
+    "LastRenderName",
+    "LastRenderPath",
+    "LastQueuePath",
+    "SecondaryINISection",
+    "BetaVersionNo64",
+    "LastBitmapName",
+    "LastBitmapPath",
+    "LastINIPath",
+    "SecondaryINIFile",
+    "BackgroundFile",
+    "SaveSettingsOnExit",
+    "TileBackground",
+    "HideNewUserHelp",
+    "SendSystemInfo",
+    "ItsAboutTime",
+    "LastPath",
+    "Band0Width",
+    "Band1Width",
+    "Band2Width",
+    "Band3Width",
+    "Band4Width",
+    "ShowCmd",
+    "Transparency",
+    "Use8BitMode",
+    "MakeActive",
+    "KeepAboveMain",
+    "AutoClose",
+    "PreserveBitmap",
+    "FontSize",
+    "FontWeight",
+    "KeepMessages",
+    "AlertSound",
+    "Completion",
+    "Priority",
+    "DutyCycle",
+    "AlertOnCompletion",
+    "AutoRender",
+    "PreventSleep",
+    "NoShelloutWait",
+    "SystemNoActive",
+    "NoShellOuts",
+    "VideoSource",
+    "SceneFile",
+    "OutputFile",
+    "IniOutputFile",
+    "CurrentDirectory",
+    "SourceFile",
+    "Rendering",
+    "RenderwinClose",
+    "Append_File",
+    "Warning Level",
+    "clock_delta",
+    "clock_on",
+    "clock",
+    "Height",
+    "Width",
+    "Dither",
+    "Flags",
+    "Font",
 
-static int txtfmt_ini_find_reserved(const char *string)
-{
-  int i;
+    /* File-types. */
+    "df3",
+    "exr",
+    "gif",
+    "hdr",
+    "iff",
+    "jpeg",
+    "pgm",
+    "png",
+    "ppm",
+    "sys",
+    "tga",
+    "tiff",
+    /* Encodings. */
+    "ascii",
+    "utf8",
+    "uint8",
+    "uint16be",
+    "uint16le",
+    "sint8",
+    "sint16be",
+    "sint16le",
+    "sint32be",
+    "sint32le",
+};
 
-  /* Keep aligned args for readability. */
-
-  /* POV-Ray Built-in INI Variables
-   * list is from...
-   * http://www.povray.org/documentation/view/3.7.0/212/
-   */
-  constexpr char *keywords[]{
-      "RenderCompleteSoundEnabled",
-      "Create_Continue_Trace_Log",
-      "ParseErrorSoundEnabled",
-      "RenderErrorSoundEnabled",
-      "HideWhenMainMinimized",
-      "Antialias_Confidence",
-      "RenderCompleteSound",
-      "ParseErrorSound",
-      "RenderErrorSound",
-      "UseExtensions",
-      "ReadWriteSourceDir",
-      "NormalPositionLeft",
-      "NormalPositionTop",
-      "NormalPositionRight",
-      "NormalPositionBottom",
-      "Pre_Scene_Command",
-      "Pre_Frame_Command",
-      "Post_Scene_Command",
-      "Post_Frame_Command",
-      "User_Abort_Command",
-      "Fatal_Error_Command",
-      "NormalPositionX",
-      "NormalPositionY",
-      "Pre_Scene_Return",
-      "Pre_Frame_Return",
-      "Post_Scene_Return",
-      "Post_Frame_Return",
-      "User_Abort_Return",
-      "Fatal_Error_Return",
-      "Antialias_Threshold",
-      "Antialias_Gamma",
-      "Antialias_Depth",
-      "input_file_name",
-      "Subset_Start_Frame",
-      "Subset_End_Frame",
-      "UseToolbar",
-      "UseTooltips",
-      "Frame_Step",
-      "Cyclic_Animation",
-      "Field_Render",
-      "Odd_Field",
-      "final_clock",
-      "final_frame",
-      "frame_number",
-      "initial_clock",
-      "initial_frame",
-      "image_height",
-      "image_width",
-      "Start_Column",
-      "Start_Row",
-      "End_Column",
-      "End_Row",
-      "Test_Abort_Count",
-      "Test_Abort",
-      "Continue_Trace",
-      "Bounding_Method",
-      "Create_Ini",
-      "Display_Gamma",
-
-      "Display",
-      "Version",
-      "Pause_When_Done",
-      "Verbose",
-      "Preview_Start_Size",
-      "Preview_End_Size",
-      "Output_to_File",
-      "Input_File_Name",
-      "Output_File_Name",
-      "Output_File_Type",
-      "Output_Alpha",
-      "Bits_Per_Color",
-      "Compression",
-      "Dither_Method",
-      "Include_Header",
-      "Library_Path",
-      "Debug_Console",
-      "Fatal_Console",
-      "Render_Console",
-      "Statistic_Console",
-      "Warning_Console",
-      "Warning_Level",
-      "All_Console",
-      "Debug_File",
-      "Fatal_File",
-      "Render_File",
-      "Statistic_File",
-      "Warning_File",
-      "All_File",
-      "Quality",
-      "Bounding_Threshold",
-      "Bounding",
-      "Light_Buffer",
-      "Vista_Buffer",
-      "Remove_Bounds",
-      "Split_Unions",
-      "Antialias",
-      "Glare_Desaturation",
-      "Sampling_Method",
-      "Stochastic_Seed",
-      "Jitter_Amount",
-      "Jitter",
-      "Antialias_Depth",
-      "CheckNewVersion",
-      "RunCount",
-      "CommandLine",
-      "TextColour",
-      "WarningColour",
-      "ErrorColour",
-      "BackgroundColour",
-
-      "DropToEditor",
-      "LastRenderName",
-      "LastRenderPath",
-      "LastQueuePath",
-      "SecondaryINISection",
-      "BetaVersionNo64",
-      "LastBitmapName",
-      "LastBitmapPath",
-      "LastINIPath",
-      "SecondaryINIFile",
-      "BackgroundFile",
-      "SaveSettingsOnExit",
-      "TileBackground",
-      "HideNewUserHelp",
-      "SendSystemInfo",
-      "ItsAboutTime",
-      "LastPath",
-      "Band0Width",
-      "Band1Width",
-      "Band2Width",
-      "Band3Width",
-      "Band4Width",
-      "ShowCmd",
-      "Transparency",
-      "Use8BitMode",
-      "MakeActive",
-      "KeepAboveMain",
-      "AutoClose",
-      "PreserveBitmap",
-      "FontSize",
-      "FontWeight",
-      "KeepMessages",
-      "AlertSound",
-      "Completion",
-      "Priority",
-      "DutyCycle",
-      "AlertOnCompletion",
-      "AutoRender",
-      "PreventSleep",
-      "NoShelloutWait",
-      "SystemNoActive",
-      "NoShellOuts",
-      "VideoSource",
-      "SceneFile",
-      "OutputFile",
-      "IniOutputFile",
-      "CurrentDirectory",
-      "SourceFile",
-      "Rendering",
-      "RenderwinClose",
-      "Append_File",
-      "Warning Level",
-      "clock_delta",
-      "clock_on",
-      "clock",
-      "Height",
-      "Width",
-      "Dither",
-      "Flags",
-      "Font",
-
-      /* File-types. */
-      "df3",
-      "exr",
-      "gif",
-      "hdr",
-      "iff",
-      "jpeg",
-      "pgm",
-      "png",
-      "ppm",
-      "sys",
-      "tga",
-      "tiff",
-      /* Encodings. */
-      "ascii",
-      "utf8",
-      "uint8",
-      "uint16be",
-      "uint16le",
-      "sint8",
-      "sint16be",
-      "sint16le",
-      "sint32be",
-      "sint32le",
-  };
-
-  //i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
-}
-
-static int txtfmt_ini_find_bool(const char *string)
-{
-  int i;
-
-  /* Keep aligned args for readability. */
-
-  /* Built-in Constants */
-  constexpr char* keywords[]{
-      "false",
-      "no",
-      "off",
-      "true",
-      "yes",
-      "on",
-      "pi",
-      "tau",
-      "%o",
-      "%s",
-      "%n",
-      "%k",
-      "%h",
-      "%w",
-  };
-
-  //i = find_keyword_length(keywords, string);
-
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
-}
+/* Built-in Constants */
+const char *ini_bool_text[]{
+    "false",
+    "no",
+    "off",
+    "true",
+    "yes",
+    "on",
+    "pi",
+    "tau",
+    "%o",
+    "%s",
+    "%n",
+    "%k",
+    "%h",
+    "%w",
+};
 
 static char txtfmt_pov_ini_format_identifier(const char *str)
 {
   char fmt;
-  if (txtfmt_ini_find_keyword(str) != -1) {
+  if (find_keyword_length(ini_keyword, str) != -1) {
     fmt = FMT_TYPE_KEYWORD;
   }
-  else if (txtfmt_ini_find_reserved(str) != -1) {
+  else if (find_keyword_length(ini_reserved, str) != -1) {
     fmt = FMT_TYPE_RESERVED;
   }
   else {
@@ -420,7 +381,7 @@ static void txtfmt_pov_ini_format_line(SpaceText *st, TextLine *line, const bool
         *fmt = FMT_TYPE_NUMERAL;
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT && (i = txtfmt_ini_find_bool(str)) != -1) {
+      else if (prev != FMT_TYPE_DEFAULT && (i = find_keyword_length(ini_bool, str)) != -1) {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -446,8 +407,8 @@ static void txtfmt_pov_ini_format_line(SpaceText *st, TextLine *line, const bool
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_ini_format_identifier()`. */
-        if        ((i = txtfmt_ini_find_keyword(str))  != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = txtfmt_ini_find_reserved(str)) != -1) { prev = FMT_TYPE_RESERVED;
+        if        ((i = find_keyword_length(ini_keyword,str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = find_keyword_length(ini_reserved,str)) != -1) { prev = FMT_TYPE_RESERVED;
 }
 
         /* clang-format on */
@@ -490,4 +451,8 @@ void ED_text_format_register_pov_ini()
   tft.comment_line = "//";
 
   ED_text_format_register(&tft);
+
+  fill_keyword_vector(ini_keyword, ini_keyword_text);
+  fill_keyword_vector(ini_reserved, ini_reserved_text);
+  fill_keyword_vector(ini_bool, ini_bool_text);
 }
