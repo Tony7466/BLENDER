@@ -5,10 +5,31 @@
 #include "COM_KuwaharaAnisotropicOperation.h"
 
 #include "BLI_math_base.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 #include "IMB_colormanagement.h"
 
 namespace blender::compositor {
+
+/* Compute x to the given power, in a safe manner which does not produce non-finite values.
+ * For non-positive values of x zero si returned. */
+static inline float safe_pow_positive(const float &x, const float &power)
+{
+  if (x <= 0.0f) {
+    return 0.0f;
+  }
+
+  return math::pow(x, power);
+}
+static inline float3 safe_pow_positive(const float3 &x, const float power)
+{
+  float3 result;
+  result.x = safe_pow_positive(x.x, power);
+  result.y = safe_pow_positive(x.y, power);
+  result.z = safe_pow_positive(x.z, power);
+  return result;
+}
 
 KuwaharaAnisotropicOperation::KuwaharaAnisotropicOperation()
 {
@@ -39,10 +60,12 @@ void KuwaharaAnisotropicOperation::deinit_execution()
 }
 
 void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
-                                                         float x,
-                                                         float y,
-                                                         PixelSampler sampler)
+                                                         const float x,
+                                                         const float y,
+                                                         const PixelSampler sampler)
 {
+  const int x_i = x;
+  const int y_i = y;
   const int width = this->get_width();
   const int height = this->get_height();
 
@@ -54,9 +77,9 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
   BLI_assert(height == s_xy_reader_->get_height());
 
   /* Values recommended by authors in original paper. */
-  const float angle = 2.0 * M_PI / n_div_;
-  const float q = 3.0;
-  const float EPS = 1.0e-10;
+  const float angle = 2.0f * float(M_PI) / n_div_;
+  const float angle_inv = 1.0f / angle;
+  const float q = 3.0f;
 
   /* For now use green channel to compute orientation. */
   /* TODO: convert to HSV and compute orientation and strength on luminance channel */
@@ -69,83 +92,83 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
   const float c = tmp[1];
 
   /* Compute egenvalues of structure tensor. */
-  const double tr = a + c;
-  const double discr = sqrt((a - b) * (a - b) + 4 * b * c);
-  const double lambda1 = (tr + discr) / 2;
-  const double lambda2 = (tr - discr) / 2;
+  const float tr = a + c;
+  const float discr = math::sqrt((a - b) * (a - b) + 4 * b * c);
+  const float lambda1 = (tr + discr) / 2;
+  const float lambda2 = (tr - discr) / 2;
 
   /* Compute orientation and its strength based on structure tensor. */
-  const double orientation = 0.5 * atan2(2 * b, a - c);
-  const double strength = (lambda1 == 0 && lambda2 == 0) ?
-                              0 :
-                              (lambda1 - lambda2) / (lambda1 + lambda2);
+  const float orientation = 0.5 * math::atan2(2 * b, a - c);
+  const float strength = (lambda1 == 0 && lambda2 == 0) ?
+                             0 :
+                             (lambda1 - lambda2) / (lambda1 + lambda2);
 
-  Vector<double> mean(n_div_);
-  Vector<double> sum(n_div_);
-  Vector<double> var(n_div_);
-  Vector<double> weight(n_div_);
+  const float sx = 1.0f / (strength + 1.0f);
+  const float sy = (1.0f + strength) / 1.0f;
+  const float theta = -orientation;
 
-  for (int ch = 0; ch < 3; ch++) {
-    mean.fill(0.0);
-    sum.fill(0.0);
-    var.fill(0.0);
-    weight.fill(0.0);
+  const float cos_theta = math::cos(theta);
+  const float sin_theta = math::sin(theta);
 
-    double sx = 1.0f / (strength + 1.0f);
-    double sy = (1.0f + strength) / 1.0f;
-    double theta = -orientation;
+  Vector<float3> mean(n_div_, float3(0.0f));
+  Vector<float3> sum(n_div_, float3(0.0f));
+  Vector<float3> var(n_div_, float3(0.0f));
+  Vector<float3> weight(n_div_, float3(0.0f));
 
-    for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
-      for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
-        if (dx == 0 && dy == 0)
-          continue;
-
-        /* Rotate and scale the kernel. This is the "anisotropic" part. */
-        int dx2 = int(sx * (cos(theta) * dx - sin(theta) * dy));
-        int dy2 = int(sy * (sin(theta) * dx + cos(theta) * dy));
-
-        /* Clamp image to avoid artifacts at borders. */
-        const int xx = math::clamp(int(x) + dx2, 0, width - 1);
-        const int yy = math::clamp(int(y) + dy2, 0, height - 1);
-
-        const double ddx2 = double(dx2);
-        const double ddy2 = double(dy2);
-        const double theta = atan2(ddy2, ddx2) + M_PI;
-        const int t = int(floor(theta / angle)) % n_div_;
-        double d2 = dx2 * dx2 + dy2 * dy2;
-        double g = exp(-d2 / (2.0 * kernel_size_));
-        float color[4];
-        image_reader_->read(color, xx, yy, nullptr);
-        const double v = color[ch];
-        /* TODO(@zazizizou): only compute lum once per region */
-        const float lum = IMB_colormanagement_get_luminance(color);
-        /* TODO(@zazizizou): only compute mean for the selected region */
-        mean[t] += g * v;
-        sum[t] += g * lum;
-        var[t] += g * lum * lum;
-        weight[t] += g;
+  for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
+    for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
+      if (dx == 0 && dy == 0) {
+        continue;
       }
+
+      /* Rotate and scale the kernel. This is the "anisotropic" part. */
+      const int dx2 = int(sx * (cos_theta * dx - sin_theta * dy));
+      const int dy2 = int(sy * (sin_theta * dx + cos_theta * dy));
+
+      /* Clamp image to avoid artifacts at borders. */
+      const int xx = math::clamp(x_i + dx2, 0, width - 1);
+      const int yy = math::clamp(y_i + dy2, 0, height - 1);
+
+      const float ddx2 = float(dx2);
+      const float ddy2 = float(dy2);
+      const float theta = math::atan2(ddy2, ddx2) + M_PI;
+      const int t = int(math::floor(theta * angle_inv)) % n_div_;
+      const float d2 = dx2 * dx2 + dy2 * dy2;
+      const float g = math::exp(-d2 / (2.0f * kernel_size_));
+
+      float4 color;
+      image_reader_->read(&color.x, xx, yy, nullptr);
+
+      /* TODO(@zazizizou): only compute lum once per region */
+      const float lum = IMB_colormanagement_get_luminance(color);
+      /* TODO(@zazizizou): only compute mean for the selected region */
+      mean[t] += g * color.xyz();
+      sum[t] += g * lum;
+      var[t] += g * lum * lum;
+      weight[t] += g;
     }
-
-    /* Calculate weighted average */
-    double de = 0.0;
-    double nu = 0.0;
-    for (int i = 0; i < n_div_; i++) {
-      double weight_inv = 1.0 / weight[i];
-      mean[i] = weight[i] != 0 ? mean[i] * weight_inv : 0.0;
-      sum[i] = weight[i] != 0 ? sum[i] * weight_inv : 0.0;
-      var[i] = weight[i] != 0 ? var[i] * weight_inv : 0.0;
-      var[i] = var[i] - sum[i] * sum[i];
-      var[i] = var[i] > FLT_EPSILON ? sqrt(var[i]) : FLT_EPSILON;
-      double w = powf(var[i], -q);
-
-      de += mean[i] * w;
-      nu += w;
-    }
-
-    double val = nu > EPS ? de / nu : 0.0;
-    output[ch] = val;
   }
+
+  /* Calculate weighted average */
+  float3 de{0.0f};
+  float3 nu{0.0f};
+  for (int i = 0; i < n_div_; i++) {
+    const float3 weight_inv = math::safe_rcp(weight[i]);
+    mean[i] = mean[i] * weight_inv;
+    sum[i] = sum[i] * weight_inv;
+    var[i] = var[i] * weight_inv;
+    var[i] = var[i] - sum[i] * sum[i];
+    var[i] = math::safe_sqrt(var[i]);
+
+    const float3 w = safe_pow_positive(var[i], -q);
+    de += mean[i] * w;
+    nu += w;
+  }
+
+  const float3 val = de * math::safe_rcp(nu);
+  output[0] = val.x;
+  output[1] = val.y;
+  output[2] = val.z;
 
   /* No changes for alpha channel. */
   image_reader_->read_sampled(tmp, x, y, sampler);
@@ -194,9 +217,14 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
   BLI_assert(height == s_xy->get_height());
 
   /* Values recommended by authors in original paper. */
-  const float angle = 2.0 * M_PI / n_div_;
-  const float q = 3.0;
-  const float EPS = 1.0e-10;
+  const float angle = 2.0f * float(M_PI) / n_div_;
+  const float angle_inv = 1.0f / angle;
+  const float q = 3.0f;
+
+  Vector<float3> mean(n_div_);
+  Vector<float3> sum(n_div_);
+  Vector<float3> var(n_div_);
+  Vector<float3> weight(n_div_);
 
   for (BuffersIterator<float> it = output->iterate_with(inputs, area); !it.is_end(); ++it) {
     const int x = it.x;
@@ -209,83 +237,83 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     const float c = s_yy->get_value(x, y, 1);
 
     /* Compute egenvalues of structure tensor */
-    const double tr = a + c;
-    const double discr = sqrt((a - b) * (a - b) + 4 * b * c);
-    const double lambda1 = (tr + discr) / 2;
-    const double lambda2 = (tr - discr) / 2;
+    const float tr = a + c;
+    const float discr = math::sqrt((a - b) * (a - b) + 4 * b * c);
+    const float lambda1 = (tr + discr) / 2;
+    const float lambda2 = (tr - discr) / 2;
 
     /* Compute orientation and its strength based on structure tensor. */
-    const double orientation = 0.5 * atan2(2 * b, a - c);
-    const double strength = (lambda1 == 0 && lambda2 == 0) ?
-                                0 :
-                                (lambda1 - lambda2) / (lambda1 + lambda2);
+    const float orientation = 0.5 * math::atan2(2 * b, a - c);
+    const float strength = (lambda1 == 0 && lambda2 == 0) ?
+                               0 :
+                               (lambda1 - lambda2) / (lambda1 + lambda2);
 
-    Vector<double> mean(n_div_);
-    Vector<double> sum(n_div_);
-    Vector<double> var(n_div_);
-    Vector<double> weight(n_div_);
+    const float sx = 1.0f / (strength + 1.0f);
+    const float sy = (1.0f + strength) / 1.0f;
+    const float theta = -orientation;
 
-    for (int ch = 0; ch < 3; ch++) {
-      mean.fill(0.0);
-      sum.fill(0.0);
-      var.fill(0.0);
-      weight.fill(0.0);
+    const float cos_theta = math::cos(theta);
+    const float sin_theta = math::sin(theta);
 
-      double sx = 1.0f / (strength + 1.0f);
-      double sy = (1.0f + strength) / 1.0f;
-      double theta = -orientation;
+    mean.fill(float3(0, 0, 0));
+    sum.fill(float3(0, 0, 0));
+    var.fill(float3(0, 0, 0));
+    weight.fill(float3(0, 0, 0));
 
-      for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
-        for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
-          if (dx == 0 && dy == 0)
-            continue;
-
-          /* Rotate and scale the kernel. This is the "anisotropic" part. */
-          int dx2 = int(sx * (cos(theta) * dx - sin(theta) * dy));
-          int dy2 = int(sy * (sin(theta) * dx + cos(theta) * dy));
-
-          /* Clamp image to avoid artifacts at borders. */
-          const int xx = math::clamp(x + dx2, 0, width - 1);
-          const int yy = math::clamp(y + dy2, 0, height - 1);
-
-          const double ddx2 = double(dx2);
-          const double ddy2 = double(dy2);
-          const double theta = atan2(ddy2, ddx2) + M_PI;
-          const int t = int(floor(theta / angle)) % n_div_;
-          double d2 = dx2 * dx2 + dy2 * dy2;
-          double g = exp(-d2 / (2.0 * kernel_size_));
-          const double v = image->get_value(xx, yy, ch);
-          float color[4];
-          image->read_elem(xx, yy, color);
-          /* TODO(@zazizizou): only compute lum once per region. */
-          const float lum = IMB_colormanagement_get_luminance(color);
-          /* TODO(@zazizizou): only compute mean for the selected region. */
-          mean[t] += g * v;
-          sum[t] += g * lum;
-          var[t] += g * lum * lum;
-          weight[t] += g;
+    for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
+      for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
+        if (dx == 0 && dy == 0) {
+          continue;
         }
+
+        /* Rotate and scale the kernel. This is the "anisotropic" part. */
+        const int dx2 = int(sx * (cos_theta * dx - sin_theta * dy));
+        const int dy2 = int(sy * (sin_theta * dx + cos_theta * dy));
+
+        /* Clamp image to avoid artifacts at borders. */
+        const int xx = math::clamp(x + dx2, 0, width - 1);
+        const int yy = math::clamp(y + dy2, 0, height - 1);
+
+        const float ddx2 = float(dx2);
+        const float ddy2 = float(dy2);
+        const float theta = math::atan2(ddy2, ddx2) + M_PI;
+        const int t = int(math::floor(theta * angle_inv)) % n_div_;
+        const float d2 = dx2 * dx2 + dy2 * dy2;
+        const float g = math::exp(-d2 / (2.0f * kernel_size_));
+
+        float4 color;
+        image->read_elem(xx, yy, &color.x);
+
+        /* TODO(@zazizizou): only compute lum once per region. */
+        const float lum = IMB_colormanagement_get_luminance(color);
+        /* TODO(@zazizizou): only compute mean for the selected region. */
+        mean[t] += g * color.xyz();
+        sum[t] += g * lum;
+        var[t] += g * lum * lum;
+        weight[t] += g;
       }
-
-      /* Calculate weighted average. */
-      double de = 0.0;
-      double nu = 0.0;
-      for (int i = 0; i < n_div_; i++) {
-        double weight_inv = 1.0 / weight[i];
-        mean[i] = weight[i] != 0 ? mean[i] * weight_inv : 0.0;
-        sum[i] = weight[i] != 0 ? sum[i] * weight_inv : 0.0;
-        var[i] = weight[i] != 0 ? var[i] * weight_inv : 0.0;
-        var[i] = var[i] - sum[i] * sum[i];
-        var[i] = var[i] > FLT_EPSILON ? sqrt(var[i]) : FLT_EPSILON;
-        double w = powf(var[i], -q);
-
-        de += mean[i] * w;
-        nu += w;
-      }
-
-      double val = nu > EPS ? de / nu : 0.0;
-      it.out[ch] = val;
     }
+
+    /* Calculate weighted average. */
+    float3 de{0.0f};
+    float3 nu{0.0f};
+    for (int i = 0; i < n_div_; i++) {
+      const float3 weight_inv = math::safe_rcp(weight[i]);
+      mean[i] = mean[i] * weight_inv;
+      sum[i] = sum[i] * weight_inv;
+      var[i] = var[i] * weight_inv;
+      var[i] = var[i] - sum[i] * sum[i];
+      var[i] = math::safe_sqrt(var[i]);
+
+      const float3 w = safe_pow_positive(var[i], -q);
+      de += mean[i] * w;
+      nu += w;
+    }
+
+    const float3 val = de * math::safe_rcp(nu);
+    it.out[0] = val.x;
+    it.out[1] = val.y;
+    it.out[2] = val.z;
 
     /* No changes for alpha channel. */
     it.out[3] = image->get_value(x, y, 3);
