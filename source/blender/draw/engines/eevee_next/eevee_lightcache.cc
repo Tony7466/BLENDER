@@ -86,7 +86,7 @@ class LightBake {
 
     if (run_as_job && !GPU_use_main_context_workaround()) {
       /* This needs to happen in main thread. */
-      gl_context_ = WM_opengl_context_create();
+      gl_context_ = WM_system_gpu_context_create();
       wm_window_reset_drawable();
     }
   }
@@ -189,21 +189,21 @@ class LightBake {
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
       GPU_context_main_lock();
-      DRW_opengl_context_enable();
+      DRW_gpu_context_enable();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
-      DRW_opengl_context_enable();
+      DRW_gpu_context_enable();
     }
     else {
       /* Worker thread case. */
-      DRW_opengl_render_context_enable(gl_context_);
+      DRW_system_gpu_render_context_enable(gl_context_);
       if (gpu_context_ == nullptr) {
         /* Create GPUContext in worker thread as it needs the correct gl context bound (which can
          * only be bound in worker thread because of some GL driver requirements). */
         gpu_context_ = GPU_context_create(nullptr, gl_context_);
       }
-      DRW_gpu_render_context_enable(gpu_context_);
+      DRW_blender_gpu_render_context_enable(gpu_context_);
     }
 
     if (render_begin) {
@@ -215,20 +215,20 @@ class LightBake {
   {
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
       GPU_render_end();
       GPU_context_main_unlock();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
       GPU_render_end();
     }
     else {
       /* Worker thread case. */
-      DRW_gpu_render_context_disable(gpu_context_);
+      DRW_blender_gpu_render_context_disable(gpu_context_);
       GPU_render_end();
-      DRW_opengl_render_context_disable(gl_context_);
+      DRW_system_gpu_render_context_disable(gl_context_);
     }
   }
 
@@ -250,20 +250,20 @@ class LightBake {
     /* Delete / unbind the GL & GPU context. Assumes it is currently bound. */
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
       GPU_context_main_unlock();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
     }
     else {
       /* Worker thread case. */
       if (gpu_context_ != nullptr) {
         GPU_context_discard(gpu_context_);
       }
-      DRW_opengl_render_context_disable(gl_context_);
-      WM_opengl_context_dispose(gl_context_);
+      DRW_system_gpu_render_context_disable(gl_context_);
+      WM_system_gpu_context_dispose(gl_context_);
     }
   }
 };
