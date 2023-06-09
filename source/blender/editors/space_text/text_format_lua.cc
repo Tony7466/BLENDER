@@ -36,28 +36,28 @@ static int txtfmt_lua_find_keyword(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("and"),
-      KEYWORD_INFO("break"),
-      KEYWORD_INFO("do"),
-      KEYWORD_INFO("else"),
-      KEYWORD_INFO("elseif"),
-      KEYWORD_INFO("end"),
-      KEYWORD_INFO("for"),
-      KEYWORD_INFO("function"),
-      KEYWORD_INFO("if"),
-      KEYWORD_INFO("in"),
-      KEYWORD_INFO("local"),
-      KEYWORD_INFO("not"),
-      KEYWORD_INFO("or"),
-      KEYWORD_INFO("repeat"),
-      KEYWORD_INFO("return"),
-      KEYWORD_INFO("then"),
-      KEYWORD_INFO("until"),
-      KEYWORD_INFO("while"),
+  constexpr char *keywords[]{
+      "and",
+      "break",
+      "do",
+      "else",
+      "elseif",
+      "end",
+      "for",
+      "function",
+      "if",
+      "in",
+      "local",
+      "not",
+      "or",
+      "repeat",
+      "return",
+      "then",
+      "until",
+      "while",
   };
 
-  i = find_keyword_length(keywords, string);
+  // i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -83,23 +83,23 @@ static int txtfmt_lua_find_specialvar(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("assert"),       KEYWORD_INFO("collectgarbage"),
-      KEYWORD_INFO("dofile"),       KEYWORD_INFO("error"),
-      KEYWORD_INFO("_G"),           KEYWORD_INFO("getfenv"),
-      KEYWORD_INFO("getmetatable"), KEYWORD_INFO("__index"),
-      KEYWORD_INFO("ipairs"),       KEYWORD_INFO("load"),
-      KEYWORD_INFO("loadfile"),     KEYWORD_INFO("loadstring"),
-      KEYWORD_INFO("next"),         KEYWORD_INFO("pairs"),
-      KEYWORD_INFO("pcall"),        KEYWORD_INFO("print"),
-      KEYWORD_INFO("rawequal"),     KEYWORD_INFO("rawget"),
-      KEYWORD_INFO("rawset"),       KEYWORD_INFO("select"),
-      KEYWORD_INFO("setfenv"),      KEYWORD_INFO("setmetatable"),
-      KEYWORD_INFO("tonumber"),     KEYWORD_INFO("tostring"),
-      KEYWORD_INFO("type"),         KEYWORD_INFO("unpack"),
-      KEYWORD_INFO("_VERSION"),     KEYWORD_INFO("xpcall"),
+  constexpr char* keywords[]{
+      "assert",       "collectgarbage",
+      "dofile",       "error",
+      "_G",           "getfenv",
+      "getmetatable", "__index",
+      "ipairs",       "load",
+      "loadfile",     "loadstring",
+      "next",         "pairs",
+      "pcall",        "print",
+      "rawequal",     "rawget",
+      "rawset",       "select",
+      "setfenv",      "setmetatable",
+      "tonumber",     "tostring",
+      "type",         "unpack",
+      "_VERSION",     "xpcall",
   };
-  i = find_keyword_length(keywords, string);
+  // i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -114,13 +114,13 @@ static int txtfmt_lua_find_bool(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("nil"),
-      KEYWORD_INFO("true"),
-      KEYWORD_INFO("false"),
+  constexpr char *keywords[]{
+      "nil",
+      "true",
+      "false",
   };
 
-  i = find_keyword_length(keywords, string);
+  //i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   if (i == 0 || text_check_identifier(string[i])) {

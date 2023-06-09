@@ -59,21 +59,21 @@ static int txtfmt_py_find_builtinfunc(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("and"),     KEYWORD_INFO("assert"),   KEYWORD_INFO("async"),
-      KEYWORD_INFO("as"),      KEYWORD_INFO("await"),    KEYWORD_INFO("break"),
-      KEYWORD_INFO("case"),    KEYWORD_INFO("continue"), KEYWORD_INFO("del"),
-      KEYWORD_INFO("elif"),    KEYWORD_INFO("else"),     KEYWORD_INFO("except"),
-      KEYWORD_INFO("finally"), KEYWORD_INFO("for"),      KEYWORD_INFO("from"),
-      KEYWORD_INFO("global"),  KEYWORD_INFO("if"),       KEYWORD_INFO("import"),
-      KEYWORD_INFO("in"),      KEYWORD_INFO("is"),       KEYWORD_INFO("lambda"),
-      KEYWORD_INFO("match"),   KEYWORD_INFO("nonlocal"), KEYWORD_INFO("not"),
-      KEYWORD_INFO("or"),      KEYWORD_INFO("pass"),     KEYWORD_INFO("raise"),
-      KEYWORD_INFO("return"),  KEYWORD_INFO("try"),      KEYWORD_INFO("while"),
-      KEYWORD_INFO("with"),    KEYWORD_INFO("yield"),
+  constexpr char* keywords[]{
+      "and",     "assert",   "async",
+      "as",      "await",    "break",
+      "case",    "continue", "del",
+      "elif",    "else",     "except",
+      "finally", "for",      "from",
+      "global",  "if",       "import",
+      "in",      "is",       "lambda",
+      "match",   "nonlocal", "not",
+      "or",      "pass",     "raise",
+      "return",  "try",      "while",
+      "with",    "yield",
   };
 
-  i = find_keyword_length(keywords, string);
+  //i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -94,11 +94,11 @@ static int txtfmt_py_find_specialvar(const char *string)
   int i;
 
   /* Keep aligned args for readability. */
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("def"),
-      KEYWORD_INFO("class"),
+  constexpr char* keywords[]{
+      "def",
+      "class",
   };
-  i = find_keyword_length(keywords, string);
+  //i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -133,13 +133,13 @@ static int txtfmt_py_find_bool(const char *string)
 
   /* Keep aligned args for readability. */
 
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("None"),
-      KEYWORD_INFO("True"),
-      KEYWORD_INFO("False"),
+  constexpr char* keywords[]{
+      "None",
+      "True",
+      "False",
   };
 
-  i = find_keyword_length(keywords, string);
+  //i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   if (i == 0 || text_check_identifier(string[i])) {

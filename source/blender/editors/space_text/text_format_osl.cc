@@ -28,18 +28,18 @@ static int txtfmt_osl_find_builtinfunc(const char *string)
   /* list is from
    * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
    */
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("break"),    KEYWORD_INFO("closure"),     KEYWORD_INFO("color"),
-      KEYWORD_INFO("continue"), KEYWORD_INFO("do"),          KEYWORD_INFO("else"),
-      KEYWORD_INFO("emit"),     KEYWORD_INFO("float"),       KEYWORD_INFO("for"),
-      KEYWORD_INFO("if"),       KEYWORD_INFO("illuminance"), KEYWORD_INFO("illuminate"),
-      KEYWORD_INFO("int"),      KEYWORD_INFO("matrix"),      KEYWORD_INFO("normal"),
-      KEYWORD_INFO("output"),   KEYWORD_INFO("point"),       KEYWORD_INFO("public"),
-      KEYWORD_INFO("return"),   KEYWORD_INFO("string"),      KEYWORD_INFO("struct"),
-      KEYWORD_INFO("vector"),   KEYWORD_INFO("void"),        KEYWORD_INFO("while"),
+  constexpr char* keywords[]{
+      "break",    "closure",     "color",
+      "continue", "do",          "else",
+      "emit",     "float",       "for",
+      "if",       "illuminance", "illuminate",
+      "int",      "matrix",      "normal",
+      "output",   "point",       "public",
+      "return",   "string",      "struct",
+      "vector",   "void",        "while",
   };
 
-  i = find_keyword_length(keywords, string);
+  // i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -57,22 +57,22 @@ static int txtfmt_osl_find_reserved(const char *string)
   /* list is from...
    * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
    */
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("bool"),      KEYWORD_INFO("case"),     KEYWORD_INFO("catch"),
-      KEYWORD_INFO("char"),      KEYWORD_INFO("const"),    KEYWORD_INFO("delete"),
-      KEYWORD_INFO("default"),   KEYWORD_INFO("double"),   KEYWORD_INFO("enum"),
-      KEYWORD_INFO("extern"),    KEYWORD_INFO("false"),    KEYWORD_INFO("friend"),
-      KEYWORD_INFO("goto"),      KEYWORD_INFO("inline"),   KEYWORD_INFO("long"),
-      KEYWORD_INFO("new"),       KEYWORD_INFO("operator"), KEYWORD_INFO("private"),
-      KEYWORD_INFO("protected"), KEYWORD_INFO("short"),    KEYWORD_INFO("signed"),
-      KEYWORD_INFO("sizeof"),    KEYWORD_INFO("static"),   KEYWORD_INFO("switch"),
-      KEYWORD_INFO("template"),  KEYWORD_INFO("this"),     KEYWORD_INFO("throw"),
-      KEYWORD_INFO("true"),      KEYWORD_INFO("try"),      KEYWORD_INFO("typedef"),
-      KEYWORD_INFO("uniform"),   KEYWORD_INFO("union"),    KEYWORD_INFO("unsigned"),
-      KEYWORD_INFO("varying"),   KEYWORD_INFO("virtual"),  KEYWORD_INFO("volatile"),
+  constexpr char* keywords[]{
+      "bool",      "case",     "catch",
+      "char",      "const",    "delete",
+      "default",   "double",   "enum",
+      "extern",    "false",    "friend",
+      "goto",      "inline",   "long",
+      "new",       "operator", "private",
+      "protected", "short",    "signed",
+      "sizeof",    "static",   "switch",
+      "template",  "this",     "throw",
+      "true",      "try",      "typedef",
+      "uniform",   "union",    "unsigned",
+      "varying",   "virtual",  "volatile",
   };
 
-  i = find_keyword_length(keywords, string);
+  // i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -95,14 +95,14 @@ static int txtfmt_osl_find_specialvar(const char *string)
   /* Keep aligned args for readability. */
 
   /* OSL shader types */
-  constexpr KeywordInfo keywords[]{
-      KEYWORD_INFO("shader"),
-      KEYWORD_INFO("surface"),
-      KEYWORD_INFO("volume"),
-      KEYWORD_INFO("displacement"),
+  constexpr char *keywords[]{
+      "shader",
+      "surface",
+      "volume",
+      "displacement",
   };
 
-  i = find_keyword_length(keywords, string);
+  // i = find_keyword_length(keywords, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
