@@ -24,6 +24,8 @@ ShaderPtr ShaderModule::selectable_shader(const char *create_info_name)
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
       GPU_shader_create_info_get(create_info_name));
 
+  info.define("OVERLAY_NEXT");
+
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
   }
@@ -39,6 +41,8 @@ ShaderPtr ShaderModule::selectable_shader(
       GPU_shader_create_info_get(create_info_name));
 
   patch(info);
+
+  info.define("OVERLAY_NEXT");
 
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
@@ -88,6 +92,12 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         /* Use the same vertex layout for all shapes. */
         info.vertex_in(1, gpu::shader::Type::INT, "vclass");
       });
+
+  extra_point = selectable_shader("overlay_extra_point", [](gpu::shader::ShaderCreateInfo &info) {
+    info.storage_buf(0, Qualifier::READ, "float4", "data_buf[]");
+    info.define("pos", "data_buf[gl_InstanceID].xyz");
+    info.vertex_inputs_.pop_last();
+  });
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)

@@ -298,7 +298,7 @@ struct Resources : public select::SelectMap {
 /**
  * Buffer containing instances of a certain shape.
  */
-template<typename InstanceDataT> struct ShapeInstanceBuf : private select::SelectBuf {
+template<typename InstanceDataT> struct ShapeInstanceBuf : protected select::SelectBuf {
 
   StorageVectorBuffer<InstanceDataT> data_buf;
 
