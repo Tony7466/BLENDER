@@ -761,9 +761,9 @@ static void view3d_interactive_add_begin(bContext *C, wmOperator *op, const wmEv
 
   ipd->step_index = STEP_BASE;
 
-  ipd->snap_to = tool_settings->snap_mode_tools;
+  ipd->snap_to = tool_settings->snap_mode & SCE_SNAP_MODE_GEOM;
   if (ipd->snap_to == SCE_SNAP_MODE_NONE) {
-    ipd->snap_to = tool_settings->snap_mode;
+    ipd->snap_to = SCE_SNAP_MODE_GEOM;
   }
 
   plane_from_point_normal_v3(ipd->step[0].plane, ipd->co_src, ipd->matrix_orient[plane_axis]);

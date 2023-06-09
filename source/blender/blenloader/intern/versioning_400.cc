@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
@@ -228,12 +229,9 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 5)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *ts = scene->toolsettings;
-      if (ts->snap_mode_tools != SCE_SNAP_MODE_NONE) {
-        ts->snap_mode_tools = SCE_SNAP_MODE_GEOM;
-      }
-
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
+        ts->snap_flag &= ~SCE_SNAP_PROJECT;
         ts->snap_mode |= SCE_SNAP_MODE_FACE_RAYCAST;
       }
 #undef SCE_SNAP_PROJECT
@@ -254,6 +252,19 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_crease_generic(*bmain);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      const ToolSettings *ts_default = DNA_struct_default_get(ToolSettings);
+      ToolSettings *ts = scene->toolsettings;
+      if (ts->snap_target != 0) {
+        ts->snap_target -= 1;
+      }
+
+      ts->snap_mode = ts_default->snap_mode;
+      ts->snap_transform_mode_flag = ts_default->snap_transform_mode_flag;
     }
   }
 

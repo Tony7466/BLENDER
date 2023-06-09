@@ -1697,12 +1697,11 @@ typedef struct ToolSettings {
 
   struct SequencerToolSettings *sequencer_tool_settings;
 
-  short snap_mode_tools; /* If SCE_SNAP_MODE_NONE, use #ToolSettings::snap_mode. #eSnapMode. */
-  char plane_axis;       /* X, Y or Z. */
-  char plane_depth;      /* #eV3DPlaceDepth. */
-  char plane_orient;     /* #eV3DPlaceOrient. */
+  char plane_axis;   /* X, Y or Z. */
+  char plane_depth;  /* #eV3DPlaceDepth. */
+  char plane_orient; /* #eV3DPlaceOrient. */
   char use_plane_axis_auto;
-  char _pad7[2];
+  char _pad7[4];
 
 } ToolSettings;
 
@@ -2273,10 +2272,9 @@ ENUM_OPERATORS(eSnapFlag, SCE_SNAP_BACKFACE_CULLING)
 
 /** See #ToolSettings.snap_target (to be renamed `snap_source`) and #TransSnap.source_operation */
 typedef enum eSnapSourceOP {
-  SCE_SNAP_SOURCE_CLOSEST = 0,
+  SCE_SNAP_SOURCE_MEDIAN = 0,
   SCE_SNAP_SOURCE_CENTER = 1,
-  SCE_SNAP_SOURCE_MEDIAN = 2,
-  SCE_SNAP_SOURCE_ACTIVE = 3,
+  SCE_SNAP_SOURCE_ACTIVE = 2,
 } eSnapSourceOP;
 
 ENUM_OPERATORS(eSnapSourceOP, SCE_SNAP_SOURCE_ACTIVE)

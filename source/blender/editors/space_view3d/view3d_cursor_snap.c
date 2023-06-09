@@ -402,36 +402,41 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
   }
 
   if (loc_prev) {
-    /* Draw an "X" indicating where the previous snap point is.
-     * This is useful for indicating perpendicular snap. */
+    float view_inv[4][4];
+    copy_m4_m4(view_inv, rv3d->viewinv);
 
-    /* v1, v2, v3 and v4 indicate the coordinates of the ends of the "X". */
-    float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
+    float vx[3], vy[3], v[3];
+    float size_tmp = ED_view3d_pixel_size(rv3d, loc_prev) * radius;
+    float size_fac = 0.5f;
 
-    /* Multiply by 0.75f so that the final size of the "X" is close to that of
-     * the circle.
-     * (A closer value is 0.7071f, but we don't need to be exact here). */
-    float x_size = 0.75f * radius * ED_view3d_pixel_size(rv3d, loc_prev);
-
-    mul_v3_v3fl(vx, view_inv[0], x_size);
-    mul_v3_v3fl(vy, view_inv[1], x_size);
-
-    add_v3_v3v3(v1, vx, vy);
-    sub_v3_v3v3(v2, vx, vy);
-    negate_v3_v3(v3, v1);
-    negate_v3_v3(v4, v2);
-
-    add_v3_v3(v1, loc_prev);
-    add_v3_v3(v2, loc_prev);
-    add_v3_v3(v3, loc_prev);
-    add_v3_v3(v4, loc_prev);
+    mul_v3_v3fl(vx, view_inv[0], size_tmp);
+    mul_v3_v3fl(vy, view_inv[1], size_tmp);
 
     immUniformColor4ubv(color_line);
-    immBegin(GPU_PRIM_LINES, 4);
-    immVertex3fv(pos, v3);
-    immVertex3fv(pos, v1);
-    immVertex3fv(pos, v4);
-    immVertex3fv(pos, v2);
+
+    imm_drawcircball(loc_prev, size_tmp, view_inv, pos);
+
+    immBegin(GPU_PRIM_LINES, 8);
+    add_v3_v3v3(v, loc_prev, vx);
+    immVertex3fv(pos, v);
+    madd_v3_v3fl(v, vx, size_fac);
+    immVertex3fv(pos, v);
+
+    sub_v3_v3v3(v, loc_prev, vx);
+    immVertex3fv(pos, v);
+    madd_v3_v3fl(v, vx, -size_fac);
+    immVertex3fv(pos, v);
+
+    add_v3_v3v3(v, loc_prev, vy);
+    immVertex3fv(pos, v);
+    madd_v3_v3fl(v, vy, size_fac);
+    immVertex3fv(pos, v);
+
+    sub_v3_v3v3(v, loc_prev, vy);
+    immVertex3fv(pos, v);
+    madd_v3_v3fl(v, vy, -size_fac);
+    immVertex3fv(pos, v);
+
     immEnd();
 
     if (loc_curr && (snap_elem_type & SCE_SNAP_MODE_EDGE_PERPENDICULAR)) {
@@ -550,8 +555,11 @@ static bool v3d_cursor_is_snap_invert(SnapCursorDataIntern *data_intern, const w
 
 static eSnapMode v3d_cursor_snap_elements(ToolSettings *tool_settings)
 {
-  return tool_settings->snap_mode_tools == SCE_SNAP_MODE_NONE ? tool_settings->snap_mode :
-                                                                tool_settings->snap_mode_tools;
+  eSnapMode snap_mode = tool_settings->snap_mode & SCE_SNAP_MODE_GEOM;
+  if (snap_mode == SCE_SNAP_MODE_NONE) {
+    snap_mode = SCE_SNAP_MODE_GEOM;
+  }
+  return snap_mode;
 }
 
 static void v3d_cursor_snap_context_ensure(Scene *scene)
