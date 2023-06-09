@@ -152,13 +152,13 @@ static bool textview_draw_string(TextViewDrawState *tds,
 
         /* Wrap. */
         if (tot_lines > 1) {
-          int iofs = (int)((float)(y_next - tds->mval[1]) / tds->lheight);
+          int iofs = int(float(y_next - tds->mval[1]) / tds->lheight);
           ofs += offsets[MIN2(iofs, tot_lines - 1)];
         }
 
         /* Last part. */
         ofs += BLI_str_utf8_offset_from_column(str + ofs,
-                                               (int)floor((float)tds->mval[0] / tds->cwidth));
+                                               int(floor(float(tds->mval[0]) / tds->cwidth)));
 
         CLAMP(ofs, 0, str_len);
         *tds->mval_pick_offset += str_len - ofs;
@@ -323,13 +323,13 @@ int textview_draw(TextViewContext *tvc,
           CLAMPIS(mval_init[1], tvc->draw_rect.ymin, tvc->draw_rect.ymax) + tvc->scroll_ymin,
   };
 
-  if (r_mval_pick_offset != NULL) {
+  if (r_mval_pick_offset != nullptr) {
     *r_mval_pick_offset = 0;
   }
 
   /* Constants for the text-view context. */
   tds.font_id = font_id;
-  tds.cwidth = (int)BLF_fixed_width(font_id);
+  tds.cwidth = int(BLF_fixed_width(font_id));
   BLI_assert(tds.cwidth > 0);
   tds.lheight = tvc->lheight;
   tds.row_vpadding = tvc->row_vpadding;
@@ -380,11 +380,11 @@ int textview_draw(TextViewContext *tvc,
           &tds,
           ext_line,
           ext_len,
-          (data_flag & TVC_LINE_FG) ? fg : NULL,
-          (data_flag & TVC_LINE_BG) ? bg : NULL,
+          (data_flag & TVC_LINE_FG) ? fg : nullptr,
+          (data_flag & TVC_LINE_BG) ? bg : nullptr,
           (data_flag & TVC_LINE_ICON) ? icon : 0,
-          (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
-          (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
+          (data_flag & TVC_LINE_ICON_FG) ? icon_fg : nullptr,
+          (data_flag & TVC_LINE_ICON_BG) ? icon_bg : nullptr,
           bg_sel);
 
       if (do_draw) {

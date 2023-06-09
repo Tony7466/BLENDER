@@ -85,7 +85,7 @@ static int console_textview_begin(TextViewContext *tvc)
   /* iterator */
   tvc->iter = sc->scrollback.last;
 
-  return (tvc->iter != NULL);
+  return (tvc->iter != nullptr);
 }
 
 static void console_textview_end(TextViewContext *tvc)
@@ -96,7 +96,7 @@ static void console_textview_end(TextViewContext *tvc)
 
 static int console_textview_step(TextViewContext *tvc)
 {
-  return ((tvc->iter = (void *)((Link *)tvc->iter)->prev) != NULL);
+  return ((tvc->iter = (void *)((Link *)tvc->iter)->prev) != nullptr);
 }
 
 static void console_textview_line_get(TextViewContext *tvc, const char **r_line, int *r_len)
@@ -137,12 +137,12 @@ static void console_textview_draw_cursor(TextViewContext *tvc, int cwidth, int c
     const ConsoleLine *cl = (ConsoleLine *)sc->history.last;
     int offl = 0, offc = 0;
 
-    console_cursor_wrap_offset(sc->prompt, columns, &offl, &offc, NULL);
+    console_cursor_wrap_offset(sc->prompt, columns, &offl, &offc, nullptr);
     console_cursor_wrap_offset(cl->line, columns, &offl, &offc, cl->line + cl->cursor);
     pen[0] = cwidth * offc;
     pen[1] = -tvc->lheight * offl;
 
-    console_cursor_wrap_offset(cl->line + cl->cursor, columns, &offl, &offc, NULL);
+    console_cursor_wrap_offset(cl->line + cl->cursor, columns, &offl, &offc, nullptr);
     pen[1] += tvc->lheight * offl;
 
     pen[0] += tvc->draw_rect.xmin;
@@ -189,7 +189,7 @@ static int console_textview_main__internal(SpaceConsole *sc,
                                            void **r_mval_pick_item,
                                            int *r_mval_pick_offset)
 {
-  ConsoleLine cl_dummy = {NULL};
+  ConsoleLine cl_dummy = {nullptr};
   int ret = 0;
 
   const View2D *v2d = &region->v2d;
@@ -206,7 +206,7 @@ static int console_textview_main__internal(SpaceConsole *sc,
   tvc.const_colors = console_textview_const_colors;
 
   tvc.arg1 = sc;
-  tvc.arg2 = NULL;
+  tvc.arg2 = nullptr;
 
   /* view */
   tvc.sel_start = sc->sel_start;
@@ -227,19 +227,19 @@ static int console_textview_main__internal(SpaceConsole *sc,
 void console_textview_main(SpaceConsole *sc, const ARegion *region)
 {
   const int mval[2] = {INT_MAX, INT_MAX};
-  console_textview_main__internal(sc, region, true, mval, NULL, NULL);
+  console_textview_main__internal(sc, region, true, mval, nullptr, nullptr);
 }
 
 int console_textview_height(SpaceConsole *sc, const ARegion *region)
 {
   const int mval[2] = {INT_MAX, INT_MAX};
-  return console_textview_main__internal(sc, region, false, mval, NULL, NULL);
+  return console_textview_main__internal(sc, region, false, mval, nullptr, nullptr);
 }
 
 int console_char_pick(SpaceConsole *sc, const ARegion *region, const int mval[2])
 {
   int r_mval_pick_offset = 0;
-  void *mval_pick_item = NULL;
+  void *mval_pick_item = nullptr;
 
   console_textview_main__internal(sc, region, false, mval, &mval_pick_item, &r_mval_pick_offset);
   return r_mval_pick_offset;

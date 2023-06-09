@@ -252,7 +252,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   report_max = static_cast<Report *>(info_text_pick(sinfo, region, reports, rect.ymin));
 
   /* get the first report if none found */
-  if (report_min == NULL) {
+  if (report_min == nullptr) {
     // printf("find_min\n");
     LISTBASE_FOREACH (Report *, report, &reports->list) {
       if (report->type & report_mask) {
@@ -262,7 +262,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  if (report_max == NULL) {
+  if (report_max == nullptr) {
     // printf("find_max\n");
     for (Report *report = static_cast<Report *>(reports->list.last); report; report = report->prev)
     {
@@ -273,7 +273,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  if (report_min == NULL || report_max == NULL) {
+  if (report_min == nullptr || report_max == nullptr) {
     return OPERATOR_CANCELLED;
   }
 

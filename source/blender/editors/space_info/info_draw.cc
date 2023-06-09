@@ -83,7 +83,7 @@ static int report_textview_skip__internal(TextViewContext *tvc)
   while (tvc->iter && (((const Report *)tvc->iter)->type & report_mask) == 0) {
     tvc->iter = (void *)((Link *)tvc->iter)->prev;
   }
-  return (tvc->iter != NULL);
+  return (tvc->iter != nullptr);
 }
 
 static int report_textview_begin(TextViewContext *tvc)
@@ -183,7 +183,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
   tvc.step = report_textview_step;
   tvc.line_get = report_textview_line_get;
   tvc.line_data = report_line_data;
-  tvc.const_colors = NULL;
+  tvc.const_colors = nullptr;
 
   tvc.arg1 = sinfo;
   tvc.arg2 = reports;
@@ -208,21 +208,21 @@ void *info_text_pick(const SpaceInfo *sinfo,
                      const ReportList *reports,
                      int mouse_y)
 {
-  void *mval_pick_item = NULL;
+  void *mval_pick_item = nullptr;
   const int mval[2] = {0, mouse_y};
 
-  info_textview_main__internal(sinfo, region, reports, false, mval, &mval_pick_item, NULL);
+  info_textview_main__internal(sinfo, region, reports, false, mval, &mval_pick_item, nullptr);
   return (void *)mval_pick_item;
 }
 
 int info_textview_height(const SpaceInfo *sinfo, const ARegion *region, const ReportList *reports)
 {
   const int mval[2] = {INT_MAX, INT_MAX};
-  return info_textview_main__internal(sinfo, region, reports, false, mval, NULL, NULL);
+  return info_textview_main__internal(sinfo, region, reports, false, mval, nullptr, nullptr);
 }
 
 void info_textview_main(const SpaceInfo *sinfo, const ARegion *region, const ReportList *reports)
 {
   const int mval[2] = {INT_MAX, INT_MAX};
-  info_textview_main__internal(sinfo, region, reports, true, mval, NULL, NULL);
+  info_textview_main__internal(sinfo, region, reports, true, mval, nullptr, nullptr);
 }

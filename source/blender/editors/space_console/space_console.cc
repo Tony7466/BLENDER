@@ -153,7 +153,7 @@ static void console_cursor(wmWindow *win, ScrArea * /*area*/, ARegion *region)
 
 static bool id_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
 {
-  return WM_drag_get_local_ID(drag, 0) != NULL;
+  return WM_drag_get_local_ID(drag, 0) != nullptr;
 }
 
 static void id_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
@@ -183,8 +183,8 @@ static void console_dropboxes(void)
 {
   ListBase *lb = WM_dropboxmap_find("Console", SPACE_CONSOLE, RGN_TYPE_WINDOW);
 
-  WM_dropbox_add(lb, "CONSOLE_OT_insert", id_drop_poll, id_drop_copy, NULL, NULL);
-  WM_dropbox_add(lb, "CONSOLE_OT_insert", path_drop_poll, path_drop_copy, NULL, NULL);
+  WM_dropbox_add(lb, "CONSOLE_OT_insert", id_drop_poll, id_drop_copy, nullptr, nullptr);
+  WM_dropbox_add(lb, "CONSOLE_OT_insert", path_drop_poll, path_drop_copy, nullptr, nullptr);
 }
 
 /* ************* end drop *********** */
@@ -196,7 +196,8 @@ static void console_main_region_draw(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
 
   if (BLI_listbase_is_empty(&sc->scrollback)) {
-    WM_operator_name_call((bContext *)C, "CONSOLE_OT_banner", WM_OP_EXEC_DEFAULT, NULL, NULL);
+    WM_operator_name_call(
+        (bContext *)C, "CONSOLE_OT_banner", WM_OP_EXEC_DEFAULT, nullptr, nullptr);
   }
 
   /* clear and setup matrix */
@@ -214,7 +215,7 @@ static void console_main_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, nullptr);
 }
 
 static void console_operatortypes(void)
@@ -316,7 +317,7 @@ static void console_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   LISTBASE_FOREACH (ConsoleLine *, cl, &con->history) {
     /* 'len_alloc' is invalid on write, set from 'len' on read */
     BLO_write_struct(writer, ConsoleLine, cl);
-    BLO_write_raw(writer, (size_t)cl->len + 1, cl->line);
+    BLO_write_raw(writer, size_t(cl->len) + 1, cl->line);
   }
   BLO_write_struct(writer, SpaceConsole, sl);
 }

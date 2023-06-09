@@ -139,7 +139,7 @@ static void info_main_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, nullptr);
 }
 
 static void info_operatortypes(void)
@@ -237,10 +237,10 @@ static void info_header_listener(const wmRegionListenerParams *params)
 
 static void info_header_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   ARegion *region = params->region;
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {NULL};
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {nullptr};
   msg_sub_value_region_tag_redraw.owner = region;
   msg_sub_value_region_tag_redraw.user_data = region;
   msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
