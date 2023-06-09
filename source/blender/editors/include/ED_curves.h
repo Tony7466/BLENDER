@@ -150,10 +150,10 @@ void select_all(bke::CurvesGeometry &curves, eAttrDomain selection_domain, int a
 /**
  * Select the ends (front or back) of all the curves.
  *
- * \param amount_front: The amount of points to select from the front.
- * \param amount_back: The amount of points to select from the back.
+ * \param amount_start: The amount of points to select from the front.
+ * \param amount_end: The amount of points to select from the back.
  */
-void select_ends(bke::CurvesGeometry &curves, int amount_front, int amount_back);
+void select_ends(bke::CurvesGeometry &curves, int amount_start, int amount_end);
 
 /**
  * Select the points of all curves that have at least one point selected.

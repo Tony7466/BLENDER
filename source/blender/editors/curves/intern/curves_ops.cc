@@ -943,12 +943,12 @@ static void CURVES_OT_select_random(wmOperatorType *ot)
 static int select_ends_exec(bContext *C, wmOperator *op)
 {
   VectorSet<Curves *> unique_curves = curves::get_unique_editable_curves(*C);
-  const int amount_front = RNA_int_get(op->ptr, "amount_front");
-  const int amount_back = RNA_int_get(op->ptr, "amount_back");
+  const int amount_start = RNA_int_get(op->ptr, "amount_start");
+  const int amount_end = RNA_int_get(op->ptr, "amount_end");
 
   for (Curves *curves_id : unique_curves) {
     CurvesGeometry &curves = curves_id->geometry.wrap();
-    select_ends(curves, amount_front, amount_back);
+    select_ends(curves, amount_start, amount_end);
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
      * attribute for now. */
@@ -967,8 +967,8 @@ static void select_ends_ui(bContext * /*C*/, wmOperator *op)
 
   uiLayout *col = uiLayoutColumn(layout, true);
   uiLayoutSetPropDecorate(col, false);
-  uiItemR(col, op->ptr, "amount_front", 0, IFACE_("Amount Front"), ICON_NONE);
-  uiItemR(col, op->ptr, "amount_back", 0, IFACE_("Back"), ICON_NONE);
+  uiItemR(col, op->ptr, "amount_start", 0, IFACE_("Amount Start"), ICON_NONE);
+  uiItemR(col, op->ptr, "amount_end", 0, IFACE_("End"), ICON_NONE);
 }
 
 static void CURVES_OT_select_ends(wmOperatorType *ot)
@@ -984,7 +984,7 @@ static void CURVES_OT_select_ends(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_int(ot->srna,
-              "amount_front",
+              "amount_start",
               0,
               0,
               INT32_MAX,
@@ -993,7 +993,7 @@ static void CURVES_OT_select_ends(wmOperatorType *ot)
               0,
               INT32_MAX);
   RNA_def_int(ot->srna,
-              "amount_back",
+              "amount_end",
               1,
               0,
               INT32_MAX,

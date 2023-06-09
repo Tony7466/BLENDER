@@ -222,7 +222,7 @@ void select_all(bke::CurvesGeometry &curves, const eAttrDomain selection_domain,
   }
 }
 
-void select_ends(bke::CurvesGeometry &curves, int amount_front, int amount_back)
+void select_ends(bke::CurvesGeometry &curves, int amount_start, int amount_end)
 {
   const bool was_anything_selected = has_anything_selected(curves);
   const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -241,7 +241,7 @@ void select_ends(bke::CurvesGeometry &curves, int amount_front, int amount_back)
       threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
         for (const int curve_i : range) {
           selection_typed
-              .slice(points_by_curve[curve_i].drop_front(amount_front).drop_back(amount_back))
+              .slice(points_by_curve[curve_i].drop_front(amount_start).drop_back(amount_end))
               .fill(T(0));
         }
       });
