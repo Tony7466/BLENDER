@@ -243,17 +243,17 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   return false;
 }
 
-int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *string)
+int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *text)
 {
   int i = 0;
   for (auto keyword : keywords) {
-    if (strncmp(string, keyword.keyword, keyword.length) == 0) {
+    if (strncmp(text, keyword.keyword, keyword.length) == 0) {
       i = keyword.length;
       break;
     }
   }
 
-  if (i == 0 || text_check_identifier(string[i])) {
+  if (i == 0 || text_check_identifier(text[i])) {
     return -1;
   }
 
