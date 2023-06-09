@@ -16,6 +16,8 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 
+#include "BLT_translation.h"
+
 #include "ED_curves.h"
 #include "ED_object.h"
 #include "ED_screen.h"
@@ -957,6 +959,18 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void select_ends_ui(bContext * /*C*/, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayout *col = uiLayoutColumn(layout, true);
+  uiLayoutSetPropDecorate(col, false);
+  uiItemR(col, op->ptr, "amount_front", 0, IFACE_("Amount Front"), ICON_NONE);
+  uiItemR(col, op->ptr, "amount_back", 0, IFACE_("Back"), ICON_NONE);
+}
+
 static void CURVES_OT_select_ends(wmOperatorType *ot)
 {
   ot->name = "Select Ends";
@@ -964,6 +978,7 @@ static void CURVES_OT_select_ends(wmOperatorType *ot)
   ot->description = "Select end points of curves";
 
   ot->exec = select_ends_exec;
+  ot->ui = select_ends_ui;
   ot->poll = editable_curves_point_domain_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
