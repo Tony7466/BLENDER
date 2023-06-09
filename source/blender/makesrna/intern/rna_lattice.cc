@@ -175,7 +175,7 @@ static int rna_Lattice_size_editable(PointerRNA *ptr, const char ** /*r_info*/)
 {
   Lattice *lt = (Lattice *)ptr->data;
 
-  return (lt->key == NULL) ? PROP_EDITABLE : 0;
+  return (lt->key == NULL) ? int(PROP_EDITABLE) : 0;
 }
 
 static void rna_Lattice_points_u_set(PointerRNA *ptr, int value)
