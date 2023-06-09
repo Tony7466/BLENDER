@@ -677,10 +677,11 @@ template<typename T>
   const VecBase<T, 3> a_point = point - a;
   T length_a_b;
   T length_a_point;
+  /* Constructing a right angle triangle between 2 points and the distance we want to calculate. */
   const VecBase<T, 3> a_b_norm = normalize_and_get_length(a_b, length_a_b);
   const VecBase<T, 3> a_point_norm = normalize_and_get_length(a_point, length_a_point);
   const float sin_angle_a = length(cross(a_b_norm, a_point_norm));
-  /* sin(90) is 1 so the division isn't needed. */
+  /* Using the law of sines, sin(90) is 1 so the division isn't needed. */
   const T distance = length_a_point * sin_angle_a;
   return distance;
 }

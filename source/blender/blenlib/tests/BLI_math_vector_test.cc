@@ -184,19 +184,25 @@ TEST(math_vector, exp)
 TEST(math_vector, distance_to_line)
 {
   float3 p1(1.0f, 1.0f, 0.0f);
-  const float3 a(0, 0, 0);
-  const float3 b(1, 0, 0);
+  const float3 a1(0, 0, 0);
+  const float3 b1(1, 0, 0);
 
-  float result = math::distance_to_line(p1, a, b);
+  float result = math::distance_to_line(p1, a1, b1);
   EXPECT_NEAR(result, 1.0f, 1e-6f);
 
   float3 p2(-1.0f, 2.0f, 0.0f);
-  result = math::distance_to_line(p2, a, b);
+  result = math::distance_to_line(p2, a1, b1);
   EXPECT_NEAR(result, 2.0f, 1e-6f);
 
   float3 p3(-1.0f, 0.0f, 0.0f);
-  result = math::distance_to_line(p3, a, b);
+  result = math::distance_to_line(p3, a1, b1);
   EXPECT_NEAR(result, 0.0f, 1e-6f);
+
+  float3 p4(-1.0f, 8.0f, -1.0f);
+  const float3 a2(-1, 0, -1);
+  const float3 b2(1, 0, 1);
+  result = math::distance_to_line(p4, a2, b2);
+  EXPECT_NEAR(result, 8.0f, 1e-6f);
 }
 
 }  // namespace blender::tests
