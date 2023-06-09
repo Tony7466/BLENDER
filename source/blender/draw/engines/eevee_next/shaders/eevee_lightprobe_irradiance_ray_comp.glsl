@@ -84,7 +84,8 @@ void main()
   sh.L1.Mp1 *= weight_captured;
 
   if (surfel_next > -1) {
-    irradiance_capture(surfel_buf[surfel_next], P, sh);
+    Surfel surfel = surfel_buf[surfel_next];
+    irradiance_capture(surfel, P, sh);
   }
   else {
     /* TODO(fclem): Sky radiance. */
@@ -92,7 +93,8 @@ void main()
   }
 
   if (surfel_prev > -1) {
-    irradiance_capture(surfel_buf[surfel_prev], P, sh);
+    Surfel surfel = surfel_buf[surfel_prev];
+    irradiance_capture(surfel, P, sh);
   }
   else {
     /* TODO(fclem): Sky radiance. */
