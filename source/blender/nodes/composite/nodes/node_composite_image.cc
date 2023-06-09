@@ -825,10 +825,20 @@ class RenderLayerOperation : public NodeOperation {
   void execute() override
   {
     const int view_layer = bnode().custom1;
-    GPUTexture *combined_texture = context().get_input_texture(view_layer, RE_PASSNAME_COMBINED);
 
-    execute_pass("Image", combined_texture, "compositor_read_pass_color");
-    execute_pass("Alpha", combined_texture, "compositor_read_pass_alpha");
+    Result &image_result = get_result("Image");
+    Result &alpha_result = get_result("Alpha");
+
+    if (image_result.should_compute() || alpha_result.should_compute()) {
+      Context::InputTexture combined = context().get_input_texture(view_layer,
+                                                                   RE_PASSNAME_COMBINED);
+      if (image_result.should_compute()) {
+        execute_pass(image_result, combined.texture, "compositor_read_pass_rgba");
+      }
+      if (alpha_result.should_compute()) {
+        execute_pass(alpha_result, combined.texture, "compositor_read_pass_rgba");
+      }
+    }
 
     /* Other output passes are not supported for now, so allocate them as invalid. */
     for (const bNodeSocket *output : this->node()->output_sockets()) {
@@ -836,15 +846,25 @@ class RenderLayerOperation : public NodeOperation {
         continue;
       }
 
-      GPUTexture *pass_texture = context().get_input_texture(view_layer, output->identifier);
+      Result &result = get_result(output->identifier);
+      if (!result.should_compute()) {
+        continue;
+      }
+
+      Context::InputTexture pass = context().get_input_texture(view_layer, output->identifier);
       if (output->type == SOCK_FLOAT) {
-        execute_pass(output->identifier, pass_texture, "compositor_read_pass_float");
+        execute_pass(result, pass.texture, "compositor_read_pass_float");
       }
       else if (output->type == SOCK_VECTOR) {
-        execute_pass(output->identifier, pass_texture, "compositor_read_pass_vector");
+        execute_pass(result, pass.texture, "compositor_read_pass_vector");
       }
       else if (output->type == SOCK_RGBA) {
-        execute_pass(output->identifier, pass_texture, "compositor_read_pass_color");
+        if (pass.num_channels == 4) {
+          execute_pass(result, pass.texture, "compositor_read_pass_rgba");
+        }
+        else {
+          execute_pass(result, pass.texture, "compositor_read_pass_rgb");
+        }
       }
       else {
         BLI_assert_unreachable();
@@ -852,15 +872,11 @@ class RenderLayerOperation : public NodeOperation {
     }
   }
 
-  void execute_pass(const char *pass_name, GPUTexture *pass_texture, const char *shader_name)
+  void execute_pass(Result &result, GPUTexture *pass_texture, const char *shader_name)
   {
-    Result &image_result = get_result(pass_name);
-    if (!image_result.should_compute()) {
-      return;
-    }
     if (pass_texture == nullptr) {
       /* Pass not rendered yet, or not supported by viewport. */
-      image_result.allocate_invalid();
+      result.allocate_invalid();
       context().set_info_message("Viewport compositor setup not fully supported");
       return;
     }
@@ -878,14 +894,14 @@ class RenderLayerOperation : public NodeOperation {
     GPU_texture_bind(pass_texture, input_unit);
 
     const int2 compositing_region_size = context().get_compositing_region_size();
-    image_result.allocate_texture(Domain(compositing_region_size));
-    image_result.bind_as_image(shader, "output_img");
+    result.allocate_texture(Domain(compositing_region_size));
+    result.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, compositing_region_size);
 
     GPU_shader_unbind();
     GPU_texture_unbind(pass_texture);
-    image_result.unbind_as_image();
+    result.unbind_as_image();
   }
 };
 
