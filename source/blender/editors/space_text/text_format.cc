@@ -246,16 +246,19 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
 int find_keyword_length(const Vector<StringRef> &keywords, const char *text)
 {
   int i = 0;
-  for (auto keyword : keywords) {
-    if (strncmp(text, keyword.data(), keyword.size()) == 0) {
-      i = keyword.size();
-      break;
-    }
+  auto comp_func = [](const StringRef &keyword, const char *text) {
+    return strncmp(text, keyword.data(), keyword.size()) > 0;
+  };
+  auto keyword_it = std::lower_bound(keywords.begin(), keywords.end(), text, comp_func);
+
+  if (keyword_it != nullptr && keyword_it != keywords.end() &&
+      strncmp(text, keyword_it->data(), keyword_it->size()) == 0)
+  {
+    i = keyword_it->size();
   }
 
   if (i == 0 || text_check_identifier(text[i])) {
     return -1;
   }
-
   return i;
 }
