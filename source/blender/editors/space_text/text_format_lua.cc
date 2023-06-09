@@ -17,23 +17,14 @@
 
 #include "text_format.hh"
 
+
 /* *** Lua Keywords (for format_line) *** */
 
 /**
- * Checks the specified source string for a Lua keyword (minus boolean & 'nil').
- * This name must start at the beginning of the source string and must be
- * followed by a non-identifier (see #text_check_identifier(char)) or null char.
- *
- * If a keyword is found, the length of the matching word is returned.
- * Otherwise, -1 is returned.
- *
+ * Lua keywords (minus boolean & 'nil').
  * See:
  * http://www.lua.org/manual/5.1/manual.html#2.1
  */
-
-std::vector<KeywordInfo> lua_keyword{};
-std::vector<KeywordInfo> lua_specialvar{};
-std::vector<KeywordInfo> lua_bool{};
 
 const char *lua_keyword_text[]{
     "and",
@@ -57,13 +48,7 @@ const char *lua_keyword_text[]{
 };
 
 /**
- * Checks the specified source string for a Lua special name/function. This
- * name must start at the beginning of the source string and must be followed
- * by a non-identifier (see *text_check_identifier(char)) or null character.
- *
- * If a special name is found, the length of the matching name is returned.
- * Otherwise, -1 is returned.
- *
+ * Lua special name/function.
  * See:
  * http://www.lua.org/manual/5.1/manual.html#5.1
  */
@@ -75,12 +60,19 @@ const char *lua_specialvar_text[]{
     "rawset",       "select",         "setfenv",  "setmetatable", "tonumber", "tostring",
     "type",         "unpack",         "_VERSION", "xpcall",
 };
+/**
+ * Lua bool values.
+ */
 
 const char *lua_bool_text[]{
     "nil",
     "true",
     "false",
 };
+
+std::vector<KeywordInfo> lua_keyword{};
+std::vector<KeywordInfo> lua_specialvar{};
+std::vector<KeywordInfo> lua_bool{};
 
 static char txtfmt_lua_format_identifier(const char *str)
 {

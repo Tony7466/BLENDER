@@ -20,18 +20,6 @@
 /* *** Local Functions (for format_line) *** */
 
 /**
- * Checks the specified source string for a Python built-in function name. This
- * name must start at the beginning of the source string and must be followed by
- * a non-identifier (see #text_check_identifier(char)) or null character.
- *
- * If a built-in function is found, the length of the matching name is returned.
- * Otherwise, -1 is returned.
- *
- * See:
- * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
- */
-
-/**
  * The following items are derived from this list:
  * \code{.py}
  * ", ".join(['"%s"' % kw
@@ -55,10 +43,11 @@
  * \endcode
  */
 
-std::vector<KeywordInfo> py_builtinfunc{};
-std::vector<KeywordInfo> py_specialvar{};
-std::vector<KeywordInfo> py_bool{};
-
+/**
+ * Python built-in function name.
+ * See:
+ * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
+ */
 const char *py_builtinfunc_text[]{
     "and", "assert", "async", "as",     "await",   "break", "case",     "continue",
     "del", "elif",   "else",  "except", "finally", "for",   "from",     "global",
@@ -66,17 +55,15 @@ const char *py_builtinfunc_text[]{
     "or",  "pass",   "raise", "return", "try",     "while", "with",     "yield",
 };
 
-/* Checks the specified source string for a Python special name. This name must
- * start at the beginning of the source string and must be followed by a non-
- * identifier (see text_check_identifier(char)) or null character.
- *
- * If a special name is found, the length of the matching name is returned.
- * Otherwise, -1 is returned. */
-
+/* Python special name.*/
 const char *py_specialvar_text[]{
     "def",
     "class",
 };
+
+std::vector<KeywordInfo> py_builtinfunc{};
+std::vector<KeywordInfo> py_specialvar{};
+std::vector<KeywordInfo> py_bool{};
 
 static int txtfmt_py_find_decorator(const char *string)
 {

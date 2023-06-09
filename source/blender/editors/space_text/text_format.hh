@@ -7,6 +7,8 @@
  */
 
 #pragma once
+#include <algorithm>
+#include <vector>
 
 struct Text;
 
@@ -121,9 +123,16 @@ struct KeywordInfo {
   const int length;
 };
 
-#include <algorithm>
-#include <vector>
 
+/*
+ * Checks the specified source string #text for a keyword in #keywords list.
+ * This name must start at the beginning of the source string and must be
+ * followed by a non-identifier (see #text_check_identifier(char)) or null char.
+ *
+ * If a keyword is found, the length of the matching word is returned.
+ * Otherwise, -1 is returned.
+ *
+ */
 int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *text);
 
 template<size_t N>

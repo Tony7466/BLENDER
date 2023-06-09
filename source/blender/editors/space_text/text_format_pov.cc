@@ -17,22 +17,10 @@
 
 #include "text_format.hh"
 
-std::vector<KeywordInfo> pov_keyword{};
-std::vector<KeywordInfo> pov_reserved{};
-std::vector<KeywordInfo> pov_builtins{};
-std::vector<KeywordInfo> pov_specialvar{};
-std::vector<KeywordInfo> pov_bool{};
-
 /* *** POV Keywords (for format_line) *** */
 
 /**
- * Checks the specified source string for a POV keyword (minus boolean & 'nil').
- * This name must start at the beginning of the source string and must be
- * followed by a non-identifier (see #text_check_identifier(char)) or null char.
- *
- * If a keyword is found, the length of the matching word is returned.
- * Otherwise, -1 is returned.
- *
+ * POV keyword (minus boolean & 'nil').
  * See:
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
@@ -422,18 +410,11 @@ const char *pov_builtins_text[]{
 };
 
 /**
- * Checks the specified source string for a POV modifiers. This
- * name must start at the beginning of the source string and must be followed
- * by a non-identifier (see #text_check_identifier(char)) or null character.
- *
- * If a special name is found, the length of the matching name is returned.
- * Otherwise, -1 is returned.
- *
+ * POV modifiers.
  * See:
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
 
-/* Modifiers */
 const char *pov_specialvar_text[]{
     "dispersion_samples",
     "projected_through",
@@ -635,7 +616,7 @@ const char *pov_specialvar_text[]{
     "gall",
 };
 
-/* Built-in Constants. */
+/* POV Built-in Constants. */
 const char *pov_bool_text[]{
     "unofficial",
     "false",
@@ -674,6 +655,12 @@ const char *pov_bool_text[]{
     "tga",
     "ttf",
 };
+
+std::vector<KeywordInfo> pov_keyword{};
+std::vector<KeywordInfo> pov_reserved{};
+std::vector<KeywordInfo> pov_builtins{};
+std::vector<KeywordInfo> pov_specialvar{};
+std::vector<KeywordInfo> pov_bool{};
 
 static char txtfmt_pov_format_identifier(const char *str)
 {

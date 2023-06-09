@@ -17,12 +17,10 @@
 
 #include "text_format.hh"
 
-std::vector<KeywordInfo> osl_builtinfunc{};
-std::vector<KeywordInfo> osl_reserved{};
-std::vector<KeywordInfo> osl_specialvar{};
+/* *** OSL Keywords (for format_line) *** */
 
-/* *** Local Functions (for format_line) *** */
-/* list is from
+/* OSL builtin function.
+ * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
 const char *osl_builtinfunc_text[]{
@@ -31,7 +29,8 @@ const char *osl_builtinfunc_text[]{
     "point", "public",  "return",      "string",     "struct", "vector", "void",   "while",
 };
 
-/* list is from...
+/* OSL reserved keywords
+ * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
 const char *osl_reserved_text[]{
@@ -42,12 +41,6 @@ const char *osl_reserved_text[]{
     "unsigned", "varying", "virtual",   "volatile",
 };
 
-/* Checks the specified source string for a OSL special name. This name must
- * start at the beginning of the source string and must be followed by a non-
- * identifier (see text_check_identifier(char)) or null character.
- *
- * If a special name is found, the length of the matching name is returned.
- * Otherwise, -1 is returned. */
 
 /* OSL shader types */
 const char *osl_specialvar_text[]{
@@ -56,6 +49,11 @@ const char *osl_specialvar_text[]{
     "volume",
     "displacement",
 };
+
+std::vector<KeywordInfo> osl_builtinfunc{};
+std::vector<KeywordInfo> osl_reserved{};
+std::vector<KeywordInfo> osl_specialvar{};
+
 
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)

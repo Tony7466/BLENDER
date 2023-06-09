@@ -17,20 +17,10 @@
 
 #include "text_format.hh"
 
-std::vector<KeywordInfo> ini_keyword{};
-std::vector<KeywordInfo> ini_reserved{};
-std::vector<KeywordInfo> ini_bool{};
-
 /* *** POV INI Keywords (for format_line) *** */
 
 /**
- * Checks the specified source string for a POV INI keyword (minus boolean & 'nil').
- * This name must start at the beginning of the source string and must be
- * followed by a non-identifier (see #text_check_identifier(char)) or null char.
- *
- * If a keyword is found, the length of the matching word is returned.
- * Otherwise, -1 is returned.
- *
+ * POV INI keyword (minus boolean & 'nil')
  * See:
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
@@ -248,7 +238,7 @@ const char *ini_reserved_text[]{
     "sint32le",
 };
 
-/* Built-in Constants */
+/* POV INI Built-in Constants */
 const char *ini_bool_text[]{
     "false",
     "no",
@@ -265,6 +255,12 @@ const char *ini_bool_text[]{
     "%h",
     "%w",
 };
+
+
+std::vector<KeywordInfo> ini_keyword{};
+std::vector<KeywordInfo> ini_reserved{};
+std::vector<KeywordInfo> ini_bool{};
+
 
 static char txtfmt_pov_ini_format_identifier(const char *str)
 {
