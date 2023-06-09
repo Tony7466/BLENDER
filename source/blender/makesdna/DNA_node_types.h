@@ -901,6 +901,12 @@ typedef struct NodeBilateralBlurData {
   char _pad[2];
 } NodeBilateralBlurData;
 
+typedef struct NodeKuwaharaData {
+  short size;
+  short variation;
+  int smoothing;
+} NodeKuwaharaData;
+
 typedef struct NodeAntiAliasingData {
   float threshold;
   float contrast_limit;
@@ -2155,6 +2161,12 @@ typedef enum CMPNodeGlareType {
   CMP_NODE_GLARE_STREAKS = 2,
   CMP_NODE_GLARE_GHOST = 3,
 } CMPNodeGlareType;
+
+/* Kuwahara Node. Stored in variation */
+typedef enum CMPNodeKuwahara {
+  CMP_NODE_KUWAHARA_CLASSIC = 0,
+  CMP_NODE_KUWAHARA_ANISOTROPIC = 1,
+} CMPNodeKuwahara;
 
 /* Stabilize 2D node. Stored in custom1. */
 typedef enum CMPNodeStabilizeInterpolation {
