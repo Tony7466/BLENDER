@@ -3911,7 +3911,8 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
     }
   }
 
-  blender::Set<CustomDataLayer *, 32> donelayers;
+  Vector<bool, 32> donelayers;
+  donelayers.resize(dest->totlayer);
 
   for (const CustomDataLayer &layer_src :
        blender::Span<CustomDataLayer>(source->layers, source->totlayer))
@@ -3927,7 +3928,8 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
         continue;
       }
 
-      donelayers.add(&layer_dst);
+      donelayers[int(&layer_dst - dest->layers)] = true;
+
       const void *src_data = POINTER_OFFSET(src_block, layer_src.offset);
       void *dest_data = POINTER_OFFSET(*dest_block, layer_dst.offset);
       const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer_src.type));
@@ -3944,7 +3946,7 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
   for (CustomDataLayer &layer_dst :
        blender::MutableSpan<CustomDataLayer>(dest->layers, dest->totlayer))
   {
-    if (!donelayers.contains(&layer_dst)) {
+    if (!donelayers[int(&layer_dst - dest->layers)]) {
       CustomData_bmesh_set_default_n(dest, dest_block, int(&layer_dst - dest->layers));
     }
   }
