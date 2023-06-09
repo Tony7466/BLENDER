@@ -3170,8 +3170,8 @@ static IDProperty **rna_NodeSocketInterface_idprops(PointerRNA *ptr)
 }
 
 static void rna_NodeSocketInterface_panel_set(PointerRNA *ptr,
-                                                 PointerRNA value,
-                                                 struct ReportList *reports)
+                                              PointerRNA value,
+                                              struct ReportList *reports)
 {
   bNodeSocket *socket = (bNodeSocket *)ptr->data;
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
@@ -3322,9 +3322,9 @@ static void rna_NodePanel_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *
 }
 
 static bNodePanel *rna_NodeTree_panels_new(bNodeTree *ntree,
-                                                               Main *bmain,
-                                                               ReportList *reports,
-                                                               const char *name)
+                                           Main *bmain,
+                                           ReportList *reports,
+                                           const char *name)
 {
   bNodePanel *panel = ntreeAddPanel(ntree, name, 0);
 
@@ -3340,9 +3340,7 @@ static bNodePanel *rna_NodeTree_panels_new(bNodeTree *ntree,
   return panel;
 }
 
-static void rna_NodeTree_panels_remove(bNodeTree *ntree,
-                                                  Main *bmain,
-                                                  bNodePanel *panel)
+static void rna_NodeTree_panels_remove(bNodeTree *ntree, Main *bmain, bNodePanel *panel)
 {
   ntreeRemovePanel(ntree, panel);
 
@@ -3360,10 +3358,7 @@ static void rna_NodeTree_panels_clear(bNodeTree *ntree, Main *bmain)
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-static void rna_NodeTree_panels_move(bNodeTree *ntree,
-                                                Main *bmain,
-                                                int from_index,
-                                                int to_index)
+static void rna_NodeTree_panels_move(bNodeTree *ntree, Main *bmain, int from_index, int to_index)
 {
   if (from_index < 0 || from_index >= ntree->panels_num || to_index < 0 ||
       to_index >= ntree->panels_num)
@@ -3382,9 +3377,7 @@ static PointerRNA rna_NodeTree_active_panel_get(PointerRNA *ptr)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->data;
   bNodePanel *panel = NULL;
-  if (ntree->active_panel >= 0 &&
-      ntree->active_panel < ntree->panels_num)
-  {
+  if (ntree->active_panel >= 0 && ntree->active_panel < ntree->panels_num) {
     panel = ntree->panels_array[ntree->active_panel];
   }
 
@@ -3394,8 +3387,8 @@ static PointerRNA rna_NodeTree_active_panel_get(PointerRNA *ptr)
 }
 
 static void rna_NodeTree_active_panel_set(PointerRNA *ptr,
-                                                    PointerRNA value,
-                                                    struct ReportList *UNUSED(reports))
+                                          PointerRNA value,
+                                          struct ReportList *UNUSED(reports))
 {
   bNodePanel *panel = (bNodePanel *)value.data;
   bNodeTree *ntree = (bNodeTree *)ptr->data;
@@ -11767,15 +11760,11 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
 
   prop = RNA_def_property(srna, "panel", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_funcs(prop,
-                                 NULL,
-                                 "rna_NodeSocketInterface_panel_set",
-                                 NULL,
-                                 "rna_NodeSocketInterface_panel_poll");
+  RNA_def_property_pointer_funcs(
+      prop, NULL, "rna_NodeSocketInterface_panel_set", NULL, "rna_NodeSocketInterface_panel_poll");
   RNA_def_property_struct_type(prop, "NodePanel");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "Panel", "Panel to group sockets together in the UI");
+  RNA_def_property_ui_text(prop, "Panel", "Panel to group sockets together in the UI");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
@@ -13224,11 +13213,8 @@ static void rna_def_node_tree_socket_panels_api(BlenderRNA *brna, PropertyRNA *c
   prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodePanel");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeTree_active_panel_get",
-                                 "rna_NodeTree_active_panel_set",
-                                 NULL,
-                                 NULL);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NodeTree_active_panel_get", "rna_NodeTree_active_panel_set", NULL, NULL);
   RNA_def_property_ui_text(prop, "Active", "Active panel");
   RNA_def_property_update(prop, NC_NODE, NULL);
 
@@ -13368,8 +13354,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, NULL, "panels_array", "panels_num");
   RNA_def_property_struct_type(prop, "NodePanel");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "Panels", "UI panels for structuring the node tree interface");
+  RNA_def_property_ui_text(prop, "Panels", "UI panels for structuring the node tree interface");
   rna_def_node_tree_socket_panels_api(brna, prop);
 
   /* exposed as a function for runtime interface type properties */
