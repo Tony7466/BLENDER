@@ -553,7 +553,7 @@ struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             const char *name);
 
 /** Set the panel of the interface socket. */
-void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodeSocketPanel *panel);
+void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodePanel *panel);
 
 /** \} */
 
@@ -565,40 +565,40 @@ void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodeSock
  * Check if a panel is part of the node tree.
  * \return True if the panel is part of the node tree.
  */
-bool ntreeContainsSocketPanel(const bNodeTree *ntree, const bNodeSocketPanel *panel);
+bool ntreeContainsPanel(const bNodeTree *ntree, const bNodePanel *panel);
 
 /**
  * Index of a panel in the node tree.
  * \return Index of the panel in the node tree or -1 if the tree does not contain the panel.
  */
-int ntreeGetSocketPanelIndex(const bNodeTree *ntree, const bNodeSocketPanel *panel);
+int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel);
 
 /**
- * Add a new socket panel to the node tree.
+ * Add a new panel to the node tree.
  * \param name: Name of the new panel.
  * \param flag: Flags of the new panel.
  */
-bNodeSocketPanel *ntreeAddSocketPanel(bNodeTree *ntree, const char *name, int flag);
+bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag);
 
 /**
- * Insert a new socket panel in the node tree.
+ * Insert a new panel in the node tree.
  * \param name: Name of the new panel.
  * \param flag: Flags of the new panel.
  * \param index: Index at which to insert the panel.
  */
-bNodeSocketPanel *ntreeInsertSocketPanel(bNodeTree *ntree, const char *name, int flag, int index);
+bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int index);
 
-/** Remove a socket panel from the node tree. */
-void ntreeRemoveSocketPanel(bNodeTree *ntree, bNodeSocketPanel *panel);
+/** Remove a panel from the node tree. */
+void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel);
 
-/** Remove all socket panels from the node tree. */
-void ntreeClearSocketPanels(bNodeTree *ntree);
+/** Remove all panels from the node tree. */
+void ntreeClearPanels(bNodeTree *ntree);
 
 /**
- * Move a socket panel up or down in the node tree.
+ * Move a panel up or down in the node tree.
  * \param index: Index to which to move the panel.
  */
-void ntreeMoveSocketPanel(bNodeTree *ntree, bNodeSocketPanel *panel, int new_index);
+void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index);
 
 /** \} */
 
