@@ -9,7 +9,11 @@ vec2 screen_position(vec4 p)
 
 void main()
 {
+#ifdef OVERLAY_NEXT
+  vec3 world_pos = pos;
+#else
   vec3 world_pos = point_object_to_world(pos);
+#endif
   gl_Position = point_world_to_ndc(world_pos);
 
 #ifdef SELECT_EDGES

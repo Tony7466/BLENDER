@@ -10,34 +10,17 @@
 
 namespace blender::draw::overlay {
 
-struct CenterInstanceBuf : public ShapeInstanceBuf<float4> {
-  CenterInstanceBuf(const SelectionType selection_type, const char *name)
-      : ShapeInstanceBuf<float4>(selection_type, name){};
-
-  void end_sync(PassSimple::Sub &pass, float4 color)
-  {
-    if (data_buf.size() == 0) {
-      return;
-    }
-    this->select_bind(pass);
-    data_buf.push_update();
-    pass.bind_ssbo("data_buf", &data_buf);
-    pass.push_constant("ucolor", color);
-    pass.draw_procedural(GPU_PRIM_POINTS, data_buf.size(), 1);
-  }
-};
-
 class ObjectCenterPasses {
   const SelectionType selection_type_;
 
   PassSimple ps_;
 
  public:
-  CenterInstanceBuf active = {selection_type_, "active"};
-  CenterInstanceBuf selected = {selection_type_, "selected"};
-  CenterInstanceBuf deselected = {selection_type_, "deselected"};
-  CenterInstanceBuf selected_lib = {selection_type_, "selected_lib"};
-  CenterInstanceBuf deselected_lib = {selection_type_, "deselected_lib"};
+  PointInstanceBuf active = {selection_type_, "active"};
+  PointInstanceBuf selected = {selection_type_, "selected"};
+  PointInstanceBuf deselected = {selection_type_, "deselected"};
+  PointInstanceBuf selected_lib = {selection_type_, "selected_lib"};
+  PointInstanceBuf deselected_lib = {selection_type_, "deselected_lib"};
 
   ObjectCenterPasses(const SelectionType selection_type, const char *name)
       : selection_type_(selection_type), ps_(name){};

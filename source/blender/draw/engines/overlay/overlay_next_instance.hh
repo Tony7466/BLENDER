@@ -15,6 +15,7 @@
 #include "overlay_next_grid.hh"
 #include "overlay_next_metaball.hh"
 #include "overlay_next_object_center.hh"
+#include "overlay_next_object_relation.hh"
 #include "overlay_next_prepass.hh"
 
 namespace blender::draw::overlay {
@@ -44,6 +45,7 @@ class Instance {
   Grid grid;
   Extra extras = {selection_type_, shapes};
   ObjectCenter object_centers = {selection_type_};
+  ObjectRelation object_relations = {selection_type_};
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
 

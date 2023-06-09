@@ -88,6 +88,7 @@ void Instance::begin_sync()
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
   object_centers.begin_sync();
+  object_relations.begin_sync();
 }
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
@@ -138,6 +139,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     extras.object_sync(ob_ref, select_id, resources, state);
     object_centers.object_sync(ob_ref, select_id, resources, state);
+    object_relations.object_sync(ob_ref, select_id, resources, state);
     switch (ob_ref.object->type) {
       case OB_ARMATURE:
         break;
@@ -159,6 +161,7 @@ void Instance::end_sync()
   metaballs.end_sync(resources, shapes, state);
   extras.end_sync(resources, state);
   object_centers.end_sync(resources, state);
+  object_relations.end_sync(resources, state);
 }
 
 void Instance::draw(Manager &manager)
@@ -226,12 +229,14 @@ void Instance::draw(Manager &manager)
   extras.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
   object_centers.draw(resources, manager, view);
+  object_relations.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
   extras.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
   object_centers.draw_in_front(resources, manager, view);
+  object_relations.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
 

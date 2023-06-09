@@ -158,11 +158,13 @@ class ShaderModule {
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
 
-  /* TODO */
   ShaderPtr extra_groundline;
+  ShaderPtr extra_point;
+  ShaderPtr extra_line;
+
+  /* TODO */
   ShaderPtr extra_wire;
   ShaderPtr extra_wire_object;
-  ShaderPtr extra_point;
   ShaderPtr extra_loose_point;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
@@ -326,6 +328,40 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : protected select::Sel
     data_buf.push_update();
     pass.bind_ssbo("data_buf", &data_buf);
     pass.draw(shape, data_buf.size());
+  }
+};
+
+struct PointInstanceBuf : public ShapeInstanceBuf<float4> {
+  PointInstanceBuf(const SelectionType selection_type, const char *name)
+      : ShapeInstanceBuf<float4>(selection_type, name){};
+
+  void end_sync(PassSimple::Sub &pass, float4 color)
+  {
+    if (data_buf.size() == 0) {
+      return;
+    }
+    this->select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.push_constant("ucolor", color);
+    pass.draw_procedural(GPU_PRIM_POINTS, data_buf.size(), 1);
+  }
+};
+
+struct LineInstanceBuf : public ShapeInstanceBuf<LineInstanceData> {
+  LineInstanceBuf(const SelectionType selection_type, const char *name)
+      : ShapeInstanceBuf<LineInstanceData>(selection_type, name){};
+
+  void end_sync(PassSimple::Sub &pass, float4 color)
+  {
+    if (data_buf.size() == 0) {
+      return;
+    }
+    this->select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.push_constant("ucolor", color);
+    pass.draw_procedural(GPU_PRIM_LINES, data_buf.size(), 2);
   }
 };
 
