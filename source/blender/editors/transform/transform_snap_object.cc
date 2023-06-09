@@ -446,6 +446,7 @@ static eSnapMode snap_object_mode_filter(const SnapObjectContext *sctx,
       /* What is selectable or not is part of the object and depends on the mode. */
       return snap_mode & ~params->exclude_selected;
     }
+    return snap_mode & ~params->exclude_nonedited;
   }
   else {
     /* Handle target selection options that make sense for edit/pose mode. */
@@ -481,17 +482,15 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx,
   eSnapMode snap_to_flag = sctx->runtime.snap_to_flag;
   const Base *base_act = sctx->runtime.base_act;
 
-  const bool use_occlusion_test = params->use_occlusion_test;
+  const bool is_occlusion_test = params->use_occlusion_test && snap_to_flag == SCE_SNAP_MODE_NONE;
 
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(sctx->runtime.view_layer)) {
-    eSnapMode snap_mode_filtered = snap_object_mode_filter(
-        sctx, params, snap_to_flag, base_act, base);
-
-    if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
-      if (!use_occlusion_test || !(snap_to_flag & SCE_SNAP_MODE_FACE)) {
+    eSnapMode snap_mode_filtered = snap_to_flag;
+    if (!is_occlusion_test) {
+      snap_mode_filtered = snap_object_mode_filter(sctx, params, snap_to_flag, base_act, base);
+      if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
         continue;
       }
-      snap_mode_filtered = SCE_SNAP_MODE_FACE;
     }
 
     sctx->runtime.snap_to_flag = snap_mode_filtered;
@@ -1106,7 +1105,6 @@ static bool raycastObjects(SnapObjectContext *sctx,
   data.use_occlusion_test = use_occlusion_test;
   data.use_occlusion_test_edit = use_occlusion_test_edit;
 
-  sctx->runtime.snap_to_flag = SCE_SNAP_MODE_FACE;
   return iter_snap_objects(sctx, params, raycast_obj_fn, &data) != SCE_SNAP_MODE_NONE;
 }
 
@@ -3145,6 +3143,7 @@ bool ED_transform_snap_object_project_ray_ex(SnapObjectContext *sctx,
 {
   snap_object_context_runtime_init(sctx, depsgraph, nullptr, v3d, nullptr);
 
+  sctx->runtime.snap_to_flag = SCE_SNAP_MODE_FACE;
   if (raycastObjects(sctx,
                      params,
                      ray_start,
@@ -3191,6 +3190,7 @@ bool ED_transform_snap_object_project_ray_all(SnapObjectContext *sctx,
   float ray_depth_prev = ray_depth;
 #endif
 
+  sctx->runtime.snap_to_flag = SCE_SNAP_MODE_FACE;
   if (raycastObjects(sctx,
                      params,
                      ray_start,
@@ -3314,6 +3314,7 @@ static eSnapMode transform_snap_context_project_view3d_mixed_impl(SnapObjectCont
   /* NOTE: if both face ray-cast and face nearest are enabled, first find result of nearest, then
    * override with ray-cast. */
   if ((snap_to_flag & SCE_SNAP_MODE_FACE_NEAREST) && !has_hit) {
+    sctx->runtime.snap_to_flag = (snap_to_flag & SCE_SNAP_MODE_FACE_NEAREST);
     has_hit = nearestWorldObjects(sctx, params, init_co, prev_co);
 
     if (has_hit) {
@@ -3345,6 +3346,7 @@ static eSnapMode transform_snap_context_project_view3d_mixed_impl(SnapObjectCont
 
     float dummy_ray_depth = BVH_RAYCAST_DIST_MAX;
 
+    sctx->runtime.snap_to_flag = (snap_to_flag & SCE_SNAP_MODE_FACE);
     has_hit = raycastObjects(sctx,
                              params,
                              ray_start,
