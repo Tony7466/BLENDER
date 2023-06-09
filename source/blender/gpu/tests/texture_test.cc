@@ -70,7 +70,7 @@ static void test_texture_cube()
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *tex = GPU_texture_create_cube("tex", SIZE, 1, GPU_RGBA32F, usage, nullptr);
-  float4 clear_color(1.0, 0.5, 0.2, 1.0);
+  float4 clear_color(1.0f, 0.5f, 0.2f, 1.0f);
   GPU_texture_clear(tex, GPU_DATA_FLOAT, clear_color);
 
   float4 *data = (float4 *)GPU_texture_read(tex, GPU_DATA_FLOAT, 0);
@@ -94,7 +94,7 @@ static void test_texture_cube_array()
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *tex = GPU_texture_create_cube_array(
       "tex", SIZE, ARRAY, 1, GPU_RGBA32F, usage, nullptr);
-  float4 clear_color(1.0, 0.5, 0.2, 1.0);
+  float4 clear_color(1.0f, 0.5f, 0.2f, 1.0f);
   GPU_texture_clear(tex, GPU_DATA_FLOAT, clear_color);
 
   float4 *data = (float4 *)GPU_texture_read(tex, GPU_DATA_FLOAT, 0);

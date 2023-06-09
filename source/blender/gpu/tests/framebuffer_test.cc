@@ -241,8 +241,7 @@ static void test_framebuffer_cube()
   GPU_texture_free(tex);
 
   for (int i : IndexRange(6)) {
-    GPU_framebuffer_free(framebuffers[i]);
-    framebuffers[i] = nullptr;
+    GPU_FRAMEBUFFER_FREE_SAFE(framebuffers[i]);
   }
 
   GPU_render_end();
