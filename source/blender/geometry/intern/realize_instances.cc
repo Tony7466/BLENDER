@@ -887,18 +887,19 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
       geometry_set, options, info.create_id_attribute, info.create_material_index_attribute);
 
   gather_meshes_to_realize(geometry_set, info.order);
+
+  const bool ensure_default_material = std::none_of(
+      info.order.begin(), info.order.end(), [](const Mesh *mesh) { return mesh->totcol == 0; });
+  if (ensure_default_material) {
+    info.materials.add(nullptr);
+  }
   for (const Mesh *mesh : info.order) {
-    if (mesh->totcol == 0) {
-      /* Add an empty material slot for the default material. */
-      info.materials.add(nullptr);
-    }
-    else {
-      for (const int slot_index : IndexRange(mesh->totcol)) {
-        Material *material = mesh->mat[slot_index];
-        info.materials.add(material);
-      }
+    for (const int slot_index : IndexRange(mesh->totcol)) {
+      Material *material = mesh->mat[slot_index];
+      info.materials.add(material);
     }
   }
+
   info.create_material_index_attribute |= info.materials.size() > 1;
   info.realize_info.reinitialize(info.order.size());
   for (const int mesh_index : info.realize_info.index_range()) {
@@ -911,17 +912,19 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
     mesh_info.corner_verts = mesh->corner_verts();
     mesh_info.corner_edges = mesh->corner_edges();
 
-    /* Create material index mapping. */
-    mesh_info.material_index_map.reinitialize(std::max<int>(mesh->totcol, 1));
-    if (mesh->totcol == 0) {
-      mesh_info.material_index_map.first() = info.materials.index_of(nullptr);
+    const auto mateiral_index_write = [&](const int index, Material *material) {
+      const int new_slot_index = info.materials.index_of(material);
+      mesh_info.material_index_map[index] = new_slot_index;
+    };
+
+    mesh_info.material_index_map.reinitialize(mesh->totcol);
+    for (const int old_slot_index : IndexRange(mesh->totcol)) {
+      Material *material = mesh->mat[old_slot_index];
+      mateiral_index_write(old_slot_index, material);
     }
-    else {
-      for (const int old_slot_index : IndexRange(mesh->totcol)) {
-        Material *material = mesh->mat[old_slot_index];
-        const int new_slot_index = info.materials.index_of(material);
-        mesh_info.material_index_map[old_slot_index] = new_slot_index;
-      }
+    if (mesh_info.material_index_map.is_empty()) {
+      mesh_info.material_index_map.reinitialize(1);
+      mateiral_index_write(0, nullptr);
     }
 
     /* Access attributes. */
