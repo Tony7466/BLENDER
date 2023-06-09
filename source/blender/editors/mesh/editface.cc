@@ -361,19 +361,23 @@ static int find_closest_edge_in_poly(ARegion *region,
   using namespace blender;
   int closest_edge_index;
 
-  const float2 mval_f = {float(mval[0]), float(mval[1])};
+  const float3 mval_f = {float(mval[0]), float(mval[1]), 0};
   float min_distance = FLT_MAX;
   for (const int i : poly_edges) {
-    float2 screen_coordinate;
     const int2 edge = edges[i];
-    const float3 edge_vert_average = math::midpoint(vert_positions[edge[0]],
-                                                    vert_positions[edge[1]]);
-    eV3DProjStatus status = ED_view3d_project_float_object(
-        region, edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
-    if (status != V3D_PROJ_RET_OK) {
+
+    float3 screen_coordinate_0;
+    float3 screen_coordinate_1;
+    eV3DProjStatus status_vert_0 = ED_view3d_project_float_object(
+        region, vert_positions[edge[0]], screen_coordinate_0, V3D_PROJ_TEST_CLIP_DEFAULT);
+    eV3DProjStatus status_vert_1 = ED_view3d_project_float_object(
+        region, vert_positions[edge[1]], screen_coordinate_1, V3D_PROJ_TEST_CLIP_DEFAULT);
+    /* This means the edge can only be checked for if both verts are on the screen. */
+    if (status_vert_0 != V3D_PROJ_RET_OK || status_vert_1 != V3D_PROJ_RET_OK) {
       continue;
     }
-    const float distance = math::distance_squared(mval_f, screen_coordinate);
+    const float distance = math::distance_to_line(
+        mval_f, screen_coordinate_0, screen_coordinate_1);
     if (distance < min_distance) {
       min_distance = distance;
       closest_edge_index = i;

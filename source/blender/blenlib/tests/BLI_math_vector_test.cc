@@ -181,4 +181,22 @@ TEST(math_vector, exp)
   EXPECT_NEAR(result.z, 20.085536923187668f, 1e-6f);
 }
 
+TEST(math_vector, distance_to_line)
+{
+  float3 p1(1.0f, 1.0f, 0.0f);
+  const float3 a(0, 0, 0);
+  const float3 b(1, 0, 0);
+
+  float result = math::distance_to_line(p1, a, b);
+  EXPECT_NEAR(result, 1.0f, 1e-6f);
+
+  float3 p2(-1.0f, 2.0f, 0.0f);
+  result = math::distance_to_line(p2, a, b);
+  EXPECT_NEAR(result, 2.0f, 1e-6f);
+
+  float3 p3(-1.0f, 0.0f, 0.0f);
+  result = math::distance_to_line(p3, a, b);
+  EXPECT_NEAR(result, 0.0f, 1e-6f);
+}
+
 }  // namespace blender::tests

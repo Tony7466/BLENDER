@@ -665,6 +665,26 @@ template<typename T, int Size>
   return true;
 }
 
+/**
+ * Return the distance from \a point to the line that goes through \a a and \a b.
+ */
+template<typename T>
+[[nodiscard]] inline T distance_to_line(const VecBase<T, 3> &point,
+                                        const VecBase<T, 3> &a,
+                                        const VecBase<T, 3> &b)
+{
+  const VecBase<T, 3> a_b = b - a;
+  const VecBase<T, 3> a_point = point - a;
+  T length_a_b;
+  T length_a_point;
+  const VecBase<T, 3> a_b_norm = normalize_and_get_length(a_b, length_a_b);
+  const VecBase<T, 3> a_point_norm = normalize_and_get_length(a_point, length_a_point);
+  const float sin_angle_a = length(cross(a_b_norm, a_point_norm));
+  /* sin(90) is 1 so the division isn't needed. */
+  const T distance = length_a_point * sin_angle_a;
+  return distance;
+}
+
 /** Intersections. */
 
 template<typename T> struct isect_result {
