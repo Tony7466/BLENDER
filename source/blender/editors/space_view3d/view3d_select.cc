@@ -4043,7 +4043,7 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, drawing_index);
-        changed |= ed::curves::select_box(
+        changed |= ed::curves::select_circle(
             *vc, drawing.geometry.wrap(), deformation.positions, ATTR_DOMAIN_POINT, *rect, sel_op);
       });
 
