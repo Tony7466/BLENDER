@@ -3788,6 +3788,9 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
   /* if something changed in the button */
   double value = UI_BUT_VALUE_UNSET;
 
+  /* Use emdash in place of text when in indeterminate state. */
+  const char *emdash = "\u2014";
+
   ui_but_update_select_flag(but, &value);
 
   /* only update soft range while not editing */
@@ -3798,7 +3801,9 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
   }
 
   if (but->drawflag & UI_BUT_INDETERMINATE) {
+    /* Center text. */
     but->drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
+    /* Do not show toggles as selected. */
     but->flag &= ~(UI_SELECT);
   }
 
@@ -3867,7 +3872,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
           }
         }
         if (but->drawflag & UI_BUT_INDETERMINATE) {
-          STRNCPY(but->drawstr, "\u2014");
+          STRNCPY(but->drawstr, emdash);
         }
         else {
           STRNCPY(but->drawstr, but->str);
@@ -3882,7 +3887,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
       }
       UI_GET_BUT_VALUE_INIT(but, value);
       if (but->drawflag & UI_BUT_INDETERMINATE) {
-        STRNCPY(but->drawstr, "\u2014");
+        STRNCPY(but->drawstr, emdash);
       }
       else if (ui_but_is_float(but)) {
         ui_but_build_drawstr_float(but, value);
@@ -3908,7 +3913,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
     case UI_BTYPE_SEARCH_MENU:
       if (!but->editstr) {
         if (but->drawflag & UI_BUT_INDETERMINATE) {
-          STRNCPY(but->drawstr, "\u2014");
+          STRNCPY(but->drawstr, emdash);
         }
         else {
           char str[UI_MAX_DRAW_STR];
