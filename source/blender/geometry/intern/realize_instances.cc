@@ -57,6 +57,9 @@ struct OrderedAttributes {
   }
 };
 
+/**
+ * OrderedAttributes reflection for each instanced to indexing instead ids lookup.
+ */
 struct AttributeFallbacksArray {
   /**
    * Instance attribute values used as fallback when the geometry does not have the
@@ -69,6 +72,9 @@ struct AttributeFallbacksArray {
   AttributeFallbacksArray(int size) : array(size, nullptr) {}
 };
 
+/**
+ * Wrapper for each instance to represent it info with specific facts.
+ */
 struct PointCloudRealizeInfo {
   const PointCloud *pointcloud = nullptr;
   /** Matches the order stored in #AllPointCloudsInfo.attributes. */
@@ -79,6 +85,10 @@ struct PointCloudRealizeInfo {
   Span<int> stored_ids;
 };
 
+/**
+ * Representation of each instance in final joined object.
+ * Mapping range of attributes, transformations, etc.
+ */
 struct RealizePointCloudTask {
   /** Starting index in the final realized point cloud. */
   int start_index;
@@ -91,6 +101,20 @@ struct RealizePointCloudTask {
   uint32_t id = 0;
 };
 
+/**
+ * All deduplicated info about real geometry.
+ */
+struct AllPointCloudsInfo {
+  /** Ordering of all attributes that are propagated to the output point cloud generically. */
+  OrderedAttributes attributes;
+  /** Ordering of the original point clouds that are joined. */
+  VectorSet<const PointCloud *> order;
+  /** Preprocessed data about every original point cloud. This is ordered by #order. */
+  Array<PointCloudRealizeInfo> realize_info;
+  bool create_id_attribute = false;
+  bool create_radius_attribute = false;
+};
+
 /** Start indices in the final output mesh. */
 struct MeshElementStartIndices {
   int vertex = 0;
@@ -99,7 +123,7 @@ struct MeshElementStartIndices {
   int loop = 0;
 };
 
-struct MeshRealizeInfo {
+struct MeshRealizeRealizeInfo {
   const Mesh *mesh = nullptr;
   Span<float3> positions;
   Span<int2> edges;
@@ -118,7 +142,7 @@ struct MeshRealizeInfo {
 
 struct RealizeMeshTask {
   MeshElementStartIndices start_indices;
-  const MeshRealizeInfo *mesh_info;
+  const MeshRealizeRealizeInfo *mesh_info;
   /** Transformation that is applied to all positions. */
   float4x4 transform;
   AttributeFallbacksArray attribute_fallbacks;
@@ -180,24 +204,13 @@ struct RealizeCurveTask {
   uint32_t id = 0;
 };
 
-struct AllPointCloudsInfo {
-  /** Ordering of all attributes that are propagated to the output point cloud generically. */
-  OrderedAttributes attributes;
-  /** Ordering of the original point clouds that are joined. */
-  VectorSet<const PointCloud *> order;
-  /** Preprocessed data about every original point cloud. This is ordered by #order. */
-  Array<PointCloudRealizeInfo> realize_info;
-  bool create_id_attribute = false;
-  bool create_radius_attribute = false;
-};
-
 struct AllMeshesInfo {
   /** Ordering of all attributes that are propagated to the output mesh generically. */
   OrderedAttributes attributes;
   /** Ordering of the original meshes that are joined. */
   VectorSet<const Mesh *> order;
   /** Preprocessed data about every original mesh. This is ordered by #order. */
-  Array<MeshRealizeInfo> realize_info;
+  Array<MeshRealizeRealizeInfo> realize_info;
   /** Ordered materials on the output mesh. */
   VectorSet<Material *> materials;
   bool create_id_attribute = false;
@@ -282,6 +295,8 @@ struct InstanceContext {
   {
   }
 };
+
+
 
 static void copy_transformed_positions(const Span<float3> src,
                                        const float4x4 &transform,
@@ -553,7 +568,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         const Mesh *mesh = mesh_component.get_for_read();
         if (mesh != nullptr && mesh->totvert > 0) {
           const int mesh_index = gather_info.meshes.order.index_of(mesh);
-          const MeshRealizeInfo &mesh_info = gather_info.meshes.realize_info[mesh_index];
+          const MeshRealizeRealizeInfo &mesh_info = gather_info.meshes.realize_info[mesh_index];
           gather_info.r_tasks.mesh_tasks.append({gather_info.r_offsets.mesh_offsets,
                                                  &mesh_info,
                                                  base_transform,
@@ -902,7 +917,7 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
   info.create_material_index_attribute |= info.materials.size() > 1;
   info.realize_info.reinitialize(info.order.size());
   for (const int mesh_index : info.realize_info.index_range()) {
-    MeshRealizeInfo &mesh_info = info.realize_info[mesh_index];
+    MeshRealizeRealizeInfo &mesh_info = info.realize_info[mesh_index];
     const Mesh *mesh = info.order[mesh_index];
     mesh_info.mesh = mesh;
     mesh_info.positions = mesh->vert_positions();
@@ -970,7 +985,7 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
                                       MutableSpan<int> all_dst_vertex_ids,
                                       MutableSpan<int> all_dst_material_indices)
 {
-  const MeshRealizeInfo &mesh_info = *task.mesh_info;
+  const MeshRealizeRealizeInfo &mesh_info = *task.mesh_info;
   const Mesh &mesh = *mesh_info.mesh;
 
   const Span<float3> src_positions = mesh_info.positions;
