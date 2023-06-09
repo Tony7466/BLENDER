@@ -41,7 +41,6 @@ const char *osl_reserved_text[]{
     "unsigned", "varying", "virtual",   "volatile",
 };
 
-
 /* OSL shader types */
 const char *osl_specialvar_text[]{
     "shader",
@@ -53,7 +52,6 @@ const char *osl_specialvar_text[]{
 std::vector<KeywordInfo> osl_builtinfunc{};
 std::vector<KeywordInfo> osl_reserved{};
 std::vector<KeywordInfo> osl_specialvar{};
-
 
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)

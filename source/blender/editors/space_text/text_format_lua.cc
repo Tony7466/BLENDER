@@ -17,7 +17,6 @@
 
 #include "text_format.hh"
 
-
 /* *** Lua Keywords (for format_line) *** */
 
 /**

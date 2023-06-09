@@ -256,11 +256,9 @@ const char *ini_bool_text[]{
     "%w",
 };
 
-
 std::vector<KeywordInfo> ini_keyword{};
 std::vector<KeywordInfo> ini_reserved{};
 std::vector<KeywordInfo> ini_bool{};
-
 
 static char txtfmt_pov_ini_format_identifier(const char *str)
 {

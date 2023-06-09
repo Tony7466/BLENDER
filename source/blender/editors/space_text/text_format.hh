@@ -123,7 +123,6 @@ struct KeywordInfo {
   const int length;
 };
 
-
 /*
  * Checks the specified source string #text for a keyword in #keywords list.
  * This name must start at the beginning of the source string and must be
