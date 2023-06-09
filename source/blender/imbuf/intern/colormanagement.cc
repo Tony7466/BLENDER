@@ -4050,7 +4050,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   const float gamma = applied_view_settings->gamma;
   const float scale = (exposure == 0.0f) ? 1.0f : powf(2.0f, exposure);
   const float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
-  const bool use_extended = STRPREFIX(display_settings->display_device, "Extended");
+  const bool use_extended = U.gpu_flag & USER_GPU_FLAG_HDR_ENABLED;
+  ;
 
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
 

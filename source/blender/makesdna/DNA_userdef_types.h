@@ -1182,6 +1182,7 @@ typedef enum eUserpref_GPU_Flag {
   USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE = (1 << 1),
   USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE = (1 << 2),
   USER_GPU_FLAG_SUBDIVISION_EVALUATION = (1 << 3),
+  USER_GPU_FLAG_HDR_ENABLED = (1 << 4)
 } eUserpref_GPU_Flag;
 
 /** #UserDef.tablet_api */

@@ -759,6 +759,9 @@ class USERPREF_PT_viewport_quality(ViewportPanel, CenterAlignMixIn, Panel):
         col.prop(system, "use_overlay_smooth_wire", text="Overlay")
         col.prop(system, "use_edit_mode_smooth_wire", text="Edit Mode")
 
+        col = layout.column(heading="Viewport Colorspace")
+        col.prop(system, "use_hdr", text="High Dynamic Range")
+
 
 class USERPREF_PT_viewport_textures(ViewportPanel, CenterAlignMixIn, Panel):
     bl_label = "Textures"

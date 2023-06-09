@@ -5676,6 +5676,14 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "use_hdr", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "gpu_flag", USER_GPU_FLAG_HDR_ENABLED);
+  RNA_def_property_ui_text(prop,
+                           "Viewport High Dynamic Range",
+                           "Enable high dynamic range with extended colorspace in viewport, "
+                           "uncapping display brightness for rendered content.");
+  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+
   prop = RNA_def_property(srna, "solid_lights", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "light_param", "");
   RNA_def_property_struct_type(prop, "UserSolidLight");

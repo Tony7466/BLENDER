@@ -723,7 +723,8 @@ bool OCIOImpl::gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
     GPU_uniformbuf_bind(textures.uniforms_buffer, UNIFORMBUF_SLOT_LUTS);
   }
 
-  updateGPUDisplayParameters(shader, scale, exponent, dither, use_predivide, use_overlay, use_extended);
+  updateGPUDisplayParameters(
+      shader, scale, exponent, dither, use_predivide, use_overlay, use_extended);
   GPU_uniformbuf_bind(shader.parameters_buffer, UNIFORMBUF_SLOT_DISPLAY);
 
   /* TODO(fclem): remove remains of IMM. */
