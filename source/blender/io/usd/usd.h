@@ -52,6 +52,7 @@ struct USDExportParams {
   bool overwrite_textures;
   bool relative_paths;
   char root_prim_path[1024]; /* FILE_MAX */
+  char chasers[1024];
 };
 
 struct USDImportParams {

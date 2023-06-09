@@ -158,6 +158,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
 
+  char chasers[FILE_MAX];
+  RNA_string_get(op->ptr, "chasers", chasers);
+
   struct USDExportParams params = {
       export_animation,
       export_hair,
@@ -175,6 +178,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
+
+  STRNCPY(params.chasers, chasers);
 
   bool ok = USD_export(C, filepath, &params, as_background_job);
 
@@ -229,6 +234,7 @@ static void wm_usd_export_draw(bContext *UNUSED(C), wmOperator *op)
   box = uiLayoutBox(layout);
   uiItemL(box, IFACE_("Experimental"), ICON_NONE);
   uiItemR(box, ptr, "use_instancing", 0, NULL, ICON_NONE);
+  uiItemR(box, ptr, "chasers", 0, NULL, ICON_NONE);
 }
 
 static void free_operator_customdata(wmOperator *op)
@@ -368,6 +374,14 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                  "Root Prim",
                  "If set, add a transform primitive with the given path to the stage "
                  "as the parent of all exported data");
+
+  RNA_def_string(ot->srna,
+                 "chasers",
+                 NULL,
+                 FILE_MAX,
+                 "Chasers",
+                 "Python modules implementing callbacks to extend the USD export functionality. "
+                 "Multiple module names may be specified in a comma-delimited list");
 }
 
 /* ====== USD Import ====== */
