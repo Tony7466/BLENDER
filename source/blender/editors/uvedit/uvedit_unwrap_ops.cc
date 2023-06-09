@@ -1700,7 +1700,8 @@ void UV_OT_pack_islands(wmOperatorType *ot)
                "");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
-  RNA_def_boolean(ot->srna, "pin", false, "Pin", "Restrict packing of pinned islands");
+  RNA_def_boolean(
+      ot->srna, "pin", false, "Use Pin", "Constrain islands containing any pinned UV's");
   RNA_def_enum(ot->srna,
                "pin_method",
                pinned_islands_method_items,
