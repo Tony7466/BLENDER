@@ -117,8 +117,10 @@ struct SnapObjectContext {
 
   struct {
     Depsgraph *depsgraph;
+    ViewLayer *view_layer;
     const ARegion *region;
     const View3D *v3d;
+    const Base *base_act;
 
     float mval[2];
     float pmat[4][4];  /* perspective matrix */
@@ -143,6 +145,7 @@ struct SnapObjectContext {
     /* List of #SnapObjectHitDepth (caller must free). */
     ListBase *hit_list;
     /* Snapped object. */
+    Base *base;
     Object *ob;
     /* Snapped data. */
     ID *data;
@@ -476,18 +479,19 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx,
   eSnapMode ret = SCE_SNAP_MODE_NONE;
   eSnapMode tmp;
   eSnapMode snap_to_flag = sctx->runtime.snap_to_flag;
+  const Base *base_act = sctx->runtime.base_act;
 
-  Scene *scene = DEG_get_input_scene(sctx->runtime.depsgraph);
-  ViewLayer *view_layer = DEG_get_input_view_layer(sctx->runtime.depsgraph);
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  Base *base_act = BKE_view_layer_active_base_get(view_layer);
+  const bool use_occlusion_test = params->use_occlusion_test;
 
-  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(sctx->runtime.view_layer)) {
     eSnapMode snap_mode_filtered = snap_object_mode_filter(
         sctx, params, snap_to_flag, base_act, base);
 
     if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
-      continue;
+      if (!use_occlusion_test || !(snap_to_flag & SCE_SNAP_MODE_FACE)) {
+        continue;
+      }
+      snap_mode_filtered = SCE_SNAP_MODE_FACE;
     }
 
     sctx->runtime.snap_to_flag = snap_mode_filtered;
@@ -507,6 +511,7 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx,
                                 false,
                                 data)) != SCE_SNAP_MODE_NONE)
         {
+          sctx->ret.base = base;
           ret = tmp;
         }
       }
@@ -524,6 +529,7 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx,
                             use_hide,
                             data)) != SCE_SNAP_MODE_NONE)
     {
+      sctx->ret.base = base;
       ret = tmp;
     }
   }
@@ -1100,6 +1106,7 @@ static bool raycastObjects(SnapObjectContext *sctx,
   data.use_occlusion_test = use_occlusion_test;
   data.use_occlusion_test_edit = use_occlusion_test_edit;
 
+  sctx->runtime.snap_to_flag = SCE_SNAP_MODE_FACE;
   return iter_snap_objects(sctx, params, raycast_obj_fn, &data) != SCE_SNAP_MODE_NONE;
 }
 
@@ -1771,6 +1778,12 @@ static eSnapMode snap_mesh_polygon(SnapObjectContext *sctx,
                                    float *dist_px)
 {
   eSnapMode elem = SCE_SNAP_MODE_NONE;
+  eSnapMode snap_mode_filtered = snap_object_mode_filter(
+      sctx, params, sctx->runtime.snap_to_flag, sctx->runtime.base_act, sctx->ret.base);
+
+  if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
+    return elem;
+  }
 
   float lpmat[4][4];
   mul_m4_m4m4(lpmat, sctx->runtime.pmat, sctx->ret.obmat);
@@ -3039,6 +3052,32 @@ static eSnapMode snapObjectsRay(SnapObjectContext *sctx,
   return iter_snap_objects(sctx, params, snap_obj_fn, &data);
 }
 
+static void snap_object_context_runtime_init(SnapObjectContext *sctx,
+                                             Depsgraph *depsgraph,
+                                             const ARegion *region,
+                                             const View3D *v3d,
+                                             ListBase *r_hit_list)
+{
+  sctx->runtime.depsgraph = depsgraph;
+  sctx->runtime.region = region;
+  sctx->runtime.v3d = v3d;
+
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  sctx->runtime.view_layer = DEG_get_input_view_layer(depsgraph);
+  BKE_view_layer_synced_ensure(scene, sctx->runtime.view_layer);
+  sctx->runtime.base_act = BKE_view_layer_active_base_get(sctx->runtime.view_layer);
+
+  zero_v3(sctx->ret.loc);
+  zero_v3(sctx->ret.no);
+  sctx->ret.index = -1;
+  zero_m4(sctx->ret.obmat);
+  sctx->ret.hit_list = r_hit_list;
+  sctx->ret.ob = nullptr;
+  sctx->ret.data = nullptr;
+  sctx->ret.dist_sq = FLT_MAX;
+  sctx->ret.is_edit = false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3104,18 +3143,7 @@ bool ED_transform_snap_object_project_ray_ex(SnapObjectContext *sctx,
                                              Object **r_ob,
                                              float r_obmat[4][4])
 {
-  sctx->runtime.depsgraph = depsgraph;
-  sctx->runtime.v3d = v3d;
-
-  zero_v3(sctx->ret.loc);
-  zero_v3(sctx->ret.no);
-  sctx->ret.index = -1;
-  zero_m4(sctx->ret.obmat);
-  sctx->ret.hit_list = nullptr;
-  sctx->ret.ob = nullptr;
-  sctx->ret.data = nullptr;
-  sctx->ret.dist_sq = FLT_MAX;
-  sctx->ret.is_edit = false;
+  snap_object_context_runtime_init(sctx, depsgraph, nullptr, v3d, nullptr);
 
   if (raycastObjects(sctx,
                      params,
@@ -3153,18 +3181,7 @@ bool ED_transform_snap_object_project_ray_all(SnapObjectContext *sctx,
                                               bool sort,
                                               ListBase *r_hit_list)
 {
-  sctx->runtime.depsgraph = depsgraph;
-  sctx->runtime.v3d = v3d;
-
-  zero_v3(sctx->ret.loc);
-  zero_v3(sctx->ret.no);
-  sctx->ret.index = -1;
-  zero_m4(sctx->ret.obmat);
-  sctx->ret.hit_list = r_hit_list;
-  sctx->ret.ob = nullptr;
-  sctx->ret.data = nullptr;
-  sctx->ret.dist_sq = FLT_MAX;
-  sctx->ret.is_edit = false;
+  snap_object_context_runtime_init(sctx, depsgraph, nullptr, v3d, r_hit_list);
 
   if (ray_depth == -1.0f) {
     ray_depth = BVH_RAYCAST_DIST_MAX;
@@ -3267,19 +3284,7 @@ static eSnapMode transform_snap_context_project_view3d_mixed_impl(SnapObjectCont
                                                                   float r_obmat[4][4],
                                                                   float r_face_nor[3])
 {
-  sctx->runtime.depsgraph = depsgraph;
-  sctx->runtime.region = region;
-  sctx->runtime.v3d = v3d;
-
-  zero_v3(sctx->ret.loc);
-  zero_v3(sctx->ret.no);
-  sctx->ret.index = -1;
-  zero_m4(sctx->ret.obmat);
-  sctx->ret.hit_list = nullptr;
-  sctx->ret.ob = nullptr;
-  sctx->ret.data = nullptr;
-  sctx->ret.dist_sq = FLT_MAX;
-  sctx->ret.is_edit = false;
+  snap_object_context_runtime_init(sctx, depsgraph, region, v3d, nullptr);
 
   eSnapMode retval = SCE_SNAP_MODE_NONE;
 
@@ -3305,7 +3310,6 @@ static eSnapMode transform_snap_context_project_view3d_mixed_impl(SnapObjectCont
   }
 
   BLI_assert(snap_to_flag & (SCE_SNAP_MODE_GEOM | SCE_SNAP_MODE_FACE_NEAREST));
-  sctx->runtime.snap_to_flag = snap_to_flag;
 
   /* NOTE: if both face ray-cast and face nearest are enabled, first find result of nearest, then
    * override with ray-cast. */
