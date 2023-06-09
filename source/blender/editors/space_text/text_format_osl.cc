@@ -19,7 +19,8 @@
 
 /* *** OSL Keywords (for format_line) *** */
 
-/* OSL builtin function.
+/**
+ * OSL builtin function.
  * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
@@ -29,7 +30,8 @@ const char *osl_builtinfunc_text[]{
     "point", "public",  "return",      "string",     "struct", "vector", "void",   "while",
 };
 
-/* OSL reserved keywords
+/**
+ * OSL reserved keywords
  * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */

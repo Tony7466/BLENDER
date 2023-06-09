@@ -36,7 +36,8 @@ const char *ini_keyword_text[]{
     "P",          "T",
 };
 
-/* POV-Ray Built-in INI Variables
+/**
+ * POV-Ray Built-in INI Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
