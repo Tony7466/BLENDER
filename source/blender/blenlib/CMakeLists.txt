@@ -318,7 +318,7 @@ set(SRC
   BLI_noise.h
   BLI_noise.hh
   BLI_offset_indices.hh
-  BLI_parameter_pack_utils.hh
+  BLI_ordered_edge.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
   BLI_polyfill_2d_beautify.h
