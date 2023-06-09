@@ -202,6 +202,15 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     BLI_addtail(&ntree_dst->outputs, dst_socket);
   }
 
+  /* copy panels */
+  ntree_dst->socket_panels_array = static_cast<bNodeSocketPanel **>(
+      MEM_dupallocN(ntree_src->socket_panels_array));
+  ntree_dst->socket_panels_num = ntree_src->socket_panels_num;
+  for (bNodeSocketPanel *&panel_ptr : ntree_dst->socket_panels_for_write()) {
+    panel_ptr = static_cast<bNodeSocketPanel *>(MEM_dupallocN(panel_ptr));
+    panel_ptr->name = BLI_strdup(panel_ptr->name);
+  }
+
   /* copy preview hash */
   if (ntree_src->previews && (flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
     bNodeInstanceHashIterator iter;
@@ -275,6 +284,13 @@ static void ntree_free_data(ID *id)
     node_socket_interface_free(ntree, sock, false);
     MEM_freeN(sock);
   }
+
+  /* free panels */
+  for (bNodeSocketPanel *panel : ntree->socket_panels_for_write()) {
+    MEM_SAFE_FREE(panel->name);
+    MEM_SAFE_FREE(panel);
+  }
+  MEM_SAFE_FREE(ntree->socket_panels_array);
 
   /* free preview hash */
   if (ntree->previews) {
