@@ -959,7 +959,7 @@ static int select_ends_exec(bContext *C, wmOperator *op)
 
 static void CURVES_OT_select_ends(wmOperatorType *ot)
 {
-  ot->name = "Select End";
+  ot->name = "Select Ends";
   ot->idname = __func__;
   ot->description = "Select end points of curves";
 
