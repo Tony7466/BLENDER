@@ -585,17 +585,22 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size, GPUVertFe
 
 VkImageType to_vk_image_type(const eGPUTextureType type)
 {
+  /* See
+   * https://vulkan.lunarg.com/doc/view/1.3.243.0/linux/1.3-extensions/vkspec.html#resources-image-views-compatibility
+   * for reference */
   switch (type) {
     case GPU_TEXTURE_1D:
     case GPU_TEXTURE_BUFFER:
     case GPU_TEXTURE_1D_ARRAY:
       return VK_IMAGE_TYPE_1D;
+
     case GPU_TEXTURE_2D:
     case GPU_TEXTURE_2D_ARRAY:
-      return VK_IMAGE_TYPE_2D;
-    case GPU_TEXTURE_3D:
     case GPU_TEXTURE_CUBE:
     case GPU_TEXTURE_CUBE_ARRAY:
+      return VK_IMAGE_TYPE_2D;
+
+    case GPU_TEXTURE_3D:
       return VK_IMAGE_TYPE_3D;
 
     case GPU_TEXTURE_ARRAY:
