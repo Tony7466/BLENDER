@@ -965,7 +965,6 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       memset(&idptr, 0, sizeof(idptr));
       RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
       RNA_property_update(C, &template_ui->ptr, template_ui->prop);
-      undo_push_label = "Unlink Data-Block";
 
       if (id && CTX_wm_window(C)->eventstate->modifier & KM_SHIFT) {
         /* only way to force-remove data (on save) */
@@ -973,6 +972,9 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         id_fake_user_clear(id);
         id->us = 0;
         undo_push_label = "Delete Data-Block";
+      }
+      else {
+        undo_push_label = "Unlink Data-Block";
       }
 
       break;
