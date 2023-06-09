@@ -367,6 +367,7 @@ static bool applyFaceProject(TransInfo *t, TransDataContainer *tc, TransData *td
   snap_object_params.exclude_edited = t->tsnap.exclude_edited & ~SCE_SNAP_MODE_FACE;
   snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited & ~SCE_SNAP_MODE_FACE;
   snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable & ~SCE_SNAP_MODE_FACE;
+  snap_object_params.exclude_moving = !(t->modifiers & MOD_EDIT_SNAP_SOURCE);
   snap_object_params.use_occlusion_test = false;
   snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
 
@@ -450,6 +451,7 @@ static void applyFaceNearest(TransInfo *t, TransDataContainer *tc, TransData *td
   snap_object_params.exclude_edited = t->tsnap.exclude_edited;
   snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited;
   snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable;
+  snap_object_params.exclude_moving = !(t->modifiers & MOD_EDIT_SNAP_SOURCE);
   snap_object_params.use_occlusion_test = false;
   snap_object_params.use_backface_culling = false;
   snap_object_params.face_nearest_steps = t->tsnap.face_nearest_steps;
@@ -1414,6 +1416,7 @@ eSnapMode snapObjectsTransform(
   snap_object_params.exclude_edited = t->tsnap.exclude_edited;
   snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited;
   snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable;
+  snap_object_params.exclude_moving = !(t->modifiers & MOD_EDIT_SNAP_SOURCE);
   snap_object_params.use_occlusion_test = true;
   snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
 
@@ -1453,6 +1456,7 @@ bool peelObjectsTransform(TransInfo *t,
   snap_object_params.exclude_edited = t->tsnap.exclude_edited;
   snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited;
   snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable;
+  snap_object_params.exclude_moving = !(t->modifiers & MOD_EDIT_SNAP_SOURCE);
 
   ListBase depths_peel = {nullptr};
   ED_transform_snap_object_project_all_view3d_ex(t->tsnap.object_context,

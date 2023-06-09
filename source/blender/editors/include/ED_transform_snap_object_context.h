@@ -65,13 +65,15 @@ struct SnapObjectParams {
   eSnapMode exclude_nonselectable;
 
   /* snap to the closest element, use when using more than one snap type */
+  bool exclude_moving : 1;
+  /* snap to the closest element, use when using more than one snap type */
   bool use_occlusion_test : 1;
   /* exclude back facing geometry from snapping */
   bool use_backface_culling : 1;
-  /* Break nearest face snapping into steps to improve transformations across U-shaped targets. */
-  short face_nearest_steps;
   /* Enable to force nearest face snapping to snap to target the source was initially near. */
   bool keep_on_same_target : 1;
+  /* Break nearest face snapping into steps to improve transformations across U-shaped targets. */
+  short face_nearest_steps;
 };
 
 typedef struct SnapObjectContext SnapObjectContext;

@@ -37,6 +37,7 @@ struct SnapSouceCustomData {
   TransModeInfo *mode_info_prev;
   void *customdata_mode_prev;
 
+  eSnapMode exclude_active_prev;
   eSnapMode exclude_selected_prev;
 
   struct {
@@ -55,6 +56,7 @@ static void snapsource_end(TransInfo *t)
   t->mode_info = customdata->mode_info_prev;
   t->custom.mode.data = customdata->customdata_mode_prev;
 
+  t->tsnap.exclude_active = customdata->exclude_active_prev;
   t->tsnap.exclude_selected = customdata->exclude_selected_prev;
 
   t->mouse.apply = customdata->mouse_prev.apply;
@@ -165,6 +167,7 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
   struct SnapSouceCustomData *customdata = MEM_callocN(sizeof(*customdata), __func__);
   customdata->mode_info_prev = t->mode_info;
 
+  customdata->exclude_active_prev = t->tsnap.exclude_active;
   customdata->exclude_selected_prev = t->tsnap.exclude_selected;
 
   customdata->mouse_prev.apply = t->mouse.apply;
@@ -179,6 +182,7 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
   }
 
   t->mode_info = &TransMode_snapsource;
+  t->tsnap.exclude_active = SCE_SNAP_MODE_NONE;
   t->tsnap.exclude_selected = SCE_SNAP_MODE_NONE;
   t->tsnap.status &= ~SNAP_SOURCE_FOUND;
 

@@ -415,21 +415,28 @@ using IterSnapObjsCallback = eSnapMode (*)(SnapObjectContext *sctx,
 
 static eSnapMode snap_object_mode_filter(const SnapObjectContext *sctx,
                                          const SnapObjectParams *params,
-                                         eSnapMode snap_mode,
-                                         const Base *base_act,
+                                         const eSnapMode snap_mode,
                                          const Base *base)
 {
   if (!BASE_VISIBLE(sctx->runtime.v3d, base)) {
     return SCE_SNAP_MODE_NONE;
   }
 
-  if (base->flag_legacy & BA_SNAP_FIX_DEPS_FIASCO) {
+  if (base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE ||
+      (params->exclude_active == SCE_SNAP_MODE_NONE &&
+       params->exclude_selected == SCE_SNAP_MODE_NONE &&
+       params->exclude_edited == SCE_SNAP_MODE_NONE &&
+       params->exclude_nonedited == SCE_SNAP_MODE_NONE &&
+       params->exclude_nonselectable == SCE_SNAP_MODE_NONE))
+  {
+    return snap_mode;
+  }
+
+  if (params->exclude_moving && base->flag_legacy & BA_SNAP_FIX_DEPS_FIASCO) {
     return SCE_SNAP_MODE_NONE;
   }
 
-  if (base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
-    return snap_mode;
-  }
+  const Base *base_act = sctx->runtime.base_act;
 
   /* Get attributes of potential target. */
   const bool is_active = (base_act == base);
@@ -487,7 +494,7 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx,
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(sctx->runtime.view_layer)) {
     eSnapMode snap_mode_filtered = snap_to_flag;
     if (!is_occlusion_test) {
-      snap_mode_filtered = snap_object_mode_filter(sctx, params, snap_to_flag, base_act, base);
+      snap_mode_filtered = snap_object_mode_filter(sctx, params, snap_to_flag, base);
       if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
         continue;
       }
@@ -1777,7 +1784,7 @@ static eSnapMode snap_mesh_polygon(SnapObjectContext *sctx,
 {
   eSnapMode elem = SCE_SNAP_MODE_NONE;
   eSnapMode snap_mode_filtered = snap_object_mode_filter(
-      sctx, params, sctx->runtime.snap_to_flag, sctx->runtime.base_act, sctx->ret.base);
+      sctx, params, sctx->runtime.snap_to_flag, sctx->ret.base);
 
   if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
     return elem;
