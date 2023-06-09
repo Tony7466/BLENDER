@@ -612,7 +612,7 @@ VkImageType to_vk_image_type(const eGPUTextureType type)
   return VK_IMAGE_TYPE_1D;
 }
 
-VkImageViewType to_vk_image_view_type(const eGPUTextureType type)
+VkImageViewType to_vk_image_view_type(const eGPUTextureType type, bool is_framebuffer)
 {
   switch (type) {
     case GPU_TEXTURE_1D:
@@ -623,7 +623,7 @@ VkImageViewType to_vk_image_view_type(const eGPUTextureType type)
     case GPU_TEXTURE_3D:
       return VK_IMAGE_VIEW_TYPE_3D;
     case GPU_TEXTURE_CUBE:
-      return VK_IMAGE_VIEW_TYPE_CUBE;
+      return is_framebuffer ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
     case GPU_TEXTURE_1D_ARRAY:
       return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
     case GPU_TEXTURE_2D_ARRAY:

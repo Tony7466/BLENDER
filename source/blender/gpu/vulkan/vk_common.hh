@@ -29,7 +29,7 @@ VkFormat to_vk_format(const GPUVertCompType type,
                       const uint32_t size,
                       const GPUVertFetchMode fetch_mode);
 VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat format);
-VkImageViewType to_vk_image_view_type(const eGPUTextureType type);
+VkImageViewType to_vk_image_view_type(const eGPUTextureType type, bool is_framebuffer = false);
 VkImageType to_vk_image_type(const eGPUTextureType type);
 VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
