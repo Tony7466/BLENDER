@@ -283,6 +283,21 @@ struct InstanceContext {
   }
 };
 
+static void copy_attributes_by_mapping_info(const OrderedAttributes attribute_mapping,
+                                            bke::AttributeAccessor src_attributes,
+                                            MutableSpan<std::optional<GVArraySpan>> dst_attribute)
+{
+  for (const int attribute_index : attribute_mapping.index_range()) {
+    const AttributeIDRef &attribute_id = attribute_mapping.ids[attribute_index];
+    const eCustomDataType data_type = attribute_mapping.kinds[attribute_index].data_type;
+    const eAttrDomain domain = attribute_mapping.kinds[attribute_index].domain;
+    if (src_attributes.contains(attribute_id)) {
+      GVArray attribute = *src_attributes.lookup_or_default(attribute_id, domain, data_type);
+      dst_attribute[attribute_index].emplace(std::move(attribute));
+    }
+  }
+}
+
 static void copy_transformed_positions(const Span<float3> src,
                                        const float4x4 &transform,
                                        MutableSpan<float3> dst)
@@ -694,30 +709,33 @@ static AllPointCloudsInfo preprocess_pointclouds(const GeometrySet &geometry_set
     const PointCloud *pointcloud = info.order[pointcloud_index];
     pointcloud_info.pointcloud = pointcloud;
 
-    /* Access attributes. */
     bke::AttributeAccessor attributes = pointcloud->attributes();
     pointcloud_info.attributes.reinitialize(info.attributes.size());
-    for (const int attribute_index : info.attributes.index_range()) {
-      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
-      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
-      const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
-      if (attributes.contains(attribute_id)) {
-        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
-        pointcloud_info.attributes[attribute_index].emplace(std::move(attribute));
-      }
-    }
-    if (info.create_id_attribute) {
+    copy_attributes_by_mapping_info(info.attributes, attributes, pointcloud_info.attributes);
+    const VArray<float3> position_attribute = *attributes.lookup_or_default<float3>(
+        "position", ATTR_DOMAIN_POINT, float3(0));
+    pointcloud_info.positions = position_attribute.get_internal_span();
+  }
+
+  if (info.create_id_attribute) {
+    for (const int pointcloud_index : info.realize_info.index_range()) {
+      PointCloudRealizeInfo &pointcloud_info = info.realize_info[pointcloud_index];
+      const PointCloud *pointcloud = info.order[pointcloud_index];
+      bke::AttributeAccessor attributes = pointcloud->attributes();
       bke::GAttributeReader ids_attribute = attributes.lookup("id");
       if (ids_attribute) {
         pointcloud_info.stored_ids = ids_attribute.varray.get_internal_span().typed<int>();
       }
     }
-    if (info.create_radius_attribute) {
+  }
+
+  if (info.create_radius_attribute) {
+    for (const int pointcloud_index : info.realize_info.index_range()) {
+      PointCloudRealizeInfo &pointcloud_info = info.realize_info[pointcloud_index];
+      const PointCloud *pointcloud = info.order[pointcloud_index];
+      bke::AttributeAccessor attributes = pointcloud->attributes();
       pointcloud_info.radii = *attributes.lookup_or_default("radius", ATTR_DOMAIN_POINT, 0.01f);
     }
-    const VArray<float3> position_attribute = *attributes.lookup_or_default<float3>(
-        "position", ATTR_DOMAIN_POINT, float3(0));
-    pointcloud_info.positions = position_attribute.get_internal_span();
   }
   return info;
 }
@@ -911,7 +929,6 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
     mesh_info.corner_verts = mesh->corner_verts();
     mesh_info.corner_edges = mesh->corner_edges();
 
-    /* Create material index mapping. */
     mesh_info.material_index_map.reinitialize(std::max<int>(mesh->totcol, 1));
     if (mesh->totcol == 0) {
       mesh_info.material_index_map.first() = info.materials.index_of(nullptr);
@@ -924,26 +941,23 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
       }
     }
 
-    /* Access attributes. */
     bke::AttributeAccessor attributes = mesh->attributes();
     mesh_info.attributes.reinitialize(info.attributes.size());
-    for (const int attribute_index : info.attributes.index_range()) {
-      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
-      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
-      const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
-      if (attributes.contains(attribute_id)) {
-        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
-        mesh_info.attributes[attribute_index].emplace(std::move(attribute));
-      }
-    }
-    if (info.create_id_attribute) {
+    copy_attributes_by_mapping_info(info.attributes, attributes, mesh_info.attributes);
+    mesh_info.material_indices = *attributes.lookup_or_default<int>(
+        "material_index", ATTR_DOMAIN_FACE, 0);
+  }
+
+  if (info.create_id_attribute) {
+    for (const int mesh_index : info.realize_info.index_range()) {
+      MeshRealizeInfo &mesh_info = info.realize_info[mesh_index];
+      const Mesh *mesh = info.order[mesh_index];
+      bke::AttributeAccessor attributes = mesh->attributes();
       bke::GAttributeReader ids_attribute = attributes.lookup("id");
       if (ids_attribute) {
         mesh_info.stored_vertex_ids = ids_attribute.varray.get_internal_span().typed<int>();
       }
     }
-    mesh_info.material_indices = *attributes.lookup_or_default<int>(
-        "material_index", ATTR_DOMAIN_FACE, 0);
   }
 
   info.no_loose_edges_hint = std::all_of(
@@ -1232,26 +1246,31 @@ static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
     const Curves *curves_id = info.order[curve_index];
     const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     curve_info.curves = curves_id;
+    curve_info.resolution = curves.resolution();
 
-    /* Access attributes. */
     bke::AttributeAccessor attributes = curves.attributes();
     curve_info.attributes.reinitialize(info.attributes.size());
-    for (const int attribute_index : info.attributes.index_range()) {
-      const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
-      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
-      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
-      if (attributes.contains(attribute_id)) {
-        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
-        curve_info.attributes[attribute_index].emplace(std::move(attribute));
-      }
-    }
-    if (info.create_id_attribute) {
+    copy_attributes_by_mapping_info(info.attributes, attributes, curve_info.attributes);
+  }
+
+  if (info.create_id_attribute) {
+    for (const int curve_index : info.realize_info.index_range()) {
+      RealizeCurveInfo &curve_info = info.realize_info[curve_index];
+      const Curves *curves_id = info.order[curve_index];
+      const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+      bke::AttributeAccessor attributes = curves.attributes();
       bke::GAttributeReader id_attribute = attributes.lookup("id");
       if (id_attribute) {
         curve_info.stored_ids = id_attribute.varray.get_internal_span().typed<int>();
       }
     }
+  }
 
+  for (const int curve_index : info.realize_info.index_range()) {
+    RealizeCurveInfo &curve_info = info.realize_info[curve_index];
+    const Curves *curves_id = info.order[curve_index];
+    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    bke::AttributeAccessor attributes = curves.attributes();
     if (attributes.contains("radius")) {
       curve_info.radius =
           attributes.lookup<float>("radius", ATTR_DOMAIN_POINT).varray.get_internal_span();
@@ -1262,7 +1281,6 @@ static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
           attributes.lookup<float>("nurbs_weight", ATTR_DOMAIN_POINT).varray.get_internal_span();
       info.create_nurbs_weight_attribute = true;
     }
-    curve_info.resolution = curves.resolution();
     if (attributes.contains("resolution")) {
       info.create_resolution_attribute = true;
     }
