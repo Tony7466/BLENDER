@@ -413,6 +413,38 @@ class AddPresetHairDynamics(AddPresetBase, Operator):
     ]
 
 
+class AddPresetSnapping(AddPresetBase, Operator):
+    """Add or remove a Snapping Preset"""
+    bl_idname = "scene.preset_add"
+    bl_label = "Add Snapping Preset"
+    preset_menu = "VIEW3D_MT_snapping_presets"
+
+    preset_defines = [
+        "toolsettings = bpy.context.scene.tool_settings"
+    ]
+
+    preset_values = [
+        "toolsettings.snap_target",
+        "toolsettings.snap_elements",
+        "toolsettings.snap_filter_active",
+        "toolsettings.snap_filter_edit",
+        "toolsettings.snap_filter_nonedit",
+        "toolsettings.snap_filter_nonselectable",
+        "toolsettings.use_snap_grid_absolute",
+        "toolsettings.use_snap_peel_object",
+        "toolsettings.use_snap_to_same_target",
+        "toolsettings.snap_face_nearest_steps",
+        "toolsettings.use_snap_align_rotation",
+        "toolsettings.use_snap_backface_culling",
+        "toolsettings.use_snap_translate",
+        "toolsettings.use_snap_rotate",
+        "toolsettings.use_snap_scale",
+        "toolsettings.show_snap_filter",
+    ]
+
+    preset_subdir = "snapping"
+
+
 class AddPresetTextEditor(AddPresetBase, Operator):
     """Add or remove a Text Editor Preset"""
     bl_idname = "text_editor.preset_add"
@@ -710,6 +742,7 @@ classes = (
     AddPresetOperator,
     AddPresetRender,
     AddPresetCameraSafeAreas,
+    AddPresetSnapping,
     AddPresetTextEditor,
     AddPresetTrackingCamera,
     AddPresetTrackingSettings,

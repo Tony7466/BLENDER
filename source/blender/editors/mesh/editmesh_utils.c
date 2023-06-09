@@ -1925,17 +1925,18 @@ void EDBM_project_snap_verts(
   ED_view3d_init_mats_rv3d(obedit, region->regiondata);
 
   Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
   SnapObjectContext *snap_context = ED_transform_snap_object_context_create(scene, 0);
 
-  eSnapTargetOP target_op = SCE_SNAP_TARGET_NOT_ACTIVE;
-  const int snap_flag = scene->toolsettings->snap_flag;
+  struct SnapObjectParams snap_params = {0};
+  snap_params.edit_mode_type = SNAP_GEOM_FINAL;
+  snap_params.exclude_active = SCE_SNAP_MODE_GEOM_ALL;
+  snap_params.exclude_edited = ~ts->snap_filter_edit;
+  snap_params.exclude_nonedited = ~ts->snap_filter_nonedit;
+  snap_params.exclude_nonselectable = ~ts->snap_filter_nonselectable;
+  snap_params.use_occlusion_test = true;
 
-  SET_FLAG_FROM_TEST(
-      target_op, !(snap_flag & SCE_SNAP_TO_INCLUDE_EDITED), SCE_SNAP_TARGET_NOT_EDITED);
-  SET_FLAG_FROM_TEST(
-      target_op, !(snap_flag & SCE_SNAP_TO_INCLUDE_NONEDITED), SCE_SNAP_TARGET_NOT_NONEDITED);
-  SET_FLAG_FROM_TEST(
-      target_op, (snap_flag & SCE_SNAP_TO_ONLY_SELECTABLE), SCE_SNAP_TARGET_ONLY_SELECTABLE);
+  const int snap_flag = scene->toolsettings->snap_flag;
 
   BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
     if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
@@ -1947,11 +1948,7 @@ void EDBM_project_snap_verts(
                                                     region,
                                                     CTX_wm_view3d(C),
                                                     SCE_SNAP_MODE_FACE,
-                                                    &(const struct SnapObjectParams){
-                                                        .snap_target_select = target_op,
-                                                        .edit_mode_type = SNAP_GEOM_FINAL,
-                                                        .use_occlusion_test = true,
-                                                    },
+                                                    &snap_params,
                                                     NULL,
                                                     mval,
                                                     NULL,

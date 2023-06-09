@@ -660,7 +660,6 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
           v3d,
           snap_elements,
           &(const struct SnapObjectParams){
-              .snap_target_select = SCE_SNAP_TARGET_ALL,
               .edit_mode_type = edit_mode_type,
               .use_occlusion_test = use_occlusion_test,
           },

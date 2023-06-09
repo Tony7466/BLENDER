@@ -7060,10 +7060,47 @@ class VIEW3D_PT_overlay_weight_paint(Panel):
         col.prop(overlay, "show_paint_wire")
 
 
+class VIEW3D_MT_snapping_presets(Menu):
+    bl_label = "Presets"
+    preset_subdir = "snapping"
+    preset_operator = "script.execute_preset"
+    draw = Menu.draw_preset
+
+
 class VIEW3D_PT_snapping(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Snapping"
+
+    @staticmethod
+    def draw_elements(layout, ts, prop):
+        def draw_filters(row, value):
+            if 'ACTIVE' in ts.show_snap_filter:
+                row.prop_enum(ts, "snap_filter_active", value, text="", icon='EDITMODE_HLT')
+            if 'EDITED' in ts.show_snap_filter:
+                row.prop_enum(ts, "snap_filter_edit", value, text="", icon='OUTLINER_DATA_MESH')
+            if 'NONEDITED' in ts.show_snap_filter:
+                row.prop_enum(ts, "snap_filter_nonedit", value, text="", icon='OUTLINER_OB_MESH')
+            if 'NONSELECTABLE' in ts.show_snap_filter:
+                row.prop_enum(ts, "snap_filter_nonselectable", value, text="", icon='RESTRICT_SELECT_ON')
+
+        if not ts.show_snap_filter:
+            layout.prop(ts, prop)
+            return
+
+        row = layout.row()
+        row.column().prop(ts, prop)
+        row_col = row.column()
+        for item in bpy.types.ToolSettings.bl_rna.properties[prop].enum_items:
+            row = row_col.row(align=True)
+            if item.identifier == 'INCREMENT':
+                row.ui_units_y = 0.92
+                row.separator()
+                continue
+
+            row.active = item.identifier in ts.snap_elements
+            row.scale_y = 0.92
+            draw_filters(row, item.identifier)
 
     def draw(self, context):
         tool_settings = context.tool_settings
@@ -7073,15 +7110,26 @@ class VIEW3D_PT_snapping(Panel):
         layout = self.layout
         col = layout.column()
 
+        row = layout.row(align=True)
+        row.alignment = 'RIGHT'
+        row.menu("VIEW3D_MT_snapping_presets", text=VIEW3D_MT_snapping_presets.bl_label)
+        row.operator("scene.preset_add", text="", icon='ADD')
+        row.operator("scene.preset_add", text="", icon='REMOVE').remove_active = True
+        row.separator()
+        row.prop_menu_enum(tool_settings, "show_snap_filter", text="", icon='FILTER')
+
+        col = layout.column()
         col.label(text="Snap With")
         row = col.row(align=True)
         row.prop(tool_settings, "snap_target", expand=True)
 
+        col.separator()
         col.label(text="Snap To")
-        col.prop(tool_settings, "snap_elements_base", expand=True)
+        self.draw_elements(col, tool_settings, "snap_elements_base")
 
+        col.separator()
         col.label(text="Snap Individual Elements To")
-        col.prop(tool_settings, "snap_elements_individual", expand=True)
+        self.draw_elements(col, tool_settings, "snap_elements_individual")
 
         col.separator()
 
@@ -7102,35 +7150,6 @@ class VIEW3D_PT_snapping(Panel):
         col.prop(tool_settings, "use_snap_backface_culling")
 
         col.separator()
-
-        if obj:
-            col.label(text="Target Selection")
-            col_targetsel = col.column(align=True)
-            if object_mode == 'EDIT' and obj.type not in {'LATTICE', 'META', 'FONT'}:
-                col_targetsel.prop(
-                    tool_settings,
-                    "use_snap_self",
-                    text="Include Active",
-                    icon='EDITMODE_HLT',
-                )
-                col_targetsel.prop(
-                    tool_settings,
-                    "use_snap_edit",
-                    text="Include Edited",
-                    icon='OUTLINER_DATA_MESH',
-                )
-                col_targetsel.prop(
-                    tool_settings,
-                    "use_snap_nonedit",
-                    text="Include Non-Edited",
-                    icon='OUTLINER_OB_MESH',
-                )
-            col_targetsel.prop(
-                tool_settings,
-                "use_snap_selectable",
-                text="Exclude Non-Selectable",
-                icon='RESTRICT_SELECT_OFF',
-            )
 
         col.label(text="Affect")
         row = col.row(align=True)
@@ -8354,6 +8373,7 @@ classes = (
     VIEW3D_MT_wpaint_vgroup_lock_pie,
     VIEW3D_MT_sculpt_face_sets_edit_pie,
     VIEW3D_MT_sculpt_curves,
+    VIEW3D_MT_snapping_presets,
     VIEW3D_PT_active_tool,
     VIEW3D_PT_active_tool_duplicate,
     VIEW3D_PT_view3d_properties,

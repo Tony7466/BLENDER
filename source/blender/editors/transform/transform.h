@@ -298,7 +298,11 @@ typedef struct TransSnap {
   /* Part of source to snap to target */
   eSnapSourceOP source_operation;
   /* Determines which objects are possible target */
-  eSnapTargetOP target_operation;
+  eSnapMode exclude_active;
+  eSnapMode exclude_selected;
+  eSnapMode exclude_edited;
+  eSnapMode exclude_nonedited;
+  eSnapMode exclude_nonselectable;
   short face_nearest_steps;
   eTSnap status;
   /* Snapped Element Type (currently for objects only). */

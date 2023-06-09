@@ -733,9 +733,9 @@ static void wm_xr_raycast(Scene *scene,
       sctx,
       depsgraph,
       NULL,
-      &(const struct SnapObjectParams){.snap_target_select = (selectable_only ?
-                                                                  SCE_SNAP_TARGET_ONLY_SELECTABLE :
-                                                                  SCE_SNAP_TARGET_ALL)},
+      &(const struct SnapObjectParams){.exclude_nonselectable = (selectable_only ?
+                                                                     SCE_SNAP_MODE_GEOM_ALL :
+                                                                     SCE_SNAP_MODE_NONE)},
       origin,
       direction,
       ray_dist,

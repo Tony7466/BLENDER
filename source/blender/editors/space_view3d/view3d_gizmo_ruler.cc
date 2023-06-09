@@ -367,7 +367,6 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
       float3 &co_other = ruler_item->co[inter->co_index == 0 ? 2 : 0];
 
       SnapObjectParams snap_object_params{};
-      snap_object_params.snap_target_select = SCE_SNAP_TARGET_ALL;
       snap_object_params.edit_mode_type = SNAP_GEOM_CAGE;
 
       eSnapMode hit = ED_transform_snap_object_project_view3d(snap_context,

@@ -77,7 +77,6 @@ static void snap_source_active_fn(TransInfo *t);
 /** \name Implementations
  * \{ */
 
-static bool snapNodeTest(View2D *v2d, bNode *node, eSnapTargetOP snap_target_select);
 static NodeBorder snapNodeBorder(eSnapMode snap_node_mode);
 
 #if 0
@@ -362,10 +361,30 @@ static bool applyFaceProject(TransInfo *t, TransDataContainer *tc, TransData *td
   }
 
   SnapObjectParams snap_object_params{};
-  snap_object_params.snap_target_select = t->tsnap.target_operation;
   snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
+  snap_object_params.exclude_active = t->tsnap.exclude_active & ~SCE_SNAP_MODE_FACE;
+  snap_object_params.exclude_selected = t->tsnap.exclude_selected & ~SCE_SNAP_MODE_FACE;
+  snap_object_params.exclude_edited = t->tsnap.exclude_edited & ~SCE_SNAP_MODE_FACE;
+  snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited & ~SCE_SNAP_MODE_FACE;
+  snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable & ~SCE_SNAP_MODE_FACE;
   snap_object_params.use_occlusion_test = false;
   snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
+
+  SET_FLAG_FROM_TEST(snap_object_params.exclude_active,
+                     snap_object_params.exclude_active & SCE_SNAP_MODE_FACE_RAYCAST,
+                     SCE_SNAP_MODE_FACE);
+  SET_FLAG_FROM_TEST(snap_object_params.exclude_selected,
+                     snap_object_params.exclude_selected & SCE_SNAP_MODE_FACE_RAYCAST,
+                     SCE_SNAP_MODE_FACE);
+  SET_FLAG_FROM_TEST(snap_object_params.exclude_edited,
+                     snap_object_params.exclude_edited & SCE_SNAP_MODE_FACE_RAYCAST,
+                     SCE_SNAP_MODE_FACE);
+  SET_FLAG_FROM_TEST(snap_object_params.exclude_nonedited,
+                     snap_object_params.exclude_nonedited & SCE_SNAP_MODE_FACE_RAYCAST,
+                     SCE_SNAP_MODE_FACE);
+  SET_FLAG_FROM_TEST(snap_object_params.exclude_nonselectable,
+                     snap_object_params.exclude_nonselectable & SCE_SNAP_MODE_FACE_RAYCAST,
+                     SCE_SNAP_MODE_FACE);
 
   eSnapMode hit = ED_transform_snap_object_project_view3d(t->tsnap.object_context,
                                                           t->depsgraph,
@@ -425,8 +444,12 @@ static void applyFaceNearest(TransInfo *t, TransDataContainer *tc, TransData *td
   }
 
   SnapObjectParams snap_object_params{};
-  snap_object_params.snap_target_select = t->tsnap.target_operation;
   snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
+  snap_object_params.exclude_active = t->tsnap.exclude_active;
+  snap_object_params.exclude_selected = t->tsnap.exclude_selected;
+  snap_object_params.exclude_edited = t->tsnap.exclude_edited;
+  snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited;
+  snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable;
   snap_object_params.use_occlusion_test = false;
   snap_object_params.use_backface_culling = false;
   snap_object_params.face_nearest_steps = t->tsnap.face_nearest_steps;
@@ -545,7 +568,11 @@ void resetSnapping(TransInfo *t)
   t->tsnap.status = SNAP_RESETTED;
   t->tsnap.snapElem = SCE_SNAP_MODE_NONE;
   t->tsnap.mode = SCE_SNAP_MODE_NONE;
-  t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
+  t->tsnap.exclude_active = SCE_SNAP_MODE_NONE;
+  t->tsnap.exclude_selected = SCE_SNAP_MODE_NONE;
+  t->tsnap.exclude_edited = SCE_SNAP_MODE_NONE;
+  t->tsnap.exclude_nonedited = SCE_SNAP_MODE_NONE;
+  t->tsnap.exclude_nonselectable = SCE_SNAP_MODE_NONE;
   t->tsnap.source_operation = SCE_SNAP_SOURCE_CLOSEST;
   t->tsnap.last = 0;
 
@@ -671,20 +698,26 @@ static eSnapMode snap_mode_from_spacetype(TransInfo *t)
   return SCE_SNAP_MODE_INCREMENT;
 }
 
-static eSnapTargetOP snap_target_select_from_spacetype(TransInfo *t)
+static void snap_target_select_from_spacetype(TransInfo *t,
+                                              eSnapMode *r_exclude_active,
+                                              eSnapMode *r_exclude_selected,
+                                              eSnapMode *r_exclude_edited,
+                                              eSnapMode *r_exclude_nonedited,
+                                              eSnapMode *r_exclude_nonselectable)
 {
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
   Base *base_act = BKE_view_layer_active_base_get(t->view_layer);
 
-  eSnapTargetOP ret = SCE_SNAP_TARGET_ALL;
-
-  /* `t->tsnap.target_operation` not initialized yet. */
-  BLI_assert(t->tsnap.target_operation == SCE_SNAP_TARGET_ALL);
+  *r_exclude_active = SCE_SNAP_MODE_NONE;
+  *r_exclude_selected = SCE_SNAP_MODE_NONE;
+  *r_exclude_edited = SCE_SNAP_MODE_NONE;
+  *r_exclude_nonedited = SCE_SNAP_MODE_NONE;
+  *r_exclude_nonselectable = SCE_SNAP_MODE_NONE;
 
   if (ELEM(t->spacetype, SPACE_VIEW3D, SPACE_IMAGE) && !(t->options & CTX_CAMERA)) {
     if (base_act && (base_act->object->mode & OB_MODE_PARTICLE_EDIT)) {
       /* Particles edit mode. */
-      return ret;
+      return;
     }
 
     if (t->options & (CTX_GPENCIL_STROKES | CTX_CURSOR | CTX_OBMODE_XFORM_OBDATA)) {
@@ -693,7 +726,7 @@ static eSnapTargetOP snap_target_select_from_spacetype(TransInfo *t)
        * TODO: perform self snap in gpencil_strokes.
        *
        * When we're moving the origins, allow snapping onto our own geometry (see #69132). */
-      return ret;
+      return;
     }
 
     const int obedit_type = t->obedit_type;
@@ -703,28 +736,27 @@ static eSnapTargetOP snap_target_select_from_spacetype(TransInfo *t)
         /* Editing a mesh */
         if ((t->flag & T_PROP_EDIT) != 0) {
           /* Exclude editmesh when using proportional edit */
-          ret |= SCE_SNAP_TARGET_NOT_EDITED;
+          *r_exclude_edited = SCE_SNAP_MODE_GEOM_ALL;
         }
         /* UV editing must never snap to the selection as this is what is transformed. */
         if (t->spacetype == SPACE_IMAGE) {
-          ret |= SCE_SNAP_TARGET_NOT_SELECTED;
+          *r_exclude_selected = SCE_SNAP_MODE_GEOM_ALL;
         }
       }
       else if (ELEM(obedit_type, OB_ARMATURE, OB_CURVES_LEGACY, OB_SURF, OB_LATTICE, OB_MBALL)) {
         /* Temporary limited to edit mode armature, curves, surfaces, lattices, and metaballs. */
-        ret |= SCE_SNAP_TARGET_NOT_SELECTED;
+        *r_exclude_selected = SCE_SNAP_MODE_GEOM_ALL;
       }
     }
     else {
       /* Object or pose mode. */
-      ret |= SCE_SNAP_TARGET_NOT_SELECTED | SCE_SNAP_TARGET_NOT_ACTIVE;
+      *r_exclude_active = SCE_SNAP_MODE_GEOM_ALL;
+      *r_exclude_selected = SCE_SNAP_MODE_GEOM_ALL;
     }
   }
   else if (ELEM(t->spacetype, SPACE_NODE, SPACE_SEQ)) {
-    ret |= SCE_SNAP_TARGET_NOT_SELECTED;
+    *r_exclude_selected = SCE_SNAP_MODE_GEOM_ALL;
   }
-
-  return ret;
 }
 
 static void snap_object_context_init(TransInfo *t)
@@ -793,8 +825,14 @@ void initSnapping(TransInfo *t, wmOperator *op)
   resetSnapping(t);
   t->tsnap.mode = snap_mode_from_spacetype(t);
   t->tsnap.flag = snap_flag_from_spacetype(t);
-  t->tsnap.target_operation = snap_target_select_from_spacetype(t);
   t->tsnap.face_nearest_steps = max_ii(ts->snap_face_nearest_steps, 1);
+
+  snap_target_select_from_spacetype(t,
+                                    &t->tsnap.exclude_active,
+                                    &t->tsnap.exclude_selected,
+                                    &t->tsnap.exclude_edited,
+                                    &t->tsnap.exclude_nonedited,
+                                    &t->tsnap.exclude_nonselectable);
 
   /* if snap property exists */
   PropertyRNA *prop;
@@ -835,44 +873,37 @@ void initSnapping(TransInfo *t, wmOperator *op)
         normalize_v3(t->tsnap.snapNormal);
       }
 
-      if ((prop = RNA_struct_find_property(op->ptr, "use_snap_project")) &&
-          RNA_property_is_set(op->ptr, prop))
-      {
-        SET_FLAG_FROM_TEST(
-            t->tsnap.mode, RNA_property_boolean_get(op->ptr, prop), SCE_SNAP_MODE_FACE_RAYCAST);
-      }
-
       /* use_snap_self is misnamed and should be use_snap_active */
       if ((prop = RNA_struct_find_property(op->ptr, "use_snap_self")) &&
           RNA_property_is_set(op->ptr, prop))
       {
-        SET_FLAG_FROM_TEST(t->tsnap.target_operation,
+        SET_FLAG_FROM_TEST(t->tsnap.exclude_active,
                            !RNA_property_boolean_get(op->ptr, prop),
-                           SCE_SNAP_TARGET_NOT_ACTIVE);
+                           SCE_SNAP_MODE_GEOM_ALL);
       }
 
       if ((prop = RNA_struct_find_property(op->ptr, "use_snap_edit")) &&
           RNA_property_is_set(op->ptr, prop))
       {
-        SET_FLAG_FROM_TEST(t->tsnap.target_operation,
+        SET_FLAG_FROM_TEST(t->tsnap.exclude_edited,
                            !RNA_property_boolean_get(op->ptr, prop),
-                           SCE_SNAP_TARGET_NOT_EDITED);
+                           SCE_SNAP_MODE_GEOM_ALL);
       }
 
       if ((prop = RNA_struct_find_property(op->ptr, "use_snap_nonedit")) &&
           RNA_property_is_set(op->ptr, prop))
       {
-        SET_FLAG_FROM_TEST(t->tsnap.target_operation,
+        SET_FLAG_FROM_TEST(t->tsnap.exclude_nonedited,
                            !RNA_property_boolean_get(op->ptr, prop),
-                           SCE_SNAP_TARGET_NOT_NONEDITED);
+                           SCE_SNAP_MODE_GEOM_ALL);
       }
 
-      if ((prop = RNA_struct_find_property(op->ptr, "use_snap_selectable")) &&
+      if ((prop = RNA_struct_find_property(op->ptr, "use_snap_nonselectable")) &&
           RNA_property_is_set(op->ptr, prop))
       {
-        SET_FLAG_FROM_TEST(t->tsnap.target_operation,
-                           RNA_property_boolean_get(op->ptr, prop),
-                           SCE_SNAP_TARGET_ONLY_SELECTABLE);
+        SET_FLAG_FROM_TEST(t->tsnap.exclude_nonselectable,
+                           !RNA_property_boolean_get(op->ptr, prop),
+                           SCE_SNAP_MODE_GEOM_ALL);
       }
     }
   }
@@ -881,19 +912,11 @@ void initSnapping(TransInfo *t, wmOperator *op)
     if (t->tsnap.flag & SCE_SNAP) {
       t->modifiers |= MOD_SNAP;
     }
-
-    SET_FLAG_FROM_TEST(t->tsnap.target_operation,
-                       (ts->snap_flag & SCE_SNAP_NOT_TO_ACTIVE),
-                       SCE_SNAP_TARGET_NOT_ACTIVE);
-    SET_FLAG_FROM_TEST(t->tsnap.target_operation,
-                       !(ts->snap_flag & SCE_SNAP_TO_INCLUDE_EDITED),
-                       SCE_SNAP_TARGET_NOT_EDITED);
-    SET_FLAG_FROM_TEST(t->tsnap.target_operation,
-                       !(ts->snap_flag & SCE_SNAP_TO_INCLUDE_NONEDITED),
-                       SCE_SNAP_TARGET_NOT_NONEDITED);
-    SET_FLAG_FROM_TEST(t->tsnap.target_operation,
-                       (ts->snap_flag & SCE_SNAP_TO_ONLY_SELECTABLE),
-                       SCE_SNAP_TARGET_ONLY_SELECTABLE);
+    t->tsnap.exclude_active |= SCE_SNAP_MODE_GEOM_ALL & ~eSnapMode(ts->snap_filter_active);
+    t->tsnap.exclude_edited |= SCE_SNAP_MODE_GEOM_ALL & ~eSnapMode(ts->snap_filter_edit);
+    t->tsnap.exclude_nonedited |= SCE_SNAP_MODE_GEOM_ALL & ~eSnapMode(ts->snap_filter_nonedit);
+    t->tsnap.exclude_nonselectable |= SCE_SNAP_MODE_GEOM_ALL &
+                                      ~eSnapMode(ts->snap_filter_nonselectable);
   }
 
   t->tsnap.source_operation = snap_source;
@@ -1138,7 +1161,7 @@ static void snap_target_uv_fn(TransInfo *t, float * /*vec*/)
                                    objects,
                                    objects_len,
                                    t->mval,
-                                   t->tsnap.target_operation & SCE_SNAP_TARGET_NOT_SELECTED,
+                                   t->tsnap.exclude_selected != SCE_SNAP_MODE_NONE,
                                    &dist_sq,
                                    t->tsnap.snap_target))
     {
@@ -1385,8 +1408,12 @@ eSnapMode snapObjectsTransform(
     TransInfo *t, const float mval[2], float *dist_px, float r_loc[3], float r_no[3])
 {
   SnapObjectParams snap_object_params{};
-  snap_object_params.snap_target_select = t->tsnap.target_operation;
   snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
+  snap_object_params.exclude_active = t->tsnap.exclude_active;
+  snap_object_params.exclude_selected = t->tsnap.exclude_selected;
+  snap_object_params.exclude_edited = t->tsnap.exclude_edited;
+  snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited;
+  snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable;
   snap_object_params.use_occlusion_test = true;
   snap_object_params.use_backface_culling = (t->tsnap.flag & SCE_SNAP_BACKFACE_CULLING) != 0;
 
@@ -1395,7 +1422,7 @@ eSnapMode snapObjectsTransform(
                                                  t->depsgraph,
                                                  t->region,
                                                  static_cast<const View3D *>(t->view),
-                                                 t->tsnap.mode,
+                                                 t->tsnap.mode & SCE_SNAP_MODE_GEOM,
                                                  &snap_object_params,
                                                  nullptr,
                                                  mval,
@@ -1420,8 +1447,12 @@ bool peelObjectsTransform(TransInfo *t,
                           float *r_thickness)
 {
   SnapObjectParams snap_object_params{};
-  snap_object_params.snap_target_select = t->tsnap.target_operation;
   snap_object_params.edit_mode_type = (t->flag & T_EDIT) != 0 ? SNAP_GEOM_EDIT : SNAP_GEOM_FINAL;
+  snap_object_params.exclude_active = t->tsnap.exclude_active;
+  snap_object_params.exclude_selected = t->tsnap.exclude_selected;
+  snap_object_params.exclude_edited = t->tsnap.exclude_edited;
+  snap_object_params.exclude_nonedited = t->tsnap.exclude_nonedited;
+  snap_object_params.exclude_nonselectable = t->tsnap.exclude_nonselectable;
 
   ListBase depths_peel = {nullptr};
   ED_transform_snap_object_project_all_view3d_ex(t->tsnap.object_context,
@@ -1498,11 +1529,11 @@ bool peelObjectsTransform(TransInfo *t,
 /** \name snap Nodes
  * \{ */
 
-static bool snapNodeTest(View2D *v2d, bNode *node, eSnapTargetOP snap_target_select)
+static bool snapNodeTest(View2D *v2d, bNode *node, bool exclude_selected)
 {
   /* node is use for snapping only if a) snap mode matches and b) node is inside the view */
-  return (((snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) && !(node->flag & NODE_SELECT)) ||
-          (snap_target_select == SCE_SNAP_TARGET_ALL && !(node->flag & NODE_ACTIVE))) &&
+  return ((exclude_selected && !(node->flag & NODE_SELECT)) ||
+          (!exclude_selected && !(node->flag & NODE_ACTIVE))) &&
          (node->runtime->totr.xmin < v2d->cur.xmax && node->runtime->totr.xmax > v2d->cur.xmin &&
           node->runtime->totr.ymin < v2d->cur.ymax && node->runtime->totr.ymax > v2d->cur.ymin);
 }
@@ -1583,7 +1614,7 @@ static bool snapNodes(ToolSettings *ts,
                       SpaceNode *snode,
                       ARegion *region,
                       const int mval[2],
-                      eSnapTargetOP snap_target_select,
+                      bool exclude_selected,
                       float r_loc[2],
                       float *r_dist_px,
                       char *r_node_border)
@@ -1595,7 +1626,7 @@ static bool snapNodes(ToolSettings *ts,
   *r_node_border = 0;
 
   for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
-    if (snapNodeTest(&region->v2d, node, snap_target_select)) {
+    if (snapNodeTest(&region->v2d, node, exclude_selected)) {
       retval |= snapNode(ts, snode, region, node, mval, r_loc, r_dist_px, r_node_border);
     }
   }
@@ -1610,7 +1641,7 @@ bool snapNodesTransform(
                    static_cast<SpaceNode *>(t->area->spacedata.first),
                    t->region,
                    mval,
-                   t->tsnap.target_operation,
+                   t->tsnap.exclude_selected != SCE_SNAP_MODE_NONE,
                    r_loc,
                    r_dist_px,
                    r_node_border);

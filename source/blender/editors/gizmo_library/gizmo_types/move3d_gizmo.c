@@ -282,7 +282,6 @@ static int gizmo_move_modal(bContext *C,
               CTX_wm_view3d(C),
               (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE),
               &(const struct SnapObjectParams){
-                  .snap_target_select = SCE_SNAP_TARGET_ALL,
                   .edit_mode_type = SNAP_GEOM_EDIT,
                   .use_occlusion_test = true,
               },

@@ -1617,6 +1617,10 @@ typedef struct ToolSettings {
   /** Snap elements (per space-type), #eSnapMode. */
   char _pad1[1];
   short snap_mode;
+  short snap_filter_active;
+  short snap_filter_edit;
+  short snap_filter_nonedit;
+  short snap_filter_nonselectable;
   char snap_node_mode;
   char snap_uv_mode;
   /** Generic flags (per space-type), #eSnapFlag. */
@@ -2254,16 +2258,15 @@ typedef enum eSnapFlag {
   SCE_SNAP = (1 << 0),
   SCE_SNAP_ROTATE = (1 << 1),
   SCE_SNAP_PEEL_OBJECT = (1 << 2),
-  // SCE_SNAP_PROJECT = (1 << 3), /* DEPRECATED, see #SCE_SNAP_MODE_FACE_RAYCAST. */
-  /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
-  SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
+  SCE_SNAP_KEEP_ON_SAME_OBJECT = (1 << 3),
+  // SCE_SNAP_NOT_TO_ACTIVE = (1 << 4), /* DEPRECATED */
   SCE_SNAP_ABS_GRID = (1 << 5),
   SCE_SNAP_BACKFACE_CULLING = (1 << 6),
-  SCE_SNAP_KEEP_ON_SAME_OBJECT = (1 << 7),
   /** see #eSnapTargetOP */
-  SCE_SNAP_TO_INCLUDE_EDITED = (1 << 8),
-  SCE_SNAP_TO_INCLUDE_NONEDITED = (1 << 9),
-  SCE_SNAP_TO_ONLY_SELECTABLE = (1 << 10),
+  SCE_SNAP_INCLUDE_ACTIVE = (1 << 7),
+  SCE_SNAP_INCLUDE_EDITED = (1 << 8),
+  SCE_SNAP_INCLUDE_NONEDITED = (1 << 9),
+  SCE_SNAP_INCLUDE_NONSELECTABLE = (1 << 10),
 } eSnapFlag;
 /* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
 /* TODO: move this macro to a more general place. */
@@ -2280,21 +2283,6 @@ typedef enum eSnapSourceOP {
 } eSnapSourceOP;
 
 ENUM_OPERATORS(eSnapSourceOP, SCE_SNAP_SOURCE_ACTIVE)
-
-/**
- * #TransSnap.target_operation and #ToolSettings.snap_flag
- * (#SCE_SNAP_NOT_TO_ACTIVE, #SCE_SNAP_TO_INCLUDE_EDITED, #SCE_SNAP_TO_INCLUDE_NONEDITED,
- * #SCE_SNAP_TO_ONLY_SELECTABLE).
- */
-typedef enum eSnapTargetOP {
-  SCE_SNAP_TARGET_ALL = 0,
-  SCE_SNAP_TARGET_NOT_SELECTED = (1 << 0),
-  SCE_SNAP_TARGET_NOT_ACTIVE = (1 << 1),
-  SCE_SNAP_TARGET_NOT_EDITED = (1 << 2),
-  SCE_SNAP_TARGET_ONLY_SELECTABLE = (1 << 3),
-  SCE_SNAP_TARGET_NOT_NONEDITED = (1 << 4),
-} eSnapTargetOP;
-ENUM_OPERATORS(eSnapTargetOP, SCE_SNAP_TARGET_NOT_NONEDITED)
 
 /** #ToolSettings.snap_mode */
 typedef enum eSnapMode {
@@ -2329,6 +2317,10 @@ ENUM_OPERATORS(eSnapMode, SCE_SNAP_MODE_FACE_RAYCAST)
 #define SCE_SNAP_MODE_GEOM \
   (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE | \
    SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT)
+
+#define SCE_SNAP_MODE_GEOM_ALL \
+  (SCE_SNAP_MODE_GEOM | SCE_SNAP_MODE_VOLUME | SCE_SNAP_MODE_FACE_NEAREST | \
+   SCE_SNAP_MODE_FACE_RAYCAST)
 
 /** #SequencerToolSettings.snap_mode */
 #define SEQ_SNAP_TO_STRIPS (1 << 0)

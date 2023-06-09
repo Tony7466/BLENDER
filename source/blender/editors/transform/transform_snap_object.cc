@@ -410,23 +410,22 @@ using IterSnapObjsCallback = eSnapMode (*)(SnapObjectContext *sctx,
                                            bool use_hide,
                                            void *data);
 
-static bool snap_object_is_snappable(const SnapObjectContext *sctx,
-                                     const eSnapTargetOP snap_target_select,
-                                     const Base *base_act,
-                                     const Base *base)
+static eSnapMode snap_object_mode_filter(const SnapObjectContext *sctx,
+                                         const SnapObjectParams *params,
+                                         eSnapMode snap_mode,
+                                         const Base *base_act,
+                                         const Base *base)
 {
   if (!BASE_VISIBLE(sctx->runtime.v3d, base)) {
-    return false;
-  }
-
-  if ((snap_target_select == SCE_SNAP_TARGET_ALL) ||
-      (base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE))
-  {
-    return true;
+    return SCE_SNAP_MODE_NONE;
   }
 
   if (base->flag_legacy & BA_SNAP_FIX_DEPS_FIASCO) {
-    return false;
+    return SCE_SNAP_MODE_NONE;
+  }
+
+  if (base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
+    return snap_mode;
   }
 
   /* Get attributes of potential target. */
@@ -440,30 +439,30 @@ static bool snap_object_is_snappable(const SnapObjectContext *sctx,
 
   if (is_in_object_mode) {
     /* Handle target selection options that make sense for object mode. */
-    if ((snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) && is_selected) {
+    if (is_selected) {
       /* What is selectable or not is part of the object and depends on the mode. */
-      return false;
+      return snap_mode & ~params->exclude_selected;
     }
   }
   else {
     /* Handle target selection options that make sense for edit/pose mode. */
-    if ((snap_target_select & SCE_SNAP_TARGET_NOT_ACTIVE) && is_active) {
-      return false;
+    if (is_active) {
+      return snap_mode & ~params->exclude_active;
     }
-    if ((snap_target_select & SCE_SNAP_TARGET_NOT_EDITED) && is_edited && !is_active) {
+    if (is_edited && !is_active) {
       /* Base is edited, but not active. */
-      return false;
+      return snap_mode & ~params->exclude_edited;
     }
-    if ((snap_target_select & SCE_SNAP_TARGET_NOT_NONEDITED) && !is_edited) {
-      return false;
+    if (!is_edited) {
+      return snap_mode & ~params->exclude_nonedited;
     }
   }
 
-  if ((snap_target_select & SCE_SNAP_TARGET_ONLY_SELECTABLE) && !is_selectable) {
-    return false;
+  if (!is_selectable) {
+    return snap_mode & ~params->exclude_nonselectable;
   }
 
-  return true;
+  return snap_mode;
 }
 
 /**
@@ -476,17 +475,22 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx,
 {
   eSnapMode ret = SCE_SNAP_MODE_NONE;
   eSnapMode tmp;
+  eSnapMode snap_to_flag = sctx->runtime.snap_to_flag;
 
   Scene *scene = DEG_get_input_scene(sctx->runtime.depsgraph);
   ViewLayer *view_layer = DEG_get_input_view_layer(sctx->runtime.depsgraph);
-  const eSnapTargetOP snap_target_select = params->snap_target_select;
   BKE_view_layer_synced_ensure(scene, view_layer);
   Base *base_act = BKE_view_layer_active_base_get(view_layer);
 
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
-    if (!snap_object_is_snappable(sctx, snap_target_select, base_act, base)) {
+    eSnapMode snap_mode_filtered = snap_object_mode_filter(
+        sctx, params, snap_to_flag, base_act, base);
+
+    if (snap_mode_filtered == SCE_SNAP_MODE_NONE) {
       continue;
     }
+
+    sctx->runtime.snap_to_flag = snap_mode_filtered;
 
     const bool is_object_active = (base == base_act);
     Object *obj_eval = DEG_get_evaluated_object(sctx->runtime.depsgraph, base->object);
@@ -2101,7 +2105,8 @@ static eSnapMode snapArmature(SnapObjectContext *sctx,
 
   const bool is_posemode = is_object_active && (ob_eval->mode & OB_MODE_POSE);
   const bool skip_selected = (is_editmode || is_posemode) &&
-                             (params->snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED);
+                             (params->exclude_selected &
+                              (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE));
   const bool is_persp = sctx->runtime.view_proj == VIEW_PROJ_PERSP;
 
   if (arm->edbo) {
@@ -2280,7 +2285,7 @@ static eSnapMode snapCurve(SnapObjectContext *sctx,
   }
 
   bool is_persp = sctx->runtime.view_proj == VIEW_PROJ_PERSP;
-  bool skip_selected = params->snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED;
+  bool skip_selected = params->exclude_selected & (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE);
 
   LISTBASE_FOREACH (Nurb *, nu, (use_obedit ? &cu->editnurb->nurbs : &cu->nurb)) {
     for (int u = 0; u < nu->pntsu; u++) {
@@ -3276,8 +3281,6 @@ static eSnapMode transform_snap_context_project_view3d_mixed_impl(SnapObjectCont
   sctx->ret.dist_sq = FLT_MAX;
   sctx->ret.is_edit = false;
 
-  BLI_assert(snap_to_flag & (SCE_SNAP_MODE_GEOM | SCE_SNAP_MODE_FACE_NEAREST));
-
   eSnapMode retval = SCE_SNAP_MODE_NONE;
 
   bool has_hit = false;
@@ -3300,6 +3303,9 @@ static eSnapMode transform_snap_context_project_view3d_mixed_impl(SnapObjectCont
   else if (init_co == nullptr) {
     snap_to_flag &= ~SCE_SNAP_MODE_FACE_NEAREST;
   }
+
+  BLI_assert(snap_to_flag & (SCE_SNAP_MODE_GEOM | SCE_SNAP_MODE_FACE_NEAREST));
+  sctx->runtime.snap_to_flag = snap_to_flag;
 
   /* NOTE: if both face ray-cast and face nearest are enabled, first find result of nearest, then
    * override with ray-cast. */

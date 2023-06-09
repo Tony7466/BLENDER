@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_defaults.h"
 #include "DNA_movieclip_types.h"
 
 #include "BLI_assert.h"
@@ -182,13 +183,26 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 5)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      const ToolSettings *ts_default = DNA_struct_default_get(ToolSettings);
       ToolSettings *ts = scene->toolsettings;
+      eSnapFlag view_filter_flag = (SCE_SNAP_INCLUDE_ACTIVE | SCE_SNAP_INCLUDE_EDITED |
+                                    SCE_SNAP_INCLUDE_NONEDITED | SCE_SNAP_INCLUDE_NONSELECTABLE);
+
       if (ts->snap_mode_tools != SCE_SNAP_MODE_NONE) {
         ts->snap_mode_tools = SCE_SNAP_MODE_GEOM;
       }
 
+      ts->snap_mode = ts_default->snap_mode;
+      ts->snap_filter_active = ts_default->snap_filter_active;
+      ts->snap_filter_edit = ts_default->snap_filter_edit;
+      ts->snap_filter_nonedit = ts_default->snap_filter_nonedit;
+      ts->snap_filter_nonselectable = ts_default->snap_filter_nonselectable;
+      ts->snap_flag &= ~view_filter_flag;
+      ts->snap_flag |= ts_default->snap_flag & view_filter_flag;
+
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
+        ts->snap_flag &= ~SCE_SNAP_PROJECT;
         ts->snap_mode |= SCE_SNAP_MODE_FACE_RAYCAST;
       }
 #undef SCE_SNAP_PROJECT

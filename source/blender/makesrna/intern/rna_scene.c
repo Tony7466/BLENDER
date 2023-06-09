@@ -157,9 +157,9 @@ const EnumPropertyItem rna_enum_mesh_select_mode_uv_items[] = {
   {SCE_SNAP_MODE_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
   {SCE_SNAP_MODE_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
   {SCE_SNAP_MODE_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
-  {SCE_SNAP_MODE_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}, \
   {SCE_SNAP_MODE_EDGE_MIDPOINT, "EDGE_MIDPOINT", ICON_SNAP_MIDPOINT, "Edge Center", "Snap to the middle of edges"}, \
-  {SCE_SNAP_MODE_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}
+  {SCE_SNAP_MODE_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}, \
+  {SCE_SNAP_MODE_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}
 /* clang-format on */
 
 const EnumPropertyItem rna_enum_snap_element_items[] = {
@@ -185,6 +185,18 @@ const EnumPropertyItem rna_enum_snap_element_base_items[] = {
 /* Last two snap elements from #rna_enum_snap_element_items. */
 const EnumPropertyItem *rna_enum_snap_element_individual_items =
     &rna_enum_snap_element_items[ARRAY_SIZE(rna_enum_snap_element_items) - 3];
+
+const EnumPropertyItem rna_enum_snap_select_filter_items[] = {
+    {SCE_SNAP_INCLUDE_ACTIVE, "ACTIVE", ICON_EDITMODE_HLT, "Active", ""},
+    {SCE_SNAP_INCLUDE_EDITED, "EDITED", ICON_OUTLINER_DATA_MESH, "Edited", ""},
+    {SCE_SNAP_INCLUDE_NONEDITED, "NONEDITED", ICON_OUTLINER_OB_MESH, "Non-edited", ""},
+    {SCE_SNAP_INCLUDE_NONSELECTABLE,
+     "NONSELECTABLE",
+     ICON_RESTRICT_SELECT_ON,
+     "Non-selectable",
+     ""},
+    {0, NULL, 0, NULL, NULL},
+};
 
 const EnumPropertyItem rna_enum_snap_node_element_items[] = {
     {SCE_SNAP_MODE_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"},
@@ -753,6 +765,12 @@ static void rna_ToolSettings_snap_mode_set(struct PointerRNA *ptr, int value)
   if (value != 0) {
     ts->snap_mode = value;
   }
+}
+
+static int rna_ToolSettings_snap_flag_get(PointerRNA *ptr)
+{
+  ToolSettings *ts = (ToolSettings *)(ptr->data);
+  return ts->snap_flag;
 }
 
 /* Grease Pencil update cache */
@@ -3411,6 +3429,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_enum_funcs(
       prop, "rna_ToolSettings_snap_mode_get", "rna_ToolSettings_snap_mode_set", NULL);
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM);
   RNA_def_property_ui_text(prop, "Snap Element", "Type of element to snap to");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
@@ -3431,6 +3450,48 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_ui_text(
       prop, "Project Mode", "Type of element for individual transformed elements to snap to");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_filter_active", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "snap_filter_active");
+  RNA_def_property_enum_items(prop, rna_enum_snap_element_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM_ALL);
+  RNA_def_property_ui_text(prop, "Snap onto Active", "Snap onto itself if in Edit Mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_filter_edit", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "snap_filter_edit");
+  RNA_def_property_enum_items(prop, rna_enum_snap_element_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM_ALL);
+  RNA_def_property_ui_text(prop, "Snap onto Edited", "Snap onto non-active objects in Edit Mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_filter_nonedit", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "snap_filter_nonedit");
+  RNA_def_property_enum_items(prop, rna_enum_snap_element_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM_ALL);
+  RNA_def_property_ui_text(prop, "Snap onto Non-edited", "Snap onto objects not in Edit Mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_filter_nonselectable", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "snap_filter_nonselectable");
+  RNA_def_property_enum_items(prop, rna_enum_snap_element_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM_ALL);
+  RNA_def_property_ui_text(
+      prop, "Snap onto Non-selectable", "Snap onto objects that are non-selectable");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
+
+  prop = RNA_def_property(srna, "show_snap_filter", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "snap_flag");
+  RNA_def_property_enum_items(prop, rna_enum_snap_select_filter_items);
+  RNA_def_property_enum_funcs(prop, "rna_ToolSettings_snap_flag_get", NULL, NULL);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, SCE_SNAP_INCLUDE_ACTIVE);
+  RNA_def_property_ui_text(prop, "Show Snap Filter", "");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
   prop = RNA_def_property(srna, "snap_face_nearest_steps", PROP_INT, PROP_FACTOR);
@@ -3476,6 +3537,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "snap_target", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "snap_target");
   RNA_def_property_enum_items(prop, rna_enum_snap_source_items);
+  RNA_def_property_enum_default(prop, SCE_SNAP_SOURCE_CLOSEST);
   RNA_def_property_ui_text(prop, "Snap Target", "Which part to snap onto the target");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
@@ -3488,32 +3550,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_snap_backface_culling", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "snap_flag", SCE_SNAP_BACKFACE_CULLING);
   RNA_def_property_ui_text(prop, "Backface Culling", "Exclude back facing geometry from snapping");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
-
-  /* TODO(@gfxcoder): Rename `use_snap_self` to `use_snap_active`, because active is correct but
-   * self is not (breaks API). This only makes a difference when more than one mesh is edited. */
-  prop = RNA_def_property(srna, "use_snap_self", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "snap_flag", SCE_SNAP_NOT_TO_ACTIVE);
-  RNA_def_property_ui_text(
-      prop, "Snap onto Active", "Snap onto itself only if enabled (Edit Mode Only)");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
-
-  prop = RNA_def_property(srna, "use_snap_edit", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "snap_flag", SCE_SNAP_TO_INCLUDE_EDITED);
-  RNA_def_property_ui_text(
-      prop, "Snap onto Edited", "Snap onto non-active objects in Edit Mode (Edit Mode Only)");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
-
-  prop = RNA_def_property(srna, "use_snap_nonedit", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "snap_flag", SCE_SNAP_TO_INCLUDE_NONEDITED);
-  RNA_def_property_ui_text(
-      prop, "Snap onto Non-edited", "Snap onto objects not in Edit Mode (Edit Mode Only)");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
-
-  prop = RNA_def_property(srna, "use_snap_selectable", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "snap_flag", SCE_SNAP_TO_ONLY_SELECTABLE);
-  RNA_def_property_ui_text(
-      prop, "Snap onto Selectable Only", "Snap only onto objects that are selectable");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap_translate", PROP_BOOLEAN, PROP_NONE);

@@ -606,15 +606,6 @@ static bool transform_poll_property(const bContext *C, wmOperator *op, const Pro
     }
   }
 
-  /* Snapping. */
-  {
-    if (STREQ(prop_id, "use_snap_project")) {
-      if (RNA_boolean_get(op->ptr, "snap") == false) {
-        return false;
-      }
-    }
-  }
-
   return true;
 }
 
@@ -705,8 +696,6 @@ void Transform_Properties(wmOperatorType *ot, int flags)
                           "");
       RNA_def_property_flag(prop, PROP_HIDDEN | PROP_ENUM_FLAG);
 
-      RNA_def_boolean(ot->srna, "use_snap_project", false, "Project Individual Elements", "");
-
       /* TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
        * "target" (now, "source" is geometry to be moved and "target" is geometry to which moved
        * geometry is snapped).  Use "Source snap point" and "Point on source that will snap to
@@ -722,7 +711,7 @@ void Transform_Properties(wmOperatorType *ot, int flags)
       prop = RNA_def_boolean(ot->srna, "use_snap_nonedit", true, "Target: Include Non-Edited", "");
       RNA_def_property_flag(prop, PROP_HIDDEN);
       prop = RNA_def_boolean(
-          ot->srna, "use_snap_selectable", false, "Target: Exclude Non-Selectable", "");
+          ot->srna, "use_snap_selectable", true, "Target: Include Non-Selectable", "");
       RNA_def_property_flag(prop, PROP_HIDDEN);
 
       prop = RNA_def_float_vector(
