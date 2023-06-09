@@ -50,7 +50,8 @@ VkImageView VKImageView::create_vk_image_view(VKTexture &texture,
   VkImageViewCreateInfo image_view_info = {};
   image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   image_view_info.image = texture.vk_image_handle();
-  image_view_info.viewType = to_vk_image_view_type(texture.type_get(), true);
+  image_view_info.viewType = to_vk_image_view_type(texture.type_get(),
+                                                   eImageViewUsage::Attachment);
   image_view_info.format = to_vk_format(texture.format_get());
   image_view_info.components = to_vk_component_mapping(texture.format_get());
   image_view_info.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(texture.format_get());

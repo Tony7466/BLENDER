@@ -562,7 +562,7 @@ void VKTexture::image_view_update()
   VkImageViewCreateInfo image_view_info = {};
   image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   image_view_info.image = vk_image_;
-  image_view_info.viewType = to_vk_image_view_type(type_);
+  image_view_info.viewType = to_vk_image_view_type(type_, eImageViewUsage::ShaderBinding);
   image_view_info.format = to_vk_format(format_);
   image_view_info.components = to_vk_component_mapping(format_);
   image_view_info.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format_);
