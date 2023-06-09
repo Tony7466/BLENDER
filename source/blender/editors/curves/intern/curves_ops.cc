@@ -938,15 +938,15 @@ static void CURVES_OT_select_random(wmOperatorType *ot)
                 1.0f);
 }
 
-static int select_end_exec(bContext *C, wmOperator *op)
+static int select_ends_exec(bContext *C, wmOperator *op)
 {
   VectorSet<Curves *> unique_curves = curves::get_unique_editable_curves(*C);
-  const bool end_points = RNA_boolean_get(op->ptr, "end_points");
-  const int amount = RNA_int_get(op->ptr, "amount");
+  const int amount_front = RNA_int_get(op->ptr, "amount_front");
+  const int amount_back = RNA_int_get(op->ptr, "amount_back");
 
   for (Curves *curves_id : unique_curves) {
     CurvesGeometry &curves = curves_id->geometry.wrap();
-    select_ends(curves, amount, end_points);
+    select_ends(curves, amount_front, amount_back);
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
      * attribute for now. */
@@ -957,24 +957,35 @@ static int select_end_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void CURVES_OT_select_end(wmOperatorType *ot)
+static void CURVES_OT_select_ends(wmOperatorType *ot)
 {
   ot->name = "Select End";
   ot->idname = __func__;
   ot->description = "Select end points of curves";
 
-  ot->exec = select_end_exec;
+  ot->exec = select_ends_exec;
   ot->poll = editable_curves_point_domain_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna,
-                  "end_points",
-                  true,
-                  "End Points",
-                  "Select points at the end of the curve as opposed to the beginning");
-  RNA_def_int(
-      ot->srna, "amount", 1, 0, INT32_MAX, "Amount", "Number of points to select", 0, INT32_MAX);
+  RNA_def_int(ot->srna,
+              "amount_front",
+              0,
+              0,
+              INT32_MAX,
+              "Amount Front",
+              "Number of points to select from the front",
+              0,
+              INT32_MAX);
+  RNA_def_int(ot->srna,
+              "amount_back",
+              1,
+              0,
+              INT32_MAX,
+              "Amount Back",
+              "Number of points to select from the back",
+              0,
+              INT32_MAX);
 }
 
 static int select_linked_exec(bContext *C, wmOperator * /*op*/)
@@ -1181,7 +1192,7 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_set_selection_domain);
   WM_operatortype_append(CURVES_OT_select_all);
   WM_operatortype_append(CURVES_OT_select_random);
-  WM_operatortype_append(CURVES_OT_select_end);
+  WM_operatortype_append(CURVES_OT_select_ends);
   WM_operatortype_append(CURVES_OT_select_linked);
   WM_operatortype_append(CURVES_OT_select_more);
   WM_operatortype_append(CURVES_OT_select_less);
