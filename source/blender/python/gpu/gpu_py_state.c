@@ -322,6 +322,12 @@ static PyObject *pygpu_state_depth_range_set(PyObject *UNUSED(self), PyObject *a
 
   if (near > far) {
     PyErr_SetString(PyExc_ValueError, "Near must be less than or equal to far");
+    return NULL;
+  }
+
+  if (near < 0.0f || far > 1.0f) {
+    PyErr_SetString(PyExc_ValueError, "Near and far values must be between 0 and 1");
+    return NULL;
   }
 
   GPU_depth_range(near, far);
