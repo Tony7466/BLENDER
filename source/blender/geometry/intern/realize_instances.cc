@@ -285,7 +285,7 @@ struct InstanceContext {
 
 static void copy_attributes_by_mapping_info(const OrderedAttributes attribute_mapping,
                                             bke::AttributeAccessor src_attributes,
-                                            MutableSpan<std::optional<GVArraySpan>> dst_attribute)
+                                            MutableSpan<std::optional<GVArraySpan>> dst_attributes)
 {
   for (const int attribute_index : attribute_mapping.index_range()) {
     const AttributeIDRef &attribute_id = attribute_mapping.ids[attribute_index];
@@ -293,7 +293,7 @@ static void copy_attributes_by_mapping_info(const OrderedAttributes attribute_ma
     const eAttrDomain domain = attribute_mapping.kinds[attribute_index].domain;
     if (src_attributes.contains(attribute_id)) {
       GVArray attribute = *src_attributes.lookup_or_default(attribute_id, domain, data_type);
-      dst_attribute[attribute_index].emplace(std::move(attribute));
+      dst_attributes[attribute_index].emplace(std::move(attribute));
     }
   }
 }
