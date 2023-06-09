@@ -265,7 +265,13 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     VLOG_INFO << "<" << i << "> " << sizes[i] << " " << work_balance_infos[i].weight << std::endl;
     total += sizes[i];
   }
-  const int slice_height = window_height/device_scale_factor;
+  int slice_height = window_height/device_scale_factor;
+  const int scale_factor_error = max(0, window_height - slice_height*device_scale_factor);
+  /* Increase the height of a slice if there are missing scanlines */
+  if(scale_factor_error > 0) {
+    slice_height++;
+  }
+  
   VLOG_INFO << "total:" << total << " slice:" <<  slice_height << std::endl;
   VLOG_INFO << "window:" << window_height << " slice:" << (window_height/device_scale_factor) << std::endl;
   /* Spread the difference over the workers if there is one */
@@ -279,6 +285,7 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   
   size_t offsets[num_works] = { 0 };
   int work_item = 0;
+  int total_height = 0;
   for (int j = 0; j < device_scale_factor; j++) {
   for (int i = 0; i < num_works; ++i) {
     const double weight = work_balance_infos[i].weight * device_scale;
@@ -287,13 +294,13 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 
     /* Disallow negative values to deal with situations when there are more compute devices than
      * scan-lines. */
-    const int remaining_window_height = max(0, window_height - current_y);
+    const int remaining_window_height = max(0, window_height - total_height);
     BufferParams slice_params = buffer_params;
 
     /* Fill in the slice details */
     slice_params.slice_stride = slice_height;
     slice_params.slice_height = sizes[i];
-    slice_params.slice_start_y = current_y;
+    slice_params.slice_start_y = slice_window_full_y;//current_y;
     VLOG_INFO << "slice start_y:" << slice_params.slice_start_y
 	      << " height:" << slice_params.slice_height
       	      << " stride:" << slice_params.slice_stride;
@@ -305,9 +312,13 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
        should be added */
     if (work_item < num_works * device_scale_factor - 1) {
       slice_params.window_height = min(slice_window_height, remaining_window_height);
+      total_height += slice_params.window_height;
+      VLOG_INFO << "(" << work_item << "/" << num_works * device_scale_factor << ") " << slice_params.window_height << " total:" << total_height << "/" << window_height << " remain:" << remaining_window_height;
     }
     else {
       slice_params.window_height = remaining_window_height;
+      total_height += slice_params.window_height;
+      VLOG_INFO << "(" << work_item << "/" << num_works * device_scale_factor << ") final " << slice_params.window_height << " total:" << total_height << "/" << window_height << " reamin:" << remaining_window_height;
     }
 
     slice_params.height = slice_params.window_y + slice_params.window_height + overscan;
@@ -321,6 +332,19 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 
     current_y += slice_params.window_height;
     work_item++;
+
+    VLOG_INFO << "####Slice tile: "
+	      << " x:" <<  slice_params.full_x
+      	      << " y:" <<  slice_params.full_y
+      	      << " w:" <<  slice_params.full_width
+	      << " h:" <<  slice_params.full_height
+	      << " wx:" <<  slice_params.window_x
+      	      << " wy:" <<  slice_params.window_y
+      	      << " ww:" <<  slice_params.window_width
+	      << " wh:" <<  slice_params.window_height
+	      << " sy:" <<  slice_params.slice_start_y
+	      << " st:" <<  slice_params.slice_stride
+      	      << " sh:" <<  slice_params.slice_height;
   }
   }
 }
@@ -341,9 +365,11 @@ void PathTrace::update_allocated_work_buffer_params()
                                  sizes[work] += params.height;
 				 strides[work] = params.pass_stride;
 				 widths[work] = params.width;
+				 VLOG_INFO << "Update work:" << work << " slice:" << slice << " s:" << sizes[work] << " w:" << widths[work]*strides[work];
                                });
   /* Allocate the master buffer which the slices reference */
   for(int i = 0;i < num_works;i++) {
+    VLOG_INFO << " reset master buffer work:" << i << " w:" << widths[i]*strides[i] << " s:" << sizes[i];
     path_trace_works_[i]->reset_master_buffer(widths[i]*strides[i], sizes[i]);
   }
   
@@ -398,6 +424,7 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
                                overscan, device_scale_factor,
                                [&](PathTraceWork *path_trace_work, const BufferParams params, int work, int slice, size_t offset) {
 				 path_trace_work->set_effective_buffer_params_in_work_set(params, slice, offset);
+				 path_trace_work->set_render_buffers_in_work_set(params, slice, offset);
                                });
 
   render_state_.effective_big_tile_params = scaled_big_tile_params;
@@ -410,12 +437,14 @@ void PathTrace::update_work_buffer_params_if_needed(const RenderWork &render_wor
     for (int i = 0; i < num_works; ++i) {
       path_trace_works_[i]->clear_or_create_work_set(device_scale_factor);
     }
+    VLOG_INFO << "UPDATING ALLOCATED WORK BUFFER PARAMS";
     update_allocated_work_buffer_params();
   }
 
   if (render_state_.need_reset_params ||
       render_state_.resolution_divider != render_work.resolution_divider)
   {
+    VLOG_INFO << "UPDATING WORK BUFFER PARAMS";
     update_effective_work_buffer_params(render_work);
   }
 
@@ -638,7 +667,7 @@ void PathTrace::denoise(const RenderWork &render_work)
 
     buffer_to_denoise = big_tile_denoise_work_->get_unique_buffers();
     if (buffer_to_denoise) {
-      buffer_to_denoise->zero(); //reset(render_state_.effective_big_tile_params);
+      //buffer_to_denoise->zero(); //reset(render_state_.effective_big_tile_params);
 
       copy_to_render_buffers(buffer_to_denoise);
 

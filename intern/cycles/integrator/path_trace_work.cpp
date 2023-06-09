@@ -106,6 +106,7 @@ void PathTraceWork::set_current_work_set(int i)
   
   buffers_ = work_set_.render_buffers_set_[i];
   effective_buffer_params_ = work_set_.effective_buffer_params_set_[i];
+  VLOG_INFO << "Effective buffer params y:" << (effective_buffer_params_.full_y + effective_buffer_params_.window_y) << " height:" << effective_buffer_params_.height << " slice height:" <<  effective_buffer_params_.slice_height << " slice stride:" << effective_buffer_params_.slice_stride;
 }
 
 /*
@@ -118,7 +119,9 @@ void PathTraceWork::set_slices_effective_params() {
     height += work_set_.effective_buffer_params_set_[i].height;
   }
   slices_buffer_params_.height = height;
-  VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << std::endl;
+  slices_buffer_params_.window_height = height;
+  slices_buffer_params_.update_offset_stride();
+  VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
   master_buffers_->params = slices_buffer_params_;
   buffers_ = master_buffers_.get();
   effective_buffer_params_ = slices_buffer_params_;
@@ -131,13 +134,13 @@ void PathTraceWork::render_samples(RenderStatistics &statistics,
 {
   SCOPED_MARKER(device_, "render_samples");
   set_slices_effective_params();
-  // for (int i = 0; i < work_set_.size(); i++) {
+  //for (int i = 0; i < work_set_.size(); i++) {
   //   SCOPED_MARKER(device_, "render_samples_work_set");
   // set_current_work_set(i);
   if(effective_buffer_params_.height > 0) {
   render_samples_impl(statistics, start_sample, samples_num, sample_offset);
   }
-  // }
+  //}
 }
 
 void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
@@ -153,12 +156,24 @@ void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mod
 
 bool PathTraceWork::copy_render_buffers_from_device()
 {
+  // for (int i = 0; i < work_set_.size(); i++) {
+  // set_current_work_set(i);
+  // if (!copy_render_buffers_from_device_impl()) return false;
+  // }
+  // return true;
+
   SCOPED_MARKER(device_, "copy_render_buffers_from_device");
   return copy_master_render_buffers_from_device_impl();
 }
 
 bool PathTraceWork::copy_render_buffers_to_device()
 {
+  // for (int i = 0; i < work_set_.size(); i++) {
+ //    set_current_work_set(i);
+ //    if (!copy_render_buffers_to_device_impl()) return false;
+ // }
+ // return true;
+
   SCOPED_MARKER(device_, "copy_render_buffers_to_device");
   return copy_master_render_buffers_to_device_impl();
 }

@@ -329,7 +329,7 @@ public:
   }
 };
 
-#define USE_SCOPED_MARKER
+// #define USE_SCOPED_MARKER
 #ifndef SCOPED_MARKER
 #   ifdef USE_SCOPED_MARKER
 #      define SCOPED_MARKER(device, msg) ScopedMarker scoped_marker(device, msg)
