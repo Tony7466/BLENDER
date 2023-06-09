@@ -359,7 +359,7 @@ static int find_closest_edge(ARegion *region,
                              const int mval[2])
 {
   using namespace blender;
-  int closest_edge_index;
+  int closest_edge_index = -1;
 
   const float2 mval_f = {float(mval[0]), float(mval[1])};
   float min_distance = FLT_MAX;
@@ -1250,38 +1250,76 @@ void paintvert_reveal(bContext *C, Object *ob, const bool select)
   paintvert_tag_select_update(C, ob);
 }
 
-static bool follow_edge_loop(const int vert_start_index,
-                             const int edge_start_index,
+static int find_opposing_edge(const int edge_index,
+                              const int vert,
+                              const blender::GroupedSpan<int> vert_to_edge_map,
+                              const blender::GroupedSpan<int> edge_to_poly_map)
+{
+  using namespace blender;
+  const Span<int> edge_polys = edge_to_poly_map[edge_index];
+  /* The opposing edge is the one that shares no polys with the current edge. */
+  for (const int vert_edge : vert_to_edge_map[vert]) {
+    bool is_opposing = true;
+    if (edge_to_poly_map[vert_edge].size() != 2) {
+      continue;
+    }
+    for (const int edge_poly : edge_to_poly_map[vert_edge]) {
+      is_opposing &= !edge_polys.contains(edge_poly);
+    }
+    if (is_opposing) {
+      return vert_edge;
+    }
+  }
+  return -1;
+}
+
+static bool follow_edge_loop(const int start_vert,
+                             const int start_edge_index,
                              const blender::GroupedSpan<int> vert_to_edge_map,
+                             const blender::GroupedSpan<int> edge_to_poly_map,
                              const blender::Span<blender::int2> edges,
                              const blender::VArray<bool> &hide_edge,
                              blender::VectorSet<int> &r_edges)
 {
-  int current_vert_index = vert_start_index;
+  int current_vert = start_vert;
+  int current_edge_index = start_edge_index;
 
-  for (int i = edge_start_index; i < edges.size(); i++) {
-    if (hide_edge[i]) {
+  while (true) {
+
+    r_edges.add(current_edge_index);
+
+    current_edge_index = find_opposing_edge(
+        current_edge_index, current_vert, vert_to_edge_map, edge_to_poly_map);
+
+    if (current_edge_index < 0) {
       return false;
     }
 
-    int next_vert;
-    if (edges[i][0] == current_vert_index) {
-      next_vert = edges[i][1];
+    if (edges[current_edge_index][0] == current_vert) {
+      current_vert = edges[current_edge_index][1];
     }
-    else if (edges[i][1] == current_vert_index) {
-      next_vert = edges[i][1];
+    else if (edges[current_edge_index][1] == current_vert) {
+      current_vert = edges[current_edge_index][0];
     }
     else {
       return false;
     }
+
     /* Can only trace a loop if vert has exactly 4 edges. */
-    if (vert_to_edge_map[next_vert].size() != 4) {
-      break;
+    if (vert_to_edge_map[current_vert].size() != 4) {
+      /* The edge that leads to that vertex is still valid. */
+      r_edges.add(current_edge_index);
+      return false;
     }
 
-    r_edges.add(i);
+    if (hide_edge[current_edge_index]) {
+      return false;
+    }
 
-    current_vert_index = next_vert;
+    /* Means the code looped around the mesh. */
+    if (r_edges.contains(current_edge_index)) {
+      return true;
+    }
   }
 
   return false;
@@ -1306,17 +1344,24 @@ void paintvert_select_loop(bContext *C,
     return;
   }
 
-  const Span<int> corner_edges = mesh->corner_edges();
   const Span<float3> verts = mesh->vert_positions();
   const Span<int2> edges = mesh->edges();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_edges = mesh->corner_edges();
 
+  Array<int> vert_to_edge_offsets;
+  Array<int> vert_to_edge_indices;
+  const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
+      edges, mesh->totvert, vert_to_edge_offsets, vert_to_edge_indices);
   Array<int> edge_to_poly_offsets;
   Array<int> edge_to_poly_indices;
-  const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
-      edges, mesh->totvert, edge_to_poly_offsets, edge_to_poly_indices);
+  const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
+      polys, corner_edges, mesh->totedge, edge_to_poly_offsets, edge_to_poly_indices);
 
   const Span<int> vert_edges = vert_to_edge_map[picked_vert];
   ARegion *region = CTX_wm_region(C);
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  ED_view3d_init_mats_rv3d(ob, rv3d);
   const int closest_edge = find_closest_edge(region, edges, vert_edges, verts, region_coordinates);
 
   VectorSet<int> edges_to_select;
@@ -1324,13 +1369,38 @@ void paintvert_select_loop(bContext *C,
   const VArray<bool> hide_edge = *attributes.lookup_or_default<bool>(
       ".hide_edge", ATTR_DOMAIN_EDGE, false);
 
-  follow_edge_loop(picked_vert, closest_edge, vert_to_edge_map, edges, hide_edge, edges_to_select);
+  const bool traced_full_loop = follow_edge_loop(edges[closest_edge][0],
+                                                 closest_edge,
+                                                 vert_to_edge_map,
+                                                 edge_to_poly_map,
+                                                 edges,
+                                                 hide_edge,
+                                                 edges_to_select);
 
-  bke::SpanAttributeWriter<bool> select_edge = attributes.lookup_or_add_for_write_span<bool>(
-      ".select_edge", ATTR_DOMAIN_EDGE);
+  if (!traced_full_loop) {
+    follow_edge_loop(edges[closest_edge][1],
+                     closest_edge,
+                     vert_to_edge_map,
+                     edge_to_poly_map,
+                     edges,
+                     hide_edge,
+                     edges_to_select);
+  }
 
-  select_edge.span.fill_indices(edges_to_select.as_span(), select);
+  bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_vert", ATTR_DOMAIN_POINT);
 
-  select_edge.finish();
+  VectorSet<int> verts_to_select;
+
+  for (const int edge_index : edges_to_select.as_span()) {
+    const int2 edge = edges[edge_index];
+    verts_to_select.add(edge[0]);
+    verts_to_select.add(edge[1]);
+  }
+
+  select_vert.span.fill_indices(verts_to_select.as_span(), select);
+
+  select_vert.finish();
   paintvert_flush_flags(ob);
+  paintvert_tag_select_update(C, ob);
 }
