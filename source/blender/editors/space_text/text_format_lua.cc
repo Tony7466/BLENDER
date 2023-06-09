@@ -69,9 +69,9 @@ const char *lua_bool_text[]{
     "false",
 };
 
-std::vector<KeywordInfo> lua_keyword{};
-std::vector<KeywordInfo> lua_specialvar{};
-std::vector<KeywordInfo> lua_bool{};
+Vector<StringRef> lua_keyword{};
+Vector<StringRef> lua_specialvar{};
+Vector<StringRef> lua_bool{};
 
 static char txtfmt_lua_format_identifier(const char *str)
 {

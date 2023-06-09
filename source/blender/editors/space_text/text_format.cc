@@ -243,12 +243,12 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   return false;
 }
 
-int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *text)
+int find_keyword_length(const Vector<StringRef> &keywords, const char *text)
 {
   int i = 0;
   for (auto keyword : keywords) {
-    if (strncmp(text, keyword.keyword, keyword.length) == 0) {
-      i = keyword.length;
+    if (strncmp(text, keyword.data(), keyword.size()) == 0) {
+      i = keyword.size();
       break;
     }
   }

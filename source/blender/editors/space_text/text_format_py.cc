@@ -61,9 +61,9 @@ const char *py_specialvar_text[]{
     "class",
 };
 
-std::vector<KeywordInfo> py_builtinfunc{};
-std::vector<KeywordInfo> py_specialvar{};
-std::vector<KeywordInfo> py_bool{};
+Vector<StringRef> py_builtinfunc{};
+Vector<StringRef> py_specialvar{};
+Vector<StringRef> py_bool{};
 
 static int txtfmt_py_find_decorator(const char *string)
 {

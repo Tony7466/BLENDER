@@ -51,9 +51,9 @@ const char *osl_specialvar_text[]{
     "displacement",
 };
 
-std::vector<KeywordInfo> osl_builtinfunc{};
-std::vector<KeywordInfo> osl_reserved{};
-std::vector<KeywordInfo> osl_specialvar{};
+Vector<StringRef> osl_builtinfunc{};
+Vector<StringRef> osl_reserved{};
+Vector<StringRef> osl_specialvar{};
 
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)

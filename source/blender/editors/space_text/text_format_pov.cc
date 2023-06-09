@@ -656,11 +656,11 @@ const char *pov_bool_text[]{
     "ttf",
 };
 
-std::vector<KeywordInfo> pov_keyword{};
-std::vector<KeywordInfo> pov_reserved{};
-std::vector<KeywordInfo> pov_builtins{};
-std::vector<KeywordInfo> pov_specialvar{};
-std::vector<KeywordInfo> pov_bool{};
+Vector<StringRef> pov_keyword{};
+Vector<StringRef> pov_reserved{};
+Vector<StringRef> pov_builtins{};
+Vector<StringRef> pov_specialvar{};
+Vector<StringRef> pov_bool{};
 
 static char txtfmt_pov_format_identifier(const char *str)
 {

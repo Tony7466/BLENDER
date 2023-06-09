@@ -7,7 +7,11 @@
  */
 
 #pragma once
-#include <vector>
+#include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
+
+using blender::StringRef;
+using blender::Vector;
 
 struct Text;
 
@@ -117,11 +121,6 @@ void ED_text_format_register_lua();
 void ED_text_format_register_pov();
 void ED_text_format_register_pov_ini();
 
-struct KeywordInfo {
-  const char *keyword;
-  const int length;
-};
-
 /*
  * Checks the specified source string #text for a keyword in #keywords list.
  * This name must start at the beginning of the source string and must be
@@ -131,12 +130,12 @@ struct KeywordInfo {
  * Otherwise, -1 is returned.
  *
  */
-int find_keyword_length(const std::vector<KeywordInfo> &keywords, const char *text);
+int find_keyword_length(const Vector<StringRef> &keywords, const char *text);
 
 template<size_t N>
-void fill_keyword_vector(std::vector<KeywordInfo> &keywords, const char *(&text_keywords)[N])
+void fill_keyword_vector(Vector<StringRef> &keywords, const char *(&text_keywords)[N])
 {
   for (auto text_keyword : text_keywords) {
-    keywords.push_back({text_keyword, int(strlen(text_keyword))});
+    keywords.append(text_keyword);
   }
 }
