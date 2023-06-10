@@ -9,7 +9,6 @@
 #pragma once
 #include "BLI_array.hh"
 #include "BLI_string_ref.hh"
-#include "BLI_vector.hh"
 
 using blender::Array;
 using blender::StringRef;
