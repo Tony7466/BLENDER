@@ -28,8 +28,6 @@ set(SRC
   text_draw.cc
   text_format.cc
   text_format_osl.cc
-  text_format_pov.cc
-  text_format_pov_ini.cc
   text_format_py.cc
   text_header.cc
   text_ops.cc
