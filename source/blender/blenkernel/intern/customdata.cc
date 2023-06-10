@@ -63,7 +63,6 @@
 using blender::float2;
 using blender::ImplicitSharingInfo;
 using blender::IndexRange;
-using blender::MutableSpan;
 using blender::Set;
 using blender::Span;
 using blender::StringRef;
@@ -5395,83 +5394,3 @@ size_t CustomData_get_elem_size(const CustomDataLayer *layer)
 {
   return LAYERTYPEINFO[layer->type].size;
 }
-
-namespace blender::bke::customdata {
-/* Build a mapping from layers in one CustomData set to another.
- */
-CDCopyInfo get_copyinfo(const CustomData *source,
-                        CustomData *dest,
-                        eCustomDataMask mask_exclude,
-                        bool respect_nocopy_flag,
-                        std::function<bool(const CustomDataLayer &)> filter_cb)
-{
-  CDCopyInfo info;
-
-  info.source_data = source;
-  info.dest_data = dest;
-
-  for (const CustomDataLayer &layer_src : Span<CustomDataLayer>(source->layers, source->totlayer))
-  {
-    if (mask_exclude != 0ULL && !(CD_TYPE_AS_MASK(layer_src.type) & mask_exclude)) {
-      continue;
-    }
-    if (!respect_nocopy_flag && (layer_src.flag & CD_FLAG_NOCOPY)) {
-      continue;
-    }
-    if (filter_cb && !filter_cb(layer_src)) {
-      continue;
-    }
-
-    int layer_dest_i = CustomData_get_named_layer_index(
-        dest, eCustomDataType(layer_src.type), layer_src.name);
-    if (layer_dest_i != -1) {
-      info.layers.append({&layer_src, dest->layers + layer_dest_i});
-    }
-  }
-
-  for (CustomDataLayer &layer_dest : MutableSpan<CustomDataLayer>(dest->layers, dest->totlayer)) {
-    bool ok = false;
-
-    for (CDCopyInfo::CDPair &layer_pair : info.layers) {
-      if (layer_pair.dest->type == layer_dest.type &&
-          STREQ(layer_pair.dest->name, layer_dest.name)) {
-        ok = true;
-        break;
-      }
-    }
-
-    if (!ok) {
-      info.dest_layers_other.append(&layer_dest);
-    }
-  }
-
-  return info;
-}
-void bmesh_copy_data(CDCopyInfo &info, const void *source, void **dest)
-{
-  if (info.dest_data->totsize == 0) {
-    return;
-  }
-
-  if (!*dest) {
-    *dest = BLI_mempool_calloc(info.dest_data->pool);
-  }
-
-  for (CDCopyInfo::CDPair &pair : info.layers) {
-    const LayerTypeInfo *type_info = layerType_getInfo(eCustomDataType(pair.source->type));
-    const void *source_ptr = POINTER_OFFSET(source, pair.source->offset);
-    void *dest_ptr = POINTER_OFFSET(*dest, pair.dest->offset);
-
-    if (type_info->copy) {
-      type_info->copy(source_ptr, dest_ptr, 1);
-    }
-    else {
-      memcpy(dest_ptr, source_ptr, type_info->size);
-    }
-  }
-
-  for (CustomDataLayer *layer : info.dest_layers_other) {
-    CustomData_bmesh_set_default_n(info.dest_data, dest, int(layer - info.dest_data->layers));
-  }
-}
-}  // namespace blender::bke::customdata

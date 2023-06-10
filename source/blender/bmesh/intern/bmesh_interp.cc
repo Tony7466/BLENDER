@@ -768,65 +768,66 @@ void BM_vert_interp_from_face(BMesh *bm, BMVert *v_dst, const BMFace *f_src)
   CustomData_bmesh_interp(&bm->vdata, blocks, w, nullptr, f_src->len, v_dst->head.data);
 }
 
-template<typename T = BMVert> static void update_elem_blocks(BMesh *bm, CDCopyInfo &copyinfo)
-{
-  int itertype;
-  if constexpr (std::is_same_v<T, BMVert>) {
-    itertype = BM_VERTS_OF_MESH;
-  }
-  else if constexpr (std::is_same_v<T, BMEdge>) {
-    itertype = BM_EDGES_OF_MESH;
-  }
-  else if constexpr (std::is_same_v<T, BMLoop>) {
-    itertype = BM_FACES_OF_MESH;
-  }
-  else if constexpr (std::is_same_v<T, BMFace>) {
-    itertype = BM_FACES_OF_MESH;
-  }
-
-  BMIter iter;
-  BMElem *elem;
-  BM_ITER_MESH (elem, &iter, bm, itertype) {
-    if constexpr (std::is_same_v<T, BMLoop>) {
-      BMFace *f = reinterpret_cast<BMFace *>(elem);
-      BMLoop *l = BM_FACE_FIRST_LOOP(f);
-      do {
-        void *block = l->head.data;
-        l->head.data = nullptr;
-        blender::bke::customdata::bmesh_copy_data(copyinfo, block, &l->head.data);
-      } while ((l = l->next) != f->l_first);
-    }
-    else {
-      void *block = elem->head.data;
-      elem->head.data = nullptr;
-      blender::bke::customdata::bmesh_copy_data(copyinfo, block, &elem->head.data);
-    }
-  }
-}
-
 static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 {
   BMIter iter;
   BLI_mempool *oldpool = olddata->pool;
   void *block;
 
-  CDCopyInfo copyinfo = blender::bke::customdata::get_copyinfo(olddata, data, 0, true, nullptr);
-
   if (data == &bm->vdata) {
+    BMVert *eve;
+
     CustomData_bmesh_init_pool(data, bm->totvert, BM_VERT);
-    update_elem_blocks<BMVert>(bm, copyinfo);
+
+    BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
+      block = nullptr;
+      CustomData_bmesh_set_default(data, &block);
+      CustomData_bmesh_copy_data(olddata, data, eve->head.data, &block);
+      CustomData_bmesh_free_block(olddata, &eve->head.data);
+      eve->head.data = block;
+    }
   }
   else if (data == &bm->edata) {
+    BMEdge *eed;
+
     CustomData_bmesh_init_pool(data, bm->totedge, BM_EDGE);
-    update_elem_blocks<BMEdge>(bm, copyinfo);
+
+    BM_ITER_MESH (eed, &iter, bm, BM_EDGES_OF_MESH) {
+      block = nullptr;
+      CustomData_bmesh_set_default(data, &block);
+      CustomData_bmesh_copy_data(olddata, data, eed->head.data, &block);
+      CustomData_bmesh_free_block(olddata, &eed->head.data);
+      eed->head.data = block;
+    }
   }
   else if (data == &bm->ldata) {
+    BMIter liter;
+    BMFace *efa;
+    BMLoop *l;
+
     CustomData_bmesh_init_pool(data, bm->totloop, BM_LOOP);
-    update_elem_blocks<BMLoop>(bm, copyinfo);
+    BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
+      BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+        block = nullptr;
+        CustomData_bmesh_set_default(data, &block);
+        CustomData_bmesh_copy_data(olddata, data, l->head.data, &block);
+        CustomData_bmesh_free_block(olddata, &l->head.data);
+        l->head.data = block;
+      }
+    }
   }
   else if (data == &bm->pdata) {
+    BMFace *efa;
+
     CustomData_bmesh_init_pool(data, bm->totface, BM_FACE);
-    update_elem_blocks<BMFace>(bm, copyinfo);
+
+    BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
+      block = nullptr;
+      CustomData_bmesh_set_default(data, &block);
+      CustomData_bmesh_copy_data(olddata, data, efa->head.data, &block);
+      CustomData_bmesh_free_block(olddata, &efa->head.data);
+      efa->head.data = block;
+    }
   }
   else {
     /* should never reach this! */
