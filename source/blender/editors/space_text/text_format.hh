@@ -141,6 +141,6 @@ void fill_keyword_vector(Vector<StringRef> &keywords, const char *(&text_keyword
     keywords.append(text_keyword);
   }
 
-  auto comp_func = [](StringRef &a, StringRef &b) { return strcmp(a.data(), b.data()) < 1; };
+  auto comp_func = [](StringRef &a, StringRef &b) { return strcmp(a.data(), b.data()) < 0; };
   std::sort(keywords.begin(), keywords.end(), comp_func);
 }
