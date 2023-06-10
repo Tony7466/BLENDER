@@ -2030,6 +2030,9 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
 
         layout.separator()
 
+        layout.operator("grease_pencil.select_linked", text="Linked")
+        layout.operator_menu_enum("grease_pencil.select_grouped", "type", text="Grouped")
+
 
 class VIEW3D_MT_select_paint_mask(Menu):
     bl_label = "Select"

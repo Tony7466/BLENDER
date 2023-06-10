@@ -62,6 +62,27 @@ static int select_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int select_linked_exec(bContext *C, wmOperator *op)
+{
+  int action = RNA_enum_get(op->ptr, "action");
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [action](int /*drawing_index*/, GreasePencilDrawing &drawing) {
+        // TODO: Support different selection domains.
+        blender::ed::curves::select_linked(drawing.geometry.wrap());
+      });
+
+  /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
+   * attribute for now. */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
 static void GREASE_PENCIL_OT_select_all(wmOperatorType *ot)
 {
   ot->name = "(De)select All Strokes";
@@ -76,6 +97,18 @@ static void GREASE_PENCIL_OT_select_all(wmOperatorType *ot)
   WM_operator_properties_select_all(ot);
 }
 
+static void GREASE_PENCIL_OT_select_linked(wmOperatorType *ot)
+{
+  ot->name = "Select Linked";
+  ot->idname = "GREASE_PENCIL_OT_select_linked";
+  ot->description = "Select all points in curves with any point selection";
+
+  ot->exec = select_linked_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 static void keymap_grease_pencil_editing(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Edit Mode", 0, 0);
@@ -88,6 +121,7 @@ void ED_operatortypes_grease_pencil(void)
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_select_all);
+  WM_operatortype_append(GREASE_PENCIL_OT_select_linked);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
