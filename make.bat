@@ -8,13 +8,13 @@ set BLENDER_DIR=%~dp0
 call "%BLENDER_DIR%\build_files\windows\reset_variables.cmd"
 
 call "%BLENDER_DIR%\build_files\windows\check_spaces_in_path.cmd"
-if errorlevel 1 goto ERROR
+if errorlevel 1 goto EOF
 
 call "%BLENDER_DIR%\build_files\windows\parse_arguments.cmd" %*
-if errorlevel 1 goto ERROR
+if errorlevel 1 goto EOF
 
 call "%BLENDER_DIR%\build_files\windows\find_dependencies.cmd"
-if errorlevel 1 goto ERROR
+if errorlevel 1 goto EOF
 
 REM if it is one of the convenience targets and BLENDER_BIN is set
 REM skip compiler detection
@@ -40,19 +40,19 @@ if "%FORMAT%" == "1" (
 )
 
 call "%BLENDER_DIR%\build_files\windows\detect_architecture.cmd"
-if errorlevel 1 goto ERROR
+if errorlevel 1 goto EOF
 
 if "%BUILD_VS_YEAR%" == "" (
 	call "%BLENDER_DIR%\build_files\windows\autodetect_msvc.cmd"
 	if errorlevel 1 (
 		echo Visual Studio not found ^(try with the 'verbose' switch for more information^)
-		goto ERROR
+		goto EOF
 	)
 ) else (
 	call "%BLENDER_DIR%\build_files\windows\detect_msvc%BUILD_VS_YEAR%.cmd"
 	if errorlevel 1 (
 		echo Visual Studio %BUILD_VS_YEAR% not found ^(try with the 'verbose' switch for more information^)
-		goto ERROR
+		goto EOF
 	)
 )
 
@@ -64,7 +64,7 @@ if "%SVN_FIX%" == "1" (
 if "%BUILD_UPDATE%" == "1" (
 	REM First see if the SVN libs are there and check them out if they are not.
 	call "%BLENDER_DIR%\build_files\windows\check_libraries.cmd"
-	if errorlevel 1 goto ERROR
+	if errorlevel 1 goto EOF
 	if "%BUILD_UPDATE_SVN%" == "1" (
 		REM Then update SVN platform libraries, since updating python while python is
 		REM running tends to be problematic. The python script that update_sources
@@ -106,7 +106,7 @@ if "%CMAKE%" == "" (
 echo Building blender with VS%BUILD_VS_YEAR% for %BUILD_ARCH% in %BUILD_DIR%
 
 call "%BLENDER_DIR%\build_files\windows\check_libraries.cmd"
-if errorlevel 1 goto ERROR
+if errorlevel 1 goto EOF
 
 if "%TEST%" == "1" (
 	call "%BLENDER_DIR%\build_files\windows\test.cmd"
@@ -115,18 +115,17 @@ if "%TEST%" == "1" (
 
 if "%BUILD_WITH_NINJA%" == "" (
 	call "%BLENDER_DIR%\build_files\windows\configure_msbuild.cmd"
-	if errorlevel 1 goto ERROR
+	if errorlevel 1 goto EOF
 
 	call "%BLENDER_DIR%\build_files\windows\build_msbuild.cmd"
-	if errorlevel 1 goto ERROR
+	if errorlevel 1 goto EOF
 ) else (
 	call "%BLENDER_DIR%\build_files\windows\configure_ninja.cmd"
-	if errorlevel 1 goto ERROR
+	if errorlevel 1 goto EOF
 
 	call "%BLENDER_DIR%\build_files\windows\build_ninja.cmd"
-	if errorlevel 1 goto ERROR
+	if errorlevel 1 goto EOF
 )
-goto EOF
-:ERROR
-exit /b %errorlevel%
+
 :EOF
+if errorlevel 1 exit /b %errorlevel%
