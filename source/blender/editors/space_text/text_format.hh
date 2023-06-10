@@ -129,6 +129,6 @@ void ED_text_format_register_pov_ini();
  * Otherwise, -1 is returned.
  *
  */
-int find_keyword_length(const Array<StringRef> &string_literals, const char *text);
+const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text);
 
 void sort_string_literals(Array<StringRef> &string_literals);

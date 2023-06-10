@@ -52,6 +52,20 @@ static Array<StringRef> text_format_osl_builtinfunc_literals = {
     "while",
 };
 /* clang-format on */
+
+static int txtfmt_osl_find_builtinfunc(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_osl_builtinfunc_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /**
  * OSL reserved keywords
  * See:
@@ -97,6 +111,19 @@ static Array<StringRef> text_format_osl_reserved_literals = {
     "volatile",
 };
 /* clang-format on */
+static int txtfmt_osl_find_reserved(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_osl_reserved_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /* OSL shader types */
 /* clang-format off */
 static Array<StringRef> text_format_osl_specialvar_literals = {
@@ -106,6 +133,19 @@ static Array<StringRef> text_format_osl_specialvar_literals = {
     "displacement",
 };
 /* clang-format on */
+static int txtfmt_osl_find_specialvar(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_osl_specialvar_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)
 {
@@ -130,9 +170,9 @@ static char txtfmt_osl_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(text_format_osl_specialvar_literals,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(text_format_osl_builtinfunc_literals,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
-  } else if (find_keyword_length(text_format_osl_reserved_literals,str)     != -1) { fmt = FMT_TYPE_RESERVED;
+  if        (txtfmt_osl_find_specialvar(str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (txtfmt_osl_find_builtinfunc(str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  } else if (txtfmt_osl_find_reserved(str)     != -1) { fmt = FMT_TYPE_RESERVED;
   } else if (txtfmt_osl_find_preprocessor(str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
   } else                                              { fmt = FMT_TYPE_DEFAULT;
   }
@@ -266,9 +306,9 @@ static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_osl_format_identifier()`. */
-        if        ((i = find_keyword_length(text_format_osl_specialvar_literals,str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(text_format_osl_builtinfunc_literals,str))  != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = find_keyword_length(text_format_osl_reserved_literals,str))     != -1) { prev = FMT_TYPE_RESERVED;
+        if        ((i = txtfmt_osl_find_specialvar(str))   != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = txtfmt_osl_find_builtinfunc(str)) != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = txtfmt_osl_find_reserved(str))    != -1) { prev = FMT_TYPE_RESERVED;
         } else if ((i = txtfmt_osl_find_preprocessor(str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 

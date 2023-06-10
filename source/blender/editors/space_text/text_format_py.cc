@@ -84,6 +84,19 @@ static Array<StringRef> text_format_py_builtinfunc_literals={
     "yield",
 };
 /* clang-format on */
+static int txtfmt_py_find_builtinfunc(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_py_builtinfunc_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /* Python special name.*/
 /* clang-format off */
 static Array<StringRef> text_format_py_specialvar_literals={
@@ -91,6 +104,19 @@ static Array<StringRef> text_format_py_specialvar_literals={
     "class",
 };
 /* clang-format on */
+static int txtfmt_py_find_specialvar(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_py_specialvar_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 static int txtfmt_py_find_decorator(const char *string)
 {
   if (string[0] != '@') {
@@ -118,6 +144,20 @@ static Array<StringRef> text_format_py_bool_literals={
     "False",
 };
 /* clang-format on */
+static int txtfmt_py_find_bool(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_py_bool_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
+
 /* Numeral character matching. */
 #define TXTFMT_PY_NUMERAL_STRING_COUNT_IMPL(txtfmt_py_numeral_char_is_fn) \
   { \
@@ -264,8 +304,8 @@ static char txtfmt_py_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(text_format_py_specialvar_literals,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(text_format_py_builtinfunc_literals,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  if        (txtfmt_py_find_specialvar(str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (txtfmt_py_find_builtinfunc(str)  != -1) { fmt = FMT_TYPE_KEYWORD;
   } else if (txtfmt_py_find_decorator(str)    != -1) { fmt = FMT_TYPE_RESERVED;
   } else                                             { fmt = FMT_TYPE_DEFAULT;
   }
@@ -425,9 +465,7 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
         text_format_fill(&str, &fmt, FMT_TYPE_NUMERAL, i);
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT &&
-               (i = find_keyword_length(text_format_py_bool_literals, str)) != -1)
-      {
+      else if (prev != FMT_TYPE_DEFAULT && (i = txtfmt_py_find_bool(str)) != -1) {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -453,8 +491,8 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_py_format_identifier()`. */
-        if        ((i = find_keyword_length(text_format_py_specialvar_literals,str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(text_format_py_builtinfunc_literals,str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        if        ((i = txtfmt_py_find_specialvar(str))    != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = txtfmt_py_find_builtinfunc(str))  != -1) { prev = FMT_TYPE_KEYWORD;
         } else if ((i = txtfmt_py_find_decorator(str))    != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 

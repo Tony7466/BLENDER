@@ -243,10 +243,8 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   return false;
 }
 
-int find_keyword_length(const Array<StringRef> &string_literals, const char *text)
+const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text)
 {
-  int i = 0;
-
   auto comp_func = [](const StringRef &string_literal, const char *text) {
     int result = strncmp(string_literal.data(), text, string_literal.size());
     return result < 0 || (result == 0 && text_check_identifier(text[string_literal.size()]));
@@ -258,13 +256,9 @@ int find_keyword_length(const Array<StringRef> &string_literals, const char *tex
   if (string_literal_it != string_literals.end() &&
       strncmp(text, string_literal_it->data(), string_literal_it->size()) == 0)
   {
-    i = string_literal_it->size();
+    return string_literal_it;
   }
-
-  if (i == 0 || text_check_identifier(text[i])) {
-    return -1;
-  }
-  return i;
+  return nullptr;
 }
 
 void sort_string_literals(Array<StringRef> &string_literals)

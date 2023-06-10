@@ -62,6 +62,19 @@ static Array<StringRef> text_format_pov_keyword_literals = {
     "if",
 };
 /* clang-format on */
+static int txtfmt_pov_find_keyword(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_pov_keyword_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /* POV-Ray Built-in Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
@@ -211,6 +224,19 @@ static Array<StringRef> text_format_pov_reserved_literals{
     "str",
 };
 /* clang-format on */
+static int txtfmt_pov_find_reserved_keywords(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_pov_reserved_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /* POV-Ray Built-in Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
@@ -439,6 +465,19 @@ static Array<StringRef> text_format_pov_builtins_literals = {
     "z",
 };
 /* clang-format on */
+static int txtfmt_pov_find_reserved_builtins(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_pov_builtins_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /**
  * POV modifiers.
  * See:
@@ -646,6 +685,19 @@ static Array<StringRef> text_format_pov_specialvar_literals = {
     "gall",
 };
 /* clang-format on */
+static int txtfmt_pov_find_specialvar(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_pov_specialvar_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 /* POV Built-in Constants. */
 /* clang-format off */
 static Array<StringRef> text_format_pov_bool_literals = {
@@ -687,6 +739,20 @@ static Array<StringRef> text_format_pov_bool_literals = {
     "ttf",
 };
 /* clang-format on */
+
+static int txtfmt_pov_find_bool(const char *string)
+{
+  const StringRef *string_literal = find_string_literal(text_format_pov_bool_literals, string);
+  if (!string_literal) {
+    return -1;
+  }
+  const int i = string_literal->size();
+  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
 static char txtfmt_pov_format_identifier(const char *str)
 {
   char fmt;
@@ -694,10 +760,10 @@ static char txtfmt_pov_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(text_format_pov_specialvar_literals,str)        != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(text_format_pov_keyword_literals,str)           != -1) { fmt = FMT_TYPE_KEYWORD;
-  } else if (find_keyword_length(text_format_pov_reserved_literals,str) != -1) { fmt = FMT_TYPE_RESERVED;
-  } else if (find_keyword_length(text_format_pov_builtins_literals,str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
+  if        (txtfmt_pov_find_specialvar(str)       != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (txtfmt_pov_find_keyword(str)           != -1) { fmt = FMT_TYPE_KEYWORD;
+  } else if (txtfmt_pov_find_reserved_keywords(str) != -1) { fmt = FMT_TYPE_RESERVED;
+  } else if (txtfmt_pov_find_reserved_builtins(str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
   } else                                                   { fmt = FMT_TYPE_DEFAULT;
   }
 
@@ -813,9 +879,7 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
         *fmt = FMT_TYPE_NUMERAL;
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT &&
-               (i = find_keyword_length(text_format_pov_bool_literals, str)) != -1)
-      {
+      else if (prev != FMT_TYPE_DEFAULT && (i = txtfmt_pov_find_bool(str)) != -1) {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -841,10 +905,10 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_pov_format_identifier()`. */
-        if        ((i = find_keyword_length(text_format_pov_specialvar_literals,str))        != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(text_format_pov_keyword_literals,str))           != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = find_keyword_length(text_format_pov_reserved_literals,str)) != -1) { prev = FMT_TYPE_RESERVED;
-        } else if ((i = find_keyword_length(text_format_pov_builtins_literals,str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
+        if        ((i = txtfmt_pov_find_specialvar(str))        != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = txtfmt_pov_find_keyword(str))           != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = txtfmt_pov_find_reserved_keywords(str)) != -1) { prev = FMT_TYPE_RESERVED;
+        } else if ((i = txtfmt_pov_find_reserved_builtins(str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
         /* clang-format on */
