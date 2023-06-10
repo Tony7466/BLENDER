@@ -3881,6 +3881,15 @@ void CustomData_bmesh_set_default(CustomData *data, void **block)
   }
 }
 
+static bool customdata_layer_copy_check(const CustomDataLayer &source,
+                                        const CustomDataLayer &dest,
+                                        eCustomDataMask mask_exclude)
+{
+  return source.type == dest.type &&
+         (mask_exclude == 0ULL || !(CD_TYPE_AS_MASK(source.type) & mask_exclude)) &&
+         STREQ(source.name, dest.name);
+}
+
 void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
                                                 CustomData *dest,
                                                 void *src_block,
@@ -3904,11 +3913,7 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
     for (CustomDataLayer &layer_dst :
          blender::MutableSpan<CustomDataLayer>(dest->layers, dest->totlayer))
     {
-      bool ok = !(layer_dst.flag & mask_exclude) || mask_exclude == 0ULL;
-      ok = ok && layer_src.type == layer_dst.type;
-      ok = ok && STREQ(layer_src.name, layer_dst.name);
-
-      if (!ok) {
+      if (!customdata_layer_copy_check(layer_src, layer_dst, mask_exclude)) {
         continue;
       }
 
