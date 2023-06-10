@@ -24,7 +24,7 @@
  * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-const char *osl_builtinfunc_text[]{
+static Array<StringRef> text_format_osl_builtinfunc_literals{
     "break", "closure", "color",       "continue",   "do",     "else",   "emit",   "float",
     "for",   "if",      "illuminance", "illuminate", "int",    "matrix", "normal", "output",
     "point", "public",  "return",      "string",     "struct", "vector", "void",   "while",
@@ -35,7 +35,7 @@ const char *osl_builtinfunc_text[]{
  * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-const char *osl_reserved_text[]{
+static Array<StringRef> text_format_osl_reserved_literals{
     "bool",     "case",    "catch",     "char",     "const",  "delete",  "default", "double",
     "enum",     "extern",  "false",     "friend",   "goto",   "inline",  "long",    "new",
     "operator", "private", "protected", "short",    "signed", "sizeof",  "static",  "switch",
@@ -44,16 +44,12 @@ const char *osl_reserved_text[]{
 };
 
 /* OSL shader types */
-const char *osl_specialvar_text[]{
+static Array<StringRef> text_format_osl_specialvar_literals{
     "shader",
     "surface",
     "volume",
     "displacement",
 };
-
-Vector<StringRef> osl_builtinfunc{};
-Vector<StringRef> osl_reserved{};
-Vector<StringRef> osl_specialvar{};
 
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)
@@ -79,9 +75,9 @@ static char txtfmt_osl_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(osl_specialvar,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(osl_builtinfunc,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
-  } else if (find_keyword_length(osl_reserved,str)     != -1) { fmt = FMT_TYPE_RESERVED;
+  if        (find_keyword_length(text_format_osl_specialvar_literals,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (find_keyword_length(text_format_osl_builtinfunc_literals,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  } else if (find_keyword_length(text_format_osl_reserved_literals,str)     != -1) { fmt = FMT_TYPE_RESERVED;
   } else if (txtfmt_osl_find_preprocessor(str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
   } else                                              { fmt = FMT_TYPE_DEFAULT;
   }
@@ -215,9 +211,9 @@ static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_osl_format_identifier()`. */
-        if        ((i = find_keyword_length(osl_specialvar,str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(osl_builtinfunc,str))  != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = find_keyword_length(osl_reserved,str))     != -1) { prev = FMT_TYPE_RESERVED;
+        if        ((i = find_keyword_length(text_format_osl_specialvar_literals,str))   != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = find_keyword_length(text_format_osl_builtinfunc_literals,str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = find_keyword_length(text_format_osl_reserved_literals,str))     != -1) { prev = FMT_TYPE_RESERVED;
         } else if ((i = txtfmt_osl_find_preprocessor(str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
@@ -267,7 +263,7 @@ void ED_text_format_register_osl()
 
   ED_text_format_register(&tft);
 
-  fill_keyword_vector(osl_builtinfunc, osl_builtinfunc_text);
-  fill_keyword_vector(osl_reserved, osl_reserved_text);
-  fill_keyword_vector(osl_specialvar, osl_specialvar_text);
+  sort_string_literals(text_format_osl_builtinfunc_literals);
+  sort_string_literals(text_format_osl_reserved_literals);
+  sort_string_literals(text_format_osl_specialvar_literals);
 }

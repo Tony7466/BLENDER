@@ -26,7 +26,7 @@
  */
 
 /* Language Directives */
-const char *ini_keyword_text[]{
+static Array<StringRef> text_format_pov_ini_keyword_literals{
     "deprecated", "statistics", "declare", "default", "version", "warning", "include", "fclose",
     "ifndef",     "append",     "elseif",  "debug",   "error",   "fopen",   "ifdef",   "local",
     "macro",      "range",      "render",  "break",   "switch",  "undef",   "while",   "write",
@@ -41,7 +41,7 @@ const char *ini_keyword_text[]{
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
-const char *ini_reserved_text[]{
+static Array<StringRef> text_format_pov_ini_reserved_literals{
     "RenderCompleteSoundEnabled",
     "Create_Continue_Trace_Log",
     "ParseErrorSoundEnabled",
@@ -240,7 +240,7 @@ const char *ini_reserved_text[]{
 };
 
 /* POV INI Built-in Constants */
-const char *ini_bool_text[]{
+static Array<StringRef> text_format_pov_ini_bool_literals{
     "false",
     "no",
     "off",
@@ -257,17 +257,13 @@ const char *ini_bool_text[]{
     "%w",
 };
 
-Vector<StringRef> ini_keyword{};
-Vector<StringRef> ini_reserved{};
-Vector<StringRef> ini_bool{};
-
 static char txtfmt_pov_ini_format_identifier(const char *str)
 {
   char fmt;
-  if (find_keyword_length(ini_keyword, str) != -1) {
+  if (find_keyword_length(text_format_pov_ini_keyword_literals, str) != -1) {
     fmt = FMT_TYPE_KEYWORD;
   }
-  else if (find_keyword_length(ini_reserved, str) != -1) {
+  else if (find_keyword_length(text_format_pov_ini_reserved_literals, str) != -1) {
     fmt = FMT_TYPE_RESERVED;
   }
   else {
@@ -376,7 +372,9 @@ static void txtfmt_pov_ini_format_line(SpaceText *st, TextLine *line, const bool
         *fmt = FMT_TYPE_NUMERAL;
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT && (i = find_keyword_length(ini_bool, str)) != -1) {
+      else if (prev != FMT_TYPE_DEFAULT &&
+               (i = find_keyword_length(text_format_pov_ini_bool_literals, str)) != -1)
+      {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -402,8 +400,8 @@ static void txtfmt_pov_ini_format_line(SpaceText *st, TextLine *line, const bool
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_ini_format_identifier()`. */
-        if        ((i = find_keyword_length(ini_keyword,str))  != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = find_keyword_length(ini_reserved,str)) != -1) { prev = FMT_TYPE_RESERVED;
+        if        ((i = find_keyword_length(text_format_pov_ini_keyword_literals,str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = find_keyword_length(text_format_pov_ini_reserved_literals,str)) != -1) { prev = FMT_TYPE_RESERVED;
 }
 
         /* clang-format on */
@@ -447,7 +445,7 @@ void ED_text_format_register_pov_ini()
 
   ED_text_format_register(&tft);
 
-  fill_keyword_vector(ini_keyword, ini_keyword_text);
-  fill_keyword_vector(ini_reserved, ini_reserved_text);
-  fill_keyword_vector(ini_bool, ini_bool_text);
+  sort_string_literals(text_format_pov_ini_keyword_literals);
+  sort_string_literals(text_format_pov_ini_reserved_literals);
+  sort_string_literals(text_format_pov_ini_bool_literals);
 }

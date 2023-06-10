@@ -25,7 +25,7 @@
  * http://www.lua.org/manual/5.1/manual.html#2.1
  */
 
-const char *lua_keyword_text[]{
+static Array<StringRef> text_format_lua_keyword_literals{
     "and",
     "break",
     "do",
@@ -52,7 +52,7 @@ const char *lua_keyword_text[]{
  * http://www.lua.org/manual/5.1/manual.html#5.1
  */
 
-const char *lua_specialvar_text[]{
+static Array<StringRef> text_format_lua_specialvar_literals{
     "assert",       "collectgarbage", "dofile",   "error",        "_G",       "getfenv",
     "getmetatable", "__index",        "ipairs",   "load",         "loadfile", "loadstring",
     "next",         "pairs",          "pcall",    "print",        "rawequal", "rawget",
@@ -63,15 +63,11 @@ const char *lua_specialvar_text[]{
  * Lua bool values.
  */
 
-const char *lua_bool_text[]{
+static Array<StringRef> text_format_lua_bool_literals{
     "nil",
     "true",
     "false",
 };
-
-Vector<StringRef> lua_keyword{};
-Vector<StringRef> lua_specialvar{};
-Vector<StringRef> lua_bool{};
 
 static char txtfmt_lua_format_identifier(const char *str)
 {
@@ -80,8 +76,8 @@ static char txtfmt_lua_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(lua_specialvar,str)  != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(lua_keyword,str)     != -1) { fmt = FMT_TYPE_KEYWORD;
+  if        (find_keyword_length(text_format_lua_specialvar_literals,str)  != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (find_keyword_length(text_format_lua_keyword_literals,str)     != -1) { fmt = FMT_TYPE_KEYWORD;
   } else                                             { fmt = FMT_TYPE_DEFAULT;
   }
 
@@ -203,7 +199,9 @@ static void txtfmt_lua_format_line(SpaceText *st, TextLine *line, const bool do_
         *fmt = FMT_TYPE_NUMERAL;
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT && (i = find_keyword_length(lua_bool, str)) != -1) {
+      else if (prev != FMT_TYPE_DEFAULT &&
+               (i = find_keyword_length(text_format_lua_bool_literals, str)) != -1)
+      {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -229,8 +227,8 @@ static void txtfmt_lua_format_line(SpaceText *st, TextLine *line, const bool do_
 
         /* Special `vars(v)` or built-in `keywords(b)` */
         /* keep in sync with `txtfmt_osl_format_identifier()`. */
-        if        ((i = find_keyword_length(lua_specialvar,str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(lua_keyword, str))      != -1) { prev = FMT_TYPE_KEYWORD;
+        if        ((i = find_keyword_length(text_format_lua_specialvar_literals,str))   != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = find_keyword_length(text_format_lua_keyword_literals, str))      != -1) { prev = FMT_TYPE_KEYWORD;
         }
 
         /* clang-format on */
@@ -274,7 +272,7 @@ void ED_text_format_register_lua()
 
   ED_text_format_register(&tft);
 
-  fill_keyword_vector(lua_keyword, lua_keyword_text);
-  fill_keyword_vector(lua_specialvar, lua_specialvar_text);
-  fill_keyword_vector(lua_bool, lua_bool_text);
+  sort_string_literals(text_format_lua_keyword_literals);
+  sort_string_literals(text_format_lua_specialvar_literals);
+  sort_string_literals(text_format_lua_bool_literals);
 }

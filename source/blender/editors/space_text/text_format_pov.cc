@@ -26,7 +26,7 @@
  */
 
 /* Language Directives */
-const char *pov_keyword_text[]{
+static Array<StringRef> text_format_pov_keyword_literals{
     "deprecated", "persistent", "statistics", "version", "warning", "declare", "default",
     "include",    "append",     "elseif",     "debug",   "break",   "else",    "error",
     "fclose",     "fopen",      "ifndef",     "ifdef",   "patch",   "local",   "macro",
@@ -40,7 +40,7 @@ const char *pov_keyword_text[]{
  */
 
 /* Float Functions */
-const char *pov_reserved_text[]{
+static Array<StringRef> text_format_pov_reserved_literals{
     "conserve_energy",
     "max_intersections",
     "dimension_size",
@@ -188,7 +188,7 @@ const char *pov_reserved_text[]{
  */
 
 /* Language Keywords */
-const char *pov_builtins_text[]{
+static Array<StringRef> text_format_pov_builtins_literals{
     "reflection_exponent",
     "area_illumination",
     "all_intersections",
@@ -415,7 +415,7 @@ const char *pov_builtins_text[]{
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
 
-const char *pov_specialvar_text[]{
+static Array<StringRef> text_format_pov_specialvar_literals{
     "dispersion_samples",
     "projected_through",
     "double_illuminate",
@@ -617,7 +617,7 @@ const char *pov_specialvar_text[]{
 };
 
 /* POV Built-in Constants. */
-const char *pov_bool_text[]{
+static Array<StringRef> text_format_pov_bool_literals{
     "unofficial",
     "false",
     "no",
@@ -656,12 +656,6 @@ const char *pov_bool_text[]{
     "ttf",
 };
 
-Vector<StringRef> pov_keyword{};
-Vector<StringRef> pov_reserved{};
-Vector<StringRef> pov_builtins{};
-Vector<StringRef> pov_specialvar{};
-Vector<StringRef> pov_bool{};
-
 static char txtfmt_pov_format_identifier(const char *str)
 {
   char fmt;
@@ -669,10 +663,10 @@ static char txtfmt_pov_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(pov_specialvar,str)        != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(pov_keyword,str)           != -1) { fmt = FMT_TYPE_KEYWORD;
-  } else if (find_keyword_length(pov_reserved,str) != -1) { fmt = FMT_TYPE_RESERVED;
-  } else if (find_keyword_length(pov_builtins,str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
+  if        (find_keyword_length(text_format_pov_specialvar_literals,str)        != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (find_keyword_length(text_format_pov_keyword_literals,str)           != -1) { fmt = FMT_TYPE_KEYWORD;
+  } else if (find_keyword_length(text_format_pov_reserved_literals,str) != -1) { fmt = FMT_TYPE_RESERVED;
+  } else if (find_keyword_length(text_format_pov_builtins_literals,str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
   } else                                                   { fmt = FMT_TYPE_DEFAULT;
   }
 
@@ -788,7 +782,9 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
         *fmt = FMT_TYPE_NUMERAL;
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT && (i = find_keyword_length(pov_bool, str)) != -1) {
+      else if (prev != FMT_TYPE_DEFAULT &&
+               (i = find_keyword_length(text_format_pov_bool_literals, str)) != -1)
+      {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -814,10 +810,10 @@ static void txtfmt_pov_format_line(SpaceText *st, TextLine *line, const bool do_
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_pov_format_identifier()`. */
-        if        ((i = find_keyword_length(pov_specialvar,str))        != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(pov_keyword,str))           != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = find_keyword_length(pov_reserved,str)) != -1) { prev = FMT_TYPE_RESERVED;
-        } else if ((i = find_keyword_length(pov_builtins,str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
+        if        ((i = find_keyword_length(text_format_pov_specialvar_literals,str))        != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = find_keyword_length(text_format_pov_keyword_literals,str))           != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = find_keyword_length(text_format_pov_reserved_literals,str)) != -1) { prev = FMT_TYPE_RESERVED;
+        } else if ((i = find_keyword_length(text_format_pov_builtins_literals,str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
         /* clang-format on */
@@ -861,9 +857,9 @@ void ED_text_format_register_pov()
 
   ED_text_format_register(&tft);
 
-  fill_keyword_vector(pov_keyword, pov_keyword_text);
-  fill_keyword_vector(pov_reserved, pov_reserved_text);
-  fill_keyword_vector(pov_builtins, pov_builtins_text);
-  fill_keyword_vector(pov_specialvar, pov_specialvar_text);
-  fill_keyword_vector(pov_bool, pov_bool_text);
+  sort_string_literals(text_format_pov_keyword_literals);
+  sort_string_literals(text_format_pov_reserved_literals);
+  sort_string_literals(text_format_pov_builtins_literals);
+  sort_string_literals(text_format_pov_specialvar_literals);
+  sort_string_literals(text_format_pov_bool_literals);
 }

@@ -243,22 +243,31 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   return false;
 }
 
-int find_keyword_length(const Vector<StringRef> &keywords, const char *text)
+int find_keyword_length(const Array<StringRef> &string_literals, const char *text)
 {
   int i = 0;
-  auto comp_func = [](const StringRef &keyword, const char *text) {
-    return strncmp(text, keyword.data(), keyword.size()) > 0;
-  };
-  auto keyword_it = std::lower_bound(keywords.begin(), keywords.end(), text, comp_func);
 
-  if (keyword_it != nullptr && keyword_it != keywords.end() &&
-      strncmp(text, keyword_it->data(), keyword_it->size()) == 0)
+  auto comp_func = [](const StringRef &string_literal, const char *text) {
+    int result = strncmp(string_literal.data(), text, string_literal.size());
+    return result < 0 || (result == 0 && text_check_identifier(text[string_literal.size()]));
+  };
+
+  auto string_literal_it = std::lower_bound(
+      string_literals.begin(), string_literals.end(), text, comp_func);
+
+  if (string_literal_it != string_literals.end() &&
+      strncmp(text, string_literal_it->data(), string_literal_it->size()) == 0)
   {
-    i = keyword_it->size();
+    i = string_literal_it->size();
   }
 
   if (i == 0 || text_check_identifier(text[i])) {
     return -1;
   }
   return i;
+}
+
+void sort_string_literals(Array<StringRef> &string_literals)
+{
+  std::sort(string_literals.begin(), string_literals.end());
 }

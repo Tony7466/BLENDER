@@ -7,11 +7,12 @@
  */
 
 #pragma once
+#include "BLI_array.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
+using blender::Array;
 using blender::StringRef;
-using blender::Vector;
 
 struct Text;
 
@@ -122,7 +123,7 @@ void ED_text_format_register_pov();
 void ED_text_format_register_pov_ini();
 
 /*
- * Checks the specified source string #text for a keyword in #keywords list.
+ * Checks the specified source string #text for a keyword in #string_literals array.
  * This name must start at the beginning of the source string and must be
  * followed by a non-identifier (see #text_check_identifier(char)) or null char.
  *
@@ -130,17 +131,6 @@ void ED_text_format_register_pov_ini();
  * Otherwise, -1 is returned.
  *
  */
-int find_keyword_length(const Vector<StringRef> &keywords, const char *text);
+int find_keyword_length(const Array<StringRef> &string_literals, const char *text);
 
-template<size_t N>
-void fill_keyword_vector(Vector<StringRef> &keywords, const char *(&text_keywords)[N])
-{
-  keywords.reserve(N);
-
-  for (auto text_keyword : text_keywords) {
-    keywords.append(text_keyword);
-  }
-
-  auto comp_func = [](StringRef &a, StringRef &b) { return strcmp(a.data(), b.data()) < 0; };
-  std::sort(keywords.begin(), keywords.end(), comp_func);
-}
+void sort_string_literals(Array<StringRef> &string_literals);

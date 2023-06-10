@@ -48,7 +48,7 @@
  * See:
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
-const char *py_builtinfunc_text[]{
+static Array<StringRef> text_format_py_builtinfunc_literals{
     "and", "assert", "async", "as",     "await",   "break", "case",     "continue",
     "del", "elif",   "else",  "except", "finally", "for",   "from",     "global",
     "if",  "import", "in",    "is",     "lambda",  "match", "nonlocal", "not",
@@ -56,14 +56,10 @@ const char *py_builtinfunc_text[]{
 };
 
 /* Python special name.*/
-const char *py_specialvar_text[]{
+static Array<StringRef> text_format_py_specialvar_literals{
     "def",
     "class",
 };
-
-Vector<StringRef> py_builtinfunc{};
-Vector<StringRef> py_specialvar{};
-Vector<StringRef> py_bool{};
 
 static int txtfmt_py_find_decorator(const char *string)
 {
@@ -84,8 +80,8 @@ static int txtfmt_py_find_decorator(const char *string)
   }
   return i;
 }
-
-const char *py_bool_text[]{
+/* Python bool values.*/
+static Array<StringRef> text_format_py_bool_literals{
     "None",
     "True",
     "False",
@@ -237,8 +233,8 @@ static char txtfmt_py_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (find_keyword_length(py_specialvar,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if (find_keyword_length(py_builtinfunc,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  if        (find_keyword_length(text_format_py_specialvar_literals,str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (find_keyword_length(text_format_py_builtinfunc_literals,str)  != -1) { fmt = FMT_TYPE_KEYWORD;
   } else if (txtfmt_py_find_decorator(str)    != -1) { fmt = FMT_TYPE_RESERVED;
   } else                                             { fmt = FMT_TYPE_DEFAULT;
   }
@@ -398,7 +394,9 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
         text_format_fill(&str, &fmt, FMT_TYPE_NUMERAL, i);
       }
       /* Booleans */
-      else if (prev != FMT_TYPE_DEFAULT && (i = find_keyword_length(py_bool, str)) != -1) {
+      else if (prev != FMT_TYPE_DEFAULT &&
+               (i = find_keyword_length(text_format_py_bool_literals, str)) != -1)
+      {
         if (i > 0) {
           text_format_fill_ascii(&str, &fmt, FMT_TYPE_NUMERAL, i);
         }
@@ -424,8 +422,8 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_py_format_identifier()`. */
-        if        ((i = find_keyword_length(py_specialvar,str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = find_keyword_length(py_builtinfunc,str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        if        ((i = find_keyword_length(text_format_py_specialvar_literals,str))   != -1) { prev = FMT_TYPE_SPECIAL;
+        } else if ((i = find_keyword_length(text_format_py_builtinfunc_literals,str))  != -1) { prev = FMT_TYPE_KEYWORD;
         } else if ((i = txtfmt_py_find_decorator(str))    != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
@@ -475,7 +473,7 @@ void ED_text_format_register_py()
 
   ED_text_format_register(&tft);
 
-  fill_keyword_vector(py_builtinfunc, py_builtinfunc_text);
-  fill_keyword_vector(py_specialvar, py_specialvar_text);
-  fill_keyword_vector(py_bool, py_bool_text);
+  sort_string_literals(text_format_py_builtinfunc_literals);
+  sort_string_literals(text_format_py_specialvar_literals);
+  sort_string_literals(text_format_py_bool_literals);
 }
