@@ -476,17 +476,6 @@ struct CacheFrame {
   int framenr;
 };
 
-static int cmp_frame(const CacheFrame &frame_a, const CacheFrame &frame_b)
-{
-  if (frame_a.framenr < frame_b.framenr) {
-    return -1;
-  }
-  if (frame_a.framenr > frame_b.framenr) {
-    return 1;
-  }
-  return 0;
-}
-
 static int get_sequence_len(const char *filepath, int *ofs)
 {
   int frame;
@@ -542,7 +531,9 @@ static int get_sequence_len(const char *filepath, int *ofs)
 
   closedir(dir);
 
-  std::sort(frames.begin(), frames.end(), cmp_frame);
+  std::sort(frames.begin(), frames.end(), [](const CacheFrame &a, const CacheFrame &b) {
+    return a.framenr < b.framenr;
+  });
 
   if (frames.size() > 0) {
     int frame_curr = frames[0].framenr;
