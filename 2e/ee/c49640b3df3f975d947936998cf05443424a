@@ -2,3 +2,4 @@ Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
 Referenced by issue #106998, Regression: Select tool does not work on bones in weight paint grease pencil
 Referenced by pull request #107076, Fix #106998: selection of bones in grease pencil weightpaint mode fails
 Referenced by commit b0ec4d889a766d0fd02ab2d05b6de0ddbd937d68, Fix #106998: selection of bones in grease pencil weightpaint mode fails
+Referenced by issue #105203, GPencil: Extending selection of strokes in 3DView deselects Object
