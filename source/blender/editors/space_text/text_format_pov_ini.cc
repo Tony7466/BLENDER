@@ -74,16 +74,14 @@ static Array<StringRef> text_format_pov_ini_keyword_literals = {
 /* clang-format on */
 static int txtfmt_ini_find_keyword(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_pov_ini_keyword_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_pov_ini_keyword_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }
   const int i = string_literal->size();
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 /**
  * POV-Ray Built-in INI Variables
@@ -291,16 +289,14 @@ static Array<StringRef> text_format_pov_ini_reserved_literals = {
 /* clang-format on */
 static int txtfmt_ini_find_reserved(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_pov_ini_reserved_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_pov_ini_reserved_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }
   const int i = string_literal->size();
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 /* POV INI Built-in Constants */
 /* clang-format off */
@@ -329,11 +325,9 @@ static int txtfmt_ini_find_bool(const char *string)
   }
   const int i = string_literal->size();
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 static char txtfmt_pov_ini_format_identifier(const char *str)
 {
   char fmt;

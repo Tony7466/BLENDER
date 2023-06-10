@@ -86,12 +86,14 @@ static Array<StringRef> text_format_py_builtinfunc_literals={
 /* clang-format on */
 static int txtfmt_py_find_builtinfunc(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_py_builtinfunc_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_py_builtinfunc_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
@@ -106,17 +108,20 @@ static Array<StringRef> text_format_py_specialvar_literals={
 /* clang-format on */
 static int txtfmt_py_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_py_specialvar_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_py_specialvar_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
 }
+
 static int txtfmt_py_find_decorator(const char *string)
 {
   if (string[0] != '@') {
@@ -136,6 +141,7 @@ static int txtfmt_py_find_decorator(const char *string)
   }
   return i;
 }
+
 /* Python bool values.*/
 /* clang-format off */
 static Array<StringRef> text_format_py_bool_literals={
@@ -151,6 +157,7 @@ static int txtfmt_py_find_bool(const char *string)
     return -1;
   }
   const int i = string_literal->size();
+
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   if (i == 0 || text_check_identifier(string[i])) {
     return -1;
@@ -491,7 +498,7 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
 
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_py_format_identifier()`. */
-        if        ((i = txtfmt_py_find_specialvar(str))    != -1) { prev = FMT_TYPE_SPECIAL;
+        if        ((i = txtfmt_py_find_specialvar(str))   != -1) { prev = FMT_TYPE_SPECIAL;
         } else if ((i = txtfmt_py_find_builtinfunc(str))  != -1) { prev = FMT_TYPE_KEYWORD;
         } else if ((i = txtfmt_py_find_decorator(str))    != -1) { prev = FMT_TYPE_DIRECTIVE;
         }

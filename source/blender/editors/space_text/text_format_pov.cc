@@ -687,7 +687,8 @@ static Array<StringRef> text_format_pov_specialvar_literals = {
 /* clang-format on */
 static int txtfmt_pov_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_pov_specialvar_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_pov_specialvar_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }

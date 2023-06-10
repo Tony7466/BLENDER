@@ -55,7 +55,8 @@ static Array<StringRef> text_format_osl_builtinfunc_literals = {
 
 static int txtfmt_osl_find_builtinfunc(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_osl_builtinfunc_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_osl_builtinfunc_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }
@@ -135,7 +136,8 @@ static Array<StringRef> text_format_osl_specialvar_literals = {
 /* clang-format on */
 static int txtfmt_osl_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_osl_specialvar_literals, string);
+  const StringRef *string_literal = find_string_literal(text_format_osl_specialvar_literals,
+                                                        string);
   if (!string_literal) {
     return -1;
   }
@@ -307,8 +309,8 @@ static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_
         /* Special vars(v) or built-in keywords(b) */
         /* keep in sync with `txtfmt_osl_format_identifier()`. */
         if        ((i = txtfmt_osl_find_specialvar(str))   != -1) { prev = FMT_TYPE_SPECIAL;
-        } else if ((i = txtfmt_osl_find_builtinfunc(str)) != -1) { prev = FMT_TYPE_KEYWORD;
-        } else if ((i = txtfmt_osl_find_reserved(str))    != -1) { prev = FMT_TYPE_RESERVED;
+        } else if ((i = txtfmt_osl_find_builtinfunc(str))  != -1) { prev = FMT_TYPE_KEYWORD;
+        } else if ((i = txtfmt_osl_find_reserved(str))     != -1) { prev = FMT_TYPE_RESERVED;
         } else if ((i = txtfmt_osl_find_preprocessor(str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
 
