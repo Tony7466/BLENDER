@@ -510,7 +510,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
   const char *basename = BLI_path_basename(filepath);
   const int len = strlen(basename) - (numdigit + strlen(ext));
 
-  blender::Vector<CacheFrame> frames{};
+  blender::Vector<CacheFrame> frames;
 
   dirent *fname;
   while ((fname = readdir(dir)) != nullptr) {
@@ -523,7 +523,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
       continue;
     }
 
-    CacheFrame cache_frame;
+    CacheFrame cache_frame{};
 
     BLI_path_frame_get(fname->d_name, &cache_frame.framenr, &numdigit);
 
