@@ -768,7 +768,11 @@ void BM_vert_interp_from_face(BMesh *bm, BMVert *v_dst, const BMFace *f_src)
   CustomData_bmesh_interp(&bm->vdata, blocks, w, nullptr, f_src->len, v_dst->head.data);
 }
 
-template<typename T = BMVert> static void update_elem_blocks(BMesh *bm, CDCopyInfo &copyinfo)
+template<typename T = BMVert>
+static void update_elem_blocks(BMesh *bm,
+                               CDCopyInfo &copyinfo,
+                               const CustomData *source,
+                               CustomData *dest)
 {
   int itertype;
   if constexpr (std::is_same_v<T, BMVert>) {
@@ -793,13 +797,13 @@ template<typename T = BMVert> static void update_elem_blocks(BMesh *bm, CDCopyIn
       do {
         void *block = l->head.data;
         l->head.data = nullptr;
-        blender::bke::customdata::bmesh_copy_data(copyinfo, block, &l->head.data);
+        blender::bke::customdata::bmesh_copy_data(source, dest, copyinfo, block, &l->head.data);
       } while ((l = l->next) != f->l_first);
     }
     else {
       void *block = elem->head.data;
       elem->head.data = nullptr;
-      blender::bke::customdata::bmesh_copy_data(copyinfo, block, &elem->head.data);
+      blender::bke::customdata::bmesh_copy_data(source, dest, copyinfo, block, &elem->head.data);
     }
   }
 }
@@ -814,19 +818,19 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
   if (data == &bm->vdata) {
     CustomData_bmesh_init_pool(data, bm->totvert, BM_VERT);
-    update_elem_blocks<BMVert>(bm, copyinfo);
+    update_elem_blocks<BMVert>(bm, copyinfo, olddata, data);
   }
   else if (data == &bm->edata) {
     CustomData_bmesh_init_pool(data, bm->totedge, BM_EDGE);
-    update_elem_blocks<BMEdge>(bm, copyinfo);
+    update_elem_blocks<BMEdge>(bm, copyinfo, olddata, data);
   }
   else if (data == &bm->ldata) {
     CustomData_bmesh_init_pool(data, bm->totloop, BM_LOOP);
-    update_elem_blocks<BMLoop>(bm, copyinfo);
+    update_elem_blocks<BMLoop>(bm, copyinfo, olddata, data);
   }
   else if (data == &bm->pdata) {
     CustomData_bmesh_init_pool(data, bm->totface, BM_FACE);
-    update_elem_blocks<BMFace>(bm, copyinfo);
+    update_elem_blocks<BMFace>(bm, copyinfo, olddata, data);
   }
   else {
     /* should never reach this! */

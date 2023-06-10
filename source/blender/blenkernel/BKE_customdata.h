@@ -63,9 +63,6 @@ typedef struct {
 
 #ifdef __cplusplus
 struct CDCopyInfo {
-  const CustomData *source_data;
-  CustomData *dest_data;
-
   struct CDPair {
     const CustomDataLayer *source;
     CustomDataLayer *dest;
@@ -73,8 +70,8 @@ struct CDCopyInfo {
 
   blender::Vector<CDPair, 32> layers;
 
-  /* Layers in dest but not source.*/
-  blender::Vector<CustomDataLayer *, 32> dest_layers_other;
+  /* Layers inside of dest but not source.*/
+  blender::Vector<int, 32> dest_layers_other;
 };
 #endif
 
@@ -837,13 +834,21 @@ void CustomData_debug_info_from_layers(const struct CustomData *data,
 #  include "BLI_cpp_type.hh"
 
 namespace blender::bke::customdata {
+/* Builds a mapping from layers in one CustomData set to another. */
 CDCopyInfo get_copyinfo(const CustomData *source,
                         CustomData *dest,
                         eCustomDataMask mask_exclude,
                         bool respect_nocopy_flag,
                         std::function<bool(const CustomDataLayer &)> filter_cb);
 
-void bmesh_copy_data(CDCopyInfo &info, const void *source, void **dest);
+/* Copy data from one bmesh block to another using a previously created
+ * CDCopyInfo mapping.
+ */
+void bmesh_copy_data(const CustomData *source,
+                     CustomData *dest,
+                     CDCopyInfo &info,
+                     const void *source_block,
+                     void **dest_block);
 
 }  // namespace blender::bke::customdata
 
