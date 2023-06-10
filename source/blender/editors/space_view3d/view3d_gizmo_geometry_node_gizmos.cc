@@ -35,28 +35,37 @@
 
 namespace blender::gizmos::geometry_node_gizmo {
 
-struct GeometryNodeGizmoWrapper {
-  const bke::GizmosGeometry &gizmos_geometry;
-  Array<wmGizmo *> gizmos_objects;
+static const bke::GizmosGeometry static_empty_gizmos = {};
 
-  GeometryNodeGizmoWrapper(const bke::GizmosGeometry &gizmos_geometry_source)
-      : gizmos_geometry(gizmos_geometry_source), gizmos_objects(gizmos_geometry.gizmos_num())
+struct MetaData {
+  int size;
+  
+  bool operator==(const MetaData &other) const
   {
+    return this->size == other.size;
   }
-
-  ~GeometryNodeGizmoWrapper() = default;
-
-  static void free(void *this_)
+  
+  bool operator!=(const MetaData &other) const
   {
-    static_cast<GeometryNodeGizmoWrapper *>(this_)->~GeometryNodeGizmoWrapper();
+    return !(*this == other);
   }
 };
 
-static const bke::GizmosGeometry *gizmos_from_context_try(const bContext *C)
+static MetaData meta_data_for_gizmos(const bke::GizmosGeometry &gizmos)
+{
+  return {gizmos.gizmos_num()};
+}
+
+struct GizmoContext {
+  const Object &object;
+  const bke::GizmosGeometry &gizmo;
+};
+
+static std::optional<GizmoContext> gizmos_context_from_context(const bContext *C)
 {
   const View3D *v3d = CTX_wm_view3d(C);
   if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
-    return nullptr;
+    return std::nullopt;
   }
 
   const Scene *scene = CTX_data_scene(C);
@@ -64,12 +73,12 @@ static const bke::GizmosGeometry *gizmos_from_context_try(const bContext *C)
   BKE_view_layer_synced_ensure(scene, view_layer);
   const Base *base = BKE_view_layer_active_base_get(view_layer);
   if (base == nullptr || !BASE_SELECTABLE(v3d, base)) {
-    return nullptr;
+    return std::nullopt;
   }
 
   Object *object = base->object;
   if (object == nullptr) {
-    return nullptr;
+    return std::nullopt;
   }
 
   const Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
@@ -79,15 +88,38 @@ static const bke::GizmosGeometry *gizmos_from_context_try(const bContext *C)
 
   const GeometrySet *evaluated_geometry_set = evaluated_object->runtime.geometry_set_eval;
   if (evaluated_geometry_set == nullptr) {
-    return nullptr;
+    return std::nullopt;
+  }
+  const bke::GizmosGeometry *gizmo = evaluated_geometry_set->get_gizmos_for_read();
+  if (gizmo == nullptr) {
+    GizmoContext context{*object, static_empty_gizmos};
+    return context;
   }
 
-  return evaluated_geometry_set->get_gizmos_for_read();
+  GizmoContext context{*object, *gizmo};
+  return context;
 }
+
+struct GizmoData {
+  Vector<wmGizmo *> gizmos_objects;
+  MetaData meta_data;
+
+  GizmoData(const bke::GizmosGeometry &gizmos) : gizmos_objects(gizmos.gizmos_num()), meta_data(meta_data_for_gizmos(gizmos))
+  {
+    
+  }
+
+  ~GizmoData() = default;
+
+  static void free(void *this_)
+  {
+    static_cast<GizmoData *>(this_)->~GizmoData();
+  }
+};
 
 static bool geometry_node_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
 {
-  if (gizmos_from_context_try(C) != nullptr) {
+  if (gizmos_context_from_context(C).has_value()) {
     return true;
   }
   return false;
@@ -95,14 +127,15 @@ static bool geometry_node_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
 
 static void geometry_node_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  const bke::GizmosGeometry *gizmos = gizmos_from_context_try(C);
-  BLI_assert(gizmos != nullptr);
+  const std::optional<GizmoContext> context = gizmos_context_from_context(C);
+  BLI_assert(context.has_value());
+  const bke::GizmosGeometry &gizmos = context->gizmo;
 
-  GeometryNodeGizmoWrapper &gzgroup_data = *(new GeometryNodeGizmoWrapper(*gizmos));
-  gzgroup->customdata = &gzgroup_data;
-  gzgroup->customdata_free = GeometryNodeGizmoWrapper::free;
+  gzgroup->customdata = new GizmoData(gizmos);
+  gzgroup->customdata_free = GizmoData::free;
+  GizmoData &gzgroup_data = *static_cast<GizmoData *>(gzgroup->customdata);
 
-  for (const int index : IndexRange(gizmos->gizmos_num())) {
+  for (const int index : IndexRange(gizmos.gizmos_num())) {
     wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, NULL);
     RNA_enum_set(gizmo->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_INVERTED);
     RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_ARROW_DRAW_FLAG_STEM);
@@ -112,15 +145,40 @@ static void geometry_node_setup(const bContext *C, wmGizmoGroup *gzgroup)
   }
 }
 
+static void refresh_data_to_new_meta(GizmoData &data, MetaData &new_meta, wmGizmoGroup *gzgroup, const bContext *C)
+{
+  const int sze = data.gizmos_objects.size();
+  if (data.meta_data.size > new_meta.size) {
+    wmGizmo *gizmo = data.gizmos_objects.pop_last();
+    WM_gizmo_unlink(&gzgroup->gizmos, gzgroup->parent_gzmap, gizmo, const_cast<bContext *>(C));
+  }
+  if (data.meta_data.size < new_meta.size) {
+    wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, NULL);
+    RNA_enum_set(gizmo->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_INVERTED);
+    RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_ARROW_DRAW_FLAG_STEM);
+    UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gizmo->color);
+    UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+    data.gizmos_objects.append(gizmo);
+  }
+  data.meta_data = new_meta;
+  printf("%d -> %d;\n", sze, data.gizmos_objects.size());
+}
+
 static void geometry_node_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  const Object *object = BKE_view_layer_active_object_get(view_layer);
-  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(gzgroup->customdata);
+  const std::optional<GizmoContext> context = gizmos_context_from_context(C);
+  BLI_assert(context.has_value());
+  const Object &object = context->object;
+  const bke::GizmosGeometry &gizmos = context->gizmo;
+  GizmoData &gzgroup_data = *static_cast<GizmoData *>(gzgroup->customdata);
 
-  const bke::GizmosGeometry *gizmos_geometry = gizmos_from_context_try(C);
-  const Span<std::string> pathes = gizmos_geometry->pathes();
-  const Span<int> paths_mapping = gizmos_geometry->paths_mapping();
+  MetaData new_meta_data = meta_data_for_gizmos(gizmos);
+  if (gzgroup_data.meta_data != new_meta_data) {
+    refresh_data_to_new_meta(gzgroup_data, new_meta_data, gzgroup, C);
+  }
+
+  const Span<std::string> pathes = gizmos.pathes();
+  const Span<int> paths_mapping = gizmos.paths_mapping();
   for (const int index : paths_mapping.index_range()) {
     wmGizmo *gizmo = gzgroup_data.gizmos_objects[index];
 
@@ -131,33 +189,34 @@ static void geometry_node_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
     PointerRNA node_ptr;
     PropertyRNA *value_prop;
-    BLI_assert(RNA_path_resolve_full(&blender_data_pointer,
-                           rna_path.data(),
-                           &node_ptr,
-                           &value_prop,
-                           nullptr));
+    const bool path_is_resolved = RNA_path_resolve_full(&blender_data_pointer,
+                                                       rna_path.data(),
+                                                       &node_ptr,
+                                                       &value_prop,
+                                                       nullptr);
+    BLI_assert(path_is_resolved);
+    UNUSED_VARS_NDEBUG(path_is_resolved);
 
     const float3 normal = {1.0f, 0.0f, 0.0f};
     WM_gizmo_set_matrix_rotation_from_z_axis(gizmo, normal);
-    WM_gizmo_set_matrix_location(gizmo, object->object_to_world[3]);
+    WM_gizmo_set_matrix_location(gizmo, object.object_to_world[3]);
     WM_gizmo_target_property_def_rna(gizmo, "offset", &node_ptr, "value", -1);
   }
 }
 
 static void geometry_node_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
-  const Object *object = BKE_view_layer_active_object_get(view_layer);
-  GeometryNodeGizmoWrapper &gzgroup_data = *static_cast<GeometryNodeGizmoWrapper *>(gzgroup->customdata);
+  const std::optional<GizmoContext> context = gizmos_context_from_context(C);
+  BLI_assert(context.has_value());
+  const Object &object = context->object;
+  const bke::GizmosGeometry &gizmos = context->gizmo;
+  GizmoData &gzgroup_data = *static_cast<GizmoData *>(gzgroup->customdata);
 
-  const bke::GizmosGeometry *gizmos_geometry = gizmos_from_context_try(C);
-
-  for (const int index : IndexRange(gizmos_geometry->gizmos_num())) {
+  for (const int index : IndexRange(gizmos.gizmos_num())) {
     wmGizmo *gizmo = gzgroup_data.gizmos_objects[index];
     const float3 normal = {1.0f, 0.0f, 0.0f};
     WM_gizmo_set_matrix_rotation_from_z_axis(gizmo, normal);
-    WM_gizmo_set_matrix_location(gizmo, object->object_to_world[3]);
+    WM_gizmo_set_matrix_location(gizmo, object.object_to_world[3]);
   }
 }
 }  // namespace geometry_node_gizmo

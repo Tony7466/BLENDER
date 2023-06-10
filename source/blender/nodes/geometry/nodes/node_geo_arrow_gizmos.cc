@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 #include "BKE_gizmos.hh"
