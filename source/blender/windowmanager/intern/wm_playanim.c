@@ -191,7 +191,7 @@ typedef enum eWS_Qual {
 static struct WindowStateGlobal {
   GHOST_SystemHandle ghost_system;
   void *ghost_window;
-  GPUContext *gpu_context;
+  GPUContext *blender_gpu_context;
 
   /* events */
   eWS_Qual qual;
@@ -245,7 +245,7 @@ typedef struct PlayAnimPict {
   int size;
   /** The allocated file-path to the image. */
   const char *filepath;
-  struct ImBuf *ibuf;
+  ImBuf *ibuf;
   struct anim *anim;
   int frame;
   int IB_flags;
@@ -257,7 +257,7 @@ typedef struct PlayAnimPict {
 #endif
 } PlayAnimPict;
 
-static struct ListBase picsbase = {NULL, NULL};
+static ListBase picsbase = {NULL, NULL};
 /* frames in memory - store them here to for easy deallocation later */
 static bool fromdisk = false;
 static double ptottime = 0.0, swaptime = 0.04;
@@ -268,7 +268,7 @@ static double fps_movie;
 #ifdef USE_FRAME_CACHE_LIMIT
 static struct {
   /** A list of #LinkData nodes referencing #PlayAnimPict to track cached frames. */
-  struct ListBase pics;
+  ListBase pics;
   /** Number if elements in `pics`. */
   int pics_len;
   /** Keep track of memory used by #g_frame_cache.pics when `g_frame_cache.memory_limit != 0`. */
@@ -536,7 +536,7 @@ static void draw_display_buffer(PlayState *ps, ImBuf *ibuf)
 }
 
 static void playanim_toscreen(
-    PlayState *ps, PlayAnimPict *picture, struct ImBuf *ibuf, int fontid, int fstep)
+    PlayState *ps, PlayAnimPict *picture, ImBuf *ibuf, int fontid, int fstep)
 {
   GHOST_ActivateWindowDrawingContext(g_WS.ghost_window);
 
@@ -639,7 +639,7 @@ static void build_pict_list_ex(
     struct anim *anim = IMB_open_anim(filepath_first, IB_rect, 0, NULL);
     if (anim) {
       int pic;
-      struct ImBuf *ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
+      ImBuf *ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
       if (ibuf) {
         playanim_toscreen(ps, NULL, ibuf, fontid, fstep);
         IMB_freeImBuf(ibuf);
@@ -836,7 +836,7 @@ static void change_frame(PlayState *ps)
   }
 
   playanim_window_get_size(&sizex, &sizey);
-  i_last = ((struct PlayAnimPict *)picsbase.last)->frame;
+  i_last = ((PlayAnimPict *)picsbase.last)->frame;
   i = (i_last * ps->frame_cursor_x) / sizex;
   CLAMP(i, 0, i_last);
 
@@ -1350,9 +1350,9 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 
 static void playanim_window_open(const char *title, int posx, int posy, int sizex, int sizey)
 {
-  GHOST_GLSettings glsettings = {0};
+  GHOST_GPUSettings gpusettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
-  glsettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpusettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
   uint32_t scr_w, scr_h;
 
   GHOST_GetMainDisplayDimensions(g_WS.ghost_system, &scr_w, &scr_h);
@@ -1369,7 +1369,7 @@ static void playanim_window_open(const char *title, int posx, int posy, int size
                                          /* Could optionally start full-screen. */
                                          GHOST_kWindowStateNormal,
                                          false,
-                                         glsettings);
+                                         gpusettings);
 }
 
 static void playanim_window_zoom(PlayState *ps, const float zoom_offset)
@@ -1398,7 +1398,7 @@ static void playanim_window_zoom(PlayState *ps, const float zoom_offset)
  */
 static char *wm_main_playanim_intern(int argc, const char **argv)
 {
-  struct ImBuf *ibuf = NULL;
+  ImBuf *ibuf = NULL;
   static char filepath[FILE_MAX]; /* abused to return dropped file path */
   uint32_t maxwinx, maxwiny;
   int i;
@@ -1569,7 +1569,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   // GHOST_ActivateWindowDrawingContext(g_WS.ghost_window);
 
   /* initialize OpenGL immediate mode */
-  g_WS.gpu_context = GPU_context_create(g_WS.ghost_window, NULL);
+  g_WS.blender_gpu_context = GPU_context_create(g_WS.ghost_window, NULL);
   GPU_init();
 
   /* initialize the font */
@@ -1612,7 +1612,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 #ifdef WITH_AUDASPACE
   source = AUD_Sound_file(filepath);
   {
-    struct anim *anim_movie = ((struct PlayAnimPict *)picsbase.first)->anim;
+    struct anim *anim_movie = ((PlayAnimPict *)picsbase.first)->anim;
     if (anim_movie) {
       short frs_sec = 25;
       float frs_sec_base = 1.0;
@@ -1832,11 +1832,11 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
   BLF_exit();
 
-  if (g_WS.gpu_context) {
-    GPU_context_active_set(g_WS.gpu_context);
+  if (g_WS.blender_gpu_context) {
+    GPU_context_active_set(g_WS.blender_gpu_context);
     GPU_exit();
-    GPU_context_discard(g_WS.gpu_context);
-    g_WS.gpu_context = NULL;
+    GPU_context_discard(g_WS.blender_gpu_context);
+    g_WS.blender_gpu_context = NULL;
   }
 
   GHOST_DisposeWindow(g_WS.ghost_system, g_WS.ghost_window);
