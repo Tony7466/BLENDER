@@ -1989,13 +1989,13 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     if (t->data_type == &TransConvertType_Node) {
       /* Set the initial auto-attach flag based on whether the chosen keymap key is pressed at the
        * start of the operator. */
-      t->modifiers &= ~MOD_NODE_LINK_ATTACH;
+      t->modifiers |= MOD_NODE_LINK_ATTACH;
       LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &t->keymap->items) {
         if (kmi->flag & KMI_INACTIVE) {
           continue;
         }
 
-        if (kmi->propvalue == TFM_MODAL_NODE_LINK_ATTACH_ON && kmi->val == KM_PRESS) {
+        if (kmi->propvalue == TFM_MODAL_NODE_LINK_ATTACH_OFF && kmi->val == KM_PRESS) {
           if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
                (event->modifier & KM_CTRL)) ||
               (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
@@ -2003,7 +2003,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
               (ELEM(kmi->type, EVT_LEFTALTKEY, EVT_RIGHTALTKEY) && (event->modifier & KM_ALT)) ||
               ((kmi->type == EVT_OSKEY) && (event->modifier & KM_OSKEY)))
           {
-            t->modifiers |= MOD_NODE_LINK_ATTACH;
+            t->modifiers &= ~MOD_NODE_LINK_ATTACH;
           }
           break;
         }
