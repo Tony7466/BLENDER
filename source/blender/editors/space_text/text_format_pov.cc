@@ -26,20 +26,49 @@
  */
 
 /* Language Directives */
-static Array<StringRef> text_format_pov_keyword_literals{
-    "deprecated", "persistent", "statistics", "version", "warning", "declare", "default",
-    "include",    "append",     "elseif",     "debug",   "break",   "else",    "error",
-    "fclose",     "fopen",      "ifndef",     "ifdef",   "patch",   "local",   "macro",
-    "range",      "read",       "render",     "switch",  "undef",   "while",   "write",
-    "case",       "end",        "for",        "if",
+/* clang-format off */
+static Array<StringRef> text_format_pov_keyword_literals = {
+    "deprecated",
+    "persistent",
+    "statistics",
+    "version",
+    "warning",
+    "declare",
+    "default",
+    "include",
+    "append",
+    "elseif",
+    "debug",
+    "break",
+    "else",
+    "error",
+    "fclose",
+    "fopen",
+    "ifndef",
+    "ifdef",
+    "patch",
+    "local",
+    "macro",
+    "range",
+    "read",
+    "render",
+    "switch",
+    "undef",
+    "while",
+    "write",
+    "case",
+    "end",
+    "for",
+    "if",
 };
-
+/* clang-format on */
 /* POV-Ray Built-in Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
 
 /* Float Functions */
+/* clang-format on */
 static Array<StringRef> text_format_pov_reserved_literals{
     "conserve_energy",
     "max_intersections",
@@ -181,14 +210,15 @@ static Array<StringRef> text_format_pov_reserved_literals{
     "chr",
     "str",
 };
-
+/* clang-format on */
 /* POV-Ray Built-in Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
 
 /* Language Keywords */
-static Array<StringRef> text_format_pov_builtins_literals{
+/* clang-format off */
+static Array<StringRef> text_format_pov_builtins_literals = {
     "reflection_exponent",
     "area_illumination",
     "all_intersections",
@@ -408,14 +438,14 @@ static Array<StringRef> text_format_pov_builtins_literals{
     "y",
     "z",
 };
-
+/* clang-format on */
 /**
  * POV modifiers.
  * See:
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
-
-static Array<StringRef> text_format_pov_specialvar_literals{
+/* clang-format off */
+static Array<StringRef> text_format_pov_specialvar_literals = {
     "dispersion_samples",
     "projected_through",
     "double_illuminate",
@@ -615,9 +645,10 @@ static Array<StringRef> text_format_pov_specialvar_literals{
     "peters",
     "gall",
 };
-
+/* clang-format on */
 /* POV Built-in Constants. */
-static Array<StringRef> text_format_pov_bool_literals{
+/* clang-format off */
+static Array<StringRef> text_format_pov_bool_literals = {
     "unofficial",
     "false",
     "no",
@@ -655,7 +686,7 @@ static Array<StringRef> text_format_pov_bool_literals{
     "tga",
     "ttf",
 };
-
+/* clang-format on */
 static char txtfmt_pov_format_identifier(const char *str)
 {
   char fmt;

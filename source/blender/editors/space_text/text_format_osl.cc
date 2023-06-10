@@ -24,33 +24,88 @@
  * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-static Array<StringRef> text_format_osl_builtinfunc_literals{
-    "break", "closure", "color",       "continue",   "do",     "else",   "emit",   "float",
-    "for",   "if",      "illuminance", "illuminate", "int",    "matrix", "normal", "output",
-    "point", "public",  "return",      "string",     "struct", "vector", "void",   "while",
+/* clang-format off */
+static Array<StringRef> text_format_osl_builtinfunc_literals = {
+    "break",
+    "closure",
+    "color",
+    "continue",
+    "do",
+    "else",
+    "emit",
+    "float",
+    "for",
+    "if",
+    "illuminance",
+    "illuminate",
+    "int",
+    "matrix",
+    "normal",
+    "output",
+    "point",
+    "public",
+    "return",
+    "string",
+    "struct",
+    "vector",
+    "void",
+    "while",
 };
-
+/* clang-format on */
 /**
  * OSL reserved keywords
  * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-static Array<StringRef> text_format_osl_reserved_literals{
-    "bool",     "case",    "catch",     "char",     "const",  "delete",  "default", "double",
-    "enum",     "extern",  "false",     "friend",   "goto",   "inline",  "long",    "new",
-    "operator", "private", "protected", "short",    "signed", "sizeof",  "static",  "switch",
-    "template", "this",    "throw",     "true",     "try",    "typedef", "uniform", "union",
-    "unsigned", "varying", "virtual",   "volatile",
+/* clang-format off */
+static Array<StringRef> text_format_osl_reserved_literals = {
+    "bool",
+    "case",
+    "catch",
+    "char",
+    "const",
+    "delete",
+    "default",
+    "double",
+    "enum",
+    "extern",
+    "false",
+    "friend",
+    "goto",
+    "inline",
+    "long",
+    "new",
+    "operator",
+    "private",
+    "protected",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "switch",
+    "template",
+    "this",
+    "throw",
+    "true",
+    "try",
+    "typedef",
+    "uniform",
+    "union",
+    "unsigned",
+    "varying",
+    "virtual",
+    "volatile",
 };
-
+/* clang-format on */
 /* OSL shader types */
-static Array<StringRef> text_format_osl_specialvar_literals{
+/* clang-format off */
+static Array<StringRef> text_format_osl_specialvar_literals = {
     "shader",
     "surface",
     "volume",
     "displacement",
 };
-
+/* clang-format on */
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)
 {

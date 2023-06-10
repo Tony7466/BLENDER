@@ -48,19 +48,49 @@
  * See:
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
-static Array<StringRef> text_format_py_builtinfunc_literals{
-    "and", "assert", "async", "as",     "await",   "break", "case",     "continue",
-    "del", "elif",   "else",  "except", "finally", "for",   "from",     "global",
-    "if",  "import", "in",    "is",     "lambda",  "match", "nonlocal", "not",
-    "or",  "pass",   "raise", "return", "try",     "while", "with",     "yield",
+/* clang-format off */
+static Array<StringRef> text_format_py_builtinfunc_literals={
+    "and",
+    "assert",
+    "async",
+    "as",
+    "await",
+    "break",
+    "case",
+    "continue",
+    "del",
+    "elif",
+    "else",
+    "except",
+    "finally",
+    "for",
+    "from",
+    "global",
+    "if",
+    "import",
+    "in",
+    "is",
+    "lambda",
+    "match",
+    "nonlocal",
+    "not",
+    "or",
+    "pass",
+    "raise",
+    "return",
+    "try",
+    "while",
+    "with",
+    "yield",
 };
-
+/* clang-format on */
 /* Python special name.*/
-static Array<StringRef> text_format_py_specialvar_literals{
+/* clang-format off */
+static Array<StringRef> text_format_py_specialvar_literals={
     "def",
     "class",
 };
-
+/* clang-format on */
 static int txtfmt_py_find_decorator(const char *string)
 {
   if (string[0] != '@') {
@@ -81,12 +111,13 @@ static int txtfmt_py_find_decorator(const char *string)
   return i;
 }
 /* Python bool values.*/
-static Array<StringRef> text_format_py_bool_literals{
+/* clang-format off */
+static Array<StringRef> text_format_py_bool_literals={
     "None",
     "True",
     "False",
 };
-
+/* clang-format on */
 /* Numeral character matching. */
 #define TXTFMT_PY_NUMERAL_STRING_COUNT_IMPL(txtfmt_py_numeral_char_is_fn) \
   { \

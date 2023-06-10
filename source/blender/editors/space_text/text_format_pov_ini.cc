@@ -26,22 +26,59 @@
  */
 
 /* Language Directives */
-static Array<StringRef> text_format_pov_ini_keyword_literals{
-    "deprecated", "statistics", "declare", "default", "version", "warning", "include", "fclose",
-    "ifndef",     "append",     "elseif",  "debug",   "error",   "fopen",   "ifdef",   "local",
-    "macro",      "range",      "render",  "break",   "switch",  "undef",   "while",   "write",
-    "case",       "else",       "read",    "end",     "for",     "if",
 
-    "I",          "S",          "A",       "Q",       "U",       "F",       "C",       "N",
-    "P",          "T",
+/* clang-format off */
+static Array<StringRef> text_format_pov_ini_keyword_literals = {
+    "deprecated",
+    "statistics",
+    "declare",
+    "default",
+    "version",
+    "warning",
+    "include",
+    "fclose",
+    "ifndef",
+    "append",
+    "elseif",
+    "debug",
+    "error",
+    "fopen",
+    "ifdef",
+    "local",
+    "macro",
+    "range",
+    "render",
+    "break",
+    "switch",
+    "undef",
+    "while",
+    "write",
+    "case",
+    "else",
+    "read",
+    "end",
+    "for",
+    "if",
+
+    "I",
+    "S",
+    "A",
+    "Q",
+    "U",
+    "F",
+    "C",
+    "N",
+    "P",
+    "T",
 };
-
+/* clang-format on */
 /**
  * POV-Ray Built-in INI Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
-static Array<StringRef> text_format_pov_ini_reserved_literals{
+/* clang-format off */
+static Array<StringRef> text_format_pov_ini_reserved_literals = {
     "RenderCompleteSoundEnabled",
     "Create_Continue_Trace_Log",
     "ParseErrorSoundEnabled",
@@ -238,9 +275,10 @@ static Array<StringRef> text_format_pov_ini_reserved_literals{
     "sint32be",
     "sint32le",
 };
-
+/* clang-format on */
 /* POV INI Built-in Constants */
-static Array<StringRef> text_format_pov_ini_bool_literals{
+/* clang-format off */
+static Array<StringRef> text_format_pov_ini_bool_literals = {
     "false",
     "no",
     "off",
@@ -256,7 +294,7 @@ static Array<StringRef> text_format_pov_ini_bool_literals{
     "%h",
     "%w",
 };
-
+/* clang-format on */
 static char txtfmt_pov_ini_format_identifier(const char *str)
 {
   char fmt;
