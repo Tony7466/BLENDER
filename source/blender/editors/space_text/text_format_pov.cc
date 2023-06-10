@@ -71,9 +71,10 @@ static int txtfmt_pov_find_keyword(const char *string)
 
   const int i = string_literal->size();
 
-  //* If next source char is an identifier (eg. 'i' in "definite") no match */
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 /* POV-Ray Built-in Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
@@ -235,6 +236,7 @@ static int txtfmt_pov_find_reserved_keywords(const char *string)
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 /* POV-Ray Built-in Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
@@ -475,6 +477,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 /**
  * POV modifiers.
  * See:
@@ -695,6 +698,7 @@ static int txtfmt_pov_find_specialvar(const char *string)
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 /* POV Built-in Constants. */
 /* clang-format off */
 static Array<StringRef> text_format_pov_bool_literals = {
@@ -749,6 +753,7 @@ static int txtfmt_pov_find_bool(const char *string)
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 static char txtfmt_pov_format_identifier(const char *str)
 {
   char fmt;

@@ -10,6 +10,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_text.h"
+
 #include "BLI_blenlib.h"
 #include "BLI_string_utils.h"
 
@@ -17,8 +19,6 @@
 #include "DNA_text_types.h"
 
 #include "ED_text.h"
-
-#include "BKE_text.h"
 
 #include "text_format.hh"
 

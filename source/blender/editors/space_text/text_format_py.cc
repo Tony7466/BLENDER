@@ -100,6 +100,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
   }
   return i;
 }
+
 /* Python special name.*/
 /* clang-format off */
 static Array<StringRef> text_format_py_specialvar_literals={
