@@ -1506,7 +1506,8 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
     smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
     correctionFactor /= 1.0f + 3.0f * params.smoothness;
     float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
-    if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+    if (calc_color) {
+      /* Only compute Color output if necessary, as it is very expensive. */
       smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
     }
     smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
@@ -1667,7 +1668,8 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
       float correctionFactor = params.smoothness * h * (1.0f - h);
       smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
       correctionFactor /= 1.0f + 3.0f * params.smoothness;
-      if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+      if (calc_color) {
+        /* Only compute Color output if necessary, as it is very expensive. */
         float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
         smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
       }
@@ -1865,7 +1867,8 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
         float correctionFactor = params.smoothness * h * (1.0f - h);
         smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
         correctionFactor /= 1.0f + 3.0f * params.smoothness;
-        if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+        if (calc_color) {
+          /* Only compute Color output if necessary, as it is very expensive. */
           float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
           smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
         }
@@ -2079,7 +2082,8 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
           float correctionFactor = params.smoothness * h * (1.0f - h);
           smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
           correctionFactor /= 1.0f + 3.0f * params.smoothness;
-          if (calc_color) { /* Only compute Color if necessary, as it is very expensive */
+          if (calc_color) {
+            /* Only compute Color output if necessary, as it is very expensive. */
             float3 cellColor = hash_float_to_float3(cellPosition + cellOffset);
             smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
           }
