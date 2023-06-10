@@ -91,6 +91,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
@@ -113,6 +114,7 @@ static int txtfmt_py_find_specialvar(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
@@ -156,6 +158,7 @@ static int txtfmt_py_find_bool(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */

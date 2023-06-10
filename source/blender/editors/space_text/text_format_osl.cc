@@ -60,13 +60,16 @@ static int txtfmt_osl_find_builtinfunc(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
 }
+
 /**
  * OSL reserved keywords
  * See:
@@ -118,13 +121,16 @@ static int txtfmt_osl_find_reserved(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
 }
+
 /* OSL shader types */
 /* clang-format off */
 static Array<StringRef> text_format_osl_specialvar_literals = {
@@ -141,13 +147,16 @@ static int txtfmt_osl_find_specialvar(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
 }
+
 /* matches py 'txtfmt_osl_find_decorator' */
 static int txtfmt_osl_find_preprocessor(const char *string)
 {

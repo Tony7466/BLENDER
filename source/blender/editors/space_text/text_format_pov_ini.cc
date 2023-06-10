@@ -79,10 +79,13 @@ static int txtfmt_ini_find_keyword(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 /**
  * POV-Ray Built-in INI Variables
  * list is from...
@@ -294,10 +297,13 @@ static int txtfmt_ini_find_reserved(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
+
 /* POV INI Built-in Constants */
 /* clang-format off */
 static Array<StringRef> text_format_pov_ini_bool_literals = {
@@ -323,7 +329,9 @@ static int txtfmt_ini_find_bool(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
+
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }

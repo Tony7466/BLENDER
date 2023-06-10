@@ -68,12 +68,11 @@ static int txtfmt_pov_find_keyword(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+
+  //* If next source char is an identifier (eg. 'i' in "definite") no match */
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 /* POV-Ray Built-in Variables
  * list is from...
@@ -230,12 +229,11 @@ static int txtfmt_pov_find_reserved_keywords(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 /* POV-Ray Built-in Variables
  * list is from...
@@ -471,12 +469,11 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 /**
  * POV modifiers.
@@ -692,12 +689,11 @@ static int txtfmt_pov_find_specialvar(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
-  /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 /* POV Built-in Constants. */
 /* clang-format off */
@@ -747,12 +743,11 @@ static int txtfmt_pov_find_bool(const char *string)
   if (!string_literal) {
     return -1;
   }
+
   const int i = string_literal->size();
+
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 static char txtfmt_pov_format_identifier(const char *str)
 {
@@ -761,7 +756,7 @@ static char txtfmt_pov_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        (txtfmt_pov_find_specialvar(str)       != -1) { fmt = FMT_TYPE_SPECIAL;
+  if        (txtfmt_pov_find_specialvar(str)        != -1) { fmt = FMT_TYPE_SPECIAL;
   } else if (txtfmt_pov_find_keyword(str)           != -1) { fmt = FMT_TYPE_KEYWORD;
   } else if (txtfmt_pov_find_reserved_keywords(str) != -1) { fmt = FMT_TYPE_RESERVED;
   } else if (txtfmt_pov_find_reserved_builtins(str) != -1) { fmt = FMT_TYPE_DIRECTIVE;
