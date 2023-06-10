@@ -49,7 +49,7 @@
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
 /* clang-format off */
-static Array<StringRef> text_format_py_builtinfunc_literals={
+static Array<StringRef> text_format_py_builtinfunc_literals = {
     "and",
     "assert",
     "async",
@@ -103,7 +103,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
 
 /* Python special name.*/
 /* clang-format off */
-static Array<StringRef> text_format_py_specialvar_literals={
+static Array<StringRef> text_format_py_specialvar_literals = {
     "def",
     "class",
 };
@@ -147,7 +147,7 @@ static int txtfmt_py_find_decorator(const char *string)
 
 /* Python bool values.*/
 /* clang-format off */
-static Array<StringRef> text_format_py_bool_literals={
+static Array<StringRef> text_format_py_bool_literals = {
     "None",
     "True",
     "False",

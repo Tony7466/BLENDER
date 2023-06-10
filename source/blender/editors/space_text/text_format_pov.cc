@@ -82,7 +82,7 @@ static int txtfmt_pov_find_keyword(const char *string)
 
 /* Float Functions */
 /* clang-format on */
-static Array<StringRef> text_format_pov_reserved_literals{
+static Array<StringRef> text_format_pov_reserved_literals = {
     "conserve_energy",
     "max_intersections",
     "dimension_size",
