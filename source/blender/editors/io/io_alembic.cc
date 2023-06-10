@@ -523,7 +523,7 @@ static int get_sequence_len(const char *filepath, int *ofs)
       continue;
     }
 
-    CacheFrame cache_frame{};
+    CacheFrame cache_frame;
 
     BLI_path_frame_get(fname->d_name, &cache_frame.framenr, &numdigit);
 
@@ -536,21 +536,21 @@ static int get_sequence_len(const char *filepath, int *ofs)
     return a.framenr < b.framenr;
   });
 
-  if (frames.size() > 0) {
-    int frame_curr = frames[0].framenr;
-    (*ofs) = frame_curr;
-
-    for (CacheFrame &cache_frame : frames) {
-      if (cache_frame.framenr != frame_curr) {
-        break;
-      }
-      frame_curr++;
-    }
-
-    return frame_curr - (*ofs);
+  if (frames.is_empty()) {
+    return -1;
   }
 
-  return 1;
+  int frame_curr = frames.first().framenr;
+  (*ofs) = frame_curr;
+
+  for (CacheFrame &cache_frame : frames) {
+    if (cache_frame.framenr != frame_curr) {
+      break;
+    }
+    frame_curr++;
+  }
+
+  return frame_curr - (*ofs);
 }
 
 /* ************************************************************************** */
