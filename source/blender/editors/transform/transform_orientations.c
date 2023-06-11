@@ -497,6 +497,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
 {
   switch (orientation_index) {
     case V3D_ORIENT_GIMBAL: {
+
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
           const bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
@@ -515,8 +516,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
     }
     case V3D_ORIENT_NORMAL: {
       if (obedit || (ob && ob->mode & OB_MODE_POSE)) {
-        ED_getTransformOrientationMatrix(
-            scene, view_layer, v3d, ob, obedit, pivot_point, r_mat, NULL, NULL, NULL);
+        ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
         break;
       }
       /* No break we define 'normal' as 'local' in Object mode. */
@@ -529,8 +529,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
            * use the active pones axis for display #33575, this works as expected on a single
            * bone and users who select many bones will understand what's going on and what local
            * means when they start transforming. */
-          ED_getTransformOrientationMatrix(
-              scene, view_layer, v3d, ob, obedit, pivot_point, r_mat, NULL, NULL, NULL);
+          ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
         }
         else {
           transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
@@ -1290,8 +1289,7 @@ int getTransformOrientation(const bContext *C, float normal[3], float plane[3])
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
 
-  return getTransformOrientation_ex(
-      scene, view_layer, v3d, obact, obedit, normal, plane, around);
+  return getTransformOrientation_ex(scene, view_layer, v3d, obact, obedit, normal, plane, around);
 }
 
 void ED_getTransformOrientationMatrix(const Scene *scene,
