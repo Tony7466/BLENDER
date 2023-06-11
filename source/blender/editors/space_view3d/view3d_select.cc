@@ -4920,7 +4920,7 @@ static bool obedit_circle_select(bContext *C,
       changed = mball_circle_select(vc, sel_op, mval, rad);
       break;
     case OB_GREASE_PENCIL:{
-    int grease_pencil_circle_select;
+     static int grease_pencil_circle_select;
       break;
 
     case OB_CURVES: {
