@@ -497,7 +497,6 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
 {
   switch (orientation_index) {
     case V3D_ORIENT_GIMBAL: {
-
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
           const bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
@@ -754,18 +753,13 @@ int getTransformOrientation_ex(const Scene *scene,
                                struct Object *obedit,
                                float normal[3],
                                float plane[3],
-                               const short around,
-                               struct BMVert *eve,
-                               struct BMEdge *eed,
-                               struct BMFace *efa)
+                               const short around)
 {
   int result = ORIENTATION_NONE;
   const bool activeOnly = (around == V3D_AROUND_ACTIVE);
 
-  if (efa == NULL && eed == NULL) {
-    zero_v3(normal);
-    zero_v3(plane);
-  }
+  zero_v3(normal);
+  zero_v3(plane);
 
   if (obedit) {
     float imat[3][3], mat[3][3];
@@ -784,72 +778,20 @@ int getTransformOrientation_ex(const Scene *scene,
       float vec[3] = {0, 0, 0};
 
       /* USE LAST SELECTED WITH ACTIVE */
-      if (efa != NULL || eed != NULL || eve != NULL ||
-          activeOnly && BM_select_history_active_get(em->bm, &ese)) {
-        if (efa != NULL) {
-          copy_v3_v3(normal, efa->no);
-          BM_face_calc_tangent_auto(efa, plane);
-          result = ORIENTATION_FACE;
-        }
-        else if (eed != NULL) {
-          float eed_plane[3];
-          float vec[3];
-          add_v3_v3v3(normal, eed->v1->no, eed->v2->no);
-          sub_v3_v3v3(eed_plane, eed->v2->co, eed->v1->co);
-          cross_v3_v3v3(vec, normal, eed_plane);
-          cross_v3_v3v3(normal, eed_plane, vec);
-          normalize_v3(normal);
+      if (activeOnly && BM_select_history_active_get(em->bm, &ese)) {
+        BM_editselection_normal(&ese, normal);
+        BM_editselection_plane(&ese, plane);
 
-          if (BM_edge_is_boundary(eed)) {
-            sub_v3_v3v3(plane, eed->l->v->co, eed->l->next->v->co);
-          }
-          else {
-            if (eed->v2->co[1] > eed->v1->co[1]) {
-              sub_v3_v3v3(plane, eed->v2->co, eed->v1->co);
-            }
-            else {
-              sub_v3_v3v3(plane, eed->v1->co, eed->v2->co);
-            }
-          }
-          normalize_v3(plane);
-          result = ORIENTATION_EDGE;
-        }
-        else if (eve != NULL) {
-          copy_v3_v3(normal, eve->no);
-          if (eve->e) {
-            float vert1v3[3] = {eve->e->v1->co[0], eve->e->v1->co[1], eve->e->v1->co[2]};
-            float vert2v3[3] = {eve->e->v2->co[0], eve->e->v2->co[1], eve->e->v2->co[2]};
-            sub_v3_v3v3(plane, vert2v3, vert1v3);
-          }
-          else {
-            if (eve->no[0] < 0.5f) {
-              vec[0] = 1.0f;
-            }
-            else if (eve->no[1] < 0.5f) {
-              vec[1] = 1.0f;
-            }
-            else {
-              vec[2] = 1.0f;
-            }
-            cross_v3_v3v3(plane, eve->no, vec);
-          }
-          normalize_v3(plane);
-          result = ORIENTATION_VERT;
-        }
-        else {
-          BM_editselection_normal(&ese, normal);
-          BM_editselection_plane(&ese, plane);
-          switch (ese.htype) {
-            case BM_VERT:
-              result = ORIENTATION_VERT;
-              break;
-            case BM_EDGE:
-              result = ORIENTATION_EDGE;
-              break;
-            case BM_FACE:
-              result = ORIENTATION_FACE;
-              break;
-          }
+        switch (ese.htype) {
+          case BM_VERT:
+            result = ORIENTATION_VERT;
+            break;
+          case BM_EDGE:
+            result = ORIENTATION_EDGE;
+            break;
+          case BM_FACE:
+            result = ORIENTATION_FACE;
+            break;
         }
       }
       else {
@@ -1349,7 +1291,7 @@ int getTransformOrientation(const bContext *C, float normal[3], float plane[3])
   View3D *v3d = CTX_wm_view3d(C);
 
   return getTransformOrientation_ex(
-      scene, view_layer, v3d, obact, obedit, normal, plane, around, NULL, NULL, NULL);
+      scene, view_layer, v3d, obact, obedit, normal, plane, around);
 }
 
 void ED_getTransformOrientationMatrix(const Scene *scene,
@@ -1358,32 +1300,14 @@ void ED_getTransformOrientationMatrix(const Scene *scene,
                                       Object *ob,
                                       Object *obedit,
                                       const short around,
-                                      float r_orientation_mat[3][3],
-                                      struct BMVert *eve,
-                                      struct BMEdge *eed,
-                                      struct BMFace *efa)
+                                      float r_orientation_mat[3][3])
 {
   float normal[3] = {0.0, 0.0, 0.0};
   float plane[3] = {0.0, 0.0, 0.0};
 
   int type;
 
-  if (efa != NULL) {
-    type = getTransformOrientation_ex(
-        scene, view_layer, v3d, ob, obedit, normal, plane, around, NULL, NULL, efa);
-  }
-  else if (eed != NULL) {
-    type = getTransformOrientation_ex(
-        scene, view_layer, v3d, ob, obedit, normal, plane, around, NULL, eed, NULL);
-  }
-  else if (eve != NULL) {
-    type = getTransformOrientation_ex(
-        scene, view_layer, v3d, ob, obedit, normal, plane, around, eve, NULL, NULL);
-  }
-  else {
-    type = getTransformOrientation_ex(
-        scene, view_layer, v3d, ob, obedit, normal, plane, around, NULL, NULL, NULL);
-  }
+  type = getTransformOrientation_ex(scene, view_layer, v3d, ob, obedit, normal, plane, around);
 
   /* Fallback, when the plane can't be calculated. */
   if (ORIENTATION_USE_PLANE(type) && is_zero_v3(plane)) {

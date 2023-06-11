@@ -1229,7 +1229,7 @@ static int view_axis_exec(bContext *C, wmOperator *op)
       Object *obedit = CTX_data_edit_object(C);
       /* same as transform gizmo when normal is set */
       ED_getTransformOrientationMatrix(
-          scene, view_layer, v3d, obact, obedit, V3D_AROUND_ACTIVE, twmat, NULL, NULL, NULL);
+          scene, view_layer, v3d, obact, obedit, V3D_AROUND_ACTIVE, twmat);
       align_quat = align_quat_buf;
       mat3_to_quat(align_quat, twmat);
       invert_qt_normalized(align_quat);

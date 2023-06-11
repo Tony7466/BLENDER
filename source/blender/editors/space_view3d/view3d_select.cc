@@ -81,7 +81,6 @@
 #include "ED_screen.h"
 #include "ED_sculpt.h"
 #include "ED_select_utils.h"
-#include "ED_transform.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -297,6 +296,75 @@ struct CircleSelectUserData {
   bool is_changed;
 };
 
+void edbm_vert_orientation(const BMVert *eve, float normal[3], float plane[3], float meshmat[3][3])
+{
+  float vec[3] = {0.0, 0.0, 0.0};
+  float tangent[3] = {0.0f, 0.0f, 1.0f};
+  copy_v3_v3(normal, eve->no);
+
+  if (eve->e) {
+    float vert1v3[3] = {eve->e->v1->co[0], eve->e->v1->co[1], eve->e->v1->co[2]};
+    float vert2v3[3] = {eve->e->v2->co[0], eve->e->v2->co[1], eve->e->v2->co[2]};
+    sub_v3_v3v3(plane, vert2v3, vert1v3);
+  }
+  else {
+    if (eve->no[0] < 0.5f) {
+      vec[0] = 1.0f;
+    }
+    else if (eve->no[1] < 0.5f) {
+      vec[1] = 1.0f;
+    }
+    else {
+      vec[2] = 1.0f;
+    }
+    cross_v3_v3v3(plane, eve->no, vec);
+  }
+  normalize_v3(plane);
+  copy_v3_v3(meshmat[2], normal);
+  cross_v3_v3v3(meshmat[0], meshmat[2], tangent);
+
+  if (is_zero_v3(meshmat[0])) {
+    tangent[0] = 1.0f;
+    tangent[1] = tangent[2] = 0.0f;
+    cross_v3_v3v3(meshmat[0], tangent, meshmat[2]);
+  }
+  cross_v3_v3v3(meshmat[1], meshmat[2], meshmat[0]);
+}
+
+void edbm_edge_orientation(const BMEdge *eed, float normal[3], float plane[3], float meshmat[3][3])
+{
+  float eed_plane[3] = {0.0, 0.0, 0.0};
+  float vec[3] = {0.0, 0.0, 0.0};
+  add_v3_v3v3(normal, eed->v1->no, eed->v2->no);
+  sub_v3_v3v3(eed_plane, eed->v2->co, eed->v1->co);
+  cross_v3_v3v3(vec, normal, eed_plane);
+  cross_v3_v3v3(normal, eed_plane, vec);
+  normalize_v3(normal);
+
+  if (BM_edge_is_boundary(eed)) {
+    sub_v3_v3v3(plane, eed->l->v->co, eed->l->next->v->co);
+  }
+  else {
+    if (eed->v2->co[1] > eed->v1->co[1]) {
+      sub_v3_v3v3(plane, eed->v2->co, eed->v1->co);
+    }
+    else {
+      sub_v3_v3v3(plane, eed->v1->co, eed->v2->co);
+    }
+  }
+  normalize_v3(plane);
+
+  normalize_v3_v3(meshmat[2], normal);
+  negate_v3_v3(meshmat[1], plane);
+
+  if (is_zero_v3(meshmat[1])) {
+    meshmat[1][2] = 1.0f;
+  }
+  cross_v3_v3v3(meshmat[0], meshmat[2], meshmat[1]);
+  cross_v3_v3v3(meshmat[1], meshmat[2], meshmat[0]);
+  normalize_v3(meshmat[1]);
+}
+
 bool edbm_normal_facing_viewport(ViewContext *vc,
                                  struct BMVert *eve,
                                  struct BMEdge *eed,
@@ -304,68 +372,47 @@ bool edbm_normal_facing_viewport(ViewContext *vc,
                                  bool use_direction)
 {
   ToolSettings *ts = vc->scene->toolsettings;
-  float meshmat[3][3];
-  bool backface = false;
-  int direction = 0;
+  float normal[3] = {0, 0, 0};
+  float plane[3] = {0, 0, 0};
+  float meshcol3[3] = {0, 0, 0};
+  float viewcol3[3] = {0, 0, 0};
+  float meshmat[3][3] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int direction = eve != NULL ? ts->viewport_facing_select_vert :
+                  eed != NULL ? ts->viewport_facing_select_edge :
+                                ts->viewport_facing_select_face;
+  bool backface = use_direction && (direction == 4 || direction == 8);
+
   if (eve != NULL) {
-    ED_getTransformOrientationMatrix(vc->scene,
-                                     vc->view_layer,
-                                     vc->v3d,
-                                     vc->obact,
-                                     vc->obedit,
-                                     V3D_AROUND_ACTIVE,
-                                     meshmat,
-                                     eve,
-                                     NULL,
-                                     NULL);
-    direction = ts->viewport_facing_select_vert;
-    if (use_direction && (direction == 4 || direction == 8)) {
-      backface = true;
-    }
+    edbm_vert_orientation(eve, normal, plane, meshmat);
   }
-  else if (eed != NULL) {
-    ED_getTransformOrientationMatrix(vc->scene,
-                                     vc->view_layer,
-                                     vc->v3d,
-                                     vc->obact,
-                                     vc->obedit,
-                                     V3D_AROUND_ACTIVE,
-                                     meshmat,
-                                     NULL,
-                                     eed,
-                                     NULL);
-    direction = ts->viewport_facing_select_edge;
-    if (use_direction && (direction == 4 || direction == 8)) {
-      backface = true;
+  else {
+    if (eed != NULL) {
+      edbm_edge_orientation(eed, normal, plane, meshmat);
     }
-  }
-  else if (efa != NULL) {
-    ED_getTransformOrientationMatrix(vc->scene,
-                                     vc->view_layer,
-                                     vc->v3d,
-                                     vc->obact,
-                                     vc->obedit,
-                                     V3D_AROUND_ACTIVE,
-                                     meshmat,
-                                     NULL,
-                                     NULL,
-                                     efa);
-    direction = ts->viewport_facing_select_face;
-    if (use_direction && (direction == 4 || direction == 8)) {
-      backface = true;
+    else if (efa != NULL) {
+      copy_v3_v3(normal, efa->no);
+      BM_face_calc_tangent_auto(efa, plane);
     }
+    normalize_v3_v3(meshmat[2], normal);
+    negate_v3_v3(meshmat[1], plane);
+
+    if (is_zero_v3(meshmat[1])) {
+      meshmat[1][2] = 1.0f;
+    }
+    cross_v3_v3v3(meshmat[0], meshmat[2], meshmat[1]);
+    cross_v3_v3v3(meshmat[1], meshmat[2], meshmat[0]);
+    normalize_v3(meshmat[1]);
   }
   normalize_m3(meshmat);
   invert_m3(meshmat);
-  float meshcol3[3] = {0, 0, 0};
   meshcol3[0] = meshmat[0][2];
   meshcol3[1] = meshmat[1][2];
   meshcol3[2] = meshmat[2][2];
-  float viewcol3[3] = {0, 0, 0};
   viewcol3[0] = vc->rv3d->viewmat[0][2];
   viewcol3[1] = vc->rv3d->viewmat[1][2];
   viewcol3[2] = vc->rv3d->viewmat[2][2];
-  bool mesh_facing;
+
+  bool mesh_facing = false;
   if (backface) {
     mesh_facing = dot_v3v3(meshcol3, viewcol3) < -ts->viewport_facing_select_threshold;
   }
