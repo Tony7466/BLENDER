@@ -12661,6 +12661,7 @@ static void rna_def_node(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", NODE_MUTED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Mute", "");
   RNA_def_property_update(prop, 0, "rna_Node_update");
 
