@@ -2032,6 +2032,11 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
 
         layout.operator("grease_pencil.select_linked", text="Linked")
 
+        layout.separator()
+
+        layout.operator("grease_pencil.select_more")
+        layout.operator("grease_pencil.select_less")
+
 
 class VIEW3D_MT_select_paint_mask(Menu):
     bl_label = "Select"
