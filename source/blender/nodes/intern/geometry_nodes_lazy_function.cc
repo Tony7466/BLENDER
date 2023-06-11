@@ -1439,7 +1439,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
         });
 
-    Array<Vector<const bNodeLink *>> pass_through_zone_border_links(tree_zones_->zones.size());
+    Array<Vector<const bNodeLink *>> border_links_by_zone(tree_zones_->zones.size());
 
     for (const bNodeLink *link : btree_.all_links()) {
       if (!link->is_available()) {
@@ -1455,7 +1455,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
       for (const TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
-        pass_through_zone_border_links[zone->index].append(link);
+        border_links_by_zone[zone->index].append(link);
       }
     }
 
@@ -1467,7 +1467,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const bNode *node : zone.child_nodes) {
         std::cout << "    " << node->name << "\n";
       }
-      const Span<const bNodeLink *> border_links = pass_through_zone_border_links[zone_i];
+      const Span<const bNodeLink *> border_links = border_links_by_zone[zone_i];
       std::cout << "  Border Links: " << border_links.size() << "\n";
       for (const bNodeLink *link : border_links) {
         std::cout << "    " << link->fromnode->name << ":" << link->fromsock->name << "\n";
