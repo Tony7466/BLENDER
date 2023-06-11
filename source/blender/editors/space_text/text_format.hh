@@ -127,11 +127,36 @@ void ED_text_format_register_pov_ini();
  * If a string literal is found, the a #StringRef pointer to the string literal is returned.
  * Otherwise, nullptr.
  */
+template<size_t N>
+const StringRef *text_format_string_literal_find(const StringRef (&string_literals)[N],
+                                                 const char *text)
+{
+  auto predicate_func = [](const char *text, const StringRef &string_literal) {
+    return !(strcmp(text, string_literal.data()) > 0);
+  };
+  auto string_literal = std::upper_bound(
+      std::begin(string_literals), std::end(string_literals), text, predicate_func);
 
-const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text);
+  if (string_literal == std::begin(string_literals)) {
+    return nullptr;
+  }
+
+  string_literal--;
+
+  if (strncmp(string_literal->data(), text, string_literal->size()) == 0) {
+    return string_literal;
+  }
+
+  return nullptr;
+}
 
 /**
- * Sort #string_literals arrays, this allows to perform binary searches on these arrays.
+ * Sort #string_literals arrays, this allows to perform binary searches on these
+ * arrays.
  * Should be use only at startup, since these arrays should not change over time.
  */
-void sort_string_literals(Array<StringRef> &string_literals);
+template<size_t N>
+void text_format_string_literals_sort_for_lookup(StringRef (&string_literals)[N])
+{
+  std::sort(std::begin(string_literals), std::end(string_literals));
+}

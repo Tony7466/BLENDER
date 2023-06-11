@@ -241,25 +241,28 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   return false;
 }
 
-const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text)
+const StringRef *text_format_string_literal_find(const Array<StringRef> &string_literals,
+                                                 const char *text)
 {
-  auto string_literal = std::upper_bound(
-      string_literals.begin(), string_literals.end(), StringRef(text));
+  auto literal_startwith = [](const StringRef &string_literal, const char *text) {
+    return strncmp(string_literal.data(), text, string_literal.size());
+  };
 
-  if (string_literal == string_literals.begin()) {
-    return nullptr;
-  }
+  auto comp_func = [literal_startwith](const StringRef &string_literal, const char *text) {
+    return literal_startwith(string_literal, text) > 0;
+  };
 
-  string_literal--;
+  auto string_literal = std::lower_bound(
+      string_literals.begin(), string_literals.end(), text, comp_func);
 
-  if (strncmp(string_literal->data(), text, string_literal->size()) == 0) {
+  if (string_literal != string_literals.end() && literal_startwith(*string_literal, text) == 0) {
     return string_literal;
   }
 
   return nullptr;
 }
 
-void sort_string_literals(Array<StringRef> &string_literals)
+void text_format_string_literals_sort_for_lookup(Array<StringRef> &string_literals)
 {
-  std::sort(string_literals.begin(), string_literals.end());
+  std::sort(string_literals.begin(), string_literals.end(), std::greater<>{});
 }

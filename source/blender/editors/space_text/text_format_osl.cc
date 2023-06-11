@@ -17,107 +17,110 @@
 
 #include "text_format.hh"
 
-/* *** OSL Keywords (for format_line) *** */
+/* -------------------------------------------------------------------- */
+/** \name Local Literal Definitions
+ * \{ */
 
 /**
  * OSL builtin function.
  * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-/* clang-format off */
-static Array<StringRef> text_format_osl_builtinfunc_literals = {
-    "break",
-    "closure",
-    "color",
-    "continue",
-    "do",
-    "else",
-    "emit",
-    "float",
-    "for",
-    "if",
-    "illuminance",
-    "illuminate",
-    "int",
-    "matrix",
-    "normal",
-    "output",
-    "point",
-    "public",
-    "return",
-    "string",
-    "struct",
-    "vector",
-    "void",
-    "while",
+static StringRef text_format_osl_literals_builtinfunc[]{
+    /* clang-format off */
+    StringRef("break"),
+    StringRef("closure"),
+    StringRef("color"),
+    StringRef("continue"),
+    StringRef("do"),
+    StringRef("else"),
+    StringRef("emit"),
+    StringRef("float"),
+    StringRef("for"),
+    StringRef("if"),
+    StringRef("illuminance"),
+    StringRef("illuminate"),
+    StringRef("int"),
+    StringRef("matrix"),
+    StringRef("normal"),
+    StringRef("output"),
+    StringRef("point"),
+    StringRef("public"),
+    StringRef("return"),
+    StringRef("string"),
+    StringRef("struct"),
+    StringRef("vector"),
+    StringRef("void"),
+    StringRef("while"),
+    /* clang-format on */
 };
-/* clang-format on */
-
-static int txtfmt_osl_find_builtinfunc(const char *string)
-{
-  const StringRef *string_literal = find_string_literal(text_format_osl_builtinfunc_literals,
-                                                        string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
-
-  /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
-    return -1;
-  }
-  return i;
-}
 
 /**
  * OSL reserved keywords
  * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-/* clang-format off */
-static Array<StringRef> text_format_osl_reserved_literals = {
-    "bool",
-    "case",
-    "catch",
-    "char",
-    "const",
-    "delete",
-    "default",
-    "double",
-    "enum",
-    "extern",
-    "false",
-    "friend",
-    "goto",
-    "inline",
-    "long",
-    "new",
-    "operator",
-    "private",
-    "protected",
-    "short",
-    "signed",
-    "sizeof",
-    "static",
-    "switch",
-    "template",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typedef",
-    "uniform",
-    "union",
-    "unsigned",
-    "varying",
-    "virtual",
-    "volatile",
+static StringRef text_format_osl_literals_reserved[]{
+    /* clang-format off */
+    StringRef("bool"),
+    StringRef("case"),
+    StringRef("catch"),
+    StringRef("char"),
+    StringRef("const"),
+    StringRef("default"),
+    StringRef("delete"),
+    StringRef("double"),
+    StringRef("enum"),
+    StringRef("extern"),
+    StringRef("false"),
+    StringRef("friend"),
+    StringRef("goto"),
+    StringRef("inline"),
+    StringRef("long"),
+    StringRef("new"),
+    StringRef("operator"),
+    StringRef("private"),
+    StringRef("protected"),
+    StringRef("short"),
+    StringRef("signed"),
+    StringRef("sizeof"),
+    StringRef("static"),
+    StringRef("switch"),
+    StringRef("template"),
+    StringRef("this"),
+    StringRef("throw"),
+    StringRef("true"),
+    StringRef("try"),
+    StringRef("typedef"),
+    StringRef("uniform"),
+    StringRef("union"),
+    StringRef("unsigned"),
+    StringRef("varying"),
+    StringRef("virtual"),
+    StringRef("volatile"),
+    /* clang-format on */
 };
-/* clang-format on */
-static int txtfmt_osl_find_reserved(const char *string)
+
+/* OSL shader types */
+static StringRef text_format_osl_literals_specialvar[]{
+    /* clang-format off */
+    StringRef("displacement"),
+    StringRef("shader"),
+    StringRef("surface"),
+    StringRef("volume"),
+    /* clang-format on */
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Local Functions (for #TextFormatType::format_line)
+ * \{ */
+
+static int txtfmt_osl_find_builtinfunc(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_osl_reserved_literals, string);
+  const StringRef *string_literal = text_format_string_literal_find(
+      text_format_osl_literals_builtinfunc, string);
   if (!string_literal) {
     return -1;
   }
@@ -131,19 +134,27 @@ static int txtfmt_osl_find_reserved(const char *string)
   return i;
 }
 
-/* OSL shader types */
-/* clang-format off */
-static Array<StringRef> text_format_osl_specialvar_literals = {
-    "shader",
-    "surface",
-    "volume",
-    "displacement",
-};
-/* clang-format on */
+static int txtfmt_osl_find_reserved(const char *string)
+{
+  const StringRef *string_literal = text_format_string_literal_find(
+      text_format_osl_literals_reserved, string);
+  if (!string_literal) {
+    return -1;
+  }
+
+  const int i = string_literal->size();
+
+  /* If next source char is an identifier (eg. 'i' in "definite") no match */
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
+}
+
 static int txtfmt_osl_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = find_string_literal(text_format_osl_specialvar_literals,
-                                                        string);
+  const StringRef *string_literal = text_format_string_literal_find(
+      text_format_osl_literals_specialvar, string);
   if (!string_literal) {
     return -1;
   }
@@ -192,6 +203,12 @@ static char txtfmt_osl_format_identifier(const char *str)
 
   return fmt;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Format Line Implementation (#TextFormatType::format_line)
+ * \{ */
 
 static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_next)
 {
@@ -322,7 +339,6 @@ static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_
         } else if ((i = txtfmt_osl_find_reserved(str))     != -1) { prev = FMT_TYPE_RESERVED;
         } else if ((i = txtfmt_osl_find_preprocessor(str)) != -1) { prev = FMT_TYPE_DIRECTIVE;
         }
-
         /* clang-format on */
 
         if (i > 0) {
@@ -357,6 +373,12 @@ static void txtfmt_osl_format_line(SpaceText *st, TextLine *line, const bool do_
   flatten_string_free(&fs);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Registration
+ * \{ */
+
 void ED_text_format_register_osl()
 {
   static TextFormatType tft = {nullptr};
@@ -369,7 +391,9 @@ void ED_text_format_register_osl()
 
   ED_text_format_register(&tft);
 
-  sort_string_literals(text_format_osl_builtinfunc_literals);
-  sort_string_literals(text_format_osl_reserved_literals);
-  sort_string_literals(text_format_osl_specialvar_literals);
+  text_format_string_literals_sort_for_lookup(text_format_osl_literals_builtinfunc);
+  text_format_string_literals_sort_for_lookup(text_format_osl_literals_reserved);
+  text_format_string_literals_sort_for_lookup(text_format_osl_literals_specialvar);
 }
+
+/** \} */
