@@ -9,17 +9,42 @@
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 
+#include "BLT_translation.h"
+
 #include "UI_interface.h"
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
 
 namespace blender::ui::greasepencil {
 
+using namespace blender::bke::greasepencil;
+
+class LayerTreeViewItem : public AbstractTreeViewItem {
+ public:
+  LayerTreeViewItem(const TreeNode &node) : node_(node) {}
+
+  void build_row(uiLayout &row) override
+  {
+    uiLayout *sub = uiLayoutRow(&row, true);
+    uiItemS_ex(sub, 0.8f);
+    uiItemL(sub, IFACE_(StringRefNull(node_.name).c_str()), ICON_NONE);
+  }
+
+ private:
+  const TreeNode &node_;
+};
+
 class LayerTreeView : public AbstractTreeView {
  public:
   explicit LayerTreeView(GreasePencil &grease_pencil) : grease_pencil_(grease_pencil) {}
 
-  void build_tree() override {}
+  void build_tree() override
+  {
+    using namespace blender::bke::greasepencil;
+    for (const TreeNode *node : grease_pencil_.root_group.wrap().nodes()) {
+      add_tree_item<LayerTreeViewItem>(*node);
+    }
+  }
 
  private:
   GreasePencil &grease_pencil_;
