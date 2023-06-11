@@ -207,6 +207,7 @@ struct GeometryNodesLazyFunctionGraphInfo {
    * Debug info that has to be destructed when the graph is not used anymore.
    */
   Vector<std::unique_ptr<lf::DummyDebugInfo>> dummy_debug_infos_;
+  ResourceScope scope;
   /**
    * Many sockets have default values. Since those are not owned by the lazy-function graph, we
    * have to keep track of them separately. This only owns the values, the memory is owned by the

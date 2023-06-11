@@ -1343,6 +1343,11 @@ struct AttributeReferenceInfo {
   Vector<const bNodeSocket *> initial_geometry_sockets;
 };
 
+struct ZoneBuildInfo {
+  lf::Graph *lf_graph = nullptr;
+  LazyFunction *lazy_function = nullptr;
+};
+
 /**
  * Utility class to build a lazy-function graph based on a geometry nodes tree.
  * This is mainly a separate class because it makes it easier to have variables that can be
@@ -1388,6 +1393,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   Map<const bNode *, lf::Node *> simulation_inputs_usage_nodes_;
 
+  const TreeZones *tree_zones_;
+  Array<ZoneBuildInfo> zone_build_infos_;
+
   friend class UsedSocketVisualizeOptions;
 
  public:
@@ -1404,6 +1412,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf_graph_ = &lf_graph_info_->graph;
     mapping_ = &lf_graph_info_->mapping;
     conversions_ = &bke::get_implicit_type_conversions();
+    tree_zones_ = bke::node_tree_zones::get_tree_zones(btree_);
 
     socket_is_used_map_.reinitialize(btree_.all_sockets().size());
     socket_is_used_map_.fill(nullptr);
@@ -1416,11 +1425,21 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->lf_index_by_bsocket.reinitialize(btree_.all_sockets().size());
     mapping_->lf_index_by_bsocket.fill(-1);
 
-    const TreeZones &tree_zones = *bke::node_tree_zones::get_tree_zones(btree_);
+    zone_build_infos_.reinitialize(tree_zones_->zones.size());
 
-    std::cout << tree_zones.zones.size() << "\n";
+    for (const int zone_i : tree_zones_->zones.index_range()) {
+      ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
+      zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
+    }
 
-    Array<Vector<const bNodeLink *>> pass_through_zone_border_links(tree_zones.zones.size());
+    Array<int> zone_build_order(tree_zones_->zones.size());
+    std::iota(zone_build_order.begin(), zone_build_order.end(), 0);
+    std::sort(
+        zone_build_order.begin(), zone_build_order.end(), [&](const int zone_a, const int zone_b) {
+          return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
+        });
+
+    Array<Vector<const bNodeLink *>> pass_through_zone_border_links(tree_zones_->zones.size());
 
     for (const bNodeLink *link : btree_.all_links()) {
       if (!link->is_available()) {
@@ -1429,8 +1448,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       if (link->is_muted()) {
         continue;
       }
-      const TreeZone *from_zone = tree_zones.get_zone_by_socket(*link->fromsock);
-      const TreeZone *to_zone = tree_zones.get_zone_by_socket(*link->tosock);
+      const TreeZone *from_zone = tree_zones_->get_zone_by_socket(*link->fromsock);
+      const TreeZone *to_zone = tree_zones_->get_zone_by_socket(*link->tosock);
       if (from_zone == to_zone) {
         continue;
       }
@@ -1440,8 +1459,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
     }
 
-    for (const int zone_i : tree_zones.zones.index_range()) {
-      const TreeZone &zone = *tree_zones.zones[zone_i];
+    for (const int zone_i : zone_build_order) {
+      const TreeZone &zone = *tree_zones_->zones[zone_i];
       std::cout << zone_i << ":\n";
       std::cout << "  Depth: " << zone.depth << "\n";
       std::cout << "  Direct children nodes: \n";
