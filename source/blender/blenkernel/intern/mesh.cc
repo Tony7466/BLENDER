@@ -182,7 +182,7 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   }
 }
 
-void BKE_mesh_free_editmesh(struct Mesh *mesh)
+void BKE_mesh_free_editmesh(Mesh *mesh)
 {
   if (mesh->edit_mesh == nullptr) {
     return;
@@ -808,44 +808,6 @@ void BKE_mesh_ensure_skin_customdata(Mesh *me)
   }
 }
 
-bool BKE_mesh_ensure_facemap_customdata(struct Mesh *me)
-{
-  BMesh *bm = me->edit_mesh ? me->edit_mesh->bm : nullptr;
-  bool changed = false;
-  if (bm) {
-    if (!CustomData_has_layer(&bm->pdata, CD_FACEMAP)) {
-      BM_data_layer_add(bm, &bm->pdata, CD_FACEMAP);
-      changed = true;
-    }
-  }
-  else {
-    if (!CustomData_has_layer(&me->pdata, CD_FACEMAP)) {
-      CustomData_add_layer(&me->pdata, CD_FACEMAP, CD_SET_DEFAULT, me->totpoly);
-      changed = true;
-    }
-  }
-  return changed;
-}
-
-bool BKE_mesh_clear_facemap_customdata(struct Mesh *me)
-{
-  BMesh *bm = me->edit_mesh ? me->edit_mesh->bm : nullptr;
-  bool changed = false;
-  if (bm) {
-    if (CustomData_has_layer(&bm->pdata, CD_FACEMAP)) {
-      BM_data_layer_free(bm, &bm->pdata, CD_FACEMAP);
-      changed = true;
-    }
-  }
-  else {
-    if (CustomData_has_layer(&me->pdata, CD_FACEMAP)) {
-      CustomData_free_layers(&me->pdata, CD_FACEMAP, me->totpoly);
-      changed = true;
-    }
-  }
-  return changed;
-}
-
 bool BKE_mesh_has_custom_loop_normals(Mesh *me)
 {
   if (me->edit_mesh) {
@@ -1107,7 +1069,7 @@ Mesh *BKE_mesh_new_nomain_from_template(const Mesh *me_src,
       me_src, verts_num, edges_num, 0, polys_num, loops_num, CD_MASK_EVERYTHING);
 }
 
-void BKE_mesh_eval_delete(struct Mesh *mesh_eval)
+void BKE_mesh_eval_delete(Mesh *mesh_eval)
 {
   /* Evaluated mesh may point to edit mesh, but never owns it. */
   mesh_eval->edit_mesh = nullptr;
@@ -1123,8 +1085,8 @@ Mesh *BKE_mesh_copy_for_eval(const Mesh *source)
 }
 
 BMesh *BKE_mesh_to_bmesh_ex(const Mesh *me,
-                            const struct BMeshCreateParams *create_params,
-                            const struct BMeshFromMeshParams *convert_params)
+                            const BMeshCreateParams *create_params,
+                            const BMeshFromMeshParams *convert_params)
 {
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(me);
 
@@ -1137,7 +1099,7 @@ BMesh *BKE_mesh_to_bmesh_ex(const Mesh *me,
 BMesh *BKE_mesh_to_bmesh(Mesh *me,
                          Object *ob,
                          const bool add_key_index,
-                         const struct BMeshCreateParams *params)
+                         const BMeshCreateParams *params)
 {
   BMeshFromMeshParams bmesh_from_mesh_params{};
   bmesh_from_mesh_params.calc_face_normal = false;
@@ -1149,7 +1111,7 @@ BMesh *BKE_mesh_to_bmesh(Mesh *me,
 }
 
 Mesh *BKE_mesh_from_bmesh_nomain(BMesh *bm,
-                                 const struct BMeshToMeshParams *params,
+                                 const BMeshToMeshParams *params,
                                  const Mesh *me_settings)
 {
   BLI_assert(params->calc_object_remap == false);
