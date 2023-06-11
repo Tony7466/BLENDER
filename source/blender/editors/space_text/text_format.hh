@@ -131,8 +131,7 @@ void ED_text_format_register_pov_ini();
 const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text);
 
 /**
- * Sort #string_literals arrays in reverse order, this allows to perform binary searches on these
- * arrays.
+ * Sort #string_literals arrays, this allows to perform binary searches on these arrays.
  * Should be use only at startup, since these arrays should not change over time.
  */
 void sort_string_literals(Array<StringRef> &string_literals);

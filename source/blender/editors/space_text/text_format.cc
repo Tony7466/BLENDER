@@ -243,18 +243,16 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
 
 const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text)
 {
-  auto literal_startwith = [](const StringRef &string_literal, const char *text) {
-    return strncmp(string_literal.data(), text, string_literal.size());
-  };
+  auto string_literal = std::upper_bound(
+      string_literals.begin(), string_literals.end(), StringRef(text));
 
-  auto comp_func = [literal_startwith](const StringRef &string_literal, const char *text) {
-    return literal_startwith(string_literal, text) > 0;
-  };
+  if (string_literal == string_literals.begin()) {
+    return nullptr;
+  }
 
-  auto string_literal = std::lower_bound(
-      string_literals.begin(), string_literals.end(), text, comp_func);
+  string_literal--;
 
-  if (string_literal != string_literals.end() && literal_startwith(*string_literal, text) == 0) {
+  if (strncmp(string_literal->data(), text, string_literal->size()) == 0) {
     return string_literal;
   }
 
@@ -263,5 +261,5 @@ const StringRef *find_string_literal(const Array<StringRef> &string_literals, co
 
 void sort_string_literals(Array<StringRef> &string_literals)
 {
-  std::sort(string_literals.begin(), string_literals.end(), std::greater<>{});
+  std::sort(string_literals.begin(), string_literals.end());
 }
