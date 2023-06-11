@@ -4136,7 +4136,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
           }
           break;
         }
-        changed = 
+        changed = grease_pencil_circle_select(&vc, &rect, sel_op);
         default:
           BLI_assert_msg(0, "box select on incorrect object type");
           break;
@@ -4921,6 +4921,7 @@ static bool obedit_circle_select(bContext *C,
       break;
     case OB_GREASE_PENCIL:{
     int grease_pencil_circle_select;
+      break;
 
     case OB_CURVES: {
       Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
@@ -4946,14 +4947,15 @@ static bool obedit_circle_select(bContext *C,
     default:
       BLI_assert(0);
       break;
-  }
+    }
 
-  if (changed) {
-    DEG_id_tag_update(static_cast<ID *>(vc->obact->data), ID_RECALC_SELECT);
-    WM_main_add_notifier(NC_GEOM | ND_SELECT, vc->obact->data);
+    if (changed) {
+      DEG_id_tag_update(static_cast<ID *>(vc->obact->data), ID_RECALC_SELECT);
+      WM_main_add_notifier(NC_GEOM | ND_SELECT, vc->obact->data);
+    }
+    return changed;
   }
-  return changed;
-}}
+}
 
 static bool object_circle_select(ViewContext *vc,
                                  const eSelectOp sel_op,
