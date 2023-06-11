@@ -184,9 +184,9 @@ void ED_operatortypes_grease_pencil(void)
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_select_all);
-  WM_operatortype_append(GREASE_PENCIL_OT_select_linked);
   WM_operatortype_append(GREASE_PENCIL_OT_select_more);
   WM_operatortype_append(GREASE_PENCIL_OT_select_less);
+  WM_operatortype_append(GREASE_PENCIL_OT_select_linked);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
