@@ -4043,7 +4043,7 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, drawing_index);
-        changed |= ed::curves::select_circle(
+        changed |= ed::curves::select_box(
             *vc, drawing.geometry.wrap(), deformation.positions, ATTR_DOMAIN_POINT, *rect, sel_op);
       });
 
@@ -4924,9 +4924,17 @@ static bool obedit_circle_select(bContext *C,
     case OB_MBALL:
       changed = mball_circle_select(vc, sel_op, mval, rad);
       break;
-    ase OB_GREASE_PENSIL:
-      changed = grease_pensil_circle_select(vc, sel_op, mval, rad);
-      break;
+    case OB_GREASE_PENSIL:{
+      GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
+      grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
+      bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+      ob_eval, *vc->obedit, drawing_index);
+      changed |= ed::curves::select_circle(
+      *vc, drawing.geometry.wrap(), deformation, ATTR_DOMAIN_POINT, *rect, sel_op);
+      });
+      break;}
     case OB_CURVES: {
       Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
       bke::CurvesGeometry &curves = curves_id.geometry.wrap();
