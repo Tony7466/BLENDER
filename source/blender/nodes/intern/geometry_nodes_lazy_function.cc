@@ -33,6 +33,7 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_node_tree_zones.hh"
 #include "BKE_type_conversions.hh"
 
 #include "FN_field_cpp_type.hh"
@@ -44,6 +45,8 @@
 
 namespace blender::nodes {
 
+using bke::node_tree_zones::TreeZone;
+using bke::node_tree_zones::TreeZones;
 using fn::ValueOrField;
 using fn::ValueOrFieldCPPType;
 
@@ -1412,6 +1415,44 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->lf_input_index_for_attribute_propagation_to_output.fill(-1);
     mapping_->lf_index_by_bsocket.reinitialize(btree_.all_sockets().size());
     mapping_->lf_index_by_bsocket.fill(-1);
+
+    const TreeZones &tree_zones = *bke::node_tree_zones::get_tree_zones(btree_);
+
+    std::cout << tree_zones.zones.size() << "\n";
+
+    Array<Vector<const bNodeLink *>> pass_through_zone_border_links(tree_zones.zones.size());
+
+    for (const bNodeLink *link : btree_.all_links()) {
+      if (!link->is_available()) {
+        continue;
+      }
+      if (link->is_muted()) {
+        continue;
+      }
+      const TreeZone *from_zone = tree_zones.get_zone_by_socket(*link->fromsock);
+      const TreeZone *to_zone = tree_zones.get_zone_by_socket(*link->tosock);
+      if (from_zone == to_zone) {
+        continue;
+      }
+      BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
+      for (const TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
+        pass_through_zone_border_links[zone->index].append(link);
+      }
+    }
+
+    for (const int zone_i : tree_zones.zones.index_range()) {
+      const TreeZone &zone = *tree_zones.zones[zone_i];
+      std::cout << zone_i << ":\n";
+      std::cout << "  Direct children nodes: \n";
+      for (const bNode *node : zone.child_nodes) {
+        std::cout << "    " << node->name << "\n";
+      }
+      const Span<const bNodeLink *> border_links = pass_through_zone_border_links[zone_i];
+      std::cout << "  Border Links: " << border_links.size() << "\n";
+      for (const bNodeLink *link : border_links) {
+        std::cout << "    " << link->fromnode->name << ":" << link->fromsock->name << "\n";
+      }
+    }
 
     this->prepare_node_multi_functions();
     this->build_group_input_node();

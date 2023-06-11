@@ -251,4 +251,16 @@ bool TreeZone::contains_node_recursively(const bNode &node) const
   return false;
 }
 
+bool TreeZone::contains_zone_recursively(const int zone_i) const
+{
+  const TreeZones &zones = *this->owner;
+  const TreeZone &other_zone = *zones.zones[zone_i];
+  for (const TreeZone *zone = other_zone.parent_zone; zone; zone = zone->parent_zone) {
+    if (zone == this) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace blender::bke::node_tree_zones

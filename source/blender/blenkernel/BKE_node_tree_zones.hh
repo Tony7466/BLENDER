@@ -32,12 +32,40 @@ struct TreeZone {
   Vector<const bNode *> child_nodes;
 
   bool contains_node_recursively(const bNode &node) const;
+  bool contains_zone_recursively(const int zone_i) const;
 };
 
 class TreeZones {
  public:
   Vector<std::unique_ptr<TreeZone>> zones;
   Map<int, int> parent_zone_by_node_id;
+
+  const TreeZone *get_zone_by_node(const bNode &node) const
+  {
+    const int zone_i = this->parent_zone_by_node_id.lookup_default(node.identifier, -1);
+    if (zone_i == -1) {
+      return nullptr;
+    }
+    return this->zones[zone_i].get();
+  }
+
+  const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const
+  {
+    const bNode &node = socket.owner_node();
+    for (const std::unique_ptr<TreeZone> &zone : zones) {
+      if (socket.in_out == SOCK_IN) {
+        if (zone->output_node == &node) {
+          return zone.get();
+        }
+      }
+      else {
+        if (zone->input_node == &node) {
+          return zone.get();
+        }
+      }
+    }
+    return this->get_zone_by_node(node);
+  }
 };
 
 const TreeZones *get_tree_zones(const bNodeTree &tree);

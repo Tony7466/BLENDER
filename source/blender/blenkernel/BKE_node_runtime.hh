@@ -516,6 +516,18 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
   return this->runtime->root_frames;
 }
 
+inline blender::Span<bNodeLink *> bNodeTree::all_links()
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->links;
+}
+
+inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->links;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
