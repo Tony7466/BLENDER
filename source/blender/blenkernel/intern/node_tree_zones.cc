@@ -107,10 +107,11 @@ static Vector<ZoneRelation> get_direct_zone_relations(
   return zone_relations;
 }
 
-static void update_parent_zone_per_node(const Span<const bNode *> all_nodes,
-                                        const Span<std::unique_ptr<TreeZone>> all_zones,
-                                        const BitGroupVector<> &depend_on_input_flag_array,
-                                        Map<int, int> &r_parent_zone_by_node_id)
+static void update_zone_per_node(const Span<const bNode *> all_nodes,
+                                 const Span<std::unique_ptr<TreeZone>> all_zones,
+                                 const BitGroupVector<> &depend_on_input_flag_array,
+                                 const Map<const bNode *, TreeZone *> &zone_by_inout_node,
+                                 Map<int, int> &r_zone_by_node_id)
 {
   for (const int node_i : all_nodes.index_range()) {
     const bNode &node = *all_nodes[node_i];
@@ -126,8 +127,11 @@ static void update_parent_zone_per_node(const Span<const bNode *> all_nodes,
       }
     });
     if (parent_zone != nullptr) {
-      r_parent_zone_by_node_id.add(node.identifier, parent_zone->index);
+      r_zone_by_node_id.add(node.identifier, parent_zone->index);
     }
+  }
+  for (const MapItem<const bNode *, TreeZone *> item : zone_by_inout_node.items()) {
+    r_zone_by_node_id.add_overwrite(item.key->identifier, item.value->index);
   }
 }
 
@@ -212,18 +216,23 @@ static std::unique_ptr<TreeZones> discover_tree_zones(const bNodeTree &tree)
     update_zone_depths(*zone);
   }
 
-  update_parent_zone_per_node(all_nodes,
-                              tree_zones->zones,
-                              depend_on_input_flag_array,
-                              tree_zones->parent_zone_by_node_id);
+  update_zone_per_node(all_nodes,
+                       tree_zones->zones,
+                       depend_on_input_flag_array,
+                       zone_by_inout_node,
+                       tree_zones->zone_by_node_id);
 
   for (const int node_i : all_nodes.index_range()) {
     const bNode *node = all_nodes[node_i];
-    const int parent_zone_i = tree_zones->parent_zone_by_node_id.lookup_default(node->identifier,
-                                                                                -1);
-    if (parent_zone_i != -1) {
-      tree_zones->zones[parent_zone_i]->child_nodes.append(node);
+    const int zone_i = tree_zones->zone_by_node_id.lookup_default(node->identifier, -1);
+    if (zone_i == -1) {
+      continue;
     }
+    const TreeZone &zone = *tree_zones->zones[zone_i];
+    if (ELEM(node, zone.input_node, zone.output_node)) {
+      continue;
+    }
+    tree_zones->zones[zone_i]->child_nodes.append(node);
   }
 
   return tree_zones;
@@ -239,11 +248,11 @@ const TreeZones *get_tree_zones(const bNodeTree &tree)
 bool TreeZone::contains_node_recursively(const bNode &node) const
 {
   const TreeZones *zones = this->owner;
-  const int parent_zone_i = zones->parent_zone_by_node_id.lookup_default(node.identifier, -1);
-  if (parent_zone_i == -1) {
+  const int zone_i = zones->zone_by_node_id.lookup_default(node.identifier, -1);
+  if (zone_i == -1) {
     return false;
   }
-  for (const TreeZone *zone = zones->zones[parent_zone_i].get(); zone; zone = zone->parent_zone) {
+  for (const TreeZone *zone = zones->zones[zone_i].get(); zone; zone = zone->parent_zone) {
     if (zone == this) {
       return true;
     }

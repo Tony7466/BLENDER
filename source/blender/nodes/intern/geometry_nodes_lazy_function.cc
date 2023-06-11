@@ -1443,6 +1443,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const int zone_i : tree_zones.zones.index_range()) {
       const TreeZone &zone = *tree_zones.zones[zone_i];
       std::cout << zone_i << ":\n";
+      std::cout << "  Depth: " << zone.depth << "\n";
       std::cout << "  Direct children nodes: \n";
       for (const bNode *node : zone.child_nodes) {
         std::cout << "    " << node->name << "\n";

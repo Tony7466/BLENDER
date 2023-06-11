@@ -28,7 +28,7 @@ struct TreeZone {
   TreeZone *parent_zone = nullptr;
   /** Direct children zones. Does not contain recursively nested zones. */
   Vector<TreeZone *> child_zones;
-  /** Direct children nodes. Does not contain recursively nested nodes. */
+  /** Direct children nodes excluding nodes that belong to child zones. */
   Vector<const bNode *> child_nodes;
 
   bool contains_node_recursively(const bNode &node) const;
@@ -38,33 +38,31 @@ struct TreeZone {
 class TreeZones {
  public:
   Vector<std::unique_ptr<TreeZone>> zones;
-  Map<int, int> parent_zone_by_node_id;
-
-  const TreeZone *get_zone_by_node(const bNode &node) const
-  {
-    const int zone_i = this->parent_zone_by_node_id.lookup_default(node.identifier, -1);
-    if (zone_i == -1) {
-      return nullptr;
-    }
-    return this->zones[zone_i].get();
-  }
+  /**
+   * Zone index by node. Nodes that are in no zone, are not included. Nodes that are at the border
+   * of a zone (e.g. Simulation Input) are mapped to the zone they create.
+   */
+  Map<int, int> zone_by_node_id;
 
   const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const
   {
     const bNode &node = socket.owner_node();
-    for (const std::unique_ptr<TreeZone> &zone : zones) {
-      if (socket.in_out == SOCK_IN) {
-        if (zone->output_node == &node) {
-          return zone.get();
-        }
-      }
-      else {
-        if (zone->input_node == &node) {
-          return zone.get();
-        }
+    const int zone_i = this->zone_by_node_id.lookup_default(node.identifier, -1);
+    if (zone_i == -1) {
+      return nullptr;
+    }
+    const TreeZone &zone = *this->zones[zone_i];
+    if (zone.input_node == &node) {
+      if (socket.is_input()) {
+        return zone.parent_zone;
       }
     }
-    return this->get_zone_by_node(node);
+    if (zone.output_node == &node) {
+      if (socket.is_output()) {
+        return zone.parent_zone;
+      }
+    }
+    return &zone;
   }
 };
 
