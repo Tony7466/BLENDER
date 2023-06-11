@@ -120,21 +120,19 @@ void ED_text_format_register_osl();
 void ED_text_format_register_pov();
 void ED_text_format_register_pov_ini();
 
-/*
+/**
  * Checks the specified source string #text for a string literal in #string_literals array.
- * This name must start at the beginning of the source string and must be
- * followed by a non-identifier (see #text_check_identifier(char)) or null char.
+ * This string literal must start at the beginning of the source string.
  *
  * If a string literal is found, the a #StringRef pointer to the string literal is returned.
  * Otherwise, nullptr.
- *
  */
 
 const StringRef *find_string_literal(const Array<StringRef> &string_literals, const char *text);
 
-/*
- * Sort string literals arrays, this allows to perform binary searches on these arrays
+/**
+ * Sort #string_literals arrays in reverse order, this allows to perform binary searches on these
+ * arrays.
  * Should be use only at startup, since these arrays should not change over time.
- *
  */
 void sort_string_literals(Array<StringRef> &string_literals);

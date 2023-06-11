@@ -10,8 +10,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_text.h"
-
 #include "BLI_blenlib.h"
 #include "BLI_string_utils.h"
 
@@ -250,8 +248,7 @@ const StringRef *find_string_literal(const Array<StringRef> &string_literals, co
   };
 
   auto comp_func = [literal_startwith](const StringRef &string_literal, const char *text) {
-    int result = literal_startwith(string_literal, text);
-    return result < 0 || (result == 0 && text_check_identifier(text[string_literal.size()]));
+    return literal_startwith(string_literal, text) > 0;
   };
 
   auto string_literal = std::lower_bound(
@@ -266,5 +263,5 @@ const StringRef *find_string_literal(const Array<StringRef> &string_literals, co
 
 void sort_string_literals(Array<StringRef> &string_literals)
 {
-  std::sort(string_literals.begin(), string_literals.end());
+  std::sort(string_literals.begin(), string_literals.end(), std::greater<>{});
 }
