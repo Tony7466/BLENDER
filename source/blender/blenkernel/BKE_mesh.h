@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -179,9 +180,6 @@ struct Mesh *BKE_mesh_new_nomain_from_curve_displist(const struct Object *ob,
 
 bool BKE_mesh_attribute_required(const char *name);
 
-bool BKE_mesh_ensure_facemap_customdata(struct Mesh *me);
-bool BKE_mesh_clear_facemap_customdata(struct Mesh *me);
-
 float (*BKE_mesh_orco_verts_get(struct Object *ob))[3];
 void BKE_mesh_orco_verts_transform(struct Mesh *me, float (*orco)[3], int totvert, int invert);
 
@@ -199,12 +197,10 @@ void BKE_mesh_to_curve(struct Main *bmain,
                        struct Depsgraph *depsgraph,
                        struct Scene *scene,
                        struct Object *ob);
-void BKE_pointcloud_from_mesh(const struct Mesh *me, struct PointCloud *pointcloud);
 void BKE_mesh_to_pointcloud(struct Main *bmain,
                             struct Depsgraph *depsgraph,
                             struct Scene *scene,
                             struct Object *ob);
-void BKE_mesh_from_pointcloud(const struct PointCloud *pointcloud, struct Mesh *me);
 void BKE_pointcloud_to_mesh(struct Main *bmain,
                             struct Depsgraph *depsgraph,
                             struct Scene *scene,

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -182,11 +183,6 @@ static void rna_Mesh_flip_normals(Mesh *mesh)
   DEG_id_tag_update(&mesh->id, 0);
 }
 
-static void rna_Mesh_split_faces(Mesh *mesh, bool UNUSED(free_loop_normals))
-{
-  ED_mesh_split_faces(mesh);
-}
-
 static void rna_Mesh_update_gpu_tag(Mesh *mesh)
 {
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
@@ -237,11 +233,8 @@ void RNA_api_mesh(StructRNA *srna)
   func = RNA_def_function(srna, "free_normals_split", "rna_Mesh_free_normals_split");
   RNA_def_function_ui_description(func, "Free split vertex normals");
 
-  func = RNA_def_function(srna, "split_faces", "rna_Mesh_split_faces");
+  func = RNA_def_function(srna, "split_faces", "ED_mesh_split_faces");
   RNA_def_function_ui_description(func, "Split faces based on the edge angle");
-  /* TODO: This parameter has no effect anymore, since the internal code does not need to
-   * compute temporary CD_NORMAL loop data. It should be removed for next major release (4.0). */
-  RNA_def_boolean(func, "free_loop_normals", 1, "Free Loop Normals", "Deprecated, has no effect");
 
   func = RNA_def_function(srna, "calc_tangents", "rna_Mesh_calc_tangents");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);

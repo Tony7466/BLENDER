@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -165,6 +166,9 @@ enum class OperationCode {
   MATERIAL_UPDATE,
   LIGHT_UPDATE,
   WORLD_UPDATE,
+
+  /* Light linking. ------------------------------------------------------- */
+  LIGHT_LINKING_UPDATE,
 
   /* Node Tree. ----------------------------------------------------------- */
   NTREE_OUTPUT,

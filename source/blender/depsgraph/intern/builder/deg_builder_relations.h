@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -150,6 +151,9 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_object_parent(Object *object);
   virtual void build_object_pointcache(Object *object);
   virtual void build_object_instance_collection(Object *object);
+
+  virtual void build_object_light_linking(Object *emitter);
+  virtual void build_light_linking_collection(Object *emitter, Collection *collection);
 
   virtual void build_constraints(ID *id,
                                  NodeType component_type,

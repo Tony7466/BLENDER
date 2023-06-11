@@ -1,11 +1,10 @@
-
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
  */
-
-#pragma once
 
 #include "overlay_next_private.hh"
 
