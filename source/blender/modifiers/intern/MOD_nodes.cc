@@ -773,22 +773,25 @@ static void modifyGeometry(ModifierData *md,
     nmd_orig->runtime_eval_log = new geo_log::GeoModifierLog();
   }
 
-  bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
-
-  MultiValueMap<ComputeContextHash, const lf::FunctionNode *> side_effect_nodes;
-  Set<ComputeContextHash> socket_log_contexts;
   nodes::GeoNodesModifierData modifier_eval_data{};
   modifier_eval_data.depsgraph = ctx->depsgraph;
   modifier_eval_data.self_object = ctx->object;
-  modifier_eval_data.eval_log = static_cast<geo_log::GeoModifierLog *>(nmd_orig->runtime_eval_log);
-  if (modifier_eval_data.eval_log) {
-    find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
-    modifier_eval_data.side_effect_nodes = &side_effect_nodes;
+  auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
+
+  prepare_simulation_states_for_evaluation(*nmd, *nmd_orig, *ctx, modifier_eval_data);
+
+  Set<ComputeContextHash> socket_log_contexts;
+  if (logging_enabled(ctx)) {
+    modifier_eval_data.eval_log = eval_log.get();
+
     find_socket_log_contexts(*nmd, *ctx, socket_log_contexts);
     modifier_eval_data.socket_log_contexts = &socket_log_contexts;
   }
+  MultiValueMap<ComputeContextHash, const lf::FunctionNode *> side_effect_nodes;
+  find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
+  modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
-  prepare_simulation_states_for_evaluation(*nmd, *nmd_orig, *ctx, modifier_eval_data);
+  bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
   geometry_set = nodes::execute_geometry_nodes_on_geometry(
       tree,
@@ -798,6 +801,11 @@ static void modifyGeometry(ModifierData *md,
       [&](nodes::GeoNodesLFUserData &user_data) {
         user_data.modifier_data = &modifier_eval_data;
       });
+
+  if (logging_enabled(ctx)) {
+    delete static_cast<geo_log::GeoModifierLog *>(nmd_orig->runtime_eval_log);
+    nmd_orig->runtime_eval_log = eval_log.release();
+  }
 
   if (DEG_is_active(ctx->depsgraph)) {
     /* When caching is turned off, remove all states except the last which was just created in this
