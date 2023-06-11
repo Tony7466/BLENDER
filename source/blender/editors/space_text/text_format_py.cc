@@ -48,62 +48,72 @@
  * See:
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
-static StringRef text_format_py_literals_builtinfunc[]{
-    /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
-    /* clang-format off */
-    StringRef("and"),
-    StringRef("as"),
-    StringRef("assert"),
-    StringRef("async"),
-    StringRef("await"),
-    StringRef("break"),
-    StringRef("case"),
-    StringRef("continue"),
-    StringRef("del"),
-    StringRef("elif"),
-    StringRef("else"),
-    StringRef("except"),
-    StringRef("finally"),
-    StringRef("for"),
-    StringRef("from"),
-    StringRef("global"),
-    StringRef("if"),
-    StringRef("import"),
-    StringRef("in"),
-    StringRef("is"),
-    StringRef("lambda"),
-    StringRef("match"),
-    StringRef("nonlocal"),
-    StringRef("not"),
-    StringRef("or"),
-    StringRef("pass"),
-    StringRef("raise"),
-    StringRef("return"),
-    StringRef("try"),
-    StringRef("while"),
-    StringRef("with"),
-    StringRef("yield"),
-    /* clang-format on */
-};
+static Array<StringRef> &text_format_py_literals_builtinfunc()
+{
+  static Array<StringRef> map{
+      /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
+      /* clang-format off */
+    "and",
+    "as",
+    "assert",
+    "async",
+    "await",
+    "break",
+    "case",
+    "continue",
+    "del",
+    "elif",
+    "else",
+    "except",
+    "finally",
+    "for",
+    "from",
+    "global",
+    "if",
+    "import",
+    "in",
+    "is",
+    "lambda",
+    "match",
+    "nonlocal",
+    "not",
+    "or",
+    "pass",
+    "raise",
+    "return",
+    "try",
+    "while",
+    "with",
+    "yield",
+      /* clang-format on */
+  };
+  return map;
+}
 
 /** Python special name.*/
-static StringRef text_format_py_literals_specialvar[]{
-    /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
-    /* clang-format off */
-    StringRef("class"),
-    StringRef("def"),
-    /* clang-format on */
-};
-
+static Array<StringRef> &text_format_py_literals_specialvar()
+{
+  static Array<StringRef> map{
+      /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
+      /* clang-format off */
+    "class",
+    "def",
+      /* clang-format on */
+  };
+  return map;
+}
 /** Python bool values.*/
-static StringRef text_format_py_literals_bool[]{
-    /* clang-format off */
-    StringRef("False"),
-    StringRef("None"),
-    StringRef("True"),
-    /* clang-format on */
-};
-
+static Array<StringRef> &text_format_py_literals_bool()
+{
+  static Array<StringRef> map{
+      /* clang-format off */
+    "False",
+    "None",
+    "True",
+      /* clang-format on */
+  };
+  return map;
+}
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -113,7 +123,7 @@ static StringRef text_format_py_literals_bool[]{
 static int txtfmt_py_find_builtinfunc(const char *string)
 {
   const StringRef *string_literal = text_format_string_literal_find(
-      text_format_py_literals_builtinfunc, string);
+      text_format_py_literals_builtinfunc(), string);
   if (!string_literal) {
     return -1;
   }
@@ -130,7 +140,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
 static int txtfmt_py_find_specialvar(const char *string)
 {
   const StringRef *string_literal = text_format_string_literal_find(
-      text_format_py_literals_specialvar, string);
+      text_format_py_literals_specialvar(), string);
   if (!string_literal) {
     return -1;
   }
@@ -166,7 +176,7 @@ static int txtfmt_py_find_decorator(const char *string)
 
 static int txtfmt_py_find_bool(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(text_format_py_literals_bool,
+  const StringRef *string_literal = text_format_string_literal_find(text_format_py_literals_bool(),
                                                                     string);
   if (!string_literal) {
     return -1;
@@ -577,9 +587,9 @@ void ED_text_format_register_py()
 
   ED_text_format_register(&tft);
 
-  text_format_string_literals_sort_for_lookup(text_format_py_literals_builtinfunc);
-  text_format_string_literals_sort_for_lookup(text_format_py_literals_specialvar);
-  text_format_string_literals_sort_for_lookup(text_format_py_literals_bool);
+  text_format_string_literals_sort_for_lookup(text_format_py_literals_builtinfunc());
+  text_format_string_literals_sort_for_lookup(text_format_py_literals_specialvar());
+  text_format_string_literals_sort_for_lookup(text_format_py_literals_bool());
 }
 
 /** \} */

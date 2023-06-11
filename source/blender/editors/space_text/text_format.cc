@@ -240,3 +240,35 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   /* The filename has a non-numerical extension that we could not highlight. */
   return false;
 }
+
+const StringRef *text_format_string_literal_find(const Span<StringRef> string_literals,
+                                                 const char *text)
+{
+  auto predicate_func = [](const char *text, const StringRef &string_literal) {
+    return !(strcmp(text, string_literal.data()) > 0);
+  };
+  auto string_literal = std::upper_bound(
+      std::begin(string_literals), std::end(string_literals), text, predicate_func);
+
+  if (string_literal == std::begin(string_literals)) {
+    return nullptr;
+  }
+
+  string_literal--;
+
+  if (strncmp(string_literal->data(), text, string_literal->size()) == 0) {
+    return string_literal;
+  }
+
+  return nullptr;
+}
+
+/**
+ * Sort #string_literals arrays, this allows to perform binary searches on these
+ * arrays.
+ * Should be use only at startup, since these arrays should not change over time.
+ */
+void text_format_string_literals_sort_for_lookup(Array<StringRef> &string_literals)
+{
+  std::sort(std::begin(string_literals), std::end(string_literals));
+}

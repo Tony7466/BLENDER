@@ -8,9 +8,11 @@
 
 #pragma once
 #include "BLI_array.hh"
+#include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 
 using blender::Array;
+using blender::Span;
 using blender::StringRef;
 
 struct Text;
@@ -127,36 +129,12 @@ void ED_text_format_register_pov_ini();
  * If a string literal is found, the a #StringRef pointer to the string literal is returned.
  * Otherwise, nullptr.
  */
-template<size_t N>
-const StringRef *text_format_string_literal_find(const StringRef (&string_literals)[N],
-                                                 const char *text)
-{
-  auto predicate_func = [](const char *text, const StringRef &string_literal) {
-    return !(strcmp(text, string_literal.data()) > 0);
-  };
-  auto string_literal = std::upper_bound(
-      std::begin(string_literals), std::end(string_literals), text, predicate_func);
-
-  if (string_literal == std::begin(string_literals)) {
-    return nullptr;
-  }
-
-  string_literal--;
-
-  if (strncmp(string_literal->data(), text, string_literal->size()) == 0) {
-    return string_literal;
-  }
-
-  return nullptr;
-}
+const StringRef *text_format_string_literal_find(const Span<StringRef> string_literals,
+                                                 const char *text);
 
 /**
  * Sort #string_literals arrays, this allows to perform binary searches on these
  * arrays.
  * Should be use only at startup, since these arrays should not change over time.
  */
-template<size_t N>
-void text_format_string_literals_sort_for_lookup(StringRef (&string_literals)[N])
-{
-  std::sort(std::begin(string_literals), std::end(string_literals));
-}
+void text_format_string_literals_sort_for_lookup(Array<StringRef> &string_literals);

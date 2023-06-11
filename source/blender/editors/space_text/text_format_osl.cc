@@ -26,90 +26,102 @@
  * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-static StringRef text_format_osl_literals_builtinfunc[]{
-    /* clang-format off */
-    StringRef("break"),
-    StringRef("closure"),
-    StringRef("color"),
-    StringRef("continue"),
-    StringRef("do"),
-    StringRef("else"),
-    StringRef("emit"),
-    StringRef("float"),
-    StringRef("for"),
-    StringRef("if"),
-    StringRef("illuminance"),
-    StringRef("illuminate"),
-    StringRef("int"),
-    StringRef("matrix"),
-    StringRef("normal"),
-    StringRef("output"),
-    StringRef("point"),
-    StringRef("public"),
-    StringRef("return"),
-    StringRef("string"),
-    StringRef("struct"),
-    StringRef("vector"),
-    StringRef("void"),
-    StringRef("while"),
-    /* clang-format on */
-};
+static Array<StringRef> &text_format_osl_literals_builtinfunc()
+{
+  static Array<StringRef> map{
+      /* clang-format off */
+    "break",
+    "closure",
+    "color",
+    "continue",
+    "do",
+    "else",
+    "emit",
+    "float",
+    "for",
+    "if",
+    "illuminance",
+    "illuminate",
+    "int",
+    "matrix",
+    "normal",
+    "output",
+    "point",
+    "public",
+    "return",
+    "string",
+    "struct",
+    "vector",
+    "void",
+    "while",
+      /* clang-format on */
+  };
+  return map;
+}
 
 /**
  * OSL reserved keywords
  * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-static StringRef text_format_osl_literals_reserved[]{
-    /* clang-format off */
-    StringRef("bool"),
-    StringRef("case"),
-    StringRef("catch"),
-    StringRef("char"),
-    StringRef("const"),
-    StringRef("default"),
-    StringRef("delete"),
-    StringRef("double"),
-    StringRef("enum"),
-    StringRef("extern"),
-    StringRef("false"),
-    StringRef("friend"),
-    StringRef("goto"),
-    StringRef("inline"),
-    StringRef("long"),
-    StringRef("new"),
-    StringRef("operator"),
-    StringRef("private"),
-    StringRef("protected"),
-    StringRef("short"),
-    StringRef("signed"),
-    StringRef("sizeof"),
-    StringRef("static"),
-    StringRef("switch"),
-    StringRef("template"),
-    StringRef("this"),
-    StringRef("throw"),
-    StringRef("true"),
-    StringRef("try"),
-    StringRef("typedef"),
-    StringRef("uniform"),
-    StringRef("union"),
-    StringRef("unsigned"),
-    StringRef("varying"),
-    StringRef("virtual"),
-    StringRef("volatile"),
-    /* clang-format on */
-};
+static Array<StringRef> &text_format_osl_literals_reserved()
+{
+  static Array<StringRef> map{
+      /* clang-format off */
+    "bool",
+    "case",
+    "catch",
+    "char",
+    "const",
+    "default",
+    "delete",
+    "double",
+    "enum",
+    "extern",
+    "false",
+    "friend",
+    "goto",
+    "inline",
+    "long",
+    "new",
+    "operator",
+    "private",
+    "protected",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "switch",
+    "template",
+    "this",
+    "throw",
+    "true",
+    "try",
+    "typedef",
+    "uniform",
+    "union",
+    "unsigned",
+    "varying",
+    "virtual",
+    "volatile",
+      /* clang-format on */
+  };
+  return map;
+}
 
 /* OSL shader types */
-static StringRef text_format_osl_literals_specialvar[]{
-    /* clang-format off */
-    StringRef("displacement"),
-    StringRef("shader"),
-    StringRef("surface"),
-    StringRef("volume"),
-    /* clang-format on */
-};
+static Array<StringRef> &text_format_osl_literals_specialvar()
+{
+  static Array<StringRef> map{
+      /* clang-format off */
+    "displacement",
+    "shader",
+    "surface",
+    "volume",
+      /* clang-format on */
+  };
+  return map;
+}
 
 /** \} */
 
@@ -120,7 +132,7 @@ static StringRef text_format_osl_literals_specialvar[]{
 static int txtfmt_osl_find_builtinfunc(const char *string)
 {
   const StringRef *string_literal = text_format_string_literal_find(
-      text_format_osl_literals_builtinfunc, string);
+      text_format_osl_literals_builtinfunc(), string);
   if (!string_literal) {
     return -1;
   }
@@ -137,7 +149,7 @@ static int txtfmt_osl_find_builtinfunc(const char *string)
 static int txtfmt_osl_find_reserved(const char *string)
 {
   const StringRef *string_literal = text_format_string_literal_find(
-      text_format_osl_literals_reserved, string);
+      text_format_osl_literals_reserved(), string);
   if (!string_literal) {
     return -1;
   }
@@ -154,7 +166,7 @@ static int txtfmt_osl_find_reserved(const char *string)
 static int txtfmt_osl_find_specialvar(const char *string)
 {
   const StringRef *string_literal = text_format_string_literal_find(
-      text_format_osl_literals_specialvar, string);
+      text_format_osl_literals_specialvar(), string);
   if (!string_literal) {
     return -1;
   }
@@ -391,9 +403,9 @@ void ED_text_format_register_osl()
 
   ED_text_format_register(&tft);
 
-  text_format_string_literals_sort_for_lookup(text_format_osl_literals_builtinfunc);
-  text_format_string_literals_sort_for_lookup(text_format_osl_literals_reserved);
-  text_format_string_literals_sort_for_lookup(text_format_osl_literals_specialvar);
+  text_format_string_literals_sort_for_lookup(text_format_osl_literals_builtinfunc());
+  text_format_string_literals_sort_for_lookup(text_format_osl_literals_reserved());
+  text_format_string_literals_sort_for_lookup(text_format_osl_literals_specialvar());
 }
 
 /** \} */
