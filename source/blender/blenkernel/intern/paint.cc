@@ -457,6 +457,29 @@ const char *BKE_paint_get_tool_prop_id_from_paintmode(ePaintMode mode)
   return nullptr;
 }
 
+const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(ePaintMode mode)
+{
+  switch (mode) {
+    case PAINT_MODE_SCULPT:
+    case PAINT_MODE_GPENCIL:
+    case PAINT_MODE_TEXTURE_2D:
+    case PAINT_MODE_TEXTURE_3D:
+      return BLT_I18NCONTEXT_ID_BRUSH;
+    case PAINT_MODE_VERTEX:
+    case PAINT_MODE_WEIGHT:
+    case PAINT_MODE_SCULPT_UV:
+    case PAINT_MODE_VERTEX_GPENCIL:
+    case PAINT_MODE_SCULPT_GPENCIL:
+    case PAINT_MODE_WEIGHT_GPENCIL:
+    case PAINT_MODE_SCULPT_CURVES:
+    case PAINT_MODE_INVALID:
+      break;
+  }
+
+  /* Invalid paint mode. */
+  return BLT_I18NCONTEXT_DEFAULT;
+}
+
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
 {
   if (sce && view_layer) {
@@ -1936,6 +1959,7 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
   }
 
   BKE_id_attributes_active_color_set(&orig_me->id, unique_name);
+  BKE_id_attributes_default_color_set(&orig_me->id, unique_name);
   DEG_id_tag_update(&orig_me->id, ID_RECALC_GEOMETRY_ALL_MODES);
   BKE_mesh_tessface_clear(orig_me);
 
