@@ -13,7 +13,7 @@
 namespace blender::compositor {
 
 /* Compute x to the given power, in a safe manner which does not produce non-finite values.
- * For non-positive values of x zero si returned. */
+ * For non-positive values of x zero is returned. */
 static inline float safe_pow_positive(const float &x, const float &power)
 {
   if (x <= 0.0f) {
@@ -139,9 +139,8 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
       float4 color;
       image_reader_->read(&color.x, xx, yy, nullptr);
 
-      /* TODO(@zazizizou): only compute lum once per region */
       const float lum = IMB_colormanagement_get_luminance(color);
-      /* TODO(@zazizizou): only compute mean for the selected region */
+      /* TODO(@zazizizou): only compute mean for the selected region. */
       mean[t] += g * color.xyz();
       sum[t] += g * lum;
       var[t] += g * lum * lum;
@@ -149,7 +148,7 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
     }
   }
 
-  /* Calculate weighted average */
+  /* Calculate weighted average. */
   float3 de{0.0f};
   float3 nu{0.0f};
   for (int i = 0; i < n_div_; i++) {
@@ -284,7 +283,6 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
         float4 color;
         image->read_elem(xx, yy, &color.x);
 
-        /* TODO(@zazizizou): only compute lum once per region. */
         const float lum = IMB_colormanagement_get_luminance(color);
         /* TODO(@zazizizou): only compute mean for the selected region. */
         mean[t] += g * color.xyz();
