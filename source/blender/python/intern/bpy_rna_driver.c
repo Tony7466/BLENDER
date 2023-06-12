@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -78,7 +80,8 @@ bool pyrna_driver_is_equal_anim_rna(const PathResolvedRNA *anim_rna, const PyObj
     const PointerRNA *ptr_b = &(((const BPy_StructRNA *)py_anim_rna)->ptr);
 
     if ((ptr_a->owner_id == ptr_b->owner_id) && (ptr_a->type == ptr_b->type) &&
-        (ptr_a->data == ptr_b->data)) {
+        (ptr_a->data == ptr_b->data))
+    {
       return true;
     }
   }

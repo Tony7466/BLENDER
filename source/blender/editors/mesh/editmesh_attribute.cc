@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -102,6 +104,8 @@ static StringRefNull rna_property_name_for_type(const eCustomDataType type)
     case CD_PROP_INT8:
     case CD_PROP_INT32:
       return "value_int";
+    case CD_PROP_INT32_2D:
+      return "value_int_vector_2d";
     default:
       BLI_assert_unreachable();
       return "";
@@ -207,6 +211,9 @@ static int mesh_set_attribute_exec(bContext *C, wmOperator *op)
       break;
     case CD_PROP_INT32:
       *static_cast<int32_t *>(buffer) = RNA_int_get(op->ptr, prop_name.c_str());
+      break;
+    case CD_PROP_INT32_2D:
+      RNA_int_get_array(op->ptr, prop_name.c_str(), static_cast<int *>(buffer));
       break;
     default:
       BLI_assert_unreachable();
@@ -320,6 +327,9 @@ static int mesh_set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent 
       case CD_PROP_INT32:
         RNA_property_int_set(op->ptr, prop, *active_value.get<int32_t>());
         break;
+      case CD_PROP_INT32_2D:
+        RNA_property_int_set_array(op->ptr, prop, *active_value.get<int2>());
+        break;
       default:
         BLI_assert_unreachable();
     }
@@ -385,6 +395,16 @@ void MESH_OT_attribute_set(wmOperatorType *ot)
                       -FLT_MAX,
                       FLT_MAX);
   RNA_def_int(ot->srna, "value_int", 0, INT_MIN, INT_MAX, "Value", "", INT_MIN, INT_MAX);
+  RNA_def_int_array(ot->srna,
+                    "value_int_vector_2d",
+                    2,
+                    nullptr,
+                    INT_MIN,
+                    INT_MAX,
+                    "Value",
+                    "",
+                    INT_MIN,
+                    INT_MAX);
   RNA_def_float_color(
       ot->srna, "value_color", 4, color_default, -FLT_MAX, FLT_MAX, "Value", "", 0.0f, 1.0f);
   RNA_def_boolean(ot->srna, "value_bool", false, "Value", "");

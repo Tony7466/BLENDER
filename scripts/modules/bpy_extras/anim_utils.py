@@ -571,4 +571,6 @@ class KeyframesCo:
             keyframe_points.foreach_set("co", co_buffer)
             keyframe_points.foreach_set("interpolation", ipo_buffer)
 
+            # This also deduplicates keys where baked keys were inserted on the
+            # same frame as existing ones.
             fcurve.update()

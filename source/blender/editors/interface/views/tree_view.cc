@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -24,10 +26,6 @@ namespace blender::ui {
 
 /* ---------------------------------------------------------------------- */
 
-/**
- * Add a tree-item to the container. This is the only place where items should be added, it
- * handles important invariants!
- */
 AbstractTreeViewItem &TreeViewItemContainer::add_tree_item(
     std::unique_ptr<AbstractTreeViewItem> item)
 {
@@ -54,7 +52,15 @@ AbstractTreeViewItem &TreeViewItemContainer::add_tree_item(
 void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptions options) const
 {
   for (const auto &child : children_) {
-    iter_fn(*child);
+    bool skip = false;
+    if (bool(options & IterOptions::SkipFiltered) && !child->is_filtered_visible_cached()) {
+      skip = true;
+    }
+
+    if (!skip) {
+      iter_fn(*child);
+    }
+
     if (bool(options & IterOptions::SkipCollapsed) && child->is_collapsed()) {
       continue;
     }
@@ -68,6 +74,11 @@ void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptio
 void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) const
 {
   foreach_item_recursive(iter_fn, options);
+}
+
+void AbstractTreeView::set_min_rows(int min_rows)
+{
+  min_rows_ = min_rows;
 }
 
 void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
@@ -116,9 +127,7 @@ void AbstractTreeView::change_state_delayed()
 
 /* ---------------------------------------------------------------------- */
 
-void AbstractTreeViewItem::tree_row_click_fn(struct bContext * /*C*/,
-                                             void *but_arg1,
-                                             void * /*arg2*/)
+void AbstractTreeViewItem::tree_row_click_fn(bContext * /*C*/, void *but_arg1, void * /*arg2*/)
 {
   uiButViewItem *item_but = (uiButViewItem *)but_arg1;
   AbstractTreeViewItem &tree_item = reinterpret_cast<AbstractTreeViewItem &>(*item_but->view_item);
@@ -158,7 +167,7 @@ void AbstractTreeViewItem::add_indent(uiLayout &row) const
   UI_block_layout_set_current(block, &row);
 }
 
-void AbstractTreeViewItem::collapse_chevron_click_fn(struct bContext *C,
+void AbstractTreeViewItem::collapse_chevron_click_fn(bContext *C,
                                                      void * /*but_arg1*/,
                                                      void * /*arg2*/)
 {
@@ -371,7 +380,8 @@ bool AbstractTreeViewItem::matches(const AbstractViewItem &other) const
 
   for (AbstractTreeViewItem *parent = parent_, *other_parent = other_tree_item.parent_;
        parent && other_parent;
-       parent = parent->parent_, other_parent = other_parent->parent_) {
+       parent = parent->parent_, other_parent = other_parent->parent_)
+  {
     if (!parent->matches_single(*other_parent)) {
       return false;
     }
@@ -426,7 +436,8 @@ void TreeViewLayoutBuilder::build_from_tree(const AbstractTreeView &tree_view)
   uiLayoutColumn(box, false);
 
   tree_view.foreach_item([this](AbstractTreeViewItem &item) { build_row(item); },
-                         AbstractTreeView::IterOptions::SkipCollapsed);
+                         AbstractTreeView::IterOptions::SkipCollapsed |
+                             AbstractTreeView::IterOptions::SkipFiltered);
 
   UI_block_layout_set_current(&block(), &parent_layout);
 }
@@ -436,7 +447,8 @@ void TreeViewLayoutBuilder::polish_layout(const uiBlock &block)
   LISTBASE_FOREACH_BACKWARD (uiBut *, but, &block.buttons) {
     if (AbstractTreeViewItem::is_collapse_chevron_but(but) && but->next &&
         /* Embossed buttons with padding-less text padding look weird, so don't touch them. */
-        ELEM(but->next->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS)) {
+        ELEM(but->next->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS))
+    {
       UI_but_drawflag_enable(static_cast<uiBut *>(but->next), UI_BUT_NO_TEXT_PADDING);
     }
 
@@ -454,6 +466,10 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   eUIEmbossType previous_emboss = UI_block_emboss_get(&block_);
 
   uiLayout *overlap = uiLayoutOverlap(&prev_layout);
+
+  if (!item.is_interactive_) {
+    uiLayoutSetActive(overlap, false);
+  }
 
   uiLayoutRow(overlap, false);
   /* Every item gets one! Other buttons can be overlapped on top. */
@@ -490,6 +506,23 @@ uiLayout &TreeViewLayoutBuilder::current_layout() const
 
 /* ---------------------------------------------------------------------- */
 
+void TreeViewBuilder::ensure_min_rows_items(AbstractTreeView &tree_view)
+{
+  int tot_visible_items = 0;
+  tree_view.foreach_item(
+      [&tot_visible_items](AbstractTreeViewItem & /*item*/) { tot_visible_items++; },
+      AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
+
+  if (tot_visible_items >= tree_view.min_rows_) {
+    return;
+  }
+
+  for (int i = 0; i < (tree_view.min_rows_ - tot_visible_items); i++) {
+    BasicTreeViewItem &new_item = tree_view.add_tree_item<BasicTreeViewItem>("");
+    new_item.disable_interaction();
+  }
+}
+
 void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view, uiLayout &layout)
 {
   uiBlock &block = *uiLayoutGetBlock(&layout);
@@ -497,6 +530,8 @@ void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view, uiLayout &lay
   tree_view.build_tree();
   tree_view.update_from_old(block);
   tree_view.change_state_delayed();
+
+  ensure_min_rows_items(tree_view);
 
   /* Ensure the given layout is actually active. */
   UI_block_layout_set_current(&block, &layout);

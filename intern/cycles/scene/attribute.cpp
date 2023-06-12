@@ -278,9 +278,11 @@ bool Attribute::same_storage(TypeDesc a, TypeDesc b)
     return true;
 
   if (a == TypeDesc::TypeColor || a == TypeDesc::TypePoint || a == TypeDesc::TypeVector ||
-      a == TypeDesc::TypeNormal) {
+      a == TypeDesc::TypeNormal)
+  {
     if (b == TypeDesc::TypeColor || b == TypeDesc::TypePoint || b == TypeDesc::TypeVector ||
-        b == TypeDesc::TypeNormal) {
+        b == TypeDesc::TypeNormal)
+    {
       return true;
     }
   }
@@ -460,9 +462,7 @@ AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim)
 {
 }
 
-AttributeSet::~AttributeSet()
-{
-}
+AttributeSet::~AttributeSet() {}
 
 Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element)
 {
@@ -842,13 +842,9 @@ AttributeRequest::AttributeRequest(AttributeStandard std_)
 
 /* AttributeRequestSet */
 
-AttributeRequestSet::AttributeRequestSet()
-{
-}
+AttributeRequestSet::AttributeRequestSet() {}
 
-AttributeRequestSet::~AttributeRequestSet()
-{
-}
+AttributeRequestSet::~AttributeRequestSet() {}
 
 bool AttributeRequestSet::modified(const AttributeRequestSet &other)
 {

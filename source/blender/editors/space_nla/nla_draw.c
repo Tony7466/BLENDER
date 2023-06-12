@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnla
@@ -433,8 +434,9 @@ static void nla_draw_strip(SpaceNla *snla,
                            float yminc,
                            float ymaxc)
 {
-  const bool non_solo = ((adt && (adt->flag & ADT_NLA_SOLO_TRACK)) &&
-                         (nlt->flag & NLATRACK_SOLO) == 0);
+  const bool solo = !((adt && (adt->flag & ADT_NLA_SOLO_TRACK)) &&
+                      (nlt->flag & NLATRACK_SOLO) == 0);
+
   const bool muted = ((nlt->flag & NLATRACK_MUTED) || (strip->flag & NLASTRIP_FLAG_MUTED));
   float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   uint shdr_pos;
@@ -448,7 +450,7 @@ static void nla_draw_strip(SpaceNla *snla,
   /* draw extrapolation info first (as backdrop)
    * - but this should only be drawn if track has some contribution
    */
-  if ((strip->extendmode != NLASTRIP_EXTEND_NOTHING) && (non_solo == 0)) {
+  if ((strip->extendmode != NLASTRIP_EXTEND_NOTHING) && solo) {
     /* enable transparency... */
     GPU_blend(GPU_BLEND_ALPHA);
 
@@ -486,7 +488,9 @@ static void nla_draw_strip(SpaceNla *snla,
   }
 
   /* draw 'inside' of strip itself */
-  if (non_solo == 0 && is_nlastrip_enabled(adt, nlt, strip)) {
+  if (solo && is_nlastrip_enabled(adt, nlt, strip) &&
+      !(strip->flag & NLASTRIP_FLAG_INVALID_LOCATION))
+  {
     immUnbindProgram();
 
     /* strip is in normal track */
@@ -533,7 +537,11 @@ static void nla_draw_strip(SpaceNla *snla,
   /* draw strip outline
    * - color used here is to indicate active vs non-active
    */
-  if (strip->flag & (NLASTRIP_FLAG_ACTIVE | NLASTRIP_FLAG_SELECT)) {
+  if (strip->flag & NLASTRIP_FLAG_INVALID_LOCATION) {
+    color[0] = 1.0f;
+    color[1] = color[2] = 0.15f;
+  }
+  else if (strip->flag & NLASTRIP_FLAG_ACTIVE) {
     /* strip should appear 'sunken', so draw a light border around it */
     color[0] = color[1] = color[2] = 1.0f; /* FIXME: hardcoded temp-hack colors */
   }
@@ -629,8 +637,9 @@ static void nla_draw_strip_text(AnimData *adt,
                                 float yminc,
                                 float ymaxc)
 {
-  const bool non_solo = ((adt && (adt->flag & ADT_NLA_SOLO_TRACK)) &&
-                         (nlt->flag & NLATRACK_SOLO) == 0);
+  const bool solo = !((adt && (adt->flag & ADT_NLA_SOLO_TRACK)) &&
+                      (nlt->flag & NLATRACK_SOLO) == 0);
+
   char str[256];
   size_t str_len;
   uchar col[4];
@@ -640,7 +649,7 @@ static void nla_draw_strip_text(AnimData *adt,
     str_len = BLI_snprintf_rlen(str, sizeof(str), "Temp-Meta");
   }
   else {
-    str_len = BLI_strncpy_rlen(str, strip->name, sizeof(str));
+    str_len = STRNCPY_RLEN(str, strip->name);
   }
 
   /* set text color - if colors (see above) are light, draw black text, otherwise draw white */
@@ -650,12 +659,12 @@ static void nla_draw_strip_text(AnimData *adt,
   else {
     col[0] = col[1] = col[2] = 255;
   }
+  // Default strip to 100% opacity.
+  col[3] = 255;
 
-  /* text opacity depends on whether if there's a solo'd track, this isn't it */
-  if (non_solo == 0) {
-    col[3] = 255;
-  }
-  else {
+  /* Reduce text opacity if a track is soloed,
+   * and if target track isn't the soloed track. */
+  if (!solo) {
     col[3] = 128;
   }
 
@@ -693,11 +702,11 @@ static void nla_draw_strip_frames_text(
    *   while also preserving some accuracy, since we do use floats
    */
   /* start frame */
-  numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%.1f", strip->start);
+  numstr_len = SNPRINTF_RLEN(numstr, "%.1f", strip->start);
   UI_view2d_text_cache_add(v2d, strip->start - 1.0f, ymaxc + ytol, numstr, numstr_len, col);
 
   /* end frame */
-  numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%.1f", strip->end);
+  numstr_len = SNPRINTF_RLEN(numstr, "%.1f", strip->end);
   UI_view2d_text_cache_add(v2d, strip->end, ymaxc + ytol, numstr, numstr_len, col);
 }
 
@@ -754,14 +763,16 @@ static ListBase get_visible_nla_strips(NlaTrack *nlt, View2D *v2d)
     NlaStrip *first_strip = nlt->strips.first;
     NlaStrip *last_strip = nlt->strips.last;
     if (first_strip && v2d->cur.xmax < first_strip->start &&
-        first_strip->extendmode == NLASTRIP_EXTEND_HOLD) {
+        first_strip->extendmode == NLASTRIP_EXTEND_HOLD)
+    {
       /* The view is to the left of all strips and the first strip has an
        * extendmode that should be drawn.
        */
       first = last = first_strip;
     }
     else if (last_strip && v2d->cur.xmin > last_strip->end &&
-             last_strip->extendmode != NLASTRIP_EXTEND_NOTHING) {
+             last_strip->extendmode != NLASTRIP_EXTEND_NOTHING)
+    {
       /* The view is to the right of all strips and the last strip has an
        * extendmode that should be drawn.
        */

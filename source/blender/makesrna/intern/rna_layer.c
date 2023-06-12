@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -272,7 +274,7 @@ static void rna_ObjectBase_hide_viewport_update(bContext *C, PointerRNA *UNUSED(
 static void rna_LayerCollection_name_get(struct PointerRNA *ptr, char *value)
 {
   ID *id = (ID *)((LayerCollection *)ptr->data)->collection;
-  BLI_strncpy(value, id->name + 2, sizeof(id->name) - 2);
+  strcpy(value, id->name + 2);
 }
 
 int rna_LayerCollection_name_length(PointerRNA *ptr)

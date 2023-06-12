@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -7,11 +8,11 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_sys_types.h"
 
 struct Mesh;
-struct MeshElemMap;
-struct MEdge;
 struct Subdiv;
 
 struct SubdivToMeshSettings {
@@ -35,8 +36,8 @@ Mesh *BKE_subdiv_to_mesh(Subdiv *subdiv,
  * false, this will perform a B-Spline interpolation using the edge neighbors, otherwise a linear
  * interpolation will be done base on the edge vertices. */
 void BKE_subdiv_mesh_interpolate_position_on_edge(const float (*coarse_positions)[3],
-                                                  const MEdge *coarse_edges,
-                                                  const MeshElemMap *vert_to_edge_map,
+                                                  const blender::int2 *coarse_edges,
+                                                  blender::GroupedSpan<int> vert_to_edge_map,
                                                   int coarse_edge_index,
                                                   bool is_simple,
                                                   float u,

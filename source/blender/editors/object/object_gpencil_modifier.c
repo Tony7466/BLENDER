@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -78,7 +79,7 @@ GpencilModifierData *ED_object_gpencil_modifier_add(
   BLI_addtail(&ob->greasepencil_modifiers, new_md);
 
   if (name) {
-    BLI_strncpy_utf8(new_md->name, name, sizeof(new_md->name));
+    STRNCPY_UTF8(new_md->name, name);
   }
 
   /* make sure modifier data has unique name */
@@ -1024,6 +1025,9 @@ static int time_segment_remove_exec(bContext *C, wmOperator *op)
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Time);
 
+  if (gpmd == NULL) {
+    return OPERATOR_CANCELLED;
+  }
   if (gpmd->segment_active_index < 0 || gpmd->segment_active_index >= gpmd->segments_len) {
     return OPERATOR_CANCELLED;
   }
@@ -1100,6 +1104,9 @@ static int time_segment_move_exec(bContext *C, wmOperator *op)
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Time);
 
+  if (gpmd == NULL) {
+    return OPERATOR_CANCELLED;
+  }
   if (gpmd->segments_len < 2) {
     return OPERATOR_CANCELLED;
   }

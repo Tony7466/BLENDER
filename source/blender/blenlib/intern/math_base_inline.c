@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -362,9 +363,6 @@ MINLINE int divide_floor_i(int a, int b)
   return r ? d - ((a < 0) ^ (b < 0)) : d;
 }
 
-/**
- * Integer division that returns the ceiling, instead of flooring like normal C division.
- */
 MINLINE uint divide_ceil_u(uint a, uint b)
 {
   return (a + b - 1) / b;
@@ -375,9 +373,6 @@ MINLINE uint64_t divide_ceil_ul(uint64_t a, uint64_t b)
   return (a + b - 1) / b;
 }
 
-/**
- * Returns \a a if it is a multiple of \a b or the next multiple or \a b after \b a .
- */
 MINLINE uint ceil_to_multiple_u(uint a, uint b)
 {
   return divide_ceil_u(a, b) * b;
@@ -391,6 +386,16 @@ MINLINE uint64_t ceil_to_multiple_ul(uint64_t a, uint64_t b)
 MINLINE int mod_i(int i, int n)
 {
   return (i % n + n) % n;
+}
+
+MINLINE float mod_f_positive(const float f, const float n)
+{
+  const float modulo = fmodf(f, n);
+  if (modulo < 0) {
+    /* fmodf returns a value in the interval (-n, n). */
+    return modulo + n;
+  }
+  return modulo;
 }
 
 MINLINE float fractf(float a)
@@ -549,6 +554,15 @@ MINLINE unsigned long long min_ulul(unsigned long long a, unsigned long long b)
 MINLINE unsigned long long max_ulul(unsigned long long a, unsigned long long b)
 {
   return (b < a) ? a : b;
+}
+
+MINLINE double min_ddd(double a, double b, double c)
+{
+  return min_dd(min_dd(a, b), c);
+}
+MINLINE double max_ddd(double a, double b, double c)
+{
+  return max_dd(max_dd(a, b), c);
 }
 
 MINLINE float min_fff(float a, float b, float c)
