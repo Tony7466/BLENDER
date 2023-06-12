@@ -12,11 +12,11 @@
 
 namespace blender::ed::outliner {
 
-class TreeElementIDTex final : public TreeElementID {
-  Tex &tex_;
+class TreeElementIDTexture final : public TreeElementID {
+  Tex &texture_;
 
  public:
-  TreeElementIDTex(TreeElement &legacy_te, Tex &tex);
+  TreeElementIDTexture(TreeElement &legacy_te, Tex &texture);
 
   void expand(SpaceOutliner &) const override;
   bool isExpandValid() const override;
