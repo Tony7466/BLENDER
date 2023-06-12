@@ -266,6 +266,11 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
         return params.extract_input<Field<int>>("Attribute_004");
       }
       break;
+    case CD_PROP_QUATERNION:
+      if (params.output_is_required("Attribute_005")) {
+        return params.extract_input<Field<math::Quaternion>>("Attribute_005");
+      }
+      break;
     default:
       BLI_assert_unreachable();
   }
@@ -293,6 +298,10 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
     }
     case CD_PROP_INT32: {
       params.set_output("Attribute_004", Field<int>(field));
+      break;
+    }
+    case CD_PROP_QUATERNION: {
+      params.set_output("Attribute_005", Field<math::Quaternion>(field));
       break;
     }
     default:
