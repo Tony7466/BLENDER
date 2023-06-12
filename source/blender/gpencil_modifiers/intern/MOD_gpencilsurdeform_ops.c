@@ -1451,11 +1451,62 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
     freeData_a(smd_orig);
   }
 
-  /*End: pass onto the next stroke*/
+  /*End: pass onto the next stroke
   if (stroke_idx < smd_orig->layers->frames->strokes_num - 1) {
-    (smd_orig->layers->frames->strokes)++; /* increase smd->strokes pointer by 1 */
-  }
+    (smd_orig->layers->frames->strokes)++; // increase smd->strokes pointer by 1 
+  } */
   return data.success == 1;
+}
+
+static bool makeTreeData(BVHTreeFromMesh *treeData,
+                         Mesh *target,
+                         SurDeformGpencilModifierData *smd_eval,
+                         SurDeformGpencilModifierData *smd_orig,
+                         SDefAdjacencyArray *vert_edges,
+                         SDefAdjacency * adj_array,
+                         SDefEdgePolys * edge_polys,
+                         MPoly *mpoly,
+                         MEdge *medge,
+                         MLoop *mloop,
+                         uint target_polys_num,
+                         uint target_verts_num,
+                         uint tedges_num)
+{
+  int adj_result;
+
+  /*Empty edge polys array*/
+  for (int ep = 0; ep < tedges_num; ep++) {
+
+    edge_polys[ep].polys[0] = 0;
+    edge_polys[ep].polys[1] = 0;
+    edge_polys[ep].num = 0;
+  }
+
+  /*Empty vert edges array*/
+  for (int ve = 0; ve < target_verts_num; ve++) {
+    vert_edges[ve].first = NULL;
+    vert_edges[ve].num = 0;
+  }
+  BKE_bvhtree_from_mesh_get(treeData, target, BVHTREE_FROM_LOOPTRI, 2);
+  if (treeData->tree == NULL) {
+    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
+    //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
+    return false;
+  }
+
+  // printf("mPoly: %p, mpoly->totloop: %d", mpoly, mpoly->totloop);
+
+  adj_result = buildAdjacencyMap(
+      mpoly, medge, mloop, target_polys_num, tedges_num, vert_edges, adj_array, edge_polys);
+
+  if (adj_result == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
+    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
+                                   "Target has edges with more than two polygons");
+    //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
+    //free_bvhtree_from_mesh(&treeData);
+    return false;
+  }
+  return true;
 }
 
 
@@ -1472,6 +1523,10 @@ static bool surfacedeformBind(Object *ob,
   bGPdata *gpd = ob_orig->data;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
+  Object *ob_target_orig = smd_orig->target;
+  Object *ob_target_eval = DEG_get_evaluated_object(depsgraph, ob_target_orig);
+  Mesh *mesh_target;
+  
 
   /*If unbind mode: unbind and exit */
   if (smd_orig->bind_modes & GP_MOD_SDEF_UNBIND_MODE) 
@@ -1515,7 +1570,6 @@ static bool surfacedeformBind(Object *ob,
 
   uint tedges_num = target->totedge;
   // uint current_stroke_idx = smd_orig->current_stroke_index;
-  int adj_result;
   SDefAdjacencyArray *vert_edges;
   SDefAdjacency *adj_array;
   SDefEdgePolys *edge_polys;
@@ -1546,29 +1600,7 @@ static bool surfacedeformBind(Object *ob,
 
   /*THERE WAS ALLOCATION OF STROKE VETS ARRAY HERE.*/
 
-  BKE_bvhtree_from_mesh_get(&treeData, target, BVHTREE_FROM_LOOPTRI, 2);
-  if (treeData.tree == NULL) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    freeAdjacencyMap(vert_edges, adj_array, edge_polys);
-    MEM_freeN(smd_orig->layers);
-    smd_orig->layers = NULL;
-    return false;
-  }
-
-  // printf("mPoly: %p, mpoly->totloop: %d", mpoly, mpoly->totloop);
-
-  adj_result = buildAdjacencyMap(
-      mpoly, medge, mloop, target_polys_num, tedges_num, vert_edges, adj_array, edge_polys);
-
-  if (adj_result == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
-                                   "Target has edges with more than two polygons");
-    freeAdjacencyMap(vert_edges, adj_array, edge_polys);
-    free_bvhtree_from_mesh(&treeData);
-    MEM_freeN(smd_orig->layers);
-    smd_orig->layers = NULL;
-    return false;
-  }
+  
 
   smd_orig->target_verts_num = target_verts_num;
   smd_orig->target_polys_num = target_polys_num;
@@ -1603,18 +1635,13 @@ static bool surfacedeformBind(Object *ob,
       LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
 
         rollback_lframes_a(smd_orig, smd_orig->layers);
-        /*If a frame has no strokes, skip it.*/
-        if (BLI_listbase_count(&(curr_gpf->strokes)) < 1)
-        {
-          continue;
-        }
+        
 
         /* If a frame is already bound, skip it.*/
         int f = 0;
         while (f != smd_orig->layers->num_of_frames &&
                 smd_orig->layers->frames[f].frame_number != curr_gpf->framenum)
-          ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
-                // fricking smart I can't
+          ++f;  
         if (f != smd_orig->layers->num_of_frames) {
           continue;
         }
@@ -1623,8 +1650,27 @@ static bool surfacedeformBind(Object *ob,
         smd_eval->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
         BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
         BKE_scene_graph_update_for_newframe(depsgraph);
+        mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
+        if (!makeTreeData(&treeData,
+                          mesh_target,
+                          smd_eval,
+                          smd_orig,
+                          vert_edges,
+                          adj_array,
+                          edge_polys,
+                          mpoly,
+                          medge,
+                          mloop,
+                          target_polys_num,
+                          target_verts_num,
+                          tedges_num))
+          continue;
         smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
         smd_eval->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
+        if (BLI_listbase_count(&smd_orig->layers->frames->blender_frame->strokes) == 0) {
+          smd_orig->layers->frames->strokes_num = 0;
+          smd_orig->layers->frames->strokes = NULL;
+        }
         uint s = 0;
         LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes) {
           if (!surfacedeformBind_stroke(s,
@@ -1633,7 +1679,7 @@ static bool surfacedeformBind(Object *ob,
                                         curr_gps,
                                         curr_gps->totpoints,
                                         target_verts_num,
-                                        target,
+                                        mesh_target,
                                         positions,
                                         mpoly,
                                         medge,
@@ -1641,15 +1687,31 @@ static bool surfacedeformBind(Object *ob,
                                         treeData,
                                         vert_edges,
                                         edge_polys)) {
-            freeAdjacencyMap(vert_edges, adj_array, edge_polys);
             return false;
           }
           s++;
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
+        free_bvhtree_from_mesh(&treeData);
+        //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
       }
+
     }
     else {
+      if (!makeTreeData(&treeData,
+                        target,
+                        smd_eval,
+                        smd_orig,
+                        vert_edges,
+                        adj_array,
+                        edge_polys,
+                        mpoly,
+                        medge,
+                        mloop,
+                        target_polys_num,
+                        target_verts_num,
+                        tedges_num))
+        continue;
       /* If a frame is already bound, skip it.*/
       rollback_lframes_a(smd_orig, smd_orig->layers);
       int f = 0;
@@ -1665,6 +1727,10 @@ static bool surfacedeformBind(Object *ob,
             smd_orig->layers,
             BKE_gpencil_frame_retime_get(depsgraph, scene, ob, smd_orig->layers->blender_layer));
         uint s = 0;
+        if (BLI_listbase_count(&smd_orig->layers->frames->blender_frame->strokes) == 0) {
+          smd_orig->layers->frames->strokes_num = 0;
+          smd_orig->layers->frames->strokes = NULL;
+        }
         LISTBASE_FOREACH (
             bGPDstroke *, curr_gps, &smd_orig->layers->frames->blender_frame->strokes) {
           if (!surfacedeformBind_stroke(s,
@@ -1681,21 +1747,23 @@ static bool surfacedeformBind(Object *ob,
                                         treeData,
                                         vert_edges,
                                         edge_polys)) {
-            freeAdjacencyMap(vert_edges, adj_array, edge_polys);
             return false;
           }
           s++;
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
       }
+      //free_bvhtree_from_mesh(&treeData);
+      //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
     }
     rollback_lframes_a(smd_orig, smd_orig->layers);
     
   }
   
   BKE_scene_frame_set(scene, current_frame);
-  freeAdjacencyMap(vert_edges, adj_array, edge_polys);
   free_bvhtree_from_mesh(&treeData);
+  freeAdjacencyMap(vert_edges, adj_array, edge_polys);
+  
   rollback_layers_a(smd_orig);
   return true;
 }
@@ -1794,8 +1862,8 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
 
   PointerRNA ob_ptr;
-  RNA_pointer_create(&ob->id, &RNA_GpencilModifier, smd_orig, &ob_ptr);
-  const bool current_frame_only = (RNA_enum_get(&ob_ptr, "curr_frame_or_all_frames") == (1 << 0));
+ // RNA_pointer_create(&ob->id, &RNA_GpencilModifier, smd_orig, &ob_ptr);
+  const bool current_frame_only = (RNA_enum_get(op->ptr, "curr_frame_or_all_frames") == (1 << 0));
  
   if (smd_orig == NULL) {
     return OPERATOR_CANCELLED;
@@ -1859,7 +1927,7 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
   }
   uint target_verts_num = BKE_mesh_wrapper_vert_len(target);
   uint target_polys_num = BKE_mesh_wrapper_poly_len(target);
-  //Mesh *target_orig = 
+  //Mesh *target = <
 
   if (!surfacedeformBind(ob,
                          depsgraph,

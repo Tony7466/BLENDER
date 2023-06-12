@@ -405,7 +405,7 @@ static void deformVert(void *__restrict userdata,
   const SDefGPBind *sdbind = data->bind_verts[index].binds;
   const int sdbind_num = data->bind_verts[index].binds_num;
   const unsigned int vertex_idx = data->bind_verts[index].vertex_idx;
-  float *const vertexCos = &(data->gps->points[vertex_idx].x);
+  float *vertexCos = &(data->gps->points[vertex_idx].x);
   float norm[3], temp[3], offset[3];
 
   /* Retrieve the value of the weight vertex group if specified. */
@@ -418,7 +418,6 @@ static void deformVert(void *__restrict userdata,
       weight = 1.0f - weight;
     }
   }*/
-
   /* Check if this vertex will be deformed. If it is not deformed we return and avoid
    * unnecessary calculations. */
   if (weight == 0.0f) {
@@ -432,6 +431,7 @@ static void deformVert(void *__restrict userdata,
   for (int j = 0; j < sdbind_num; j++) {
     max_verts = MAX2(max_verts, sdbind[j].verts_num);
   }
+
 
   const bool big_buffer = max_verts > 256;
   float(*coords_buffer)[3];
@@ -491,7 +491,7 @@ static void deformVert(void *__restrict userdata,
   /* Add the offset to start coord multiplied by the strength and weight values. */
   madd_v3_v3fl(vertexCos, offset, data->strength * weight);
 
-  if (UNLIKELY(big_buffer)) {
+      if (UNLIKELY(big_buffer)) {
     MEM_freeN(coords_buffer);
   }
 }
@@ -547,6 +547,11 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   {
     freeData;
     smd_orig->flags = 0;
+    return;
+  }
+
+  if (smd->layers->frames == NULL)
+  {
     return;
   }
 
@@ -805,8 +810,9 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   };
   
   if (data.targetCos != NULL) {
+    float tmp_mat[4][4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     BKE_mesh_wrapper_vert_coords_copy_with_mat4(
-        target, data.targetCos, target_verts_num, smd->mat);
+        target, data.targetCos, target_verts_num, tmp_mat);
 
     TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
@@ -886,7 +892,8 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA op_ptr;
+  PointerRNA op_ptr_all;
+  PointerRNA op_ptr_curr;
   PointerRNA ob_ptr;
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, &ob_ptr);
 
@@ -931,24 +938,24 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_bind",
                IFACE_("Bind All"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT, 0, &op_ptr);
-  RNA_enum_set(&op_ptr, "curr_frame_or_all_frames", 0);
+              WM_OP_INVOKE_DEFAULT, 0, &op_ptr_all);
+  RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_bind",
               IFACE_("Bind This Frame"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT,  0, &op_ptr);
-  RNA_enum_set(&op_ptr, "curr_frame_or_all_frames", 1);
+              WM_OP_INVOKE_DEFAULT,  0, &op_ptr_curr);
+  RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
   /*UNBIND*/
   row = uiLayoutRow(col, true);
   uiLayoutSetActive(col, !RNA_pointer_is_null(&target_ptr));
   uiItemFullO(row, "GPENCIL_OT_gpencilsurdeform_unbind", 
               IFACE_("Unbind All"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT, 0, &op_ptr);
-  RNA_enum_set(&op_ptr, "curr_frame_or_all_frames", 0);
+              WM_OP_INVOKE_DEFAULT, 0, &op_ptr_all);
+  RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_unbind",
               IFACE_("Unbind This Frame"), ICON_NONE, NULL,
-              WM_OP_INVOKE_DEFAULT, 0,  &op_ptr);
-  RNA_enum_set(&op_ptr, "curr_frame_or_all_frames", 1);
+              WM_OP_INVOKE_DEFAULT, 0,  &op_ptr_curr);
+  RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
   row = uiLayoutRow(col, true);
   char label[50];
