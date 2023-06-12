@@ -2669,7 +2669,7 @@ static void prepare_mesh_for_viewport_render(Main *bmain,
   }
 }
 
-void BKE_scene_update_sound(Depsgraph *depsgraph, Main *bmain)
+void BKE_scene_update_sound(Depsgraph *depsgraph, Main *bmain, bool no_muting)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   const int recalc = scene->id.recalc;
@@ -2683,8 +2683,8 @@ void BKE_scene_update_sound(Depsgraph *depsgraph, Main *bmain)
   if (recalc & ID_RECALC_AUDIO_VOLUME) {
     BKE_sound_set_scene_volume(scene, scene->audio.volume);
   }
-  if (recalc & ID_RECALC_AUDIO_MUTE) {
-    const bool is_mute = (scene->audio.flag & AUDIO_MUTE);
+  if (recalc & ID_RECALC_AUDIO_MUTE || no_muting) {
+    const bool is_mute = !no_muting && (scene->audio.flag & AUDIO_MUTE);
     BKE_sound_mute_scene(scene, is_mute);
   }
   if (recalc & ID_RECALC_AUDIO_LISTENER) {
@@ -2733,7 +2733,7 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
      * by depsgraph or manual, no layer check here, gets correct flushed. */
     DEG_evaluate_on_refresh(depsgraph);
     /* Update sound system. */
-    BKE_scene_update_sound(depsgraph, bmain);
+    BKE_scene_update_sound(depsgraph, bmain, false);
     /* Notify python about depsgraph update. */
     if (run_callbacks) {
       BKE_callback_exec_id_depsgraph(
@@ -2818,7 +2818,7 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
       DEG_evaluate_on_refresh(depsgraph);
     }
     /* Update sound system animation. */
-    BKE_scene_update_sound(depsgraph, bmain);
+    BKE_scene_update_sound(depsgraph, bmain, false);
 
     /* Notify editors and python about recalc. */
     if (pass == 0) {

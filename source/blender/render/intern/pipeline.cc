@@ -1098,7 +1098,8 @@ static void do_render_compositor_scenes(Render *re)
       if (node->id && node->id != (ID *)re->scene) {
         Scene *scene = (Scene *)node->id;
         if (!BLI_gset_haskey(scenes_rendered, scene) &&
-            render_scene_has_layers_to_render(scene, nullptr)) {
+            render_scene_has_layers_to_render(scene, nullptr))
+        {
           do_render_compositor_scene(re, scene, cfra);
           BLI_gset_add(scenes_rendered, scene);
           node->typeinfo->updatefunc(restore_scene->nodetree, node);
@@ -1563,7 +1564,8 @@ bool RE_is_rendering_allowed(Scene *scene,
 
   if (scene->r.mode & R_BORDER) {
     if (scene->r.border.xmax <= scene->r.border.xmin ||
-        scene->r.border.ymax <= scene->r.border.ymin) {
+        scene->r.border.ymax <= scene->r.border.ymin)
+    {
       BKE_report(reports, RPT_ERROR, "No border area selected");
       return false;
     }
@@ -1719,7 +1721,7 @@ static void render_update_depsgraph(Render *re)
 {
   Scene *scene = re->scene;
   DEG_evaluate_on_framechange(re->pipeline_depsgraph, BKE_scene_frame_get(scene));
-  BKE_scene_update_sound(re->pipeline_depsgraph, re->main);
+  BKE_scene_update_sound(re->pipeline_depsgraph, re->main, true);
 }
 
 static void render_init_depsgraph(Render *re)

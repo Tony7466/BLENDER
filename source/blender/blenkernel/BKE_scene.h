@@ -195,7 +195,7 @@ int BKE_scene_orientation_get_index_from_flag(struct Scene *scene, int flag);
 
 /* **  Scene evaluation ** */
 
-void BKE_scene_update_sound(struct Depsgraph *depsgraph, struct Main *bmain);
+void BKE_scene_update_sound(struct Depsgraph *depsgraph, struct Main *bmain, bool no_muting);
 void BKE_scene_update_tag_audio_volume(struct Depsgraph *, struct Scene *scene);
 
 void BKE_scene_graph_update_tagged(struct Depsgraph *depsgraph, struct Main *bmain);
