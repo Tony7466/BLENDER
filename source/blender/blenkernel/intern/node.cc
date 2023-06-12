@@ -3701,6 +3701,10 @@ bNodeSocket *ntreeFindSocketInterface(bNodeTree *ntree,
 
 void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree)
 {
+  if (!U.experimental.use_node_panels) {
+    return;
+  }
+
   /* Store panel index for sorting. */
   blender::Map<const bNodePanel *, int> panel_index_map;
   int index = 0;

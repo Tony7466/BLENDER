@@ -974,6 +974,9 @@ class NODE_PT_socket_panels(Panel):
 
     @classmethod
     def poll(cls, context):
+        if not context.preferences.experimental.use_node_panels:
+            return False
+
         snode = context.space_data
         if snode is None:
             return False
