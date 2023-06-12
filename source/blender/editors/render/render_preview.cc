@@ -675,28 +675,56 @@ static bool ed_preview_draw_rect(ScrArea *area, int split, int first, rcti *rect
       newrect->ymax = max_ii(newrect->ymax, rect->ymin + rres.recty);
 
       if (rres.rectx && rres.recty) {
-        uchar *rect_byte = static_cast<uchar *>(
-            MEM_mallocN(rres.rectx * rres.recty * sizeof(int), "ed_preview_draw_rect"));
-        float fx = rect->xmin + offx;
-        float fy = rect->ymin;
 
-        /* material preview only needs monoscopy (view 0) */
-        RE_AcquiredResultGet32(re, &rres, (uint *)rect_byte, 0);
+        /* High dynamic range preview. */
+        if (U.gpu_flag & USER_GPU_FLAG_HDR_ENABLED) {
+          float *rect_float = static_cast<float *>(MEM_mallocN(
+              rres.rectx * rres.recty * sizeof(float) * 4, "ed_preview_draw_rect_float"));
+          float fx = rect->xmin + offx;
+          float fy = rect->ymin;
 
-        IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
-        immDrawPixelsTexTiled(&state,
-                              fx,
-                              fy,
-                              rres.rectx,
-                              rres.recty,
-                              GPU_RGBA8,
-                              false,
-                              rect_byte,
-                              1.0f,
-                              1.0f,
-                              nullptr);
+          /* material preview only needs monoscopy (view 0) */
+          RE_AcquiredResultGetFloat(re, &rres, rect_float, 0);
 
-        MEM_freeN(rect_byte);
+          IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
+          immDrawPixelsTexTiled(&state,
+                                fx,
+                                fy,
+                                rres.rectx,
+                                rres.recty,
+                                GPU_RGBA16F,
+                                false,
+                                rect_float,
+                                1.0f,
+                                1.0f,
+                                nullptr);
+
+          MEM_freeN(rect_float);
+        }
+        else {
+          uchar *rect_byte = static_cast<uchar *>(
+              MEM_mallocN(rres.rectx * rres.recty * sizeof(int), "ed_preview_draw_rect"));
+          float fx = rect->xmin + offx;
+          float fy = rect->ymin;
+
+          /* material preview only needs monoscopy (view 0) */
+          RE_AcquiredResultGet32(re, &rres, (uint *)rect_byte, 0);
+
+          IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
+          immDrawPixelsTexTiled(&state,
+                                fx,
+                                fy,
+                                rres.rectx,
+                                rres.recty,
+                                GPU_RGBA8,
+                                false,
+                                rect_byte,
+                                1.0f,
+                                1.0f,
+                                nullptr);
+
+          MEM_freeN(rect_byte);
+        }
 
         ok = true;
       }

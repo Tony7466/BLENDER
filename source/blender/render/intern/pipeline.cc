@@ -516,6 +516,17 @@ void RE_AcquiredResultGet32(Render *re, RenderResult *result, uint *rect, const 
                                 view_id);
 }
 
+void RE_AcquiredResultGetFloat(Render *re, RenderResult *result, float *rect, const int view_id)
+{
+  render_result_rect_get_pixels_float(result,
+                                      rect,
+                                      re->rectx,
+                                      re->recty,
+                                      &re->scene->view_settings,
+                                      &re->scene->display_settings,
+                                      view_id);
+}
+
 RenderStats *RE_GetStats(Render *re)
 {
   return &re->i;

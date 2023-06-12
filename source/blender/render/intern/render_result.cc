@@ -1046,6 +1046,32 @@ void render_result_rect_get_pixels(RenderResult *rr,
   }
 }
 
+void render_result_rect_get_pixels_float(RenderResult *rr,
+                                         float *rect,
+                                         int rectx,
+                                         int recty,
+                                         const ColorManagedViewSettings *view_settings,
+                                         const ColorManagedDisplaySettings *display_settings,
+                                         const int view_id)
+{
+  RenderView *rv = RE_RenderViewGetById(rr, view_id);
+
+  if (rv && rv->combined_buffer.data) {
+    IMB_display_buffer_transform_apply_float(rect,
+                                             rv->combined_buffer.data,
+                                             rr->rectx,
+                                             rr->recty,
+                                             4,
+                                             view_settings,
+                                             display_settings,
+                                             true);
+  }
+  else {
+    /* else fill with black */
+    memset(rect, 0, sizeof(int) * rectx * recty);
+  }
+}
+
 /*************************** multiview functions *****************************/
 
 bool RE_HasCombinedLayer(const RenderResult *result)

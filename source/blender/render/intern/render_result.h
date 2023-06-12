@@ -121,6 +121,14 @@ void render_result_rect_get_pixels(struct RenderResult *rr,
                                    const struct ColorManagedViewSettings *view_settings,
                                    const struct ColorManagedDisplaySettings *display_settings,
                                    int view_id);
+void render_result_rect_get_pixels_float(
+    struct RenderResult *rr,
+    float *rect,
+    int rectx,
+    int recty,
+    const struct ColorManagedViewSettings *view_settings,
+    const struct ColorManagedDisplaySettings *display_settings,
+    int view_id);
 
 /**
  * Create a new views #ListBase in rr without duplicating the memory pointers.

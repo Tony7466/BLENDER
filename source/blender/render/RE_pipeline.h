@@ -261,6 +261,10 @@ void RE_AcquiredResultGet32(struct Render *re,
                             struct RenderResult *result,
                             unsigned int *rect,
                             int view_id);
+void RE_AcquiredResultGetFloat(struct Render *re,
+                               struct RenderResult *result,
+                               float *rect,
+                               const int view_id);
 
 void RE_render_result_full_channel_name(char *fullname,
                                         const char *layname,

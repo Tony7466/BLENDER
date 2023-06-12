@@ -2784,6 +2784,31 @@ void IMB_display_buffer_transform_apply(uchar *display_buffer,
   MEM_freeN(buffer);
 }
 
+void IMB_display_buffer_transform_apply_float(float *float_display_buffer,
+                                              float *linear_buffer,
+                                              int width,
+                                              int height,
+                                              int channels,
+                                              const ColorManagedViewSettings *view_settings,
+                                              const ColorManagedDisplaySettings *display_settings,
+                                              bool predivide)
+{
+  float *buffer;
+  ColormanageProcessor *cm_processor = IMB_colormanagement_display_processor_new(view_settings,
+                                                                                 display_settings);
+
+  buffer = static_cast<float *>(MEM_mallocN(size_t(channels) * width * height * sizeof(float),
+                                            "display transform temp buffer"));
+  memcpy(buffer, linear_buffer, size_t(channels) * width * height * sizeof(float));
+
+  IMB_colormanagement_processor_apply(cm_processor, buffer, width, height, channels, predivide);
+
+  IMB_colormanagement_processor_free(cm_processor);
+
+  memcpy(float_display_buffer, buffer, size_t(channels) * width * height * sizeof(float));
+  MEM_freeN(buffer);
+}
+
 void IMB_display_buffer_release(void *cache_handle)
 {
   if (cache_handle) {
