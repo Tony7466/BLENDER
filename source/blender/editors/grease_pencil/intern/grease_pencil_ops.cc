@@ -181,8 +181,7 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra,
-      [amount_start, amount_end](int /*drawing_index*/, GreasePencilDrawing &drawing) {
+      scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
         blender::ed::curves::select_ends(drawing.geometry.wrap(), amount_start, amount_end);
       });
 
