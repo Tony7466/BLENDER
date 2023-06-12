@@ -197,7 +197,7 @@ static void GREASE_PENCIL_OT_select_ends(wmOperatorType *ot)
 {
   ot->name = "Select Ends";
   ot->idname = "GREASE_PENCIL_OT_select_ends";
-  ot->description = "Select end points of curves";
+  ot->description = "Select end points of strokes";
 
   ot->exec = select_ends_exec;
   ot->poll = editable_grease_pencil_poll;
