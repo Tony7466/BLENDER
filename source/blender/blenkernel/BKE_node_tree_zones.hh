@@ -38,6 +38,8 @@ struct TreeZone {
 class TreeZones {
  public:
   Vector<std::unique_ptr<TreeZone>> zones;
+  Vector<TreeZone *> root_zones;
+  Vector<const bNode *> nodes_outside_zones;
   /**
    * Zone index by node. Nodes that are in no zone, are not included. Nodes that are at the border
    * of a zone (e.g. Simulation Input) are mapped to the zone they create.

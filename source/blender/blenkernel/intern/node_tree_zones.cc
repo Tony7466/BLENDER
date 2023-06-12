@@ -111,7 +111,8 @@ static void update_zone_per_node(const Span<const bNode *> all_nodes,
                                  const Span<std::unique_ptr<TreeZone>> all_zones,
                                  const BitGroupVector<> &depend_on_input_flag_array,
                                  const Map<const bNode *, TreeZone *> &zone_by_inout_node,
-                                 Map<int, int> &r_zone_by_node_id)
+                                 Map<int, int> &r_zone_by_node_id,
+                                 Vector<const bNode *> &r_node_outside_zones)
 {
   for (const int node_i : all_nodes.index_range()) {
     const bNode &node = *all_nodes[node_i];
@@ -126,7 +127,10 @@ static void update_zone_per_node(const Span<const bNode *> all_nodes,
         parent_zone = zone;
       }
     });
-    if (parent_zone != nullptr) {
+    if (parent_zone == nullptr) {
+      r_node_outside_zones.append(&node);
+    }
+    else {
       r_zone_by_node_id.add(node.identifier, parent_zone->index);
     }
   }
@@ -216,11 +220,18 @@ static std::unique_ptr<TreeZones> discover_tree_zones(const bNodeTree &tree)
     update_zone_depths(*zone);
   }
 
+  for (std::unique_ptr<TreeZone> &zone : tree_zones->zones) {
+    if (zone->depth == 0) {
+      tree_zones->root_zones.append(zone.get());
+    }
+  }
+
   update_zone_per_node(all_nodes,
                        tree_zones->zones,
                        depend_on_input_flag_array,
                        zone_by_inout_node,
-                       tree_zones->zone_by_node_id);
+                       tree_zones->zone_by_node_id,
+                       tree_zones->nodes_outside_zones);
 
   for (const int node_i : all_nodes.index_range()) {
     const bNode *node = all_nodes[node_i];

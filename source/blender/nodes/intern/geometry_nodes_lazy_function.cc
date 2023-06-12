@@ -1427,6 +1427,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     zone_build_infos_.reinitialize(tree_zones_->zones.size());
 
+    this->prepare_node_multi_functions();
+
     for (const int zone_i : tree_zones_->zones.index_range()) {
       ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
       zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
@@ -1548,7 +1550,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
     }
 
-    this->prepare_node_multi_functions();
     this->build_group_input_node();
     if (btree_.group_output_node() == nullptr) {
       this->build_fallback_output_node();
