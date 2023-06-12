@@ -177,11 +177,11 @@ class Context : public realtime_compositor::Context {
     return viewer_output_texture_;
   }
 
-  InputTexture get_input_texture(int view_layer_id, const char *pass_name) override
+  GPUTexture *get_input_texture(int view_layer_id, const char *pass_name) override
   {
     Render *re = RE_GetSceneRender(&scene_);
     RenderResult *rr = nullptr;
-    InputTexture input_texture = {nullptr, 0};
+    GPUTexture *input_texture = nullptr;
 
     if (re) {
       rr = RE_AcquireResultRead(re);
@@ -196,13 +196,12 @@ class Context : public realtime_compositor::Context {
               &rl->passes, pass_name, offsetof(RenderPass, name));
 
           if (rpass && rpass->buffer.data) {
-            input_texture.num_channels = rpass->channels;
-            input_texture.texture = RE_pass_ensure_gpu_texture_cache(re, rpass);
+            input_texture = RE_pass_ensure_gpu_texture_cache(re, rpass);
 
-            if (input_texture.texture) {
+            if (input_texture) {
               /* Don't assume render keeps texture around, add our own reference. */
-              GPU_texture_ref(input_texture.texture);
-              render_texture_pool_.textures_.append(input_texture.texture);
+              GPU_texture_ref(input_texture);
+              render_texture_pool_.textures_.append(input_texture);
             }
           }
         }

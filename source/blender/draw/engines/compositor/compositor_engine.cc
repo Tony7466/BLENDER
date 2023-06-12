@@ -158,13 +158,13 @@ class Context : public realtime_compositor::Context {
     return DRW_viewport_texture_list_get()->color;
   }
 
-  InputTexture get_input_texture(int view_layer, const char *pass_name) override
+  GPUTexture *get_input_texture(int view_layer, const char *pass_name) override
   {
     if (view_layer == 0 && STREQ(pass_name, RE_PASSNAME_COMBINED)) {
-      return InputTexture{get_output_texture(), 4};
+      return get_output_texture();
     }
     else {
-      return InputTexture{nullptr, 0};
+      return nullptr;
     }
   }
 

@@ -830,13 +830,12 @@ class RenderLayerOperation : public NodeOperation {
     Result &alpha_result = get_result("Alpha");
 
     if (image_result.should_compute() || alpha_result.should_compute()) {
-      Context::InputTexture combined = context().get_input_texture(view_layer,
-                                                                   RE_PASSNAME_COMBINED);
+      GPUTexture *combined_texture = context().get_input_texture(view_layer, RE_PASSNAME_COMBINED);
       if (image_result.should_compute()) {
-        execute_pass(image_result, combined.texture, "compositor_read_pass_rgba");
+        execute_pass(image_result, combined_texture, "compositor_read_pass_color");
       }
       if (alpha_result.should_compute()) {
-        execute_pass(alpha_result, combined.texture, "compositor_read_pass_rgba");
+        execute_pass(alpha_result, combined_texture, "compositor_read_pass_alpha");
       }
     }
 
@@ -851,20 +850,15 @@ class RenderLayerOperation : public NodeOperation {
         continue;
       }
 
-      Context::InputTexture pass = context().get_input_texture(view_layer, output->identifier);
+      GPUTexture *pass_texture = context().get_input_texture(view_layer, output->identifier);
       if (output->type == SOCK_FLOAT) {
-        execute_pass(result, pass.texture, "compositor_read_pass_float");
+        execute_pass(result, pass_texture, "compositor_read_pass_float");
       }
       else if (output->type == SOCK_VECTOR) {
-        execute_pass(result, pass.texture, "compositor_read_pass_vector");
+        execute_pass(result, pass_texture, "compositor_read_pass_vector");
       }
       else if (output->type == SOCK_RGBA) {
-        if (pass.num_channels == 4) {
-          execute_pass(result, pass.texture, "compositor_read_pass_rgba");
-        }
-        else {
-          execute_pass(result, pass.texture, "compositor_read_pass_rgb");
-        }
+        execute_pass(result, pass_texture, "compositor_read_pass_color");
       }
       else {
         BLI_assert_unreachable();

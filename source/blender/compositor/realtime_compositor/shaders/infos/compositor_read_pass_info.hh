@@ -22,13 +22,7 @@ GPU_SHADER_CREATE_INFO(compositor_read_pass_vector)
     .define("READ_EXPRESSION(pass_color)", "pass_color")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(compositor_read_pass_rgb)
-    .additional_info("compositor_read_pass_shared")
-    .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
-    .define("READ_EXPRESSION(pass_color)", "vec4(pass_color.rgb, 1.0)")
-    .do_static_compilation(true);
-
-GPU_SHADER_CREATE_INFO(compositor_read_pass_rgba)
+GPU_SHADER_CREATE_INFO(compositor_read_pass_color)
     .additional_info("compositor_read_pass_shared")
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
     .define("READ_EXPRESSION(pass_color)", "pass_color")

@@ -680,7 +680,7 @@ void RE_FreeGPUTextureCaches(const bool only_unused)
               do_free = false;
             }
           }
-          else if (space.spacetype == SPACE_NODE) {
+          else if (space.spacetype == SPACE_IMAGE) {
             const SpaceImage &sima = reinterpret_cast<const SpaceImage &>(space);
             if (sima.image && sima.image->source == IMA_SRC_VIEWER) {
               do_free = false;

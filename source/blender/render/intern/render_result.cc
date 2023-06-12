@@ -1243,6 +1243,7 @@ template<class BufferType> static BufferType render_buffer_new(decltype(BufferTy
 
   buffer.data = data;
   buffer.sharing_info = blender::implicit_sharing::info_for_mem_free(data);
+  buffer.gpu_texture = nullptr;
 
   return buffer;
 }
