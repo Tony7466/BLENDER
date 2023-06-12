@@ -16,26 +16,26 @@ static void collision_sync(const ObjectRef &ob_ref,
                            const select::ID select_id,
                            Resources & /*res*/,
                            const State & /*state*/,
-                           ExtraInstancePasses &passes,
+                           ExtraInstancePass &pass,
                            ExtraInstanceData data)
 {
   Object *ob = ob_ref.object;
 
   switch (ob->rigidbody_object->shape) {
     case RB_SHAPE_BOX:
-      bounds_sync_base(ob_ref, select_id, passes, data, OB_BOUND_BOX, true);
+      bounds_sync_base(ob_ref, select_id, pass, data, OB_BOUND_BOX, true);
       break;
     case RB_SHAPE_SPHERE:
-      bounds_sync_base(ob_ref, select_id, passes, data, OB_BOUND_SPHERE, true);
+      bounds_sync_base(ob_ref, select_id, pass, data, OB_BOUND_SPHERE, true);
       break;
     case RB_SHAPE_CONE:
-      bounds_sync_base(ob_ref, select_id, passes, data, OB_BOUND_CONE, true);
+      bounds_sync_base(ob_ref, select_id, pass, data, OB_BOUND_CONE, true);
       break;
     case RB_SHAPE_CYLINDER:
-      bounds_sync_base(ob_ref, select_id, passes, data, OB_BOUND_CYLINDER, true);
+      bounds_sync_base(ob_ref, select_id, pass, data, OB_BOUND_CYLINDER, true);
       break;
     case RB_SHAPE_CAPSULE:
-      bounds_sync_base(ob_ref, select_id, passes, data, OB_BOUND_CAPSULE, true);
+      bounds_sync_base(ob_ref, select_id, pass, data, OB_BOUND_CAPSULE, true);
       break;
   }
 }

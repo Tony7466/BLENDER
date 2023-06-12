@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include "overlay_next_extra_passes.hh"
+#include "overlay_next_extra_pass.hh"
 namespace blender::draw::overlay {
 
 static void light_sync(const ObjectRef &ob_ref,
                        const select::ID select_id,
                        Resources & /*res*/,
                        const State &state,
-                       ExtraInstancePasses &passes,
+                       ExtraInstancePass &pass,
                        ExtraInstanceData data)
 {
   /* Pack render data into object matrix. */
@@ -43,18 +43,18 @@ static void light_sync(const ObjectRef &ob_ref,
     light_color = float4(la->r, la->g, la->b, 1.0f);
   }
 
-  passes.groundline.append(float4(data.matrix.location()), select_id);
+  pass.groundline.append(float4(data.matrix.location()), select_id);
 
-  passes.light_icon_inner.append(data.with_color(light_color), select_id);
-  passes.light_icon_outer.append(data, select_id);
+  pass.light_icon_inner.append(data.with_color(light_color), select_id);
+  pass.light_icon_outer.append(data, select_id);
 
   if (la->type == LA_LOCAL) {
     area_size_x = area_size_y = la->radius;
-    passes.light_point.append(data, select_id);
+    pass.light_point.append(data, select_id);
   }
   else if (la->type == LA_SUN) {
-    passes.light_sun.append(data, select_id);
-    passes.light_icon_sun_rays.append(data.with_color(light_color), select_id);
+    pass.light_sun.append(data, select_id);
+    pass.light_icon_sun_rays.append(data.with_color(light_color), select_id);
   }
   else if (la->type == LA_SPOT) {
     /* Previous implementation was using the clip-end distance as cone size.
@@ -76,16 +76,16 @@ static void light_sync(const ObjectRef &ob_ref,
     spot_cosine = a;
     /* HACK: We pack the area size in alpha color. This is decoded by the shader. */
     data.color.w = -max_ff(la->radius, FLT_MIN);
-    passes.light_spot.append(data, select_id);
+    pass.light_spot.append(data, select_id);
     if ((la->mode & LA_SHOW_CONE) && !DRW_state_is_select()) {
-      passes.light_spot_cone_front.append(data.with_color({0.0f, 0.0f, 0.0f, 0.5f}), select_id);
-      passes.light_spot_cone_back.append(data.with_color({1.0f, 1.0f, 1.0f, 0.3f}), select_id);
+      pass.light_spot_cone_front.append(data.with_color({0.0f, 0.0f, 0.0f, 0.5f}), select_id);
+      pass.light_spot_cone_back.append(data.with_color({1.0f, 1.0f, 1.0f, 0.3f}), select_id);
     }
   }
   else if (la->type == LA_AREA) {
     ExtraInstanceBuf &buf = ELEM(la->area_shape, LA_AREA_SQUARE, LA_AREA_RECT) ?
-                                passes.light_area_square :
-                                passes.light_area_disk;
+                                pass.light_area_square :
+                                pass.light_area_disk;
     bool uniform_scale = !ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
     area_size_x = la->area_size;
     area_size_y = uniform_scale ? la->area_size : la->area_sizey;

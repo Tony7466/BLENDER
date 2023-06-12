@@ -35,40 +35,27 @@ struct GroundLineInstanceData {
 
 using GroundLineInstanceBuf = ExtraInstanceBufBase<float4>;
 
-class ExtraInstancePasses {
+class ExtraInstancePass {
  protected:
-  enum ExtraType {
-    DEFAULT = 0,
-    DEFAULT_ALWAYS,
-    BLEND_CULL_FRONT,
-    BLEND_CULL_BACK,
-    /*
-    WIRE,
-    WIRE_OB,
-    POINT,
-    LOOSE_POINT,
-    CENTER,
-    */
-    MAX
-  };
+  enum ExtraType { DEFAULT, DEFAULT_ALWAYS, BLEND_CULL_FRONT, BLEND_CULL_BACK, MAX };
 
   const SelectionType selection_type;
   const ShapeCache &shapes;
 
-  PassSimple pass;
-  Vector<ExtraInstanceBuf *> extra_buffers[ExtraType::MAX] = {{}};
+  PassSimple ps_;
+  Vector<ExtraInstanceBuf *> extra_buffers_[ExtraType::MAX] = {{}};
 
   ExtraInstanceBuf extra_buf(const char *name,
                              const BatchPtr &shape_ptr,
                              ExtraType pass_type = DEFAULT)
   {
-    Vector<ExtraInstanceBuf *> &vector = extra_buffers[pass_type];
+    Vector<ExtraInstanceBuf *> &vector = extra_buffers_[pass_type];
     return {name, shape_ptr.get(), selection_type, vector};
   };
 
  public:
-  ExtraInstancePasses(SelectionType selection_type, const ShapeCache &shapes, const char *name)
-      : selection_type(selection_type), shapes(shapes), pass(name){};
+  ExtraInstancePass(SelectionType selection_type, const ShapeCache &shapes, const char *name)
+      : selection_type(selection_type), shapes(shapes), ps_(name){};
 
   ExtraInstanceBuf plain_axes = extra_buf("plain_axes", shapes.plain_axes);
   ExtraInstanceBuf single_arrow = extra_buf("single_arrow", shapes.single_arrow);
@@ -126,20 +113,9 @@ class ExtraInstancePasses {
 
   ExtraInstanceBuf origin_xform = extra_buf("origin_xform", shapes.plain_axes, DEFAULT_ALWAYS);
 
-  /* TODO
-  ExtraInstanceBuf dashed_lines = extra_buf("dashed_lines", nullptr, WIRE);
-  ExtraInstanceBuf lines = extra_buf("lines", nullptr, WIRE);
-
-  ExtraInstanceBuf wires = extra_buf("wires", nullptr, WIRE_OB);
-
-  ExtraInstanceBuf loose_points = extra_buf("loose_points", nullptr, LOOSE_POINTS);
-
-  ExtraInstanceBuf points = extra_buf("points", nullptr, POINTS);
-  */
-
   void begin_sync()
   {
-    for (Vector<ExtraInstanceBuf *> &vector : extra_buffers) {
+    for (Vector<ExtraInstanceBuf *> &vector : extra_buffers_) {
       for (ExtraInstanceBuf *buf : vector) {
         buf->clear();
       }
@@ -150,8 +126,8 @@ class ExtraInstancePasses {
 
   void end_sync(Resources &res, const State &state)
   {
-    pass.init();
-    res.select_bind(pass);
+    ps_.init();
+    res.select_bind(ps_);
 
     auto sub_pass =
         [&](const char *name, ShaderPtr &shader, DRWState drw_state) -> PassSimple::Sub * {
@@ -159,7 +135,7 @@ class ExtraInstancePasses {
         /*TODO*/
         return nullptr;
       }
-      PassSimple::Sub &ps = pass.sub(name);
+      PassSimple::Sub &ps = ps_.sub(name);
       ps.state_set(drw_state);
       ps.shader_set(shader.get());
       /* TODO: Fixed index. */
@@ -171,7 +147,7 @@ class ExtraInstancePasses {
         [&](const char *name, ExtraType type, ShaderPtr &shader, DRWState drw_state) {
           PassSimple::Sub *ps = sub_pass(name, shader, drw_state);
           if (ps) {
-            for (ExtraInstanceBuf *buf : extra_buffers[type]) {
+            for (ExtraInstanceBuf *buf : extra_buffers_[type]) {
               buf->end_sync(*ps, buf->shape);
             }
           }
@@ -197,20 +173,12 @@ class ExtraInstancePasses {
 
     groundline.end_sync(*sub_pass("GroundLine", res.shaders.extra_groundline, state_blend),
                         groundline.shape);
-
-    /*
-    sub_pass("Wire", WIRE, res.shaders.extra_wire, state_default);
-    sub_pass("Wire Object", WIRE_OB, res.shaders.extra_wire_object, state_default);
-    sub_pass("Point", POINT, res.shaders.extra_point, state_default);
-    sub_pass("Loose Point", LOOSE_POINT, res.shaders.extra_loose_point, state_default);
-    sub_pass("Center", CENTER, res.shaders.extra_point, state_blend);
-    */
   }
 
   void draw(Manager &manager, View &view, Framebuffer &fb)
   {
     fb.bind();
-    manager.submit(pass, view);
+    manager.submit(ps_, view);
   }
 
   ExtraInstanceBuf &empty_buf(int empty_drawtype)

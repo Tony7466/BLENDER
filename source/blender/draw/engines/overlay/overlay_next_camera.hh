@@ -12,7 +12,7 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_camera_types.h"
 #include "ED_view3d.h"
-#include "overlay_next_extra_passes.hh"
+#include "overlay_next_extra_pass.hh"
 
 namespace blender::draw::overlay {
 
@@ -78,7 +78,7 @@ struct CameraInstanceData : public ExtraInstanceData {
 static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
                                          const select::ID select_id,
                                          const State &state,
-                                         ExtraInstancePasses &passes,
+                                         ExtraInstancePass &pass,
                                          CameraInstanceData data)
 {
   const Scene *scene = state.scene;
@@ -158,13 +158,13 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
 
       if (is_solid_bundle) {
         if (is_selected) {
-          passes.empty_buf(v3d->bundle_drawtype)
+          pass.empty_buf(v3d->bundle_drawtype)
               .append(bundle_data.with_color(data.color), select_id);
         }
-        passes.sphere_solid.append(bundle_data, select_id);
+        pass.sphere_solid.append(bundle_data, select_id);
       }
       else {
-        passes.empty_buf(v3d->bundle_drawtype).append(bundle_data, select_id);
+        pass.empty_buf(v3d->bundle_drawtype).append(bundle_data, select_id);
       }
 
       if ((v3d->flag2 & V3D_SHOW_BUNDLENAME) && !is_select) {
@@ -231,7 +231,7 @@ static float camera_offaxis_shiftx_get(const Scene *scene,
 static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
                                      const select::ID select_id,
                                      const State &state,
-                                     ExtraInstancePasses &passes,
+                                     ExtraInstancePass &pass,
                                      CameraInstanceData data)
 {
   CameraInstanceData stereodata = data;
@@ -248,7 +248,7 @@ static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
 
   if (!is_stereo3d_cameras) {
     /* Draw single camera. */
-    passes.camera_frame.append(data, select_id);
+    pass.camera_frame.append(data, select_id);
   }
 
   for (int eye : IndexRange(2)) {
@@ -262,7 +262,7 @@ static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
     stereodata.depth() = data.depth();
 
     if (is_stereo3d_cameras) {
-      passes.camera_frame.append(stereodata, select_id);
+      pass.camera_frame.append(stereodata, select_id);
 
       /* Connecting line between cameras. */
       /* TODO(Miguel Pozo)
@@ -279,14 +279,14 @@ static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
       /* Encode eye + intensity and alpha (see shader) */
       // stereodata.color.xy() = {r + 0.15f, 1.0f};
       copy_v2_v2(stereodata.color, float2(r + 0.15f, 1.0f));
-      passes.camera_frame.append(stereodata, select_id);
+      pass.camera_frame.append(stereodata, select_id);
 
       if (v3d->stereo3d_volume_alpha > 0.0f) {
         /* Encode eye + intensity and alpha (see shader) */
         // stereodata.color.xy() = {r + 0.999f, v3d->stereo3d_volume_alpha};
         copy_v2_v2(stereodata.color, float2(r + 0.999f, v3d->stereo3d_convergence_alpha));
 
-        passes.camera_volume.append(stereodata, select_id);
+        pass.camera_volume.append(stereodata, select_id);
       }
       /* restore */
       stereodata.color = data.color;
@@ -329,13 +329,13 @@ static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
     /* Encode eye + intensity and alpha (see shader) */
     // stereodata.color.xy() = {0.1f, 1.0f};
     copy_v2_v2(stereodata.color, float2(0.1f, 1.0f));
-    passes.camera_frame.append(stereodata, select_id);
+    pass.camera_frame.append(stereodata, select_id);
 
     if (v3d->stereo3d_convergence_alpha > 0.0f) {
       /* Encode eye + intensity and alpha (see shader) */
       // stereodata.color.xy() = {0.0f, v3d->stereo3d_convergence_alpha};
       copy_v2_v2(stereodata.color, float2(0.0f, v3d->stereo3d_convergence_alpha));
-      passes.camera_volume.append(stereodata, select_id);
+      pass.camera_volume.append(stereodata, select_id);
     }
   }
 }
@@ -344,7 +344,7 @@ static void camera_sync(const ObjectRef &ob_ref,
                         const select::ID select_id,
                         Resources & /*res*/,
                         const State &state,
-                        ExtraInstancePasses &passes,
+                        ExtraInstancePass &pass,
                         CameraInstanceData data)
 {
   Object *ob = ob_ref.object;
@@ -429,16 +429,16 @@ static void camera_sync(const ObjectRef &ob_ref,
         }
       }
       data.depth() *= -1.0f; /* Hides the back of the camera wires (see shader). */
-      passes.camera_frame.append(data, select_id);
+      pass.camera_frame.append(data, select_id);
     }
   }
   else {
     /* Stereo cameras, volumes, plane drawing. */
     if (is_stereo3d_display_extra) {
-      camera_stereoscopy_extra(ob_ref, select_id, state, passes, data);
+      camera_stereoscopy_extra(ob_ref, select_id, state, pass, data);
     }
     else {
-      passes.camera_frame.append(data, select_id);
+      pass.camera_frame.append(data, select_id);
     }
   }
 
@@ -449,7 +449,7 @@ static void camera_sync(const ObjectRef &ob_ref,
     data.center_x() = center.x;
     data.center_y() = center.y + data.corner_y() + tria_margin + tria_size;
     data.corner_x() = data.corner_y() = -tria_size;
-    ExtraInstanceBuf &buf = is_active ? passes.camera_tria : passes.camera_tria_wire;
+    ExtraInstanceBuf &buf = is_active ? pass.camera_tria : pass.camera_tria_wire;
     buf.append(data, select_id);
   }
 
@@ -462,7 +462,7 @@ static void camera_sync(const ObjectRef &ob_ref,
     data.focus() = -BKE_camera_object_dof_distance(ob);
     data.clip_start() = cam->clip_start;
     data.clip_end() = cam->clip_end;
-    passes.camera_distances.append(data, select_id);
+    pass.camera_distances.append(data, select_id);
   }
 
   if (cam->flag & CAM_SHOWMIST) {
@@ -472,13 +472,13 @@ static void camera_sync(const ObjectRef &ob_ref,
       data.focus() = 1.0f; /* Disable */
       data.mist_start() = world->miststa;
       data.mist_end() = world->miststa + world->mistdist;
-      passes.camera_distances.append(data, select_id);
+      pass.camera_distances.append(data, select_id);
     }
   }
 #if 0
     /* Motion Tracking. */
     if ((v3d->flag2 & V3D_SHOW_RECONSTRUCTION) != 0) {
-      camera_view3d_reconstruction(passes, scene, v3d, ob, data.color);
+      camera_view3d_reconstruction(pass, scene, v3d, ob, data.color);
     }
 
     /* Background images. */

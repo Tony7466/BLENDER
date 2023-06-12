@@ -7,7 +7,7 @@
 #pragma once
 
 #include "DNA_lightprobe_types.h"
-#include "overlay_next_extra_passes.hh"
+#include "overlay_next_extra_pass.hh"
 
 namespace blender::draw::overlay {
 
@@ -15,7 +15,7 @@ static void probe_sync(const ObjectRef &ob_ref,
                        const select::ID select_id,
                        Resources &res,
                        const State &state,
-                       ExtraInstancePasses &passes,
+                       ExtraInstancePass &pass,
                        ExtraInstanceData data)
 {
   const LightProbe *probe = (LightProbe *)ob_ref.object->data;
@@ -30,15 +30,15 @@ static void probe_sync(const ObjectRef &ob_ref,
     data.matrix[2][3] = show_clipping ? probe->clipsta : -1.0;
     data.matrix[3][3] = show_clipping ? probe->clipend : -1.0;
 
-    passes.probe_cube.append(data, select_id);
-    passes.groundline.append(float4(data.matrix.location()), select_id);
+    pass.probe_cube.append(data, select_id);
+    pass.groundline.append(float4(data.matrix.location()), select_id);
 
     if (show_influence) {
       float influence_start = probe->distinf * (1.0f - probe->falloff);
       float influence_end = probe->distinf;
 
-      ExtraInstanceBuf &buf = (probe->attenuation_type == LIGHTPROBE_SHAPE_BOX) ? passes.cube :
-                                                                                  passes.sphere;
+      ExtraInstanceBuf &buf = (probe->attenuation_type == LIGHTPROBE_SHAPE_BOX) ? pass.cube :
+                                                                                  pass.sphere;
 
       buf.append(data.with_size(influence_start), select_id);
       buf.append(data.with_size(influence_end), select_id);
@@ -47,8 +47,8 @@ static void probe_sync(const ObjectRef &ob_ref,
     if (show_parallax) {
       float radius = (probe->flag & LIGHTPROBE_FLAG_CUSTOM_PARALLAX) ? probe->distpar :
                                                                        probe->distinf;
-      ExtraInstanceBuf &buf = (probe->parallax_type == LIGHTPROBE_SHAPE_BOX) ? passes.cube :
-                                                                               passes.sphere;
+      ExtraInstanceBuf &buf = (probe->parallax_type == LIGHTPROBE_SHAPE_BOX) ? pass.cube :
+                                                                               pass.sphere;
       buf.append(data.with_size(radius), select_id);
     }
   }
@@ -56,14 +56,14 @@ static void probe_sync(const ObjectRef &ob_ref,
     /* Pack render data into object matrix. */
     data.matrix[2][3] = show_clipping ? probe->clipsta : -1.0;
     data.matrix[3][3] = show_clipping ? probe->clipend : -1.0;
-    passes.probe_grid.append(data, select_id);
+    pass.probe_grid.append(data, select_id);
 
     if (show_influence) {
       float influence_start = 1.0f + probe->distinf * (1.0f - probe->falloff);
       float influence_end = 1.0f + probe->distinf;
 
-      passes.cube.append(data.with_size(influence_start), select_id);
-      passes.cube.append(data.with_size(influence_end), select_id);
+      pass.cube.append(data.with_size(influence_start), select_id);
+      pass.cube.append(data.with_size(influence_end), select_id);
     }
 
     /* Data dots */
@@ -92,26 +92,26 @@ static void probe_sync(const ObjectRef &ob_ref,
     }
   }
   else if (probe->type == LIGHTPROBE_TYPE_PLANAR) {
-    passes.probe_planar.append(data, select_id);
+    pass.probe_planar.append(data, select_id);
 
     if (res.selection_type != SelectionType::DISABLED && (probe->flag & LIGHTPROBE_FLAG_SHOW_DATA))
     {
-      passes.quad.append(data, select_id);
+      pass.quad.append(data, select_id);
     }
 
     if (show_influence) {
       data.matrix.z_axis() = math::normalize(data.matrix.z_axis()) * probe->distinf;
-      passes.cube.append(data, select_id);
+      pass.cube.append(data, select_id);
       data.matrix.z_axis() *= 1.0f - probe->falloff;
-      passes.cube.append(data, select_id);
+      pass.cube.append(data, select_id);
     }
 
     data.matrix.z_axis() = float3(0);
-    passes.cube.append(data, select_id);
+    pass.cube.append(data, select_id);
 
     data.matrix = float4x4(ob_ref.object->object_to_world);
     data.matrix.view<3, 3>() = math::normalize(data.matrix.view<3, 3>());
-    passes.single_arrow.append(data.with_size(ob_ref.object->empty_drawsize), select_id);
+    pass.single_arrow.append(data.with_size(ob_ref.object->empty_drawsize), select_id);
   }
 }
 

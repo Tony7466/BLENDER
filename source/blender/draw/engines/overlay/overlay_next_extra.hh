@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "overlay_next_extra_passes.hh"
+#include "overlay_next_extra_pass.hh"
 
 #include "overlay_next_bounds.hh"
 #include "overlay_next_camera.hh"
@@ -20,17 +20,17 @@ namespace blender::draw::overlay {
 
 class Extra {
  public:
-  ExtraInstancePasses passes_;
-  ExtraInstancePasses passes_in_front_;
+  ExtraInstancePass pass_;
+  ExtraInstancePass pass_in_front_;
 
   Extra(const SelectionType selection_type, const ShapeCache &shapes)
-      : passes_(selection_type, shapes, "Extra Shapes"),
-        passes_in_front_(selection_type, shapes, "Extra Shapes In Front"){};
+      : pass_(selection_type, shapes, "Extra Shapes"),
+        pass_in_front_(selection_type, shapes, "Extra Shapes In Front"){};
 
   void begin_sync()
   {
-    passes_.begin_sync();
-    passes_in_front_.begin_sync();
+    pass_.begin_sync();
+    pass_in_front_.begin_sync();
   }
 
   void object_sync(const ObjectRef &ob_ref,
@@ -38,26 +38,25 @@ class Extra {
                    Resources &res,
                    const State &state)
   {
-    ExtraInstancePasses &passes = ob_ref.object->dtx & OB_DRAW_IN_FRONT ? passes_in_front_ :
-                                                                          passes_;
+    ExtraInstancePass &pass = ob_ref.object->dtx & OB_DRAW_IN_FRONT ? pass_in_front_ : pass_;
 
     ExtraInstanceData data(ob_ref.object, res.object_wire_color(ob_ref, state));
 
     switch (ob_ref.object->type) {
       case OB_CAMERA:
-        camera_sync(ob_ref, select_id, res, state, passes, data);
+        camera_sync(ob_ref, select_id, res, state, pass, data);
         break;
       case OB_EMPTY:
-        empty_sync(ob_ref, select_id, res, state, passes, data);
+        empty_sync(ob_ref, select_id, res, state, pass, data);
         break;
       case OB_LAMP:
-        light_sync(ob_ref, select_id, res, state, passes, data);
+        light_sync(ob_ref, select_id, res, state, pass, data);
         break;
       case OB_LIGHTPROBE:
-        probe_sync(ob_ref, select_id, res, state, passes, data);
+        probe_sync(ob_ref, select_id, res, state, pass, data);
         break;
       case OB_SPEAKER:
-        passes.speaker.append(data, select_id);
+        pass.speaker.append(data, select_id);
         break;
     }
 
@@ -75,9 +74,6 @@ class Extra {
     const bool has_texspace = has_bounds &&
                               !ELEM(
                                   ob->type, OB_EMPTY, OB_LATTICE, OB_ARMATURE, OB_GPENCIL_LEGACY);
-    const bool draw_relations = ((state.v3d_flag & V3D_HIDE_HELPLINES) == 0) && !is_select_mode;
-    const bool draw_obcenters = !is_paint_mode &&
-                                (state.overlay.flag & V3D_OVERLAY_HIDE_OBJECT_ORIGINS) == 0;
     const bool draw_texspace = (ob->dtx & OB_TEXSPACE) && has_texspace;
     const bool draw_obname = (ob->dtx & OB_DRAWNAME) && DRW_state_show_text();
     const bool draw_bounds = has_bounds && ((ob->dt == OB_BOUNDBOX) ||
@@ -97,26 +93,21 @@ class Extra {
 #endif
 
     if (draw_bounds) {
-      bounds_sync(ob_ref, select_id, res, state, passes, data);
+      bounds_sync(ob_ref, select_id, res, state, pass, data);
     }
 
     /* Helpers for when we're transforming origins. */
     if (draw_xform) {
       /* TODO(Miguel Pozo): What's this? */
       const float4 color_xform = {0.15f, 0.15f, 0.15f, 0.7f};
-      passes.origin_xform.append(data.with_color(color_xform), select_id);
+      pass.origin_xform.append(data.with_color(color_xform), select_id);
     }
     if (ob->pd && ob->pd->forcefield) {
-      force_field_sync(ob_ref, select_id, res, state, passes, data);
+      force_field_sync(ob_ref, select_id, res, state, pass, data);
     }
 
     /* don't show object extras in set's */
     if (!from_dupli) {
-      if (draw_relations) {
-        /* TODO
-        OVERLAY_relationship_lines(cb, draw_ctx->depsgraph, draw_ctx->scene, ob);
-        */
-      }
       if (draw_obname) {
         /* TODO
         OVERLAY_object_name(ob, theme_id);
@@ -128,10 +119,10 @@ class Extra {
         */
       }
       if (ob->rigidbody_object != nullptr) {
-        collision_sync(ob_ref, select_id, res, state, passes, data);
+        collision_sync(ob_ref, select_id, res, state, pass, data);
       }
       if (ob->dtx & OB_AXIS) {
-        passes.arrows.append(data, select_id);
+        pass.arrows.append(data, select_id);
       }
       /* TODO
       if (draw_volume) {
@@ -143,18 +134,18 @@ class Extra {
 
   void end_sync(Resources &res, const State &state)
   {
-    passes_.end_sync(res, state);
-    passes_in_front_.end_sync(res, state);
+    pass_.end_sync(res, state);
+    pass_in_front_.end_sync(res, state);
   }
 
   void draw(Resources &res, Manager &manager, View &view)
   {
-    passes_.draw(manager, view, res.overlay_line_fb);
+    pass_.draw(manager, view, res.overlay_line_fb);
   }
 
   void draw_in_front(Resources &res, Manager &manager, View &view)
   {
-    passes_in_front_.draw(manager, view, res.overlay_line_in_front_fb);
+    pass_in_front_.draw(manager, view, res.overlay_line_in_front_fb);
   }
 };
 

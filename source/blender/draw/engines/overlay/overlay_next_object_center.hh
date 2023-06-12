@@ -10,67 +10,27 @@
 
 namespace blender::draw::overlay {
 
-class ObjectCenterPasses {
+class ObjectCenterPass {
   const SelectionType selection_type_;
-
   PassSimple ps_;
 
- public:
-  PointInstanceBuf active = {selection_type_, "active"};
-  PointInstanceBuf selected = {selection_type_, "selected"};
-  PointInstanceBuf deselected = {selection_type_, "deselected"};
-  PointInstanceBuf selected_lib = {selection_type_, "selected_lib"};
-  PointInstanceBuf deselected_lib = {selection_type_, "deselected_lib"};
+  PointInstanceBuf active_ = {selection_type_, "active"};
+  PointInstanceBuf selected_ = {selection_type_, "selected"};
+  PointInstanceBuf deselected_ = {selection_type_, "deselected"};
+  PointInstanceBuf selected_lib_ = {selection_type_, "selected_lib"};
+  PointInstanceBuf deselected_lib_ = {selection_type_, "deselected_lib"};
 
-  ObjectCenterPasses(const SelectionType selection_type, const char *name)
+ public:
+  ObjectCenterPass(const SelectionType selection_type, const char *name)
       : selection_type_(selection_type), ps_(name){};
 
   void begin_sync()
   {
-    active.clear();
-    selected.clear();
-    deselected.clear();
-    selected_lib.clear();
-    deselected_lib.clear();
-  }
-
-  void end_sync(Resources &res, const State &state)
-  {
-    ps_.init();
-    res.select_bind(ps_);
-    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_WRITE_DEPTH |
-                  DRW_STATE_PROGRAM_POINT_SIZE | state.clipping_state);
-    ps_.shader_set(res.shaders.extra_point.get());
-    /* TODO: Fixed index. */
-    ps_.bind_ubo("globalsBlock", &res.globals_buf);
-
-    active.end_sync(ps_, res.theme_settings.color_active);
-    selected.end_sync(ps_, res.theme_settings.color_select);
-    deselected.end_sync(ps_, res.theme_settings.color_deselect);
-    selected_lib.end_sync(ps_, res.theme_settings.color_library_select);
-    deselected_lib.end_sync(ps_, res.theme_settings.color_library);
-  }
-
-  void draw(Manager &manager, View &view, Framebuffer &fb)
-  {
-    fb.bind();
-    manager.submit(ps_, view);
-  }
-};
-
-class ObjectCenter {
-  ObjectCenterPasses passes_;
-  ObjectCenterPasses passes_in_front_;
-
- public:
-  ObjectCenter(const SelectionType selection_type)
-      : passes_(selection_type, "Object Center"),
-        passes_in_front_(selection_type, "Object Center In Front"){};
-
-  void begin_sync()
-  {
-    passes_.begin_sync();
-    passes_in_front_.begin_sync();
+    active_.clear();
+    selected_.clear();
+    deselected_.clear();
+    selected_lib_.clear();
+    deselected_lib_.clear();
   }
 
   void object_sync(const ObjectRef &ob_ref,
@@ -89,38 +49,84 @@ class ObjectCenter {
       return;
     }
 
-    ObjectCenterPasses &passes = ob->dtx & OB_DRAW_IN_FRONT ? passes_in_front_ : passes_;
-
     float4 center = float4(ob->object_to_world[3]);
 
     const bool is_library = ID_REAL_USERS(&ob->id) > 1 || ID_IS_LINKED(ob);
     /* TODO(Miguel Pozo): Handle const. */
     BKE_view_layer_synced_ensure(state.scene, (ViewLayer *)state.view_layer);
     if (ob == BKE_view_layer_active_object_get(state.view_layer)) {
-      passes.active.append(center, select_id);
+      active_.append(center, select_id);
     }
     else if (ob->base_flag & BASE_SELECTED) {
-      (is_library ? passes.selected_lib : passes.selected).append(center, select_id);
+      (is_library ? selected_lib_ : selected_).append(center, select_id);
     }
     else if (state.v3d_flag & V3D_DRAW_CENTERS) {
-      (is_library ? passes.deselected_lib : passes.deselected).append(center, select_id);
+      (is_library ? deselected_lib_ : deselected_).append(center, select_id);
     }
   }
 
   void end_sync(Resources &res, const State &state)
   {
-    passes_.end_sync(res, state);
-    passes_in_front_.end_sync(res, state);
+    ps_.init();
+    res.select_bind(ps_);
+    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_WRITE_DEPTH |
+                  DRW_STATE_PROGRAM_POINT_SIZE | state.clipping_state);
+    ps_.shader_set(res.shaders.extra_point.get());
+    /* TODO: Fixed index. */
+    ps_.bind_ubo("globalsBlock", &res.globals_buf);
+
+    active_.end_sync(ps_, res.theme_settings.color_active);
+    selected_.end_sync(ps_, res.theme_settings.color_select);
+    deselected_.end_sync(ps_, res.theme_settings.color_deselect);
+    selected_lib_.end_sync(ps_, res.theme_settings.color_library_select);
+    deselected_lib_.end_sync(ps_, res.theme_settings.color_library);
+  }
+
+  void draw(Manager &manager, View &view, Framebuffer &fb)
+  {
+    fb.bind();
+    manager.submit(ps_, view);
+  }
+};
+
+class ObjectCenter {
+  ObjectCenterPass pass_;
+  ObjectCenterPass pass_in_front_;
+
+ public:
+  ObjectCenter(const SelectionType selection_type)
+      : pass_(selection_type, "Object Center"),
+        pass_in_front_(selection_type, "Object Center In Front"){};
+
+  void begin_sync()
+  {
+    pass_.begin_sync();
+    pass_in_front_.begin_sync();
+  }
+
+  void object_sync(const ObjectRef &ob_ref,
+                   const select::ID select_id,
+                   Resources &res,
+                   const State &state)
+  {
+    ObjectCenterPass &pass = ob_ref.object->dtx & OB_DRAW_IN_FRONT ? pass_in_front_ : pass_;
+    pass.object_sync(ob_ref, select_id, res, state);
+  }
+
+  void end_sync(Resources &res, const State &state)
+  {
+    pass_.end_sync(res, state);
+    pass_in_front_.end_sync(res, state);
   }
 
   void draw(Resources &res, Manager &manager, View &view)
   {
-    passes_.draw(manager, view, res.overlay_line_fb);
+    pass_.draw(manager, view, res.overlay_line_fb);
   }
 
   void draw_in_front(Resources &res, Manager &manager, View &view)
   {
-    passes_in_front_.draw(manager, view, res.overlay_line_in_front_fb);
+    pass_in_front_.draw(manager, view, res.overlay_line_in_front_fb);
   }
 };
 

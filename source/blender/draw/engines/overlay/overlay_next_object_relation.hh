@@ -15,65 +15,23 @@
 
 namespace blender::draw::overlay {
 
-class ObjectRelationPasses {
+class ObjectRelationPass {
   const SelectionType selection_type_;
-
   PassSimple ps_;
 
- public:
-  LineInstanceBuf constraint_line = {selection_type_, "constraint_line"};
-  LineInstanceBuf relation_line = {selection_type_, "relation_line"};
-  PointInstanceBuf relation_point = {selection_type_, "relation_point"};
+  LineInstanceBuf constraint_line_ = {selection_type_, "constraint_line"};
+  LineInstanceBuf relation_line_ = {selection_type_, "relation_line"};
+  PointInstanceBuf relation_point_ = {selection_type_, "relation_point"};
 
-  ObjectRelationPasses(const SelectionType selection_type, const char *name)
+ public:
+  ObjectRelationPass(const SelectionType selection_type, const char *name)
       : selection_type_(selection_type), ps_(name){};
 
   void begin_sync()
   {
-    constraint_line.clear();
-    relation_line.clear();
-    relation_point.clear();
-  }
-
-  void end_sync(Resources &res, const State &state)
-  {
-    ps_.init();
-    res.select_bind(ps_);
-    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_WRITE_DEPTH |
-                  DRW_STATE_PROGRAM_POINT_SIZE | state.clipping_state);
-
-    ps_.shader_set(res.shaders.extra_line.get());
-    /* TODO: Fixed index. */
-    ps_.bind_ubo("globalsBlock", &res.globals_buf);
-    constraint_line.end_sync(ps_, res.theme_settings.color_grid_axis_z); /* ? */
-    relation_line.end_sync(ps_, res.theme_settings.color_wire);
-
-    ps_.shader_set(res.shaders.extra_point.get());
-    /* TODO: Fixed index. */
-    ps_.bind_ubo("globalsBlock", &res.globals_buf);
-    relation_point.end_sync(ps_, res.theme_settings.color_wire);
-  }
-
-  void draw(Manager &manager, View &view, Framebuffer &fb)
-  {
-    fb.bind();
-    manager.submit(ps_, view);
-  }
-};
-
-class ObjectRelation {
-  ObjectRelationPasses passes_;
-  ObjectRelationPasses passes_in_front_;
-
- public:
-  ObjectRelation(const SelectionType selection_type)
-      : passes_(selection_type, "Object Relation"),
-        passes_in_front_(selection_type, "Object Relation In Front"){};
-
-  void begin_sync()
-  {
-    passes_.begin_sync();
-    passes_in_front_.begin_sync();
+    constraint_line_.clear();
+    relation_line_.clear();
+    relation_point_.clear();
   }
 
   void object_sync(const ObjectRef &ob_ref,
@@ -89,15 +47,13 @@ class ObjectRelation {
       return;
     }
 
-    ObjectRelationPasses &passes = ob->dtx & OB_DRAW_IN_FRONT ? passes_in_front_ : passes_;
-
     const float4x4 ob_mat = float4x4(ob->object_to_world);
     const float3 &ob_pos = ob_mat.location();
 
     /* Parent lines. */
     if (ob->parent && (DRW_object_visibility_in_active_context(ob->parent) & OB_VISIBLE_SELF)) {
       float3 parent_pos = float3(ob->runtime.parent_display_origin);
-      passes.relation_line.append({parent_pos, ob_pos}, select_id);
+      relation_line_.append({parent_pos, ob_pos}, select_id);
     }
 
     /* Hook lines. */
@@ -106,9 +62,9 @@ class ObjectRelation {
         HookModifierData *hmd = reinterpret_cast<HookModifierData *>(md);
         float3 center = math::transform_point(ob_mat, float3(hmd->cent));
         if (hmd->object) {
-          passes.relation_line.append({hmd->object->object_to_world[3], center}, select_id);
+          relation_line_.append({hmd->object->object_to_world[3], center}, select_id);
         }
-        passes.relation_point.append(float4(center), select_id);
+        relation_point_.append(float4(center), select_id);
       }
     }
     for (GpencilModifierData *md :
@@ -117,9 +73,9 @@ class ObjectRelation {
         HookGpencilModifierData *hmd = reinterpret_cast<HookGpencilModifierData *>(md);
         float3 center = math::transform_point(ob_mat, float3(hmd->cent));
         if (hmd->object) {
-          passes.relation_line.append({hmd->object->object_to_world[3], center}, select_id);
+          relation_line_.append({hmd->object->object_to_world[3], center}, select_id);
         }
-        passes.relation_point.append(float4(center), select_id);
+        relation_point_.append(float4(center), select_id);
       }
     }
 
@@ -128,10 +84,10 @@ class ObjectRelation {
       Object *rbc_ob1 = ob->rigidbody_constraint->ob1;
       Object *rbc_ob2 = ob->rigidbody_constraint->ob2;
       if (rbc_ob1 && (DRW_object_visibility_in_active_context(rbc_ob1) & OB_VISIBLE_SELF)) {
-        passes.relation_line.append({rbc_ob1->object_to_world[3], ob_pos}, select_id);
+        relation_line_.append({rbc_ob1->object_to_world[3], ob_pos}, select_id);
       }
       if (rbc_ob2 && (DRW_object_visibility_in_active_context(rbc_ob2) & OB_VISIBLE_SELF)) {
-        passes.relation_line.append({rbc_ob2->object_to_world[3], ob_pos}, select_id);
+        relation_line_.append({rbc_ob2->object_to_world[3], ob_pos}, select_id);
       }
     }
 
@@ -161,7 +117,7 @@ class ObjectRelation {
           }
 
           if (cam_ob) {
-            passes.constraint_line.append({cam_ob->object_to_world[3], ob_pos}, select_id);
+            constraint_line_.append({cam_ob->object_to_world[3], ob_pos}, select_id);
           }
         }
         else {
@@ -182,7 +138,7 @@ class ObjectRelation {
                     depsgraph, con, con_ob, target, DEG_get_ctime(depsgraph));
                 target_pos = target->matrix[3];
               }
-              passes.constraint_line.append({target_pos, ob_pos}, select_id);
+              constraint_line_.append({target_pos, ob_pos}, select_id);
             }
 
             BKE_constraint_targets_flush(con, &targets, true);
@@ -196,18 +152,68 @@ class ObjectRelation {
 
   void end_sync(Resources &res, const State &state)
   {
-    passes_.end_sync(res, state);
-    passes_in_front_.end_sync(res, state);
+    ps_.init();
+    res.select_bind(ps_);
+    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_WRITE_DEPTH |
+                  DRW_STATE_PROGRAM_POINT_SIZE | state.clipping_state);
+
+    ps_.shader_set(res.shaders.extra_line.get());
+    /* TODO: Fixed index. */
+    ps_.bind_ubo("globalsBlock", &res.globals_buf);
+    constraint_line_.end_sync(ps_, res.theme_settings.color_grid_axis_z); /* ? */
+    relation_line_.end_sync(ps_, res.theme_settings.color_wire);
+
+    ps_.shader_set(res.shaders.extra_point.get());
+    /* TODO: Fixed index. */
+    ps_.bind_ubo("globalsBlock", &res.globals_buf);
+    relation_point_.end_sync(ps_, res.theme_settings.color_wire);
+  }
+
+  void draw(Manager &manager, View &view, Framebuffer &fb)
+  {
+    fb.bind();
+    manager.submit(ps_, view);
+  }
+};
+
+class ObjectRelation {
+  ObjectRelationPass pass_;
+  ObjectRelationPass pass_in_front_;
+
+ public:
+  ObjectRelation(const SelectionType selection_type)
+      : pass_(selection_type, "Object Relation"),
+        pass_in_front_(selection_type, "Object Relation In Front"){};
+
+  void begin_sync()
+  {
+    pass_.begin_sync();
+    pass_in_front_.begin_sync();
+  }
+
+  void object_sync(const ObjectRef &ob_ref,
+                   const select::ID select_id,
+                   Resources &res,
+                   const State &state)
+  {
+    ObjectRelationPass &pass = ob_ref.object->dtx & OB_DRAW_IN_FRONT ? pass_in_front_ : pass_;
+    pass.object_sync(ob_ref, select_id, res, state);
+  }
+
+  void end_sync(Resources &res, const State &state)
+  {
+    pass_.end_sync(res, state);
+    pass_in_front_.end_sync(res, state);
   }
 
   void draw(Resources &res, Manager &manager, View &view)
   {
-    passes_.draw(manager, view, res.overlay_line_fb);
+    pass_.draw(manager, view, res.overlay_line_fb);
   }
 
   void draw_in_front(Resources &res, Manager &manager, View &view)
   {
-    passes_in_front_.draw(manager, view, res.overlay_line_in_front_fb);
+    pass_in_front_.draw(manager, view, res.overlay_line_in_front_fb);
   }
 };
 

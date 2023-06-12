@@ -7,13 +7,13 @@
 #pragma once
 
 #include "BKE_mball.h"
-#include "overlay_next_extra_passes.hh"
+#include "overlay_next_extra_pass.hh"
 
 namespace blender::draw::overlay {
 
 static void bounds_sync_base(const ObjectRef &ob_ref,
                              const select::ID select_id,
-                             ExtraInstancePasses &passes,
+                             ExtraInstancePass &pass,
                              ExtraInstanceData data,
                              char boundtype,
                              bool around_origin)
@@ -44,19 +44,19 @@ static void bounds_sync_base(const ObjectRef &ob_ref,
   if (boundtype == OB_BOUND_BOX) {
     float4x4 mat = math::from_scale<float4x4>(size);
     mat.location() = center;
-    passes.cube.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.cube.append(data.with_matrix(data.matrix * mat), select_id);
   }
   else if (boundtype == OB_BOUND_SPHERE) {
     size = float3(std::max({size.x, size.y, size.z}));
     float4x4 mat = math::from_scale<float4x4>(size);
     mat.location() = center;
-    passes.sphere.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.sphere.append(data.with_matrix(data.matrix * mat), select_id);
   }
   else if (boundtype == OB_BOUND_CYLINDER) {
     size.x = size.y = std::max(size.x, size.y);
     float4x4 mat = math::from_scale<float4x4>(size);
     mat.location() = center;
-    passes.cylinder.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.cylinder.append(data.with_matrix(data.matrix * mat), select_id);
   }
   else if (boundtype == OB_BOUND_CONE) {
     size.x = size.y = std::max(size.x, size.y);
@@ -65,7 +65,7 @@ static void bounds_sync_base(const ObjectRef &ob_ref,
     /* Cone batch has base at 0 and is pointing towards +Y. */
     std::swap(mat[1], mat[2]);
     mat.location().z -= size.z;
-    passes.cone.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.cone.append(data.with_matrix(data.matrix * mat), select_id);
   }
   else if (boundtype == OB_BOUND_CAPSULE) {
     size.x = size.y = std::max(size.x, size.y);
@@ -73,14 +73,14 @@ static void bounds_sync_base(const ObjectRef &ob_ref,
     mat.location() = center;
 
     mat.location().z = center.z + std::max(0.0f, size.z - size.x);
-    passes.capsule_cap.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.capsule_cap.append(data.with_matrix(data.matrix * mat), select_id);
 
     mat.location().z = center.z - std::max(0.0f, size.z - size.x);
     mat.z_axis() *= -1.0f;
-    passes.capsule_cap.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.capsule_cap.append(data.with_matrix(data.matrix * mat), select_id);
 
     mat.z_axis().z = std::max(0.0f, (size.z - size.x) * 2.0f);
-    passes.capsule_body.append(data.with_matrix(data.matrix * mat), select_id);
+    pass.capsule_body.append(data.with_matrix(data.matrix * mat), select_id);
   }
 }
 
@@ -88,11 +88,11 @@ static void bounds_sync(const ObjectRef &ob_ref,
                         const select::ID select_id,
                         Resources & /*res*/,
                         const State & /*state*/,
-                        ExtraInstancePasses &passes,
+                        ExtraInstancePass &pass,
                         ExtraInstanceData data)
 {
   Object *ob = ob_ref.object;
-  bounds_sync_base(ob_ref, select_id, passes, data, ob->boundtype, false);
+  bounds_sync_base(ob_ref, select_id, pass, data, ob->boundtype, false);
 }
 
 }  // namespace blender::draw::overlay
