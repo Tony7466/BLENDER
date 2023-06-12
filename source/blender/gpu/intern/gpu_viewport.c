@@ -455,7 +455,8 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE);
     GPU_batch_uniform_1i(batch, "overlay", do_overlay_merge);
     GPU_batch_uniform_1i(batch, "display_transform", display_colorspace);
-    GPU_batch_uniform_1i(batch, "use_extended", U.gpu_flag & USER_GPU_FLAG_HDR_ENABLED);
+    GPU_batch_uniform_1i(
+        batch, "use_extended", viewport->view_settings.flag & COLORMANAGE_VIEW_USE_HDR);
   }
 
   GPU_texture_bind(color, 0);

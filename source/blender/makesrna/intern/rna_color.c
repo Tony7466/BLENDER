@@ -508,6 +508,18 @@ static void rna_ColorManagedViewSettings_look_set(PointerRNA *ptr, int value)
   }
 }
 
+static void rna_ColorManagedViewSettings_use_hdr_set(PointerRNA *ptr, bool value)
+{
+  ColorManagedViewSettings *view_settings = (ColorManagedViewSettings *)ptr->data;
+
+  if (value) {
+    view_settings->flag |= COLORMANAGE_VIEW_USE_HDR;
+  }
+  else {
+    view_settings->flag &= ~COLORMANAGE_VIEW_USE_HDR;
+  }
+}
+
 static const EnumPropertyItem *rna_ColorManagedViewSettings_look_itemf(bContext *UNUSED(C),
                                                                        PointerRNA *ptr,
                                                                        PropertyRNA *UNUSED(prop),
@@ -1273,6 +1285,15 @@ static void rna_def_colormanage(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", COLORMANAGE_VIEW_USE_CURVES);
   RNA_def_property_boolean_funcs(prop, NULL, "rna_ColorManagedViewSettings_use_curves_set");
   RNA_def_property_ui_text(prop, "Use Curves", "Use RGB curved for pre-display transformation");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
+
+  prop = RNA_def_property(srna, "use_hdr_view", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", COLORMANAGE_VIEW_USE_HDR);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_ColorManagedViewSettings_use_hdr_set");
+  RNA_def_property_ui_text(prop,
+                           "High Dynamic Range",
+                           "Enable high dynamic range with extended colorspace in viewport, "
+                           "uncapping display brightness for rendered content.");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
 
   /* ** Color-space ** */

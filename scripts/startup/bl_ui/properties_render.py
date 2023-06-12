@@ -75,6 +75,7 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         col = flow.column()
         col.prop(view, "exposure")
         col.prop(view, "gamma")
+        col.prop(view, "use_hdr_view")
 
         col.separator()
 
