@@ -1118,9 +1118,9 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
   const int direction = RNA_enum_get(op->ptr, "direction");
   const int axis = 0;
 
-  bool is_relevant_selection = true;
+  bool is_selection_relevant = true;
   if (CTX_DATA_COUNT(C, selected_bones) == 0) {
-    is_relevant_selection = false;
+    is_selection_relevant = false;
   }
 
   uint objects_len = 0;
@@ -1149,7 +1149,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
       }
 
       char name_flip[MAXBONENAME];
-      if (is_relevant_selection && ((ebone_iter->flag & BONE_SELECTED) == 0)) {
+      if (is_selection_relevant && ((ebone_iter->flag & BONE_SELECTED) == 0)) {
         continue;
       }
 
@@ -1174,7 +1174,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
         /* Iterbone selected, mirrored bone is not, so set temp ptr. */
         ebone_iter->temp.ebone = ebone;
       }
-      else if ((ebone->flag & BONE_SELECTED) | (!is_relevant_selection)) {
+      else if ((ebone->flag & BONE_SELECTED) | (!is_selection_relevant)) {
         float axis_delta;
 
         axis_delta = ebone->head[axis] - ebone_iter->head[axis];
@@ -1204,7 +1204,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 
         /* Both bones are selected, or at least the ebone is currently selected. */
         ebone_dst->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-        if (is_relevant_selection) {
+        if (is_selection_relevant) {
           ebone_src->temp.ebone = ebone_dst;
         }
         else {
