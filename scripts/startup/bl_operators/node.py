@@ -244,7 +244,7 @@ class NODE_OT_tree_path_parent(Operator):
         return {'FINISHED'}
 
 
-class NodeSocketPanelOperator():
+class NodePanelOperator():
     @classmethod
     def poll(cls, context):
         snode = context.space_data
@@ -258,16 +258,16 @@ class NodeSocketPanelOperator():
         return True
 
 
-class NODE_OT_socket_panel_add(NodeSocketPanelOperator, Operator):
-    '''Add a new socket panel to the tree'''
-    bl_idname = "node.socket_panel_add"
-    bl_label = "Add Socket Panel"
+class NODE_OT_panel_add(NodePanelOperator, Operator):
+    '''Add a new panel to the tree'''
+    bl_idname = "node.panel_add"
+    bl_label = "Add Panel"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        panels = tree.socket_panels
+        panels = tree.panels
 
         # Remember index to move the item.
         dst_index = min(panels.active_index + 1, len(panels))
@@ -278,16 +278,16 @@ class NODE_OT_socket_panel_add(NodeSocketPanelOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_socket_panel_remove(NodeSocketPanelOperator, Operator):
-    '''Remove a socket panel from the tree'''
-    bl_idname = "node.socket_panel_remove"
-    bl_label = "Remove Socket Panel"
+class NODE_OT_panel_remove(NodePanelOperator, Operator):
+    '''Remove a panel from the tree'''
+    bl_idname = "node.panel_remove"
+    bl_label = "Remove Panel"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        panels = tree.socket_panels
+        panels = tree.panels
 
         if panels.active:
             panels.remove(panels.active)
@@ -296,10 +296,10 @@ class NODE_OT_socket_panel_remove(NodeSocketPanelOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_socket_panel_move(NodeSocketPanelOperator, Operator):
-    '''Move a socket panel to another position'''
-    bl_idname = "node.socket_panel_move"
-    bl_label = "Move Socket Panel"
+class NODE_OT_panel_move(NodePanelOperator, Operator):
+    '''Move a panel to another position'''
+    bl_idname = "node.panel_move"
+    bl_label = "Move Panel"
     bl_options = {'REGISTER', 'UNDO'}
 
     direction: EnumProperty(
@@ -311,7 +311,7 @@ class NODE_OT_socket_panel_move(NodeSocketPanelOperator, Operator):
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        panels = tree.socket_panels
+        panels = tree.panels
 
         if self.direction == 'UP' and panels.active_index > 0:
             panels.move(panels.active_index, panels.active_index - 1)
@@ -329,8 +329,8 @@ classes = (
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
     NODE_OT_collapse_hide_unused_toggle,
-    NODE_OT_socket_panel_add,
-    NODE_OT_socket_panel_remove,
-    NODE_OT_socket_panel_move,
+    NODE_OT_panel_add,
+    NODE_OT_panel_remove,
+    NODE_OT_panel_move,
     NODE_OT_tree_path_parent,
 )
