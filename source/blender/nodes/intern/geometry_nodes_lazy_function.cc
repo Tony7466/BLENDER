@@ -1355,6 +1355,9 @@ struct ZoneBuildInfo {
   Map<const bNodeSocket *, lf::OutputSocket *> output_socket_map;
   const LazyFunction *lazy_function = nullptr;
   Vector<const bNodeLink *> border_links;
+  IndexRange main_input_indices;
+  IndexRange main_output_indices;
+  IndexRange border_link_input_indices;
 };
 
 /**
@@ -1587,11 +1590,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
     if (lf_zone_input_node) {
       lf_zone_inputs.extend(lf_zone_input_node->outputs());
+      zone_info.main_input_indices = lf_zone_inputs.index_range();
     }
     lf_zone_inputs.extend(lf_border_link_input_node.outputs());
+    zone_info.border_link_input_indices = lf_zone_inputs.index_range().take_back(
+        lf_border_link_input_node.outputs().size());
 
     Vector<const lf::InputSocket *, 16> lf_zone_outputs;
     lf_zone_outputs.extend(lf_zone_output_node.inputs());
+    zone_info.main_output_indices = lf_zone_outputs.index_range();
 
     const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
         *zone_info.lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
@@ -1652,21 +1659,21 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::FunctionNode &child_zone_node = insert_params.lf_graph.add_function(
         *child_zone_info.lazy_function);
 
-    if (child_zone.input_node) {
-      for (const int i : child_zone.input_node->input_sockets().drop_back(1).index_range()) {
-        insert_params.input_socket_map.add(&child_zone.input_node->input_socket(i),
-                                           &child_zone_node.input(i));
-      }
+    for (const int i : child_zone_info.main_input_indices.index_range()) {
+      insert_params.input_socket_map.add(
+          &child_zone.input_node->input_socket(i),
+          &child_zone_node.input(child_zone_info.main_input_indices[i]));
     }
-    for (const int i : child_zone.output_node->output_sockets().drop_back(1).index_range()) {
-      insert_params.output_socket_map.add(&child_zone.output_node->output_socket(i),
-                                          &child_zone_node.output(i));
+    for (const int i : child_zone_info.main_output_indices.index_range()) {
+      insert_params.output_socket_map.add(
+          &child_zone.output_node->output_socket(i),
+          &child_zone_node.output(child_zone_info.main_output_indices[i]));
     }
 
     const Span<const bNodeLink *> child_border_links = child_zone_info.border_links;
     for (const int child_border_link_i : child_border_links.index_range()) {
       lf::InputSocket &child_border_link_input = child_zone_node.input(
-          child_zone_node.inputs().size() - child_border_links.size() + child_border_link_i);
+          child_zone_info.border_link_input_indices[child_border_link_i]);
       const bNodeLink &link = *child_border_links[child_border_link_i];
       const int border_link_i = border_links.first_index_try(&link);
       if (border_link_i == -1) {
