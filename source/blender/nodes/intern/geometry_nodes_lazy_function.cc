@@ -1354,6 +1354,7 @@ struct ZoneBuildInfo {
   MultiValueMap<const bNodeSocket *, lf::InputSocket *> input_socket_map;
   Map<const bNodeSocket *, lf::OutputSocket *> output_socket_map;
   const LazyFunction *lazy_function = nullptr;
+  Vector<const bNodeLink *> border_links;
 };
 
 /**
@@ -1433,14 +1434,75 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->lf_index_by_bsocket.reinitialize(btree_.all_sockets().size());
     mapping_->lf_index_by_bsocket.fill(-1);
 
-    zone_build_infos_.reinitialize(tree_zones_->zones.size());
-
     this->prepare_node_multi_functions();
+    this->build_zone_functions();
 
-    for (const int zone_i : tree_zones_->zones.index_range()) {
-      ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
-      zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
+    this->build_group_input_node();
+    if (btree_.group_output_node() == nullptr) {
+      this->build_fallback_output_node();
     }
+
+    {
+      InsertBNodeParams insert_params{
+          *root_lf_graph_, root_input_socket_map_, root_output_socket_map_};
+      for (const bNode *bnode : tree_zones_->nodes_outside_zones) {
+        this->insert_node_in_graph(*bnode, insert_params);
+      }
+      for (const TreeZone *child_zone : tree_zones_->root_zones) {
+        const int child_zone_i = child_zone->index;
+        ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
+        lf::FunctionNode &child_zone_node = root_lf_graph_->add_function(
+            *child_zone_info.lazy_function);
+
+        if (child_zone->input_node) {
+          for (const int i : child_zone->input_node->input_sockets().drop_back(1).index_range()) {
+            root_input_socket_map_.add(&child_zone->input_node->input_socket(i),
+                                       &child_zone_node.input(i));
+          }
+        }
+
+        for (const int i : child_zone->output_node->output_sockets().drop_back(1).index_range()) {
+          root_output_socket_map_.add(&child_zone->output_node->output_socket(i),
+                                      &child_zone_node.output(i));
+        }
+
+        const Span<const bNodeLink *> border_links = child_zone_info.border_links;
+        for (const int border_link_i : border_links.index_range()) {
+          const bNodeLink &border_link = *border_links[border_link_i];
+          lf::InputSocket &border_link_lf_input = child_zone_node.input(
+              child_zone_node.inputs().size() - border_links.size() + border_link_i);
+          root_input_socket_map_.add(border_link.tosock, &border_link_lf_input);
+        }
+      }
+      for (const auto item : root_output_socket_map_.items()) {
+        this->insert_links_from_socket(*item.key, *item.value, insert_params);
+      }
+      this->add_default_inputs(insert_params);
+    }
+
+    // this->build_attribute_propagation_input_node();
+    // this->build_output_usage_input_node();
+    // this->build_input_usage_output_node();
+    // this->build_socket_usages();
+
+    // this->build_attribute_propagation_sets();
+    // this->fix_link_cycles();
+
+    this->print_graph();
+
+    root_lf_graph_->update_node_indices();
+    lf_graph_info_->num_inline_nodes_approximate += root_lf_graph_->nodes().size();
+  }
+
+ private:
+  void prepare_node_multi_functions()
+  {
+    lf_graph_info_->node_multi_functions = std::make_unique<NodeMultiFunctions>(btree_);
+  }
+
+  void build_zone_functions()
+  {
+    zone_build_infos_.reinitialize(tree_zones_->zones.size());
 
     Array<int> zone_build_order(tree_zones_->zones.size());
     std::iota(zone_build_order.begin(), zone_build_order.end(), 0);
@@ -1448,8 +1510,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         zone_build_order.begin(), zone_build_order.end(), [&](const int zone_a, const int zone_b) {
           return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
         });
-
-    Array<Vector<const bNodeLink *>> border_links_by_zone(tree_zones_->zones.size());
 
     for (const bNodeLink *link : btree_.all_links()) {
       if (!link->is_available()) {
@@ -1465,22 +1525,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
       for (const TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
-        border_links_by_zone[zone->index].append(link);
-      }
-    }
-
-    for (const int zone_i : zone_build_order) {
-      const TreeZone &zone = *tree_zones_->zones[zone_i];
-      std::cout << zone_i << ":\n";
-      std::cout << "  Depth: " << zone.depth << "\n";
-      std::cout << "  Direct children nodes: \n";
-      for (const bNode *node : zone.child_nodes) {
-        std::cout << "    " << node->name << "\n";
-      }
-      const Span<const bNodeLink *> border_links = border_links_by_zone[zone_i];
-      std::cout << "  Border Links: " << border_links.size() << "\n";
-      for (const bNodeLink *link : border_links) {
-        std::cout << "    " << link->fromnode->name << ":" << link->fromsock->name << "\n";
+        ZoneBuildInfo &zone_info = zone_build_infos_[zone->index];
+        zone_info.border_links.append(link);
       }
     }
 
@@ -1505,9 +1551,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
       auto border_link_inputs_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
       border_link_inputs_debug_info->name = "Border Links";
-      const Span<const bNodeLink *> border_links = border_links_by_zone[zone_i];
       Vector<const CPPType *, 16> border_link_types;
-      for (const bNodeLink *border_link : border_links) {
+      for (const bNodeLink *border_link : zone_info.border_links) {
         border_link_types.append(border_link->tosock->typeinfo->geometry_nodes_cpp_type);
         border_link_inputs_debug_info->output_names.append(StringRef("Link from ") +
                                                            border_link->fromsock->identifier);
@@ -1557,12 +1602,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                           &child_zone_node.output(i));
         }
 
-        const Span<const bNodeLink *> child_border_links = border_links_by_zone[child_zone_i];
+        const Span<const bNodeLink *> child_border_links = child_zone_info.border_links;
         for (const int child_border_link_i : child_border_links.index_range()) {
           lf::InputSocket &child_border_link_input = child_zone_node.input(
               child_zone_node.inputs().size() - child_border_links.size() + child_border_link_i);
           const bNodeLink &link = *child_border_links[child_border_link_i];
-          const int border_link_i = border_links.first_index_try(&link);
+          const int border_link_i = zone_info.border_links.first_index_of_try(&link);
           if (border_link_i == -1) {
             zone_info.input_socket_map.add(link.tosock, &child_border_link_input);
           }
@@ -1577,8 +1622,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         this->insert_links_from_socket(*item.key, *item.value, insert_params);
       }
 
-      for (const int border_link_i : border_links.index_range()) {
-        const bNodeLink &border_link = *border_links[border_link_i];
+      for (const int border_link_i : zone_info.border_links.index_range()) {
+        const bNodeLink &border_link = *zone_info.border_links[border_link_i];
         lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
         const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
                                                                                   insert_params);
@@ -1614,68 +1659,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
       std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
     }
-
-    this->build_group_input_node();
-    if (btree_.group_output_node() == nullptr) {
-      this->build_fallback_output_node();
-    }
-
-    {
-      InsertBNodeParams insert_params{
-          *root_lf_graph_, root_input_socket_map_, root_output_socket_map_};
-      for (const bNode *bnode : tree_zones_->nodes_outside_zones) {
-        this->insert_node_in_graph(*bnode, insert_params);
-      }
-      for (const TreeZone *child_zone : tree_zones_->root_zones) {
-        const int child_zone_i = child_zone->index;
-        ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
-        lf::FunctionNode &child_zone_node = root_lf_graph_->add_function(
-            *child_zone_info.lazy_function);
-
-        if (child_zone->input_node) {
-          for (const int i : child_zone->input_node->input_sockets().drop_back(1).index_range()) {
-            root_input_socket_map_.add(&child_zone->input_node->input_socket(i),
-                                       &child_zone_node.input(i));
-          }
-        }
-
-        for (const int i : child_zone->output_node->output_sockets().drop_back(1).index_range()) {
-          root_output_socket_map_.add(&child_zone->output_node->output_socket(i),
-                                      &child_zone_node.output(i));
-        }
-
-        const Span<const bNodeLink *> border_links = border_links_by_zone[child_zone_i];
-        for (const int border_link_i : border_links.index_range()) {
-          const bNodeLink &border_link = *border_links[border_link_i];
-          lf::InputSocket &border_link_lf_input = child_zone_node.input(
-              child_zone_node.inputs().size() - border_links.size() + border_link_i);
-          root_input_socket_map_.add(border_link.tosock, &border_link_lf_input);
-        }
-      }
-      for (const auto item : root_output_socket_map_.items()) {
-        this->insert_links_from_socket(*item.key, *item.value, insert_params);
-      }
-      this->add_default_inputs(insert_params);
-    }
-
-    // this->build_attribute_propagation_input_node();
-    // this->build_output_usage_input_node();
-    // this->build_input_usage_output_node();
-    // this->build_socket_usages();
-
-    // this->build_attribute_propagation_sets();
-    // this->fix_link_cycles();
-
-    this->print_graph();
-
-    root_lf_graph_->update_node_indices();
-    lf_graph_info_->num_inline_nodes_approximate += root_lf_graph_->nodes().size();
-  }
-
- private:
-  void prepare_node_multi_functions()
-  {
-    lf_graph_info_->node_multi_functions = std::make_unique<NodeMultiFunctions>(btree_);
   }
 
   void build_group_input_node()
