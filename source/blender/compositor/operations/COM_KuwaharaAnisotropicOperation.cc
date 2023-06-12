@@ -157,7 +157,8 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
     sum[i] = sum[i] * weight_inv;
     var[i] = var[i] * weight_inv;
     var[i] = var[i] - sum[i] * sum[i];
-    var[i] = math::safe_sqrt(var[i]);
+    var[i] = math::max(var[i], float3(FLT_EPSILON * FLT_EPSILON));
+    var[i] = math::sqrt(var[i]);
 
     const float3 w = safe_pow_positive(var[i], -q);
     de += mean[i] * w;
@@ -301,7 +302,8 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
       sum[i] = sum[i] * weight_inv;
       var[i] = var[i] * weight_inv;
       var[i] = var[i] - sum[i] * sum[i];
-      var[i] = math::safe_sqrt(var[i]);
+      var[i] = math::max(var[i], float3(FLT_EPSILON * FLT_EPSILON));
+      var[i] = math::sqrt(var[i]);
 
       const float3 w = safe_pow_positive(var[i], -q);
       de += mean[i] * w;
