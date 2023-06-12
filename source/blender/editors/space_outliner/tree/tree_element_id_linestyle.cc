@@ -17,15 +17,16 @@
 
 namespace blender::ed::outliner {
 
-TreeElementIDLineStyle::TreeElementIDLineStyle(TreeElement &legacy_te, FreestyleLineStyle &linestyle)
-: TreeElementID(legacy_te, linestyle.id), linestyle_(linestyle)
+TreeElementIDLineStyle::TreeElementIDLineStyle(TreeElement &legacy_te,
+                                               FreestyleLineStyle &linestyle)
+    : TreeElementID(legacy_te, linestyle.id), linestyle_(linestyle)
 {
 }
 
 void TreeElementIDLineStyle::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, linestyle_.adt);
-  
+
   expandTextures(space_outliner);
 }
 
@@ -38,9 +39,10 @@ void TreeElementIDLineStyle::expandTextures(SpaceOutliner &space_outliner) const
 {
   for (int a = 0; a < MAX_MTEX; a++) {
     if (linestyle_.mtex[a]) {
-      outliner_add_element(&space_outliner, &legacy_te_.subtree, (linestyle_.mtex[a])->tex, &legacy_te_, 0, a);
+      outliner_add_element(
+          &space_outliner, &legacy_te_.subtree, (linestyle_.mtex[a])->tex, &legacy_te_, 0, a);
     }
   }
 }
 
-}
+}  // namespace blender::ed::outliner

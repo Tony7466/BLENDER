@@ -16,16 +16,15 @@ namespace blender::ed::outliner {
 
 class TreeElementIDLineStyle final : public TreeElementID {
   FreestyleLineStyle &linestyle_;
-  
-public:
+
+ public:
   TreeElementIDLineStyle(TreeElement &legacy_te, FreestyleLineStyle &linestyle);
-  
+
   void expand(SpaceOutliner &) const override;
   bool isExpandValid() const override;
-  
-private:
+
+ private:
   void expandTextures(SpaceOutliner &) const;
-  
 };
 
 }  // namespace blender::ed::outliner
