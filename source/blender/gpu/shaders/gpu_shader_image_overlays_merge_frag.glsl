@@ -36,7 +36,8 @@ void main()
   vec4 overlay_col = texture(overlays_texture, texCoord_interp.xy);
 
   if (overlay) {
-    vec4 clamped_col = clamp(fragColor, 0.0, 1.0);
+    fragColor = max(fragColor, 0.0);
+    vec4 clamped_col = min(fragColor, 1.0);
     if (!use_extended) {
       /* Only clamp color if we are not using an extended display colorspace. */
       fragColor = clamped_col;

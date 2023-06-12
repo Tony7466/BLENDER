@@ -169,7 +169,8 @@ vec4 OCIO_ProcessColor(vec4 col, vec4 col_overlay)
    * merge UI using alpha blending in the correct color space. */
   if (parameters.use_overlay) {
     col.rgb = pow(col.rgb, vec3(parameters.exponent * 2.2));
-    vec4 clamped_col = clamp(col, 0.0, 1.0);
+    col = max(col, 0.0);
+    vec4 clamped_col = min(col, 1.0);
 
     if (!parameters.use_extended) {
       /* if we're not using an extended colour space, clamp the color 0..1 */
