@@ -6681,9 +6681,6 @@ void uiTemplateColormanagedViewSettings(uiLayout *layout,
   uiItemR(col, &view_transform_ptr, "gamma", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &view_transform_ptr, "use_hdr_view", 0, nullptr, ICON_NONE);
-
-  col = uiLayoutColumn(layout, false);
   uiItemR(col, &view_transform_ptr, "use_curve_mapping", 0, nullptr, ICON_NONE);
   if (view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) {
     uiTemplateCurveMapping(

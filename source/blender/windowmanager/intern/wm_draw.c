@@ -38,6 +38,7 @@
 #include "ED_view3d.h"
 
 #include "GPU_batch_presets.h"
+#include "GPU_capabilities.h"
 #include "GPU_context.h"
 #include "GPU_debug.h"
 #include "GPU_framebuffer.h"
@@ -663,7 +664,7 @@ static void wm_draw_region_buffer_create(Scene *scene,
   /* Determine desired offscreen format. */
   bool use_hdr = false;
   if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-    use_hdr = true;
+    use_hdr = GPU_HDR_support();
   }
   eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
 
@@ -1165,7 +1166,7 @@ static void wm_draw_window(bContext *C, wmWindow *win)
     bool use_hdr = false;
     Scene *scene = WM_window_get_active_scene(win);
     if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-      use_hdr = true;
+      use_hdr = GPU_HDR_support();
     }
     eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
 
@@ -1328,7 +1329,7 @@ uint8_t *WM_window_pixels_read_from_offscreen(bContext *C, wmWindow *win, int r_
   bool use_hdr = false;
   Scene *scene = WM_window_get_active_scene(win);
   if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-    use_hdr = true;
+    use_hdr = GPU_HDR_support();
   }
   eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
 

@@ -55,6 +55,8 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         'BLENDER_WORKBENCH_NEXT'}
 
     def draw(self, context):
+        import gpu
+
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
@@ -75,7 +77,9 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         col = flow.column()
         col.prop(view, "exposure")
         col.prop(view, "gamma")
-        col.prop(view, "use_hdr_view")
+
+        if gpu.capabilities.hdr_support_get():
+            col.prop(view, "use_hdr_view")
 
         col.separator()
 

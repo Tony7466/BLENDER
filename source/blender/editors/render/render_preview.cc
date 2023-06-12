@@ -74,6 +74,7 @@
 
 #include "BIF_glutil.h"
 
+#include "GPU_capabilities.h"
 #include "GPU_shader.h"
 
 #include "RE_engine.h"
@@ -678,7 +679,8 @@ static bool ed_preview_draw_rect(ScrArea *area, int split, int first, rcti *rect
 
         /*Use floating point texture for material preview if High Dynamic Range enabled. */
         Scene *scene = RE_GetScene(re);
-        if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+        if (GPU_HDR_support() && scene &&
+            ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
           float *rect_float = static_cast<float *>(MEM_mallocN(
               rres.rectx * rres.recty * sizeof(float) * 4, "ed_preview_draw_rect_float"));
           float fx = rect->xmin + offx;

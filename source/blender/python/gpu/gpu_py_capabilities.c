@@ -228,6 +228,19 @@ static PyObject *pygpu_shader_image_load_store_support_get(PyObject *UNUSED(self
 {
   return PyBool_FromLong(GPU_shader_image_load_store_support());
 }
+
+PyDoc_STRVAR(pygpu_hdr_support_get_doc,
+             ".. function:: hdr_support_get()\n"
+             "\n"
+             "  Return whether GPU backend supports High Dynamic range for viewport.\n"
+             "\n"
+             "   :return: HDR support available.\n"
+             "   :rtype: bool\n");
+static PyObject *pygpu_hdr_support_get(PyObject *UNUSED(self))
+{
+  return PyBool_FromLong(GPU_HDR_support());
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -297,6 +310,10 @@ static PyMethodDef pygpu_capabilities__tp_methods[] = {
      (PyCFunction)pygpu_shader_image_load_store_support_get,
      METH_NOARGS,
      pygpu_shader_image_load_store_support_get_doc},
+    {"hdr_support_get",
+     (PyCFunction)pygpu_hdr_support_get,
+     METH_NOARGS,
+     pygpu_hdr_support_get_doc},
 
     {NULL, NULL, 0, NULL},
 };

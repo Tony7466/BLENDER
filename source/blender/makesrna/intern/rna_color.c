@@ -1293,7 +1293,7 @@ static void rna_def_colormanage(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "High Dynamic Range",
                            "Enable high dynamic range with extended colorspace in viewport, "
-                           "uncapping display brightness for rendered content.");
+                           "uncapping display brightness for rendered content");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagedColorspaceSettings_reload_update");
 
   /* ** Color-space ** */
