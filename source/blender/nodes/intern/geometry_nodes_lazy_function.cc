@@ -1571,17 +1571,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf_graph_info_->dummy_debug_infos_.append(std::move(zone_input_debug_info));
     }
 
-    auto border_link_inputs_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-    border_link_inputs_debug_info->name = "Border Links";
-    Vector<const CPPType *, 16> border_link_types;
-    for (const bNodeLink *border_link : zone_info.border_links) {
-      border_link_types.append(border_link->tosock->typeinfo->geometry_nodes_cpp_type);
-      border_link_inputs_debug_info->output_names.append(StringRef("Link from ") +
-                                                         border_link->fromsock->identifier);
-    }
-    lf::Node &lf_border_link_input_node = zone_info.lf_graph->add_dummy(
-        {}, border_link_types, border_link_inputs_debug_info.get());
-    lf_graph_info_->dummy_debug_infos_.append(std::move(border_link_inputs_debug_info));
+    lf::Node &lf_border_link_input_node = this->build_zone_border_link_inputs_node(zone_info);
 
     auto zone_output_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
     zone_output_debug_info->name = "Zone Output";
@@ -1679,6 +1669,20 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_info.lazy_function = &zone_function;
 
     std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
+  }
+
+  lf::DummyNode &build_zone_border_link_inputs_node(ZoneBuildInfo &zone_info)
+  {
+    auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    debug_info->name = "Border Links";
+    Vector<const CPPType *, 16> border_link_types;
+    for (const bNodeLink *border_link : zone_info.border_links) {
+      border_link_types.append(border_link->tosock->typeinfo->geometry_nodes_cpp_type);
+      debug_info->output_names.append(StringRef("Link from ") + border_link->fromsock->identifier);
+    }
+    lf::DummyNode &node = zone_info.lf_graph->add_dummy({}, border_link_types, debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+    return node;
   }
 
   void build_group_input_node()
