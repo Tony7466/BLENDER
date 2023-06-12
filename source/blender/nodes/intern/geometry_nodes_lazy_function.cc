@@ -1508,133 +1508,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     this->find_zone_border_links();
 
     for (const int zone_i : zone_build_order) {
-      const TreeZone &zone = *tree_zones_->zones[zone_i];
-      ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
-      zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
-
-      lf::Node *lf_zone_input_node = nullptr;
-      if (zone.input_node != nullptr) {
-        Vector<const CPPType *, 16> zone_input_types;
-        auto zone_input_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-        zone_input_debug_info->name = "Zone Input";
-        for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
-          zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-          zone_input_debug_info->output_names.append(socket->identifier);
-        }
-        lf_zone_input_node = &zone_info.lf_graph->add_dummy(
-            {}, zone_input_types, zone_input_debug_info.get());
-        lf_graph_info_->dummy_debug_infos_.append(std::move(zone_input_debug_info));
-      }
-
-      auto border_link_inputs_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-      border_link_inputs_debug_info->name = "Border Links";
-      Vector<const CPPType *, 16> border_link_types;
-      for (const bNodeLink *border_link : zone_info.border_links) {
-        border_link_types.append(border_link->tosock->typeinfo->geometry_nodes_cpp_type);
-        border_link_inputs_debug_info->output_names.append(StringRef("Link from ") +
-                                                           border_link->fromsock->identifier);
-      }
-      lf::Node &lf_border_link_input_node = zone_info.lf_graph->add_dummy(
-          {}, border_link_types, border_link_inputs_debug_info.get());
-      lf_graph_info_->dummy_debug_infos_.append(std::move(border_link_inputs_debug_info));
-
-      auto zone_output_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-      zone_output_debug_info->name = "Zone Output";
-      Vector<const CPPType *, 16> zone_output_types;
-      for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
-        zone_output_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-        zone_output_debug_info->input_names.append(socket->identifier);
-      }
-      lf::Node &lf_zone_output_node = zone_info.lf_graph->add_dummy(
-          zone_output_types, {}, zone_output_debug_info.get());
-      lf_graph_info_->dummy_debug_infos_.append(std::move(zone_output_debug_info));
-
-      InsertBNodeParams insert_params{
-          *zone_info.lf_graph, zone_info.input_socket_map, zone_info.output_socket_map};
-
-      lf::FunctionNode *lf_simulation_input = nullptr;
-      if (zone.input_node) {
-        lf_simulation_input = this->handle_simulation_input_node(
-            btree_, *zone.input_node, insert_params);
-      }
-      lf::FunctionNode &lf_simulation_output = this->handle_simulation_output_node(
-          *zone.output_node, insert_params);
-      for (const bNode *bnode : zone.child_nodes) {
-        this->insert_node_in_graph(*bnode, insert_params);
-      }
-      for (const TreeZone *child_zone : zone.child_zones) {
-        const int child_zone_i = child_zone->index;
-        ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
-        lf::FunctionNode &child_zone_node = zone_info.lf_graph->add_function(
-            *child_zone_info.lazy_function);
-
-        if (child_zone->input_node) {
-          for (const int i : child_zone->input_node->input_sockets().drop_back(1).index_range()) {
-            zone_info.input_socket_map.add(&child_zone->input_node->input_socket(i),
-                                           &child_zone_node.input(i));
-          }
-        }
-        for (const int i : child_zone->output_node->output_sockets().drop_back(1).index_range()) {
-          zone_info.output_socket_map.add(&child_zone->output_node->output_socket(i),
-                                          &child_zone_node.output(i));
-        }
-
-        const Span<const bNodeLink *> child_border_links = child_zone_info.border_links;
-        for (const int child_border_link_i : child_border_links.index_range()) {
-          lf::InputSocket &child_border_link_input = child_zone_node.input(
-              child_zone_node.inputs().size() - child_border_links.size() + child_border_link_i);
-          const bNodeLink &link = *child_border_links[child_border_link_i];
-          const int border_link_i = zone_info.border_links.first_index_of_try(&link);
-          if (border_link_i == -1) {
-            zone_info.input_socket_map.add(link.tosock, &child_border_link_input);
-          }
-          else {
-            zone_info.lf_graph->add_link(lf_border_link_input_node.output(border_link_i),
-                                         child_border_link_input);
-          }
-        }
-      }
-
-      for (const auto item : zone_info.output_socket_map.items()) {
-        this->insert_links_from_socket(*item.key, *item.value, insert_params);
-      }
-
-      for (const int border_link_i : zone_info.border_links.index_range()) {
-        const bNodeLink &border_link = *zone_info.border_links[border_link_i];
-        lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
-        const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
-                                                                                  insert_params);
-        for (lf::InputSocket *lf_to : lf_link_targets) {
-          zone_info.lf_graph->add_link(lf_from, *lf_to);
-        }
-      }
-
-      if (lf_zone_input_node != nullptr) {
-        for (const int i : lf_zone_input_node->outputs().index_range()) {
-          zone_info.lf_graph->add_link(lf_zone_input_node->output(i),
-                                       lf_simulation_input->input(i));
-        }
-      }
-      for (const int i : lf_zone_output_node.inputs().index_range()) {
-        zone_info.lf_graph->add_link(lf_simulation_output.output(i), lf_zone_output_node.input(i));
-      }
-
-      this->add_default_inputs(insert_params);
-
-      Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
-      if (lf_zone_input_node) {
-        lf_zone_inputs.extend(lf_zone_input_node->outputs());
-      }
-      lf_zone_inputs.extend(lf_border_link_input_node.outputs());
-
-      Vector<const lf::InputSocket *, 16> lf_zone_outputs;
-      lf_zone_outputs.extend(lf_zone_output_node.inputs());
-
-      const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
-          *zone_info.lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
-      zone_info.lazy_function = &zone_function;
-
-      std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
+      this->build_zone_function(zone_i);
     }
   }
 
@@ -1673,6 +1547,136 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         zone_info.border_links.append(link);
       }
     }
+  }
+
+  void build_zone_function(const int zone_i)
+  {
+    const TreeZone &zone = *tree_zones_->zones[zone_i];
+    ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
+    zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
+
+    lf::Node *lf_zone_input_node = nullptr;
+    if (zone.input_node != nullptr) {
+      Vector<const CPPType *, 16> zone_input_types;
+      auto zone_input_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+      zone_input_debug_info->name = "Zone Input";
+      for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
+        zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+        zone_input_debug_info->output_names.append(socket->identifier);
+      }
+      lf_zone_input_node = &zone_info.lf_graph->add_dummy(
+          {}, zone_input_types, zone_input_debug_info.get());
+      lf_graph_info_->dummy_debug_infos_.append(std::move(zone_input_debug_info));
+    }
+
+    auto border_link_inputs_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    border_link_inputs_debug_info->name = "Border Links";
+    Vector<const CPPType *, 16> border_link_types;
+    for (const bNodeLink *border_link : zone_info.border_links) {
+      border_link_types.append(border_link->tosock->typeinfo->geometry_nodes_cpp_type);
+      border_link_inputs_debug_info->output_names.append(StringRef("Link from ") +
+                                                         border_link->fromsock->identifier);
+    }
+    lf::Node &lf_border_link_input_node = zone_info.lf_graph->add_dummy(
+        {}, border_link_types, border_link_inputs_debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(border_link_inputs_debug_info));
+
+    auto zone_output_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    zone_output_debug_info->name = "Zone Output";
+    Vector<const CPPType *, 16> zone_output_types;
+    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
+      zone_output_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+      zone_output_debug_info->input_names.append(socket->identifier);
+    }
+    lf::Node &lf_zone_output_node = zone_info.lf_graph->add_dummy(
+        zone_output_types, {}, zone_output_debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(zone_output_debug_info));
+
+    InsertBNodeParams insert_params{
+        *zone_info.lf_graph, zone_info.input_socket_map, zone_info.output_socket_map};
+
+    lf::FunctionNode *lf_simulation_input = nullptr;
+    if (zone.input_node) {
+      lf_simulation_input = this->handle_simulation_input_node(
+          btree_, *zone.input_node, insert_params);
+    }
+    lf::FunctionNode &lf_simulation_output = this->handle_simulation_output_node(*zone.output_node,
+                                                                                 insert_params);
+    for (const bNode *bnode : zone.child_nodes) {
+      this->insert_node_in_graph(*bnode, insert_params);
+    }
+    for (const TreeZone *child_zone : zone.child_zones) {
+      const int child_zone_i = child_zone->index;
+      ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
+      lf::FunctionNode &child_zone_node = zone_info.lf_graph->add_function(
+          *child_zone_info.lazy_function);
+
+      if (child_zone->input_node) {
+        for (const int i : child_zone->input_node->input_sockets().drop_back(1).index_range()) {
+          zone_info.input_socket_map.add(&child_zone->input_node->input_socket(i),
+                                         &child_zone_node.input(i));
+        }
+      }
+      for (const int i : child_zone->output_node->output_sockets().drop_back(1).index_range()) {
+        zone_info.output_socket_map.add(&child_zone->output_node->output_socket(i),
+                                        &child_zone_node.output(i));
+      }
+
+      const Span<const bNodeLink *> child_border_links = child_zone_info.border_links;
+      for (const int child_border_link_i : child_border_links.index_range()) {
+        lf::InputSocket &child_border_link_input = child_zone_node.input(
+            child_zone_node.inputs().size() - child_border_links.size() + child_border_link_i);
+        const bNodeLink &link = *child_border_links[child_border_link_i];
+        const int border_link_i = zone_info.border_links.first_index_of_try(&link);
+        if (border_link_i == -1) {
+          zone_info.input_socket_map.add(link.tosock, &child_border_link_input);
+        }
+        else {
+          zone_info.lf_graph->add_link(lf_border_link_input_node.output(border_link_i),
+                                       child_border_link_input);
+        }
+      }
+    }
+
+    for (const auto item : zone_info.output_socket_map.items()) {
+      this->insert_links_from_socket(*item.key, *item.value, insert_params);
+    }
+
+    for (const int border_link_i : zone_info.border_links.index_range()) {
+      const bNodeLink &border_link = *zone_info.border_links[border_link_i];
+      lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
+      const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
+                                                                                insert_params);
+      for (lf::InputSocket *lf_to : lf_link_targets) {
+        zone_info.lf_graph->add_link(lf_from, *lf_to);
+      }
+    }
+
+    if (lf_zone_input_node != nullptr) {
+      for (const int i : lf_zone_input_node->outputs().index_range()) {
+        zone_info.lf_graph->add_link(lf_zone_input_node->output(i), lf_simulation_input->input(i));
+      }
+    }
+    for (const int i : lf_zone_output_node.inputs().index_range()) {
+      zone_info.lf_graph->add_link(lf_simulation_output.output(i), lf_zone_output_node.input(i));
+    }
+
+    this->add_default_inputs(insert_params);
+
+    Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
+    if (lf_zone_input_node) {
+      lf_zone_inputs.extend(lf_zone_input_node->outputs());
+    }
+    lf_zone_inputs.extend(lf_border_link_input_node.outputs());
+
+    Vector<const lf::InputSocket *, 16> lf_zone_outputs;
+    lf_zone_outputs.extend(lf_zone_output_node.inputs());
+
+    const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
+        *zone_info.lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
+    zone_info.lazy_function = &zone_function;
+
+    std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
   }
 
   void build_group_input_node()
