@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edanimation
@@ -368,7 +369,7 @@ static void acf_generic_idblock_name(bAnimListElem *ale, char *name)
 
   /* just copy the name... */
   if (id && name) {
-    BLI_strncpy(name, id->name + 2, ANIM_CHAN_NAME_SIZE);
+    BLI_strncpy_utf8(name, id->name + 2, ANIM_CHAN_NAME_SIZE);
   }
 }
 
@@ -476,7 +477,7 @@ static void acf_summary_backdrop(bAnimContext *ac, bAnimListElem *ale, float ymi
 static void acf_summary_name(bAnimListElem *UNUSED(ale), char *name)
 {
   if (name) {
-    BLI_strncpy(name, IFACE_("Summary"), ANIM_CHAN_NAME_SIZE);
+    BLI_strncpy_utf8(name, IFACE_("Summary"), ANIM_CHAN_NAME_SIZE);
   }
 }
 
@@ -696,6 +697,8 @@ static int acf_object_icon(bAnimListElem *ale)
     case OB_EMPTY:
       return ICON_OUTLINER_OB_EMPTY;
     case OB_GPENCIL_LEGACY:
+      return ICON_OUTLINER_OB_GREASEPENCIL;
+    case OB_GREASE_PENCIL:
       return ICON_OUTLINER_OB_GREASEPENCIL;
     default:
       return ICON_OBJECT_DATA;
@@ -1178,7 +1181,7 @@ static void acf_nla_controls_backdrop(bAnimContext *ac,
 /* name for nla controls expander entries */
 static void acf_nla_controls_name(bAnimListElem *UNUSED(ale), char *name)
 {
-  BLI_strncpy(name, IFACE_("NLA Strip Controls"), ANIM_CHAN_NAME_SIZE);
+  BLI_strncpy_utf8(name, IFACE_("NLA Strip Controls"), ANIM_CHAN_NAME_SIZE);
 }
 
 /* check if some setting exists for this channel */
@@ -1393,7 +1396,7 @@ static int acf_filldrivers_icon(bAnimListElem *UNUSED(ale))
 
 static void acf_filldrivers_name(bAnimListElem *UNUSED(ale), char *name)
 {
-  BLI_strncpy(name, IFACE_("Drivers"), ANIM_CHAN_NAME_SIZE);
+  BLI_strncpy_utf8(name, IFACE_("Drivers"), ANIM_CHAN_NAME_SIZE);
 }
 
 /* check if some setting exists for this channel */

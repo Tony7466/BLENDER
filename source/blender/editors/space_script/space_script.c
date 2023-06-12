@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spscript
@@ -61,7 +62,7 @@ static SpaceLink *script_create(const ScrArea *UNUSED(area), const Scene *UNUSED
   return (SpaceLink *)sscript;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void script_free(SpaceLink *sl)
 {
   SpaceScript *sscript = (SpaceScript *)sl;
@@ -76,7 +77,7 @@ static void script_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void script_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
+static void script_init(wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
 
 static SpaceLink *script_duplicate(SpaceLink *sl)
 {
@@ -151,7 +152,7 @@ static void script_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, S
   SpaceScript *scpt = (SpaceScript *)sl;
   /*scpt->script = NULL; - 2.45 set to null, better re-run the script */
   if (scpt->script) {
-    BLO_read_id_address(reader, parent_id->lib, &scpt->script);
+    BLO_read_id_address(reader, parent_id, &scpt->script);
     if (scpt->script) {
       SCRIPT_SET_NULL(scpt->script);
     }
