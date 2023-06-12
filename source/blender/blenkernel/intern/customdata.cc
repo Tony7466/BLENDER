@@ -24,6 +24,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_math.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_mempool.h"
 #include "BLI_path_util.h"
@@ -1933,6 +1934,8 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr},
     /* 51: CD_HAIRLENGTH */
     {sizeof(float), "float", 1, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
+    /* 52: CD_PROP_QUATERNION */
+    {sizeof(float[4]), "vec4f", 1, N_("Quaternion"), nullptr, nullptr, nullptr, nullptr, nullptr},
 };
 
 static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
@@ -4353,7 +4356,7 @@ static bool customdata_unique_check(void *arg, const char *name)
   return cd_layer_find_dupe(data_arg->data, name, data_arg->type, data_arg->index);
 }
 
-int CustomData_name_max_length_calc(const blender::StringRef name)
+int CustomData_name_maxncpy_calc(const blender::StringRef name)
 {
   if (name.startswith(".")) {
     return MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX;
@@ -4379,7 +4382,7 @@ void CustomData_set_layer_unique_name(CustomData *data, const int index)
     return;
   }
 
-  const int max_length = CustomData_name_max_length_calc(nlayer->name);
+  const int name_maxncpy = CustomData_name_maxncpy_calc(nlayer->name);
 
   /* Set default name if none specified. Note we only call DATA_() when
    * needed to avoid overhead of locale lookups in the depsgraph. */
@@ -4388,7 +4391,7 @@ void CustomData_set_layer_unique_name(CustomData *data, const int index)
   }
 
   const char *defname = ""; /* Dummy argument, never used as `name` is never zero length. */
-  BLI_uniquename_cb(customdata_unique_check, &data_arg, defname, '.', nlayer->name, max_length);
+  BLI_uniquename_cb(customdata_unique_check, &data_arg, defname, '.', nlayer->name, name_maxncpy);
 }
 
 void CustomData_validate_layer_name(const CustomData *data,
@@ -5354,6 +5357,8 @@ const blender::CPPType *custom_data_type_to_cpp_type(const eCustomDataType type)
       return &CPPType::get<int8_t>();
     case CD_PROP_BYTE_COLOR:
       return &CPPType::get<ColorGeometry4b>();
+    case CD_PROP_QUATERNION:
+      return &CPPType::get<math::Quaternion>();
     case CD_PROP_STRING:
       return &CPPType::get<MStringProperty>();
     default:
@@ -5389,6 +5394,9 @@ eCustomDataType cpp_type_to_custom_data_type(const blender::CPPType &type)
   }
   if (type.is<ColorGeometry4b>()) {
     return CD_PROP_BYTE_COLOR;
+  }
+  if (type.is<math::Quaternion>()) {
+    return CD_PROP_QUATERNION;
   }
   if (type.is<MStringProperty>()) {
     return CD_PROP_STRING;
