@@ -91,7 +91,7 @@ class NodeAddOperator:
             except AttributeError as e:
                 self.report(
                     {'ERROR_INVALID_INPUT'},
-                    "Node has no attribute " + setting.name)
+                    tip_("Node has no attribute %s") % setting.name)
                 print(str(e))
                 # Continue despite invalid attribute
 
@@ -244,7 +244,7 @@ class NODE_OT_tree_path_parent(Operator):
         return {'FINISHED'}
 
 
-class NodeSocketCategoryOperator():
+class NodePanelOperator():
     @classmethod
     def poll(cls, context):
         snode = context.space_data
@@ -258,48 +258,48 @@ class NodeSocketCategoryOperator():
         return True
 
 
-class NODE_OT_socket_category_add(NodeSocketCategoryOperator, Operator):
-    '''Add a new socket category to the tree'''
-    bl_idname = "node.function_parameter_add"
-    bl_label = "Add Socket Category"
+class NODE_OT_panel_add(NodePanelOperator, Operator):
+    '''Add a new panel to the tree'''
+    bl_idname = "node.panel_add"
+    bl_label = "Add Panel"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        categories = tree.socket_categories
+        panels = tree.panels
 
         # Remember index to move the item.
-        dst_index = min(categories.active_index + 1, len(categories))
-        categories.new("Category")
-        categories.move(len(categories) - 1, dst_index)
-        categories.active_index = dst_index
+        dst_index = min(panels.active_index + 1, len(panels))
+        panels.new("Panel")
+        panels.move(len(panels) - 1, dst_index)
+        panels.active_index = dst_index
 
         return {'FINISHED'}
 
 
-class NODE_OT_socket_category_remove(NodeSocketCategoryOperator, Operator):
-    '''Remove a socket category from the tree'''
-    bl_idname = "node.function_parameter_remove"
-    bl_label = "Remove Socket Category"
+class NODE_OT_panel_remove(NodePanelOperator, Operator):
+    '''Remove a panel from the tree'''
+    bl_idname = "node.panel_remove"
+    bl_label = "Remove Panel"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        categories = tree.socket_categories
+        panels = tree.panels
 
-        if categories.active:
-            categories.remove(categories.active)
-            categories.active_index = min(categories.active_index, len(categories) - 1)
+        if panels.active:
+            panels.remove(panels.active)
+            panels.active_index = min(panels.active_index, len(panels) - 1)
 
         return {'FINISHED'}
 
 
-class NODE_OT_socket_category_move(NodeSocketCategoryOperator, Operator):
-    '''Move a socket category to another position'''
-    bl_idname = "node.function_parameter_move"
-    bl_label = "Move Socket Category"
+class NODE_OT_panel_move(NodePanelOperator, Operator):
+    '''Move a panel to another position'''
+    bl_idname = "node.panel_move"
+    bl_label = "Move Panel"
     bl_options = {'REGISTER', 'UNDO'}
 
     direction: EnumProperty(
@@ -311,14 +311,14 @@ class NODE_OT_socket_category_move(NodeSocketCategoryOperator, Operator):
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        categories = tree.socket_categories
+        panels = tree.panels
 
-        if self.direction == 'UP' and categories.active_index > 0:
-            categories.move(categories.active_index, categories.active_index - 1)
-            categories.active_index -= 1
-        elif self.direction == 'DOWN' and categories.active_index < len(categories) - 1:
-            categories.move(categories.active_index, categories.active_index + 1)
-            categories.active_index += 1
+        if self.direction == 'UP' and panels.active_index > 0:
+            panels.move(panels.active_index, panels.active_index - 1)
+            panels.active_index -= 1
+        elif self.direction == 'DOWN' and panels.active_index < len(panels) - 1:
+            panels.move(panels.active_index, panels.active_index + 1)
+            panels.active_index += 1
 
         return {'FINISHED'}
 
@@ -329,8 +329,8 @@ classes = (
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
     NODE_OT_collapse_hide_unused_toggle,
-    NODE_OT_socket_category_add,
-    NODE_OT_socket_category_remove,
-    NODE_OT_socket_category_move,
+    NODE_OT_panel_add,
+    NODE_OT_panel_remove,
+    NODE_OT_panel_move,
     NODE_OT_tree_path_parent,
 )

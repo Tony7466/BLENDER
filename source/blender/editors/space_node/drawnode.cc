@@ -1196,7 +1196,7 @@ static const float std_node_socket_colors[][4] = {
     {0.78, 0.78, 0.16, 1.0}, /* SOCK_RGBA */
     {0.39, 0.78, 0.39, 1.0}, /* SOCK_SHADER */
     {0.80, 0.65, 0.84, 1.0}, /* SOCK_BOOLEAN */
-    {0.0, 0.0, 0.0, 1.0},    /*__SOCK_MESH (deprecated) */
+    {0.0, 0.0, 0.0, 0.0},    /* UNUSED */
     {0.35, 0.55, 0.36, 1.0}, /* SOCK_INT */
     {0.44, 0.70, 1.00, 1.0}, /* SOCK_STRING */
     {0.93, 0.62, 0.36, 1.0}, /* SOCK_OBJECT */
@@ -1299,7 +1299,7 @@ static void std_node_socket_draw(
   }
 
   if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
-      ((sock->flag & SOCK_IS_LINKED) && !(sock->link->is_muted())))
+      ((sock->flag & SOCK_IS_LINKED) && !all_links_muted(*sock)))
   {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
     return;
@@ -1481,7 +1481,9 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
     uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
   }
 
-  uiItemPointerR(col, ptr, "category", &tree_ptr, "socket_categories", nullptr, 0);
+  if (U.experimental.use_node_panels) {
+    uiItemPointerR(col, ptr, "panel", &tree_ptr, "panels", nullptr, 0);
+  }
 }
 
 static void node_socket_virtual_draw_color(bContext * /*C*/,

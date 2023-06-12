@@ -95,6 +95,8 @@ struct CompoJob {
   /* Evaluated state/ */
   Depsgraph *compositor_depsgraph;
   bNodeTree *localtree;
+  /* Render instance. */
+  Render *re;
   /* Jon system integration. */
   const bool *stop;
   bool *do_update;
@@ -239,6 +241,9 @@ static void compo_initjob(void *cjv)
   if (cj->recalc_flags) {
     compo_tag_output_nodes(cj->localtree, cj->recalc_flags);
   }
+
+  cj->re = RE_NewSceneRender(scene);
+  RE_system_gpu_context_create(cj->re);
 }
 
 /* Called before redraw notifiers, it moves finished previews over. */
@@ -286,16 +291,18 @@ static void compo_startjob(void *cjv,
   BKE_callback_exec_id(cj->bmain, &scene->id, BKE_CB_EVT_COMPOSITE_PRE);
 
   if ((cj->scene->r.scemode & R_MULTIVIEW) == 0) {
-    ntreeCompositExecTree(cj->scene, ntree, &cj->scene->r, false, true, "");
+    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, false, true, "");
   }
   else {
     LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
       if (BKE_scene_multiview_is_render_view_active(&scene->r, srv) == false) {
         continue;
       }
-      ntreeCompositExecTree(cj->scene, ntree, &cj->scene->r, false, true, srv->name);
+      ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, false, true, srv->name);
     }
   }
+
+  RE_system_gpu_context_destroy(cj->re);
 
   ntree->runtime->test_break = nullptr;
   ntree->runtime->stats_draw = nullptr;
@@ -2191,8 +2198,8 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
-    /* Inherit socket category from the active socket interface. */
-    sock->category_id = active_sock->category_id;
+    /* Inherit socket panel from the active socket interface. */
+    sock->panel = active_sock->panel;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2584,7 +2591,7 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
     }
   }
 
-  ntreeEnsureSocketCategoryOrder(ntree);
+  ntreeEnsureSocketInterfacePanelOrder(ntree);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

@@ -168,9 +168,8 @@ typedef struct bNodeSocket {
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
 
-  /* ID of the UI category of the socket. */
-  int category_id;
-  int _pad2;
+  /* UI panel of the socket. */
+  struct bNodePanel *panel;
 
   bNodeSocketRuntimeHandle *runtime;
 
@@ -234,7 +233,6 @@ typedef enum eNodeSocketDatatype {
   SOCK_RGBA = 2,
   SOCK_SHADER = 3,
   SOCK_BOOLEAN = 4,
-  __SOCK_MESH = 5, /* deprecated */
   SOCK_INT = 6,
   SOCK_STRING = 7,
   SOCK_OBJECT = 8,
@@ -535,11 +533,12 @@ typedef struct bNodeLink {
 #define NTREE_CHUNKSIZE_512 512
 #define NTREE_CHUNKSIZE_1024 1024
 
-typedef struct bNodeSocketCategory {
+/** Panel in node tree for grouping sockets. */
+typedef struct bNodePanel {
   char *name;
   int flag;
-  int identifier;
-} bNodeSocketCategory;
+  int _pad;
+} bNodePanel;
 
 /* the basis for a Node tree, all links and nodes reside internal here */
 /* only re-usable node trees are in the library though,
@@ -604,11 +603,11 @@ typedef struct bNodeTree {
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
 
-  /* UI categories for sockets */
-  struct bNodeSocketCategory *socket_categories_array;
-  int socket_categories_num;
-  int active_socket_category;
-  int next_socket_category_identifier;
+  /* UI panels */
+  struct bNodePanel **panels_array;
+  int panels_num;
+  int active_panel;
+  int next_panel_identifier;
   char _pad2[4];
 
   bNodeTreeRuntimeHandle *runtime;
@@ -675,8 +674,8 @@ typedef struct bNodeTree {
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<bNodeSocketCategory> socket_categories() const;
-  blender::MutableSpan<bNodeSocketCategory> socket_categories_for_write();
+  blender::Span<bNodePanel *> panels() const;
+  blender::MutableSpan<bNodePanel *> panels_for_write();
 #endif
 } bNodeTree;
 
@@ -704,6 +703,7 @@ typedef struct bNodeTree {
 typedef enum eNodeTreeExecutionMode {
   NTREE_EXECUTION_MODE_TILED = 0,
   NTREE_EXECUTION_MODE_FULL_FRAME = 1,
+  NTREE_EXECUTION_MODE_REALTIME = 2,
 } eNodeTreeExecutionMode;
 
 typedef enum eNodeTreeRuntimeFlag {
@@ -900,6 +900,12 @@ typedef struct NodeBilateralBlurData {
   short iter;
   char _pad[2];
 } NodeBilateralBlurData;
+
+typedef struct NodeKuwaharaData {
+  short size;
+  short variation;
+  int smoothing;
+} NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
   float threshold;
@@ -2155,6 +2161,12 @@ typedef enum CMPNodeGlareType {
   CMP_NODE_GLARE_STREAKS = 2,
   CMP_NODE_GLARE_GHOST = 3,
 } CMPNodeGlareType;
+
+/* Kuwahara Node. Stored in variation */
+typedef enum CMPNodeKuwahara {
+  CMP_NODE_KUWAHARA_CLASSIC = 0,
+  CMP_NODE_KUWAHARA_ANISOTROPIC = 1,
+} CMPNodeKuwahara;
 
 /* Stabilize 2D node. Stored in custom1. */
 typedef enum CMPNodeStabilizeInterpolation {

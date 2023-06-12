@@ -542,8 +542,8 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \name Node Tree Interface
  * \{ */
 
-/** Run this after relevant changes to categories to ensure sockets remain sorted by category. */
-void ntreeEnsureSocketCategoryOrder(bNodeTree *ntree);
+/** Run this after relevant changes to panels to ensure sockets remain sorted by panel. */
+void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree);
 
 void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
 
@@ -552,52 +552,53 @@ struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             const char *idname,
                                             const char *name);
 
-/** Set the category of the interface socket. */
-void ntreeSetSocketInterfaceCategory(bNodeTree *ntree,
-                                     bNodeSocket *sock,
-                                     bNodeSocketCategory *category);
+/** Set the panel of the interface socket. */
+void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodePanel *panel);
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Node Tree Socket Categories
+/** \name Node Tree Socket Panels
  * \{ */
 
 /**
- * Find a socket category by its unique ID.
- * \param id: Unique ID of the category within the node tree.
+ * Check if a panel is part of the node tree.
+ * \return True if the panel is part of the node tree.
  */
-bNodeSocketCategory *ntreeFindSocketCategoryByID(bNodeTree *ntree, int id);
+bool ntreeContainsPanel(const bNodeTree *ntree, const bNodePanel *panel);
 
 /**
- * Add a new socket category to the node tree.
- * \param name: Name of the new category.
- * \param flag: Flags of the new category.
+ * Index of a panel in the node tree.
+ * \return Index of the panel in the node tree or -1 if the tree does not contain the panel.
  */
-bNodeSocketCategory *ntreeAddSocketCategory(bNodeTree *ntree, const char *name, int flag);
+int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel);
 
 /**
- * Insert a new socket category in the node tree.
- * \param name: Name of the new category.
- * \param flag: Flags of the new category.
- * \param index: Index at which to insert the category.
+ * Add a new panel to the node tree.
+ * \param name: Name of the new panel.
+ * \param flag: Flags of the new panel.
  */
-bNodeSocketCategory *ntreeInsertSocketCategory(bNodeTree *ntree,
-                                               const char *name,
-                                               int flag,
-                                               int index);
-
-/** Remove a socket category from the node tree. */
-void ntreeRemoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category);
-
-/** Remove all socket categories from the node tree. */
-void ntreeClearSocketCategories(bNodeTree *ntree);
+bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag);
 
 /**
- * Move a socket category up or down in the node tree.
- * \param index: Index to which to move the category.
+ * Insert a new panel in the node tree.
+ * \param name: Name of the new panel.
+ * \param flag: Flags of the new panel.
+ * \param index: Index at which to insert the panel.
  */
-void ntreeMoveSocketCategory(bNodeTree *ntree, bNodeSocketCategory *category, int new_index);
+bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int index);
+
+/** Remove a panel from the node tree. */
+void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel);
+
+/** Remove all panels from the node tree. */
+void ntreeClearPanels(bNodeTree *ntree);
+
+/**
+ * Move a panel up or down in the node tree.
+ * \param index: Index to which to move the panel.
+ */
+void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index);
 
 /** \} */
 
@@ -1111,6 +1112,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_INPAINT 272
 #define CMP_NODE_DESPECKLE 273
 #define CMP_NODE_ANTIALIASING 274
+#define CMP_NODE_KUWAHARA 275
 
 #define CMP_NODE_GLARE 301
 #define CMP_NODE_TONEMAP 302

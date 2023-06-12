@@ -516,17 +516,15 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
   return this->runtime->root_frames;
 }
 
-inline blender::Span<bNodeSocketCategory> bNodeTree::socket_categories() const
+inline blender::Span<bNodePanel *> bNodeTree::panels() const
 {
-  return blender::Span(socket_categories_array, socket_categories_num);
+  return blender::Span(panels_array, panels_num);
 }
 
-inline blender::MutableSpan<bNodeSocketCategory> bNodeTree::socket_categories_for_write()
+inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
 {
-  return blender::MutableSpan(socket_categories_array, socket_categories_num);
+  return blender::MutableSpan(panels_array, panels_num);
 }
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name #bNode Inline Methods
