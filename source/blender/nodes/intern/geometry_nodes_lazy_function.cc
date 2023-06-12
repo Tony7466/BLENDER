@@ -1543,7 +1543,34 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const TreeZone *child_zone : zone.child_zones) {
         const int child_zone_i = child_zone->index;
         ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
-        zone_info.lf_graph->add_function(*child_zone_info.lazy_function);
+        lf::FunctionNode &child_zone_node = zone_info.lf_graph->add_function(
+            *child_zone_info.lazy_function);
+
+        if (child_zone->input_node) {
+          for (const int i : child_zone->input_node->input_sockets().drop_back(1).index_range()) {
+            zone_info.input_socket_map.add(&child_zone->input_node->input_socket(i),
+                                           &child_zone_node.input(i));
+          }
+        }
+        for (const int i : child_zone->output_node->output_sockets().drop_back(1).index_range()) {
+          zone_info.output_socket_map.add(&child_zone->output_node->output_socket(i),
+                                          &child_zone_node.output(i));
+        }
+
+        const Span<const bNodeLink *> child_border_links = border_links_by_zone[child_zone_i];
+        for (const int child_border_link_i : child_border_links.index_range()) {
+          lf::InputSocket &child_border_link_input = child_zone_node.input(
+              child_zone_node.inputs().size() - child_border_links.size() + child_border_link_i);
+          const bNodeLink &link = *child_border_links[child_border_link_i];
+          const int border_link_i = border_links.first_index_try(&link);
+          if (border_link_i == -1) {
+            zone_info.input_socket_map.add(link.tosock, &child_border_link_input);
+          }
+          else {
+            zone_info.lf_graph->add_link(lf_border_link_input_node.output(border_link_i),
+                                         child_border_link_input);
+          }
+        }
       }
 
       for (const auto item : zone_info.output_socket_map.items()) {
