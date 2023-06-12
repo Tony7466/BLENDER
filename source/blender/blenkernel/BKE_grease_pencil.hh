@@ -258,6 +258,11 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   ~LayerGroup();
 
  public:
+  StringRefNull name() const
+  {
+    return this->base.name;
+  }
+
   /**
    * Adds a group at the end of this group.
    */

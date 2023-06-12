@@ -19,36 +19,72 @@ namespace blender::ui::greasepencil {
 
 using namespace blender::bke::greasepencil;
 
-class LayerTreeViewItem : public AbstractTreeViewItem {
+class LayerViewItem : public AbstractTreeViewItem {
  public:
-  LayerTreeViewItem(const TreeNode &node) : node_(node) {}
+  LayerViewItem(const Layer &layer) : layer_(layer) {}
 
   void build_row(uiLayout &row) override
   {
     uiLayout *sub = uiLayoutRow(&row, true);
-    uiItemS_ex(sub, 0.8f);
-    uiItemL(sub, IFACE_(StringRefNull(node_.name).c_str()), ICON_NONE);
+    uiItemL(sub, IFACE_(layer_.name().c_str()), ICON_GREASEPENCIL);
+  }
+
+  bool supports_collapsing() const
+  {
+    return false;
   }
 
  private:
-  const TreeNode &node_;
+  const Layer &layer_;
+};
+
+class LayerGroupViewItem : public AbstractTreeViewItem {
+ public:
+  LayerGroupViewItem(const LayerGroup &group) : group_(group) {}
+
+  void build_row(uiLayout &row) override
+  {
+    uiLayout *sub = uiLayoutRow(&row, true);
+    uiItemL(sub, IFACE_(group_.name().c_str()), ICON_FILE_FOLDER);
+  }
+
+ private:
+  const LayerGroup &group_;
 };
 
 class LayerTreeView : public AbstractTreeView {
  public:
   explicit LayerTreeView(GreasePencil &grease_pencil) : grease_pencil_(grease_pencil) {}
 
-  void build_tree() override
-  {
-    using namespace blender::bke::greasepencil;
-    for (const TreeNode *node : grease_pencil_.root_group.wrap().nodes()) {
-      add_tree_item<LayerTreeViewItem>(*node);
-    }
-  }
+  void build_tree() override;
 
  private:
+  void build_tree_node_recursive(const TreeNode &node);
   GreasePencil &grease_pencil_;
 };
+
+void LayerTreeView::build_tree_node_recursive(const TreeNode & /*node*/)
+{
+  using namespace blender::bke::greasepencil;
+  /* TODO */
+}
+
+void LayerTreeView::build_tree()
+{
+  using namespace blender::bke::greasepencil;
+  LISTBASE_FOREACH_BACKWARD (
+      GreasePencilLayerTreeNode *, node_, &this->grease_pencil_.root_group.children)
+  {
+    const TreeNode &node = node_->wrap();
+    /* TODO: use build_tree_node_recursive. */
+    if (node.is_group()) {
+      /* TODO */
+    }
+    else if (node.is_layer()) {
+      add_tree_item<LayerViewItem>(node.as_layer());
+    }
+  }
+}
 
 }  // namespace blender::ui::greasepencil
 
