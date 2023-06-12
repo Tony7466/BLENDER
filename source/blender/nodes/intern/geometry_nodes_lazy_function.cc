@@ -1367,8 +1367,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   GeometryNodesLazyFunctionGraphInfo *lf_graph_info_;
   lf::Graph *root_lf_graph_;
   GeometryNodeLazyFunctionGraphMapping *mapping_;
-  MultiValueMap<const bNodeSocket *, lf::InputSocket *> input_socket_map_;
-  Map<const bNodeSocket *, lf::OutputSocket *> output_socket_map_;
+  MultiValueMap<const bNodeSocket *, lf::InputSocket *> root_input_socket_map_;
+  Map<const bNodeSocket *, lf::OutputSocket *> root_output_socket_map_;
   Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes_;
   const bke::DataTypeConversions *conversions_;
   /**
@@ -2211,7 +2211,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void add_default_inputs()
   {
-    for (auto item : input_socket_map_.items()) {
+    for (auto item : root_input_socket_map_.items()) {
       const bNodeSocket &bsocket = *item.key;
       const Span<lf::InputSocket *> lf_sockets = item.value;
       for (lf::InputSocket *lf_socket : lf_sockets) {
@@ -2524,7 +2524,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       return;
     }
     socket_is_used_map_[switch_input_bsocket->index_in_tree()] = output_is_used_socket;
-    lf::InputSocket *lf_switch_input = input_socket_map_.lookup(switch_input_bsocket)[0];
+    lf::InputSocket *lf_switch_input = root_input_socket_map_.lookup(switch_input_bsocket)[0];
     if (lf::OutputSocket *lf_switch_origin = lf_switch_input->origin()) {
       /* The condition input is dynamic, so the usage of the other inputs is as well. */
       static const LazyFunctionForSwitchSocketUsage switch_socket_usage_fn;
@@ -2808,7 +2808,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         const int key_index = r_attribute_reference_keys.index_of_or_add(key);
         if (key_index >= r_attribute_reference_infos.size()) {
           AttributeReferenceInfo info;
-          lf::OutputSocket &lf_field_socket = *output_socket_map_.lookup(&field_bsocket);
+          lf::OutputSocket &lf_field_socket = *root_output_socket_map_.lookup(&field_bsocket);
           info.lf_attribute_set_socket = &add_get_attributes_node(lf_field_socket);
           r_attribute_reference_infos.append(info);
         }
@@ -3272,13 +3272,13 @@ class UsedSocketVisualizeOptions : public lf::Graph::ToDotOptions {
       socket_name_suffixes_.add(lf_used_socket, suffix);
 
       if (bsocket->is_input()) {
-        for (const lf::InputSocket *lf_socket : builder_.input_socket_map_.lookup(bsocket)) {
+        for (const lf::InputSocket *lf_socket : builder_.root_input_socket_map_.lookup(bsocket)) {
           socket_font_colors_.add(lf_socket, color_str);
           socket_name_suffixes_.add(lf_socket, suffix);
         }
       }
-      else if (lf::OutputSocket *lf_socket = builder_.output_socket_map_.lookup_default(bsocket,
-                                                                                        nullptr))
+      else if (lf::OutputSocket *lf_socket = builder_.root_output_socket_map_.lookup_default(
+                   bsocket, nullptr))
       {
         socket_font_colors_.add(lf_socket, color_str);
         socket_name_suffixes_.add(lf_socket, suffix);
