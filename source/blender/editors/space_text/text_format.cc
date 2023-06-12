@@ -245,7 +245,7 @@ const StringRef *text_format_string_literal_find(const Span<StringRef> string_li
                                                  const char *text)
 {
   auto predicate_func = [](const char *text, const StringRef &string_literal) {
-    return !(strcmp(text, string_literal.data()) > 0);
+    return strcmp(text, string_literal.data()) < 0;
   };
   auto string_literal = std::upper_bound(
       std::begin(string_literals), std::end(string_literals), text, predicate_func);
