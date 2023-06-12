@@ -13350,7 +13350,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE, NULL);
 
-  prop = RNA_def_property(srna, "socket_panels", PROP_COLLECTION, PROP_NONE);
+  prop = RNA_def_property(srna, "panels", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "panels_array", "panels_num");
   RNA_def_property_struct_type(prop, "NodePanel");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

@@ -1482,7 +1482,7 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   }
 
   if (U.experimental.use_node_panels) {
-    uiItemPointerR(col, ptr, "socket_panel", &tree_ptr, "panels", nullptr, 0);
+    uiItemPointerR(col, ptr, "panel", &tree_ptr, "panels", nullptr, 0);
   }
 }
 
