@@ -43,9 +43,8 @@ class Instance {
   Prepass prepass;
   Metaballs metaballs = {selection_type_};
   Grid grid;
-  Extra extras = {selection_type_, shapes};
-  ObjectCenter object_centers = {selection_type_};
-  ObjectRelation object_relations = {selection_type_};
+  /** TODO(Miguel Pozo): Don't use G_draw. */
+  Extra extras = {selection_type_, shapes, G_draw.block};
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
 

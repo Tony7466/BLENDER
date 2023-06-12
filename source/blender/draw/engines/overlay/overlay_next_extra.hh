@@ -15,6 +15,8 @@
 #include "overlay_next_force_field.hh"
 #include "overlay_next_light.hh"
 #include "overlay_next_light_probe.hh"
+#include "overlay_next_object_center.hh"
+#include "overlay_next_object_relation.hh"
 
 namespace blender::draw::overlay {
 
@@ -23,9 +25,11 @@ class Extra {
   ExtraInstancePass pass_;
   ExtraInstancePass pass_in_front_;
 
-  Extra(const SelectionType selection_type, const ShapeCache &shapes)
-      : pass_(selection_type, shapes, "Extra Shapes"),
-        pass_in_front_(selection_type, shapes, "Extra Shapes In Front"){};
+  Extra(const SelectionType selection_type,
+        const ShapeCache &shapes,
+        const GlobalsUboStorage &theme_colors)
+      : pass_(selection_type, shapes, theme_colors, "Extra Shapes"),
+        pass_in_front_(selection_type, shapes, theme_colors, "Extra Shapes In Front"){};
 
   void begin_sync()
   {
@@ -74,6 +78,9 @@ class Extra {
     const bool has_texspace = has_bounds &&
                               !ELEM(
                                   ob->type, OB_EMPTY, OB_LATTICE, OB_ARMATURE, OB_GPENCIL_LEGACY);
+    const bool draw_relations = ((state.v3d_flag & V3D_HIDE_HELPLINES) == 0) && !is_select_mode;
+    const bool draw_obcenters = !is_paint_mode &&
+                                (state.overlay.flag & V3D_OVERLAY_HIDE_OBJECT_ORIGINS) == 0;
     const bool draw_texspace = (ob->dtx & OB_TEXSPACE) && has_texspace;
     const bool draw_obname = (ob->dtx & OB_DRAWNAME) && DRW_state_show_text();
     const bool draw_bounds = has_bounds && ((ob->dt == OB_BOUNDBOX) ||
@@ -108,6 +115,12 @@ class Extra {
 
     /* don't show object extras in set's */
     if (!from_dupli) {
+      if (draw_obcenters) {
+        object_center_sync(ob_ref, select_id, res, state, pass);
+      }
+      if (draw_relations) {
+        object_relation_sync(ob_ref, select_id, res, state, pass);
+      }
       if (draw_obname) {
         /* TODO
         OVERLAY_object_name(ob, theme_id);

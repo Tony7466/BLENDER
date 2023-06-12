@@ -331,38 +331,4 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : protected select::Sel
   }
 };
 
-struct PointInstanceBuf : public ShapeInstanceBuf<float4> {
-  PointInstanceBuf(const SelectionType selection_type, const char *name)
-      : ShapeInstanceBuf<float4>(selection_type, name){};
-
-  void end_sync(PassSimple::Sub &pass, float4 color)
-  {
-    if (data_buf.size() == 0) {
-      return;
-    }
-    this->select_bind(pass);
-    data_buf.push_update();
-    pass.bind_ssbo("data_buf", &data_buf);
-    pass.push_constant("ucolor", color);
-    pass.draw_procedural(GPU_PRIM_POINTS, data_buf.size(), 1);
-  }
-};
-
-struct LineInstanceBuf : public ShapeInstanceBuf<LineInstanceData> {
-  LineInstanceBuf(const SelectionType selection_type, const char *name)
-      : ShapeInstanceBuf<LineInstanceData>(selection_type, name){};
-
-  void end_sync(PassSimple::Sub &pass, float4 color)
-  {
-    if (data_buf.size() == 0) {
-      return;
-    }
-    this->select_bind(pass);
-    data_buf.push_update();
-    pass.bind_ssbo("data_buf", &data_buf);
-    pass.push_constant("ucolor", color);
-    pass.draw_procedural(GPU_PRIM_LINES, data_buf.size(), 2);
-  }
-};
-
 }  // namespace blender::draw::overlay
