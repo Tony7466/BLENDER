@@ -1559,30 +1559,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     lf::Node *lf_zone_input_node = nullptr;
     if (zone.input_node != nullptr) {
-      Vector<const CPPType *, 16> zone_input_types;
-      auto zone_input_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-      zone_input_debug_info->name = "Zone Input";
-      for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
-        zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-        zone_input_debug_info->output_names.append(socket->identifier);
-      }
-      lf_zone_input_node = &zone_info.lf_graph->add_dummy(
-          {}, zone_input_types, zone_input_debug_info.get());
-      lf_graph_info_->dummy_debug_infos_.append(std::move(zone_input_debug_info));
+      lf_zone_input_node = &this->build_simulation_zone_input_node(zone, zone_info);
     }
-
-    lf::Node &lf_border_link_input_node = this->build_zone_border_link_inputs_node(zone_info);
-
-    auto zone_output_debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-    zone_output_debug_info->name = "Zone Output";
-    Vector<const CPPType *, 16> zone_output_types;
-    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
-      zone_output_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-      zone_output_debug_info->input_names.append(socket->identifier);
-    }
-    lf::Node &lf_zone_output_node = zone_info.lf_graph->add_dummy(
-        zone_output_types, {}, zone_output_debug_info.get());
-    lf_graph_info_->dummy_debug_infos_.append(std::move(zone_output_debug_info));
+    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone_info);
+    lf::Node &lf_zone_output_node = this->build_simulation_zone_output_node(zone, zone_info);
 
     InsertBNodeParams insert_params{
         *zone_info.lf_graph, zone_info.input_socket_map, zone_info.output_socket_map};
@@ -1671,7 +1651,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
   }
 
-  lf::DummyNode &build_zone_border_link_inputs_node(ZoneBuildInfo &zone_info)
+  lf::DummyNode &build_zone_border_links_input_node(ZoneBuildInfo &zone_info)
   {
     auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
     debug_info->name = "Border Links";
@@ -1681,6 +1661,34 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       debug_info->output_names.append(StringRef("Link from ") + border_link->fromsock->identifier);
     }
     lf::DummyNode &node = zone_info.lf_graph->add_dummy({}, border_link_types, debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+    return node;
+  }
+
+  lf::DummyNode &build_simulation_zone_input_node(const TreeZone &zone, ZoneBuildInfo &zone_info)
+  {
+    Vector<const CPPType *, 16> zone_input_types;
+    auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    debug_info->name = "Zone Input";
+    for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
+      zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+      debug_info->output_names.append(socket->identifier);
+    }
+    lf::DummyNode &node = zone_info.lf_graph->add_dummy({}, zone_input_types, debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+    return node;
+  }
+
+  lf::DummyNode &build_simulation_zone_output_node(const TreeZone &zone, ZoneBuildInfo &zone_info)
+  {
+    auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    debug_info->name = "Zone Output";
+    Vector<const CPPType *, 16> zone_output_types;
+    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
+      zone_output_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+      debug_info->input_names.append(socket->identifier);
+    }
+    lf::DummyNode &node = zone_info.lf_graph->add_dummy(zone_output_types, {}, debug_info.get());
     lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
     return node;
   }
