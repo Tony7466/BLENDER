@@ -4028,28 +4028,6 @@ static bool do_pose_box_select(bContext *C,
 
   return changed_multi;
 }
-using namespace blender;
- Scene *scene = vc->scene;
- const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
- const_cast<Object *>(vc->obedit));
- GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
- 
- bool changed = false;
- grease_pencil.foreach_editable_drawing(
- scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
- bke::crazyspace::GeometryDeformation deformation =
- bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
- ob_eval, *vc->obedit, drawing_index);
- changed |= ed::curves::select_circle(
- *vc, drawing.geometry.wrap(), deformation.positions, ATTR_DOMAIN_POINT, *rect, sel_op);
- });
- 
- if (changed) {
- DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
- WM_event_add_notifier(vc->C, NC_GEOM | ND_DATA, &grease_pencil);
- }
- 
- return changed;
 
 static int view3d_box_select_exec(bContext *C, wmOperator *op)
 {
@@ -4920,7 +4898,7 @@ static bool obedit_circle_select(bContext *C,
       changed = mball_circle_select(vc, sel_op, mval, rad);
       break;
     case OB_GREASE_PENCIL:{
-     static int grease_pencil_circle_select;
+      changed = grease_pencil_circle_select(vc, sel_op, mval, rad);
       break;
 
     case OB_CURVES: {
@@ -4948,12 +4926,11 @@ static bool obedit_circle_select(bContext *C,
       BLI_assert(0);
       break;
     }
-
     if (changed) {
       DEG_id_tag_update(static_cast<ID *>(vc->obact->data), ID_RECALC_SELECT);
       WM_main_add_notifier(NC_GEOM | ND_SELECT, vc->obact->data);
-    }
-    return changed;
+      }
+      return changed;
   }
 }
 
