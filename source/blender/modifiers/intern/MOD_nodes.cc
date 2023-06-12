@@ -723,6 +723,8 @@ static void modifyGeometry(ModifierData *md,
   if (nmd->node_group == nullptr) {
     return;
   }
+  NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
+      BKE_modifier_get_original(ctx->object, &nmd->modifier));
 
   const bNodeTree &tree = *nmd->node_group;
   tree.ensure_topology_cache();
@@ -764,13 +766,6 @@ static void modifyGeometry(ModifierData *md,
     use_orig_index_verts = CustomData_has_layer(&mesh->vdata, CD_ORIGINDEX);
     use_orig_index_edges = CustomData_has_layer(&mesh->edata, CD_ORIGINDEX);
     use_orig_index_polys = CustomData_has_layer(&mesh->pdata, CD_ORIGINDEX);
-  }
-
-  NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
-      BKE_modifier_get_original(ctx->object, &nmd->modifier));
-  delete static_cast<geo_log::GeoModifierLog *>(nmd_orig->runtime_eval_log);
-  if (logging_enabled(ctx)) {
-    nmd_orig->runtime_eval_log = new geo_log::GeoModifierLog();
   }
 
   nodes::GeoNodesModifierData modifier_eval_data{};
