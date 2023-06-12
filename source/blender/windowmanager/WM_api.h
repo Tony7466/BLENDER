@@ -1686,7 +1686,7 @@ void *WM_draw_cb_activate(struct wmWindow *win,
 void WM_draw_cb_exit(struct wmWindow *win, void *handle);
 void WM_redraw_windows(struct bContext *C);
 
-void WM_draw_region_viewport_ensure(struct ARegion *region, short space_type);
+void WM_draw_region_viewport_ensure(struct Scene *scene, struct ARegion *region, short space_type);
 void WM_draw_region_viewport_bind(struct ARegion *region);
 void WM_draw_region_viewport_unbind(struct ARegion *region);
 

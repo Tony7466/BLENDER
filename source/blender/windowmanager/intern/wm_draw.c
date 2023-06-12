@@ -654,8 +654,19 @@ static void wm_draw_offscreen_texture_parameters(GPUOffScreen *offscreen)
   GPU_texture_mipmap_mode(texture, false, false);
 }
 
-static void wm_draw_region_buffer_create(ARegion *region, bool stereo, bool use_viewport)
+static void wm_draw_region_buffer_create(Scene *scene,
+                                         ARegion *region,
+                                         bool stereo,
+                                         bool use_viewport)
 {
+
+  /* Determine desired offscreen format. */
+  bool use_hdr = false;
+  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+    use_hdr = true;
+  }
+  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+
   if (region->draw_buffer) {
     if (region->draw_buffer->stereo != stereo) {
       /* Free draw buffer on stereo changes. */
@@ -665,7 +676,8 @@ static void wm_draw_region_buffer_create(ARegion *region, bool stereo, bool use_
       /* Free offscreen buffer on size changes. Viewport auto resizes. */
       GPUOffScreen *offscreen = region->draw_buffer->offscreen;
       if (offscreen && (GPU_offscreen_width(offscreen) != region->winx ||
-                        GPU_offscreen_height(offscreen) != region->winy))
+                        GPU_offscreen_height(offscreen) != region->winy ||
+                        GPU_offscreen_format(offscreen) != desired_format))
       {
         wm_draw_region_buffer_free(region);
       }
@@ -684,7 +696,7 @@ static void wm_draw_region_buffer_create(ARegion *region, bool stereo, bool use_
        * depth or multi-sample buffers. 3D view creates own buffers with
        * the data it needs. */
       GPUOffScreen *offscreen = GPU_offscreen_create(
-          region->winx, region->winy, false, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
+          region->winx, region->winy, false, desired_format, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
       if (!offscreen) {
         WM_report(RPT_ERROR, "Region could not be drawn!");
         return;
@@ -935,7 +947,8 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
       GPU_debug_group_begin(use_viewport ? "Viewport" : "ARegion");
 
       if (stereo && wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID)) {
-        wm_draw_region_buffer_create(region, true, use_viewport);
+        Scene *scene = WM_window_get_active_scene(win);
+        wm_draw_region_buffer_create(scene, region, true, use_viewport);
 
         for (int view = 0; view < 2; view++) {
           eStereoViews sview;
@@ -958,7 +971,8 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
       }
       else {
         wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID);
-        wm_draw_region_buffer_create(region, false, use_viewport);
+        Scene *scene = WM_window_get_active_scene(win);
+        wm_draw_region_buffer_create(scene, region, false, use_viewport);
         wm_draw_region_bind(region, 0);
         ED_region_do_draw(C, region);
         wm_draw_region_unbind(region);
@@ -991,7 +1005,8 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
       region->type->layout(C, region);
     }
 
-    wm_draw_region_buffer_create(region, false, false);
+    Scene *scene = WM_window_get_active_scene(win);
+    wm_draw_region_buffer_create(scene, region, false, false);
     wm_draw_region_bind(region, 0);
     GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
     ED_region_do_draw(C, region);
@@ -1146,13 +1161,21 @@ static void wm_draw_window(bContext *C, wmWindow *win)
     wm_draw_window_onscreen(C, win, -1);
   }
   else {
+    /* Determine desired offscreen format. */
+    bool use_hdr = false;
+    Scene *scene = WM_window_get_active_scene(win);
+    if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+      use_hdr = true;
+    }
+    eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+
     /* For side-by-side and top-bottom, we need to render each view to an
      * an off-screen texture and then draw it. This used to happen for all
      * stereo methods, but it's less efficient than drawing directly. */
     const int width = WM_window_pixels_x(win);
     const int height = WM_window_pixels_y(win);
     GPUOffScreen *offscreen = GPU_offscreen_create(
-        width, height, false, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
+        width, height, false, desired_format, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
 
     if (offscreen) {
       GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
@@ -1301,8 +1324,16 @@ uint8_t *WM_window_pixels_read_from_offscreen(bContext *C, wmWindow *win, int r_
   r_size[0] = WM_window_pixels_x(win);
   r_size[1] = WM_window_pixels_y(win);
 
+  /* Determine desired offscreen format depending on HDR availability. */
+  bool use_hdr = false;
+  Scene *scene = WM_window_get_active_scene(win);
+  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+    use_hdr = true;
+  }
+  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+
   GPUOffScreen *offscreen = GPU_offscreen_create(
-      r_size[0], r_size[1], false, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
+      r_size[0], r_size[1], false, desired_format, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
   if (UNLIKELY(!offscreen)) {
     return NULL;
   }
@@ -1543,7 +1574,9 @@ void wm_draw_region_test(bContext *C, ScrArea *area, ARegion *region)
 {
   /* Function for redraw timer benchmark. */
   bool use_viewport = WM_region_use_viewport(area, region);
-  wm_draw_region_buffer_create(region, false, use_viewport);
+  wmWindow *win = CTX_wm_window(C);
+  Scene *scene = WM_window_get_active_scene(win);
+  wm_draw_region_buffer_create(scene, region, false, use_viewport);
   wm_draw_region_bind(region, 0);
   ED_region_do_draw(C, region);
   wm_draw_region_unbind(region);
@@ -1575,10 +1608,10 @@ void WM_redraw_windows(bContext *C)
  *
  * \{ */
 
-void WM_draw_region_viewport_ensure(ARegion *region, short space_type)
+void WM_draw_region_viewport_ensure(struct Scene *scene, ARegion *region, short space_type)
 {
   bool use_viewport = wm_region_use_viewport_by_type(space_type, region->regiontype);
-  wm_draw_region_buffer_create(region, false, use_viewport);
+  wm_draw_region_buffer_create(scene, region, false, use_viewport);
 }
 
 void WM_draw_region_viewport_bind(ARegion *region)

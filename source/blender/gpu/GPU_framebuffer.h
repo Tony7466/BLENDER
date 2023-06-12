@@ -654,6 +654,12 @@ int GPU_offscreen_height(const GPUOffScreen *offscreen);
 struct GPUTexture *GPU_offscreen_color_texture(const GPUOffScreen *offscreen);
 
 /**
+ * Return the color texture of a #GPUOffScreen. Does not give ownership.
+ * \note only to be used by viewport code!
+ */
+eGPUTextureFormat GPU_offscreen_format(const GPUOffScreen *offscreen);
+
+/**
  * Return the internals of a #GPUOffScreen. Does not give ownership.
  * \note only to be used by viewport code!
  */
