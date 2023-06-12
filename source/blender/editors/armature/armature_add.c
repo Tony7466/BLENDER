@@ -1118,10 +1118,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
   const int direction = RNA_enum_get(op->ptr, "direction");
   const int axis = 0;
 
-  bool is_selection_relevant = true;
-  if (CTX_DATA_COUNT(C, selected_bones) == 0) {
-    is_selection_relevant = false;
-  }
+  const bool is_selection_relevant = CTX_DATA_COUNT(C, selected_bones) > 0;
 
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
