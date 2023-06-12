@@ -350,12 +350,12 @@ colorspaces:
     from_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Luminance Compensation BT.2020}
-        - !<MatrixTransform> {matrix: [0.747953396154556, 0.0901972380717162, 0.161849365773728, 0, 0.117125881715711, 0.640982203019882, 0.241891915264407, 0, 0.0830837751779731, 0.075047756463071, 0.841868468358956, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [0.749107998271888, 0.0964229302180083, 0.154469071510103, 0, 0.117306686818968, 0.685224775770072, 0.19746853741096, 0, 0.0832120300976373, 0.0802277845658995, 0.836560185336463, 0, 0, 0, 0, 1]}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
     to_scene_reference: !<GroupTransform>
       children:
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117], direction: inverse}
-        - !<MatrixTransform> {matrix: [0.747953396154556, 0.0901972380717162, 0.161849365773728, 0, 0.117125881715711, 0.640982203019882, 0.241891915264407, 0, 0.0830837751779731, 0.075047756463071, 0.841868468358956, 0, 0, 0, 0, 1], direction: inverse}
+        - !<MatrixTransform> {matrix: [0.749107998271888, 0.0964229302180083, 0.154469071510103, 0, 0.117306686818968, 0.685224775770072, 0.19746853741096, 0, 0.0832120300976373, 0.0802277845658995, 0.836560185336463, 0, 0, 0, 0, 1], direction: inverse}
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear BT.2020 I-D65, direction: inverse}
 
   - !<ColorSpace>
