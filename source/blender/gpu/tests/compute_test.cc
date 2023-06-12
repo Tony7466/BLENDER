@@ -18,7 +18,7 @@ static void test_compute_direct()
 {
   if (!GPU_compute_shader_support()) {
     /* We can't test as a the platform does not support compute shaders. */
-    GTEST_SKIP() << "Skipping compute shader test: platform not supported";
+    GTEST_SKIP() << "Skipping test: platform not supported";
     return;
   }
 
@@ -61,7 +61,7 @@ static void test_compute_indirect()
 {
   if (!GPU_compute_shader_support()) {
     /* We can't test as a the platform does not support compute shaders. */
-    GTEST_SKIP() << "Skipping compute shader test: platform not supported";
+    GTEST_SKIP() << "Skipping test: platform not supported";
     return;
   }
 
