@@ -1504,31 +1504,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   {
     zone_build_infos_.reinitialize(tree_zones_->zones.size());
 
-    Array<int> zone_build_order(tree_zones_->zones.size());
-    std::iota(zone_build_order.begin(), zone_build_order.end(), 0);
-    std::sort(
-        zone_build_order.begin(), zone_build_order.end(), [&](const int zone_a, const int zone_b) {
-          return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
-        });
-
-    for (const bNodeLink *link : btree_.all_links()) {
-      if (!link->is_available()) {
-        continue;
-      }
-      if (link->is_muted()) {
-        continue;
-      }
-      const TreeZone *from_zone = tree_zones_->get_zone_by_socket(*link->fromsock);
-      const TreeZone *to_zone = tree_zones_->get_zone_by_socket(*link->tosock);
-      if (from_zone == to_zone) {
-        continue;
-      }
-      BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
-      for (const TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
-        ZoneBuildInfo &zone_info = zone_build_infos_[zone->index];
-        zone_info.border_links.append(link);
-      }
-    }
+    const Array<int> zone_build_order = this->compute_zone_build_order();
+    this->find_zone_border_links();
 
     for (const int zone_i : zone_build_order) {
       const TreeZone &zone = *tree_zones_->zones[zone_i];
@@ -1658,6 +1635,43 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       zone_info.lazy_function = &zone_function;
 
       std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
+    }
+  }
+
+  Array<int> compute_zone_build_order()
+  {
+    /* Build nested zones first. */
+    Array<int> zone_build_order(tree_zones_->zones.size());
+    std::iota(zone_build_order.begin(), zone_build_order.end(), 0);
+    std::sort(
+        zone_build_order.begin(), zone_build_order.end(), [&](const int zone_a, const int zone_b) {
+          return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
+        });
+    return zone_build_order;
+  }
+
+  /**
+   * Finds links that go from the outside into a zone without going through a zone input node.
+   */
+  void find_zone_border_links()
+  {
+    for (const bNodeLink *link : btree_.all_links()) {
+      if (!link->is_available()) {
+        continue;
+      }
+      if (link->is_muted()) {
+        continue;
+      }
+      const TreeZone *from_zone = tree_zones_->get_zone_by_socket(*link->fromsock);
+      const TreeZone *to_zone = tree_zones_->get_zone_by_socket(*link->tosock);
+      if (from_zone == to_zone) {
+        continue;
+      }
+      BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
+      for (const TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
+        ZoneBuildInfo &zone_info = zone_build_infos_[zone->index];
+        zone_info.border_links.append(link);
+      }
     }
   }
 
