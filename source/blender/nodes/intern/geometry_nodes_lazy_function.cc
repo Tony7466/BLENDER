@@ -1531,10 +1531,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       InsertBNodeParams insert_params{
           *zone_info.lf_graph, zone_info.input_socket_map, zone_info.output_socket_map};
 
+      lf::FunctionNode *lf_simulation_input = nullptr;
       if (zone.input_node) {
-        this->handle_simulation_input_node(btree_, *zone.input_node, insert_params);
+        lf_simulation_input = this->handle_simulation_input_node(
+            btree_, *zone.input_node, insert_params);
       }
-      this->handle_simulation_output_node(*zone.output_node, insert_params);
+      lf::FunctionNode &lf_simulation_output = this->handle_simulation_output_node(
+          *zone.output_node, insert_params);
       for (const bNode *bnode : zone.child_nodes) {
         this->insert_node_in_graph(*bnode, insert_params);
       }
@@ -1543,6 +1546,29 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
         lf::FunctionNode &lf_node = zone_info.lf_graph->add_function(
             *child_zone_info.lazy_function);
+      }
+
+      for (const auto item : zone_info.output_socket_map.items()) {
+        this->insert_links_from_socket(*item.key, *item.value, insert_params);
+      }
+
+      for (const int border_link_i : border_links.index_range()) {
+        const bNodeLink &border_link = *border_links[border_link_i];
+        lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
+        for (lf::InputSocket *lf_to : zone_info.input_socket_map.lookup(border_link.tosock)) {
+          /* TODO: Handle conversions and multi-inputs. */
+          zone_info.lf_graph->add_link(lf_from, *lf_to);
+        }
+      }
+
+      if (lf_zone_input_node != nullptr) {
+        for (const int i : lf_zone_input_node->outputs().index_range()) {
+          zone_info.lf_graph->add_link(lf_zone_input_node->output(i),
+                                       lf_simulation_input->input(i));
+        }
+      }
+      for (const int i : lf_zone_output_node.inputs().index_range()) {
+        zone_info.lf_graph->add_link(lf_simulation_output.output(i), lf_zone_output_node.input(i));
       }
 
       Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
@@ -1565,7 +1591,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     if (btree_.group_output_node() == nullptr) {
       this->build_fallback_output_node();
     }
-    // this->handle_links();
     // this->add_default_inputs();
 
     // this->build_attribute_propagation_input_node();
@@ -1945,14 +1970,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->viewer_node_map.add(&bnode, &lf_node);
   }
 
-  void handle_simulation_input_node(const bNodeTree &node_tree,
-                                    const bNode &bnode,
-                                    InsertBNodeParams &insert_params)
+  lf::FunctionNode *handle_simulation_input_node(const bNodeTree &node_tree,
+                                                 const bNode &bnode,
+                                                 InsertBNodeParams &insert_params)
   {
     const NodeGeometrySimulationInput *storage = static_cast<const NodeGeometrySimulationInput *>(
         bnode.storage);
     if (node_tree.node_by_id(storage->output_node_id) == nullptr) {
-      return;
+      return nullptr;
     }
 
     std::unique_ptr<LazyFunction> lazy_function = get_simulation_input_lazy_function(
@@ -1974,9 +1999,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       insert_params.output_socket_map.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
+    return &lf_node;
   }
 
-  void handle_simulation_output_node(const bNode &bnode, InsertBNodeParams &insert_params)
+  lf::FunctionNode &handle_simulation_output_node(const bNode &bnode,
+                                                  InsertBNodeParams &insert_params)
   {
     std::unique_ptr<LazyFunction> lazy_function = get_simulation_output_lazy_function(
         bnode, *lf_graph_info_);
@@ -1999,6 +2026,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     mapping_->sim_output_node_map.add(&bnode, &lf_node);
+    return lf_node;
   }
 
   void handle_switch_node(const bNode &bnode, InsertBNodeParams &insert_params)
@@ -2044,14 +2072,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
   }
 
-  void handle_links()
-  {
-    for (const auto item : output_socket_map_.items()) {
-      this->insert_links_from_socket(*item.key, *item.value);
-    }
-  }
-
-  void insert_links_from_socket(const bNodeSocket &from_bsocket, lf::OutputSocket &from_lf_socket)
+  void insert_links_from_socket(const bNodeSocket &from_bsocket,
+                                lf::OutputSocket &from_lf_socket,
+                                InsertBNodeParams &insert_params)
   {
     if (bke::nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
       return;
@@ -2097,7 +2120,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const Span<const bNodeLink *> links = type_with_links.links;
 
       lf::OutputSocket *converted_from_lf_socket = this->insert_type_conversion_if_necessary(
-          from_lf_socket, to_type);
+          from_lf_socket, to_type, insert_params.lf_graph);
 
       auto make_input_link_or_set_default = [&](lf::InputSocket &to_lf_socket) {
         if (converted_from_lf_socket == nullptr) {
@@ -2105,7 +2128,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           to_lf_socket.set_default_value(default_value);
         }
         else {
-          lf_graph_->add_link(*converted_from_lf_socket, to_lf_socket);
+          insert_params.lf_graph.add_link(*converted_from_lf_socket, to_lf_socket);
         }
       };
 
@@ -2127,7 +2150,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           }
           if (to_bsocket.owner_node().is_muted()) {
             if (link_index == 0) {
-              for (lf::InputSocket *to_lf_socket : input_socket_map_.lookup(&to_bsocket)) {
+              for (lf::InputSocket *to_lf_socket :
+                   insert_params.input_socket_map.lookup(&to_bsocket)) {
                 make_input_link_or_set_default(*to_lf_socket);
               }
             }
@@ -2142,7 +2166,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           }
         }
         else {
-          for (lf::InputSocket *to_lf_socket : input_socket_map_.lookup(&to_bsocket)) {
+          for (lf::InputSocket *to_lf_socket : insert_params.input_socket_map.lookup(&to_bsocket))
+          {
             make_input_link_or_set_default(*to_lf_socket);
           }
         }
@@ -2151,7 +2176,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   }
 
   lf::OutputSocket *insert_type_conversion_if_necessary(lf::OutputSocket &from_socket,
-                                                        const CPPType &to_type)
+                                                        const CPPType &to_type,
+                                                        lf::Graph &lf_graph)
   {
     const CPPType &from_type = from_socket.type();
     if (from_type == to_type) {
@@ -2168,7 +2194,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             multi_fn, *from_field_type, *to_field_type);
         lf::Node &conversion_node = lf_graph_->add_function(*fn);
         lf_graph_info_->functions.append(std::move(fn));
-        lf_graph_->add_link(from_socket, conversion_node.input(0));
+        lf_graph.add_link(from_socket, conversion_node.input(0));
         return &conversion_node.output(0);
       }
     }
