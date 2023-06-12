@@ -1543,8 +1543,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const TreeZone *child_zone : zone.child_zones) {
         const int child_zone_i = child_zone->index;
         ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
-        lf::FunctionNode &lf_node = zone_info.lf_graph->add_function(
-            *child_zone_info.lazy_function);
+        zone_info.lf_graph->add_function(*child_zone_info.lazy_function);
       }
 
       for (const auto item : zone_info.output_socket_map.items()) {
@@ -1591,6 +1590,23 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     if (btree_.group_output_node() == nullptr) {
       this->build_fallback_output_node();
     }
+
+    {
+      InsertBNodeParams insert_params{
+          *root_lf_graph_, root_input_socket_map_, root_output_socket_map_};
+      for (const bNode *bnode : tree_zones_->nodes_outside_zones) {
+        this->insert_node_in_graph(*bnode, insert_params);
+      }
+      for (const TreeZone *child_zone : tree_zones_->root_zones) {
+        const int child_zone_i = child_zone->index;
+        ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
+        root_lf_graph_->add_function(*child_zone_info.lazy_function);
+      }
+      for (const auto item : root_output_socket_map_.items()) {
+        this->insert_links_from_socket(*item.key, *item.value, insert_params);
+      }
+    }
+
     // this->add_default_inputs();
 
     // this->build_attribute_propagation_input_node();
@@ -1601,7 +1617,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     // this->build_attribute_propagation_sets();
     // this->fix_link_cycles();
 
-    // this->print_graph();
+    this->print_graph();
 
     root_lf_graph_->update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += root_lf_graph_->nodes().size();
