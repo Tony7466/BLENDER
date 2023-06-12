@@ -209,8 +209,8 @@ static void GREASE_PENCIL_OT_select_ends(wmOperatorType *ot)
               0,
               0,
               INT32_MAX,
-              "Amount Front",
-              "Number of points to select from the front",
+              "Amount Start",
+              "Number of points to select from the start",
               0,
               INT32_MAX);
   RNA_def_int(ot->srna,
@@ -218,8 +218,8 @@ static void GREASE_PENCIL_OT_select_ends(wmOperatorType *ot)
               1,
               0,
               INT32_MAX,
-              "Amount Back",
-              "Number of points to select from the back",
+              "Amount End",
+              "Number of points to select from the end",
               0,
               INT32_MAX);
 }
