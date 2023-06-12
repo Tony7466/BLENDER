@@ -9,6 +9,7 @@
 #include "DNA_ID.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_listBase.h"
+#include "DNA_outliner_types.h"
 #include "DNA_texture_types.h"
 
 #include "../outliner_intern.hh"
@@ -40,7 +41,7 @@ void TreeElementIDLineStyle::expandTextures(SpaceOutliner &space_outliner) const
   for (int a = 0; a < MAX_MTEX; a++) {
     if (linestyle_.mtex[a]) {
       outliner_add_element(
-          &space_outliner, &legacy_te_.subtree, (linestyle_.mtex[a])->tex, &legacy_te_, 0, a);
+          &space_outliner, &legacy_te_.subtree, (linestyle_.mtex[a])->tex, &legacy_te_, TSE_SOME_ID, a);
     }
   }
 }
