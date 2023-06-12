@@ -2432,6 +2432,9 @@ static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src,
       MEM_dupallocN(sock_src->default_attribute_name));
 
   sock_dst->stack_index = 0;
+
+  /* Reset socket shape in case a node is copied to a different tree type. */
+  sock_dst->display_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
 }
 
 bNode *node_copy_with_mapping(bNodeTree *dst_tree,
