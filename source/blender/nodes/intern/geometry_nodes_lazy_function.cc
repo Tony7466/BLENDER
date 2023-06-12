@@ -2072,6 +2072,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
   }
 
+  struct TypeWithLinks {
+    const CPPType *type;
+    Vector<const bNodeLink *> links;
+  };
+
   void insert_links_from_socket(const bNodeSocket &from_bsocket,
                                 lf::OutputSocket &from_lf_socket,
                                 InsertBNodeParams &insert_params)
@@ -2080,40 +2085,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       return;
     }
 
-    const Span<const bNodeLink *> links_from_bsocket = from_bsocket.directly_linked_links();
-
-    struct TypeWithLinks {
-      const CPPType *type;
-      Vector<const bNodeLink *> links;
-    };
-
     /* Group available target sockets by type so that they can be handled together. */
-    Vector<TypeWithLinks> types_with_links;
-    for (const bNodeLink *link : links_from_bsocket) {
-      if (link->is_muted()) {
-        continue;
-      }
-      if (!link->is_available()) {
-        continue;
-      }
-      const bNodeSocket &to_bsocket = *link->tosock;
-      const CPPType *to_type = get_socket_cpp_type(to_bsocket);
-      if (to_type == nullptr) {
-        continue;
-      }
-      bool inserted = false;
-      for (TypeWithLinks &types_with_links : types_with_links) {
-        if (types_with_links.type == to_type) {
-          types_with_links.links.append(link);
-          inserted = true;
-          break;
-        }
-      }
-      if (inserted) {
-        continue;
-      }
-      types_with_links.append({to_type, {link}});
-    }
+    const Vector<TypeWithLinks> types_with_links = this->group_link_targets_by_type(from_bsocket);
 
     for (const TypeWithLinks &type_with_links : types_with_links) {
       const CPPType &to_type = *type_with_links.type;
@@ -2173,6 +2146,38 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       }
     }
+  }
+
+  Vector<TypeWithLinks> group_link_targets_by_type(const bNodeSocket &from_bsocket)
+  {
+    const Span<const bNodeLink *> links_from_bsocket = from_bsocket.directly_linked_links();
+    Vector<TypeWithLinks> types_with_links;
+    for (const bNodeLink *link : links_from_bsocket) {
+      if (link->is_muted()) {
+        continue;
+      }
+      if (!link->is_available()) {
+        continue;
+      }
+      const bNodeSocket &to_bsocket = *link->tosock;
+      const CPPType *to_type = get_socket_cpp_type(to_bsocket);
+      if (to_type == nullptr) {
+        continue;
+      }
+      bool inserted = false;
+      for (TypeWithLinks &types_with_links : types_with_links) {
+        if (types_with_links.type == to_type) {
+          types_with_links.links.append(link);
+          inserted = true;
+          break;
+        }
+      }
+      if (inserted) {
+        continue;
+      }
+      types_with_links.append({to_type, {link}});
+    }
+    return types_with_links;
   }
 
   lf::OutputSocket *insert_type_conversion_if_necessary(lf::OutputSocket &from_socket,
