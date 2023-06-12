@@ -361,5 +361,7 @@ Array<Vector<int, 2>> build_edge_to_poly_map(OffsetIndices<int> polys,
                                              int edges_num);
 Vector<Vector<int>> build_edge_to_loop_map_resizable(Span<int> corner_edges, int edges_num);
 
+void build_islands(Span<int2> edges, int vert_num, Array<int> &r_offsets, Array<int> &r_indices);
+
 }  // namespace blender::bke::mesh_topology
 #endif

@@ -14,6 +14,7 @@
 
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_mapping.h"
 
 #include "GEO_mesh_merge_by_distance.hh"
 
@@ -1442,8 +1443,18 @@ static void weld_mesh_context_create(const Mesh &mesh,
 /** \name CustomData
  * \{ */
 
-static void customdata_weld(
-    const CustomData *source, CustomData *dest, const int *src_indices, int count, int dest_index)
+/**
+ * Interp customdata.
+ *
+ * \return r_skin_roots: Indices of the vertices that are roots of the Skin modifier. They are
+ * stored so that we can remove the extra roots in the same island.
+ */
+static void customdata_weld(const CustomData *source,
+                            CustomData *dest,
+                            const int *src_indices,
+                            int count,
+                            int dest_index,
+                            Vector<int> &r_skin_roots)
 {
   if (count == 1) {
     CustomData_copy_data(source, dest, src_indices[0], dest_index, 1);
@@ -1454,6 +1465,8 @@ static void customdata_weld(
 
   int src_i, dest_i;
   int j;
+
+  int vs_flag = 0;
 
   /* interpolates a layer at a time */
   dest_i = 0;
@@ -1475,7 +1488,16 @@ static void customdata_weld(
     /* if we found a matching layer, add the data */
     if (dest->layers[dest_i].type == type) {
       void *src_data = source->layers[src_i].data;
-      if (CustomData_layer_has_interp(dest, dest_i)) {
+      if (type == CD_MVERT_SKIN) {
+        /* The `typeInfo->interp` of #CD_MVERT_SKIN does not include the flag, so #MVERT_SKIN_ROOT
+         * and #MVERT_SKIN_LOOSE can get lost in the interpolation. Re-include them so that if only
+         * one of the merged vertices has these flags, they will be added to the resultant. */
+        for (j = 0; j < count; j++) {
+          MVertSkin *vs = &((MVertSkin *)src_data)[src_indices[j]];
+          vs_flag |= vs->flag;
+        }
+      }
+      else if (CustomData_layer_has_interp(dest, dest_i)) {
         /* Already calculated.
          * TODO: Optimize by exposing `typeInfo->interp`. */
       }
@@ -1505,7 +1527,14 @@ static void customdata_weld(
   for (dest_i = 0; dest_i < dest->totlayer; dest_i++) {
     CustomDataLayer *layer_dst = &dest->layers[dest_i];
     const eCustomDataType type = eCustomDataType(layer_dst->type);
-    if (CustomData_layer_has_interp(dest, dest_i)) {
+    if (type == CD_MVERT_SKIN) {
+      MVertSkin *vs = &((MVertSkin *)layer_dst->data)[dest_index];
+      vs->flag = vs_flag;
+      if (vs_flag & MVERT_SKIN_ROOT) {
+        r_skin_roots.append(dest_index);
+      }
+    }
+    else if (CustomData_layer_has_interp(dest, dest_i)) {
       /* Already calculated. */
     }
     else if (CustomData_layer_has_math(dest, dest_i)) {
@@ -1558,6 +1587,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
    * This map will be used to adjust edges and loops to point to new vertex indices. */
   MutableSpan<int> vert_final_map = vert_group_map;
 
+  Vector<int> skin_roots;
   int dest_index = 0;
   for (int i = 0; i < totvert; i++) {
     int source_index = i;
@@ -1580,7 +1610,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
                       &result->vdata,
                       &weld_mesh.vert_groups_buffer[*wgroup],
                       *(wgroup + 1) - *wgroup,
-                      dest_index);
+                      dest_index,
+                      skin_roots);
       vert_final_map[i] = dest_index;
       dest_index++;
     }
@@ -1624,7 +1655,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
                       &result->edata,
                       &weld_mesh.edge_groups_buffer[wegrp_offs],
                       wegrp_len,
-                      dest_index);
+                      dest_index,
+                      skin_roots);
       int2 &edge = dst_edges[dest_index];
       edge[0] = vert_final_map[wegrp_verts[0]];
       edge[1] = vert_final_map[wegrp_verts[1]];
@@ -1671,8 +1703,12 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
         continue;
       }
       while (weld_iter_loop_of_poly_next(iter)) {
-        customdata_weld(
-            &mesh.ldata, &result->ldata, group_buffer.data(), iter.group_len, loop_cur);
+        customdata_weld(&mesh.ldata,
+                        &result->ldata,
+                        group_buffer.data(),
+                        iter.group_len,
+                        loop_cur,
+                        skin_roots);
         dst_corner_verts[loop_cur] = vert_final_map[iter.v];
         dst_corner_edges[loop_cur] = edge_final_map[iter.e];
         loop_cur++;
@@ -1704,7 +1740,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
       continue;
     }
     while (weld_iter_loop_of_poly_next(iter)) {
-      customdata_weld(&mesh.ldata, &result->ldata, group_buffer.data(), iter.group_len, loop_cur);
+      customdata_weld(
+          &mesh.ldata, &result->ldata, group_buffer.data(), iter.group_len, loop_cur, skin_roots);
       dst_corner_verts[loop_cur] = vert_final_map[iter.v];
       dst_corner_edges[loop_cur] = edge_final_map[iter.e];
       loop_cur++;
@@ -1716,6 +1753,33 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
 
   BLI_assert(int(r_i) == result_npolys);
   BLI_assert(loop_cur == result_nloops);
+
+  if (skin_roots.size()) {
+    const int vs_layer_index = CustomData_get_layer_index(&result->vdata, CD_MVERT_SKIN);
+    CustomDataLayer *layer_dst = &result->vdata.layers[vs_layer_index];
+    MVertSkin *vs_array = &((MVertSkin *)layer_dst->data)[vs_layer_index];
+
+    Array<int> islands_offsets;
+    Array<int> islands_indices;
+    bke::mesh_topology::build_islands(
+        result->edges(), result->totvert, islands_offsets, islands_indices);
+
+    const OffsetIndices<int> offsets(islands_offsets);
+    for (int island : offsets.index_range()) {
+      bool remove_root = false;
+      for (const int offset : offsets[island]) {
+        int vert = islands_indices[offset];
+        MVertSkin *vs = &vs_array[vert];
+        if (vs->flag & MVERT_SKIN_ROOT) {
+          if (remove_root) {
+            vs->flag &= ~MVERT_SKIN_ROOT;
+            continue;
+          }
+          remove_root = true;
+        }
+      }
+    }
+  }
 
   return result;
 }

@@ -22,10 +22,13 @@
 
 #include "BKE_customdata.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BLI_memarena.h"
 
 #include "BLI_strict_flags.h"
+
+using namespace blender;
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Connectivity Mapping
@@ -594,6 +597,61 @@ Vector<Vector<int>> build_edge_to_loop_map_resizable(const Span<int> corner_edge
     map[corner_edges[i]].append(int(i));
   }
   return map;
+}
+
+/* Copied form node_geo_blur_attribute.cc */
+static Array<Vector<int>> build_vert_to_vert_by_edge_map(const Span<int2> edges,
+                                                         const int verts_num)
+{
+  Array<Vector<int>> map(verts_num);
+  for (const int2 &edge : edges) {
+    map[edge[0]].append(edge[1]);
+    map[edge[1]].append(edge[0]);
+  }
+  return map;
+}
+
+static void island_fill_indices_recursive(const int vert_index,
+                                          BitVector<> &is_vert_added,
+                                          Array<Vector<int>> &vert_linked_map,
+                                          Vector<int> &indices)
+{
+  if (is_vert_added[vert_index]) {
+    return;
+  }
+  is_vert_added[vert_index].set();
+  indices.append(vert_index);
+
+  for (const int vert_linked : vert_linked_map[vert_index]) {
+    island_fill_indices_recursive(vert_linked, is_vert_added, vert_linked_map, indices);
+  }
+};
+
+void build_islands(Span<int2> edges, int vert_num, Array<int> &r_offsets, Array<int> &r_indices)
+{
+  Vector<int> indices;
+  indices.reserve(vert_num);
+
+  Vector<int> offsets;
+  offsets.reserve(2);
+  offsets.append(0);
+
+  Array<Vector<int>> vert_linked_map = build_vert_to_vert_by_edge_map(edges, vert_num);
+  BitVector<> is_vert_added(vert_num, false);
+
+  for (int64_t vert_index : IndexRange(vert_num)) {
+    if (is_vert_added[vert_index]) {
+      continue;
+    }
+    island_fill_indices_recursive(int(vert_index), is_vert_added, vert_linked_map, indices);
+
+    offsets.increase_size_by_unchecked(1);
+    int *island_next = &offsets.last();
+    *island_next = int(indices.size());
+  }
+
+  r_offsets = Span(std::move(offsets.data()), offsets.size());
+  r_indices = Span(std::move(indices.data()), indices.size());
 }
 
 }  // namespace blender::bke::mesh_topology
