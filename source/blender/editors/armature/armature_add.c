@@ -494,8 +494,7 @@ static void updateDuplicateActionConstraintSettings(
   ListBase ani_curves;
   BLI_listbase_clear(&ani_curves);
   if ((act != NULL) &&
-      BKE_fcurves_filter(&ani_curves, &act->curves, "pose.bones[", orig_bone->name))
-  {
+      BKE_fcurves_filter(&ani_curves, &act->curves, "pose.bones[", orig_bone->name)) {
     /* Create a copy and mirror the animation */
     for (LinkData *ld = ani_curves.first; ld; ld = ld->next) {
       FCurve *old_curve = ld->data;
@@ -514,8 +513,7 @@ static void updateDuplicateActionConstraintSettings(
         const size_t slength = strlen(new_curve->rna_path);
         bool flip = false;
         if (BLI_strn_endswith(new_curve->rna_path, "location", slength) &&
-            new_curve->array_index == 0)
-        {
+            new_curve->array_index == 0) {
           flip = true;
         }
         else if (BLI_strn_endswith(new_curve->rna_path, "rotation_quaternion", slength) &&
