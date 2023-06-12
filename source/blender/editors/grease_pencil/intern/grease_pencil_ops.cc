@@ -183,7 +183,6 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra,
       [amount_start, amount_end](int /*drawing_index*/, GreasePencilDrawing &drawing) {
-        // TODO: Support different selection domains.
         blender::ed::curves::select_ends(drawing.geometry.wrap(), amount_start, amount_end);
       });
 
