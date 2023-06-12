@@ -77,6 +77,7 @@ struct CameraInstanceData : public ExtraInstanceData {
 
 static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
                                          const select::ID select_id,
+                                         Resources &res,
                                          const State &state,
                                          ExtraInstancePass &pass,
                                          CameraInstanceData data)
@@ -98,15 +99,6 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
   MovieTracking *tracking = &clip->tracking;
   /* Index must start in 1, to mimic BKE_tracking_track_get_for_selection_index. */
   int track_index = 1;
-
-  float3 bundle_color_custom;
-  /* TODO(Miguel Pozo) */
-  float *bundle_color_solid = G_draw.block.color_bundle_solid;
-  float *bundle_color_unselected = G_draw.block.color_wire;
-  uchar text_color_selected[4], text_color_unselected[4];
-  /* Color Management: Exception here as texts are drawn in sRGB space directly. */
-  UI_GetThemeColor4ubv(TH_SELECT, text_color_selected);
-  UI_GetThemeColor4ubv(TH_TEXT, text_color_unselected);
 
   float4x4 camera_mat;
   BKE_tracking_get_camera_object_matrix(ob, camera_mat.ptr());
@@ -138,15 +130,15 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
       bundle_data.matrix = math::translate(bundle_data.matrix, float3(track->bundle_pos));
 
       if (track->flag & TRACK_CUSTOMCOLOR) {
-        /* Meh, hardcoded srgb transform here. */
+        /* Hardcoded srgb transform. */
         /* TODO: change the actual DNA color to be linear. */
         srgb_to_linearrgb_v3_v3(bundle_data.color, track->color);
       }
       else if (is_solid_bundle) {
-        bundle_data.color = bundle_color_solid;
+        bundle_data.color = res.theme_settings.color_bundle_solid;
       }
       else if (!is_selected) {
-        bundle_data.color = bundle_color_unselected;
+        bundle_data.color = res.theme_settings.color_wire;
       }
 
       if (is_select) {
@@ -168,7 +160,13 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
       }
 
       if ((v3d->flag2 & V3D_SHOW_BUNDLENAME) && !is_select) {
-        /** TODO(Miguel Pozo):
+#if 0
+        /* TODO(Miguel Pozo): */
+        uchar text_color_selected[4], text_color_unselected[4];
+        /* Color Management: Exception here as texts are drawn in sRGB space directly. */
+        UI_GetThemeColor4ubv(TH_SELECT, text_color_selected);
+        UI_GetThemeColor4ubv(TH_TEXT, text_color_unselected);
+
         DRWTextStore *dt = DRW_text_cache_ensure();
 
         DRW_text_cache_add(dt,
@@ -179,7 +177,7 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
                            0,
                            DRW_TEXT_CACHE_GLOBALSPACE | DRW_TEXT_CACHE_STRING_PTR,
                            is_selected ? text_color_selected : text_color_unselected);
-        */
+#endif
       }
     }
 
@@ -342,7 +340,7 @@ static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
 
 static void camera_sync(const ObjectRef &ob_ref,
                         const select::ID select_id,
-                        Resources & /*res*/,
+                        Resources &res,
                         const State &state,
                         ExtraInstancePass &pass,
                         CameraInstanceData data)
