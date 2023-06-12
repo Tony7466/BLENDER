@@ -1508,7 +1508,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     this->find_zone_border_links();
 
     for (const int zone_i : zone_build_order) {
-      this->build_zone_function(zone_i);
+      const TreeZone &zone = *tree_zones_->zones[zone_i];
+      BLI_assert(zone.output_node->type == GEO_NODE_SIMULATION_OUTPUT);
+      this->build_simulation_zone_function(zone);
     }
   }
 
@@ -1549,9 +1551,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
   }
 
-  void build_zone_function(const int zone_i)
+  void build_simulation_zone_function(const TreeZone &zone)
   {
-    const TreeZone &zone = *tree_zones_->zones[zone_i];
+    const int zone_i = zone.index;
     ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
     zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
 
