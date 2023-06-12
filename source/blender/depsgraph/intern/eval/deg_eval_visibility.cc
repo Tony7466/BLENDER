@@ -141,73 +141,72 @@ void deg_graph_flush_visibility_flags(Depsgraph *graph)
     OperationNode *op_node;
     BLI_stack_pop(stack, &op_node);
 
-    const OperationNode *op_to = reinterpret_cast<const OperationNode *>(op_node);
-    const ComponentNode *comp_to = op_to->owner;
-
-    /* Ignore the synchronization target.
-     * It is always visible and should not affect on other components. */
-    if (comp_to->type == NodeType::SYNCHRONIZATION) {
-      continue;
-    }
-
     /* Flush flags to parents. */
     for (Relation *rel : op_node->inlinks) {
-      if (rel->from->type != NodeType::OPERATION) {
-        continue;
-      }
-      OperationNode *op_from = reinterpret_cast<OperationNode *>(rel->from);
-      ComponentNode *comp_from = op_from->owner;
+      if (rel->from->type == NodeType::OPERATION) {
+        const OperationNode *op_to = reinterpret_cast<const OperationNode *>(rel->to);
+        const ComponentNode *comp_to = op_to->owner;
 
-      op_from->flag |= (op_to->flag & OperationFlag::DEPSOP_FLAG_AFFECTS_VISIBILITY);
+        /* Ignore the synchronization target.
+         * It is always visible and should not affect on other components. */
+        if (comp_to->type == NodeType::SYNCHRONIZATION) {
+          continue;
+        }
 
-      if (rel->flag & RELATION_NO_VISIBILITY_CHANGE) {
-        continue;
-      }
+        OperationNode *op_from = reinterpret_cast<OperationNode *>(rel->from);
+        ComponentNode *comp_from = op_from->owner;
 
-      const bool target_possibly_affects_visible_id = comp_to->possibly_affects_visible_id;
+        op_from->flag |= (op_to->flag & OperationFlag::DEPSOP_FLAG_AFFECTS_VISIBILITY);
 
-      bool target_affects_visible_id = comp_to->affects_visible_id;
+        if (rel->flag & RELATION_NO_VISIBILITY_CHANGE) {
+          continue;
+        }
 
-      /* This is a bit arbitrary but the idea here is following:
-       *
-       *  - When another object is used by a disabled modifier we do not want that object to
-       *    be considered needed for evaluation.
-       *
-       *  - However, we do not want to take mute flag during visibility propagation within the
-       *    same object. Otherwise drivers and transform dependencies of the geometry component
-       *    entry component might not be properly handled.
-       *
-       * This code works fine for muting modifiers, but might need tweaks when mute is used for
-       * something else. */
-      if (comp_from != comp_to && (op_to->flag & DEPSOP_FLAG_MUTE)) {
-        target_affects_visible_id = false;
-      }
+        const bool target_possibly_affects_visible_id = comp_to->possibly_affects_visible_id;
 
-      /* Visibility component forces all components of the current ID to be considered as
-       * affecting directly visible. */
-      if (comp_from->type == NodeType::VISIBILITY) {
-        const IDNode *id_node_from = comp_from->owner;
-        if (target_possibly_affects_visible_id) {
-          for (ComponentNode *comp_node : id_node_from->components.values()) {
-            comp_node->possibly_affects_visible_id |= target_possibly_affects_visible_id;
+        bool target_affects_visible_id = comp_to->affects_visible_id;
+
+        /* This is a bit arbitrary but the idea here is following:
+         *
+         *  - When another object is used by a disabled modifier we do not want that object to
+         *    be considered needed for evaluation.
+         *
+         *  - However, we do not want to take mute flag during visibility propagation within the
+         *    same object. Otherwise drivers and transform dependencies of the geometry component
+         *    entry component might not be properly handled.
+         *
+         * This code works fine for muting modifiers, but might need tweaks when mute is used for
+         * something else. */
+        if (comp_from != comp_to && (op_to->flag & DEPSOP_FLAG_MUTE)) {
+          target_affects_visible_id = false;
+        }
+
+        /* Visibility component forces all components of the current ID to be considered as
+         * affecting directly visible. */
+        if (comp_from->type == NodeType::VISIBILITY) {
+          const IDNode *id_node_from = comp_from->owner;
+          if (target_possibly_affects_visible_id) {
+            for (ComponentNode *comp_node : id_node_from->components.values()) {
+              comp_node->possibly_affects_visible_id |= target_possibly_affects_visible_id;
+            }
+          }
+          if (target_affects_visible_id) {
+            for (ComponentNode *comp_node : id_node_from->components.values()) {
+              comp_node->affects_visible_id |= target_affects_visible_id;
+            }
           }
         }
-        if (target_affects_visible_id) {
-          for (ComponentNode *comp_node : id_node_from->components.values()) {
-            comp_node->affects_visible_id |= target_affects_visible_id;
-          }
+        else {
+          comp_from->possibly_affects_visible_id |= target_possibly_affects_visible_id;
+          comp_from->affects_visible_id |= target_affects_visible_id;
         }
-      }
-      else {
-        comp_from->possibly_affects_visible_id |= target_possibly_affects_visible_id;
-        comp_from->affects_visible_id |= target_affects_visible_id;
       }
     }
 
     /* Schedule parent nodes. */
     for (Relation *rel : op_node->inlinks) {
       if (rel->from->type == NodeType::OPERATION) {
-        OperationNode *op_from = reinterpret_cast<OperationNode *>(rel->from);
+        OperationNode *op_from = (OperationNode *)rel->from;
         if ((rel->flag & RELATION_FLAG_CYCLIC) == 0) {
           BLI_assert(op_from->num_links_pending > 0);
           --op_from->num_links_pending;
