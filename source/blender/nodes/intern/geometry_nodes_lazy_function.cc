@@ -1358,6 +1358,10 @@ struct ZoneBuildInfo {
   IndexRange main_input_indices;
   IndexRange main_output_indices;
   IndexRange border_link_input_indices;
+
+  IndexRange main_input_usage_indices;
+  IndexRange main_output_usage_indices;
+  IndexRange border_link_input_usage_indices;
 };
 
 /**
@@ -1543,6 +1547,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
     lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone_info);
     lf::Node &lf_zone_output_node = this->build_simulation_zone_output_node(zone, zone_info);
+    lf::Node &lf_main_input_usage_node = this->build_simulation_zone_input_usage_node(zone,
+                                                                                      zone_info);
+    lf::Node &lf_main_output_usage_node = this->build_simulation_zone_output_usage_node(zone,
+                                                                                        zone_info);
+    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone_info);
 
     InsertBNodeParams insert_params{
         *zone_info.lf_graph, zone_info.input_socket_map, zone_info.output_socket_map};
@@ -1596,9 +1605,21 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_info.border_link_input_indices = lf_zone_inputs.index_range().take_back(
         lf_border_link_input_node.outputs().size());
 
+    lf_zone_inputs.extend(lf_main_output_usage_node.outputs());
+    zone_info.main_output_usage_indices = lf_zone_inputs.index_range().take_back(
+        lf_main_output_usage_node.outputs().size());
+
     Vector<const lf::InputSocket *, 16> lf_zone_outputs;
     lf_zone_outputs.extend(lf_zone_output_node.inputs());
     zone_info.main_output_indices = lf_zone_outputs.index_range();
+
+    lf_zone_outputs.extend(lf_main_input_usage_node.inputs());
+    zone_info.main_input_usage_indices = lf_zone_outputs.index_range().take_back(
+        lf_main_input_usage_node.inputs().size());
+
+    lf_zone_outputs.extend(lf_border_link_usage_node.inputs());
+    zone_info.border_link_input_usage_indices = lf_zone_outputs.index_range().take_back(
+        lf_border_link_usage_node.inputs().size());
 
     const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
         *zone_info.lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
@@ -1647,6 +1668,31 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::DummyNode &node = zone_info.lf_graph->add_dummy(zone_output_types, {}, debug_info.get());
     lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
     return node;
+  }
+
+  lf::DummyNode &build_simulation_zone_input_usage_node(const TreeZone &zone,
+                                                        ZoneBuildInfo &zone_info)
+  {
+    Vector<const CPPType *, 16> types;
+    types.append_n_times(&CPPType::get<bool>(),
+                         zone.input_node->input_sockets().drop_back(1).size());
+    return zone_info.lf_graph->add_dummy(types, {});
+  }
+
+  lf::DummyNode &build_simulation_zone_output_usage_node(const TreeZone &zone,
+                                                         ZoneBuildInfo &zone_info)
+  {
+    Vector<const CPPType *, 16> types;
+    types.append_n_times(&CPPType::get<bool>(),
+                         zone.output_node->output_sockets().drop_back(1).size());
+    return zone_info.lf_graph->add_dummy({}, types);
+  }
+
+  lf::DummyNode &build_border_link_input_usage_node(ZoneBuildInfo &zone_info)
+  {
+    Vector<const CPPType *, 16> types;
+    types.append_n_times(&CPPType::get<bool>(), zone_info.border_links.size());
+    return zone_info.lf_graph->add_dummy(types, {});
   }
 
   void insert_child_zone_node(const TreeZone &child_zone,
