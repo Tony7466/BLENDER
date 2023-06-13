@@ -128,7 +128,9 @@ static void update_zone_per_node(const Span<const bNode *> all_nodes,
       }
     });
     if (parent_zone == nullptr) {
-      r_node_outside_zones.append(&node);
+      if (!zone_by_inout_node.contains(&node)) {
+        r_node_outside_zones.append(&node);
+      }
     }
     else {
       r_zone_by_node_id.add(node.identifier, parent_zone->index);
