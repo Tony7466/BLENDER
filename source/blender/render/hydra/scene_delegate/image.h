@@ -3,15 +3,11 @@
 
 #pragma once
 
+#include "BKE_context.h"
 #include "BKE_image.h"
-#include "BKE_image_save.h"
 
 namespace blender::render::hydra {
 
-class BlenderSceneDelegate;
-
-std::string cache_or_get_image_file(Image *image,
-                                    BlenderSceneDelegate *scene_delegate,
-                                    ImageUser *iuser);
+std::string cache_or_get_image_file(Image *image, bContext *context, ImageUser *iuser);
 
 }  // namespace blender::render::hydra

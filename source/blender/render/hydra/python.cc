@@ -16,6 +16,7 @@
 
 #include "final_engine.h"
 #include "preview_engine.h"
+#include "scene_delegate/image.h"
 #include "viewport_engine.h"
 
 namespace blender::render::hydra {
@@ -221,6 +222,20 @@ static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *a
   Py_RETURN_NONE;
 }
 
+static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *args)
+{
+  PyObject *pycontext, *pyimage;
+  if (!PyArg_ParseTuple(args, "OO", &pycontext, &pyimage)) {
+    Py_RETURN_NONE;
+  }
+
+  bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
+  Image *image = (Image *)PyLong_AsVoidPtr(pyimage);
+
+  std::string image_path = cache_or_get_image_file(image, context, nullptr);
+  return PyUnicode_FromString(image_path.c_str());
+}
+
 static PyMethodDef methods[] = {
     {"register_plugins", register_plugins_func, METH_VARARGS, ""},
 
@@ -232,6 +247,8 @@ static PyMethodDef methods[] = {
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
     {"engine_set_sync_setting", engine_set_sync_setting_func, METH_VARARGS, ""},
     {"engine_set_render_setting", engine_set_render_setting_func, METH_VARARGS, ""},
+
+    {"cache_or_get_image_file", cache_or_get_image_file_func, METH_VARARGS, ""},
 
     {NULL, NULL, 0, NULL},
 };

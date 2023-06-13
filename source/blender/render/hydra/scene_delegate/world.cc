@@ -87,7 +87,8 @@ void WorldData::init()
         NodeTexImage *tex = static_cast<NodeTexImage *>(color_input_node->storage);
         Image *image = (Image *)color_input_node->id;
         if (image) {
-          std::string image_path = cache_or_get_image_file(image, scene_delegate_, &tex->iuser);
+          std::string image_path = cache_or_get_image_file(
+              image, scene_delegate_->context, &tex->iuser);
           if (!image_path.empty()) {
             data_[pxr::HdLightTokens->textureFile] = pxr::SdfAssetPath(image_path, image_path);
           }
