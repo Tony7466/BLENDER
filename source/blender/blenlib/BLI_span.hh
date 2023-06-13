@@ -124,6 +124,8 @@ template<typename T> class Span {
 
   template<std::size_t N> constexpr Span(const std::array<T, N> &array) : Span(array.data(), N) {}
 
+  template<std::size_t N> constexpr Span(const T (&array)[N]) : Span(array, N) {}
+
   /**
    * Support implicit conversions like the one below:
    *   Span<T *> -> Span<const T *>
