@@ -13,7 +13,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_alloca.h"
+#include "BLI_array.hh"
 #include "BLI_buffer.h"
 #include "BLI_kdtree.h"
 #include "BLI_listbase.h"
@@ -1443,7 +1443,7 @@ BMEdge *EDBM_verts_mirror_get_edge(BMEditMesh *em, BMEdge *e)
 
 BMFace *EDBM_verts_mirror_get_face(BMEditMesh *em, BMFace *f)
 {
-  BMVert **v_mirr_arr = BLI_array_alloca(v_mirr_arr, f->len);
+  blender::Array<BMVert *, BM_DEFAULT_NGON_STACK_SIZE> v_mirr_arr(f->len);
 
   BMLoop *l_iter, *l_first;
   uint i = 0;
@@ -1455,7 +1455,7 @@ BMFace *EDBM_verts_mirror_get_face(BMEditMesh *em, BMFace *f)
     }
   } while ((l_iter = l_iter->next) != l_first);
 
-  return BM_face_exists(v_mirr_arr, f->len);
+  return BM_face_exists(v_mirr_arr.data(), v_mirr_arr.size());
 }
 
 void EDBM_verts_mirror_cache_clear(BMEditMesh *em, BMVert *v)
