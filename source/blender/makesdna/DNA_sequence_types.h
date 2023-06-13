@@ -125,6 +125,7 @@ typedef struct Strip {
 typedef enum eSeqRetimingHandleFlag {
   SPEED_TRANSITION = (1 << 0),
   FREEZE_FRAME = (1 << 1),
+  DELETE_HANDLE = (1 << 2),
 } eSeqRetimingHandleFlag;
 
 typedef struct SeqRetimingHandle {
@@ -294,6 +295,13 @@ typedef struct SeqTimelineChannel {
   int flag;
 } SeqTimelineChannel;
 
+typedef struct SeqRetimingHandleSelection {
+  struct SeqRetimingHandleSelection *next, *prev;
+  char *strip_name;
+  int index;
+  int _pad0;
+} SeqRetimingHandleSelection;
+
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
 } EditingRuntime;
@@ -307,6 +315,8 @@ typedef struct Editing {
   ListBase seqbase;
   ListBase metastack;
   ListBase channels; /* SeqTimelineChannel */
+
+  ListBase retiming_selection; /* RetimingHandleSelection */
 
   /* Context vars, used to be static */
   Sequence *act_seq;

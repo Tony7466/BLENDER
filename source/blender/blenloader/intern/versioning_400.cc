@@ -21,6 +21,9 @@
 #include "BKE_node.hh"
 #include "BKE_tracking.h"
 
+#include "SEQ_retiming.h"
+#include "SEQ_sequencer.h"
+
 #include "BLO_readfile.h"
 
 #include "readfile.h"
@@ -222,5 +225,12 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     /* Convert anisotropic BSDF node to glossy BSDF. */
 
     /* Keep this block, even when empty. */
+    /* Fix possible uncleared `SEQ_FLAG_DELETE` flag */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_retiming_selection_clear(ed);
+      }
+    }
   }
 }
