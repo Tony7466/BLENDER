@@ -3671,15 +3671,15 @@ static bNodeSocket *make_socket_interface(bNodeTree *ntree,
   return sock;
 }
 
-using PanelIndexMap = blender::Map<const bNodePanel *, int>;
+using PanelIndexMap = blender::VectorSet<const bNodePanel *>;
 
 static int node_socket_panel_cmp(void *panel_index_map_v, const void *a, const void *b)
 {
   const PanelIndexMap &panel_index_map = *static_cast<const PanelIndexMap *>(panel_index_map_v);
   const bNodeSocket *sock_a = static_cast<const bNodeSocket *>(a);
   const bNodeSocket *sock_b = static_cast<const bNodeSocket *>(b);
-  return panel_index_map.lookup_default(sock_a->panel, -1) >
-                 panel_index_map.lookup_default(sock_b->panel, -1) ?
+  return panel_index_map.index_of_try(sock_a->panel) >
+                 panel_index_map.index_of_try(sock_b->panel) ?
              1 :
              0;
 }
@@ -3706,11 +3706,7 @@ void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree)
   }
 
   /* Store panel index for sorting. */
-  blender::Map<const bNodePanel *, int> panel_index_map;
-  int index = 0;
-  for (const bNodePanel *panel : ntree->panels()) {
-    panel_index_map.add_new(panel, index++);
-  }
+  blender::bke::PanelIndexMap panel_index_map(ntree->panels());
   BLI_listbase_sort_r(&ntree->inputs, blender::bke::node_socket_panel_cmp, &panel_index_map);
   BLI_listbase_sort_r(&ntree->outputs, blender::bke::node_socket_panel_cmp, &panel_index_map);
 }
