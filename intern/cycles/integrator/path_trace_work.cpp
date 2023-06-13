@@ -113,6 +113,21 @@ void PathTraceWork::set_current_work_set(int i)
    Deteremines a full buffer and parameters from the work_set_
  */
 void PathTraceWork::set_slices_effective_params() {
+  // int height = 0;
+  // slices_buffer_params_ = work_set_.effective_buffer_params_set_[0];
+  // for (int i = 0; i < work_set_.size(); i++) {
+  //   height += work_set_.effective_buffer_params_set_[i].height;
+  // }
+  // slices_buffer_params_.height = height;
+  // slices_buffer_params_.window_height = height;
+  // slices_buffer_params_.update_offset_stride();
+  // VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
+  // master_buffers_->params = slices_buffer_params_;
+  buffers_ = master_buffers_.get();
+  effective_buffer_params_ = slices_buffer_params_;
+}
+
+void PathTraceWork::update_slices_buffer_params() {
   int height = 0;
   slices_buffer_params_ = work_set_.effective_buffer_params_set_[0];
   for (int i = 0; i < work_set_.size(); i++) {
@@ -122,9 +137,8 @@ void PathTraceWork::set_slices_effective_params() {
   slices_buffer_params_.window_height = height;
   slices_buffer_params_.update_offset_stride();
   VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
-  master_buffers_->params = slices_buffer_params_;
-  buffers_ = master_buffers_.get();
-  effective_buffer_params_ = slices_buffer_params_;
+  //master_buffers_->params = slices_buffer_params_;
+  //buffers_ = master_buffers_.get();
 }
 
 void PathTraceWork::render_samples(RenderStatistics &statistics,

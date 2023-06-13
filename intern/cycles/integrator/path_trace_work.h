@@ -181,6 +181,7 @@ class PathTraceWork {
   void set_effective_buffer_params_in_work_set(const BufferParams&, int i, size_t offset);
   void set_current_work_set(int i);
   void set_slices_effective_params();
+  void update_slices_buffer_params();
  protected:
   PathTraceWork(Device *device,
                 Film *film,

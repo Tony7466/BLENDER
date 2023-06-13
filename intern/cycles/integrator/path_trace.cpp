@@ -416,8 +416,9 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
     path_trace_works_[i]->set_effective_full_buffer_params(scaled_full_params, scaled_big_tile_params);
   }
 
+  
   const int overscan = tile_manager_.get_tile_overscan();
-
+  int height = 0;
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                scaled_big_tile_params,
@@ -427,6 +428,9 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
 				 path_trace_work->set_render_buffers_in_work_set(params, slice, offset);
                                });
 
+  for (int i = 0; i < path_trace_works_.size(); i++) {
+    path_trace_works_[i]->update_slices_buffer_params();
+  }
   render_state_.effective_big_tile_params = scaled_big_tile_params;
 }
 
