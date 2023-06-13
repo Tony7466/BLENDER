@@ -81,15 +81,196 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
 
   attributes.for_all(
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
+        /* Skipping "internal" Blender properties. */
+        if (attribute_id.name()[0] == '.' || attribute_id.name() == "position") {
+          return true;
+        }
+
+        std::cerr << "Exporting attribute: " << attribute_id.name() << std::endl;
+
+        /* UV Data. */
+        if (usd_export_context_.export_params.export_uvmaps
+            && meta_data.domain == ATTR_DOMAIN_CORNER
+            && meta_data.data_type == CD_PROP_FLOAT2) {
+          write_uv_data(mesh, usd_mesh, attribute_id, meta_data);
+        }
+
         /* Color data. */
-        if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
+        else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
             ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
         {
           write_color_data(mesh, usd_mesh, attribute_id, meta_data);
         }
 
+        else {
+          write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
+        }
+
         return true;
       });
+}
+
+static pxr::SdfValueTypeName convert_blender_type_to_usd(const eCustomDataType blender_type) {
+  switch(blender_type) {
+    case CD_PROP_FLOAT:
+      return pxr::SdfValueTypeNames->FloatArray;
+    case CD_PROP_INT8:
+    case CD_PROP_INT32:
+      return pxr::SdfValueTypeNames->IntArray;
+    case CD_PROP_FLOAT2:
+      return pxr::SdfValueTypeNames->Float2Array;
+    case CD_PROP_FLOAT3:
+      return pxr::SdfValueTypeNames->Float3Array;
+    case CD_PROP_STRING:
+      return pxr::SdfValueTypeNames->StringArray;
+    case CD_PROP_BOOL:
+      return pxr::SdfValueTypeNames->BoolArray;
+    case CD_PROP_QUATERNION:
+      return pxr::SdfValueTypeNames->QuatfArray;
+    default:
+      BLI_assert_msg(0, "Unsupported domain for mesh data.");
+      return pxr::SdfValueTypeNames->Opaque;
+  }
+}
+
+template <typename T>
+const VArray<T> get_attribute_buffer(const Mesh *mesh,
+                                      const bke::AttributeIDRef &attribute_id,
+                                      const bke::AttributeMetaData &meta_data,
+                                      const T default_value)
+{
+  return *mesh->attributes().lookup_or_default<T>(attribute_id, meta_data.domain, default_value);
+}
+
+template <typename T, typename U>
+void USDGenericMeshWriter::copy_blender_buffer_to_prim(const VArray<T>& buffer, const pxr::UsdTimeCode timecode, pxr::UsdGeomPrimvar attribute_pv) {
+  pxr::VtArray<U> data;
+  for(const auto index : buffer.index_range()) {
+    U value = buffer.get(index);
+    data.push_back(value);
+  }
+  attribute_pv.Set(data, timecode);
+
+  const pxr::UsdAttribute &prim_attr = attribute_pv.GetAttr();
+  usd_value_writer_.SetAttribute(prim_attr, pxr::VtValue(data), timecode);
+}
+
+template <typename T, typename U>
+void USDGenericMeshWriter::copy_blender_buffer_to_prim2(const VArray<T>& buffer, const pxr::UsdTimeCode timecode, pxr::UsdGeomPrimvar attribute_pv) {
+  pxr::VtArray<U> data;
+  for(const auto index : buffer.index_range()) {
+     T value = buffer.get(index);
+    data.push_back({value.x, value.y});
+  }
+  attribute_pv.Set(data, timecode);
+
+  const pxr::UsdAttribute &prim_attr = attribute_pv.GetAttr();
+  usd_value_writer_.SetAttribute(prim_attr, pxr::VtValue(data), timecode);
+}
+
+template <typename T, typename U>
+void USDGenericMeshWriter::copy_blender_buffer_to_prim3(const VArray<T>& buffer, const pxr::UsdTimeCode timecode, pxr::UsdGeomPrimvar attribute_pv) {
+  pxr::VtArray<U> data;
+  for(const auto index : buffer.index_range()) {
+     T buffer_value = buffer.get(index);
+     /* Colors store as rgb, so recast */
+     float3 value = static_cast<float3>(buffer_value);
+    data.push_back({value.x, value.y, value.z});
+  }
+  attribute_pv.Set(data, timecode);
+
+  const pxr::UsdAttribute &prim_attr = attribute_pv.GetAttr();
+  usd_value_writer_.SetAttribute(prim_attr, pxr::VtValue(data), timecode);
+}
+
+template <typename T, typename U>
+void USDGenericMeshWriter::copy_blender_buffer_to_prim_quat(const VArray<T>& buffer, const pxr::UsdTimeCode timecode, pxr::UsdGeomPrimvar attribute_pv) {
+  pxr::VtArray<U> data;
+  for(const auto index : buffer.index_range()) {
+    T value = buffer.get(index);
+    /* Note for the future: We may need a separate _prim4 function as
+     * this function deliberately puts the W value first. */
+    data.push_back({value.w, value.x, value.y, value.z});
+  }
+  attribute_pv.Set(data, timecode);
+
+  const pxr::UsdAttribute &prim_attr = attribute_pv.GetAttr();
+  usd_value_writer_.SetAttribute(prim_attr, pxr::VtValue(data), timecode);
+}
+
+void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
+                                              pxr::UsdGeomMesh usd_mesh,
+                                              const bke::AttributeIDRef &attribute_id,
+                                              const bke::AttributeMetaData &meta_data)
+{
+  pxr::UsdTimeCode timecode = get_export_time_code();
+  const std::string name = attribute_id.name();
+  pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(name));
+  const pxr::UsdGeomPrimvarsAPI pvApi = pxr::UsdGeomPrimvarsAPI(usd_mesh);
+
+  /* Varying type depends on original domain. */
+  const pxr::TfToken prim_varying = meta_data.domain == ATTR_DOMAIN_CORNER ?
+                                        pxr::UsdGeomTokens->faceVarying :
+                                        pxr::UsdGeomTokens->vertex;
+  const pxr::SdfValueTypeName prim_attr_type = convert_blender_type_to_usd(meta_data.data_type);
+
+  pxr::UsdGeomPrimvar attribute_pv = pvApi.CreatePrimvar(
+      primvar_name, prim_attr_type, prim_varying);
+
+  switch (meta_data.data_type) {
+    case CD_PROP_FLOAT: {
+      auto buffer = get_attribute_buffer<float>(mesh, attribute_id, meta_data, 0);
+      copy_blender_buffer_to_prim<float, float>(buffer, timecode, attribute_pv);
+      break;
+    }
+    case CD_PROP_INT8: {
+      auto buffer = get_attribute_buffer<int8_t>(mesh, attribute_id, meta_data, 0);
+      copy_blender_buffer_to_prim<int8_t, int>(buffer, timecode, attribute_pv);
+      break;
+    }
+    case CD_PROP_INT32: {
+      auto buffer = get_attribute_buffer<int32_t>(mesh, attribute_id, meta_data, 0);
+      copy_blender_buffer_to_prim<int32_t, int32_t>(buffer, timecode, attribute_pv);
+      break;
+    }
+    case CD_PROP_FLOAT2: {
+      auto buffer = get_attribute_buffer<float2>(mesh, attribute_id, meta_data, {0.0f, 0.0f});
+      copy_blender_buffer_to_prim2<float2, pxr::GfVec2f>(buffer, timecode, attribute_pv);
+      break;
+    }
+    case CD_PROP_FLOAT3: {
+      auto buffer = get_attribute_buffer<float3>(
+          mesh, attribute_id, meta_data, {0.0f, 0.0f, 0.0f});
+      copy_blender_buffer_to_prim3<float3, pxr::GfVec3f>(buffer, timecode, attribute_pv);
+      break;
+    }
+    case CD_PROP_BOOL: {
+      auto buffer = get_attribute_buffer<bool>(mesh, attribute_id, meta_data, false);
+      copy_blender_buffer_to_prim<bool, bool>(buffer, timecode, attribute_pv);
+      break;
+    }
+    /*
+     * // This seems to be unsupported so far?
+    case CD_PROP_QUATERNION: {
+      auto buffer = get_attribute_buffer<float4>(
+          // Note that GfQuatf takes in values in wxyz order.
+          mesh, attribute_id, meta_data, {1.0f, 0.0f, 0.0f, 0.0f});
+      copy_blender_buffer_to_prim_quat<float4, pxr::GfQuatf>(buffer, timecode, attribute_pv);
+      break;
+    }
+    */
+    default:
+      BLI_assert_msg(0, "Unsupported domain for mesh data.");
+  }
+}
+
+void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
+                                         pxr::UsdGeomMesh usd_mesh,
+                                         const bke::AttributeIDRef &attribute_id,
+                                         const bke::AttributeMetaData &meta_data)
+{
+  const VArray<ColorGeometry4f> attribute = *mesh->attributes().lookup_or_default<ColorGeometry4f>(
+      attribute_id, meta_data.domain, {0.0f, 0.0f, 0.0f, 1.0f});
 }
 
 void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
@@ -110,36 +291,18 @@ void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
   pxr::UsdGeomPrimvar colors_pv = pvApi.CreatePrimvar(
       primvar_name, pxr::SdfValueTypeNames->Color3fArray, prim_varying);
 
-  const VArray<ColorGeometry4f> attribute = *mesh->attributes().lookup_or_default<ColorGeometry4f>(
-      attribute_id, meta_data.domain, {0.0f, 0.0f, 0.0f, 1.0f});
+  const VArray<ColorGeometry4f> buffer = get_attribute_buffer<ColorGeometry4f>(mesh, attribute_id, meta_data, {0.0f, 0.0f, 0.0f, 1.0f});
 
-  pxr::VtArray<pxr::GfVec3f> colors_data;
-
-  /* TODO: Thread the copy, like the obj exporter. */
   switch (meta_data.domain) {
     case ATTR_DOMAIN_CORNER:
-      for (size_t loop_idx = 0; loop_idx < mesh->totloop; loop_idx++) {
-        const ColorGeometry4f color = attribute.get(loop_idx);
-        colors_data.push_back(pxr::GfVec3f(color.r, color.g, color.b));
-      }
-      break;
-
     case ATTR_DOMAIN_POINT:
-      for (const int point_index : attribute.index_range()) {
-        const ColorGeometry4f color = attribute.get(point_index);
-        colors_data.push_back(pxr::GfVec3f(color.r, color.g, color.b));
-      }
+      copy_blender_buffer_to_prim3<ColorGeometry4f, pxr::GfVec3f>(buffer, timecode, colors_pv);
       break;
 
     default:
       BLI_assert_msg(0, "Invalid domain for mesh color data.");
       return;
   }
-
-  colors_pv.Set(colors_data, timecode);
-
-  const pxr::UsdAttribute &prim_colors_attr = colors_pv.GetAttr();
-  usd_value_writer_.SetAttribute(prim_colors_attr, pxr::VtValue(colors_data), timecode);
 }
 
 void USDGenericMeshWriter::free_export_mesh(Mesh *mesh)
