@@ -29,6 +29,7 @@ set(INC
   ../../blenlib
   ../../depsgraph
   ../../blenkernel
+  ../../imbuf
   ../../gpu
   ../../gpu/intern
   ../../python/intern

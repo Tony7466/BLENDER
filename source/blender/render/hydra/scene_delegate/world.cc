@@ -101,6 +101,13 @@ void WorldData::init()
     data_[pxr::HdLightTokens->exposure] = world->exposure;
     data_[pxr::HdLightTokens->color] = pxr::GfVec3f(world->horr, world->horg, world->horb);
   }
+
+  if (data_.find(pxr::HdLightTokens->textureFile) == data_.end()) {
+    pxr::GfVec3f c = data_[pxr::HdLightTokens->color].Get<pxr::GfVec3f>();
+    float color[4] = {c[0], c[1], c[2], 1.0f};
+    std::string image_path = cache_image_color(color);
+    data_[pxr::HdLightTokens->textureFile] = pxr::SdfAssetPath(image_path, image_path);
+  }
 }
 
 void WorldData::insert()

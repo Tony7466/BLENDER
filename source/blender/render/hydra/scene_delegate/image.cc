@@ -8,18 +8,33 @@
 #include "BKE_image_save.h"
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
 
 #include "blender_scene_delegate.h"
 #include "image.h"
 
 namespace blender::render::hydra {
 
+static std::string get_cache_file(const std::string &file_name, bool mkdir = true)
+{
+  char dir_path[FILE_MAX];
+  BLI_path_join(dir_path, sizeof(dir_path), BKE_tempdir_session(), "hydra_image_cache");
+  if (mkdir) {
+    BLI_dir_create_recursive(dir_path);
+  }
+
+  char file_path[FILE_MAX];
+  BLI_path_join(file_path, sizeof(file_path), dir_path, file_name.c_str());
+  return file_path;
+}
+
 static std::string cache_image_file(Image *image,
                                     bContext *context,
                                     ImageUser *iuser,
                                     bool check_exist)
 {
-  char file_path[FILE_MAX];
+  std::string file_path;
   Main *main = CTX_data_main(context);
   Scene *scene = CTX_data_scene(context);
   ImageSaveOptions opts;
@@ -29,29 +44,30 @@ static std::string cache_image_file(Image *image,
     BKE_image_path_ext_from_imformat(&scene->r.im_format, &r_ext);
     snprintf(file_name, sizeof(file_name), "img_%016llx%s", (uintptr_t)image, r_ext);
 
-    BLI_path_join(
-        file_path, sizeof(file_path), BKE_tempdir_session(), "hydra_image_cache", file_name);
-
-    if (check_exist && BLI_exists(file_path)) {
+    file_path = get_cache_file(file_name);
+    if (check_exist && BLI_exists(file_path.c_str())) {
       return file_path;
     }
+
     opts.save_copy = true;
-    STRNCPY(opts.filepath, file_path);
+    STRNCPY(opts.filepath, file_path.c_str());
     if (BKE_image_save(nullptr, main, image, iuser, &opts)) {
-      CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path);
+      CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
     }
     else {
-      memset(file_path, 0, sizeof(file_path));
+      CLOG_ERROR(LOG_RENDER_HYDRA_SCENE, "Can't save %s", file_path.c_str());
+      file_path = "";
     }
   }
   BKE_image_save_options_free(&opts);
 
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s -> %s", image->id.name, file_path.c_str());
   return file_path;
 }
 
 std::string cache_or_get_image_file(Image *image, bContext *context, ImageUser *iuser)
 {
-  std::string file_path(FILE_MAX, 0);
+  std::string file_path;
   if (image->source == IMA_SRC_GENERATED) {
     file_path = cache_image_file(image, context, iuser, false);
   }
@@ -60,6 +76,7 @@ std::string cache_or_get_image_file(Image *image, bContext *context, ImageUser *
   }
   else {
     Main *main = CTX_data_main(context);
+    file_path.reserve(FILE_MAX);
     BKE_image_user_file_path_ex(main, iuser, image, file_path.data(), false, true);
 
     if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(file_path)) {
@@ -68,6 +85,36 @@ std::string cache_or_get_image_file(Image *image, bContext *context, ImageUser *
   }
 
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
+  return file_path;
+}
+
+std::string cache_image_color(float color[4])
+{
+  char name[128];
+  snprintf(name,
+           sizeof(name),
+           "color_%02x-%02x-%02x.hdr",
+           int(color[0] * 255),
+           int(color[1] * 255),
+           int(color[2] * 255));
+  std::string file_path = get_cache_file(name);
+  if (BLI_exists(file_path.c_str())) {
+    return file_path;
+  }
+
+  ImBuf *ibuf = IMB_allocImBuf(4, 4, 32, IB_rectfloat);
+  IMB_rectfill(ibuf, color);
+  ibuf->ftype = IMB_FTYPE_RADHDR;
+
+  if (IMB_saveiff(ibuf, file_path.c_str(), IB_rectfloat)) {
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", file_path.c_str());
+  }
+  else {
+    CLOG_ERROR(LOG_RENDER_HYDRA_SCENE, "Can't save %s", file_path.c_str());
+    file_path = "";
+  }
+  IMB_freeImBuf(ibuf);
+
   return file_path;
 }
 
