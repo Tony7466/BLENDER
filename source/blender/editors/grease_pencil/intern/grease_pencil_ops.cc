@@ -17,6 +17,7 @@
 #include "ED_curves.h"
 #include "ED_grease_pencil.h"
 #include "ED_screen.h"
+#include "ED_view3d.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -47,11 +48,11 @@ static int select_all_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  eAttrDomain domain = ED_view3d_grease_pencil_selection_domain_get(C);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [action](int /*drawing_index*/, GreasePencilDrawing &drawing) {
-        // TODO: Support different selection domains.
-        blender::ed::curves::select_all(drawing.geometry.wrap(), ATTR_DOMAIN_POINT, action);
+      scene->r.cfra, [action, domain](int /*drawing_index*/, GreasePencilDrawing &drawing) {
+        blender::ed::curves::select_all(drawing.geometry.wrap(), domain, action);
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
