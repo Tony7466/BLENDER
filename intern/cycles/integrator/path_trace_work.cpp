@@ -41,7 +41,8 @@ PathTraceWork::PathTraceWork(Device *device,
       buffers_(NULL),
       master_buffers_(make_unique<RenderBuffers>(device)),
       effective_buffer_params_(effective_full_params_),
-      cancel_requested_flag_(cancel_requested_flag)
+      cancel_requested_flag_(cancel_requested_flag),
+      device_scale_factor_(-1)
 {
 }
 
@@ -59,6 +60,7 @@ WorkSet::~WorkSet()
 
 void PathTraceWork::clear_or_create_work_set(int device_scale_factor)
 {
+  device_scale_factor_ = device_scale_factor;
   if (work_set_.size() < device_scale_factor) {
     if (work_set_.size() > 0) {
       for (int i = 0; i < work_set_.size(); i++) {
@@ -213,7 +215,7 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 
   int y_slice = 0;
   int y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  for (int i = 0; i < work_set_.size(); i++) {
+  for (int i = 0; i < device_scale_factor_; i++) {
     SCOPED_MARKER(device_, "copy_to_render_buffers_work_set");
     int height = std::min(total_height - i*slice_height, slice_height);
     //VLOG_INFO << "\t(" << i << ") Buffer height " << height << " y slice:" << y_slice << " y render:" << y_render;
@@ -241,7 +243,7 @@ void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers
 
   int y_slice = 0;
   int y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  for (int i = 0; i < work_set_.size(); i++) {
+  for (int i = 0; i < device_scale_factor_; i++) {
     SCOPED_MARKER(device_, "copy_from_render_buffers_work_set");
     int height = std::min(total_height - i*slice_height, slice_height);
     if(height > 0) {      
