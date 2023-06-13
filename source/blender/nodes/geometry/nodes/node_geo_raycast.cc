@@ -42,17 +42,17 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_DISTANCE)
       .supports_field();
 
-  b.add_output<decl::Bool>("Is Hit").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Hit Position").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Hit Normal").dependent_field({6, 7, 8});
-  b.add_output<decl::Float>("Hit Distance").dependent_field({6, 7, 8});
+  b.add_output<decl::Bool>("Is Hit").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Hit Position").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Hit Normal").dependent_field({7, 8, 9});
+  b.add_output<decl::Float>("Hit Distance").dependent_field({7, 8, 9});
 
-  b.add_output<decl::Vector>("Attribute").dependent_field({6, 7, 8});
-  b.add_output<decl::Float>("Attribute", "Attribute_001").dependent_field({6, 7, 8});
-  b.add_output<decl::Color>("Attribute", "Attribute_002").dependent_field({6, 7, 8});
-  b.add_output<decl::Bool>("Attribute", "Attribute_003").dependent_field({6, 7, 8});
-  b.add_output<decl::Int>("Attribute", "Attribute_004").dependent_field({6, 7, 8});
-  b.add_output<decl::Rotation>("Attribute", "Attribute_005").dependent_field({6, 7, 8});
+  b.add_output<decl::Vector>("Attribute").dependent_field({7, 8, 9});
+  b.add_output<decl::Float>("Attribute", "Attribute_001").dependent_field({7, 8, 9});
+  b.add_output<decl::Color>("Attribute", "Attribute_002").dependent_field({7, 8, 9});
+  b.add_output<decl::Bool>("Attribute", "Attribute_003").dependent_field({7, 8, 9});
+  b.add_output<decl::Int>("Attribute", "Attribute_004").dependent_field({7, 8, 9});
+  b.add_output<decl::Rotation>("Attribute", "Attribute_005").dependent_field({7, 8, 9});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
