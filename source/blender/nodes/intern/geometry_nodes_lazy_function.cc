@@ -1472,7 +1472,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     // this->build_attribute_propagation_sets();
     // this->fix_link_cycles();
 
-    this->print_graph();
+    // this->print_graph();
 
     root_lf_graph_->update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += root_lf_graph_->nodes().size();
@@ -1673,26 +1673,38 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   lf::DummyNode &build_simulation_zone_input_usage_node(const TreeZone &zone,
                                                         ZoneBuildInfo &zone_info)
   {
+    auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    debug_info->name = "Input Usages";
     Vector<const CPPType *, 16> types;
     types.append_n_times(&CPPType::get<bool>(),
                          zone.input_node->input_sockets().drop_back(1).size());
-    return zone_info.lf_graph->add_dummy(types, {});
+    lf::DummyNode &node = zone_info.lf_graph->add_dummy(types, {}, debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+    return node;
   }
 
   lf::DummyNode &build_simulation_zone_output_usage_node(const TreeZone &zone,
                                                          ZoneBuildInfo &zone_info)
   {
+    auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    debug_info->name = "Output Usages";
     Vector<const CPPType *, 16> types;
     types.append_n_times(&CPPType::get<bool>(),
                          zone.output_node->output_sockets().drop_back(1).size());
-    return zone_info.lf_graph->add_dummy({}, types);
+    lf::DummyNode &node = zone_info.lf_graph->add_dummy({}, types, debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+    return node;
   }
 
   lf::DummyNode &build_border_link_input_usage_node(ZoneBuildInfo &zone_info)
   {
+    auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+    debug_info->name = "Border Link Usages";
     Vector<const CPPType *, 16> types;
     types.append_n_times(&CPPType::get<bool>(), zone_info.border_links.size());
-    return zone_info.lf_graph->add_dummy(types, {});
+    lf::DummyNode &node = zone_info.lf_graph->add_dummy(types, {}, debug_info.get());
+    lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+    return node;
   }
 
   void insert_child_zone_node(const TreeZone &child_zone,
