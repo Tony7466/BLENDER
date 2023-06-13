@@ -3835,12 +3835,14 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel)
 bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag)
 {
   bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<bNodePanel *> old_panels = ntree->panels();
+  const Span<const bNodePanel *> old_panels = ntree->panels();
   ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num + 1, __func__);
   ++ntree->panels_num;
   const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
 
-  std::copy(old_panels.begin(), old_panels.end(), new_panels.data());
+  std::copy(const_cast<bNodePanel **>(old_panels.begin()),
+            const_cast<bNodePanel **>(old_panels.end()),
+            new_panels.data());
 
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
   *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
@@ -3860,16 +3862,19 @@ bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int i
   }
 
   bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<bNodePanel *> old_panels = ntree->panels();
+  const Span<const bNodePanel *> old_panels = ntree->panels();
   ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num + 1, __func__);
   ++ntree->panels_num;
   const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
 
   Span old_panels_front = old_panels.take_front(index);
   Span old_panels_back = old_panels.drop_front(index);
-  std::copy(old_panels_front.begin(), old_panels_front.end(), new_panels.data());
-  std::copy(
-      old_panels_back.begin(), old_panels_back.end(), new_panels.drop_front(index + 1).data());
+  std::copy(const_cast<bNodePanel **>(old_panels_front.begin()),
+            const_cast<bNodePanel **>(old_panels_front.end()),
+            new_panels.data());
+  std::copy(const_cast<bNodePanel **>(old_panels_back.begin()),
+            const_cast<bNodePanel **>(old_panels_back.end()),
+            new_panels.drop_front(index + 1).data());
 
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
   *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
@@ -3902,15 +3907,19 @@ void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel)
   }
 
   bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<bNodePanel *> old_panels = ntree->panels();
+  const Span<const bNodePanel *> old_panels = ntree->panels();
   ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num - 1, __func__);
   --ntree->panels_num;
   const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
 
   Span old_panels_front = old_panels.take_front(index);
   Span old_panels_back = old_panels.drop_front(index + 1);
-  std::copy(old_panels_front.begin(), old_panels_front.end(), new_panels.data());
-  std::copy(old_panels_back.begin(), old_panels_back.end(), new_panels.drop_front(index).data());
+  std::copy(const_cast<bNodePanel **>(old_panels_front.begin()),
+            const_cast<bNodePanel **>(old_panels_front.end()),
+            new_panels.data());
+  std::copy(const_cast<bNodePanel **>(old_panels_back.begin()),
+            const_cast<bNodePanel **>(old_panels_back.end()),
+            new_panels.drop_front(index).data());
 
   MEM_SAFE_FREE(panel->name);
   MEM_SAFE_FREE(panel);

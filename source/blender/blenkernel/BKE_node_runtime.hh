@@ -516,7 +516,7 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
   return this->runtime->root_frames;
 }
 
-inline blender::Span<bNodePanel *> bNodeTree::panels() const
+inline blender::Span<const bNodePanel *> bNodeTree::panels() const
 {
   return blender::Span(panels_array, panels_num);
 }
