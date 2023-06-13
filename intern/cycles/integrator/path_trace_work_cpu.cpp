@@ -62,8 +62,8 @@ void PathTraceWorkCPU::render_samples_impl(RenderStatistics &statistics,
                                       int samples_num,
                                       int sample_offset)
 {
-  const int64_t image_width = effective_buffer_params_.width;
-  const int64_t image_height = effective_buffer_params_.height;
+  const int64_t image_width = slices_buffer_params_.width;
+  const int64_t image_height = slices_buffer_params_.height;
   const int64_t total_pixels_num = image_width * image_height;
 
   if (device_->profiler.active()) {
@@ -238,17 +238,14 @@ bool PathTraceWorkCPU::zero_render_buffers_impl()
 int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float threshold, bool reset)
 {
   uint num_active_pixels = 0;
-  for (int i = 0; i < work_set_.size(); i++ ) {
-  set_current_work_set(i);
-  if(effective_buffer_params_.height > 0) {
-  const int full_x = effective_buffer_params_.full_x;
-  const int full_y = effective_buffer_params_.full_y;
-  const int width = effective_buffer_params_.width;
-  const int height = effective_buffer_params_.height;
-  const int offset = effective_buffer_params_.offset;
-  const int stride = effective_buffer_params_.stride;
+  const int full_x = slices_buffer_params_.full_x;
+  const int full_y = slices_buffer_params_.full_y;
+  const int width = slices_buffer_params_.width;
+  const int height = slices_buffer_params_.height;
+  const int offset = slices_buffer_params_.offset;
+  const int stride = slices_buffer_params_.stride;
 
-  float *render_buffer = buffers_->buffer.data();
+  float *render_buffer = master_buffers_->buffer.data();
 
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
@@ -287,20 +284,16 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
       });
     });
   }
-  }
-  }
+
   return num_active_pixels;
 }
 
 void PathTraceWorkCPU::cryptomatte_postproces()
 {
-  for (int i = 0; i < work_set_.size(); i++ ) {
-  set_current_work_set(i);
-  if(effective_buffer_params_.height > 0) {
-  const int width = effective_buffer_params_.width;
-  const int height = effective_buffer_params_.height;
+  const int width = slices_buffer_params_.width;
+  const int height = slices_buffer_params_.height;
 
-  float *render_buffer = buffers_->buffer.data();
+  float *render_buffer = master_buffers_->buffer.data();
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
 
@@ -315,8 +308,6 @@ void PathTraceWorkCPU::cryptomatte_postproces()
       }
     });
   });
-  }
-  }
 }
 
 #ifdef WITH_PATH_GUIDING
