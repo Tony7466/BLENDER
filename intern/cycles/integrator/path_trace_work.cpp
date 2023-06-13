@@ -215,7 +215,7 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
     VLOG_INFO << "\t(" << i << ") Buffer height " << height << " y slice:" << y_slice << " y render:" << y_render;
     if(height > 0) {
       const int64_t width = slices_buffer_params_.width; //effective_buffer_params_.width;
-      const int64_t height = slice_height; //effective_buffer_params_.height;
+      //const int64_t height = slice_height; //effective_buffer_params_.height;
       const int64_t pass_stride = slices_buffer_params_.pass_stride; //effective_buffer_params_.pass_stride;
       const int64_t row_stride = width * pass_stride;
       const int64_t data_size = row_stride * height * sizeof(float);
@@ -236,24 +236,38 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers)
 {
   SCOPED_MARKER(device_, "copy_from_render_buffers");
+  int y_stride = slices_buffer_params_.slice_stride;
+  int y_slice = 0; //slices_buffer_params_.slice_stride;
+  int y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
+  int slice_height = slices_buffer_params_.slice_height;
+  int total_height = slices_buffer_params_.height;
   for (int i = 0; i < work_set_.size(); i++) {
     SCOPED_MARKER(device_, "copy_from_render_buffers_work_set");
-  set_current_work_set(i);
-  if(effective_buffer_params_.height > 0) {
-  const int64_t width = effective_buffer_params_.width;
-  const int64_t height = effective_buffer_params_.height;
-  const int64_t pass_stride = effective_buffer_params_.pass_stride;
-  const int64_t row_stride = width * pass_stride;
-  const int64_t data_size = row_stride * height * sizeof(float);
-
-  const int64_t offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  const int64_t offset_in_floats = offset_y * row_stride;
-
-  const float *src = render_buffers->buffer.data() + offset_in_floats;
-  float *dst = buffers_->buffer.data();
-
-  memcpy(dst, src, data_size);
-  }
+    //set_current_work_set(i);
+    int height = std::min(total_height - i*slice_height, slice_height);
+    if(height > 0) {
+      const int64_t width = slices_buffer_params_.width; //effective_buffer_params_.width;
+      //const int64_t height = slice_height; //effective_buffer_params_.height;
+      const int64_t pass_stride = slices_buffer_params_.pass_stride; //effective_buffer_params_.pass_stride;
+      const int64_t row_stride = width * pass_stride;
+      const int64_t data_size = row_stride * height * sizeof(float);
+      
+      // const int64_t width = effective_buffer_params_.width;
+      // const int64_t height = effective_buffer_params_.height;
+      // const int64_t pass_stride = effective_buffer_params_.pass_stride;
+      // const int64_t row_stride = width * pass_stride;
+      // const int64_t data_size = row_stride * height * sizeof(float);
+      
+      // const int64_t offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
+      // const int64_t offset_in_floats = offset_y * row_stride;
+      
+      const float *src = render_buffers->buffer.data() + y_render*row_stride; // + offset_in_floats;
+      float *dst = master_buffers_->buffer.data() + y_slice*row_stride;
+      
+      memcpy(dst, src, data_size);
+      y_slice += slice_height;
+      y_render += y_stride;
+    }
   }
   copy_render_buffers_to_device();
 }
