@@ -11,3 +11,4 @@ Referenced by pull request #108697, Outliner: Port texture elements to new tree-
 Referenced by commit b67e5492c354f5f8342cd88788b02cf020f542f1, Outliner: Port texture elements to new tree-element code design
 Referenced by pull request #108887, Outliner: Port linestyle elements to new tree-element code design
 Referenced by commit a7ac317159ddc14e617cca4c0347c53f1e638aea, Outliner: Port linestyle elements to new tree-element code design
+Referenced by pull request #108929, Outliner: Port grease pencil legacy elements to new tree-element code design
