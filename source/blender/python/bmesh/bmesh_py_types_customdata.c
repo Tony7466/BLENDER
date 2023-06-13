@@ -88,9 +88,6 @@ PyDoc_STRVAR(bpy_bmlayeraccess_collection__deform_doc,
 PyDoc_STRVAR(
     bpy_bmlayeraccess_collection__shape_doc,
     "Vertex shapekey absolute location (as a 3D Vector).\n\n:type: :class:`BMLayerCollection`");
-PyDoc_STRVAR(bpy_bmlayeraccess_collection__crease_doc,
-             "Crease for subdivision surface - float in [0 - 1].\n\n:type: "
-             ":class:`BMLayerCollection`");
 PyDoc_STRVAR(
     bpy_bmlayeraccess_collection__uv_doc,
     "Accessor for :class:`BMLoopUV` UV (as a 2D Vector).\n\ntype: :class:`BMLayerCollection`");
