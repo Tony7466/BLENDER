@@ -141,22 +141,20 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
         bundle_data.color = res.theme_settings.color_wire;
       }
 
+      select::ID track_select_id = select_id;
       if (is_select) {
-        /* TODO(Miguel Pozo):
-        DRW_select_load_id(ob->runtime.select_id | (track_index << 16));
-        */
-        track_index++;
+        track_select_id = res.select_id(ob_ref, track_index++);
       }
 
       if (is_solid_bundle) {
         if (is_selected) {
           pass.empty_buf(v3d->bundle_drawtype)
-              .append(bundle_data.with_color(data.color), select_id);
+              .append(bundle_data.with_color(data.color), track_select_id);
         }
-        pass.sphere_solid.append(bundle_data, select_id);
+        pass.sphere_solid.append(bundle_data, track_select_id);
       }
       else {
-        pass.empty_buf(v3d->bundle_drawtype).append(bundle_data, select_id);
+        pass.empty_buf(v3d->bundle_drawtype).append(bundle_data, track_select_id);
       }
 
       if ((v3d->flag2 & V3D_SHOW_BUNDLENAME) && !is_select) {
@@ -190,15 +188,11 @@ static void camera_view3d_reconstruction(const ObjectRef &ob_ref,
         const MovieReconstructedCamera *camera = reconstruction->cameras;
         float3 v0 = float3(0);
         float3 v1 = float3(0);
-        for (int a = 0; a < reconstruction->camnr; a++, camera++) {
+        for (int i = 0; i < reconstruction->camnr; i++, camera++) {
           v0 = v1;
           v1 = math::transform_point(camera_mat, float3(camera->mat[3]));
-          if (a > 0) {
-            /* This one is suboptimal (gl_lines instead of gl_line_strip)
-             * but we keep this for simplicity */
-            /** TODO(Miguel Pozo):
-              OVERLAY_extra_line(cb, v0, v1, TH_CAMERA_PATH);
-            */
+          if (i > 0) {
+            pass.camera_path.append({v0, v1}, select_id);
           }
         }
       }
@@ -261,12 +255,8 @@ static void camera_stereoscopy_extra(const ObjectRef &ob_ref,
 
     if (is_stereo3d_cameras) {
       pass.camera_frame.append(stereodata, select_id);
-
       /* Connecting line between cameras. */
-      /* TODO(Miguel Pozo)
-      OVERLAY_extra_line_dashed(cb, stereodata.matrix.location(), data.matrix.location(),
-      G_draw.block.color_wire);
-      */
+      pass.relation_line.append({stereodata.matrix.location(), data.matrix.location()}, select_id);
     }
 
     if (is_stereo3d_volume && !is_select) {
@@ -473,12 +463,14 @@ static void camera_sync(const ObjectRef &ob_ref,
       pass.camera_distances.append(data, select_id);
     }
   }
-#if 0
-    /* Motion Tracking. */
-    if ((v3d->flag2 & V3D_SHOW_RECONSTRUCTION) != 0) {
-      camera_view3d_reconstruction(pass, scene, v3d, ob, data.color);
-    }
 
+  /* Motion Tracking. */
+  if (v3d->flag2 & V3D_SHOW_RECONSTRUCTION) {
+    camera_view3d_reconstruction(ob_ref, select_id, res, state, pass, data);
+  }
+
+#if 0
+    /* TODO(Miguel Pozo): */
     /* Background images. */
     if (look_through && (cam->flag & CAM_SHOW_BG_IMAGE) && !BLI_listbase_is_empty(&cam->bg_images))
     {

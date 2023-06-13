@@ -172,6 +172,7 @@ class ExtraInstancePass {
   ExtraInstanceBuf camera_distances = extra_buf("camera_distances", shapes.camera_distances);
   ExtraInstanceBuf camera_tria_wire = extra_buf("camera_tria_wire", shapes.camera_tria_wire);
   ExtraInstanceBuf camera_tria = extra_buf("camera_tria", shapes.camera_tria);
+  LineInstanceBuf camera_path = line_buf("camera_path", theme_colors.color_camera_path);
 
   ExtraInstanceBuf field_wind = extra_buf("field_wind", shapes.field_wind);
   ExtraInstanceBuf field_force = extra_buf("field_force", shapes.field_force);
