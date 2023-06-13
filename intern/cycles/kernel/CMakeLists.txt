@@ -701,6 +701,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     -Wno-unused-value
     --hipcc-func-supp
     -ffast-math
+    -parallel-jobs=15
     -o ${bitcode_file})
   if(WITH_CYCLES_DEBUG)
     set(hiprt_compile_flags ${hiprt_compile_flags} -D WITH_CYCLES_DEBUG)
