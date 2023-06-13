@@ -1481,7 +1481,8 @@ static char *rna_def_property_length_func(
   else if (prop->type == PROP_COLLECTION) {
     if (!manualfunc) {
       if (prop->type == PROP_COLLECTION &&
-          (!(dp->dnalengthname || dp->dnalengthfixed) || !dp->dnaname)) {
+          (!(dp->dnalengthname || dp->dnalengthfixed) || !dp->dnaname))
+      {
         CLOG_ERROR(&LOG, "%s.%s has no valid dna info.", srna->identifier, prop->identifier);
         DefRNA.error = true;
         return NULL;
@@ -4037,7 +4038,8 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
        * we'll probably have to revisit. :/ */
       StructRNA *type = rna_find_struct((const char *)pprop->type);
       if (type && (type->flag & STRUCT_ID) &&
-          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED)) {
+          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED))
+      {
         prop->flag |= PROP_PTR_NO_OWNERSHIP;
       }
       break;
@@ -4049,7 +4051,8 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
        * we'll probably have to revisit. :/ */
       StructRNA *type = rna_find_struct((const char *)cprop->item_type);
       if (type && (type->flag & STRUCT_ID) &&
-          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED)) {
+          !(prop->flag_internal & PROP_INTERN_PTR_OWNERSHIP_FORCED))
+      {
         prop->flag |= PROP_PTR_NO_OWNERSHIP;
       }
       break;
@@ -4546,12 +4549,12 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_color.c", NULL, RNA_def_color},
     {"rna_constraint.c", NULL, RNA_def_constraint},
     {"rna_context.c", NULL, RNA_def_context},
-    {"rna_curve.c", "rna_curve_api.c", RNA_def_curve},
+    {"rna_curve.cc", "rna_curve_api.cc", RNA_def_curve},
     {"rna_dynamicpaint.c", NULL, RNA_def_dynamic_paint},
     {"rna_fcurve.c", "rna_fcurve_api.c", RNA_def_fcurve},
     {"rna_gpencil_legacy.c", NULL, RNA_def_gpencil},
     {"rna_grease_pencil.c", NULL, RNA_def_grease_pencil},
-    {"rna_curves.c", NULL, RNA_def_curves},
+    {"rna_curves.cc", NULL, RNA_def_curves},
     {"rna_image.c", "rna_image_api.c", RNA_def_image},
     {"rna_key.c", NULL, RNA_def_key},
     {"rna_light.c", NULL, RNA_def_light},
@@ -4567,8 +4570,8 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_gpencil_legacy_modifier.c", NULL, RNA_def_greasepencil_modifier},
     {"rna_shader_fx.c", NULL, RNA_def_shader_fx},
     {"rna_nla.c", NULL, RNA_def_nla},
-    {"rna_nodetree.c", NULL, RNA_def_nodetree},
-    {"rna_object.c", "rna_object_api.c", RNA_def_object},
+    {"rna_nodetree.cc", NULL, RNA_def_nodetree},
+    {"rna_object.cc", "rna_object_api.cc", RNA_def_object},
     {"rna_object_force.c", NULL, RNA_def_object_force},
     {"rna_depsgraph.c", NULL, RNA_def_depsgraph},
     {"rna_packedfile.c", NULL, RNA_def_packedfile},
