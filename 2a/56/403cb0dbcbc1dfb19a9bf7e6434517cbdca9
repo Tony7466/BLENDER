@@ -1,3 +1,4 @@
 Referenced by commit f75af7cbf53da7570555dedb2653bf64f0de9280, Mesh: Forward compatibility with generic bevel weight in 4.0
 Referenced by issue #108491, Crash when file is loaded in previous versions
 Referenced by pull request #108089, Mesh: Move vertex/edge crease to generic attributes
+Referenced by commit e5ec04d73c7873498f4052cbb9f58acfdaf4b7b0, Mesh: Move vertex/edge crease to generic attributes
