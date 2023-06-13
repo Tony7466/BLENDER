@@ -1690,6 +1690,7 @@ static bool surfacedeformBind(Object *ob,
             return false;
           }
           s++;
+          smd_orig->layers->frames->strokes++;
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
         free_bvhtree_from_mesh(&treeData);
@@ -1750,6 +1751,7 @@ static bool surfacedeformBind(Object *ob,
             return false;
           }
           s++;
+          smd_orig->layers->frames->strokes++;
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
       }

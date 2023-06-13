@@ -407,6 +407,8 @@ static void deformVert(void *__restrict userdata,
   const unsigned int vertex_idx = data->bind_verts[index].vertex_idx;
   float *vertexCos = &(data->gps->points[vertex_idx].x);
   float norm[3], temp[3], offset[3];
+  float tmp_mat_err[4][4] = {
+      {1.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 1.0, -1.0}, {0.0, -1.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 1.0}};
 
   /* Retrieve the value of the weight vertex group if specified. */
   float weight = 1.0f;
@@ -810,9 +812,10 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   };
   
   if (data.targetCos != NULL) {
-    float tmp_mat[4][4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    float tmp_mat[4][4] = {
+        {1.0, 0.0, 0.0, 0.0}, {0.0, 0.0, 1.0, -1.0}, {0.0, -1.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 1.0}};
     BKE_mesh_wrapper_vert_coords_copy_with_mat4(
-        target, data.targetCos, target_verts_num, tmp_mat);
+        target, data.targetCos, target_verts_num, smd->mat);
 
     TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
