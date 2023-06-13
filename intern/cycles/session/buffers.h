@@ -186,6 +186,8 @@ class RenderBuffers {
  * Copy happens of the number of pixels in the destination. */
 void render_buffers_host_copy_denoised(RenderBuffers *dst,
                                        const BufferParams &dst_params,
+				       const size_t dst_offset,
+				       const size_t dst_height,
                                        const RenderBuffers *src,
                                        const BufferParams &src_params,
                                        const size_t src_offset = 0);

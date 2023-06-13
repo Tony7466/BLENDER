@@ -335,6 +335,8 @@ void RenderBuffers::copy_to_device()
 
 void render_buffers_host_copy_denoised(RenderBuffers *dst,
                                        const BufferParams &dst_params,
+				       const size_t dst_offset,
+				       const size_t dst_height,
                                        const RenderBuffers *src,
                                        const BufferParams &src_params,
                                        const size_t src_offset)
@@ -375,15 +377,15 @@ void render_buffers_host_copy_denoised(RenderBuffers *dst,
   /* TODO(sergey): Make it more reusable, allowing implement copy of noisy passes. */
 
   const int64_t dst_width = dst_params.width;
-  const int64_t dst_height = dst_params.height;
   const int64_t dst_pass_stride = dst_params.pass_stride;
   const int64_t dst_num_pixels = dst_width * dst_height;
+  const int64_t dst_offset_in_floats = dst_offset * dst_pass_stride;
 
   const int64_t src_pass_stride = src_params.pass_stride;
   const int64_t src_offset_in_floats = src_offset * src_pass_stride;
 
   const float *src_pixel = src->buffer.data() + src_offset_in_floats;
-  float *dst_pixel = dst->buffer.data();
+  float *dst_pixel = dst->buffer.data() + dst_offset_in_floats;
 
   for (int i = 0; i < dst_num_pixels;
        ++i, src_pixel += src_pass_stride, dst_pixel += dst_pass_stride)

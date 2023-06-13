@@ -260,16 +260,21 @@ void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers
 
 void PathTraceWork::copy_from_denoised_render_buffers(const RenderBuffers *render_buffers)
 {
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
-  if(effective_buffer_params_.height > 0) {
-  const int64_t width = effective_buffer_params_.width;
-  const int64_t offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  const int64_t offset = offset_y * width;
+  const int64_t width = slices_buffer_params_.width;
+  const int y_stride = slices_buffer_params_.slice_stride;  
+  const int slice_height = slices_buffer_params_.slice_height;
+  
+  int y_slice = 0;
+  int64_t y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
+  for (int i = 0; i < device_scale_factor_; i++) {
+    const int64_t dst_offset = y_render * width;
+    const int64_t src_offset = y_slice * width;
 
-  render_buffers_host_copy_denoised(
-      buffers_, effective_buffer_params_, render_buffers, effective_buffer_params_, offset);
-  }
+    render_buffers_host_copy_denoised(
+				      master_buffers_.get(), slices_buffer_params_, src_offset, slice_height, render_buffers, effective_buffer_params_, dst_offset);
+
+    y_slice += slice_height;
+    y_render += y_stride;
   }
   copy_render_buffers_to_device();
 }
