@@ -1351,6 +1351,7 @@ struct InsertBNodeParams {
   Map<const bNodeSocket *, lf::OutputSocket *> &output_socket_map;
   Map<const bNodeSocket *, lf::OutputSocket *> &usage_by_socket;
   OrSocketUsagesCache &or_socket_usages_cache;
+  Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
 };
 
 struct ZoneBuildInfo {
@@ -1456,9 +1457,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             return a->runtime->toposort_right_to_left_index <
                    b->runtime->toposort_right_to_left_index;
           });
-      for (const bNode *n : nodes_to_insert) {
-        std::cout << " - " << n->name << "\n";
-      }
+
       OrSocketUsagesCache or_socket_usages_cache;
       Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
       if (const bNode *group_output_bnode = btree_.group_output_node()) {
@@ -1485,15 +1484,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       this->build_group_input_usages(insert_params);
       this->add_default_inputs(insert_params);
+      this->link_postponed_inputs(insert_params);
 
       // UsedSocketVisualizeOptions options{*this, insert_params.usage_by_socket};
       std::cout << "\n\n" << root_lf_graph_->to_dot() << "\n\n";
     }
 
     // this->build_attribute_propagation_input_node();
-
-    // this->build_socket_usages();
-
     // this->build_attribute_propagation_sets();
     // this->fix_link_cycles();
 
@@ -1576,7 +1573,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                                                                         zone_info);
     lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone_info);
 
-    {
+    lf::Node &lf_simulation_usage_node = [&]() -> lf::Node & {
       auto lazy_function = std::make_unique<LazyFunctionForSimulationInputsUsage>();
       lf::Node &lf_node = zone_info.lf_graph->add_function(*lazy_function);
       lf_graph_info_->functions.append(std::move(lazy_function));
@@ -1587,10 +1584,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const int i : lf_border_link_usage_node.inputs().index_range()) {
         zone_info.lf_graph->add_link(lf_node.output(1), lf_border_link_usage_node.input(i));
       }
-    }
+      return lf_node;
+    }();
 
     OrSocketUsagesCache or_socket_usages_cache;
     Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
+
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
                                     zone_info.output_socket_map,
@@ -1604,14 +1603,30 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
     lf::FunctionNode &lf_simulation_output = this->insert_simulation_output_node(*zone.output_node,
                                                                                  insert_params);
-    for (const bNode *bnode : zone.child_nodes) {
-      this->insert_node_in_graph(*bnode, insert_params);
-    }
-    for (const TreeZone *child_zone : zone.child_zones) {
-      this->insert_child_zone_node(
-          *child_zone, insert_params, zone_info.border_links, &lf_border_link_input_node);
+
+    for (const bNodeSocket *bsocket : zone.output_node->input_sockets().drop_back(1)) {
+      usage_by_socket.add(bsocket, &lf_simulation_usage_node.output(1));
     }
 
+    Vector<const bNode *> nodes_to_insert = zone.child_nodes;
+    Map<const bNode *, const TreeZone *> zone_by_output;
+    for (const TreeZone *child_zone : zone.child_zones) {
+      nodes_to_insert.append(child_zone->output_node);
+      zone_by_output.add(child_zone->output_node, child_zone);
+    }
+    std::sort(nodes_to_insert.begin(), nodes_to_insert.end(), [](const bNode *a, const bNode *b) {
+      return a->runtime->toposort_right_to_left_index < b->runtime->toposort_right_to_left_index;
+    });
+
+    for (const bNode *bnode : nodes_to_insert) {
+      this->build_output_socket_usages(*bnode, insert_params);
+      if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
+        this->insert_child_zone_node(*zone, insert_params, {}, nullptr);
+      }
+      else {
+        this->insert_node_in_graph(*bnode, insert_params);
+      }
+    }
     for (const auto item : zone_info.output_socket_map.items()) {
       this->insert_links_from_socket(*item.key, *item.value, insert_params);
     }
@@ -1636,6 +1651,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     this->add_default_inputs(insert_params);
+    this->link_postponed_inputs(insert_params);
 
     Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
     if (lf_zone_input_node) {
@@ -2399,6 +2415,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         break;
       }
     }
+
+    this->build_switch_node_socket_usage(bnode, insert_params);
   }
 
   void build_switch_node_socket_usage(const bNode &bnode, InsertBNodeParams &insert_params)
@@ -2433,12 +2451,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       return;
     }
     insert_params.usage_by_socket.add(switch_input_bsocket, output_is_used_socket);
-    lf::InputSocket *lf_switch_input = root_input_socket_map_.lookup(switch_input_bsocket)[0];
-    if (lf::OutputSocket *lf_switch_origin = lf_switch_input->origin()) {
+    if (switch_input_bsocket->is_directly_linked()) {
       /* The condition input is dynamic, so the usage of the other inputs is as well. */
       static const LazyFunctionForSwitchSocketUsage switch_socket_usage_fn;
       lf::Node &lf_node = insert_params.lf_graph.add_function(switch_socket_usage_fn);
-      insert_params.lf_graph.add_link(*lf_switch_origin, lf_node.input(0));
+      insert_params.inputs_to_link_later.append({switch_input_bsocket, &lf_node.input(0)});
       insert_params.usage_by_socket.add(false_input_bsocket, &lf_node.output(0));
       insert_params.usage_by_socket.add(true_input_bsocket, &lf_node.output(1));
     }
@@ -2618,6 +2635,19 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           continue;
         }
         this->add_default_input(bsocket, *lf_socket, insert_params);
+      }
+    }
+  }
+
+  void link_postponed_inputs(InsertBNodeParams &insert_params)
+  {
+    for (const auto &item : insert_params.inputs_to_link_later) {
+      lf::InputSocket *lf_socket = insert_params.input_socket_map.lookup(item.first)[0];
+      if (lf::OutputSocket *lf_origin = lf_socket->origin()) {
+        insert_params.lf_graph.add_link(*lf_origin, *item.second);
+      }
+      else {
+        item.second->set_default_value(lf_socket->default_value());
       }
     }
   }
