@@ -58,7 +58,7 @@ set(SRC
   tree/tree_element_gpencil_layer.cc
   tree/tree_element_id.cc
   tree/tree_element_id_curve.cc
-  tree/tree_element_id_gplegacy.cc
+  tree/tree_element_id_gpencil_legacy.cc
   tree/tree_element_id_library.cc
   tree/tree_element_id_linestyle.cc
   tree/tree_element_id_mesh.cc
@@ -84,7 +84,7 @@ set(SRC
   tree/tree_element_gpencil_layer.hh
   tree/tree_element_id.hh
   tree/tree_element_id_curve.hh
-  tree/tree_element_id_gplegacy.hh
+  tree/tree_element_id_gpencil_legacy.hh
   tree/tree_element_id_library.hh
   tree/tree_element_id_linestyle.hh
   tree/tree_element_id_mesh.hh

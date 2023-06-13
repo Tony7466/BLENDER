@@ -21,7 +21,7 @@
 #include "../outliner_intern.hh"
 #include "common.hh"
 #include "tree_element_id_curve.hh"
-#include "tree_element_id_gplegacy.hh"
+#include "tree_element_id_gpencil_legacy.hh"
 #include "tree_element_id_library.hh"
 #include "tree_element_id_linestyle.hh"
 #include "tree_element_id_mesh.hh"

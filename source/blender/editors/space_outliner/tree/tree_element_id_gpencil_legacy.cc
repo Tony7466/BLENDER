@@ -15,7 +15,7 @@
 
 #include "../outliner_intern.hh"
 
-#include "tree_element_id_gplegacy.hh"
+#include "tree_element_id_gpencil_legacy.hh"
 
 namespace blender::ed::outliner {
 
