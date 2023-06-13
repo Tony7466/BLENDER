@@ -1039,13 +1039,8 @@ int PathTraceWorkGPU::adaptive_sampling_converge_filter_count_active(float thres
   const int num_active_pixels = adaptive_sampling_convergence_check_count_active(threshold, reset);
 
   if (num_active_pixels) {
-    //for (int i = 0; i<work_set_.size(); i++) {
-    //set_current_work_set(i);
-    //if(effective_buffer_params_.height > 0) {
     enqueue_adaptive_sampling_filter_x();
     enqueue_adaptive_sampling_filter_y();
-    //}
-    //}
     queue_->synchronize();
   }
 
@@ -1113,19 +1108,14 @@ void PathTraceWorkGPU::enqueue_adaptive_sampling_filter_y()
 void PathTraceWorkGPU::cryptomatte_postproces()
 {
   SCOPED_MARKER(device_, "cryptomatte_postproces");
-  for (int i = 0; i < work_set_.size(); i++){
-  set_current_work_set(i);
-  if(effective_buffer_params_.height > 0) {
-  const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
+  const int work_size = slices_buffer_params_.width * slices_buffer_params_.height;
 
-  DeviceKernelArguments args(&buffers_->buffer.device_pointer,
+  DeviceKernelArguments args(&master_buffers_->buffer.device_pointer,
                              &work_size,
-                             &effective_buffer_params_.offset,
-                             &effective_buffer_params_.stride);
+                             &slices_buffer_params_.offset,
+                             &slices_buffer_params_.stride);
 
   queue_->enqueue(DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS, work_size, args);
-  }
-  }
 }
 
 bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
