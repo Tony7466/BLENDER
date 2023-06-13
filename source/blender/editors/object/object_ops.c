@@ -150,6 +150,8 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(GPENCIL_OT_segment_add);
   WM_operatortype_append(GPENCIL_OT_segment_remove);
   WM_operatortype_append(GPENCIL_OT_segment_move);
+  WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_unbind);
+  WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_bind);
 
   WM_operatortype_append(GPENCIL_OT_time_segment_add);
   WM_operatortype_append(GPENCIL_OT_time_segment_remove);

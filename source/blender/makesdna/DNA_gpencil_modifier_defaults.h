@@ -412,5 +412,22 @@
     .skip = 0, \
   }
 
+#define _DNA_DEFAULT_SurDeformGpencilModifierData \
+  { \
+    .depsgraph = NULL, \
+    .target = NULL, \
+    .layers = NULL, \
+    .falloff = 4.0f, \
+    .num_of_layers = 0, \
+    .target_verts_num = 0, \
+    .target_polys_num = 0, \
+    .flags = 0, \
+    .bound_flags = 0, \
+    .bind_modes = 5, \
+    .mat = _DNA_DEFAULT_UNIT_M4, \
+    .strength = 1.0f, \
+    .defgrp_name = "", \
+  }
+
 
 /* clang-format off */
