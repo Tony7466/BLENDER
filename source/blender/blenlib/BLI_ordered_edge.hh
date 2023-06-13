@@ -36,11 +36,6 @@ struct OrderedEdge {
     return (this->v_low << 8) ^ this->v_high;
   }
 
-  uint64_t hash2() const
-  {
-    return this->v_low;
-  }
-
   friend bool operator==(const OrderedEdge &e1, const OrderedEdge &e2)
   {
     BLI_assert(e1.v_low < e1.v_high);
