@@ -81,11 +81,6 @@ static CustomData *rna_mesh_vdata_helper(Mesh *me)
   return (me->edit_mesh) ? &me->edit_mesh->bm->vdata : &me->vdata;
 }
 
-static CustomData *rna_mesh_edata_helper(Mesh *me)
-{
-  return (me->edit_mesh) ? &me->edit_mesh->bm->edata : &me->edata;
-}
-
 static CustomData *rna_mesh_ldata_helper(Mesh *me)
 {
   return (me->edit_mesh) ? &me->edit_mesh->bm->ldata : &me->ldata;
