@@ -1535,6 +1535,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
   }
 
+  using OrSocketUsagesCache = Map<Vector<lf::OutputSocket *>, lf::OutputSocket *>;
+
   void build_simulation_zone_function(const TreeZone &zone)
   {
     const int zone_i = zone.index;
@@ -1552,6 +1554,19 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::Node &lf_main_output_usage_node = this->build_simulation_zone_output_usage_node(zone,
                                                                                         zone_info);
     lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone_info);
+
+    {
+      auto lazy_function = std::make_unique<LazyFunctionForSimulationInputsUsage>();
+      lf::Node &lf_node = zone_info.lf_graph->add_function(*lazy_function);
+      lf_graph_info_->functions.append(std::move(lazy_function));
+
+      for (const int i : lf_main_input_usage_node.inputs().index_range()) {
+        zone_info.lf_graph->add_link(lf_node.output(0), lf_main_input_usage_node.input(i));
+      }
+      for (const int i : lf_border_link_usage_node.inputs().index_range()) {
+        zone_info.lf_graph->add_link(lf_node.output(1), lf_border_link_usage_node.input(i));
+      }
+    }
 
     InsertBNodeParams insert_params{
         *zone_info.lf_graph, zone_info.input_socket_map, zone_info.output_socket_map};
@@ -2547,8 +2562,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     this->build_group_input_usages(or_socket_usages_cache);
     this->link_output_used_sockets_for_builtin_nodes();
   }
-
-  using OrSocketUsagesCache = Map<Vector<lf::OutputSocket *>, lf::OutputSocket *>;
 
   /**
    * Combine multiple socket usages with a logical or. Inserts a new node for that purpose if
