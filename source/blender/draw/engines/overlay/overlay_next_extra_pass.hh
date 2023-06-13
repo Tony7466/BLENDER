@@ -33,11 +33,6 @@ template<typename T> struct BatchInstanceBuf : public ShapeInstanceBuf<T> {
 
 using ExtraInstanceBuf = BatchInstanceBuf<ExtraInstanceData>;
 
-struct GroundLineInstanceData {
-  float4 color;
-  float4 position;
-};
-
 using GroundLineInstanceBuf = BatchInstanceBuf<float4>;
 
 struct PointInstanceBuf : public ShapeInstanceBuf<float4> {

@@ -19,8 +19,8 @@ static void empty_sync(const ObjectRef &ob_ref,
                        ExtraInstanceData data)
 {
   pass.empty_buf(ob_ref.object->empty_drawtype).append(data, select_id);
-  if (ob_ref.object->empty_drawtype) {
-    /** TODO: This only shows the frame.
+  if (ob_ref.object->empty_drawtype == OB_EMPTY_IMAGE) {
+    /** TODO:
      * See OVERLAY_image_empty_cache_populate() for the image. */
   }
 }
