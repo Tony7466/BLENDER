@@ -324,12 +324,6 @@ const float (*BKE_mesh_vert_normals_ensure(const struct Mesh *mesh))[3];
 const float (*BKE_mesh_poly_normals_ensure(const struct Mesh *mesh))[3];
 
 /**
- * See #Mesh::corner_normals().
- * \warning May return null if the mesh is empty or has no polygons.
- */
-const float (*BKE_mesh_corner_normals_ensure(const struct Mesh *mesh))[3];
-
-/**
  * Retrieve write access to the cached vertex normals, ensuring that they are allocated but *not*
  * that they are calculated. The provided vertex normals should be the same as if they were
  * calculated automatically.

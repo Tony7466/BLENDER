@@ -478,7 +478,7 @@ static void rna_MeshLoop_normal_get(PointerRNA *ptr, float *values)
 {
   Mesh *me = rna_mesh(ptr);
   const int index = rna_MeshLoop_index_get(ptr);
-  const float(*loop_normals)[3] = BKE_mesh_corner_normals_ensure(me);
+  const blender::Span<blender::float3> loop_normals = me->corner_normals();
   copy_v3_v3(values, loop_normals[index]);
 }
 
@@ -511,8 +511,9 @@ static void rna_MeshLoop_bitangent_get(PointerRNA *ptr, float *values)
 {
   Mesh *me = rna_mesh(ptr);
   const int index = rna_MeshLoop_index_get(ptr);
-  const float(*loop_normals)[3] = BKE_mesh_corner_normals_ensure(me);
-  const float(*vec)[4] = CustomData_get_layer(&me->ldata, CD_MLOOPTANGENT);
+  const blender::Span<blender::float3> loop_normals = me->corner_normals();
+  const float(*vec)[4] = static_cast<const float(*)[4]>(
+      CustomData_get_layer(&me->ldata, CD_MLOOPTANGENT));
 
   if (vec) {
     cross_v3_v3v3(values, loop_normals[index], vec[index]);
@@ -686,7 +687,7 @@ static void rna_MeshLoopTriangle_normal_get(PointerRNA *ptr, float *values)
 static void rna_MeshLoopTriangle_split_normals_get(PointerRNA *ptr, float *values)
 {
   Mesh *me = rna_mesh(ptr);
-  const float(*loop_normals)[3] = BKE_mesh_corner_normals_ensure(me);
+  const blender::Span<blender::float3> loop_normals = me->corner_normals();
   const MLoopTri *lt = (const MLoopTri *)ptr->data;
   copy_v3_v3(values + 0, loop_normals[lt->tri[0]]);
   copy_v3_v3(values + 3, loop_normals[lt->tri[1]]);
@@ -1675,12 +1676,13 @@ int rna_Mesh_poly_normals_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_p
 static void rna_Mesh_corner_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  const float(*normals)[3] = BKE_mesh_corner_normals_ensure(mesh);
-  if (!normals) {
+  const blender::Span<blender::float3> normals = mesh->corner_normals();
+  if (normals.is_empty()) {
     iter->valid = false;
     return;
   }
-  rna_iterator_array_begin(iter, (void *)normals, sizeof(float[3]), mesh->totloop, false, nullptr);
+  rna_iterator_array_begin(
+      iter, (void *)normals.data(), sizeof(float[3]), mesh->totloop, false, nullptr);
 }
 
 static int rna_Mesh_corner_normals_length(PointerRNA *ptr)
@@ -1692,14 +1694,14 @@ static int rna_Mesh_corner_normals_length(PointerRNA *ptr)
 int rna_Mesh_corner_normals_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
-  const float(*normals)[3] = BKE_mesh_corner_normals_ensure(mesh);
-  if (index < 0 || index >= mesh->totloop || !normals) {
+  const blender::Span<blender::float3> normals = mesh->corner_normals();
+  if (index < 0 || index >= mesh->totloop || normals.is_empty()) {
     return false;
   }
   /* Casting away const is okay because this RNA type doesn't allow changing the value. */
   r_ptr->owner_id = (ID *)&mesh->id;
   r_ptr->type = &RNA_MeshNormalValue;
-  r_ptr->data = (float *)normals[index];
+  r_ptr->data = (float *)&normals[index];
   return true;
 }
 

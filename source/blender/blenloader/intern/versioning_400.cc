@@ -154,8 +154,12 @@ static void version_mesh_objects_replace_auto_smooth(Main &bmain)
   }
 }
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main * /*bmain*/)
+void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
 {
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
+    version_mesh_objects_replace_auto_smooth(*bmain);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -170,7 +174,6 @@ void do_versions_after_linking_400(FileData * /*fd*/, Main * /*bmain*/)
    */
   {
     /* Keep this block, even when empty. */
-    version_mesh_objects_replace_auto_smooth(*bmain);
   }
 }
 

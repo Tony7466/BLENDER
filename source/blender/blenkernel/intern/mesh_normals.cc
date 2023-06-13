@@ -478,11 +478,6 @@ blender::Span<blender::float3> Mesh::corner_normals() const
   return this->runtime->corner_normals;
 }
 
-const float (*BKE_mesh_corner_normals_ensure(const Mesh *mesh))[3]
-{
-  return reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data());
-}
-
 void BKE_lnor_spacearr_init(MLoopNorSpaceArray *lnors_spacearr,
                             const int numLoops,
                             const char data_type)
