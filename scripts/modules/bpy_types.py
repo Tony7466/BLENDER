@@ -523,7 +523,7 @@ def ord_ind(i1, i2):
     return i2, i1
 
 
-def name_convention_attribute_get(attributes, name, domain, data_type):
+def _name_convention_attribute_get(attributes, name, domain, data_type):
     try:
         attribute = attributes[name]
     except KeyError:
@@ -535,7 +535,7 @@ def name_convention_attribute_get(attributes, name, domain, data_type):
     return attribute
 
 
-def name_convention_attribute_ensure(attributes, name, domain, data_type):
+def _name_convention_attribute_ensure(attributes, name, domain, data_type):
     try:
         attribute = attributes[name]
     except KeyError:
@@ -546,7 +546,7 @@ def name_convention_attribute_ensure(attributes, name, domain, data_type):
     return attributes.new(name, data_type, domain)
 
 
-def name_convention_attribute_remove(attributes, name):
+def _name_convention_attribute_remove(attributes, name):
     try:
         attributes.remove(attributes[name])
     except KeyError:
@@ -632,26 +632,26 @@ class Mesh(bpy_types.ID):
         """
         Vertex crease values for subdivision surface, corresponding to the "crease_vert" attribute.
         """
-        return name_convention_attribute_get(self.attributes, "crease_vert", 'POINT', 'FLOAT')
+        return _name_convention_attribute_get(self.attributes, "crease_vert", 'POINT', 'FLOAT')
 
     def vertex_creases_ensure(self):
-        return name_convention_attribute_ensure(self.attributes, "crease_vert", 'POINT', 'FLOAT')
+        return _name_convention_attribute_ensure(self.attributes, "crease_vert", 'POINT', 'FLOAT')
 
     def vertex_creases_remove(self):
-        name_convention_attribute_remove(self.attributes, "crease_vert")
+        _name_convention_attribute_remove(self.attributes, "crease_vert")
 
     @property
     def edge_creases(self):
         """
         Edge crease values for subdivision surface, corresponding to the "crease_edge" attribute.
         """
-        return name_convention_attribute_get(self.attributes, "crease_edge", 'EDGE', 'FLOAT')
+        return _name_convention_attribute_get(self.attributes, "crease_edge", 'EDGE', 'FLOAT')
 
     def edge_creases_ensure(self):
-        return name_convention_attribute_ensure(self.attributes, "crease_edge", 'EDGE', 'FLOAT')
+        return _name_convention_attribute_ensure(self.attributes, "crease_edge", 'EDGE', 'FLOAT')
 
     def edge_creases_remove(self):
-        name_convention_attribute_remove(self.attributes, "crease_edge")
+        _name_convention_attribute_remove(self.attributes, "crease_edge")
 
 
 class MeshEdge(StructRNA):
