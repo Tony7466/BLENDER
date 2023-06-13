@@ -14,14 +14,14 @@ namespace blender::ed::outliner {
 
 class TreeElementIDGPLegacy final : public TreeElementID {
   bGPdata &gpd_;
-  
-public:
+
+ public:
   TreeElementIDGPLegacy(TreeElement &legacy_te, bGPdata &gpd);
-  
+
   void expand(SpaceOutliner &) const override;
   bool isExpandValid() const override;
-  
-private:
+
+ private:
   void expandLayers(SpaceOutliner &) const;
 };
 

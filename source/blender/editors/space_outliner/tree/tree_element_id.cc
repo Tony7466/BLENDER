@@ -56,7 +56,7 @@ std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_t
     case ID_LS:
       return std::make_unique<TreeElementIDLineStyle>(legacy_te, (FreestyleLineStyle &)id);
     case ID_GD_LEGACY:
-        return std::make_unique<TreeElementIDGPLegacy>(legacy_te, (bGPdata &)id);
+      return std::make_unique<TreeElementIDGPLegacy>(legacy_te, (bGPdata &)id);
     case ID_OB:
     case ID_MA:
     case ID_LT:
