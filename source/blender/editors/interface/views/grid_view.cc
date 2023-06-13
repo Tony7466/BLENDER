@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -39,6 +41,15 @@ void AbstractGridView::foreach_item(ItemIterFn iter_fn) const
 {
   for (const auto &item_ptr : items_) {
     iter_fn(*item_ptr);
+  }
+}
+
+void AbstractGridView::foreach_filtered_item(ItemIterFn iter_fn) const
+{
+  for (const auto &item_ptr : items_) {
+    if (item_ptr->is_filtered_visible_cached()) {
+      iter_fn(*item_ptr);
+    }
   }
 }
 
@@ -84,6 +95,20 @@ int AbstractGridView::get_item_count() const
   return items_.size();
 }
 
+int AbstractGridView::get_item_count_filtered() const
+{
+  if (item_count_filtered_) {
+    return *item_count_filtered_;
+  }
+
+  int i = 0;
+  foreach_filtered_item([&i](const auto &) { i++; });
+
+  BLI_assert(i <= get_item_count());
+  item_count_filtered_ = i;
+  return i;
+}
+
 GridViewStyle::GridViewStyle(int width, int height) : tile_width(width), tile_height(height) {}
 
 /* ---------------------------------------------------------------------- */
@@ -96,9 +121,7 @@ bool AbstractGridViewItem::matches(const AbstractViewItem &other) const
   return identifier_ == other_grid_item.identifier_;
 }
 
-void AbstractGridViewItem::grid_tile_click_fn(struct bContext * /*C*/,
-                                              void *but_arg1,
-                                              void * /*arg2*/)
+void AbstractGridViewItem::grid_tile_click_fn(bContext * /*C*/, void *but_arg1, void * /*arg2*/)
 {
   uiButViewItem *view_item_but = (uiButViewItem *)but_arg1;
   AbstractGridViewItem &grid_item = reinterpret_cast<AbstractGridViewItem &>(
@@ -265,7 +288,7 @@ void BuildOnlyVisibleButtonsHelper::fill_layout_before_visible(uiBlock &block) c
 
 void BuildOnlyVisibleButtonsHelper::fill_layout_after_visible(uiBlock &block) const
 {
-  const int last_item_idx = grid_view_.get_item_count() - 1;
+  const int last_item_idx = grid_view_.get_item_count_filtered() - 1;
   const int last_visible_idx = visible_items_range_.last();
 
   if (last_item_idx > last_visible_idx) {
@@ -350,7 +373,7 @@ void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
 
   int item_idx = 0;
   uiLayout *row = nullptr;
-  grid_view.foreach_item([&](AbstractGridViewItem &item) {
+  grid_view.foreach_filtered_item([&](AbstractGridViewItem &item) {
     /* Skip if item isn't visible. */
     if (!build_visible_helper.is_item_visible(item_idx)) {
       item_idx++;

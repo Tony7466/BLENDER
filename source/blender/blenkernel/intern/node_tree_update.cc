@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_map.hh"
 #include "BLI_multi_value_map.hh"
@@ -528,13 +530,8 @@ class NodeTreeMainUpdater {
   {
     tree.ensure_topology_cache();
     for (bNodeSocket *socket : tree.all_sockets()) {
-      socket->flag &= ~SOCK_IS_LINKED;
-      for (const bNodeLink *link : socket->directly_linked_links()) {
-        if (!link->is_muted()) {
-          socket->flag |= SOCK_IS_LINKED;
-          break;
-        }
-      }
+      const bool socket_is_linked = !socket->directly_linked_links().is_empty();
+      SET_FLAG_FROM_TEST(socket->flag, socket_is_linked, SOCK_IS_LINKED);
     }
   }
 
@@ -754,11 +751,15 @@ class NodeTreeMainUpdater {
   {
     ntree.ensure_topology_cache();
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+      link->flag |= NODE_LINK_VALID;
       if (link->is_in_cycle()) {
         link->flag &= ~NODE_LINK_VALID;
         continue;
       }
-
+      if (!link->fromsock->is_available() || !link->tosock->is_available()) {
+        link->flag &= ~NODE_LINK_VALID;
+        continue;
+      }
       if (ntree.typeinfo->validate_link) {
         const eNodeSocketDatatype from_type = eNodeSocketDatatype(link->fromsock->type);
         const eNodeSocketDatatype to_type = eNodeSocketDatatype(link->tosock->type);
@@ -767,8 +768,6 @@ class NodeTreeMainUpdater {
           continue;
         }
       }
-
-      link->flag |= NODE_LINK_VALID;
     }
   }
 

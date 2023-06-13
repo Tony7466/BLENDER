@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -152,8 +153,10 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
 /**
  * This has to be called from each make_local_* func, we could call from BKE_lib_id_make_local()
  * but then the make local functions would not be self contained.
- * Also note that the id _must_ have a library - campbell */
-/* TODO: This can probably be replaced by an ID-level version of #BKE_bpath_relative_rebase. */
+ *
+ * NOTE(@ideasman42): that the id _must_ have a library.
+ * TODO: This can probably be replaced by an ID-level version of #BKE_bpath_relative_rebase.
+ */
 static void lib_id_library_local_paths(Main *bmain, Library *lib, ID *id)
 {
   const char *bpath_user_data[2] = {BKE_main_blendfile_path(bmain), lib->filepath_abs};
@@ -450,7 +453,7 @@ void lib_id_copy_ensure_local(Main *bmain, const ID *old_id, ID *new_id, const i
 }
 
 void BKE_lib_id_make_local_generic_action_define(
-    struct Main *bmain, struct ID *id, int flags, bool *r_force_local, bool *r_force_copy)
+    Main *bmain, ID *id, int flags, bool *r_force_local, bool *r_force_copy)
 {
   bool force_local = (flags & LIB_ID_MAKELOCAL_FORCE_LOCAL) != 0;
   bool force_copy = (flags & LIB_ID_MAKELOCAL_FORCE_COPY) != 0;
@@ -1072,17 +1075,14 @@ void BKE_main_id_tag_listbase(ListBase *lb, const int tag, const bool value)
   }
 }
 
-void BKE_main_id_tag_idcode(struct Main *mainvar,
-                            const short type,
-                            const int tag,
-                            const bool value)
+void BKE_main_id_tag_idcode(Main *mainvar, const short type, const int tag, const bool value)
 {
   ListBase *lb = which_libbase(mainvar, type);
 
   BKE_main_id_tag_listbase(lb, tag, value);
 }
 
-void BKE_main_id_tag_all(struct Main *mainvar, const int tag, const bool value)
+void BKE_main_id_tag_all(Main *mainvar, const int tag, const bool value)
 {
   ListBase *lbarray[INDEX_ID_MAX];
   int a;
@@ -1458,16 +1458,14 @@ void *BKE_libblock_copy(Main *bmain, const ID *id)
 
 /* ***************** ID ************************ */
 
-ID *BKE_libblock_find_name(struct Main *bmain, const short type, const char *name)
+ID *BKE_libblock_find_name(Main *bmain, const short type, const char *name)
 {
   ListBase *lb = which_libbase(bmain, type);
   BLI_assert(lb != NULL);
   return BLI_findstring(lb, name, offsetof(ID, name) + 2);
 }
 
-struct ID *BKE_libblock_find_session_uuid(Main *bmain,
-                                          const short type,
-                                          const uint32_t session_uuid)
+ID *BKE_libblock_find_session_uuid(Main *bmain, const short type, const uint32_t session_uuid)
 {
   ListBase *lb = which_libbase(bmain, type);
   BLI_assert(lb != NULL);
@@ -1591,7 +1589,7 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
 }
 
 bool BKE_id_new_name_validate(
-    struct Main *bmain, ListBase *lb, ID *id, const char *tname, const bool do_linked_data)
+    Main *bmain, ListBase *lb, ID *id, const char *tname, const bool do_linked_data)
 {
   bool result = false;
   char name[MAX_ID_NAME - 2];
@@ -1661,7 +1659,7 @@ static int id_refcount_recompute_callback(LibraryIDLinkCallbackData *cb_data)
   return IDWALK_RET_NOP;
 }
 
-void BKE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_only)
+void BKE_main_id_refcount_recompute(Main *bmain, const bool do_linked_only)
 {
   ID *id;
 
@@ -1754,19 +1752,19 @@ static void library_make_local_copying_check(ID *id,
   BLI_gset_remove(loop_tags, id, NULL);
 }
 
-/* NOTE: Old (2.77) version was simply making (tagging) data-blocks as local,
- * without actually making any check whether they were also indirectly used or not...
- *
- * Current version uses regular id_make_local callback, with advanced pre-processing step to
- * detect all cases of IDs currently indirectly used, but which will be used by local data only
- * once this function is finished.  This allows to avoid any unneeded duplication of IDs, and
- * hence all time lost afterwards to remove orphaned linked data-blocks. */
 void BKE_library_make_local(Main *bmain,
                             const Library *lib,
                             GHash *old_to_new_ids,
                             const bool untagged_only,
                             const bool set_fake)
 {
+  /* NOTE: Old (2.77) version was simply making (tagging) data-blocks as local,
+   * without actually making any check whether they were also indirectly used or not...
+   *
+   * Current version uses regular id_make_local callback, with advanced pre-processing step to
+   * detect all cases of IDs currently indirectly used, but which will be used by local data only
+   * once this function is finished.  This allows to avoid any unneeded duplication of IDs, and
+   * hence all time lost afterwards to remove orphaned linked data-blocks. */
 
   ListBase *lbarray[INDEX_ID_MAX];
 
@@ -2049,7 +2047,7 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
   }
 }
 
-char *BKE_id_to_unique_string_key(const struct ID *id)
+char *BKE_id_to_unique_string_key(const ID *id)
 {
   if (!ID_IS_LINKED(id)) {
     return BLI_strdup(id->name);

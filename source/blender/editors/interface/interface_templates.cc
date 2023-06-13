@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -974,6 +976,9 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         id->us = 0;
         undo_push_label = "Delete Data-Block";
       }
+      else {
+        undo_push_label = "Unlink Data-Block";
+      }
 
       break;
     case UI_ID_FAKE_USER:
@@ -1108,7 +1113,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
       case ID_GD_LEGACY:
-        return N_("Browse Grease Pencil Data to be linked");
+        return N_("Browse Grease Pencil (legacy) Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
       case ID_MSK:
@@ -1131,6 +1136,8 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Volume Data to be linked");
       case ID_SIM:
         return N_("Browse Simulation to be linked");
+      case ID_GP:
+        return N_("Browse Grease Pencil Data to be linked");
 
       /* Use generic text. */
       case ID_LI:
