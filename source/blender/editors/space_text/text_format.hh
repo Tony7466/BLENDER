@@ -11,9 +11,7 @@
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 
-using blender::Array;
 using blender::Span;
-using blender::StringRef;
 
 struct Text;
 

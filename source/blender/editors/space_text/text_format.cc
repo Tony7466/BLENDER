@@ -244,8 +244,8 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
 const int text_format_string_literal_find(const Span<const char *> string_literals,
                                           const char *text)
 {
-  auto predicate_func = [](const char *text, const StringRef &string_literal) {
-    return strcmp(text, string_literal.data()) < 0;
+  auto predicate_func = [](const char *text, const char *string_literal) {
+    return strcmp(text, string_literal) < 0;
   };
   auto string_literal = std::upper_bound(
       std::begin(string_literals), std::end(string_literals), text, predicate_func);
@@ -255,9 +255,8 @@ const int text_format_string_literal_find(const Span<const char *> string_litera
   }
 
   string_literal--;
-  auto a = *string_literal;
-  if (strncmp(a, text, strlen(a)) == 0) {
-    return strlen(a);
+  if (strncmp((*string_literal), text, strlen((*string_literal))) == 0) {
+    return strlen((*string_literal));
   }
 
   return -1;
