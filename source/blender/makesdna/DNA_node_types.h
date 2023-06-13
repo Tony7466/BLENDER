@@ -1111,7 +1111,9 @@ typedef struct NodeTexVoronoi {
   int dimensions;
   int feature;
   int distance;
+  int normalize;
   int coloring DNA_DEPRECATED;
+  char _pad[4];
 } NodeTexVoronoi;
 
 typedef struct NodeTexMusgrave {
