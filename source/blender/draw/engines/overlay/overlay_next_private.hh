@@ -33,6 +33,7 @@ using blender::draw::TextureRef;
 
 struct State {
   Depsgraph *depsgraph;
+  Manager *manager;
   const ViewLayer *view_layer;
   const Scene *scene;
   const View3D *v3d;
@@ -161,6 +162,7 @@ class ShaderModule {
   ShaderPtr extra_groundline;
   ShaderPtr extra_point;
   ShaderPtr extra_line;
+  ShaderPtr extra_grid;
 
   /* TODO */
   ShaderPtr extra_wire;

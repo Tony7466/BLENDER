@@ -30,6 +30,7 @@ void Instance::init()
   BKE_view_layer_synced_ensure(ctx->scene, ctx->view_layer);
 
   state.depsgraph = ctx->depsgraph;
+  state.manager = DRW_manager_get();
   state.view_layer = ctx->view_layer;
   state.scene = ctx->scene;
   state.v3d = ctx->v3d;
@@ -84,7 +85,7 @@ void Instance::begin_sync()
 
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
-  extras.begin_sync();
+  extras.begin_sync(resources, state);
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
 }

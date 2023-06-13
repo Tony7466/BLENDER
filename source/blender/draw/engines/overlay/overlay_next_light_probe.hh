@@ -68,27 +68,9 @@ static void probe_sync(const ObjectRef &ob_ref,
 
     /* Data dots */
     if (show_data) {
-      /* Pack render data into object matrix. */
-      data.matrix[0][3] = probe->grid_resolution_x;
-      data.matrix[1][3] = probe->grid_resolution_y;
-      data.matrix[2][3] = probe->grid_resolution_z;
-
-      /* Put theme id in matrix. */
-      if (res.object_wire_theme_id(ob_ref, state) == TH_ACTIVE) {
-        data.matrix[3][3] = 1.0;
-      }
-      else /* TH_SELECT */ {
-        data.matrix[3][3] = 2.0;
-      }
-
-      uint cell_count = probe->grid_resolution_x * probe->grid_resolution_y *
-                        probe->grid_resolution_z;
-#if 0
-      /* TODO(Miguel Pozo) */
-      DRWShadingGroup *grp = DRW_shgroup_create_sub(vedata.stl->pd->extra_grid_grp);
-      DRW_shgroup_uniform_mat4_copy(grp, "gridModelMatrix", data.matrix);
-      DRW_shgroup_call_procedural_points(grp, nullptr, cell_count);
-#endif
+      int3 resolution = int3(&probe->grid_resolution_x);
+      int theme_id = res.object_wire_theme_id(ob_ref, state) == TH_ACTIVE ? 1 : 2;
+      pass.probe_grid_dots.object_sync(ob_ref, select_id, resolution, theme_id, res, state);
     }
   }
   else if (probe->type == LIGHTPROBE_TYPE_PLANAR) {

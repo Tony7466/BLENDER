@@ -91,6 +91,49 @@ struct LineInstanceBuf : public ShapeInstanceBuf<LineInstanceData> {
   }
 };
 
+class ProbeGridDotsPass {
+  PassMain ps_ = {"Probe Grid"};
+
+ public:
+  void begin_sync(PassSimple::Sub &pass, Resources &res, const State &state)
+  {
+    ps_.init();
+    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_PROGRAM_POINT_SIZE | state.clipping_state);
+    ps_.shader_set(res.shaders.extra_grid.get());
+    /* TODO(Miguel Pozo): Selection doesn't work. */
+    res.select_bind(ps_);
+    /* TODO: Fixed index. */
+    ps_.bind_ubo("globalsBlock", &res.globals_buf);
+    ps_.bind_texture("depthBuffer", &res.depth_tx);
+  }
+
+  void object_sync(const ObjectRef &ob_ref,
+                   const select::ID select_id,
+                   int3 grid_resolution,
+                   int theme_id,
+                   Resources &res,
+                   const State &state)
+  {
+    float4x4 matrix = float4x4(ob_ref.object->object_to_world);
+    /* Pack render data into object matrix. */
+    matrix[0][3] = grid_resolution.x;
+    matrix[1][3] = grid_resolution.y;
+    matrix[2][3] = grid_resolution.z;
+    matrix[3][3] = theme_id;
+
+    uint cell_count = grid_resolution.x * grid_resolution.y * grid_resolution.z;
+
+    ResourceHandle res_handle = state.manager->resource_handle(matrix);
+    ps_.draw_procedural(GPU_PRIM_POINTS, 1, cell_count, 0, res_handle, select_id.get());
+  }
+
+  void draw(Manager &manager, View &view, Framebuffer &fb)
+  {
+    fb.bind();
+    manager.submit(ps_, view);
+  }
+};
+
 class ExtraInstancePass {
   const SelectionType selection_type;
   const ShapeCache &shapes;
@@ -163,6 +206,7 @@ class ExtraInstancePass {
   ExtraInstanceBuf probe_cube = extra_buf("probe_cube", shapes.probe_cube);
   ExtraInstanceBuf probe_grid = extra_buf("probe_grid", shapes.probe_grid);
   ExtraInstanceBuf probe_planar = extra_buf("probe_planar", shapes.probe_planar);
+  ProbeGridDotsPass probe_grid_dots;
 
   ExtraInstanceBuf camera_volume = extra_buf(
       "camera_volume", shapes.camera_volume, BLEND_CULL_BACK);
@@ -197,8 +241,12 @@ class ExtraInstancePass {
 
   LineInstanceBuf constraint_line = line_buf("constraint_line", theme_colors.color_grid_axis_z);
 
-  void begin_sync()
+  void begin_sync(Resources &res, const State &state)
   {
+    ps_.init();
+    res.select_bind(ps_);
+    probe_grid_dots.begin_sync(ps_, res, state);
+
     for (Vector<ExtraInstanceBuf *> &vector : extra_buffers_) {
       for (ExtraInstanceBuf *buf : vector) {
         buf->clear();
@@ -218,9 +266,6 @@ class ExtraInstancePass {
 
   void end_sync(Resources &res, const State &state)
   {
-    ps_.init();
-    res.select_bind(ps_);
-
     auto sub_pass =
         [&](const char *name, ShaderPtr &shader, DRWState drw_state) -> PassSimple::Sub * {
       PassSimple::Sub &ps = ps_.sub(name);
@@ -268,6 +313,8 @@ class ExtraInstancePass {
   {
     fb.bind();
     manager.submit(ps_, view);
+
+    probe_grid_dots.draw(manager, view, fb);
   }
 
   ExtraInstanceBuf &empty_buf(int empty_drawtype)
@@ -288,7 +335,7 @@ class ExtraInstancePass {
       case OB_ARROWS:
         return arrows;
       case OB_EMPTY_IMAGE:
-        /* This only show the frame. See OVERLAY_image_empty_cache_populate() for the image. */
+        /* This only show the frame. See empty_sync() for the image. */
         return image;
       default:
         BLI_assert_unreachable();

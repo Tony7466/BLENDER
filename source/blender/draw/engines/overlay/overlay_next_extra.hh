@@ -31,10 +31,10 @@ class Extra {
       : pass_(selection_type, shapes, theme_colors, "Extra Shapes"),
         pass_in_front_(selection_type, shapes, theme_colors, "Extra Shapes In Front"){};
 
-  void begin_sync()
+  void begin_sync(Resources &res, const State &state)
   {
-    pass_.begin_sync();
-    pass_in_front_.begin_sync();
+    pass_.begin_sync(res, state);
+    pass_in_front_.begin_sync(res, state);
   }
 
   void object_sync(const ObjectRef &ob_ref,
@@ -113,7 +113,7 @@ class Extra {
       force_field_sync(ob_ref, select_id, res, state, pass, data);
     }
 
-    /* don't show object extras in set's */
+    /* Don't show object extras in sets. */
     if (!from_dupli) {
       if (draw_obcenters) {
         object_center_sync(ob_ref, select_id, res, state, pass);

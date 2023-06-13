@@ -112,6 +112,10 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.vertex_inputs_.pop_last();
     info.vertex_inputs_.pop_last();
   });
+
+  extra_grid = selectable_shader("overlay_extra_grid", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_info("draw_modelmat_new", "draw_resource_handle_new");
+  });
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)

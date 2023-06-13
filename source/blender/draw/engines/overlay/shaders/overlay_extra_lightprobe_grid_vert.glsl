@@ -24,12 +24,18 @@ vec4 color_from_id(float color_id)
 
 void main()
 {
-  mat4 model_mat = gridModelMatrix;
+#ifdef OVERLAY_NEXT
+  mat4 grid_matrix = ModelMatrix;
+#else
+  mat4 grid_matrix = gridModelMatrix;
+#endif
+
+  mat4 model_mat = grid_matrix;
   model_mat[0][3] = model_mat[1][3] = model_mat[2][3] = 0.0;
   model_mat[3][3] = 1.0;
-  float color_id = gridModelMatrix[3].w;
+  float color_id = grid_matrix[3].w;
 
-  ivec3 grid_resolution = ivec3(gridModelMatrix[0].w, gridModelMatrix[1].w, gridModelMatrix[2].w);
+  ivec3 grid_resolution = ivec3(grid_matrix[0].w, grid_matrix[1].w, grid_matrix[2].w);
 
   vec3 ls_cell_location;
   /* Keep in sync with update_irradiance_probe */
