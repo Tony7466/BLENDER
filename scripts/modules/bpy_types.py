@@ -523,6 +523,36 @@ def ord_ind(i1, i2):
     return i2, i1
 
 
+def name_convention_attribute_get(attributes, name, domain, data_type):
+    try:
+        attribute = attributes[name]
+    except KeyError:
+        return None
+    if attribute.domain != domain:
+        return None
+    if attribute.data_type != data_type:
+        return None
+    return attribute
+
+
+def name_convention_attribute_ensure(attributes, name, domain, data_type):
+    try:
+        attribute = attributes[name]
+    except KeyError:
+        return attributes.new(name, data_type, domain)
+    if attribute.domain == domain and attribute.data_type == data_type:
+        return attribute
+    attributes.remove(attribute)
+    return attributes.new(name, data_type, domain)
+
+
+def name_convention_attribute_remove(attributes, name):
+    try:
+        attributes.remove(attributes[name])
+    except KeyError:
+        pass
+
+
 class Mesh(bpy_types.ID):
     __slots__ = ()
 
@@ -602,32 +632,27 @@ class Mesh(bpy_types.ID):
         """
         Vertex crease values for subdivision surface, corresponding to the "crease_vert" attribute.
         """
-        attributes = self.attributes
-        try:
-            creases = attributes["crease_vert"]
-            if creases.data_type != 'FLOAT':
-                return None
-            if creases.domain != 'POINT':
-                return None
-            return creases
-        except KeyError:
-            return None
+        return name_convention_attribute_get(self.attributes, "crease_vert", 'POINT', 'FLOAT')
+
+    def vertex_creases_ensure(self):
+        return name_convention_attribute_ensure(self.attributes, "crease_vert", 'POINT', 'FLOAT')
+
+    def vertex_creases_remove(self):
+        name_convention_attribute_remove(self.attributes, "crease_vert")
 
     @property
     def edge_creases(self):
         """
         Edge crease values for subdivision surface, corresponding to the "crease_edge" attribute.
         """
-        attributes = self.attributes
-        try:
-            creases = attributes["crease_edge"]
-            if creases.data_type != 'FLOAT':
-                return None
-            if creases.domain != 'EDGE':
-                return None
-            return creases
-        except KeyError:
-            return None
+        return name_convention_attribute_get(self.attributes, "crease_edge", 'EDGE', 'FLOAT')
+
+    def edge_creases_ensure(self):
+        return name_convention_attribute_ensure(self.attributes, "crease_edge", 'EDGE', 'FLOAT')
+
+    def edge_creases_remove(self):
+        name_convention_attribute_remove(self.attributes, "crease_edge")
+
 
 class MeshEdge(StructRNA):
     __slots__ = ()
