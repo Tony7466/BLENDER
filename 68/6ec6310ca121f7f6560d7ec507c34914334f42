@@ -1,0 +1,1 @@
+Referenced by issue #108917, Policy: poison unsafe string manipulation funcitons (strcat, strcpy)
