@@ -2,6 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include <pxr/base/gf/vec2f.h>
+#include <pxr/base/tf/staticTokens.h>
 #include <pxr/imaging/hd/tokens.h>
 
 #include "BKE_material.h"
@@ -11,6 +12,10 @@
 
 #include "blender_scene_delegate.h"
 #include "mesh.h"
+
+PXR_NAMESPACE_OPEN_SCOPE
+TF_DEFINE_PRIVATE_TOKENS(_tokens, (st));
+PXR_NAMESPACE_CLOSE_SCOPE
 
 namespace blender::render::hydra {
 
@@ -85,7 +90,7 @@ pxr::VtValue MeshData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key)
   else if (key == pxr::HdTokens->normals) {
     return pxr::VtValue(submesh(id).normals);
   }
-  else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
+  else if (key == pxr::_tokens->st) {
     return pxr::VtValue(submesh(id).uvs);
   }
   return pxr::VtValue();
@@ -128,9 +133,8 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
           pxr::HdTokens->normals, interpolation, pxr::HdPrimvarRoleTokens->normal);
     }
     if (!submeshes_[0].uvs.empty()) {
-      primvars.emplace_back(pxr::HdPrimvarRoleTokens->textureCoordinate,
-                            interpolation,
-                            pxr::HdPrimvarRoleTokens->textureCoordinate);
+      primvars.emplace_back(
+          pxr::_tokens->st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
     }
   }
   return primvars;

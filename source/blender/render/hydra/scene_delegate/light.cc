@@ -139,7 +139,6 @@ void LightData::update()
 pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
 {
   ID_LOG(3, "%s", key.GetText());
-  pxr::VtValue ret;
   auto it = data_.find(key);
   if (it != data_.end()) {
     return pxr::VtValue(it->second);
