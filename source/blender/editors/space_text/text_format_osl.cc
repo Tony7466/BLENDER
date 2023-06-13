@@ -26,10 +26,8 @@
  * list is from
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-static Array<StringRef> &text_format_osl_literals_builtinfunc()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_osl_literals_builtinfunc_data[]{
+    /* clang-format off */
     "break",
     "closure",
     "color",
@@ -54,20 +52,19 @@ static Array<StringRef> &text_format_osl_literals_builtinfunc()
     "vector",
     "void",
     "while",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_osl_literals_builtinfunc(
+    text_format_osl_literals_builtinfunc_data,
+    ARRAY_SIZE(text_format_osl_literals_builtinfunc_data));
 
 /**
  * OSL reserved keywords
  * See:
  * https://github.com/imageworks/OpenShadingLanguage/raw/master/src/doc/osl-languagespec.pdf
  */
-static Array<StringRef> &text_format_osl_literals_reserved()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_osl_literals_reserved_data[]{
+    /* clang-format off */
     "bool",
     "case",
     "catch",
@@ -104,24 +101,23 @@ static Array<StringRef> &text_format_osl_literals_reserved()
     "varying",
     "virtual",
     "volatile",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_osl_literals_reserved(
+    text_format_osl_literals_reserved_data, ARRAY_SIZE(text_format_osl_literals_reserved_data));
 
 /* OSL shader types */
-static Array<StringRef> &text_format_osl_literals_specialvar()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_osl_literals_specialvar_data[]{
+    /* clang-format off */
     "displacement",
     "shader",
     "surface",
     "volume",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_osl_literals_specialvar(
+    text_format_osl_literals_specialvar_data,
+    ARRAY_SIZE(text_format_osl_literals_specialvar_data));
 
 /** \} */
 
@@ -131,13 +127,7 @@ static Array<StringRef> &text_format_osl_literals_specialvar()
 
 static int txtfmt_osl_find_builtinfunc(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_osl_literals_builtinfunc(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_osl_literals_builtinfunc, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -148,13 +138,7 @@ static int txtfmt_osl_find_builtinfunc(const char *string)
 
 static int txtfmt_osl_find_reserved(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_osl_literals_reserved(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_osl_literals_reserved, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -165,13 +149,7 @@ static int txtfmt_osl_find_reserved(const char *string)
 
 static int txtfmt_osl_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_osl_literals_specialvar(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_osl_literals_specialvar, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -403,9 +381,9 @@ void ED_text_format_register_osl()
 
   ED_text_format_register(&tft);
 
-  text_format_string_literals_sort_for_lookup(text_format_osl_literals_builtinfunc());
-  text_format_string_literals_sort_for_lookup(text_format_osl_literals_reserved());
-  text_format_string_literals_sort_for_lookup(text_format_osl_literals_specialvar());
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_osl_literals_builtinfunc));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_osl_literals_reserved));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_osl_literals_specialvar));
 }
 
 /** \} */

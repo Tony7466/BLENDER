@@ -48,11 +48,9 @@
  * See:
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
-static Array<StringRef> &text_format_py_literals_builtinfunc()
-{
-  static Array<StringRef> map{
-      /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
-      /* clang-format off */
+static const char *text_format_py_literals_builtinfunc_data[]{
+    /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
+    /* clang-format off */
     "and",
     "as",
     "assert",
@@ -85,35 +83,34 @@ static Array<StringRef> &text_format_py_literals_builtinfunc()
     "while",
     "with",
     "yield",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_py_literals_builtinfunc(
+    text_format_py_literals_builtinfunc_data,
+    ARRAY_SIZE(text_format_py_literals_builtinfunc_data));
 
 /** Python special name.*/
-static Array<StringRef> &text_format_py_literals_specialvar()
-{
-  static Array<StringRef> map{
-      /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
-      /* clang-format off */
+static const char *text_format_py_literals_specialvar_data[]{
+    /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
+    /* clang-format off */
     "class",
     "def",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_py_literals_specialvar(
+    text_format_py_literals_specialvar_data, ARRAY_SIZE(text_format_py_literals_specialvar_data));
+
 /** Python bool values.*/
-static Array<StringRef> &text_format_py_literals_bool()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_py_literals_bool_data[]{
+    /* clang-format off */
     "False",
     "None",
     "True",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_py_literals_bool(
+    text_format_py_literals_bool_data, ARRAY_SIZE(text_format_py_literals_bool_data));
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -122,13 +119,7 @@ static Array<StringRef> &text_format_py_literals_bool()
 
 static int txtfmt_py_find_builtinfunc(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_py_literals_builtinfunc(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_py_literals_builtinfunc, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -139,13 +130,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
 
 static int txtfmt_py_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_py_literals_specialvar(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_py_literals_specialvar, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -176,13 +161,7 @@ static int txtfmt_py_find_decorator(const char *string)
 
 static int txtfmt_py_find_bool(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(text_format_py_literals_bool(),
-                                                                    string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_py_literals_bool, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   if (i == 0 || text_check_identifier(string[i])) {
@@ -587,9 +566,9 @@ void ED_text_format_register_py()
 
   ED_text_format_register(&tft);
 
-  text_format_string_literals_sort_for_lookup(text_format_py_literals_builtinfunc());
-  text_format_string_literals_sort_for_lookup(text_format_py_literals_specialvar());
-  text_format_string_literals_sort_for_lookup(text_format_py_literals_bool());
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_py_literals_builtinfunc));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_py_literals_specialvar));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_py_literals_bool));
 }
 
 /** \} */

@@ -126,15 +126,15 @@ void ED_text_format_register_pov_ini();
  * Checks the specified source string #text for a string literal in #string_literals array.
  * This string literal must start at the beginning of the source string.
  *
- * If a string literal is found, the a #StringRef pointer to the string literal is returned.
- * Otherwise, nullptr.
+ * If a string literal is found, the length of the string literal is returned.
+ * Otherwise, -1.
  */
-const StringRef *text_format_string_literal_find(const Span<StringRef> string_literals,
-                                                 const char *text);
+const int text_format_string_literal_find(const Span<const char *> string_literals,
+                                          const char *text);
 
 /**
- * Sort #string_literals arrays, this allows to perform binary searches on these
- * arrays.
- * Should be use only at startup, since these arrays should not change over time.
+ * Check if #string_literals array is shorted. This validation is required since text formatters do
+ * binary search on these string literals arrays. Used only for assertions.
  */
-void text_format_string_literals_sort_for_lookup(Array<StringRef> &string_literals);
+const bool text_format_string_literals_check_sorted_array(
+    const Span<const char *> &string_literals);

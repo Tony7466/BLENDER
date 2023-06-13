@@ -28,10 +28,19 @@
  */
 
 /* Language Directives */
-static Array<StringRef> &text_format_pov_ini_literals_keyword()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+
+static const char *text_format_pov_ini_literals_keyword_data[]{
+    /* clang-format off */
+    "A",
+    "C",
+    "F",
+    "I",
+    "N",
+    "P",
+    "Q",
+    "S",
+    "T",
+    "U",
     "append",
     "break",
     "case",
@@ -62,31 +71,19 @@ static Array<StringRef> &text_format_pov_ini_literals_keyword()
     "warning",
     "while",
     "write",
-
-    "A",
-    "C",
-    "F",
-    "I",
-    "N",
-    "P",
-    "Q",
-    "S",
-    "T",
-    "U",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_ini_literals_keyword(
+    text_format_pov_ini_literals_keyword_data,
+    ARRAY_SIZE(text_format_pov_ini_literals_keyword_data));
 
 /**
  * POV-Ray Built-in INI Variables
  * list is from...
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
-static Array<StringRef> &text_format_pov_ini_literals_reserved()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_pov_ini_literals_reserved_data[]{
+    /* clang-format off */
     "AlertOnCompletion",
     "AlertSound",
     "All_Console",
@@ -244,52 +241,48 @@ static Array<StringRef> &text_format_pov_ini_literals_reserved()
     "Warning_File",
     "Warning_Level",
     "Width",
+    "ascii",
     "clock",
     "clock_delta",
     "clock_on",
+    "df3",
+    "exr",
     "final_clock",
     "final_frame",
     "frame_number",
+    "gif",
+    "hdr",
+    "iff",
     "image_height",
     "image_width",
     "initial_clock",
     "initial_frame",
     "input_file_name",
-
-    /* File-types. */
-    "df3",
-    "exr",
-    "gif",
-    "hdr",
-    "iff",
     "jpeg",
     "pgm",
     "png",
     "ppm",
-    "sys",
-    "tga",
-    "tiff",
-    /* Encodings. */
-    "ascii",
     "sint16be",
     "sint16le",
     "sint32be",
     "sint32le",
     "sint8",
+    "sys",
+    "tga",
+    "tiff",
     "uint16be",
     "uint16le",
     "uint8",
     "utf8",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_ini_literals_reserved(
+    text_format_pov_ini_literals_reserved_data,
+    ARRAY_SIZE(text_format_pov_ini_literals_reserved_data));
 
 /** POV INI Built-in Constants */
-static Array<StringRef> &text_format_pov_ini_literals_bool()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_pov_ini_literals_bool_data[]{
+    /* clang-format off */
     "%h",
     "%k",
     "%n",
@@ -304,10 +297,10 @@ static Array<StringRef> &text_format_pov_ini_literals_bool()
     "tau",
     "true",
     "yes",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_ini_literals_bool(
+    text_format_pov_ini_literals_bool_data, ARRAY_SIZE(text_format_pov_ini_literals_bool_data));
 
 /** \} */
 
@@ -317,13 +310,7 @@ static Array<StringRef> &text_format_pov_ini_literals_bool()
 
 static int txtfmt_ini_find_keyword(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_ini_literals_keyword(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_ini_literals_keyword, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -331,13 +318,7 @@ static int txtfmt_ini_find_keyword(const char *string)
 
 static int txtfmt_ini_find_reserved(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_ini_literals_reserved(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_ini_literals_reserved, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -345,13 +326,7 @@ static int txtfmt_ini_find_reserved(const char *string)
 
 static int txtfmt_ini_find_bool(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_ini_literals_bool(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_ini_literals_bool, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -554,9 +529,10 @@ void ED_text_format_register_pov_ini()
 
   ED_text_format_register(&tft);
 
-  text_format_string_literals_sort_for_lookup(text_format_pov_ini_literals_keyword());
-  text_format_string_literals_sort_for_lookup(text_format_pov_ini_literals_reserved());
-  text_format_string_literals_sort_for_lookup(text_format_pov_ini_literals_bool());
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_ini_literals_keyword));
+  BLI_assert(
+      text_format_string_literals_check_sorted_array(text_format_pov_ini_literals_reserved));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_ini_literals_bool));
 }
 
 /** \} */

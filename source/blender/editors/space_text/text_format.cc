@@ -241,8 +241,8 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
   return false;
 }
 
-const StringRef *text_format_string_literal_find(const Span<StringRef> string_literals,
-                                                 const char *text)
+const int text_format_string_literal_find(const Span<const char *> string_literals,
+                                          const char *text)
 {
   auto predicate_func = [](const char *text, const StringRef &string_literal) {
     return strcmp(text, string_literal.data()) < 0;
@@ -251,24 +251,22 @@ const StringRef *text_format_string_literal_find(const Span<StringRef> string_li
       std::begin(string_literals), std::end(string_literals), text, predicate_func);
 
   if (string_literal == std::begin(string_literals)) {
-    return nullptr;
+    return -1;
   }
 
   string_literal--;
-
-  if (strncmp(string_literal->data(), text, string_literal->size()) == 0) {
-    return string_literal;
+  auto a = *string_literal;
+  if (strncmp(a, text, strlen(a)) == 0) {
+    return strlen(a);
   }
 
-  return nullptr;
+  return -1;
 }
 
-/**
- * Sort #string_literals arrays, this allows to perform binary searches on these
- * arrays.
- * Should be use only at startup, since these arrays should not change over time.
- */
-void text_format_string_literals_sort_for_lookup(Array<StringRef> &string_literals)
+const bool text_format_string_literals_check_sorted_array(
+    const Span<const char *> &string_literals)
 {
-  std::sort(std::begin(string_literals), std::end(string_literals));
+  return std::is_sorted(string_literals.begin(),
+                        string_literals.end(),
+                        [](const char *a, const char *b) { return strcmp(a, b) < 0; });
 }

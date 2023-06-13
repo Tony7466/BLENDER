@@ -22,10 +22,8 @@
  * \{ */
 
 /** Language Directives */
-static Array<StringRef> &text_format_pov_literals_keyword()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_pov_literals_keyword_data[]{
+    /* clang-format off */
     "append",
     "break",
     "case",
@@ -58,10 +56,10 @@ static Array<StringRef> &text_format_pov_literals_keyword()
     "warning",
     "while",
     "write",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_literals_keyword(
+    text_format_pov_literals_keyword_data, ARRAY_SIZE(text_format_pov_literals_keyword_data));
 
 /* POV-Ray Built-in Variables
  * list is from...
@@ -69,153 +67,146 @@ static Array<StringRef> &text_format_pov_literals_keyword()
  */
 
 /** Float Functions */
-static Array<StringRef> &text_format_pov_literals_reserved()
-{
-  static Array<StringRef> map{
-      /* clang-format on */
-      "abs",
-      "acos",
-      "acosh",
-      "albedo",
-      "altitude",
-      "angle",
-      "asc",
-      "asin",
-      "asinh",
-      "atan",
-      "atan2",
-      "atand",
-      "atanh",
-      "bitwise_and",
-      "bitwise_or",
-      "bitwise_xor",
-      "blink",
-      "ceil",
-      "child",
-      "clipped_by",
-      "collect",
-      "conserve_energy",
-      "cos",
-      "cosh",
-      "crand",
-      "defined",
-      "degrees",
-      "dimension_size",
-      "dimensions",
-      "direction",
-      "div",
-      "evaluate",
-      "exp",
-      "file_exists",
-      "floor",
-      "form",
-      "function",
-      "gts_load",
-      "gts_save",
-      "inside",
-      "int",
-      "inverse",
-      "jitter",
-      "ln",
-      "load_file",
-      "location",
-      "log",
-      "look_at",
-      "matrix",
-      "max",
-      "max_intersections",
-      "max_trace",
-      "metallic",
-      "min",
-      "mod",
-      "phong_size",
-      "pow",
-      "precompute",
-      "prod",
-      "pwr",
-      "quaternion",
-      "radians",
-      "rand",
-      "reciprocal",
-      "right",
-      "rotate",
-      "roughness",
-      "save_file",
-      "scale",
-      "seed",
-      "select",
-      "shadowless",
-      "sin",
-      "sinh",
-      "sky",
-      "sqr",
-      "sqrt",
-      "strcmp",
-      "strlen",
-      "sturm",
-      "sum",
-      "tan",
-      "tanh",
-      "target",
-      "tessel",
-      "tesselate",
-      "transform",
-      "translate",
-      "turb_depth",
-      "up",
-      "val",
-      "vdot",
-      "vlength",
-      "warp",
-      "with",
-
-      /* Color Identifiers */
-      "SRGB",
-      "blue",
-      "filter",
-      "gamma",
-      "gray",
-      "green",
-      "red",
-      "rgb",
-      "rgbf",
-      "rgbft",
-      "rgbt",
-      "sRGB",
-      "srgb",
-      "srgbf",
-      "srgbft",
-      "srgbt",
-      "transmit",
-      /* Color Spaces */
-      "hsl",
-      "hsv",
-      "pov",
-      "xyl",
-      "xyv",
-      /* Vector Functions */
-      "max_extent",
-      "min_extent",
-      "trace",
-      "vaxis_rotate",
-      "vcross",
-      "vnormalize",
-      "vrotate",
-      "vturbulence",
-      /* String Functions */
-      "chr",
-      "concat",
-      "datetime",
-      "file_time",
-      "str",
-      "strlwr",
-      "strupr",
-      "substr",
-      "vstr",
-      /* clang-format on */
-  };
-  return map;
-}
+static const char *text_format_pov_literals_reserved_data[]{
+    /* clang-format on */
+    "SRGB",
+    "abs",
+    "acos",
+    "acosh",
+    "albedo",
+    "altitude",
+    "angle",
+    "asc",
+    "asin",
+    "asinh",
+    "atan",
+    "atan2",
+    "atand",
+    "atanh",
+    "bitwise_and",
+    "bitwise_or",
+    "bitwise_xor",
+    "blink",
+    "blue",
+    "ceil",
+    "child",
+    "chr",
+    "clipped_by",
+    "collect",
+    "concat",
+    "conserve_energy",
+    "cos",
+    "cosh",
+    "crand",
+    "datetime",
+    "defined",
+    "degrees",
+    "dimension_size",
+    "dimensions",
+    "direction",
+    "div",
+    "evaluate",
+    "exp",
+    "file_exists",
+    "file_time",
+    "filter",
+    "floor",
+    "form",
+    "function",
+    "gamma",
+    "gray",
+    "green",
+    "gts_load",
+    "gts_save",
+    "hsl",
+    "hsv",
+    "inside",
+    "int",
+    "inverse",
+    "jitter",
+    "ln",
+    "load_file",
+    "location",
+    "log",
+    "look_at",
+    "matrix",
+    "max",
+    "max_extent",
+    "max_intersections",
+    "max_trace",
+    "metallic",
+    "min",
+    "min_extent",
+    "mod",
+    "phong_size",
+    "pov",
+    "pow",
+    "precompute",
+    "prod",
+    "pwr",
+    "quaternion",
+    "radians",
+    "rand",
+    "reciprocal",
+    "red",
+    "rgb",
+    "rgbf",
+    "rgbft",
+    "rgbt",
+    "right",
+    "rotate",
+    "roughness",
+    "sRGB",
+    "save_file",
+    "scale",
+    "seed",
+    "select",
+    "shadowless",
+    "sin",
+    "sinh",
+    "sky",
+    "sqr",
+    "sqrt",
+    "srgb",
+    "srgbf",
+    "srgbft",
+    "srgbt",
+    "str",
+    "strcmp",
+    "strlen",
+    "strlwr",
+    "strupr",
+    "sturm",
+    "substr",
+    "sum",
+    "tan",
+    "tanh",
+    "target",
+    "tessel",
+    "tesselate",
+    "trace",
+    "transform",
+    "translate",
+    "transmit",
+    "turb_depth",
+    "up",
+    "val",
+    "vaxis_rotate",
+    "vcross",
+    "vdot",
+    "vlength",
+    "vnormalize",
+    "vrotate",
+    "vstr",
+    "vturbulence",
+    "warp",
+    "with",
+    "xyl",
+    "xyv",
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_literals_reserved(
+    text_format_pov_literals_reserved_data, ARRAY_SIZE(text_format_pov_literals_reserved_data));
 
 /* POV-Ray Built-in Variables
  * list is from...
@@ -223,262 +214,262 @@ static Array<StringRef> &text_format_pov_literals_reserved()
  */
 
 /* Language Keywords */
-static Array<StringRef> &text_format_pov_literals_builtins()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_pov_literals_builtins_data[]{
+    /* clang-format off */
     "aa_threshold",
     "absorption",
+    "agate",
+    "akima_spline",
     "all",
     "all_intersections",
     "alpha",
+    "ambient",
+    "aoi",
     "arc_angle",
     "area_illumination",
     "array",
-    "bend",
-    "black_hole",
-    "color_space",
-    "colour_space",
-    "component",
-    "composite",
-    "coords",
-    "cube",
-    "cutaway_textures",
-    "dist_exp",
-    "emission",
-    "exterior",
-    "falloff_angle",
-    "file_gamma",
-    "flatness",
-    "flip",
-    "hierarchy",
-    "hypercomplex",
-    "interior",
-    "internal",
-    "iridescence",
-    "keep",
-    "lommel_seeliger",
-    "look_at",
-    "major_radius",
-    "material",
-    "max_distance",
-    "max_extent",
-    "max_iteration",
-    "metric",
-    "minnaert",
-    "move",
-    "now",
-    "offset",
-    "oren_nayar",
-    "orientation",
-    "pattern",
-    "photons",
-    "planet",
-    "pot",
-    "precision",
-    "radiosity",
-    "reflection",
-    "reflection_exponent",
-    "refraction",
-    "repeat",
-    "roll",
-    "scattering",
-    "screw",
-    "size",
-    "slice",
-    "smooth",
-    "smooth_triangle",
-    "solid",
-    "subsurface",
-    "texture",
-    "tolerance",
-    "toroidal",
-    "type",
-    "water_level",
-    "width",
-
-    /* Animation Options */
-    "clock",
-    "clock_delta",
-    "clock_on",
-    "final_clock",
-    "final_frame",
-    "frame_number",
-    "global_settings",
-    "image_height",
-    "image_width",
-    "initial_clock",
-    "initial_frame",
-    "input_file_name",
-
-    /* Spline Identifiers */
-    "akima_spline",
-    "b_spline",
-    "basic_x_spline",
-    "bezier_spline",
-    "conic_sweep",
-    "cubic_spline",
-    "extended_x_spline",
-    "general_x_spline",
-    "linear_spline",
-    "linear_sweep",
-    "natural_spline",
-    "quadratic_spline",
-    "sor_spline",
-    "tcb_spline",
-
-    /* Patterns */
-    "agate",
-    "aoi",
     "average",
+    "b_spline",
+    "background",
+    "basic_x_spline",
+    "bend",
+    "bezier_spline",
+    "bicubic_patch",
     "binary",
+    "black_hole",
+    "blob",
+    "box",
     "boxed",
     "bozo",
     "brick",
+    "brilliance",
     "bump_map",
     "bumps",
+    "camera",
     "cells",
     "checker",
+    "clock",
+    "clock_delta",
+    "clock_on",
+    "color",
+    "color_space",
+    "colour",
+    "colour_space",
+    "component",
+    "composite",
+    "cone",
+    "conic_sweep",
+    "coords",
     "crackle",
+    "cube",
     "cubic",
+    "cubic",
+    "cubic_spline",
+    "cubic_spline",
+    "cutaway_textures",
+    "cylinder",
     "cylindrical",
     "density_file",
     "dents",
-    "facets",
-    "gradient",
-    "granite",
-    "hexagon",
-    "image_map",
-    "image_pattern",
-    "julia",
-    "leopard",
-    "magnet",
-    "mandel",
-    "marble",
-    "masonry",
-    "onion",
-    "pavement",
-    "pigment_pattern",
-    "planar",
-    "proportion",
-    "proximity",
-    "quilted",
-    "radial",
-    "ripples",
-    "slope",
-    "spherical",
-    "spiral1",
-    "spiral2",
-    "spotted",
-    "square",
-    "tile2",
-    "tiles",
-    "tiling",
-    "triangular",
-    "voronoi",
-    "waves",
-    "wood",
-    "wrinkles",
-
-    /* Objects */
-    "ambient",
-    "background",
-    "bicubic_patch",
-    "blob",
-    "box",
-    "brilliance",
-    "camera",
-    "color",
-    "colour",
-    "cone",
-    "cubic",
-    "cubic_spline",
-    "cylinder",
     "difference",
     "diffuse",
     "disc",
     "displace",
+    "dist_exp",
+    "emission",
+    "extended_x_spline",
+    "exterior",
+    "facets",
+    "falloff_angle",
+    "file_gamma",
+    "final_clock",
+    "final_frame",
+    "flatness",
+    "flip",
     "fog",
+    "frame_number",
     "galley",
+    "general_x_spline",
+    "global_settings",
+    "gradient",
+    "granite",
     "height_field",
+    "hexagon",
+    "hierarchy",
+    "hypercomplex",
+    "image_height",
+    "image_map",
+    "image_pattern",
+    "image_width",
+    "initial_clock",
+    "initial_frame",
+    "input_file_name",
+    "interior",
     "intermerge",
+    "internal",
     "intersection",
     "interunion",
     "irid",
+    "iridescence",
     "isosurface",
+    "julia",
     "julia_fractal",
+    "keep",
     "lathe",
     "lemon",
+    "leopard",
     "light_group",
     "light_source",
+    "linear_spline",
+    "linear_sweep",
+    "lommel_seeliger",
+    "look_at",
+    "magnet",
+    "major_radius",
+    "mandel",
+    "marble",
+    "masonry",
+    "material",
+    "max_distance",
+    "max_extent",
+    "max_iteration",
     "media",
     "merge",
     "mesh",
     "mesh2",
+    "metric",
+    "minnaert",
+    "move",
+    "natural_spline",
+    "now",
     "object",
+    "offset",
+    "onion",
+    "oren_nayar",
+    "orientation",
     "ovus",
     "parametric",
+    "pattern",
+    "pavement",
     "phong",
+    "photons",
+    "pigment_pattern",
+    "planar",
     "plane",
+    "planet",
     "poly",
     "polygon",
     "polynomial",
+    "pot",
+    "precision",
     "prism",
+    "proportion",
+    "proximity",
+    "quadratic_spline",
     "quadric",
     "quartic",
+    "quilted",
+    "radial",
+    "radiosity",
     "rainbow",
+    "reflection",
+    "reflection_exponent",
+    "refraction",
+    "repeat",
+    "ripples",
+    "roll",
+    "scattering",
+    "screw",
+    "size",
     "sky_sphere",
+    "slice",
+    "slope",
+    "smooth",
+    "smooth_triangle",
+    "solid",
     "sor",
+    "sor_spline",
     "specular",
     "sphere",
     "sphere_sweep",
+    "spherical",
+    "spiral1",
+    "spiral2",
     "spline",
+    "spotted",
+    "square",
+    "subsurface",
     "superellipsoid",
+    "t",
+    "tcb_spline",
     "text",
+    "texture",
+    "tile2",
+    "tiles",
+    "tiling",
+    "tolerance",
+    "toroidal",
     "torus",
     "triangle",
-    "union",
-    /* Built-in Vectors */
-    "t",
+    "triangular",
+    "type",
     "u",
+    "union",
     "v",
+    "voronoi",
+    "water_level",
+    "waves",
+    "width",
+    "wood",
+    "wrinkles",
     "x",
     "y",
     "z",
-      /* clang-format on */
-  };
-  return map;
-}
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_literals_builtins(
+    text_format_pov_literals_builtins_data, ARRAY_SIZE(text_format_pov_literals_builtins_data));
+
 /**
  * POV modifiers.
  * See:
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
-static Array<StringRef> &text_format_pov_literals_specialvar()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
+static const char *text_format_pov_literals_specialvar_data[]{
+    /* clang-format off */
     "aa_level",
     "accuracy",
     "accuracy",
     "adaptive",
     "adc_bailout",
     "agate_turb",
+    "aitoff_hammer",
     "albinos",
     "always_sample",
     "ambient_light",
     "amount",
+    "aperture",
+    "area_light",
     "assumed_gamma",
     "autostop",
+    "balthasart",
+    "behrmann",
+    "blur_samples",
     "bounded_by",
     "brick_size",
     "brightness",
     "bump_size",
+    "camera_direction",
+    "camera_location",
+    "camera_right",
+    "camera_type",
+    "camera_up",
     "caustics",
     "charset",
     "circular",
     "color_map",
     "colour_map",
+    "confidence",
     "contained_by",
     "control0",
     "control1",
@@ -492,6 +483,9 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "distance",
     "double_illuminate",
     "eccentricity",
+    "eckert_iv",
+    "eckert_vi",
+    "edwards",
     "error_bound",
     "expand_thresholds",
     "exponent",
@@ -501,18 +495,25 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "fade_colour",
     "fade_distance",
     "fade_power",
+    "fade_power",
+    "falloff",
     "finish",
+    "fisheye",
     "fixed",
+    "focal_point",
     "fog_alt",
     "fog_offset",
     "fog_type",
     "frequency",
     "fresnel",
+    "gall",
     "gather",
     "global_lights",
     "gray_threshold",
     "hf_gray_16",
+    "hobo_dyer",
     "hollow",
+    "icosa",
     "importance",
     "inbound",
     "inner",
@@ -524,6 +525,9 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "ior",
     "irid_wavelength",
     "lambda",
+    "lambert_azimuthal",
+    "lambert_cylindrical",
+    "looks_like",
     "low_error_factor",
     "map_type",
     "material_map",
@@ -534,11 +538,15 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "maximum_reuse",
     "media_attenuation",
     "media_interaction",
+    "mercator",
+    "mesh_camera",
     "method",
+    "miller_cylindrical",
     "minimal",
     "minimum_reuse",
     "mm_per_unit",
     "modulation",
+    "mollweide",
     "mortar",
     "nearest_count",
     "no_bump_scale",
@@ -553,20 +561,31 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "normal_map",
     "normal_vectors",
     "number_of_waves",
+    "octa",
     "octaves",
     "offset",
     "omega",
+    "omni_directional_stereo",
+    "omnimax",
     "once",
     "open",
     "orient",
     "origin",
     "original",
+    "orthographic",
     "outbound",
     "outside",
+    "panoramic",
+    "parallaxe",
+    "parallel",
     "pass_through",
+    "perspective",
+    "peters",
     "phase",
     "pigment",
     "pigment_map",
+    "plate_carree",
+    "point_at",
     "polarity",
     "poly_wave",
     "precision",
@@ -575,6 +594,7 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "projected_through",
     "quick_color",
     "quick_colour",
+    "radius",
     "ramp_wave",
     "ratio",
     "recursion_limit",
@@ -582,17 +602,23 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "scallop_wave",
     "sine_wave",
     "slope_map",
+    "smyth_craster",
     "spacing",
     "split_union",
+    "spotlight",
+    "stereo",
     "strength",
+    "tetra",
     "texture_list",
     "texture_map",
     "thickness",
     "threshold",
+    "tightness",
     "translucency",
     "triangle_wave",
     "turbulence",
     "u_steps",
+    "ultra_wide_angle",
     "use_alpha",
     "use_color",
     "use_colour",
@@ -601,110 +627,57 @@ static Array<StringRef> &text_format_pov_literals_specialvar()
     "uv_mapping",
     "uv_vectors",
     "v_steps",
-    "vertex_vectors",
-
-    /* Light Types and options. */
-    "area_light",
-    "fade_power",
-    "falloff",
-    "looks_like",
-    "parallel",
-    "point_at",
-    "radius",
-    "spotlight",
-    "tightness",
-
-    /* Camera Types and options. */
-    "aitoff_hammer",
-    "aperture",
-    "balthasart",
-    "behrmann",
-    "blur_samples",
-    "camera_direction",
-    "camera_location",
-    "camera_right",
-    "camera_type",
-    "camera_up",
-    "confidence",
-    "eckert_iv",
-    "eckert_vi",
-    "edwards",
-    "fisheye",
-    "focal_point",
-    "gall",
-    "hobo_dyer",
-    "icosa",
-    "lambert_azimuthal",
-    "lambert_cylindrical",
-    "mercator",
-    "mesh_camera",
-    "miller_cylindrical",
-    "mollweide",
-    "octa",
-    "omni_directional_stereo",
-    "omnimax",
-    "orthographic",
-    "panoramic",
-    "parallaxe",
-    "perspective",
-    "peters",
-    "plate_carree",
-    "smyth_craster",
-    "stereo",
-    "tetra",
-    "ultra_wide_angle",
     "van_der_grinten",
     "variance",
-      /* clang-format on */
-  };
-  return map;
-}
+    "vertex_vectors",
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_literals_specialvar(
+    text_format_pov_literals_specialvar_data,
+    ARRAY_SIZE(text_format_pov_literals_specialvar_data));
 
 /** POV Built-in Constants. */
-static Array<StringRef> &text_format_pov_literals_bool()
-{
-  static Array<StringRef> map{
-      /* clang-format off */
-    "false",
-    "no",
-    "off",
-    "on",
-    "pi",
-    "tau",
-    "true",
-    "unofficial",
-    "yes",
-    /* Encodings. */
+static const char *text_format_pov_literals_bool_data[]{
+    /* clang-format off */
     "ascii",
     "bt2020",
     "bt709",
+    "df3",
+    "exr",
+    "false",
+    "gif",
+    "hdr",
+    "iff",
+    "jpeg",
+    "no",
+    "off",
+    "on",
+    "pgm",
+    "pi",
+    "png",
+    "ppm",
     "sint16be",
     "sint16le",
     "sint32be",
     "sint32le",
     "sint8",
+    "sys",
+    "tau",
+    "tga",
+    "tiff",
+    "true",
+    "ttf",
     "uint16be",
     "uint16le",
     "uint8",
+    "unofficial",
     "utf8",
-    /* File-types. */
-    "df3",
-    "exr",
-    "gif",
-    "hdr",
-    "iff",
-    "jpeg",
-    "pgm",
-    "png",
-    "ppm",
-    "sys",
-    "tga",
-    "tiff",
-    "ttf",
-      /* clang-format on */
-  };
-  return map;
-}
+    "yes",
+    /* clang-format on */
+};
+static const Span<const char *> text_format_pov_literals_bool(
+    text_format_pov_literals_bool_data, ARRAY_SIZE(text_format_pov_literals_bool_data));
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -719,13 +692,8 @@ static Array<StringRef> &text_format_pov_literals_bool()
 
 static int txtfmt_pov_find_keyword(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_literals_keyword(), string);
-  if (!string_literal) {
-    return -1;
-  }
 
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_literals_keyword, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -733,13 +701,7 @@ static int txtfmt_pov_find_keyword(const char *string)
 
 static int txtfmt_pov_find_reserved_keywords(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_literals_reserved(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_literals_reserved, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -747,13 +709,7 @@ static int txtfmt_pov_find_reserved_keywords(const char *string)
 
 static int txtfmt_pov_find_reserved_builtins(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_literals_builtins(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_literals_builtins, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -761,13 +717,7 @@ static int txtfmt_pov_find_reserved_builtins(const char *string)
 
 static int txtfmt_pov_find_specialvar(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_literals_specialvar(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_literals_specialvar, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -775,13 +725,7 @@ static int txtfmt_pov_find_specialvar(const char *string)
 
 static int txtfmt_pov_find_bool(const char *string)
 {
-  const StringRef *string_literal = text_format_string_literal_find(
-      text_format_pov_literals_bool(), string);
-  if (!string_literal) {
-    return -1;
-  }
-
-  const int i = string_literal->size();
+  const int i = text_format_string_literal_find(text_format_pov_literals_bool, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
   return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
@@ -998,11 +942,11 @@ void ED_text_format_register_pov()
 
   ED_text_format_register(&tft);
 
-  text_format_string_literals_sort_for_lookup(text_format_pov_literals_keyword());
-  text_format_string_literals_sort_for_lookup(text_format_pov_literals_reserved());
-  text_format_string_literals_sort_for_lookup(text_format_pov_literals_builtins());
-  text_format_string_literals_sort_for_lookup(text_format_pov_literals_specialvar());
-  text_format_string_literals_sort_for_lookup(text_format_pov_literals_bool());
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_literals_keyword));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_literals_reserved));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_literals_builtins));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_literals_specialvar));
+  BLI_assert(text_format_string_literals_check_sorted_array(text_format_pov_literals_bool));
 }
 
 /** \} */
