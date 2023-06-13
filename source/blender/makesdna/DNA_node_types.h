@@ -2468,8 +2468,3 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
-
-typedef enum NodeCombineSeparateRotatioNMode {
-  NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ = 0,
-  NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE = 1,
-} NodeCombineSeparateRotatioNMode;
