@@ -6,15 +6,14 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include "RNA_define.h"
 
 #include "DNA_customdata_types.h"
 
 #include "BLI_sys_types.h"
-
 #include "BLI_utildefines.h"
 
 #include "rna_internal.h" /* own include */
@@ -28,11 +27,15 @@
 #  include "BKE_mesh_mapping.h"
 #  include "BKE_mesh_runtime.h"
 #  include "BKE_mesh_tangent.h"
+#  include "BKE_report.h"
+
 #  include "ED_mesh.h"
 
-static const char *rna_Mesh_unit_test_compare(struct Mesh *mesh,
-                                              struct Mesh *mesh2,
-                                              float threshold)
+#  include "DEG_depsgraph.h"
+
+#  include "WM_api.h"
+
+static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float threshold)
 {
   const char *ret = BKE_mesh_cmp(mesh, mesh2, threshold);
 
@@ -61,12 +64,13 @@ static void rna_Mesh_calc_tangents(Mesh *mesh, ReportList *reports, const char *
   float(*r_looptangents)[4];
 
   if (CustomData_has_layer(&mesh->ldata, CD_MLOOPTANGENT)) {
-    r_looptangents = CustomData_get_layer_for_write(&mesh->ldata, CD_MLOOPTANGENT, mesh->totloop);
+    r_looptangents = static_cast<float(*)[4]>(
+        CustomData_get_layer_for_write(&mesh->ldata, CD_MLOOPTANGENT, mesh->totloop));
     memset(r_looptangents, 0, sizeof(float[4]) * mesh->totloop);
   }
   else {
-    r_looptangents = CustomData_add_layer(
-        &mesh->ldata, CD_MLOOPTANGENT, CD_SET_DEFAULT, mesh->totloop);
+    r_looptangents = static_cast<float(*)[4]>(
+        CustomData_add_layer(&mesh->ldata, CD_MLOOPTANGENT, CD_SET_DEFAULT, mesh->totloop));
     CustomData_set_layer_flag(&mesh->ldata, CD_MLOOPTANGENT, CD_FLAG_TEMPORARY);
   }
 
@@ -214,8 +218,8 @@ void RNA_api_mesh(StructRNA *srna)
   RNA_def_function_ui_description(func,
                                   "Transform mesh vertices by a matrix "
                                   "(Warning: inverts normals if matrix is negative)");
-  parm = RNA_def_float_matrix(func, "matrix", 4, 4, NULL, 0.0f, 0.0f, "", "Matrix", 0.0f, 0.0f);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_float_matrix(func, "matrix", 4, 4, nullptr, 0.0f, 0.0f, "", "Matrix", 0.0f, 0.0f);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_boolean(func, "shape_keys", 0, "", "Transform Shape Keys");
 
   func = RNA_def_function(srna, "flip_normals", "rna_Mesh_flip_normals");
@@ -245,7 +249,7 @@ void RNA_api_mesh(StructRNA *srna)
       "(split normals are also computed if not yet present)");
   parm = RNA_def_string(func,
                         "uvmap",
-                        NULL,
+                        nullptr,
                         MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX,
                         "",
                         "Name of the UV map to use for tangent space computation");
@@ -262,11 +266,11 @@ void RNA_api_mesh(StructRNA *srna)
   RNA_def_boolean(
       func, "use_bitflags", false, "", "Produce bitflags groups instead of simple numeric values");
   /* return values */
-  parm = RNA_def_int_array(func, "poly_groups", 1, NULL, 0, 0, "", "Smooth Groups", 0, 0);
+  parm = RNA_def_int_array(func, "poly_groups", 1, nullptr, 0, 0, "", "Smooth Groups", 0, 0);
   RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_OUTPUT);
   parm = RNA_def_int(
       func, "groups", 0, 0, INT_MAX, "groups", "Total number of groups", 0, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_OUTPUT);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_OUTPUT);
 
   func = RNA_def_function(srna, "normals_split_custom_set", "rna_Mesh_normals_split_custom_set");
   RNA_def_function_ui_description(func,
@@ -274,7 +278,7 @@ void RNA_api_mesh(StructRNA *srna)
                                   "(use zero-vectors to keep auto ones)");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   /* TODO: see how array size of 0 works, this shouldn't be used. */
-  parm = RNA_def_float_array(func, "normals", 1, NULL, -1.0f, 1.0f, "", "Normals", 0.0f, 0.0f);
+  parm = RNA_def_float_array(func, "normals", 1, nullptr, -1.0f, 1.0f, "", "Normals", 0.0f, 0.0f);
   RNA_def_property_multi_array(parm, 2, normals_array_dim);
   RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 
@@ -287,7 +291,7 @@ void RNA_api_mesh(StructRNA *srna)
       "(use zero-vectors to keep auto ones)");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   /* TODO: see how array size of 0 works, this shouldn't be used. */
-  parm = RNA_def_float_array(func, "normals", 1, NULL, -1.0f, 1.0f, "", "Normals", 0.0f, 0.0f);
+  parm = RNA_def_float_array(func, "normals", 1, nullptr, -1.0f, 1.0f, "", "Normals", 0.0f, 0.0f);
   RNA_def_property_multi_array(parm, 2, normals_array_dim);
   RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 
@@ -346,7 +350,7 @@ void RNA_api_mesh(StructRNA *srna)
 
   func = RNA_def_function(srna, "count_selected_items", "rna_Mesh_count_selected_items ");
   RNA_def_function_ui_description(func, "Return the number of selected items (vert, edge, face)");
-  parm = RNA_def_int_vector(func, "result", 3, NULL, 0, INT_MAX, "Result", NULL, 0, INT_MAX);
+  parm = RNA_def_int_vector(func, "result", 3, nullptr, 0, INT_MAX, "Result", nullptr, 0, INT_MAX);
   RNA_def_function_output(func, parm);
 }
 
