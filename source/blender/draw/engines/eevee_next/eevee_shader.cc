@@ -400,7 +400,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     frag_gen << "float nodetree_thickness()\n";
     frag_gen << "{\n";
     /* TODO(fclem): Better default. */
-    frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.1;\n");
+    frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.0;\n");
     frag_gen << "}\n\n";
 
     info.fragment_source_generated = frag_gen.str();
