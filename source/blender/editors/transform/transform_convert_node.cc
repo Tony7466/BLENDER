@@ -47,25 +47,17 @@ static void create_transform_data_for_node(TransData &td,
                                            bNode &node,
                                            const float dpi_fac)
 {
-  float locx, locy;
+  blender::float2 loc;
 
+  const blender::float2 node_offset = {node.offsetx, node.offsety};
   /* account for parents (nested nodes) */
-  if (node.parent) {
-    blender::bke::nodeToView(node.parent,
-                             node.locx + roundf(node.offsetx),
-                             node.locy + roundf(node.offsety),
-                             &locx,
-                             &locy);
-  }
-  else {
-    locx = node.locx + roundf(node.offsetx);
-    locy = node.locy + roundf(node.offsety);
-  }
+  loc = blender::bke::nodeToView(node.parent, blender::math::round(node_offset));
+  loc *= dpi_fac;
 
   /* use top-left corner as the transform origin for nodes */
   /* Weirdo - but the node system is a mix of free 2d elements and DPI sensitive UI. */
-  td2d.loc[0] = locx * dpi_fac;
-  td2d.loc[1] = locy * dpi_fac;
+  td2d.loc[0] = loc.x;
+  td2d.loc[1] = loc.y;
   td2d.loc[2] = 0.0f;
   td2d.loc2d = td2d.loc; /* current location */
 
@@ -243,25 +235,18 @@ static void flushTransNodes(TransInfo *t)
       TransData2D *td2d = &tc->data_2d[i];
       bNode *node = static_cast<bNode *>(td->extra);
 
-      float loc[2];
+      blender::float2 loc;
       add_v2_v2v2(loc, td2d->loc, offset);
 
       /* Weirdo - but the node system is a mix of free 2d elements and DPI sensitive UI. */
-      loc[0] /= dpi_fac;
-      loc[1] /= dpi_fac;
+      loc /= dpi_fac;
 
       /* account for parents (nested nodes) */
-      if (node->parent) {
-        blender::bke::nodeFromView(node->parent,
-                                   loc[0] - roundf(node->offsetx),
-                                   loc[1] - roundf(node->offsety),
-                                   &node->locx,
-                                   &node->locy);
-      }
-      else {
-        node->locx = loc[0] - roundf(node->offsetx);
-        node->locy = loc[1] - roundf(node->offsety);
-      }
+      blender::float2 offset = blender::bke::nodeFromView(node, {});
+      offset = blender::math::round(offset);
+      offset += loc;
+      node->locx = offset.x;
+      node->locy = offset.y;
     }
 
     /* handle intersection with noodles */
