@@ -1304,11 +1304,8 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
   const float frame_rate = (float)(ac.scene->r.frs_sec) / ac.scene->r.frs_sec_base;
   const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
   const float sampling_frequency = frame_rate * samples_per_frame;
-  /* Invert factor so 1 means perfectly smoothed. */
-  const float slider_cutoff_factor = 1 - slider_factor_get_and_remember(op);
-  /* Clamp cutoff frequency to Nyquist Frequency. */
-  const float cutoff_frequency = (sampling_frequency / 2) * slider_cutoff_factor;
-  RNA_float_set(op->ptr, "cutoff_frequency", cutoff_frequency);
+
+  const float cutoff_frequency = slider_factor_get_and_remember(op);
   const int blend_in_out = RNA_int_get(op->ptr, "blend_in_out");
 
   ED_anim_calculate_butterworth_coefficients(
@@ -1343,7 +1340,7 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   tGraphSliderOp *gso = op->customdata;
   gso->modal_update = btw_smooth_modal_update;
-  gso->factor_prop = RNA_struct_find_property(op->ptr, "cutoff_factor");
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "cutoff_frequency");
 
   const int filter_order = RNA_int_get(op->ptr, "filter_order");
   const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
@@ -1351,7 +1348,12 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   btw_smooth_allocate_operator_data(gso, filter_order, samples_per_frame);
   gso->free_operator_data = btw_smooth_free_operator_data;
 
+  const float frame_rate = (float)(gso->scene->r.frs_sec) / gso->scene->r.frs_sec_base;
+  const float sampling_frequency = frame_rate * samples_per_frame;
+  ED_slider_factor_bounds_set(gso->slider, 0, sampling_frequency / 2);
+  ED_slider_factor_set(gso->slider, 0);
   ED_slider_allow_overshoot_set(gso->slider, false, false);
+  ED_slider_unit_set(gso->slider, SLIDER_UNIT_FLOAT);
   common_draw_status_header(C, gso, "Butterworth Smooth");
 
   return invoke_result;
@@ -1447,17 +1449,6 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
                        "How much to blend to the smoothed curve",
                        0.0f,
                        1.0f);
-
-  PropertyRNA *prop = RNA_def_float_factor(ot->srna,
-                                           "cutoff_factor",
-                                           0.2f,
-                                           0,
-                                           1.0f,
-                                           "Cutoff Factor",
-                                           "Not exposed to the user, should only be used in modal",
-                                           0.0f,
-                                           1.0f);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_float(ot->srna,
                 "cutoff_frequency",

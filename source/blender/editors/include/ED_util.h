@@ -74,6 +74,8 @@ void ED_region_image_metadata_draw(
 
 struct tSlider;
 
+typedef enum SliderUnit { SLIDER_UNIT_PERCENT = 0, SLIDER_UNIT_FLOAT = 1 } SliderUnit;
+
 struct tSlider *ED_slider_create(struct bContext *C);
 /**
  * For modal operations so the percentage doesn't pop on the first mouse movement.
@@ -105,6 +107,8 @@ void ED_slider_factor_bounds_set(struct tSlider *slider, float lower_bound, floa
 
 bool ED_slider_allow_increments_get(struct tSlider *slider);
 void ED_slider_allow_increments_set(struct tSlider *slider, bool value);
+
+void ED_slider_unit_set(struct tSlider *slider, SliderUnit unit);
 
 /* ************** XXX OLD CRUFT WARNING ************* */
 

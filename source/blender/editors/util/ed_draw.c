@@ -79,6 +79,9 @@ typedef struct tSlider {
   /** Range of the slider without overshoot. */
   float factor_bounds[2];
 
+  /* What unit to draw. */
+  SliderUnit slider_unit;
+
   /** Enable range beyond factor_bounds.
    * This is set by the code that uses the slider, as not all operations support
    * extrapolation. */
@@ -328,8 +331,6 @@ static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
     }
   }
 
-  char percentage_string[256];
-
   /* Draw handle indicating current factor. */
   const rctf handle_rect = {
       .xmin = handle_pos_x - (line_width),
@@ -339,13 +340,22 @@ static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
   };
 
   UI_draw_roundbox_3ub_alpha(&handle_rect, true, 1, color_handle, 255);
-  SNPRINTF(percentage_string, "%.0f%%", slider->factor * 100);
 
-  /* Draw percentage string. */
+  char factor_string[256];
+  switch (slider->slider_unit) {
+    case SLIDER_UNIT_PERCENT:
+      SNPRINTF(factor_string, "%.0f%%", slider->factor * 100);
+      break;
+    case SLIDER_UNIT_FLOAT:
+      SNPRINTF(factor_string, "%.2f", slider->factor);
+      break;
+  }
+
+  /* Draw factor string. */
   float percentage_string_pixel_size[2];
   BLF_width_and_height(fontid,
-                       percentage_string,
-                       sizeof(percentage_string),
+                       factor_string,
+                       sizeof(factor_string),
                        &percentage_string_pixel_size[0],
                        &percentage_string_pixel_size[1]);
 
@@ -353,12 +363,14 @@ static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
                main_line_rect.xmin - 24.0 * U.pixelsize - percentage_string_pixel_size[0] / 2,
                (region->winy / 2) - percentage_string_pixel_size[1] / 2,
                0.0f);
-  BLF_draw(fontid, percentage_string, sizeof(percentage_string));
+  BLF_draw(fontid, factor_string, sizeof(factor_string));
 }
 
 static void slider_update_factor(tSlider *slider, const wmEvent *event)
 {
-  const float factor_delta = (event->xy[0] - slider->last_cursor[0]) / SLIDE_PIXEL_DISTANCE;
+  const float slider_range = slider->factor_bounds[1] - slider->factor_bounds[0];
+  const float factor_delta = (event->xy[0] - slider->last_cursor[0]) /
+                             (SLIDE_PIXEL_DISTANCE / slider_range);
   /* Reduced factor delta in precision mode (shift held). */
   slider->raw_factor += slider->precision ? (factor_delta / 8) : factor_delta;
   slider->factor = slider->raw_factor;
@@ -395,6 +407,8 @@ tSlider *ED_slider_create(bContext *C)
 
   slider->factor_bounds[0] = 0;
   slider->factor_bounds[1] = 1;
+
+  slider->slider_unit = SLIDER_UNIT_PERCENT;
 
   /* Set initial factor. */
   slider->raw_factor = 0.5f;
@@ -552,6 +566,11 @@ void ED_slider_factor_bounds_set(tSlider *slider,
 {
   slider->factor_bounds[0] = factor_bound_lower;
   slider->factor_bounds[1] = factor_bound_upper;
+}
+
+void ED_slider_unit_set(tSlider *slider, SliderUnit unit)
+{
+  slider->slider_unit = unit;
 }
 
 /** \} */
