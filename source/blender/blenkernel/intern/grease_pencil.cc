@@ -545,10 +545,44 @@ Layer &LayerGroup::add_layer(Layer *layer)
   return *layer;
 }
 
+Layer &LayerGroup::add_layer_before(Layer *layer, Layer *link)
+{
+  BLI_assert(layer != nullptr && link != nullptr);
+  BLI_insertlinkbefore(&this->children,
+                       reinterpret_cast<GreasePencilLayerTreeNode *>(link),
+                       reinterpret_cast<GreasePencilLayerTreeNode *>(layer));
+  layer->base.parent = reinterpret_cast<GreasePencilLayerTreeGroup *>(this);
+  this->tag_nodes_cache_dirty();
+  return *layer;
+}
+
+Layer &LayerGroup::add_layer_after(Layer *layer, Layer *link)
+{
+  BLI_assert(layer != nullptr && link != nullptr);
+  BLI_insertlinkafter(&this->children,
+                      reinterpret_cast<GreasePencilLayerTreeNode *>(link),
+                      reinterpret_cast<GreasePencilLayerTreeNode *>(layer));
+  layer->base.parent = reinterpret_cast<GreasePencilLayerTreeGroup *>(this);
+  this->tag_nodes_cache_dirty();
+  return *layer;
+}
+
 Layer &LayerGroup::add_layer(StringRefNull name)
 {
   Layer *new_layer = MEM_new<Layer>(__func__, name);
   return this->add_layer(new_layer);
+}
+
+Layer &LayerGroup::add_layer_before(StringRefNull name, Layer *link)
+{
+  Layer *new_layer = MEM_new<Layer>(__func__, name);
+  return this->add_layer_before(new_layer, link);
+}
+
+Layer &LayerGroup::add_layer_after(StringRefNull name, Layer *link)
+{
+  Layer *new_layer = MEM_new<Layer>(__func__, name);
+  return this->add_layer_after(new_layer, link);
 }
 
 int64_t LayerGroup::num_direct_nodes() const

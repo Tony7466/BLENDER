@@ -276,6 +276,18 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   Layer &add_layer(StringRefNull name);
 
   /**
+   * Adds a layer before \a link and returns it. 
+   */
+  Layer &add_layer_before(Layer *layer, Layer *link);
+  Layer &add_layer_before(StringRefNull name, Layer *link);
+
+  /**
+   * Adds a layer after \a link and returns it. 
+   */
+  Layer &add_layer_after(Layer *layer, Layer *link);
+  Layer &add_layer_after(StringRefNull name, Layer *link);
+
+  /**
    * Returns the number of direct nodes in this group.
    */
   int64_t num_direct_nodes() const;
