@@ -1301,6 +1301,7 @@ struct InsertBNodeParams {
   Map<const bNodeSocket *, lf::OutputSocket *> &usage_by_socket;
   OrSocketUsagesCache &or_socket_usages_cache;
   Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> &inputs_to_link_later;
+  Map<const bNodeSocket *, lf::InputSocket *> &attribute_set_propagation_map;
 };
 
 struct ZoneBuildInfo {
@@ -1334,10 +1335,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes_;
   const bke::DataTypeConversions *conversions_;
 
-  /**
-   * Maps from output geometry sockets to corresponding attribute set inputs.
-   */
-  Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map_;
   /**
    * Boolean inputs that tell a node if some socket (of the same or another node) is used. If
    * this socket is in a link-cycle, its input can become a constant true.
@@ -1415,12 +1412,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       }
       Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
+      Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
       InsertBNodeParams insert_params{*root_lf_graph_,
                                       root_input_socket_map_,
                                       root_output_socket_map_,
                                       usage_by_socket,
                                       or_socket_usages_cache,
-                                      inputs_to_link_later};
+                                      inputs_to_link_later,
+                                      attribute_set_propagation_map};
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
@@ -1541,13 +1540,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     OrSocketUsagesCache or_socket_usages_cache;
     Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
     Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
+    Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
 
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
                                     zone_info.output_socket_map,
                                     usage_by_socket,
                                     or_socket_usages_cache,
-                                    inputs_to_link_later};
+                                    inputs_to_link_later,
+                                    attribute_set_propagation_map};
 
     lf::FunctionNode *lf_simulation_input = nullptr;
     if (zone.input_node) {
@@ -2046,7 +2047,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                        [bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
           lf::InputSocket &lf_input = lf_node.input(lf_input_index);
-          attribute_set_propagation_map_.add(bsocket, &lf_input);
+          insert_params.attribute_set_propagation_map.add(bsocket, &lf_input);
         }
       }
     }
@@ -2181,7 +2182,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         const int lf_input_index = mapping_->lf_input_index_for_attribute_propagation_to_output
                                        [bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
-          attribute_set_propagation_map_.add(bsocket, &lf_node.input(lf_input_index));
+          insert_params.attribute_set_propagation_map.add(bsocket, &lf_node.input(lf_input_index));
         }
       }
     }
