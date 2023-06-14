@@ -3327,15 +3327,19 @@ static bool realtime_compositor_is_in_use(const bContext &context)
     return false;
   }
 
-  const Main *main = CTX_data_main(&context);
-  LISTBASE_FOREACH (const bScreen *, screen, &main->screens) {
-    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
-      LISTBASE_FOREACH (const SpaceLink *, space, &area->spacedata) {
-        if (space->spacetype != SPACE_VIEW3D) {
-          continue;
-        }
+  if (U.experimental.use_full_frame_compositor &&
+      scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
+  {
+    return true;
+  }
 
-        const View3D &view_3d = *reinterpret_cast<const View3D *>(space);
+  wmWindowManager *wm = CTX_wm_manager(&context);
+  LISTBASE_FOREACH (const wmWindow *, win, &wm->windows) {
+    const bScreen *screen = WM_window_get_active_screen(win);
+    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+      const SpaceLink &space = *static_cast<const SpaceLink *>(area->spacedata.first);
+      if (space.spacetype == SPACE_VIEW3D) {
+        const View3D &view_3d = reinterpret_cast<const View3D &>(space);
 
         if (view_3d.shading.use_compositor == V3D_SHADING_USE_COMPOSITOR_DISABLED) {
           continue;
