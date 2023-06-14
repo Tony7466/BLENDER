@@ -1024,6 +1024,9 @@ void gather_attributes(const AttributeAccessor src_attributes,
     }
     bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
         id, domain, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
     array_utils::gather(src.varray, selection, dst.span);
     dst.finish();
     return true;
