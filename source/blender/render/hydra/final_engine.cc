@@ -67,7 +67,7 @@ void FinalEngine::update_render_result()
     if (it_image == render_images_.end()) {
       continue;
     }
-    memcpy(pass->rect,
+    memcpy(pass->buffer.data,
            it_image->second.data(),
            sizeof(float) * pass->rectx * pass->recty * pass->channels);
   }
