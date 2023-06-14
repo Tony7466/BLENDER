@@ -133,8 +133,14 @@ static void button2d_draw_intern(const bContext *C,
   const int draw_options = RNA_enum_get(gz->ptr, "draw_options");
   if (button->is_init == false) {
     button->is_init = true;
-    PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
     button->icon = -1;
+    
+    PropertyRNA *icon_value = RNA_struct_find_property(gz->ptr, "icon_value");
+    if (RNA_property_is_set(gz->ptr, icon_value)) {
+      button->icon = RNA_property_int_get(gz->ptr, icon_value);
+      return;
+    }
+    PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
     if (RNA_property_is_set(gz->ptr, prop)) {
       button->icon = RNA_property_enum_get(gz->ptr, prop);
     }
@@ -408,6 +414,8 @@ static void GIZMO_GT_button_2d(wmGizmoType *gzt)
   PropertyRNA *prop;
 
   RNA_def_enum_flag(gzt->srna, "draw_options", rna_enum_draw_options, 0, "Draw Options", "");
+
+  RNA_def_property(gzt->srna, "icon_value", PROP_INT, PROP_NONE);
 
   prop = RNA_def_property(gzt->srna, "icon", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_icon_items);
