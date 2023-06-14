@@ -1308,6 +1308,7 @@ struct InsertBNodeParams {
   OrSocketUsagesCache &or_socket_usages_cache;
   Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> &inputs_to_link_later;
   Map<const bNodeSocket *, lf::InputSocket *> &attribute_set_propagation_map;
+  Map<const bNodeSocket *, lf::Node *> &multi_input_socket_nodes;
 };
 
 struct ZoneBuildInfo {
@@ -1338,7 +1339,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   GeometryNodeLazyFunctionGraphMapping *mapping_;
   MultiValueMap<const bNodeSocket *, lf::InputSocket *> root_input_socket_map_;
   Map<const bNodeSocket *, lf::OutputSocket *> root_output_socket_map_;
-  Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes_;
   const bke::DataTypeConversions *conversions_;
 
   /**
@@ -1419,13 +1419,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
       Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
+      Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
       InsertBNodeParams insert_params{*root_lf_graph_,
                                       root_input_socket_map_,
                                       root_output_socket_map_,
                                       usage_by_socket,
                                       or_socket_usages_cache,
                                       inputs_to_link_later,
-                                      attribute_set_propagation_map};
+                                      attribute_set_propagation_map,
+                                      multi_input_socket_nodes};
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
@@ -1547,6 +1549,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
     Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
     Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
+    Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
 
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
@@ -1554,7 +1557,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                     usage_by_socket,
                                     or_socket_usages_cache,
                                     inputs_to_link_later,
-                                    attribute_set_propagation_map};
+                                    attribute_set_propagation_map,
+                                    multi_input_socket_nodes};
 
     lf::FunctionNode *lf_simulation_input = nullptr;
     if (zone.input_node) {
@@ -2268,7 +2272,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             *multi_input_lazy_function);
         lf_graph_info_->functions.append(std::move(multi_input_lazy_function));
         insert_params.lf_graph.add_link(lf_multi_input_node.output(0), lf_socket);
-        multi_input_socket_nodes_.add_new(bsocket, &lf_multi_input_node);
+        insert_params.multi_input_socket_nodes.add_new(bsocket, &lf_multi_input_node);
         for (lf::InputSocket *lf_multi_input_socket : lf_multi_input_node.inputs()) {
           mapping_->bsockets_by_lf_socket_map.add(lf_multi_input_socket, bsocket);
           const void *default_value = lf_multi_input_socket->type().default_value();
@@ -2605,7 +2609,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
         else {
           for (lf::InputSocket *to_lf_socket : lf_link_targets) {
-            /* TODO: Handle multi-input in zone. */
             insert_params.lf_graph.add_link(*converted_from_lf_socket, *to_lf_socket);
           }
         }
@@ -2669,8 +2672,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       }
       else {
-        lf::Node *multi_input_lf_node = multi_input_socket_nodes_.lookup_default(&to_bsocket,
-                                                                                 nullptr);
+        /* TODO: Handle multi-input in zone. */
+        lf::Node *multi_input_lf_node = insert_params.multi_input_socket_nodes.lookup_default(
+            &to_bsocket, nullptr);
         if (multi_input_lf_node == nullptr) {
           return {};
         }
