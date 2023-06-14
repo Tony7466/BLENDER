@@ -515,7 +515,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     if (cropx_max == (thumb_x_end - timeline_frame)) {
       cropx_max = cropx_max + 1;
     }
-    BLI_rcti_init(&crop, int(cropx_min), int(cropx_max), 0, int(image_height)-1);
+    BLI_rcti_init(&crop, int(cropx_min), int(cropx_max), 0, int(image_height) - 1);
 
     /* Get the image. */
     ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
