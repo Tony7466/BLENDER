@@ -1411,13 +1411,13 @@ static int btw_smooth_exec(bContext *C, wmOperator *op)
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return OPERATOR_CANCELLED;
   }
-  const float factor = RNA_float_get(op->ptr, "factor");
+  const float blend = RNA_float_get(op->ptr, "blend");
   const float cutoff_frequency = RNA_float_get(op->ptr, "cutoff_frequency");
   const int filter_order = RNA_int_get(op->ptr, "filter_order");
   const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
   const int blend_in_out = RNA_int_get(op->ptr, "blend_in_out");
   btw_smooth_graph_keys(
-      &ac, factor, blend_in_out, cutoff_frequency, filter_order, samples_per_frame);
+      &ac, blend, blend_in_out, cutoff_frequency, filter_order, samples_per_frame);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1440,16 +1440,6 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_X;
-
-  RNA_def_float_factor(ot->srna,
-                       "factor",
-                       1.0f,
-                       0,
-                       FLT_MAX,
-                       "Factor",
-                       "How much to blend to the smoothed curve",
-                       0.0f,
-                       1.0f);
 
   RNA_def_float(ot->srna,
                 "cutoff_frequency",
@@ -1480,6 +1470,16 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
               "How many samples to calculate per frame, helps with subframe data",
               1,
               16);
+
+  RNA_def_float_factor(ot->srna,
+                       "blend",
+                       1.0f,
+                       0,
+                       FLT_MAX,
+                       "Blend",
+                       "How much to blend to the smoothed curve",
+                       0.0f,
+                       1.0f);
 
   RNA_def_int(ot->srna,
               "blend_in_out",
