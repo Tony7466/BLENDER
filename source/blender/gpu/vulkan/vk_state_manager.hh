@@ -19,6 +19,7 @@ class VKTexture;
 class VKUniformBuffer;
 class VKVertexBuffer;
 class VKStorageBuffer;
+class VKIndexBuffer;
 
 class VKStateManager : public StateManager {
   /* Dummy sampler for now. */
@@ -40,6 +41,7 @@ class VKStateManager : public StateManager {
   struct StorageBufferBinding {
     VKStorageBuffer *storage_buffer = nullptr;
     VKVertexBuffer *vertex_buffer = nullptr;
+    VKIndexBuffer *index_buffer = nullptr;
   };
   Array<ImageBinding> image_bindings_;
   Array<TextureBinding> texture_bindings_;
@@ -72,9 +74,11 @@ class VKStateManager : public StateManager {
   void texel_buffer_unbind(VKVertexBuffer *vertex_buffer);
 
   void storage_buffer_bind(VKStorageBuffer *storage_buffer, int slot);
-  void storage_buffer_unbind(VKStorageBuffer *storage_buffer);
   void storage_buffer_bind(VKVertexBuffer *vertex_buffer, int slot);
+  void storage_buffer_bind(VKIndexBuffer *index_buffer, int slot);
+  void storage_buffer_unbind(VKStorageBuffer *storage_buffer);
   void storage_buffer_unbind(VKVertexBuffer *vertex_buffer);
+  void storage_buffer_unbind(VKIndexBuffer *index_buffer);
 
   void texture_unpack_row_length_set(uint len) override;
 

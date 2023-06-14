@@ -227,6 +227,13 @@ void VKDevice::unbind(VKVertexBuffer &vertex_buffer) const
   }
 }
 
+void VKDevice::unbind(VKIndexBuffer &index_buffer) const
+{
+  for (VKContext &context : contexts_) {
+    context.state_manager_get().storage_buffer_unbind(&index_buffer);
+  }
+}
+
 /** \} */
 
 }  // namespace blender::gpu

@@ -68,7 +68,6 @@ class VKContext : public Context, NonCopyable {
     return command_buffer_;
   }
 
-  // const VKStateManager &state_manager_get() const;
   VKStateManager &state_manager_get() const;
 };
 

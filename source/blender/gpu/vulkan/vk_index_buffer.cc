@@ -9,8 +9,14 @@
 #include "vk_index_buffer.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
+#include "vk_state_manager.hh"
 
 namespace blender::gpu {
+
+VKIndexBuffer::~VKIndexBuffer()
+{
+  VKBackend::get().device_get().unbind(*this);
+}
 
 void VKIndexBuffer::ensure_updated()
 {
@@ -41,16 +47,22 @@ void VKIndexBuffer::bind(VKContext &context)
 
 void VKIndexBuffer::bind_as_ssbo(uint binding)
 {
+  VKContext::get()->state_manager_get().storage_buffer_bind(this, binding);
+}
+
+void VKIndexBuffer::bind(uint binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
+{
+  BLI_assert(bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
   ensure_updated();
 
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
   const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(
-          shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, binding);
-  BLI_assert_msg(location, "Locations to SSBOs should always exist.");
-  shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, *location);
+      shader_interface.descriptor_set_location(bind_type, binding);
+  if (location) {
+    shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, *location);
+  }
 }
 
 void VKIndexBuffer::read(uint32_t *data) const

@@ -124,12 +124,6 @@ void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {
 /* -------------------------------------------------------------------- */
 /** \name State manager
  * \{ */
-#if 0
-const VKStateManager &VKContext::state_manager_get() const
-{
-  return *static_cast<const VKStateManager *>(state_manager);
-}
-#endif
 
 VKStateManager &VKContext::state_manager_get() const
 {

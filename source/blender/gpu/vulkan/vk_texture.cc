@@ -25,8 +25,10 @@ namespace blender::gpu {
 
 VKTexture::~VKTexture()
 {
+  const VKDevice &device = VKBackend::get().device_get();
+  device.unbind(*this);
+
   if (is_allocated()) {
-    const VKDevice &device = VKBackend::get().device_get();
     vmaDestroyImage(device.mem_allocator_get(), vk_image_, allocation_);
   }
 }

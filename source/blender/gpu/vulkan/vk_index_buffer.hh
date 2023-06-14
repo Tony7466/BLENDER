@@ -18,10 +18,12 @@ class VKIndexBuffer : public IndexBuf {
   VKBuffer buffer_;
 
  public:
+  ~VKIndexBuffer();
   void upload_data() override;
 
   void bind_as_ssbo(uint binding) override;
   void bind(VKContext &context);
+  void bind(uint binding, shader::ShaderCreateInfo::Resource::BindType bind_type);
 
   void read(uint32_t *data) const override;
 

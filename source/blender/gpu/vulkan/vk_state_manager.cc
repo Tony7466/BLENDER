@@ -8,6 +8,7 @@
 
 #include "vk_state_manager.hh"
 #include "vk_context.hh"
+#include "vk_index_buffer.hh"
 #include "vk_pipeline.hh"
 #include "vk_shader.hh"
 #include "vk_storage_buffer.hh"
@@ -76,6 +77,10 @@ void VKStateManager::apply_bindings()
       }
       else if (storage_buffer_bindings_[binding].vertex_buffer) {
         storage_buffer_bindings_[binding].vertex_buffer->bind(
+            binding, shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
+      }
+      else if (storage_buffer_bindings_[binding].index_buffer) {
+        storage_buffer_bindings_[binding].index_buffer->bind(
             binding, shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
       }
     }
@@ -181,12 +186,21 @@ void VKStateManager::storage_buffer_bind(VKStorageBuffer *storage_buffer, int sl
 {
   storage_buffer_bindings_[slot].storage_buffer = storage_buffer;
   storage_buffer_bindings_[slot].vertex_buffer = nullptr;
+  storage_buffer_bindings_[slot].index_buffer = nullptr;
 }
 
 void VKStateManager::storage_buffer_bind(VKVertexBuffer *vertex_buffer, int slot)
 {
   storage_buffer_bindings_[slot].storage_buffer = nullptr;
   storage_buffer_bindings_[slot].vertex_buffer = vertex_buffer;
+  storage_buffer_bindings_[slot].index_buffer = nullptr;
+}
+
+void VKStateManager::storage_buffer_bind(VKIndexBuffer *index_buffer, int slot)
+{
+  storage_buffer_bindings_[slot].storage_buffer = nullptr;
+  storage_buffer_bindings_[slot].vertex_buffer = nullptr;
+  storage_buffer_bindings_[slot].index_buffer = index_buffer;
 }
 
 void VKStateManager::storage_buffer_unbind(VKStorageBuffer *storage_buffer)
@@ -203,6 +217,15 @@ void VKStateManager::storage_buffer_unbind(VKVertexBuffer *vertex_buffer)
   for (StorageBufferBinding &binding : storage_buffer_bindings_) {
     if (binding.vertex_buffer == vertex_buffer) {
       binding.vertex_buffer = nullptr;
+    }
+  }
+}
+
+void VKStateManager::storage_buffer_unbind(VKIndexBuffer *index_buffer)
+{
+  for (StorageBufferBinding &binding : storage_buffer_bindings_) {
+    if (binding.index_buffer == index_buffer) {
+      binding.index_buffer = nullptr;
     }
   }
 }

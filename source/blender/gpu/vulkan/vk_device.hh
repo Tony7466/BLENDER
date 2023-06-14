@@ -153,6 +153,11 @@ class VKDevice : public NonCopyable {
    */
   void unbind(VKVertexBuffer &vertex_buffer) const;
 
+  /**
+   * Unbind given index_buffer from registered contexts.
+   */
+  void unbind(VKIndexBuffer &index_buffer) const;
+
   /** \} */
 
  private:
