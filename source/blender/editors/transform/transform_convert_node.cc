@@ -47,11 +47,9 @@ static void create_transform_data_for_node(TransData &td,
                                            bNode &node,
                                            const float dpi_fac)
 {
-  blender::float2 loc;
-
-  const blender::float2 node_offset = {node.offsetx, node.offsety};
   /* account for parents (nested nodes) */
-  loc = blender::bke::nodeToView(node.parent, blender::math::round(node_offset));
+  const blender::float2 node_offset = {node.offsetx, node.offsety};
+  blender::float2 loc = blender::bke::nodeToView(&node, blender::math::round(node_offset));
   loc *= dpi_fac;
 
   /* use top-left corner as the transform origin for nodes */
@@ -242,11 +240,11 @@ static void flushTransNodes(TransInfo *t)
       loc /= dpi_fac;
 
       /* account for parents (nested nodes) */
-      blender::float2 offset = blender::bke::nodeFromView(node, {});
-      offset = blender::math::round(offset);
-      offset += loc;
-      node->locx = offset.x;
-      node->locy = offset.y;
+      const blender::float2 node_offset = {node->offsetx, node->offsety};
+      const blender::float2 new_node_location = loc - blender::math::round(node_offset);
+      const blender::float2 location = blender::bke::nodeFromView(node->parent, new_node_location);
+      node->locx = location.x;
+      node->locy = location.y;
     }
 
     /* handle intersection with noodles */

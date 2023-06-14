@@ -314,8 +314,8 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 
 float2 node_to_view(const bNode &node, const float2 &co)
 {
-  const float2 result = bke::nodeToView(&node, co);
-  return result * UI_SCALE_FAC;
+  const float2 node_location = bke::nodeToView(&node, co);
+  return node_location * UI_SCALE_FAC;
 }
 
 void node_to_updated_rect(const bNode &node, rctf &r_rect)
@@ -331,9 +331,9 @@ void node_to_updated_rect(const bNode &node, rctf &r_rect)
 
 float2 node_from_view(const bNode &node, const float2 &co)
 {
-  const float2 co_scaled = co / UI_SCALE_FAC;
-  const float2 result = bke::nodeFromView(&node, co_scaled);
-  return result;
+  const float2 node_location = co / UI_SCALE_FAC;
+  return bke::nodeFromView(&node, node_location);
+  ;
 }
 
 /**
