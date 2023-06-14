@@ -53,8 +53,8 @@ struct SeqDropCoords {
   float start_frame, channel;
   int strip_len, channel_len;
   float playback_rate;
-  bool in_use;
-  bool has_read_mouse_pos;
+  bool in_use = false;
+  bool has_read_mouse_pos = false;
   bool is_intersecting;
   bool use_snapping;
   float snap_point_x;
@@ -66,14 +66,7 @@ struct SeqDropCoords {
  * preloading data on drag start.
  * Therefore we will for now use a global variable for this.
  */
-static constexpr SeqDropCoords DefaultSeqDropCoords()
-{
-  SeqDropCoords drop_cords{};
-  drop_cords.in_use = false;
-  drop_cords.has_read_mouse_pos = false;
-  return drop_cords;
-}
-static SeqDropCoords g_drop_coords = DefaultSeqDropCoords();
+static SeqDropCoords g_drop_coords{};
 
 static void generic_poll_operations(const wmEvent *event, uint8_t type)
 {
