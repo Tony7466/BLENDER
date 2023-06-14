@@ -191,16 +191,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (domain == ATTR_DOMAIN_INSTANCE) {
     if (geometry_set.has_instances()) {
       GeometryComponent &component = geometry_set.get_component_for_write(
-          GEO_COMPONENT_TYPE_INSTANCES);
+          bke::GEO_COMPONENT_TYPE_INSTANCES);
       bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
     }
   }
   else {
-    static const Array<GeometryComponentType> types = {
-        GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD, GEO_COMPONENT_TYPE_CURVE};
+    static const Array<bke::GeometryComponentType> types = {bke::GEO_COMPONENT_TYPE_MESH,
+                                                            bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                            bke::GEO_COMPONENT_TYPE_CURVE};
 
     geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-      for (const GeometryComponentType type : types) {
+      for (const bke::GeometryComponentType type : types) {
         if (geometry_set.has(type)) {
           GeometryComponent &component = geometry_set.get_component_for_write(type);
           bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);

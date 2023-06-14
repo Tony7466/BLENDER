@@ -773,15 +773,16 @@ class LazyFunctionForViewerNode : public LazyFunction {
       if (domain == ATTR_DOMAIN_INSTANCE) {
         if (geometry.has_instances()) {
           GeometryComponent &component = geometry.get_component_for_write(
-              GEO_COMPONENT_TYPE_INSTANCES);
+              bke::GEO_COMPONENT_TYPE_INSTANCES);
           bke::try_capture_field_on_geometry(
               component, viewer_attribute_name, ATTR_DOMAIN_INSTANCE, field);
         }
       }
       else {
         geometry.modify_geometry_sets([&](GeometrySet &geometry) {
-          for (const GeometryComponentType type :
-               {GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD, GEO_COMPONENT_TYPE_CURVE})
+          for (const GeometryComponentType type : {bke::GEO_COMPONENT_TYPE_MESH,
+                                                   bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                   bke::GEO_COMPONENT_TYPE_CURVE})
           {
             if (geometry.has(type)) {
               GeometryComponent &component = geometry.get_component_for_write(type);

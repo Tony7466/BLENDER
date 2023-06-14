@@ -754,6 +754,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
                                               const bool build_shapekey_layers,
                                               ReportList *reports)
 {
+  using namespace blender;
   Mesh *me = ob_eval->runtime.data_orig ? reinterpret_cast<Mesh *>(ob_eval->runtime.data_orig) :
                                           reinterpret_cast<Mesh *>(ob_eval->data);
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md_eval->type));
@@ -954,6 +955,7 @@ static void remove_invalid_attribute_strings(Mesh &mesh)
 static bool modifier_apply_obdata(
     ReportList *reports, Depsgraph *depsgraph, Scene *scene, Object *ob, ModifierData *md_eval)
 {
+  using namespace blender;
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_eval->type);
 
   if (mti->isDisabled && mti->isDisabled(scene, md_eval, false)) {

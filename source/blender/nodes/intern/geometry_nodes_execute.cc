@@ -345,7 +345,7 @@ struct OutputAttributeInfo {
 };
 
 struct OutputAttributeToStore {
-  GeometryComponentType component_type;
+  bke::GeometryComponentType component_type;
   eAttrDomain domain;
   StringRefNull name;
   GMutableSpan data;
@@ -403,10 +403,10 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
     const MultiValueMap<eAttrDomain, OutputAttributeInfo> &outputs_by_domain)
 {
   Vector<OutputAttributeToStore> attributes_to_store;
-  for (const GeometryComponentType component_type : {GEO_COMPONENT_TYPE_MESH,
-                                                     GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                     GEO_COMPONENT_TYPE_CURVE,
-                                                     GEO_COMPONENT_TYPE_INSTANCES})
+  for (const bke::GeometryComponentType component_type : {bke::GEO_COMPONENT_TYPE_MESH,
+                                                          bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                          bke::GEO_COMPONENT_TYPE_CURVE,
+                                                          bke::GEO_COMPONENT_TYPE_INSTANCES})
   {
     if (!geometry.has(component_type)) {
       continue;
@@ -442,7 +442,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
 }
 
 static void store_computed_output_attributes(
-    GeometrySet &geometry, const Span<OutputAttributeToStore> attributes_to_store)
+    bke::GeometrySet &geometry, const Span<OutputAttributeToStore> attributes_to_store)
 {
   for (const OutputAttributeToStore &store : attributes_to_store) {
     bke::GeometryComponent &component = geometry.get_component_for_write(store.component_type);
@@ -497,7 +497,7 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
-GeometrySet execute_geometry_nodes_on_geometry(
+bke::GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
     const IDProperty *properties,
     const ComputeContext &base_compute_context,

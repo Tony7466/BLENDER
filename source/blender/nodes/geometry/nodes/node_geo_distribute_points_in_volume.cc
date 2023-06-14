@@ -28,7 +28,7 @@ NODE_STORAGE_FUNCS(NodeGeometryDistributePointsInVolume)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Volume")
-      .supported_type(GEO_COMPONENT_TYPE_VOLUME)
+      .supported_type(bke::GEO_COMPONENT_TYPE_VOLUME)
       .translation_context(BLT_I18NCONTEXT_ID_ID);
   b.add_input<decl::Float>("Density")
       .default_value(1.0f)

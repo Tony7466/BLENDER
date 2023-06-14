@@ -31,7 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Volume")
       .translation_context(BLT_I18NCONTEXT_ID_ID)
-      .supported_type(GEO_COMPONENT_TYPE_VOLUME);
+      .supported_type(bke::GEO_COMPONENT_TYPE_VOLUME);
   b.add_input<decl::Float>("Voxel Size")
       .default_value(0.3f)
       .min(0.01f)

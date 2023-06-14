@@ -82,7 +82,7 @@ static void SPREADSHEET_OT_remove_row_filter_rule(wmOperatorType *ot)
 
 static int select_component_domain_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  GeometryComponentType component_type = static_cast<GeometryComponentType>(
+  blender::bke::GeometryComponentType component_type = blender::bke::GeometryComponentType(
       RNA_int_get(op->ptr, "component_type"));
   eAttrDomain attribute_domain = static_cast<eAttrDomain>(
       RNA_int_get(op->ptr, "attribute_domain_type"));
