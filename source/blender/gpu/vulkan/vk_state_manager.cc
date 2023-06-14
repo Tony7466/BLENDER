@@ -107,6 +107,7 @@ void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
   uniform_buffer_bindings_.unbind(resource);
   storage_buffer_bindings_.unbind(resource);
   image_bindings_.unbind(resource);
+  texture_bindings_.unbind(resource);
 }
 
 void VKStateManager::texel_buffer_bind(VKVertexBuffer &vertex_buffer, int slot)

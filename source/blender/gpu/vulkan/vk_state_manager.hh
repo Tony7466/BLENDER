@@ -12,7 +12,7 @@
 
 #include "BLI_array.hh"
 
-#include "vk_resource_bindable.hh"
+#include "vk_bindable_resource.hh"
 
 namespace blender::gpu {
 class VKTexture;

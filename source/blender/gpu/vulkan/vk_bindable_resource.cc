@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "vk_resource_bindable.hh"
+#include "vk_bindable_resource.hh"
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_device.hh"

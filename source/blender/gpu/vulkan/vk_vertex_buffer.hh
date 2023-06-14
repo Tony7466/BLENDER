@@ -10,8 +10,8 @@
 
 #include "gpu_vertex_buffer_private.hh"
 
+#include "vk_bindable_resource.hh"
 #include "vk_buffer.hh"
-#include "vk_resource_bindable.hh"
 
 namespace blender::gpu {
 

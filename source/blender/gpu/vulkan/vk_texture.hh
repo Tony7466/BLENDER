@@ -10,9 +10,9 @@
 
 #include "gpu_texture_private.hh"
 
+#include "vk_bindable_resource.hh"
 #include "vk_context.hh"
 #include "vk_image_view.hh"
-#include "vk_resource_bindable.hh"
 
 namespace blender::gpu {
 

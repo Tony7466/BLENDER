@@ -203,6 +203,7 @@ set(OPENGL_SRC
 set(VULKAN_SRC
   vulkan/vk_backend.cc
   vulkan/vk_batch.cc
+  vulkan/vk_bindable_resource.cc
   vulkan/vk_buffer.cc
   vulkan/vk_command_buffer.cc
   vulkan/vk_common.cc
@@ -225,7 +226,6 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
   vulkan/vk_query.cc
-  vulkan/vk_resource_bindable.cc
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
   vulkan/vk_shader.cc
@@ -240,6 +240,7 @@ set(VULKAN_SRC
 
   vulkan/vk_backend.hh
   vulkan/vk_batch.hh
+  vulkan/vk_bindable_resource.hh
   vulkan/vk_buffer.hh
   vulkan/vk_command_buffer.hh
   vulkan/vk_common.hh
@@ -262,7 +263,6 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
-  vulkan/vk_resource_bindable.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
   vulkan/vk_shader.hh
