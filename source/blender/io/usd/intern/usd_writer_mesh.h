@@ -46,7 +46,8 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   void write_uv_data(const Mesh *mesh,
                         pxr::UsdGeomMesh usd_mesh,
                         const bke::AttributeIDRef &attribute_id,
-                        const bke::AttributeMetaData &meta_data);
+                        const bke::AttributeMetaData &meta_data,
+                        const char* active_set_name);
   void write_color_data(const Mesh *mesh,
                         pxr::UsdGeomMesh usd_mesh,
                         const bke::AttributeIDRef &attribute_id,
