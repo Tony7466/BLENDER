@@ -33,7 +33,7 @@ void VKVertexBuffer::bind_as_texture(uint binding)
 {
   VKContext &context = *VKContext::get();
   VKStateManager &state_manager = context.state_manager_get();
-  state_manager.texel_buffer_bind(this, binding);
+  state_manager.texel_buffer_bind(*this, binding);
 }
 
 void VKVertexBuffer::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)

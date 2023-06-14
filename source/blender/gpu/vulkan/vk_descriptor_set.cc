@@ -96,7 +96,7 @@ void VKDescriptorSetTracker::image_bind(VKTexture &texture,
 
 void VKDescriptorSetTracker::bind(VKTexture &texture,
                                   const VKDescriptorSet::Location location,
-                                  VKSampler &sampler)
+                                  const VKSampler &sampler)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

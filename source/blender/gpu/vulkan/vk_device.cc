@@ -21,6 +21,7 @@ namespace blender::gpu {
 
 void VKDevice::deinit()
 {
+  sampler_.free();
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
   debugging_tools_.deinit(vk_instance_);
@@ -54,6 +55,8 @@ void VKDevice::init(void *ghost_context)
   init_debug_callbacks();
   init_memory_allocator();
   init_descriptor_pools();
+
+  sampler_.create();
 
   debug::object_label(device_get(), "LogicalDevice");
   debug::object_label(queue_get(), "GenericQueue");

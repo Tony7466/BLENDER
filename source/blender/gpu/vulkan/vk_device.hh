@@ -14,6 +14,7 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_sampler.hh"
 
 namespace blender::gpu {
 class VKBackend;
@@ -36,6 +37,9 @@ class VKDevice : public NonCopyable {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   uint32_t vk_queue_family_ = 0;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
+
+  /* Dummy sampler for now. */
+  VKSampler sampler_;
 
   /**
    * Available Contexts for this device.
@@ -110,6 +114,11 @@ class VKDevice : public NonCopyable {
   const debug::VKDebuggingTools &debugging_tools_get() const
   {
     return debugging_tools_;
+  }
+
+  const VKSampler &sampler_get() const
+  {
+    return sampler_;
   }
 
   bool is_initialized() const;

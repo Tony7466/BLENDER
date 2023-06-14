@@ -167,7 +167,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
   /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
-  void bind(VKTexture &texture, VKDescriptorSet::Location location, VKSampler &sampler);
+  void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
   /* Bind as uniform texel buffer. */
   void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
   /**
