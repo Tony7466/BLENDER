@@ -1300,7 +1300,7 @@ struct InsertBNodeParams {
   Map<const bNodeSocket *, lf::OutputSocket *> &output_socket_map;
   Map<const bNodeSocket *, lf::OutputSocket *> &usage_by_socket;
   OrSocketUsagesCache &or_socket_usages_cache;
-  Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
+  Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> &inputs_to_link_later;
 };
 
 struct ZoneBuildInfo {
@@ -1414,11 +1414,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           usage_by_socket.add(bsocket, &lf_output_usage_node.output(bsocket->index()));
         }
       }
+      Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
       InsertBNodeParams insert_params{*root_lf_graph_,
                                       root_input_socket_map_,
                                       root_output_socket_map_,
                                       usage_by_socket,
-                                      or_socket_usages_cache};
+                                      or_socket_usages_cache,
+                                      inputs_to_link_later};
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
@@ -1538,12 +1540,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     OrSocketUsagesCache or_socket_usages_cache;
     Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
+    Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
 
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
                                     zone_info.output_socket_map,
                                     usage_by_socket,
-                                    or_socket_usages_cache};
+                                    or_socket_usages_cache,
+                                    inputs_to_link_later};
 
     lf::FunctionNode *lf_simulation_input = nullptr;
     if (zone.input_node) {
