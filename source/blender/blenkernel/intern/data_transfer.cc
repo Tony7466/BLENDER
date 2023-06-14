@@ -199,7 +199,7 @@ int BKE_object_data_transfer_dttype_to_cdtype(const int dtdata_type)
     case DT_TYPE_SEAM:
       return CD_FAKE_SEAM;
     case DT_TYPE_CREASE:
-      return CD_CREASE;
+      return CD_FAKE_CREASE;
     case DT_TYPE_BWEIGHT_EDGE:
       return CD_FAKE_BWEIGHT;
     case DT_TYPE_FREESTYLE_EDGE:
@@ -1170,7 +1170,7 @@ static bool data_transfer_layersmapping_generate(ListBase *r_map,
   return false;
 }
 
-void BKE_object_data_transfer_layout(struct Depsgraph *depsgraph,
+void BKE_object_data_transfer_layout(Depsgraph *depsgraph,
                                      Object *ob_src,
                                      Object *ob_dst,
                                      const int data_types,
@@ -1314,7 +1314,7 @@ void BKE_object_data_transfer_layout(struct Depsgraph *depsgraph,
   }
 }
 
-bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
+bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
                                  Object *ob_src,
                                  Object *ob_dst,
                                  Mesh *me_dst,
@@ -1809,7 +1809,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
 #undef DATAMAX
 }
 
-bool BKE_object_data_transfer_mesh(struct Depsgraph *depsgraph,
+bool BKE_object_data_transfer_mesh(Depsgraph *depsgraph,
                                    Object *ob_src,
                                    Object *ob_dst,
                                    const int data_types,
