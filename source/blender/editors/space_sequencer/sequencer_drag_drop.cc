@@ -170,7 +170,7 @@ static float update_overlay_strip_position_data(bContext *C, const int mval[2])
   float strip_len;
 
   if (coords->playback_rate != 0.0f) {
-    float scene_playback_rate = (float)scene->r.frs_sec / scene->r.frs_sec_base;
+    float scene_playback_rate = float(scene->r.frs_sec) / scene->r.frs_sec_base;
     strip_len = coords->strip_len / (coords->playback_rate / scene_playback_rate);
   }
   else {
@@ -478,7 +478,7 @@ static void draw_seq_in_view(bContext *C, wmWindow * /*win*/, wmDrag *drag, cons
     }
 
     if (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_DURATION) {
-      SNPRINTF(strip_duration_text, "%d", (int)(x2 - x1));
+      SNPRINTF(strip_duration_text, "%d", int(x2 - x1));
       text_array[len_text_arr++] = text_sep;
       text_array[len_text_arr++] = strip_duration_text;
     }
@@ -556,7 +556,7 @@ static void prefetch_data_fn(void *custom_data,
     short frs_sec;
     float frs_sec_base;
     if (IMB_anim_get_fps(anim, &frs_sec, &frs_sec_base, true)) {
-      g_drop_coords.playback_rate = (float)frs_sec / frs_sec_base;
+      g_drop_coords.playback_rate = float(frs_sec) / frs_sec_base;
     }
     else {
       g_drop_coords.playback_rate = 0;

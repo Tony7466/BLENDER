@@ -112,7 +112,7 @@ static void seq_get_thumb_image_dimensions(Sequence *seq,
   float image_height = seq->strip->stripdata->orig_height;
 
   /* Fix the dimensions to be max SEQ_RENDER_THUMB_SIZE (256) for x or y. */
-  float aspect_ratio = (float)image_width / image_height;
+  float aspect_ratio = image_width / image_height;
   if (image_width > image_height) {
     image_width = SEQ_RENDER_THUMB_SIZE;
     image_height = round_fl_to_int(image_width / aspect_ratio);
@@ -123,7 +123,7 @@ static void seq_get_thumb_image_dimensions(Sequence *seq,
   }
 
   /* Calculate thumb dimensions. */
-  aspect_ratio = ((float)image_width) / image_height;
+  aspect_ratio = image_width / image_height;
   float thumb_h_px = thumb_height / pixely;
   float thumb_width = aspect_ratio * thumb_h_px * pixelx;
 
@@ -341,7 +341,7 @@ static void last_displayed_thumbnails_list_cleanup(GSet *previously_displayed,
   GSetIterator gset_iter;
   BLI_gsetIterator_init(&gset_iter, previously_displayed);
   while (!BLI_gsetIterator_done(&gset_iter)) {
-    int frame = (float)POINTER_AS_INT(BLI_gsetIterator_getKey(&gset_iter));
+    int frame = float(POINTER_AS_INT(BLI_gsetIterator_getKey(&gset_iter)));
     BLI_gsetIterator_step(&gset_iter);
 
     if (frame > range_start && frame < range_end) {
@@ -382,7 +382,7 @@ static int sequencer_thumbnail_closest_guaranteed_frame_get(Scene *scene,
   /* Set of "guaranteed" thumbnails. */
   const int frame_index = timeline_frame - SEQ_time_left_handle_frame_get(scene, seq);
   const int frame_step = SEQ_render_thumbnails_guaranteed_set_frame_step_get(scene, seq);
-  const int relative_base_frame = round_fl_to_int(frame_index / (float)frame_step) * frame_step;
+  const int relative_base_frame = round_fl_to_int(frame_index / float(frame_step)) * frame_step;
   const int nearest_guaranted_absolute_frame = relative_base_frame +
                                                SEQ_time_left_handle_frame_get(scene, seq);
   return nearest_guaranted_absolute_frame;
@@ -515,7 +515,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     if (cropx_max == (thumb_x_end - timeline_frame)) {
       cropx_max = cropx_max + 1;
     }
-    BLI_rcti_init(&crop, (int)(cropx_min), (int)cropx_max, 0, (int)(image_height)-1);
+    BLI_rcti_init(&crop, int(cropx_min), int(cropx_max), 0, int(image_height)-1);
 
     /* Get the image. */
     ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);

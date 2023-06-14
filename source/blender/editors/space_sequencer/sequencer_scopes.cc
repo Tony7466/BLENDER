@@ -107,7 +107,7 @@ static void wform_put_border(uchar *tgt, int w, int h)
 
 static void wform_put_gridrow(uchar *tgt, float perc, int w, int h)
 {
-  tgt += (int)(perc / 100.0f * h) * w * 4;
+  tgt += int(perc / 100.0f * h) * w * 4;
 
   for (int i = 0; i < w * 2; i++) {
     tgt[0] = 255;
@@ -138,7 +138,7 @@ static ImBuf *make_waveform_view_from_ibuf_byte(ImBuf *ibuf)
   wform_put_border(tgt, w, h);
 
   for (x = 0; x < 256; x++) {
-    wtable[x] = (uchar)(pow(((float)x + 1) / 256, waveform_gamma) * 255);
+    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, waveform_gamma) * 255.0f);
   }
 
   for (y = 0; y < ibuf->y; y++) {
@@ -146,9 +146,9 @@ static ImBuf *make_waveform_view_from_ibuf_byte(ImBuf *ibuf)
 
     for (x = 0; x < ibuf->x; x++) {
       const uchar *rgb = src + 4 * (ibuf->x * y + x);
-      float v = (float)IMB_colormanagement_get_luminance_byte(rgb) / 255.0f;
+      float v = float(IMB_colormanagement_get_luminance_byte(rgb)) / 255.0f;
       uchar *p = tgt;
-      p += 4 * (w * ((int)(v * (h - 3)) + 1) + x + 1);
+      p += 4 * (w * (int(v * (h - 3)) + 1) + x + 1);
 
       scope_put_pixel(wtable, p);
       p += 4 * w;
@@ -178,7 +178,7 @@ static ImBuf *make_waveform_view_from_ibuf_float(ImBuf *ibuf)
   wform_put_grid(tgt, w, h);
 
   for (x = 0; x < 256; x++) {
-    wtable[x] = (uchar)(pow(((float)x + 1) / 256, waveform_gamma) * 255);
+    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, waveform_gamma) * 255.0f);
   }
 
   for (y = 0; y < ibuf->y; y++) {
@@ -191,7 +191,7 @@ static ImBuf *make_waveform_view_from_ibuf_float(ImBuf *ibuf)
 
       CLAMP(v, 0.0f, 1.0f);
 
-      p += 4 * (w * ((int)(v * (h - 3)) + 1) + x + 1);
+      p += 4 * (w * (int(v * (h - 3)) + 1) + x + 1);
 
       scope_put_pixel(wtable, p);
       p += 4 * w;
@@ -232,7 +232,7 @@ static ImBuf *make_sep_waveform_view_from_ibuf_byte(ImBuf *ibuf)
   wform_put_grid(tgt, w, h);
 
   for (x = 0; x < 256; x++) {
-    wtable[x] = (uchar)(pow(((float)x + 1) / 256, waveform_gamma) * 255);
+    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, waveform_gamma) * 255.0f);
   }
 
   for (y = 0; y < ibuf->y; y++) {
@@ -277,7 +277,7 @@ static ImBuf *make_sep_waveform_view_from_ibuf_float(ImBuf *ibuf)
   wform_put_grid(tgt, w, h);
 
   for (x = 0; x < 256; x++) {
-    wtable[x] = (uchar)(pow(((float)x + 1) / 256, waveform_gamma) * 255);
+    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, waveform_gamma) * 255.0f);
   }
 
   for (y = 0; y < ibuf->y; y++) {
@@ -292,7 +292,7 @@ static ImBuf *make_sep_waveform_view_from_ibuf_float(ImBuf *ibuf)
 
         CLAMP(v, 0.0f, 1.0f);
 
-        p += 4 * (w * ((int)(v * (h - 3)) + 1) + c * sw + x / 3 + 1);
+        p += 4 * (w * (int(v * (h - 3)) + 1) + c * sw + x / 3 + 1);
 
         scope_put_pixel_single(wtable, p, c);
         p += 4 * w;
@@ -492,16 +492,16 @@ static ImBuf *make_histogram_view_from_ibuf_byte(ImBuf *ibuf)
 
   for (x = 0; x < HIS_STEPS; x++) {
     if (nr) {
-      draw_histogram_bar(rval, x * 2 + 1, ((float)bins[0][x]) / nr, 0);
-      draw_histogram_bar(rval, x * 2 + 2, ((float)bins[0][x]) / nr, 0);
+      draw_histogram_bar(rval, x * 2 + 1, (float(bins[0][x])) / nr, 0);
+      draw_histogram_bar(rval, x * 2 + 2, (float(bins[0][x])) / nr, 0);
     }
     if (ng) {
-      draw_histogram_bar(rval, x * 2 + 1, ((float)bins[1][x]) / ng, 1);
-      draw_histogram_bar(rval, x * 2 + 2, ((float)bins[1][x]) / ng, 1);
+      draw_histogram_bar(rval, x * 2 + 1, (float(bins[1][x])) / ng, 1);
+      draw_histogram_bar(rval, x * 2 + 2, (float(bins[1][x])) / ng, 1);
     }
     if (nb) {
-      draw_histogram_bar(rval, x * 2 + 1, ((float)bins[2][x]) / nb, 2);
-      draw_histogram_bar(rval, x * 2 + 2, ((float)bins[2][x]) / nb, 2);
+      draw_histogram_bar(rval, x * 2 + 1, (float(bins[2][x])) / nb, 2);
+      draw_histogram_bar(rval, x * 2 + 2, (float(bins[2][x])) / nb, 2);
     }
   }
 
@@ -519,7 +519,7 @@ BLI_INLINE int get_bin_float(float f)
     return 511;
   }
 
-  return (int)(((f + 0.25f) / 1.5f) * 512);
+  return int(((f + 0.25f) / 1.5f) * 512);
 }
 
 static void make_histogram_view_from_ibuf_float_fn(void *__restrict userdata,
@@ -576,13 +576,13 @@ static ImBuf *make_histogram_view_from_ibuf_float(ImBuf *ibuf)
 
   for (x = 0; x < HIS_STEPS; x++) {
     if (nr) {
-      draw_histogram_bar(rval, x + 1, ((float)bins[0][x]) / nr, 0);
+      draw_histogram_bar(rval, x + 1, (float(bins[0][x])) / nr, 0);
     }
     if (ng) {
-      draw_histogram_bar(rval, x + 1, ((float)bins[1][x]) / ng, 1);
+      draw_histogram_bar(rval, x + 1, (float(bins[1][x])) / ng, 1);
     }
     if (nb) {
-      draw_histogram_bar(rval, x + 1, ((float)bins[2][x]) / nb, 2);
+      draw_histogram_bar(rval, x + 1, (float(bins[2][x])) / nb, 2);
     }
   }
 
@@ -608,12 +608,12 @@ static void vectorscope_put_cross(uchar r, uchar g, uchar b, uchar *tgt, int w, 
   float rgb[3], yuv[3];
   uchar *p;
 
-  rgb[0] = (float)r / 255.0f;
-  rgb[1] = (float)g / 255.0f;
-  rgb[2] = (float)b / 255.0f;
+  rgb[0] = float(r) / 255.0f;
+  rgb[1] = float(g) / 255.0f;
+  rgb[2] = float(b) / 255.0f;
   rgb_to_yuv_normalized(rgb, yuv);
 
-  p = tgt + 4 * (w * (int)(yuv[2] * (h - 3) + 1) + (int)(yuv[1] * (w - 3) + 1));
+  p = tgt + 4 * (w * int(yuv[2] * (h - 3) + 1) + int(yuv[1] * (w - 3) + 1));
 
   if (r == 0 && g == 0 && b == 0) {
     r = 255;
@@ -643,7 +643,7 @@ static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
   uchar wtable[256];
 
   for (x = 0; x < 256; x++) {
-    wtable[x] = (uchar)(pow(((float)x + 1) / 256, scope_gamma) * 255);
+    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, scope_gamma) * 255.0f);
   }
 
   for (x = 0; x < 256; x++) {
@@ -660,12 +660,12 @@ static ImBuf *make_vectorscope_view_from_ibuf_byte(ImBuf *ibuf)
       const uchar *src1 = src + 4 * (ibuf->x * y + x);
       uchar *p;
 
-      rgb[0] = (float)src1[0] / 255.0f;
-      rgb[1] = (float)src1[1] / 255.0f;
-      rgb[2] = (float)src1[2] / 255.0f;
+      rgb[0] = float(src1[0]) / 255.0f;
+      rgb[1] = float(src1[1]) / 255.0f;
+      rgb[2] = float(src1[2]) / 255.0f;
       rgb_to_yuv_normalized(rgb, yuv);
 
-      p = tgt + 4 * (w * (int)(yuv[2] * (h - 3) + 1) + (int)(yuv[1] * (w - 3) + 1));
+      p = tgt + 4 * (w * int(yuv[2] * (h - 3) + 1) + int(yuv[1] * (w - 3) + 1));
       scope_put_pixel(wtable, (uchar *)p);
     }
   }
@@ -688,7 +688,7 @@ static ImBuf *make_vectorscope_view_from_ibuf_float(ImBuf *ibuf)
   uchar wtable[256];
 
   for (x = 0; x < 256; x++) {
-    wtable[x] = (uchar)(pow(((float)x + 1) / 256, scope_gamma) * 255);
+    wtable[x] = uchar(pow((float(x) + 1.0f) / 256.0f, scope_gamma) * 255.0f);
   }
 
   for (x = 0; x <= 255; x++) {
@@ -711,7 +711,7 @@ static ImBuf *make_vectorscope_view_from_ibuf_float(ImBuf *ibuf)
 
       rgb_to_yuv_normalized(rgb, yuv);
 
-      p = tgt + 4 * (w * (int)(yuv[2] * (h - 3) + 1) + (int)(yuv[1] * (w - 3) + 1));
+      p = tgt + 4 * (w * int(yuv[2] * (h - 3) + 1) + int(yuv[1] * (w - 3) + 1));
       scope_put_pixel(wtable, (uchar *)p);
     }
   }

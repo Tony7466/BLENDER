@@ -580,7 +580,7 @@ static void drawmeta_contents(Scene *scene,
     const int enddisp = SEQ_time_right_handle_frame_get(scene, seq) + offset;
 
     if ((startdisp > x2 || enddisp < x1) == 0) {
-      float y_chan = (seq->machine - chan_min) / (float)(chan_range)*draw_range;
+      float y_chan = (seq->machine - chan_min) / float(chan_range) * draw_range;
       float x1_chan = startdisp;
       float x2_chan = enddisp;
       float y1_chan, y2_chan;
@@ -628,8 +628,8 @@ float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const 
 
   /* Ensure that handle is not wider, than quarter of strip. */
   return min_ff(maxhandle,
-                ((float)(SEQ_time_right_handle_frame_get(scene, seq) -
-                         SEQ_time_left_handle_frame_get(scene, seq)) /
+                (float(SEQ_time_right_handle_frame_get(scene, seq) -
+                       SEQ_time_left_handle_frame_get(scene, seq)) /
                  4.0f));
 }
 
@@ -759,7 +759,8 @@ static void draw_seq_outline(Scene *scene,
    */
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(scene);
   if ((G.moving & G_TRANSFORM_SEQ) && (seq->flag & SELECT) &&
-      overlap_mode != SEQ_OVERLAP_OVERWRITE) {
+      overlap_mode != SEQ_OVERLAP_OVERWRITE)
+  {
     if (seq->flag & SEQ_OVERLAP) {
       col[0] = 255;
       col[1] = col[2] = 33;
@@ -1308,7 +1309,7 @@ static void draw_seq_strip(const bContext *C,
   float pixely = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
 
   /* Check if we are doing "solo preview". */
-  bool is_single_image = (char)SEQ_transform_single_image_check(seq);
+  bool is_single_image = char(SEQ_transform_single_image_check(seq));
 
   /* Use the seq->color_tag to display the tag color. */
   const bool show_strip_color_tag = (sseq->timeline_overlay.flag &
@@ -1358,7 +1359,8 @@ static void draw_seq_strip(const bContext *C,
   if (sseq->flag & SEQ_SHOW_OVERLAY) {
     if (!is_single_image && pixely > 0) {
       if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_OFFSETS) ||
-          (seq == special_seq_update)) {
+          (seq == special_seq_update))
+      {
         draw_sequence_extensions_overlay(scene, seq, pos, pixely, show_strip_color_tag);
       }
     }
@@ -1617,8 +1619,8 @@ static ImBuf *sequencer_make_scope(Scene *scene, ImBuf *ibuf, ImBuf *(*make_scop
 
 static void sequencer_display_size(Scene *scene, float r_viewrect[2])
 {
-  r_viewrect[0] = (float)scene->r.xsch;
-  r_viewrect[1] = (float)scene->r.ysch;
+  r_viewrect[0] = float(scene->r.xsch);
+  r_viewrect[1] = float(scene->r.ysch);
 
   r_viewrect[0] *= scene->r.xasp / scene->r.yasp;
 }
@@ -1840,7 +1842,7 @@ static void sequencer_preview_get_rect(rctf *preview,
                     (fabsf(BLI_rctf_size_y(&v2d->tot)) * scene->ed->overlay_frame_rect.ymin);
   }
   else if (draw_backdrop) {
-    float aspect = BLI_rcti_size_x(&region->winrct) / (float)BLI_rcti_size_y(&region->winrct);
+    float aspect = BLI_rcti_size_x(&region->winrct) / float(BLI_rcti_size_y(&region->winrct));
     float image_aspect = viewrect[0] / viewrect[1];
 
     if (aspect >= image_aspect) {
@@ -2248,7 +2250,7 @@ static void draw_seq_timeline_channels(View2D *v2d)
   immUniformThemeColor(TH_ROW_ALTERNATE);
 
   /* Alternating horizontal stripes. */
-  int i = max_ii(1, ((int)v2d->cur.ymin) - 1);
+  int i = max_ii(1, int(v2d->cur.ymin) - 1);
   while (i < v2d->cur.ymax) {
     if (i & 1) {
       immRectf(pos, v2d->cur.xmin, i, v2d->cur.xmax, i + 1);
@@ -2368,8 +2370,8 @@ static void seq_draw_sfra_efra(const Scene *scene, View2D *v2d)
   immUniformThemeColorShadeAlpha(TH_BACK, -10, -100);
 
   if (frame_sta < frame_end) {
-    immRectf(pos, v2d->cur.xmin, v2d->cur.ymin, (float)frame_sta, v2d->cur.ymax);
-    immRectf(pos, (float)frame_end, v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
+    immRectf(pos, v2d->cur.xmin, v2d->cur.ymin, float(frame_sta), v2d->cur.ymax);
+    immRectf(pos, float(frame_end), v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
   }
   else {
     immRectf(pos, v2d->cur.xmin, v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
@@ -2469,7 +2471,8 @@ static bool draw_cache_view_iter_fn(void *userdata,
   size_t *vert_count;
 
   if ((cache_type & SEQ_CACHE_STORE_FINAL_OUT) &&
-      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT)) {
+      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT))
+  {
     stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_SCALE_FAC * U.pixelsize) - v2d->cur.ymin;
     stripe_bot = UI_view2d_region_to_view_y(v2d, V2D_SCROLL_HANDLE_HEIGHT);
     stripe_top = stripe_bot + stripe_ht;

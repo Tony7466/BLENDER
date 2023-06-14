@@ -270,13 +270,15 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq)) {
+              SEQ_time_right_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq)) {
+              SEQ_time_left_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
@@ -307,7 +309,7 @@ Sequence *find_nearest_seq(Scene *scene, View2D *v2d, int *hand, const int mval[
   seq = static_cast<Sequence *>(ed->seqbasep->first);
 
   while (seq) {
-    if (seq->machine == (int)y) {
+    if (seq->machine == int(y)) {
       /* Check for both normal strips, and strips that have been flipped horizontally. */
       if (((SEQ_time_left_handle_frame_get(scene, seq) <
             SEQ_time_right_handle_frame_get(scene, seq)) &&
@@ -322,8 +324,8 @@ Sequence *find_nearest_seq(Scene *scene, View2D *v2d, int *hand, const int mval[
 
           /* Clamp handles to defined size in pixel space. */
           handsize = 2.0f * sequence_handle_size_get_clamped(scene, seq, pixelx);
-          displen = (float)abs(SEQ_time_left_handle_frame_get(scene, seq) -
-                               SEQ_time_right_handle_frame_get(scene, seq));
+          displen = float(abs(SEQ_time_left_handle_frame_get(scene, seq) -
+                              SEQ_time_right_handle_frame_get(scene, seq)));
 
           /* Don't even try to grab the handles of small strips. */
           if (displen / pixelx > 16) {
