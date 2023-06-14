@@ -152,10 +152,6 @@ eAttrDomain ED_view3d_grease_pencil_selection_domain_get(bContext *C)
     case GP_SELECTMODE_STROKE:
       return ATTR_DOMAIN_CURVE;
       break;
-    case GP_SELECTMODE_SEGMENT:
-      /* TODO: there is no 'segment' selection mode for curves yet. */
-      return ATTR_DOMAIN_POINT;
-      break;
     default:
       BLI_assert_unreachable();
   }
