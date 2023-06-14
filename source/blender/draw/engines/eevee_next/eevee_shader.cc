@@ -242,6 +242,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         case SHADOW_TILEMAPS_TEX_SLOT:
           resource.slot = GPU_max_textures_frag() - 3;
           break;
+        case SSS_TRANSMITTANCE_TEX_SLOT:
+          resource.slot = GPU_max_textures_frag() - 4;
       }
     }
   }
