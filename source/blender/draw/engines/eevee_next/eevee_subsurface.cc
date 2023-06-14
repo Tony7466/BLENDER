@@ -121,11 +121,18 @@ void SubsurfaceModule::precompute_transmittance_profile()
     /* Normalize over the disk. */
     profile[i] /= area_accum;
   }
+
+  /** NOTE: There's something very wrong here.
+   * This should be a small remap,
+   * but current profile range goes from 0.0399098 to 0.0026898. */
+
   /* Make a smooth gradient from 1 to 0. */
   float range = profile.first() - profile.last();
   float offset = profile.last();
   for (float &value : profile) {
     value = (value - offset) / range;
+    /** HACK: Remap the curve to better fit Cycles values. */
+    value = std::pow(value, 1.6f);
   }
   profile.first() = 1;
   profile.last() = 0;
