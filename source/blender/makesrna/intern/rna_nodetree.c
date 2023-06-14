@@ -5922,6 +5922,11 @@ static void def_sh_tex_voronoi(StructRNA *srna)
   RNA_def_property_ui_text(
       prop, "Feature Output", "The Voronoi feature that the node will compute");
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "normalize", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "normalize", 0);
+  RNA_def_property_ui_text(prop, "Normalize", "Normalize output Distance to 0.0 to 1.0 range");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_sh_tex_wave(StructRNA *srna)
@@ -9371,6 +9376,43 @@ static void def_cmp_denoise(StructRNA *srna)
   RNA_def_property_enum_items(prop, prefilter_items);
   RNA_def_property_enum_default(prop, CMP_NODE_DENOISE_PREFILTER_ACCURATE);
   RNA_def_property_ui_text(prop, "", "Denoising prefilter");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_cmp_kuwahara(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeKuwaharaData", "storage");
+
+  static const EnumPropertyItem variation_items[] = {
+      {0, "CLASSIC", 0, "Classic", "Fast but less accurate variation"},
+      {1, "ANISOTROPIC", 0, "Anisotropic", "Accurate but slower variation"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "size", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "size");
+  RNA_def_property_range(prop, 1.0, 100.0);
+  RNA_def_property_ui_range(prop, 1, 100, 1, -1);
+  RNA_def_property_ui_text(
+      prop, "Size", "Size of filter. Larger values give stronger stylized effect");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "variation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "variation");
+  RNA_def_property_enum_items(prop, variation_items);
+  RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "smoothing", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "smoothing");
+  RNA_def_property_range(prop, 0.0, 50.0);
+  RNA_def_property_ui_range(prop, 0, 50, 1, -1);
+  RNA_def_property_ui_text(prop,
+                           "Smoothing",
+                           "Smoothing degree before applying filter. Higher values remove details "
+                           "and give smoother edges");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
