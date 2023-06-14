@@ -436,7 +436,7 @@ static void draw_seq_waveform_overlay(
 
   /* F-Curve lookup is quite expensive, so do this after precondition. */
   FCurve *fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "volume", 0, nullptr);
-  WaveVizData *waveform_data = MEM_cnew_array<WaveVizData>(3, __func__);
+  WaveVizData *waveform_data = MEM_cnew_array<WaveVizData>(pixels_to_draw * 3, __func__);
   size_t wave_data_len = 0;
 
   /* Offset must be also aligned, otherwise waveform flickers when moving left handle. */
