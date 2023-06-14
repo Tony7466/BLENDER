@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -86,7 +88,7 @@ void normals_calc_poly_vert(Span<float3> vert_positions,
  * \{ */
 
 /**
- * Combined with the automatically calculated face corner normal, this gives a dimentional
+ * Combined with the automatically calculated face corner normal, this gives a dimensional
  * coordinate space used to convert normals between the "custom normal" #short2 representation and
  * a regular #float3 format.
  */
@@ -118,6 +120,14 @@ struct CornerNormalSpaceArray {
    * same as #Mesh::totloop). Rare -1 values define face corners without a coordinate space.
    */
   Array<int> corner_space_indices;
+
+  /**
+   * A map containing the face corners that make up each space,
+   * in the order that they were processed (winding around a vertex).
+   */
+  Array<Array<int>> corners_by_space;
+  /** Whether to create the above map when calculating normals. */
+  bool create_corners_by_space = false;
 };
 
 void lnor_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,

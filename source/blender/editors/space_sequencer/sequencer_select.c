@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spseq
@@ -235,12 +236,12 @@ void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool desel
 
   if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE)) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_imagedir, seq->strip->dir, FILE_MAXDIR);
+      BLI_strncpy(ed->act_imagedir, seq->strip->dirpath, FILE_MAXDIR);
     }
   }
   else if (seq->type == SEQ_TYPE_SOUND_RAM) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_sounddir, seq->strip->dir, FILE_MAXDIR);
+      BLI_strncpy(ed->act_sounddir, seq->strip->dirpath, FILE_MAXDIR);
     }
   }
   seq->flag |= SELECT;
@@ -489,7 +490,7 @@ static int sequencer_de_select_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void SEQUENCER_OT_select_all(struct wmOperatorType *ot)
+void SEQUENCER_OT_select_all(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "(De)select All";
@@ -541,7 +542,7 @@ static int sequencer_select_inverse_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void SEQUENCER_OT_select_inverse(struct wmOperatorType *ot)
+void SEQUENCER_OT_select_inverse(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Select Inverse";
@@ -570,12 +571,12 @@ static void sequencer_select_set_active(Scene *scene, Sequence *seq)
 
   if (ELEM(seq->type, SEQ_TYPE_IMAGE, SEQ_TYPE_MOVIE)) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_imagedir, seq->strip->dir, FILE_MAXDIR);
+      BLI_strncpy(ed->act_imagedir, seq->strip->dirpath, FILE_MAXDIR);
     }
   }
   else if (seq->type == SEQ_TYPE_SOUND_RAM) {
     if (seq->strip) {
-      BLI_strncpy(ed->act_sounddir, seq->strip->dir, FILE_MAXDIR);
+      BLI_strncpy(ed->act_sounddir, seq->strip->dirpath, FILE_MAXDIR);
     }
   }
   recurs_sel_seq(seq);
@@ -1893,7 +1894,7 @@ static bool select_grouped_data(SeqCollection *strips,
                                 const int channel)
 {
   bool changed = false;
-  const char *dir = actseq->strip ? actseq->strip->dir : NULL;
+  const char *dirpath = actseq->strip ? actseq->strip->dirpath : NULL;
 
   if (!SEQ_USE_DATA(actseq)) {
     return changed;
@@ -1901,10 +1902,10 @@ static bool select_grouped_data(SeqCollection *strips,
 
   Sequence *seq;
 
-  if (SEQ_HAS_PATH(actseq) && dir) {
+  if (SEQ_HAS_PATH(actseq) && dirpath) {
     SEQ_ITERATOR_FOREACH (seq, strips) {
       if (SEQ_CHANNEL_CHECK(seq, channel) && SEQ_HAS_PATH(seq) && seq->strip &&
-          STREQ(seq->strip->dir, dir))
+          STREQ(seq->strip->dirpath, dirpath))
       {
         seq->flag |= SELECT;
         changed = true;
@@ -2036,8 +2037,8 @@ static bool select_grouped_effect_link(const Scene *scene,
   /* Get collection of strips. */
   SEQ_filter_selected_strips(strips);
   const int selected_strip_count = SEQ_collection_len(strips);
-  // XXX this uses scene as arg, so it does not work with iterator :( I had thought about this, but
-  // expand function is just so useful... I can just add scene and inject it I guess.....
+  /* XXX: this uses scene as arg, so it does not work with iterator :( I had thought about this,
+   * but expand function is just so useful... I can just add scene and inject it I guess. */
   SEQ_collection_expand(scene, seqbase, strips, query_lower_channel_strips);
   SEQ_collection_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -38,7 +39,7 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
@@ -89,6 +90,8 @@
 #include "../interface/interface_intern.hh" /* TODO: Remove */
 
 #include "node_intern.hh" /* own include */
+
+#include <fmt/format.h>
 
 namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::node_tree_zones::TreeZone;
@@ -312,7 +315,7 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 float2 node_to_view(const bNode &node, const float2 &co)
 {
   float2 result;
-  nodeToView(&node, co.x, co.y, &result.x, &result.y);
+  bke::nodeToView(&node, co.x, co.y, &result.x, &result.y);
   return result * UI_SCALE_FAC;
 }
 
@@ -332,7 +335,7 @@ float2 node_from_view(const bNode &node, const float2 &co)
   const float x = co.x / UI_SCALE_FAC;
   const float y = co.y / UI_SCALE_FAC;
   float2 result;
-  nodeFromView(&node, x, y, &result.x, &result.y);
+  bke::nodeFromView(&node, x, y, &result.x, &result.y);
   return result;
 }
 
@@ -402,7 +405,7 @@ static void node_update_basis(const bContext &C,
     uiLayout *row = uiLayoutRow(layout, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
 
-    const char *socket_label = nodeSocketLabel(socket);
+    const char *socket_label = bke::nodeSocketLabel(socket);
     const char *socket_translation_context = node_socket_get_translation_context(*socket);
     socket->typeinfo->draw((bContext *)&C,
                            row,
@@ -539,7 +542,7 @@ static void node_update_basis(const bContext &C,
 
     uiLayout *row = uiLayoutRow(layout, true);
 
-    const char *socket_label = nodeSocketLabel(socket);
+    const char *socket_label = bke::nodeSocketLabel(socket);
     const char *socket_translation_context = node_socket_get_translation_context(*socket);
     socket->typeinfo->draw((bContext *)&C,
                            row,
@@ -856,7 +859,7 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
     return;
   }
   if (value_type.is<std::string>()) {
-    ss << *static_cast<const std::string *>(buffer) << " " << TIP_("(String)");
+    ss << fmt::format(TIP_("{} (String)"), *static_cast<const std::string *>(buffer));
     return;
   }
 
@@ -873,22 +876,22 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   BLI_SCOPED_DEFER([&]() { socket_type.destruct(socket_value); });
 
   if (socket_type.is<int>()) {
-    ss << *static_cast<int *>(socket_value) << " " << TIP_("(Integer)");
+    ss << fmt::format(TIP_("{} (Integer)"), *static_cast<int *>(socket_value));
   }
   else if (socket_type.is<float>()) {
-    ss << *static_cast<float *>(socket_value) << " " << TIP_("(Float)");
+    ss << fmt::format(TIP_("{} (Float)"), *static_cast<float *>(socket_value));
   }
   else if (socket_type.is<blender::float3>()) {
-    ss << *static_cast<blender::float3 *>(socket_value) << " " << TIP_("(Vector)");
+    const blender::float3 &vector = *static_cast<blender::float3 *>(socket_value);
+    ss << fmt::format(TIP_("({}, {}, {}) (Vector)"), vector.x, vector.y, vector.z);
   }
   else if (socket_type.is<blender::ColorGeometry4f>()) {
     const blender::ColorGeometry4f &color = *static_cast<blender::ColorGeometry4f *>(socket_value);
-    ss << "(" << color.r << ", " << color.g << ", " << color.b << ", " << color.a << ") "
-       << TIP_("(Color)");
+    ss << fmt::format(TIP_("({}, {}, {}, {}) (Color)"), color.r, color.g, color.b, color.a);
   }
   else if (socket_type.is<bool>()) {
-    ss << ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")) << " "
-       << TIP_("(Boolean)");
+    ss << fmt::format(TIP_("{} (Boolean)"),
+                      ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")));
   }
 }
 
@@ -1162,7 +1165,7 @@ static char *node_socket_get_tooltip(const SpaceNode *snode,
   }
 
   if (output.str().empty()) {
-    output << nodeSocketLabel(&socket);
+    output << bke::nodeSocketLabel(&socket);
   }
 
   return BLI_strdup(output.str().c_str());
@@ -2322,7 +2325,7 @@ static void node_draw_basis(const bContext &C,
   }
 
   char showname[128];
-  nodeLabel(&ntree, &node, showname, sizeof(showname));
+  bke::nodeLabel(&ntree, &node, showname, sizeof(showname));
 
   uiBut *but = uiDefBut(&block,
                         UI_BTYPE_LABEL,
@@ -2351,7 +2354,7 @@ static void node_draw_basis(const bContext &C,
   const float outline_width = 1.0f;
   {
     /* Use warning color to indicate undefined types. */
-    if (nodeTypeUndefined(&node)) {
+    if (bke::node_type_is_undefined(&node)) {
       UI_GetThemeColorBlend4f(TH_REDALERT, TH_NODE, 0.4f, color);
     }
     /* Muted nodes get a mix of the background with the node color. */
@@ -2424,7 +2427,7 @@ static void node_draw_basis(const bContext &C,
     if (node.flag & SELECT) {
       UI_GetThemeColor4fv((node.flag & NODE_ACTIVE) ? TH_ACTIVE : TH_SELECT, color_outline);
     }
-    else if (nodeTypeUndefined(&node)) {
+    else if (bke::node_type_is_undefined(&node)) {
       UI_GetThemeColor4fv(TH_REDALERT, color_outline);
     }
     else if (ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
@@ -2493,7 +2496,7 @@ static void node_draw_hidden(const bContext &C,
   /* Body. */
   float color[4];
   {
-    if (nodeTypeUndefined(&node)) {
+    if (bke::node_type_is_undefined(&node)) {
       /* Use warning color to indicate undefined types. */
       UI_GetThemeColorBlend4f(TH_REDALERT, TH_NODE, 0.4f, color);
     }
@@ -2557,7 +2560,7 @@ static void node_draw_hidden(const bContext &C,
   }
 
   char showname[128];
-  nodeLabel(&ntree, &node, showname, sizeof(showname));
+  bke::nodeLabel(&ntree, &node, showname, sizeof(showname));
 
   uiBut *but = uiDefBut(&block,
                         UI_BTYPE_LABEL,
@@ -2590,7 +2593,7 @@ static void node_draw_hidden(const bContext &C,
     if (node.flag & SELECT) {
       UI_GetThemeColor4fv((node.flag & NODE_ACTIVE) ? TH_ACTIVE : TH_SELECT, color_outline);
     }
-    else if (nodeTypeUndefined(&node)) {
+    else if (bke::node_type_is_undefined(&node)) {
       UI_GetThemeColor4fv(TH_REDALERT, color_outline);
     }
     else {
@@ -2687,10 +2690,10 @@ void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
-  const NodeResizeDirection dir = node_get_resize_direction(node, cursor[0], cursor[1]);
+  const NodeResizeDirection dir = node_get_resize_direction(snode, node, cursor[0], cursor[1]);
   if (node->is_frame() && dir == NODE_RESIZE_NONE) {
     /* Indicate that frame nodes can be moved/selected on their borders. */
-    const rctf frame_inside = node_frame_rect_inside(*node);
+    const rctf frame_inside = node_frame_rect_inside(snode, *node);
     if (!BLI_rctf_isect_pt(&frame_inside, cursor[0], cursor[1])) {
       WM_cursor_set(&win, WM_CURSOR_NSEW_SCROLL);
       return;
@@ -2855,7 +2858,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   const float font_size = data->label_size / aspect;
 
   char label[MAX_NAME];
-  nodeLabel(&ntree, &node, label, sizeof(label));
+  bke::nodeLabel(&ntree, &node, label, sizeof(label));
 
   BLF_enable(fontid, BLF_ASPECT);
   BLF_aspect(fontid, aspect, aspect, 1.0f);
@@ -3247,14 +3250,14 @@ static void node_draw_nodetree(const bContext &C,
   nodelink_batch_start(snode);
 
   LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
-    if (!nodeLinkIsHidden(link) && !nodeLinkIsSelected(link)) {
+    if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
   LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
-    if (!nodeLinkIsHidden(link) && nodeLinkIsSelected(link)) {
+    if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, true);
     }
   }
@@ -3324,15 +3327,19 @@ static bool realtime_compositor_is_in_use(const bContext &context)
     return false;
   }
 
-  const Main *main = CTX_data_main(&context);
-  LISTBASE_FOREACH (const bScreen *, screen, &main->screens) {
-    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
-      LISTBASE_FOREACH (const SpaceLink *, space, &area->spacedata) {
-        if (space->spacetype != SPACE_VIEW3D) {
-          continue;
-        }
+  if (U.experimental.use_full_frame_compositor &&
+      scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
+  {
+    return true;
+  }
 
-        const View3D &view_3d = *reinterpret_cast<const View3D *>(space);
+  wmWindowManager *wm = CTX_wm_manager(&context);
+  LISTBASE_FOREACH (const wmWindow *, win, &wm->windows) {
+    const bScreen *screen = WM_window_get_active_screen(win);
+    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+      const SpaceLink &space = *static_cast<const SpaceLink *>(area->spacedata.first);
+      if (space.spacetype == SPACE_VIEW3D) {
+        const View3D &view_3d = reinterpret_cast<const View3D &>(space);
 
         if (view_3d.shading.use_compositor == V3D_SHADING_USE_COMPOSITOR_DISABLED) {
           continue;
@@ -3405,9 +3412,6 @@ static void draw_background_color(const SpaceNode &snode)
 
 void node_draw_space(const bContext &C, ARegion &region)
 {
-  if (G.is_rendering) {
-    return;
-  }
   wmWindow *win = CTX_wm_window(&C);
   SpaceNode &snode = *CTX_wm_space_node(&C);
   View2D &v2d = region.v2d;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -32,6 +34,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_search.h"
+#include "BLI_string_utils.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -973,6 +976,9 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         id->us = 0;
         undo_push_label = "Delete Data-Block";
       }
+      else {
+        undo_push_label = "Unlink Data-Block";
+      }
 
       break;
     case UI_ID_FAKE_USER:
@@ -1107,7 +1113,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
       case ID_GD_LEGACY:
-        return N_("Browse Grease Pencil Data to be linked");
+        return N_("Browse Grease Pencil (legacy) Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
       case ID_MSK:
@@ -1130,6 +1136,8 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Volume Data to be linked");
       case ID_SIM:
         return N_("Browse Simulation to be linked");
+      case ID_GP:
+        return N_("Browse Grease Pencil Data to be linked");
 
       /* Use generic text. */
       case ID_LI:
@@ -1228,6 +1236,7 @@ static uiBut *template_id_def_new_but(uiBlock *block,
                             BLT_I18NCONTEXT_ID_POINTCLOUD,
                             BLT_I18NCONTEXT_ID_VOLUME,
                             BLT_I18NCONTEXT_ID_SIMULATION, );
+  BLT_I18N_MSGID_MULTI_CTXT("New", BLT_I18NCONTEXT_ID_PAINTCURVE, );
   /* NOTE: BLT_I18N_MSGID_MULTI_CTXT takes a maximum number of parameters,
    * check the definition to see if a new call must be added when the limit
    * is exceeded. */
@@ -2407,7 +2416,7 @@ static void set_constraint_expand_flag(const bContext * /*C*/, Panel *panel, sho
  * \note Constraint panel types are assumed to be named with the struct name field
  * concatenated to the defined prefix.
  */
-static void object_constraint_panel_id(void *md_link, char *r_name)
+static void object_constraint_panel_id(void *md_link, char *r_idname)
 {
   bConstraint *con = (bConstraint *)md_link;
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(con->type);
@@ -2416,12 +2425,10 @@ static void object_constraint_panel_id(void *md_link, char *r_name)
   if (cti == nullptr) {
     return;
   }
-
-  strcpy(r_name, CONSTRAINT_TYPE_PANEL_PREFIX);
-  strcat(r_name, cti->structName);
+  BLI_string_join(r_idname, BKE_ST_MAXNAME, CONSTRAINT_TYPE_PANEL_PREFIX, cti->structName);
 }
 
-static void bone_constraint_panel_id(void *md_link, char *r_name)
+static void bone_constraint_panel_id(void *md_link, char *r_idname)
 {
   bConstraint *con = (bConstraint *)md_link;
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(con->type);
@@ -2430,9 +2437,7 @@ static void bone_constraint_panel_id(void *md_link, char *r_name)
   if (cti == nullptr) {
     return;
   }
-
-  strcpy(r_name, CONSTRAINT_BONE_TYPE_PANEL_PREFIX);
-  strcat(r_name, cti->structName);
+  BLI_string_join(r_idname, BKE_ST_MAXNAME, CONSTRAINT_BONE_TYPE_PANEL_PREFIX, cti->structName);
 }
 
 void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_constraints)

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -213,12 +214,14 @@ typedef struct MVertSkin {
 } MVertSkin;
 
 typedef enum eMVertSkinFlag {
-  /** Marks a vertex as the edge-graph root, used for calculating rotations for all connected
+  /**
+   * Marks a vertex as the edge-graph root, used for calculating rotations for all connected
    * edges (recursively). Also used to choose a root when generating an armature.
    */
   MVERT_SKIN_ROOT = 1,
 
-  /** Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
+  /**
+   * Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
    * are directly hulled together, rather than the default of generating intermediate frames.
    */
   MVERT_SKIN_LOOSE = 2,
@@ -356,7 +359,7 @@ enum {
 typedef struct MEdge {
   /** Un-ordered vertex indices (cannot match). */
   unsigned int v1, v2;
-  /** Deprecated edge crease, now located in #CD_CREASE, except for file read and write. */
+  /** Deprecated edge crease, now located in `edge_crease`, except for file read and write. */
   char crease_legacy;
   /**
    * Deprecated bevel weight storage, now located in #CD_BWEIGHT, except for file read and write.

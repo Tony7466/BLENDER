@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -143,6 +144,11 @@ GHOST_SystemWin32::GHOST_SystemWin32()
    * blurry scaling and enables WM_DPICHANGED to allow us to draw at proper DPI. */
   SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
+  /* Set App Id for the process so our console will be grouped on the Task Bar. */
+  UTF16_ENCODE(BLENDER_WIN_APPID);
+  SetCurrentProcessExplicitAppUserModelID(BLENDER_WIN_APPID_16);
+  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
+
   /* Check if current keyboard layout uses AltGr and save keylayout ID for
    * specialized handling if keys like VK_OEM_*. I.e. french keylayout
    * generates #VK_OEM_8 for their exclamation key (key left of right shift). */
@@ -219,7 +225,7 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
                                                uint32_t width,
                                                uint32_t height,
                                                GHOST_TWindowState state,
-                                               GHOST_GLSettings glSettings,
+                                               GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
                                                const bool is_dialog,
                                                const GHOST_IWindow *parentWindow)
@@ -232,11 +238,11 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
       width,
       height,
       state,
-      glSettings.context_type,
-      ((glSettings.flags & GHOST_glStereoVisual) != 0),
+      gpuSettings.context_type,
+      ((gpuSettings.flags & GHOST_gpuStereoVisual) != 0),
       false,
       (GHOST_WindowWin32 *)parentWindow,
-      ((glSettings.flags & GHOST_glDebugContext) != 0),
+      ((gpuSettings.flags & GHOST_gpuDebugContext) != 0),
       is_dialog);
 
   if (window->getValid()) {
@@ -258,15 +264,15 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
  * Never explicitly delete the window, use #disposeContext() instead.
  * \return The new context (or 0 if creation failed).
  */
-GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GLSettings glSettings)
+GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
-  const bool debug_context = (glSettings.flags & GHOST_glDebugContext) != 0;
+  const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
 
   GHOST_Context *context = nullptr;
 
 #ifdef WITH_VULKAN_BACKEND
   /* Vulkan does not need a window. */
-  if (glSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
+  if (gpuSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
     context = new GHOST_ContextVK(false, (HWND)0, 1, 2, debug_context);
 
     if (!context->initializeDrawingContext()) {
@@ -1867,9 +1873,10 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
           /* Mouse Tracking is now off. TrackMouseEvent restarts in MouseMove. */
           window->m_mousePresent = false;
 
-          /* Auto-focus only occurs within Blender windows, not with _other_ applications. */
+          /* Auto-focus only occurs within Blender windows, not with _other_ applications. We are
+           * notified of change of focus from our console, but it returns null from GetFocus. */
           HWND old_hwnd = ::GetFocus();
-          if (hwnd != old_hwnd) {
+          if (old_hwnd && hwnd != old_hwnd) {
             HWND new_parent = ::GetParent(hwnd);
             HWND old_parent = ::GetParent(old_hwnd);
             if (hwnd == old_parent || old_hwnd == new_parent) {
@@ -2422,7 +2429,7 @@ static uint *getClipboardImageImBuf(int *r_width, int *r_height, UINT format)
     *r_width = ibuf->x;
     *r_height = ibuf->y;
     rgba = (uint *)malloc(4 * ibuf->x * ibuf->y);
-    memcpy(rgba, ibuf->rect, 4 * ibuf->x * ibuf->y);
+    memcpy(rgba, ibuf->byte_buffer.data, 4 * ibuf->x * ibuf->y);
     IMB_freeImBuf(ibuf);
   }
 
@@ -2513,7 +2520,7 @@ static bool putClipboardImagePNG(uint *rgba, int width, int height)
   UINT cf = RegisterClipboardFormat("PNG");
 
   /* Load buffer into ImBuf, convert to PNG. */
-  ImBuf *ibuf = IMB_allocFromBuffer(rgba, nullptr, width, height, 32);
+  ImBuf *ibuf = IMB_allocFromBuffer(reinterpret_cast<uint8_t *>(rgba), nullptr, width, height, 32);
   ibuf->ftype = IMB_FTYPE_PNG;
   ibuf->foptions.quality = 15;
   if (!IMB_saveiff(ibuf, "<memory>", IB_rect | IB_mem)) {
@@ -2521,7 +2528,7 @@ static bool putClipboardImagePNG(uint *rgba, int width, int height)
     return false;
   }
 
-  HGLOBAL hMem = GlobalAlloc(GHND, ibuf->encodedbuffersize);
+  HGLOBAL hMem = GlobalAlloc(GHND, ibuf->encoded_buffer_size);
   if (!hMem) {
     IMB_freeImBuf(ibuf);
     return false;
@@ -2534,7 +2541,7 @@ static bool putClipboardImagePNG(uint *rgba, int width, int height)
     return false;
   }
 
-  memcpy(pMem, ibuf->encodedbuffer, ibuf->encodedbuffersize);
+  memcpy(pMem, ibuf->encoded_buffer.data, ibuf->encoded_buffer_size);
 
   GlobalUnlock(hMem);
   IMB_freeImBuf(ibuf);

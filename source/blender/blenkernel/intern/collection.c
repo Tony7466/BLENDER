@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -325,11 +327,11 @@ static void collection_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_collection_blend_read_data(reader, collection, NULL);
 }
 
-static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Collection *collection)
+static void lib_link_collection_data(BlendLibReader *reader, ID *self_id, Collection *collection)
 {
   BLI_assert(collection->runtime.gobject_hash == NULL);
   LISTBASE_FOREACH_MUTABLE (CollectionObject *, cob, &collection->gobject) {
-    BLO_read_id_address(reader, lib, &cob->ob);
+    BLO_read_id_address(reader, self_id, &cob->ob);
 
     if (cob->ob == NULL) {
       BLI_freelinkN(&collection->gobject, cob);
@@ -337,22 +339,20 @@ static void lib_link_collection_data(BlendLibReader *reader, Library *lib, Colle
   }
 
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
-    BLO_read_id_address(reader, lib, &child->collection);
+    BLO_read_id_address(reader, self_id, &child->collection);
   }
 }
 
 #ifdef USE_COLLECTION_COMPAT_28
-void BKE_collection_compat_blend_read_lib(BlendLibReader *reader,
-                                          Library *lib,
-                                          SceneCollection *sc)
+void BKE_collection_compat_blend_read_lib(BlendLibReader *reader, ID *self_id, SceneCollection *sc)
 {
   LISTBASE_FOREACH (LinkData *, link, &sc->objects) {
-    BLO_read_id_address(reader, lib, &link->data);
+    BLO_read_id_address(reader, self_id, &link->data);
     BLI_assert(link->data);
   }
 
   LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
-    BKE_collection_compat_blend_read_lib(reader, lib, nsc);
+    BKE_collection_compat_blend_read_lib(reader, self_id, nsc);
   }
 }
 #endif
@@ -361,15 +361,15 @@ void BKE_collection_blend_read_lib(BlendLibReader *reader, Collection *collectio
 {
 #ifdef USE_COLLECTION_COMPAT_28
   if (collection->collection) {
-    BKE_collection_compat_blend_read_lib(reader, collection->id.lib, collection->collection);
+    BKE_collection_compat_blend_read_lib(reader, &collection->id, collection->collection);
   }
 
   if (collection->view_layer) {
-    BKE_view_layer_blend_read_lib(reader, collection->id.lib, collection->view_layer);
+    BKE_view_layer_blend_read_lib(reader, &collection->id, collection->view_layer);
   }
 #endif
 
-  lib_link_collection_data(reader, collection->id.lib, collection);
+  lib_link_collection_data(reader, &collection->id, collection);
 }
 
 static void collection_blend_read_lib(BlendLibReader *reader, ID *id)
@@ -379,8 +379,7 @@ static void collection_blend_read_lib(BlendLibReader *reader, ID *id)
 }
 
 #ifdef USE_COLLECTION_COMPAT_28
-void BKE_collection_compat_blend_read_expand(struct BlendExpander *expander,
-                                             struct SceneCollection *sc)
+void BKE_collection_compat_blend_read_expand(BlendExpander *expander, SceneCollection *sc)
 {
   LISTBASE_FOREACH (LinkData *, link, &sc->objects) {
     BLO_expand(expander, link->data);
@@ -520,7 +519,7 @@ void BKE_collection_add_from_collection(Main *bmain,
   bool is_instantiated = false;
 
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
-    if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDABLE_LIBRARY(collection) &&
+    if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
         collection_find_child(collection, collection_src))
     {
       collection_child_add(collection, collection_dst, 0, true);
@@ -803,7 +802,7 @@ void BKE_collection_new_name_get(Collection *collection_parent, char *rname)
   MEM_freeN(name);
 }
 
-const char *BKE_collection_ui_name_get(struct Collection *collection)
+const char *BKE_collection_ui_name_get(Collection *collection)
 {
   if (collection->flag & COLLECTION_IS_MASTER) {
     return IFACE_("Scene Collection");
@@ -972,7 +971,7 @@ static bool collection_object_cyclic_check_internal(Object *object, Collection *
   if (object->instance_collection) {
     Collection *dup_collection = object->instance_collection;
     if ((dup_collection->id.tag & LIB_TAG_DOIT) == 0) {
-      /* Cycle already exists in collections, let's prevent further crappyness */
+      /* Cycle already exists in collections, let's prevent further creepiness. */
       return true;
     }
     /* flag the object to identify cyclic dependencies in further dupli collections */
@@ -1309,8 +1308,8 @@ static Collection *collection_parent_editable_find_recursive(const ViewLayer *vi
 static bool collection_object_add(
     Main *bmain, Collection *collection, Object *ob, int flag, const bool add_us)
 {
+  /* Cyclic dependency check. */
   if (ob->instance_collection) {
-    /* Cyclic dependency check. */
     if ((ob->instance_collection == collection) ||
         collection_find_child_recursive(ob->instance_collection, collection))
     {
@@ -1404,7 +1403,7 @@ bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Objec
     BKE_main_collection_sync(bmain);
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&collection->id, ID_RECALC_GEOMETRY | ID_RECALC_HIERARCHY);
 
   return true;
 }
@@ -1472,7 +1471,7 @@ bool BKE_collection_object_remove(Main *bmain,
     BKE_main_collection_sync(bmain);
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&collection->id, ID_RECALC_GEOMETRY | ID_RECALC_HIERARCHY);
 
   return true;
 }
@@ -1944,6 +1943,49 @@ void BKE_main_collections_parent_relations_rebuild(Main *bmain)
   }
 }
 
+bool BKE_collection_validate(Collection *collection)
+{
+  if (!BLI_listbase_validate(&collection->children)) {
+    return false;
+  }
+  if (!BLI_listbase_validate(&collection->runtime.parents)) {
+    return false;
+  }
+  if (BKE_collection_cycle_find(collection, NULL)) {
+    return false;
+  }
+
+  bool is_ok = true;
+
+  /* Check that children have each collection used/referenced only once. */
+  GSet *processed_collections = BLI_gset_ptr_new(__func__);
+  for (CollectionChild *child = collection->children.first; child; child = child->next) {
+    void **r_key;
+    if (BLI_gset_ensure_p_ex(processed_collections, child->collection, &r_key)) {
+      is_ok = false;
+    }
+    else {
+      *r_key = child->collection;
+    }
+  }
+
+  /* Check that parents have each collection used/referenced only once. */
+  BLI_gset_clear(processed_collections, NULL);
+  for (CollectionParent *parent = collection->runtime.parents.first; parent; parent = parent->next)
+  {
+    void **r_key;
+    if (BLI_gset_ensure_p_ex(processed_collections, parent->collection, &r_key)) {
+      is_ok = false;
+    }
+    else {
+      *r_key = parent->collection;
+    }
+  }
+
+  BLI_gset_free(processed_collections, NULL);
+  return is_ok;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -2161,7 +2203,7 @@ void BKE_scene_collections_iterator_begin(BLI_Iterator *iter, void *data_in)
   iter->current = data->array[data->cur];
 }
 
-void BKE_scene_collections_iterator_next(struct BLI_Iterator *iter)
+void BKE_scene_collections_iterator_next(BLI_Iterator *iter)
 {
   CollectionsIteratorData *data = iter->data;
 
@@ -2173,7 +2215,7 @@ void BKE_scene_collections_iterator_next(struct BLI_Iterator *iter)
   }
 }
 
-void BKE_scene_collections_iterator_end(struct BLI_Iterator *iter)
+void BKE_scene_collections_iterator_end(BLI_Iterator *iter)
 {
   CollectionsIteratorData *data = iter->data;
 
@@ -2258,7 +2300,7 @@ void BKE_scene_objects_iterator_begin_ex(BLI_Iterator *iter, void *data_in)
   scene_objects_iterator_skip_invalid_flag(iter);
 }
 
-void BKE_scene_objects_iterator_next_ex(struct BLI_Iterator *iter)
+void BKE_scene_objects_iterator_next_ex(BLI_Iterator *iter)
 {
   /* Unpack the data. */
   SceneObjectsIteratorExData *data = iter->data;
@@ -2273,7 +2315,7 @@ void BKE_scene_objects_iterator_next_ex(struct BLI_Iterator *iter)
   scene_objects_iterator_skip_invalid_flag(iter);
 }
 
-void BKE_scene_objects_iterator_end_ex(struct BLI_Iterator *iter)
+void BKE_scene_objects_iterator_end_ex(BLI_Iterator *iter)
 {
   /* Unpack the data. */
   SceneObjectsIteratorExData *data = iter->data;

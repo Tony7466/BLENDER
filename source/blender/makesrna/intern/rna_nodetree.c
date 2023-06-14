@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -134,6 +136,11 @@ static const EnumPropertyItem rna_enum_execution_mode_items[] = {
      0,
      "Full Frame",
      "Composites full image result as fast as possible"},
+    {NTREE_EXECUTION_MODE_REALTIME,
+     "REALTIME",
+     0,
+     "Realtime GPU",
+     "Use GPU accelerated compositing with more limited functionality"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -1184,6 +1191,9 @@ static bNode *rna_NodeTree_node_new(bNodeTree *ntree,
   if (!rna_NodeTree_check(ntree, reports)) {
     return NULL;
   }
+
+  /* If the given idname is an alias, translate it to the proper idname. */
+  type = nodeTypeFindAlias(type);
 
   ntype = nodeTypeFind(type);
   if (!ntype) {
@@ -2685,13 +2695,6 @@ static void rna_Node_width_range(
   bNode *node = ptr->data;
   *min = *softmin = node->typeinfo->minwidth;
   *max = *softmax = node->typeinfo->maxwidth;
-}
-
-static void rna_Node_width_hidden_set(PointerRNA *UNUSED(ptr), float UNUSED(value)) {}
-
-static float rna_Node_width_hidden_get(PointerRNA *UNUSED(ptr))
-{
-  return 0.0f;
 }
 
 static void rna_Node_height_range(
@@ -4742,16 +4745,11 @@ static const EnumPropertyItem node_flip_items[] = {
 static const EnumPropertyItem node_ycc_items[] = {
     {0, "ITUBT601", 0, "ITU 601", ""},
     {1, "ITUBT709", 0, "ITU 709", ""},
-    {2, "JFIF", 0, "Jpeg", ""},
+    {2, "JFIF", 0, "JPEG", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_glossy_items[] = {
-    {SHD_GLOSSY_SHARP,
-     "SHARP",
-     0,
-     "Sharp",
-     "Results in perfectly sharp reflections like a mirror. The Roughness value is not used"},
     {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
     {SHD_GLOSSY_ASHIKHMIN_SHIRLEY, "ASHIKHMIN_SHIRLEY", 0, "Ashikhmin-Shirley", ""},
@@ -4759,47 +4757,24 @@ static const EnumPropertyItem node_glossy_items[] = {
      "MULTI_GGX",
      0,
      "Multiscatter GGX",
-     "Slower than GGX but gives a more energy conserving results, which would otherwise be "
-     "visible as excessive darkening"},
-    {0, NULL, 0, NULL, NULL},
-};
-
-static const EnumPropertyItem node_anisotropic_items[] = {
-    {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
-    {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
-    {SHD_GLOSSY_MULTI_GGX,
-     "MULTI_GGX",
-     0,
-     "Multiscatter GGX",
-     "Slower than GGX but gives a more energy conserving results, which would otherwise be "
-     "visible as excessive darkening"},
-    {SHD_GLOSSY_ASHIKHMIN_SHIRLEY, "ASHIKHMIN_SHIRLEY", 0, "Ashikhmin-Shirley", ""},
+     "GGX with additional correction to account for multiple scattering, preserve energy and "
+     "prevent unexpected darkening at high roughness"},
     {0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_glass_items[] = {
-    {SHD_GLOSSY_SHARP,
-     "SHARP",
-     0,
-     "Sharp",
-     "Results in perfectly sharp reflections like a mirror. The Roughness value is not used"},
     {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
     {SHD_GLOSSY_MULTI_GGX,
      "MULTI_GGX",
      0,
      "Multiscatter GGX",
-     "Slower than GGX but gives a more energy conserving results, which would otherwise be "
-     "visible as excessive darkening"},
+     "GGX with additional correction to account for multiple scattering, preserve energy and "
+     "prevent unexpected darkening at high roughness"},
     {0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_refraction_items[] = {
-    {SHD_GLOSSY_SHARP,
-     "SHARP",
-     0,
-     "Sharp",
-     "Results in perfectly sharp reflections like a mirror. The Roughness value is not used"},
     {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
     {0, NULL, 0, NULL, NULL},
@@ -4865,8 +4840,8 @@ static const EnumPropertyItem node_principled_distribution_items[] = {
      "MULTI_GGX",
      0,
      "Multiscatter GGX",
-     "Slower than GGX but gives a more energy conserving results, which would otherwise be "
-     "visible as excessive darkening"},
+     "GGX with additional correction to account for multiple scattering, preserve energy and "
+     "prevent unexpected darkening at high roughness"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -5947,6 +5922,11 @@ static void def_sh_tex_voronoi(StructRNA *srna)
   RNA_def_property_ui_text(
       prop, "Feature Output", "The Voronoi feature that the node will compute");
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "normalize", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "normalize", 0);
+  RNA_def_property_ui_text(prop, "Normalize", "Normalize output Distance to 0.0 to 1.0 range");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_sh_tex_wave(StructRNA *srna)
@@ -6093,6 +6073,7 @@ static void def_sh_tex_wireframe(StructRNA *srna)
   prop = RNA_def_property(srna, "use_pixel_size", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "custom1", 1);
   RNA_def_property_ui_text(prop, "Pixel Size", "Use screen pixel size instead of world units");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_UNIT);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -6303,17 +6284,6 @@ static void def_refraction(StructRNA *srna)
   prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, node_refraction_items);
-  RNA_def_property_ui_text(prop, "Distribution", "Light scattering distribution on rough surface");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_anisotropic(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, node_anisotropic_items);
   RNA_def_property_ui_text(prop, "Distribution", "Light scattering distribution on rough surface");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
@@ -9409,6 +9379,43 @@ static void def_cmp_denoise(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_cmp_kuwahara(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeKuwaharaData", "storage");
+
+  static const EnumPropertyItem variation_items[] = {
+      {0, "CLASSIC", 0, "Classic", "Fast but less accurate variation"},
+      {1, "ANISOTROPIC", 0, "Anisotropic", "Accurate but slower variation"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "size", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "size");
+  RNA_def_property_range(prop, 1.0, 100.0);
+  RNA_def_property_ui_range(prop, 1, 100, 1, -1);
+  RNA_def_property_ui_text(
+      prop, "Size", "Size of filter. Larger values give stronger stylized effect");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "variation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "variation");
+  RNA_def_property_enum_items(prop, variation_items);
+  RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "smoothing", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "smoothing");
+  RNA_def_property_range(prop, 0.0, 50.0);
+  RNA_def_property_ui_range(prop, 0, 50, 1, -1);
+  RNA_def_property_ui_text(prop,
+                           "Smoothing",
+                           "Smoothing degree before applying filter. Higher values remove details "
+                           "and give smoother edges");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_cmp_antialiasing(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9958,7 +9965,7 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Attribute Domain",
-      "Attribute domain where the attribute domain is stored in the simulation state");
+      "Attribute domain where the attribute is stored in the simulation state");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
@@ -10999,6 +11006,44 @@ static void def_geo_attribute_capture(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_geo_sample_volume(StructRNA *srna)
+{
+  static const EnumPropertyItem interpolation_mode_items[] = {
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST, "NEAREST", 0, "Nearest Neighbor", ""},
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR, "TRILINEAR", 0, "Trilinear", ""},
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC,
+       "TRIQUADRATIC",
+       0,
+       "Triquadratic",
+       ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem grid_type_items[] = {
+      {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
+      {CD_PROP_FLOAT3, "FLOAT_VECTOR", 0, "Vector", "3D vector with floating-point values"},
+      {CD_PROP_INT32, "INT", 0, "Integer", "32-bit integer"},
+      {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySampleVolume", "storage");
+
+  prop = RNA_def_property(srna, "interpolation_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, interpolation_mode_items);
+  RNA_def_property_ui_text(
+      prop, "Interpolation Mode", "How to interpolate the values from neighboring voxels");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "grid_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, grid_type_items);
+  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
+  RNA_def_property_ui_text(prop, "Grid Type", "Type of grid to sample data from");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+}
+
 static void def_geo_image(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -11240,17 +11285,6 @@ static void def_geo_viewer(StructRNA *srna)
   RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
   RNA_def_property_ui_text(prop, "Domain", "Domain to evaluate the field on");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_geo_realize_instances(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "legacy_behavior", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "custom1", GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR);
-  RNA_def_property_ui_text(
-      prop, "Legacy Behavior", "Behave like before instance attributes existed");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
 }
 
 static void def_geo_evaluate_at_index(StructRNA *srna)
@@ -12578,13 +12612,6 @@ static void rna_def_node(BlenderRNA *brna)
   RNA_def_property_float_funcs(prop, NULL, NULL, "rna_Node_width_range");
   RNA_def_property_ui_text(prop, "Width", "Width of the node");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, NULL);
-
-  prop = RNA_def_property(srna, "width_hidden", PROP_FLOAT, PROP_XYZ);
-  RNA_def_property_float_funcs(
-      prop, "rna_Node_width_hidden_get", "rna_Node_width_hidden_set", "rna_Node_width_range");
-  RNA_def_property_ui_text(
-      prop, "Width Hidden", "Deprecated width of the node when it is collapsed");
-  RNA_def_property_update(prop, 0, NULL);
 
   prop = RNA_def_property(srna, "height", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_float_sdna(prop, NULL, "height");

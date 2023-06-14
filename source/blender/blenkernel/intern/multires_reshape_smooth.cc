@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -490,8 +491,10 @@ static float get_effective_crease(const MultiresReshapeSmoothContext *reshape_sm
   if (!is_crease_supported(reshape_smooth_context)) {
     return 1.0f;
   }
-  const float *creases = reshape_smooth_context->reshape_context->cd_edge_crease;
-  return creases ? creases[base_edge_index] : 0.0f;
+  if (reshape_smooth_context->reshape_context->cd_edge_crease.is_empty()) {
+    return 0.0f;
+  }
+  return reshape_smooth_context->reshape_context->cd_edge_crease[base_edge_index];
 }
 
 static float get_effective_crease_float(const MultiresReshapeSmoothContext *reshape_smooth_context,
@@ -616,12 +619,11 @@ static void foreach_single_vertex(const SubdivForeachContext *foreach_context,
   }
 
   const MultiresReshapeContext *reshape_context = reshape_smooth_context->reshape_context;
-  const float *cd_vertex_crease = reshape_context->cd_vertex_crease;
-  if (cd_vertex_crease == nullptr) {
+  if (reshape_context->cd_vertex_crease.is_empty()) {
     return;
   }
 
-  float crease = cd_vertex_crease[coarse_vertex_index];
+  float crease = reshape_context->cd_vertex_crease[coarse_vertex_index];
   if (crease == 0.0f) {
     return;
   }
@@ -822,18 +824,15 @@ static void foreach_edge(const SubdivForeachContext *foreach_context,
     return;
   }
 
-  /* Ignore all inner face edges as they have sharpness of zero when using Catmull-Clark mode. In
-   * simple mode, all edges have maximum sharpness, so they can't be skipped. */
-  if (coarse_edge_index == ORIGINDEX_NONE &&
-      reshape_smooth_context->smoothing_type != MULTIRES_SUBDIVIDE_SIMPLE)
-  {
+  /* Ignore all inner face edges as they have sharpness of zero. */
+  if (coarse_edge_index == ORIGINDEX_NONE) {
     return;
   }
   /* Ignore all loose edges as well, as they are not communicated to the OpenSubdiv. */
-  if (!reshape_smooth_context->loose_base_edges.is_empty() &&
-      reshape_smooth_context->loose_base_edges[coarse_edge_index])
-  {
-    return;
+  if (!reshape_smooth_context->loose_base_edges.is_empty()) {
+    if (reshape_smooth_context->loose_base_edges[coarse_edge_index]) {
+      return;
+    }
   }
   /* Edges without crease are to be ignored as well. */
   const float crease = get_effective_crease(reshape_smooth_context, coarse_edge_index);

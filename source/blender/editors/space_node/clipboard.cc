@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_space_types.h"
 
@@ -6,7 +8,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_report.h"
@@ -245,6 +247,13 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
     {
       bNode *new_node = bke::node_copy_with_mapping(
           &tree, node, LIB_ID_COPY_DEFAULT, true, socket_map);
+      /* Reset socket shape in case a node is copied to a different tree type. */
+      LISTBASE_FOREACH (bNodeSocket *, socket, &new_node->inputs) {
+        socket->display_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
+      }
+      LISTBASE_FOREACH (bNodeSocket *, socket, &new_node->outputs) {
+        socket->display_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
+      }
       node_map.add_new(&node, new_node);
     }
     else {
@@ -315,7 +324,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   for (bNode *new_node : node_map.values()) {
-    nodeDeclarationEnsure(&tree, new_node);
+    bke::nodeDeclarationEnsure(&tree, new_node);
   }
 
   remap_pairing(tree, node_map);

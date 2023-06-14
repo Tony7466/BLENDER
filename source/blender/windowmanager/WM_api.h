@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -25,7 +26,6 @@ extern "C" {
 #endif
 
 struct ARegion;
-struct AssetHandle;
 struct GHashIterator;
 struct GPUViewport;
 struct ID;
@@ -100,16 +100,35 @@ void WM_init_input_devices(void);
  */
 void WM_init(struct bContext *C, int argc, const char **argv);
 /**
- * \note doesn't run exit() call #WM_exit() for that.
+ * Main exit function (implementation).
+ *
+ * \note Unlike #WM_exit this does not call `exit()`,
+ * the caller is responsible for this.
+ *
+ * \param C: The context or null, a null context implies `do_user_exit_actions == false` &
+ * prevents some editor-exit operations from running.
+ * \param do_python: Free all data associated with Blender's Python integration.
+ * Also exit the Python interpreter (unless `WITH_PYTHON_MODULE` is enabled).
+ * \param do_user_exit_actions: When enabled perform actions associated with a user
+ * having been using Blender then exiting. Actions such as writing the auto-save
+ * and writing any changes to preferences.
+ * Set to false in background mode or when exiting because of failed command line argument parsing.
+ * In general automated actions where the user isn't making changes should pass in false too.
  */
-void WM_exit_ex(struct bContext *C, bool do_python);
+void WM_exit_ex(struct bContext *C, bool do_python, bool do_user_exit_actions);
 
 /**
- * \brief Main exit function to close Blender ordinarily.
+ * Main exit function to close Blender ordinarily.
+ *
  * \note Use #wm_exit_schedule_delayed() to close Blender from an operator.
  * Might leak memory otherwise.
+ *
+ * \param exit_code: Passed to #exit, typically #EXIT_SUCCESS or #EXIT_FAILURE should be used.
+ * With failure being used for an early exit when parsing command line arguments fails.
+ * Note that any exit-code besides #EXIT_SUCCESS calls #WM_exit_ex with its `do_user_exit_actions`
+ * argument set to false.
  */
-void WM_exit(struct bContext *C) ATTR_NORETURN;
+void WM_exit(struct bContext *C, int exit_code) ATTR_NORETURN;
 
 void WM_main(struct bContext *C) ATTR_NORETURN;
 
@@ -124,7 +143,7 @@ void WM_init_splash_on_startup(struct bContext *C);
  */
 void WM_init_splash(struct bContext *C);
 
-void WM_init_opengl(void);
+void WM_init_gpu(void);
 
 /**
  * Return an identifier for the underlying GHOST implementation.
@@ -134,7 +153,7 @@ void WM_init_opengl(void);
 const char *WM_ghost_backend(void);
 
 typedef enum eWM_CapabilitiesFlag {
-  /** Ability to warp the cursor (set it's location). */
+  /** Ability to warp the cursor (set its location). */
   WM_CAPABILITY_CURSOR_WARP = (1 << 0),
   /** Ability to access window positions & move them. */
   WM_CAPABILITY_WINDOW_POSITION = (1 << 1),
@@ -165,7 +184,7 @@ void WM_script_tag_reload(void);
 wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mval[2]);
 
 /**
- * Knowing the area, return it's screen.
+ * Knowing the area, return its screen.
  * \note This should typically be avoided, only use when the context is not available.
  */
 wmWindow *WM_window_find_by_area(wmWindowManager *wm, const struct ScrArea *area);
@@ -181,9 +200,9 @@ wmWindow *WM_window_find_by_area(wmWindowManager *wm, const struct ScrArea *area
  * \warning Drawing (swap-buffers) immediately before calling this function causes
  * the front-buffer state to be invalid under some EGL configurations.
  */
-uint *WM_window_pixels_read_from_frontbuffer(const struct wmWindowManager *wm,
-                                             const struct wmWindow *win,
-                                             int r_size[2]);
+uint8_t *WM_window_pixels_read_from_frontbuffer(const struct wmWindowManager *wm,
+                                                const struct wmWindow *win,
+                                                int r_size[2]);
 /** A version of #WM_window_pixels_read_from_frontbuffer that samples a pixel at `pos`. */
 void WM_window_pixels_read_sample_from_frontbuffer(const wmWindowManager *wm,
                                                    const struct wmWindow *win,
@@ -197,9 +216,9 @@ void WM_window_pixels_read_sample_from_frontbuffer(const wmWindowManager *wm,
  * \note This is needed because the state of the front-buffer may be damaged
  * (see in-line code comments for details).
  */
-uint *WM_window_pixels_read_from_offscreen(struct bContext *C,
-                                           struct wmWindow *win,
-                                           int r_size[2]);
+uint8_t *WM_window_pixels_read_from_offscreen(struct bContext *C,
+                                              struct wmWindow *win,
+                                              int r_size[2]);
 /** A version of #WM_window_pixels_read_from_offscreen that samples a pixel at `pos`. */
 bool WM_window_pixels_read_sample_from_offscreen(struct bContext *C,
                                                  struct wmWindow *win,
@@ -211,7 +230,7 @@ bool WM_window_pixels_read_sample_from_offscreen(struct bContext *C,
  *
  * \note Use off-screen drawing when front-buffer reading is not supported.
  */
-uint *WM_window_pixels_read(struct bContext *C, struct wmWindow *win, int r_size[2]);
+uint8_t *WM_window_pixels_read(struct bContext *C, struct wmWindow *win, int r_size[2]);
 /**
  * Read a single pixel from the screen.
  *
@@ -293,10 +312,10 @@ void WM_window_ensure_active_view_layer(struct wmWindow *win) ATTR_NONNULL(1);
 
 bool WM_window_is_temp_screen(const struct wmWindow *win) ATTR_WARN_UNUSED_RESULT;
 
-void *WM_opengl_context_create(void);
-void WM_opengl_context_dispose(void *context);
-void WM_opengl_context_activate(void *context);
-void WM_opengl_context_release(void *context);
+void *WM_system_gpu_context_create(void);
+void WM_system_gpu_context_dispose(void *context);
+void WM_system_gpu_context_activate(void *context);
+void WM_system_gpu_context_release(void *context);
 
 /* #WM_window_open alignment */
 typedef enum eWindowAlignment {
@@ -387,9 +406,6 @@ void WM_cursor_grab_enable(struct wmWindow *win,
                            eWM_CursorWrapAxis wrap,
                            const struct rcti *wrap_region,
                            bool hide);
-/**
- *
- */
 void WM_cursor_grab_disable(struct wmWindow *win, const int mouse_ungrab_xy[2]);
 /**
  * After this you can call restore too.
@@ -488,6 +504,8 @@ wmKeyMapItem *WM_event_match_keymap_item_from_handlers(struct bContext *C,
                                                        struct wmWindow *win,
                                                        struct ListBase *handlers,
                                                        const struct wmEvent *event);
+
+bool WM_event_match(const struct wmEvent *winevent, const struct wmKeyMapItem *kmi);
 
 typedef int (*wmUIHandlerFunc)(struct bContext *C, const struct wmEvent *event, void *userdata);
 typedef void (*wmUIHandlerRemoveFunc)(struct bContext *C, void *userdata);
@@ -768,7 +786,7 @@ bool WM_operator_name_poll(struct bContext *C, const char *opstring);
  * \param event: Optionally pass in an event to use when context uses one of the
  * `WM_OP_INVOKE_*` values. When left unset the #wmWindow.eventstate will be used,
  * this can cause problems for operators that read the events type - for example,
- * storing the key that was pressed so as to be able to detect it's release.
+ * storing the key that was pressed so as to be able to detect its release.
  * In these cases it's necessary to forward the current event being handled.
  */
 int WM_operator_name_call_ptr(struct bContext *C,
@@ -1360,8 +1378,12 @@ int WM_operator_flag_only_pass_through_on_press(int retval, const struct wmEvent
  * Start dragging immediately with the given data.
  * Note that \a poin should be valid allocated and not on stack.
  */
-void WM_event_start_drag(
-    struct bContext *C, int icon, int type, void *poin, double value, unsigned int flags);
+void WM_event_start_drag(struct bContext *C,
+                         int icon,
+                         eWM_DragDataType type,
+                         void *poin,
+                         double value,
+                         unsigned int flags);
 /**
  * Create and fill the dragging data, but don't start dragging just yet (unlike
  * #WM_event_start_drag()). Must be followed up by #WM_event_start_prepared_drag(), otherwise the
@@ -1369,15 +1391,19 @@ void WM_event_start_drag(
  *
  * Note that \a poin should be valid allocated and not on stack.
  */
-wmDrag *WM_drag_data_create(
-    struct bContext *C, int icon, int type, void *poin, double value, unsigned int flags);
+wmDrag *WM_drag_data_create(struct bContext *C,
+                            int icon,
+                            eWM_DragDataType type,
+                            void *poin,
+                            double value,
+                            unsigned int flags);
 /**
  * Invoke dragging using the given \a drag data.
  */
 void WM_event_start_prepared_drag(struct bContext *C, wmDrag *drag);
 void WM_event_drag_image(struct wmDrag *, struct ImBuf *, float scale);
 void WM_drag_free(struct wmDrag *drag);
-void WM_drag_data_free(int dragtype, void *poin);
+void WM_drag_data_free(eWM_DragDataType dragtype, void *poin);
 void WM_drag_free_list(struct ListBase *lb);
 struct wmDropBox *WM_dropbox_add(
     ListBase *lb,
@@ -1417,8 +1443,7 @@ bool WM_drag_is_ID_type(const struct wmDrag *drag, int idcode);
 /**
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
-wmDragAsset *WM_drag_create_asset_data(const struct AssetHandle *asset,
-                                       const char *path,
+wmDragAsset *WM_drag_create_asset_data(const struct AssetRepresentation *asset,
                                        int /* #eAssetImportMethod */ import_type);
 struct wmDragAsset *WM_drag_get_asset_data(const struct wmDrag *drag, int idcode);
 struct AssetMetaData *WM_drag_get_asset_meta_data(const struct wmDrag *drag, int idcode);
@@ -1448,7 +1473,7 @@ struct wmDragAssetCatalog *WM_drag_get_asset_catalog_data(const struct wmDrag *d
 /**
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
-void WM_drag_add_asset_list_item(wmDrag *drag, const struct AssetHandle *asset);
+void WM_drag_add_asset_list_item(wmDrag *drag, const struct AssetRepresentation *asset);
 const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(struct wmDrag *drag);
@@ -1616,14 +1641,15 @@ void WM_job_main_thread_lock_release(struct wmJob *job);
 
 /**
  * Return text from the clipboard.
- *
- * \note Caller needs to check for valid utf8 if this is a requirement.
+ * \param selection: Use the "primary" clipboard, see: #WM_CAPABILITY_PRIMARY_CLIPBOARD.
+ * \param ensure_utf8: Ensure the resulting string does not contain invalid UTF8 encoding.
  */
-char *WM_clipboard_text_get(bool selection, int *r_len);
+char *WM_clipboard_text_get(bool selection, bool ensure_utf8, int *r_len);
 /**
  * Convenience function for pasting to areas of Blender which don't support newlines.
  */
-char *WM_clipboard_text_get_firstline(bool selection, int *r_len);
+char *WM_clipboard_text_get_firstline(bool selection, bool ensure_utf8, int *r_len);
+
 void WM_clipboard_text_set(const char *buf, bool selection);
 
 /**

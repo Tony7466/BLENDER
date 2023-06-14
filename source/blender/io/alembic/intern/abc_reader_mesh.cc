@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -24,6 +26,8 @@
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
+
+#include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_lib_id.h"
@@ -632,14 +636,14 @@ bool AbcMeshReader::accepts_object_type(
     const char **err_str) const
 {
   if (!Alembic::AbcGeom::IPolyMesh::matches(alembic_header)) {
-    *err_str =
+    *err_str = N_(
         "Object type mismatch, Alembic object path pointed to PolyMesh when importing, but not "
-        "any more.";
+        "any more.");
     return false;
   }
 
   if (ob->type != OB_MESH) {
-    *err_str = "Object type mismatch, Alembic object path points to PolyMesh.";
+    *err_str = N_("Object type mismatch, Alembic object path points to PolyMesh.");
     return false;
   }
 
@@ -888,8 +892,8 @@ static void read_vertex_creases(Mesh *mesh,
     return;
   }
 
-  float *vertex_crease_data = (float *)CustomData_add_layer(
-      &mesh->vdata, CD_CREASE, CD_SET_DEFAULT, mesh->totvert);
+  float *vertex_crease_data = (float *)CustomData_add_layer_named(
+      &mesh->vdata, CD_PROP_FLOAT, CD_SET_DEFAULT, mesh->totvert, "crease_vert");
   const int totvert = mesh->totvert;
 
   for (int i = 0, v = indices->size(); i < v; ++i) {
@@ -914,8 +918,8 @@ static void read_edge_creases(Mesh *mesh,
   MutableSpan<int2> edges = mesh->edges_for_write();
   EdgeHash *edge_hash = BLI_edgehash_new_ex(__func__, edges.size());
 
-  float *creases = static_cast<float *>(
-      CustomData_add_layer(&mesh->edata, CD_CREASE, CD_SET_DEFAULT, edges.size()));
+  float *creases = static_cast<float *>(CustomData_add_layer_named(
+      &mesh->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, edges.size(), "crease_edge"));
 
   for (const int i : edges.index_range()) {
     int2 &edge = edges[i];
@@ -969,14 +973,14 @@ bool AbcSubDReader::accepts_object_type(
     const char **err_str) const
 {
   if (!Alembic::AbcGeom::ISubD::matches(alembic_header)) {
-    *err_str =
+    *err_str = N_(
         "Object type mismatch, Alembic object path pointed to SubD when importing, but not any "
-        "more.";
+        "more.");
     return false;
   }
 
   if (ob->type != OB_MESH) {
-    *err_str = "Object type mismatch, Alembic object path points to SubD.";
+    *err_str = N_("Object type mismatch, Alembic object path points to SubD.");
     return false;
   }
 

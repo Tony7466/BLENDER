@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -418,7 +420,7 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
       else {
         /* Set to `sys.executable = None` below (we can't do before Python is initialized). */
         fprintf(stderr,
-                "Unable to find the python binary, "
+                "Unable to find the Python binary, "
                 "the multiprocessing module may not be functional!\n");
       }
     }
@@ -435,7 +437,7 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
         if (strchr(py_path_bundle, ':')) {
           fprintf(stderr,
                   "Warning! Blender application is located in a path containing ':' or '/' chars\n"
-                  "This may make python import function fail\n");
+                  "This may make Python import function fail\n");
         }
 #  endif /* __APPLE__ */
 
@@ -467,14 +469,18 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
   Py_DECREF(PyImport_ImportModule("threading"));
 #  endif
 
-#else
+#else /* WITH_PYTHON_MODULE */
   (void)argc;
   (void)argv;
 
-  /* must run before python initializes */
-  /* broken in py3.3, load explicitly below */
+  /* NOTE(ideasman42): unfortunately the `inittab` can only be used
+   * before Python has been initialized.
+   * When built as a Python module, Python will have been initialized
+   * and using the `inittab` isn't supported.
+   * So it's necessary to load all modules as soon as `bpy` is imported. */
   // PyImport_ExtendInittab(bpy_internal_modules);
-#endif
+
+#endif /* WITH_PYTHON_MODULE */
 
   bpy_intern_string_init();
 
@@ -811,7 +817,7 @@ static void bpy_module_delay_init(PyObject *bpy_proxy)
   const char *filepath_rel = PyUnicode_AsUTF8(filepath_obj); /* can be relative */
   char filepath_abs[1024];
 
-  BLI_strncpy(filepath_abs, filepath_rel, sizeof(filepath_abs));
+  STRNCPY(filepath_abs, filepath_rel);
   BLI_path_abs_from_cwd(filepath_abs, sizeof(filepath_abs));
   Py_DECREF(filepath_obj);
 
