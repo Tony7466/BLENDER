@@ -90,14 +90,14 @@
 /* Resource bindings. */
 
 /* Texture. */
-#define SHADOW_TILEMAPS_TEX_SLOT 12
+#define SHADOW_TILEMAPS_TEX_SLOT 11
 /* Only during surface shading. */
-#define SHADOW_ATLAS_TEX_SLOT 13
+#define SHADOW_ATLAS_TEX_SLOT 12
 /* Only during shadow rendering. */
-#define SHADOW_RENDER_MAP_SLOT 13
-#define RBUFS_UTILITY_TEX_SLOT 14
-#define HIZ_TEX_SLOT 15
-#define SSS_TRANSMITTANCE_TEX_SLOT 16
+#define SHADOW_RENDER_MAP_SLOT 12
+#define RBUFS_UTILITY_TEX_SLOT 13
+#define HIZ_TEX_SLOT 14
+#define SSS_TRANSMITTANCE_TEX_SLOT 15
 
 /* Images. */
 #define RBUFS_COLOR_SLOT 0
