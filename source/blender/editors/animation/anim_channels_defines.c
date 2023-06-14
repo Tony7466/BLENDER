@@ -5177,12 +5177,6 @@ static void draw_setting_widget(bAnimContext *ac,
       UI_but_disable(but, TIP_("Can't edit this property from a linked data-block"));
     }
   }
-  if (ale->datatype == ALE_FCURVE && setting == ACHANNEL_SETTING_PROTECT) {
-    FCurve *fcu = ale->key_data;
-    if (!fcu->bezt) {
-      UI_but_disable(but, TIP_("Baked curves cannot be locked"));
-    }
-  }
 }
 
 void ANIM_channel_draw_widgets(const bContext *C,
