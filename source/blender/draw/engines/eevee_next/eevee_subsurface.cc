@@ -51,6 +51,8 @@ void SubsurfaceModule::end_sync()
   subsurface_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
   subsurface_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   subsurface_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
+  /** NOTE: Not used in the shader, but we bind it to avoid debug warnings. */
+  subsurface_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
 
   subsurface_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
   subsurface_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
