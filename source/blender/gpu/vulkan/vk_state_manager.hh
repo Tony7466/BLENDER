@@ -12,6 +12,7 @@
 
 #include "BLI_array.hh"
 
+#include "vk_resource_bindable.hh"
 #include "vk_sampler.hh"
 
 namespace blender::gpu {
@@ -35,18 +36,12 @@ class VKStateManager : public StateManager {
   struct ImageBinding {
     VKTexture *texture = nullptr;
   };
-  struct UniformBufferBinding {
-    VKUniformBuffer *buffer = nullptr;
-  };
-  struct StorageBufferBinding {
-    VKStorageBuffer *storage_buffer = nullptr;
-    VKVertexBuffer *vertex_buffer = nullptr;
-    VKIndexBuffer *index_buffer = nullptr;
-  };
-  Array<ImageBinding> image_bindings_;
   Array<TextureBinding> texture_bindings_;
-  Array<UniformBufferBinding> uniform_buffer_bindings_;
-  Array<StorageBufferBinding> storage_buffer_bindings_;
+  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::IMAGE> image_bindings_;
+  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER>
+      uniform_buffer_bindings_;
+  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER>
+      storage_buffer_bindings_;
 
  public:
   VKStateManager();
@@ -73,12 +68,10 @@ class VKStateManager : public StateManager {
   void texel_buffer_bind(VKVertexBuffer *vertex_buffer, int slot);
   void texel_buffer_unbind(VKVertexBuffer *vertex_buffer);
 
-  void storage_buffer_bind(VKStorageBuffer *storage_buffer, int slot);
-  void storage_buffer_bind(VKVertexBuffer *vertex_buffer, int slot);
-  void storage_buffer_bind(VKIndexBuffer *index_buffer, int slot);
-  void storage_buffer_unbind(VKStorageBuffer *storage_buffer);
-  void storage_buffer_unbind(VKVertexBuffer *vertex_buffer);
-  void storage_buffer_unbind(VKIndexBuffer *index_buffer);
+  void storage_buffer_bind(VKBindableResource &resource, int slot);
+  void storage_buffer_unbind(VKBindableResource &resource);
+
+  void unbind_from_all_namespaces(VKBindableResource &bindable_resource);
 
   void texture_unpack_row_length_set(uint len) override;
 

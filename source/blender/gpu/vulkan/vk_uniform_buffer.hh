@@ -13,21 +13,24 @@
 #include "gpu_uniform_buffer_private.hh"
 
 #include "vk_buffer.hh"
+#include "vk_resource_bindable.hh"
 
 namespace blender::gpu {
 
-class VKUniformBuffer : public UniformBuf, NonCopyable {
+class VKUniformBuffer : public UniformBuf, public VKBindableResource, NonCopyable {
   VKBuffer buffer_;
 
  public:
   VKUniformBuffer(int size, const char *name) : UniformBuf(size, name) {}
-  ~VKUniformBuffer();
 
   void update(const void *data) override;
   void clear_to_zero() override;
   void bind(int slot) override;
   void bind_as_ssbo(int slot) override;
-  void bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type);
+
+  /**
+   * Unbind uniform buffer from active context.
+   */
   void unbind() override;
 
   VkBuffer vk_handle() const
@@ -39,6 +42,9 @@ class VKUniformBuffer : public UniformBuf, NonCopyable {
   {
     return size_in_bytes_;
   }
+
+  /* Bindable resource */
+  void bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type) override;
 
  private:
   void allocate();

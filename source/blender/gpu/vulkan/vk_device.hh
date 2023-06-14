@@ -132,31 +132,12 @@ class VKDevice : public NonCopyable {
 
   void context_register(VKContext &context);
   void context_unregister(VKContext &context);
-
-  /**
-   * Unbind given uniform buffer from registered contexts.
-   */
-  void unbind(VKUniformBuffer &uniform_buffer) const;
+  const Vector<std::reference_wrapper<VKContext>> &contexts_get() const;
 
   /**
    * Unbind given texture from registered contexts.
    */
   void unbind(VKTexture &texture) const;
-
-  /**
-   * Unbind given storage buffer from registered contexts.
-   */
-  void unbind(VKStorageBuffer &storage_buffer) const;
-
-  /**
-   * Unbind given vertex_buffer from registered contexts.
-   */
-  void unbind(VKVertexBuffer &vertex_buffer) const;
-
-  /**
-   * Unbind given index_buffer from registered contexts.
-   */
-  void unbind(VKIndexBuffer &index_buffer) const;
 
   /** \} */
 

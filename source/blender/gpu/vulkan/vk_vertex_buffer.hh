@@ -11,10 +11,11 @@
 #include "gpu_vertex_buffer_private.hh"
 
 #include "vk_buffer.hh"
+#include "vk_resource_bindable.hh"
 
 namespace blender::gpu {
 
-class VKVertexBuffer : public VertBuf {
+class VKVertexBuffer : public VertBuf, public VKBindableResource {
   VKBuffer buffer_;
   /** When a vertex buffer is used as a UNIFORM_TEXEL_BUFFER the buffer requires a buffer view. */
   VkBufferView vk_buffer_view_ = VK_NULL_HANDLE;
@@ -24,7 +25,7 @@ class VKVertexBuffer : public VertBuf {
 
   void bind_as_ssbo(uint binding) override;
   void bind_as_texture(uint binding) override;
-  void bind(uint binding, shader::ShaderCreateInfo::Resource::BindType bind_type);
+  void bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type) override;
   void wrap_handle(uint64_t handle) override;
 
   void update_sub(uint start, uint len, const void *data) override;

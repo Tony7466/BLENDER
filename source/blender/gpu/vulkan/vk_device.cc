@@ -196,41 +196,16 @@ void VKDevice::context_unregister(VKContext &context)
 {
   contexts_.remove(contexts_.first_index_of(std::reference_wrapper(context)));
 }
-
-void VKDevice::unbind(VKUniformBuffer &uniform_buffer) const
+const Vector<std::reference_wrapper<VKContext>> &VKDevice::contexts_get() const
 {
-  for (const VKContext &context : contexts_) {
-    context.state_manager_get().uniform_buffer_unbind(&uniform_buffer);
-  }
-}
+  return contexts_;
+};
 
 void VKDevice::unbind(VKTexture &texture) const
 {
   for (const VKContext &context : contexts_) {
     context.state_manager_get().image_unbind(wrap(&texture));
     context.state_manager_get().texture_unbind(wrap(&texture));
-  }
-}
-
-void VKDevice::unbind(VKStorageBuffer &storage_buffer) const
-{
-  for (VKContext &context : contexts_) {
-    context.state_manager_get().storage_buffer_unbind(&storage_buffer);
-  }
-}
-
-void VKDevice::unbind(VKVertexBuffer &vertex_buffer) const
-{
-  for (VKContext &context : contexts_) {
-    context.state_manager_get().texel_buffer_unbind(&vertex_buffer);
-    context.state_manager_get().storage_buffer_unbind(&vertex_buffer);
-  }
-}
-
-void VKDevice::unbind(VKIndexBuffer &index_buffer) const
-{
-  for (VKContext &context : contexts_) {
-    context.state_manager_get().storage_buffer_unbind(&index_buffer);
   }
 }
 

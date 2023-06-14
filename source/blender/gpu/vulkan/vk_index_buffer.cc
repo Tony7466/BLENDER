@@ -13,11 +13,6 @@
 
 namespace blender::gpu {
 
-VKIndexBuffer::~VKIndexBuffer()
-{
-  VKBackend::get().device_get().unbind(*this);
-}
-
 void VKIndexBuffer::ensure_updated()
 {
   if (is_subrange_) {
@@ -47,10 +42,10 @@ void VKIndexBuffer::bind(VKContext &context)
 
 void VKIndexBuffer::bind_as_ssbo(uint binding)
 {
-  VKContext::get()->state_manager_get().storage_buffer_bind(this, binding);
+  VKContext::get()->state_manager_get().storage_buffer_bind(*this, binding);
 }
 
-void VKIndexBuffer::bind(uint binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKIndexBuffer::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
 {
   BLI_assert(bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
   ensure_updated();

@@ -162,6 +162,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
   void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind_as_ssbo(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
   /* TODO: bind as image */

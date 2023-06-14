@@ -12,12 +12,13 @@
 
 #include "vk_context.hh"
 #include "vk_image_view.hh"
+#include "vk_resource_bindable.hh"
 
 namespace blender::gpu {
 
 class VKSampler;
 
-class VKTexture : public Texture {
+class VKTexture : public Texture, public VKBindableResource {
   VkImage vk_image_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
 
@@ -61,7 +62,7 @@ class VKTexture : public Texture {
   uint gl_bindcode_get() const override;
 
   void bind(int unit, VKSampler &sampler);
-  void image_bind(int location);
+  void bind(int location, shader::ShaderCreateInfo::Resource::BindType bind_type) override;
 
   VkImage vk_image_handle() const
   {

@@ -26,7 +26,7 @@ void VKVertexBuffer::bind_as_ssbo(uint binding)
 {
   VKContext &context = *VKContext::get();
   VKStateManager &state_manager = context.state_manager_get();
-  state_manager.storage_buffer_bind(this, binding);
+  state_manager.storage_buffer_bind(*this, binding);
 }
 
 void VKVertexBuffer::bind_as_texture(uint binding)
@@ -36,7 +36,7 @@ void VKVertexBuffer::bind_as_texture(uint binding)
   state_manager.texel_buffer_bind(this, binding);
 }
 
-void VKVertexBuffer::bind(uint binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKVertexBuffer::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
 {
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
@@ -117,10 +117,8 @@ void VKVertexBuffer::resize_data()
 
 void VKVertexBuffer::release_data()
 {
-  const VKDevice &device = VKBackend::get().device_get();
-  device.unbind(*this);
-
   if (vk_buffer_view_ != VK_NULL_HANDLE) {
+    const VKDevice &device = VKBackend::get().device_get();
     VK_ALLOCATION_CALLBACKS;
     vkDestroyBufferView(device.device_get(), vk_buffer_view_, vk_allocation_callbacks);
     vk_buffer_view_ = VK_NULL_HANDLE;

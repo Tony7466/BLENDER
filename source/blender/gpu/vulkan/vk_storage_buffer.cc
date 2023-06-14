@@ -19,11 +19,6 @@ VKStorageBuffer::VKStorageBuffer(int size, GPUUsageType usage, const char *name)
 {
 }
 
-VKStorageBuffer::~VKStorageBuffer()
-{
-  unbind();
-}
-
 void VKStorageBuffer::update(const void *data)
 {
   ensure_allocated();
@@ -50,7 +45,7 @@ void VKStorageBuffer::allocate()
 void VKStorageBuffer::bind(int slot)
 {
   VKContext &context = *VKContext::get();
-  context.state_manager_get().storage_buffer_bind(this, slot);
+  context.state_manager_get().storage_buffer_bind(*this, slot);
 }
 
 void VKStorageBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type)
@@ -68,7 +63,7 @@ void VKStorageBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindTyp
 
 void VKStorageBuffer::unbind()
 {
-  VKBackend::get().device_get().unbind(*this);
+  unbind_from_active_context();
 }
 
 void VKStorageBuffer::clear(uint32_t clear_value)

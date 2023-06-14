@@ -483,7 +483,7 @@ void VKTexture::bind(int unit, VKSampler &sampler)
   }
 }
 
-void VKTexture::image_bind(int binding)
+void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)
 {
   if (!is_allocated()) {
     allocate();
@@ -492,8 +492,7 @@ void VKTexture::image_bind(int binding)
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
   const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(shader::ShaderCreateInfo::Resource::BindType::IMAGE,
-                                               binding);
+      shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
     VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
     descriptor_set.image_bind(*this, *location);
