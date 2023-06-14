@@ -783,6 +783,7 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
   const RealizePointCloudTask &first_task = tasks.first();
   const PointCloud &first_pointcloud = *first_task.pointcloud_info->pointcloud;
   dst_pointcloud->mat = static_cast<Material **>(MEM_dupallocN(first_pointcloud.mat));
+  dst_pointcloud->totcol = first_pointcloud.totcol;
 
   SpanAttributeWriter<float3> positions = dst_attributes.lookup_or_add_for_write_only_span<float3>(
       "position", ATTR_DOMAIN_POINT);
