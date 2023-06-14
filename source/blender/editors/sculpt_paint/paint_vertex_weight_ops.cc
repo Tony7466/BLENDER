@@ -741,7 +741,20 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   WPGradient_vertStoreBase *vert_cache = static_cast<WPGradient_vertStoreBase *>(
       gesture->user_data.data);
-  int ret = WM_gesture_straightline_modal(C, op, event);
+  Object *ob = CTX_data_active_object(C);
+  Mesh *me = (Mesh *)ob->data;
+  bDeformGroup *dg = (bDeformGroup *)BLI_findlink(&me->vertex_group_names,
+                                                  me->vertex_group_active_index - 1);
+
+  int ret;
+
+  if (dg->flag & DG_LOCK_WEIGHT) {
+    BKE_report(op->reports, RPT_WARNING, "Active group is locked, aborting");
+    ret = OPERATOR_CANCELLED;
+  }
+  else {
+    ret = WM_gesture_straightline_modal(C, op, event);
+  }
 
   if (ret & OPERATOR_RUNNING_MODAL) {
     if (event->type == LEFTMOUSE && event->val == KM_RELEASE) { /* XXX, hardcoded */
@@ -753,9 +766,7 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   }
 
   if (ret & OPERATOR_CANCELLED) {
-    Object *ob = CTX_data_active_object(C);
     if (vert_cache != nullptr) {
-      Mesh *me = static_cast<Mesh *>(ob->data);
       if (vert_cache->wpp.wpaint_prev) {
         MDeformVert *dvert = BKE_mesh_deform_verts_for_write(me);
         BKE_defvert_array_free_elems(dvert, me->totvert);
