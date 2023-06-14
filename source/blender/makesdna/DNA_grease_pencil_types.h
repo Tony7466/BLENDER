@@ -445,6 +445,10 @@ typedef struct GreasePencil {
   bool has_active_layer() const;
   blender::bke::greasepencil::Layer &add_layer(blender::bke::greasepencil::LayerGroup &group,
                                                blender::StringRefNull name);
+  blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
+  blender::bke::greasepencil::Layer &add_layer_after(blender::bke::greasepencil::LayerGroup &group,
+                                                     blender::bke::greasepencil::Layer *layer,
+                                                     blender::StringRefNull name);
 
   const blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name) const;
   blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);

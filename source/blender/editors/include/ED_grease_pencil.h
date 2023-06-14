@@ -23,6 +23,7 @@ extern "C" {
  * \{ */
 
 void ED_operatortypes_grease_pencil(void);
+void ED_operatortypes_grease_pencil_layers(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 
 #ifdef __cplusplus
@@ -30,6 +31,8 @@ void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 #endif
 
 #ifdef __cplusplus
+
+#  include "BLI_math_matrix_types.hh"
 
 namespace blender::ed::greasepencil {
 

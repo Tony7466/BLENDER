@@ -25,6 +25,9 @@
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
+#include "BLI_string_utils.h"
+#include "BLI_vector_set.hh"
 
 #include "BLO_read_write.h"
 
@@ -40,7 +43,7 @@
 using blender::float3;
 using blender::Span;
 using blender::uint3;
-using blender::Vector;
+using blender::VectorSet;
 
 static void grease_pencil_init_data(ID *id)
 {
@@ -1182,13 +1185,47 @@ blender::Span<blender::bke::greasepencil::Layer *> GreasePencil::layers_for_writ
   return this->root_group.wrap().layers_for_write();
 }
 
+static bool unique_layer_cb(void *arg, const char *name)
+{
+  using namespace blender;
+  VectorSet<StringRefNull> &names = *reinterpret_cast<VectorSet<StringRefNull> *>(arg);
+  return names.contains(StringRefNull(name));
+}
+
+static bool unique_layer_name(VectorSet<blender::StringRefNull> &names, char *name)
+{
+  return BLI_uniquename_cb(unique_layer_cb, &names, "GP_Layer", '.', name, INT16_MAX);
+}
+
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &group, const blender::StringRefNull name)
 {
   using namespace blender;
-  /* TODO: Check for name collisions and resolve them. */
-  /* StringRefNull checked_name; */
-  return group.add_layer(name);
+  VectorSet<StringRefNull> names;
+  for (const blender::bke::greasepencil::Layer *layer : this->layers()) {
+    names.add(layer->name());
+  }
+  char *unique_name = BLI_strdup(name.c_str());
+  unique_layer_name(names, unique_name);
+  return group.add_layer(unique_name);
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer_after(
+    blender::bke::greasepencil::LayerGroup &group, blender::bke::greasepencil::Layer *layer, const blender::StringRefNull name)
+{
+  using namespace blender;
+  VectorSet<StringRefNull> names;
+  for (const blender::bke::greasepencil::Layer *layer : this->layers()) {
+    names.add(layer->name());
+  }
+  char *unique_name = BLI_strdup(name.c_str());
+  unique_layer_name(names, unique_name);
+  return group.add_layer_after(unique_name, layer);
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(const blender::StringRefNull name)
+{
+  return this->add_layer(this->root_group.wrap(), name);
 }
 
 const blender::bke::greasepencil::Layer *GreasePencil::find_layer_by_name(

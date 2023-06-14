@@ -35,7 +35,10 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
-        layout.template_grease_pencil_layer_tree()
+        row = layout.row()
+        row.template_grease_pencil_layer_tree()
+
+        row.operator("grease_pencil.layer_add", icon='ADD', text="")
 
 
 classes = (

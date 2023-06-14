@@ -97,6 +97,7 @@ void ED_spacetypes_init()
   ED_operatortypes_gpencil_legacy();
   ED_operatortypes_grease_pencil_draw();
   ED_operatortypes_grease_pencil();
+  ED_operatortypes_grease_pencil_layers();
   ED_operatortypes_object();
   ED_operatortypes_lattice();
   ED_operatortypes_mesh();
