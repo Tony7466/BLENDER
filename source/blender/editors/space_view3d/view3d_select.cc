@@ -3226,7 +3226,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         return (a.elem.distance < b.elem.distance) ? a : b;
       });
 
-  bool deselected = false;
+  std::atomic<bool> deselected = false;
   if (params.deselect_all || params.sel_op == SEL_OP_SET) {
     threading::parallel_for(drawings.index_range(), 1L, [&](const IndexRange range) {
       for (const int i : range) {
