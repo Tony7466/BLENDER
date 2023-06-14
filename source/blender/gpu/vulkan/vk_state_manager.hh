@@ -18,6 +18,7 @@ namespace blender::gpu {
 class VKTexture;
 class VKUniformBuffer;
 class VKVertexBuffer;
+class VKStorageBuffer;
 
 class VKStateManager : public StateManager {
   /* Dummy sampler for now. */
@@ -36,9 +37,14 @@ class VKStateManager : public StateManager {
   struct UniformBufferBinding {
     VKUniformBuffer *buffer = nullptr;
   };
+  struct StorageBufferBinding {
+    VKStorageBuffer *storage_buffer = nullptr;
+    VKVertexBuffer *vertex_buffer = nullptr;
+  };
   Array<ImageBinding> image_bindings_;
   Array<TextureBinding> texture_bindings_;
   Array<UniformBufferBinding> uniform_buffer_bindings_;
+  Array<StorageBufferBinding> storage_buffer_bindings_;
 
  public:
   VKStateManager();
@@ -64,6 +70,11 @@ class VKStateManager : public StateManager {
 
   void texel_buffer_bind(VKVertexBuffer *vertex_buffer, int slot);
   void texel_buffer_unbind(VKVertexBuffer *vertex_buffer);
+
+  void storage_buffer_bind(VKStorageBuffer *storage_buffer, int slot);
+  void storage_buffer_unbind(VKStorageBuffer *storage_buffer);
+  void storage_buffer_bind(VKVertexBuffer *vertex_buffer, int slot);
+  void storage_buffer_unbind(VKVertexBuffer *vertex_buffer);
 
   void texture_unpack_row_length_set(uint len) override;
 

@@ -149,9 +149,14 @@ class VKTexture : public Texture {
   /** \} */
 };
 
-static inline VKTexture *unwrap(Texture *tex)
+BLI_INLINE VKTexture *unwrap(Texture *tex)
 {
   return static_cast<VKTexture *>(tex);
+}
+
+BLI_INLINE Texture *wrap(VKTexture *texture)
+{
+  return static_cast<Texture *>(texture);
 }
 
 }  // namespace blender::gpu

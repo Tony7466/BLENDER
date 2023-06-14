@@ -73,10 +73,7 @@ void VKUniformBuffer::bind_as_ssbo(int slot)
 
 void VKUniformBuffer::unbind()
 {
-  VKContext *context = VKContext::get();
-  if (context) {
-    context->state_manager_get().uniform_buffer_unbind(this);
-  }
+  VKBackend::get().device_get().unbind(*this);
 }
 
 }  // namespace blender::gpu

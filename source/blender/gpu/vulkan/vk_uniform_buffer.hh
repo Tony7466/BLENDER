@@ -44,4 +44,9 @@ class VKUniformBuffer : public UniformBuf, NonCopyable {
   void allocate();
 };
 
+BLI_INLINE UniformBuf *wrap(VKUniformBuffer *uniform_buffer)
+{
+  return static_cast<UniformBuf *>(uniform_buffer);
+}
+
 }  // namespace blender::gpu

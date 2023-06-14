@@ -23,13 +23,12 @@ class VKStorageBuffer : public StorageBuf {
   VKBuffer buffer_;
 
  public:
-  VKStorageBuffer(int size, GPUUsageType usage, const char *name)
-      : StorageBuf(size, name), usage_(usage)
-  {
-  }
+  VKStorageBuffer(int size, GPUUsageType usage, const char *name);
+  virtual ~VKStorageBuffer();
 
   void update(const void *data) override;
   void bind(int slot) override;
+  void bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type);
   void unbind() override;
   void clear(uint32_t clear_value) override;
   void copy_sub(VertBuf *src, uint dst_offset, uint src_offset, uint copy_size) override;
@@ -51,7 +50,7 @@ class VKStorageBuffer : public StorageBuf {
   void allocate();
 };
 
-static inline VKStorageBuffer *unwrap(StorageBuf *storage_buffer)
+BLI_INLINE VKStorageBuffer *unwrap(StorageBuf *storage_buffer)
 {
   return static_cast<VKStorageBuffer *>(storage_buffer);
 }

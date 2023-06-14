@@ -10,6 +10,7 @@
 #include "vk_context.hh"
 #include "vk_pipeline.hh"
 #include "vk_shader.hh"
+#include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
 
@@ -27,6 +28,8 @@ VKStateManager::VKStateManager()
   texture_bindings_.fill(TextureBinding());
   uniform_buffer_bindings_ = Array<UniformBufferBinding>(max_bindings);
   uniform_buffer_bindings_.fill(UniformBufferBinding());
+  storage_buffer_bindings_ = Array<StorageBufferBinding>(max_bindings);
+  storage_buffer_bindings_.fill(StorageBufferBinding());
 }
 
 void VKStateManager::apply_state()
@@ -54,7 +57,8 @@ void VKStateManager::apply_bindings()
         texture_bindings_[binding].texture->bind(binding, sampler_);
       }
       else if (texture_bindings_[binding].vertex_buffer) {
-        texture_bindings_[binding].vertex_buffer->bind(binding);
+        texture_bindings_[binding].vertex_buffer->bind(
+            binding, shader::ShaderCreateInfo::Resource::BindType::SAMPLER);
       }
     }
 
@@ -62,6 +66,17 @@ void VKStateManager::apply_bindings()
       if (uniform_buffer_bindings_[binding].buffer) {
         uniform_buffer_bindings_[binding].buffer->bind(
             binding, shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER);
+      }
+    }
+
+    for (int binding : IndexRange(storage_buffer_bindings_.size())) {
+      if (storage_buffer_bindings_[binding].storage_buffer) {
+        storage_buffer_bindings_[binding].storage_buffer->bind(
+            binding, shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
+      }
+      else if (storage_buffer_bindings_[binding].vertex_buffer) {
+        storage_buffer_bindings_[binding].vertex_buffer->bind(
+            binding, shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
       }
     }
   }
@@ -158,6 +173,36 @@ void VKStateManager::texel_buffer_unbind(VKVertexBuffer *vertex_buffer)
     if (binding.vertex_buffer == vertex_buffer) {
       binding.vertex_buffer = nullptr;
       binding.texture = nullptr;
+    }
+  }
+}
+
+void VKStateManager::storage_buffer_bind(VKStorageBuffer *storage_buffer, int slot)
+{
+  storage_buffer_bindings_[slot].storage_buffer = storage_buffer;
+  storage_buffer_bindings_[slot].vertex_buffer = nullptr;
+}
+
+void VKStateManager::storage_buffer_bind(VKVertexBuffer *vertex_buffer, int slot)
+{
+  storage_buffer_bindings_[slot].storage_buffer = nullptr;
+  storage_buffer_bindings_[slot].vertex_buffer = vertex_buffer;
+}
+
+void VKStateManager::storage_buffer_unbind(VKStorageBuffer *storage_buffer)
+{
+  for (StorageBufferBinding &binding : storage_buffer_bindings_) {
+    if (binding.storage_buffer == storage_buffer) {
+      binding.storage_buffer = nullptr;
+    }
+  }
+}
+
+void VKStateManager::storage_buffer_unbind(VKVertexBuffer *vertex_buffer)
+{
+  for (StorageBufferBinding &binding : storage_buffer_bindings_) {
+    if (binding.vertex_buffer == vertex_buffer) {
+      binding.vertex_buffer = nullptr;
     }
   }
 }

@@ -8,7 +8,12 @@
 
 #include "vk_device.hh"
 #include "vk_backend.hh"
+#include "vk_context.hh"
 #include "vk_memory.hh"
+#include "vk_state_manager.hh"
+#include "vk_storage_buffer.hh"
+#include "vk_texture.hh"
+#include "vk_vertex_buffer.hh"
 
 #include "GHOST_C-api.h"
 
@@ -174,6 +179,52 @@ std::string VKDevice::driver_version() const
   return std::to_string(VK_VERSION_MAJOR(driver_version)) + "." +
          std::to_string(VK_VERSION_MINOR(driver_version)) + "." +
          std::to_string(VK_VERSION_PATCH(driver_version));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Resource management
+ * \{ */
+
+void VKDevice::context_register(VKContext &context)
+{
+  contexts_.append(std::reference_wrapper(context));
+}
+
+void VKDevice::context_unregister(VKContext &context)
+{
+  contexts_.remove(contexts_.first_index_of(std::reference_wrapper(context)));
+}
+
+void VKDevice::unbind(VKUniformBuffer &uniform_buffer) const
+{
+  for (const VKContext &context : contexts_) {
+    context.state_manager_get().uniform_buffer_unbind(&uniform_buffer);
+  }
+}
+
+void VKDevice::unbind(VKTexture &texture) const
+{
+  for (const VKContext &context : contexts_) {
+    context.state_manager_get().image_unbind(wrap(&texture));
+    context.state_manager_get().texture_unbind(wrap(&texture));
+  }
+}
+
+void VKDevice::unbind(VKStorageBuffer &storage_buffer) const
+{
+  for (VKContext &context : contexts_) {
+    context.state_manager_get().storage_buffer_unbind(&storage_buffer);
+  }
+}
+
+void VKDevice::unbind(VKVertexBuffer &vertex_buffer) const
+{
+  for (VKContext &context : contexts_) {
+    context.state_manager_get().texel_buffer_unbind(&vertex_buffer);
+    context.state_manager_get().storage_buffer_unbind(&vertex_buffer);
+  }
 }
 
 /** \} */
