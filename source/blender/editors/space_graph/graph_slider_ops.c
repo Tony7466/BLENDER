@@ -1351,9 +1351,10 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   const float frame_rate = (float)(gso->scene->r.frs_sec) / gso->scene->r.frs_sec_base;
   const float sampling_frequency = frame_rate * samples_per_frame;
   ED_slider_factor_bounds_set(gso->slider, 0, sampling_frequency / 2);
-  ED_slider_factor_set(gso->slider, 0);
+  ED_slider_factor_set(gso->slider, sampling_frequency / 2);
   ED_slider_allow_overshoot_set(gso->slider, false, false);
-  ED_slider_unit_set(gso->slider, SLIDER_UNIT_FLOAT);
+  ED_slider_mode_set(gso->slider, SLIDER_MODE_FLOAT);
+  ED_slider_unit_set(gso->slider, "Hz");
   common_draw_status_header(C, gso, "Butterworth Smooth");
 
   return invoke_result;

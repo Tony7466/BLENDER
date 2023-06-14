@@ -79,8 +79,11 @@ typedef struct tSlider {
   /** Range of the slider without overshoot. */
   float factor_bounds[2];
 
-  /* What unit to draw. */
-  SliderUnit slider_unit;
+  /* How the factor number is drawn. When drawing percent it is factor*100. */
+  SliderMode slider_mode;
+
+  /* What unit to add to the slider. */
+  const char *unit_string;
 
   /** Enable range beyond factor_bounds.
    * This is set by the code that uses the slider, as not all operations support
@@ -342,12 +345,12 @@ static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
   UI_draw_roundbox_3ub_alpha(&handle_rect, true, 1, color_handle, 255);
 
   char factor_string[256];
-  switch (slider->slider_unit) {
-    case SLIDER_UNIT_PERCENT:
-      SNPRINTF(factor_string, "%.0f%%", slider->factor * 100);
+  switch (slider->slider_mode) {
+    case SLIDER_MODE_PERCENT:
+      SNPRINTF(factor_string, "%.0f %s", slider->factor * 100, slider->unit_string);
       break;
-    case SLIDER_UNIT_FLOAT:
-      SNPRINTF(factor_string, "%.2f", slider->factor);
+    case SLIDER_MODE_FLOAT:
+      SNPRINTF(factor_string, "%.1f %s", slider->factor, slider->unit_string);
       break;
   }
 
@@ -360,7 +363,7 @@ static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
                        &percentage_string_pixel_size[1]);
 
   BLF_position(fontid,
-               main_line_rect.xmin - 24.0 * U.pixelsize - percentage_string_pixel_size[0] / 2,
+               main_line_rect.xmin - 6.0 * U.pixelsize - percentage_string_pixel_size[0],
                (region->winy / 2) - percentage_string_pixel_size[1] / 2,
                0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
@@ -408,7 +411,9 @@ tSlider *ED_slider_create(bContext *C)
   slider->factor_bounds[0] = 0;
   slider->factor_bounds[1] = 1;
 
-  slider->slider_unit = SLIDER_UNIT_PERCENT;
+  slider->unit_string = "%";
+
+  slider->slider_mode = SLIDER_MODE_PERCENT;
 
   /* Set initial factor. */
   slider->raw_factor = 0.5f;
@@ -568,9 +573,14 @@ void ED_slider_factor_bounds_set(tSlider *slider,
   slider->factor_bounds[1] = factor_bound_upper;
 }
 
-void ED_slider_unit_set(tSlider *slider, SliderUnit unit)
+void ED_slider_mode_set(tSlider *slider, SliderMode mode)
 {
-  slider->slider_unit = unit;
+  slider->slider_mode = mode;
+}
+
+void ED_slider_unit_set(tSlider *slider, const char *unit)
+{
+  slider->unit_string = unit;
 }
 
 /** \} */
