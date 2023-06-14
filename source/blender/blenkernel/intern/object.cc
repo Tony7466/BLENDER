@@ -85,8 +85,8 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
-#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -1882,7 +1882,7 @@ void BKE_object_free_derived_caches(Object *ob)
   }
 
   if (ob->runtime.geometry_set_eval != nullptr) {
-    BKE_geometry_set_free(ob->runtime.geometry_set_eval);
+    delete ob->runtime.geometry_set_eval;
     ob->runtime.geometry_set_eval = nullptr;
   }
 
@@ -2119,7 +2119,7 @@ int BKE_object_visibility(const Object *ob, const int dag_eval_mode)
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
-  if (BKE_object_has_geometry_set_instances(ob)) {
+  if (blender::bke::object_has_geometry_set_instances(ob)) {
     visibility |= OB_VISIBLE_INSTANCES;
   }
 

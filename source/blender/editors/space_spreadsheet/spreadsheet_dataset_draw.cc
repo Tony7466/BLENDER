@@ -55,7 +55,7 @@ class GeometryDataSetTreeViewItem : public ui::AbstractTreeViewItem {
 };
 
 class GeometryDataSetTreeView : public ui::AbstractTreeView {
-  GeometrySet geometry_set_;
+  bke::GeometrySet geometry_set_;
   const bContext &C_;
   SpaceSpreadsheet &sspreadsheet_;
   bScreen &screen_;
@@ -63,7 +63,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
   friend class GeometryDataSetTreeViewItem;
 
  public:
-  GeometryDataSetTreeView(GeometrySet geometry_set, const bContext &C)
+  GeometryDataSetTreeView(bke::GeometrySet geometry_set, const bContext &C)
       : geometry_set_(std::move(geometry_set)),
         C_(C),
         sspreadsheet_(*CTX_wm_space_spreadsheet(&C)),
@@ -181,7 +181,7 @@ GeometryDataSetTreeView &GeometryDataSetTreeViewItem::get_tree() const
 std::optional<int> GeometryDataSetTreeViewItem::count() const
 {
   GeometryDataSetTreeView &tree_view = this->get_tree();
-  GeometrySet &geometry = tree_view.geometry_set_;
+  bke::GeometrySet &geometry = tree_view.geometry_set_;
 
   /* Special case for volumes since there is no grid domain. */
   if (component_type_ == GEO_COMPONENT_TYPE_VOLUME) {
@@ -195,7 +195,7 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
     return std::nullopt;
   }
 
-  if (const GeometryComponent *component = geometry.get_component_for_read(component_type_)) {
+  if (const bke::GeometryComponent *component = geometry.get_component_for_read(component_type_)) {
     return component->attribute_domain_size(*domain_);
   }
 

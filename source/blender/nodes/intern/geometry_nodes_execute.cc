@@ -377,7 +377,7 @@ static MultiValueMap<eAttrDomain, OutputAttributeInfo> find_output_attributes_to
  * actual geometry.
  */
 static Vector<OutputAttributeToStore> compute_attributes_to_store(
-    const GeometrySet &geometry,
+    const bke::GeometrySet &geometry,
     const MultiValueMap<eAttrDomain, OutputAttributeInfo> &outputs_by_domain)
 {
   Vector<OutputAttributeToStore> attributes_to_store;
@@ -389,7 +389,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
     if (!geometry.has(component_type)) {
       continue;
     }
-    const GeometryComponent &component = *geometry.get_component_for_read(component_type);
+    const bke::GeometryComponent &component = *geometry.get_component_for_read(component_type);
     const bke::AttributeAccessor attributes = *component.attributes();
     for (const auto item : outputs_by_domain.items()) {
       const eAttrDomain domain = item.key;
@@ -423,7 +423,7 @@ static void store_computed_output_attributes(
     GeometrySet &geometry, const Span<OutputAttributeToStore> attributes_to_store)
 {
   for (const OutputAttributeToStore &store : attributes_to_store) {
-    GeometryComponent &component = geometry.get_component_for_write(store.component_type);
+    bke::GeometryComponent &component = geometry.get_component_for_write(store.component_type);
     bke::MutableAttributeAccessor attributes = *component.attributes_for_write();
 
     const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(store.data.type());
@@ -461,7 +461,7 @@ static void store_computed_output_attributes(
   }
 }
 
-static void store_output_attributes(GeometrySet &geometry,
+static void store_output_attributes(bke::GeometrySet &geometry,
                                     const bNodeTree &tree,
                                     const IDProperty *properties,
                                     Span<GMutablePointer> output_values)
@@ -479,7 +479,7 @@ GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
     const IDProperty *properties,
     const ComputeContext &base_compute_context,
-    GeometrySet input_geometry,
+    bke::GeometrySet input_geometry,
     const FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data)
 {
   const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info =
@@ -564,7 +564,7 @@ GeometrySet execute_geometry_nodes_on_geometry(
     ptr.destruct();
   }
 
-  GeometrySet output_geometry = std::move(*param_outputs[0].get<GeometrySet>());
+  bke::GeometrySet output_geometry = std::move(*param_outputs[0].get<bke::GeometrySet>());
   store_output_attributes(output_geometry, btree, properties, param_outputs);
 
   for (GMutablePointer &ptr : param_outputs) {

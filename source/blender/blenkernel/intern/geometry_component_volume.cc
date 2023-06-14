@@ -8,6 +8,8 @@
 #include "BKE_lib_id.h"
 #include "BKE_volume.h"
 
+namespace blender::bke {
+
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
  * \{ */
@@ -91,3 +93,5 @@ void VolumeComponent::ensure_owns_direct_data()
 }
 
 /** \} */
+
+}

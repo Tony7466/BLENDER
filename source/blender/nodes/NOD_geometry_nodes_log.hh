@@ -148,7 +148,7 @@ class GeometryInfoLog : public ValueLog {
   std::optional<InstancesInfo> instances_info;
   std::optional<EditDataInfo> edit_data_info;
 
-  GeometryInfoLog(const GeometrySet &geometry_set);
+  GeometryInfoLog(const bke::GeometrySet &geometry_set);
 };
 
 /**
@@ -157,7 +157,7 @@ class GeometryInfoLog : public ValueLog {
  */
 class ViewerNodeLog {
  public:
-  GeometrySet geometry;
+  bke::GeometrySet geometry;
 };
 
 using Clock = std::chrono::steady_clock;

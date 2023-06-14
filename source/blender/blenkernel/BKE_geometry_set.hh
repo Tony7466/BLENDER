@@ -17,13 +17,29 @@
 #include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_geometry_set.h"
 
 struct Curves;
 struct Curve;
 struct Mesh;
 struct PointCloud;
 struct Volume;
+
+namespace blender::bke {
+
+/**
+ * Each geometry component has a specific type. The type determines what kind of data the component
+ * stores. Functions modifying a geometry will usually just modify a subset of the component types.
+ */
+enum GeometryComponentType {
+  GEO_COMPONENT_TYPE_MESH = 0,
+  GEO_COMPONENT_TYPE_POINT_CLOUD = 1,
+  GEO_COMPONENT_TYPE_INSTANCES = 2,
+  GEO_COMPONENT_TYPE_VOLUME = 3,
+  GEO_COMPONENT_TYPE_CURVE = 4,
+  GEO_COMPONENT_TYPE_EDIT = 5,
+};
+
+#define GEO_COMPONENT_TYPE_ENUM_SIZE 6
 
 enum class GeometryOwnershipType {
   /* The geometry is owned. This implies that it can be changed. */
@@ -34,21 +50,19 @@ enum class GeometryOwnershipType {
   ReadOnly = 2,
 };
 
-namespace blender::bke {
 class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
-}  // namespace blender::bke
 
 class GeometryComponent;
-using GeometryComponentPtr = blender::ImplicitSharingPtr<GeometryComponent>;
+using GeometryComponentPtr = ImplicitSharingPtr<GeometryComponent>;
 
 /**
  * This is the base class for specialized geometry component types. A geometry component uses
  * implicit sharing to avoid read-only copies. It also integrates with attribute API, which
  * generalizes storing and modifying generic information on a geometry.
  */
-class GeometryComponent : public blender::ImplicitSharingMixin {
+class GeometryComponent : public ImplicitSharingMixin {
  private:
   GeometryComponentType type_;
 
@@ -63,8 +77,8 @@ class GeometryComponent : public blender::ImplicitSharingMixin {
    * Get access to the attributes in this geometry component. May return none if the geometry does
    * not support the attribute system.
    */
-  virtual std::optional<blender::bke::AttributeAccessor> attributes() const;
-  virtual std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write();
+  virtual std::optional<AttributeAccessor> attributes() const;
+  virtual std::optional<MutableAttributeAccessor> attributes_for_write();
 
   /* The returned component should be of the same type as the type this is called on. */
   virtual GeometryComponent *copy() const = 0;
@@ -162,12 +176,12 @@ struct GeometrySet {
   /**
    * Remove all geometry components with types that are not in the provided list.
    */
-  void keep_only(const blender::Span<GeometryComponentType> component_types);
+  void keep_only(const Span<GeometryComponentType> component_types);
   /**
    * Keeps the provided geometry types, but also instances and edit data.
    * Instances must not be removed while using #modify_geometry_sets.
    */
-  void keep_only_during_modify(const blender::Span<GeometryComponentType> component_types);
+  void keep_only_during_modify(const Span<GeometryComponentType> component_types);
   void remove_geometry_during_modify();
 
   void add(const GeometryComponent &component);
@@ -175,9 +189,9 @@ struct GeometrySet {
   /**
    * Get all geometry components in this geometry set for read-only access.
    */
-  blender::Vector<const GeometryComponent *> get_components_for_read() const;
+  Vector<const GeometryComponent *> get_components_for_read() const;
 
-  bool compute_boundbox_without_instances(blender::float3 *r_min, blender::float3 *r_max) const;
+  bool compute_boundbox_without_instances(float3 *r_min, float3 *r_max) const;
 
   friend std::ostream &operator<<(std::ostream &stream, const GeometrySet &geometry_set);
 
@@ -199,26 +213,24 @@ struct GeometrySet {
    */
   void ensure_owns_all_data();
 
-  using AttributeForeachCallback =
-      blender::FunctionRef<void(const blender::bke::AttributeIDRef &attribute_id,
-                                const blender::bke::AttributeMetaData &meta_data,
-                                const GeometryComponent &component)>;
+  using AttributeForeachCallback = FunctionRef<void(const AttributeIDRef &attribute_id,
+                                                    const AttributeMetaData &meta_data,
+                                                    const GeometryComponent &component)>;
 
-  void attribute_foreach(blender::Span<GeometryComponentType> component_types,
+  void attribute_foreach(Span<GeometryComponentType> component_types,
                          bool include_instances,
                          AttributeForeachCallback callback) const;
 
-  void gather_attributes_for_propagation(
-      blender::Span<GeometryComponentType> component_types,
-      GeometryComponentType dst_component_type,
-      bool include_instances,
-      const blender::bke::AnonymousAttributePropagationInfo &propagation_info,
-      blender::Map<blender::bke::AttributeIDRef, blender::bke::AttributeKind> &r_attributes) const;
+  void gather_attributes_for_propagation(Span<GeometryComponentType> component_types,
+                                         GeometryComponentType dst_component_type,
+                                         bool include_instances,
+                                         const AnonymousAttributePropagationInfo &propagation_info,
+                                         Map<AttributeIDRef, AttributeKind> &r_attributes) const;
 
-  blender::Vector<GeometryComponentType> gather_component_types(bool include_instances,
-                                                                bool ignore_empty) const;
+  Vector<GeometryComponentType> gather_component_types(bool include_instances,
+                                                       bool ignore_empty) const;
 
-  using ForeachSubGeometryCallback = blender::FunctionRef<void(GeometrySet &geometry_set)>;
+  using ForeachSubGeometryCallback = FunctionRef<void(GeometrySet &geometry_set)>;
 
   /**
    * Modify every (recursive) instance separately. This is often more efficient than realizing all
@@ -251,8 +263,7 @@ struct GeometrySet {
    * Create a new geometry set that only contains the given instances.
    */
   static GeometrySet create_with_instances(
-      blender::bke::Instances *instances,
-      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+      Instances *instances, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   /* Utility methods for access. */
   /**
@@ -303,11 +314,11 @@ struct GeometrySet {
   /**
    * Returns read-only instances or null.
    */
-  const blender::bke::Instances *get_instances_for_read() const;
+  const Instances *get_instances_for_read() const;
   /**
    * Returns read-only curve edit hints or null.
    */
-  const blender::bke::CurvesEditHints *get_curve_edit_hints_for_read() const;
+  const CurvesEditHints *get_curve_edit_hints_for_read() const;
 
   /**
    * Returns a mutable mesh or null. No ownership is transferred.
@@ -328,11 +339,11 @@ struct GeometrySet {
   /**
    * Returns mutable instances or null. No ownership is transferred.
    */
-  blender::bke::Instances *get_instances_for_write();
+  Instances *get_instances_for_write();
   /**
    * Returns mutable curve edit hints or null.
    */
-  blender::bke::CurvesEditHints *get_curve_edit_hints_for_write();
+  CurvesEditHints *get_curve_edit_hints_for_write();
 
   /* Utility methods for replacement. */
   /**
@@ -357,7 +368,7 @@ struct GeometrySet {
   /**
    * Clear the existing instances and replace them with the given one.
    */
-  void replace_instances(blender::bke::Instances *instances,
+  void replace_instances(Instances *instances,
                          GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
  private:
@@ -420,8 +431,8 @@ class MeshComponent : public GeometryComponent {
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_MESH;
 
-  std::optional<blender::bke::AttributeAccessor> attributes() const final;
-  std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write() final;
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 };
 
 /**
@@ -475,8 +486,8 @@ class PointCloudComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
-  std::optional<blender::bke::AttributeAccessor> attributes() const final;
-  std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write() final;
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_POINT_CLOUD;
 
@@ -528,8 +539,8 @@ class CurveComponent : public GeometryComponent {
    */
   const Curve *get_curve_for_render() const;
 
-  std::optional<blender::bke::AttributeAccessor> attributes() const final;
-  std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write() final;
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_CURVE;
 };
@@ -539,7 +550,7 @@ class CurveComponent : public GeometryComponent {
  */
 class InstancesComponent : public GeometryComponent {
  private:
-  blender::bke::Instances *instances_ = nullptr;
+  Instances *instances_ = nullptr;
   GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
 
  public:
@@ -549,10 +560,10 @@ class InstancesComponent : public GeometryComponent {
 
   void clear() override;
 
-  const blender::bke::Instances *get_for_read() const;
-  blender::bke::Instances *get_for_write();
+  const Instances *get_for_read() const;
+  Instances *get_for_write();
 
-  void replace(blender::bke::Instances *instances,
+  void replace(Instances *instances,
                GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   bool is_empty() const final;
@@ -560,8 +571,8 @@ class InstancesComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
-  std::optional<blender::bke::AttributeAccessor> attributes() const final;
-  std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write() final;
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_INSTANCES;
 };
@@ -626,7 +637,7 @@ class GeometryComponentEditData final : public GeometryComponent {
    * because the data remains valid even when there is no actual curves geometry anymore, for
    * example, when the curves have been converted to a mesh.
    */
-  std::unique_ptr<blender::bke::CurvesEditHints> curves_edit_hints_;
+  std::unique_ptr<CurvesEditHints> curves_edit_hints_;
 
   GeometryComponentEditData();
 
@@ -646,3 +657,5 @@ class GeometryComponentEditData final : public GeometryComponent {
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_EDIT;
 };
+
+}  // namespace blender::bke

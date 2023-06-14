@@ -9,7 +9,6 @@
 
 #include "node_geometry_util.hh"
 
-#include "BKE_geometry_set.h"
 #include "BKE_volume.h"
 
 #include "DNA_node_types.h"

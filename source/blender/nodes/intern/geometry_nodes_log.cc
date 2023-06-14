@@ -53,7 +53,7 @@ FieldInfoLog::FieldInfoLog(const GField &field) : type(field.cpp_type())
   }
 }
 
-GeometryInfoLog::GeometryInfoLog(const GeometrySet &geometry_set)
+GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
 {
   static std::array all_component_types = {GEO_COMPONENT_TYPE_CURVE,
                                            GEO_COMPONENT_TYPE_INSTANCES,
@@ -71,17 +71,17 @@ GeometryInfoLog::GeometryInfoLog(const GeometrySet &geometry_set)
       true,
       [&](const bke::AttributeIDRef &attribute_id,
           const bke::AttributeMetaData &meta_data,
-          const GeometryComponent & /*component*/) {
+          const bke::GeometryComponent & /*component*/) {
         if (!attribute_id.is_anonymous() && names.add(attribute_id.name())) {
           this->attributes.append({attribute_id.name(), meta_data.domain, meta_data.data_type});
         }
       });
 
-  for (const GeometryComponent *component : geometry_set.get_components_for_read()) {
+  for (const bke::GeometryComponent *component : geometry_set.get_components_for_read()) {
     this->component_types.append(component->type());
     switch (component->type()) {
       case GEO_COMPONENT_TYPE_MESH: {
-        const MeshComponent &mesh_component = *(const MeshComponent *)component;
+        const auto &mesh_component = *static_cast<const bke::MeshComponent *>(component);
         MeshInfo &info = this->mesh_info.emplace();
         info.verts_num = mesh_component.attribute_domain_size(ATTR_DOMAIN_POINT);
         info.edges_num = mesh_component.attribute_domain_size(ATTR_DOMAIN_EDGE);
@@ -89,27 +89,28 @@ GeometryInfoLog::GeometryInfoLog(const GeometrySet &geometry_set)
         break;
       }
       case GEO_COMPONENT_TYPE_CURVE: {
-        const CurveComponent &curve_component = *(const CurveComponent *)component;
+        const auto &curve_component = *static_cast<const bke::CurveComponent *>(component);
         CurveInfo &info = this->curve_info.emplace();
         info.points_num = curve_component.attribute_domain_size(ATTR_DOMAIN_POINT);
         info.splines_num = curve_component.attribute_domain_size(ATTR_DOMAIN_CURVE);
         break;
       }
       case GEO_COMPONENT_TYPE_POINT_CLOUD: {
-        const PointCloudComponent &pointcloud_component = *(const PointCloudComponent *)component;
+        const auto &pointcloud_component = *static_cast<const bke::PointCloudComponent *>(
+            component);
         PointCloudInfo &info = this->pointcloud_info.emplace();
         info.points_num = pointcloud_component.attribute_domain_size(ATTR_DOMAIN_POINT);
         break;
       }
       case GEO_COMPONENT_TYPE_INSTANCES: {
-        const InstancesComponent &instances_component = *(const InstancesComponent *)component;
+        const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
         InstancesInfo &info = this->instances_info.emplace();
         info.instances_num = instances_component.attribute_domain_size(ATTR_DOMAIN_INSTANCE);
         break;
       }
       case GEO_COMPONENT_TYPE_EDIT: {
-        const GeometryComponentEditData &edit_component = *(
-            const GeometryComponentEditData *)component;
+        const auto &edit_component = *static_cast<const bke::GeometryComponentEditData *>(
+            component);
         if (const bke::CurvesEditHints *curve_edit_hints = edit_component.curves_edit_hints_.get())
         {
           EditDataInfo &info = this->edit_data_info.emplace();
@@ -191,7 +192,7 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
   }
 }
 
-void GeoTreeLogger::log_viewer_node(const bNode &viewer_node, GeometrySet geometry)
+void GeoTreeLogger::log_viewer_node(const bNode &viewer_node, bke::GeometrySet geometry)
 {
   destruct_ptr<ViewerNodeLog> log = this->allocator->construct<ViewerNodeLog>();
   log->geometry = std::move(geometry);

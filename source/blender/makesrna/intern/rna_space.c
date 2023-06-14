@@ -15,7 +15,6 @@
 
 #include "BKE_attribute.h"
 #include "BKE_context.h"
-#include "BKE_geometry_set.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_movieclip.h"
@@ -63,22 +62,22 @@
 #include "RNA_enum_types.h"
 
 const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
-    {GEO_COMPONENT_TYPE_MESH,
+    {blender::bke::GEO_COMPONENT_TYPE_MESH,
      "MESH",
      ICON_MESH_DATA,
      "Mesh",
      "Mesh component containing point, corner, edge and face data"},
-    {GEO_COMPONENT_TYPE_POINT_CLOUD,
+    {blender::bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
      "POINTCLOUD",
      ICON_POINTCLOUD_DATA,
      "Point Cloud",
      "Point cloud component containing only point data"},
-    {GEO_COMPONENT_TYPE_CURVE,
+    {blender::bke::GEO_COMPONENT_TYPE_CURVE,
      "CURVE",
      ICON_CURVE_DATA,
      "Curve",
      "Curve component containing spline and control point data"},
-    {GEO_COMPONENT_TYPE_INSTANCES,
+    {blender::bke::GEO_COMPONENT_TYPE_INSTANCES,
      "INSTANCES",
      ICON_EMPTY_AXIS,
      "Instances",

@@ -827,14 +827,14 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
     }
 
     if (mti->modifyGeometrySet) {
-      GeometrySet geometry_set = GeometrySet::create_with_mesh(mesh_temp,
-                                                               GeometryOwnershipType::Owned);
+      bke::GeometrySet geometry_set = bke::GeometrySet::create_with_mesh(
+          mesh_temp, bke::GeometryOwnershipType::Owned);
       mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
       if (!geometry_set.has_mesh()) {
         BKE_report(reports, RPT_ERROR, "Evaluated geometry from modifier does not contain a mesh");
         return nullptr;
       }
-      result = geometry_set.get_component_for_write<MeshComponent>().release();
+      result = geometry_set.get_component_for_write<bke::MeshComponent>().release();
     }
     else {
       result = mti->modifyMesh(md_eval, &mectx, mesh_temp);
@@ -1065,9 +1065,9 @@ static bool modifier_apply_obdata(
     }
 
     /* Create a temporary geometry set and component. */
-    GeometrySet geometry_set;
-    geometry_set.get_component_for_write<CurveComponent>().replace(
-        &curves, GeometryOwnershipType::ReadOnly);
+    bke::GeometrySet geometry_set;
+    geometry_set.get_component_for_write<bke::CurveComponent>().replace(
+        &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
@@ -1093,9 +1093,9 @@ static bool modifier_apply_obdata(
     }
 
     /* Create a temporary geometry set and component. */
-    GeometrySet geometry_set;
-    geometry_set.get_component_for_write<PointCloudComponent>().replace(
-        &points, GeometryOwnershipType::ReadOnly);
+    bke::GeometrySet geometry_set;
+    geometry_set.get_component_for_write<bke::PointCloudComponent>().replace(
+        &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
@@ -1105,7 +1105,7 @@ static bool modifier_apply_obdata(
       return false;
     }
     PointCloud *pointcloud_eval =
-        geometry_set.get_component_for_write<PointCloudComponent>().release();
+        geometry_set.get_component_for_write<bke::PointCloudComponent>().release();
 
     /* Anonymous attributes shouldn't be available on the applied geometry. */
     pointcloud_eval->attributes_for_write().remove_anonymous();
