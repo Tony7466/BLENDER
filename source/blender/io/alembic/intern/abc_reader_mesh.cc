@@ -712,9 +712,10 @@ bool AbcMeshReader::topology_changed(const Mesh *existing_mesh, const ISampleSel
     return true;
   }
 
-  /* Check first if we indeed have multiple samples. */
-  if (m_schema.getFaceIndicesProperty().getNumSamples() == 1 &&
-      m_schema.getFaceCountsProperty().getNumSamples() == 1)
+  /* Check first if we indeed have multiple samples, unless we read a file sequence in which case
+   * we need to do a full topology comparison. */
+  if (!m_is_reading_a_file_sequence && (m_schema.getFaceIndicesProperty().getNumSamples() == 1 &&
+                                        m_schema.getFaceCountsProperty().getNumSamples() == 1))
   {
     return false;
   }
