@@ -134,7 +134,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
 
   const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      (eNodeSocketDatatype)params.other_socket().type);
+      eNodeSocketDatatype(params.other_socket().type));
   if (type && *type != CD_PROP_STRING) {
     /* The input and output sockets have the same name. */
     params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
@@ -276,6 +276,8 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
       return params.extract_input<Field<bool>>("Value_Bool");
     case CD_PROP_INT32:
       return params.extract_input<Field<int>>("Value_Int");
+    case CD_PROP_QUATERNION:
+      return params.extract_input<Field<math::Quaternion>>("Value_Rotation");
     default:
       BLI_assert_unreachable();
   }
@@ -303,6 +305,10 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
     }
     case CD_PROP_INT32: {
       params.set_output("Value_Int", Field<int>(field));
+      break;
+    }
+    case CD_PROP_QUATERNION: {
+      params.set_output("Value_Rotation", Field<math::Quaternion>(field));
       break;
     }
     default:

@@ -63,12 +63,14 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Value", "Value_Vector").hide_value().supports_field();
   b.add_input<decl::Color>("Value", "Value_Color").hide_value().supports_field();
   b.add_input<decl::Bool>("Value", "Value_Bool").hide_value().supports_field();
+  b.add_input<decl::Rotation>("Value", "Value_Rotation").hide_value().supports_field();
 
   b.add_output<decl::Float>("Value", "Value_Float").field_source_reference_all();
   b.add_output<decl::Int>("Value", "Value_Int").field_source_reference_all();
   b.add_output<decl::Vector>("Value", "Value_Vector").field_source_reference_all();
   b.add_output<decl::Color>("Value", "Value_Color").field_source_reference_all();
   b.add_output<decl::Bool>("Value", "Value_Bool").field_source_reference_all();
+  b.add_output<decl::Rotation>("Value", "Value_Rotation").field_source_reference_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -121,7 +123,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   const bNodeType &node_type = params.node_type();
   const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      (eNodeSocketDatatype)params.other_socket().type);
+      eNodeSocketDatatype(params.other_socket().type));
   if (type && *type != CD_PROP_STRING) {
     params.add_item(IFACE_("Value"), [node_type, type](LinkSearchOpParams &params) {
       bNode &node = params.add_node(node_type);

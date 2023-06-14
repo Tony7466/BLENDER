@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
  */
 
+#include "BLI_math_euler.hh"
 #include "BLI_math_quaternion.hh"
 
 #include "NOD_geometry_nodes_execute.hh"
@@ -37,7 +40,8 @@ StringRef input_attribute_name_suffix()
 
 bool socket_type_has_attribute_toggle(const bNodeSocket &socket)
 {
-  return ELEM(socket.type, SOCK_FLOAT, SOCK_VECTOR, SOCK_BOOLEAN, SOCK_RGBA, SOCK_INT);
+  return ELEM(
+      socket.type, SOCK_FLOAT, SOCK_VECTOR, SOCK_BOOLEAN, SOCK_RGBA, SOCK_INT, SOCK_ROTATION);
 }
 
 bool input_has_attribute_toggle(const bNodeTree &node_tree, const int socket_index)
@@ -118,7 +122,15 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       return property;
     }
     case SOCK_ROTATION: {
-      return nullptr;
+      const bNodeSocketValueRotation *value = static_cast<const bNodeSocketValueRotation *>(
+          socket.default_value);
+      auto property = bke::idprop::create(
+          socket.identifier,
+          Span<float>{value->value_euler[0], value->value_euler[1], value->value_euler[2]});
+      IDPropertyUIDataFloat *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(
+          IDP_ui_data_ensure(property.get()));
+      ui_data->base.rna_subtype = PROP_EULER;
+      return property;
     }
     case SOCK_STRING: {
       const bNodeSocketValueString *value = static_cast<const bNodeSocketValueString *>(
@@ -169,6 +181,7 @@ bool id_property_type_matches_socket(const bNodeSocket &socket, const IDProperty
     case SOCK_INT:
       return property.type == IDP_INT;
     case SOCK_VECTOR:
+    case SOCK_ROTATION:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 3;
     case SOCK_RGBA:
     case SOCK_ROTATION:
@@ -225,9 +238,9 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       break;
     }
     case SOCK_ROTATION: {
-      const math::Quaternion value = math::Quaternion(
-          float4(static_cast<const float *>(IDP_Array(&property))));
-      new (r_value) fn::ValueOrField<math::Quaternion>(value);
+      const math::EulerXYZ euler_value = math::EulerXYZ(
+          float3(static_cast<const float *>(IDP_Array(&property))));
+      new (r_value) fn::ValueOrField<math::Quaternion>(math::to_quaternion(euler_value));
       break;
     }
     case SOCK_STRING: {

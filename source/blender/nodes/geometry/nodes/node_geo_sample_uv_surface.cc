@@ -39,15 +39,15 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supports_field()
       .description("The coordinates to sample within the UV map");
 
-  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({7});
-  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({7});
-  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({7});
-  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({7});
-  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({7});
-  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({7});
+  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({8});
+  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({8});
+  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({8});
+  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({8});
+  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({8});
+  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({8});
 
   b.add_output<decl::Bool>("Is Valid")
-      .dependent_field({7})
+      .dependent_field({8})
       .description("Whether the node could find a single face to sample at the UV coordinate");
 }
 

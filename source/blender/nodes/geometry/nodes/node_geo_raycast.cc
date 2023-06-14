@@ -42,17 +42,17 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_DISTANCE)
       .supports_field();
 
-  b.add_output<decl::Bool>("Is Hit").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Hit Position").dependent_field({6, 7, 8});
-  b.add_output<decl::Vector>("Hit Normal").dependent_field({6, 7, 8});
-  b.add_output<decl::Float>("Hit Distance").dependent_field({6, 7, 8});
+  b.add_output<decl::Bool>("Is Hit").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Hit Position").dependent_field({7, 8, 9});
+  b.add_output<decl::Vector>("Hit Normal").dependent_field({7, 8, 9});
+  b.add_output<decl::Float>("Hit Distance").dependent_field({7, 8, 9});
 
-  b.add_output<decl::Vector>("Attribute").dependent_field({6, 7, 8});
-  b.add_output<decl::Float>("Attribute", "Attribute_001").dependent_field({6, 7, 8});
-  b.add_output<decl::Color>("Attribute", "Attribute_002").dependent_field({6, 7, 8});
-  b.add_output<decl::Bool>("Attribute", "Attribute_003").dependent_field({6, 7, 8});
-  b.add_output<decl::Int>("Attribute", "Attribute_004").dependent_field({6, 7, 8});
-  b.add_output<decl::Rotation>("Attribute", "Attribute_005").dependent_field({6, 7, 8});
+  b.add_output<decl::Vector>("Attribute").dependent_field({7, 8, 9});
+  b.add_output<decl::Float>("Attribute", "Attribute_001").dependent_field({7, 8, 9});
+  b.add_output<decl::Color>("Attribute", "Attribute_002").dependent_field({7, 8, 9});
+  b.add_output<decl::Bool>("Attribute", "Attribute_003").dependent_field({7, 8, 9});
+  b.add_output<decl::Int>("Attribute", "Attribute_004").dependent_field({7, 8, 9});
+  b.add_output<decl::Rotation>("Attribute", "Attribute_005").dependent_field({7, 8, 9});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -111,7 +111,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   search_link_ops_for_declarations(params, declaration.outputs.as_span().take_front(4));
 
   const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
-      (eNodeSocketDatatype)params.other_socket().type);
+      eNodeSocketDatatype(params.other_socket().type));
   if (type && *type != CD_PROP_STRING) {
     /* The input and output sockets have the same name. */
     params.add_item(IFACE_("Attribute"), [type](LinkSearchOpParams &params) {
@@ -266,6 +266,11 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
         return params.extract_input<Field<int>>("Attribute_004");
       }
       break;
+    case CD_PROP_QUATERNION:
+      if (params.output_is_required("Attribute_005")) {
+        return params.extract_input<Field<math::Quaternion>>("Attribute_005");
+      }
+      break;
     default:
       BLI_assert_unreachable();
   }
@@ -293,6 +298,10 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
     }
     case CD_PROP_INT32: {
       params.set_output("Attribute_004", Field<int>(field));
+      break;
+    }
+    case CD_PROP_QUATERNION: {
+      params.set_output("Attribute_005", Field<math::Quaternion>(field));
       break;
     }
     default:
