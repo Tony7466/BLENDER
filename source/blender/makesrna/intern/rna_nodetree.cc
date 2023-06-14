@@ -512,7 +512,6 @@ static const EnumPropertyItem rna_node_combsep_color_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},
@@ -2079,6 +2078,9 @@ static const EnumPropertyItem *itemf_function_check(
 
 static bool switch_type_supported(const EnumPropertyItem *item)
 {
+  if (!U.experimental.use_rotation_socket && item->value == SOCK_ROTATION) {
+    return false;
+  }
   return ELEM(item->value,
               SOCK_FLOAT,
               SOCK_INT,
@@ -2225,6 +2227,9 @@ static void rna_GeometryNodeCompare_data_type_update(Main *bmain, Scene *scene, 
 
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
 {
+    if (!U.experimental.use_rotation_socket && item->value == CD_PROP_QUATERNION) {
+    return false;
+  }
   return ELEM(item->value,
               CD_PROP_FLOAT,
               CD_PROP_FLOAT2,
@@ -5448,7 +5453,6 @@ static void def_fn_combsep_color(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Mode", "Mode of color processing");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
-
 
 /* -- Shader Nodes ---------------------------------------------------------- */
 

@@ -69,12 +69,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("Index").supports_field().description(
       "Which element to retrieve a value from on the geometry");
 
-  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({8});
-  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({8});
-  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({8});
-  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({8});
-  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({8});
-  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({8});
+  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({7});
+  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({7});
+  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({7});
+  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({7});
+  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({7});
+  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({7});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
