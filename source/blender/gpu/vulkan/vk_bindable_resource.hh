@@ -39,11 +39,11 @@ class VKBindableResource {
  * namespaces.
  */
 template<shader::ShaderCreateInfo::Resource::BindType BindType, int MaxBindings = 16>
-class VKBindingNamespace {
+class VKBindSpace {
   Array<VKBindableResource *> bindings_ = Array<VKBindableResource *>(MaxBindings);
 
  public:
-  VKBindingNamespace()
+  VKBindSpace()
   {
     bindings_.fill(nullptr);
   }

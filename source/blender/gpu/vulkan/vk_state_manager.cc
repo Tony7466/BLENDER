@@ -33,10 +33,10 @@ void VKStateManager::apply_bindings()
 {
   VKContext &context = *VKContext::get();
   if (context.shader) {
-    texture_bindings_.apply_bindings();
-    image_bindings_.apply_bindings();
-    uniform_buffer_bindings_.apply_bindings();
-    storage_buffer_bindings_.apply_bindings();
+    textures_.apply_bindings();
+    images_.apply_bindings();
+    uniform_buffers_.apply_bindings();
+    storage_buffers_.apply_bindings();
   }
 }
 
@@ -61,73 +61,73 @@ void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)
 void VKStateManager::texture_bind(Texture *tex, GPUSamplerState /*sampler*/, int unit)
 {
   VKTexture *texture = unwrap(tex);
-  texture_bindings_.bind(unit, *texture);
+  textures_.bind(unit, *texture);
 }
 
 void VKStateManager::texture_unbind(Texture *tex)
 {
   VKTexture *texture = unwrap(tex);
-  texture_bindings_.unbind(*texture);
+  textures_.unbind(*texture);
 }
 
 void VKStateManager::texture_unbind_all()
 {
-  texture_bindings_.unbind_all();
+  textures_.unbind_all();
 }
 
 void VKStateManager::image_bind(Texture *tex, int binding)
 {
   VKTexture *texture = unwrap(tex);
-  image_bindings_.bind(binding, *texture);
+  images_.bind(binding, *texture);
 }
 
 void VKStateManager::image_unbind(Texture *tex)
 {
   VKTexture *texture = unwrap(tex);
-  image_bindings_.unbind(*texture);
+  images_.unbind(*texture);
 }
 
 void VKStateManager::image_unbind_all()
 {
-  image_bindings_.unbind_all();
+  images_.unbind_all();
 }
 
 void VKStateManager::uniform_buffer_bind(VKUniformBuffer *uniform_buffer, int slot)
 {
-  uniform_buffer_bindings_.bind(slot, *uniform_buffer);
+  uniform_buffers_.bind(slot, *uniform_buffer);
 }
 
 void VKStateManager::uniform_buffer_unbind(VKUniformBuffer *uniform_buffer)
 {
-  uniform_buffer_bindings_.unbind(*uniform_buffer);
+  uniform_buffers_.unbind(*uniform_buffer);
 }
 
 void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
 {
-  uniform_buffer_bindings_.unbind(resource);
-  storage_buffer_bindings_.unbind(resource);
-  image_bindings_.unbind(resource);
-  texture_bindings_.unbind(resource);
+  uniform_buffers_.unbind(resource);
+  storage_buffers_.unbind(resource);
+  images_.unbind(resource);
+  textures_.unbind(resource);
 }
 
 void VKStateManager::texel_buffer_bind(VKVertexBuffer &vertex_buffer, int slot)
 {
-  texture_bindings_.bind(slot, vertex_buffer);
+  textures_.bind(slot, vertex_buffer);
 }
 
 void VKStateManager::texel_buffer_unbind(VKVertexBuffer &vertex_buffer)
 {
-  texture_bindings_.unbind(vertex_buffer);
+  textures_.unbind(vertex_buffer);
 }
 
 void VKStateManager::storage_buffer_bind(VKBindableResource &resource, int slot)
 {
-  storage_buffer_bindings_.bind(slot, resource);
+  storage_buffers_.bind(slot, resource);
 }
 
 void VKStateManager::storage_buffer_unbind(VKBindableResource &resource)
 {
-  storage_buffer_bindings_.unbind(resource);
+  storage_buffers_.unbind(resource);
 }
 
 void VKStateManager::texture_unpack_row_length_set(uint len)

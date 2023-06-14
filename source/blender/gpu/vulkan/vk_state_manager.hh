@@ -25,12 +25,10 @@ class VKStateManager : public StateManager {
 
   uint texture_unpack_row_length_ = 0;
 
-  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::SAMPLER> texture_bindings_;
-  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::IMAGE> image_bindings_;
-  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER>
-      uniform_buffer_bindings_;
-  VKBindingNamespace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER>
-      storage_buffer_bindings_;
+  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::SAMPLER> textures_;
+  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::IMAGE> images_;
+  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER> uniform_buffers_;
+  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
 
  public:
   void apply_state() override;
