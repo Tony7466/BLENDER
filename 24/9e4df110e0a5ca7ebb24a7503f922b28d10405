@@ -16,3 +16,4 @@ Referenced by pull request #108929, Outliner: Port grease pencil legacy elements
 Referenced by commit 3481376981cc48dbe57e0826c67c128607a9e273, Outliner: Port grease pencil legacy elements to new tree-element code design
 Referenced by pull request #108943, Outliner: Port collection elements to new tree-element code design
 Referenced by commit 864798b4c7abb5424ddebbfbc6415de9607545f1, Outliner: Port collection elements to new tree-element code design
+Referenced by pull request #108964, Outliner: Port armature elements to new tree-element code design
