@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_constraint_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
@@ -249,6 +250,26 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       versioning_remove_microfacet_sharp_distribution(ntree);
     }
     FOREACH_NODETREE_END;
+
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      LISTBASE_FOREACH (bConstraint *, con, &ob->constraints) {
+        if (con->type == CONSTRAINT_TYPE_SIZELIMIT) {
+          bSizeLimitConstraint *data = (bSizeLimitConstraint *)con->data;
+          if ((data->flag & LIMIT_XMAX) && (!(data->flag & LIMIT_XMIN)) && data->xmin == 0) {
+            data->flag |= LIMIT_XMIN;
+            data->xmin = -data->xmax;
+          }
+          if ((data->flag & LIMIT_YMAX) && (!(data->flag & LIMIT_YMIN)) && data->ymin == 0) {
+            data->flag |= LIMIT_YMIN;
+            data->ymin = -data->ymax;
+          }
+          if ((data->flag & LIMIT_ZMAX) && (!(data->flag & LIMIT_ZMIN)) && data->zmin == 0) {
+            data->flag |= LIMIT_ZMIN;
+            data->zmin = -data->zmax;
+          }
+        }
+      }
+    }
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
