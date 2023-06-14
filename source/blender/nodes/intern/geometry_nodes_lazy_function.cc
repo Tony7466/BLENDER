@@ -2537,13 +2537,16 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       });
     };
 
-    for (const auto [geometry_output_bsocket, lf_attribute_set_input] :
+    for (const MapItem<const bNodeSocket *, lf::InputSocket *> item :
          attribute_set_propagation_map_.items())
     {
+      const bNodeSocket &geometry_output_bsocket = *item.key;
+      lf::InputSocket &lf_attribute_set_input = *item.value;
+
       const BoundedBitSpan required_fields =
-          result.required_fields_by_geometry_socket[geometry_output_bsocket->index_in_tree()];
+          result.required_fields_by_geometry_socket[geometry_output_bsocket.index_in_tree()];
       const BoundedBitSpan required_output_propagations =
-          result.propagate_to_output_by_geometry_socket[geometry_output_bsocket->index_in_tree()];
+          result.propagate_to_output_by_geometry_socket[geometry_output_bsocket.index_in_tree()];
 
       Vector<lf::OutputSocket *> attribute_set_sockets;
       Vector<lf::OutputSocket *> used_sockets;
@@ -2562,7 +2565,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
         else {
           const auto &socket_field = std::get<SocketFieldSource>(field_source.data);
-          if (&socket_field.socket->owner_node() == &geometry_output_bsocket->owner_node()) {
+          if (&socket_field.socket->owner_node() == &geometry_output_bsocket.owner_node()) {
             return;
           }
           lf::OutputSocket *lf_field_socket = output_socket_map_.lookup(socket_field.socket);
@@ -2588,11 +2591,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       if (lf::OutputSocket *joined_attribute_set = this->join_attribute_sets(
               attribute_set_sockets, used_sockets, join_attribute_sets_cache))
       {
-        lf_graph_->add_link(*joined_attribute_set, *lf_attribute_set_input);
+        lf_graph_->add_link(*joined_attribute_set, lf_attribute_set_input);
       }
       else {
         static const bke::AnonymousAttributeSet empty_set;
-        lf_attribute_set_input->set_default_value(&empty_set);
+        lf_attribute_set_input.set_default_value(&empty_set);
       }
     }
   }
