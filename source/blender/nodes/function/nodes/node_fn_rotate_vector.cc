@@ -30,7 +30,7 @@ void register_node_type_fn_rotate_vector()
 {
   namespace file_ns = blender::nodes::node_fn_rotate_vector_cc;
   static bNodeType ntype;
-  fn_node_type_base(&ntype, FN_NODE_ROTATE_VECTOR, "Rotation Vector", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_ROTATE_VECTOR, "Rotate Vector", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.build_multi_function = file_ns::node_build_multi_function;
   nodeRegisterType(&ntype);

@@ -328,14 +328,14 @@ static void dpaint_bake_endjob(void *customdata)
   if (job->success) {
     /* Show bake info */
     WM_reportf(
-        RPT_INFO, "DynamicPaint: Bake complete (%.2f)", PIL_check_seconds_timer() - job->start);
+        RPT_INFO, "DynamicPaint: Bake complete! (%.2f)", PIL_check_seconds_timer() - job->start);
   }
   else {
     if (strlen(canvas->error)) { /* If an error occurred */
       WM_reportf(RPT_ERROR, "DynamicPaint: Bake failed: %s", canvas->error);
     }
     else { /* User canceled the bake */
-      WM_report(RPT_WARNING, "Baking canceled");
+      WM_report(RPT_WARNING, "Baking canceled!");
     }
   }
 }

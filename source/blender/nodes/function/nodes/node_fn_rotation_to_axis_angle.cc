@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_axis_angle.hh"
 #include "BLI_math_quaternion.hh"
 
 #include "node_function_util.hh"
@@ -32,8 +33,8 @@ class QuaterniontoAxisAngleFunction : public mf::MultiFunction {
   {
     const VArraySpan<math::Quaternion> quaternions =
         params.readonly_single_input<math::Quaternion>(0, "Quaternion");
-    MutableSpan<float3> axes = params.uninitialized_single_output<float3>(2, "Axis");
-    MutableSpan<float> angles = params.uninitialized_single_output<float>(3, "Angle");
+    MutableSpan<float3> axes = params.uninitialized_single_output<float3>(1, "Axis");
+    MutableSpan<float> angles = params.uninitialized_single_output<float>(2, "Angle");
     mask.foreach_index([&](const int64_t i) {
       const math::AxisAngle axis_angle = math::to_axis_angle(quaternions[i]);
       axes[i] = axis_angle.axis();

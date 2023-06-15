@@ -9,7 +9,6 @@
 void register_function_nodes()
 {
   register_node_type_fn_align_euler_to_vector();
-  register_node_type_fn_axes_to_rotation();
   register_node_type_fn_axis_angle_to_rotation();
   register_node_type_fn_boolean_math();
   register_node_type_fn_combine_color();

@@ -5,7 +5,6 @@
 #pragma once
 
 void register_node_type_fn_align_euler_to_vector();
-void register_node_type_fn_axes_to_rotation();
 void register_node_type_fn_axis_angle_to_rotation();
 void register_node_type_fn_boolean_math();
 void register_node_type_fn_combine_color();
