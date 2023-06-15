@@ -210,7 +210,7 @@ static eSnapMode editmesh_snap_mode_supported(BMEditMesh *em)
 
 static SnapData_EditMesh *editmesh_snapdata_init(SnapObjectContext *sctx,
                                                  Object *ob_eval,
-                                                 eSnapMode snap_to_flag)
+                                                 eSnapMode m_snap_to_flag)
 {
   BMEditMesh *em = BKE_editmesh_from_object(ob_eval);
   if (em == nullptr) {
@@ -222,7 +222,7 @@ static SnapData_EditMesh *editmesh_snapdata_init(SnapObjectContext *sctx,
     return sod;
   }
 
-  eSnapMode snap_mode_used = snap_to_flag & editmesh_snap_mode_supported(em);
+  eSnapMode snap_mode_used = m_snap_to_flag & editmesh_snap_mode_supported(em);
   if (snap_mode_used == SCE_SNAP_MODE_NONE) {
     return nullptr;
   }
@@ -368,23 +368,10 @@ static bool raycastEditMesh(SnapData_EditMesh *sod,
       if (hit.dist <= *ray_depth) {
         *ray_depth = hit.dist;
         copy_v3_v3(r_loc, hit.co);
-
-        /* Back to world-space. */
-        mul_m4_v3(obmat, r_loc);
-
-        if (r_no) {
-          copy_v3_v3(r_no, hit.no);
-          mul_transposed_mat3_m4_v3(imat, r_no);
-          normalize_v3(r_no);
-        }
+        copy_v3_v3(r_no, hit.no);
+        *r_index = BM_elem_index_get(em->looptris[hit.index][0]->f);
 
         retval = true;
-
-        if (r_index) {
-          em = sod->treedata_editmesh.em;
-
-          *r_index = BM_elem_index_get(em->looptris[hit.index][0]->f);
-        }
       }
     }
   }
@@ -400,8 +387,6 @@ static bool nearest_world_editmesh(SnapData_EditMesh *sod,
                                    SnapObjectContext *sctx,
                                    BMEditMesh *em,
                                    const float (*obmat)[4],
-                                   const float init_co[3],
-                                   const float curr_co[3],
                                    float *r_dist_sq,
                                    float *r_loc,
                                    float *r_no,
@@ -417,8 +402,6 @@ static bool nearest_world_editmesh(SnapData_EditMesh *sod,
                             treedata->nearest_callback,
                             treedata,
                             obmat,
-                            init_co,
-                            curr_co,
                             r_dist_sq,
                             r_loc,
                             r_no,
@@ -452,10 +435,7 @@ static void cb_bedge_verts_get(const int index, const Nearest2dUserData *data, i
   r_v_index[1] = BM_elem_index_get(eed->v2);
 }
 
-void nearest2d_data_init_editmesh(BMEditMesh *em,
-                                  bool is_persp,
-                                  bool use_backface_culling,
-                                  Nearest2dUserData *r_nearest2d)
+static void nearest2d_data_init_editmesh(BMEditMesh *em, Nearest2dUserData *r_nearest2d)
 {
   r_nearest2d->get_vert_co = cb_bvert_co_get;
   r_nearest2d->get_edge_verts_index = cb_bedge_verts_get;
@@ -464,9 +444,6 @@ void nearest2d_data_init_editmesh(BMEditMesh *em,
   r_nearest2d->get_tri_edges_index = nullptr;
 
   r_nearest2d->bm = em->bm;
-
-  r_nearest2d->is_persp = is_persp;
-  r_nearest2d->use_backface_culling = use_backface_culling;
 }
 
 /** \} */
@@ -475,118 +452,61 @@ void nearest2d_data_init_editmesh(BMEditMesh *em,
 /** \name Internal Object Snapping API
  * \{ */
 
-eSnapMode snap_polygon_editmesh(SnapObjectContext *sctx,
-                                Object *ob_eval,
-                                ID * /*id*/,
-                                const float obmat[4][4],
-                                eSnapMode snap_to_flag,
-                                int polygon,
-                                const float clip_planes_local[MAX_CLIPPLANE_LEN][4])
+void snap_polygon_editmesh(
+    SnapObjectContext *sctx, Object *ob_eval, const ID *id, const float obmat[4][4], int polygon)
 {
-  eSnapMode elem = SCE_SNAP_MODE_NONE;
-
-  SnapData_EditMesh *sod = editmesh_snapdata_init(sctx, ob_eval, snap_to_flag);
+  SnapData_EditMesh *sod = editmesh_snapdata_init(sctx, ob_eval, sctx->runtime.snap_to_flag);
   if (sod == nullptr) {
-    return elem;
+    return;
   }
 
   BMEditMesh *em = sod->treedata_editmesh.em;
 
-  float lpmat[4][4];
-  mul_m4_m4m4(lpmat, sctx->runtime.pmat, obmat);
-
-  DistProjectedAABBPrecalc neasrest_precalc;
-  dist_squared_to_projected_aabb_precalc(
-      &neasrest_precalc, lpmat, sctx->runtime.win_size, sctx->runtime.mval);
-
-  BVHTreeNearest nearest{};
-  nearest.index = -1;
-  nearest.dist_sq = sctx->ret.dist_px_sq;
-
-  Nearest2dUserData nearest2d;
-
-  nearest2d_data_init_editmesh(
-      em, sctx->runtime.is_persp, sctx->runtime.params.use_backface_culling, &nearest2d);
+  Nearest2dUserData nearest2d(sctx, ob_eval, id, obmat);
+  nearest2d_data_init_editmesh(em, &nearest2d);
 
   BM_mesh_elem_table_ensure(em->bm, BM_FACE);
   BMFace *f = BM_face_at_index(em->bm, polygon);
   BMLoop *l_iter, *l_first;
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
-  if (snap_to_flag & SCE_SNAP_MODE_EDGE) {
-    elem = SCE_SNAP_MODE_EDGE;
+  if (nearest2d.m_snap_to_flag &
+      (SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_EDGE_MIDPOINT | SCE_SNAP_MODE_EDGE_PERPENDICULAR))
+  {
     BM_mesh_elem_index_ensure(em->bm, BM_VERT | BM_EDGE);
     BM_mesh_elem_table_ensure(em->bm, BM_VERT | BM_EDGE);
     do {
-      cb_snap_edge(&nearest2d,
-                   BM_elem_index_get(l_iter->e),
-                   &neasrest_precalc,
-                   clip_planes_local,
-                   sctx->runtime.clip_plane_len,
-                   &nearest);
+      int edge_index = BM_elem_index_get(l_iter->e);
+      int vindex[2];
+      nearest2d.get_edge_verts_index(edge_index, &nearest2d, vindex);
+
+      const float *v_pair[2];
+      nearest2d.get_vert_co(vindex[0], &nearest2d, &v_pair[0]);
+      nearest2d.get_vert_co(vindex[1], &nearest2d, &v_pair[1]);
+
+      nearest2d.snap_edge(edge_index, vindex[0], vindex[1], v_pair[0], v_pair[1]);
     } while ((l_iter = l_iter->next) != l_first);
   }
   else {
-    elem = SCE_SNAP_MODE_VERTEX;
+    BLI_assert(nearest2d.m_snap_to_flag & SCE_SNAP_MODE_VERTEX);
     BM_mesh_elem_index_ensure(em->bm, BM_VERT);
     BM_mesh_elem_table_ensure(em->bm, BM_VERT);
     do {
-      cb_snap_vert(&nearest2d,
-                   BM_elem_index_get(l_iter->v),
-                   &neasrest_precalc,
-                   clip_planes_local,
-                   sctx->runtime.clip_plane_len,
-                   &nearest);
+      int vert_index = BM_elem_index_get(l_iter->v);
+      const float *co;
+      nearest2d.get_vert_co(vert_index, &nearest2d, &co);
+      nearest2d.snap_point(vert_index, co);
     } while ((l_iter = l_iter->next) != l_first);
   }
 
-  if (nearest.index != -1) {
-    sctx->ret.dist_px_sq = nearest.dist_sq;
-
-    mul_m4_v3(obmat, nearest.co);
-    copy_v3_v3(sctx->ret.loc, nearest.co);
-
-    {
-      float imat[4][4];
-      invert_m4_m4(imat, obmat);
-      mul_transposed_mat3_m4_v3(imat, nearest.no);
-      normalize_v3(nearest.no);
-
-      copy_v3_v3(sctx->ret.no, nearest.no);
-    }
-
-    sctx->ret.index = nearest.index;
-    return elem;
-  }
-
-  return SCE_SNAP_MODE_NONE;
+  nearest2d.confirm(sctx);
 }
 
-static eSnapMode snapEditMesh(SnapData_EditMesh *sod,
-                              SnapObjectContext *sctx,
-                              BMEditMesh *em,
-                              const float obmat[4][4],
-                              eSnapMode snap_to_flag,
-                              /* read/write args */
-                              float *dist_px_sq,
-                              /* return args */
-                              float r_loc[3],
-                              float r_no[3],
-                              int *r_index)
+static void snap_vert_editmesh(SnapObjectContext *sctx,
+                               Nearest2dUserData *nearest2d,
+                               SnapData_EditMesh *sod,
+                               BMEditMesh *em)
 {
-  BLI_assert(snap_to_flag != SCE_SNAP_MODE_FACE);
-  float lpmat[4][4];
-  mul_m4_m4m4(lpmat, sctx->runtime.pmat, obmat);
-
-  /* Test BoundBox */
-
-  /* Was BKE_boundbox_ray_hit_check, see: cf6ca226fa58. */
-  if (!snap_bound_box_check_dist(
-          sod->min, sod->max, lpmat, sctx->runtime.win_size, sctx->runtime.mval, *dist_px_sq))
   {
-    return SCE_SNAP_MODE_NONE;
-  }
-
-  if (snap_to_flag & SCE_SNAP_MODE_VERTEX) {
     BVHTreeFromEditMesh treedata{};
     treedata.tree = sod->bvhtree[0];
 
@@ -616,7 +536,31 @@ static eSnapMode snapEditMesh(SnapData_EditMesh *sod,
     }
   }
 
-  if (snap_to_flag & SCE_SNAP_MODE_EDGE) {
+  if (sod->bvhtree[0]) {
+    BVHTreeNearest nearest = {};
+    nearest.index = -1;
+    nearest.dist_sq = nearest2d->dist_px_sq();
+
+    BM_mesh_elem_table_ensure(em->bm, BM_VERT);
+    BM_mesh_elem_index_ensure(em->bm, BM_VERT);
+    BLI_bvhtree_find_nearest_projected(sod->bvhtree[0],
+                                       nearest2d->m_pmat_local,
+                                       sctx->runtime.win_size,
+                                       sctx->runtime.mval,
+                                       nearest2d->m_clip_plane,
+                                       nearest2d->m_clip_plane_len,
+                                       &nearest,
+                                       cb_snap_vert,
+                                       nearest2d);
+  }
+}
+
+static void snap_edge_editmesh(SnapObjectContext *sctx,
+                               Nearest2dUserData *nearest2d,
+                               SnapData_EditMesh *sod,
+                               BMEditMesh *em)
+{
+  {
     BVHTreeFromEditMesh treedata{};
     treedata.tree = sod->bvhtree[1];
 
@@ -646,154 +590,105 @@ static eSnapMode snapEditMesh(SnapData_EditMesh *sod,
     }
   }
 
-  Nearest2dUserData nearest2d;
-  nearest2d_data_init_editmesh(sod->treedata_editmesh.em,
-                               sctx->runtime.is_persp,
-                               sctx->runtime.params.use_backface_culling,
-                               &nearest2d);
-
-  BVHTreeNearest nearest{};
-  nearest.index = -1;
-  nearest.dist_sq = *dist_px_sq;
-
-  eSnapMode elem = SCE_SNAP_MODE_VERTEX;
-
-  float tobmat[4][4], clip_planes_local[MAX_CLIPPLANE_LEN][4];
-  transpose_m4_m4(tobmat, obmat);
-
-  for (int i = sctx->runtime.clip_plane_len; i--;) {
-    mul_v4_m4v4(clip_planes_local[i], tobmat, sctx->runtime.clip_plane[i]);
-  }
-
-  if (sod->bvhtree[0] && (snap_to_flag & SCE_SNAP_MODE_VERTEX)) {
-    BM_mesh_elem_table_ensure(em->bm, BM_VERT);
-    BM_mesh_elem_index_ensure(em->bm, BM_VERT);
-    BLI_bvhtree_find_nearest_projected(sod->bvhtree[0],
-                                       lpmat,
-                                       sctx->runtime.win_size,
-                                       sctx->runtime.mval,
-                                       clip_planes_local,
-                                       sctx->runtime.clip_plane_len,
-                                       &nearest,
-                                       cb_snap_vert,
-                                       &nearest2d);
-  }
-
-  if (sod->bvhtree[1] && (snap_to_flag & SCE_SNAP_MODE_EDGE)) {
-    int last_index = nearest.index;
+  if (sod->bvhtree[1]) {
+    BVHTreeNearest nearest = {};
     nearest.index = -1;
+    nearest.dist_sq = nearest2d->dist_px_sq();
+
     BM_mesh_elem_table_ensure(em->bm, BM_EDGE | BM_VERT);
     BM_mesh_elem_index_ensure(em->bm, BM_EDGE | BM_VERT);
     BLI_bvhtree_find_nearest_projected(sod->bvhtree[1],
-                                       lpmat,
+                                       nearest2d->m_pmat_local,
                                        sctx->runtime.win_size,
                                        sctx->runtime.mval,
-                                       clip_planes_local,
-                                       sctx->runtime.clip_plane_len,
-                                       &nearest,
+                                       nearest2d->m_clip_plane,
+                                       nearest2d->m_clip_plane_len,
+                                       nullptr,
                                        cb_snap_edge,
-                                       &nearest2d);
+                                       nearest2d);
+  }
+}
 
-    if (nearest.index != -1) {
-      elem = SCE_SNAP_MODE_EDGE;
-    }
-    else {
-      nearest.index = last_index;
-    }
+static bool snapEditMesh(SnapObjectContext *sctx,
+                         SnapData_EditMesh *sod,
+                         Object *ob_eval,
+                         const float obmat[4][4])
+{
+  Nearest2dUserData nearest2d(sctx, ob_eval, nullptr, obmat);
+  BLI_assert(nearest2d.m_snap_to_flag != SCE_SNAP_MODE_FACE);
+
+  /* Was BKE_boundbox_ray_hit_check, see: cf6ca226fa58. */
+  if (!nearest2d.snap_boundbox(sod->min, sod->max)) {
+    return false;
   }
 
-  if (nearest.index != -1) {
-    *dist_px_sq = nearest.dist_sq;
+  nearest2d_data_init_editmesh(sod->treedata_editmesh.em, &nearest2d);
 
-    copy_v3_v3(r_loc, nearest.co);
-    mul_m4_v3(obmat, r_loc);
-    if (r_no) {
-      float imat[4][4];
-      invert_m4_m4(imat, obmat);
-
-      copy_v3_v3(r_no, nearest.no);
-      mul_transposed_mat3_m4_v3(imat, r_no);
-      normalize_v3(r_no);
-    }
-    if (r_index) {
-      *r_index = nearest.index;
-    }
-
-    return elem;
+  /* Start with vertices, it is more efficient and reduces the search threshold. */
+  if (nearest2d.m_snap_to_flag & SCE_SNAP_MODE_VERTEX) {
+    snap_vert_editmesh(sctx, &nearest2d, sod, sod->treedata_editmesh.em);
   }
 
-  return SCE_SNAP_MODE_NONE;
+  if (nearest2d.m_snap_to_flag &
+      (SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_EDGE_MIDPOINT | SCE_SNAP_MODE_EDGE_PERPENDICULAR))
+  {
+    snap_edge_editmesh(sctx, &nearest2d, sod, sod->treedata_editmesh.em);
+  }
+
+  return nearest2d.confirm(sctx);
 }
 
 /** \} */
 
-eSnapMode snap_object_editmesh(SnapObjectContext *sctx,
-                               Object *ob_eval,
-                               ID * /*id*/,
-                               const float obmat[4][4],
-                               eSnapMode snap_to_flag,
-                               bool /*use_hide*/)
+void snap_object_editmesh(SnapObjectContext *sctx,
+                          Object *ob_eval,
+                          ID * /*id*/,
+                          const float obmat[4][4],
+                          bool /*use_hide*/)
 {
-  eSnapMode elem = SCE_SNAP_MODE_NONE;
-
-  SnapData_EditMesh *sod = editmesh_snapdata_init(sctx, ob_eval, snap_to_flag);
+  SnapData_EditMesh *sod = editmesh_snapdata_init(sctx, ob_eval, sctx->runtime.snap_to_flag);
   if (sod == nullptr) {
-    return elem;
+    return;
   }
 
   BMEditMesh *em = sod->treedata_editmesh.em;
 
-  eSnapMode snap_mode_used = snap_to_flag & editmesh_snap_mode_supported(em);
-  if (snap_mode_used & (SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_EDGE_MIDPOINT |
-                        SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_VERTEX))
+  eSnapMode snap_mode_used = sctx->runtime.snap_to_flag & editmesh_snap_mode_supported(em);
+  if ((snap_mode_used & (SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_EDGE_MIDPOINT |
+                         SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_VERTEX)) &&
+      snapEditMesh(sctx, sod, ob_eval, obmat))
   {
-    elem = snapEditMesh(sod,
-                        sctx,
-                        em,
-                        obmat,
-                        snap_to_flag,
-                        &sctx->ret.dist_px_sq,
-                        sctx->ret.loc,
-                        sctx->ret.no,
-                        &sctx->ret.index);
-    if (elem) {
-      return elem;
-    }
+    /* Pass. */;
   }
-
-  if (snap_mode_used & SCE_SNAP_MODE_FACE) {
-    if (raycastEditMesh(sod,
-                        sctx,
-                        em,
-                        obmat,
-                        sctx->runtime.object_index++,
-                        /* read/write args */
-                        &sctx->ret.ray_depth_max,
-                        /* return args */
-                        sctx->ret.loc,
-                        sctx->ret.no,
-                        &sctx->ret.index,
-                        sctx->ret.hit_list))
-    {
-      return SCE_SNAP_MODE_FACE;
-    }
+  else if ((snap_mode_used & SCE_SNAP_MODE_FACE) && raycastEditMesh(sod,
+                                                                    sctx,
+                                                                    em,
+                                                                    obmat,
+                                                                    sctx->runtime.object_index++,
+                                                                    &sctx->poly.nearest.dist_sq,
+                                                                    sctx->poly.nearest.co,
+                                                                    sctx->poly.nearest.no,
+                                                                    &sctx->poly.nearest.index,
+                                                                    sctx->hit_list))
+  {
+    sctx->poly.ob = ob_eval;
+    sctx->poly.data = nullptr;
+    copy_m4_m4(sctx->poly.obmat, obmat);
+    sctx->poly.elem = SCE_SNAP_MODE_FACE;
   }
-
-  if (snap_mode_used & SCE_SNAP_MODE_FACE_NEAREST) {
-    if (nearest_world_editmesh(sod,
-                               sctx,
-                               em,
-                               obmat,
-                               sctx->runtime.init_co,
-                               sctx->runtime.curr_co,
-                               &sctx->ret.dist_px_sq,
-                               sctx->ret.loc,
-                               sctx->ret.no,
-                               &sctx->ret.index))
-    {
-      return SCE_SNAP_MODE_FACE_NEAREST;
-    }
+  else if ((snap_mode_used & SCE_SNAP_MODE_FACE_NEAREST) &&
+           nearest_world_editmesh(sod,
+                                  sctx,
+                                  em,
+                                  obmat,
+                                  &sctx->poly.nearest.dist_sq,
+                                  sctx->poly.nearest.co,
+                                  sctx->poly.nearest.no,
+                                  &sctx->poly.nearest.index))
+  {
+    sctx->poly.ob = ob_eval;
+    sctx->poly.data = nullptr;
+    copy_m4_m4(sctx->poly.obmat, obmat);
+    sctx->poly.elem = SCE_SNAP_MODE_FACE_NEAREST;
   }
-
-  return SCE_SNAP_MODE_NONE;
 }
