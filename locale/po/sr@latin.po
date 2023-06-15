@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'51c2a0f81606')\n"
+"Project-Id-Version: Blender 3.6.0 Beta (b'de4fb0e570b4')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-15 09:19:43\n"
+"POT-Creation-Date: 2023-06-05 09:47:30\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -1367,34 +1367,6 @@ msgid "Fill"
 msgstr "Ispuna"
 
 
-msgid "Smooth"
-msgstr "Umekšano"
-
-
-msgid "Thickness"
-msgstr "Debljina"
-
-
-msgid "Randomize"
-msgstr "Nasumično"
-
-
-msgid "Grab"
-msgstr "Povlačenje"
-
-
-msgid "Push"
-msgstr "Postavlja zapamćenu pozu"
-
-
-msgid "Pinch"
-msgstr "Štipanje"
-
-
-msgid "Clone"
-msgstr "Kliniranje"
-
-
 msgid "Draw"
 msgstr "Crtaj"
 
@@ -1409,6 +1381,14 @@ msgstr "Zamazivanje"
 
 msgid "Input Samples"
 msgstr "Ulazni uzorci"
+
+
+msgid "Thickness"
+msgstr "Debljina"
+
+
+msgid "Smooth"
+msgstr "Umekšano"
 
 
 msgid "Iterations"
@@ -5378,22 +5358,6 @@ msgid "Box"
 msgstr "Kutija"
 
 
-msgid "Deformation"
-msgstr "Deformacija"
-
-
-msgid "Bend"
-msgstr "Savijanje"
-
-
-msgid "Expand"
-msgstr "Proširi"
-
-
-msgid "Inflate"
-msgstr "Naduvati"
-
-
 msgid "Loop"
 msgstr "Petlje"
 
@@ -5404,6 +5368,26 @@ msgstr "X alfa"
 
 msgid "Clone Image"
 msgstr "Kloniraj sloj"
+
+
+msgid "Deformation"
+msgstr "Deformacija"
+
+
+msgid "Push"
+msgstr "Postavlja zapamćenu pozu"
+
+
+msgid "Inflate"
+msgstr "Naduvati"
+
+
+msgid "Grab"
+msgstr "Povlačenje"
+
+
+msgid "Expand"
+msgstr "Proširi"
 
 
 msgid "Snake Hook"
@@ -5438,6 +5422,10 @@ msgid "Comb"
 msgstr "Češalj"
 
 
+msgid "Pinch"
+msgstr "Štipanje"
+
+
 msgid "Fill Threshold"
 msgstr "Prag ispune"
 
@@ -5464,6 +5452,10 @@ msgstr "Alatke bojenja slike"
 
 msgid "Soften"
 msgstr "Umekšanje"
+
+
+msgid "Clone"
+msgstr "Kliniranje"
 
 
 msgid "Mask"
@@ -6514,20 +6506,8 @@ msgid "U"
 msgstr "U"
 
 
-msgid "Point in U direction (can't be changed when there are shape keys)"
-msgstr "Tačaka u U pravcu (nije moguća izmena ukoliko postoje ključevi oblika)"
-
-
 msgid "V"
 msgstr "V"
-
-
-msgid "Point in V direction (can't be changed when there are shape keys)"
-msgstr "Tačaka u V pravcu (nije moguća izmena ukoliko postoje ključevi oblika)"
-
-
-msgid "Point in W direction (can't be changed when there are shape keys)"
-msgstr "Tačaka u W pravcu (nije moguća izmena ukoliko postoje ključevi oblika)"
 
 
 msgid "Vertex group to apply the influence of the lattice"
@@ -6618,10 +6598,6 @@ msgid "Collection of layers which defines this mask"
 msgstr "Zbirka slojeva koji određuju ovu masku"
 
 
-msgid "Opaque"
-msgstr "Neprovidno"
-
-
 msgid "Diffuse Color"
 msgstr "Difuzna boja"
 
@@ -6672,6 +6648,10 @@ msgstr "Niti kose"
 
 msgid "Roughness"
 msgstr "Hrapavost"
+
+
+msgid "Opaque"
+msgstr "Neprovidno"
 
 
 msgid "Texture Slot Images"
@@ -6796,10 +6776,6 @@ msgstr "Temena meša"
 
 msgid "Render Size"
 msgstr "Veličina renderinga"
-
-
-msgid "Wire Size"
-msgstr "Veličina mreže"
 
 
 msgid "Update"
@@ -9719,10 +9695,6 @@ msgid "Size Z"
 msgstr "Veličina Z"
 
 
-msgid "Metaball types"
-msgstr "Vrsta meta lopte"
-
-
 msgid "Ball"
 msgstr "Lopta"
 
@@ -9951,6 +9923,10 @@ msgid "Start frame of the effect"
 msgstr "Početni kadar efekta"
 
 
+msgid "Randomize"
+msgstr "Nasumično"
+
+
 msgid "Randomize the faces or edges during build"
 msgstr "Nasumično stvaraj stranice i ivice"
 
@@ -9973,10 +9949,6 @@ msgstr "Modifikator simulacije tkanine"
 
 msgid "Settings"
 msgstr "Podešavanja"
-
-
-msgid "Smooth factor effect"
-msgstr "Efekat faktor umekšavanja"
 
 
 msgid "Curve Modifier"
@@ -10089,10 +10061,6 @@ msgstr "Modifikator dinamičkog bojenja"
 
 msgid "Dynamic Paint modifier"
 msgstr "Modifikator dinamičkog bojenja"
-
-
-msgid "Canvas"
-msgstr "Platno"
 
 
 msgid "Split Angle"
@@ -10441,6 +10409,11 @@ msgstr "Razvuci V"
 
 msgid "Angle of deformation"
 msgstr "Ugao deformacije"
+
+
+msgctxt "Operator"
+msgid "Bend"
+msgstr "Savijanje"
 
 
 msgid "Limits"
@@ -11290,10 +11263,6 @@ msgid "ITU 709"
 msgstr "YCbCr (ITU 709)"
 
 
-msgid "Jpeg"
-msgstr "Jpeg"
-
-
 msgid "Combine YUVA"
 msgstr "Kombinuj YUVA"
 
@@ -12076,10 +12045,6 @@ msgstr "Pretvori iz"
 
 msgid "Convert To"
 msgstr "Pretvori u"
-
-
-msgid "Pixel Size"
-msgstr "Veličina piksela"
 
 
 msgid "Texture Node"
@@ -13844,6 +13809,10 @@ msgstr "Uvećanje"
 
 msgid "Skin Resize"
 msgstr "Uvećanje kože"
+
+
+msgid "Bend"
+msgstr "Savijanje"
 
 
 msgid "Shrink/Fatten"
@@ -19513,11 +19482,6 @@ msgid "Constraint Axis"
 msgstr "Ograničenja osa"
 
 
-msgctxt "Operator"
-msgid "Bend"
-msgstr "Savijanje"
-
-
 msgid "Bend selected items between the 3D cursor and the mouse"
 msgstr "Savija izabrane stavke između 3D kursora i miša"
 
@@ -20757,6 +20721,10 @@ msgstr "Simetrično Y"
 
 msgid "Symmetry Z"
 msgstr "Simetrično Z"
+
+
+msgid "Canvas"
+msgstr "Platno"
 
 
 msgid "Dither"
@@ -22155,6 +22123,14 @@ msgid "Translate Tooltips"
 msgstr "Prevodi opise"
 
 
+msgid "Base"
+msgstr "Osnova"
+
+
+msgid "Temperature"
+msgstr "Temperatura"
+
+
 msgid "Group of ID properties"
 msgstr "Svojstva tečnosti:"
 
@@ -22443,6 +22419,10 @@ msgid "Line thickness mode for Freestyle line drawing"
 msgstr "Režim debljine linije pri slobodoručnom iscrtavanju linije"
 
 
+msgid "Pixel Size"
+msgstr "Veličina piksela"
+
+
 msgid "Resolution %"
 msgstr "Rezolucija %"
 
@@ -22639,10 +22619,6 @@ msgid "Linear Damping"
 msgstr "Linearno"
 
 
-msgid "Base"
-msgstr "Osnova"
-
-
 msgid "All modifiers"
 msgstr "Svi modifikatori"
 
@@ -22713,10 +22689,6 @@ msgstr "YCbCr (ITU 601)"
 
 msgid "YCbCr (ITU 709)"
 msgstr "YCbCr (ITU 709)"
-
-
-msgid "YCbCr (Jpeg)"
-msgstr "YCbCr (Jpeg)"
 
 
 msgid "Blend Opacity"
@@ -25106,10 +25078,6 @@ msgid "Remove"
 msgstr "Ukloni"
 
 
-msgid "Out"
-msgstr "Van"
-
-
 msgctxt "Operator"
 msgid "Add Image"
 msgstr "Dodaj sliku"
@@ -25327,10 +25295,6 @@ msgstr "Velika slova"
 
 msgid "Auto-Step"
 msgstr "Automatsko koračanje"
-
-
-msgid "Temperature"
-msgstr "Temperatura"
 
 
 msgid "Paths:"
@@ -26500,6 +26464,10 @@ msgstr "Osnovno"
 
 msgid "Scene not found"
 msgstr "Brzina zvuka"
+
+
+msgid "Out"
+msgstr "Van"
 
 
 msgid "<Unknown Modifier>"
@@ -28086,10 +28054,6 @@ msgid "Japanese (日本語)"
 msgstr "Japanski (日本語)"
 
 
-msgid "Dutch (Nederlandse taal)"
-msgstr "Holandski (Nederlandse taal)"
-
-
 msgid "Italian (Italiano)"
 msgstr "Italijanski (Italiano)"
 
@@ -28182,10 +28146,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Hebrejski (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Estonski (Eestlane)"
-
-
 msgid "Esperanto (Esperanto)"
 msgstr "Esperanto (Esperanto)"
 
@@ -28200,14 +28160,6 @@ msgstr "Amharski (አማርኛ)"
 
 msgid "Uzbek (Oʻzbek)"
 msgstr "Uzbečki (Oʻzbek)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Indijski (मानक हिन्दी)"
-
-
-msgid "Vietnamese (tiếng Việt)"
-msgstr "Vijetnamski (tiếng Việt)"
 
 
 msgid "Complete"

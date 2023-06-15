@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 set(INC
   ../../intern/clog
@@ -49,6 +50,7 @@ if(WITH_LIBMV)
 endif()
 
 if(WITH_CYCLES)
+  add_definitions(-DWITH_CYCLES)
   if(WITH_CYCLES_LOGGING)
     list(APPEND INC ../../intern/cycles/blender)
     add_definitions(-DWITH_CYCLES_LOGGING)
@@ -334,11 +336,15 @@ endif()
 
 
 set(BLENDER_TEXT_FILES
-  ${CMAKE_SOURCE_DIR}/release/text/copyright.txt
   # Generate this file:
   # `${CMAKE_SOURCE_DIR}/release/text/readme.html`
 )
 
+if(WITH_INSTALL_COPYRIGHT)
+  list(APPEND BLENDER_TEXT_FILES
+    ${CMAKE_SOURCE_DIR}/release/text/copyright.txt
+  )
+endif()
 
 # -----------------------------------------------------------------------------
 # Platform specific target destinations
@@ -882,13 +888,24 @@ elseif(WIN32)
     )
   endif()
 
+  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3.dll)
+    set(FFTW_DLL ${LIBDIR}/fftw3/lib/fftw3.dll)
+  else()
+    set(FFTW_DLL ${LIBDIR}/fftw3/lib/libfftw3-3.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/fftw3/lib/libfftw3-3.dll
+    FILES ${FFTW_DLL}
     ALL
   )
-  if(EXISTS ${LIBDIR}/fftw3/lib/libfftw3f-3.dll)
+  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3f-3.dll)
     windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/libfftw3f-3.dll
+      FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
+      ALL
+    )
+  elseif(EXISTS ${LIBDIR}/fftw3/lib/fftw3f.dll)
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/fftw3/lib/fftw3f.dll
       ALL
     )
   endif()
@@ -951,10 +968,19 @@ elseif(WIN32)
       DEBUG
     )
   endif()
+
+  if(EXISTS ${LIBDIR}/gmp/lib/gmp-10.dll)
+    set(GMP_DLL ${LIBDIR}/gmp/lib/gmp-10.dll)
+  else()
+    set(GMP_DLL ${LIBDIR}/gmp/lib/libgmp-10.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/gmp/lib/libgmp-10.dll
+    FILES ${GMP_DLL}
     ALL
   )
+  unset(GMP_DLL)
+
   windows_install_shared_manifest(
     FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
     RELEASE
@@ -1262,10 +1288,17 @@ elseif(WIN32)
     list(APPEND LIB ${TBB_MALLOC_LIBRARIES})
   endif()
 
+  if(EXISTS ${LIBDIR}/sndfile/lib/sndfile.dll)
+    set(SNDFILE_DLL ${LIBDIR}/sndfile/lib/sndfile.dll)
+  else()
+    set(SNDFILE_DLL ${LIBDIR}/sndfile/lib/libsndfile-1.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/sndfile/lib/libsndfile-1.dll
+    FILES ${SNDFILE_DLL}
     ALL
   )
+  unset(SNDFILE_DLL)
 
   windows_install_shared_manifest(
     FILES ${LIBDIR}/shaderc/bin/shaderc_shared.dll
@@ -1710,7 +1743,21 @@ if(\n\
   ($\{BLENDER_BIN\} IS_NEWER_THAN $\{MANPAGE_OUT\}) OR\n\
   ($\{MANPAGE_GEN\} IS_NEWER_THAN $\{MANPAGE_OUT\})\n\
 )\n\
-  execute_process(COMMAND $\{MANPAGE_GEN\} --blender $\{BLENDER_BIN\} --output $\{MANPAGE_OUT\})\n\
+  set(ENV{ASAN_OPTIONS} \"$ENV{ASAN_OPTIONS}:\
+exitcode=0:\
+check_initialization_order=0:\
+strict_init_order=0:\
+detect_leaks=0\"\n\
+  )\n\
+  execute_process(\n\
+    OUTPUT_QUIET\n\
+    COMMAND $\{BLENDER_BIN\}\n\
+    --background\n\
+    --factory-startup\n\
+    --python $\{MANPAGE_GEN\}\n\
+    --\n\
+    --output $\{MANPAGE_OUT\}\n\
+  )\n\
 endif()\n\
 "
         DEPENDS blender

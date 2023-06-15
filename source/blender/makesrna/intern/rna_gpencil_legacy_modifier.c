@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -892,11 +894,11 @@ static void rna_DashGpencilModifierSegment_name_set(PointerRNA *ptr, const char 
   char name_esc[sizeof(ds->dmd->modifier.name) * 2];
   BLI_str_escape(name_esc, ds->dmd->modifier.name, sizeof(name_esc));
 
-  char prefix[36 + sizeof(name_esc) + 1];
-  SNPRINTF(prefix, "grease_pencil_modifiers[\"%s\"].segments", name_esc);
+  char rna_path_prefix[36 + sizeof(name_esc) + 1];
+  SNPRINTF(rna_path_prefix, "grease_pencil_modifiers[\"%s\"].segments", name_esc);
 
   /* Fix all the animation data which may link to this. */
-  BKE_animdata_fix_paths_rename_all(NULL, prefix, oldname, ds->name);
+  BKE_animdata_fix_paths_rename_all(NULL, rna_path_prefix, oldname, ds->name);
 }
 
 static void rna_TimeGpencilModifierSegment_name_set(PointerRNA *ptr, const char *value)
@@ -915,11 +917,11 @@ static void rna_TimeGpencilModifierSegment_name_set(PointerRNA *ptr, const char 
   char name_esc[sizeof(ds->gpmd->modifier.name) * 2];
   BLI_str_escape(name_esc, ds->gpmd->modifier.name, sizeof(name_esc));
 
-  char prefix[36 + sizeof(name_esc) + 1];
-  SNPRINTF(prefix, "grease_pencil_modifiers[\"%s\"].segments", name_esc);
+  char rna_path_prefix[36 + sizeof(name_esc) + 1];
+  SNPRINTF(rna_path_prefix, "grease_pencil_modifiers[\"%s\"].segments", name_esc);
 
   /* Fix all the animation data which may link to this. */
-  BKE_animdata_fix_paths_rename_all(NULL, prefix, oldname, ds->name);
+  BKE_animdata_fix_paths_rename_all(NULL, rna_path_prefix, oldname, ds->name);
 }
 
 static int rna_ShrinkwrapGpencilModifier_face_cull_get(PointerRNA *ptr)
@@ -1655,7 +1657,7 @@ static void rna_def_modifier_gpenciloffset(BlenderRNA *brna)
   prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_EULER);
   RNA_def_property_float_sdna(prop, NULL, "rot");
   RNA_def_property_ui_text(prop, "Rotation", "Values for changes in rotation");
-  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
@@ -1673,7 +1675,7 @@ static void rna_def_modifier_gpenciloffset(BlenderRNA *brna)
   prop = RNA_def_property(srna, "random_rotation", PROP_FLOAT, PROP_EULER);
   RNA_def_property_float_sdna(prop, NULL, "rnd_rot");
   RNA_def_property_ui_text(prop, "Random Rotation", "Value for changes in rotation");
-  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "random_scale", PROP_FLOAT, PROP_XYZ);
@@ -2371,7 +2373,7 @@ static void rna_def_modifier_gpencilarray(BlenderRNA *brna)
   prop = RNA_def_property(srna, "random_rotation", PROP_FLOAT, PROP_EULER);
   RNA_def_property_float_sdna(prop, NULL, "rnd_rot");
   RNA_def_property_ui_text(prop, "Random Rotation", "Value for changes in rotation");
-  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "random_scale", PROP_FLOAT, PROP_XYZ);
@@ -3968,7 +3970,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Image Boundary Trimming",
-      "Trim all edges right at the boundary of image(including overscan region)");
+      "Trim all edges right at the boundary of image (including overscan region)");
 
   prop = RNA_def_property(srna, "use_back_face_culling", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "calculation_flags", LRT_USE_BACK_FACE_CULLING);

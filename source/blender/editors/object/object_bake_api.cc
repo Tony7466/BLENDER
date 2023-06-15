@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -186,7 +187,7 @@ static void bias_tangent_normal_pixels(
   BLI_assert(channels >= 3);
 
   for (int y = 0; y < height; y++) {
-    float *pixels = rect + ((size_t)stride) * y * channels;
+    float *pixels = rect + size_t(stride) * y * channels;
     for (int x = 0; x < width; x++, pixels += channels) {
       if (fabsf(pixels[0] - 0.5f) < 1.0f / 255.0f) {
         pixels[0] = 0.5f + 1e-5f;
@@ -950,7 +951,7 @@ static bool bake_targets_output_external(const BakeAPIRender *bkr,
     }
 
     if (bk_image->tile_number) {
-      char tmp[FILE_MAX];
+      char tmp[12];
       SNPRINTF(tmp, "%d", bk_image->tile_number);
       BLI_path_suffix(filepath, FILE_MAX, tmp, "_");
     }

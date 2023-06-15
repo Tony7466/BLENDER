@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -27,46 +28,36 @@ struct Tex;
 typedef struct MTex {
   DNA_DEFINE_CXX_METHODS(MTex)
 
-  short texco, mapto, maptoneg, blendtype;
+  short texco, mapto, blendtype;
+  char _pad2[2];
   struct Object *object;
   struct Tex *tex;
   /** MAX_CUSTOMDATA_LAYER_NAME. */
   char uvname[68];
-  char _pad1[4];
 
   char projx, projy, projz, mapping;
   char brush_map_mode, brush_angle_mode;
-  char _pad[2];
+
+  /**
+   * Match against the texture node (#TEX_NODE_OUTPUT, #bNode::custom1 value).
+   * otherwise zero when unspecified (default).
+   */
+  short which_output;
+
   float ofs[3], size[3], rot, random_angle;
 
-  char _pad0[2];
-  short colormodel;
-  short normapspace, which_output;
   float r, g, b, k;
   float def_var;
 
   /* common */
-  float colfac, varfac;
-
-  /* material */
-  float norfac, dispfac, warpfac;
-  float colspecfac, mirrfac, alphafac;
-  float difffac, specfac, emitfac, hardfac;
-  float raymirrfac, translfac, ambfac;
-  float colemitfac, colreflfac, coltransfac;
-  float densfac, scatterfac, reflfac;
+  float colfac;
+  float alphafac;
 
   /* particles */
   float timefac, lengthfac, clumpfac, dampfac;
   float kinkfac, kinkampfac, roughfac, padensfac, gravityfac;
   float lifefac, sizefac, ivelfac, fieldfac;
   float twistfac;
-
-  /* light */
-  float shadowfac;
-
-  /* world */
-  float zenupfac, zendownfac, blendfac;
 } MTex;
 
 #ifndef DNA_USHORT_FIX
@@ -187,14 +178,17 @@ typedef struct Tex {
 
   float cropxmin, cropymin, cropxmax, cropymax;
   int texfilter;
-  int afmax; /* anisotropic filter maximum value, ewa -> max eccentricity, feline -> max probes */
+  /** Anisotropic filter maximum value, EWA -> max eccentricity, feline -> max probes. */
+  int afmax;
   short xrepeat, yrepeat;
   short extend;
 
-  /* variables disabled, moved to struct iuser */
+  /* Variables only used for versioning, moved to struct member `iuser`. */
   short _pad0;
-  int len;
-  int frames, offset, sfra;
+  int len DNA_DEPRECATED;
+  int frames DNA_DEPRECATED;
+  int offset DNA_DEPRECATED;
+  int sfra DNA_DEPRECATED;
 
   float checkerdist, nabla;
   char _pad1[4];

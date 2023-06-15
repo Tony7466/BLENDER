@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
@@ -131,12 +133,17 @@ static void attribute_search_update_fn(
  */
 static eCustomDataType data_type_in_attribute_input_node(const eCustomDataType type)
 {
+  if (!U.experimental.use_rotation_socket && type == CD_PROP_QUATERNION) {
+    /* Invalid type, no implicit conversions available. */
+    return CD_PROP_BOOL;
+  }
   switch (type) {
     case CD_PROP_FLOAT:
     case CD_PROP_INT32:
     case CD_PROP_FLOAT3:
     case CD_PROP_COLOR:
     case CD_PROP_BOOL:
+    case CD_PROP_QUATERNION:
       return type;
     case CD_PROP_BYTE_COLOR:
       return CD_PROP_COLOR;

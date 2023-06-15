@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -103,7 +105,7 @@ class SPREADSHEET_HT_header(bpy.types.Header):
         if obj.type == 'MESH':
             return obj.mode == 'EDIT'
         if obj.type == 'CURVES':
-            return obj.mode == 'SCULPT_CURVES'
+            return obj.mode in {'SCULPT_CURVES', 'EDIT'}
         return True
 
 

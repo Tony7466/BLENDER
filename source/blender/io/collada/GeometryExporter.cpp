@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -344,7 +346,7 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
   Material *ma = ob->totcol ? BKE_object_material_get(ob, material_index + 1) : nullptr;
   COLLADASW::PrimitivesBase *primitive_list = create_primitive_list(is_triangulated, mSW);
 
-  /* sets count attribute in <polylist> */
+  /* sets count attribute in `<polylist>`. */
   primitive_list->setCount(polygon_count);
 
   /* sets material name */
@@ -616,7 +618,7 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
   int last_normal_index = -1;
 
   const Span<float3> positions = me->vert_positions();
-  const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me);
+  const Span<float3> vert_normals = me->vert_normals();
   const blender::OffsetIndices polys = me->polys();
   const Span<int> corner_verts = me->corner_verts();
   const float(*lnors)[3] = nullptr;
