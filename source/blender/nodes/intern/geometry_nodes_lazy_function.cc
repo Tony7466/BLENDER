@@ -1402,87 +1402,98 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::Node &lf_output_usage_node = this->build_output_usage_input_node(lf_graph);
     this->build_input_usage_output_node(lf_graph);
 
-    {
-      InsertBNodeParams insert_params{lf_graph};
-      if (const bNode *group_output_bnode = btree_.group_output_node()) {
-        for (const bNodeSocket *bsocket : group_output_bnode->input_sockets().drop_back(1)) {
-          insert_params.usage_by_socket.add(bsocket,
-                                            &lf_output_usage_node.output(bsocket->index()));
-        }
+    InsertBNodeParams insert_params{lf_graph};
+    if (const bNode *group_output_bnode = btree_.group_output_node()) {
+      for (const bNodeSocket *bsocket : group_output_bnode->input_sockets().drop_back(1)) {
+        insert_params.usage_by_socket.add(bsocket, &lf_output_usage_node.output(bsocket->index()));
       }
-
-      this->insert_nodes_and_zones(
-          tree_zones_->nodes_outside_zones, tree_zones_->root_zones, insert_params);
-
-      for (const auto item : insert_params.output_socket_map.items()) {
-        this->insert_links_from_socket(*item.key, *item.value, insert_params);
-      }
-      this->build_group_input_usages(insert_params);
-      this->add_default_inputs(insert_params);
-      this->link_postponed_inputs(insert_params);
-
-      const Vector<int> all_required_field_sources = this->find_all_required_field_source_indices(
-          insert_params.lf_attribute_set_input_by_output_geometry_bsocket,
-          insert_params.lf_attribute_set_input_by_field_source_index);
-
-      Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
-      for (const int field_source_index : all_required_field_sources) {
-        const aai::FieldSource &field_source =
-            attribute_inferencing_.all_field_sources[field_source_index];
-        lf::OutputSocket *lf_attribute_set_socket;
-        if (const auto *input_field_source = std::get_if<aai::InputFieldSource>(
-                &field_source.data)) {
-          const int input_index = input_field_source->input_index;
-          lf::OutputSocket &lf_field_socket = const_cast<lf::OutputSocket &>(
-              *mapping_->group_input_sockets[input_index]);
-          lf::OutputSocket *lf_usage_socket = const_cast<lf::OutputSocket *>(
-              mapping_->group_input_usage_sockets[input_index]->origin());
-          lf_attribute_set_socket = &this->get_extracted_attributes(
-              lf_field_socket, lf_usage_socket, lf_graph, insert_params.socket_usage_inputs);
-        }
-        else {
-          const auto &socket_field_source = std::get<aai::SocketFieldSource>(field_source.data);
-          const bNodeSocket &bsocket = *socket_field_source.socket;
-          lf::OutputSocket &lf_field_socket = *insert_params.output_socket_map.lookup(&bsocket);
-          lf::OutputSocket *lf_usage_socket = insert_params.usage_by_socket.lookup_default(
-              &bsocket, nullptr);
-          lf_attribute_set_socket = &this->get_extracted_attributes(
-              lf_field_socket, lf_usage_socket, lf_graph, insert_params.socket_usage_inputs);
-        }
-        lf_attribute_set_by_field_source_index.add_new(field_source_index,
-                                                       lf_attribute_set_socket);
-      }
-
-      this->build_attribute_propagation_input_node(lf_graph);
-
-      Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
-      for (const int caller_propagation_index :
-           attribute_inferencing_.propagated_output_geometry_indices)
-      {
-        const int group_output_index =
-            attribute_inferencing_.propagated_output_geometry_indices[caller_propagation_index];
-        lf::OutputSocket &lf_attribute_set_socket = const_cast<lf::OutputSocket &>(
-            *mapping_->attribute_set_by_geometry_output.lookup(group_output_index));
-        lf_attribute_set_by_caller_propagation_index.add(caller_propagation_index,
-                                                         &lf_attribute_set_socket);
-      }
-
-      this->link_attribute_set_inputs(
-          lf_graph,
-          insert_params.lf_attribute_set_input_by_output_geometry_bsocket,
-          insert_params.lf_attribute_set_input_by_field_source_index,
-          insert_params.lf_attribute_set_input_by_caller_propagation_index,
-          lf_attribute_set_by_field_source_index,
-          lf_attribute_set_by_caller_propagation_index,
-          insert_params.socket_usage_inputs);
-
-      this->fix_link_cycles(lf_graph, insert_params.socket_usage_inputs);
-
-      std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
     }
+
+    this->insert_nodes_and_zones(
+        tree_zones_->nodes_outside_zones, tree_zones_->root_zones, insert_params);
+
+    for (const auto item : insert_params.output_socket_map.items()) {
+      this->insert_links_from_socket(*item.key, *item.value, insert_params);
+    }
+    this->build_group_input_usages(insert_params);
+    this->add_default_inputs(insert_params);
+    this->link_postponed_inputs(insert_params);
+
+    this->build_attribute_propagation_input_node(lf_graph);
+
+    Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
+    Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
+    this->build_attibute_set_inputs_outside_of_zones(insert_params,
+                                                     lf_attribute_set_by_field_source_index,
+                                                     lf_attribute_set_by_caller_propagation_index);
+    this->link_attribute_set_inputs(
+        lf_graph,
+        insert_params.lf_attribute_set_input_by_output_geometry_bsocket,
+        insert_params.lf_attribute_set_input_by_field_source_index,
+        insert_params.lf_attribute_set_input_by_caller_propagation_index,
+        lf_attribute_set_by_field_source_index,
+        lf_attribute_set_by_caller_propagation_index,
+        insert_params.socket_usage_inputs);
+
+    this->fix_link_cycles(lf_graph, insert_params.socket_usage_inputs);
+
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
+  }
+
+  void build_attibute_set_inputs_outside_of_zones(
+      InsertBNodeParams &insert_params,
+      Map<int, lf::OutputSocket *> &lf_attribute_set_by_field_source_index,
+      Map<int, lf::OutputSocket *> &lf_attribute_set_by_caller_propagation_index)
+  {
+    const Vector<int> all_required_field_sources = this->find_all_required_field_source_indices(
+        insert_params.lf_attribute_set_input_by_output_geometry_bsocket,
+        insert_params.lf_attribute_set_input_by_field_source_index);
+
+    for (const int field_source_index : all_required_field_sources) {
+      const aai::FieldSource &field_source =
+          attribute_inferencing_.all_field_sources[field_source_index];
+      lf::OutputSocket *lf_attribute_set_socket;
+      if (const auto *input_field_source = std::get_if<aai::InputFieldSource>(&field_source.data))
+      {
+        const int input_index = input_field_source->input_index;
+        lf::OutputSocket &lf_field_socket = const_cast<lf::OutputSocket &>(
+            *mapping_->group_input_sockets[input_index]);
+        lf::OutputSocket *lf_usage_socket = const_cast<lf::OutputSocket *>(
+            mapping_->group_input_usage_sockets[input_index]->origin());
+        lf_attribute_set_socket = &this->get_extracted_attributes(
+            lf_field_socket,
+            lf_usage_socket,
+            insert_params.lf_graph,
+            insert_params.socket_usage_inputs);
+      }
+      else {
+        const auto &socket_field_source = std::get<aai::SocketFieldSource>(field_source.data);
+        const bNodeSocket &bsocket = *socket_field_source.socket;
+        lf::OutputSocket &lf_field_socket = *insert_params.output_socket_map.lookup(&bsocket);
+        lf::OutputSocket *lf_usage_socket = insert_params.usage_by_socket.lookup_default(&bsocket,
+                                                                                         nullptr);
+        lf_attribute_set_socket = &this->get_extracted_attributes(
+            lf_field_socket,
+            lf_usage_socket,
+            insert_params.lf_graph,
+            insert_params.socket_usage_inputs);
+      }
+      lf_attribute_set_by_field_source_index.add_new(field_source_index, lf_attribute_set_socket);
+    }
+
+    for (const int caller_propagation_index :
+         attribute_inferencing_.propagated_output_geometry_indices)
+    {
+      const int group_output_index =
+          attribute_inferencing_.propagated_output_geometry_indices[caller_propagation_index];
+      lf::OutputSocket &lf_attribute_set_socket = const_cast<lf::OutputSocket &>(
+          *mapping_->attribute_set_by_geometry_output.lookup(group_output_index));
+      lf_attribute_set_by_caller_propagation_index.add(caller_propagation_index,
+                                                       &lf_attribute_set_socket);
+    }
   }
 
   Vector<int> find_all_required_field_source_indices(
@@ -1758,7 +1769,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
     zone_info.lazy_function = &zone_function;
 
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   void insert_nodes_and_zones(const Span<const bNode *> bnodes,
