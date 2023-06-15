@@ -3931,17 +3931,17 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
   Vector<bool, 32> donelayers;
   donelayers.resize(dest->totlayer);
 
-  for (const CustomDataLayer &layer_src :
-       blender::Span<CustomDataLayer>(source->layers, source->totlayer))
-  {
-    for (CustomDataLayer &layer_dst :
-         blender::MutableSpan<CustomDataLayer>(dest->layers, dest->totlayer))
-    {
+  for (int layer_src_i : IndexRange(source->totlayer)) {
+    const CustomDataLayer &layer_src = source->layers[layer_src_i];
+
+    for (int layer_dst_i : IndexRange(dest->totlayer)) {
+      CustomDataLayer &layer_dst = dest->layers[layer_dst_i];
+
       if (!customdata_layer_copy_check(layer_src, layer_dst, mask_exclude)) {
         continue;
       }
 
-      donelayers[int(&layer_dst - dest->layers)] = true;
+      donelayers[layer_dst_i] = true;
 
       const void *src_data = POINTER_OFFSET(src_block, layer_src.offset);
       void *dest_data = POINTER_OFFSET(*dest_block, layer_dst.offset);
@@ -3956,11 +3956,9 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
   }
 
   /* Initialize dest layers that weren't in source. */
-  for (CustomDataLayer &layer_dst :
-       blender::MutableSpan<CustomDataLayer>(dest->layers, dest->totlayer))
-  {
-    if (!donelayers[int(&layer_dst - dest->layers)]) {
-      CustomData_bmesh_set_default_n(dest, dest_block, int(&layer_dst - dest->layers));
+  for (int layer_dst_i : IndexRange(dest->totlayer)) {
+    if (!donelayers[layer_dst_i]) {
+      CustomData_bmesh_set_default_n(dest, dest_block, layer_dst_i);
     }
   }
 }
