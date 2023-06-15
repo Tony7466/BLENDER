@@ -889,9 +889,6 @@ void drawPropCircle(const struct bContext *C, TransInfo *t)
 
     GPU_matrix_push();
 
-    float center[3];
-    copy_v3_v3(center, t->center_global);
-
     if (t->spacetype == SPACE_VIEW3D) {
       /* pass */
     }
@@ -905,7 +902,7 @@ void drawPropCircle(const struct bContext *C, TransInfo *t)
 
       const float fac_scale = xscale / yscale;
       GPU_matrix_scale_2f(1.0f, fac_scale);
-      copy_v3_fl3(center, t->center_global[0], t->center_global[1] / fac_scale, 0.0f);
+      GPU_matrix_translate_2f(0.0f,  (t->center_global[1] / fac_scale) - t->center_global[1]);
     }
 
     eGPUDepthTest depth_test_enabled = GPU_depth_test_get();
@@ -925,11 +922,11 @@ void drawPropCircle(const struct bContext *C, TransInfo *t)
     immUniform1f("lineWidth", 3.0f * U.pixelsize);
 
     immUniformThemeColorShadeAlpha(TH_GRID, -20, 255);
-    imm_drawcircball(center, t->prop_size, imat, pos);
+    imm_drawcircball(t->center_global, t->prop_size, imat, pos);
 
     immUniform1f("lineWidth", 1.0f * U.pixelsize);
     immUniformThemeColorShadeAlpha(TH_GRID, 20, 255);
-    imm_drawcircball(center, t->prop_size, imat, pos);
+    imm_drawcircball(t->center_global, t->prop_size, imat, pos);
 
     immUnbindProgram();
 
