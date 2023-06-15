@@ -2902,8 +2902,7 @@ static int vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_context(C);
 
-  /* A bit of a hack to set the default group subset.  If armature is present, default to `Deform
-   * Bones` otherwise `All Groups`. */
+  /* If armature is present, default to `Deform Bones` otherwise `All Groups`. */
   RNA_enum_set(op->ptr,
                "group_select_mode",
                BKE_modifiers_is_deformed_by_armature(ob) ? WT_VGROUP_BONE_DEFORM : WT_VGROUP_ALL);
