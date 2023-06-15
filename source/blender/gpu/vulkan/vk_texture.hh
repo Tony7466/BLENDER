@@ -86,9 +86,18 @@ class VKTexture : public Texture, public VKBindableResource {
    */
   bool allocate();
 
-  int layer_count();
-
   VkImageViewType vk_image_view_type() const;
+
+  /**
+   * Determine the layerCount for vulkan based on the texture type. Will pass the
+   * #non_layered_value for non layered textures.
+   */
+  int vk_layer_count(int non_layered_value) const;
+
+  /**
+   * Determine the VkExtent3D for the given mip_level.
+   */
+  VkExtent3D vk_extent_3d(int mip_level) const;
 
   /* -------------------------------------------------------------------- */
   /** \name Image Layout
