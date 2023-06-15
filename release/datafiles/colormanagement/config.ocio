@@ -686,13 +686,13 @@ colorspaces:
     from_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
-        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1]}
         - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
         - !<ExponentTransform> {value: 0.5}
         - !<FileTransform> {src: luminance_compensation_srgb.cube, interpolation: best}
         - !<ExponentTransform> {value: 0.5, direction: inverse}
         - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
-        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1], direction: inverse}
+        - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1], direction: inverse}
         - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear BT.709 I-D65}
         - !<RangeTransform> {min_in_value: 0, min_out_value: 0}
 
@@ -708,13 +708,13 @@ colorspaces:
     from_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
-        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1]}
+        - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1]}
         - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
         - !<ExponentTransform> {value: 0.5}
         - !<FileTransform> {src: luminance_compensation_p3.cube, interpolation: best}
         - !<ExponentTransform> {value: 0.5, direction: inverse}
         - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
-        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1], direction: inverse}
+        - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1], direction: inverse}
         - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear DCI-P3 I-D65}
         - !<RangeTransform> {min_in_value: 0, min_out_value: 0}
 
