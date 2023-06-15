@@ -1740,24 +1740,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       this->insert_links_from_socket(*item.key, *item.value, insert_params);
     }
 
-    for (const int border_link_i : zone.border_links.index_range()) {
-      const bNodeLink &border_link = *zone.border_links[border_link_i];
-      lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
-      const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
-                                                                                insert_params);
-      for (lf::InputSocket *lf_to : lf_link_targets) {
-        zone_info.lf_graph->add_link(lf_from, *lf_to);
-      }
-      lf::InputSocket &lf_usage_output = lf_border_link_usage_node.input(border_link_i);
-      if (lf::OutputSocket *lf_usage = usage_by_socket.lookup_default(border_link.tosock, nullptr))
-      {
-        zone_info.lf_graph->add_link(*lf_usage, lf_usage_output);
-      }
-      else {
-        static const bool static_false = false;
-        lf_usage_output.set_default_value(&static_false);
-      }
-    }
+    this->link_border_link_inputs_and_usages(
+        zone, lf_border_link_input_node, lf_border_link_usage_node, insert_params);
 
     if (lf_zone_input_node != nullptr) {
       for (const int i : lf_zone_input_node->outputs().index_range()) {
@@ -1911,6 +1895,33 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       else {
         this->insert_node_in_graph(*bnode, insert_params);
+      }
+    }
+  }
+
+  void link_border_link_inputs_and_usages(const TreeZone &zone,
+                                          lf::Node &lf_border_link_input_node,
+                                          lf::Node &lf_border_link_usage_node,
+                                          InsertBNodeParams &insert_params)
+  {
+    lf::Graph &lf_graph = insert_params.lf_graph;
+    for (const int border_link_i : zone.border_links.index_range()) {
+      const bNodeLink &border_link = *zone.border_links[border_link_i];
+      lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
+      const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
+                                                                                insert_params);
+      for (lf::InputSocket *lf_to : lf_link_targets) {
+        lf_graph.add_link(lf_from, *lf_to);
+      }
+      lf::InputSocket &lf_usage_output = lf_border_link_usage_node.input(border_link_i);
+      if (lf::OutputSocket *lf_usage = insert_params.usage_by_socket.lookup_default(
+              border_link.tosock, nullptr))
+      {
+        lf_graph.add_link(*lf_usage, lf_usage_output);
+      }
+      else {
+        static const bool static_false = false;
+        lf_usage_output.set_default_value(&static_false);
       }
     }
   }
