@@ -94,4 +94,4 @@ void VolumeComponent::ensure_owns_direct_data()
 
 /** \} */
 
-}
+}  // namespace blender::bke

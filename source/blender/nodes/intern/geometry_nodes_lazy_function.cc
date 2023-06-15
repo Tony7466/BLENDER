@@ -780,9 +780,9 @@ class LazyFunctionForViewerNode : public LazyFunction {
       }
       else {
         geometry.modify_geometry_sets([&](GeometrySet &geometry) {
-          for (const GeometryComponentType type : {bke::GEO_COMPONENT_TYPE_MESH,
-                                                   bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                   bke::GEO_COMPONENT_TYPE_CURVE})
+          for (const bke::GeometryComponentType type : {bke::GEO_COMPONENT_TYPE_MESH,
+                                                        bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                        bke::GEO_COMPONENT_TYPE_CURVE})
           {
             if (geometry.has(type)) {
               GeometryComponent &component = geometry.get_component_for_write(type);

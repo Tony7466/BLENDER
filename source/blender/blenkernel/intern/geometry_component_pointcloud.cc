@@ -204,15 +204,21 @@ static const AttributeAccessorFunctions &get_pointcloud_accessor_functions_ref()
   return fn;
 }
 
-AttributeAccessor PointCloud::attributes() const
+}  // namespace blender::bke
+
+blender::bke::AttributeAccessor PointCloud::attributes() const
 {
-  return AttributeAccessor(this, get_pointcloud_accessor_functions_ref());
+  return blender::bke::AttributeAccessor(this,
+                                         blender::bke::get_pointcloud_accessor_functions_ref());
 }
 
-MutableAttributeAccessor PointCloud::attributes_for_write()
+blender::bke::MutableAttributeAccessor PointCloud::attributes_for_write()
 {
-  return MutableAttributeAccessor(this, get_pointcloud_accessor_functions_ref());
+  return blender::bke::MutableAttributeAccessor(
+      this, blender::bke::get_pointcloud_accessor_functions_ref());
 }
+
+namespace blender::bke {
 
 std::optional<AttributeAccessor> PointCloudComponent::attributes() const
 {

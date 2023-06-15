@@ -1261,15 +1261,20 @@ static const AttributeAccessorFunctions &get_mesh_accessor_functions_ref()
   return fn;
 }
 
-AttributeAccessor Mesh::attributes() const
+}  // namespace blender::bke
+
+blender::bke::AttributeAccessor Mesh::attributes() const
 {
-  return AttributeAccessor(this, get_mesh_accessor_functions_ref());
+  return blender::bke::AttributeAccessor(this, blender::bke::get_mesh_accessor_functions_ref());
 }
 
-MutableAttributeAccessor Mesh::attributes_for_write()
+blender::bke::MutableAttributeAccessor Mesh::attributes_for_write()
 {
-  return MutableAttributeAccessor(this, get_mesh_accessor_functions_ref());
+  return blender::bke::MutableAttributeAccessor(this,
+                                                blender::bke::get_mesh_accessor_functions_ref());
 }
+
+namespace blender::bke {
 
 std::optional<AttributeAccessor> MeshComponent::attributes() const
 {

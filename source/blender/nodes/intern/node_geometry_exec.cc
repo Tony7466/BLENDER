@@ -44,7 +44,7 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
 
   const bool only_realized_data = geo_decl->only_realized_data();
   const bool only_instances = geo_decl->only_instances();
-  const Span<GeometryComponentType> supported_types = geo_decl->supported_types();
+  const Span<bke::GeometryComponentType> supported_types = geo_decl->supported_types();
 
   if (only_realized_data) {
     if (geometry_set.has_instances()) {
@@ -62,10 +62,10 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
     /* Assume all types are supported. */
     return;
   }
-  const Vector<GeometryComponentType> types_in_geometry = geometry_set.gather_component_types(
+  const Vector<bke::GeometryComponentType> types_in_geometry = geometry_set.gather_component_types(
       true, true);
-  for (const GeometryComponentType type : types_in_geometry) {
-    if (type == GEO_COMPONENT_TYPE_INSTANCES) {
+  for (const bke::GeometryComponentType type : types_in_geometry) {
+    if (type == bke::GEO_COMPONENT_TYPE_INSTANCES) {
       continue;
     }
     if (supported_types.contains(type)) {
@@ -73,27 +73,27 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
     }
     std::string message = TIP_("Input geometry has unsupported type: ");
     switch (type) {
-      case GEO_COMPONENT_TYPE_MESH: {
+      case bke::GEO_COMPONENT_TYPE_MESH: {
         message += TIP_("Mesh");
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GEO_COMPONENT_TYPE_POINT_CLOUD: {
         message += TIP_("Point Cloud");
         break;
       }
-      case GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GEO_COMPONENT_TYPE_INSTANCES: {
         BLI_assert_unreachable();
         break;
       }
-      case GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GEO_COMPONENT_TYPE_VOLUME: {
         message += CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume");
         break;
       }
-      case GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GEO_COMPONENT_TYPE_CURVE: {
         message += TIP_("Curve");
         break;
       }
-      case GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GEO_COMPONENT_TYPE_EDIT: {
         continue;
       }
     }

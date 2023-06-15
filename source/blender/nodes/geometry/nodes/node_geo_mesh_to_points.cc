@@ -105,7 +105,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
 
   Map<AttributeIDRef, AttributeKind> attributes;
   geometry_set.gather_attributes_for_propagation({bke::GEO_COMPONENT_TYPE_MESH},
-                                                bke:: GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                 bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
                                                  false,
                                                  propagation_info,
                                                  attributes);
@@ -135,7 +135,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   }
 
   geometry_set.replace_pointcloud(pointcloud);
-  geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_POINT_CLOUD});
+  geometry_set.keep_only_during_modify({bke::GEO_COMPONENT_TYPE_POINT_CLOUD});
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

@@ -541,7 +541,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   Map<AttributeIDRef, AttributeKind> attributes;
   geometry_set.gather_attributes_for_propagation({bke::GEO_COMPONENT_TYPE_MESH},
-                                           bke::      GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                 bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
                                                  false,
                                                  params.get_output_propagation_info("Points"),
                                                  attributes);

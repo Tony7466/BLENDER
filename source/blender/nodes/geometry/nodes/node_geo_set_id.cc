@@ -18,7 +18,7 @@ static void set_id_in_component(GeometryComponent &component,
                                 const Field<bool> &selection_field,
                                 const Field<int> &id_field)
 {
-  const eAttrDomain domain = (component.type() == GEO_COMPONENT_TYPE_INSTANCES) ?
+  const eAttrDomain domain = (component.type() == bke::GEO_COMPONENT_TYPE_INSTANCES) ?
                                  ATTR_DOMAIN_INSTANCE :
                                  ATTR_DOMAIN_POINT;
   const int domain_size = component.attribute_domain_size(domain);
@@ -58,10 +58,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<int> id_field = params.extract_input<Field<int>>("ID");
 
-  for (const GeometryComponentType type : {bke::GEO_COMPONENT_TYPE_INSTANCES,
-                                           bke::GEO_COMPONENT_TYPE_MESH,
-                                           bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                           bke::GEO_COMPONENT_TYPE_CURVE})
+  for (const bke::GeometryComponentType type : {bke::GEO_COMPONENT_TYPE_INSTANCES,
+                                                bke::GEO_COMPONENT_TYPE_MESH,
+                                                bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                bke::GEO_COMPONENT_TYPE_CURVE})
   {
     if (geometry_set.has(type)) {
       set_id_in_component(geometry_set.get_component_for_write(type), selection_field, id_field);

@@ -200,7 +200,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     Mesh *mesh = create_mesh_from_volume(geometry_set, params);
     geometry_set.replace_mesh(mesh);
-    geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
+    geometry_set.keep_only_during_modify({bke::GEO_COMPONENT_TYPE_MESH});
   });
   params.set_output("Mesh", std::move(geometry_set));
 #else

@@ -46,7 +46,7 @@ static void geometry_set_points_to_vertices(
 
   Map<AttributeIDRef, AttributeKind> attributes;
   geometry_set.gather_attributes_for_propagation({bke::GEO_COMPONENT_TYPE_POINT_CLOUD},
-                                                bke:: GEO_COMPONENT_TYPE_MESH,
+                                                 bke::GEO_COMPONENT_TYPE_MESH,
                                                  false,
                                                  propagation_info,
                                                  attributes);
