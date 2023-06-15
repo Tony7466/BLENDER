@@ -1028,8 +1028,12 @@ static void rna_clamp_value_range_check(FILE *f,
     fprintf(f, "    {\n");
     fprintf(f, "#ifdef __cplusplus\n");
     fprintf(f, "        using T = decltype(%s%s);\n", dnaname_prefix, dnaname);
-    fprintf(f, "        static_assert(std::numeric_limits<T>::max() >= %d);\n", iprop->hardmax);
-    fprintf(f, "        static_assert(std::numeric_limits<T>::min() <= %d);\n", iprop->hardmin);
+    fprintf(f,
+            "        static_assert(std::numeric_limits<std::decay_t<T>>::max() >= %d);\n",
+            iprop->hardmax);
+    fprintf(f,
+            "        static_assert(std::numeric_limits<std::decay_t<T>>::min() <= %d);\n",
+            iprop->hardmin);
     fprintf(f, "#else\n");
     fprintf(f,
             "        BLI_STATIC_ASSERT("
@@ -4108,7 +4112,8 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
           prop->totarraylength);
   fprintf(f,
           "\t%s%s, %d, %s, %s, %s, %s, %s,\n",
-          (prop->flag & PROP_CONTEXT_UPDATE) ? "(UpdateFunc)" : "",
+          /* NOTE: void cast is needed to quiet function cast warning in C++. */
+          (prop->flag & PROP_CONTEXT_UPDATE) ? "(UpdateFunc)(void *)" : "",
           rna_function_string(prop->update),
           prop->noteflag,
           rna_function_string(prop->editable),
@@ -4587,7 +4592,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
 #ifdef WITH_SIMULATION_DATABLOCK
     {"rna_simulation.c", NULL, RNA_def_simulation},
 #endif
-    {"rna_space.c", "rna_space_api.c", RNA_def_space},
+    {"rna_space.cc", "rna_space_api.cc", RNA_def_space},
     {"rna_speaker.c", NULL, RNA_def_speaker},
     {"rna_test.c", NULL, RNA_def_test},
     {"rna_text.c", "rna_text_api.c", RNA_def_text},
