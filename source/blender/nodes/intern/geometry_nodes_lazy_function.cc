@@ -1498,7 +1498,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                       attribute_set_source_map,
                                       socket_usage_inputs);
 
-      this->fix_link_cycles(socket_usage_inputs);
+      this->fix_link_cycles(*root_lf_graph_, socket_usage_inputs);
 
       // UsedSocketVisualizeOptions options{*this, insert_params.usage_by_socket};
       std::cout << "\n\n" << root_lf_graph_->to_dot() << "\n\n";
@@ -1832,7 +1832,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                     attribute_set_inputs,
                                     attribute_set_source_map,
                                     socket_usage_inputs);
-    this->fix_link_cycles(socket_usage_inputs);
+    this->fix_link_cycles(*zone_info.lf_graph, socket_usage_inputs);
 
     Vector<const lf::InputSocket *, 16> lf_zone_outputs;
     lf_zone_outputs.extend(lf_zone_output_node.inputs());
@@ -1845,6 +1845,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf_zone_outputs.extend(lf_border_link_usage_node.inputs());
     zone_info.border_link_input_usage_indices = lf_zone_outputs.index_range().take_back(
         lf_border_link_usage_node.inputs().size());
+
+    zone_info.lf_graph->update_node_indices();
 
     const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
         *zone_info.lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
@@ -3092,10 +3094,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    * first has to compute the points, but for that one has to know whether the normal information
    * has to be added to the points. The fix is to always add the normal information in this case.
    */
-  void fix_link_cycles(Set<const lf::InputSocket *> &socket_usage_inputs)
+  void fix_link_cycles(lf::Graph &lf_graph, Set<const lf::InputSocket *> &socket_usage_inputs)
   {
-    root_lf_graph_->update_socket_indices();
-    const int sockets_num = root_lf_graph_->socket_num();
+    lf_graph.update_socket_indices();
+    const int sockets_num = lf_graph.socket_num();
 
     struct SocketState {
       bool done = false;
@@ -3105,7 +3107,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Array<SocketState> socket_states(sockets_num);
 
     Vector<lf::Socket *> lf_sockets_to_check;
-    for (lf::Node *lf_node : root_lf_graph_->nodes()) {
+    for (lf::Node *lf_node : lf_graph.nodes()) {
       if (lf_node->is_function()) {
         for (lf::OutputSocket *lf_socket : lf_node->outputs()) {
           if (lf_socket->targets().is_empty()) {
@@ -3176,7 +3178,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             if (lf_cycle_socket->is_input() &&
                 socket_usage_inputs.contains(&lf_cycle_socket->as_input())) {
               lf::InputSocket &lf_cycle_input_socket = lf_cycle_socket->as_input();
-              root_lf_graph_->clear_origin(lf_cycle_input_socket);
+              lf_graph.clear_origin(lf_cycle_input_socket);
               static const bool static_true = true;
               lf_cycle_input_socket.set_default_value(&static_true);
               broke_cycle = true;
