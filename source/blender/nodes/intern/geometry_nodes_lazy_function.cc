@@ -437,9 +437,9 @@ class LazyFunctionForRerouteNode : public LazyFunction {
 };
 
 /**
- * Lazy functions for nodes whose type cannot be found. An undefined function just outputs
- * default values. It's useful to have so other parts of the conversion don't have to care about
- * undefined nodes.
+ * Lazy functions for nodes whose type cannot be found. An undefined function just outputs default
+ * values. It's useful to have so other parts of the conversion don't have to care about undefined
+ * nodes.
  */
 class LazyFunctionForUndefinedNode : public LazyFunction {
  public:
@@ -619,8 +619,8 @@ class LazyFunctionForMutedNode : public LazyFunction {
 };
 
 /**
- * Type conversions are generally implemented as multi-functions. This node checks if the input
- * is a field or single value and outputs a field or single value respectively.
+ * Type conversions are generally implemented as multi-functions. This node checks if the input is
+ * a field or single value and outputs a field or single value respectively.
  */
 class LazyFunctionForMultiFunctionConversion : public LazyFunction {
  private:
@@ -725,8 +725,8 @@ class LazyFunctionForImplicitInput : public LazyFunction {
 };
 
 /**
- * The viewer node does not have outputs. Instead it is executed because the executor knows that
- * it has side effects. The side effect is that the inputs to the viewer are logged.
+ * The viewer node does not have outputs. Instead it is executed because the executor knows that it
+ * has side effects. The side effect is that the inputs to the viewer are logged.
  */
 class LazyFunctionForViewerNode : public LazyFunction {
  private:
@@ -908,8 +908,7 @@ class LazyFunctionForGroupNode : public LazyFunction {
     /* Add inputs that also exist on the bnode. */
     graph_inputs.extend(group_lf_graph_info.mapping.group_input_sockets);
 
-    /* Add a boolean input for every output bsocket that indicates whether that socket is used.
-     */
+    /* Add a boolean input for every output bsocket that indicates whether that socket is used. */
     for (const int i : group_node.output_sockets().index_range()) {
       own_lf_graph_info.mapping.lf_input_index_for_output_bsocket_usage
           [group_node.output_socket(i).index_in_all_outputs()] = graph_inputs.append_and_get_index(
@@ -933,8 +932,7 @@ class LazyFunctionForGroupNode : public LazyFunction {
     Vector<const lf::InputSocket *> graph_outputs;
     /* Add outputs that also exist on the bnode. */
     graph_outputs.extend(group_lf_graph_info.mapping.standard_group_output_sockets);
-    /* Add a boolean output for every input bsocket that indicates whether that socket is used.
-     */
+    /* Add a boolean output for every input bsocket that indicates whether that socket is used. */
     for (const int i : group_node.input_sockets().index_range()) {
       const InputUsageHint &input_usage_hint =
           group_lf_graph_info.mapping.group_input_usage_hints[i];
@@ -962,8 +960,8 @@ class LazyFunctionForGroupNode : public LazyFunction {
     BLI_assert(user_data != nullptr);
 
     if (has_many_nodes_) {
-      /* If the called node group has many nodes, it's likely that executing it takes a while
-       * even if every individual node is very small. */
+      /* If the called node group has many nodes, it's likely that executing it takes a while even
+       * if every individual node is very small. */
       lazy_threading::send_hint();
     }
 
