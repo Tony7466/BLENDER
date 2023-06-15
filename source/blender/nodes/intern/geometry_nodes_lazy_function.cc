@@ -1768,79 +1768,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_info.main_output_usage_indices = lf_zone_inputs.index_range().take_back(
         lf_main_output_usage_node.outputs().size());
 
-    const Vector<int> all_required_field_sources = this->find_all_required_field_source_indices(
-        lf_attribute_set_input_by_output_geometry_bsocket,
-        lf_attribute_set_input_by_field_source_index);
-    const Vector<int> all_required_caller_propagation_indices =
-        this->find_all_required_caller_propagation_indices(
-            lf_attribute_set_input_by_output_geometry_bsocket,
-            lf_attribute_set_input_by_caller_propagation_index);
-
     Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
-    Map<int, int> input_by_field_source_index;
-
-    for (const int field_source_index : all_required_field_sources) {
-      const aai::FieldSource &field_source =
-          attribute_inferencing_.all_field_sources[field_source_index];
-      if ([[maybe_unused]] const auto *input_field_source = std::get_if<aai::InputFieldSource>(
-              &field_source.data))
-      {
-        input_by_field_source_index.add_new(field_source_index,
-                                            input_by_field_source_index.size());
-      }
-      else {
-        const auto &socket_field_source = std::get<aai::SocketFieldSource>(field_source.data);
-        const bNodeSocket &bsocket = *socket_field_source.socket;
-        if (lf::OutputSocket *lf_field_socket = zone_info.output_socket_map.lookup_default(
-                &bsocket, nullptr))
-        {
-          lf::OutputSocket *lf_usage_socket = usage_by_socket.lookup_default(&bsocket, nullptr);
-          lf::OutputSocket &lf_attribute_set_socket = this->get_extracted_attributes(
-              *lf_field_socket, lf_usage_socket, *zone_info.lf_graph, socket_usage_inputs);
-          lf_attribute_set_by_field_source_index.add(field_source_index, &lf_attribute_set_socket);
-        }
-        else {
-          input_by_field_source_index.add_new(field_source_index,
-                                              input_by_field_source_index.size());
-        }
-      }
-    }
-
     Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
-
-    {
-      auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
-      debug_info->name = "Attribute Sets";
-      Vector<const CPPType *, 16> types;
-      const int num = input_by_field_source_index.size() +
-                      all_required_caller_propagation_indices.size();
-      types.append_n_times(&CPPType::get<bke::AnonymousAttributeSet>(), num);
-      debug_info->output_names.append_n_times("Set", num);
-      lf::DummyNode &node = zone_info.lf_graph->add_dummy({}, types, debug_info.get());
-      lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
-
-      for (const auto item : input_by_field_source_index.items()) {
-        const int field_source_index = item.key;
-        const int attribute_set_index = item.value;
-        lf::OutputSocket &lf_attribute_set_socket = node.output(attribute_set_index);
-        lf_attribute_set_by_field_source_index.add(field_source_index, &lf_attribute_set_socket);
-
-        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.attribute_set_input_by_field_source_index.add(field_source_index,
-                                                                zone_input_index);
-      }
-      for (const int i : all_required_caller_propagation_indices.index_range()) {
-        const int caller_propagation_index = all_required_caller_propagation_indices[i];
-        lf::OutputSocket &lf_attribute_set_socket = node.output(
-            input_by_field_source_index.size() + i);
-        lf_attribute_set_by_caller_propagation_index.add_new(caller_propagation_index,
-                                                             &lf_attribute_set_socket);
-        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.attribute_set_input_by_caller_propagation_index.add(caller_propagation_index,
-                                                                      zone_input_index);
-      }
-    }
-
+    this->build_attribute_set_inputs_for_zone(insert_params,
+                                              zone_info,
+                                              lf_attribute_set_by_field_source_index,
+                                              lf_attribute_set_by_caller_propagation_index,
+                                              lf_zone_inputs);
     this->link_attribute_set_inputs(*zone_info.lf_graph,
                                     lf_attribute_set_input_by_output_geometry_bsocket,
                                     lf_attribute_set_input_by_field_source_index,
@@ -1922,6 +1856,88 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       else {
         static const bool static_false = false;
         lf_usage_output.set_default_value(&static_false);
+      }
+    }
+  }
+
+  void build_attribute_set_inputs_for_zone(
+      InsertBNodeParams &insert_params,
+      ZoneBuildInfo &zone_info,
+      Map<int, lf::OutputSocket *> &lf_attribute_set_by_field_source_index,
+      Map<int, lf::OutputSocket *> &lf_attribute_set_by_caller_propagation_index,
+      Vector<const lf::OutputSocket *, 16> &lf_zone_inputs)
+  {
+    const Vector<int> all_required_field_sources = this->find_all_required_field_source_indices(
+        insert_params.lf_attribute_set_input_by_output_geometry_bsocket,
+        insert_params.lf_attribute_set_input_by_field_source_index);
+    const Vector<int> all_required_caller_propagation_indices =
+        this->find_all_required_caller_propagation_indices(
+            insert_params.lf_attribute_set_input_by_output_geometry_bsocket,
+            insert_params.lf_attribute_set_input_by_caller_propagation_index);
+
+    Map<int, int> input_by_field_source_index;
+
+    for (const int field_source_index : all_required_field_sources) {
+      const aai::FieldSource &field_source =
+          attribute_inferencing_.all_field_sources[field_source_index];
+      if ([[maybe_unused]] const auto *input_field_source = std::get_if<aai::InputFieldSource>(
+              &field_source.data))
+      {
+        input_by_field_source_index.add_new(field_source_index,
+                                            input_by_field_source_index.size());
+      }
+      else {
+        const auto &socket_field_source = std::get<aai::SocketFieldSource>(field_source.data);
+        const bNodeSocket &bsocket = *socket_field_source.socket;
+        if (lf::OutputSocket *lf_field_socket = insert_params.output_socket_map.lookup_default(
+                &bsocket, nullptr))
+        {
+          lf::OutputSocket *lf_usage_socket = insert_params.usage_by_socket.lookup_default(
+              &bsocket, nullptr);
+          lf::OutputSocket &lf_attribute_set_socket = this->get_extracted_attributes(
+              *lf_field_socket,
+              lf_usage_socket,
+              insert_params.lf_graph,
+              insert_params.socket_usage_inputs);
+          lf_attribute_set_by_field_source_index.add(field_source_index, &lf_attribute_set_socket);
+        }
+        else {
+          input_by_field_source_index.add_new(field_source_index,
+                                              input_by_field_source_index.size());
+        }
+      }
+    }
+
+    {
+      auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
+      debug_info->name = "Attribute Sets";
+      Vector<const CPPType *, 16> types;
+      const int num = input_by_field_source_index.size() +
+                      all_required_caller_propagation_indices.size();
+      types.append_n_times(&CPPType::get<bke::AnonymousAttributeSet>(), num);
+      debug_info->output_names.append_n_times("Set", num);
+      lf::DummyNode &node = insert_params.lf_graph.add_dummy({}, types, debug_info.get());
+      lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
+
+      for (const auto item : input_by_field_source_index.items()) {
+        const int field_source_index = item.key;
+        const int attribute_set_index = item.value;
+        lf::OutputSocket &lf_attribute_set_socket = node.output(attribute_set_index);
+        lf_attribute_set_by_field_source_index.add(field_source_index, &lf_attribute_set_socket);
+
+        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
+        zone_info.attribute_set_input_by_field_source_index.add(field_source_index,
+                                                                zone_input_index);
+      }
+      for (const int i : all_required_caller_propagation_indices.index_range()) {
+        const int caller_propagation_index = all_required_caller_propagation_indices[i];
+        lf::OutputSocket &lf_attribute_set_socket = node.output(
+            input_by_field_source_index.size() + i);
+        lf_attribute_set_by_caller_propagation_index.add_new(caller_propagation_index,
+                                                             &lf_attribute_set_socket);
+        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
+        zone_info.attribute_set_input_by_caller_propagation_index.add(caller_propagation_index,
+                                                                      zone_input_index);
       }
     }
   }
