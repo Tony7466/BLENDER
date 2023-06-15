@@ -25,10 +25,8 @@ namespace blender::gpu {
 
 VKTexture::~VKTexture()
 {
-  const VKDevice &device = VKBackend::get().device_get();
-  device.unbind(*this);
-
   if (is_allocated()) {
+    const VKDevice &device = VKBackend::get().device_get();
     vmaDestroyImage(device.mem_allocator_get(), vk_image_, allocation_);
   }
 }
@@ -179,8 +177,7 @@ void VKTexture::read_sub(int mip, eGPUDataFormat format, const int area[4], void
   size_t sample_len = area[2] * area[3] * layer_count();
   size_t device_memory_size = sample_len * to_bytesize(format_);
 
-  staging_buffer.create(
-      device_memory_size, GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  staging_buffer.create(device_memory_size, GPU_USAGE_DYNAMIC, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
   VkBufferImageCopy region = {};
   region.imageOffset.x = area[0];
@@ -226,8 +223,7 @@ void VKTexture::update_sub(
   size_t sample_len = extent.x * extent.y * extent.z;
   size_t device_memory_size = sample_len * to_bytesize(format_);
 
-  staging_buffer.create(
-      device_memory_size, GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+  staging_buffer.create(device_memory_size, GPU_USAGE_DYNAMIC, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
   uint buffer_row_length = context.state_manager_get().texture_unpack_row_length_get();
   if (buffer_row_length) {
@@ -463,24 +459,6 @@ bool VKTexture::allocate()
   layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
 
   return result == VK_SUCCESS;
-}
-
-/* TODO: move texture/image bindings to shader. */
-void VKTexture::bind(int unit, VKSampler &sampler)
-{
-  if (!is_allocated()) {
-    allocate();
-  }
-  VKContext &context = *VKContext::get();
-  VKShader *shader = static_cast<VKShader *>(context.shader);
-  const VKShaderInterface &shader_interface = shader->interface_get();
-  const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(
-          shader::ShaderCreateInfo::Resource::BindType::SAMPLER, unit);
-  if (location) {
-    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
-    descriptor_set.bind(*this, *location, sampler);
-  }
 }
 
 void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType bind_type)

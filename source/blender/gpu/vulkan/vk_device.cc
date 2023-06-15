@@ -204,14 +204,6 @@ const Vector<std::reference_wrapper<VKContext>> &VKDevice::contexts_get() const
   return contexts_;
 };
 
-void VKDevice::unbind(VKTexture &texture) const
-{
-  for (const VKContext &context : contexts_) {
-    context.state_manager_get().image_unbind(wrap(&texture));
-    context.state_manager_get().texture_unbind(wrap(&texture));
-  }
-}
-
 /** \} */
 
 }  // namespace blender::gpu

@@ -143,11 +143,6 @@ class VKDevice : public NonCopyable {
   void context_unregister(VKContext &context);
   const Vector<std::reference_wrapper<VKContext>> &contexts_get() const;
 
-  /**
-   * Unbind given texture from registered contexts.
-   */
-  void unbind(VKTexture &texture) const;
-
   /** \} */
 
  private:

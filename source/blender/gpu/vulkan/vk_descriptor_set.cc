@@ -179,8 +179,9 @@ void VKDescriptorSetTracker::update(VKContext &context)
     if (!binding.is_image()) {
       continue;
     }
-    /* When updating the descriptor sets the layout of the texture should already be updated. */
-    binding.texture->layout_ensure(context, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    /* TODO: Based on the actual usage we should use
+     * VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL/VK_IMAGE_LAYOUT_GENERAL. */
+    binding.texture->layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
     image_info.imageView = binding.texture->image_view_get().vk_handle();
