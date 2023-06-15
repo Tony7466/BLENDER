@@ -159,7 +159,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node);
 
 float2 nodeToView(const bNode *node, float2 loc);
 
-float2 nodeFromView(const bNode *node, float2 loc);
+float2 nodeFromView(const bNode *node, float2 view_loc);
 
 void nodePositionRelative(bNode *from_node,
                           const bNode *to_node,
