@@ -2900,13 +2900,13 @@ float2 nodeToView(const bNode *node, const float2 loc)
   return view_loc;
 }
 
-float2 nodeFromView(const bNode *node, const float2 loc)
+float2 nodeFromView(const bNode *node, const float2 view_loc)
 {
-  float2 loc_from_viuw = loc;
+  float2 loc = view_loc;
   for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
-    loc_from_viuw -= float2(node_iter->locx, node_iter->locy);
+    loc -= float2(node_iter->locx, node_iter->locy);
   }
-  return loc_from_viuw;
+  return loc;
 }
 
 }  // namespace blender::bke
