@@ -15,13 +15,11 @@ ccl_device_inline bool distant_light_sample(const ccl_global KernelLight *klight
                                             ccl_private LightSample *ls)
 {
   /* distant light */
-  float3 lightD = klight->co;
-  float3 D = lightD;
-  float radius = klight->distant.radius;
-  float invarea = klight->distant.invarea;
+  float3 D = klight->co;
 
-  if (radius > 0.0f) {
-    D = normalize(D + disk_light_sample(D, rand) * radius);
+  if (klight->distant.cosangle != 1.0f) {
+    const float3 cone = concentric_sample_uniform_cone(rand, klight->distant.cosangle);
+    D = cone.z * D + cone.x * klight->distant.axis_u + cone.y * klight->distant.axis_v;
   }
 
   ls->P = D;
@@ -29,9 +27,8 @@ ccl_device_inline bool distant_light_sample(const ccl_global KernelLight *klight
   ls->D = -D;
   ls->t = FLT_MAX;
 
-  float costheta = dot(lightD, D);
-  ls->pdf = invarea / (costheta * costheta * costheta);
-  ls->eval_fac = ls->pdf;
+  ls->pdf = klight->distant.pdf;
+  ls->eval_fac = klight->distant.invarea;
 
   return true;
 }
@@ -50,7 +47,7 @@ ccl_device bool distant_light_intersect(const ccl_global KernelLight *klight,
 {
   kernel_assert(klight->type == LIGHT_DISTANT);
 
-  if (klight->distant.radius == 0.0f) {
+  if (klight->distant.cosangle == 1.0f) {
     return false;
   }
 
@@ -76,7 +73,7 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
 {
   ccl_global const KernelLight *klight = &kernel_data_fetch(lights, lamp);
   const int shader = klight->shader_id;
-  const float radius = klight->distant.radius;
+  const float cosangle = klight->distant.cosangle;
   const LightType type = (LightType)klight->type;
 
   if (type != LIGHT_DISTANT) {
@@ -85,28 +82,11 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
   if (!(shader & SHADER_USE_MIS)) {
     return false;
   }
-  if (radius == 0.0f) {
+  if (cosangle == 1.0f) {
     return false;
   }
 
-  /* a distant light is infinitely far away, but equivalent to a disk
-   * shaped light exactly 1 unit away from the current shading point.
-   *
-   *     radius              t^2/cos(theta)
-   *  <---------->           t = sqrt(1^2 + tan(theta)^2)
-   *       tan(th)           area = radius*radius*pi
-   *       <----->
-   *        \    |           (1 + tan(theta)^2)/cos(theta)
-   *         \   |           (1 + tan(acos(cos(theta)))^2)/cos(theta)
-   *       t  \th| 1         simplifies to
-   *           \-|           1/(cos(theta)^3)
-   *            \|           magic!
-   *             P
-   */
-
-  float3 lightD = klight->co;
-  float costheta = dot(-lightD, ray_D);
-  float cosangle = klight->distant.cosangle;
+  float costheta = dot(-klight->co, ray_D);
 
   /* Workaround to prevent a hang in the classroom scene with AMD HIP drivers 22.10,
    * Remove when a compiler fix is available. */
@@ -133,10 +113,8 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
   ls->D = ray_D;
   ls->group = lamp_lightgroup(kg, lamp);
 
-  /* compute pdf */
-  float invarea = klight->distant.invarea;
-  ls->pdf = invarea / (costheta * costheta * costheta);
-  ls->eval_fac = ls->pdf;
+  ls->pdf = klight->distant.pdf;
+  ls->eval_fac = klight->distant.invarea;
 
   return true;
 }

@@ -1373,10 +1373,12 @@ typedef struct KernelAreaLight {
 } KernelAreaLight;
 
 typedef struct KernelDistantLight {
-  float radius;
+  packed_float3 axis_u;
   float cosangle;
+  packed_float3 axis_v;
+  float pdf;
   float invarea;
-  float pad;
+  float pad[3];
 } KernelDistantLight;
 
 typedef struct KernelLight {

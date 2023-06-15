@@ -1227,22 +1227,31 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
     else if (light->light_type == LIGHT_DISTANT) {
       shader_id &= ~SHADER_AREA_LIGHT;
 
+      float3 dir = safe_normalize(light->dir);
       float angle = light->angle / 2.0f;
-      float radius = tanf(angle);
-      float cosangle = cosf(angle);
-      float area = M_PI_F * radius * radius;
-      float invarea = (light->normalize && area > 0.0f) ? 1.0f / area : 1.0f;
-      float3 dir = light->dir;
-
-      dir = safe_normalize(dir);
-
-      if (light->use_mis && area > 0.0f)
-        shader_id |= SHADER_USE_MIS;
 
       klights[light_index].co = dir;
-      klights[light_index].distant.invarea = invarea;
-      klights[light_index].distant.radius = radius;
-      klights[light_index].distant.cosangle = cosangle;
+      if (angle > 1e-4f) {
+        if (light->use_mis) {
+          shader_id |= SHADER_USE_MIS;
+        }
+
+        const float cosangle = cosf(angle);
+        const float pdf = M_1_2PI_F / (1.0f - cosangle);
+        float3 axis_u, axis_v;
+        make_orthonormals(dir, &axis_u, &axis_v);
+
+        klights[light_index].distant.cosangle = cosangle;
+        klights[light_index].distant.pdf = pdf;
+        klights[light_index].distant.invarea = light->normalize ? pdf : 1.0f;
+        klights[light_index].distant.axis_u = axis_u;
+        klights[light_index].distant.axis_v = axis_v;
+      }
+      else {
+        klights[light_index].distant.cosangle = 1.0f;
+        klights[light_index].distant.pdf = 1.0f;
+        klights[light_index].distant.invarea = 1.0f;
+      }
     }
     else if (light->light_type == LIGHT_BACKGROUND) {
       uint visibility = scene->background->get_visibility();
