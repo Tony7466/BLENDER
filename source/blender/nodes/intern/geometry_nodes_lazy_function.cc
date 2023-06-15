@@ -1435,7 +1435,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           const int input_index = input_field_source->input_index;
           lf::OutputSocket &lf_field_socket = const_cast<lf::OutputSocket &>(
               *mapping_->group_input_sockets[input_index]);
-          /* TODO: Need to look at group_input_usage_hints? */
           lf::OutputSocket *lf_usage_socket = const_cast<lf::OutputSocket *>(
               mapping_->group_input_usage_sockets[input_index]->origin());
           lf_attribute_set_socket = &this->get_extracted_attributes(
