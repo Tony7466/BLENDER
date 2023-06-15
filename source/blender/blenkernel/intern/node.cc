@@ -66,6 +66,7 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_type_conversions.hh"
@@ -231,10 +232,25 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     dst_runtime.field_inferencing_interface = std::make_unique<FieldInferencingInterface>(
         *ntree_src->runtime->field_inferencing_interface);
   }
-  if (ntree_src->runtime->anonymous_attribute_relations) {
-    dst_runtime.anonymous_attribute_relations =
-        std::make_unique<blender::nodes::anonymous_attribute_lifetime::RelationsInNode>(
-            *ntree_src->runtime->anonymous_attribute_relations);
+  if (ntree_src->runtime->anonymous_attribute_inferencing) {
+    using namespace blender::bke::anonymous_attribute_inferencing;
+    dst_runtime.anonymous_attribute_inferencing =
+        std::make_unique<AnonymousAttributeInferencingResult>(
+            *ntree_src->runtime->anonymous_attribute_inferencing);
+    for (FieldSource &field_source :
+         dst_runtime.anonymous_attribute_inferencing->all_field_sources) {
+      if (auto *socket_field_source = std::get_if<SocketFieldSource>(&field_source.data)) {
+        socket_field_source->socket = socket_map.lookup(socket_field_source->socket);
+      }
+    }
+    for (GeometrySource &geometry_source :
+         dst_runtime.anonymous_attribute_inferencing->all_geometry_sources)
+    {
+      if (auto *socket_geometry_source = std::get_if<SocketGeometrySource>(&geometry_source.data))
+      {
+        socket_geometry_source->socket = socket_map.lookup(socket_geometry_source->socket);
+      }
+    }
   }
 
   if (flag & LIB_ID_COPY_NO_PREVIEW) {
@@ -344,6 +360,7 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_VECTOR:
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
+    case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
     case SOCK_CUSTOM:
@@ -489,6 +506,9 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
       break;
     case SOCK_MATERIAL:
       BLO_write_struct(writer, bNodeSocketValueMaterial, sock->default_value);
+      break;
+    case SOCK_ROTATION:
+      BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
       break;
     case SOCK_CUSTOM:
       /* Custom node sockets where default_value is defined uses custom properties for storage. */
@@ -947,6 +967,7 @@ static void lib_link_node_socket(BlendLibReader *reader, ID *self_id, bNodeSocke
     case SOCK_VECTOR:
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
+    case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
     case SOCK_CUSTOM:
@@ -1039,6 +1060,7 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
     case SOCK_VECTOR:
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
+    case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
     case SOCK_CUSTOM:
@@ -1727,6 +1749,7 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_VECTOR:
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
+    case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
     case SOCK_CUSTOM:
@@ -1772,6 +1795,7 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_VECTOR:
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
+    case SOCK_ROTATION:
     case SOCK_INT:
     case SOCK_STRING:
     case SOCK_CUSTOM:
@@ -1825,6 +1849,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_RGBA:
         case SOCK_SHADER:
         case SOCK_BOOLEAN:
+        case SOCK_ROTATION:
         case SOCK_CUSTOM:
         case SOCK_OBJECT:
         case SOCK_IMAGE:
@@ -1928,6 +1953,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       }
     case SOCK_BOOLEAN:
       return "NodeSocketBool";
+    case SOCK_ROTATION:
+      return "NodeSocketRotation";
     case SOCK_VECTOR:
       switch (PropertySubType(subtype)) {
         case PROP_TRANSLATION:
@@ -2007,6 +2034,8 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
       }
     case SOCK_BOOLEAN:
       return "NodeSocketInterfaceBool";
+    case SOCK_ROTATION:
+      return "NodeSocketInterfaceRotation";
     case SOCK_VECTOR:
       switch (PropertySubType(subtype)) {
         case PROP_TRANSLATION:
@@ -2058,6 +2087,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Integer";
     case SOCK_BOOLEAN:
       return "Boolean";
+    case SOCK_ROTATION:
+      return "Rotation";
     case SOCK_VECTOR:
       return "Vector";
     case SOCK_RGBA:
@@ -2598,6 +2629,7 @@ static void *socket_value_storage(bNodeSocket &socket)
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     case SOCK_STRING:
+    case SOCK_ROTATION:
       /* We don't want do this now! */
       return nullptr;
     case SOCK_CUSTOM:
@@ -3671,15 +3703,15 @@ static bNodeSocket *make_socket_interface(bNodeTree *ntree,
   return sock;
 }
 
-using PanelIndexMap = blender::Map<const bNodePanel *, int>;
+using PanelIndexMap = blender::VectorSet<const bNodePanel *>;
 
 static int node_socket_panel_cmp(void *panel_index_map_v, const void *a, const void *b)
 {
   const PanelIndexMap &panel_index_map = *static_cast<const PanelIndexMap *>(panel_index_map_v);
   const bNodeSocket *sock_a = static_cast<const bNodeSocket *>(a);
   const bNodeSocket *sock_b = static_cast<const bNodeSocket *>(b);
-  return panel_index_map.lookup_default(sock_a->panel, -1) >
-                 panel_index_map.lookup_default(sock_b->panel, -1) ?
+  return panel_index_map.index_of_try(sock_a->panel) >
+                 panel_index_map.index_of_try(sock_b->panel) ?
              1 :
              0;
 }
@@ -3706,11 +3738,7 @@ void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree)
   }
 
   /* Store panel index for sorting. */
-  blender::Map<const bNodePanel *, int> panel_index_map;
-  int index = 0;
-  for (const bNodePanel *panel : ntree->panels()) {
-    panel_index_map.add_new(panel, index++);
-  }
+  blender::bke::PanelIndexMap panel_index_map(ntree->panels());
   BLI_listbase_sort_r(&ntree->inputs, blender::bke::node_socket_panel_cmp, &panel_index_map);
   BLI_listbase_sort_r(&ntree->outputs, blender::bke::node_socket_panel_cmp, &panel_index_map);
 }
@@ -3835,12 +3863,14 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel)
 bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag)
 {
   bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<bNodePanel *> old_panels = ntree->panels();
+  const Span<const bNodePanel *> old_panels = ntree->panels();
   ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num + 1, __func__);
   ++ntree->panels_num;
   const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
 
-  std::copy(old_panels.begin(), old_panels.end(), new_panels.data());
+  std::copy(const_cast<bNodePanel **>(old_panels.begin()),
+            const_cast<bNodePanel **>(old_panels.end()),
+            new_panels.data());
 
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
   *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
@@ -3860,16 +3890,19 @@ bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int i
   }
 
   bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<bNodePanel *> old_panels = ntree->panels();
+  const Span<const bNodePanel *> old_panels = ntree->panels();
   ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num + 1, __func__);
   ++ntree->panels_num;
   const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
 
   Span old_panels_front = old_panels.take_front(index);
   Span old_panels_back = old_panels.drop_front(index);
-  std::copy(old_panels_front.begin(), old_panels_front.end(), new_panels.data());
-  std::copy(
-      old_panels_back.begin(), old_panels_back.end(), new_panels.drop_front(index + 1).data());
+  std::copy(const_cast<bNodePanel **>(old_panels_front.begin()),
+            const_cast<bNodePanel **>(old_panels_front.end()),
+            new_panels.data());
+  std::copy(const_cast<bNodePanel **>(old_panels_back.begin()),
+            const_cast<bNodePanel **>(old_panels_back.end()),
+            new_panels.drop_front(index + 1).data());
 
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
   *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
@@ -3902,15 +3935,19 @@ void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel)
   }
 
   bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<bNodePanel *> old_panels = ntree->panels();
+  const Span<const bNodePanel *> old_panels = ntree->panels();
   ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num - 1, __func__);
   --ntree->panels_num;
   const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
 
   Span old_panels_front = old_panels.take_front(index);
   Span old_panels_back = old_panels.drop_front(index + 1);
-  std::copy(old_panels_front.begin(), old_panels_front.end(), new_panels.data());
-  std::copy(old_panels_back.begin(), old_panels_back.end(), new_panels.drop_front(index).data());
+  std::copy(const_cast<bNodePanel **>(old_panels_front.begin()),
+            const_cast<bNodePanel **>(old_panels_front.end()),
+            new_panels.data());
+  std::copy(const_cast<bNodePanel **>(old_panels_back.begin()),
+            const_cast<bNodePanel **>(old_panels_back.end()),
+            new_panels.drop_front(index).data());
 
   MEM_SAFE_FREE(panel->name);
   MEM_SAFE_FREE(panel);

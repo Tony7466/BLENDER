@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 
 import bpy
@@ -305,7 +308,7 @@ class NODE_OT_panel_move(NodePanelOperator, Operator):
     direction: EnumProperty(
         name="Direction",
         items=[('UP', "Up", ""), ('DOWN', "Down", "")],
-        default = 'UP',
+        default='UP',
     )
 
     def execute(self, context):

@@ -241,6 +241,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_COLLECTION = 11,
   SOCK_TEXTURE = 12,
   SOCK_MATERIAL = 13,
+  SOCK_ROTATION = 14,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
@@ -674,7 +675,7 @@ typedef struct bNodeTree {
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<bNodePanel *> panels() const;
+  blender::Span<const bNodePanel *> panels() const;
   blender::MutableSpan<bNodePanel *> panels_for_write();
 #endif
 } bNodeTree;
@@ -743,6 +744,10 @@ typedef struct bNodeSocketValueVector {
   float value[3];
   float min, max;
 } bNodeSocketValueVector;
+
+typedef struct bNodeSocketValueRotation {
+  float value_euler[3];
+} bNodeSocketValueRotation;
 
 typedef struct bNodeSocketValueRGBA {
   float value[4];
@@ -1128,7 +1133,9 @@ typedef struct NodeTexVoronoi {
   int dimensions;
   int feature;
   int distance;
+  int normalize;
   int coloring DNA_DEPRECATED;
+  char _pad[4];
 } NodeTexVoronoi;
 
 typedef struct NodeTexMusgrave {
