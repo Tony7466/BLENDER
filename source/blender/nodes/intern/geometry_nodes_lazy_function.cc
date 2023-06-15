@@ -1406,18 +1406,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     this->build_input_usage_output_node();
 
     {
-      Vector<const bNode *> nodes_to_insert = tree_zones_->nodes_outside_zones;
-      Map<const bNode *, const TreeZone *> zone_by_output;
-      for (const TreeZone *child_zone : tree_zones_->root_zones) {
-        nodes_to_insert.append(child_zone->output_node);
-        zone_by_output.add(child_zone->output_node, child_zone);
-      }
-      std::sort(
-          nodes_to_insert.begin(), nodes_to_insert.end(), [](const bNode *a, const bNode *b) {
-            return a->runtime->toposort_right_to_left_index <
-                   b->runtime->toposort_right_to_left_index;
-          });
-
       OrSocketUsagesCache or_socket_usages_cache;
       Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
       if (const bNode *group_output_bnode = btree_.group_output_node()) {
@@ -1447,15 +1435,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                       socket_usage_inputs,
                                       lf_attribute_set_input_by_field_source_index,
                                       lf_attribute_set_input_by_caller_propagation_index};
-      for (const bNode *bnode : nodes_to_insert) {
-        this->build_output_socket_usages(*bnode, insert_params);
-        if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
-          this->insert_child_zone_node(*zone, insert_params);
-        }
-        else {
-          this->insert_node_in_graph(*bnode, insert_params);
-        }
-      }
+      this->insert_nodes_and_zones(
+          tree_zones_->nodes_outside_zones, tree_zones_->root_zones, insert_params);
+
       for (const auto item : root_output_socket_map_.items()) {
         this->insert_links_from_socket(*item.key, *item.value, insert_params);
       }
@@ -1749,25 +1731,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       usage_by_socket.add(bsocket, &lf_simulation_usage_node.output(1));
     }
 
-    Vector<const bNode *> nodes_to_insert = zone.child_nodes;
-    Map<const bNode *, const TreeZone *> zone_by_output;
-    for (const TreeZone *child_zone : zone.child_zones) {
-      nodes_to_insert.append(child_zone->output_node);
-      zone_by_output.add(child_zone->output_node, child_zone);
-    }
-    std::sort(nodes_to_insert.begin(), nodes_to_insert.end(), [](const bNode *a, const bNode *b) {
-      return a->runtime->toposort_right_to_left_index < b->runtime->toposort_right_to_left_index;
-    });
+    this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, insert_params);
 
-    for (const bNode *bnode : nodes_to_insert) {
-      this->build_output_socket_usages(*bnode, insert_params);
-      if (const TreeZone *child_zone = zone_by_output.lookup_default(bnode, nullptr)) {
-        this->insert_child_zone_node(*child_zone, insert_params);
-      }
-      else {
-        this->insert_node_in_graph(*bnode, insert_params);
-      }
-    }
     if (zone.input_node) {
       this->build_output_socket_usages(*zone.input_node, insert_params);
     }
@@ -1922,6 +1887,32 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_info.lazy_function = &zone_function;
 
     std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
+  }
+
+  void insert_nodes_and_zones(const Span<const bNode *> bnodes,
+                              const Span<const TreeZone *> zones,
+                              InsertBNodeParams &insert_params)
+  {
+    Vector<const bNode *> nodes_to_insert = bnodes;
+    Map<const bNode *, const TreeZone *> zone_by_output;
+    for (const TreeZone *zone : zones) {
+      nodes_to_insert.append(zone->output_node);
+      zone_by_output.add(zone->output_node, zone);
+    }
+    /* Insert nodes from right to left so that usage sockets can be build in the same pass. */
+    std::sort(nodes_to_insert.begin(), nodes_to_insert.end(), [](const bNode *a, const bNode *b) {
+      return a->runtime->toposort_right_to_left_index < b->runtime->toposort_right_to_left_index;
+    });
+
+    for (const bNode *bnode : nodes_to_insert) {
+      this->build_output_socket_usages(*bnode, insert_params);
+      if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
+        this->insert_child_zone_node(*zone, insert_params);
+      }
+      else {
+        this->insert_node_in_graph(*bnode, insert_params);
+      }
+    }
   }
 
   lf::OutputSocket &get_extracted_attributes(lf::OutputSocket &lf_field_socket,
