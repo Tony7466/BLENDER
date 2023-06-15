@@ -1688,14 +1688,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_info.lf_graph = &lf_graph_info_->scope.construct<lf::Graph>();
 
     lf::Node *lf_zone_input_node = nullptr;
+    lf::Node *lf_main_input_usage_node = nullptr;
     if (zone.input_node != nullptr) {
       lf_zone_input_node = &this->build_simulation_zone_input_node(zone, zone_info);
+      lf_main_input_usage_node = &this->build_simulation_zone_input_usage_node(zone, zone_info);
     }
     lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone,
                                                                                    zone_info);
     lf::Node &lf_zone_output_node = this->build_simulation_zone_output_node(zone, zone_info);
-    lf::Node &lf_main_input_usage_node = this->build_simulation_zone_input_usage_node(zone,
-                                                                                      zone_info);
     lf::Node &lf_main_output_usage_node = this->build_simulation_zone_output_usage_node(zone,
                                                                                         zone_info);
     lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone,
@@ -1706,8 +1706,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf::Node &lf_node = zone_info.lf_graph->add_function(*lazy_function);
       lf_graph_info_->functions.append(std::move(lazy_function));
 
-      for (const int i : lf_main_input_usage_node.inputs().index_range()) {
-        zone_info.lf_graph->add_link(lf_node.output(0), lf_main_input_usage_node.input(i));
+      if (lf_main_input_usage_node) {
+        for (const int i : lf_main_input_usage_node->inputs().index_range()) {
+          zone_info.lf_graph->add_link(lf_node.output(0), lf_main_input_usage_node->input(i));
+        }
       }
       return lf_node;
     }();
@@ -1908,9 +1910,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf_zone_outputs.extend(lf_zone_output_node.inputs());
     zone_info.main_output_indices = lf_zone_outputs.index_range();
 
-    lf_zone_outputs.extend(lf_main_input_usage_node.inputs());
-    zone_info.main_input_usage_indices = lf_zone_outputs.index_range().take_back(
-        lf_main_input_usage_node.inputs().size());
+    if (lf_main_input_usage_node) {
+      lf_zone_outputs.extend(lf_main_input_usage_node->inputs());
+      zone_info.main_input_usage_indices = lf_zone_outputs.index_range().take_back(
+          lf_main_input_usage_node->inputs().size());
+    }
 
     lf_zone_outputs.extend(lf_border_link_usage_node.inputs());
     zone_info.border_link_input_usage_indices = lf_zone_outputs.index_range().take_back(
