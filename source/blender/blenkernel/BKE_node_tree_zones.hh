@@ -30,6 +30,8 @@ struct TreeZone {
   Vector<TreeZone *> child_zones;
   /** Direct children nodes excluding nodes that belong to child zones. */
   Vector<const bNode *> child_nodes;
+  /** Links that enter the zone through the zone border. */
+  Vector<const bNodeLink *> border_links;
 
   bool contains_node_recursively(const bNode &node) const;
   bool contains_zone_recursively(const int zone_i) const;

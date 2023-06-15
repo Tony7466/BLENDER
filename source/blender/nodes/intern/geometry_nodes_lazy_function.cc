@@ -1316,7 +1316,6 @@ struct ZoneBuildInfo {
   MultiValueMap<const bNodeSocket *, lf::InputSocket *> input_socket_map;
   Map<const bNodeSocket *, lf::OutputSocket *> output_socket_map;
   const LazyFunction *lazy_function = nullptr;
-  Vector<const bNodeLink *> border_links;
   IndexRange main_input_indices;
   IndexRange main_output_indices;
   IndexRange border_link_input_indices;
@@ -1467,7 +1466,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_build_infos_.reinitialize(tree_zones_->zones.size());
 
     const Array<int> zone_build_order = this->compute_zone_build_order();
-    this->find_zone_border_links();
 
     for (const int zone_i : zone_build_order) {
       const TreeZone &zone = *tree_zones_->zones[zone_i];
@@ -1488,31 +1486,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     return zone_build_order;
   }
 
-  /**
-   * Finds links that go from the outside into a zone without going through a zone input node.
-   */
-  void find_zone_border_links()
-  {
-    for (const bNodeLink *link : btree_.all_links()) {
-      if (!link->is_available()) {
-        continue;
-      }
-      if (link->is_muted()) {
-        continue;
-      }
-      const TreeZone *from_zone = tree_zones_->get_zone_by_socket(*link->fromsock);
-      const TreeZone *to_zone = tree_zones_->get_zone_by_socket(*link->tosock);
-      if (from_zone == to_zone) {
-        continue;
-      }
-      BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
-      for (const TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
-        ZoneBuildInfo &zone_info = zone_build_infos_[zone->index];
-        zone_info.border_links.append(link);
-      }
-    }
-  }
-
   void build_simulation_zone_function(const TreeZone &zone)
   {
     const int zone_i = zone.index;
@@ -1523,13 +1496,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     if (zone.input_node != nullptr) {
       lf_zone_input_node = &this->build_simulation_zone_input_node(zone, zone_info);
     }
-    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone_info);
+    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone,
+                                                                                   zone_info);
     lf::Node &lf_zone_output_node = this->build_simulation_zone_output_node(zone, zone_info);
     lf::Node &lf_main_input_usage_node = this->build_simulation_zone_input_usage_node(zone,
                                                                                       zone_info);
     lf::Node &lf_main_output_usage_node = this->build_simulation_zone_output_usage_node(zone,
                                                                                         zone_info);
-    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone_info);
+    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone,
+                                                                                   zone_info);
 
     lf::Node &lf_simulation_usage_node = [&]() -> lf::Node & {
       auto lazy_function = std::make_unique<LazyFunctionForSimulationInputsUsage>();
@@ -1584,8 +1559,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNode *bnode : nodes_to_insert) {
       this->build_output_socket_usages(*bnode, insert_params);
-      if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
-        this->insert_child_zone_node(*zone, insert_params, {}, nullptr);
+      if (const TreeZone *child_zone = zone_by_output.lookup_default(bnode, nullptr)) {
+        this->insert_child_zone_node(*child_zone, insert_params, zone.border_links, nullptr);
       }
       else {
         this->insert_node_in_graph(*bnode, insert_params);
@@ -1598,8 +1573,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       this->insert_links_from_socket(*item.key, *item.value, insert_params);
     }
 
-    for (const int border_link_i : zone_info.border_links.index_range()) {
-      const bNodeLink &border_link = *zone_info.border_links[border_link_i];
+    for (const int border_link_i : zone.border_links.index_range()) {
+      const bNodeLink &border_link = *zone.border_links[border_link_i];
       lf::OutputSocket &lf_from = lf_border_link_input_node.output(border_link_i);
       const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(border_link,
                                                                                 insert_params);
@@ -1773,12 +1748,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     });
   }
 
-  lf::DummyNode &build_zone_border_links_input_node(ZoneBuildInfo &zone_info)
+  lf::DummyNode &build_zone_border_links_input_node(const TreeZone &zone, ZoneBuildInfo &zone_info)
   {
     auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
     debug_info->name = "Border Links";
     Vector<const CPPType *, 16> border_link_types;
-    for (const bNodeLink *border_link : zone_info.border_links) {
+    for (const bNodeLink *border_link : zone.border_links) {
       border_link_types.append(border_link->tosock->typeinfo->geometry_nodes_cpp_type);
       debug_info->output_names.append(StringRef("Link from ") + border_link->fromsock->identifier);
     }
@@ -1843,12 +1818,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     return node;
   }
 
-  lf::DummyNode &build_border_link_input_usage_node(ZoneBuildInfo &zone_info)
+  lf::DummyNode &build_border_link_input_usage_node(const TreeZone &zone, ZoneBuildInfo &zone_info)
   {
     auto debug_info = std::make_unique<lf::SimpleDummyDebugInfo>();
     debug_info->name = "Border Link Usages";
     Vector<const CPPType *, 16> types;
-    types.append_n_times(&CPPType::get<bool>(), zone_info.border_links.size());
+    types.append_n_times(&CPPType::get<bool>(), zone.border_links.size());
     debug_info->input_names.append_n_times("Usage", types.size());
     lf::DummyNode &node = zone_info.lf_graph->add_dummy(types, {}, debug_info.get());
     lf_graph_info_->dummy_debug_infos_.append(std::move(debug_info));
@@ -1888,7 +1863,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
     }
 
-    const Span<const bNodeLink *> child_border_links = child_zone_info.border_links;
+    const Span<const bNodeLink *> child_border_links = child_zone.border_links;
     for (const int child_border_link_i : child_border_links.index_range()) {
       lf::InputSocket &child_border_link_input = child_zone_node.input(
           child_zone_info.border_link_input_indices[child_border_link_i]);

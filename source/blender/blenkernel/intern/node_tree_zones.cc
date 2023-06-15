@@ -141,6 +141,27 @@ static void update_zone_per_node(const Span<const bNode *> all_nodes,
   }
 }
 
+static void update_zone_border_links(const bNodeTree &tree, TreeZones &tree_zones)
+{
+  for (const bNodeLink *link : tree.all_links()) {
+    if (!link->is_available()) {
+      continue;
+    }
+    if (link->is_muted()) {
+      continue;
+    }
+    TreeZone *from_zone = const_cast<TreeZone *>(tree_zones.get_zone_by_socket(*link->fromsock));
+    TreeZone *to_zone = const_cast<TreeZone *>(tree_zones.get_zone_by_socket(*link->tosock));
+    if (from_zone == to_zone) {
+      continue;
+    }
+    BLI_assert(from_zone == nullptr || from_zone->contains_zone_recursively(to_zone->index));
+    for (TreeZone *zone = to_zone; zone != from_zone; zone = zone->parent_zone) {
+      zone->border_links.append(link);
+    }
+  }
+}
+
 static std::unique_ptr<TreeZones> discover_tree_zones(const bNodeTree &tree)
 {
   if (tree.has_available_link_cycle()) {
@@ -247,6 +268,8 @@ static std::unique_ptr<TreeZones> discover_tree_zones(const bNodeTree &tree)
     }
     tree_zones->zones[zone_i]->child_nodes.append(node);
   }
+
+  update_zone_border_links(tree, *tree_zones);
 
   return tree_zones;
 }
