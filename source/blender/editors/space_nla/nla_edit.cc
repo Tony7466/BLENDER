@@ -438,7 +438,9 @@ static bool nla_channels_get_selected_extents(bAnimContext *ac, float *r_min, fl
   /* loop through all channels, finding the first one that's selected */
   float ymax = NLACHANNEL_FIRST_TOP(ac);
 
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+  for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+       ale = ale->next, ymax -= NLACHANNEL_STEP(snla))
+  {
     const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
 
     /* must be selected... */
@@ -459,7 +461,6 @@ static bool nla_channels_get_selected_extents(bAnimContext *ac, float *r_min, fl
         break;
       }
     }
-    ymax -= NLACHANNEL_STEP(snla);
   }
 
   /* free all temp data */

@@ -812,7 +812,9 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
   /* Loop through channels, and set up drawing depending on their type. */
   float ymax = NLACHANNEL_FIRST_TOP(ac);
 
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+  for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+       ale = ale->next, ymax -= NLACHANNEL_STEP(snla))
+  {
     float ymin = ymax - NLACHANNEL_HEIGHT(snla);
     float ycenter = (ymax + ymin) / 2.0f;
 
@@ -910,7 +912,6 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
         }
       }
     }
-    ymax -= NLACHANNEL_STEP(snla);
   }
 
   /* Free temporary channels. */
@@ -951,7 +952,9 @@ void draw_nla_channel_list(const bContext *C, bAnimContext *ac, ARegion *region)
     size_t channel_index = 0;
     float ymax = NLACHANNEL_FIRST_TOP(ac);
 
-    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+         ale = ale->next, ymax -= NLACHANNEL_STEP(snla), channel_index++)
+    {
       float ymin = ymax - NLACHANNEL_HEIGHT(snla);
 
       /* check if visible */
@@ -961,8 +964,6 @@ void draw_nla_channel_list(const bContext *C, bAnimContext *ac, ARegion *region)
         ANIM_channel_draw(ac, ale, ymin, ymax, channel_index);
       }
     }
-    ymax -= NLACHANNEL_STEP(snla);
-    channel_index++;
   }
   { /* second pass: UI widgets */
     uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
@@ -973,7 +974,9 @@ void draw_nla_channel_list(const bContext *C, bAnimContext *ac, ARegion *region)
     GPU_blend(GPU_BLEND_ALPHA);
 
     /* Loop through channels, and set up drawing depending on their type. */
-    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+         ale = ale->next, ymax -= NLACHANNEL_STEP(snla), channel_index++)
+    {
       float ymin = ymax - NLACHANNEL_HEIGHT(snla);
 
       /* check if visible */
@@ -984,8 +987,6 @@ void draw_nla_channel_list(const bContext *C, bAnimContext *ac, ARegion *region)
         BLI_rctf_init(&channel_rect, 0, v2d->cur.xmax, ymin, ymax);
         ANIM_channel_draw_widgets(C, ac, ale, block, &channel_rect, channel_index);
       }
-      ymax -= NLACHANNEL_STEP(snla);
-      channel_index++;
     }
 
     UI_block_end(C, block);

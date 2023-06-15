@@ -227,7 +227,9 @@ static void box_select_nla_strips(bAnimContext *ac, rcti rect, short mode, short
 
   /* loop over data, doing box select */
   float ymax = NLACHANNEL_FIRST_TOP(ac);
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+  for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+       ale = ale->next, ymax -= NLACHANNEL_STEP(snla))
+  {
     float ymin = ymax - NLACHANNEL_HEIGHT(snla);
 
     /* perform vertical suitability check (if applicable) */
@@ -249,7 +251,6 @@ static void box_select_nla_strips(bAnimContext *ac, rcti rect, short mode, short
         }
       }
     }
-    ymax -= NLACHANNEL_STEP(snla);
   }
 
   /* cleanup */
