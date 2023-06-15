@@ -943,6 +943,31 @@ class NodeTreeInterfacePanel(Panel):
             active_socket.draw(context, layout)
 
 
+class NODE_PT_node_tree_declaration(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Group"
+    bl_label = "Interface"
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        tree = snode.edit_tree
+        if tree is None:
+            return False
+        if tree.is_embedded_data:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        snode = context.space_data
+        tree = snode.edit_tree
+        self.template_node_tree_declaration(layout, tree)
+
+
 class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
@@ -1155,6 +1180,7 @@ classes = (
     NODE_MT_view_pie,
     NODE_PT_material_slots,
     NODE_PT_node_color_presets,
+    NODE_PT_node_tree_declaration,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
     NODE_PT_active_node_properties,

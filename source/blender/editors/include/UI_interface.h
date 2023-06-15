@@ -2630,6 +2630,8 @@ void uiTemplateLightLinkingCollection(struct uiLayout *layout,
                                       struct PointerRNA *ptr,
                                       const char *propname);
 
+void uiTemplateNodeTreeDeclaration(struct uiLayout *layout, struct PointerRNA *ptr);
+
 /**
  * \return: A RNA pointer for the operator properties.
  */
