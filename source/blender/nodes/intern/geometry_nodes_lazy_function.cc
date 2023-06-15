@@ -1385,6 +1385,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     conversions_ = &bke::get_implicit_type_conversions();
     tree_zones_ = bke::node_tree_zones::get_tree_zones(btree_);
 
+    this->initialize_mapping_arrays();
+    this->prepare_node_multi_functions();
+    this->build_zone_functions();
+    this->build_root_graph();
+  }
+
+ private:
+  void initialize_mapping_arrays()
+  {
     mapping_->lf_input_index_for_output_bsocket_usage.reinitialize(
         btree_.all_output_sockets().size());
     mapping_->lf_input_index_for_output_bsocket_usage.fill(-1);
@@ -1393,10 +1402,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->lf_input_index_for_attribute_propagation_to_output.fill(-1);
     mapping_->lf_index_by_bsocket.reinitialize(btree_.all_sockets().size());
     mapping_->lf_index_by_bsocket.fill(-1);
+  }
 
-    this->prepare_node_multi_functions();
-    this->build_zone_functions();
-
+  void build_root_graph()
+  {
     lf::Graph &lf_graph = lf_graph_info_->graph;
 
     this->build_group_input_node(lf_graph);
@@ -1624,7 +1633,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
   }
 
- private:
   void prepare_node_multi_functions()
   {
     lf_graph_info_->node_multi_functions = std::make_unique<NodeMultiFunctions>(btree_);
