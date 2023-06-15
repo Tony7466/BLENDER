@@ -1561,7 +1561,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
          lf_attribute_set_input_by_output_geometry_bsocket.keys())
     {
       all_required_caller_propagation_indices |=
-          result.required_fields_by_geometry_socket[geometry_output_bs->index_in_tree()];
+          result.propagate_to_output_by_geometry_socket[geometry_output_bs->index_in_tree()];
     }
     for (const int caller_propagation_index :
          lf_attribute_set_input_by_caller_propagation_index.keys())
@@ -2093,6 +2093,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           &bsocket, &child_zone_node.output(child_zone_info.main_output_indices[i]));
       lf::InputSocket &lf_usage_input = child_zone_node.input(
           child_zone_info.main_output_usage_indices[i]);
+      insert_params.socket_usage_inputs.add(&lf_usage_input);
       if (lf::OutputSocket *lf_usage = insert_params.usage_by_socket.lookup_default(&bsocket,
                                                                                     nullptr)) {
         insert_params.lf_graph.add_link(*lf_usage, lf_usage_input);
