@@ -1497,7 +1497,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                       attribute_set_source_map,
                                       socket_usage_inputs);
 
-      // this->build_attribute_propagation_input_node();
+      this->build_attribute_propagation_input_node();
       this->fix_link_cycles(socket_usage_inputs);
 
       // UsedSocketVisualizeOptions options{*this, insert_params.usage_by_socket};
