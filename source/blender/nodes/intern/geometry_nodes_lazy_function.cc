@@ -1330,7 +1330,7 @@ struct ZoneBuildInfo {
   IndexRange main_output_usage_indices;
   IndexRange border_link_input_usage_indices;
 
-  Map<int, int> input_by_field_source_index;
+  Map<int, int> attribute_set_input_by_field_source_index;
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
@@ -1809,7 +1809,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         lf_attribute_set_by_field_source_index.add(field_source_index, &lf_attribute_set_socket);
 
         const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.input_by_field_source_index.add(field_source_index, zone_input_index);
+        zone_info.attribute_set_input_by_field_source_index.add(field_source_index,
+                                                                zone_input_index);
       }
     }
 
@@ -2027,7 +2028,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       insert_params.usage_by_socket.add(link.tosock, &lf_usage);
     }
 
-    for (const auto item : child_zone_info.input_by_field_source_index.items()) {
+    for (const auto item : child_zone_info.attribute_set_input_by_field_source_index.items()) {
       const int field_source_index = item.key;
       const int child_zone_input_index = item.value;
       lf::InputSocket &lf_attribute_set_input = child_zone_node.input(child_zone_input_index);
