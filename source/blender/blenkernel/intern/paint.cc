@@ -458,6 +458,29 @@ const char *BKE_paint_get_tool_prop_id_from_paintmode(ePaintMode mode)
   return nullptr;
 }
 
+const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(ePaintMode mode)
+{
+  switch (mode) {
+    case PAINT_MODE_SCULPT:
+    case PAINT_MODE_GPENCIL:
+    case PAINT_MODE_TEXTURE_2D:
+    case PAINT_MODE_TEXTURE_3D:
+      return BLT_I18NCONTEXT_ID_BRUSH;
+    case PAINT_MODE_VERTEX:
+    case PAINT_MODE_WEIGHT:
+    case PAINT_MODE_SCULPT_UV:
+    case PAINT_MODE_VERTEX_GPENCIL:
+    case PAINT_MODE_SCULPT_GPENCIL:
+    case PAINT_MODE_WEIGHT_GPENCIL:
+    case PAINT_MODE_SCULPT_CURVES:
+    case PAINT_MODE_INVALID:
+      break;
+  }
+
+  /* Invalid paint mode. */
+  return BLT_I18NCONTEXT_DEFAULT;
+}
+
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
 {
   if (sce && view_layer) {
@@ -1667,7 +1690,8 @@ static void sculpt_update_object(
 
   BLI_assert(me_eval != nullptr);
 
-  /* This is for handling a newly opened file with no object visible, causing me_eval==NULL. */
+  /* This is for handling a newly opened file with no object visible,
+   * causing `me_eval == nullptr`. */
   if (me_eval == nullptr) {
     return;
   }
@@ -1953,8 +1977,11 @@ void BKE_sculpt_update_object_for_edit(
   sculpt_update_object(depsgraph, ob_orig, ob_eval, need_pmap, is_paint_tool);
 }
 
-int *BKE_sculpt_face_sets_ensure(Mesh *mesh)
+int *BKE_sculpt_face_sets_ensure(Object *ob)
 {
+  SculptSession *ss = ob->sculpt;
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+
   using namespace blender;
   using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
@@ -1966,8 +1993,14 @@ int *BKE_sculpt_face_sets_ensure(Mesh *mesh)
     face_sets.finish();
   }
 
-  return static_cast<int *>(CustomData_get_layer_named_for_write(
+  int *face_sets = static_cast<int *>(CustomData_get_layer_named_for_write(
       &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly));
+
+  if (ss->pbvh && ELEM(BKE_pbvh_type(ss->pbvh), PBVH_FACES, PBVH_GRIDS)) {
+    BKE_pbvh_face_sets_set(ss->pbvh, face_sets);
+  }
+
+  return face_sets;
 }
 
 bool *BKE_sculpt_hide_poly_ensure(Mesh *mesh)
@@ -2184,7 +2217,9 @@ static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform)
   const bool is_deformed = check_sculpt_object_deformed(ob, true);
   if (is_deformed && me_eval_deform != nullptr) {
     BKE_pbvh_vert_coords_apply(
-        pbvh, BKE_mesh_vert_positions(me_eval_deform), me_eval_deform->totvert);
+        pbvh,
+        reinterpret_cast<const float(*)[3]>(me_eval_deform->vert_positions().data()),
+        me_eval_deform->totvert);
   }
 
   return pbvh;
@@ -2647,7 +2682,7 @@ static SculptAttribute *sculpt_alloc_attr(SculptSession *ss)
   return nullptr;
 }
 
-SculptAttribute *BKE_sculpt_attribute_get(struct Object *ob,
+SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
                                           eAttrDomain domain,
                                           eCustomDataType proptype,
                                           const char *name)

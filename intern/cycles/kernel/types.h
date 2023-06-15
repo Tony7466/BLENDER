@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -1224,7 +1225,13 @@ typedef enum KernelBVHLayout {
 
 typedef struct KernelTables {
   int filter_table_offset;
-  int pad1, pad2, pad3;
+  int ggx_E;
+  int ggx_Eavg;
+  int ggx_glass_E;
+  int ggx_glass_Eavg;
+  int ggx_glass_inv_E;
+  int ggx_glass_inv_Eavg;
+  int pad1;
 } KernelTables;
 static_assert_align(KernelTables, 16);
 

@@ -222,14 +222,14 @@ bool BKE_curves_attribute_required(const Curves * /*curves*/, const char *name)
   return STREQ(name, ATTR_POSITION);
 }
 
-Curves *BKE_curves_copy_for_eval(Curves *curves_src)
+Curves *BKE_curves_copy_for_eval(const Curves *curves_src)
 {
   return reinterpret_cast<Curves *>(
       BKE_id_copy_ex(nullptr, &curves_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
 }
 
-static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
-                                      struct Scene *scene,
+static void curves_evaluate_modifiers(Depsgraph *depsgraph,
+                                      Scene *scene,
                                       Object *object,
                                       GeometrySet &geometry_set)
 {
@@ -265,7 +265,7 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
   }
 }
 
-void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
+void BKE_curves_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
