@@ -5,10 +5,15 @@
 /** \file
  * \ingroup nodes
  *
- * This file mainly converts a #bNodeTree into a lazy-function graph. This generally works by
- * creating a lazy-function for every node, which is then put into the lazy-function graph. Then
- * the nodes in the new graph are linked based on links in the original #bNodeTree. Some additional
- * nodes are inserted for things like type conversions and multi-input sockets.
+ * This file mainly converts a #bNodeTree into a lazy-function graph, that can then be evaluated to
+ * execute geometry nodes. This generally works by creating a lazy-function for every node, which
+ * is then put into the lazy-function graph. Then the nodes in the new graph are linked based on
+ * links in the original #bNodeTree. Some additional nodes are inserted for things like type
+ * conversions and multi-input sockets.
+ *
+ * If the #bNodeTree contains zones, those are turned into separate lazy-functions first.
+ * Essentially, a separate lazy-function graph is created for every zone that is than called by the
+ * parent zone or by the root graph.
  *
  * Currently, lazy-functions are even created for nodes that don't strictly require it, like
  * reroutes or muted nodes. In the future we could avoid that at the cost of additional code
