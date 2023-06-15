@@ -271,24 +271,19 @@ class GHOST_DeviceVK {
  */
 static std::optional<GHOST_DeviceVK> vulkan_device;
 
-static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
-                                           VkSurfaceKHR vk_surface,
-                                           vector<const char *> required_extensions)
+static VkPhysicalDevice find_best_physical_device(VkInstance vk_instance,
+                                                  VkSurfaceKHR vk_surface,
+                                                  vector<VkPhysicalDevice> &physical_devices,
+                                                  vector<const char *> &required_extensions,
+                                                  int device_number)
 {
-  if (vulkan_device.has_value()) {
-    return GHOST_kSuccess;
-  }
-
   VkPhysicalDevice best_physical_device = VK_NULL_HANDLE;
-
-  uint32_t device_count = 0;
-  vkEnumeratePhysicalDevices(vk_instance, &device_count, NULL);
-
-  vector<VkPhysicalDevice> physical_devices(device_count);
-  vkEnumeratePhysicalDevices(vk_instance, &device_count, physical_devices.data());
-
   int best_device_score = -1;
+
+  int physical_device_number = -1;
   for (const auto &physical_device : physical_devices) {
+    physical_device_number++;
+
     GHOST_DeviceVK device_vk(vk_instance, physical_device);
 
     if (!device_vk.extensions_support(required_extensions)) {
@@ -335,11 +330,33 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
       default:
         break;
     }
+    if (physical_device_number == device_number) {
+      device_score += 1000;
+    }
     if (device_score > best_device_score) {
       best_physical_device = physical_device;
       best_device_score = device_score;
     }
   }
+  return best_physical_device;
+}
+
+static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
+                                           VkSurfaceKHR vk_surface,
+                                           vector<const char *> required_extensions,
+                                           int device_number)
+{
+  if (vulkan_device.has_value()) {
+    return GHOST_kSuccess;
+  }
+
+  uint32_t device_count = 0;
+  vkEnumeratePhysicalDevices(vk_instance, &device_count, NULL);
+
+  vector<VkPhysicalDevice> physical_devices(device_count);
+  vkEnumeratePhysicalDevices(vk_instance, &device_count, physical_devices.data());
+  VkPhysicalDevice best_physical_device = find_best_physical_device(
+      vk_instance, vk_surface, physical_devices, required_extensions, device_number);
 
   if (best_physical_device == VK_NULL_HANDLE) {
     fprintf(stderr, "Error: No suitable Vulkan Device found!\n");
@@ -369,7 +386,8 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #endif
                                  int contextMajorVersion,
                                  int contextMinorVersion,
-                                 int debug)
+                                 int debug,
+                                 int device_number)
     : GHOST_Context(stereoVisual),
 #ifdef _WIN32
       m_hwnd(hwnd),
@@ -387,6 +405,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_context_major_version(contextMajorVersion),
       m_context_minor_version(contextMinorVersion),
       m_debug(debug),
+      m_device_number(device_number),
       m_command_pool(VK_NULL_HANDLE),
       m_surface(VK_NULL_HANDLE),
       m_swapchain(VK_NULL_HANDLE),
@@ -1115,7 +1134,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 #endif
   }
 
-  if (!ensure_vulkan_device(instance, m_surface, extensions_device)) {
+  if (!ensure_vulkan_device(instance, m_surface, extensions_device, m_device_number)) {
     return GHOST_kFailure;
   }
 

@@ -6302,7 +6302,8 @@ GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gp
                                                  display_->wl_display,
                                                  1,
                                                  2,
-                                                 debug_context);
+                                                 debug_context,
+                                                 gpuSettings.device);
 
     if (!context->initializeDrawingContext()) {
       delete context;
@@ -6378,8 +6379,10 @@ GHOST_IWindow *GHOST_SystemWayland::createWindow(const char *title,
       parentWindow,
       gpuSettings.context_type,
       is_dialog,
-      ((gpuSettings.flags & GHOST_gpuStereoVisual) != 0),
-      exclusive);
+      (gpuSettings.flags & GHOST_gpuStereoVisual) != 0,
+      exclusive,
+      (gpuSettings.flags & GHOST_gpuDebugContext) != 0,
+      gpuSettings.device);
 
   if (window) {
     if (window->getValid()) {

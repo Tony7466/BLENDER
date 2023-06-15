@@ -25,6 +25,19 @@ bool GPU_backend_supported(void);
 void GPU_backend_type_selection_set(const eGPUBackendType backend);
 eGPUBackendType GPU_backend_type_selection_get(void);
 eGPUBackendType GPU_backend_get_type(void);
+void GPU_backend_device_selection_set(int device_number);
+
+/**
+ * Which device should be selected by GHOST.
+ *
+ * -1 = Auto detect best matching GPU
+ * 0  = Select first GPU
+ * 1  = Select second GPU
+ * ...
+ *
+ * NOTE: Only supported by the Vulkan Backend.
+ */
+int GPU_backend_device_selection_get(void);
 
 /**
  * Detect the most suited eGPUBackendType.

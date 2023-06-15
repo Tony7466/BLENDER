@@ -79,6 +79,7 @@ class GHOST_WindowWin32 : public GHOST_Window {
                     bool alphaBackground = false,
                     GHOST_WindowWin32 *parentWindow = 0,
                     bool is_debug = false,
+                    int device_number = -1,
                     bool dialog = false);
 
   /**
@@ -419,4 +420,5 @@ class GHOST_WindowWin32 : public GHOST_Window {
   GHOST_ImeWin32 m_imeInput;
 #endif
   bool m_debug_context;
+  int m_device_number;
 };

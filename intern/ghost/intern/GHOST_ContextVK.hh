@@ -70,7 +70,8 @@ class GHOST_ContextVK : public GHOST_Context {
 #endif
                   int contextMajorVersion,
                   int contextMinorVersion,
-                  int m_debug);
+                  int m_debug,
+                  int device_number);
 
   /**
    * Destructor.
@@ -165,6 +166,7 @@ class GHOST_ContextVK : public GHOST_Context {
   const int m_context_major_version;
   const int m_context_minor_version;
   const int m_debug;
+  const int m_device_number = -1;
 
   VkCommandPool m_command_pool;
 

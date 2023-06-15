@@ -74,7 +74,9 @@ class GHOST_WindowWayland : public GHOST_Window {
                       GHOST_TDrawingContextType type,
                       const bool is_dialog,
                       const bool stereoVisual,
-                      const bool exclusive);
+                      const bool exclusive,
+                      const bool debug_context,
+                      const int device_number);
 
   ~GHOST_WindowWayland() override;
 
@@ -182,4 +184,7 @@ class GHOST_WindowWayland : public GHOST_Window {
    * \return Indication of success.
    */
   GHOST_Context *newDrawingContext(GHOST_TDrawingContextType type) override;
+
+  bool m_debug_context;
+  int m_device_number;
 };

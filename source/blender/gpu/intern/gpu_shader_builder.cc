@@ -44,6 +44,7 @@ void ShaderBuilder::init()
   CLG_init();
 
   GHOST_GPUSettings gpuSettings = {0};
+  gpuSettings.device = GPU_backend_device_selection_get();
   switch (GPU_backend_type_selection_get()) {
     case GPU_BACKEND_OPENGL:
       gpuSettings.context_type = GHOST_kDrawingContextTypeOpenGL;

@@ -693,6 +693,9 @@ static void print_help(bArgs *ba, bool all)
   PRINT("\n");
   PRINT("GPU Options:\n");
   BLI_args_print_arg_doc(ba, "--gpu-backend");
+#  ifdef WITH_VULKAN_BACKEND
+  BLI_args_print_arg_doc(ba, "--gpu-device");
+#  endif
 
   PRINT("\n");
   PRINT("Misc Options:\n");
@@ -1314,6 +1317,25 @@ static int arg_handle_gpu_backend_set(int argc, const char **argv, void *UNUSED(
 
   return 1;
 }
+
+#  ifdef WITH_VULKAN_BACKEND
+static const char arg_handle_gpu_device_set_doc[] =
+    "\n"
+    "\tForce to use a specific GPU for viewport. Only supported when using vulkan backend.";
+static int arg_handle_gpu_device_set(int argc, const char **argv, void *UNUSED(data))
+{
+  if (argc == 0) {
+    fprintf(stderr,
+            "\nError: '--gpu-device' must be followed by a device number (0 for first GPU).\n");
+    return 0;
+  }
+
+  int device_number = atoi(argv[1]);
+  GPU_backend_device_selection_set(device_number);
+
+  return 1;
+}
+#  endif
 
 static const char arg_handle_debug_fpe_set_doc[] =
     "\n\t"
@@ -2369,6 +2391,9 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
   /* GPU backend selection should be part of #ARG_PASS_ENVIRONMENT for correct GPU context
    * selection for animation player. */
   BLI_args_add(ba, NULL, "--gpu-backend", CB_ALL(arg_handle_gpu_backend_set), NULL);
+#  ifdef WITH_VULKAN_BACKEND
+  BLI_args_add(ba, NULL, "--gpu-device", CB(arg_handle_gpu_device_set), NULL);
+#  endif
 
   /* Pass: Background Mode & Settings
    *

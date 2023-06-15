@@ -231,6 +231,8 @@ static eGPUBackendType g_backend_type = GPU_BACKEND_OPENGL;
 static std::optional<eGPUBackendType> g_backend_type_override = std::nullopt;
 static std::optional<bool> g_backend_type_supported = std::nullopt;
 static GPUBackend *g_backend = nullptr;
+/* NOTE: -1 = auto detection. 0 = first GPU, 1 = second GPU. */
+static int g_device_number = -1;
 
 void GPU_backend_type_selection_set(const eGPUBackendType backend)
 {
@@ -241,6 +243,16 @@ void GPU_backend_type_selection_set(const eGPUBackendType backend)
 eGPUBackendType GPU_backend_type_selection_get()
 {
   return g_backend_type;
+}
+
+void GPU_backend_device_selection_set(int device_number)
+{
+  g_device_number = device_number;
+}
+
+int GPU_backend_device_selection_get()
+{
+  return g_device_number;
 }
 
 void GPU_backend_type_selection_set_override(const eGPUBackendType backend_type)

@@ -681,6 +681,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
 
   eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpuSettings.device = GPU_backend_device_selection_get();
 
   int scr_w, scr_h;
   wm_get_desktopsize(&scr_w, &scr_h);
@@ -2652,6 +2653,7 @@ void *WM_system_gpu_context_create(void)
   GHOST_GPUSettings gpuSettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpuSettings.device = GPU_backend_type_selection_get();
   if (G.debug & G_DEBUG_GPU) {
     gpuSettings.flags |= GHOST_gpuDebugContext;
   }

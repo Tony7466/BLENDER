@@ -1353,6 +1353,7 @@ static void playanim_window_open(const char *title, int posx, int posy, int size
   GHOST_GPUSettings gpusettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpusettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpusettings.device = GPU_backend_device_selection_get();
   uint32_t scr_w, scr_h;
 
   GHOST_GetMainDisplayDimensions(g_WS.ghost_system, &scr_w, &scr_h);

@@ -1293,10 +1293,14 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
                                          const GHOST_TDrawingContextType type,
                                          const bool is_dialog,
                                          const bool stereoVisual,
-                                         const bool exclusive)
+                                         const bool exclusive,
+                                         const bool debug_context,
+                                         const int device_number)
     : GHOST_Window(width, height, state, stereoVisual, exclusive),
       system_(system),
-      window_(new GWL_Window)
+      window_(new GWL_Window),
+      m_debug_context(debug_context),
+      m_device_number(device_number)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*system->server_mutex};
@@ -1765,7 +1769,8 @@ GHOST_Context *GHOST_WindowWayland::newDrawingContext(GHOST_TDrawingContextType 
                                     system_->wl_display(),
                                     1,
                                     2,
-                                    true);
+                                    m_debug_context,
+                                    m_device_number);
       break;
 #endif
 

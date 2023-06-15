@@ -62,7 +62,8 @@ class GHOST_WindowX11 : public GHOST_Window {
                   const bool is_dialog = false,
                   const bool stereoVisual = false,
                   const bool exclusive = false,
-                  const bool is_debug = false);
+                  const bool is_debug = false,
+                  const int m_device_number = -1);
 
   bool getValid() const override;
 
@@ -251,6 +252,7 @@ class GHOST_WindowX11 : public GHOST_Window {
 
   bool m_valid_setup;
   bool m_is_debug_context;
+  int m_device_number;
 
   void icccmSetState(int state);
   int icccmGetState() const;

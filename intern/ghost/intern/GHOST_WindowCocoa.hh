@@ -53,6 +53,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
                     GHOST_TDrawingContextType type = GHOST_kDrawingContextTypeNone,
                     const bool stereoVisual = false,
                     bool is_debug = false,
+                    int device_number = -1,
                     bool dialog = false,
                     GHOST_WindowCocoa *parentWindow = 0);
 
@@ -305,6 +306,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
 
   bool m_immediateDraw;
   bool m_debug_context;  // for debug messages during context setup
+  int m_device_number;
   bool m_is_dialog;
 };
 

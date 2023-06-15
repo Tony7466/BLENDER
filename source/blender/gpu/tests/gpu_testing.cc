@@ -27,6 +27,7 @@ void GPUTest::SetUp()
   GHOST_GPUSettings gpuSettings = {};
   gpuSettings.context_type = draw_context_type;
   gpuSettings.flags = GHOST_gpuDebugContext;
+  gpuSettings.device = GPU_backend_device_selection_get();
   ghost_system = GHOST_CreateSystem();
   ghost_context = GHOST_CreateGPUContext(ghost_system, gpuSettings);
   GHOST_ActivateGPUContext(ghost_context);

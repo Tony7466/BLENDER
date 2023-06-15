@@ -108,7 +108,8 @@ GHOST_WindowX11::GHOST_WindowX11(GHOST_SystemX11 *system,
                                  const bool is_dialog,
                                  const bool stereoVisual,
                                  const bool exclusive,
-                                 const bool is_debug)
+                                 const bool is_debug,
+                                 const int device_number)
     : GHOST_Window(width, height, state, stereoVisual, exclusive),
       m_display(display),
       m_visualInfo(nullptr),
@@ -128,7 +129,8 @@ GHOST_WindowX11::GHOST_WindowX11(GHOST_SystemX11 *system,
       m_xic(nullptr),
 #endif
       m_valid_setup(false),
-      m_is_debug_context(is_debug)
+      m_is_debug_context(is_debug),
+      m_device_number(device_number)
 {
   if (type == GHOST_kDrawingContextTypeOpenGL) {
     m_visualInfo = get_x11_visualinfo(m_display);
@@ -1237,7 +1239,8 @@ GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type
                                                  NULL,
                                                  1,
                                                  2,
-                                                 m_is_debug_context);
+                                                 m_is_debug_context,
+                                                 m_device_number);
 
     if (!context->initializeDrawingContext()) {
       delete context;

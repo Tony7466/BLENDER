@@ -682,6 +682,15 @@ typedef struct {
 typedef struct {
   int flags;
   GHOST_TDrawingContextType context_type;
+
+  /**
+   * Which device should be selected.
+   *
+   * -1 = autodetect
+   * 0  = select first device
+   * 1  = select second device
+   */
+  int device;
 } GHOST_GPUSettings;
 
 typedef enum {

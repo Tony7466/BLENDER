@@ -55,6 +55,7 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
                                      bool alphaBackground,
                                      GHOST_WindowWin32 *parentwindow,
                                      bool is_debug,
+                                     int device_number,
                                      bool dialog)
     : GHOST_Window(width, height, state, wantStereoVisual, false),
       m_mousePresent(false),
@@ -76,7 +77,8 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
       m_user32(::LoadLibrary("user32.dll")),
       m_parentWindowHwnd(parentwindow ? parentwindow->m_hWnd : HWND_DESKTOP),
       m_directManipulationHelper(NULL),
-      m_debug_context(is_debug)
+      m_debug_context(is_debug),
+      m_device_number(device_number)
 {
   DWORD style = parentwindow ?
                     WS_POPUPWINDOW | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX :
@@ -648,7 +650,7 @@ GHOST_Context *GHOST_WindowWin32::newDrawingContext(GHOST_TDrawingContextType ty
 
 #ifdef WITH_VULKAN_BACKEND
   else if (type == GHOST_kDrawingContextTypeVulkan) {
-    GHOST_Context *context = new GHOST_ContextVK(false, m_hWnd, 1, 2, m_debug_context);
+    GHOST_Context *context = new GHOST_ContextVK(false, m_hWnd, 1, 2, m_debug_context, -1);
 
     if (context->initializeDrawingContext()) {
       return context;

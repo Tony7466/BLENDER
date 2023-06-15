@@ -273,7 +273,7 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpuS
 #ifdef WITH_VULKAN_BACKEND
   /* Vulkan does not need a window. */
   if (gpuSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
-    context = new GHOST_ContextVK(false, (HWND)0, 1, 2, debug_context);
+    context = new GHOST_ContextVK(false, (HWND)0, 1, 2, debug_context, gpuSettings.device);
 
     if (!context->initializeDrawingContext()) {
       delete context;
