@@ -1310,6 +1310,7 @@ struct InsertBNodeParams {
   Map<const bNodeSocket *, lf::InputSocket *> &attribute_set_propagation_map;
   Map<const bNodeSocket *, lf::Node *> &multi_input_socket_nodes;
   Map<const bNodeLink *, lf::InputSocket *> &child_zones_border_inputs;
+  Set<const lf::InputSocket *> &socket_usage_inputs;
 };
 
 struct ZoneBuildInfo {
@@ -1340,12 +1341,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   MultiValueMap<const bNodeSocket *, lf::InputSocket *> root_input_socket_map_;
   Map<const bNodeSocket *, lf::OutputSocket *> root_output_socket_map_;
   const bke::DataTypeConversions *conversions_;
-
-  /**
-   * Boolean inputs that tell a node if some socket (of the same or another node) is used. If
-   * this socket is in a link-cycle, its input can become a constant true.
-   */
-  Set<const lf::InputSocket *> socket_usage_inputs_;
 
   /**
    * All group input nodes are combined into one dummy node in the lazy-function graph.
@@ -1421,6 +1416,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
       Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
       Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
+      Set<const lf::InputSocket *> socket_usage_inputs;
       InsertBNodeParams insert_params{*root_lf_graph_,
                                       root_input_socket_map_,
                                       root_output_socket_map_,
@@ -1429,7 +1425,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                       inputs_to_link_later,
                                       attribute_set_propagation_map,
                                       multi_input_socket_nodes,
-                                      child_zones_border_inputs};
+                                      child_zones_border_inputs,
+                                      socket_usage_inputs};
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
@@ -1446,13 +1443,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       this->add_default_inputs(insert_params);
       this->link_postponed_inputs(insert_params);
 
+      // this->build_attribute_propagation_input_node();
+      // this->build_attribute_propagation_sets();
+      this->fix_link_cycles(socket_usage_inputs);
+
       // UsedSocketVisualizeOptions options{*this, insert_params.usage_by_socket};
       std::cout << "\n\n" << root_lf_graph_->to_dot() << "\n\n";
     }
-
-    // this->build_attribute_propagation_input_node();
-    // this->build_attribute_propagation_sets();
-    // this->fix_link_cycles();
 
     root_lf_graph_->update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += root_lf_graph_->nodes().size();
@@ -1529,6 +1526,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
     Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
     Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
+    Set<const lf::InputSocket *> socket_usage_inputs;
 
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
@@ -1538,7 +1536,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                     inputs_to_link_later,
                                     attribute_set_propagation_map,
                                     multi_input_socket_nodes,
-                                    child_zones_border_inputs};
+                                    child_zones_border_inputs,
+                                    socket_usage_inputs};
 
     lf::FunctionNode *lf_simulation_input = nullptr;
     if (zone.input_node) {
@@ -1676,8 +1675,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       });
 
-      if (lf::OutputSocket *lf_attribute_set = this->join_attribute_sets(
-              attribute_set_infos, join_attribute_sets_cache, *zone_info.lf_graph))
+      if (lf::OutputSocket *lf_attribute_set = this->join_attribute_sets(attribute_set_infos,
+                                                                         join_attribute_sets_cache,
+                                                                         *zone_info.lf_graph,
+                                                                         socket_usage_inputs))
       {
         zone_info.lf_graph->add_link(*lf_attribute_set, lf_attribute_set_input);
       }
@@ -1724,7 +1725,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   lf::OutputSocket *join_attribute_sets(const Span<AttributeSetInfo> attribute_set_infos,
                                         JoinAttibuteSetsCache &cache,
-                                        lf::Graph &lf_graph)
+                                        lf::Graph &lf_graph,
+                                        Set<const lf::InputSocket *> &socket_usage_inputs)
   {
     if (attribute_set_infos.is_empty()) {
       return nullptr;
@@ -1743,7 +1745,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const int i : attribute_set_infos.index_range()) {
         const AttributeSetInfo &info = attribute_set_infos[i];
         lf::InputSocket &lf_use_input = lf_node.input(lazy_function.get_use_input(i));
-        socket_usage_inputs_.add(&lf_use_input);
+        socket_usage_inputs.add(&lf_use_input);
         lf::InputSocket &lf_attributes_input = lf_node.input(
             lazy_function.get_attribute_set_input(i));
         lf_graph.add_link(*info.used, lf_use_input);
@@ -2153,7 +2155,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         if (lf_input_index != -1) {
           lf::InputSocket &lf_input = lf_node.input(lf_input_index);
           lf_input.set_default_value(&static_false);
-          socket_usage_inputs_.add(&lf_input);
+          insert_params.socket_usage_inputs.add(&lf_input);
         }
       }
       {
@@ -2289,7 +2291,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             static const bool static_false = false;
             lf_input_socket.set_default_value(&static_false);
           }
-          socket_usage_inputs_.add_new(&lf_node.input(lf_input_index));
+          insert_params.socket_usage_inputs.add_new(&lf_node.input(lf_input_index));
         }
       }
       {
@@ -2941,7 +2943,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    * first has to compute the points, but for that one has to know whether the normal information
    * has to be added to the points. The fix is to always add the normal information in this case.
    */
-  void fix_link_cycles()
+  void fix_link_cycles(Set<const lf::InputSocket *> &socket_usage_inputs)
   {
     root_lf_graph_->update_socket_indices();
     const int sockets_num = root_lf_graph_->socket_num();
@@ -3023,7 +3025,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           bool broke_cycle = false;
           for (lf::Socket *lf_cycle_socket : cycle) {
             if (lf_cycle_socket->is_input() &&
-                socket_usage_inputs_.contains(&lf_cycle_socket->as_input())) {
+                socket_usage_inputs.contains(&lf_cycle_socket->as_input())) {
               lf::InputSocket &lf_cycle_input_socket = lf_cycle_socket->as_input();
               root_lf_graph_->clear_origin(lf_cycle_input_socket);
               static const bool static_true = true;
@@ -3126,10 +3128,10 @@ class UsedSocketVisualizeOptions : public lf::Graph::ToDotOptions {
                            const lf::InputSocket &to,
                            dot::DirectedEdge &dot_edge) const override
   {
-    if (builder_.socket_usage_inputs_.contains_as(&to)) {
-      // dot_edge.attributes.set("constraint", "false");
-      dot_edge.attributes.set("color", "#00000055");
-    }
+    // if (builder_.socket_usage_inputs_.contains_as(&to)) {
+    //   // dot_edge.attributes.set("constraint", "false");
+    //   dot_edge.attributes.set("color", "#00000055");
+    // }
   }
 };
 
