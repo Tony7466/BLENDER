@@ -2073,9 +2073,6 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   else {
     tnmd->simulation_cache = new_simulation_cache();
   }
-  tnmd->simulation_bake_directory = nmd->simulation_bake_directory ?
-                                        BLI_strdup(nmd->simulation_bake_directory) :
-                                        nullptr;
 
   if (nmd->settings.properties != nullptr) {
     tnmd->settings.properties = IDP_CopyProperty_ex(nmd->settings.properties, flag);
