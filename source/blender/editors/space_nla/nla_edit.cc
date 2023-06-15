@@ -328,6 +328,7 @@ static void get_nlastrip_extents(bAnimContext *ac, float *min, float *max, const
     /* go through channels, finding max extents */
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       NlaTrack *nlt = static_cast<NlaTrack *>(ale->data);
+
       LISTBASE_FOREACH (NlaStrip *, strip, &nlt->strips) {
         /* only consider selected strips? */
         if ((only_sel == false) || (strip->flag & NLASTRIP_FLAG_SELECT)) {
@@ -635,6 +636,7 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   bAnimContext ac;
+
   ListBase anim_data = {nullptr, nullptr};
 
   /* get editor data */
@@ -1856,7 +1858,7 @@ static int nlaedit_move_down_exec(bContext *C, wmOperator * /*op*/)
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     NlaTrack *nlt = static_cast<NlaTrack *>(ale->data);
     NlaTrack *nltp = nlt->prev;
-    NlaStrip **stripn;
+    NlaStrip *stripn;
 
     const bool is_liboverride = ID_IS_OVERRIDE_LIBRARY(ale->id);
 

@@ -496,6 +496,7 @@ static bool nla_action_unlink_poll(bContext *C)
 static int nla_action_unlink_exec(bContext *C, wmOperator *op)
 {
   PointerRNA adt_ptr;
+
   /* check context and also validity of pointer */
   if (!nla_panel_context(C, &adt_ptr, nullptr, nullptr)) {
     return OPERATOR_CANCELLED;

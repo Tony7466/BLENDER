@@ -227,6 +227,7 @@ static bool nla_strip_panel_poll(const bContext *C, PanelType * /*pt*/)
 static bool nla_strip_actclip_panel_poll(const bContext *C, PanelType * /*pt*/)
 {
   PointerRNA ptr;
+
   if (!nla_panel_context(C, nullptr, nullptr, &ptr)) {
     return 0;
   }
