@@ -291,7 +291,7 @@ static void gizmo_axis_draw(const bContext *C, wmGizmo *gz)
 
 static int gizmo_axis_test_select(bContext * /*C*/, wmGizmo *gz, const int mval[2])
 {
-  float point_local[2] = {mval[0], mval[1]};
+  float point_local[2] = {float(mval[0]), float(mval[1])};
   sub_v2_v2(point_local, gz->matrix_basis[3]);
   mul_v2_fl(point_local, 1.0f / gz->scale_final);
 
