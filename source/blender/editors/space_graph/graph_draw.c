@@ -828,14 +828,11 @@ static int calculate_bezt_draw_resolution(BezTriple *bezt,
     return max_bez_resolution;
   }
 
-  int resolution = (int)(5.0f * len_v2v2(bezt->vec[1], prevbezt->vec[1]));
+  const int resolution = (int)(5.0f * len_v2v2(bezt->vec[1], prevbezt->vec[1]));
 
   /* NOTE: higher values will crash */
   /* TODO: view scale should factor into this someday too... */
-  if (resolution > max_bez_resolution) {
-    resolution = max_bez_resolution;
-  }
-  return resolution;
+  return min_ii(resolution, max_bez_resolution);
 }
 
 /** Draw a segment from \param prevbezt to \param bezt at the given \param resolution.
