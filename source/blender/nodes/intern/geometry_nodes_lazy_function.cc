@@ -1309,6 +1309,7 @@ struct InsertBNodeParams {
   Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> &inputs_to_link_later;
   Map<const bNodeSocket *, lf::InputSocket *> &attribute_set_propagation_map;
   Map<const bNodeSocket *, lf::Node *> &multi_input_socket_nodes;
+  Map<const bNodeLink *, lf::InputSocket *> &child_zones_border_inputs;
 };
 
 struct ZoneBuildInfo {
@@ -1419,6 +1420,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
       Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
       Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
+      Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
       InsertBNodeParams insert_params{*root_lf_graph_,
                                       root_input_socket_map_,
                                       root_output_socket_map_,
@@ -1426,7 +1428,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                       or_socket_usages_cache,
                                       inputs_to_link_later,
                                       attribute_set_propagation_map,
-                                      multi_input_socket_nodes};
+                                      multi_input_socket_nodes,
+                                      child_zones_border_inputs};
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
@@ -1525,6 +1528,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
     Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map;
     Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
+    Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
 
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
@@ -1533,7 +1537,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                     or_socket_usages_cache,
                                     inputs_to_link_later,
                                     attribute_set_propagation_map,
-                                    multi_input_socket_nodes};
+                                    multi_input_socket_nodes,
+                                    child_zones_border_inputs};
 
     lf::FunctionNode *lf_simulation_input = nullptr;
     if (zone.input_node) {
@@ -1868,6 +1873,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf::InputSocket &child_border_link_input = child_zone_node.input(
           child_zone_info.border_link_input_indices[child_border_link_i]);
       const bNodeLink &link = *child_border_links[child_border_link_i];
+      insert_params.child_zones_border_inputs.add(&link, &child_border_link_input);
       const int border_link_i = border_links.first_index_try(&link);
       lf::OutputSocket &lf_usage = child_zone_node.output(
           child_zone_info.border_link_input_usage_indices[child_border_link_i]);
@@ -2626,6 +2632,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   Vector<lf::InputSocket *> find_link_targets(const bNodeLink &link,
                                               const InsertBNodeParams &insert_params)
   {
+    if (lf::InputSocket *lf_input_socket = insert_params.child_zones_border_inputs.lookup_default(
+            &link, nullptr))
+    {
+      return {lf_input_socket};
+    }
+
     const bNodeSocket &to_bsocket = *link.tosock;
     if (to_bsocket.is_multi_input()) {
       /* TODO: Cache this index on the link. */
@@ -2647,7 +2659,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       }
       else {
-        /* TODO: Handle multi-input in zone. */
         lf::Node *multi_input_lf_node = insert_params.multi_input_socket_nodes.lookup_default(
             &to_bsocket, nullptr);
         if (multi_input_lf_node == nullptr) {
