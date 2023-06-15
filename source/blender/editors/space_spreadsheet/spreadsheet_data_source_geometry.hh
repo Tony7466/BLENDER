@@ -54,7 +54,7 @@ class GeometryDataSource : public DataSource {
  public:
   GeometryDataSource(Object *object_eval,
                      bke::GeometrySet geometry_set,
-                     const bke::GeometryComponentType component_type,
+                     const bke::GeometryComponent::Type component_type,
                      const eAttrDomain domain,
                      ExtraColumns extra_columns = {})
       : object_eval_(object_eval),

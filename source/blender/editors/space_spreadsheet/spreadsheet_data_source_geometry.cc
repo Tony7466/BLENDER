@@ -179,7 +179,7 @@ void GeometryDataSource::foreach_default_column_ids(
     return;
   }
 
-  if (component_->type() == bke::GEO_COMPONENT_TYPE_INSTANCES) {
+  if (component_->type() == bke::GeometryComponent::Type::Instance) {
     fn({(char *)"Name"}, false);
   }
 
@@ -203,11 +203,11 @@ void GeometryDataSource::foreach_default_column_ids(
         return true;
       });
 
-  if (component_->type() == bke::GEO_COMPONENT_TYPE_INSTANCES) {
+  if (component_->type() == bke::GeometryComponent::Type::Instance) {
     fn({(char *)"Rotation"}, false);
     fn({(char *)"Scale"}, false);
   }
-  else if (G.debug_value == 4001 && component_->type() == bke::GEO_COMPONENT_TYPE_MESH) {
+  else if (G.debug_value == 4001 && component_->type() == bke::GeometryComponent::Type::Mesh) {
     const bke::MeshComponent &component = static_cast<const bke::MeshComponent &>(*component_);
     if (const Mesh *mesh = component.get_for_read()) {
       add_mesh_debug_column_names(*mesh, domain_, fn);
@@ -234,7 +234,7 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
     return extra_column_values;
   }
 
-  if (component_->type() == bke::GEO_COMPONENT_TYPE_INSTANCES) {
+  if (component_->type() == bke::GeometryComponent::Type::Instance) {
     if (const bke::Instances *instances =
             static_cast<const bke::InstancesComponent &>(*component_).get_for_read())
     {
@@ -263,7 +263,7 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
       }
     }
   }
-  else if (G.debug_value == 4001 && component_->type() == bke::GEO_COMPONENT_TYPE_MESH) {
+  else if (G.debug_value == 4001 && component_->type() == bke::GeometryComponent::Type::Mesh) {
     const bke::MeshComponent &component = static_cast<const bke::MeshComponent &>(*component_);
     if (const Mesh *mesh = component.get_for_read()) {
       if (std::unique_ptr<ColumnValues> values = build_mesh_debug_columns(
@@ -304,7 +304,7 @@ bool GeometryDataSource::has_selection_filter() const
 {
   Object *object_orig = DEG_get_original_object(object_eval_);
   switch (component_->type()) {
-    case bke::GEO_COMPONENT_TYPE_MESH: {
+    case bke::GeometryComponent::Type::Mesh: {
       if (object_orig->type != OB_MESH) {
         return false;
       }
@@ -313,7 +313,7 @@ bool GeometryDataSource::has_selection_filter() const
       }
       return true;
     }
-    case bke::GEO_COMPONENT_TYPE_CURVE: {
+    case bke::GeometryComponent::Type::Curve: {
       if (object_orig->type != OB_CURVES) {
         return false;
       }
@@ -336,7 +336,7 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
   }
 
   switch (component_->type()) {
-    case bke::GEO_COMPONENT_TYPE_MESH: {
+    case bke::GeometryComponent::Type::Mesh: {
       BLI_assert(object_eval_->type == OB_MESH);
       BLI_assert(object_eval_->mode == OB_MODE_EDIT);
       Object *object_orig = DEG_get_original_object(object_eval_);
@@ -382,7 +382,7 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
 
       return full_range;
     }
-    case bke::GEO_COMPONENT_TYPE_CURVE: {
+    case bke::GeometryComponent::Type::Curve: {
       BLI_assert(object_eval_->type == OB_CURVES);
       const bke::CurveComponent &component = static_cast<const bke::CurveComponent &>(*component_);
       const Curves &curves_id = *component.get_for_read();
@@ -541,13 +541,13 @@ std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object 
 {
   SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
   const eAttrDomain domain = (eAttrDomain)sspreadsheet->attribute_domain;
-  const auto component_type = bke::GeometryComponentType(sspreadsheet->geometry_component_type);
+  const auto component_type = bke::GeometryComponent::Type(sspreadsheet->geometry_component_type);
   bke::GeometrySet geometry_set = spreadsheet_get_display_geometry_set(sspreadsheet, object_eval);
   if (!geometry_set.has(component_type)) {
     return {};
   }
 
-  if (component_type == bke::GEO_COMPONENT_TYPE_VOLUME) {
+  if (component_type == bke::GeometryComponent::Type::Volume) {
     return std::make_unique<VolumeDataSource>(std::move(geometry_set));
   }
   return std::make_unique<GeometryDataSource>(

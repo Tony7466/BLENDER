@@ -122,7 +122,7 @@ struct GeometryAttributeInfo {
 class GeometryInfoLog : public ValueLog {
  public:
   Vector<GeometryAttributeInfo> attributes;
-  Vector<bke::GeometryComponentType> component_types;
+  Vector<bke::GeometryComponent::Type> component_types;
 
   struct MeshInfo {
     int verts_num, edges_num, faces_num;

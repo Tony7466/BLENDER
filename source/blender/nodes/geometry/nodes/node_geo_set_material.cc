@@ -21,10 +21,10 @@ namespace blender::nodes::node_geo_set_material_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry")
-      .supported_type({bke::GEO_COMPONENT_TYPE_MESH,
-                       bke::GEO_COMPONENT_TYPE_VOLUME,
-                       bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
-                       bke::GEO_COMPONENT_TYPE_CURVE});
+      .supported_type({GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::Volume,
+                       GeometryComponent::Type::PointCloud,
+                       GeometryComponent::Type::Curve});
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Material>("Material").hide_label();
   b.add_output<decl::Geometry>("Geometry").propagate_all();

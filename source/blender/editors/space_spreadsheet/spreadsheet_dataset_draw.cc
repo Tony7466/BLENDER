@@ -28,15 +28,15 @@ namespace blender::ed::spreadsheet {
 class GeometryDataSetTreeView;
 
 class GeometryDataSetTreeViewItem : public ui::AbstractTreeViewItem {
-  bke::GeometryComponentType component_type_;
+  bke::GeometryComponent::Type component_type_;
   std::optional<eAttrDomain> domain_;
   BIFIconID icon_;
 
  public:
-  GeometryDataSetTreeViewItem(bke::GeometryComponentType component_type,
+  GeometryDataSetTreeViewItem(bke::GeometryComponent::Type component_type,
                               StringRef label,
                               BIFIconID icon);
-  GeometryDataSetTreeViewItem(bke::GeometryComponentType component_type,
+  GeometryDataSetTreeViewItem(bke::GeometryComponent::Type component_type,
                               eAttrDomain domain,
                               StringRef label,
                               BIFIconID icon);
@@ -74,54 +74,56 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
   void build_tree() override
   {
     GeometryDataSetTreeViewItem &mesh = this->add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_MESH, IFACE_("Mesh"), ICON_MESH_DATA);
+        bke::GeometryComponent::Type::Mesh, IFACE_("Mesh"), ICON_MESH_DATA);
     mesh.add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_MESH, ATTR_DOMAIN_POINT, IFACE_("Vertex"), ICON_VERTEXSEL);
+        bke::GeometryComponent::Type::Mesh, ATTR_DOMAIN_POINT, IFACE_("Vertex"), ICON_VERTEXSEL);
     mesh.add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_MESH, ATTR_DOMAIN_EDGE, IFACE_("Edge"), ICON_EDGESEL);
+        bke::GeometryComponent::Type::Mesh, ATTR_DOMAIN_EDGE, IFACE_("Edge"), ICON_EDGESEL);
     mesh.add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_MESH, ATTR_DOMAIN_FACE, IFACE_("Face"), ICON_FACESEL);
-    mesh.add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_MESH, ATTR_DOMAIN_CORNER, IFACE_("Face Corner"), ICON_NODE_CORNER);
+        bke::GeometryComponent::Type::Mesh, ATTR_DOMAIN_FACE, IFACE_("Face"), ICON_FACESEL);
+    mesh.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Mesh,
+                                                    ATTR_DOMAIN_CORNER,
+                                                    IFACE_("Face Corner"),
+                                                    ICON_NODE_CORNER);
 
     GeometryDataSetTreeViewItem &curve = this->add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_CURVE, IFACE_("Curve"), ICON_CURVE_DATA);
-    curve.add_tree_item<GeometryDataSetTreeViewItem>(bke::GEO_COMPONENT_TYPE_CURVE,
+        bke::GeometryComponent::Type::Curve, IFACE_("Curve"), ICON_CURVE_DATA);
+    curve.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Curve,
                                                      ATTR_DOMAIN_POINT,
                                                      IFACE_("Control Point"),
                                                      ICON_CURVE_BEZCIRCLE);
     curve.add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_CURVE, ATTR_DOMAIN_CURVE, IFACE_("Spline"), ICON_CURVE_PATH);
+        bke::GeometryComponent::Type::Curve, ATTR_DOMAIN_CURVE, IFACE_("Spline"), ICON_CURVE_PATH);
 
     GeometryDataSetTreeViewItem &pointcloud = this->add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_POINT_CLOUD, IFACE_("Point Cloud"), ICON_POINTCLOUD_DATA);
-    pointcloud.add_tree_item<GeometryDataSetTreeViewItem>(bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+        bke::GeometryComponent::Type::PointCloud, IFACE_("Point Cloud"), ICON_POINTCLOUD_DATA);
+    pointcloud.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::PointCloud,
                                                           ATTR_DOMAIN_POINT,
                                                           IFACE_("Point"),
                                                           ICON_PARTICLE_POINT);
 
     this->add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GEO_COMPONENT_TYPE_VOLUME, IFACE_("Volume Grids"), ICON_VOLUME_DATA);
+        bke::GeometryComponent::Type::Volume, IFACE_("Volume Grids"), ICON_VOLUME_DATA);
 
-    this->add_tree_item<GeometryDataSetTreeViewItem>(bke::GEO_COMPONENT_TYPE_INSTANCES,
+    this->add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Instance,
                                                      ATTR_DOMAIN_INSTANCE,
                                                      IFACE_("Instances"),
                                                      ICON_EMPTY_AXIS);
   }
 };
 
-GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(bke::GeometryComponentType component_type,
-                                                         StringRef label,
-                                                         BIFIconID icon)
+GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
+    bke::GeometryComponent::Type component_type, StringRef label, BIFIconID icon)
     : component_type_(component_type), domain_(std::nullopt), icon_(icon)
 {
   label_ = label;
   this->set_collapsed(false);
 }
-GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(bke::GeometryComponentType component_type,
-                                                         eAttrDomain domain,
-                                                         StringRef label,
-                                                         BIFIconID icon)
+GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
+    bke::GeometryComponent::Type component_type,
+    eAttrDomain domain,
+    StringRef label,
+    BIFIconID icon)
     : component_type_(component_type), domain_(domain), icon_(icon)
 {
   label_ = label;
@@ -132,7 +134,7 @@ void GeometryDataSetTreeViewItem::on_activate()
   GeometryDataSetTreeView &tree_view = this->get_tree();
   bContext &C = const_cast<bContext &>(tree_view.C_);
   SpaceSpreadsheet &sspreadsheet = tree_view.sspreadsheet_;
-  tree_view.sspreadsheet_.geometry_component_type = component_type_;
+  tree_view.sspreadsheet_.geometry_component_type = uint8_t(component_type_);
   if (domain_) {
     tree_view.sspreadsheet_.attribute_domain = *domain_;
   }
@@ -160,15 +162,15 @@ std::optional<bool> GeometryDataSetTreeViewItem::should_be_active() const
   GeometryDataSetTreeView &tree_view = this->get_tree();
   SpaceSpreadsheet &sspreadsheet = tree_view.sspreadsheet_;
 
-  if (component_type_ == bke::GEO_COMPONENT_TYPE_VOLUME) {
-    return sspreadsheet.geometry_component_type == component_type_;
+  if (component_type_ == bke::GeometryComponent::Type::Volume) {
+    return sspreadsheet.geometry_component_type == uint8_t(component_type_);
   }
 
   if (!domain_) {
     return false;
   }
 
-  return sspreadsheet.geometry_component_type == component_type_ &&
+  return sspreadsheet.geometry_component_type == uint8_t(component_type_) &&
          sspreadsheet.attribute_domain == *domain_;
 }
 
@@ -188,7 +190,7 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
   bke::GeometrySet &geometry = tree_view.geometry_set_;
 
   /* Special case for volumes since there is no grid domain. */
-  if (component_type_ == bke::GEO_COMPONENT_TYPE_VOLUME) {
+  if (component_type_ == bke::GeometryComponent::Type::Volume) {
     if (const Volume *volume = geometry.get_volume_for_read()) {
       return BKE_volume_num_grids(volume);
     }

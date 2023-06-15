@@ -7,9 +7,7 @@
 
 namespace blender::bke {
 
-GeometryComponentEditData::GeometryComponentEditData() : GeometryComponent(GEO_COMPONENT_TYPE_EDIT)
-{
-}
+GeometryComponentEditData::GeometryComponentEditData() : GeometryComponent(Type::Edit) {}
 
 GeometryComponent *GeometryComponentEditData::copy() const
 {

@@ -16,7 +16,7 @@ namespace blender::bke {
 /** \name Geometry Component Implementation
  * \{ */
 
-PointCloudComponent::PointCloudComponent() : GeometryComponent(GEO_COMPONENT_TYPE_POINT_CLOUD) {}
+PointCloudComponent::PointCloudComponent() : GeometryComponent(Type::PointCloud) {}
 
 PointCloudComponent::~PointCloudComponent()
 {

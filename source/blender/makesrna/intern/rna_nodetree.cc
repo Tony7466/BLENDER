@@ -9666,7 +9666,7 @@ static void def_geo_attribute_domain_size(StructRNA *srna)
   PropertyRNA *prop = RNA_def_property(srna, "component", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_geometry_component_type_items);
-  RNA_def_property_enum_default(prop, blender::bke::GEO_COMPONENT_TYPE_MESH);
+  RNA_def_property_enum_default(prop, int(blender::bke::GeometryComponent::Type::Mesh));
   RNA_def_property_ui_text(prop, "Component", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }

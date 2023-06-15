@@ -30,7 +30,7 @@ namespace blender::bke {
 /** \name Geometry Component Implementation
  * \{ */
 
-InstancesComponent::InstancesComponent() : GeometryComponent(GEO_COMPONENT_TYPE_INSTANCES) {}
+InstancesComponent::InstancesComponent() : GeometryComponent(Type::Instance) {}
 
 InstancesComponent::~InstancesComponent()
 {

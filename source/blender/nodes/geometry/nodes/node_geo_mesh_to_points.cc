@@ -23,7 +23,7 @@ NODE_STORAGE_FUNCS(NodeGeometryMeshToPoints)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Mesh").supported_type(bke::GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
   b.add_input<decl::Vector>("Position").implicit_field_on_all(implicit_field_inputs::position);
   b.add_input<decl::Float>("Radius")
@@ -104,8 +104,8 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   radius.finish();
 
   Map<AttributeIDRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({bke::GEO_COMPONENT_TYPE_MESH},
-                                                 bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Mesh},
+                                                 GeometryComponent::Type::PointCloud,
                                                  false,
                                                  propagation_info,
                                                  attributes);
@@ -135,7 +135,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   }
 
   geometry_set.replace_pointcloud(pointcloud);
-  geometry_set.keep_only_during_modify({bke::GEO_COMPONENT_TYPE_POINT_CLOUD});
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

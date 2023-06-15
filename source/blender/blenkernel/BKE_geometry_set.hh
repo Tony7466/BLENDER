@@ -26,19 +26,6 @@ struct Volume;
 
 namespace blender::bke {
 
-/**
- * Each geometry component has a specific type. The type determines what kind of data the component
- * stores. Functions modifying a geometry will usually just modify a subset of the component types.
- */
-enum GeometryComponentType {
-  GEO_COMPONENT_TYPE_MESH = 0,
-  GEO_COMPONENT_TYPE_POINT_CLOUD = 1,
-  GEO_COMPONENT_TYPE_INSTANCES = 2,
-  GEO_COMPONENT_TYPE_VOLUME = 3,
-  GEO_COMPONENT_TYPE_CURVE = 4,
-  GEO_COMPONENT_TYPE_EDIT = 5,
-};
-
 #define GEO_COMPONENT_TYPE_ENUM_SIZE 6
 
 enum class GeometryOwnershipType {
@@ -63,13 +50,29 @@ using GeometryComponentPtr = ImplicitSharingPtr<GeometryComponent>;
  * generalizes storing and modifying generic information on a geometry.
  */
 class GeometryComponent : public ImplicitSharingMixin {
+ public:
+  /**
+   * Each geometry component has a specific type. The type determines what kind of data the
+   * component stores. Functions modifying a geometry will usually just modify a subset of the
+   * component types.
+   * \note These values are stored in files, so they should not be reordered.
+   */
+  enum class Type {
+    Mesh = 0,
+    PointCloud = 1,
+    Instance = 2,
+    Volume = 3,
+    Curve = 4,
+    Edit = 5,
+  };
+
  private:
-  GeometryComponentType type_;
+  Type type_;
 
  public:
-  GeometryComponent(GeometryComponentType type);
+  GeometryComponent(Type type);
   virtual ~GeometryComponent() = default;
-  static GeometryComponentPtr create(GeometryComponentType component_type);
+  static GeometryComponentPtr create(Type component_type);
 
   int attribute_domain_size(eAttrDomain domain) const;
 
@@ -92,7 +95,7 @@ class GeometryComponent : public ImplicitSharingMixin {
   virtual bool owns_direct_data() const = 0;
   virtual void ensure_owns_direct_data() = 0;
 
-  GeometryComponentType type() const;
+  Type type() const;
 
   virtual bool is_empty() const;
 
@@ -124,7 +127,7 @@ inline constexpr bool is_geometry_component_v = std::is_base_of_v<GeometryCompon
  */
 struct GeometrySet {
  private:
-  /* Indexed by #GeometryComponentType. */
+  /* Indexed by #GeometryComponent::Type. */
   std::array<GeometryComponentPtr, GEO_COMPONENT_TYPE_ENUM_SIZE> components_;
 
  public:
@@ -142,7 +145,7 @@ struct GeometrySet {
    * This method can only be used when the geometry set is mutable. It returns a mutable geometry
    * component of the given type.
    */
-  GeometryComponent &get_component_for_write(GeometryComponentType component_type);
+  GeometryComponent &get_component_for_write(GeometryComponent::Type component_type);
   template<typename Component> Component &get_component_for_write()
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
@@ -152,21 +155,21 @@ struct GeometrySet {
   /**
    * Get the component of the given type. Might return null if the component does not exist yet.
    */
-  const GeometryComponent *get_component_for_read(GeometryComponentType component_type) const;
+  const GeometryComponent *get_component_for_read(GeometryComponent::Type component_type) const;
   template<typename Component> const Component *get_component_for_read() const
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
     return static_cast<const Component *>(get_component_for_read(Component::static_type));
   }
 
-  bool has(const GeometryComponentType component_type) const;
+  bool has(const GeometryComponent::Type component_type) const;
   template<typename Component> bool has() const
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
     return this->has(Component::static_type);
   }
 
-  void remove(const GeometryComponentType component_type);
+  void remove(const GeometryComponent::Type component_type);
   template<typename Component> void remove()
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
@@ -176,12 +179,12 @@ struct GeometrySet {
   /**
    * Remove all geometry components with types that are not in the provided list.
    */
-  void keep_only(const Span<GeometryComponentType> component_types);
+  void keep_only(const Span<GeometryComponent::Type> component_types);
   /**
    * Keeps the provided geometry types, but also instances and edit data.
    * Instances must not be removed while using #modify_geometry_sets.
    */
-  void keep_only_during_modify(const Span<GeometryComponentType> component_types);
+  void keep_only_during_modify(const Span<GeometryComponent::Type> component_types);
   void remove_geometry_during_modify();
 
   void add(const GeometryComponent &component);
@@ -217,18 +220,18 @@ struct GeometrySet {
                                                     const AttributeMetaData &meta_data,
                                                     const GeometryComponent &component)>;
 
-  void attribute_foreach(Span<GeometryComponentType> component_types,
+  void attribute_foreach(Span<GeometryComponent::Type> component_types,
                          bool include_instances,
                          AttributeForeachCallback callback) const;
 
-  void gather_attributes_for_propagation(Span<GeometryComponentType> component_types,
-                                         GeometryComponentType dst_component_type,
+  void gather_attributes_for_propagation(Span<GeometryComponent::Type> component_types,
+                                         GeometryComponent::Type dst_component_type,
                                          bool include_instances,
                                          const AnonymousAttributePropagationInfo &propagation_info,
                                          Map<AttributeIDRef, AttributeKind> &r_attributes) const;
 
-  Vector<GeometryComponentType> gather_component_types(bool include_instances,
-                                                       bool ignore_empty) const;
+  Vector<GeometryComponent::Type> gather_component_types(bool include_instances,
+                                                         bool ignore_empty) const;
 
   using ForeachSubGeometryCallback = FunctionRef<void(GeometrySet &geometry_set)>;
 
@@ -376,7 +379,7 @@ struct GeometrySet {
    * Retrieve the pointer to a component without creating it if it does not exist,
    * unlike #get_component_for_write.
    */
-  GeometryComponent *get_component_ptr(GeometryComponentType type);
+  GeometryComponent *get_component_ptr(GeometryComponent::Type type);
   template<typename Component> Component *get_component_ptr()
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
@@ -429,7 +432,7 @@ class MeshComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
-  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_MESH;
+  static constexpr inline GeometryComponent::Type static_type = Type::Mesh;
 
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
@@ -489,9 +492,7 @@ class PointCloudComponent : public GeometryComponent {
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
-  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_POINT_CLOUD;
-
- private:
+  static constexpr inline GeometryComponent::Type static_type = Type::PointCloud;
 };
 
 /**
@@ -542,7 +543,7 @@ class CurveComponent : public GeometryComponent {
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
-  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_CURVE;
+  static constexpr inline GeometryComponent::Type static_type = Type::Curve;
 };
 
 /**
@@ -574,7 +575,7 @@ class InstancesComponent : public GeometryComponent {
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
-  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_INSTANCES;
+  static constexpr inline GeometryComponent::Type static_type = Type::Instance;
 };
 
 /**
@@ -619,7 +620,7 @@ class VolumeComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
-  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_VOLUME;
+  static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
 
 /**
@@ -655,7 +656,7 @@ class GeometryComponentEditData final : public GeometryComponent {
    */
   static void remember_deformed_curve_positions_if_necessary(GeometrySet &geometry);
 
-  static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_EDIT;
+  static constexpr inline GeometryComponent::Type static_type = GeometryComponent::Type::Edit;
 };
 
 }  // namespace blender::bke

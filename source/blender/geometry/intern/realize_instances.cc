@@ -547,9 +547,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                            const InstanceContext &base_instance_context)
 {
   for (const bke::GeometryComponent *component : geometry_set.get_components_for_read()) {
-    const bke::GeometryComponentType type = component->type();
+    const bke::GeometryComponent::Type type = component->type();
     switch (type) {
-      case bke::GEO_COMPONENT_TYPE_MESH: {
+      case bke::GeometryComponent::Type::Mesh: {
         const bke::MeshComponent &mesh_component = *static_cast<const bke::MeshComponent *>(
             component);
         const Mesh *mesh = mesh_component.get_for_read();
@@ -568,7 +568,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GeometryComponent::Type::PointCloud: {
         const auto &pointcloud_component = *static_cast<const bke::PointCloudComponent *>(
             component);
         const PointCloud *pointcloud = pointcloud_component.get_for_read();
@@ -585,7 +585,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GeometryComponent::Type::Curve: {
         const auto &curve_component = *static_cast<const bke::CurveComponent *>(component);
         const Curves *curves = curve_component.get_for_read();
         if (curves != nullptr && curves->geometry.curve_num > 0) {
@@ -601,7 +601,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GeometryComponent::Type::Instance: {
         const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
         const Instances *instances = instances_component.get_for_read();
         if (instances != nullptr && instances->instances_num() > 0) {
@@ -610,7 +610,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GeometryComponent::Type::Volume: {
         const auto *volume_component = static_cast<const bke::VolumeComponent *>(component);
         if (!gather_info.r_tasks.first_volume) {
           volume_component->add_user();
@@ -618,7 +618,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GeometryComponent::Type::Edit: {
         const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
             component);
         if (!gather_info.r_tasks.first_edit_data) {
@@ -643,15 +643,15 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
     bool &r_create_radii,
     bool &r_create_id)
 {
-  Vector<bke::GeometryComponentType> src_component_types;
-  src_component_types.append(bke::GEO_COMPONENT_TYPE_POINT_CLOUD);
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::PointCloud);
   if (options.realize_instance_attributes) {
-    src_component_types.append(bke::GEO_COMPONENT_TYPE_INSTANCES);
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                    bke::GeometryComponent::Type::PointCloud,
                                                     true,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
@@ -844,15 +844,15 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
     bool &r_create_id,
     bool &r_create_material_index)
 {
-  Vector<bke::GeometryComponentType> src_component_types;
-  src_component_types.append(bke::GEO_COMPONENT_TYPE_MESH);
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Mesh);
   if (options.realize_instance_attributes) {
-    src_component_types.append(bke::GEO_COMPONENT_TYPE_INSTANCES);
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GEO_COMPONENT_TYPE_MESH,
+                                                    bke::GeometryComponent::Type::Mesh,
                                                     true,
                                                     options.propagation_info,
                                                     attributes_to_propagate);
@@ -1185,15 +1185,15 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
     const RealizeInstancesOptions &options,
     bool &r_create_id)
 {
-  Vector<bke::GeometryComponentType> src_component_types;
-  src_component_types.append(bke::GEO_COMPONENT_TYPE_CURVE);
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Curve);
   if (options.realize_instance_attributes) {
-    src_component_types.append(bke::GEO_COMPONENT_TYPE_INSTANCES);
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
   in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GEO_COMPONENT_TYPE_CURVE,
+                                                    bke::GeometryComponent::Type::Curve,
                                                     true,
                                                     options.propagation_info,
                                                     attributes_to_propagate);

@@ -27,7 +27,7 @@ namespace blender::bke {
 /** \name Geometry Component Implementation
  * \{ */
 
-MeshComponent::MeshComponent() : GeometryComponent(GEO_COMPONENT_TYPE_MESH) {}
+MeshComponent::MeshComponent() : GeometryComponent(Type::Mesh) {}
 
 MeshComponent::~MeshComponent()
 {

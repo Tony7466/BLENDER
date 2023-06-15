@@ -55,11 +55,11 @@ FieldInfoLog::FieldInfoLog(const GField &field) : type(field.cpp_type())
 
 GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
 {
-  static std::array all_component_types = {bke::GEO_COMPONENT_TYPE_CURVE,
-                                           bke::GEO_COMPONENT_TYPE_INSTANCES,
-                                           bke::GEO_COMPONENT_TYPE_MESH,
-                                           bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                           bke::GEO_COMPONENT_TYPE_VOLUME};
+  static std::array all_component_types = {bke::GeometryComponent::Type::Curve,
+                                           bke::GeometryComponent::Type::Instance,
+                                           bke::GeometryComponent::Type::Mesh,
+                                           bke::GeometryComponent::Type::PointCloud,
+                                           bke::GeometryComponent::Type::Volume};
 
   /* Keep track handled attribute names to make sure that we do not return the same name twice.
    * Currently #GeometrySet::attribute_foreach does not do that. Note that this will merge
@@ -80,7 +80,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
   for (const bke::GeometryComponent *component : geometry_set.get_components_for_read()) {
     this->component_types.append(component->type());
     switch (component->type()) {
-      case bke::GEO_COMPONENT_TYPE_MESH: {
+      case bke::GeometryComponent::Type::Mesh: {
         const auto &mesh_component = *static_cast<const bke::MeshComponent *>(component);
         MeshInfo &info = this->mesh_info.emplace();
         info.verts_num = mesh_component.attribute_domain_size(ATTR_DOMAIN_POINT);
@@ -88,27 +88,27 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         info.faces_num = mesh_component.attribute_domain_size(ATTR_DOMAIN_FACE);
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GeometryComponent::Type::Curve: {
         const auto &curve_component = *static_cast<const bke::CurveComponent *>(component);
         CurveInfo &info = this->curve_info.emplace();
         info.points_num = curve_component.attribute_domain_size(ATTR_DOMAIN_POINT);
         info.splines_num = curve_component.attribute_domain_size(ATTR_DOMAIN_CURVE);
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GeometryComponent::Type::PointCloud: {
         const auto &pointcloud_component = *static_cast<const bke::PointCloudComponent *>(
             component);
         PointCloudInfo &info = this->pointcloud_info.emplace();
         info.points_num = pointcloud_component.attribute_domain_size(ATTR_DOMAIN_POINT);
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GeometryComponent::Type::Instance: {
         const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
         InstancesInfo &info = this->instances_info.emplace();
         info.instances_num = instances_component.attribute_domain_size(ATTR_DOMAIN_INSTANCE);
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GeometryComponent::Type::Edit: {
         const auto &edit_component = *static_cast<const bke::GeometryComponentEditData *>(
             component);
         if (const bke::CurvesEditHints *curve_edit_hints = edit_component.curves_edit_hints_.get())
@@ -119,7 +119,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         }
         break;
       }
-      case bke::GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GeometryComponent::Type::Volume: {
         break;
       }
     }

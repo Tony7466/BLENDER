@@ -203,19 +203,19 @@ static void node_geo_exec(GeoNodeExecParams params)
       instances_component.replace(dst_instances);
     }
 
-    const Array<bke::GeometryComponentType> types{bke::GEO_COMPONENT_TYPE_MESH,
-                                                  bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                  bke::GEO_COMPONENT_TYPE_CURVE};
+    const Array<GeometryComponent::Type> types{GeometryComponent::Type::Mesh,
+                                               GeometryComponent::Type::PointCloud,
+                                               GeometryComponent::Type::Curve};
 
     Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
     geometry_set.gather_attributes_for_propagation(types,
-                                                   bke::GEO_COMPONENT_TYPE_INSTANCES,
+                                                   GeometryComponent::Type::Instance,
                                                    false,
                                                    params.get_output_propagation_info("Instances"),
                                                    attributes_to_propagate);
     attributes_to_propagate.remove("position");
 
-    for (const bke::GeometryComponentType type : types) {
+    for (const GeometryComponent::Type type : types) {
       if (geometry_set.has(type)) {
         add_instances_from_component(*dst_instances,
                                      *geometry_set.get_component_for_read(type),

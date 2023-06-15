@@ -345,7 +345,7 @@ struct OutputAttributeInfo {
 };
 
 struct OutputAttributeToStore {
-  bke::GeometryComponentType component_type;
+  bke::GeometryComponent::Type component_type;
   eAttrDomain domain;
   StringRefNull name;
   GMutableSpan data;
@@ -403,10 +403,10 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
     const MultiValueMap<eAttrDomain, OutputAttributeInfo> &outputs_by_domain)
 {
   Vector<OutputAttributeToStore> attributes_to_store;
-  for (const bke::GeometryComponentType component_type : {bke::GEO_COMPONENT_TYPE_MESH,
-                                                          bke::GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                          bke::GEO_COMPONENT_TYPE_CURVE,
-                                                          bke::GEO_COMPONENT_TYPE_INSTANCES})
+  for (const auto component_type : {bke::GeometryComponent::Type::Mesh,
+                                    bke::GeometryComponent::Type::PointCloud,
+                                    bke::GeometryComponent::Type::Curve,
+                                    bke::GeometryComponent::Type::Instance})
   {
     if (!geometry.has(component_type)) {
       continue;

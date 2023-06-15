@@ -168,9 +168,8 @@ void OVERLAY_viewer_attribute_cache_populate(OVERLAY_Data *vedata, Object *objec
   DupliObject *dupli_object = DRW_object_get_dupli(object);
 
   if (dupli_object->preview_instance_index >= 0) {
-    const blender::bke::InstancesComponent &instances =
-        *dupli_object->preview_base_geometry
-             ->get_component_for_read<blender::bke::InstancesComponent>();
+    const auto &instances = *dupli_object->preview_base_geometry
+                                 ->get_component_for_read<blender::bke::InstancesComponent>();
     if (instances.attributes()->contains(".viewer")) {
       populate_cache_for_instance(*object, *pd, *dupli_object, opacity);
       return;
