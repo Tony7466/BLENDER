@@ -1315,6 +1315,8 @@ struct InsertBNodeParams {
   Map<const bNodeSocket *, lf::Node *> &multi_input_socket_nodes;
   Map<const bNodeLink *, lf::InputSocket *> &child_zones_border_inputs;
   Set<lf::InputSocket *> &socket_usage_inputs;
+  MultiValueMap<int, lf::InputSocket *> &lf_attribute_set_input_by_field_source_index;
+  MultiValueMap<int, lf::InputSocket *> &lf_attribute_set_input_by_caller_propagation_index;
 };
 
 struct ZoneBuildInfo {
@@ -1419,8 +1421,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           usage_by_socket.add(bsocket, &lf_output_usage_node.output(bsocket->index()));
         }
       }
-      MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_field_source_index;
-      MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_caller_propagation_index;
 
       Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
       Map<const bNodeSocket *, lf::InputSocket *>
@@ -1428,6 +1428,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
       Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
       Set<lf::InputSocket *> socket_usage_inputs;
+      MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_field_source_index;
+      MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_caller_propagation_index;
+
       InsertBNodeParams insert_params{*root_lf_graph_,
                                       root_input_socket_map_,
                                       root_output_socket_map_,
@@ -1437,14 +1440,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                       lf_attribute_set_input_by_output_geometry_bsocket,
                                       multi_input_socket_nodes,
                                       child_zones_border_inputs,
-                                      socket_usage_inputs};
+                                      socket_usage_inputs,
+                                      lf_attribute_set_input_by_field_source_index,
+                                      lf_attribute_set_input_by_caller_propagation_index};
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
-          this->insert_child_zone_node(*zone,
-                                       insert_params,
-                                       lf_attribute_set_input_by_field_source_index,
-                                       lf_attribute_set_input_by_caller_propagation_index);
+          this->insert_child_zone_node(*zone, insert_params);
         }
         else {
           this->insert_node_in_graph(*bnode, insert_params);
@@ -1721,6 +1723,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
     Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
     Set<lf::InputSocket *> socket_usage_inputs;
+    MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_field_source_index;
+    MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_caller_propagation_index;
 
     InsertBNodeParams insert_params{*zone_info.lf_graph,
                                     zone_info.input_socket_map,
@@ -1731,7 +1735,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                     lf_attribute_set_input_by_output_geometry_bsocket,
                                     multi_input_socket_nodes,
                                     child_zones_border_inputs,
-                                    socket_usage_inputs};
+                                    socket_usage_inputs,
+                                    lf_attribute_set_input_by_field_source_index,
+                                    lf_attribute_set_input_by_caller_propagation_index};
 
     lf::FunctionNode *lf_simulation_input = nullptr;
     if (zone.input_node) {
@@ -1755,16 +1761,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       return a->runtime->toposort_right_to_left_index < b->runtime->toposort_right_to_left_index;
     });
 
-    MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_field_source_index;
-    MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_caller_propagation_index;
-
     for (const bNode *bnode : nodes_to_insert) {
       this->build_output_socket_usages(*bnode, insert_params);
       if (const TreeZone *child_zone = zone_by_output.lookup_default(bnode, nullptr)) {
-        this->insert_child_zone_node(*child_zone,
-                                     insert_params,
-                                     lf_attribute_set_input_by_field_source_index,
-                                     lf_attribute_set_input_by_caller_propagation_index);
+        this->insert_child_zone_node(*child_zone, insert_params);
       }
       else {
         this->insert_node_in_graph(*bnode, insert_params);
@@ -2073,11 +2073,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     return node;
   }
 
-  void insert_child_zone_node(
-      const TreeZone &child_zone,
-      InsertBNodeParams &insert_params,
-      MultiValueMap<int, lf::InputSocket *> &lf_attribute_set_input_by_field_source_index,
-      MultiValueMap<int, lf::InputSocket *> &lf_attribute_set_input_by_caller_propagation_index)
+  void insert_child_zone_node(const TreeZone &child_zone, InsertBNodeParams &insert_params)
   {
     const int child_zone_i = child_zone.index;
     ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
@@ -2124,16 +2120,16 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const int field_source_index = item.key;
       const int child_zone_input_index = item.value;
       lf::InputSocket &lf_attribute_set_input = child_zone_node.input(child_zone_input_index);
-      lf_attribute_set_input_by_field_source_index.add(field_source_index,
-                                                       &lf_attribute_set_input);
+      insert_params.lf_attribute_set_input_by_field_source_index.add(field_source_index,
+                                                                     &lf_attribute_set_input);
     }
     for (const auto item : child_zone_info.attribute_set_input_by_caller_propagation_index.items())
     {
       const int caller_propagation_index = item.key;
       const int child_zone_input_index = item.value;
       lf::InputSocket &lf_attribute_set_input = child_zone_node.input(child_zone_input_index);
-      lf_attribute_set_input_by_caller_propagation_index.add(caller_propagation_index,
-                                                             &lf_attribute_set_input);
+      insert_params.lf_attribute_set_input_by_caller_propagation_index.add(
+          caller_propagation_index, &lf_attribute_set_input);
     }
   }
 
