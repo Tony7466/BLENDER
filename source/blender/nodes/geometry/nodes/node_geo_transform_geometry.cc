@@ -8,7 +8,6 @@
 
 #include "BLI_math_matrix.hh"
 #include "BLI_math_matrix_types.hh"
-#include "BLI_math_quaternion.hh"
 #include "BLI_task.hh"
 
 #include "DNA_mesh_types.h"
@@ -27,9 +26,9 @@
 
 namespace blender::nodes {
 
-static bool use_translate(const math::Quaternion rotation, const float3 scale)
+static bool use_translate(const float3 rotation, const float3 scale)
 {
-  if (!math::is_equal(float4(rotation), float4(math::Quaternion::identity()), 1e7f)) {
+  if (compare_ff(math::length_squared(rotation), 0.0f, 1e-9f) != 1) {
     return false;
   }
   if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
@@ -268,7 +267,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
   b.add_input<decl::Vector>("Translation").subtype(PROP_TRANSLATION);
-  b.add_input<decl::Rotation>("Rotation");
+  b.add_input<decl::Vector>("Rotation").subtype(PROP_EULER);
   b.add_input<decl::Vector>("Scale").default_value({1, 1, 1}).subtype(PROP_XYZ);
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
@@ -277,7 +276,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   const float3 translation = params.extract_input<float3>("Translation");
-  const math::Quaternion rotation = params.extract_input<math::Quaternion>("Rotation");
+  const float3 rotation = params.extract_input<float3>("Rotation");
   const float3 scale = params.extract_input<float3>("Scale");
 
   /* Use only translation if rotation and scale don't apply. */

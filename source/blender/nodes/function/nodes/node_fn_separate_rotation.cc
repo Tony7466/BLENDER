@@ -13,14 +13,13 @@ namespace blender::nodes::node_fn_separate_rotation_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Rotation>(N_("Rotation"));
-  b.add_output<decl::Vector>(N_("Euler")).subtype(PROP_EULER).make_available([](bNode &node) {
+  b.add_input<decl::Rotation>("Rotation");
+  b.add_output<decl::Vector>("Euler").subtype(PROP_EULER).make_available([](bNode &node) {
     node.custom1 = NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ;
   });
-  b.add_output<decl::Vector>(N_("Axis")).make_available([](bNode &node) {
-    node.custom1 = NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE;
-  });
-  b.add_output<decl::Float>(N_("Angle")).subtype(PROP_ANGLE).make_available([](bNode &node) {
+  b.add_output<decl::Vector>("Axis").make_available(
+      [](bNode &node) { node.custom1 = NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE; });
+  b.add_output<decl::Float>("Angle").subtype(PROP_ANGLE).make_available([](bNode &node) {
     node.custom1 = NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE;
   });
 };
@@ -74,20 +73,63 @@ class QuaterniontoAxisAngleFunction : public mf::MultiFunction {
   }
 };
 
+class SeparateQuaternionFunction : public mf::MultiFunction {
+ public:
+  SeparateQuaternionFunction()
+  {
+    static mf::Signature signature_;
+    mf::SignatureBuilder builder{"Separate Quaternion", signature_};
+    builder.single_input<math::Quaternion>("Quaternion");
+    builder.single_output<float>("W");
+    builder.single_output<float>("X");
+    builder.single_output<float>("Y");
+    builder.single_output<float>("Z");
+    this->set_signature(&signature_);
+  }
+
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  {
+    const VArraySpan<math::Quaternion> quats = params.readonly_single_input<math::Quaternion>(
+        0, "Quaternion");
+    MutableSpan<float> w = params.uninitialized_single_output<float>(1, "W");
+    MutableSpan<float> x = params.uninitialized_single_output<float>(2, "X");
+    MutableSpan<float> y = params.uninitialized_single_output<float>(3, "Y");
+    MutableSpan<float> z = params.uninitialized_single_output<float>(4, "Z");
+    mask.foreach_index([&](const int64_t i) {
+      const math::Quaternion quat = quats[i];
+      w[i] = quat.w;
+      x[i] = quat.x;
+      y[i] = quat.y;
+      z[i] = quat.z;
+    });
+  }
+};
+
 static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
-  const auto mode = NodeCombineSeparateRotatioNMode(bnode.custom1);
-
-  static auto euler_xyz_fn = mf::build::SI1_SO<math::Quaternion, float3>(
-      "Quaternion to Euler XYZ",
-      [](const math::Quaternion quaternion) { return math::to_euler(quaternion); });
-  static QuaterniontoAxisAngleFunction axis_angle_fn;
-
-  switch (mode) {
-    case NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ:
-      return &euler_xyz_fn;
-    case NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE:
-      return &axis_angle_fn;
+  switch (NodeCombineSeparateRotationMode(bnode.custom1)) {
+    case NODE_COMBINE_SEPARATE_ROTATION_QUATERNION: {
+      static SeparateQuaternionFunction fn;
+      return &fn;
+    }
+    case NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE: {
+      static QuaterniontoAxisAngleFunction fn;
+      return &fn;
+    }
+    case NODE_COMBINE_SEPARATE_ROTATION_AXES: {
+      static auto fn = mf::build::SI2_SO<float3, float3, math::Quaternion>(
+          "Axes to Quaternion", [](float3 forward, float3 up) {
+            const float3x3 matrix = math::from_orthonormal_axes<float3x3>(math::normalize(forward),
+                                                                          math::normalize(up));
+            return math::to_quaternion(matrix);
+          });
+      return &fn;
+    }
+    case NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ: {
+      static auto fn = mf::build::SI1_SO<math::Quaternion, float3>(
+          "Quaternion to Euler XYZ", [](math::Quaternion quat) { return math::to_euler(quat); });
+      return &fn;
+    }
   }
   BLI_assert_unreachable();
   return nullptr;

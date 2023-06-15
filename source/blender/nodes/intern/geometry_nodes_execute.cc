@@ -184,7 +184,6 @@ bool id_property_type_matches_socket(const bNodeSocket &socket, const IDProperty
     case SOCK_ROTATION:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 3;
     case SOCK_RGBA:
-    case SOCK_ROTATION:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 4;
     case SOCK_BOOLEAN:
       return property.type == IDP_BOOLEAN;

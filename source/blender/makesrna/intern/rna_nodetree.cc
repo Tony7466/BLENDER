@@ -514,8 +514,10 @@ static const EnumPropertyItem rna_node_combsep_color_items[] = {
 };
 
 static const EnumPropertyItem rna_node_combine_separate_rotation_items[] = {
+    {NODE_COMBINE_SEPARATE_ROTATION_QUATERNION, "QUATERNION", ICON_NONE, "Quaternion", ""},
     {NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ, "EULER_XYZ", ICON_NONE, "Euler", ""},
     {NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE, "AXIS_ANGLE", ICON_NONE, "Axis Angle", ""},
+    {NODE_COMBINE_SEPARATE_ROTATION_AXES, "AXES", ICON_NONE, "AXES", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -12096,44 +12098,6 @@ static void rna_def_node_socket_rotation(BlenderRNA *brna,
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
-}
-
-static void rna_def_node_socket_rotation(BlenderRNA *brna,
-                                         const char *identifier,
-                                         const char *interface_idname)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
-  RNA_def_struct_ui_text(srna, "Rotation Node Socket", "Rotation value socket of a node");
-  RNA_def_struct_sdna(srna, "bNodeSocket");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueRotation", "default_value");
-
-  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_EULER);
-  RNA_def_property_float_sdna(prop, NULL, "value_euler");
-  // RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocket", NULL);
-
-  /* socket interface */
-  srna = RNA_def_struct(brna, interface_idname, "NodeSocketInterfaceStandard");
-  RNA_def_struct_ui_text(
-      srna, "Rotation Node Socket Interface", "Rotation value socket of a node");
-  RNA_def_struct_sdna(srna, "bNodeSocket");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueRotation", "default_value");
-
-  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_EULER);
-  RNA_def_property_float_sdna(prop, NULL, "value_euler");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
-
-  RNA_def_struct_sdna_from(srna, "bNodeSocket", NULL);
 }
 
 static void rna_def_node_socket_vector(BlenderRNA *brna,
