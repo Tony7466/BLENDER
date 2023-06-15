@@ -1491,13 +1491,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       }
 
+      this->build_attribute_propagation_input_node();
       this->link_attribute_set_inputs(*root_lf_graph_,
                                       attribute_set_propagation_map,
                                       attribute_set_inputs,
                                       attribute_set_source_map,
                                       socket_usage_inputs);
 
-      this->build_attribute_propagation_input_node();
       this->fix_link_cycles(socket_usage_inputs);
 
       // UsedSocketVisualizeOptions options{*this, insert_params.usage_by_socket};
@@ -1555,6 +1555,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       Vector<AttributeSetInfo> attribute_set_infos;
 
       bits::foreach_1_index(required_fields, [&](const int field_source_index) {
+        const auto &field_source = result.all_field_sources[field_source_index];
+        if (const auto *socket_field_source = std::get_if<SocketFieldSource>(&field_source.data)) {
+          if (&socket_field_source->socket->owner_node() == &geometry_output_bsocket.owner_node())
+          {
+            return;
+          }
+        }
         if (const AttributeSetInfo *info = attribute_set_source_map.lookup_ptr(field_source_index))
         {
           attribute_set_infos.append(*info);
@@ -3315,7 +3322,7 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
   GeometryNodesLazyFunctionGraphBuilder builder{btree, *lf_graph_info};
   builder.build();
 
-  // lf_graph_info_ptr = std::move(lf_graph_info);
+  lf_graph_info_ptr = std::move(lf_graph_info);
   return lf_graph_info_ptr.get();
 }
 
