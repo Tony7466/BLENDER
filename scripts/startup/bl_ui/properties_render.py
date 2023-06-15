@@ -168,10 +168,7 @@ class RENDER_PT_eevee_next_ambient_occlusion(RenderButtonsPanel, Panel):
         layout.active = props.use_gtao
         col = layout.column()
         col.prop(props, "gtao_distance")
-        col.prop(props, "gtao_factor")
         col.prop(props, "gtao_quality")
-        col.prop(props, "use_gtao_bent_normals")
-        col.prop(props, "use_gtao_bounce")
 
 
 class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):

@@ -914,13 +914,9 @@ BLI_STATIC_ASSERT_ALIGN(RayTracingData, 16)
 
 struct AOData {
   bool1 enabled;
-  bool1 use_bent_normals;
   float distance;
-  float factor;
-  float bounce_factor;
   float quality;
   int _pad0;
-  int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(AOData, 16)
 

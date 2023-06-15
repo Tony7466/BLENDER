@@ -26,6 +26,8 @@ float cone_cosine(float r)
  */
 
 #define NO_OCCLUSION_DATA OcclusionData(vec4(M_PI, -M_PI, M_PI, -M_PI), 1.0)
+#define AO_BENT_NORMALS true
+#define AO_MULTI_BOUNCE true
 
 struct OcclusionData {
   /* 4 horizons angles, one in each direction around the view vector to form a cross pattern. */
@@ -231,11 +233,11 @@ void occlusion_eval(OcclusionData data,
     visibility = saturate(dot(N, Ng) * 0.5 + 0.5);
     visibility = min(visibility, data.custom_occlusion);
 
-    if (!ao_buf.use_bent_normals) {
-      bent_normal = N;
+    if (AO_BENT_NORMALS) {
+      bent_normal = safe_normalize(N + Ng);
     }
     else {
-      bent_normal = safe_normalize(N + Ng);
+      bent_normal = N;
     }
     return;
   }
@@ -297,13 +299,13 @@ void occlusion_eval(OcclusionData data,
 
   visibility = min(visibility, data.custom_occlusion);
 
-  if (!ao_buf.use_bent_normals) {
-    bent_normal = N;
-  }
-  else {
+  if (AO_BENT_NORMALS) {
     /* NOTE: using pow(visibility, 6.0) produces NaN (see #87369). */
     float tmp = saturate(pow6(visibility));
     bent_normal = normalize(mix(bent_normal, N, tmp));
+  }
+  else {
+    bent_normal = N;
   }
 }
 
@@ -311,7 +313,7 @@ void occlusion_eval(OcclusionData data,
  * Page 78 in the .pdf version. */
 float gtao_multibounce(float visibility, vec3 albedo)
 {
-  if (ao_buf.bounce_factor == 0.0) {
+  if (!AO_MULTI_BOUNCE) {
     return visibility;
   }
 
@@ -332,9 +334,8 @@ float diffuse_occlusion(OcclusionData data, ivec2 texel, vec3 V, vec3 N, vec3 Ng
   float unused_error;
   float visibility;
   occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, unused);
-  /* Scale by user factor */
-  visibility = occlusion_pow(saturate(visibility), ao_buf.factor);
-  return visibility;
+
+  return saturate(visibility);
 }
 
 float diffuse_occlusion(
@@ -345,9 +346,8 @@ float diffuse_occlusion(
   occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, bent_normal);
 
   visibility = gtao_multibounce(visibility, albedo);
-  /* Scale by user factor */
-  visibility = occlusion_pow(saturate(visibility), ao_buf.factor);
-  return visibility;
+
+  return saturate(visibility);
 }
 
 /**
@@ -409,7 +409,5 @@ float specular_occlusion(
   float tmp = saturate(pow8(visibility));
   visibility = mix(specular_occlusion, 1.0, tmp);
 
-  /* Scale by user factor */
-  visibility = occlusion_pow(saturate(visibility), ao_buf.factor);
-  return visibility;
+  return saturate(visibility);
 }

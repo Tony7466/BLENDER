@@ -49,10 +49,7 @@ void AmbientOcclusion::init()
   }
 
   data_.distance = scene->eevee.gtao_distance;
-  data_.factor = std::max(1e-4f, scene->eevee.gtao_factor);
   data_.quality = scene->eevee.gtao_quality;
-  data_.use_bent_normals = scene->eevee.flag & SCE_EEVEE_GTAO_BENT_NORMALS;
-  data_.bounce_factor = (scene->eevee.flag & SCE_EEVEE_GTAO_BOUNCE) ? 1.0f : 0.0f;
 
   data_.push_update();
 
