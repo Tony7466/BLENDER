@@ -85,16 +85,12 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
     active_set_name = mesh->ldata.layers[active_uv_set_index].name;
   }
 
-  std::cerr << "Active UV Set name: " << active_set_name << std::endl;
-
   attributes.for_all(
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
         /* Skipping "internal" Blender properties. */
         if (attribute_id.name()[0] == '.' || attribute_id.name() == "position") {
           return true;
         }
-
-        std::cerr << "Exporting attribute: " << attribute_id.name() << std::endl;
 
         /* UV Data. */
         if (meta_data.domain == ATTR_DOMAIN_CORNER
@@ -139,7 +135,7 @@ static pxr::SdfValueTypeName convert_blender_type_to_usd(const eCustomDataType b
     case CD_PROP_QUATERNION:
       return pxr::SdfValueTypeNames->QuatfArray;
     default:
-      BLI_assert_msg(0, "Unsupported domain for mesh data.");
+      WM_reportf(RPT_WARNING, "Unsupported domain for mesh data.");
       return pxr::SdfValueTypeNames->Opaque;
   }
 }
@@ -155,7 +151,7 @@ static const pxr::TfToken convert_blender_domain_to_usd(const eAttrDomain blende
     case ATTR_DOMAIN_EDGE:
       return pxr::UsdGeomTokens->edgeOnly;
     default:
-      BLI_assert_msg(0, "Unsupported domain for mesh data.");
+      WM_reportf(RPT_WARNING, "Unsupported domain for mesh data.");
       return pxr::TfToken();
   }
 }
