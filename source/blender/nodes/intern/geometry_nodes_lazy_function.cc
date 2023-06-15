@@ -1430,7 +1430,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const bNode *bnode : nodes_to_insert) {
         this->build_output_socket_usages(*bnode, insert_params);
         if (const TreeZone *zone = zone_by_output.lookup_default(bnode, nullptr)) {
-          this->insert_child_zone_node(*zone, insert_params, {});
+          this->insert_child_zone_node(*zone, insert_params);
         }
         else {
           this->insert_node_in_graph(*bnode, insert_params);
@@ -1514,9 +1514,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       for (const int i : lf_main_input_usage_node.inputs().index_range()) {
         zone_info.lf_graph->add_link(lf_node.output(0), lf_main_input_usage_node.input(i));
       }
-      for (const int i : lf_border_link_usage_node.inputs().index_range()) {
-        zone_info.lf_graph->add_link(lf_node.output(1), lf_border_link_usage_node.input(i));
-      }
       return lf_node;
     }();
 
@@ -1564,7 +1561,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const bNode *bnode : nodes_to_insert) {
       this->build_output_socket_usages(*bnode, insert_params);
       if (const TreeZone *child_zone = zone_by_output.lookup_default(bnode, nullptr)) {
-        this->insert_child_zone_node(*child_zone, insert_params, zone.border_links);
+        this->insert_child_zone_node(*child_zone, insert_params);
       }
       else {
         this->insert_node_in_graph(*bnode, insert_params);
@@ -1584,6 +1581,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                                                                 insert_params);
       for (lf::InputSocket *lf_to : lf_link_targets) {
         zone_info.lf_graph->add_link(lf_from, *lf_to);
+      }
+      lf::InputSocket &lf_usage_output = lf_border_link_usage_node.input(border_link_i);
+      if (lf::OutputSocket *lf_usage = usage_by_socket.lookup_default(border_link.tosock, nullptr))
+      {
+        zone_info.lf_graph->add_link(*lf_usage, lf_usage_output);
+      }
+      else {
+        static const bool static_false = false;
+        lf_usage_output.set_default_value(&static_false);
       }
     }
 
@@ -1837,9 +1843,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     return node;
   }
 
-  void insert_child_zone_node(const TreeZone &child_zone,
-                              InsertBNodeParams &insert_params,
-                              const Span<const bNodeLink *> current_zone_border_links)
+  void insert_child_zone_node(const TreeZone &child_zone, InsertBNodeParams &insert_params)
   {
     const int child_zone_i = child_zone.index;
     ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
@@ -1875,16 +1879,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           child_zone_info.border_link_input_indices[child_border_link_i]);
       const bNodeLink &link = *child_border_links[child_border_link_i];
       insert_params.child_zones_border_inputs.add(&link, &child_border_link_input);
-      const int current_border_link_i = current_zone_border_links.first_index_try(&link);
       lf::OutputSocket &lf_usage = child_zone_node.output(
           child_zone_info.border_link_input_usage_indices[child_border_link_i]);
-      if (current_border_link_i == -1) {
-        insert_params.input_socket_map.add(link.tosock, &child_border_link_input);
-        insert_params.usage_by_socket.add(link.tosock, &lf_usage);
-      }
-      else {
-        /* TODO: Handle socket usage. */
-      }
+      insert_params.input_socket_map.add(link.tosock, &child_border_link_input);
+      insert_params.usage_by_socket.add(link.tosock, &lf_usage);
     }
   }
 
