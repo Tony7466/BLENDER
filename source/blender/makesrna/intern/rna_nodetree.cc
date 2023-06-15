@@ -513,14 +513,6 @@ static const EnumPropertyItem rna_node_combsep_color_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem rna_node_combine_separate_rotation_items[] = {
-    {NODE_COMBINE_SEPARATE_ROTATION_QUATERNION, "QUATERNION", ICON_NONE, "Quaternion", ""},
-    {NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ, "EULER_XYZ", ICON_NONE, "Euler", ""},
-    {NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE, "AXIS_ANGLE", ICON_NONE, "Axis Angle", ""},
-    {NODE_COMBINE_SEPARATE_ROTATION_AXES, "AXES", ICON_NONE, "AXES", ""},
-    {0, NULL, 0, NULL, NULL},
-};
-
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},
@@ -5461,28 +5453,6 @@ static void def_fn_combsep_color(StructRNA *srna)
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_node_combsep_color_items);
   RNA_def_property_ui_text(prop, "Mode", "Mode of color processing");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_fn_combine_rotation(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_node_combine_separate_rotation_items);
-  RNA_def_property_ui_text(prop, "Mode", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_fn_separate_rotation(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_node_combine_separate_rotation_items);
-  RNA_def_property_ui_text(prop, "Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
