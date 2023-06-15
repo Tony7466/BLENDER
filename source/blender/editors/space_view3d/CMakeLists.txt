@@ -39,17 +39,17 @@ set(SRC
   view3d_cursor_snap.c
   view3d_draw.cc
   view3d_edit.c
-  view3d_gizmo_armature.c
-  view3d_gizmo_camera.c
-  view3d_gizmo_empty.c
-  view3d_gizmo_forcefield.c
-  view3d_gizmo_light.c
-  view3d_gizmo_navigate.c
-  view3d_gizmo_navigate_type.c
-  view3d_gizmo_preselect.c
+  view3d_gizmo_armature.cc
+  view3d_gizmo_camera.cc
+  view3d_gizmo_empty.cc
+  view3d_gizmo_forcefield.cc
+  view3d_gizmo_light.cc
+  view3d_gizmo_navigate.cc
+  view3d_gizmo_navigate_type.cc
+  view3d_gizmo_preselect.cc
   view3d_gizmo_preselect_type.cc
   view3d_gizmo_ruler.cc
-  view3d_gizmo_tool_generic.c
+  view3d_gizmo_tool_generic.cc
   view3d_header.c
   view3d_iterators.cc
   view3d_navigate.cc
