@@ -2893,22 +2893,20 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
 
 float2 nodeToView(const bNode *node, const float2 loc)
 {
-  float2 transform = loc;
+  float2 view_loc = loc;
   for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
-    const float2 parent_offset = {node_iter->locx, node_iter->locy};
-    transform += parent_offset;
+    view_loc += float2(node_iter->locx, node_iter->locy);
   }
-  return transform;
+  return view_loc;
 }
 
 float2 nodeFromView(const bNode *node, const float2 loc)
 {
-  float2 transform = loc;
+  float2 loc_from_viuw = loc;
   for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
-    const float2 parent_offset = {node_iter->locx, node_iter->locy};
-    transform -= parent_offset;
+    loc_from_viuw -= float2(node_iter->locx, node_iter->locy);
   }
-  return transform;
+  return loc_from_viuw;
 }
 
 }  // namespace blender::bke
