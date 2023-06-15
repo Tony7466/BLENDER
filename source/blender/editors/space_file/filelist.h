@@ -75,7 +75,11 @@ void filelist_free_icons(void);
 void filelist_file_get_full_path(const struct FileList *filelist,
                                  const FileDirEntry *file,
                                  char r_filepath[/*FILE_MAX_LIBEXTRA*/]);
+void filelist_prepare_preview_for_display(const struct bContext *C,
+                                          struct FileList *filelist,
+                                          const int index);
 struct ImBuf *filelist_getimage(struct FileList *filelist, int index);
+struct PreviewImage *filelist_getpreview(struct FileList *filelist, const int index);
 struct ImBuf *filelist_file_getimage(const FileDirEntry *file);
 struct ImBuf *filelist_geticon_image_ex(const FileDirEntry *file);
 struct ImBuf *filelist_geticon_image(struct FileList *filelist, int index);

@@ -141,7 +141,7 @@ struct IconPreview {
   Depsgraph *depsgraph; /* May be nullptr (see #WM_OT_previews_ensure). */
   Scene *scene;
   void *owner;
-  /** May be nullptr! (see #ICON_TYPE_PREVIEW case in #ui_icon_ensure_deferred()). */
+  /** May be nullptr! (see #ICON_TYPE_PREVIEW case in #UI_icon_ensure_deferred()). */
   ID *id;
   ID *id_copy;
   ListBase sizes;
@@ -1845,6 +1845,9 @@ void PreviewLoadJob::run_fn(void *customdata, bool *stop, bool *do_update, float
                      preview->h[request->icon_size],
                      preview->rect[request->icon_size]);
       IMB_freeImBuf(thumb);
+    }
+    else {
+      preview->tag |= PRV_TAG_DEFERRED_NOT_FOUND;
     }
 
     *do_update = true;

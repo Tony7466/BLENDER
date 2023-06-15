@@ -103,7 +103,14 @@ int BKE_icon_preview_ensure(struct ID *id, struct PreviewImage *preview);
  * \note Transforms ownership of \a ibuf to the newly created icon.
  */
 int BKE_icon_imbuf_create(struct ImBuf *ibuf) ATTR_WARN_UNUSED_RESULT;
-struct ImBuf *BKE_icon_imbuf_get_buffer(int icon_id) ATTR_WARN_UNUSED_RESULT;
+/**
+ * \param quiet: Don't print an error when the icon isn't an image buffer icon.
+ */
+struct ImBuf *BKE_icon_imbuf_get_buffer(int icon_id, bool quiet) ATTR_WARN_UNUSED_RESULT;
+/**
+ * \param quiet: Don't print an error when the icon isn't a preview image icon.
+ */
+struct PreviewImage *BKE_icon_preview_get(int icon_id, bool quiet) ATTR_WARN_UNUSED_RESULT;
 
 /**
  * Retrieve icon for id.

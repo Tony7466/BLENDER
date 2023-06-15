@@ -567,7 +567,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
         const int but_flag = ((a == data->active) ? UI_ACTIVE : 0) | data->items.but_flags[a];
 
         /* ensure icon is up-to-date */
-        ui_icon_ensure_deferred(C, data->items.icons[a], data->preview);
+        UI_icon_ensure_deferred(C, data->items.icons[a], data->preview);
 
         ui_searchbox_butrect(&rect, data, a);
 

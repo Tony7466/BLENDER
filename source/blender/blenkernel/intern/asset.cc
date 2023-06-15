@@ -179,14 +179,6 @@ IDProperty *BKE_asset_metadata_idprop_find(const AssetMetaData *asset_data, cons
   return IDP_GetPropertyFromGroup(asset_data->properties, name);
 }
 
-/* Queries -------------------------------------------- */
-
-PreviewImage *BKE_asset_metadata_preview_get_from_id(const AssetMetaData * /*asset_data*/,
-                                                     const ID *id)
-{
-  return BKE_previewimg_id_get(id);
-}
-
 /* .blend file API -------------------------------------------- */
 
 void BKE_asset_metadata_write(BlendWriter *writer, AssetMetaData *asset_data)

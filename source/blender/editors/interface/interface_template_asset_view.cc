@@ -251,7 +251,6 @@ void uiTemplateAssetView(uiLayout *layout,
   }
 
   ED_assetlist_storage_fetch(&asset_library_ref, C);
-  ED_assetlist_ensure_previews_job(&asset_library_ref, C);
   const int tot_items = ED_assetlist_size(&asset_library_ref);
 
   populate_asset_collection(asset_library_ref, *assets_dataptr, assets_propname);

@@ -24,6 +24,7 @@
 
 #include "AS_asset_library.h"
 #include "AS_asset_library.hh"
+#include "AS_asset_representation.h"
 #include "AS_asset_representation.hh"
 
 #include "MEM_guardedalloc.h"
@@ -75,6 +76,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "UI_interface.h"
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
 
@@ -114,10 +116,6 @@ struct FileListInternEntry {
   struct {
     /** When showing local IDs (FILE_MAIN, FILE_MAIN_ASSET), the ID this file entry represents. */
     ID *id;
-
-    /* For the few file types that have the preview already in memory. For others, there's delayed
-     * preview reading from disk. Non-owning pointer. */
-    PreviewImage *preview_image;
   } local_data;
 
   /* References an asset in the asset library storage. */
@@ -1165,16 +1163,31 @@ static FileDirEntry *filelist_geticon_get_file(FileList *filelist, const int ind
   return filelist_file(filelist, index);
 }
 
+void filelist_prepare_preview_for_display(const bContext *C, FileList *filelist, const int index)
+{
+  FileDirEntry *file = filelist_geticon_get_file(filelist, index);
+  if (file->preview_icon_id) {
+    UI_icon_ensure_deferred(C, file->preview_icon_id, true);
+  }
+}
+
 ImBuf *filelist_getimage(FileList *filelist, const int index)
 {
   FileDirEntry *file = filelist_geticon_get_file(filelist, index);
 
-  return file->preview_icon_id ? BKE_icon_imbuf_get_buffer(file->preview_icon_id) : nullptr;
+  return file->preview_icon_id ? BKE_icon_imbuf_get_buffer(file->preview_icon_id, true) : nullptr;
+}
+
+PreviewImage *filelist_getpreview(FileList *filelist, const int index)
+{
+  FileDirEntry *file = filelist_geticon_get_file(filelist, index);
+
+  return file->preview_icon_id ? BKE_icon_preview_get(file->preview_icon_id, true) : nullptr;
 }
 
 ImBuf *filelist_file_getimage(const FileDirEntry *file)
 {
-  return file->preview_icon_id ? BKE_icon_imbuf_get_buffer(file->preview_icon_id) : nullptr;
+  return file->preview_icon_id ? BKE_icon_imbuf_get_buffer(file->preview_icon_id, true) : nullptr;
 }
 
 ImBuf *filelist_geticon_image_ex(const FileDirEntry *file)
@@ -1406,10 +1419,11 @@ static void filelist_entry_clear(FileDirEntry *entry)
   if (entry->redirection_path) {
     MEM_freeN(entry->redirection_path);
   }
+  //  if (entry->preview_icon_id && ((entry->flags & FILE_ENTRY_ICON_DELETE) != 0)) {
   if (entry->preview_icon_id) {
     BKE_icon_delete(entry->preview_icon_id);
-    entry->preview_icon_id = 0;
   }
+  entry->preview_icon_id = 0;
 }
 
 static void filelist_entry_free(FileDirEntry *entry)
@@ -1633,9 +1647,16 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   }
 
   FileListInternEntry *intern_entry = filelist->filelist_intern.filtered[index];
-  PreviewImage *preview_in_memory = intern_entry->local_data.preview_image;
+  PreviewImage *preview_in_memory = nullptr;
+  if (entry->asset) {
+    preview_in_memory = AS_asset_representation_preview_request(entry->asset);
+  }
+
   if (preview_in_memory && !BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW)) {
     /* Nothing to set yet. Wait for next call. */
+    return;
+  }
+  if (preview_in_memory && preview_in_memory->tag & PRV_TAG_DEFERRED_NOT_FOUND) {
     return;
   }
 
@@ -1652,10 +1673,7 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     /* TODO(mano-wii): No need to use the thread API here. */
     BLI_assert(BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW));
     preview->filepath[0] = '\0';
-    ImBuf *imbuf = BKE_previewimg_to_imbuf(preview_in_memory, ICON_SIZE_PREVIEW);
-    if (imbuf) {
-      preview->icon_id = BKE_icon_imbuf_create(imbuf);
-    }
+    preview->icon_id = BKE_icon_preview_ensure(intern_entry->local_data.id, preview_in_memory);
     BLI_thread_queue_push(cache->previews_done, preview);
   }
   else {
@@ -2099,15 +2117,15 @@ static FileDirEntry *filelist_file_create_entry(FileList *filelist, const int in
   }
   ret->id = entry->local_data.id;
   ret->asset = reinterpret_cast<::AssetRepresentation *>(entry->asset);
-  /* For some file types the preview is already available. */
-  if (entry->local_data.preview_image &&
-      BKE_previewimg_is_finished(entry->local_data.preview_image, ICON_SIZE_PREVIEW))
-  {
-    ImBuf *ibuf = BKE_previewimg_to_imbuf(entry->local_data.preview_image, ICON_SIZE_PREVIEW);
-    if (ibuf) {
-      ret->preview_icon_id = BKE_icon_imbuf_create(ibuf);
+
+  /* Shortcut: IDs may already have their preview in memory. No need to load them in a thread. */
+  if (ret->id) {
+    PreviewImage *preview = BKE_previewimg_id_get(ret->id);
+    if (preview && BKE_previewimg_is_finished(preview, ICON_SIZE_PREVIEW)) {
+      ret->preview_icon_id = BKE_icon_preview_ensure(entry->local_data.id, preview);
     }
   }
+
   if (entry->blenderlib_has_no_preview) {
     ret->flags |= FILE_ENTRY_BLENDERLIB_NO_PREVIEW;
   }
@@ -3854,8 +3872,7 @@ static void filelist_readjob_main_assets_add_items(FileListReadJob *job_params,
     entry->typeflag |= FILE_TYPE_BLENDERLIB | FILE_TYPE_ASSET;
     entry->blentype = GS(id_iter->name);
     entry->uid = filelist_uid_generate(filelist);
-    entry->local_data.preview_image = BKE_asset_metadata_preview_get_from_id(id_iter->asset_data,
-                                                                             id_iter);
+
     entry->local_data.id = id_iter;
     if (job_params->load_asset_library) {
       entry->asset = &job_params->load_asset_library->add_local_id_asset(entry->relpath, *id_iter);

@@ -1366,7 +1366,7 @@ static void ui_studiolight_icon_job_end(void *customdata)
   BKE_studiolight_set_free_function(sl, &ui_studiolight_free_function, nullptr);
 }
 
-void ui_icon_ensure_deferred(const bContext *C, const int icon_id, const bool big)
+void UI_icon_ensure_deferred(const bContext *C, const int icon_id, const bool big)
 {
   Icon *icon = BKE_icon_get(icon_id);
 

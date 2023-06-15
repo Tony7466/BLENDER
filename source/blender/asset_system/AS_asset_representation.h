@@ -28,6 +28,8 @@ ID_Type AS_asset_representation_id_type_get(const AssetRepresentation *asset)
     ATTR_WARN_UNUSED_RESULT;
 AssetMetaData *AS_asset_representation_metadata_get(const AssetRepresentation *asset)
     ATTR_WARN_UNUSED_RESULT;
+int AS_asset_representation_preview_icon_id_get(const AssetRepresentation *asset_handle)
+    ATTR_WARN_UNUSED_RESULT;
 struct ID *AS_asset_representation_local_id_get(const AssetRepresentation *asset)
     ATTR_WARN_UNUSED_RESULT;
 bool AS_asset_representation_is_local_id(const AssetRepresentation *asset) ATTR_WARN_UNUSED_RESULT;
@@ -43,6 +45,10 @@ bool AS_asset_representation_use_relative_path_get(const AssetRepresentation *as
  */
 AssetWeakReference *AS_asset_representation_weak_reference_create(const AssetRepresentation *asset)
     ATTR_WARN_UNUSED_RESULT;
+
+/** See #AssetRepresentation::request_preview. */
+struct PreviewImage *AS_asset_representation_preview_request(
+    const AssetRepresentation *asset_handle);
 
 #ifdef __cplusplus
 }

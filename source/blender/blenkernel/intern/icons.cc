@@ -814,7 +814,9 @@ int BKE_icon_preview_ensure(ID *id, PreviewImage *preview)
   }
 
   Icon *icon = icon_create(preview->icon_id, ICON_DATA_PREVIEW, preview);
-  icon->flag = ICON_FLAG_MANAGED;
+  if ((preview->tag & PRV_TAG_DEFFERED) == 0) {
+    icon->flag = ICON_FLAG_MANAGED;
+  }
 
   return preview->icon_id;
 }
@@ -829,7 +831,7 @@ int BKE_icon_imbuf_create(ImBuf *ibuf)
   return icon_id;
 }
 
-ImBuf *BKE_icon_imbuf_get_buffer(int icon_id)
+ImBuf *BKE_icon_imbuf_get_buffer(int icon_id, bool quiet)
 {
   Icon *icon = icon_ghash_lookup(icon_id);
   if (!icon) {
@@ -837,11 +839,30 @@ ImBuf *BKE_icon_imbuf_get_buffer(int icon_id)
     return nullptr;
   }
   if (icon->obj_type != ICON_DATA_IMBUF) {
-    CLOG_ERROR(&LOG, "icon ID does not refer to an imbuf icon: %d", icon_id);
+    if (!quiet) {
+      CLOG_ERROR(&LOG, "icon ID does not refer to an imbuf icon: %d", icon_id);
+    }
     return nullptr;
   }
 
   return (ImBuf *)icon->obj;
+}
+
+PreviewImage *BKE_icon_preview_get(int icon_id, bool quiet)
+{
+  Icon *icon = icon_ghash_lookup(icon_id);
+  if (!icon) {
+    CLOG_ERROR(&LOG, "no icon for icon ID: %d", icon_id);
+    return nullptr;
+  }
+  if (icon->obj_type != ICON_DATA_PREVIEW) {
+    if (!quiet) {
+      CLOG_ERROR(&LOG, "icon ID does not refer to a preview icon: %d", icon_id);
+    }
+    return nullptr;
+  }
+
+  return (PreviewImage *)icon->obj;
 }
 
 Icon *BKE_icon_get(const int icon_id)

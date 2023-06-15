@@ -12,6 +12,7 @@
 #include "AS_asset_representation.hh"
 
 #include "BKE_blendfile.h"
+#include "BKE_icons.h"
 
 #include "BLI_string.h"
 
@@ -46,9 +47,13 @@ ID_Type ED_asset_handle_get_id_type(const AssetHandle *asset_handle)
   return AS_asset_representation_id_type_get(asset_handle->file_data->asset);
 }
 
-int ED_asset_handle_get_preview_icon_id(const AssetHandle *asset)
+int ED_asset_handle_get_preview_icon_id(const AssetHandle *asset_handle)
 {
-  return asset->file_data->preview_icon_id;
+  PreviewImage *preview = AS_asset_representation_preview_request(asset_handle->file_data->asset);
+  /* Can be null. */
+  ID *local_id = AS_asset_representation_local_id_get(asset_handle->file_data->asset);
+
+  return BKE_icon_preview_ensure(local_id, preview);
 }
 
 void ED_asset_handle_get_full_library_path(const AssetHandle *asset_handle,

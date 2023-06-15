@@ -1460,6 +1460,13 @@ int UI_text_colorid_from_report_type(int type);
 int UI_icon_from_event_type(short event_type, short event_value);
 int UI_icon_from_keymap_item(const struct wmKeyMapItem *kmi, int r_icon_mod[4]);
 
+/**
+ * Ensure the icon with \a icon_id is prepared for display, triggering asynchronous loading if
+ * needed. Displaying icons in buttons handles this already, this is just necessary when drawing
+ * icons by other means. Redundant calls for the same \a icon_id are harmless.
+ */
+void UI_icon_ensure_deferred(const struct bContext *C, int icon_id, bool big);
+
 uiBut *uiDefPulldownBut(uiBlock *block,
                         uiBlockCreateFunc func,
                         void *arg,

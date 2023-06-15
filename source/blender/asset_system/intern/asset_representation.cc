@@ -8,9 +8,15 @@
 
 #include <stdexcept>
 
+#include "BLI_sys_types.h"
+
+#include "BKE_icons.h"
+
 #include "DNA_ID.h"
 #include "DNA_asset_types.h"
 #include "DNA_userdef_types.h"
+
+#include "IMB_thumbs.h"
 
 #include "AS_asset_identifier.hh"
 #include "AS_asset_library.hh"
@@ -78,6 +84,26 @@ std::unique_ptr<AssetWeakReference> AssetRepresentation::make_weak_reference() c
   }
 
   return AssetWeakReference::make_reference(*owner_asset_library_, identifier_);
+}
+
+PreviewImage *AssetRepresentation::request_preview() const
+{
+  if (is_local_id_) {
+    return BKE_previewimg_id_get(local_asset_id_);
+  }
+
+  if (external_asset_.preview) {
+    return external_asset_.preview;
+  }
+
+  StringRefNull asset_identifier = get_identifier().library_relative_identifier();
+  std::string full_path = get_identifier().full_path();
+
+  /* Request a deferred preview. */
+  external_asset_.preview = BKE_previewimg_cached_thumbnail_read(
+      asset_identifier.c_str(), full_path.c_str(), THB_SOURCE_BLEND, false);
+
+  return external_asset_.preview;
 }
 
 StringRefNull AssetRepresentation::get_name() const
@@ -238,6 +264,13 @@ AssetWeakReference *AS_asset_representation_weak_reference_create(
       reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
   std::unique_ptr<AssetWeakReference> weak_ref = asset->make_weak_reference();
   return MEM_new<AssetWeakReference>(__func__, std::move(*weak_ref));
+}
+
+PreviewImage *AS_asset_representation_preview_request(const AssetRepresentation *asset_handle)
+{
+  const asset_system::AssetRepresentation *asset =
+      reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
+  return asset->request_preview();
 }
 
 /** \} */

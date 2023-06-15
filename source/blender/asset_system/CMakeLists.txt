@@ -7,6 +7,7 @@ set(INC
   intern
   ../blenkernel
   ../blenlib
+  ../imbuf
   ../makesdna
   ../../../intern/clog
   ../../../intern/guardedalloc

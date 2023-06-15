@@ -4278,7 +4278,7 @@ static uiBut *ui_def_but(uiBlock *block,
 void ui_def_but_icon(uiBut *but, const int icon, const int flag)
 {
   if (icon) {
-    ui_icon_ensure_deferred(static_cast<const bContext *>(but->block->evil_C),
+    UI_icon_ensure_deferred(static_cast<const bContext *>(but->block->evil_C),
                             icon,
                             (flag & UI_BUT_ICON_PREVIEW) != 0);
   }

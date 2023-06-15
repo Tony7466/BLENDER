@@ -588,6 +588,7 @@ enum {
   PRV_TAG_DEFFERED_RENDERING = (1 << 1),
   /** Deferred preview should be deleted asap. */
   PRV_TAG_DEFFERED_DELETE = (1 << 2),
+  PRV_TAG_DEFERRED_NOT_FOUND = (1 << 3),
 };
 
 typedef struct PreviewImage {

@@ -100,7 +100,6 @@ class PreviewTimer {
 class AssetList : NonCopyable {
   FileListWrapper filelist_;
   AssetLibraryReference library_ref_;
-  PreviewTimer previews_timer_;
 
  public:
   AssetList() = delete;
@@ -112,7 +111,6 @@ class AssetList : NonCopyable {
 
   void setup();
   void fetch(const bContext &C);
-  void ensurePreviewsJob(const bContext *C);
   void clear(bContext *C);
 
   AssetHandle asset_get_by_index(int index) const;
@@ -223,31 +221,6 @@ void AssetList::iterate(AssetListIterFn fn) const
 
     return fn(asset);
   });
-}
-
-void AssetList::ensurePreviewsJob(const bContext *C)
-{
-  FileList *files = filelist_;
-  int numfiles = filelist_files_ensure(files);
-
-  filelist_cache_previews_set(files, true);
-  /* TODO fetch all previews for now. */
-  /* Add one extra entry to ensure nothing is lost because of integer division. */
-  filelist_file_cache_slidingwindow_set(files, numfiles / 2 + 1);
-  filelist_file_cache_block(files, 0);
-  filelist_cache_previews_update(files);
-
-  {
-    const bool previews_running = filelist_cache_previews_running(files) &&
-                                  !filelist_cache_previews_done(files);
-    if (previews_running) {
-      previews_timer_.ensureRunning(C);
-    }
-    else {
-      /* Preview is not running, no need to keep generating update events! */
-      previews_timer_.stop(C);
-    }
-  }
 }
 
 void AssetList::clear(bContext *C)
@@ -450,16 +423,6 @@ bool ED_assetlist_is_loaded(const AssetLibraryReference *library_reference)
     return false;
   }
   return list->isLoaded();
-}
-
-void ED_assetlist_ensure_previews_job(const AssetLibraryReference *library_reference,
-                                      const bContext *C)
-{
-
-  AssetList *list = AssetListStorage::lookup_list(*library_reference);
-  if (list) {
-    list->ensurePreviewsJob(C);
-  }
 }
 
 void ED_assetlist_clear(const AssetLibraryReference *library_reference, bContext *C)

@@ -72,9 +72,6 @@ void BKE_asset_metadata_idprop_ensure(struct AssetMetaData *asset_data, struct I
 struct IDProperty *BKE_asset_metadata_idprop_find(const struct AssetMetaData *asset_data,
                                                   const char *name) ATTR_WARN_UNUSED_RESULT;
 
-struct PreviewImage *BKE_asset_metadata_preview_get_from_id(const struct AssetMetaData *asset_data,
-                                                            const struct ID *owner_id);
-
 void BKE_asset_metadata_write(struct BlendWriter *writer, struct AssetMetaData *asset_data);
 void BKE_asset_metadata_read(struct BlendDataReader *reader, struct AssetMetaData *asset_data);
 

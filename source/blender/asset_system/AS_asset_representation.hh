@@ -26,6 +26,7 @@
 
 struct AssetMetaData;
 struct ID;
+struct PreviewImage;
 
 namespace blender::asset_system {
 
@@ -45,6 +46,8 @@ class AssetRepresentation {
     std::string name;
     int id_type = 0;
     std::unique_ptr<AssetMetaData> metadata_ = nullptr;
+
+    mutable PreviewImage *preview = nullptr; /* Non-owning (preview image cache owns it). */
   };
   union {
     ExternalAsset external_asset_;
@@ -86,6 +89,23 @@ class AssetRepresentation {
    * A weak reference can only be created if an asset representation is owned by an asset library.
    */
   std::unique_ptr<AssetWeakReference> make_weak_reference() const;
+
+  /**
+   * Request the preview for this asset. The returned preview may not contain the actual image yet,
+   * which can be lazy-loaded from disk. For example when displaying previews, the UI will spawn a
+   * thread to lazy-load pending previews from disk, while keeping the UI responsive. That means
+   * that this function is efficient and doesn't do any loading or heavy processing itself.
+   *
+   * To enforce immediate loading of the preview image from disk, #BKE_previewimg_ensure() can be
+   * called on the returned preview.
+   *
+   * \warning Must be called from the main thread.
+   *
+   * \return the preview or null if the asset has no preview. Note that external assets may not
+   *         have a preview, but this function returns non-null. It's only clear that an external
+   *         asset doesn't have a preview when attempting to load it from disk failed.
+   */
+  PreviewImage *request_preview() const;
 
   StringRefNull get_name() const;
   ID_Type get_id_type() const;

@@ -338,10 +338,32 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
   }
 }
 
+struct FilePreview {
+  FilePreview() = default;
+  FilePreview(ImBuf &ibuf) : w(ibuf.x), h(ibuf.y), data(ibuf.byte_buffer.data) {}
+  FilePreview(PreviewImage &preview)
+      : w(preview.w[ICON_SIZE_PREVIEW]),
+        h(preview.h[ICON_SIZE_PREVIEW]),
+        data(reinterpret_cast<uint8_t *>(preview.rect[ICON_SIZE_PREVIEW]))
+  {
+  }
+  FilePreview(const FilePreview &) = default;
+  FilePreview &operator=(const FilePreview &) = default;
+
+  bool is_valid() const
+  {
+    return data != nullptr;
+  }
+
+  int w = 0;
+  int h = 0;
+  uint8_t *data = nullptr;
+};
+
 static void file_draw_preview(const FileDirEntry *file,
                               const rcti *tile_draw_rect,
                               const float icon_aspect,
-                              ImBuf *imb,
+                              const FilePreview &preview,
                               const int icon,
                               FileLayout *layout,
                               const bool is_icon,
@@ -360,23 +382,23 @@ static void file_draw_preview(const FileDirEntry *file,
                       (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
 
-  BLI_assert(imb != nullptr);
+  BLI_assert(preview.is_valid());
 
-  ui_imbx = imb->x * UI_SCALE_FAC;
-  ui_imby = imb->y * UI_SCALE_FAC;
+  ui_imbx = preview.w * UI_SCALE_FAC;
+  ui_imby = preview.h * UI_SCALE_FAC;
   /* Unlike thumbnails, icons are not scaled up. */
   if (((ui_imbx > layout->prv_w) || (ui_imby > layout->prv_h)) ||
       (!is_icon && ((ui_imbx < layout->prv_w) || (ui_imby < layout->prv_h))))
   {
-    if (imb->x > imb->y) {
+    if (preview.w > preview.h) {
       scaledx = float(layout->prv_w);
-      scaledy = (float(imb->y) / float(imb->x)) * layout->prv_w;
-      scale = scaledx / imb->x;
+      scaledy = (float(preview.h) / float(preview.w)) * layout->prv_w;
+      scale = scaledx / preview.w;
     }
     else {
       scaledy = float(layout->prv_h);
-      scaledx = (float(imb->x) / float(imb->y)) * layout->prv_h;
-      scale = scaledy / imb->y;
+      scaledx = (float(preview.w) / float(preview.h)) * layout->prv_h;
+      scale = scaledy / preview.h;
     }
   }
   else {
@@ -424,11 +446,11 @@ static void file_draw_preview(const FileDirEntry *file,
   immDrawPixelsTexTiled_scaling(&state,
                                 float(xco),
                                 float(yco),
-                                imb->x,
-                                imb->y,
+                                preview.w,
+                                preview.h,
                                 GPU_RGBA8,
                                 true,
-                                imb->byte_buffer.data,
+                                preview.data,
                                 scale,
                                 scale,
                                 1.0f,
@@ -902,7 +924,6 @@ void file_draw_list(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
   FileList *files = sfile->files;
   FileDirEntry *file;
-  ImBuf *imb;
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   int numfiles;
   int numfiles_layout;
@@ -1018,10 +1039,22 @@ void file_draw_list(const bContext *C, ARegion *region)
 
     if (FILE_IMGDISPLAY == params->display) {
       const int icon = filelist_geticon(files, i, false);
+      FilePreview preview_ref;
+      ImBuf *imb = nullptr;
+
+      filelist_prepare_preview_for_display(C, files, i);
+
       is_icon = 0;
       imb = filelist_getimage(files, i);
-      if (!imb) {
+      if (imb) {
+        preview_ref = {*imb};
+      }
+      else if (PreviewImage *preview = filelist_getpreview(files, i)) {
+        preview_ref = {*preview};
+      }
+      else {
         imb = filelist_geticon_image(files, i);
+        preview_ref = {*imb};
         is_icon = 1;
       }
 
@@ -1029,7 +1062,7 @@ void file_draw_list(const bContext *C, ARegion *region)
       file_draw_preview(file,
                         &tile_draw_rect,
                         thumb_icon_aspect,
-                        imb,
+                        preview_ref,
                         icon,
                         layout,
                         is_icon,
