@@ -128,7 +128,7 @@ ccl_device float2 concentric_sample_disk(const float2 rand)
 
 /* sample direction uniformly distributed in cone, using the stratification-preserving
  * concentric_sample_disk as a base. */
-ccl_device float3 concentric_sample_uniform_cone(const float2 rand, const float cosAngle)
+ccl_device float3 concentric_sample_uniform_cone(const float2 rand, const float one_minus_cosangle)
 {
   const float2 xy = concentric_sample_disk(rand);
 
@@ -154,15 +154,15 @@ ccl_device float3 concentric_sample_uniform_cone(const float2 rand, const float 
    * r_cone(r_disk) = r_cone(rand(r_disk)) = sqrt(1 - mix(cosThetaMin, 1, r_disk^2))^2)
    *
    * In practise, we need to replace rand with 1-rand to preserve the stratification, but since
-   * it's uniform, that's fine.
-   */
-  const float r2_disk = len_squared(xy);
-  const float r2_cone = 1.0f - sqr(mix(cosAngle, 1.0f, 1.0f - r2_disk));
+   * it's uniform, that's fine. From there, it's just simplification of terms to get the result
+   * below. */
+  const float r2 = len_squared(xy);
+  const float z = 1.0f - r2 * one_minus_cosangle;
 
   /* Multiplier to remap the xy coords that we got from disk sampling to the new radius. */
-  const float fac = safe_sqrtf(r2_cone / r2_disk);
+  const float fac = safe_sqrtf(one_minus_cosangle * (2.0f - one_minus_cosangle * r2));
 
-  return make_float3(xy.x * fac, xy.y * fac, sqrtf(1.0f - r2_cone));
+  return make_float3(xy.x * fac, xy.y * fac, z);
 }
 
 /* sample point in unit polygon with given number of corners and rotation */

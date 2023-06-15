@@ -17,8 +17,8 @@ ccl_device_inline bool distant_light_sample(const ccl_global KernelLight *klight
   /* distant light */
   float3 D = klight->co;
 
-  if (klight->distant.cosangle != 1.0f) {
-    const float3 cone = concentric_sample_uniform_cone(rand, klight->distant.cosangle);
+  if (klight->distant.angle > 0.0f) {
+    const float3 cone = concentric_sample_uniform_cone(rand, klight->distant.one_minus_cosangle);
     D = cone.z * D + cone.x * klight->distant.axis_u + cone.y * klight->distant.axis_v;
   }
 
@@ -47,15 +47,11 @@ ccl_device bool distant_light_intersect(const ccl_global KernelLight *klight,
 {
   kernel_assert(klight->type == LIGHT_DISTANT);
 
-  if (klight->distant.cosangle == 1.0f) {
+  if (klight->distant.angle == 0.0f) {
     return false;
   }
 
-  const float3 lightD = klight->co;
-  const float costheta = dot(-lightD, ray->D);
-  const float cosangle = klight->distant.cosangle;
-
-  if (costheta < cosangle) {
+  if (vector_angle(-klight->co, ray->D) > klight->distant.angle) {
     return false;
   }
 
@@ -73,7 +69,6 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
 {
   ccl_global const KernelLight *klight = &kernel_data_fetch(lights, lamp);
   const int shader = klight->shader_id;
-  const float cosangle = klight->distant.cosangle;
   const LightType type = (LightType)klight->type;
 
   if (type != LIGHT_DISTANT) {
@@ -82,11 +77,9 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
   if (!(shader & SHADER_USE_MIS)) {
     return false;
   }
-  if (cosangle == 1.0f) {
+  if (klight->distant.angle == 0.0f) {
     return false;
   }
-
-  float costheta = dot(-klight->co, ray_D);
 
   /* Workaround to prevent a hang in the classroom scene with AMD HIP drivers 22.10,
    * Remove when a compiler fix is available. */
@@ -94,8 +87,9 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
   ls->shader = klight->shader_id;
 #endif
 
-  if (costheta < cosangle)
+  if (vector_angle(-klight->co, ray_D) > klight->distant.angle) {
     return false;
+  }
 
   ls->type = type;
 #ifndef __HIP__
