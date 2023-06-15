@@ -6829,7 +6829,7 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
   }
 
   row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, engine_supports_procedural);
+  uiLayoutSetActive(row, is_alembic && engine_supports_procedural);
   uiItemR(row, fileptr, "use_render_procedural", 0, nullptr, ICON_NONE);
 
   const bool use_render_procedural = RNA_boolean_get(fileptr, "use_render_procedural");
