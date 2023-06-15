@@ -1457,8 +1457,47 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       this->add_default_inputs(insert_params);
       this->link_postponed_inputs(insert_params);
 
+      using namespace bke::anonymous_attribute_inferencing;
+      const AnonymousAttributeInferencingResult &result =
+          *btree_.runtime->anonymous_attribute_inferencing;
+      const Vector<int> all_required_fields = this->find_all_required_field_source_indices(
+          attribute_set_propagation_map, attribute_set_inputs);
+
+      Map<lf::OutputSocket *, lf::OutputSocket *> get_attributes_node_cache;
+
+      Map<int, AttributeSetInfo> attribute_set_source_map;
+      for (const int field_source_index : all_required_fields) {
+        const FieldSource &field_source = result.all_field_sources[field_source_index];
+        AttributeSetInfo info;
+        if (const auto *input_field_source = std::get_if<InputFieldSource>(&field_source.data)) {
+          lf::OutputSocket &lf_field_socket = const_cast<lf::OutputSocket &>(
+              *mapping_->group_input_sockets[input_field_source->input_index]);
+          info.attribute_set = &this->get_extracted_attributes(
+              lf_field_socket, *root_lf_graph_, get_attributes_node_cache);
+          info.used = const_cast<lf::OutputSocket *>(
+              mapping_->group_input_usage_sockets[input_field_source->input_index]->origin());
+        }
+        else {
+          const auto &socket_field_source = std::get<SocketFieldSource>(field_source.data);
+          const bNodeSocket &bsocket = *socket_field_source.socket;
+          lf::OutputSocket &lf_field_socket = *root_output_socket_map_.lookup(&bsocket);
+
+          info.attribute_set = &this->get_extracted_attributes(
+              lf_field_socket, *root_lf_graph_, get_attributes_node_cache);
+          info.used = usage_by_socket.lookup_default(&bsocket, nullptr);
+        }
+        if (info.used) {
+          attribute_set_source_map.add(field_source_index, info);
+        }
+      }
+
+      this->link_attribute_set_inputs(*root_lf_graph_,
+                                      attribute_set_propagation_map,
+                                      attribute_set_inputs,
+                                      attribute_set_source_map,
+                                      socket_usage_inputs);
+
       // this->build_attribute_propagation_input_node();
-      // this->build_attribute_propagation_sets();
       this->fix_link_cycles(socket_usage_inputs);
 
       // UsedSocketVisualizeOptions options{*this, insert_params.usage_by_socket};
@@ -1467,6 +1506,81 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     root_lf_graph_->update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += root_lf_graph_->nodes().size();
+  }
+
+  Vector<int> find_all_required_field_source_indices(
+      const Map<const bNodeSocket *, lf::InputSocket *> &attribute_set_propagation_map,
+      const MultiValueMap<int, AttributeSetInput> &attribute_set_inputs)
+  {
+    using namespace bke::anonymous_attribute_inferencing;
+    const AnonymousAttributeInferencingResult &result =
+        *btree_.runtime->anonymous_attribute_inferencing;
+
+    BitVector<> all_required_fields(result.all_field_sources.size(), false);
+    for (const bNodeSocket *geometry_output_bsocket : attribute_set_propagation_map.keys()) {
+      all_required_fields |=
+          result.required_fields_by_geometry_socket[geometry_output_bsocket->index_in_tree()];
+    }
+    for (const int field_source_index : attribute_set_inputs.keys()) {
+      all_required_fields[field_source_index].set();
+    }
+
+    Vector<int> indices;
+    bits::foreach_1_index(all_required_fields, [&](const int i) { indices.append(i); });
+    return indices;
+  }
+
+  void link_attribute_set_inputs(
+      lf::Graph &lf_graph,
+      const Map<const bNodeSocket *, lf::InputSocket *> &attribute_set_propagation_map,
+      const MultiValueMap<int, AttributeSetInput> &attribute_set_inputs,
+      Map<int, AttributeSetInfo> &attribute_set_source_map,
+      Set<const lf::InputSocket *> &socket_usage_inputs)
+  {
+    using namespace bke::anonymous_attribute_inferencing;
+    const AnonymousAttributeInferencingResult &result =
+        *btree_.runtime->anonymous_attribute_inferencing;
+
+    JoinAttibuteSetsCache join_attribute_sets_cache;
+
+    for (const MapItem<const bNodeSocket *, lf::InputSocket *> item :
+         attribute_set_propagation_map.items())
+    {
+      const bNodeSocket &geometry_output_bsocket = *item.key;
+      lf::InputSocket &lf_attribute_set_input = *item.value;
+
+      const BoundedBitSpan required_fields =
+          result.required_fields_by_geometry_socket[geometry_output_bsocket.index_in_tree()];
+
+      Vector<AttributeSetInfo> attribute_set_infos;
+
+      bits::foreach_1_index(required_fields, [&](const int field_source_index) {
+        if (const AttributeSetInfo *info = attribute_set_source_map.lookup_ptr(field_source_index))
+        {
+          attribute_set_infos.append(*info);
+        }
+      });
+
+      if (lf::OutputSocket *lf_attribute_set = this->join_attribute_sets(
+              attribute_set_infos, join_attribute_sets_cache, lf_graph, socket_usage_inputs))
+      {
+        lf_graph.add_link(*lf_attribute_set, lf_attribute_set_input);
+      }
+      else {
+        static const bke::AnonymousAttributeSet empty_set;
+        lf_attribute_set_input.set_default_value(&empty_set);
+      }
+    }
+
+    for (const auto item : attribute_set_inputs.items()) {
+      const int field_source_index = item.key;
+      if (const AttributeSetInfo *info = attribute_set_source_map.lookup_ptr(field_source_index)) {
+        for (const AttributeSetInput &attribute_set_input : item.value) {
+          lf_graph.add_link(*info->used, *attribute_set_input.use);
+          lf_graph.add_link(*info->attribute_set, *attribute_set_input.set);
+        }
+      }
+    }
   }
 
  private:
@@ -1638,37 +1752,19 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     const AnonymousAttributeInferencingResult &result =
         *btree_.runtime->anonymous_attribute_inferencing;
 
-    JoinAttibuteSetsCache join_attribute_sets_cache;
-
     Map<lf::OutputSocket *, lf::OutputSocket *> get_attributes_node_cache;
 
-    auto add_get_attributes_node = [&](lf::OutputSocket &lf_field_socket) -> lf::OutputSocket & {
-      return *get_attributes_node_cache.lookup_or_add_cb(&lf_field_socket, [&]() {
-        const ValueOrFieldCPPType &type = *ValueOrFieldCPPType::get_from_self(
-            lf_field_socket.type());
-        auto lazy_function = std::make_unique<LazyFunctionForAnonymousAttributeSetExtract>(type);
-        lf::Node &lf_node = zone_info.lf_graph->add_function(*lazy_function);
-        zone_info.lf_graph->add_link(lf_field_socket, lf_node.input(0));
-        lf_graph_info_->functions.append(std::move(lazy_function));
-        return &lf_node.output(0);
-      });
-    };
-
-    BitVector<> all_required_fields(result.all_field_sources.size(), false);
-    for (const bNodeSocket *geometry_output_bsocket : attribute_set_propagation_map.keys()) {
-      all_required_fields |=
-          result.required_fields_by_geometry_socket[geometry_output_bsocket->index_in_tree()];
-    }
-    for (const int field_source_index : attribute_set_inputs.keys()) {
-      all_required_fields[field_source_index].set();
-    }
+    const Vector<int> all_required_fields = this->find_all_required_field_source_indices(
+        attribute_set_propagation_map, attribute_set_inputs);
 
     Map<int, AttributeSetInfo> attribute_set_source_map;
     Map<int, int> attribute_set_input_by_field_source_index;
 
-    bits::foreach_1_index(all_required_fields, [&](const int field_source_index) {
+    for (const int field_source_index : all_required_fields) {
       const FieldSource &field_source = result.all_field_sources[field_source_index];
-      if (const auto *input_field_source = std::get_if<InputFieldSource>(&field_source.data)) {
+      if ([[maybe_unused]] const auto *input_field_source = std::get_if<InputFieldSource>(
+              &field_source.data))
+      {
         attribute_set_input_by_field_source_index.add_new(
             field_source_index, attribute_set_input_by_field_source_index.size());
       }
@@ -1677,8 +1773,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         const bNodeSocket &bsocket = *socket_field_source.socket;
         if (zone_info.output_socket_map.contains(&bsocket)) {
           AttributeSetInfo info;
-          info.attribute_set = &add_get_attributes_node(
-              *zone_info.output_socket_map.lookup(&bsocket));
+          info.attribute_set = &this->get_extracted_attributes(
+              *zone_info.output_socket_map.lookup(&bsocket),
+              *zone_info.lf_graph,
+              get_attributes_node_cache);
           info.used = usage_by_socket.lookup_default(&bsocket, nullptr);
 
           if (info.used) {
@@ -1690,7 +1788,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
               field_source_index, attribute_set_input_by_field_source_index.size());
         }
       }
-    });
+    }
 
     const int attribute_set_input_num = attribute_set_input_by_field_source_index.size();
 
@@ -1722,46 +1820,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
     }
 
-    for (const MapItem<const bNodeSocket *, lf::InputSocket *> item :
-         attribute_set_propagation_map.items())
-    {
-      const bNodeSocket &geometry_output_bsocket = *item.key;
-      lf::InputSocket &lf_attribute_set_input = *item.value;
-
-      const BoundedBitSpan required_fields =
-          result.required_fields_by_geometry_socket[geometry_output_bsocket.index_in_tree()];
-
-      Vector<AttributeSetInfo> attribute_set_infos;
-
-      bits::foreach_1_index(required_fields, [&](const int field_source_index) {
-        if (const AttributeSetInfo *info = attribute_set_source_map.lookup_ptr(field_source_index))
-        {
-          attribute_set_infos.append(*info);
-        }
-      });
-
-      if (lf::OutputSocket *lf_attribute_set = this->join_attribute_sets(attribute_set_infos,
-                                                                         join_attribute_sets_cache,
-                                                                         *zone_info.lf_graph,
-                                                                         socket_usage_inputs))
-      {
-        zone_info.lf_graph->add_link(*lf_attribute_set, lf_attribute_set_input);
-      }
-      else {
-        static const bke::AnonymousAttributeSet empty_set;
-        lf_attribute_set_input.set_default_value(&empty_set);
-      }
-    }
-
-    for (const auto item : attribute_set_inputs.items()) {
-      const int field_source_index = item.key;
-      if (const AttributeSetInfo *info = attribute_set_source_map.lookup_ptr(field_source_index)) {
-        for (const AttributeSetInput &attribute_set_input : item.value) {
-          zone_info.lf_graph->add_link(*info->used, *attribute_set_input.use);
-          zone_info.lf_graph->add_link(*info->attribute_set, *attribute_set_input.set);
-        }
-      }
-    }
+    this->link_attribute_set_inputs(*zone_info.lf_graph,
+                                    attribute_set_propagation_map,
+                                    attribute_set_inputs,
+                                    attribute_set_source_map,
+                                    socket_usage_inputs);
+    this->fix_link_cycles(socket_usage_inputs);
 
     Vector<const lf::InputSocket *, 16> lf_zone_outputs;
     lf_zone_outputs.extend(lf_zone_output_node.inputs());
@@ -1780,6 +1844,21 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     zone_info.lazy_function = &zone_function;
 
     std::cout << "\n\n" << zone_info.lf_graph->to_dot() << "\n\n";
+  }
+
+  lf::OutputSocket &get_extracted_attributes(lf::OutputSocket &lf_field_socket,
+                                             lf::Graph &lf_graph,
+                                             Map<lf::OutputSocket *, lf::OutputSocket *> &cache)
+  {
+    return *cache.lookup_or_add_cb(&lf_field_socket, [&]() {
+      const ValueOrFieldCPPType &type = *ValueOrFieldCPPType::get_from_self(
+          lf_field_socket.type());
+      auto lazy_function = std::make_unique<LazyFunctionForAnonymousAttributeSetExtract>(type);
+      lf::Node &lf_node = lf_graph.add_function(*lazy_function);
+      lf_graph.add_link(lf_field_socket, lf_node.input(0));
+      lf_graph_info_->functions.append(std::move(lazy_function));
+      return &lf_node.output(0);
+    });
   }
 
   /**
@@ -1946,9 +2025,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const auto item : child_zone_info.indices_by_field_source.items()) {
       const int field_source_index = item.key;
       const AttributeSetZoneInput &child_zone_input = item.value;
-      attribute_set_inputs.add(field_source_index,
-                               {&child_zone_node.input(child_zone_input.use),
-                                &child_zone_node.input(child_zone_input.set)});
+      AttributeSetInput attribute_input;
+      attribute_input.use = &child_zone_node.input(child_zone_input.use);
+      attribute_input.set = &child_zone_node.input(child_zone_input.set);
+      attribute_set_inputs.add(field_source_index, attribute_input);
+      insert_params.socket_usage_inputs.add(attribute_input.use);
     }
   }
 
