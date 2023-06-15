@@ -429,12 +429,12 @@ eSnapMode snap_polygon_mesh(SnapObjectContext *sctx,
                             ID *id,
                             const float obmat[4][4],
                             eSnapMode snap_to_flag,
-                            const int polygon,
+                            int polygon,
                             const float clip_planes_local[MAX_CLIPPLANE_LEN][4])
 {
   eSnapMode elem = SCE_SNAP_MODE_NONE;
 
-  Mesh *mesh_eval = (Mesh *)id;
+  Mesh *mesh_eval = reinterpret_cast<Mesh *>(id);
 
   float lpmat[4][4];
   mul_m4_m4m4(lpmat, sctx->runtime.pmat, obmat);
@@ -693,7 +693,7 @@ eSnapMode snap_object_mesh(SnapObjectContext *sctx,
 {
   eSnapMode elem = SCE_SNAP_MODE_NONE;
 
-  Mesh *mesh_eval = (Mesh *)id;
+  Mesh *mesh_eval = reinterpret_cast<Mesh *>(id);
 
   eSnapMode snap_mode_used = snap_to_flag & mesh_snap_mode_supported(mesh_eval);
   if (snap_mode_used & (SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_EDGE_MIDPOINT |

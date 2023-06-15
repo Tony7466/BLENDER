@@ -234,7 +234,7 @@ eSnapMode snap_polygon_editmesh(SnapObjectContext *sctx,
                                 ID *id,
                                 const float obmat[4][4],
                                 eSnapMode snap_to_flag,
-                                const int polygon,
+                                int polygon,
                                 const float clip_planes_local[MAX_CLIPPLANE_LEN][4]);
 
 void nearest2d_data_init_editmesh(struct BMEditMesh *em,
@@ -256,7 +256,7 @@ eSnapMode snap_polygon_mesh(SnapObjectContext *sctx,
                             ID *id,
                             const float obmat[4][4],
                             eSnapMode snap_to_flag,
-                            const int polygon,
+                            int polygon,
                             const float clip_planes_local[MAX_CLIPPLANE_LEN][4]);
 
 void nearest2d_data_init_mesh(const Mesh *mesh,
