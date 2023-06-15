@@ -653,7 +653,7 @@ static void flushTransGraphData(TransInfo *t)
 
   const short autosnap = getAnimEdit_SnapMode(t);
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-
+  ToolSettings *ts = t->scene->toolsettings;
   /* flush to 2d vector from internally used 3d vector */
   for (a = 0, td = tc->data, td2d = tc->data_2d, tdg = tc->custom.type.data; a < tc->data_len;
        a++, td++, td2d++, tdg++)
@@ -668,7 +668,7 @@ static void flushTransGraphData(TransInfo *t)
      * - Only apply to keyframes (but never to handles).
      * - Don't do this when canceling, or else these changes won't go away.
      */
-    if ((autosnap != SACTSNAP_OFF) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
+    if (ts->snap_flag_anim && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
       transform_snap_anim_flush_data(t, td, autosnap, td->loc);
     }
 

@@ -392,8 +392,6 @@ static const EnumPropertyItem display_channels_items[] = {
 
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem autosnap_items[] = {
-    {SACTSNAP_OFF, "NONE", 0, "No Auto-Snap", ""},
-    /* {-1, "", 0, "", ""}, */
     {SACTSNAP_STEP, "STEP", 0, "Frame Step", "Snap to 1.0 frame intervals"},
     {SACTSNAP_TSTEP, "TIME_STEP", 0, "Second Step", "Snap to 1.0 second intervals"},
     /* {-1, "", 0, "", ""}, */

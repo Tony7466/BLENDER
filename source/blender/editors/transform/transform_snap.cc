@@ -615,9 +615,7 @@ static eSnapFlag snap_flag_from_spacetype(TransInfo *t)
     case SPACE_GRAPH:
     case SPACE_ACTION:
     case SPACE_NLA:
-      /* These editors have their own "Auto-Snap" activation option.
-       * See #getAnimEdit_SnapMode. */
-      return eSnapFlag(0);
+      return eSnapFlag(ts->snap_flag_anim);
   }
   /* #SPACE_EMPTY.
    * It can happen when the operator is called via a handle in `bpy.app.handlers`. */

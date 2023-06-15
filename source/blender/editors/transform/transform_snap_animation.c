@@ -25,7 +25,7 @@
 
 short getAnimEdit_SnapMode(TransInfo *t)
 {
-  short autosnap = SACTSNAP_OFF;
+  eAnimEdit_AutoSnap autosnap = SACTSNAP_FRAME;
 
   if (t->spacetype == SPACE_ACTION) {
     SpaceAction *saction = (SpaceAction *)t->area->spacedata.first;
@@ -51,19 +51,7 @@ short getAnimEdit_SnapMode(TransInfo *t)
     }
   }
   else {
-    autosnap = SACTSNAP_OFF;
-  }
-
-  /* toggle autosnap on/off
-   * - when toggling on, prefer nearest frame over 1.0 frame increments
-   */
-  if (t->modifiers & MOD_SNAP_INVERT) {
-    if (autosnap) {
-      autosnap = SACTSNAP_OFF;
-    }
-    else {
-      autosnap = SACTSNAP_FRAME;
-    }
+    autosnap = SACTSNAP_FRAME;
   }
 
   return autosnap;
@@ -102,8 +90,6 @@ void snapFrameTransform(TransInfo *t,
       deltax = floorf(deltax + 0.5f);
       *r_val_final = val_initial + deltax;
       break;
-    case SACTSNAP_OFF:
-      break;
   }
 }
 
@@ -112,7 +98,7 @@ void transform_snap_anim_flush_data(TransInfo *t,
                                     const eAnimEdit_AutoSnap autosnap,
                                     float *r_val_final)
 {
-  BLI_assert(autosnap != SACTSNAP_OFF);
+  BLI_assert(t->scene->toolsettings->snap_flag_anim);
 
   float val = td->loc[0];
   float ival = td->iloc[0];

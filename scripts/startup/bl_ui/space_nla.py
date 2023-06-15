@@ -33,7 +33,28 @@ class NLA_HT_header(Header):
             icon='FILTER',
         )
 
-        layout.prop(st, "auto_snap", text="")
+        row = layout.row(align=True)
+        tool_settings = context.tool_settings
+        row.prop(tool_settings, "use_snap_anim", text="")
+        sub = row.row(align=True)
+        sub.popover(
+            panel="DOPESHEET_PT_snapping",
+            icon='NONE',
+            text="Modes",
+        )
+
+
+class DOPESHEET_PT_snapping(Panel):
+    bl_space_type = 'NLA_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Snapping"
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.label(text="Snap With")
+        st = context.space_data
+        col.prop(st, "auto_snap", expand=True)
 
 
 class NLA_PT_filters(DopesheetFilterPopoverBase, Panel):

@@ -918,8 +918,6 @@ typedef enum eAnimEdit_Context {
 
 /* SpaceAction AutoSnap Settings (also used by other Animation Editors) */
 typedef enum eAnimEdit_AutoSnap {
-  /* no auto-snap */
-  SACTSNAP_OFF = 0,
   /* snap to 1.0 frame/second intervals */
   SACTSNAP_STEP = 1,
   /* snap to actual frames/seconds (nla-action time) */
