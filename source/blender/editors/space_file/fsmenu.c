@@ -29,6 +29,7 @@
 /* For SHGetSpecialFolderPath, has to be done before BLI_winstuff
  * because 'near' is disabled through BLI_windstuff. */
 #  include "BLI_winstuff.h"
+#  include <shldisp.h>
 #  include <shlobj.h>
 #  include <shlwapi.h>
 #endif
@@ -618,6 +619,103 @@ void fsmenu_read_bookmarks(FSMenu *fsmenu, const char *filepath)
 }
 
 #ifdef WIN32
+
+/* Add Windows Quick Access items to the System list. */
+static void fsmenu_add_windows_quick_access(struct FSMenu *fsmenu,
+                                            FSMenuCategory category,
+                                            FSMenuInsert flag)
+{
+  VARIANT var;
+  IShellDispatch *shell = NULL;
+  HRESULT hr;
+
+  /* Get shell COM object. */
+  hr = CoCreateInstance(&CLSID_Shell, NULL, CLSCTX_ALL, &IID_IShellDispatch, (void **)&shell);
+  if (FAILED(hr)) {
+    shell = NULL;
+  }
+
+  /* Open Quick Access folder. */
+  Folder *dir = NULL;
+  if (shell) {
+    VariantInit(&var);
+    V_VT(&var) = VT_BSTR;
+    V_BSTR(&var) = SysAllocString(L"shell:::{679f85cb-0220-4080-b29b-5540cc05aab6}");
+    hr = shell->lpVtbl->NameSpace(shell, var, &dir);
+    SysFreeString(V_BSTR(&var));
+    if (FAILED(hr)) {
+      dir = NULL;
+    }
+  }
+
+  /* Get FolderItems. */
+  FolderItems *items = NULL;
+  if (dir) {
+    hr = dir->lpVtbl->Items(dir, &items);
+    if (FAILED(hr)) {
+      items = NULL;
+    }
+  }
+
+  long count = 0;
+  if (items) {
+    hr = items->lpVtbl->get_Count(items, &count);
+    if (FAILED(hr)) {
+      count = 0;
+    }
+  }
+
+  /* Iterate through the folder. */
+  for (long i = 0; i < count; i++) {
+    FolderItem *item;
+
+    V_VT(&var) = VT_I4;
+    V_I4(&var) = i;
+    hr = items->lpVtbl->Item(items, var, &item);
+    if (FAILED(hr)) {
+      continue;
+    }
+
+    VARIANT_BOOL isFolder;
+    hr = item->lpVtbl->get_IsFolder(item, &isFolder);
+    /* Skip if it's not a folder. */
+    if (FAILED(hr) || isFolder == VARIANT_FALSE) {
+      item->lpVtbl->Release(item);
+      continue;
+    }
+
+    BSTR path = NULL;
+    hr = item->lpVtbl->get_Path(item, &path);
+    if (FAILED(hr)) {
+      path = NULL;
+    }
+
+    char utf_path[FILE_MAXDIR];
+    if (path) {
+      BLI_strncpy_wchar_as_utf8(utf_path, path, FILE_MAXDIR);
+      SysFreeString(path);
+
+      /* Skip library folders since they are not currently supported. */
+      if (!BLI_strcasestr(utf_path, ".library-ms")) {
+        /* Add folder to the fsmenu. */
+        fsmenu_insert_entry(fsmenu, category, utf_path, NULL, ICON_FILE_FOLDER, flag);
+      }
+    }
+
+    item->lpVtbl->Release(item);
+  }
+
+  if (items) {
+    items->lpVtbl->Release(items);
+  }
+  if (dir) {
+    dir->lpVtbl->Release(dir);
+  }
+  if (shell) {
+    shell->lpVtbl->Release(shell);
+  }
+}
+
 /* Add a Windows known folder path to the System list. */
 static void fsmenu_add_windows_folder(struct FSMenu *fsmenu,
                                       FSMenuCategory category,
@@ -771,9 +869,11 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
                                 FS_INSERT_LAST);
 
       /* These items are just put in path cache for thumbnail views and if bookmarked. */
-
       fsmenu_add_windows_folder(
           fsmenu, FS_CATEGORY_OTHER, &FOLDERID_UserProfiles, NULL, ICON_COMMUNITY, FS_INSERT_LAST);
+
+      /* Last add Quick Access items to avoid duplicates and use icons if available. */
+      fsmenu_add_windows_quick_access(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, FS_INSERT_LAST);
     }
   }
 #elif defined(__APPLE__)
