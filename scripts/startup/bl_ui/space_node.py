@@ -965,7 +965,7 @@ class NODE_PT_node_tree_declaration(Panel):
         layout = self.layout
         snode = context.space_data
         tree = snode.edit_tree
-        self.template_node_tree_declaration(layout, tree)
+        layout.template_node_tree_declaration(tree)
 
 
 class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):

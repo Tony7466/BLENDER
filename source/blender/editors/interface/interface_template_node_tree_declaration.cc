@@ -26,6 +26,26 @@ namespace blender::ui::nodes {
 
 namespace {
 
+class NodeGroupSocketViewItem : public BasicTreeViewItem {
+ public:
+  NodeGroupSocketViewItem(bNodeTree &nodetree, bNodeSocket &socket)
+      : BasicTreeViewItem(socket.name, ICON_NONE), nodetree_(nodetree), socket_(socket)
+  {
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    add_label(row);
+
+    uiLayout *sub = uiLayoutRow(&row, true);
+    uiLayoutSetPropDecorate(sub, false);
+  }
+
+ private:
+  bNodeTree &nodetree_;
+  bNodeSocket &socket_;
+};
+
 class NodePanelViewItem : public BasicTreeViewItem {
  public:
   NodePanelViewItem(bNodeTree &nodetree, bNodePanel &panel)
@@ -145,6 +165,9 @@ class NodeTreeDeclarationView : public AbstractTreeView {
     //      add_tree_item<CollectionViewItem>(
     //          collection_, child_object->id, collection_object->light_linking, ICON_OBJECT_DATA);
     //    }
+    for (bNodePanel *panel : nodetree_.panels_for_write()) {
+      add_tree_item<NodePanelViewItem>(nodetree_, *panel);
+    }
   }
 
  private:
@@ -162,7 +185,7 @@ void uiTemplateNodeTreeDeclaration(struct uiLayout *layout, struct PointerRNA *p
   if (!ptr->data) {
     return;
   }
-  if (!RNA_struct_is_a(&RNA_NodeTree, ptr->type)) {
+  if (!RNA_struct_is_a(ptr->type, &RNA_NodeTree)) {
     return;
   }
   bNodeTree &nodetree = *static_cast<bNodeTree *>(ptr->data);
