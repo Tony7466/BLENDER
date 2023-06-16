@@ -144,16 +144,32 @@ static void remap_pairing(bNodeTree &dst_tree,
                           const Map<int32_t, int32_t> &identifier_map)
 {
   for (bNode *dst_node : nodes) {
-    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
-      if (data->output_node_id == 0) {
-        continue;
-      }
+    switch (dst_node->type) {
+      case GEO_NODE_SIMULATION_INPUT: {
+        NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+            dst_node->storage);
+        if (data->output_node_id == 0) {
+          continue;
+        }
 
-      data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
-      if (data->output_node_id == 0) {
-        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
+        if (data->output_node_id == 0) {
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
+      }
+      case GEO_NODE_SERIAL_LOOP_INPUT: {
+        NodeGeometrySerialLoopInput *data = static_cast<NodeGeometrySerialLoopInput *>(
+            dst_node->storage);
+        if (data->output_node_id == 0) {
+          continue;
+        }
+
+        data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
+        if (data->output_node_id == 0) {
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
     }
   }
