@@ -34,7 +34,7 @@ struct TreeZone {
   Vector<const bNodeLink *> border_links;
 
   bool contains_node_recursively(const bNode &node) const;
-  bool contains_zone_recursively(const int zone_i) const;
+  bool contains_zone_recursively(const TreeZone &other_zone) const;
 };
 
 class TreeZones {
@@ -48,26 +48,11 @@ class TreeZones {
    */
   Map<int, int> zone_by_node_id;
 
-  const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const
-  {
-    const bNode &node = socket.owner_node();
-    const int zone_i = this->zone_by_node_id.lookup_default(node.identifier, -1);
-    if (zone_i == -1) {
-      return nullptr;
-    }
-    const TreeZone &zone = *this->zones[zone_i];
-    if (zone.input_node == &node) {
-      if (socket.is_input()) {
-        return zone.parent_zone;
-      }
-    }
-    if (zone.output_node == &node) {
-      if (socket.is_output()) {
-        return zone.parent_zone;
-      }
-    }
-    return &zone;
-  }
+  /**
+   * Get the deepest zone that a socket is in. Note that the inputs of a Simulation Input node are
+   * in a different zone than its output sockets.
+   */
+  const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const;
 };
 
 const TreeZones *get_tree_zones(const bNodeTree &tree);
