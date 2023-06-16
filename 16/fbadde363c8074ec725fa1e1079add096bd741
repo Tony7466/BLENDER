@@ -9,4 +9,4 @@ Referenced by issue #107095, Multires: Spikes on base mesh verts when sculpting 
 Referenced by commit 19dbe049db9198f7f018c92c42f69daa2d7faeeb, Fix #106469: unstable tessellation with quad-flipping detection
 Referenced by commit ae57d86d42c7f2184c657c8118ebffad30baf6ee, Fix #107095: Spikes during multires reshape propagation
 Referenced by issue #107480, Regression: mesh data fails to load in 3.6 (alpha)
-Referenced by issue #109043, Mask modifier's smoothing option is broken
+Referenced by issue #109043, Regression: Mask modifier's smoothing option is broken
