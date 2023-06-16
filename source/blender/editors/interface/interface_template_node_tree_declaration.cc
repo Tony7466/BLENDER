@@ -18,6 +18,8 @@
 
 #include "DNA_node_types.h"
 
+#include "ED_node.h"
+
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
@@ -120,12 +122,11 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext &C, StringRefNull new_name) override
   {
     BLI_strncpy(socket_.name, new_name.c_str(), sizeof(socket_.name));
     BKE_ntree_update_tag_interface(&nodetree_);
-    /* XXX No context pointer and/or bmain available here, cannot do full update. */
-    //    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    ED_node_tree_propagate_change(&C, CTX_data_main(&C), &nodetree_);
     return true;
   }
 
@@ -193,9 +194,11 @@ class NodePanelViewItem : public BasicTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext &C, StringRefNull new_name) override
   {
     panel_.name = BLI_strdup(new_name.c_str());
+    BKE_ntree_update_tag_interface(&nodetree_);
+    ED_node_tree_propagate_change(&C, CTX_data_main(&C), &nodetree_);
     return true;
   }
 
