@@ -412,7 +412,19 @@ bool NodeGroupSocketDropTarget::on_drop(bContext *C, const wmDrag &drag) const
     case eNodeTreeDeclarationType::NODE_SOCKET: {
       bNodeSocket *drag_socket = static_cast<bNodeSocket *>(drag_data->item);
       ntreeSetSocketInterfacePanel(&nodetree, drag_socket, socket_.panel);
-      ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, &socket_);
+      bNodeSocket *before;
+      if (drag_socket->in_out == socket_.in_out) {
+        before = &socket_;
+      }
+      else if (drag_socket->in_out == SOCK_IN) {
+        /* Input dragged onto output, move to end of inputs list. */
+        before = nullptr;
+      }
+      else {
+        /* Output dragged onto input, move to beginning of outputs list. */
+        before = static_cast<bNodeSocket *>(nodetree.outputs.first);
+      }
+      ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
       break;
     }
   }
@@ -500,27 +512,15 @@ bool NodePanelDropTarget::on_drop(bContext *C, const wmDrag &drag) const
   switch (drag_data->type) {
     case eNodeTreeDeclarationType::NODE_PANEL: {
       bNodePanel *drag_panel = static_cast<bNodePanel *>(drag_data->item);
-      const int index = nodetree.panels().first_index_try(&panel_);
-      ntreeMovePanel(&nodetree, drag_panel, index);
+      ntreeInsertPanelBefore(&nodetree, drag_panel, &panel_);
       break;
     }
     case eNodeTreeDeclarationType::NODE_SOCKET: {
       bNodeSocket *drag_socket = static_cast<bNodeSocket *>(drag_data->item);
 
-      switch (drag_socket->in_out) {
-        case SOCK_IN: {
-          bNodeSocket *before = find_first_socket_in_panel(nodetree, panel_, SOCK_OUT);
-          ntreeSetSocketInterfacePanel(&nodetree, drag_socket, &panel_);
-          ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
-          break;
-        }
-        case SOCK_OUT: {
-          bNodeSocket *before = find_first_socket_in_panel(nodetree, panel_, SOCK_OUT);
-          ntreeSetSocketInterfacePanel(&nodetree, drag_socket, &panel_);
-          ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
-          break;
-        }
-      }
+      bNodeSocket *before = find_first_socket_in_panel(nodetree, panel_, eNodeSocketInOut(drag_socket->in_out));
+      ntreeSetSocketInterfacePanel(&nodetree, drag_socket, &panel_);
+      ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
       break;
     }
   }

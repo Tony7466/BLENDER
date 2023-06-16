@@ -3870,7 +3870,8 @@ void ntreeMoveSocketInterface(bNodeTree *ntree, bNodeSocket *socket, int new_ind
 
 void ntreeInsertSocketInterfaceBefore(bNodeTree *ntree, bNodeSocket *socket, bNodeSocket *before)
 {
-  if (socket->in_out != before->in_out) {
+  BLI_assert(socket != nullptr);
+  if (before && socket->in_out != before->in_out) {
     return;
   }
 
