@@ -78,13 +78,13 @@ void main()
   vec3 Ng = transform_direction(ViewMatrixInverse, vNg);
   vec3 N = imageLoad(in_normal_img, texel).xyz;
 
-  // OcclusionData data = unpack_occlusion_data(texelFetch(horizons_tx, texel, 0));
-  OcclusionData data = occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
+  OcclusionData data = ambient_occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
 
   float visibility;
   float visibility_error_out;
   vec3 bent_normal_out;
-  occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, visibility_error_out, bent_normal_out);
+  ambient_occlusion_eval(
+      data, texel, V, N, Ng, 0.0, visibility, visibility_error_out, bent_normal_out);
   /* Scale by user factor */
   visibility = saturate(visibility);
 

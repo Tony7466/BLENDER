@@ -4,10 +4,9 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_raytrace_lib.glsl)
 
-/* TODO(Miguel Pozo): Move somewhere else. */
-
+/* TODO(Miguel Pozo): Move this function somewhere else. */
 /* Return a fitted cone angle given the input roughness */
-float cone_cosine(float r)
+float ambient_occlusion_cone_cosine(float r)
 {
   /* Using phong gloss
    * roughness = sqrt(2/(gloss+2)) */
@@ -25,43 +24,47 @@ float cone_cosine(float r)
  * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pptx
  */
 
-#define NO_OCCLUSION_DATA OcclusionData(vec4(M_PI, -M_PI, M_PI, -M_PI), 1.0)
 #define AO_BENT_NORMALS true
 #define AO_MULTI_BOUNCE true
 
 struct OcclusionData {
-  /* 4 horizons angles, one in each direction around the view vector to form a cross pattern. */
+  /* 4 horizon angles, one in each direction around the view vector to form a cross pattern. */
   vec4 horizons;
   /* Custom large scale occlusion. */
   float custom_occlusion;
-
-#ifdef GPU_METAL
-  /* Constructors required for OcclusionData(..) syntax. */
-  inline OcclusionData() = default;
-  inline OcclusionData(vec4 in_horizons, float in_custom_occlusion)
-      : horizons(in_horizons), custom_occlusion(in_custom_occlusion)
-  {
-  }
-#endif
 };
 
-vec4 pack_occlusion_data(OcclusionData data)
+OcclusionData ambient_occlusion_data(vec4 horizons, float custom_occlusion)
+{
+  OcclusionData data;
+  data.horizons = horizons;
+  data.custom_occlusion = custom_occlusion;
+  return data;
+}
+
+/* No Occlusion Data. */
+OcclusionData ambient_occlusion_disabled_data()
+{
+  return ambient_occlusion_data(vec4(M_PI, -M_PI, M_PI, -M_PI), 1.0);
+}
+
+vec4 ambient_occlusion_pack_data(OcclusionData data)
 {
   return vec4(1.0 - data.horizons * vec4(1, -1, 1, -1) * M_1_PI);
 }
 
-OcclusionData unpack_occlusion_data(vec4 v)
+OcclusionData ambient_occlusion_unpack_data(vec4 v)
 {
-  return OcclusionData((1.0 - v) * vec4(1, -1, 1, -1) * M_PI, 0.0);
+  return ambient_occlusion_data((1.0 - v) * vec4(1, -1, 1, -1) * M_PI, 0.0);
 }
 
-vec2 get_ao_noise(ivec2 texel)
+vec2 ambient_occlusion_get_noise(ivec2 texel)
 {
   vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).xy;
   return fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
 }
 
-vec2 get_ao_dir(float jitter)
+vec2 ambient_occlusion_get_dir(float jitter)
 {
   /* Only a quarter of a turn because we integrate using 2 slices.
    * We use this instead of using utiltex circle noise to improve cache hits
@@ -70,30 +73,15 @@ vec2 get_ao_dir(float jitter)
   return vec2(cos(jitter), sin(jitter));
 }
 
-/* Certain intel drivers on macOS lose precision, resulting in rendering artifacts,
- * when using standard pow(A, B) function.
- * Using logarithmic identity provides higher precision results. */
-#if defined(GPU_INTEL) && defined(OS_MAC)
-float occlusion_pow(float a, float b)
-{
-  return exp(b * log(a));
-}
-#else
-float occlusion_pow(float a, float b)
-{
-  return pow(a, b);
-}
-#endif
-
 /* Return horizon angle cosine. */
-float search_horizon(vec3 vI,
-                     vec3 vP,
-                     float noise,
-                     ScreenSpaceRay ssray,
-                     sampler2D depth_tx,
-                     const float inverted,
-                     float radius,
-                     const float sample_count)
+float ambient_ambient_occlusion_search_horizon(vec3 vI,
+                                               vec3 vP,
+                                               float noise,
+                                               ScreenSpaceRay ssray,
+                                               sampler2D depth_tx,
+                                               const float inverted,
+                                               float radius,
+                                               const float sample_count)
 {
   /* Init at cos(M_PI). */
   float h = (inverted != 0.0) ? 1.0 : -1.0;
@@ -147,26 +135,26 @@ float search_horizon(vec3 vI,
   return fast_acos(h);
 }
 
-OcclusionData occlusion_search(vec3 vP,
-                               sampler2D depth_tx,
-                               ivec2 texel,
-                               float radius,
-                               const float inverted,
-                               const float dir_sample_count)
+OcclusionData ambient_occlusion_search(vec3 vP,
+                                       sampler2D depth_tx,
+                                       ivec2 texel,
+                                       float radius,
+                                       const float inverted,
+                                       const float dir_sample_count)
 {
   if (!ao_buf.enabled) {
-    return NO_OCCLUSION_DATA;
+    return ambient_occlusion_disabled_data();
   }
 
-  vec2 noise = get_ao_noise(texel);
-  vec2 dir = get_ao_dir(noise.x);
+  vec2 noise = ambient_occlusion_get_noise(texel);
+  vec2 dir = ambient_occlusion_get_dir(noise.x);
   vec2 uv = get_uvs_from_view(vP);
   vec3 vI = ((ProjectionMatrix[3][3] == 0.0) ? normalize(-vP) : vec3(0.0, 0.0, 1.0));
   vec3 avg_dir = vec3(0.0);
   float avg_apperture = 0.0;
 
-  OcclusionData data = (inverted != 0.0) ? OcclusionData(vec4(0, 0, 0, 0), 1.0) :
-                                           NO_OCCLUSION_DATA;
+  OcclusionData data = (inverted != 0.0) ? ambient_occlusion_data(vec4(0, 0, 0, 0), 1.0) :
+                                           ambient_occlusion_disabled_data();
 
   for (int i = 0; i < 2; i++) {
     Ray ray;
@@ -176,13 +164,13 @@ OcclusionData occlusion_search(vec3 vP,
     ScreenSpaceRay ssray;
 
     ssray = raytrace_screenspace_ray_create(ray);
-    data.horizons[0 + i * 2] = search_horizon(
+    data.horizons[0 + i * 2] = ambient_ambient_occlusion_search_horizon(
         vI, vP, noise.y, ssray, depth_tx, inverted, radius, dir_sample_count);
 
     ray.direction = -ray.direction;
 
     ssray = raytrace_screenspace_ray_create(ray);
-    data.horizons[1 + i * 2] = -search_horizon(
+    data.horizons[1 + i * 2] = -ambient_ambient_occlusion_search_horizon(
         vI, vP, noise.y, ssray, depth_tx, inverted, radius, dir_sample_count);
 
     /* Rotate 90 degrees. */
@@ -192,7 +180,9 @@ OcclusionData occlusion_search(vec3 vP,
   return data;
 }
 
-vec2 clamp_horizons_to_hemisphere(vec2 horizons, float angle_N, const float inverted)
+vec2 ambient_occlusion_clamp_horizons_to_hemisphere(vec2 horizons,
+                                                    float angle_N,
+                                                    const float inverted)
 {
   /* Add a little bias to fight self shadowing. */
   const float max_angle = M_PI_2 - 0.05;
@@ -208,15 +198,15 @@ vec2 clamp_horizons_to_hemisphere(vec2 horizons, float angle_N, const float inve
   return horizons;
 }
 
-void occlusion_eval(OcclusionData data,
-                    ivec2 texel,
-                    vec3 V,
-                    vec3 N,
-                    vec3 Ng,
-                    const float inverted,
-                    out float visibility,
-                    out float visibility_error,
-                    out vec3 bent_normal)
+void ambient_occlusion_eval(OcclusionData data,
+                            ivec2 texel,
+                            vec3 V,
+                            vec3 N,
+                            vec3 Ng,
+                            const float inverted,
+                            out float visibility,
+                            out float visibility_error,
+                            out vec3 bent_normal)
 {
   /* No error by default. */
   visibility_error = 1.0;
@@ -242,8 +232,8 @@ void occlusion_eval(OcclusionData data,
     return;
   }
 
-  vec2 noise = get_ao_noise(texel);
-  vec2 dir = get_ao_dir(noise.x);
+  vec2 noise = ambient_occlusion_get_noise(texel);
+  vec2 dir = ambient_occlusion_get_dir(noise.x);
 
   visibility_error = 0.0;
   visibility = 0.0;
@@ -269,7 +259,7 @@ void occlusion_eval(OcclusionData data,
     float angle_Ng = sign(Ng_sin) * fast_acos(Ng_cos);
     float angle_N = sign(N_sin) * fast_acos(N_cos);
     /* Clamp horizons to hemisphere around shading normal. */
-    h = clamp_horizons_to_hemisphere(h, angle_N, inverted);
+    h = ambient_occlusion_clamp_horizons_to_hemisphere(h, angle_N, inverted);
 
     float bent_angle = (h.x + h.y) * 0.5;
     /* NOTE: here we multiply z by 0.5 as it shows less difference with the geometric normal.
@@ -279,7 +269,7 @@ void occlusion_eval(OcclusionData data,
 
     /* Clamp to geometric normal only for integral to keep smooth bent normal. */
     /* This is done to match Cycles ground truth but adds some computation. */
-    h = clamp_horizons_to_hemisphere(h, angle_Ng, inverted);
+    h = ambient_occlusion_clamp_horizons_to_hemisphere(h, angle_Ng, inverted);
 
     /* Inner integral (Eq. 7). */
     float a = dot(-cos(2.0 * h - angle_N) + N_cos + 2.0 * h * N_sin, vec2(0.25));
@@ -311,7 +301,7 @@ void occlusion_eval(OcclusionData data,
 
 /* Multibounce approximation base on surface albedo.
  * Page 78 in the .pdf version. */
-float gtao_multibounce(float visibility, vec3 albedo)
+float ambient_occlusion_multibounce(float visibility, vec3 albedo)
 {
   if (!AO_MULTI_BOUNCE) {
     return visibility;
@@ -328,24 +318,24 @@ float gtao_multibounce(float visibility, vec3 albedo)
   return max(x, ((x * a + b) * x + c) * x);
 }
 
-float diffuse_occlusion(OcclusionData data, ivec2 texel, vec3 V, vec3 N, vec3 Ng)
+float ambient_occlusion_diffuse(OcclusionData data, ivec2 texel, vec3 V, vec3 N, vec3 Ng)
 {
   vec3 unused;
   float unused_error;
   float visibility;
-  occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, unused);
+  ambient_occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, unused);
 
   return saturate(visibility);
 }
 
-float diffuse_occlusion(
+float ambient_occlusion_diffuse(
     OcclusionData data, ivec2 texel, vec3 V, vec3 N, vec3 Ng, vec3 albedo, out vec3 bent_normal)
 {
   float visibility;
   float unused_error;
-  occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, bent_normal);
+  ambient_occlusion_eval(data, texel, V, N, Ng, 0.0, visibility, unused_error, bent_normal);
 
-  visibility = gtao_multibounce(visibility, albedo);
+  visibility = ambient_occlusion_multibounce(visibility, albedo);
 
   return saturate(visibility);
 }
@@ -357,7 +347,7 @@ float diffuse_occlusion(
  * dist : Distance between caps (radians between centers of caps)
  * NOTE: Result is divided by pi to save one multiply.
  */
-float spherical_cap_intersection(float radius1, float radius2, float dist)
+float ambient_occlusion_spherical_cap_intersection(float radius1, float radius2, float dist)
 {
   /* From "Ambient Aperture Lighting" by Chris Oat
    * Slide 15. */
@@ -381,13 +371,13 @@ float spherical_cap_intersection(float radius1, float radius2, float dist)
   return area;
 }
 
-float specular_occlusion(
+float ambient_occlusion_specular(
     OcclusionData data, ivec2 texel, vec3 V, vec3 N, float roughness, inout vec3 specular_dir)
 {
   vec3 visibility_dir;
   float visibility_error;
   float visibility;
-  occlusion_eval(data, texel, V, N, N, 0.0, visibility, visibility_error, visibility_dir);
+  ambient_occlusion_eval(data, texel, V, N, N, 0.0, visibility, visibility_error, visibility_dir);
 
   /* Correct visibility error for very sharp surfaces. */
   visibility *= mix(safe_rcp(visibility_error), 1.0, roughness);
@@ -397,13 +387,16 @@ float specular_occlusion(
   /* Visibility to cone angle (eq. 18). */
   float vis_angle = fast_acos(sqrt(1 - visibility));
   /* Roughness to cone angle (eq. 26). */
-  float spec_angle = max(0.00990998744964599609375, fast_acos(cone_cosine(roughness)));
+  float spec_angle = max(0.00990998744964599609375,
+                         fast_acos(ambient_occlusion_cone_cosine(roughness)));
   /* Angle between cone axes. */
   float cone_cone_dist = fast_acos(saturate(dot(visibility_dir, specular_dir)));
   float cone_nor_dist = fast_acos(saturate(dot(N, specular_dir)));
 
-  float isect_solid_angle = spherical_cap_intersection(vis_angle, spec_angle, cone_cone_dist);
-  float specular_solid_angle = spherical_cap_intersection(M_PI_2, spec_angle, cone_nor_dist);
+  float isect_solid_angle = ambient_occlusion_spherical_cap_intersection(
+      vis_angle, spec_angle, cone_cone_dist);
+  float specular_solid_angle = ambient_occlusion_spherical_cap_intersection(
+      M_PI_2, spec_angle, cone_nor_dist);
   float specular_occlusion = isect_solid_angle / specular_solid_angle;
   /* Mix because it is unstable in unoccluded areas. */
   float tmp = saturate(pow8(visibility));

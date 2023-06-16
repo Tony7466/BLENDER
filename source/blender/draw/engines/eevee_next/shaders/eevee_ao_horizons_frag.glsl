@@ -15,12 +15,12 @@ void main()
   float depth = textureLod(hiz_tx, uvs * hiz_buf.uv_scale, 0.0).r;
   vec3 vP = get_view_space_from_depth(uvs, depth);
 
-  OcclusionData data = NO_OCCLUSION_DATA;
+  OcclusionData data = ambient_occlusion_disabled_data();
   /* Do not trace for background */
   if (depth != 1.0) {
     ivec2 texel = ivec2(gl_FragCoord.xy);
-    data = occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
+    data = ambient_occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
   }
 
-  out_horizons = pack_occlusion_data(data);
+  out_horizons = ambient_occlusion_pack_data(data);
 }
