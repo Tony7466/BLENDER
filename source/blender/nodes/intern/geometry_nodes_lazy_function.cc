@@ -1310,19 +1310,44 @@ using JoinAttibuteSetsCache = Map<Vector<lf::OutputSocket *>, lf::OutputSocket *
 struct BuildGraphParams {
   /** Lazy-function graph that nodes and links should be inserted into. */
   lf::Graph &lf_graph;
-
+  /** Map #bNodeSocket to newly generated sockets. Those maps are later used to insert links. */
   MultiValueMap<const bNodeSocket *, lf::InputSocket *> lf_inputs_by_bsocket;
   Map<const bNodeSocket *, lf::OutputSocket *> lf_output_by_bsocket;
+  /**
+   * Maps sockets to corresponding generated boolean sockets that indicate whether the socket is
+   * used or not.
+   */
   Map<const bNodeSocket *, lf::OutputSocket *> usage_by_bsocket;
-  Map<Vector<lf::OutputSocket *>, lf::OutputSocket *> socket_usages_combination_cache;
+  /**
+   * Nodes that propagate anonymous attributes have to know which of those attributes to propagate.
+   * For that they have an attribute set input for each geometry output.
+   */
   Map<const bNodeSocket *, lf::InputSocket *> lf_attribute_set_input_by_output_geometry_bsocket;
+  /**
+   * Multi-input sockets are split into a separate node that collects all the individual values and
+   * then passes them to the main node function as list.
+   */
   Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
+  /**
+   * This is similar to #lf_inputs_by_bsocket but contains more relevant information when border
+   * links are linked to multi-input sockets.
+   */
   Map<const bNodeLink *, lf::InputSocket *> lf_input_by_border_link;
+  /**
+   * Keeps track of all boolean inputs that indicate whether a socket is used. Links to those
+   * sockets may be replaced with a constant-true if necessary to break dependency cycles in
+   * #fix_link_cycles.
+   */
   Set<lf::InputSocket *> socket_usage_inputs;
+  /**
+   * Collect input sockets that anonymous attribute sets based on fields or group inputs have to be
+   * linked to later.
+   */
   MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_field_source_index;
   MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_caller_propagation_index;
-
-  Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
+  /**  */
+  /** Cache to avoid building the same socket combinations multiple times. */
+  Map<Vector<lf::OutputSocket *>, lf::OutputSocket *> socket_usages_combination_cache;
 };
 
 struct ZoneBuildInfo {
@@ -1433,7 +1458,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
     this->build_group_input_usages(graph_params);
     this->add_default_inputs(graph_params);
-    this->link_postponed_inputs(graph_params);
 
     this->build_attribute_propagation_input_node(lf_graph);
 
@@ -1453,7 +1477,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
@@ -1726,7 +1750,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     this->add_default_inputs(graph_params);
-    this->link_postponed_inputs(graph_params);
 
     Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
     if (lf_zone_input_node) {
@@ -1778,7 +1801,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
     zone_info.lazy_function = &zone_function;
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   void insert_nodes_and_zones(const Span<const bNode *> bnodes,
@@ -2732,7 +2755,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       /* The condition input is dynamic, so the usage of the other inputs is as well. */
       static const LazyFunctionForSwitchSocketUsage switch_socket_usage_fn;
       lf::Node &lf_node = graph_params.lf_graph.add_function(switch_socket_usage_fn);
-      graph_params.inputs_to_link_later.append({switch_input_bsocket, &lf_node.input(0)});
+      graph_params.lf_inputs_by_bsocket.add(switch_input_bsocket, &lf_node.input(0));
       graph_params.usage_by_bsocket.add(false_input_bsocket, &lf_node.output(0));
       graph_params.usage_by_bsocket.add(true_input_bsocket, &lf_node.output(1));
     }
@@ -2916,19 +2939,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           continue;
         }
         this->add_default_input(bsocket, *lf_socket, graph_params);
-      }
-    }
-  }
-
-  void link_postponed_inputs(BuildGraphParams &graph_params)
-  {
-    for (const auto &item : graph_params.inputs_to_link_later) {
-      lf::InputSocket *lf_socket = graph_params.lf_inputs_by_bsocket.lookup(item.first)[0];
-      if (lf::OutputSocket *lf_origin = lf_socket->origin()) {
-        graph_params.lf_graph.add_link(*lf_origin, *item.second);
-      }
-      else {
-        item.second->set_default_value(lf_socket->default_value());
       }
     }
   }
