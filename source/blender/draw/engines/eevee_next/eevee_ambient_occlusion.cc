@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "eevee_ao.hh"
+#include "eevee_ambient_occlusion.hh"
 #include "eevee_instance.hh"
 
 #include "GPU_capabilities.h"
@@ -72,7 +72,7 @@ void AmbientOcclusion::sync()
 
   if (render_pass_enabled_) {
     render_pass_ps_.init();
-    render_pass_ps_.shader_set(inst_.shaders.static_shader_get(AO_PASS));
+    render_pass_ps_.shader_set(inst_.shaders.static_shader_get(AMBIENT_OCCLUSION_PASS));
     bind_resources(&render_pass_ps_);
 
     render_pass_ps_.bind_image("in_normal_img", &rp_normal_tx_);
@@ -80,7 +80,7 @@ void AmbientOcclusion::sync()
 
     render_pass_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS & GPU_BARRIER_TEXTURE_FETCH);
     render_pass_ps_.dispatch(
-        math::divide_ceil(inst_.film.render_extent_get(), int2(AO_PASS_TILE_SIZE)));
+        math::divide_ceil(inst_.film.render_extent_get(), int2(AMBIENT_OCCLUSION_PASS_TILE_SIZE)));
   }
 }
 

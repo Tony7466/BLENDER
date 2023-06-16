@@ -66,7 +66,7 @@ void Instance::init(const int2 &output_res,
   sampling.init(scene);
   camera.init();
   film.init(output_res, output_rect);
-  ao.init();
+  ambient_occlusion.init();
   velocity.init();
   depth_of_field.init();
   shadows.init();
@@ -122,7 +122,7 @@ void Instance::begin_sync()
   world.sync();
   film.sync();
   render_buffers.sync();
-  ao.sync();
+  ambient_occlusion.sync();
   irradiance_cache.sync();
 }
 

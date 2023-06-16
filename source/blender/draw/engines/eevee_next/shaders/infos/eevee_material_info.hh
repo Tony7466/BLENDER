@@ -110,7 +110,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
                      /* Added at runtime because of test shaders not having `node_tree`. */
                      //  "eevee_render_pass_out",
                      "eevee_cryptomatte_out",
-                     "eevee_ao_data");
+                     "eevee_ambient_occlusion_data");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     .vertex_out(eevee_surf_iface)
@@ -125,7 +125,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_shadow_data",
-                     "eevee_ao_horizons_data"
+                     "eevee_ambient_occlusion_horizons_data"
                      /* Optionally added depending on the material. */
                      // "eevee_render_pass_out",
                      // "eevee_cryptomatte_out",

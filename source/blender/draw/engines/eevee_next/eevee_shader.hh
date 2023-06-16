@@ -28,7 +28,7 @@ namespace blender::eevee {
 /* Keep alphabetical order and clean prefix. */
 enum eShaderType {
   AO_HORIZONS = 0,
-  AO_PASS,
+  AMBIENT_OCCLUSION_PASS = 0,
 
   FILM_FRAG,
   FILM_COMP,

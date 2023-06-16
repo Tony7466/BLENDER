@@ -82,9 +82,9 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
 {
   switch (shader_type) {
     case AO_HORIZONS:
-      return "eevee_ao_horizons";
-    case AO_PASS:
-      return "eevee_ao_pass";
+      return "eevee_ambient_occlusion_horizons";
+    case AMBIENT_OCCLUSION_PASS:
+      return "eevee_ambient_occlusion_pass";
     case FILM_FRAG:
       return "eevee_film_frag";
     case FILM_COMP:
@@ -248,7 +248,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       ELEM(pipeline_type, MAT_PIPE_FORWARD, MAT_PIPE_DEFERRED) &&
       ELEM(geometry_type, MAT_GEOM_MESH, MAT_GEOM_CURVES))
   {
-    info.define("MAT_AO");
+    info.define("MAT_AMBIENT_OCCLUSION");
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {

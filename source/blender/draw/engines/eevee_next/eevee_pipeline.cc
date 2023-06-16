@@ -150,7 +150,7 @@ void ForwardPipeline::sync()
       inst_.shadows.bind_resources(&opaque_ps_);
       inst_.sampling.bind_resources(&opaque_ps_);
       inst_.cryptomatte.bind_resources(&opaque_ps_);
-      inst_.ao.bind_resources(&opaque_ps_);
+      inst_.ambient_occlusion.bind_resources(&opaque_ps_);
     }
 
     opaque_single_sided_ps_ = &opaque_ps_.sub("SingleSided");
@@ -176,7 +176,7 @@ void ForwardPipeline::sync()
     inst_.lights.bind_resources(&sub);
     inst_.shadows.bind_resources(&sub);
     inst_.sampling.bind_resources(&sub);
-    inst_.ao.bind_resources(&sub);
+    inst_.ambient_occlusion.bind_resources(&sub);
   }
 }
 
@@ -330,7 +330,7 @@ void DeferredLayer::begin_sync()
 
       inst_.sampling.bind_resources(&gbuffer_ps_);
       inst_.cryptomatte.bind_resources(&gbuffer_ps_);
-      inst_.ao.bind_resources(&gbuffer_ps_);
+      inst_.ambient_occlusion.bind_resources(&gbuffer_ps_);
     }
 
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM | DRW_STATE_DEPTH_EQUAL |
@@ -373,7 +373,7 @@ void DeferredLayer::end_sync()
     inst_.shadows.bind_resources(&eval_light_ps_);
     inst_.sampling.bind_resources(&eval_light_ps_);
     inst_.hiz_buffer.bind_resources(&eval_light_ps_);
-    inst_.ao.bind_resources(&eval_light_ps_);
+    inst_.ambient_occlusion.bind_resources(&eval_light_ps_);
 
     eval_light_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     eval_light_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);

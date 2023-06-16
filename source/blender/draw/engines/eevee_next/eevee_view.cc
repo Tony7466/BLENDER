@@ -139,7 +139,7 @@ void ShadingView::render()
 
   inst_.irradiance_cache.debug_draw(render_view_new_, combined_fb_);
 
-  inst_.ao.render_pass(render_view_new_);
+  inst_.ambient_occlusion.render_pass(render_view_new_);
 
   GPUTexture *combined_final_tx = render_postfx(rbufs.combined_tx);
   inst_.film.accumulate(sub_view_, combined_final_tx);
