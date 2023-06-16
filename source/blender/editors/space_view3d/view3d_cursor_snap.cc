@@ -81,20 +81,20 @@ SnapCursorDataIntern constexpr g_data_intern_init()
   SnapCursorDataIntern snap_cursor_data{};
   snap_cursor_data.state_default.flag = V3D_SNAPCURSOR_SNAP_EDIT_GEOM_FINAL;
 
+  snap_cursor_data.state_default.color_point[0] = 255;
   snap_cursor_data.state_default.color_point[1] = 255;
   snap_cursor_data.state_default.color_point[2] = 255;
   snap_cursor_data.state_default.color_point[3] = 255;
-  snap_cursor_data.state_default.color_point[4] = 255;
 
+  snap_cursor_data.state_default.color_line[0] = 255;
   snap_cursor_data.state_default.color_line[1] = 255;
   snap_cursor_data.state_default.color_line[2] = 255;
-  snap_cursor_data.state_default.color_line[3] = 255;
-  snap_cursor_data.state_default.color_line[4] = 128;
+  snap_cursor_data.state_default.color_line[3] = 128;
 
+  snap_cursor_data.state_default.color_box[0] = 255;
   snap_cursor_data.state_default.color_box[1] = 255;
   snap_cursor_data.state_default.color_box[2] = 255;
-  snap_cursor_data.state_default.color_box[3] = 255;
-  snap_cursor_data.state_default.color_box[4] = 128;
+  snap_cursor_data.state_default.color_box[3] = 128;
 
   snap_cursor_data.state_default.box_dimensions[0] = 1.0f;
   snap_cursor_data.state_default.box_dimensions[1] = 1.0f;
