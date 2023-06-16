@@ -298,7 +298,6 @@ bool TreeZone::contains_node_recursively(const bNode &node) const
 
 bool TreeZone::contains_zone_recursively(const TreeZone &other_zone) const
 {
-  const TreeZones &zones = *this->owner;
   for (const TreeZone *zone = other_zone.parent_zone; zone; zone = zone->parent_zone) {
     if (zone == this) {
       return true;
