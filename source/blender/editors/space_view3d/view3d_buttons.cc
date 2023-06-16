@@ -1220,8 +1220,8 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
   if (block) {
     BLI_assert(C == nullptr);
     int yi = 200;
-    const short butw = 200;
-    const short buth = short(20 * UI_SCALE_FAC);
+    const int butw = 200;
+    const int buth = int(20 * UI_SCALE_FAC);
 
     BKE_object_dimensions_get(ob, tfp->ob_dims);
     copy_v3_v3(tfp->ob_dims_orig, tfp->ob_dims);
@@ -1234,8 +1234,8 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
              IFACE_("Dimensions:"),
              0,
              yi -= buth,
-             butw,
-             buth,
+             short(butw),
+             short(buth),
              nullptr,
              0,
              0,
@@ -1253,8 +1253,8 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
                       text,
                       0,
                       yi -= buth,
-                      butw,
-                      buth,
+                      short(butw),
+                      short(buth),
                       &(tfp->ob_dims[i]),
                       0.0f,
                       lim,
