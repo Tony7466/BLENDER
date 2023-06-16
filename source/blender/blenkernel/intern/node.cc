@@ -130,6 +130,7 @@ namespace blender::bke {
 static void ntree_set_typeinfo(bNodeTree *ntree, bNodeTreeType *typeinfo);
 static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src, const int flag);
 static void free_localized_node_groups(bNodeTree *ntree);
+static bNodePanel *copy_panel_imp(const bNodePanel *other);
 static void node_socket_interface_free(bNodeTree * /*ntree*/,
                                        bNodeSocket *sock,
                                        const bool do_id_user);
@@ -203,12 +204,13 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     BLI_addtail(&ntree_dst->outputs, dst_socket);
   }
 
-  /* copy panels */
-  ntree_dst->panels_array = static_cast<bNodePanel **>(MEM_dupallocN(ntree_src->panels_array));
+  /* Copy panels. */
+  const Span<const bNodePanel *> src_panels = ntree_src->panels();
+  ntree_dst->panels_array = MEM_cnew_array<bNodePanel *>(src_panels.size(), __func__);
   ntree_dst->panels_num = ntree_src->panels_num;
-  for (bNodePanel *&panel_ptr : ntree_dst->panels_for_write()) {
-    panel_ptr = static_cast<bNodePanel *>(MEM_dupallocN(panel_ptr));
-    panel_ptr->name = BLI_strdup(panel_ptr->name);
+  MutableSpan<bNodePanel *> dst_panels = ntree_dst->panels();
+  for (const int index : dst_panels.index_range()) {
+    dst_panels[index] = copy_panel_imp(src_panels[index]);
   }
 
   /* copy preview hash */
@@ -301,7 +303,7 @@ static void ntree_free_data(ID *id)
   }
 
   /* free panels */
-  for (bNodePanel *panel : ntree->panels_for_write()) {
+  for (bNodePanel *panel : ntree->panels()) {
     MEM_SAFE_FREE(panel->name);
     MEM_SAFE_FREE(panel);
   }
@@ -3854,105 +3856,117 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel)
   return ntree->panels().first_index_try(const_cast<bNodePanel *>(panel));
 }
 
-bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag)
+namespace bke {
+
+static bNodePanel *new_panel_imp(const char *name)
 {
-  bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<const bNodePanel *> old_panels = ntree->panels();
-  ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num + 1, __func__);
-  ++ntree->panels_num;
-  const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
-
-  std::copy(const_cast<bNodePanel **>(old_panels.begin()),
-            const_cast<bNodePanel **>(old_panels.end()),
-            new_panels.data());
-
-  bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
-  *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
-  new_panels[new_panels.size() - 1] = new_panel;
-
-  MEM_SAFE_FREE(old_panels_array);
-
-  /* No need to sort sockets, nothing is using the new panel yet */
-
-  return new_panel;
+  bNodePanel *panel = MEM_cnew<bNodePanel>(__func__);
+  panel->name = BLI_strdup(name);
+  return panel;
 }
 
-bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int index)
+static void free_panel_imp(bNodePanel *panel)
+{
+  MEM_SAFE_FREE(panel->name);
+  MEM_SAFE_FREE(panel);
+}
+
+static bNodePanel *copy_panel_imp(const bNodePanel *other)
+{
+  bNodePanel *panel = MEM_cnew<bNodePanel>(__func__);
+  panel->name = BLI_strdup(other->name);
+  return panel;
+}
+}  // namespace bke
+
+bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, const int /*flag*/)
+{
+  MutableSpan<bNodePanel *> old_panels = ntree->panels();
+  ntree->panels_num++;
+  ntree->next_panel_identifier++;
+  ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num, __func__);
+  MutableSpan<bNodePanel *> new_panels = ntree->panels();
+
+  new_panels.drop_back(1).copy_from(old_panels);
+  new_panels.last() = bke::new_panel_imp(name);
+
+  if (!old_panels.is_empty()) {
+    MEM_freeN(old_panels.data());
+  }
+
+  /* No need to sort sockets, nothing is using the new panel yet. */
+  return new_panels.last();
+}
+
+bNodePanel *ntreeInsertPanel(bNodeTree *ntree,
+                             const char *name,
+                             const int /*flag*/,
+                             const int index)
 {
   if (!blender::IndexRange(ntree->panels().size() + 1).contains(index)) {
     return nullptr;
   }
 
-  bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<const bNodePanel *> old_panels = ntree->panels();
-  ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num + 1, __func__);
-  ++ntree->panels_num;
-  const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
+  MutableSpan<bNodePanel *> old_panels = ntree->panels();
+  ntree->panels_num++;
+  ntree->next_panel_identifier++;
+  ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num, __func__);
+  MutableSpan<bNodePanel *> new_panels = ntree->panels();
 
-  Span old_panels_front = old_panels.take_front(index);
-  Span old_panels_back = old_panels.drop_front(index);
-  std::copy(const_cast<bNodePanel **>(old_panels_front.begin()),
-            const_cast<bNodePanel **>(old_panels_front.end()),
-            new_panels.data());
-  std::copy(const_cast<bNodePanel **>(old_panels_back.begin()),
-            const_cast<bNodePanel **>(old_panels_back.end()),
-            new_panels.drop_front(index + 1).data());
+  new_panels.drop_back(1).copy_from(old_panels);
+  new_panels.shift_to_back(new_panels.index_range().drop_front(index));
+  new_panels[index] = bke::new_panel_imp(name);
 
-  bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
-  *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
-  new_panels[index] = new_panel;
+  if (!old_panels.is_empty()) {
+    MEM_freeN(old_panels.data());
+  }
 
-  MEM_SAFE_FREE(old_panels_array);
-
-  /* No need to sort sockets, nothing is using the new panel yet */
-
-  return new_panel;
+  /* No need to sort sockets, nothing is using the new panel yet. */
+  return new_panels[index];
 }
 
 void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel)
 {
   const int index = ntreeGetPanelIndex(ntree, panel);
-  if (index < 0) {
+  if (index == -1) {
     return;
   }
 
-  /* Remove references */
-  LISTBASE_FOREACH (bNodeSocket *, iosock, &ntree->inputs) {
-    if (iosock->panel == panel) {
-      iosock->panel = nullptr;
+  /* Remove references. */
+  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
+    if (socket->panel == panel) {
+      socket->panel = nullptr;
     }
   }
-  LISTBASE_FOREACH (bNodeSocket *, iosock, &ntree->outputs) {
-    if (iosock->panel == panel) {
-      iosock->panel = nullptr;
+  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
+    if (socket->panel == panel) {
+      socket->panel = nullptr;
     }
   }
 
-  bNodePanel **old_panels_array = ntree->panels_array;
-  const Span<const bNodePanel *> old_panels = ntree->panels();
-  ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num - 1, __func__);
-  --ntree->panels_num;
-  const MutableSpan<bNodePanel *> new_panels = ntree->panels_for_write();
+  MutableSpan<bNodePanel *> old_panels = ntree->panels();
+  ntree->panels_num--;
+  ntree->panels_array = MEM_cnew_array<bNodePanel *>(ntree->panels_num, __func__);
+  MutableSpan<bNodePanel *> new_panels = ntree->panels();
 
-  Span old_panels_front = old_panels.take_front(index);
-  Span old_panels_back = old_panels.drop_front(index + 1);
-  std::copy(const_cast<bNodePanel **>(old_panels_front.begin()),
-            const_cast<bNodePanel **>(old_panels_front.end()),
-            new_panels.data());
-  std::copy(const_cast<bNodePanel **>(old_panels_back.begin()),
-            const_cast<bNodePanel **>(old_panels_back.end()),
-            new_panels.drop_front(index).data());
+  if (!new_panels.is_empty()) {
+    const blender::IndexRange panels_after_removed = old_panels.index_range().drop_front(index +
+                                                                                         1);
+    old_panels.shift_to_front(panels_after_removed);
+    new_panels.copy_from(old_panels.drop_back(1));
+  }
 
-  MEM_SAFE_FREE(panel->name);
-  MEM_SAFE_FREE(panel);
-  MEM_SAFE_FREE(old_panels_array);
+  bke::free_panel_imp(panel);
+  if (!old_panels.is_empty()) {
+    MEM_freeN(old_panels.data());
+  }
 
   ntreeEnsureSocketInterfacePanelOrder(ntree);
 }
 
 void ntreeClearPanels(bNodeTree *ntree)
 {
-  /* Remove references */
+  /* Remove references. */
   LISTBASE_FOREACH (bNodeSocket *, iosock, &ntree->inputs) {
     iosock->panel = nullptr;
   }
@@ -3960,9 +3974,8 @@ void ntreeClearPanels(bNodeTree *ntree)
     iosock->panel = nullptr;
   }
 
-  for (bNodePanel *panel : ntree->panels_for_write()) {
-    MEM_SAFE_FREE(panel->name);
-    MEM_SAFE_FREE(panel);
+  for (bNodePanel *panel : ntree->panels()) {
+    bke::free_panel_imp(panel);
   }
   MEM_SAFE_FREE(ntree->panels_array);
   ntree->panels_array = nullptr;
@@ -3971,30 +3984,22 @@ void ntreeClearPanels(bNodeTree *ntree)
   /* No need to sort sockets, only null panel exists, relative order remains unchanged. */
 }
 
-void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index)
+void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, const int new_index)
 {
+  if (!ntree->panels().index_range().contains(new_index)) {
+    return;
+  }
   const int old_index = ntreeGetPanelIndex(ntree, panel);
-  if (old_index < 0) {
+  if (old_index == -1) {
+    return;
+  }
+  if (old_index == new_index) {
+    /* To avoid redundant panel reordering. */
     return;
   }
 
-  const MutableSpan<bNodePanel *> panels = ntree->panels_for_write();
-  if (old_index == new_index) {
-    return;
-  }
-  else if (old_index < new_index) {
-    const Span<bNodePanel *> moved_panels = panels.slice(old_index + 1, new_index - old_index);
-    bNodePanel *tmp = panels[old_index];
-    std::copy(moved_panels.begin(), moved_panels.end(), panels.drop_front(old_index).data());
-    panels[new_index] = tmp;
-  }
-  else /* old_index > new_index */ {
-    const Span<bNodePanel *> moved_panels = panels.slice(new_index, old_index - new_index);
-    bNodePanel *tmp = panels[old_index];
-    std::copy_backward(
-        moved_panels.begin(), moved_panels.end(), panels.drop_front(old_index + 1).data());
-    panels[new_index] = tmp;
-  }
+  MutableSpan<bNodePanel *> panels = ntree->panels();
+  std::swap(panels[old_index], panels[new_index]);
 
   ntreeEnsureSocketInterfacePanelOrder(ntree);
 }

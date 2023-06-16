@@ -766,6 +766,20 @@ template<typename T> class MutableSpan {
     int64_t new_size = size_ * sizeof(T) / sizeof(NewT);
     return MutableSpan<NewT>(reinterpret_cast<NewT *>(data_), new_size);
   }
+
+  constexpr void shift_to_back(IndexRange range, int64_t steps = 1)
+  {
+    BLI_assert(steps > 0);
+    MutableSpan<T> to_shift = this->slice(range.start(), range.size() + steps);
+    std::shift_right(to_shift.begin(), to_shift.end(), steps);
+  }
+
+  constexpr void shift_to_front(IndexRange range, int64_t steps = 1)
+  {
+    BLI_assert(steps > 0);
+    MutableSpan<T> to_shift = this->slice(range.start() - steps, range.size() + steps);
+    std::shift_left(to_shift.begin(), to_shift.end(), steps);
+  }
 };
 
 } /* namespace blender */

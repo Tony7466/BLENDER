@@ -520,7 +520,7 @@ inline blender::Span<const bNodePanel *> bNodeTree::panels() const
   return blender::Span(panels_array, panels_num);
 }
 
-inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
+inline blender::MutableSpan<bNodePanel *> bNodeTree::panels()
 {
   return blender::MutableSpan(panels_array, panels_num);
 }

@@ -675,8 +675,8 @@ typedef struct bNodeTree {
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
 
+  blender::MutableSpan<bNodePanel *> panels();
   blender::Span<const bNodePanel *> panels() const;
-  blender::MutableSpan<bNodePanel *> panels_for_write();
 #endif
 } bNodeTree;
 

@@ -581,10 +581,9 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel);
 bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag);
 
 /**
- * Insert a new panel in the node tree.
- * \param name: Name of the new panel.
- * \param flag: Flags of the new panel.
- * \param index: Index at which to insert the panel.
+ * Insert a new panel in the node tree. Old panels from this index and next going to be shifted to
+ * back. \param name: Name of the new panel. \param flag: Flags of the new panel. \param index:
+ * Index at which to insert the panel.
  */
 bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int index);
 
