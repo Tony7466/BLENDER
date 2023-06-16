@@ -439,7 +439,6 @@ set(GLSL_SRC
   engines/eevee/shaders/infos/engine_eevee_legacy_shared.h
   engines/eevee/engine_eevee_shared_defines.h
 
-  engines/eevee_next/shaders/eevee_ambient_occlusion_horizons_frag.glsl
   engines/eevee_next/shaders/eevee_ambient_occlusion_lib.glsl
   engines/eevee_next/shaders/eevee_ambient_occlusion_pass_comp.glsl
   engines/eevee_next/shaders/eevee_attributes_lib.glsl

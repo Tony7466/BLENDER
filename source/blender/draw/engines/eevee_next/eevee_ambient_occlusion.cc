@@ -41,67 +41,28 @@ void AmbientOcclusion::init()
                   (inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO);
   render_pass_enabled_ = data_.enabled && inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO;
 
-  if (!data_.enabled) {
-    /* Early return. */
-    data_.push_update();
-    horizons_tx_.free();
-    return;
-  }
-
   data_.distance = scene->eevee.gtao_distance;
   data_.quality = scene->eevee.gtao_quality;
 
   data_.push_update();
-
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
-  horizons_tx_.ensure_2d(GPU_RGBA8, inst_.film.render_extent_get(), usage);
 }
 
 void AmbientOcclusion::sync()
 {
-  if (!data_.enabled) {
+  if (!render_pass_enabled_) {
     return;
   }
 
-  horizons_search_ps_.init();
-  horizons_search_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  horizons_search_ps_.shader_set(inst_.shaders.static_shader_get(AO_HORIZONS));
-  bind_resources(&horizons_search_ps_, false);
+  render_pass_ps_.init();
+  render_pass_ps_.shader_set(inst_.shaders.static_shader_get(AMBIENT_OCCLUSION_PASS));
+  bind_resources(&render_pass_ps_);
 
-  horizons_search_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+  render_pass_ps_.bind_image("in_normal_img", &rp_normal_tx_);
+  render_pass_ps_.bind_image("out_ao_img", &rp_ao_tx_);
 
-  if (render_pass_enabled_) {
-    render_pass_ps_.init();
-    render_pass_ps_.shader_set(inst_.shaders.static_shader_get(AMBIENT_OCCLUSION_PASS));
-    bind_resources(&render_pass_ps_);
-
-    render_pass_ps_.bind_image("in_normal_img", &rp_normal_tx_);
-    render_pass_ps_.bind_image("out_ao_img", &rp_ao_tx_);
-
-    render_pass_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS & GPU_BARRIER_TEXTURE_FETCH);
-    render_pass_ps_.dispatch(
-        math::divide_ceil(inst_.film.render_extent_get(), int2(AMBIENT_OCCLUSION_PASS_TILE_SIZE)));
-  }
-}
-
-void AmbientOcclusion::render(View &view)
-{
-  if (!data_.enabled) {
-    return;
-  }
-
-  inst_.hiz_buffer.update();
-
-  fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(horizons_tx_));
-  fb_.bind();
-  inst_.manager->submit(horizons_search_ps_, view);
-
-  if (GPU_mip_render_workaround() ||
-      GPU_type_matches_ex(GPU_DEVICE_INTEL_UHD, GPU_OS_WIN, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL))
-  {
-    /* Fix dot corruption on intel HD5XX/HD6XX series. */
-    GPU_flush();
-  }
+  render_pass_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS & GPU_BARRIER_TEXTURE_FETCH);
+  render_pass_ps_.dispatch(
+      math::divide_ceil(inst_.film.render_extent_get(), int2(AMBIENT_OCCLUSION_PASS_TILE_SIZE)));
 }
 
 void AmbientOcclusion::render_pass(View &view)

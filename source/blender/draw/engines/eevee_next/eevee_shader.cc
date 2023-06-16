@@ -81,8 +81,6 @@ ShaderModule::~ShaderModule()
 const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_type)
 {
   switch (shader_type) {
-    case AO_HORIZONS:
-      return "eevee_ambient_occlusion_horizons";
     case AMBIENT_OCCLUSION_PASS:
       return "eevee_ambient_occlusion_pass";
     case FILM_FRAG:

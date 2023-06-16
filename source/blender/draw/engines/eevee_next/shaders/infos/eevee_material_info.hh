@@ -125,7 +125,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_shadow_data",
-                     "eevee_ambient_occlusion_horizons_data"
+                     "eevee_ambient_occlusion_data"
                      /* Optionally added depending on the material. */
                      // "eevee_render_pass_out",
                      // "eevee_cryptomatte_out",

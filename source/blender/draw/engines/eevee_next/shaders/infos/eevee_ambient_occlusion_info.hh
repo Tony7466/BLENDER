@@ -11,18 +11,8 @@ GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_data)
     .additional_info("eevee_raytrace_data", "eevee_sampling_data", "eevee_utility_texture")
     .uniform_buf(AO_BUF_SLOT, "AOData", "ao_buf");
 
-GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_horizons_data)
-    .additional_info("eevee_ambient_occlusion_data")
-    .sampler(AO_HORIZONS_TEX_SLOT, ImageType::FLOAT_2D, "horizons_tx");
-
-GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_horizons)
-    .additional_info("eevee_ambient_occlusion_data", "draw_fullscreen")
-    .fragment_source("eevee_ambient_occlusion_horizons_frag.glsl")
-    .fragment_out(0, Type::VEC4, "out_horizons")
-    .do_static_compilation(true);
-
 GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_pass)
-    .additional_info("eevee_ambient_occlusion_horizons_data")
+    .additional_info("eevee_ambient_occlusion_data")
     .compute_source("eevee_ambient_occlusion_pass_comp.glsl")
     .local_group_size(AMBIENT_OCCLUSION_PASS_TILE_SIZE, AMBIENT_OCCLUSION_PASS_TILE_SIZE)
     .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "in_normal_img")

@@ -99,7 +99,6 @@
 /* Only during surface shading (forward and deferred eval). */
 #define SHADOW_TILEMAPS_TEX_SLOT 4
 #define SHADOW_ATLAS_TEX_SLOT 5
-#define AO_HORIZONS_TEX_SLOT 6
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 4
 
