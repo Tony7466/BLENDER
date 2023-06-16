@@ -41,6 +41,38 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
     uiLayoutSetPropDecorate(sub, false);
   }
 
+ protected:
+  bool matches(const AbstractViewItem &other) const override
+  {
+    const NodeGroupSocketViewItem *other_panel_item =
+        dynamic_cast<const NodeGroupSocketViewItem *>(&other);
+    if (other_panel_item == nullptr) {
+      return false;
+    }
+
+    return &socket_ == &other_panel_item->socket_;
+  }
+
+  std::optional<bool> should_be_active() const override
+  {
+    /* TODO There can only be one active item per tree view and we have 2 separate lists.
+     * Let panels' active index take precedence, until we change the underlying data. */
+    return nodetree_.active_panel < 0 && (socket_.flag & SELECT) != 0;
+  }
+
+  void on_activate() override
+  {
+    /* Make sure active panel is cleared to avoid conflicting active index. */
+    nodetree_.active_panel = -1;
+
+    LISTBASE_FOREACH (bNodeSocket *, tsocket, &nodetree_.inputs) {
+      SET_FLAG_FROM_TEST(tsocket->flag, tsocket == &socket_, SELECT);
+    }
+    LISTBASE_FOREACH (bNodeSocket *, tsocket, &nodetree_.outputs) {
+      SET_FLAG_FROM_TEST(tsocket->flag, tsocket == &socket_, SELECT);
+    }
+  }
+
  private:
   bNodeTree &nodetree_;
   bNodeSocket &socket_;
@@ -64,84 +96,37 @@ class NodePanelViewItem : public BasicTreeViewItem {
     //    build_remove_button(*sub);
   }
 
+ protected:
+  bool matches(const AbstractViewItem &other) const override
+  {
+    const NodePanelViewItem *other_panel_item = dynamic_cast<const NodePanelViewItem *>(&other);
+    if (other_panel_item == nullptr) {
+      return false;
+    }
+
+    return &panel_ == &other_panel_item->panel_;
+  }
+
+  std::optional<bool> should_be_active() const override
+  {
+    const bNodePanel *active_panel = nodetree_.panels().get(nodetree_.active_panel, nullptr);
+    return &panel_ == active_panel;
+  }
+
+  void on_activate() override
+  {
+    nodetree_.active_panel = nodetree_.panels().first_index_try(&panel_);
+
+    /* Make sure active socket is cleared to avoid conflicting active index. */
+    LISTBASE_FOREACH (bNodeSocket *, tsocket, &nodetree_.inputs) {
+      SET_FLAG_FROM_TEST(tsocket->flag, false, SELECT);
+    }
+    LISTBASE_FOREACH (bNodeSocket *, tsocket, &nodetree_.outputs) {
+      SET_FLAG_FROM_TEST(tsocket->flag, false, SELECT);
+    }
+  }
+
  private:
-  //  int get_state_icon() const
-  //  {
-  //    /* TODO(sergey): Use proper icons. */
-  //    switch (collection_light_linking_.link_state) {
-  //      case COLLECTION_LIGHT_LINKING_STATE_INCLUDE:
-  //        return ICON_OUTLINER_OB_LIGHT;
-  //      case COLLECTION_LIGHT_LINKING_STATE_EXCLUDE:
-  //        return ICON_LIGHT;
-  //    }
-  //    BLI_assert_unreachable();
-  //    return ICON_NONE;
-  //  }
-
-  //  static void link_state_toggle_cb(bContext * /*C*/,
-  //                                   void * /*collection_v*/,
-  //                                   void *collection_light_linking_v)
-  //  {
-  //    CollectionLightLinking &collection_light_linking = *static_cast<CollectionLightLinking *>(
-  //        collection_light_linking_v);
-
-  //    switch (collection_light_linking.link_state) {
-  //      case COLLECTION_LIGHT_LINKING_STATE_INCLUDE:
-  //        collection_light_linking.link_state = COLLECTION_LIGHT_LINKING_STATE_EXCLUDE;
-  //        return;
-  //      case COLLECTION_LIGHT_LINKING_STATE_EXCLUDE:
-  //        collection_light_linking.link_state = COLLECTION_LIGHT_LINKING_STATE_INCLUDE;
-  //        return;
-  //    }
-
-  //    BLI_assert_unreachable();
-  //  }
-
-  //  void build_state_button(uiLayout &row)
-  //  {
-  //    uiBlock *block = uiLayoutGetBlock(&row);
-  //    const int icon = get_state_icon();
-
-  //    PointerRNA collection_light_linking_ptr;
-  //    RNA_pointer_create(&collection_.id,
-  //                       &RNA_CollectionLightLinking,
-  //                       &collection_light_linking_,
-  //                       &collection_light_linking_ptr);
-
-  //    uiBut *button = uiDefIconButR(block,
-  //                                  UI_BTYPE_BUT,
-  //                                  0,
-  //                                  icon,
-  //                                  0,
-  //                                  0,
-  //                                  UI_UNIT_X,
-  //                                  UI_UNIT_Y,
-  //                                  &collection_light_linking_ptr,
-  //                                  "link_state",
-  //                                  0,
-  //                                  0.0f,
-  //                                  0.0f,
-  //                                  0.0f,
-  //                                  0.0f,
-  //                                  nullptr);
-
-  //    UI_but_func_set(button, link_state_toggle_cb, &collection_, &collection_light_linking_);
-  //  }
-
-  //  void build_remove_button(uiLayout &row)
-  //  {
-  //    PointerRNA id_ptr;
-  //    RNA_id_pointer_create(id_, &id_ptr);
-
-  //    PointerRNA collection_ptr;
-  //    RNA_id_pointer_create(&collection_.id, &collection_ptr);
-
-  //    uiLayoutSetContextPointer(&row, "id", &id_ptr);
-  //    uiLayoutSetContextPointer(&row, "collection", &collection_ptr);
-
-  //    uiItemO(&row, "", ICON_X, "OBJECT_OT_light_linking_unlink_from_collection");
-  //  }
-
   bNodeTree &nodetree_;
   bNodePanel &panel_;
 };
@@ -152,21 +137,29 @@ class NodeTreeDeclarationView : public AbstractTreeView {
 
   void build_tree() override
   {
-    //    LISTBASE_FOREACH (CollectionChild *, collection_child, &collection_.children) {
-    //      Collection *child_collection = collection_child->collection;
-    //      add_tree_item<CollectionViewItem>(collection_,
-    //                                        child_collection->id,
-    //                                        collection_child->light_linking,
-    //                                        ICON_OUTLINER_COLLECTION);
-    //    }
+    /* TODO there should be either a cached map for per-panel sockets
+     * or a simple hierarchical struct to begin with, to avoid looping
+     * over all sockets for every panel. */
 
-    //    LISTBASE_FOREACH (CollectionObject *, collection_object, &collection_.gobject) {
-    //      Object *child_object = collection_object->ob;
-    //      add_tree_item<CollectionViewItem>(
-    //          collection_, child_object->id, collection_object->light_linking, ICON_OBJECT_DATA);
-    //    }
+    add_socket_items_for_panel(nullptr, *this);
+
     for (bNodePanel *panel : nodetree_.panels_for_write()) {
-      add_tree_item<NodePanelViewItem>(nodetree_, *panel);
+      NodePanelViewItem &panel_item = add_tree_item<NodePanelViewItem>(nodetree_, *panel);
+      panel_item.set_collapsed(false);
+
+      add_socket_items_for_panel(panel, panel_item);
+    }
+  }
+
+ protected:
+  void add_socket_items_for_panel(const bNodePanel *panel, ui::TreeViewOrItem &parent_item)
+  {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &nodetree_.inputs) {
+      if (socket->panel != panel) {
+        continue;
+      }
+
+      parent_item.add_tree_item<NodeGroupSocketViewItem>(nodetree_, *socket);
     }
   }
 
