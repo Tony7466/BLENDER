@@ -541,6 +541,20 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
 
   attributes.remove(attribute_id);
   if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveArray(buffer))) {
+    if ((data_type == CD_PROP_COLOR || data_type == CD_PROP_BYTE_COLOR) &&
+        component.type() == GEO_COMPONENT_TYPE_MESH)
+    {
+      MeshComponent *mc = static_cast<MeshComponent *>(&component);
+      if (mc->has_mesh()) {
+        Mesh *mesh = mc->get_for_write();
+        if (mesh->active_color_attribute == nullptr) {
+          mesh->active_color_attribute = BLI_strdup(attribute_id.name().data());
+        }
+        if (mesh->default_color_attribute == nullptr) {
+          mesh->default_color_attribute = BLI_strdup(attribute_id.name().data());
+        }
+      }
+    }
     return true;
   }
 
