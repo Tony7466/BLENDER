@@ -947,7 +947,7 @@ class NODE_PT_node_tree_declaration(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Group"
-    bl_label = "Interface"
+    bl_label = "Sockets"
 
     @classmethod
     def poll(cls, context):
