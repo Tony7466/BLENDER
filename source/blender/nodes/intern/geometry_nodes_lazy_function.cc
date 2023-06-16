@@ -1305,6 +1305,46 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
   }
 };
 
+class LazyFunctionForSimulationZone : public LazyFunction {
+ private:
+  const bNode &sim_output_bnode_;
+  const LazyFunction &fn_;
+
+ public:
+  LazyFunctionForSimulationZone(const bNode &sim_output_bnode, const LazyFunction &fn)
+      : sim_output_bnode_(sim_output_bnode), fn_(fn)
+  {
+    debug_name_ = "Simulation Zone";
+    inputs_ = fn.inputs();
+    outputs_ = fn.outputs();
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  {
+    fn_.execute(params, context);
+  }
+
+  void *init_storage(LinearAllocator<> &allocator) const override
+  {
+    return fn_.init_storage(allocator);
+  }
+
+  void destruct_storage(void *storage) const override
+  {
+    fn_.destruct_storage(storage);
+  }
+
+  std::string input_name(const int i) const override
+  {
+    return fn_.input_name(i);
+  }
+
+  std::string output_name(const int i) const override
+  {
+    return fn_.output_name(i);
+  }
+};
+
 using JoinAttributeSetsCache = Map<Vector<lf::OutputSocket *>, lf::OutputSocket *>;
 
 struct BuildGraphParams {
@@ -1469,7 +1509,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   {
     const int zone_i = zone.index;
     ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
-    lf::Graph &lf_graph = lf_graph_info_->scope.construct<lf::Graph>();
+    lf::Graph &lf_graph = scope_.construct<lf::Graph>();
 
     lf::Node *lf_zone_input_node = nullptr;
     lf::Node *lf_main_input_usage_node = nullptr;
@@ -1574,8 +1614,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     lf_graph.update_node_indices();
 
-    const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
+    const auto &lf_graph_fn = scope_.construct<lf::GraphExecutor>(
         lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
+    const auto &zone_function = scope_.construct<LazyFunctionForSimulationZone>(*zone.output_node,
+                                                                                lf_graph_fn);
     zone_info.lazy_function = &zone_function;
 
     // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
