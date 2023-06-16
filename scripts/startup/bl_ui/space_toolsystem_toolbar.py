@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # For documentation on tool definitions: see "bl_ui.space_toolsystem_common.ToolDef"
@@ -3111,7 +3113,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'EDIT_GPENCIL': [
-            *_tools_gpencil_select,
+            *_tools_select,
             _defs_view3d_generic.cursor,
             None,
             *_tools_transform,

@@ -235,13 +235,13 @@ set(SRC
   intern/node.cc
   intern/node_runtime.cc
   intern/node_tree_anonymous_attributes.cc
+  intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
   intern/object.cc
   intern/object_deform.c
   intern/object_dupli.cc
-  intern/object_facemap.c
   intern/object_update.cc
   intern/ocean.c
   intern/ocean_spectrum.c
@@ -388,7 +388,6 @@ set(SRC
   BKE_fluid.h
   BKE_freestyle.h
   BKE_geometry_fields.hh
-  BKE_geometry_set.h
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.h
@@ -453,11 +452,12 @@ set(SRC
   BKE_node.h
   BKE_node.hh
   BKE_node_runtime.hh
+  BKE_node_tree_anonymous_attributes.hh
+  BKE_node_tree_dot_export.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh
   BKE_object.h
   BKE_object_deform.h
-  BKE_object_facemap.h
   BKE_ocean.h
   BKE_outliner_treehash.hh
   BKE_packedFile.h

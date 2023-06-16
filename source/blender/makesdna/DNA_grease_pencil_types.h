@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -453,9 +453,9 @@ typedef struct GreasePencil {
   void remove_drawing(int index);
 
   void foreach_visible_drawing(int frame,
-                               blender::FunctionRef<void(GreasePencilDrawing &)> function);
+                               blender::FunctionRef<void(int, GreasePencilDrawing &)> function);
   void foreach_editable_drawing(int frame,
-                                blender::FunctionRef<void(GreasePencilDrawing &)> function);
+                                blender::FunctionRef<void(int, GreasePencilDrawing &)> function);
 
   bool bounds_min_max(blender::float3 &min, blender::float3 &max) const;
 

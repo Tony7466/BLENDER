@@ -85,8 +85,8 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
-#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -114,7 +114,6 @@
 #include "BKE_multires.h"
 #include "BKE_node.hh"
 #include "BKE_object.h"
-#include "BKE_object_facemap.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pbvh.h"
@@ -233,7 +232,6 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
     }
   }
 
-  BKE_object_facemap_copy_list(&ob_dst->fmaps, &ob_src->fmaps);
   BKE_constraints_copy_ex(&ob_dst->constraints, &ob_src->constraints, flag_subdata, true);
 
   ob_dst->mode = ob_dst->type != OB_GPENCIL_LEGACY ? OB_MODE_OBJECT : ob_dst->mode;
@@ -302,7 +300,6 @@ static void object_free_data(ID *id)
   MEM_SAFE_FREE(ob->iuser);
   MEM_SAFE_FREE(ob->runtime.bb);
 
-  BLI_freelistN(&ob->fmaps);
   if (ob->pose) {
     BKE_pose_free_ex(ob->pose, false);
     ob->pose = nullptr;
@@ -546,13 +543,6 @@ static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   }
 }
 
-static void write_fmaps(BlendWriter *writer, ListBase *fbase)
-{
-  LISTBASE_FOREACH (bFaceMap *, fmap, fbase) {
-    BLO_write_struct(writer, bFaceMap, fmap);
-  }
-}
-
 static void object_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
   Object *ob = (Object *)id;
@@ -586,7 +576,6 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   }
 
   BKE_pose_blend_write(writer, ob->pose, arm);
-  write_fmaps(writer, &ob->fmaps);
   BKE_constraint_blend_write(writer, &ob->constraints);
   animviz_motionpath_blend_write(writer, ob->mpath);
 
@@ -626,7 +615,7 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     BLO_write_struct(writer, LightgroupMembership, ob->lightgroup);
   }
   if (ob->light_linking) {
-    BLO_write_struct(writer, LightgroupMembership, ob->light_linking);
+    BLO_write_struct(writer, LightLinking, ob->light_linking);
   }
 
   if (ob->lightprobe_cache) {
@@ -682,7 +671,6 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   /* Only for versioning, vertex group names are now stored on object data. */
   BLO_read_list(reader, &ob->defbase);
 
-  BLO_read_list(reader, &ob->fmaps);
   /* XXX deprecated - old animation system <<< */
   direct_link_nlastrips(reader, &ob->nlastrips);
   BLO_read_list(reader, &ob->constraintChannels);
@@ -1894,7 +1882,7 @@ void BKE_object_free_derived_caches(Object *ob)
   }
 
   if (ob->runtime.geometry_set_eval != nullptr) {
-    BKE_geometry_set_free(ob->runtime.geometry_set_eval);
+    delete ob->runtime.geometry_set_eval;
     ob->runtime.geometry_set_eval = nullptr;
   }
 
@@ -2131,7 +2119,7 @@ int BKE_object_visibility(const Object *ob, const int dag_eval_mode)
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
-  if (BKE_object_has_geometry_set_instances(ob)) {
+  if (blender::bke::object_has_geometry_set_instances(*ob)) {
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
@@ -4500,7 +4488,7 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 {
   /* First attempt to retrieve the evaluated mesh from the evaluated geometry set. Most
    * object types either store it there or add a reference to it if it's owned elsewhere. */
-  GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval;
+  blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval;
   if (geometry_set_eval) {
     /* Some areas expect to be able to modify the evaluated mesh in limited ways. Theoretically
      * this should be avoided, or at least protected with a lock, so a const mesh could be returned
