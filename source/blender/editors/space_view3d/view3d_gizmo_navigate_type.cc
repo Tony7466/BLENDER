@@ -243,7 +243,8 @@ static void gizmo_axis_draw(const bContext *C, wmGizmo *gz)
       rect.xmax = rad;
       rect.ymin = -rad;
       rect.ymax = rad;
-      UI_draw_roundbox_4fv_ex(&rect, inner_color, NULL, 0.0f, outline_color, AXIS_RING_WIDTH, rad);
+      UI_draw_roundbox_4fv_ex(
+          &rect, inner_color, nullptr, 0.0f, outline_color, AXIS_RING_WIDTH, rad);
       GPU_matrix_pop();
     }
 

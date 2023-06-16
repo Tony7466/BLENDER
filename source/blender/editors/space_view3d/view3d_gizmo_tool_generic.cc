@@ -63,7 +63,7 @@ static bool WIDGETGROUP_tool_generic_poll(const bContext *C, wmGizmoGroupType *g
 static wmGizmo *tool_generic_create_gizmo(const bContext *C, wmGizmoGroup *gzgroup)
 {
 
-  wmGizmo *gz = WM_gizmo_new("GIZMO_GT_button_2d", gzgroup, NULL);
+  wmGizmo *gz = WM_gizmo_new("GIZMO_GT_button_2d", gzgroup, nullptr);
   gz->flag |= WM_GIZMO_OPERATOR_TOOL_INIT;
 
   UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
@@ -185,7 +185,6 @@ static void WIDGETGROUP_gizmo_message_subscribe(const bContext *C,
     }
   }
 }
-
 
 void VIEW3D_GGT_tool_generic_handle_normal(wmGizmoGroupType *gzgt)
 {

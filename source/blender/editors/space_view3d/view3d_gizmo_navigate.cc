@@ -131,7 +131,7 @@ static void WIDGETGROUP_navigate_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   for (int i = 0; i < GZ_INDEX_TOTAL; i++) {
     const NavigateGizmoInfo *info = &g_navigate_params[i];
-    navgroup->gz_array[i] = WM_gizmo_new(info->gizmo, gzgroup, NULL);
+    navgroup->gz_array[i] = WM_gizmo_new(info->gizmo, gzgroup, nullptr);
     wmGizmo *gz = navgroup->gz_array[i];
     gz->flag |= WM_GIZMO_MOVE_CURSOR | WM_GIZMO_DRAW_MODAL;
 
@@ -170,12 +170,12 @@ static void WIDGETGROUP_navigate_setup(const bContext *C, wmGizmoGroup *gzgroup)
     }
 
     wmOperatorType *ot = WM_operatortype_find(info->opname, true);
-    WM_gizmo_operator_set(gz, 0, ot, NULL);
+    WM_gizmo_operator_set(gz, 0, ot, nullptr);
   }
 
   {
     wmGizmo *gz = navgroup->gz_array[GZ_INDEX_CAMERA];
-    WM_gizmo_operator_set(gz, 0, ot_view_camera, NULL);
+    WM_gizmo_operator_set(gz, 0, ot_view_camera, nullptr);
   }
 
   /* Click only buttons (not modal). */
@@ -210,7 +210,7 @@ static void WIDGETGROUP_navigate_setup(const bContext *C, wmGizmoGroup *gzgroup)
     };
 
     for (int part_index = 0; part_index < 6; part_index += 1) {
-      PointerRNA *ptr = WM_gizmo_operator_set(gz, part_index + 1, ot_view_axis, NULL);
+      PointerRNA *ptr = WM_gizmo_operator_set(gz, part_index + 1, ot_view_axis, nullptr);
       RNA_enum_set(ptr, "type", mapping[part_index]);
     }
 

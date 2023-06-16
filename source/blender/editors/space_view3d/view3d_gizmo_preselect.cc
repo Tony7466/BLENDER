@@ -36,7 +36,7 @@ static void WIDGETGROUP_mesh_preselect_elem_setup(const bContext * /*C*/, wmGizm
   GizmoGroupPreSelElem *ggd = MEM_cnew<GizmoGroupPreSelElem>(__func__);
   gzgroup->customdata = ggd;
 
-  wmGizmo *gz = ggd->gizmo = WM_gizmo_new_ptr(gzt_presel, gzgroup, NULL);
+  wmGizmo *gz = ggd->gizmo = WM_gizmo_new_ptr(gzt_presel, gzgroup, nullptr);
   UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
   UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 }
@@ -72,7 +72,7 @@ static void WIDGETGROUP_mesh_preselect_edgering_setup(const bContext * /*C*/,
   GizmoGroupPreSelEdgeRing *ggd = MEM_cnew<GizmoGroupPreSelEdgeRing>(__func__);
   gzgroup->customdata = ggd;
 
-  wmGizmo *gz = ggd->gizmo = WM_gizmo_new_ptr(gzt_presel, gzgroup, NULL);
+  wmGizmo *gz = ggd->gizmo = WM_gizmo_new_ptr(gzt_presel, gzgroup, nullptr);
   UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
   UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 }

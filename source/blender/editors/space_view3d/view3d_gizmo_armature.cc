@@ -147,7 +147,7 @@ static void WIDGETGROUP_armature_spline_setup(const bContext *C, wmGizmoGroup *g
 
   /* Handles */
   for (int i = 0; i < ARRAY_SIZE(bspline_group->handles); i++) {
-    wmGizmo *gz = bspline_group->handles[i].gizmo = WM_gizmo_new_ptr(gzt_move, gzgroup, NULL);
+    wmGizmo *gz = bspline_group->handles[i].gizmo = WM_gizmo_new_ptr(gzt_move, gzgroup, nullptr);
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_MOVE_STYLE_RING_2D);
     RNA_enum_set(gz->ptr,
                  "draw_options",
@@ -193,7 +193,7 @@ static void WIDGETGROUP_armature_spline_refresh(const bContext *C, wmGizmoGroup 
     wmGizmoPropertyFnParams gizmo_property_params{};
     gizmo_property_params.value_get_fn = gizmo_bbone_offset_get;
     gizmo_property_params.value_set_fn = gizmo_bbone_offset_set;
-    gizmo_property_params.range_get_fn = NULL;
+    gizmo_property_params.range_get_fn = nullptr;
     gizmo_property_params.user_data = &bspline_group->handles[i];
     WM_gizmo_target_property_def_func(gz, "offset", &gizmo_property_params);
   }

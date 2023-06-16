@@ -121,7 +121,7 @@ static bool WIDGETGROUP_empty_image_poll(const bContext *C, wmGizmoGroupType * /
 static void WIDGETGROUP_empty_image_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   EmptyImageWidgetGroup *igzgroup = MEM_cnew<EmptyImageWidgetGroup>(__func__);
-  igzgroup->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
+  igzgroup->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
   wmGizmo *gz = igzgroup->gizmo;
   RNA_enum_set(gz->ptr, "transform", ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
 
@@ -152,7 +152,7 @@ static void WIDGETGROUP_empty_image_refresh(const bContext *C, wmGizmoGroup *gzg
   igzgroup->state.ob = ob;
 
   /* Use dimensions for aspect. */
-  if (ob->data != NULL) {
+  if (ob->data != nullptr) {
     Image *image = static_cast<Image *>(ob->data);
     ImageUser iuser = *ob->iuser;
     float size[2];
@@ -177,7 +177,7 @@ static void WIDGETGROUP_empty_image_refresh(const bContext *C, wmGizmoGroup *gzg
   wmGizmoPropertyFnParams gizmo_property_params{};
   gizmo_property_params.value_get_fn = gizmo_empty_image_prop_matrix_get;
   gizmo_property_params.value_set_fn = gizmo_empty_image_prop_matrix_set;
-  gizmo_property_params.range_get_fn = NULL;
+  gizmo_property_params.range_get_fn = nullptr;
   gizmo_property_params.user_data = igzgroup;
   WM_gizmo_target_property_def_func(gz, "matrix", &gizmo_property_params);
 }

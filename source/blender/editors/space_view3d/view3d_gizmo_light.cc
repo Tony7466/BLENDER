@@ -170,7 +170,7 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
 
   /* Spot angle gizmo. */
   {
-    ls_gzgroup->spot_angle = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, NULL);
+    ls_gzgroup->spot_angle = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, nullptr);
     wmGizmo *gz = ls_gzgroup->spot_angle;
     RNA_enum_set(gz->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_INVERTED);
     ED_gizmo_arrow3d_set_range_fac(gz, 4.0f);
@@ -179,7 +179,7 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
 
   /* Spot blend gizmo. */
   {
-    ls_gzgroup->spot_blend = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
+    ls_gzgroup->spot_blend = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
     wmGizmo *gz = ls_gzgroup->spot_blend;
     RNA_enum_set(gz->ptr,
                  "transform",
@@ -191,14 +191,14 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     wmGizmoPropertyFnParams gizmo_property_parms{};
     gizmo_property_parms.value_get_fn = gizmo_spot_blend_prop_matrix_get;
     gizmo_property_parms.value_set_fn = gizmo_spot_blend_prop_matrix_set;
-    gizmo_property_parms.range_get_fn = NULL;
+    gizmo_property_parms.range_get_fn = nullptr;
     gizmo_property_parms.user_data = (void *)C;
     WM_gizmo_target_property_def_func(gz, "matrix", &gizmo_property_parms);
   }
 
   /* Spot radius gizmo. */
   {
-    ls_gzgroup->spot_radius = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
+    ls_gzgroup->spot_radius = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
     wmGizmo *gz = ls_gzgroup->spot_radius;
     RNA_enum_set(gz->ptr,
                  "transform",
@@ -210,7 +210,7 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     wmGizmoPropertyFnParams gizmo_property_params{};
     gizmo_property_params.value_get_fn = gizmo_light_radius_prop_matrix_get;
     gizmo_property_params.value_set_fn = gizmo_light_radius_prop_matrix_set;
-    gizmo_property_params.range_get_fn = NULL;
+    gizmo_property_params.range_get_fn = nullptr;
     gizmo_property_params.user_data = (void *)C;
     WM_gizmo_target_property_def_func(gz, "matrix", &gizmo_property_params);
   }
@@ -318,7 +318,7 @@ static bool WIDGETGROUP_light_point_poll(const bContext *C, wmGizmoGroupType * /
 static void WIDGETGROUP_light_point_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
   wmGizmoWrapper *wwrapper = MEM_cnew<wmGizmoWrapper>(__func__);
-  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
+  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
   /* Point radius gizmo. */
   wmGizmo *gz = wwrapper->gizmo;
   gzgroup->customdata = wwrapper;
@@ -333,7 +333,7 @@ static void WIDGETGROUP_light_point_setup(const bContext *C, wmGizmoGroup *gzgro
   wmGizmoPropertyFnParams gizmo_property_params{};
   gizmo_property_params.value_get_fn = gizmo_light_radius_prop_matrix_get;
   gizmo_property_params.value_set_fn = gizmo_light_radius_prop_matrix_set;
-  gizmo_property_params.range_get_fn = NULL;
+  gizmo_property_params.range_get_fn = nullptr;
   gizmo_property_params.user_data = (void *)(C);
   WM_gizmo_target_property_def_func(gz, "matrix", &gizmo_property_params);
 }
@@ -435,7 +435,7 @@ static bool WIDGETGROUP_light_area_poll(const bContext *C, wmGizmoGroupType * /*
 static void WIDGETGROUP_light_area_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   wmGizmoWrapper *wwrapper = MEM_cnew<wmGizmoWrapper>(__func__);
-  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
+  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
   wmGizmo *gz = wwrapper->gizmo;
   RNA_enum_set(gz->ptr, "transform", ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
 
@@ -469,7 +469,7 @@ static void WIDGETGROUP_light_area_refresh(const bContext *C, wmGizmoGroup *gzgr
   wmGizmoPropertyFnParams gizmo_property_params{};
   gizmo_property_params.value_get_fn = gizmo_area_light_prop_matrix_get;
   gizmo_property_params.value_set_fn = gizmo_area_light_prop_matrix_set;
-  gizmo_property_params.range_get_fn = NULL;
+  gizmo_property_params.range_get_fn = nullptr;
   gizmo_property_params.user_data = la;
   WM_gizmo_target_property_def_func(gz, "matrix", &gizmo_property_params);
 }
@@ -525,7 +525,7 @@ static bool WIDGETGROUP_light_target_poll(const bContext *C, wmGizmoGroupType * 
 static void WIDGETGROUP_light_target_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   wmGizmoWrapper *wwrapper = MEM_cnew<wmGizmoWrapper>(__func__);
-  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_move_3d", gzgroup, NULL);
+  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_move_3d", gzgroup, nullptr);
   wmGizmo *gz = wwrapper->gizmo;
 
   gzgroup->customdata = wwrapper;
@@ -540,7 +540,7 @@ static void WIDGETGROUP_light_target_setup(const bContext * /*C*/, wmGizmoGroup 
   RNA_enum_set(
       gz->ptr, "draw_options", ED_GIZMO_MOVE_DRAW_FLAG_FILL | ED_GIZMO_MOVE_DRAW_FLAG_ALIGN_VIEW);
 
-  WM_gizmo_operator_set(gz, 0, ot, NULL);
+  WM_gizmo_operator_set(gz, 0, ot, nullptr);
 }
 
 static void WIDGETGROUP_light_target_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)

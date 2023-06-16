@@ -63,7 +63,7 @@ static void WIDGETGROUP_forcefield_setup(const bContext * /*C*/, wmGizmoGroup *g
   wmGizmoWrapper *wwrapper = MEM_cnew<wmGizmoWrapper>(__func__);
   gzgroup->customdata = wwrapper;
 
-  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, NULL);
+  wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, nullptr);
   wmGizmo *gz = wwrapper->gizmo;
   RNA_enum_set(gz->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_CONSTRAINED);
   ED_gizmo_arrow3d_set_ui_range(gz, -200.0f, 200.0f);

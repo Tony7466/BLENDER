@@ -93,7 +93,7 @@ static void WIDGETGROUP_camera_setup(const bContext *C, wmGizmoGroup *gzgroup)
   /* dof distance */
   {
     wmGizmo *gz;
-    gz = cagzgroup->dop_dist = WM_gizmo_new_ptr(gzt_arrow, gzgroup, NULL);
+    gz = cagzgroup->dop_dist = WM_gizmo_new_ptr(gzt_arrow, gzgroup, nullptr);
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_CROSS);
     WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_HOVER | WM_GIZMO_DRAW_NO_SCALE, true);
 
@@ -104,7 +104,7 @@ static void WIDGETGROUP_camera_setup(const bContext *C, wmGizmoGroup *gzgroup)
   /* focal length
    * - logic/calculations are similar to BKE_camera_view_frame_ex, better keep in sync */
   {
-    wmGizmo *gz = cagzgroup->focal_len = WM_gizmo_new_ptr(gzt_arrow, gzgroup, NULL);
+    wmGizmo *gz = cagzgroup->focal_len = WM_gizmo_new_ptr(gzt_arrow, gzgroup, nullptr);
     gz->flag |= WM_GIZMO_DRAW_NO_SCALE;
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_CONE);
     RNA_enum_set(gz->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_CONSTRAINED);
@@ -112,7 +112,7 @@ static void WIDGETGROUP_camera_setup(const bContext *C, wmGizmoGroup *gzgroup)
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 
-    gz = cagzgroup->ortho_scale = WM_gizmo_new_ptr(gzt_arrow, gzgroup, NULL);
+    gz = cagzgroup->ortho_scale = WM_gizmo_new_ptr(gzt_arrow, gzgroup, nullptr);
     gz->flag |= WM_GIZMO_DRAW_NO_SCALE;
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_CONE);
     RNA_enum_set(gz->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_CONSTRAINED);
@@ -408,7 +408,7 @@ static void WIDGETGROUP_camera_view_setup(const bContext * /*C*/, wmGizmoGroup *
 {
   CameraViewWidgetGroup *viewgroup = MEM_cnew<CameraViewWidgetGroup>(__func__);
 
-  viewgroup->border = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
+  viewgroup->border = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
 
   RNA_enum_set(viewgroup->border->ptr,
                "transform",
@@ -477,10 +477,10 @@ static void WIDGETGROUP_camera_view_refresh(const bContext *C, wmGizmoGroup *gzg
       viewgroup->state.edit_border = &v3d->render_border;
       viewgroup->is_camera = false;
     }
-    wmGizmoPropertyFnParams gizmo_property_params {};
+    wmGizmoPropertyFnParams gizmo_property_params{};
     gizmo_property_params.value_get_fn = gizmo_render_border_prop_matrix_get;
     gizmo_property_params.value_set_fn = gizmo_render_border_prop_matrix_set;
-    gizmo_property_params.range_get_fn = NULL;
+    gizmo_property_params.range_get_fn = nullptr;
     gizmo_property_params.user_data = viewgroup;
     WM_gizmo_target_property_def_func(gz, "matrix", &gizmo_property_params);
   }
