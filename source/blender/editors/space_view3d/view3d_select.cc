@@ -4842,9 +4842,9 @@ static bool mball_circle_select(ViewContext* vc,
 */
 
 static bool grease_pencil_circle_select(ViewContext* vc,
-    const eSelectOp sel_op
-    const int mval[2],
-    float rad)
+                                        const eSelectOp sel_op
+                                        const int mval[2],
+                                        float rad)
 {
     bool changed = false;
     grease_pencil.foreach_editable_drawing(
