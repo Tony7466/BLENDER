@@ -2201,8 +2201,8 @@ void BKE_keyblock_update_from_mesh(const Mesh *me, KeyBlock *kb)
     return;
   }
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  memcpy(kb->data, positions, sizeof(float[3]) * tot);
+  const blender::Span<blender::float3> positions = me->vert_positions();
+  memcpy(kb->data, positions.data(), sizeof(float[3]) * tot);
 }
 
 void BKE_keyblock_convert_from_mesh(const Mesh *me, const Key *key, KeyBlock *kb)
@@ -2239,8 +2239,8 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
     return;
   }
 
-  float(*positions)[3] = static_cast<float(*)[3]>(MEM_dupallocN(BKE_mesh_vert_positions(mesh)));
-  BKE_keyblock_convert_to_mesh(kb, positions, mesh->totvert);
+  blender::Array<blender::float3> positions(mesh->vert_positions());
+  BKE_keyblock_convert_to_mesh(kb, reinterpret_cast<float(*)[3]>(positions.data()), mesh->totvert);
   const blender::Span<blender::int2> edges = mesh->edges();
   const blender::OffsetIndices polys = mesh->polys();
   const blender::Span<int> corner_verts = mesh->corner_verts();
@@ -2268,14 +2268,14 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
 
   if (poly_normals_needed) {
     blender::bke::mesh::normals_calc_polys(
-        {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
+        positions,
         polys,
         corner_verts,
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()});
   }
   if (vert_normals_needed) {
     blender::bke::mesh::normals_calc_poly_vert(
-        {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
+        positions,
         polys,
         corner_verts,
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
@@ -2290,7 +2290,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
     const blender::short2 *clnors = static_cast<const blender::short2 *>(
         CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL));
     blender::bke::mesh::normals_calc_loop(
-        {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
+        positions,
         edges,
         polys,
         corner_verts,
@@ -2311,7 +2311,6 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   if (free_poly_normals) {
     MEM_freeN(poly_normals);
   }
-  MEM_freeN(positions);
 }
 
 /************************* raw coords ************************/

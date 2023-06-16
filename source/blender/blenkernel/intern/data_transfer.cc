@@ -1343,7 +1343,10 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
     }
 
     BKE_mesh_remap_find_best_match_from_mesh(
-        BKE_mesh_vert_positions(me_dst), me_dst->totvert, me_src, space_transform);
+        reinterpret_cast<const float(*)[3]>(me_dst->vert_positions().data()),
+        me_dst->totvert,
+        me_src,
+        space_transform);
   }
 
   /* Check all possible data types.
@@ -1369,7 +1372,7 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
     }
 
     if (DT_DATATYPE_IS_VERT(dtdata_type)) {
-      float(*positions_dst)[3] = BKE_mesh_vert_positions_for_write(me_dst);
+      blender::MutableSpan<blender::float3> positions_dst = me_dst->vert_positions_for_write();
       const int num_verts_dst = me_dst->totvert;
 
       if (!geom_map_init[VDATA]) {
@@ -1404,15 +1407,16 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
           continue;
         }
 
-        BKE_mesh_remap_calc_verts_from_mesh(map_vert_mode,
-                                            space_transform,
-                                            max_distance,
-                                            ray_radius,
-                                            positions_dst,
-                                            num_verts_dst,
-                                            me_src,
-                                            me_dst,
-                                            &geom_map[VDATA]);
+        BKE_mesh_remap_calc_verts_from_mesh(
+            map_vert_mode,
+            space_transform,
+            max_distance,
+            ray_radius,
+            reinterpret_cast<const float(*)[3]>(positions_dst.data()),
+            num_verts_dst,
+            me_src,
+            me_dst,
+            &geom_map[VDATA]);
         geom_map_init[VDATA] = true;
       }
 
@@ -1454,7 +1458,8 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
       }
     }
     if (DT_DATATYPE_IS_EDGE(dtdata_type)) {
-      const float(*positions_dst)[3] = BKE_mesh_vert_positions_for_write(me_dst);
+      blender::MutableSpan<blender::float3> positions_dst = me_dst->vert_positions_for_write();
+
       const int num_verts_dst = me_dst->totvert;
       const blender::Span<blender::int2> edges_dst = me_dst->edges();
 
@@ -1483,17 +1488,18 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
           continue;
         }
 
-        BKE_mesh_remap_calc_edges_from_mesh(map_edge_mode,
-                                            space_transform,
-                                            max_distance,
-                                            ray_radius,
-                                            positions_dst,
-                                            num_verts_dst,
-                                            edges_dst.data(),
-                                            edges_dst.size(),
-                                            me_src,
-                                            me_dst,
-                                            &geom_map[EDATA]);
+        BKE_mesh_remap_calc_edges_from_mesh(
+            map_edge_mode,
+            space_transform,
+            max_distance,
+            ray_radius,
+            reinterpret_cast<const float(*)[3]>(positions_dst.data()),
+            num_verts_dst,
+            edges_dst.data(),
+            edges_dst.size(),
+            me_src,
+            me_dst,
+            &geom_map[EDATA]);
         geom_map_init[EDATA] = true;
       }
 
@@ -1540,7 +1546,7 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
       }
     }
     if (DT_DATATYPE_IS_LOOP(dtdata_type)) {
-      const float(*positions_dst)[3] = BKE_mesh_vert_positions(me_dst);
+      const blender::Span<blender::float3> positions_dst = me_dst->vert_positions();
       const int num_verts_dst = me_dst->totvert;
       const blender::OffsetIndices polys_dst = me_dst->polys();
       const blender::Span<int> corner_verts_dst = me_dst->corner_verts();
@@ -1573,20 +1579,21 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
           continue;
         }
 
-        BKE_mesh_remap_calc_loops_from_mesh(map_loop_mode,
-                                            space_transform,
-                                            max_distance,
-                                            ray_radius,
-                                            me_dst,
-                                            positions_dst,
-                                            num_verts_dst,
-                                            corner_verts_dst.data(),
-                                            corner_verts_dst.size(),
-                                            polys_dst,
-                                            me_src,
-                                            island_callback,
-                                            islands_handling_precision,
-                                            &geom_map[LDATA]);
+        BKE_mesh_remap_calc_loops_from_mesh(
+            map_loop_mode,
+            space_transform,
+            max_distance,
+            ray_radius,
+            me_dst,
+            reinterpret_cast<const float(*)[3]>(positions_dst.data()),
+            num_verts_dst,
+            corner_verts_dst.data(),
+            corner_verts_dst.size(),
+            polys_dst,
+            me_src,
+            island_callback,
+            islands_handling_precision,
+            &geom_map[LDATA]);
         geom_map_init[LDATA] = true;
       }
 
@@ -1633,7 +1640,7 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
       }
     }
     if (DT_DATATYPE_IS_POLY(dtdata_type)) {
-      const float(*positions_dst)[3] = BKE_mesh_vert_positions(me_dst);
+      const blender::Span<blender::float3> positions_dst = me_dst->vert_positions();
       const int num_verts_dst = me_dst->totvert;
       const blender::OffsetIndices polys_dst = me_dst->polys();
       const blender::Span<int> corner_verts_dst = me_dst->corner_verts();
@@ -1663,17 +1670,18 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
           continue;
         }
 
-        BKE_mesh_remap_calc_polys_from_mesh(map_poly_mode,
-                                            space_transform,
-                                            max_distance,
-                                            ray_radius,
-                                            me_dst,
-                                            positions_dst,
-                                            num_verts_dst,
-                                            corner_verts_dst.data(),
-                                            polys_dst,
-                                            me_src,
-                                            &geom_map[PDATA]);
+        BKE_mesh_remap_calc_polys_from_mesh(
+            map_poly_mode,
+            space_transform,
+            max_distance,
+            ray_radius,
+            me_dst,
+            reinterpret_cast<const float(*)[3]>(positions_dst.data()),
+            num_verts_dst,
+            corner_verts_dst.data(),
+            polys_dst,
+            me_src,
+            &geom_map[PDATA]);
         geom_map_init[PDATA] = true;
       }
 

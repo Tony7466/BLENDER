@@ -14,6 +14,8 @@
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
+#include "DNA_genfile.h"
+
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_set.hh"

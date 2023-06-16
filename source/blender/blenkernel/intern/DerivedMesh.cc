@@ -72,6 +72,9 @@ using blender::float3;
 using blender::IndexRange;
 using blender::Span;
 using blender::VArray;
+using blender::bke::GeometryOwnershipType;
+using blender::bke::GeometrySet;
+using blender::bke::MeshComponent;
 
 /* very slow! enable for testing only! */
 //#define USE_MODIFIER_VALIDATE
@@ -672,11 +675,12 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
           mesh_final = BKE_mesh_copy_for_eval(mesh_input);
           ASSERT_IS_VALID_MESH(mesh_final);
         }
-        BKE_modifier_deform_verts(md,
-                                  &mectx,
-                                  mesh_final,
-                                  BKE_mesh_vert_positions_for_write(mesh_final),
-                                  mesh_final->totvert);
+        BKE_modifier_deform_verts(
+            md,
+            &mectx,
+            mesh_final,
+            reinterpret_cast<float(*)[3]>(mesh_final->vert_positions_for_write().data()),
+            mesh_final->totvert);
       }
       else {
         break;
@@ -761,11 +765,12 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
         mesh_final = BKE_mesh_copy_for_eval(mesh_input);
         ASSERT_IS_VALID_MESH(mesh_final);
       }
-      BKE_modifier_deform_verts(md,
-                                &mectx,
-                                mesh_final,
-                                BKE_mesh_vert_positions_for_write(mesh_final),
-                                mesh_final->totvert);
+      BKE_modifier_deform_verts(
+          md,
+          &mectx,
+          mesh_final,
+          reinterpret_cast<float(*)[3]>(mesh_final->vert_positions_for_write().data()),
+          mesh_final->totvert);
     }
     else {
       bool check_for_needs_mapping = false;
