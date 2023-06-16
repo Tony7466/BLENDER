@@ -327,4 +327,19 @@ const TreeZone *TreeZones::get_zone_by_socket(const bNodeSocket &socket) const
   return &zone;
 }
 
+Vector<const TreeZone *> TreeZones::get_zone_stack_for_node(const int node_id) const
+{
+  const int zone_i = this->zone_by_node_id.lookup_default(node_id, -1);
+  if (zone_i == -1) {
+    return {};
+  }
+  const TreeZone *zone = this->zones[zone_i].get();
+  Vector<const TreeZone *> zone_stack;
+  for (; zone; zone = zone->parent_zone) {
+    zone_stack.append(zone);
+  }
+  std::reverse(zone_stack.begin(), zone_stack.end());
+  return zone_stack;
+}
+
 }  // namespace blender::bke::node_tree_zones

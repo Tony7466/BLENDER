@@ -1628,8 +1628,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     lf_graph.update_node_indices();
 
+    auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
+
     const auto &lf_graph_fn = scope_.construct<lf::GraphExecutor>(
-        lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
+        lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, &side_effect_provider);
     const auto &zone_function = scope_.construct<LazyFunctionForSimulationZone>(*zone.output_node,
                                                                                 lf_graph_fn);
     zone_info.lazy_function = &zone_function;
@@ -2140,6 +2142,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     ZoneBuildInfo &child_zone_info = zone_build_infos_[child_zone_i];
     lf::FunctionNode &child_zone_node = graph_params.lf_graph.add_function(
         *child_zone_info.lazy_function);
+    mapping_->zone_node_map.add_new(&child_zone, &child_zone_node);
 
     for (const int i : child_zone_info.main_input_indices.index_range()) {
       const bNodeSocket &bsocket = child_zone.input_node->input_socket(i);
@@ -2748,8 +2751,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
-
-    mapping_->sim_output_node_map.add(&bnode, &lf_node);
     return lf_node;
   }
 

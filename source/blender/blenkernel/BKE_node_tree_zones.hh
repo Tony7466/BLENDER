@@ -14,6 +14,8 @@
 
 namespace blender::bke::node_tree_zones {
 
+class TreeZones;
+
 struct TreeZone {
   TreeZones *owner = nullptr;
   /** Index of the zone in the array of all zones in a node tree. */
@@ -53,6 +55,8 @@ class TreeZones {
    * in a different zone than its output sockets.
    */
   const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const;
+
+  Vector<const TreeZone *> get_zone_stack_for_node(const int32_t node_id) const;
 };
 
 const TreeZones *get_tree_zones(const bNodeTree &tree);

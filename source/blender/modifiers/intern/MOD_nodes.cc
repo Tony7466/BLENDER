@@ -424,31 +424,14 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
 
 namespace blender {
 
-static const lf::FunctionNode *find_viewer_lf_node(const bNode &viewer_bnode)
-{
-  if (const nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
-          nodes::ensure_geometry_nodes_lazy_function_graph(viewer_bnode.owner_tree()))
-  {
-    return lf_graph_info->mapping.viewer_node_map.lookup_default(&viewer_bnode, nullptr);
-  }
-  return nullptr;
-}
-static const lf::FunctionNode *find_group_lf_node(const bNode &group_bnode)
-{
-  if (const nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
-          nodes::ensure_geometry_nodes_lazy_function_graph(group_bnode.owner_tree()))
-  {
-    return lf_graph_info->mapping.group_node_map.lookup_default(&group_bnode, nullptr);
-  }
-  return nullptr;
-}
-
 static void find_side_effect_nodes_for_viewer_path(
     const ViewerPath &viewer_path,
     const NodesModifierData &nmd,
     const ModifierEvalContext &ctx,
     MultiValueMap<ComputeContextHash, const lf::FunctionNode *> &r_side_effect_nodes)
 {
+  using namespace bke::node_tree_zones;
+
   const std::optional<ed::viewer_path::ViewerPathForGeometryNodesViewer> parsed_path =
       ed::viewer_path::parse_geometry_nodes_viewer(viewer_path);
   if (!parsed_path.has_value()) {
@@ -464,8 +447,12 @@ static void find_side_effect_nodes_for_viewer_path(
   ComputeContextBuilder compute_context_builder;
   compute_context_builder.push<bke::ModifierComputeContext>(parsed_path->modifier_name);
 
+  /* Write side effect nodes to a new map and only if everything succeeds, move the nodes to the
+   * caller. This is easier than changing r_side_effect_nodes directly and then undoing changes in
+   * case of errors. */
+  MultiValueMap<ComputeContextHash, const lf::FunctionNode *> local_side_effect_nodes;
+
   const bNodeTree *group = nmd.node_group;
-  Stack<const bNode *> group_node_stack;
   for (const int32_t group_node_id : parsed_path->group_node_ids) {
     const bNode *found_node = group->node_by_id(group_node_id);
     if (found_node == nullptr) {
@@ -477,7 +464,31 @@ static void find_side_effect_nodes_for_viewer_path(
     if (found_node->is_muted()) {
       return;
     }
-    group_node_stack.push(found_node);
+    const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*group);
+    if (lf_graph_info == nullptr) {
+      return;
+    }
+    const TreeZones *tree_zones = get_tree_zones(*group);
+    if (tree_zones == nullptr) {
+      return;
+    }
+    const Vector<const TreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(group_node_id);
+    for (const TreeZone *zone : zone_stack) {
+      const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
+          zone, nullptr);
+      if (lf_zone_node == nullptr) {
+        return;
+      }
+      local_side_effect_nodes.add(compute_context_builder.hash(), lf_zone_node);
+      compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+    }
+
+    const lf::FunctionNode *lf_group_node = lf_graph_info->mapping.group_node_map.lookup_default(
+        found_node, nullptr);
+    if (lf_group_node == nullptr) {
+      return;
+    }
+    local_side_effect_nodes.add(compute_context_builder.hash(), lf_group_node);
     group = reinterpret_cast<bNodeTree *>(found_node->id);
     compute_context_builder.push<bke::NodeGroupComputeContext>(*found_node);
   }
@@ -486,23 +497,35 @@ static void find_side_effect_nodes_for_viewer_path(
   if (found_viewer_node == nullptr) {
     return;
   }
-  const lf::FunctionNode *lf_viewer_node = find_viewer_lf_node(*found_viewer_node);
+  const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*group);
+  if (lf_graph_info == nullptr) {
+    return;
+  }
+  const TreeZones *tree_zones = get_tree_zones(*group);
+  if (tree_zones == nullptr) {
+    return;
+  }
+  const Vector<const TreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
+      parsed_path->viewer_node_id);
+  for (const TreeZone *zone : zone_stack) {
+    const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
+        zone, nullptr);
+    if (lf_zone_node == nullptr) {
+      return;
+    }
+    local_side_effect_nodes.add(compute_context_builder.hash(), lf_zone_node);
+    compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+  }
+  const lf::FunctionNode *lf_viewer_node = lf_graph_info->mapping.viewer_node_map.lookup_default(
+      found_viewer_node, nullptr);
   if (lf_viewer_node == nullptr) {
     return;
   }
+  local_side_effect_nodes.add(compute_context_builder.hash(), lf_viewer_node);
 
-  /* Not only mark the viewer node as having side effects, but also all group nodes it is contained
-   * in. */
-  r_side_effect_nodes.add_non_duplicates(compute_context_builder.hash(), lf_viewer_node);
-  compute_context_builder.pop();
-  while (!compute_context_builder.is_empty()) {
-    const lf::FunctionNode *lf_group_node = find_group_lf_node(*group_node_stack.pop());
-    if (lf_group_node == nullptr) {
-      return;
-    }
-
-    r_side_effect_nodes.add_non_duplicates(compute_context_builder.hash(), lf_group_node);
-    compute_context_builder.pop();
+  /* Successfully found all compute contexts for the viewer. */
+  for (const auto item : local_side_effect_nodes.items()) {
+    r_side_effect_nodes.add_multiple(item.key, item.value);
   }
 }
 
