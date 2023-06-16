@@ -6,91 +6,147 @@
 
 #pragma once
 
-#include "overlay_next_extra_pass.hh"
+#include "overlay_next_private.hh"
+
 namespace blender::draw::overlay {
 
-static void light_sync(const ObjectRef &ob_ref,
-                       const select::ID select_id,
-                       Resources & /*res*/,
-                       const State &state,
-                       ExtraInstancePass &pass,
-                       ExtraInstanceData data)
-{
-  /* Pack render data into object matrix. */
-  float4x4 &matrix = data.matrix;
-  float &area_size_x = matrix[0].w;
-  float &area_size_y = matrix[1].w;
-  float &spot_cosine = matrix[0].w;
-  float &spot_blend = matrix[1].w;
-  float &clip_start = matrix[2].w;
-  float &clip_end = matrix[3].w;
+using GroundLineInstanceBuf = BatchInstanceBuf<float4>;
 
-  Object *ob = ob_ref.object;
-  Light *la = static_cast<Light *>(ob->data);
+class LightPasses : public OverlayPasses {
 
-  /* FIXME / TODO: clip_end has no meaning nowadays.
-   * In EEVEE, Only clip_start is used shadow-mapping.
-   * Clip end is computed automatically based on light power.
-   * For now, always use the custom distance as clip_end. */
-  clip_end = la->att_dist;
-  clip_start = la->clipsta;
+  GroundLineInstanceBuf groundline = {"groundline", shapes.groundline.get(), selection_type};
 
-  /* Remove the alpha. */
-  data.color = float4(data.color.xyz(), 1.0f);
+  ExtraInstanceBuf icon_inner = extra_buf("light_icon_inner", shapes.light_icon_inner);
+  ExtraInstanceBuf icon_outer = extra_buf("light_icon_outer", shapes.light_icon_outer);
+  ExtraInstanceBuf icon_sun_rays = extra_buf("light_icon_sun_rays", shapes.light_icon_sun_rays);
 
-  float4 light_color = data.color;
-  if (state.overlay.flag & V3D_OVERLAY_SHOW_LIGHT_COLORS) {
-    light_color = float4(la->r, la->g, la->b, 1.0f);
+  ExtraInstanceBuf point = extra_buf("light_point", shapes.light_point);
+  ExtraInstanceBuf sun = extra_buf("light_sun", shapes.light_sun);
+  ExtraInstanceBuf spot = extra_buf("light_spot", shapes.light_spot);
+  ExtraInstanceBuf spot_cone_back = extra_buf(
+      "light_spot_cone_back", shapes.light_spot_cone, BLEND_CULL_BACK);
+  ExtraInstanceBuf spot_cone_front = extra_buf(
+      "light_spot_cone_front", shapes.light_spot_cone, BLEND_CULL_FRONT);
+  ExtraInstanceBuf area_disk = extra_buf("light_area_disk", shapes.light_area_disk);
+  ExtraInstanceBuf area_square = extra_buf("light_area_square", shapes.light_area_square);
+
+ public:
+  LightPasses(SelectionType selection_type,
+              const ShapeCache &shapes,
+              const GlobalsUboStorage &theme_colors,
+              bool in_front)
+      : OverlayPasses("Lights", selection_type, shapes, theme_colors, in_front){};
+
+  virtual void begin_sync(Resources &res, const State &state) final override
+  {
+    OverlayPasses::begin_sync(res, state);
+    groundline.clear();
   }
 
-  pass.groundline.append(float4(data.matrix.location()), select_id);
-
-  pass.light_icon_inner.append(data.with_color(light_color), select_id);
-  pass.light_icon_outer.append(data, select_id);
-
-  if (la->type == LA_LOCAL) {
-    area_size_x = area_size_y = la->radius;
-    pass.light_point.append(data, select_id);
+  virtual void end_sync(Resources &res, const State &state) final override
+  {
+    OverlayPasses::end_sync(res, state);
+    if (groundline.data_buf.is_empty()) {
+      return;
+    }
+    PassSimple::Sub &ps = ps_.sub("GroundLine");
+    ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_BLEND_ADD |
+                 state.clipping_state);
+    ps.shader_set(res.shaders.extra_groundline.get());
+    /* TODO: Fixed index. */
+    ps.bind_ubo("globalsBlock", &res.globals_buf);
+    groundline.end_sync(ps);
   }
-  else if (la->type == LA_SUN) {
-    pass.light_sun.append(data, select_id);
-    pass.light_icon_sun_rays.append(data.with_color(light_color), select_id);
-  }
-  else if (la->type == LA_SPOT) {
-    /* Previous implementation was using the clip-end distance as cone size.
-     * We cannot do this anymore so we use a fixed size of 10. (see #72871) */
-    matrix = math::scale(matrix, float3(10.0f));
-    /* For cycles and EEVEE the spot attenuation is:
-     * `y = (1/sqrt(1 + x^2) - a)/((1 - a) b)`
-     * x being the tangent of the angle between the light direction and the
-     * generatrix of the cone. We solve the case where spot attenuation y = 1
-     * and y = 0 root for y = 1 is sqrt(1/c^2 - 1) root for y = 0 is
-     * sqrt(1/a^2 - 1) and use that to position the blend circle. */
-    float a = cosf(la->spotsize * 0.5f);
-    float b = la->spotblend;
-    float c = a * b - a - b;
-    float a2 = a * a;
-    float c2 = c * c;
-    /* Optimized version or root1 / root0 */
-    spot_blend = sqrtf((a2 - a2 * c2) / (c2 - a2 * c2));
-    spot_cosine = a;
-    /* HACK: We pack the area size in alpha color. This is decoded by the shader. */
-    data.color.w = -max_ff(la->radius, FLT_MIN);
-    pass.light_spot.append(data, select_id);
-    if ((la->mode & LA_SHOW_CONE) && !DRW_state_is_select()) {
-      pass.light_spot_cone_front.append(data.with_color({0.0f, 0.0f, 0.0f, 0.5f}), select_id);
-      pass.light_spot_cone_back.append(data.with_color({1.0f, 1.0f, 1.0f, 0.3f}), select_id);
+
+  virtual void object_sync(const ObjectRef &ob_ref,
+                           const select::ID select_id,
+                           Resources &res,
+                           const State &state) final override
+  {
+    Object *ob = ob_ref.object;
+    BLI_assert(ob->type == OB_LAMP);
+
+    ExtraInstanceData data(ob_ref.object, res.object_wire_color(ob_ref, state));
+
+    /* Pack render data into object matrix. */
+    float4x4 &matrix = data.matrix;
+    float &area_size_x = matrix[0].w;
+    float &area_size_y = matrix[1].w;
+    float &spot_cosine = matrix[0].w;
+    float &spot_blend = matrix[1].w;
+    float &clip_start = matrix[2].w;
+    float &clip_end = matrix[3].w;
+
+    Light *la = static_cast<Light *>(ob->data);
+
+    /* FIXME / TODO: clip_end has no meaning nowadays.
+     * In EEVEE, Only clip_start is used shadow-mapping.
+     * Clip end is computed automatically based on light power.
+     * For now, always use the custom distance as clip_end. */
+    clip_end = la->att_dist;
+    clip_start = la->clipsta;
+
+    /* Remove the alpha. */
+    data.color = float4(data.color.xyz(), 1.0f);
+
+    float4 light_color = data.color;
+    if (state.overlay.flag & V3D_OVERLAY_SHOW_LIGHT_COLORS) {
+      light_color = float4(la->r, la->g, la->b, 1.0f);
+    }
+
+    groundline.append(float4(data.matrix.location()), select_id);
+
+    icon_inner.append(data.with_color(light_color), select_id);
+    icon_outer.append(data, select_id);
+
+    if (la->type == LA_LOCAL) {
+      area_size_x = area_size_y = la->radius;
+      point.append(data, select_id);
+    }
+    else if (la->type == LA_SUN) {
+      sun.append(data, select_id);
+      icon_sun_rays.append(data.with_color(light_color), select_id);
+    }
+    else if (la->type == LA_SPOT) {
+      /* Previous implementation was using the clip-end distance as cone size.
+       * We cannot do this anymore so we use a fixed size of 10. (see #72871) */
+      matrix = math::scale(matrix, float3(10.0f));
+      /* For cycles and EEVEE the spot attenuation is:
+       * `y = (1/sqrt(1 + x^2) - a)/((1 - a) b)`
+       * x being the tangent of the angle between the light direction and the
+       * generatrix of the cone. We solve the case where spot attenuation y = 1
+       * and y = 0 root for y = 1 is sqrt(1/c^2 - 1) root for y = 0 is
+       * sqrt(1/a^2 - 1) and use that to position the blend circle. */
+      float a = cosf(la->spotsize * 0.5f);
+      float b = la->spotblend;
+      float c = a * b - a - b;
+      float a2 = a * a;
+      float c2 = c * c;
+      /* Optimized version or root1 / root0 */
+      spot_blend = sqrtf((a2 - a2 * c2) / (c2 - a2 * c2));
+      spot_cosine = a;
+      /* HACK: We pack the area size in alpha color. This is decoded by the shader. */
+      data.color.w = -max_ff(la->radius, FLT_MIN);
+      spot.append(data, select_id);
+      if ((la->mode & LA_SHOW_CONE) && !DRW_state_is_select()) {
+        spot_cone_front.append(data.with_color({0.0f, 0.0f, 0.0f, 0.5f}), select_id);
+        spot_cone_back.append(data.with_color({1.0f, 1.0f, 1.0f, 0.3f}), select_id);
+      }
+    }
+    else if (la->type == LA_AREA) {
+      ExtraInstanceBuf &buf = ELEM(la->area_shape, LA_AREA_SQUARE, LA_AREA_RECT) ? area_square :
+                                                                                   area_disk;
+      bool uniform_scale = !ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
+      area_size_x = la->area_size;
+      area_size_y = uniform_scale ? la->area_size : la->area_sizey;
+      buf.append(data, select_id);
+    }
+    else {
+      BLI_assert_unreachable();
     }
   }
-  else if (la->type == LA_AREA) {
-    ExtraInstanceBuf &buf = ELEM(la->area_shape, LA_AREA_SQUARE, LA_AREA_RECT) ?
-                                pass.light_area_square :
-                                pass.light_area_disk;
-    bool uniform_scale = !ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
-    area_size_x = la->area_size;
-    area_size_y = uniform_scale ? la->area_size : la->area_sizey;
-    buf.append(data, select_id);
-  }
-}
+};
+
+using Light = OverlayType<LightPasses>;
 
 }  // namespace blender::draw::overlay

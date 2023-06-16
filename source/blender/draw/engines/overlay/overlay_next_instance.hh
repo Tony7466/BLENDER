@@ -11,12 +11,22 @@
 #include "overlay_next_private.hh"
 
 #include "overlay_next_background.hh"
-#include "overlay_next_extra.hh"
 #include "overlay_next_grid.hh"
 #include "overlay_next_metaball.hh"
 #include "overlay_next_object_center.hh"
 #include "overlay_next_object_relation.hh"
 #include "overlay_next_prepass.hh"
+
+#include "overlay_next_bounds.hh"
+#include "overlay_next_camera.hh"
+#include "overlay_next_collision.hh"
+#include "overlay_next_empty.hh"
+#include "overlay_next_force_field.hh"
+#include "overlay_next_light.hh"
+#include "overlay_next_light_probe.hh"
+#include "overlay_next_object_center.hh"
+#include "overlay_next_object_relation.hh"
+#include "overlay_next_speaker.hh"
 
 namespace blender::draw::overlay {
 
@@ -43,8 +53,16 @@ class Instance {
   Prepass prepass;
   Metaballs metaballs = {selection_type_};
   Grid grid;
-  /** TODO(Miguel Pozo): Don't use G_draw. */
-  Extra extras = {selection_type_, shapes, G_draw.block};
+  Bound bounds = {selection_type_, shapes, G_draw.block};
+  Camera cameras = {selection_type_, shapes, G_draw.block};
+  Collision collisions = {selection_type_, shapes, G_draw.block};
+  Empty empties = {selection_type_, shapes, G_draw.block};
+  ForceField force_fields = {selection_type_, shapes, G_draw.block};
+  Light lights = {selection_type_, shapes, G_draw.block};
+  LightProbe light_probes = {selection_type_, shapes, G_draw.block};
+  ObjectCenter object_centers = {selection_type_, shapes, G_draw.block};
+  ObjectRelation object_relations = {selection_type_, shapes, G_draw.block};
+  Speaker speakers = {selection_type_, shapes, G_draw.block};
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
 

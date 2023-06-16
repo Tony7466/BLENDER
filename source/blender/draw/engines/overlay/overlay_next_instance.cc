@@ -85,9 +85,18 @@ void Instance::begin_sync()
 
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
-  extras.begin_sync(resources, state);
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
+  bounds.begin_sync(resources, state);
+  cameras.begin_sync(resources, state);
+  collisions.begin_sync(resources, state);
+  empties.begin_sync(resources, state);
+  force_fields.begin_sync(resources, state);
+  lights.begin_sync(resources, state);
+  light_probes.begin_sync(resources, state);
+  object_centers.begin_sync(resources, state);
+  object_relations.begin_sync(resources, state);
+  speakers.begin_sync(resources, state);
 }
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
@@ -136,18 +145,37 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   }
 
   if (!state.hide_overlays) {
-    extras.object_sync(ob_ref, select_id, resources, state);
     switch (ob_ref.object->type) {
       case OB_ARMATURE:
+        break;
+      case OB_CAMERA:
+        cameras.object_sync(ob_ref, select_id, resources, state);
+        break;
+      case OB_EMPTY:
+        empties.object_sync(ob_ref, select_id, resources, state);
+        break;
+      case OB_GPENCIL_LEGACY:
+        break;
+      case OB_LAMP:
+        lights.object_sync(ob_ref, select_id, resources, state);
+        break;
+      case OB_LIGHTPROBE:
+        light_probes.object_sync(ob_ref, select_id, resources, state);
         break;
       case OB_MBALL:
         if (!in_edit_mode) {
           metaballs.object_sync(ob_ref, select_id, resources, state);
         }
         break;
-      case OB_GPENCIL_LEGACY:
+      case OB_SPEAKER:
+        speakers.object_sync(ob_ref, select_id, resources, state);
         break;
     }
+    bounds.object_sync(ob_ref, select_id, resources, state);
+    collisions.object_sync(ob_ref, select_id, resources, state);
+    force_fields.object_sync(ob_ref, select_id, resources, state);
+    object_centers.object_sync(ob_ref, select_id, resources, state);
+    object_relations.object_sync(ob_ref, select_id, resources, state);
   }
 }
 
@@ -156,7 +184,16 @@ void Instance::end_sync()
   resources.end_sync();
 
   metaballs.end_sync(resources, shapes, state);
-  extras.end_sync(resources, state);
+  bounds.end_sync(resources, state);
+  cameras.end_sync(resources, state);
+  collisions.end_sync(resources, state);
+  empties.end_sync(resources, state);
+  force_fields.end_sync(resources, state);
+  lights.end_sync(resources, state);
+  light_probes.end_sync(resources, state);
+  object_centers.end_sync(resources, state);
+  object_relations.end_sync(resources, state);
+  speakers.end_sync(resources, state);
 }
 
 void Instance::draw(Manager &manager)
@@ -221,13 +258,31 @@ void Instance::draw(Manager &manager)
 
   background.draw(resources, manager);
 
-  extras.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
+  bounds.draw(resources, manager, view);
+  cameras.draw(resources, manager, view);
+  collisions.draw(resources, manager, view);
+  empties.draw(resources, manager, view);
+  force_fields.draw(resources, manager, view);
+  lights.draw(resources, manager, view);
+  light_probes.draw(resources, manager, view);
+  object_centers.draw(resources, manager, view);
+  object_relations.draw(resources, manager, view);
+  speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
-  extras.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
+  bounds.draw_in_front(resources, manager, view);
+  cameras.draw_in_front(resources, manager, view);
+  collisions.draw_in_front(resources, manager, view);
+  empties.draw_in_front(resources, manager, view);
+  force_fields.draw_in_front(resources, manager, view);
+  lights.draw_in_front(resources, manager, view);
+  light_probes.draw_in_front(resources, manager, view);
+  object_centers.draw_in_front(resources, manager, view);
+  object_relations.draw_in_front(resources, manager, view);
+  speakers.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
 
