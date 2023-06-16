@@ -20,16 +20,6 @@
 
 CCL_NAMESPACE_BEGIN
 
-ccl_device_forceinline bool integrator_intersect_skip_lights(KernelGlobals kg,
-                                                             IntegratorState state)
-{
-  /* When direct lighting is disabled for baking, we skip light sampling in
-   * integrate_surface_direct_light for the first bounce. Therefore, in order
-   * for MIS to be consistent, we also need to skip evaluating lights here. */
-  return (kernel_data.integrator.filter_closures & FILTER_CLOSURE_DIRECT_LIGHT) &&
-         (INTEGRATOR_STATE(state, path, bounce) == 1);
-}
-
 ccl_device_forceinline bool integrator_intersect_terminate(KernelGlobals kg,
                                                            IntegratorState state,
                                                            const int shader_flags)
@@ -272,12 +262,7 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
   }
   else {
     /* Nothing hit, continue with background kernel. */
-    if (integrator_intersect_skip_lights(kg, state)) {
-      integrator_path_terminate(kg, state, current_kernel);
-    }
-    else {
-      integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
-    }
+    integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
   }
 }
 
@@ -329,12 +314,8 @@ ccl_device_forceinline void integrator_intersect_next_kernel_after_volume(
   }
   else {
     /* Nothing hit, continue with background kernel. */
-    if (integrator_intersect_skip_lights(kg, state)) {
-      integrator_path_terminate(kg, state, current_kernel);
-    }
-    else {
-      integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
-    }
+    integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
+    return;
   }
 }
 
@@ -408,7 +389,7 @@ ccl_device void integrator_intersect_closest(KernelGlobals kg,
 #endif /* __MNEE__ */
 
   /* Light intersection for MIS. */
-  if (kernel_data.integrator.use_light_mis && !integrator_intersect_skip_lights(kg, state)) {
+  if (kernel_data.integrator.use_light_mis) {
     /* NOTE: if we make lights visible to camera rays, we'll need to initialize
      * these in the path_state_init. */
     const int last_type = INTEGRATOR_STATE(state, isect, type);

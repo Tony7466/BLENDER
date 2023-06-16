@@ -44,7 +44,7 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
 
   const bool only_realized_data = geo_decl->only_realized_data();
   const bool only_instances = geo_decl->only_instances();
-  const Span<GeometryComponent::Type> supported_types = geo_decl->supported_types();
+  const Span<GeometryComponentType> supported_types = geo_decl->supported_types();
 
   if (only_realized_data) {
     if (geometry_set.has_instances()) {
@@ -62,10 +62,10 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
     /* Assume all types are supported. */
     return;
   }
-  const Vector<GeometryComponent::Type> types_in_geometry = geometry_set.gather_component_types(
+  const Vector<GeometryComponentType> types_in_geometry = geometry_set.gather_component_types(
       true, true);
-  for (const GeometryComponent::Type type : types_in_geometry) {
-    if (type == GeometryComponent::Type::Instance) {
+  for (const GeometryComponentType type : types_in_geometry) {
+    if (type == GEO_COMPONENT_TYPE_INSTANCES) {
       continue;
     }
     if (supported_types.contains(type)) {
@@ -73,27 +73,27 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
     }
     std::string message = TIP_("Input geometry has unsupported type: ");
     switch (type) {
-      case GeometryComponent::Type::Mesh: {
+      case GEO_COMPONENT_TYPE_MESH: {
         message += TIP_("Mesh");
         break;
       }
-      case GeometryComponent::Type::PointCloud: {
+      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
         message += TIP_("Point Cloud");
         break;
       }
-      case GeometryComponent::Type::Instance: {
+      case GEO_COMPONENT_TYPE_INSTANCES: {
         BLI_assert_unreachable();
         break;
       }
-      case GeometryComponent::Type::Volume: {
+      case GEO_COMPONENT_TYPE_VOLUME: {
         message += CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume");
         break;
       }
-      case GeometryComponent::Type::Curve: {
+      case GEO_COMPONENT_TYPE_CURVE: {
         message += TIP_("Curve");
         break;
       }
-      case GeometryComponent::Type::Edit: {
+      case GEO_COMPONENT_TYPE_EDIT: {
         continue;
       }
     }

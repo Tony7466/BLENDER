@@ -12,15 +12,6 @@
 #include "DNA_modifier_types.h" /* needed for all enum typdefs */
 
 #ifdef __cplusplus
-namespace blender::bke {
-struct GeometrySet;
-}
-using GeometrySetHandle = blender::bke::GeometrySet;
-#else
-typedef struct GeometrySetHandle GeometrySetHandle;
-#endif
-
-#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -32,6 +23,7 @@ struct BlendWriter;
 struct CustomData_MeshMasks;
 struct DepsNodeHandle;
 struct Depsgraph;
+struct GeometrySet;
 struct ID;
 struct ListBase;
 struct Main;
@@ -250,7 +242,7 @@ typedef struct ModifierTypeInfo {
    */
   void (*modifyGeometrySet)(struct ModifierData *md,
                             const struct ModifierEvalContext *ctx,
-                            GeometrySetHandle *geometry_set);
+                            struct GeometrySet *geometry_set);
 
   /********************* Optional functions *********************/
 

@@ -67,21 +67,21 @@ void Instances::add_instance(const int instance_handle, const float4x4 &transfor
   attributes_.reallocate(this->instances_num());
 }
 
-Span<int> Instances::reference_handles() const
+blender::Span<int> Instances::reference_handles() const
 {
   return reference_handles_;
 }
 
-MutableSpan<int> Instances::reference_handles()
+blender::MutableSpan<int> Instances::reference_handles()
 {
   return reference_handles_;
 }
 
-MutableSpan<float4x4> Instances::transforms()
+blender::MutableSpan<blender::float4x4> Instances::transforms()
 {
   return transforms_;
 }
-Span<float4x4> Instances::transforms() const
+blender::Span<blender::float4x4> Instances::transforms() const
 {
   return transforms_;
 }
@@ -102,7 +102,7 @@ int Instances::add_reference(const InstanceReference &reference)
   return references_.index_of_or_add_as(reference);
 }
 
-Span<InstanceReference> Instances::references() const
+blender::Span<InstanceReference> Instances::references() const
 {
   return references_;
 }

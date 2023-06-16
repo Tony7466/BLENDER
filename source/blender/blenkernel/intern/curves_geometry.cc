@@ -1096,14 +1096,19 @@ void CurvesGeometry::transform(const float4x4 &matrix)
   this->tag_positions_changed();
 }
 
-std::optional<Bounds<float3>> CurvesGeometry::bounds_min_max() const
+bool CurvesGeometry::bounds_min_max(float3 &min, float3 &max) const
 {
   if (this->points_num() == 0) {
-    return std::nullopt;
+    return false;
   }
+
   this->runtime->bounds_cache.ensure(
       [&](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(this->evaluated_positions()); });
-  return this->runtime->bounds_cache.data();
+
+  const Bounds<float3> &bounds = this->runtime->bounds_cache.data();
+  min = math::min(bounds.min, min);
+  max = math::max(bounds.max, max);
+  return true;
 }
 
 CurvesGeometry curves_copy_point_selection(

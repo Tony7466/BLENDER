@@ -314,8 +314,9 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 
 float2 node_to_view(const bNode &node, const float2 &co)
 {
-  const float2 node_location = bke::nodeToView(&node, co);
-  return node_location * UI_SCALE_FAC;
+  float2 result;
+  bke::nodeToView(&node, co.x, co.y, &result.x, &result.y);
+  return result * UI_SCALE_FAC;
 }
 
 void node_to_updated_rect(const bNode &node, rctf &r_rect)
@@ -331,9 +332,11 @@ void node_to_updated_rect(const bNode &node, rctf &r_rect)
 
 float2 node_from_view(const bNode &node, const float2 &co)
 {
-  const float2 node_location = co / UI_SCALE_FAC;
-  return bke::nodeFromView(&node, node_location);
-  ;
+  const float x = co.x / UI_SCALE_FAC;
+  const float y = co.y / UI_SCALE_FAC;
+  float2 result;
+  bke::nodeFromView(&node, x, y, &result.x, &result.y);
+  return result;
 }
 
 /**
@@ -938,7 +941,7 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
 static void create_inspection_string_for_geometry_info(const geo_log::GeometryInfoLog &value_log,
                                                        std::stringstream &ss)
 {
-  Span<bke::GeometryComponent::Type> component_types = value_log.component_types;
+  Span<GeometryComponentType> component_types = value_log.component_types;
   if (component_types.is_empty()) {
     ss << TIP_("Empty Geometry");
     return;
@@ -951,9 +954,9 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   };
 
   ss << TIP_("Geometry:") << "\n";
-  for (bke::GeometryComponent::Type type : component_types) {
+  for (GeometryComponentType type : component_types) {
     switch (type) {
-      case bke::GeometryComponent::Type::Mesh: {
+      case GEO_COMPONENT_TYPE_MESH: {
         const geo_log::GeometryInfoLog::MeshInfo &mesh_info = *value_log.mesh_info;
         char line[256];
         SNPRINTF(line,
@@ -964,7 +967,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case bke::GeometryComponent::Type::PointCloud: {
+      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
         const geo_log::GeometryInfoLog::PointCloudInfo &pointcloud_info =
             *value_log.pointcloud_info;
         char line[256];
@@ -974,7 +977,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case bke::GeometryComponent::Type::Curve: {
+      case GEO_COMPONENT_TYPE_CURVE: {
         const geo_log::GeometryInfoLog::CurveInfo &curve_info = *value_log.curve_info;
         char line[256];
         SNPRINTF(line,
@@ -984,7 +987,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case bke::GeometryComponent::Type::Instance: {
+      case GEO_COMPONENT_TYPE_INSTANCES: {
         const geo_log::GeometryInfoLog::InstancesInfo &instances_info = *value_log.instances_info;
         char line[256];
         SNPRINTF(
@@ -992,11 +995,11 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case bke::GeometryComponent::Type::Volume: {
+      case GEO_COMPONENT_TYPE_VOLUME: {
         ss << TIP_("\u2022 Volume");
         break;
       }
-      case bke::GeometryComponent::Type::Edit: {
+      case GEO_COMPONENT_TYPE_EDIT: {
         if (value_log.edit_data_info.has_value()) {
           const geo_log::GeometryInfoLog::EditDataInfo &edit_info = *value_log.edit_data_info;
           char line[256];
@@ -1029,36 +1032,36 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
     ss << ".\n\n";
   }
 
-  Span<bke::GeometryComponent::Type> supported_types = socket_decl->supported_types();
+  Span<GeometryComponentType> supported_types = socket_decl->supported_types();
   if (supported_types.is_empty()) {
     ss << TIP_("Supported: All Types");
     return;
   }
 
   ss << TIP_("Supported: ");
-  for (bke::GeometryComponent::Type type : supported_types) {
+  for (GeometryComponentType type : supported_types) {
     switch (type) {
-      case bke::GeometryComponent::Type::Mesh: {
+      case GEO_COMPONENT_TYPE_MESH: {
         ss << TIP_("Mesh");
         break;
       }
-      case bke::GeometryComponent::Type::PointCloud: {
+      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
         ss << TIP_("Point Cloud");
         break;
       }
-      case bke::GeometryComponent::Type::Curve: {
+      case GEO_COMPONENT_TYPE_CURVE: {
         ss << TIP_("Curve");
         break;
       }
-      case bke::GeometryComponent::Type::Instance: {
+      case GEO_COMPONENT_TYPE_INSTANCES: {
         ss << TIP_("Instances");
         break;
       }
-      case bke::GeometryComponent::Type::Volume: {
+      case GEO_COMPONENT_TYPE_VOLUME: {
         ss << CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume");
         break;
       }
-      case bke::GeometryComponent::Type::Edit: {
+      case GEO_COMPONENT_TYPE_EDIT: {
         break;
       }
     }
@@ -3100,7 +3103,7 @@ static void find_bounds_by_zone_recursive(const SpaceNode &snode,
       if (link.fromnode == nullptr) {
         continue;
       }
-      if (zone.contains_node_recursively(*link.fromnode) && zone.output_node != link.fromnode) {
+      if (zone.contains_node_recursively(*link.fromnode) || zone.input_node == link.fromnode) {
         const float2 pos = node_link_bezier_points_dragged(snode, link)[3];
         rctf rect;
         BLI_rctf_init_pt_radius(&rect, pos, node_padding);
@@ -3246,14 +3249,14 @@ static void node_draw_nodetree(const bContext &C,
   GPU_blend(GPU_BLEND_ALPHA);
   nodelink_batch_start(snode);
 
-  for (const bNodeLink *link : ntree.all_links()) {
+  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
     if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
-  for (const bNodeLink *link : ntree.all_links()) {
+  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
     if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, true);
     }

@@ -1945,7 +1945,7 @@ typedef struct SpaceSpreadsheet {
   /* eSpaceSpreadsheet_FilterFlag. */
   uint8_t filter_flag;
 
-  /* #GeometryComponent::Type. */
+  /* #GeometryComponentType. */
   uint8_t geometry_component_type;
   /* #eAttrDomain. */
   uint8_t attribute_domain;

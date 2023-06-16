@@ -156,7 +156,6 @@ void device_hip_info(vector<DeviceInfo> &devices)
 
     info.has_nanovdb = true;
     info.has_light_tree = true;
-    info.has_mnee = true;
     info.denoisers = 0;
 
     info.has_gpu_queue = true;

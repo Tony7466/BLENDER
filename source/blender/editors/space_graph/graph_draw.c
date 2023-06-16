@@ -819,65 +819,7 @@ static bool fcurve_can_use_simple_bezt_drawing(FCurve *fcu)
   return true;
 }
 
-static int calculate_bezt_draw_resolution(BezTriple *bezt,
-                                          BezTriple *prevbezt,
-                                          const int max_bez_resolution,
-                                          const bool is_driver)
-{
-  if (is_driver) {
-    return max_bez_resolution;
-  }
-
-  const int resolution = (int)(5.0f * len_v2v2(bezt->vec[1], prevbezt->vec[1]));
-
-  /* NOTE: higher values will crash */
-  /* TODO: view scale should factor into this someday too... */
-  return min_ii(resolution, max_bez_resolution);
-}
-
-/** Draw a segment from \param prevbezt to \param bezt at the given \param resolution.
- * immBeginAtMost is expected to be called with enough space for this function to run.
- */
-static void draw_bezt(BezTriple *bezt, BezTriple *prevbezt, int resolution, uint pos)
-{
-  float prev_key[2], prev_handle[2], bez_handle[2], bez_key[2];
-  float data[120];
-
-  if (resolution < 2) {
-    prev_key[0] = prevbezt->vec[1][0];
-    prev_key[1] = prevbezt->vec[1][1];
-    immVertex2fv(pos, prev_key);
-    return;
-  }
-
-  prev_key[0] = prevbezt->vec[1][0];
-  prev_key[1] = prevbezt->vec[1][1];
-  prev_handle[0] = prevbezt->vec[2][0];
-  prev_handle[1] = prevbezt->vec[2][1];
-
-  bez_handle[0] = bezt->vec[0][0];
-  bez_handle[1] = bezt->vec[0][1];
-  bez_key[0] = bezt->vec[1][0];
-  bez_key[1] = bezt->vec[1][1];
-
-  BKE_fcurve_correct_bezpart(prev_key, prev_handle, bez_handle, bez_key);
-
-  BKE_curve_forward_diff_bezier(
-      prev_key[0], prev_handle[0], bez_handle[0], bez_key[0], data, resolution, sizeof(float[3]));
-  BKE_curve_forward_diff_bezier(prev_key[1],
-                                prev_handle[1],
-                                bez_handle[1],
-                                bez_key[1],
-                                data + 1,
-                                resolution,
-                                sizeof(float[3]));
-
-  for (float *fp = data; resolution; resolution--, fp += 3) {
-    immVertex2fv(pos, fp);
-  }
-}
-
-/* Helper function - draw one repeat of an F-Curve (using Bezier curve approximations). */
+/* helper func - draw one repeat of an F-Curve (using Bezier curve approximations) */
 static void draw_fcurve_curve_bezts(
     bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d, uint pos, const bool draw_extrapolation)
 {
@@ -885,136 +827,178 @@ static void draw_fcurve_curve_bezts(
     return;
   }
 
-  /* Apply unit mapping. */
-  GPU_matrix_push();
-  float offset;
+  BezTriple *prevbezt = fcu->bezt;
+  BezTriple *bezt = prevbezt + 1;
+  float v1[2], v2[2], v3[2], v4[2];
+  float *fp, data[120];
+  float fac = 0.0f;
+  int b = fcu->totvert - 1;
+  int resol;
+  float unit_scale, offset;
   short mapping_flag = ANIM_get_normalization_flags(ac);
-  const float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
+
+  /* apply unit mapping */
+  GPU_matrix_push();
+  unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
   GPU_matrix_scale_2f(1.0f, unit_scale);
   GPU_matrix_translate_2f(0.0f, offset);
 
   /* For now, this assumes the worst case scenario, where all the keyframes have
    * bezier interpolation, and are drawn at full res.
    * This is tricky to optimize, but maybe can be improved at some point... */
-  int b = fcu->totvert - 1;
-  const int max_bezt_resolution = 32;
-  immBeginAtMost(GPU_PRIM_LINE_STRIP, (b * max_bezt_resolution + 3));
+  immBeginAtMost(GPU_PRIM_LINE_STRIP, (b * 32 + 3));
 
-  BezTriple *prevbezt = fcu->bezt;
-  BezTriple *bezt = prevbezt + 1;
-
-  float vertex_position[2];
-  float fac = 0.0f;
-
-  /* Extrapolate to the left? */
+  /* extrapolate to left? */
   if (draw_extrapolation && prevbezt->vec[1][0] > v2d->cur.xmin) {
     /* left-side of view comes before first keyframe, so need to extend as not cyclic */
-    vertex_position[0] = v2d->cur.xmin;
+    v1[0] = v2d->cur.xmin;
 
     /* y-value depends on the interpolation */
     if ((fcu->extend == FCURVE_EXTRAPOLATE_CONSTANT) || (prevbezt->ipo == BEZT_IPO_CONST) ||
         (prevbezt->ipo == BEZT_IPO_LIN && fcu->totvert == 1))
     {
       /* just extend across the first keyframe's value */
-      vertex_position[1] = prevbezt->vec[1][1];
+      v1[1] = prevbezt->vec[1][1];
     }
     else if (prevbezt->ipo == BEZT_IPO_LIN) {
       /* extrapolate linear doesn't use the handle, use the next points center instead */
-      fac = (prevbezt->vec[1][0] - bezt->vec[1][0]) / (prevbezt->vec[1][0] - vertex_position[0]);
+      fac = (prevbezt->vec[1][0] - bezt->vec[1][0]) / (prevbezt->vec[1][0] - v1[0]);
       if (fac) {
         fac = 1.0f / fac;
       }
-      vertex_position[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[1][1] - bezt->vec[1][1]);
+      v1[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[1][1] - bezt->vec[1][1]);
     }
     else {
       /* based on angle of handle 1 (relative to keyframe) */
-      fac = (prevbezt->vec[0][0] - prevbezt->vec[1][0]) /
-            (prevbezt->vec[1][0] - vertex_position[0]);
+      fac = (prevbezt->vec[0][0] - prevbezt->vec[1][0]) / (prevbezt->vec[1][0] - v1[0]);
       if (fac) {
         fac = 1.0f / fac;
       }
-      vertex_position[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[0][1] - prevbezt->vec[1][1]);
+      v1[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[0][1] - prevbezt->vec[1][1]);
     }
 
-    immVertex2fv(pos, vertex_position);
+    immVertex2fv(pos, v1);
   }
 
-  /* If only one keyframe, add it now. */
+  /* if only one keyframe, add it now */
   if (fcu->totvert == 1) {
-    vertex_position[0] = prevbezt->vec[1][0];
-    vertex_position[1] = prevbezt->vec[1][1];
-    immVertex2fv(pos, vertex_position);
+    v1[0] = prevbezt->vec[1][0];
+    v1[1] = prevbezt->vec[1][1];
+    immVertex2fv(pos, v1);
   }
 
-  /* Draw curve between first and last keyframe (if there are enough to do so). */
+  /* draw curve between first and last keyframe (if there are enough to do so) */
   /* TODO: optimize this to not have to calc stuff out of view too? */
   while (b--) {
     if (prevbezt->ipo == BEZT_IPO_CONST) {
       /* Constant-Interpolation: draw segment between previous keyframe and next,
        * but holding same value */
-      vertex_position[0] = prevbezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
+      v1[0] = prevbezt->vec[1][0];
+      v1[1] = prevbezt->vec[1][1];
+      immVertex2fv(pos, v1);
 
-      vertex_position[0] = bezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
+      v1[0] = bezt->vec[1][0];
+      v1[1] = prevbezt->vec[1][1];
+      immVertex2fv(pos, v1);
     }
     else if (prevbezt->ipo == BEZT_IPO_LIN) {
       /* Linear interpolation: just add one point (which should add a new line segment) */
-      vertex_position[0] = prevbezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
+      v1[0] = prevbezt->vec[1][0];
+      v1[1] = prevbezt->vec[1][1];
+      immVertex2fv(pos, v1);
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
-      int resolution = calculate_bezt_draw_resolution(
-          bezt, prevbezt, max_bezt_resolution, fcu->driver != NULL);
-      draw_bezt(bezt, prevbezt, resolution, pos);
+      /* Bezier-Interpolation: draw curve as series of segments between keyframes
+       * - resol determines number of points to sample in between keyframes
+       */
+
+      /* resol depends on distance between points
+       * (not just horizontal) OR is a fixed high res */
+      /* TODO: view scale should factor into this someday too... */
+      if (fcu->driver) {
+        resol = 32;
+      }
+      else {
+        resol = (int)(5.0f * len_v2v2(bezt->vec[1], prevbezt->vec[1]));
+      }
+
+      if (resol < 2) {
+        /* only draw one */
+        v1[0] = prevbezt->vec[1][0];
+        v1[1] = prevbezt->vec[1][1];
+        immVertex2fv(pos, v1);
+      }
+      else {
+        /* clamp resolution to max of 32 */
+        /* NOTE: higher values will crash */
+        if (resol > 32) {
+          resol = 32;
+        }
+
+        v1[0] = prevbezt->vec[1][0];
+        v1[1] = prevbezt->vec[1][1];
+        v2[0] = prevbezt->vec[2][0];
+        v2[1] = prevbezt->vec[2][1];
+
+        v3[0] = bezt->vec[0][0];
+        v3[1] = bezt->vec[0][1];
+        v4[0] = bezt->vec[1][0];
+        v4[1] = bezt->vec[1][1];
+
+        BKE_fcurve_correct_bezpart(v1, v2, v3, v4);
+
+        BKE_curve_forward_diff_bezier(v1[0], v2[0], v3[0], v4[0], data, resol, sizeof(float[3]));
+        BKE_curve_forward_diff_bezier(
+            v1[1], v2[1], v3[1], v4[1], data + 1, resol, sizeof(float[3]));
+
+        for (fp = data; resol; resol--, fp += 3) {
+          immVertex2fv(pos, fp);
+        }
+      }
     }
 
-    /* Get next pointers. */
+    /* get next pointers */
     prevbezt = bezt;
     bezt++;
 
-    /* Last point? */
+    /* last point? */
     if (b == 0) {
-      vertex_position[0] = prevbezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
+      v1[0] = prevbezt->vec[1][0];
+      v1[1] = prevbezt->vec[1][1];
+      immVertex2fv(pos, v1);
     }
   }
 
-  /* Extrapolate to the right? (see code for left-extrapolation above too) */
+  /* extrapolate to right? (see code for left-extrapolation above too) */
   if (draw_extrapolation && prevbezt->vec[1][0] < v2d->cur.xmax) {
-    vertex_position[0] = v2d->cur.xmax;
+    v1[0] = v2d->cur.xmax;
 
-    /* y-value depends on the interpolation. */
+    /* y-value depends on the interpolation */
     if ((fcu->extend == FCURVE_EXTRAPOLATE_CONSTANT) || (fcu->flag & FCURVE_INT_VALUES) ||
         (prevbezt->ipo == BEZT_IPO_CONST) || (prevbezt->ipo == BEZT_IPO_LIN && fcu->totvert == 1))
     {
       /* based on last keyframe's value */
-      vertex_position[1] = prevbezt->vec[1][1];
+      v1[1] = prevbezt->vec[1][1];
     }
     else if (prevbezt->ipo == BEZT_IPO_LIN) {
-      /* Extrapolate linear doesn't use the handle, use the previous points center instead. */
+      /* extrapolate linear doesn't use the handle, use the previous points center instead */
       bezt = prevbezt - 1;
-      fac = (prevbezt->vec[1][0] - bezt->vec[1][0]) / (prevbezt->vec[1][0] - vertex_position[0]);
+      fac = (prevbezt->vec[1][0] - bezt->vec[1][0]) / (prevbezt->vec[1][0] - v1[0]);
       if (fac) {
         fac = 1.0f / fac;
       }
-      vertex_position[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[1][1] - bezt->vec[1][1]);
+      v1[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[1][1] - bezt->vec[1][1]);
     }
     else {
-      /* Based on angle of handle 1 (relative to keyframe). */
-      fac = (prevbezt->vec[2][0] - prevbezt->vec[1][0]) /
-            (prevbezt->vec[1][0] - vertex_position[0]);
+      /* based on angle of handle 1 (relative to keyframe) */
+      fac = (prevbezt->vec[2][0] - prevbezt->vec[1][0]) / (prevbezt->vec[1][0] - v1[0]);
       if (fac) {
         fac = 1.0f / fac;
       }
-      vertex_position[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[2][1] - prevbezt->vec[1][1]);
+      v1[1] = prevbezt->vec[1][1] - fac * (prevbezt->vec[2][1] - prevbezt->vec[1][1]);
     }
 
-    immVertex2fv(pos, vertex_position);
+    immVertex2fv(pos, v1);
   }
 
   immEnd();

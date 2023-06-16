@@ -22,14 +22,16 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   /* Compute the min and max of all realized geometry for the two
    * vector outputs, which are only meant to consider real geometry. */
-  const std::optional<Bounds<float3>> bounds = geometry_set.compute_boundbox_without_instances();
-  if (!bounds) {
+  float3 min = float3(FLT_MAX);
+  float3 max = float3(-FLT_MAX);
+  geometry_set.compute_boundbox_without_instances(&min, &max);
+  if (min == float3(FLT_MAX)) {
     params.set_output("Min", float3(0));
     params.set_output("Max", float3(0));
   }
   else {
-    params.set_output("Min", bounds->min);
-    params.set_output("Max", bounds->max);
+    params.set_output("Min", min);
+    params.set_output("Max", max);
   }
 
   /* Generate the bounding box meshes inside each unique geometry set (including individually for
@@ -37,26 +39,28 @@ static void node_geo_exec(GeoNodeExecParams params)
    * repurpose the original geometry sets for the output. */
   if (params.output_is_required("Bounding Box")) {
     geometry_set.modify_geometry_sets([&](GeometrySet &sub_geometry) {
-      std::optional<Bounds<float3>> sub_bounds;
+      float3 sub_min = float3(FLT_MAX);
+      float3 sub_max = float3(-FLT_MAX);
 
       /* Reuse the min and max calculation if this is the main "real" geometry set. */
       if (&sub_geometry == &geometry_set) {
-        sub_bounds = bounds;
+        sub_min = min;
+        sub_max = max;
       }
       else {
-        sub_bounds = sub_geometry.compute_boundbox_without_instances();
+        sub_geometry.compute_boundbox_without_instances(&sub_min, &sub_max);
       }
 
-      if (!sub_bounds) {
+      if (sub_min == float3(FLT_MAX)) {
         sub_geometry.remove_geometry_during_modify();
       }
       else {
-        const float3 scale = sub_bounds->max - sub_bounds->min;
-        const float3 center = sub_bounds->min + scale / 2.0f;
+        const float3 scale = sub_max - sub_min;
+        const float3 center = sub_min + scale / 2.0f;
         Mesh *mesh = geometry::create_cuboid_mesh(scale, 2, 2, 2, "uv_map");
         transform_mesh(*mesh, center, float3(0), float3(1));
         sub_geometry.replace_mesh(mesh);
-        sub_geometry.keep_only_during_modify({GeometryComponent::Type::Mesh});
+        sub_geometry.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
       }
     });
 

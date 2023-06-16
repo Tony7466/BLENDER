@@ -52,7 +52,6 @@
 #include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_bounds.hh"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
@@ -86,8 +85,8 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
+#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -616,7 +615,7 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     BLO_write_struct(writer, LightgroupMembership, ob->lightgroup);
   }
   if (ob->light_linking) {
-    BLO_write_struct(writer, LightLinking, ob->light_linking);
+    BLO_write_struct(writer, LightgroupMembership, ob->light_linking);
   }
 
   if (ob->lightprobe_cache) {
@@ -1883,7 +1882,7 @@ void BKE_object_free_derived_caches(Object *ob)
   }
 
   if (ob->runtime.geometry_set_eval != nullptr) {
-    delete ob->runtime.geometry_set_eval;
+    BKE_geometry_set_free(ob->runtime.geometry_set_eval);
     ob->runtime.geometry_set_eval = nullptr;
   }
 
@@ -2120,7 +2119,7 @@ int BKE_object_visibility(const Object *ob, const int dag_eval_mode)
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
-  if (blender::bke::object_has_geometry_set_instances(*ob)) {
+  if (BKE_object_has_geometry_set_instances(ob)) {
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
@@ -3848,18 +3847,23 @@ void BKE_object_boundbox_calc_from_mesh(Object *ob, const Mesh *me_eval)
 
 bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
 {
-  using namespace blender;
+  float3 min(FLT_MAX);
+  float3 max(-FLT_MAX);
 
-  std::optional<Bounds<float3>> bounds;
   if (ob->runtime.geometry_set_eval) {
-    bounds = ob->runtime.geometry_set_eval->compute_boundbox_without_instances();
+    if (!ob->runtime.geometry_set_eval->compute_boundbox_without_instances(&min, &max)) {
+      min = float3(0);
+      max = float3(0);
+    }
   }
   else if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
-    Bounds<float3> mesh_bounds{float3(std::numeric_limits<float>::max()),
-                               float3(std::numeric_limits<float>::min())};
-    if (BKE_mesh_wrapper_minmax(mesh_eval, mesh_bounds.min, mesh_bounds.max)) {
-      bounds = bounds::merge(bounds, {mesh_bounds});
+    if (!BKE_mesh_wrapper_minmax(mesh_eval, min, max)) {
+      min = float3(0);
+      max = float3(0);
     }
+  }
+  else if (ob->runtime.curve_cache) {
+    BKE_displist_minmax(&ob->runtime.curve_cache->disp, min, max);
   }
   else {
     return false;
@@ -3868,12 +3872,8 @@ bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
   if (ob->runtime.bb == nullptr) {
     ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
   }
-  if (bounds) {
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
-  }
-  else {
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(0), float3(0));
-  }
+
+  BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
 
   ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
 
@@ -4488,7 +4488,7 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 {
   /* First attempt to retrieve the evaluated mesh from the evaluated geometry set. Most
    * object types either store it there or add a reference to it if it's owned elsewhere. */
-  blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval;
+  GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval;
   if (geometry_set_eval) {
     /* Some areas expect to be able to modify the evaluated mesh in limited ways. Theoretically
      * this should be avoided, or at least protected with a lock, so a const mesh could be returned

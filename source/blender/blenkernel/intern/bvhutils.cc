@@ -665,23 +665,6 @@ static void bvhtree_from_editmesh_setup_data(BVHTree *tree,
   }
 }
 
-static BVHTree *bvhtree_new_common(
-    float epsilon, int tree_type, int axis, int elems_num, int &elems_num_active)
-{
-  if (elems_num_active != -1) {
-    BLI_assert(IN_RANGE_INCL(elems_num_active, 0, elems_num));
-  }
-  else {
-    elems_num_active = elems_num;
-  }
-
-  if (elems_num_active == 0) {
-    return nullptr;
-  }
-
-  return BLI_bvhtree_new(elems_num_active, epsilon, tree_type, axis);
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -695,14 +678,19 @@ static BVHTree *bvhtree_from_editmesh_verts_create_tree(float epsilon,
                                                         const BitSpan verts_mask,
                                                         int verts_num_active)
 {
+  BM_mesh_elem_table_ensure(em->bm, BM_VERT);
   const int verts_num = em->bm->totvert;
+  if (!verts_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(verts_num_active, 0, verts_num));
+  }
+  else {
+    verts_num_active = verts_num;
+  }
 
-  BVHTree *tree = bvhtree_new_common(epsilon, tree_type, axis, verts_num, verts_num_active);
+  BVHTree *tree = BLI_bvhtree_new(verts_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
-
-  BM_mesh_elem_table_ensure(em->bm, BM_VERT);
 
   for (int i = 0; i < verts_num; i++) {
     if (!verts_mask.is_empty() && !verts_mask[i]) {
@@ -724,7 +712,17 @@ static BVHTree *bvhtree_from_mesh_verts_create_tree(float epsilon,
                                                     const BitSpan verts_mask,
                                                     int verts_num_active)
 {
-  BVHTree *tree = bvhtree_new_common(epsilon, tree_type, axis, verts_num, verts_num_active);
+  if (!verts_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(verts_num_active, 0, verts_num));
+  }
+  else {
+    verts_num_active = verts_num;
+  }
+  if (verts_num_active == 0) {
+    return nullptr;
+  }
+
+  BVHTree *tree = BLI_bvhtree_new(verts_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
@@ -802,14 +800,20 @@ static BVHTree *bvhtree_from_editmesh_edges_create_tree(float epsilon,
                                                         const BitSpan edges_mask,
                                                         int edges_num_active)
 {
+  BM_mesh_elem_table_ensure(em->bm, BM_EDGE);
   const int edges_num = em->bm->totedge;
 
-  BVHTree *tree = bvhtree_new_common(epsilon, tree_type, axis, edges_num, edges_num_active);
+  if (!edges_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(edges_num_active, 0, edges_num));
+  }
+  else {
+    edges_num_active = edges_num;
+  }
+
+  BVHTree *tree = BLI_bvhtree_new(edges_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
-
-  BM_mesh_elem_table_ensure(em->bm, BM_EDGE);
 
   int i;
   BMIter iter;
@@ -837,7 +841,18 @@ static BVHTree *bvhtree_from_mesh_edges_create_tree(const float (*positions)[3],
                                                     int tree_type,
                                                     int axis)
 {
-  BVHTree *tree = bvhtree_new_common(epsilon, tree_type, axis, edges.size(), edges_num_active);
+  if (!edges_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(edges_num_active, 0, edges.size()));
+  }
+  else {
+    edges_num_active = edges.size();
+  }
+  if (edges_num_active == 0) {
+    return nullptr;
+  }
+
+  /* Create a BVH-tree of the given target */
+  BVHTree *tree = BLI_bvhtree_new(edges_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
@@ -921,7 +936,20 @@ static BVHTree *bvhtree_from_mesh_faces_create_tree(float epsilon,
                                                     const BitSpan faces_mask,
                                                     int faces_num_active)
 {
-  BVHTree *tree = bvhtree_new_common(epsilon, tree_type, axis, faces_num, faces_num_active);
+  if (faces_num == 0) {
+    return nullptr;
+  }
+
+  if (!faces_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(faces_num_active, 0, faces_num));
+  }
+  else {
+    faces_num_active = faces_num;
+  }
+
+  /* Create a BVH-tree of the given target. */
+  // printf("%s: building BVH, total=%d\n", __func__, numFaces);
+  BVHTree *tree = BLI_bvhtree_new(faces_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
@@ -962,8 +990,20 @@ static BVHTree *bvhtree_from_editmesh_looptri_create_tree(float epsilon,
                                                           int looptri_num_active)
 {
   const int looptri_num = em->tottri;
+  if (looptri_num == 0) {
+    return nullptr;
+  }
 
-  BVHTree *tree = bvhtree_new_common(epsilon, tree_type, axis, looptri_num, looptri_num_active);
+  if (!looptri_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(looptri_num_active, 0, looptri_num));
+  }
+  else {
+    looptri_num_active = looptri_num;
+  }
+
+  /* Create a BVH-tree of the given target */
+  // printf("%s: building BVH, total=%d\n", __func__, numFaces);
+  BVHTree *tree = BLI_bvhtree_new(looptri_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
@@ -1002,30 +1042,37 @@ static BVHTree *bvhtree_from_mesh_looptri_create_tree(float epsilon,
                                                       const BitSpan looptri_mask,
                                                       int looptri_num_active)
 {
-  if (positions == nullptr) {
+  if (!looptri_mask.is_empty()) {
+    BLI_assert(IN_RANGE_INCL(looptri_num_active, 0, looptris.size()));
+  }
+  else {
+    looptri_num_active = looptris.size();
+  }
+  if (looptri_num_active == 0) {
     return nullptr;
   }
 
-  BVHTree *tree = bvhtree_new_common(
-      epsilon, tree_type, axis, looptris.size(), looptri_num_active);
-
+  /* Create a BVH-tree of the given target */
+  // printf("%s: building BVH, total=%d\n", __func__, numFaces);
+  BVHTree *tree = BLI_bvhtree_new(looptri_num_active, epsilon, tree_type, axis);
   if (!tree) {
     return nullptr;
   }
 
-  for (const int i : looptris.index_range()) {
-    float co[3][3];
-    if (!looptri_mask.is_empty() && !looptri_mask[i]) {
-      continue;
+  if (positions && !looptris.is_empty()) {
+    for (const int i : looptris.index_range()) {
+      float co[3][3];
+      if (!looptri_mask.is_empty() && !looptri_mask[i]) {
+        continue;
+      }
+
+      copy_v3_v3(co[0], positions[corner_verts[looptris[i].tri[0]]]);
+      copy_v3_v3(co[1], positions[corner_verts[looptris[i].tri[1]]]);
+      copy_v3_v3(co[2], positions[corner_verts[looptris[i].tri[2]]]);
+
+      BLI_bvhtree_insert(tree, i, co[0], 3);
     }
-
-    copy_v3_v3(co[0], positions[corner_verts[looptris[i].tri[0]]]);
-    copy_v3_v3(co[1], positions[corner_verts[looptris[i].tri[1]]]);
-    copy_v3_v3(co[2], positions[corner_verts[looptris[i].tri[2]]]);
-
-    BLI_bvhtree_insert(tree, i, co[0], 3);
   }
-
   BLI_assert(BLI_bvhtree_get_len(tree) == looptri_num_active);
 
   return tree;
@@ -1355,8 +1402,7 @@ BVHTree *BKE_bvhtree_from_pointcloud_get(BVHTreeFromPointCloud *data,
                                          const PointCloud *pointcloud,
                                          const int tree_type)
 {
-  int tot_point = pointcloud->totpoint;
-  BVHTree *tree = bvhtree_new_common(0.0f, tree_type, 6, tot_point, tot_point);
+  BVHTree *tree = BLI_bvhtree_new(pointcloud->totpoint, 0.0f, tree_type, 6);
   if (!tree) {
     return nullptr;
   }
@@ -1365,8 +1411,7 @@ BVHTree *BKE_bvhtree_from_pointcloud_get(BVHTreeFromPointCloud *data,
   for (const int i : positions.index_range()) {
     BLI_bvhtree_insert(tree, i, positions[i], 1);
   }
-
-  BLI_assert(BLI_bvhtree_get_len(tree) == tot_point);
+  BLI_assert(BLI_bvhtree_get_len(tree) == pointcloud->totpoint);
   bvhtree_balance(tree, false);
 
   data->coords = (const float(*)[3])positions.data();

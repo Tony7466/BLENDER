@@ -15,7 +15,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_context.h"
-#include "BKE_geometry_set.hh"
+#include "BKE_geometry_set.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_movieclip.h"
@@ -63,22 +63,22 @@
 #include "RNA_enum_types.h"
 
 const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
-    {int(blender::bke::GeometryComponent::Type::Mesh),
+    {GEO_COMPONENT_TYPE_MESH,
      "MESH",
      ICON_MESH_DATA,
      "Mesh",
      "Mesh component containing point, corner, edge and face data"},
-    {int(blender::bke::GeometryComponent::Type::PointCloud),
+    {GEO_COMPONENT_TYPE_POINT_CLOUD,
      "POINTCLOUD",
      ICON_POINTCLOUD_DATA,
      "Point Cloud",
      "Point cloud component containing only point data"},
-    {int(blender::bke::GeometryComponent::Type::Curve),
+    {GEO_COMPONENT_TYPE_CURVE,
      "CURVE",
      ICON_CURVE_DATA,
      "Curve",
      "Curve component containing spline and control point data"},
-    {int(blender::bke::GeometryComponent::Type::Instance),
+    {GEO_COMPONENT_TYPE_INSTANCES,
      "INSTANCES",
      ICON_EMPTY_AXIS,
      "Instances",
@@ -3227,7 +3227,7 @@ static void rna_SpaceSpreadsheet_geometry_component_type_update(Main * /*bmain*/
 {
   SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)ptr->data;
   switch (sspreadsheet->geometry_component_type) {
-    case int(blender::bke::GeometryComponent::Type::Mesh): {
+    case GEO_COMPONENT_TYPE_MESH: {
       if (!ELEM(sspreadsheet->attribute_domain,
                 ATTR_DOMAIN_POINT,
                 ATTR_DOMAIN_EDGE,
@@ -3238,18 +3238,18 @@ static void rna_SpaceSpreadsheet_geometry_component_type_update(Main * /*bmain*/
       }
       break;
     }
-    case int(blender::bke::GeometryComponent::Type::PointCloud): {
+    case GEO_COMPONENT_TYPE_POINT_CLOUD: {
       sspreadsheet->attribute_domain = ATTR_DOMAIN_POINT;
       break;
     }
-    case int(blender::bke::GeometryComponent::Type::Instance): {
+    case GEO_COMPONENT_TYPE_INSTANCES: {
       sspreadsheet->attribute_domain = ATTR_DOMAIN_INSTANCE;
       break;
     }
-    case int(blender::bke::GeometryComponent::Type::Volume): {
+    case GEO_COMPONENT_TYPE_VOLUME: {
       break;
     }
-    case int(blender::bke::GeometryComponent::Type::Curve): {
+    case GEO_COMPONENT_TYPE_CURVE: {
       if (!ELEM(sspreadsheet->attribute_domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE)) {
         sspreadsheet->attribute_domain = ATTR_DOMAIN_POINT;
       }
@@ -3264,7 +3264,7 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
                                                                     bool *r_free)
 {
   SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)ptr->data;
-  auto component_type = blender::bke::GeometryComponent::Type(
+  GeometryComponentType component_type = GeometryComponentType(
       sspreadsheet->geometry_component_type);
   if (sspreadsheet->object_eval_state == SPREADSHEET_OBJECT_EVAL_STATE_ORIGINAL) {
     ID *used_id = ED_spreadsheet_get_current_id(sspreadsheet);
@@ -3272,10 +3272,10 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
       if (GS(used_id->name) == ID_OB) {
         Object *used_object = (Object *)used_id;
         if (used_object->type == OB_POINTCLOUD) {
-          component_type = blender::bke::GeometryComponent::Type::PointCloud;
+          component_type = GEO_COMPONENT_TYPE_POINT_CLOUD;
         }
         else {
-          component_type = blender::bke::GeometryComponent::Type::Mesh;
+          component_type = GEO_COMPONENT_TYPE_MESH;
         }
       }
     }
@@ -3289,7 +3289,7 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
   for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
        item++)
   {
-    if (component_type == blender::bke::GeometryComponent::Type::Mesh) {
+    if (component_type == GEO_COMPONENT_TYPE_MESH) {
       if (!ELEM(item->value,
                 ATTR_DOMAIN_CORNER,
                 ATTR_DOMAIN_EDGE,
@@ -3298,19 +3298,17 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
         continue;
       }
     }
-    if (component_type == blender::bke::GeometryComponent::Type::PointCloud) {
+    if (component_type == GEO_COMPONENT_TYPE_POINT_CLOUD) {
       if (item->value != ATTR_DOMAIN_POINT) {
         continue;
       }
     }
-    if (component_type == blender::bke::GeometryComponent::Type::Curve) {
+    if (component_type == GEO_COMPONENT_TYPE_CURVE) {
       if (!ELEM(item->value, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE)) {
         continue;
       }
     }
-    if (item->value == ATTR_DOMAIN_POINT &&
-        component_type == blender::bke::GeometryComponent::Type::Mesh)
-    {
+    if (item->value == ATTR_DOMAIN_POINT && component_type == GEO_COMPONENT_TYPE_MESH) {
       RNA_enum_item_add(&item_array, &items_len, &mesh_vertex_domain_item);
     }
     else {

@@ -291,9 +291,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   bool has_available_linked_outputs = false;
   Vector<bNode *> direct_children_in_frame;
   bNodeTree *owner_tree = nullptr;
-  /** Can be used to toposort a subset of nodes. */
-  int toposort_left_to_right_index = -1;
-  int toposort_right_to_left_index = -1;
 };
 
 namespace node_tree_runtime {
@@ -518,18 +515,6 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
   return this->runtime->root_frames;
 }
 
-inline blender::Span<bNodeLink *> bNodeTree::all_links()
-{
-  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->links;
-}
-
-inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
-{
-  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->links;
-}
-
 inline blender::Span<const bNodePanel *> bNodeTree::panels() const
 {
   return blender::Span(panels_array, panels_num);
@@ -539,8 +524,6 @@ inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
 {
   return blender::MutableSpan(panels_array, panels_num);
 }
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name #bNode Inline Methods

@@ -21,7 +21,7 @@ namespace blender::bounds {
 /**
  * Find the smallest and largest values element-wise in the span.
  */
-template<typename T> [[nodiscard]] inline std::optional<Bounds<T>> min_max(Span<T> values)
+template<typename T> inline std::optional<Bounds<T>> min_max(Span<T> values)
 {
   if (values.is_empty()) {
     return std::nullopt;
@@ -48,8 +48,7 @@ template<typename T> [[nodiscard]] inline std::optional<Bounds<T>> min_max(Span<
  * first. The template type T is expected to have an addition operator implemented with RadiusT.
  */
 template<typename T, typename RadiusT>
-[[nodiscard]] inline std::optional<Bounds<T>> min_max_with_radii(Span<T> values,
-                                                                 Span<RadiusT> radii)
+inline std::optional<Bounds<T>> min_max_with_radii(Span<T> values, Span<RadiusT> radii)
 {
   BLI_assert(values.size() == radii.size());
   if (values.is_empty()) {
@@ -71,27 +70,6 @@ template<typename T, typename RadiusT>
       [](const Bounds<T> &a, const Bounds<T> &b) {
         return Bounds<T>{math::min(a.min, b.min), math::max(a.max, b.max)};
       });
-}
-
-template<typename T> [[nodiscard]] inline Bounds<T> merge(const Bounds<T> &a, const Bounds<T> &b)
-{
-  return {math::min(a.min, b.min), math::max(a.max, b.max)};
-}
-
-template<typename T>
-[[nodiscard]] inline std::optional<Bounds<T>> merge(const std::optional<Bounds<T>> &a,
-                                                    const std::optional<Bounds<T>> &b)
-{
-  if (a.has_value() && b.has_value()) {
-    return merge(*a, *b);
-  }
-  if (a.has_value()) {
-    return a;
-  }
-  if (b.has_value()) {
-    return b;
-  }
-  return std::nullopt;
 }
 
 }  // namespace blender::bounds

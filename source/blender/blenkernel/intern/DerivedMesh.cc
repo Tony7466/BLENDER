@@ -72,9 +72,6 @@ using blender::float3;
 using blender::IndexRange;
 using blender::Span;
 using blender::VArray;
-using blender::bke::GeometryOwnershipType;
-using blender::bke::GeometrySet;
-using blender::bke::MeshComponent;
 
 /* very slow! enable for testing only! */
 //#define USE_MODIFIER_VALIDATE

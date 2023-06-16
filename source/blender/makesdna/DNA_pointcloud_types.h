@@ -12,9 +12,6 @@
 #include "DNA_customdata_types.h"
 
 #ifdef __cplusplus
-#  include <optional>
-
-#  include "BLI_bounds_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
 #endif
@@ -66,7 +63,7 @@ typedef struct PointCloud {
   void tag_positions_changed();
   void tag_radii_changed();
 
-  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
+  bool bounds_min_max(blender::float3 &min, blender::float3 &max) const;
 #endif
 
   PointCloudRuntimeHandle *runtime;

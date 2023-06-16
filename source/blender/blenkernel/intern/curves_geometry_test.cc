@@ -33,7 +33,9 @@ TEST(curves_geometry, Empty)
 {
   CurvesGeometry empty(0, 0);
   empty.cyclic();
-  EXPECT_FALSE(empty.bounds_min_max());
+  float3 min;
+  float3 max;
+  EXPECT_FALSE(empty.bounds_min_max(min, max));
 }
 
 TEST(curves_geometry, Move)
@@ -50,7 +52,9 @@ TEST(curves_geometry, Move)
   EXPECT_EQ(curves.curve_offsets, nullptr); /* NOLINT: bugprone-use-after-move */
 
   /* Just a basic check that the new curves work okay. */
-  EXPECT_TRUE(other.bounds_min_max());
+  float3 min;
+  float3 max;
+  EXPECT_TRUE(other.bounds_min_max(min, max));
 
   curves = std::move(other);
 

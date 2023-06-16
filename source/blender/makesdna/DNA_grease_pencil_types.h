@@ -13,7 +13,6 @@
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
-#  include "BLI_bounds_types.hh"
 #  include "BLI_function_ref.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_vector_types.hh"
@@ -458,7 +457,7 @@ typedef struct GreasePencil {
   void foreach_editable_drawing(int frame,
                                 blender::FunctionRef<void(int, GreasePencilDrawing &)> function);
 
-  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
+  bool bounds_min_max(blender::float3 &min, blender::float3 &max) const;
 
   /* For debugging purposes. */
   void print_layer_tree();

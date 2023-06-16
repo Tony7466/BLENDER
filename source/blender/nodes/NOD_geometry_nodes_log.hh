@@ -122,7 +122,7 @@ struct GeometryAttributeInfo {
 class GeometryInfoLog : public ValueLog {
  public:
   Vector<GeometryAttributeInfo> attributes;
-  Vector<bke::GeometryComponent::Type> component_types;
+  Vector<GeometryComponentType> component_types;
 
   struct MeshInfo {
     int verts_num, edges_num, faces_num;
@@ -148,7 +148,7 @@ class GeometryInfoLog : public ValueLog {
   std::optional<InstancesInfo> instances_info;
   std::optional<EditDataInfo> edit_data_info;
 
-  GeometryInfoLog(const bke::GeometrySet &geometry_set);
+  GeometryInfoLog(const GeometrySet &geometry_set);
 };
 
 /**
@@ -157,7 +157,7 @@ class GeometryInfoLog : public ValueLog {
  */
 class ViewerNodeLog {
  public:
-  bke::GeometrySet geometry;
+  GeometrySet geometry;
 };
 
 using Clock = std::chrono::steady_clock;
@@ -215,7 +215,7 @@ class GeoTreeLogger {
   ~GeoTreeLogger();
 
   void log_value(const bNode &node, const bNodeSocket &socket, GPointer value);
-  void log_viewer_node(const bNode &viewer_node, bke::GeometrySet geometry);
+  void log_viewer_node(const bNode &viewer_node, GeometrySet geometry);
 };
 
 /**

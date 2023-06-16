@@ -21,7 +21,7 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveSample)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(
-      GeometryComponent::Type::Curve);
+      GEO_COMPONENT_TYPE_CURVE);
 
   b.add_input<decl::Float>("Value", "Value_Float").hide_value().field_on_all();
   b.add_input<decl::Int>("Value", "Value_Int").hide_value().field_on_all();

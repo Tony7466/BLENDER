@@ -95,20 +95,26 @@ static void free_anim_movie(anim * /*anim*/)
   /* pass */
 }
 
-static int an_stringdec(const char *filepath, char *head, char *tail, ushort *numlen)
+#if defined(_WIN32)
+#  define PATHSEPARATOR '\\'
+#else
+#  define PATHSEPARATOR '/'
+#endif
+
+static int an_stringdec(const char *string, char *head, char *tail, ushort *numlen)
 {
   ushort len, nume, nums = 0;
   short i;
   bool found = false;
 
-  len = strlen(filepath);
+  len = strlen(string);
   nume = len;
 
   for (i = len - 1; i >= 0; i--) {
-    if (filepath[i] == SEP) {
+    if (string[i] == PATHSEPARATOR) {
       break;
     }
-    if (isdigit(filepath[i])) {
+    if (isdigit(string[i])) {
       if (found) {
         nums = i;
       }
@@ -125,26 +131,26 @@ static int an_stringdec(const char *filepath, char *head, char *tail, ushort *nu
     }
   }
   if (found) {
-    strcpy(tail, &filepath[nume + 1]);
-    strcpy(head, filepath);
+    strcpy(tail, &string[nume + 1]);
+    strcpy(head, string);
     head[nums] = '\0';
     *numlen = nume - nums + 1;
-    return int(atoi(&(filepath)[nums]));
+    return int(atoi(&(string)[nums]));
   }
   tail[0] = '\0';
-  strcpy(head, filepath);
+  strcpy(head, string);
   *numlen = 0;
   return true;
 }
 
-static void an_stringenc(char *filepath,
+static void an_stringenc(char *string,
                          const size_t string_maxncpy,
                          const char *head,
                          const char *tail,
                          ushort numlen,
                          int pic)
 {
-  BLI_path_sequence_encode(filepath, string_maxncpy, head, tail, numlen, pic);
+  BLI_path_sequence_encode(string, string_maxncpy, head, tail, numlen, pic);
 }
 
 #ifdef WITH_AVI

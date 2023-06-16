@@ -15,7 +15,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
-#include "BLI_math_vector.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -793,20 +792,21 @@ void PAINT_OT_sample_color(wmOperatorType *ot)
 /** \name Texture Paint Toggle Operator
  * \{ */
 
-static blender::float3 paint_init_pivot_mesh(Object *ob)
+static void paint_init_pivot_mesh(Object *ob, float location[3])
 {
-  using namespace blender;
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
   if (!me_eval) {
     me_eval = (const Mesh *)ob->data;
   }
 
-  const std::optional<Bounds<float3>> bounds = me_eval->bounds_min_max();
-  if (!bounds) {
-    return float3(0.0f);
+  float min[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, max[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+
+  if (!BKE_mesh_minmax(me_eval, min, max)) {
+    zero_v3(location);
+    zero_v3(max);
   }
 
-  return math::midpoint(bounds->min, bounds->max);
+  interp_v3_v3v3(location, min, max, 0.5f);
 }
 
 static void paint_init_pivot_curves(Object *ob, float location[3])
@@ -824,11 +824,11 @@ static void paint_init_pivot_grease_pencil(Object *ob, float location[3])
 void paint_init_pivot(Object *ob, Scene *scene)
 {
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
+  float location[3];
 
-  blender::float3 location;
   switch (ob->type) {
     case OB_MESH:
-      location = paint_init_pivot_mesh(ob);
+      paint_init_pivot_mesh(ob, location);
       break;
     case OB_CURVES:
       paint_init_pivot_curves(ob, location);

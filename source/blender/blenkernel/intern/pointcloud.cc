@@ -263,12 +263,12 @@ void BKE_pointcloud_nomain_to_pointcloud(PointCloud *pointcloud_src, PointCloud 
   BKE_id_free(nullptr, pointcloud_src);
 }
 
-std::optional<blender::Bounds<blender::float3>> PointCloud::bounds_min_max() const
+bool PointCloud::bounds_min_max(blender::float3 &min, blender::float3 &max) const
 {
   using namespace blender;
   using namespace blender::bke;
   if (this->totpoint == 0) {
-    return std::nullopt;
+    return false;
   }
   this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
     const AttributeAccessor attributes = this->attributes();
@@ -281,35 +281,34 @@ std::optional<blender::Bounds<blender::float3>> PointCloud::bounds_min_max() con
       r_bounds = *bounds::min_max(positions);
     }
   });
-  return this->runtime->bounds_cache.data();
+  const Bounds<float3> &bounds = this->runtime->bounds_cache.data();
+  min = math::min(bounds.min, min);
+  max = math::max(bounds.max, max);
+  return true;
 }
 
 BoundBox *BKE_pointcloud_boundbox_get(Object *ob)
 {
-  using namespace blender;
   BLI_assert(ob->type == OB_POINTCLOUD);
+
   if (ob->runtime.bb != nullptr && (ob->runtime.bb->flag & BOUNDBOX_DIRTY) == 0) {
     return ob->runtime.bb;
   }
+
   if (ob->runtime.bb == nullptr) {
-    ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
+    ob->runtime.bb = static_cast<BoundBox *>(MEM_callocN(sizeof(BoundBox), "pointcloud boundbox"));
   }
 
-  std::optional<Bounds<float3>> bounds;
-  if (ob->runtime.geometry_set_eval) {
-    bounds = ob->runtime.geometry_set_eval->compute_boundbox_without_instances();
+  float3 min, max;
+  INIT_MINMAX(min, max);
+  if (ob->runtime.geometry_set_eval != nullptr) {
+    ob->runtime.geometry_set_eval->compute_boundbox_without_instances(&min, &max);
   }
   else {
     const PointCloud *pointcloud = static_cast<PointCloud *>(ob->data);
-    bounds = pointcloud->bounds_min_max();
+    pointcloud->bounds_min_max(min, max);
   }
-
-  if (bounds) {
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
-  }
-  else {
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(-1), float3(1));
-  }
+  BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
 
   return ob->runtime.bb;
 }
@@ -330,7 +329,7 @@ PointCloud *BKE_pointcloud_copy_for_eval(const PointCloud *pointcloud_src)
 static void pointcloud_evaluate_modifiers(Depsgraph *depsgraph,
                                           Scene *scene,
                                           Object *object,
-                                          blender::bke::GeometrySet &geometry_set)
+                                          GeometrySet &geometry_set)
 {
   /* Modifier evaluation modes. */
   const bool use_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
@@ -361,22 +360,21 @@ static void pointcloud_evaluate_modifiers(Depsgraph *depsgraph,
   }
 }
 
-static PointCloud *take_pointcloud_ownership_from_geometry_set(
-    blender::bke::GeometrySet &geometry_set)
+static PointCloud *take_pointcloud_ownership_from_geometry_set(GeometrySet &geometry_set)
 {
-  if (!geometry_set.has<blender::bke::PointCloudComponent>()) {
+  if (!geometry_set.has<PointCloudComponent>()) {
     return nullptr;
   }
-  blender::bke::PointCloudComponent &pointcloud_component =
-      geometry_set.get_component_for_write<blender::bke::PointCloudComponent>();
+  PointCloudComponent &pointcloud_component =
+      geometry_set.get_component_for_write<PointCloudComponent>();
   PointCloud *pointcloud = pointcloud_component.release();
   if (pointcloud != nullptr) {
     /* Add back, but as read-only non-owning component. */
-    pointcloud_component.replace(pointcloud, blender::bke::GeometryOwnershipType::ReadOnly);
+    pointcloud_component.replace(pointcloud, GeometryOwnershipType::ReadOnly);
   }
   else {
     /* The component was empty, we can also remove it. */
-    geometry_set.remove<blender::bke::PointCloudComponent>();
+    geometry_set.remove<PointCloudComponent>();
   }
   return pointcloud;
 }
@@ -388,8 +386,8 @@ void BKE_pointcloud_data_update(Depsgraph *depsgraph, Scene *scene, Object *obje
 
   /* Evaluate modifiers. */
   PointCloud *pointcloud = static_cast<PointCloud *>(object->data);
-  blender::bke::GeometrySet geometry_set = blender::bke::GeometrySet::create_with_pointcloud(
-      pointcloud, blender::bke::GeometryOwnershipType::ReadOnly);
+  GeometrySet geometry_set = GeometrySet::create_with_pointcloud(pointcloud,
+                                                                 GeometryOwnershipType::ReadOnly);
   pointcloud_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
   PointCloud *pointcloud_eval = take_pointcloud_ownership_from_geometry_set(geometry_set);
@@ -402,7 +400,7 @@ void BKE_pointcloud_data_update(Depsgraph *depsgraph, Scene *scene, Object *obje
   /* Assign evaluated object. */
   const bool eval_is_owned = pointcloud_eval != pointcloud;
   BKE_object_eval_assign_data(object, &pointcloud_eval->id, eval_is_owned);
-  object->runtime.geometry_set_eval = new blender::bke::GeometrySet(std::move(geometry_set));
+  object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
 }
 
 void PointCloud::tag_positions_changed()

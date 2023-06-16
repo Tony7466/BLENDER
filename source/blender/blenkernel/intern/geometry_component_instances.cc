@@ -24,13 +24,11 @@
 
 #include "BLI_cpp_type_make.hh"
 
-namespace blender::bke {
-
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
  * \{ */
 
-InstancesComponent::InstancesComponent() : GeometryComponent(Type::Instance) {}
+InstancesComponent::InstancesComponent() : GeometryComponent(GEO_COMPONENT_TYPE_INSTANCES) {}
 
 InstancesComponent::~InstancesComponent()
 {
@@ -41,7 +39,7 @@ GeometryComponent *InstancesComponent::copy() const
 {
   InstancesComponent *new_component = new InstancesComponent();
   if (instances_ != nullptr) {
-    new_component->instances_ = new Instances(*instances_);
+    new_component->instances_ = new blender::bke::Instances(*instances_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return new_component;
@@ -81,28 +79,31 @@ void InstancesComponent::ensure_owns_direct_data()
   }
 }
 
-const Instances *InstancesComponent::get_for_read() const
+const blender::bke::Instances *InstancesComponent::get_for_read() const
 {
   return instances_;
 }
 
-Instances *InstancesComponent::get_for_write()
+blender::bke::Instances *InstancesComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    instances_ = new Instances(*instances_);
+    instances_ = new blender::bke::Instances(*instances_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return instances_;
 }
 
-void InstancesComponent::replace(Instances *instances, GeometryOwnershipType ownership)
+void InstancesComponent::replace(blender::bke::Instances *instances,
+                                 GeometryOwnershipType ownership)
 {
   BLI_assert(this->is_mutable());
   this->clear();
   instances_ = instances;
   ownership_ = ownership;
 }
+
+namespace blender::bke {
 
 static float3 get_transform_position(const float4x4 &transform)
 {
@@ -239,26 +240,30 @@ static const AttributeAccessorFunctions &get_instances_accessor_functions_ref()
   return fn;
 }
 
-AttributeAccessor Instances::attributes() const
+blender::bke::AttributeAccessor Instances::attributes() const
 {
-  return AttributeAccessor(this, get_instances_accessor_functions_ref());
+  return blender::bke::AttributeAccessor(this,
+                                         blender::bke::get_instances_accessor_functions_ref());
 }
 
-MutableAttributeAccessor Instances::attributes_for_write()
+blender::bke::MutableAttributeAccessor Instances::attributes_for_write()
 {
-  return MutableAttributeAccessor(this, get_instances_accessor_functions_ref());
+  return blender::bke::MutableAttributeAccessor(
+      this, blender::bke::get_instances_accessor_functions_ref());
 }
 
-std::optional<AttributeAccessor> InstancesComponent::attributes() const
+}  // namespace blender::bke
+
+std::optional<blender::bke::AttributeAccessor> InstancesComponent::attributes() const
 {
-  return AttributeAccessor(instances_, get_instances_accessor_functions_ref());
+  return blender::bke::AttributeAccessor(instances_,
+                                         blender::bke::get_instances_accessor_functions_ref());
 }
 
-std::optional<MutableAttributeAccessor> InstancesComponent::attributes_for_write()
+std::optional<blender::bke::MutableAttributeAccessor> InstancesComponent::attributes_for_write()
 {
-  return MutableAttributeAccessor(instances_, get_instances_accessor_functions_ref());
+  return blender::bke::MutableAttributeAccessor(
+      instances_, blender::bke::get_instances_accessor_functions_ref());
 }
 
 /** \} */
-
-}  // namespace blender::bke

@@ -25,15 +25,6 @@
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
-namespace blender::bke {
-struct GeometrySet;
-}
-using GeometrySetHandle = blender::bke::GeometrySet;
-#else
-typedef struct GeometrySetHandle GeometrySetHandle;
-#endif
-
-#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -42,6 +33,7 @@ struct BoundBox;
 struct Collection;
 struct Curve;
 struct FluidsimSettings;
+struct GeometrySet;
 struct Ipo;
 struct LightgroupMembership;
 struct LightProbeGridCacheFrame;
@@ -157,7 +149,7 @@ typedef struct Object_Runtime {
    * #geometry_set_eval might reference the ID pointed to by #data_eval as well, but does not own
    * the data.
    */
-  GeometrySetHandle *geometry_set_eval;
+  struct GeometrySet *geometry_set_eval;
 
   /**
    * Mesh structure created during object evaluation.

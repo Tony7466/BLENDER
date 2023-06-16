@@ -620,8 +620,7 @@ static Scene *preview_prepare_scene(
 
 /* new UI convention: draw is in pixel space already. */
 /* uses UI_BTYPE_ROUNDBOX button in block to get the rect */
-static bool ed_preview_draw_rect(
-    Scene *scene, ScrArea *area, int split, int first, rcti *rect, rcti *newrect)
+static bool ed_preview_draw_rect(ScrArea *area, int split, int first, rcti *rect, rcti *newrect)
 {
   Render *re;
   RenderView *rv;
@@ -669,21 +668,35 @@ static bool ed_preview_draw_rect(
   }
 
   if (rv && rv->combined_buffer.data) {
+
     if (abs(rres.rectx - newx) < 2 && abs(rres.recty - newy) < 2) {
+
       newrect->xmax = max_ii(newrect->xmax, rect->xmin + rres.rectx + offx);
       newrect->ymax = max_ii(newrect->ymax, rect->ymin + rres.recty);
 
       if (rres.rectx && rres.recty) {
+        uchar *rect_byte = static_cast<uchar *>(
+            MEM_mallocN(rres.rectx * rres.recty * sizeof(int), "ed_preview_draw_rect"));
         float fx = rect->xmin + offx;
         float fy = rect->ymin;
 
-        ImBuf *ibuf = IMB_allocImBuf(rres.rectx, rres.recty, 0, 0);
-        IMB_assign_float_buffer(ibuf, rv->combined_buffer.data, IB_DO_NOT_TAKE_OWNERSHIP);
+        /* material preview only needs monoscopy (view 0) */
+        RE_AcquiredResultGet32(re, &rres, (uint *)rect_byte, 0);
 
-        ED_draw_imbuf(
-            ibuf, fx, fy, false, &scene->view_settings, &scene->display_settings, 1.0f, 1.0f);
+        IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
+        immDrawPixelsTexTiled(&state,
+                              fx,
+                              fy,
+                              rres.rectx,
+                              rres.recty,
+                              GPU_RGBA8,
+                              false,
+                              rect_byte,
+                              1.0f,
+                              1.0f,
+                              nullptr);
 
-        IMB_freeImBuf(ibuf);
+        MEM_freeN(rect_byte);
 
         ok = true;
       }
@@ -698,7 +711,6 @@ static bool ed_preview_draw_rect(
 void ED_preview_draw(const bContext *C, void *idp, void *parentp, void *slotp, rcti *rect)
 {
   if (idp) {
-    Scene *scene = CTX_data_scene(C);
     wmWindowManager *wm = CTX_wm_manager(C);
     ScrArea *area = CTX_wm_area(C);
     ID *id = (ID *)idp;
@@ -718,11 +730,11 @@ void ED_preview_draw(const bContext *C, void *idp, void *parentp, void *slotp, r
     newrect.ymax = rect->ymin;
 
     if (parent) {
-      ok = ed_preview_draw_rect(scene, area, 1, 1, rect, &newrect);
-      ok &= ed_preview_draw_rect(scene, area, 1, 0, rect, &newrect);
+      ok = ed_preview_draw_rect(area, 1, 1, rect, &newrect);
+      ok &= ed_preview_draw_rect(area, 1, 0, rect, &newrect);
     }
     else {
-      ok = ed_preview_draw_rect(scene, area, 0, 0, rect, &newrect);
+      ok = ed_preview_draw_rect(area, 0, 0, rect, &newrect);
     }
 
     if (ok) {

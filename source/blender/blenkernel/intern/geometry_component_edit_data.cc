@@ -5,9 +5,12 @@
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 
-namespace blender::bke {
+using namespace blender;
+using namespace blender::bke;
 
-GeometryComponentEditData::GeometryComponentEditData() : GeometryComponent(Type::Edit) {}
+GeometryComponentEditData::GeometryComponentEditData() : GeometryComponent(GEO_COMPONENT_TYPE_EDIT)
+{
+}
 
 GeometryComponent *GeometryComponentEditData::copy() const
 {
@@ -53,7 +56,7 @@ void GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(
   if (curves_id == nullptr) {
     return;
   }
-  const CurvesGeometry &curves = curves_id->geometry.wrap();
+  const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
   const int points_num = curves.points_num();
   if (points_num != edit_component.curves_edit_hints_->curves_id_orig.geometry.point_num) {
     return;
@@ -61,5 +64,3 @@ void GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(
   edit_component.curves_edit_hints_->positions.emplace(points_num);
   edit_component.curves_edit_hints_->positions->as_mutable_span().copy_from(curves.positions());
 }
-
-}  // namespace blender::bke

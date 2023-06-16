@@ -65,8 +65,9 @@ GeometrySet object_get_evaluated_geometry_set(const Object &object)
 }
 
 void Instances::foreach_referenced_geometry(
-    FunctionRef<void(const GeometrySet &geometry_set)> callback) const
+    blender::FunctionRef<void(const GeometrySet &geometry_set)> callback) const
 {
+  using namespace blender::bke;
   for (const InstanceReference &reference : references_) {
     switch (reference.type()) {
       case InstanceReference::Type::Object: {
@@ -98,6 +99,8 @@ void Instances::foreach_referenced_geometry(
 
 void Instances::ensure_geometry_instances()
 {
+  using namespace blender;
+  using namespace blender::bke;
   VectorSet<InstanceReference> new_references;
   new_references.reserve(references_.size());
   for (const InstanceReference &reference : references_) {

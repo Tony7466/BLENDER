@@ -258,9 +258,12 @@ class CurvesGeometry : public ::CurvesGeometry {
   MutableSpan<float2> surface_uv_coords_for_write();
 
   /**
-   * The largest and smallest position values of evaluated points.
+   * Calculate the largest and smallest position values, only including control points
+   * (rather than evaluated points). The existing values of `min` and `max` are taken into account.
+   *
+   * \return Whether there are any points. If the curve is empty, the inputs will be unaffected.
    */
-  std::optional<Bounds<float3>> bounds_min_max() const;
+  bool bounds_min_max(float3 &min, float3 &max) const;
 
  private:
   /* --------------------------------------------------------------------
