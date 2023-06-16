@@ -1143,6 +1143,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                      Mesh **r_final,
                                      GeometrySet **r_geometry_set)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   /* Input and final mesh. Final mesh is only created the moment the first
    * constructive modifier is executed, or a deform modifier needs normals
    * or certain data layers. */
@@ -1185,7 +1186,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
   /* Evaluate modifiers up to certain index to get the mesh cage. */
   int cageIndex = BKE_modifiers_get_cage_index(scene, ob, nullptr, true);
   if (r_cage && cageIndex == -1) {
-    mesh_cage = BKE_mesh_wrapper_from_editmesh(em_input, &final_datamask, mesh_input);
+    mesh_cage = mesh_final;
   }
 
   /* The mesh from edit mode should not have any original index layers already, since those
