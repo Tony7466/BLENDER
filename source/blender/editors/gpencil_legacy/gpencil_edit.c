@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -5752,7 +5752,7 @@ void GPENCIL_OT_stroke_cutter(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "flat_caps", 0, "Flat Caps", "");
 }
 
-bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
+bool ED_object_gpencil_exit(Main *bmain, Object *ob)
 {
   bool ok = false;
   if (ob) {

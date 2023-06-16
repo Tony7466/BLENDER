@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -173,6 +172,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_opaque";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
+    case SUBSURFACE_EVAL:
+      return "eevee_subsurface_eval";
     /* To avoid compiler warning about missing case. */
     case MAX_SHADER_TYPE:
       return "";
@@ -226,27 +227,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.additional_info("draw_object_attribute_new");
   }
 
-  /* WORKAROUND: Avoid utility texture merge error. TODO: find a cleaner fix. */
+  /* First indices are reserved by the engine.
+   * Put material samplers in reverse order, starting from the last slot. */
+  int sampler_slot = GPU_max_textures_frag() - 1;
   for (auto &resource : info.batch_resources_) {
     if (resource.bind_type == ShaderCreateInfo::Resource::BindType::SAMPLER) {
-      switch (resource.slot) {
-        case RBUFS_UTILITY_TEX_SLOT:
-          resource.slot = GPU_max_textures_frag() - 1;
-          break;
-        // case SHADOW_RENDER_MAP_SLOT: /* Does not compile because it is a define. */
-        case SHADOW_ATLAS_TEX_SLOT:
-          resource.slot = GPU_max_textures_frag() - 2;
-          break;
-        case SHADOW_TILEMAPS_TEX_SLOT:
-          resource.slot = GPU_max_textures_frag() - 3;
-          break;
-      }
+      resource.slot = sampler_slot--;
     }
   }
 
   /* WORKAROUND: Needed because node_tree isn't present in test shaders. */
   if (pipeline_type == MAT_PIPE_DEFERRED) {
-    info.define("MAT_RENDER_PASS_SUPPORT");
+    info.additional_info("eevee_render_pass_out");
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
@@ -263,6 +255,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     /* Opaque forward do support AOVs and render pass if not using transparency. */
     info.additional_info("eevee_render_pass_out");
     info.additional_info("eevee_cryptomatte_out");
+  }
+
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE) && pipeline_type == MAT_PIPE_FORWARD) {
+    info.additional_info("eevee_transmittance_data");
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_BARYCENTRIC)) {
@@ -295,7 +291,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           global_vars << input.type << " " << input.name << ";\n";
         }
         else {
-          info.sampler(0, ImageType::FLOAT_BUFFER, input.name, Frequency::BATCH);
+          info.sampler(sampler_slot--, ImageType::FLOAT_BUFFER, input.name, Frequency::BATCH);
         }
       }
       info.vertex_inputs_.clear();
@@ -462,7 +458,7 @@ static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *co
 }
 
 GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
-                                               struct bNodeTree *nodetree,
+                                               bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
                                                bool deferred_compilation)
@@ -475,7 +471,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
       blender_mat, nodetree, shader_uuid, is_volume, deferred_compilation, codegen_callback, this);
 }
 
-GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, struct bNodeTree *nodetree)
+GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, bNodeTree *nodetree)
 {
   eMaterialPipeline pipeline_type = MAT_PIPE_DEFERRED; /* Unused. */
   eMaterialGeometry geometry_type = MAT_GEOM_WORLD;
@@ -498,7 +494,7 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, struct bNode
  * materials and call GPU_material_free on it to update the material. */
 GPUMaterial *ShaderModule::material_shader_get(const char *name,
                                                ListBase &materials,
-                                               struct bNodeTree *nodetree,
+                                               bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
                                                bool is_lookdev)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 #include "GPU_state.h"
 
 static struct {
-  struct GPUTexture *dummy_horizon_tx;
+  GPUTexture *dummy_horizon_tx;
 } e_data = {NULL}; /* Engine data */
 
 int EEVEE_occlusion_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
