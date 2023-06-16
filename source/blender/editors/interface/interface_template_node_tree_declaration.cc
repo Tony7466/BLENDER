@@ -8,6 +8,11 @@
 
 #include "UI_interface.h"
 
+#include "BKE_context.h"
+#include "BKE_node.hh"
+
+#include "BLI_color.hh"
+
 #include "BLT_translation.h"
 
 #include "DNA_node_types.h"
@@ -31,14 +36,50 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
   NodeGroupSocketViewItem(bNodeTree &nodetree, bNodeSocket &socket)
       : BasicTreeViewItem(socket.name, ICON_NONE), nodetree_(nodetree), socket_(socket)
   {
+    if (socket_.typeinfo->draw_color) {
+      PointerRNA socket_ptr, node_ptr;
+      RNA_pointer_create(&nodetree_.id, &RNA_NodeSocket, &socket_, &socket_ptr);
+      RNA_pointer_create(&nodetree_.id, &RNA_Node, nullptr, &node_ptr);
+      /* XXX we don't have a context but it's not commonly used by the draw_color function. */
+      bContext *C = nullptr;
+      socket_.typeinfo->draw_color(C, &socket_ptr, &node_ptr, color_);
+    }
+    else {
+      color_ = ColorGeometry4f(1.0f, 0.0f, 1.0f, 1.0f);
+    }
   }
 
   void build_row(uiLayout &row) override
   {
+    uiLayoutSetPropDecorate(&row, false);
+
+    uiLayout *input_socket_layout = uiLayoutRow(&row, true);
+    if (socket_.in_out == SOCK_IN) {
+      /* XXX Socket template only draws in embossed layouts (Julian). */
+      uiLayoutSetEmboss(input_socket_layout, UI_EMBOSS);
+      /* XXX Context is not used by the template function. */
+      bContext *C = nullptr;
+      uiTemplateNodeSocket(input_socket_layout, C, color_);
+    }
+    else {
+      /* Blank item to align output socket labels with inputs. */
+      uiItemL(input_socket_layout, "", ICON_BLANK1);
+    }
+
     add_label(row);
 
-    uiLayout *sub = uiLayoutRow(&row, true);
-    uiLayoutSetPropDecorate(sub, false);
+    uiLayout *output_socket_layout = uiLayoutRow(&row, true);
+    if (socket_.in_out == SOCK_OUT) {
+      /* XXX Socket template only draws in embossed layouts (Julian). */
+      uiLayoutSetEmboss(output_socket_layout, UI_EMBOSS);
+      /* XXX Context is not used by the template function. */
+      bContext *C = nullptr;
+      uiTemplateNodeSocket(output_socket_layout, C, color_);
+    }
+    else {
+      /* Blank item to align input socket labels with outputs. */
+      uiItemL(output_socket_layout, "", ICON_BLANK1);
+    }
   }
 
  protected:
@@ -76,6 +117,7 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
  private:
   bNodeTree &nodetree_;
   bNodeSocket &socket_;
+  ColorGeometry4f color_;
 };
 
 class NodePanelViewItem : public BasicTreeViewItem {
@@ -155,6 +197,13 @@ class NodeTreeDeclarationView : public AbstractTreeView {
   void add_socket_items_for_panel(const bNodePanel *panel, ui::TreeViewOrItem &parent_item)
   {
     LISTBASE_FOREACH (bNodeSocket *, socket, &nodetree_.inputs) {
+      if (socket->panel != panel) {
+        continue;
+      }
+
+      parent_item.add_tree_item<NodeGroupSocketViewItem>(nodetree_, *socket);
+    }
+    LISTBASE_FOREACH (bNodeSocket *, socket, &nodetree_.outputs) {
       if (socket->panel != panel) {
         continue;
       }
