@@ -1321,7 +1321,21 @@ class LazyFunctionForSimulationZone : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    fn_.execute(params, context);
+    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+
+    bke::SimulationZoneComputeContext compute_context{user_data.compute_context,
+                                                      sim_output_bnode_};
+
+    GeoNodesLFUserData zone_user_data = user_data;
+    zone_user_data.compute_context = &compute_context;
+    if (user_data.modifier_data->socket_log_contexts) {
+      zone_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
+          compute_context.hash());
+    }
+    GeoNodesLFLocalUserData zone_local_user_data{zone_user_data};
+
+    lf::Context zone_context{context.storage, &zone_user_data, &zone_local_user_data};
+    fn_.execute(params, zone_context);
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
