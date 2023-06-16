@@ -750,6 +750,11 @@ class BlendFileTest(MeshTest):
 
 
 class GeoNodesSimulationTest(MeshTest):
+    """
+    A mesh test that works similar to BlendFileTest but evaluates the scene at multiple
+    frames so that simulations can run.
+    """
+
     def __init__(self, test_object_name, exp_object_name, *, frames_num, **kwargs):
         super().__init__(test_object_name, exp_object_name, **kwargs)
         self.frames_num = frames_num
@@ -768,8 +773,6 @@ class GeoNodesSimulationTest(MeshTest):
 
         for modifier in modifiers_list:
             bpy.ops.object.modifier_apply(modifier=modifier.name)
-
-
 
 
 class RunTest:
