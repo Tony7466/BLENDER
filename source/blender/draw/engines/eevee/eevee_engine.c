@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -461,7 +461,7 @@ static void eevee_render_reset_passes(EEVEE_Data *vedata)
 
 static void eevee_render_to_image(void *vedata,
                                   RenderEngine *engine,
-                                  struct RenderLayer *render_layer,
+                                  RenderLayer *render_layer,
                                   const rcti *rect)
 {
   EEVEE_Data *ved = (EEVEE_Data *)vedata;
@@ -620,7 +620,7 @@ static void eevee_render_to_image(void *vedata,
   }
 }
 
-static void eevee_store_metadata(void *vedata, struct RenderResult *render_result)
+static void eevee_store_metadata(void *vedata, RenderResult *render_result)
 {
   EEVEE_Data *ved = (EEVEE_Data *)vedata;
   EEVEE_PrivateData *g_data = ved->stl->g_data;

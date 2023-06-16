@@ -91,6 +91,8 @@
 
 #include "node_intern.hh" /* own include */
 
+#include <fmt/format.h>
+
 namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::node_tree_zones::TreeZone;
 using blender::bke::node_tree_zones::TreeZones;
@@ -312,9 +314,8 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 
 float2 node_to_view(const bNode &node, const float2 &co)
 {
-  float2 result;
-  bke::nodeToView(&node, co.x, co.y, &result.x, &result.y);
-  return result * UI_SCALE_FAC;
+  const float2 node_location = bke::nodeToView(&node, co);
+  return node_location * UI_SCALE_FAC;
 }
 
 void node_to_updated_rect(const bNode &node, rctf &r_rect)
@@ -330,11 +331,9 @@ void node_to_updated_rect(const bNode &node, rctf &r_rect)
 
 float2 node_from_view(const bNode &node, const float2 &co)
 {
-  const float x = co.x / UI_SCALE_FAC;
-  const float y = co.y / UI_SCALE_FAC;
-  float2 result;
-  bke::nodeFromView(&node, x, y, &result.x, &result.y);
-  return result;
+  const float2 node_location = co / UI_SCALE_FAC;
+  return bke::nodeFromView(&node, node_location);
+  ;
 }
 
 /**
@@ -857,7 +856,7 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
     return;
   }
   if (value_type.is<std::string>()) {
-    ss << *static_cast<const std::string *>(buffer) << " " << TIP_("(String)");
+    ss << fmt::format(TIP_("{} (String)"), *static_cast<const std::string *>(buffer));
     return;
   }
 
@@ -874,22 +873,22 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   BLI_SCOPED_DEFER([&]() { socket_type.destruct(socket_value); });
 
   if (socket_type.is<int>()) {
-    ss << *static_cast<int *>(socket_value) << " " << TIP_("(Integer)");
+    ss << fmt::format(TIP_("{} (Integer)"), *static_cast<int *>(socket_value));
   }
   else if (socket_type.is<float>()) {
-    ss << *static_cast<float *>(socket_value) << " " << TIP_("(Float)");
+    ss << fmt::format(TIP_("{} (Float)"), *static_cast<float *>(socket_value));
   }
   else if (socket_type.is<blender::float3>()) {
-    ss << *static_cast<blender::float3 *>(socket_value) << " " << TIP_("(Vector)");
+    const blender::float3 &vector = *static_cast<blender::float3 *>(socket_value);
+    ss << fmt::format(TIP_("({}, {}, {}) (Vector)"), vector.x, vector.y, vector.z);
   }
   else if (socket_type.is<blender::ColorGeometry4f>()) {
     const blender::ColorGeometry4f &color = *static_cast<blender::ColorGeometry4f *>(socket_value);
-    ss << "(" << color.r << ", " << color.g << ", " << color.b << ", " << color.a << ") "
-       << TIP_("(Color)");
+    ss << fmt::format(TIP_("({}, {}, {}, {}) (Color)"), color.r, color.g, color.b, color.a);
   }
   else if (socket_type.is<bool>()) {
-    ss << ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")) << " "
-       << TIP_("(Boolean)");
+    ss << fmt::format(TIP_("{} (Boolean)"),
+                      ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")));
   }
 }
 
@@ -939,7 +938,7 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
 static void create_inspection_string_for_geometry_info(const geo_log::GeometryInfoLog &value_log,
                                                        std::stringstream &ss)
 {
-  Span<GeometryComponentType> component_types = value_log.component_types;
+  Span<bke::GeometryComponent::Type> component_types = value_log.component_types;
   if (component_types.is_empty()) {
     ss << TIP_("Empty Geometry");
     return;
@@ -952,9 +951,9 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   };
 
   ss << TIP_("Geometry:") << "\n";
-  for (GeometryComponentType type : component_types) {
+  for (bke::GeometryComponent::Type type : component_types) {
     switch (type) {
-      case GEO_COMPONENT_TYPE_MESH: {
+      case bke::GeometryComponent::Type::Mesh: {
         const geo_log::GeometryInfoLog::MeshInfo &mesh_info = *value_log.mesh_info;
         char line[256];
         SNPRINTF(line,
@@ -965,7 +964,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GeometryComponent::Type::PointCloud: {
         const geo_log::GeometryInfoLog::PointCloudInfo &pointcloud_info =
             *value_log.pointcloud_info;
         char line[256];
@@ -975,7 +974,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GeometryComponent::Type::Curve: {
         const geo_log::GeometryInfoLog::CurveInfo &curve_info = *value_log.curve_info;
         char line[256];
         SNPRINTF(line,
@@ -985,7 +984,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GeometryComponent::Type::Instance: {
         const geo_log::GeometryInfoLog::InstancesInfo &instances_info = *value_log.instances_info;
         char line[256];
         SNPRINTF(
@@ -993,11 +992,11 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GeometryComponent::Type::Volume: {
         ss << TIP_("\u2022 Volume");
         break;
       }
-      case GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GeometryComponent::Type::Edit: {
         if (value_log.edit_data_info.has_value()) {
           const geo_log::GeometryInfoLog::EditDataInfo &edit_info = *value_log.edit_data_info;
           char line[256];
@@ -1030,36 +1029,36 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
     ss << ".\n\n";
   }
 
-  Span<GeometryComponentType> supported_types = socket_decl->supported_types();
+  Span<bke::GeometryComponent::Type> supported_types = socket_decl->supported_types();
   if (supported_types.is_empty()) {
     ss << TIP_("Supported: All Types");
     return;
   }
 
   ss << TIP_("Supported: ");
-  for (GeometryComponentType type : supported_types) {
+  for (bke::GeometryComponent::Type type : supported_types) {
     switch (type) {
-      case GEO_COMPONENT_TYPE_MESH: {
+      case bke::GeometryComponent::Type::Mesh: {
         ss << TIP_("Mesh");
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GeometryComponent::Type::PointCloud: {
         ss << TIP_("Point Cloud");
         break;
       }
-      case GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GeometryComponent::Type::Curve: {
         ss << TIP_("Curve");
         break;
       }
-      case GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GeometryComponent::Type::Instance: {
         ss << TIP_("Instances");
         break;
       }
-      case GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GeometryComponent::Type::Volume: {
         ss << CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume");
         break;
       }
-      case GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GeometryComponent::Type::Edit: {
         break;
       }
     }
@@ -2688,10 +2687,10 @@ void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
-  const NodeResizeDirection dir = node_get_resize_direction(node, cursor[0], cursor[1]);
+  const NodeResizeDirection dir = node_get_resize_direction(snode, node, cursor[0], cursor[1]);
   if (node->is_frame() && dir == NODE_RESIZE_NONE) {
     /* Indicate that frame nodes can be moved/selected on their borders. */
-    const rctf frame_inside = node_frame_rect_inside(*node);
+    const rctf frame_inside = node_frame_rect_inside(snode, *node);
     if (!BLI_rctf_isect_pt(&frame_inside, cursor[0], cursor[1])) {
       WM_cursor_set(&win, WM_CURSOR_NSEW_SCROLL);
       return;
@@ -3325,15 +3324,19 @@ static bool realtime_compositor_is_in_use(const bContext &context)
     return false;
   }
 
-  const Main *main = CTX_data_main(&context);
-  LISTBASE_FOREACH (const bScreen *, screen, &main->screens) {
-    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
-      LISTBASE_FOREACH (const SpaceLink *, space, &area->spacedata) {
-        if (space->spacetype != SPACE_VIEW3D) {
-          continue;
-        }
+  if (U.experimental.use_full_frame_compositor &&
+      scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
+  {
+    return true;
+  }
 
-        const View3D &view_3d = *reinterpret_cast<const View3D *>(space);
+  wmWindowManager *wm = CTX_wm_manager(&context);
+  LISTBASE_FOREACH (const wmWindow *, win, &wm->windows) {
+    const bScreen *screen = WM_window_get_active_screen(win);
+    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+      const SpaceLink &space = *static_cast<const SpaceLink *>(area->spacedata.first);
+      if (space.spacetype == SPACE_VIEW3D) {
+        const View3D &view_3d = reinterpret_cast<const View3D &>(space);
 
         if (view_3d.shading.use_compositor == V3D_SHADING_USE_COMPOSITOR_DISABLED) {
           continue;

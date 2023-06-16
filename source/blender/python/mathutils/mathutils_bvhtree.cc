@@ -754,7 +754,7 @@ static PyObject *C_BVHTree_FromPolygons(PyObject * /*cls*/, PyObject *args, PyOb
     /* ngon support (much more involved) */
     const uint polys_len = uint(PySequence_Fast_GET_SIZE(py_tris_fast));
     struct PolyLink {
-      struct PolyLink *next;
+      PolyLink *next;
       uint len;
       uint poly[0];
     } *plink_first = nullptr, **p_plink_prev = &plink_first, *plink = nullptr;
@@ -1155,7 +1155,7 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
       MEM_mallocN(sizeof(*coords) * size_t(coords_len), __func__));
   uint(*tris)[3] = static_cast<uint(*)[3]>(
       MEM_mallocN(sizeof(*tris) * size_t(looptris.size()), __func__));
-  memcpy(coords, BKE_mesh_vert_positions(mesh), sizeof(float[3]) * size_t(mesh->totvert));
+  memcpy(coords, mesh->vert_positions().data(), sizeof(float[3]) * size_t(mesh->totvert));
 
   BVHTree *tree;
 

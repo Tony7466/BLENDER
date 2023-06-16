@@ -17,7 +17,7 @@ GPU_SHADER_CREATE_INFO(eevee_shared)
 GPU_SHADER_CREATE_INFO(eevee_sampling_data)
     .define("EEVEE_SAMPLING_DATA")
     .additional_info("eevee_shared")
-    .storage_buf(6, Qualifier::READ, "SamplingData", "sampling_buf");
+    .storage_buf(SAMPLING_BUF_SLOT, Qualifier::READ, "SamplingData", "sampling_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_utility_texture)
     .sampler(RBUFS_UTILITY_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "utility_tx");
@@ -107,7 +107,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
     .additional_info("eevee_camera",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
-                     "eevee_render_pass_out",
+                     /* Added at runtime because of test shaders not having `node_tree`. */
+                     //  "eevee_render_pass_out",
                      "eevee_cryptomatte_out");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)

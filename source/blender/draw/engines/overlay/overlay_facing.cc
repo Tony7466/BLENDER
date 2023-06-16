@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -50,7 +50,7 @@ void OVERLAY_facing_cache_populate(OVERLAY_Data *vedata, Object *ob)
     DRW_shgroup_call_sculpt(pd->facing_grp[is_xray], ob, false, false, false, false, false);
   }
   else {
-    struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    GPUBatch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       DRW_shgroup_call(pd->facing_grp[is_xray], geom, ob);
     }
