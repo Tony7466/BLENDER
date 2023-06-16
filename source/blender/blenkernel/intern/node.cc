@@ -3844,6 +3844,54 @@ void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock)
   BKE_ntree_update_tag_interface(ntree);
 }
 
+void ntreeMoveSocketInterface(bNodeTree *ntree, bNodeSocket *socket, int new_index)
+{
+  switch (socket->in_out) {
+    case SOCK_IN: {
+      bNodeSocket *next_socket = static_cast<bNodeSocket *>(
+          BLI_findlink(&ntree->inputs, new_index));
+      BLI_remlink(&ntree->inputs, socket);
+      BLI_insertlinkbefore(&ntree->inputs, next_socket, socket);
+      break;
+    }
+    case SOCK_OUT: {
+      bNodeSocket *next_socket = static_cast<bNodeSocket *>(
+          BLI_findlink(&ntree->outputs, new_index));
+      BLI_remlink(&ntree->outputs, socket);
+      BLI_insertlinkbefore(&ntree->outputs, next_socket, socket);
+      break;
+    }
+  }
+
+  ntreeEnsureSocketInterfacePanelOrder(ntree);
+
+  BKE_ntree_update_tag_interface(ntree);
+}
+
+void ntreeInsertSocketInterfaceBefore(bNodeTree *ntree, bNodeSocket *socket, bNodeSocket *before)
+{
+  if (socket->in_out != before->in_out) {
+    return;
+  }
+
+  switch (socket->in_out) {
+    case SOCK_IN: {
+      BLI_remlink(&ntree->inputs, socket);
+      BLI_insertlinkbefore(&ntree->inputs, before, socket);
+      break;
+    }
+    case SOCK_OUT: {
+      BLI_remlink(&ntree->outputs, socket);
+      BLI_insertlinkbefore(&ntree->outputs, before, socket);
+      break;
+    }
+  }
+
+  ntreeEnsureSocketInterfacePanelOrder(ntree);
+
+  BKE_ntree_update_tag_interface(ntree);
+}
+
 bool ntreeContainsPanel(const bNodeTree *ntree, const bNodePanel *panel)
 {
   return ntree->panels().contains(const_cast<bNodePanel *>(panel));
@@ -3997,6 +4045,19 @@ void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index)
   }
 
   ntreeEnsureSocketInterfacePanelOrder(ntree);
+}
+
+void ntreeInsertPanelBefore(bNodeTree *ntree, bNodePanel *panel, bNodePanel *before)
+{
+  const int from_index = ntree->panels().first_index_try(panel);
+  const int to_index = ntree->panels().first_index_try(before);
+
+  if (from_index < to_index) {
+    ntreeMovePanel(ntree, panel, to_index - 1);
+  }
+  else if (from_index > to_index) {
+    ntreeMovePanel(ntree, panel, to_index);
+  }
 }
 
 namespace blender::bke {

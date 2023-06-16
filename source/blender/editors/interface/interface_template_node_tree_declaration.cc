@@ -34,6 +34,60 @@ namespace blender::ui::nodes {
 
 namespace {
 
+class NodeTreeDeclarationView;
+
+enum eNodeTreeDeclarationType {
+  /* Item is a node panel declaration. */
+  NODE_PANEL,
+  /* iem is a socket declaration. */
+  NODE_SOCKET,
+};
+
+class NodeTreeDeclarationDragController : public AbstractViewItemDragController {
+ public:
+  explicit NodeTreeDeclarationDragController(NodeTreeDeclarationView &view, bNodeSocket *socket);
+  explicit NodeTreeDeclarationDragController(NodeTreeDeclarationView &view, bNodePanel *panel);
+  virtual ~NodeTreeDeclarationDragController() = default;
+
+  eWM_DragDataType get_drag_type() const;
+
+  void *create_drag_data() const;
+
+ private:
+  eNodeTreeDeclarationType type_;
+  void *item_;
+};
+
+class NodeGroupSocketDropTarget : public AbstractViewItemDropTarget {
+ public:
+  explicit NodeGroupSocketDropTarget(NodeTreeDeclarationView &view, bNodeSocket &socket);
+
+  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
+  std::string drop_tooltip(const wmDrag &drag) const override;
+  bool on_drop(bContext *C, const wmDrag &drag) const override;
+
+ protected:
+  wmDragNodeTreeDeclaration *get_drag_node_tree_declaration(const wmDrag &drag) const;
+
+ private:
+  bNodeSocket &socket_;
+};
+
+class NodePanelDropTarget : public AbstractViewItemDropTarget {
+ public:
+  explicit NodePanelDropTarget(NodeTreeDeclarationView &view, bNodePanel &panel);
+
+  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
+  std::string drop_tooltip(const wmDrag &drag) const override;
+  bool on_drop(bContext *C, const wmDrag &drag) const override;
+
+ protected:
+  wmDragNodeTreeDeclaration *get_drag_node_tree_declaration(const wmDrag &drag) const;
+
+ private:
+  bNodePanel &panel_;
+};
+
 class NodeGroupSocketViewItem : public BasicTreeViewItem {
  public:
   NodeGroupSocketViewItem(bNodeTree &nodetree, bNodeSocket &socket)
@@ -103,7 +157,6 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
      * Let panels' active index take precedence, until we change the underlying data. */
     return nodetree_.active_panel < 0 && (socket_.flag & SELECT) != 0;
   }
-
   void on_activate() override
   {
     /* Make sure active panel is cleared to avoid conflicting active index. */
@@ -121,7 +174,6 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
   {
     return true;
   }
-
   bool rename(const bContext &C, StringRefNull new_name) override
   {
     BLI_strncpy(socket_.name, new_name.c_str(), sizeof(socket_.name));
@@ -129,11 +181,13 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
     ED_node_tree_propagate_change(&C, CTX_data_main(&C), &nodetree_);
     return true;
   }
-
   StringRef get_rename_string() const override
   {
     return socket_.name;
   }
+
+  std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override;
+  std::unique_ptr<AbstractViewItemDropTarget> create_drop_target() override;
 
  private:
   bNodeTree &nodetree_;
@@ -175,7 +229,6 @@ class NodePanelViewItem : public BasicTreeViewItem {
     const bNodePanel *active_panel = nodetree_.panels().get(nodetree_.active_panel, nullptr);
     return &panel_ == active_panel;
   }
-
   void on_activate() override
   {
     nodetree_.active_panel = nodetree_.panels().first_index_try(&panel_);
@@ -193,7 +246,6 @@ class NodePanelViewItem : public BasicTreeViewItem {
   {
     return true;
   }
-
   bool rename(const bContext &C, StringRefNull new_name) override
   {
     panel_.name = BLI_strdup(new_name.c_str());
@@ -201,11 +253,13 @@ class NodePanelViewItem : public BasicTreeViewItem {
     ED_node_tree_propagate_change(&C, CTX_data_main(&C), &nodetree_);
     return true;
   }
-
   StringRef get_rename_string() const override
   {
     return panel_.name;
   }
+
+  std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override;
+  std::unique_ptr<AbstractViewItemDropTarget> create_drop_target() override;
 
  private:
   bNodeTree &nodetree_;
@@ -215,6 +269,11 @@ class NodePanelViewItem : public BasicTreeViewItem {
 class NodeTreeDeclarationView : public AbstractTreeView {
  public:
   explicit NodeTreeDeclarationView(bNodeTree &nodetree) : nodetree_(nodetree) {}
+
+  bNodeTree &nodetree()
+  {
+    return nodetree_;
+  }
 
   void build_tree() override
   {
@@ -254,6 +313,228 @@ class NodeTreeDeclarationView : public AbstractTreeView {
  private:
   bNodeTree &nodetree_;
 };
+
+std::unique_ptr<AbstractViewItemDragController> NodeGroupSocketViewItem::create_drag_controller()
+    const
+{
+  return std::make_unique<NodeTreeDeclarationDragController>(
+      static_cast<NodeTreeDeclarationView &>(get_tree_view()), &socket_);
+}
+
+std::unique_ptr<AbstractViewItemDropTarget> NodeGroupSocketViewItem::create_drop_target()
+{
+  return std::make_unique<NodeGroupSocketDropTarget>(
+      static_cast<NodeTreeDeclarationView &>(get_tree_view()), socket_);
+}
+
+std::unique_ptr<AbstractViewItemDragController> NodePanelViewItem::create_drag_controller() const
+{
+  return std::make_unique<NodeTreeDeclarationDragController>(
+      static_cast<NodeTreeDeclarationView &>(get_tree_view()), &panel_);
+}
+
+std::unique_ptr<AbstractViewItemDropTarget> NodePanelViewItem::create_drop_target()
+{
+  return std::make_unique<NodePanelDropTarget>(
+      static_cast<NodeTreeDeclarationView &>(get_tree_view()), panel_);
+}
+
+NodeTreeDeclarationDragController::NodeTreeDeclarationDragController(NodeTreeDeclarationView &view,
+                                                                     bNodeSocket *socket)
+    : AbstractViewItemDragController(view),
+      type_(eNodeTreeDeclarationType::NODE_SOCKET),
+      item_(socket)
+{
+}
+
+NodeTreeDeclarationDragController::NodeTreeDeclarationDragController(NodeTreeDeclarationView &view,
+                                                                     bNodePanel *panel)
+    : AbstractViewItemDragController(view),
+      type_(eNodeTreeDeclarationType::NODE_PANEL),
+      item_(panel)
+{
+}
+
+eWM_DragDataType NodeTreeDeclarationDragController::get_drag_type() const
+{
+  return WM_DRAG_NODE_TREE_DECLARATION;
+}
+
+void *NodeTreeDeclarationDragController::create_drag_data() const
+{
+  wmDragNodeTreeDeclaration *drag_data = MEM_cnew<wmDragNodeTreeDeclaration>(__func__);
+  drag_data->type = type_;
+  drag_data->item = item_;
+  return drag_data;
+}
+
+NodeGroupSocketDropTarget::NodeGroupSocketDropTarget(NodeTreeDeclarationView &view,
+                                                     bNodeSocket &socket)
+    : AbstractViewItemDropTarget(view), socket_(socket)
+{
+}
+
+bool NodeGroupSocketDropTarget::can_drop(const wmDrag &drag,
+                                         const char ** /*r_disabled_hint*/) const
+{
+  if (drag.type != WM_DRAG_NODE_TREE_DECLARATION) {
+    return false;
+  }
+  wmDragNodeTreeDeclaration *drag_data = get_drag_node_tree_declaration(drag);
+  switch (drag_data->type) {
+    case eNodeTreeDeclarationType::NODE_PANEL:
+      /* Can't insert panel before socket. */
+      return false;
+    case eNodeTreeDeclarationType::NODE_SOCKET:
+      /* Socket will be inserted before the target socket. */
+      return true;
+  }
+  return false;
+}
+
+std::string NodeGroupSocketDropTarget::drop_tooltip(const wmDrag & /*drag*/) const
+{
+  return N_("Insert before socket");
+}
+
+bool NodeGroupSocketDropTarget::on_drop(bContext *C, const wmDrag &drag) const
+{
+  wmDragNodeTreeDeclaration *drag_data = get_drag_node_tree_declaration(drag);
+  BLI_assert(drag_data != nullptr);
+
+  bNodeTree &nodetree = get_view<NodeTreeDeclarationView>().nodetree();
+
+  switch (drag_data->type) {
+    case eNodeTreeDeclarationType::NODE_PANEL: {
+      BLI_assert_unreachable();
+      break;
+    }
+    case eNodeTreeDeclarationType::NODE_SOCKET: {
+      bNodeSocket *drag_socket = static_cast<bNodeSocket *>(drag_data->item);
+      ntreeSetSocketInterfacePanel(&nodetree, drag_socket, socket_.panel);
+      ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, &socket_);
+      break;
+    }
+  }
+
+  ED_node_tree_propagate_change(C, CTX_data_main(C), &nodetree);
+  return true;
+}
+
+wmDragNodeTreeDeclaration *NodeGroupSocketDropTarget::get_drag_node_tree_declaration(
+    const wmDrag &drag) const
+{
+  BLI_assert(drag.type == WM_DRAG_NODE_TREE_DECLARATION);
+  return static_cast<wmDragNodeTreeDeclaration *>(drag.poin);
+}
+
+NodePanelDropTarget::NodePanelDropTarget(NodeTreeDeclarationView &view, bNodePanel &panel)
+    : AbstractViewItemDropTarget(view), panel_(panel)
+{
+}
+
+bool NodePanelDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disabled_hint*/) const
+{
+  if (drag.type != WM_DRAG_NODE_TREE_DECLARATION) {
+    return false;
+  }
+  wmDragNodeTreeDeclaration *drag_data = get_drag_node_tree_declaration(drag);
+  switch (drag_data->type) {
+    case eNodeTreeDeclarationType::NODE_PANEL:
+      /* Panel will be inserted before the target panel. */
+      return true;
+    case eNodeTreeDeclarationType::NODE_SOCKET:
+      /* Socket will be inserted at the start of the panel. */
+      return true;
+  }
+  return false;
+}
+
+std::string NodePanelDropTarget::drop_tooltip(const wmDrag &drag) const
+{
+  wmDragNodeTreeDeclaration *drag_data = get_drag_node_tree_declaration(drag);
+  BLI_assert(drag_data != nullptr);
+
+  switch (drag_data->type) {
+    case eNodeTreeDeclarationType::NODE_PANEL:
+      return N_("Insert before panel");
+      break;
+    case eNodeTreeDeclarationType::NODE_SOCKET:
+      return N_("Insert socket into panel");
+      break;
+  }
+
+  return "";
+}
+
+static bNodeSocket *find_first_socket_in_panel(const bNodeTree &nodetree,
+                                               const bNodePanel &panel,
+                                               eNodeSocketInOut in_out)
+{
+  switch (in_out) {
+    case SOCK_IN:
+      LISTBASE_FOREACH (bNodeSocket *, socket, &nodetree.inputs) {
+        if (socket->panel == &panel) {
+          return socket;
+        }
+      }
+      break;
+    case SOCK_OUT:
+      LISTBASE_FOREACH (bNodeSocket *, socket, &nodetree.inputs) {
+        if (socket->panel == &panel) {
+          return socket;
+        }
+      }
+      break;
+  }
+  return nullptr;
+}
+
+bool NodePanelDropTarget::on_drop(bContext *C, const wmDrag &drag) const
+{
+  wmDragNodeTreeDeclaration *drag_data = get_drag_node_tree_declaration(drag);
+  BLI_assert(drag_data != nullptr);
+
+  bNodeTree &nodetree = get_view<NodeTreeDeclarationView>().nodetree();
+
+  switch (drag_data->type) {
+    case eNodeTreeDeclarationType::NODE_PANEL: {
+      bNodePanel *drag_panel = static_cast<bNodePanel *>(drag_data->item);
+      const int index = nodetree.panels().first_index_try(&panel_);
+      ntreeMovePanel(&nodetree, drag_panel, index);
+      break;
+    }
+    case eNodeTreeDeclarationType::NODE_SOCKET: {
+      bNodeSocket *drag_socket = static_cast<bNodeSocket *>(drag_data->item);
+
+      switch (drag_socket->in_out) {
+        case SOCK_IN: {
+          bNodeSocket *before = find_first_socket_in_panel(nodetree, panel_, SOCK_OUT);
+          ntreeSetSocketInterfacePanel(&nodetree, drag_socket, &panel_);
+          ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
+          break;
+        }
+        case SOCK_OUT: {
+          bNodeSocket *before = find_first_socket_in_panel(nodetree, panel_, SOCK_OUT);
+          ntreeSetSocketInterfacePanel(&nodetree, drag_socket, &panel_);
+          ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  ED_node_tree_propagate_change(C, CTX_data_main(C), &nodetree);
+  return true;
+}
+
+wmDragNodeTreeDeclaration *NodePanelDropTarget::get_drag_node_tree_declaration(
+    const wmDrag &drag) const
+{
+  BLI_assert(drag.type == WM_DRAG_NODE_TREE_DECLARATION);
+  return static_cast<wmDragNodeTreeDeclaration *>(drag.poin);
+}
 
 }  // namespace
 
