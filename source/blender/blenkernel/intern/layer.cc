@@ -1914,34 +1914,44 @@ void BKE_layer_collection_set_visible(const Scene *scene,
 static void layer_collection_flag_recursive_set(LayerCollection *lc,
                                                 const int flag,
                                                 const bool value,
-                                                const bool restore_flag)
+                                                const bool is_recursive_call)
 {
+  /* Exposing the previous state requires some special processing. */
+  bool do_recurse = true;
+  bool prev_excluded = false;
+  const int BOTH_EXCLUDE_FLAGS = LAYER_COLLECTION_EXCLUDE | LAYER_COLLECTION_PREVIOUSLY_EXCLUDED;
+
   if (flag == LAYER_COLLECTION_EXCLUDE) {
     /* For exclude flag, we remember the state the children had before
      * excluding and restoring it when enabling the parent collection again. */
-    if (value) {
-      if (restore_flag) {
-        SET_FLAG_FROM_TEST(
-            lc->flag, (lc->flag & LAYER_COLLECTION_EXCLUDE), LAYER_COLLECTION_PREVIOUSLY_EXCLUDED);
+    if (is_recursive_call) {
+      if (value) {
+        /* Exclude nested collections. Don't change the backup flag. */
+        lc->flag |= LAYER_COLLECTION_EXCLUDE;
       }
       else {
-        lc->flag &= ~LAYER_COLLECTION_PREVIOUSLY_EXCLUDED;
+        /* Expose. Sync to backup flag. */
+        prev_excluded = lc->flag & LAYER_COLLECTION_PREVIOUSLY_EXCLUDED;
+        SET_FLAG_FROM_TEST(lc->flag, prev_excluded, BOTH_EXCLUDE_FLAGS);
+        if (prev_excluded) {
+          do_recurse = false;
+        }
       }
-
-      lc->flag |= flag;
     }
     else {
-      if (!(lc->flag & LAYER_COLLECTION_PREVIOUSLY_EXCLUDED)) {
-        lc->flag &= ~flag;
-      }
+      /* Directly controlled element. Set both flags accordingly. */
+      SET_FLAG_FROM_TEST(lc->flag, value, BOTH_EXCLUDE_FLAGS);
     }
   }
+
   else {
     SET_FLAG_FROM_TEST(lc->flag, value, flag);
   }
 
-  LISTBASE_FOREACH (LayerCollection *, nlc, &lc->layer_collections) {
-    layer_collection_flag_recursive_set(nlc, flag, value, true);
+  if (do_recurse) {
+    LISTBASE_FOREACH (LayerCollection *, nlc, &lc->layer_collections) {
+      layer_collection_flag_recursive_set(nlc, flag, value, true);
+    }
   }
 }
 
