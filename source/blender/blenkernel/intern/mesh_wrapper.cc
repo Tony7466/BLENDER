@@ -177,7 +177,7 @@ float (*BKE_mesh_wrapper_vert_coords_for_write(Mesh *mesh))[3]
 {
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_BMESH:
-      if (mesh->runtime->edit_data->vertexCos) {
+      if (mesh->runtime->edit_data->vertexCos == nullptr) {
         mesh->runtime->edit_data->vertexCos = editbmesh_vert_coords_alloc(mesh->edit_mesh);
       }
       return mesh->runtime->edit_data->vertexCos;
