@@ -1433,6 +1433,201 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     mapping_->lf_index_by_bsocket.fill(-1);
   }
 
+  void build_zone_functions()
+  {
+    zone_build_infos_.reinitialize(tree_zones_->zones.size());
+
+    const Array<int> zone_build_order = this->compute_zone_build_order();
+
+    for (const int zone_i : zone_build_order) {
+      const TreeZone &zone = *tree_zones_->zones[zone_i];
+      BLI_assert(zone.output_node->type == GEO_NODE_SIMULATION_OUTPUT);
+      this->build_simulation_zone_function(zone);
+    }
+  }
+
+  Array<int> compute_zone_build_order()
+  {
+    /* Build nested zones first. */
+    Array<int> zone_build_order(tree_zones_->zones.size());
+    std::iota(zone_build_order.begin(), zone_build_order.end(), 0);
+    std::sort(
+        zone_build_order.begin(), zone_build_order.end(), [&](const int zone_a, const int zone_b) {
+          return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
+        });
+    return zone_build_order;
+  }
+
+  void build_simulation_zone_function(const TreeZone &zone)
+  {
+    const int zone_i = zone.index;
+    ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
+    lf::Graph &lf_graph = lf_graph_info_->scope.construct<lf::Graph>();
+
+    lf::Node *lf_zone_input_node = nullptr;
+    lf::Node *lf_main_input_usage_node = nullptr;
+    if (zone.input_node != nullptr) {
+      lf_zone_input_node = &this->build_simulation_zone_input_node(zone, lf_graph);
+      lf_main_input_usage_node = &this->build_simulation_zone_input_usage_node(zone, lf_graph);
+    }
+    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone, lf_graph);
+    lf::Node &lf_zone_output_node = this->build_simulation_zone_output_node(zone, lf_graph);
+    lf::Node &lf_main_output_usage_node = this->build_simulation_zone_output_usage_node(zone,
+                                                                                        lf_graph);
+    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone, lf_graph);
+
+    lf::Node &lf_simulation_usage_node = [&]() -> lf::Node & {
+      auto &lazy_function = scope_.construct<LazyFunctionForSimulationInputsUsage>();
+      lf::Node &lf_node = lf_graph.add_function(lazy_function);
+
+      if (lf_main_input_usage_node) {
+        for (const int i : lf_main_input_usage_node->inputs().index_range()) {
+          lf_graph.add_link(lf_node.output(0), lf_main_input_usage_node->input(i));
+        }
+      }
+      return lf_node;
+    }();
+
+    BuildGraphParams graph_params{lf_graph};
+
+    lf::FunctionNode *lf_simulation_input = nullptr;
+    if (zone.input_node) {
+      lf_simulation_input = this->insert_simulation_input_node(
+          btree_, *zone.input_node, graph_params);
+    }
+    lf::FunctionNode &lf_simulation_output = this->insert_simulation_output_node(*zone.output_node,
+                                                                                 graph_params);
+
+    for (const bNodeSocket *bsocket : zone.output_node->input_sockets().drop_back(1)) {
+      graph_params.usage_by_bsocket.add(bsocket, &lf_simulation_usage_node.output(1));
+    }
+
+    this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
+
+    if (zone.input_node) {
+      this->build_output_socket_usages(*zone.input_node, graph_params);
+    }
+    for (const auto item : graph_params.lf_output_by_bsocket.items()) {
+      this->insert_links_from_socket(*item.key, *item.value, graph_params);
+    }
+
+    this->link_border_link_inputs_and_usages(
+        zone, lf_border_link_input_node, lf_border_link_usage_node, graph_params);
+
+    if (lf_zone_input_node != nullptr) {
+      for (const int i : lf_zone_input_node->outputs().index_range()) {
+        lf_graph.add_link(lf_zone_input_node->output(i), lf_simulation_input->input(i));
+      }
+    }
+    for (const int i : lf_zone_output_node.inputs().index_range()) {
+      lf_graph.add_link(lf_simulation_output.output(i), lf_zone_output_node.input(i));
+    }
+
+    this->add_default_inputs(graph_params);
+
+    Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
+    if (lf_zone_input_node) {
+      lf_zone_inputs.extend(lf_zone_input_node->outputs());
+      zone_info.main_input_indices = lf_zone_inputs.index_range();
+    }
+    lf_zone_inputs.extend(lf_border_link_input_node.outputs());
+    zone_info.border_link_input_indices = lf_zone_inputs.index_range().take_back(
+        lf_border_link_input_node.outputs().size());
+
+    lf_zone_inputs.extend(lf_main_output_usage_node.outputs());
+    zone_info.main_output_usage_indices = lf_zone_inputs.index_range().take_back(
+        lf_main_output_usage_node.outputs().size());
+
+    Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
+    Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
+    this->build_attribute_set_inputs_for_zone(graph_params,
+                                              zone_info,
+                                              lf_attribute_set_by_field_source_index,
+                                              lf_attribute_set_by_caller_propagation_index,
+                                              lf_zone_inputs);
+    this->link_attribute_set_inputs(
+        lf_graph,
+        graph_params.lf_attribute_set_input_by_output_geometry_bsocket,
+        graph_params.lf_attribute_set_input_by_field_source_index,
+        graph_params.lf_attribute_set_input_by_caller_propagation_index,
+        lf_attribute_set_by_field_source_index,
+        lf_attribute_set_by_caller_propagation_index,
+        graph_params.socket_usage_inputs);
+    this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
+
+    Vector<const lf::InputSocket *, 16> lf_zone_outputs;
+    lf_zone_outputs.extend(lf_zone_output_node.inputs());
+    zone_info.main_output_indices = lf_zone_outputs.index_range();
+
+    if (lf_main_input_usage_node) {
+      lf_zone_outputs.extend(lf_main_input_usage_node->inputs());
+      zone_info.main_input_usage_indices = lf_zone_outputs.index_range().take_back(
+          lf_main_input_usage_node->inputs().size());
+    }
+
+    lf_zone_outputs.extend(lf_border_link_usage_node.inputs());
+    zone_info.border_link_input_usage_indices = lf_zone_outputs.index_range().take_back(
+        lf_border_link_usage_node.inputs().size());
+
+    lf_graph.update_node_indices();
+
+    const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
+        lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
+    zone_info.lazy_function = &zone_function;
+
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+  }
+
+  lf::DummyNode &build_simulation_zone_input_node(const TreeZone &zone, lf::Graph &lf_graph)
+  {
+    Vector<const CPPType *, 16> zone_input_types;
+    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+    debug_info.name = "Zone Input";
+    for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
+      zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+      debug_info.output_names.append(socket->identifier);
+    }
+    lf::DummyNode &node = lf_graph.add_dummy({}, zone_input_types, &debug_info);
+    return node;
+  }
+
+  lf::DummyNode &build_simulation_zone_output_node(const TreeZone &zone, lf::Graph &lf_graph)
+  {
+    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+    debug_info.name = "Zone Output";
+    Vector<const CPPType *, 16> zone_output_types;
+    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
+      zone_output_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+      debug_info.input_names.append(socket->identifier);
+    }
+    lf::DummyNode &node = lf_graph.add_dummy(zone_output_types, {}, &debug_info);
+    return node;
+  }
+
+  lf::DummyNode &build_simulation_zone_input_usage_node(const TreeZone &zone, lf::Graph &lf_graph)
+  {
+    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+    debug_info.name = "Input Usages";
+    Vector<const CPPType *, 16> types;
+    types.append_n_times(&CPPType::get<bool>(),
+                         zone.input_node->input_sockets().drop_back(1).size());
+    debug_info.input_names.append_n_times("Usage", types.size());
+    lf::DummyNode &node = lf_graph.add_dummy(types, {}, &debug_info);
+    return node;
+  }
+
+  lf::DummyNode &build_simulation_zone_output_usage_node(const TreeZone &zone, lf::Graph &lf_graph)
+  {
+    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+    debug_info.name = "Output Usages";
+    Vector<const CPPType *, 16> types;
+    types.append_n_times(&CPPType::get<bool>(),
+                         zone.output_node->output_sockets().drop_back(1).size());
+    debug_info.output_names.append_n_times("Usage", types.size());
+    lf::DummyNode &node = lf_graph.add_dummy({}, types, &debug_info);
+    return node;
+  }
+
   void build_root_graph()
   {
     lf::Graph &lf_graph = lf_graph_info_->graph;
@@ -1661,151 +1856,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
   }
 
-  void build_zone_functions()
-  {
-    zone_build_infos_.reinitialize(tree_zones_->zones.size());
-
-    const Array<int> zone_build_order = this->compute_zone_build_order();
-
-    for (const int zone_i : zone_build_order) {
-      const TreeZone &zone = *tree_zones_->zones[zone_i];
-      BLI_assert(zone.output_node->type == GEO_NODE_SIMULATION_OUTPUT);
-      this->build_simulation_zone_function(zone);
-    }
-  }
-
-  Array<int> compute_zone_build_order()
-  {
-    /* Build nested zones first. */
-    Array<int> zone_build_order(tree_zones_->zones.size());
-    std::iota(zone_build_order.begin(), zone_build_order.end(), 0);
-    std::sort(
-        zone_build_order.begin(), zone_build_order.end(), [&](const int zone_a, const int zone_b) {
-          return tree_zones_->zones[zone_a]->depth > tree_zones_->zones[zone_b]->depth;
-        });
-    return zone_build_order;
-  }
-
-  void build_simulation_zone_function(const TreeZone &zone)
-  {
-    const int zone_i = zone.index;
-    ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
-    lf::Graph &lf_graph = lf_graph_info_->scope.construct<lf::Graph>();
-
-    lf::Node *lf_zone_input_node = nullptr;
-    lf::Node *lf_main_input_usage_node = nullptr;
-    if (zone.input_node != nullptr) {
-      lf_zone_input_node = &this->build_simulation_zone_input_node(zone, lf_graph);
-      lf_main_input_usage_node = &this->build_simulation_zone_input_usage_node(zone, lf_graph);
-    }
-    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone, lf_graph);
-    lf::Node &lf_zone_output_node = this->build_simulation_zone_output_node(zone, lf_graph);
-    lf::Node &lf_main_output_usage_node = this->build_simulation_zone_output_usage_node(zone,
-                                                                                        lf_graph);
-    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone, lf_graph);
-
-    lf::Node &lf_simulation_usage_node = [&]() -> lf::Node & {
-      auto &lazy_function = scope_.construct<LazyFunctionForSimulationInputsUsage>();
-      lf::Node &lf_node = lf_graph.add_function(lazy_function);
-
-      if (lf_main_input_usage_node) {
-        for (const int i : lf_main_input_usage_node->inputs().index_range()) {
-          lf_graph.add_link(lf_node.output(0), lf_main_input_usage_node->input(i));
-        }
-      }
-      return lf_node;
-    }();
-
-    BuildGraphParams graph_params{lf_graph};
-
-    lf::FunctionNode *lf_simulation_input = nullptr;
-    if (zone.input_node) {
-      lf_simulation_input = this->insert_simulation_input_node(
-          btree_, *zone.input_node, graph_params);
-    }
-    lf::FunctionNode &lf_simulation_output = this->insert_simulation_output_node(*zone.output_node,
-                                                                                 graph_params);
-
-    for (const bNodeSocket *bsocket : zone.output_node->input_sockets().drop_back(1)) {
-      graph_params.usage_by_bsocket.add(bsocket, &lf_simulation_usage_node.output(1));
-    }
-
-    this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
-
-    if (zone.input_node) {
-      this->build_output_socket_usages(*zone.input_node, graph_params);
-    }
-    for (const auto item : graph_params.lf_output_by_bsocket.items()) {
-      this->insert_links_from_socket(*item.key, *item.value, graph_params);
-    }
-
-    this->link_border_link_inputs_and_usages(
-        zone, lf_border_link_input_node, lf_border_link_usage_node, graph_params);
-
-    if (lf_zone_input_node != nullptr) {
-      for (const int i : lf_zone_input_node->outputs().index_range()) {
-        lf_graph.add_link(lf_zone_input_node->output(i), lf_simulation_input->input(i));
-      }
-    }
-    for (const int i : lf_zone_output_node.inputs().index_range()) {
-      lf_graph.add_link(lf_simulation_output.output(i), lf_zone_output_node.input(i));
-    }
-
-    this->add_default_inputs(graph_params);
-
-    Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
-    if (lf_zone_input_node) {
-      lf_zone_inputs.extend(lf_zone_input_node->outputs());
-      zone_info.main_input_indices = lf_zone_inputs.index_range();
-    }
-    lf_zone_inputs.extend(lf_border_link_input_node.outputs());
-    zone_info.border_link_input_indices = lf_zone_inputs.index_range().take_back(
-        lf_border_link_input_node.outputs().size());
-
-    lf_zone_inputs.extend(lf_main_output_usage_node.outputs());
-    zone_info.main_output_usage_indices = lf_zone_inputs.index_range().take_back(
-        lf_main_output_usage_node.outputs().size());
-
-    Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
-    Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
-    this->build_attribute_set_inputs_for_zone(graph_params,
-                                              zone_info,
-                                              lf_attribute_set_by_field_source_index,
-                                              lf_attribute_set_by_caller_propagation_index,
-                                              lf_zone_inputs);
-    this->link_attribute_set_inputs(
-        lf_graph,
-        graph_params.lf_attribute_set_input_by_output_geometry_bsocket,
-        graph_params.lf_attribute_set_input_by_field_source_index,
-        graph_params.lf_attribute_set_input_by_caller_propagation_index,
-        lf_attribute_set_by_field_source_index,
-        lf_attribute_set_by_caller_propagation_index,
-        graph_params.socket_usage_inputs);
-    this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
-
-    Vector<const lf::InputSocket *, 16> lf_zone_outputs;
-    lf_zone_outputs.extend(lf_zone_output_node.inputs());
-    zone_info.main_output_indices = lf_zone_outputs.index_range();
-
-    if (lf_main_input_usage_node) {
-      lf_zone_outputs.extend(lf_main_input_usage_node->inputs());
-      zone_info.main_input_usage_indices = lf_zone_outputs.index_range().take_back(
-          lf_main_input_usage_node->inputs().size());
-    }
-
-    lf_zone_outputs.extend(lf_border_link_usage_node.inputs());
-    zone_info.border_link_input_usage_indices = lf_zone_outputs.index_range().take_back(
-        lf_border_link_usage_node.inputs().size());
-
-    lf_graph.update_node_indices();
-
-    const lf::GraphExecutor &zone_function = lf_graph_info_->scope.construct<lf::GraphExecutor>(
-        lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, nullptr);
-    zone_info.lazy_function = &zone_function;
-
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
-  }
-
   void insert_nodes_and_zones(const Span<const bNode *> bnodes,
                               const Span<const TreeZone *> zones,
                               BuildGraphParams &graph_params)
@@ -2011,56 +2061,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       debug_info.output_names.append(StringRef("Link from ") + border_link->fromsock->identifier);
     }
     lf::DummyNode &node = lf_graph.add_dummy({}, border_link_types, &debug_info);
-    return node;
-  }
-
-  lf::DummyNode &build_simulation_zone_input_node(const TreeZone &zone, lf::Graph &lf_graph)
-  {
-    Vector<const CPPType *, 16> zone_input_types;
-    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
-    debug_info.name = "Zone Input";
-    for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
-      zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-      debug_info.output_names.append(socket->identifier);
-    }
-    lf::DummyNode &node = lf_graph.add_dummy({}, zone_input_types, &debug_info);
-    return node;
-  }
-
-  lf::DummyNode &build_simulation_zone_output_node(const TreeZone &zone, lf::Graph &lf_graph)
-  {
-    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
-    debug_info.name = "Zone Output";
-    Vector<const CPPType *, 16> zone_output_types;
-    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
-      zone_output_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-      debug_info.input_names.append(socket->identifier);
-    }
-    lf::DummyNode &node = lf_graph.add_dummy(zone_output_types, {}, &debug_info);
-    return node;
-  }
-
-  lf::DummyNode &build_simulation_zone_input_usage_node(const TreeZone &zone, lf::Graph &lf_graph)
-  {
-    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
-    debug_info.name = "Input Usages";
-    Vector<const CPPType *, 16> types;
-    types.append_n_times(&CPPType::get<bool>(),
-                         zone.input_node->input_sockets().drop_back(1).size());
-    debug_info.input_names.append_n_times("Usage", types.size());
-    lf::DummyNode &node = lf_graph.add_dummy(types, {}, &debug_info);
-    return node;
-  }
-
-  lf::DummyNode &build_simulation_zone_output_usage_node(const TreeZone &zone, lf::Graph &lf_graph)
-  {
-    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
-    debug_info.name = "Output Usages";
-    Vector<const CPPType *, 16> types;
-    types.append_n_times(&CPPType::get<bool>(),
-                         zone.output_node->output_sockets().drop_back(1).size());
-    debug_info.output_names.append_n_times("Usage", types.size());
-    lf::DummyNode &node = lf_graph.add_dummy({}, types, &debug_info);
     return node;
   }
 
