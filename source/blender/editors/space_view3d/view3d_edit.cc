@@ -903,7 +903,7 @@ void ED_view3d_cursor3d_position_rotation(bContext *C,
     float obmat[4][4];
     Object *ob_dummy = nullptr;
     float dist_px = 0;
-    SnapObjectParams snap_params;
+    SnapObjectParams snap_params{};
     snap_params.snap_target_select = SCE_SNAP_TARGET_ALL;
     snap_params.edit_mode_type = SNAP_GEOM_FINAL;
     snap_params.use_occlusion_test = true;
