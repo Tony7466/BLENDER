@@ -79,7 +79,7 @@ enum eGraphKeys_LeftRightSelect_Mode {
   GRAPHKEYS_LRSEL_RIGHT,
 };
 
-/* Defines for handle selection */
+/* Defines for handle selection. */
 enum eGraphKey_HandleSelect_Mode {
   GRAPHKEYS_HANDLESEL_LR = 0,
   GRAPHKEYS_HANDLESEL_L,

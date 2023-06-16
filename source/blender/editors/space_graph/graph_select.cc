@@ -216,8 +216,7 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
         if (fcurve_handle_sel_check(sipo, bezt1)) {
           /* first handle only visible if previous segment had handles */
           if ((!prevbezt && (bezt1->ipo == BEZT_IPO_BEZ)) ||
-              (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ)))
-          {
+              (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ))) {
             nearest_fcurve_vert_store(matches,
                                       v2d,
                                       fcu,
@@ -2067,15 +2066,15 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 /** \} */
 /* Handle selection */
 
-/* defines for left-right select tool */
+/* Defines for handle select tool. */
 static const EnumPropertyItem prop_graphkeys_leftright_handle_select_types[] = {
-    {GRAPHKEYS_HANDLESEL_LR, "CHECK", 0, "Select Both Handles", ""},
+    {GRAPHKEYS_HANDLESEL_LR, "BOTH", 0, "Select Both Handles", ""},
     {GRAPHKEYS_HANDLESEL_L, "LEFT", 0, "Select Left Handles", ""},
     {GRAPHKEYS_HANDLESEL_R, "RIGHT", 0, "Select Right Handles", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
-short bezt_sel_left_handles(KeyframeEditData *ked, BezTriple *bezt)
+static short bezt_sel_left_handles(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
 {
   if (BEZT_ISSEL_ANY(bezt)) {
     BEZT_SEL_IDX(bezt, 0);
@@ -2084,7 +2083,7 @@ short bezt_sel_left_handles(KeyframeEditData *ked, BezTriple *bezt)
   return 0;
 }
 
-short bezt_sel_right_handles(KeyframeEditData *ked, BezTriple *bezt)
+static short bezt_sel_right_handles(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
 {
   if (BEZT_ISSEL_ANY(bezt)) {
     BEZT_DESEL_IDX(bezt, 0);
@@ -2093,7 +2092,7 @@ short bezt_sel_right_handles(KeyframeEditData *ked, BezTriple *bezt)
   return 0;
 }
 
-short bezt_sel_both_handles(KeyframeEditData *ked, BezTriple *bezt)
+static short bezt_sel_both_handles(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
 {
   if (BEZT_ISSEL_ANY(bezt)) {
     BEZT_SEL_IDX(bezt, 0);
@@ -2102,7 +2101,7 @@ short bezt_sel_both_handles(KeyframeEditData *ked, BezTriple *bezt)
   return 0;
 }
 
-short bezt_desel_keys(KeyframeEditData *ked, BezTriple *bezt)
+static short bezt_desel_keys(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
 {
   if (BEZT_ISSEL_ANY(bezt)) {
     BEZT_DESEL_IDX(bezt, 1);
@@ -2110,19 +2109,18 @@ short bezt_desel_keys(KeyframeEditData *ked, BezTriple *bezt)
   return 0;
 }
 
-static void graphkeys_de_select_handles(bAnimContext *ac, short mode, const bool desel_kf)
+static void graphkeys_de_select_handles(
+    bAnimContext *ac,
+    const short mode,  // prop_graphkeys_leftright_handle_select_types
+    const bool deselect_keyframe)
 {
   ListBase anim_data = {NULL, NULL};
-  bAnimListElem *ale;
-  int filter;
 
-  KeyframeEditData ked;
-
-  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
-            ANIMFILTER_NODUPLIS);
+  const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
+                      ANIMFILTER_NODUPLIS);
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* Only continue if F-Curve has keyframes. */
@@ -2131,17 +2129,20 @@ static void graphkeys_de_select_handles(bAnimContext *ac, short mode, const bool
     }
     switch (mode) {
       case GRAPHKEYS_HANDLESEL_LR: {
-        ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_sel_both_handles, NULL);
-      } break;
+        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_both_handles, NULL);
+        break;
+      }
       case GRAPHKEYS_HANDLESEL_R: {
-        ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_sel_right_handles, NULL);
-      } break;
+        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_right_handles, NULL);
+        break;
+      }
       case GRAPHKEYS_HANDLESEL_L: {
-        ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_sel_left_handles, NULL);
-      } break;
+        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_left_handles, NULL);
+        break;
+      }
     }
-    if (desel_kf) {
-      ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_desel_keys, NULL);
+    if (deselect_keyframe) {
+      ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_desel_keys, NULL);
     }
   }
 
@@ -2159,9 +2160,9 @@ static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
   }
 
   short leftright = RNA_enum_get(op->ptr, "mode");
-  bool desel_kf = RNA_boolean_get(op->ptr, "desel_kf");
+  bool deselect_keyframe = RNA_boolean_get(op->ptr, "deselect_keyframe");
   /* Perform selection changes. */
-  graphkeys_de_select_handles(&ac, leftright, desel_kf);
+  graphkeys_de_select_handles(&ac, leftright, deselect_keyframe);
 
   /* Set notifier that keyframe selection has changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
@@ -2171,8 +2172,6 @@ static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
 
 void GRAPH_OT_select_handles(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Select Handles";
   ot->idname = "GRAPH_OT_select_handles";
@@ -2188,8 +2187,8 @@ void GRAPH_OT_select_handles(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna,
                           "mode",
                           prop_graphkeys_leftright_handle_select_types,
-                          GRAPHKEYS_LRSEL_TEST,
+                          GRAPHKEYS_HANDLESEL_LR,
                           "Mode",
                           "(De)Select handles based on selection");
-  prop = RNA_def_boolean(ot->srna, "desel_kf", 1, "Deselect Keyframes", "");
+  ot->prop = RNA_def_boolean(ot->srna, "deselect_keyframe", 1, "Deselect Keyframes", "");
 }
