@@ -1308,19 +1308,21 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
 using JoinAttibuteSetsCache = Map<Vector<lf::OutputSocket *>, lf::OutputSocket *>;
 
 struct BuildGraphParams {
+  /** Lazy-function graph that nodes and links should be inserted into. */
   lf::Graph &lf_graph;
 
-  MultiValueMap<const bNodeSocket *, lf::InputSocket *> input_socket_map;
-  Map<const bNodeSocket *, lf::OutputSocket *> output_socket_map;
-  Map<const bNodeSocket *, lf::OutputSocket *> usage_by_socket;
-  Map<Vector<lf::OutputSocket *>, lf::OutputSocket *> or_socket_usages_cache;
-  Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
+  MultiValueMap<const bNodeSocket *, lf::InputSocket *> lf_inputs_by_bsocket;
+  Map<const bNodeSocket *, lf::OutputSocket *> lf_output_by_bsocket;
+  Map<const bNodeSocket *, lf::OutputSocket *> usage_by_bsocket;
+  Map<Vector<lf::OutputSocket *>, lf::OutputSocket *> socket_usages_combination_cache;
   Map<const bNodeSocket *, lf::InputSocket *> lf_attribute_set_input_by_output_geometry_bsocket;
   Map<const bNodeSocket *, lf::Node *> multi_input_socket_nodes;
-  Map<const bNodeLink *, lf::InputSocket *> child_zones_border_inputs;
+  Map<const bNodeLink *, lf::InputSocket *> lf_input_by_border_link;
   Set<lf::InputSocket *> socket_usage_inputs;
   MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_field_source_index;
   MultiValueMap<int, lf::InputSocket *> lf_attribute_set_input_by_caller_propagation_index;
+
+  Vector<std::pair<const bNodeSocket *, lf::InputSocket *>> inputs_to_link_later;
 };
 
 struct ZoneBuildInfo {
@@ -1419,14 +1421,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     BuildGraphParams graph_params{lf_graph};
     if (const bNode *group_output_bnode = btree_.group_output_node()) {
       for (const bNodeSocket *bsocket : group_output_bnode->input_sockets().drop_back(1)) {
-        graph_params.usage_by_socket.add(bsocket, &lf_output_usage_node.output(bsocket->index()));
+        graph_params.usage_by_bsocket.add(bsocket, &lf_output_usage_node.output(bsocket->index()));
       }
     }
 
     this->insert_nodes_and_zones(
         tree_zones_->nodes_outside_zones, tree_zones_->root_zones, graph_params);
 
-    for (const auto item : graph_params.output_socket_map.items()) {
+    for (const auto item : graph_params.lf_output_by_bsocket.items()) {
       this->insert_links_from_socket(*item.key, *item.value, graph_params);
     }
     this->build_group_input_usages(graph_params);
@@ -1486,9 +1488,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       else {
         const auto &socket_field_source = std::get<aai::SocketFieldSource>(field_source.data);
         const bNodeSocket &bsocket = *socket_field_source.socket;
-        lf::OutputSocket &lf_field_socket = *graph_params.output_socket_map.lookup(&bsocket);
-        lf::OutputSocket *lf_usage_socket = graph_params.usage_by_socket.lookup_default(&bsocket,
-                                                                                        nullptr);
+        lf::OutputSocket &lf_field_socket = *graph_params.lf_output_by_bsocket.lookup(&bsocket);
+        lf::OutputSocket *lf_usage_socket = graph_params.usage_by_bsocket.lookup_default(&bsocket,
+                                                                                         nullptr);
         lf_attribute_set_socket = &this->get_extracted_attributes(
             lf_field_socket,
             lf_usage_socket,
@@ -1699,7 +1701,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                                                                  graph_params);
 
     for (const bNodeSocket *bsocket : zone.output_node->input_sockets().drop_back(1)) {
-      graph_params.usage_by_socket.add(bsocket, &lf_simulation_usage_node.output(1));
+      graph_params.usage_by_bsocket.add(bsocket, &lf_simulation_usage_node.output(1));
     }
 
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
@@ -1707,7 +1709,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     if (zone.input_node) {
       this->build_output_socket_usages(*zone.input_node, graph_params);
     }
-    for (const auto item : graph_params.output_socket_map.items()) {
+    for (const auto item : graph_params.lf_output_by_bsocket.items()) {
       this->insert_links_from_socket(*item.key, *item.value, graph_params);
     }
 
@@ -1820,7 +1822,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         lf_graph.add_link(lf_from, *lf_to);
       }
       lf::InputSocket &lf_usage_output = lf_border_link_usage_node.input(border_link_i);
-      if (lf::OutputSocket *lf_usage = graph_params.usage_by_socket.lookup_default(
+      if (lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(
               border_link.tosock, nullptr))
       {
         lf_graph.add_link(*lf_usage, lf_usage_output);
@@ -1861,11 +1863,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       else {
         const auto &socket_field_source = std::get<aai::SocketFieldSource>(field_source.data);
         const bNodeSocket &bsocket = *socket_field_source.socket;
-        if (lf::OutputSocket *lf_field_socket = graph_params.output_socket_map.lookup_default(
+        if (lf::OutputSocket *lf_field_socket = graph_params.lf_output_by_bsocket.lookup_default(
                 &bsocket, nullptr))
         {
-          lf::OutputSocket *lf_usage_socket = graph_params.usage_by_socket.lookup_default(&bsocket,
-                                                                                          nullptr);
+          lf::OutputSocket *lf_usage_socket = graph_params.usage_by_bsocket.lookup_default(
+              &bsocket, nullptr);
           lf::OutputSocket &lf_attribute_set_socket = this->get_extracted_attributes(
               *lf_field_socket,
               lf_usage_socket,
@@ -2057,20 +2059,20 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const int i : child_zone_info.main_input_indices.index_range()) {
       const bNodeSocket &bsocket = child_zone.input_node->input_socket(i);
-      graph_params.input_socket_map.add(
+      graph_params.lf_inputs_by_bsocket.add(
           &bsocket, &child_zone_node.input(child_zone_info.main_input_indices[i]));
-      graph_params.usage_by_socket.add(
+      graph_params.usage_by_bsocket.add(
           &bsocket, &child_zone_node.output(child_zone_info.main_input_usage_indices[i]));
     }
     for (const int i : child_zone_info.main_output_indices.index_range()) {
       const bNodeSocket &bsocket = child_zone.output_node->output_socket(i);
-      graph_params.output_socket_map.add(
+      graph_params.lf_output_by_bsocket.add(
           &bsocket, &child_zone_node.output(child_zone_info.main_output_indices[i]));
       lf::InputSocket &lf_usage_input = child_zone_node.input(
           child_zone_info.main_output_usage_indices[i]);
       graph_params.socket_usage_inputs.add(&lf_usage_input);
-      if (lf::OutputSocket *lf_usage = graph_params.usage_by_socket.lookup_default(&bsocket,
-                                                                                   nullptr)) {
+      if (lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(&bsocket,
+                                                                                    nullptr)) {
         graph_params.lf_graph.add_link(*lf_usage, lf_usage_input);
       }
       else {
@@ -2084,11 +2086,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf::InputSocket &child_border_link_input = child_zone_node.input(
           child_zone_info.border_link_input_indices[child_border_link_i]);
       const bNodeLink &link = *child_border_links[child_border_link_i];
-      graph_params.child_zones_border_inputs.add(&link, &child_border_link_input);
+      graph_params.lf_input_by_border_link.add(&link, &child_border_link_input);
       lf::OutputSocket &lf_usage = child_zone_node.output(
           child_zone_info.border_link_input_usage_indices[child_border_link_i]);
-      graph_params.input_socket_map.add(link.tosock, &child_border_link_input);
-      graph_params.usage_by_socket.add(link.tosock, &lf_usage);
+      graph_params.lf_inputs_by_bsocket.add(link.tosock, &child_border_link_input);
+      graph_params.usage_by_bsocket.add(link.tosock, &lf_usage);
     }
 
     for (const auto item : child_zone_info.attribute_set_input_by_field_source_index.items()) {
@@ -2218,7 +2220,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         continue;
       }
       lf::InputSocket &lf_socket = lf_node.input(lf_index);
-      graph_params.input_socket_map.add(bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
     for (const bNodeSocket *bsocket : bnode.output_sockets()) {
@@ -2227,7 +2229,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         continue;
       }
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
-      graph_params.output_socket_map.add_new(bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add_new(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
 
@@ -2251,14 +2253,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       /* The input is used if any of the internally linked outputs is used. */
       Vector<lf::OutputSocket *> lf_socket_usages;
       for (const bNodeSocket *output_bsocket : output_bsockets) {
-        if (lf::OutputSocket *lf_socket = graph_params.usage_by_socket.lookup_default(
+        if (lf::OutputSocket *lf_socket = graph_params.usage_by_bsocket.lookup_default(
                 output_bsocket, nullptr))
         {
           lf_socket_usages.append(lf_socket);
         }
       }
-      graph_params.usage_by_socket.add(&input_bsocket,
-                                       this->or_socket_usages(lf_socket_usages, graph_params));
+      graph_params.usage_by_bsocket.add(&input_bsocket,
+                                        this->or_socket_usages(lf_socket_usages, graph_params));
     }
   }
 
@@ -2276,15 +2278,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     lf::InputSocket &lf_input = lf_node.input(0);
     lf::OutputSocket &lf_output = lf_node.output(0);
-    graph_params.input_socket_map.add(&input_bsocket, &lf_input);
-    graph_params.output_socket_map.add_new(&output_bsocket, &lf_output);
+    graph_params.lf_inputs_by_bsocket.add(&input_bsocket, &lf_input);
+    graph_params.lf_output_by_bsocket.add_new(&output_bsocket, &lf_output);
     mapping_->bsockets_by_lf_socket_map.add(&lf_input, &input_bsocket);
     mapping_->bsockets_by_lf_socket_map.add(&lf_output, &output_bsocket);
 
-    if (lf::OutputSocket *lf_usage = graph_params.usage_by_socket.lookup_default(
+    if (lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(
             &bnode.output_socket(0), nullptr))
     {
-      graph_params.usage_by_socket.add(&bnode.input_socket(0), lf_usage);
+      graph_params.usage_by_bsocket.add(&bnode.input_socket(0), lf_usage);
     }
   }
 
@@ -2293,7 +2295,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const int i : btree_.interface_inputs().index_range()) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
       lf::OutputSocket &lf_socket = group_input_lf_node_->output(i);
-      graph_params.output_socket_map.add_new(&bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add_new(&bsocket, &lf_socket);
       mapping_->dummy_socket_map.add_new(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
@@ -2314,7 +2316,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const int i : group_output_lf_node.inputs().index_range()) {
       const bNodeSocket &bsocket = bnode.input_socket(i);
       lf::InputSocket &lf_socket = group_output_lf_node.input(i);
-      graph_params.input_socket_map.add(&bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->dummy_socket_map.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
@@ -2344,13 +2346,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const bNodeSocket &bsocket = bnode.input_socket(i);
       BLI_assert(!bsocket.is_multi_input());
       lf::InputSocket &lf_socket = lf_node.input(i);
-      graph_params.input_socket_map.add(&bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
     for (const int i : bnode.output_sockets().index_range()) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
       lf::OutputSocket &lf_socket = lf_node.output(i);
-      graph_params.output_socket_map.add_new(&bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add_new(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
     mapping_->group_node_map.add(&bnode, &lf_node);
@@ -2408,18 +2410,18 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         case InputUsageHintType::DependsOnOutput: {
           Vector<lf::OutputSocket *> output_usages;
           for (const int i : input_usage_hint.output_dependencies) {
-            if (lf::OutputSocket *lf_socket = graph_params.usage_by_socket.lookup_default(
+            if (lf::OutputSocket *lf_socket = graph_params.usage_by_bsocket.lookup_default(
                     &bnode.output_socket(i), nullptr))
             {
               output_usages.append(lf_socket);
             }
           }
-          graph_params.usage_by_socket.add(input_bsocket,
-                                           this->or_socket_usages(output_usages, graph_params));
+          graph_params.usage_by_bsocket.add(input_bsocket,
+                                            this->or_socket_usages(output_usages, graph_params));
           break;
         }
         case InputUsageHintType::DynamicSocket: {
-          graph_params.usage_by_socket.add(
+          graph_params.usage_by_bsocket.add(
               input_bsocket,
               &lf_group_node.output(fn.lf_output_for_input_bsocket_usage_.lookup(input_index)));
           break;
@@ -2433,7 +2435,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
               ->lf_input_index_for_output_bsocket_usage[output_bsocket->index_in_all_outputs()];
       BLI_assert(lf_input_index >= 0);
       lf::InputSocket &lf_socket = lf_group_node.input(lf_input_index);
-      if (lf::OutputSocket *lf_output_is_used = graph_params.usage_by_socket.lookup_default(
+      if (lf::OutputSocket *lf_output_is_used = graph_params.usage_by_bsocket.lookup_default(
               output_bsocket, nullptr))
       {
         graph_params.lf_graph.add_link(*lf_output_is_used, lf_socket);
@@ -2470,7 +2472,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
       }
       else {
-        graph_params.input_socket_map.add(bsocket, &lf_socket);
+        graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
         mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
       }
     }
@@ -2480,7 +2482,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         continue;
       }
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
-      graph_params.output_socket_map.add_new(bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add_new(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
 
@@ -2490,8 +2492,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             mapping_->lf_input_index_for_output_bsocket_usage[bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
           lf::InputSocket &lf_input_socket = lf_node.input(lf_input_index);
-          if (lf::OutputSocket *lf_usage = graph_params.usage_by_socket.lookup_default(bsocket,
-                                                                                       nullptr)) {
+          if (lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(bsocket,
+                                                                                        nullptr)) {
             graph_params.lf_graph.add_link(*lf_usage, lf_input_socket);
           }
           else {
@@ -2526,7 +2528,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       if (!output_socket->is_available()) {
         continue;
       }
-      if (lf::OutputSocket *is_used_socket = graph_params.usage_by_socket.lookup_default(
+      if (lf::OutputSocket *is_used_socket = graph_params.usage_by_bsocket.lookup_default(
               output_socket, nullptr))
       {
         output_usages.append_non_duplicates(is_used_socket);
@@ -2541,7 +2543,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNodeSocket *input_socket : bnode.input_sockets()) {
       if (input_socket->is_available()) {
-        graph_params.usage_by_socket.add(input_socket, lf_usage);
+        graph_params.usage_by_bsocket.add(input_socket, lf_usage);
       }
     }
   }
@@ -2561,7 +2563,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       BLI_assert(!bsocket->is_multi_input());
       lf::InputSocket &lf_socket = lf_node.input(lf_index);
-      graph_params.input_socket_map.add(bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
     for (const bNodeSocket *bsocket : bnode.output_sockets()) {
@@ -2570,7 +2572,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         continue;
       }
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
-      graph_params.output_socket_map.add(bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
 
@@ -2589,7 +2591,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         continue;
       }
       lf::InputSocket &lf_socket = lf_viewer_node.input(lf_index);
-      graph_params.input_socket_map.add(bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
 
@@ -2602,7 +2604,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
       for (const bNodeSocket *bsocket : bnode.input_sockets()) {
         if (bsocket->is_available()) {
-          graph_params.usage_by_socket.add(bsocket, &lf_usage_node.output(0));
+          graph_params.usage_by_bsocket.add(bsocket, &lf_usage_node.output(0));
         }
       }
     }
@@ -2627,14 +2629,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const bNodeSocket &bsocket = bnode.input_socket(i);
       lf::InputSocket &lf_socket = lf_node.input(
           mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      graph_params.input_socket_map.add(&bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
     for (const int i : bnode.output_sockets().index_range().drop_back(1)) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
       lf::OutputSocket &lf_socket = lf_node.output(
           mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      graph_params.output_socket_map.add(&bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
     return &lf_node;
@@ -2652,14 +2654,14 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const bNodeSocket &bsocket = bnode.input_socket(i);
       lf::InputSocket &lf_socket = lf_node.input(
           mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      graph_params.input_socket_map.add(&bsocket, &lf_socket);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
     for (const int i : bnode.output_sockets().index_range().drop_back(1)) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
       lf::OutputSocket &lf_socket = lf_node.output(
           mapping_->lf_index_by_bsocket[bsocket.index_in_tree()]);
-      graph_params.output_socket_map.add(&bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
 
@@ -2677,7 +2679,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const bNodeSocket *bsocket : bnode.input_sockets()) {
       if (bsocket->is_available()) {
         lf::InputSocket &lf_socket = lf_node.input(input_index);
-        graph_params.input_socket_map.add(bsocket, &lf_socket);
+        graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
         mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
         input_index++;
       }
@@ -2685,7 +2687,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const bNodeSocket *bsocket : bnode.output_sockets()) {
       if (bsocket->is_available()) {
         lf::OutputSocket &lf_socket = lf_node.output(0);
-        graph_params.output_socket_map.add(bsocket, &lf_socket);
+        graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
         mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
         break;
       }
@@ -2720,26 +2722,26 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         break;
       }
     }
-    lf::OutputSocket *output_is_used_socket = graph_params.usage_by_socket.lookup_default(
+    lf::OutputSocket *output_is_used_socket = graph_params.usage_by_bsocket.lookup_default(
         output_bsocket, nullptr);
     if (output_is_used_socket == nullptr) {
       return;
     }
-    graph_params.usage_by_socket.add(switch_input_bsocket, output_is_used_socket);
+    graph_params.usage_by_bsocket.add(switch_input_bsocket, output_is_used_socket);
     if (switch_input_bsocket->is_directly_linked()) {
       /* The condition input is dynamic, so the usage of the other inputs is as well. */
       static const LazyFunctionForSwitchSocketUsage switch_socket_usage_fn;
       lf::Node &lf_node = graph_params.lf_graph.add_function(switch_socket_usage_fn);
       graph_params.inputs_to_link_later.append({switch_input_bsocket, &lf_node.input(0)});
-      graph_params.usage_by_socket.add(false_input_bsocket, &lf_node.output(0));
-      graph_params.usage_by_socket.add(true_input_bsocket, &lf_node.output(1));
+      graph_params.usage_by_bsocket.add(false_input_bsocket, &lf_node.output(0));
+      graph_params.usage_by_bsocket.add(true_input_bsocket, &lf_node.output(1));
     }
     else {
       if (switch_input_bsocket->default_value_typed<bNodeSocketValueBoolean>()->value) {
-        graph_params.usage_by_socket.add(true_input_bsocket, output_is_used_socket);
+        graph_params.usage_by_bsocket.add(true_input_bsocket, output_is_used_socket);
       }
       else {
-        graph_params.usage_by_socket.add(false_input_bsocket, output_is_used_socket);
+        graph_params.usage_by_bsocket.add(false_input_bsocket, output_is_used_socket);
       }
     }
   }
@@ -2756,7 +2758,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         continue;
       }
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
-      graph_params.output_socket_map.add(bsocket, &lf_socket);
+      graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
     }
   }
@@ -2837,7 +2839,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   Vector<lf::InputSocket *> find_link_targets(const bNodeLink &link,
                                               const BuildGraphParams &graph_params)
   {
-    if (lf::InputSocket *lf_input_socket = graph_params.child_zones_border_inputs.lookup_default(
+    if (lf::InputSocket *lf_input_socket = graph_params.lf_input_by_border_link.lookup_default(
             &link, nullptr))
     {
       return {lf_input_socket};
@@ -2860,7 +2862,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
       if (to_bsocket.owner_node().is_muted()) {
         if (link_index == 0) {
-          return Vector<lf::InputSocket *>(graph_params.input_socket_map.lookup(&to_bsocket));
+          return Vector<lf::InputSocket *>(graph_params.lf_inputs_by_bsocket.lookup(&to_bsocket));
         }
       }
       else {
@@ -2873,7 +2875,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       }
     }
     else {
-      return Vector<lf::InputSocket *>(graph_params.input_socket_map.lookup(&to_bsocket));
+      return Vector<lf::InputSocket *>(graph_params.lf_inputs_by_bsocket.lookup(&to_bsocket));
     }
     return {};
   }
@@ -2905,7 +2907,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void add_default_inputs(BuildGraphParams &graph_params)
   {
-    for (auto item : graph_params.input_socket_map.items()) {
+    for (auto item : graph_params.lf_inputs_by_bsocket.items()) {
       const bNodeSocket &bsocket = *item.key;
       const Span<lf::InputSocket *> lf_sockets = item.value;
       for (lf::InputSocket *lf_socket : lf_sockets) {
@@ -2921,7 +2923,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void link_postponed_inputs(BuildGraphParams &graph_params)
   {
     for (const auto &item : graph_params.inputs_to_link_later) {
-      lf::InputSocket *lf_socket = graph_params.input_socket_map.lookup(item.first)[0];
+      lf::InputSocket *lf_socket = graph_params.lf_inputs_by_bsocket.lookup(item.first)[0];
       if (lf::OutputSocket *lf_origin = lf_socket->origin()) {
         graph_params.lf_graph.add_link(*lf_origin, *item.second);
       }
@@ -3053,7 +3055,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     std::sort(usages.begin(), usages.end());
-    return graph_params.or_socket_usages_cache.lookup_or_add_cb_as(usages, [&]() {
+    return graph_params.socket_usages_combination_cache.lookup_or_add_cb_as(usages, [&]() {
       auto &logical_or_fn = scope_.construct<LazyFunctionForLogicalOr>(usages.size());
       lf::Node &logical_or_node = graph_params.lf_graph.add_function(logical_or_fn);
 
@@ -3078,15 +3080,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           continue;
         }
         const bNodeSocket &target_socket = *link->tosock;
-        if (lf::OutputSocket *is_used_socket = graph_params.usage_by_socket.lookup_default(
+        if (lf::OutputSocket *is_used_socket = graph_params.usage_by_bsocket.lookup_default(
                 &target_socket, nullptr))
         {
           target_usages.append_non_duplicates(is_used_socket);
         }
       }
       /* Combine target socket usages into the usage of the current socket. */
-      graph_params.usage_by_socket.add(socket,
-                                       this->or_socket_usages(target_usages, graph_params));
+      graph_params.usage_by_bsocket.add(socket,
+                                        this->or_socket_usages(target_usages, graph_params));
     }
   }
 
@@ -3096,7 +3098,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const int i : btree_.interface_inputs().index_range()) {
       Vector<lf::OutputSocket *> target_usages;
       for (const bNode *group_input_node : group_input_nodes) {
-        if (lf::OutputSocket *lf_socket = graph_params.usage_by_socket.lookup_default(
+        if (lf::OutputSocket *lf_socket = graph_params.usage_by_bsocket.lookup_default(
                 &group_input_node->output_socket(i), nullptr))
         {
           target_usages.append_non_duplicates(lf_socket);
