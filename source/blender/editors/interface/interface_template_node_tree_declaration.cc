@@ -10,6 +10,7 @@
 
 #include "BKE_context.h"
 #include "BKE_node.hh"
+#include "BKE_node_tree_update.h"
 
 #include "BLI_color.hh"
 
@@ -114,6 +115,25 @@ class NodeGroupSocketViewItem : public BasicTreeViewItem {
     }
   }
 
+  bool supports_renaming() const override
+  {
+    return true;
+  }
+
+  bool rename(StringRefNull new_name) override
+  {
+    BLI_strncpy(socket_.name, new_name.c_str(), sizeof(socket_.name));
+    BKE_ntree_update_tag_interface(&nodetree_);
+    /* XXX No context pointer and/or bmain available here, cannot do full update. */
+    //    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    return true;
+  }
+
+  StringRef get_rename_string() const override
+  {
+    return socket_.name;
+  }
+
  private:
   bNodeTree &nodetree_;
   bNodeSocket &socket_;
@@ -166,6 +186,22 @@ class NodePanelViewItem : public BasicTreeViewItem {
     LISTBASE_FOREACH (bNodeSocket *, tsocket, &nodetree_.outputs) {
       SET_FLAG_FROM_TEST(tsocket->flag, false, SELECT);
     }
+  }
+
+  bool supports_renaming() const override
+  {
+    return true;
+  }
+
+  bool rename(StringRefNull new_name) override
+  {
+    panel_.name = BLI_strdup(new_name.c_str());
+    return true;
+  }
+
+  StringRef get_rename_string() const override
+  {
+    return panel_.name;
   }
 
  private:
