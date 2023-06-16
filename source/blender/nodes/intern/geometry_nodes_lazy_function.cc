@@ -1351,8 +1351,10 @@ struct BuildGraphParams {
 };
 
 struct ZoneBuildInfo {
+  /** The lazy function that contains the zone. */
   const LazyFunction *lazy_function = nullptr;
 
+  /** Information about what the various inputs and outputs of the lazy-function are. */
   IndexRange main_input_indices;
   IndexRange main_output_indices;
   IndexRange border_link_input_indices;
