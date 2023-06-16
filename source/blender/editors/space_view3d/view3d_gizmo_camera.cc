@@ -477,7 +477,7 @@ static void WIDGETGROUP_camera_view_refresh(const bContext *C, wmGizmoGroup *gzg
       viewgroup->state.edit_border = &v3d->render_border;
       viewgroup->is_camera = false;
     }
-    wmGizmoPropertyFnParams gizmo_property_params;
+    wmGizmoPropertyFnParams gizmo_property_params {};
     gizmo_property_params.value_get_fn = gizmo_render_border_prop_matrix_get;
     gizmo_property_params.value_set_fn = gizmo_render_border_prop_matrix_set;
     gizmo_property_params.range_get_fn = NULL;
