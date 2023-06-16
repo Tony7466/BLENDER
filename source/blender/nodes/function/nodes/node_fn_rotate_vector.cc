@@ -11,16 +11,16 @@ namespace blender::nodes::node_fn_rotate_vector_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Rotation>("Rotation");
   b.add_input<decl::Vector>("Vector");
+  b.add_input<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Vector");
 };
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  static auto fn = mf::build::SI2_SO<math::Quaternion, float3, float3>(
+  static auto fn = mf::build::SI2_SO<float3, math::Quaternion, float3>(
       "Rotate Vector",
-      [](math::Quaternion quat, float3 vector) { return math::transform_point(quat, vector); });
+      [](float3 vector, math::Quaternion quat) { return math::transform_point(quat, vector); });
   builder.set_matching_fn(fn);
 }
 
