@@ -1805,6 +1805,32 @@ void BKE_layer_collection_local_sync_all(const Main *bmain)
   }
 }
 
+static void layer_collection_initialize_exclude_flag_recursive(LayerCollection *layer_collection)
+{
+  if (layer_collection->flag & LAYER_COLLECTION_EXCLUDE) {
+    layer_collection->flag |= LAYER_COLLECTION_PREVIOUSLY_EXCLUDED;
+  }
+  else {
+    layer_collection->flag &= ~LAYER_COLLECTION_PREVIOUSLY_EXCLUDED;
+  }
+
+  LISTBASE_FOREACH (LayerCollection *, layer_collection_iter, &layer_collection->layer_collections)
+  {
+    layer_collection_initialize_exclude_flag_recursive(layer_collection_iter);
+  }
+}
+
+void BKE_layer_collection_initialize_exclude_flag(const Main *bmain)
+{
+  LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+    LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
+      LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
+        layer_collection_initialize_exclude_flag_recursive(layer_collection);
+      }
+    }
+  }
+}
+
 void BKE_layer_collection_isolate_local(
     const Scene *scene, ViewLayer *view_layer, const View3D *v3d, LayerCollection *lc, bool extend)
 {

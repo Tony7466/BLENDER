@@ -163,6 +163,9 @@ void BKE_layer_collection_doversion_2_80(const struct Scene *scene, struct ViewL
 
 void BKE_main_collection_sync(const struct Main *bmain);
 void BKE_scene_collection_sync(const struct Scene *scene);
+
+void BKE_layer_collection_initialize_exclude_flag(const struct Main *bmain);
+
 /**
  * Update view layer collection tree from collections used in the scene.
  * This is used when collections are removed or added, both while editing
