@@ -667,9 +667,8 @@ static void rna_uiTemplateAssetView(uiLayout *layout,
                                     const char *drag_opname,
                                     PointerRNA *r_drag_op_properties)
 {
-  AssetFilterSettings filter_settings = {
-      .id_types = filter_id_types ? filter_id_types : FILTER_ID_ALL,
-  };
+  AssetFilterSettings filter_settings{};
+  filter_settings.id_types = filter_id_types ? filter_id_types : FILTER_ID_ALL;
 
   uiTemplateAssetView(layout,
                       C,
