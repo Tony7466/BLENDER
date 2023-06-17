@@ -8,6 +8,8 @@
 
 #include <algorithm>
 
+#include "BLI_math_quaternion.hh"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -62,25 +64,36 @@ static void sh_node_mix_declare(NodeDeclarationBuilder &b)
       .default_value({0.5f, 0.5f, 0.5f, 1.0f})
       .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
+  b.add_input<decl::Rotation>("A", "A_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input<decl::Rotation>("A", "A_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+
   b.add_output<decl::Float>("Result", "Result_Float");
   b.add_output<decl::Vector>("Result", "Result_Vector");
   b.add_output<decl::Color>("Result", "Result_Color");
+  b.add_output<decl::Rotation>("Result", "Result_Rotation");
 };
 
 static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   const NodeShaderMix &data = node_storage(*static_cast<const bNode *>(ptr->data));
   uiItemR(layout, ptr, "data_type", 0, "", ICON_NONE);
-  if (data.data_type == SOCK_VECTOR) {
-    uiItemR(layout, ptr, "factor_mode", 0, "", ICON_NONE);
-  }
-  if (data.data_type == SOCK_RGBA) {
-    uiItemR(layout, ptr, "blend_type", 0, "", ICON_NONE);
-    uiItemR(layout, ptr, "clamp_result", 0, nullptr, ICON_NONE);
-    uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
-  }
-  else {
-    uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
+  switch (data.data_type) {
+    case SOCK_FLOAT:
+      uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
+    case SOCK_VECTOR:
+      uiItemR(layout, ptr, "factor_mode", 0, "", ICON_NONE);
+      break;
+    case SOCK_RGBA:
+      uiItemR(layout, ptr, "blend_type", 0, "", ICON_NONE);
+      uiItemR(layout, ptr, "clamp_result", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
+      break;
+    case SOCK_ROTATION:
+      uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
   }
 }
 
@@ -166,6 +179,8 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
       break;
     case SOCK_RGBA:
       type = SOCK_RGBA;
+    case SOCK_ROTATION:
+      type = SOCK_ROTATION;
       break;
     default:
       return;
@@ -428,7 +443,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
   const NodeShaderMix *data = (NodeShaderMix *)node.storage;
   bool uniform_factor = data->factor_mode == NODE_MIX_MODE_UNIFORM;
   const bool clamp_factor = data->clamp_factor;
-  switch (data->data_type) {
+  switch (eNodeSocketDatatype(data->data_type)) {
     case SOCK_FLOAT: {
       if (clamp_factor) {
         static auto fn = mf::build::SI3_SO<float, float, float, float>(
@@ -480,8 +495,29 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
         }
       }
     }
+    case SOCK_ROTATION: {
+      if (clamp_factor) {
+        static auto fn =
+            mf::build::SI3_SO<float, math::Quaternion, math::Quaternion, math::Quaternion>(
+                "Mix Quaternion",
+                [](const float factor, const math::Quaternion a, const math::Quaternion b) {
+                  return math::interpolate(a, b, math::clamp(factor, 0.0f, 1.0f));
+                });
+        return &fn;
+      }
+      else {
+        static auto fn =
+            mf::build::SI3_SO<float, math::Quaternion, math::Quaternion, math::Quaternion>(
+                "Mix Quaternion",
+                [](const float factor, const math::Quaternion a, const math::Quaternion b) {
+                  return math::interpolate(a, b, factor);
+                });
+        return &fn;
+      }
+    }
+    default:
+      BLI_assert_unreachable();
   }
-  BLI_assert_unreachable();
   return nullptr;
 }
 
