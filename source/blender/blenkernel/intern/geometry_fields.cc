@@ -538,8 +538,9 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       return true;
     }
   }
-
-  attributes.remove(attribute_id);
+  if (!attribute_id.is_anonymous()) {
+    attributes.remove(attribute_id);
+  }
   if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveArray(buffer))) {
     return true;
   }
