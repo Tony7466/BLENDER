@@ -160,7 +160,8 @@ static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
                                            point_access,
                                            nullptr);
   static CustomDataAttributeProvider point_custom_data(ATTR_DOMAIN_POINT, point_access);
-  return ComponentAttributeProviders({&position, &radius, &id}, {&point_custom_data});
+  return ComponentAttributeProviders(
+      {&position, &radius, &id}, {&point_custom_data}, nullptr, nullptr);
 }
 
 static AttributeAccessorFunctions get_pointcloud_accessor_functions()

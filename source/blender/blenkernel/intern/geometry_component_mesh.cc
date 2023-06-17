@@ -1082,6 +1082,37 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
  */
 static ComponentAttributeProviders create_attribute_providers_for_mesh()
 {
+  static AttributeAddTrigger mesh_add_trigger =
+      [](void *owner, AttributeIDRef const &attribute_id, eCustomDataType type) -> void {
+    Mesh *mesh = static_cast<Mesh *>(owner);
+    if ((type == CD_PROP_COLOR || type == CD_PROP_BYTE_COLOR) &&
+       !attribute_id.is_anonymous()) {
+      if (mesh->active_color_attribute == nullptr) {
+        mesh->active_color_attribute = static_cast<char *>(
+            BLI_strdupn(attribute_id.name().data(), attribute_id.name().size()));
+      }
+      if (mesh->default_color_attribute == nullptr) {
+        mesh->default_color_attribute = static_cast<char *>(
+            BLI_strdupn(attribute_id.name().data(), attribute_id.name().size()));
+      }
+    }
+  };
+
+  static AttributeRemoveTrigger mesh_remove_trigger =
+      [](void *owner, AttributeIDRef const &attribute_id) -> void {
+    Mesh *mesh = static_cast<Mesh *>(owner);
+    if (mesh->active_color_attribute &&
+        !strncmp(mesh->active_color_attribute, attribute_id.name().data(), attribute_id.name().size()))
+    {
+      MEM_SAFE_FREE(mesh->active_color_attribute);
+    }
+    if (mesh->default_color_attribute &&
+        !strncmp(mesh->default_color_attribute, attribute_id.name().data(), attribute_id.name().size()))
+    {
+      MEM_SAFE_FREE(mesh->default_color_attribute);
+    }
+  };
+
 #define MAKE_MUTABLE_CUSTOM_DATA_GETTER(NAME) \
   [](void *owner) -> CustomData * { \
     Mesh *mesh = static_cast<Mesh *>(owner); \
@@ -1239,7 +1270,9 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                       &vertex_groups,
                                       &point_custom_data,
                                       &edge_custom_data,
-                                      &face_custom_data});
+                                      &face_custom_data},
+                                     mesh_add_trigger,
+                                     mesh_remove_trigger);
 }
 
 static AttributeAccessorFunctions get_mesh_accessor_functions()

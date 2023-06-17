@@ -207,7 +207,7 @@ static ComponentAttributeProviders create_attribute_providers_for_instances()
   static CustomDataAttributeProvider instance_custom_data(ATTR_DOMAIN_INSTANCE,
                                                           instance_custom_data_access);
 
-  return ComponentAttributeProviders({&position, &id}, {&instance_custom_data});
+  return ComponentAttributeProviders({&position, &id}, {&instance_custom_data}, nullptr, nullptr);
 }
 
 static AttributeAccessorFunctions get_instances_accessor_functions()

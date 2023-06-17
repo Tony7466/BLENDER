@@ -560,7 +560,9 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                       &curve_type,
                                       &resolution,
                                       &cyclic},
-                                     {&curve_custom_data, &point_custom_data});
+                                     {&curve_custom_data, &point_custom_data},
+                                     nullptr,
+                                     nullptr);
 }
 
 /** \} */
