@@ -381,18 +381,103 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
   float view_inv[4][4];
   copy_m4_m4(view_inv, rv3d->viewinv);
 
-  /* The size of the circle is larger than the vertex size.
-   * This prevents a drawing overlaps the other. */
-  float radius = 2.5f * UI_GetThemeValuef(TH_VERTEX_SIZE);
+  /* The size of the symbol is larger than the vertex size.
+   * This prevents overlaps. */
+  float radius = 3.2f * UI_GetThemeValuef(TH_VERTEX_SIZE);
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
+    GPU_blend(GPU_BLEND_ALPHA);
+  GPU_line_smooth(true);
+  GPU_line_width(1.5f);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   if (loc_curr) {
     immUniformColor4ubv(color_point);
-    imm_drawcircball(loc_curr, ED_view3d_pixel_size(rv3d, loc_curr) * radius, view_inv, pos);
 
-    /* draw normal if needed */
+    if (snap_elem_type & SCE_SNAP_MODE_EDGE_MIDPOINT) {
+      /* Draw a triangle. */
+      float v1[3], v2[3], v3[3], tmp[3];
+      float x_size = radius * ED_view3d_pixel_size(rv3d, loc_curr);
+
+      mul_v3_v3fl(v1, view_inv[1], x_size);
+      mul_v3_v3fl(v2, v1, -0.5f);
+      mul_v3_v3fl(v3, v1, -0.5f);
+      mul_v3_v3fl(tmp, view_inv[0], 0.8f * x_size);
+      add_v3_v3(v2, tmp);
+      sub_v3_v3(v3, tmp);
+
+      add_v3_v3(v1, loc_curr);
+      add_v3_v3(v2, loc_curr);
+      add_v3_v3(v3, loc_curr);
+
+      immBegin(GPU_PRIM_LINES, 6);
+      immVertex3fv(pos, v1);
+      immVertex3fv(pos, v2);
+      immVertex3fv(pos, v2);
+      immVertex3fv(pos, v3);
+      immVertex3fv(pos, v3);
+      immVertex3fv(pos, v1);
+      immEnd();
+    }
+    else if (snap_elem_type & SCE_SNAP_MODE_VERTEX) {
+      /* Draw a rectangle. */
+      float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
+      float x_size = 0.8f * radius * ED_view3d_pixel_size(rv3d, loc_curr);
+
+      mul_v3_v3fl(vx, view_inv[0], x_size);
+      mul_v3_v3fl(vy, view_inv[1], x_size);
+
+      add_v3_v3v3(v1, vx, vy);
+      sub_v3_v3v3(v2, vx, vy);
+      negate_v3_v3(v3, v1);
+      negate_v3_v3(v4, v2);
+
+      add_v3_v3(v1, loc_curr);
+      add_v3_v3(v2, loc_curr);
+      add_v3_v3(v3, loc_curr);
+      add_v3_v3(v4, loc_curr);
+
+      immBegin(GPU_PRIM_LINES, 8);
+      immVertex3fv(pos, v1);
+      immVertex3fv(pos, v2);
+      immVertex3fv(pos, v2);
+      immVertex3fv(pos, v3);
+      immVertex3fv(pos, v3);
+      immVertex3fv(pos, v4);
+      immVertex3fv(pos, v4);
+      immVertex3fv(pos, v1);
+      immEnd();
+    }
+    else if (snap_elem_type & SCE_SNAP_MODE_EDGE) {
+      /* Draw an "X". */
+      float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
+      float x_size = 0.8f * radius * ED_view3d_pixel_size(rv3d, loc_curr);
+
+      mul_v3_v3fl(vx, view_inv[0], x_size);
+      mul_v3_v3fl(vy, view_inv[1], x_size);
+
+      add_v3_v3v3(v1, vx, vy);
+      sub_v3_v3v3(v2, vx, vy);
+      negate_v3_v3(v3, v1);
+      negate_v3_v3(v4, v2);
+
+      add_v3_v3(v1, loc_curr);
+      add_v3_v3(v2, loc_curr);
+      add_v3_v3(v3, loc_curr);
+      add_v3_v3(v4, loc_curr);
+
+      immBegin(GPU_PRIM_LINES, 4);
+      immVertex3fv(pos, v3);
+      immVertex3fv(pos, v1);
+      immVertex3fv(pos, v4);
+      immVertex3fv(pos, v2);
+      immEnd();
+    }
+    else {
+      imm_drawcircball(loc_curr, ED_view3d_pixel_size(rv3d, loc_curr) * radius, view_inv, pos);
+    }
+
+     /* Draw normal if needed. */
     if (normal) {
       immBegin(GPU_PRIM_LINES, 2);
       immVertex3fv(pos, loc_curr);
@@ -458,6 +543,8 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
     }
   }
 
+  GPU_line_smooth(false);
+  GPU_blend(GPU_BLEND_NONE);
   immUnbindProgram();
 }
 
@@ -883,9 +970,6 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void *UNUSED(cust
     const float *prev_point = (snap_data->snap_elem & SCE_SNAP_MODE_EDGE_PERPENDICULAR) ?
                                   state->prevpoint :
                                   NULL;
-
-    GPU_line_smooth(false);
-    GPU_line_width(1.0f);
 
     ED_view3d_cursor_snap_draw_util(rv3d,
                                     prev_point,
