@@ -2912,7 +2912,25 @@ static void rna_NodeSocket_update(Main *bmain, Scene * /*scene*/, PointerRNA *pt
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-
+  const bool skip_tree_update = [=]() -> bool {
+    if (!sock->is_input()) {
+      return false;
+    }
+    ntree->ensure_topology_cache();
+    const bNode &node = sock->owner_node();
+    if (!node.is_muted()) {
+      return false;
+    }
+    for (const bNodeLink &link : node.internal_links()) {
+      if (link.fromsock == sock) {
+        return false;
+      }
+    }
+    return true;
+  }();
+  if (skip_tree_update) {
+    return;
+  }
   BKE_ntree_update_tag_socket_property(ntree, sock);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
