@@ -13,6 +13,8 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
+#include "BLI_function_ref.hh"
+
 #include "BLF_api.h"
 
 #include "BLT_translation.h"
@@ -2062,7 +2064,7 @@ static StructRNA *rna_Node_register(Main *bmain,
 
 static const EnumPropertyItem *itemf_function_check(
     const EnumPropertyItem *original_item_array,
-    bool (*value_supported)(const EnumPropertyItem *item))
+    blender::FunctionRef<bool(const EnumPropertyItem *item)> value_supported)
 {
   EnumPropertyItem *item_array = nullptr;
   int items_len = 0;
@@ -3793,6 +3795,37 @@ static const EnumPropertyItem *renderresult_layers_add_enum(RenderLayer *rl)
   return item;
 }
 
+static const EnumPropertyItem *rna_ShaderNodeMix_data_type_itemf(bContext * /*C*/,
+                                                                 PointerRNA *ptr,
+                                                                 PropertyRNA * /*prop*/,
+                                                                 bool *r_free)
+{
+  *r_free = true;
+
+  static const EnumPropertyItem rna_enum_mix_data_type_items[] = {
+      {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
+      {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
+      {SOCK_RGBA, "RGBA", 0, "Color", ""},
+      {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  const auto rotation_supported_mix = [ptr](const EnumPropertyItem *item) -> bool {
+    const eNodeSocketDatatype data_type = eNodeSocketDatatype(item->value);
+    if (U.experimental.use_rotation_socket && data_type == SOCK_ROTATION) {
+      const bNodeTree *tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
+      BLI_assert(tree != nullptr);
+
+      if (tree->type == NTREE_GEOMETRY) {
+        return true;
+      }
+    }
+    return ELEM(data_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
+  };
+
+  return itemf_function_check(rna_enum_mix_data_type_items, rotation_supported_mix);
+}
+
 static const EnumPropertyItem *rna_Node_image_layer_itemf(bContext * /*C*/,
                                                           PointerRNA *ptr,
                                                           PropertyRNA * /*prop*/,
@@ -5206,16 +5239,17 @@ static void def_compare(StructRNA *srna)
 
 static void def_sh_mix(StructRNA *srna)
 {
+  static const EnumPropertyItem rna_enum_mix_mode_items[] = {
+      {NODE_MIX_MODE_UNIFORM, "UNIFORM", 0, "Uniform", "Use a single factor for all components"},
+      {NODE_MIX_MODE_NON_UNIFORM, "NON_UNIFORM", 0, "Non-Uniform", "Per component factor"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem rna_enum_mix_data_type_items[] = {
       {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
       {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
       {SOCK_RGBA, "RGBA", 0, "Color", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem rna_enum_mix_mode_items[] = {
-      {NODE_MIX_MODE_UNIFORM, "UNIFORM", 0, "Uniform", "Use a single factor for all components"},
-      {NODE_MIX_MODE_NON_UNIFORM, "NON_UNIFORM", 0, "Non-Uniform", "Per component factor"},
+      {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -5224,6 +5258,7 @@ static void def_sh_mix(StructRNA *srna)
   RNA_def_struct_sdna_from(srna, "NodeShaderMix", "storage");
 
   prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_ShaderNodeMix_data_type_itemf");
   RNA_def_property_enum_items(prop, rna_enum_mix_data_type_items);
   RNA_def_property_enum_default(prop, SOCK_FLOAT);
   RNA_def_property_ui_text(prop, "Data Type", "");
