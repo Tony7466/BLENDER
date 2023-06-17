@@ -302,9 +302,7 @@ static void flushTransNodes(TransInfo *t)
       }
     }
     else {
-      if (tc->data_len == 1) {
         space_node::node_insert_on_link_flags_clear(node_tree);
-      }
     }
 
     /* Handle detaching nodes from parent frames. */
