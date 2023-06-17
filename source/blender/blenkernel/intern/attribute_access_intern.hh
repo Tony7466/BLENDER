@@ -206,10 +206,10 @@ class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
   bool layer_exists(const CustomData &custom_data) const;
 };
 
-using AttributeAddTrigger = void (*)(void *owner,
+using AttributeAddHandler = void (*)(void *owner,
                                      AttributeIDRef const &attribute_id,
                                      eCustomDataType type);
-using AttributeRemoveTrigger = void (*)(void *owner, AttributeIDRef const &attribute_id);
+using AttributeRemoveHandler = void (*)(void *owner, AttributeIDRef const &attribute_id);
 
 /**
  * This is a container for multiple attribute providers that are used by one geometry component
@@ -234,17 +234,17 @@ class ComponentAttributeProviders {
    */
   VectorSet<eAttrDomain> supported_domains_;
 
-  AttributeAddTrigger add_trigger_;
-  AttributeRemoveTrigger remove_trigger_;
+  AttributeAddHandler add_handler_;
+  AttributeRemoveHandler remove_handler_;
 
  public:
   ComponentAttributeProviders(Span<const BuiltinAttributeProvider *> builtin_attribute_providers,
                               Span<const DynamicAttributesProvider *> dynamic_attribute_providers,
-                              AttributeAddTrigger add_trigger,
-                              AttributeRemoveTrigger remove_trigger)
+                              AttributeAddHandler add_handler,
+                              AttributeRemoveHandler remove_handler)
       : dynamic_attribute_providers_(dynamic_attribute_providers),
-        add_trigger_(add_trigger),
-        remove_trigger_(remove_trigger)
+        add_handler_(add_handler),
+        remove_handler_(remove_handler)
   {
     for (const BuiltinAttributeProvider *provider : builtin_attribute_providers) {
       /* Use #add_new to make sure that no two builtin attributes have the same name. */
@@ -271,19 +271,19 @@ class ComponentAttributeProviders {
     return supported_domains_;
   }
 
-  void call_add_trigger(void *owner,
+  void call_add_handler(void *owner,
                         AttributeIDRef const &attribute_id,
                         eCustomDataType type) const
   {
-    if (add_trigger_) {
-      add_trigger_(owner, attribute_id, type);
+    if (add_handler_) {
+      add_handler_(owner, attribute_id, type);
     }
   }
 
-  void call_remove_trigger(void *owner, AttributeIDRef const &attribute_id) const
+  void call_remove_handler(void *owner, AttributeIDRef const &attribute_id) const
   {
-    if (remove_trigger_) {
-      remove_trigger_(owner, attribute_id);
+    if (remove_handler_) {
+      remove_handler_(owner, attribute_id);
     }
   }
 };
@@ -429,9 +429,9 @@ inline bool remove(void *owner, const AttributeIDRef &attribute_id)
       return provider->try_delete(owner);
     }
   }
+  providers.call_remove_handler(owner, attribute_id);
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
     if (provider->try_delete(owner, attribute_id)) {
-      providers.call_remove_trigger(owner, attribute_id);
       return true;
     }
   }
@@ -464,7 +464,7 @@ inline bool add(void *owner,
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
     if (provider->try_create(owner, attribute_id, domain, data_type, initializer)) {
-      providers.call_add_trigger(owner, attribute_id, data_type);
+      providers.call_add_handler(owner, attribute_id, data_type);
       return true;
     }
   }

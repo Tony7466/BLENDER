@@ -1082,7 +1082,7 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
  */
 static ComponentAttributeProviders create_attribute_providers_for_mesh()
 {
-  static AttributeAddTrigger mesh_add_trigger =
+  static AttributeAddHandler mesh_add_handler =
       [](void *owner, AttributeIDRef const &attribute_id, eCustomDataType type) -> void {
     Mesh *mesh = static_cast<Mesh *>(owner);
     if ((type == CD_PROP_COLOR || type == CD_PROP_BYTE_COLOR) && !attribute_id.is_anonymous()) {
@@ -1097,7 +1097,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
     }
   };
 
-  static AttributeRemoveTrigger mesh_remove_trigger =
+  static AttributeRemoveHandler mesh_remove_handler =
       [](void *owner, AttributeIDRef const &attribute_id) -> void {
     Mesh *mesh = static_cast<Mesh *>(owner);
     if (mesh->active_color_attribute && !strncmp(mesh->active_color_attribute,
@@ -1272,8 +1272,8 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                       &point_custom_data,
                                       &edge_custom_data,
                                       &face_custom_data},
-                                     mesh_add_trigger,
-                                     mesh_remove_trigger);
+                                     mesh_add_handler,
+                                     mesh_remove_handler);
 }
 
 static AttributeAccessorFunctions get_mesh_accessor_functions()
