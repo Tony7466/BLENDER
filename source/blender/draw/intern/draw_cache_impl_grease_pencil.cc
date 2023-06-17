@@ -317,13 +317,23 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     const VArray<bool> cyclic = curves.cyclic();
     const VArray<float> radii = drawing.radii();
     const VArray<float> opacities = drawing.opacities();
+    const VArray<float> rotations = *attributes.lookup_or_default<float>(
+        "rotation", ATTR_DOMAIN_POINT, 0.0f);
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
     const VArray<float> selection_float = *attributes.lookup_or_default<float>(
         ".selection", ATTR_DOMAIN_POINT, true);
+    const VArray<ColorGeometry4f> vertex_colors = *attributes.lookup_or_default<ColorGeometry4f>(
+        "vertex_color", ATTR_DOMAIN_POINT, ColorGeometry4f(float4(0.0f, 0.0f, 0.0f, 0.0f)));
     const VArray<int8_t> start_caps = *attributes.lookup_or_default<int8_t>(
         "start_cap", ATTR_DOMAIN_CURVE, 0);
     const VArray<int8_t> end_caps = *attributes.lookup_or_default<int8_t>(
         "end_cap", ATTR_DOMAIN_CURVE, 0);
+    const VArray<float> stroke_hardnesses = *attributes.lookup_or_default<float>(
+        "hardness", ATTR_DOMAIN_CURVE, 1.0f);
+    const VArray<float> stroke_point_aspect_ratios = *attributes.lookup_or_default<float>(
+        "point_aspect_ratio", ATTR_DOMAIN_CURVE, 1.0f);
+    const VArray<ColorGeometry4f> stroke_fill_colors = *attributes.lookup_or_default<ColorGeometry4f>(
+        "fill_color", ATTR_DOMAIN_CURVE, ColorGeometry4f(float4(0.0f, 0.0f, 0.0f, 0.0f)));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, -1);
     const Span<uint3> triangles = drawing.triangles();
@@ -352,16 +362,15 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       s_vert.stroke_id = verts_range.first();
       s_vert.mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
 
-      /* TODO: Populate rotation, aspect and hardness. */
-      s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
+      s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(rotations[point_i], 
+          stroke_point_aspect_ratios[curve_i], stroke_hardnesses[curve_i]);
       /* TODO: Populate stroke UVs. */
       s_vert.u_stroke = 0;
       /* TODO: Populate fill UVs. */
       s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
 
-      /* TODO: Populate vertex color and fill color. */
-      copy_v4_v4(c_vert.vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-      copy_v4_v4(c_vert.fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+      copy_v4_v4(c_vert.vcol, vertex_colors[point_i]);
+      copy_v4_v4(c_vert.fcol, stroke_fill_colors[curve_i]);
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
