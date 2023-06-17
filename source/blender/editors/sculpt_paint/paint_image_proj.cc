@@ -417,7 +417,7 @@ struct ProjPaintState {
   int totpoly_eval;
   int totvert_eval;
 
-  const float (*vert_positions_eval)[3];
+  blender::Span<blender::float3> vert_positions_eval;
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::int2> edges_eval;
   blender::OffsetIndices<int> polys_eval;
@@ -4095,7 +4095,7 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   }
   ps->mat_array[totmat - 1] = nullptr;
 
-  ps->vert_positions_eval = BKE_mesh_vert_positions(ps->me_eval);
+  ps->vert_positions_eval = ps->me_eval->vert_positions();
   ps->vert_normals = ps->me_eval->vert_normals();
   ps->edges_eval = ps->me_eval->edges();
   ps->polys_eval = ps->me_eval->polys();
@@ -6628,9 +6628,13 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
     case LAYER_ROUGHNESS:
     case LAYER_METALLIC: {
       bNodeTree *ntree = nullptr;
-      ma->nodetree->ensure_topology_cache();
-      const blender::Span<bNode *> nodes = ma->nodetree->nodes_by_type("ShaderNodeBsdfPrincipled");
-      bNode *in_node = nodes.is_empty() ? nullptr : nodes.first();
+      bNode *in_node = nullptr;
+      if (ma && ma->nodetree) {
+        ma->nodetree->ensure_topology_cache();
+        const blender::Span<bNode *> nodes = ma->nodetree->nodes_by_type(
+            "ShaderNodeBsdfPrincipled");
+        in_node = nodes.is_empty() ? nullptr : nodes.first();
+      }
       if (!in_node) {
         /* An existing material or Principled BSDF node could not be found.
          * Copy default color values from a default Principled BSDF instead. */
@@ -6861,7 +6865,8 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
   get_default_texture_layer_name_for_object(ob, type, (char *)&imagename, sizeof(imagename));
   RNA_string_set(op->ptr, "name", imagename);
 
-  /* Set default color. Copy the color from nodes, so it matches the existing material. */
+  /* Set default color. Copy the color from nodes, so it matches the existing material.
+   * Material could be null so we should have a default color. */
   float color[4];
   default_paint_slot_color_get(type, ma, color);
   RNA_float_set_array(op->ptr, "color", color);

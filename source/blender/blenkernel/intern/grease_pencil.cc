@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,6 +17,7 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 
+#include "BLI_bounds.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
@@ -699,25 +700,21 @@ GreasePencil *BKE_grease_pencil_new_nomain()
 
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
 {
+  using namespace blender;
   BLI_assert(ob->type == OB_GREASE_PENCIL);
   const GreasePencil *grease_pencil = static_cast<const GreasePencil *>(ob->data);
-
   if (ob->runtime.bb != nullptr && (ob->runtime.bb->flag & BOUNDBOX_DIRTY) == 0) {
     return ob->runtime.bb;
   }
-
   if (ob->runtime.bb == nullptr) {
     ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
+  }
 
-    float3 min(FLT_MAX);
-    float3 max(-FLT_MAX);
-
-    if (!grease_pencil->bounds_min_max(min, max)) {
-      min = float3(-1);
-      max = float3(1);
-    }
-
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
+  if (const std::optional<Bounds<float3>> bounds = grease_pencil->bounds_min_max()) {
+    BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
+  }
+  else {
+    BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(-1), float3(1));
   }
 
   return ob->runtime.bb;
@@ -1053,16 +1050,35 @@ void GreasePencil::remove_drawing(const int index_to_remove)
   shrink_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, 1);
 }
 
-void GreasePencil::foreach_visible_drawing(
-    int frame, blender::FunctionRef<void(GreasePencilDrawing &)> function)
+enum ForeachDrawingMode {
+  VISIBLE,
+  EDITABLE,
+};
+
+static void foreach_drawing_ex(GreasePencil &grease_pencil,
+                               int frame,
+                               ForeachDrawingMode mode,
+                               blender::FunctionRef<void(int, GreasePencilDrawing &)> function)
 {
   using namespace blender::bke::greasepencil;
 
-  blender::Span<GreasePencilDrawingBase *> drawings = this->drawings();
-  for (const Layer *layer : this->layers()) {
-    if (!layer->is_visible()) {
-      continue;
+  blender::Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
+  for (const Layer *layer : grease_pencil.layers()) {
+    switch (mode) {
+      case VISIBLE: {
+        if (!layer->is_visible()) {
+          continue;
+        }
+        break;
+      }
+      case EDITABLE: {
+        if (!layer->is_visible() || layer->is_locked()) {
+          continue;
+        }
+        break;
+      }
     }
+
     int index = layer->drawing_index_at(frame);
     if (index == -1) {
       continue;
@@ -1070,7 +1086,7 @@ void GreasePencil::foreach_visible_drawing(
     GreasePencilDrawingBase *drawing_base = drawings[index];
     if (drawing_base->type == GP_DRAWING) {
       GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-      function(*drawing);
+      function(index, *drawing);
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
       /* TODO */
@@ -1078,21 +1094,31 @@ void GreasePencil::foreach_visible_drawing(
   }
 }
 
-bool GreasePencil::bounds_min_max(float3 &min, float3 &max) const
+void GreasePencil::foreach_visible_drawing(
+    int frame, blender::FunctionRef<void(int, GreasePencilDrawing &)> function)
 {
-  bool found = false;
+  foreach_drawing_ex(*this, frame, VISIBLE, function);
+}
+
+void GreasePencil::foreach_editable_drawing(
+    int frame, blender::FunctionRef<void(int, GreasePencilDrawing &)> function)
+{
+  foreach_drawing_ex(*this, frame, EDITABLE, function);
+}
+
+std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() const
+{
+  using namespace blender;
   /* FIXME: this should somehow go through the visible drawings. We don't have access to the
    * scene time here, so we probably need to cache the visible drawing for each layer somehow. */
+  std::optional<Bounds<float3>> bounds;
   for (int i = 0; i < this->drawing_array_num; i++) {
     GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
     switch (drawing_base->type) {
       case GP_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        const blender::bke::CurvesGeometry &curves = drawing->geometry.wrap();
-
-        if (curves.bounds_min_max(min, max)) {
-          found = true;
-        }
+        const bke::CurvesGeometry &curves = drawing->geometry.wrap();
+        bounds = bounds::merge(bounds, curves.bounds_min_max());
         break;
       }
       case GP_DRAWING_REFERENCE: {
@@ -1102,7 +1128,7 @@ bool GreasePencil::bounds_min_max(float3 &min, float3 &max) const
     }
   }
 
-  return found;
+  return bounds;
 }
 
 blender::Span<const blender::bke::greasepencil::Layer *> GreasePencil::layers() const
