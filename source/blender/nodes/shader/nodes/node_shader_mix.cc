@@ -8,9 +8,9 @@
 
 #include <algorithm>
 
-#include "BLI_math_quaternion.hh"
 #include "BLI_math_axis_angle.hh"
 #include "BLI_math_euler.hh"
+#include "BLI_math_quaternion.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -66,8 +66,10 @@ static void sh_node_mix_declare(NodeDeclarationBuilder &b)
       .default_value({0.5f, 0.5f, 0.5f, 1.0f})
       .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
-  b.add_input<decl::Rotation>("A", "A_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
-  b.add_input<decl::Rotation>("A", "A_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input<decl::Rotation>("A", "A_Rotation")
+      .is_default_link_socket()
+      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input<decl::Rotation>("B", "B_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
   b.add_output<decl::Float>("Result", "Result_Float");
   b.add_output<decl::Vector>("Result", "Result_Vector");
@@ -104,7 +106,8 @@ static void sh_node_mix_label(const bNodeTree * /*ntree*/,
                               char *label,
                               int label_maxncpy)
 {
-  const auto get_enum_value_name = [&](const EnumPropertyItem *item, const int value) -> const char * {
+  const auto get_enum_value_name = [&](const EnumPropertyItem *item,
+                                       const int value) -> const char * {
     const char *name;
     const bool incorrect_enum_value = !RNA_enum_name(item, value, &name);
     if (incorrect_enum_value) {
@@ -120,7 +123,8 @@ static void sh_node_mix_label(const bNodeTree * /*ntree*/,
       BLI_strncpy_utf8(label, IFACE_(name), label_maxncpy);
     }
     case SOCK_ROTATION: {
-      const char *name = get_enum_value_name(rna_node_mix_rotations_type_items, storage.rotation_mode);
+      const char *name = get_enum_value_name(rna_node_mix_rotations_type_items,
+                                             storage.rotation_mode);
       BLI_strncpy_utf8(label, IFACE_(name), label_maxncpy);
     }
     default:
@@ -480,23 +484,27 @@ class MixRotationFunction : public mf::MultiFunction {
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float> &factor_varray = params.readonly_single_input<float>(0, "Factor");
-    const VArray<math::Quaternion> &rotation_a_varray = params.readonly_single_input<math::Quaternion>(1, "A");
-    const VArray<math::Quaternion> &rotation_b_varray = params.readonly_single_input<math::Quaternion>(2, "B");
-    MutableSpan<math::Quaternion> results = params.uninitialized_single_output<math::Quaternion>(3, "Result");
+    const VArray<math::Quaternion> &rotation_a_varray =
+        params.readonly_single_input<math::Quaternion>(1, "A");
+    const VArray<math::Quaternion> &rotation_b_varray =
+        params.readonly_single_input<math::Quaternion>(2, "B");
+    MutableSpan<math::Quaternion> results = params.uninitialized_single_output<math::Quaternion>(
+        3, "Result");
 
     Array<float> factors(mask.size());
+    factor_varray.materialize_compressed(mask, factors.as_mutable_span());
     if (clamp_factor_) {
-      mask.foreach_index_optimized<int>([&](const int index, const int position) {
-        factors[position] = math::clamp(factor_varray[index], 0.0f, 1.0f);
+      mask.foreach_index_optimized<int>([&](const int /*index*/, const int position) {
+        factors[position] = math::clamp(factors[position], 0.0f, 1.0f);
       });
-    } else {
-      factor_varray.materialize_compressed(mask, factors.as_mutable_span());
     }
 
     switch (rotation_type_) {
-      case bke::eNodeMixRotationMode::EULER :
+      case bke::eNodeMixRotationMode::AXIS:
         break;
-      case bke::eNodeMixRotationMode::QUATERNION :
+      case bke::eNodeMixRotationMode::EULER:
+        break;
+      case bke::eNodeMixRotationMode::QUATERNION:
         mask.foreach_index_optimized<int>([&](const int index, const int position) {
           const float factor = factors[position];
           const math::Quaternion &rotation_a = rotation_a_varray[index];
@@ -506,7 +514,6 @@ class MixRotationFunction : public mf::MultiFunction {
         break;
       default:
         BLI_assert_unreachable();
-        break;
     }
   }
 };
@@ -580,10 +587,12 @@ static void sh_node_mix_build_multi_function(NodeMultiFunctionBuilder &builder)
 
   switch (eNodeSocketDatatype(storage.data_type)) {
     case SOCK_RGBA:
-      builder.construct_and_set_matching_fn<MixColorFunction>(storage.clamp_factor, storage.clamp_result, storage.blend_type);
+      builder.construct_and_set_matching_fn<MixColorFunction>(
+          storage.clamp_factor, storage.clamp_result, storage.blend_type);
       break;
     case SOCK_ROTATION:
-      builder.construct_and_set_matching_fn<MixRotationFunction>(storage.clamp_factor, bke::eNodeMixRotationMode(storage.rotation_mode));
+      builder.construct_and_set_matching_fn<MixRotationFunction>(
+          storage.clamp_factor, bke::eNodeMixRotationMode(storage.rotation_mode));
       break;
     default:
       const mf::MultiFunction *fn = get_multi_function(builder.node());

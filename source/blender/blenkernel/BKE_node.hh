@@ -363,7 +363,8 @@ extern bNodeSocketType NodeSocketTypeUndefined;
 namespace blender::bke {
 
 enum eNodeMixRotationMode : int8_t {
-  EULER = 0,
+  AXIS = 0,
+  EULER,
   QUATERNION = 1,
 };
 

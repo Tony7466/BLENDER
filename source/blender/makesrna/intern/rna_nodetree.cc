@@ -517,6 +517,7 @@ static const EnumPropertyItem rna_node_combsep_color_items[] = {
 };
 
 const EnumPropertyItem rna_node_mix_rotations_type_items[] = {
+    {blender::bke::eNodeMixRotationMode::AXIS, "AXIS", 0, "Axis Angle Mix", ""},
     {blender::bke::eNodeMixRotationMode::EULER, "EULER", 0, "Euler Mix", ""},
     {blender::bke::eNodeMixRotationMode::QUATERNION, "QUATERNION", 0, "Quaternion Mix", ""},
     {0, NULL, 0, NULL, NULL},
