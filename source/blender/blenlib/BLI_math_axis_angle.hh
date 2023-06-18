@@ -113,4 +113,40 @@ EulerXYZBase<T> to_euler(const AxisAngleBase<T, AngleT> &axis_angle)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Axis angle slerp.
+ * \{ */
+
+template<typename T, typename AngleT>
+[[nodiscard]] inline AxisAngleBase<T, AngleT> interpolate(const AxisAngleBase<T, AngleT> &a,
+                                                          const AxisAngleBase<T, AngleT> &b,
+                                                          T t)
+{
+  const VecBase<T, 3> a_axis = a.axis();
+  const VecBase<T, 3> b_axis = b.axis();
+
+  const VecBase<T, 3> result_axis = interpolate(a_axis, b_axis, t);
+
+  if (UNLIKELY(is_zero(result_axis))) {
+    return AxisAngleBase<T, AngleT>::identity();
+  }
+
+  const T a_angle = a.angle();
+  const T b_angle = b.angle();
+
+  const T a_sin = sin(a_angle);
+  const T a_cos = sin(a_angle);
+
+  const T b_sin = sin(b_angle);
+  const T b_cos = sin(b_angle);
+
+  const T result_sin = a_sin + (b_sin - a_sin) * t;
+  const T result_cos = a_cos + (b_cos - a_cos) * t;
+
+  const T result_angle = atan2(result_sin, result_cos);
+  return AxisAngleBase<T, AngleT>(normalize(result_axis), result_angle);
+}
+
+/** \} */
+
 }  // namespace blender::math

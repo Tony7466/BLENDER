@@ -516,6 +516,7 @@ if(WITH_GTESTS)
     tests/BLI_linklist_lockfree_test.cc
     tests/BLI_listbase_test.cc
     tests/BLI_map_test.cc
+    tests/BLI_math_axis_angle_test.cc
     tests/BLI_math_base_safe_test.cc
     tests/BLI_math_base_test.cc
     tests/BLI_math_bits_test.cc
