@@ -3055,7 +3055,6 @@ class VIEW3D_MT_object_convert(Menu):
     def draw(self, context):
         layout = self.layout
         ob = context.active_object
-
         
         if ob and ob.type == 'GPENCIL' and context.gpencil_data:
             layout.operator_enum("gpencil.convert", "type")
