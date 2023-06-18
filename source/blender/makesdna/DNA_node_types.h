@@ -1690,12 +1690,14 @@ typedef struct NodeCombSepColor {
 typedef struct NodeShaderMix {
   /* eNodeSocketDatatype */
   int8_t data_type;
+  /* eNodeMixRotationMode */
+  int8_t rotation_mode;
   /* NodeShaderMixMode */
   int8_t factor_mode;
   int8_t clamp_factor;
   int8_t clamp_result;
   int8_t blend_type;
-  char _pad[3];
+  char _pad[2];
 } NodeShaderMix;
 
 /* script node mode */

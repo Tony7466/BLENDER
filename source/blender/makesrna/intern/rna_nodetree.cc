@@ -35,6 +35,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_image.h"
 #include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
@@ -512,6 +513,20 @@ static const EnumPropertyItem rna_node_combsep_color_items[] = {
     {NODE_COMBSEP_COLOR_RGB, "RGB", ICON_NONE, "RGB", "Use RGB color processing"},
     {NODE_COMBSEP_COLOR_HSV, "HSV", ICON_NONE, "HSV", "Use HSV color processing"},
     {NODE_COMBSEP_COLOR_HSL, "HSL", ICON_NONE, "HSL", "Use HSL color processing"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_node_mix_rotations_type_items[] = {
+    {blender::bke::eNodeMixRotationMode::EULER, "EULER", 0, "Euler Mix", ""},
+    {blender::bke::eNodeMixRotationMode::QUATERNION, "QUATERNION", 0, "Quaternion Mix", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static const EnumPropertyItem rna_enum_mix_data_type_items[] = {
+    {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
+    {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
+    {SOCK_RGBA, "RGBA", 0, "Color", ""},
+    {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -3802,14 +3817,6 @@ static const EnumPropertyItem *rna_ShaderNodeMix_data_type_itemf(bContext * /*C*
 {
   *r_free = true;
 
-  static const EnumPropertyItem rna_enum_mix_data_type_items[] = {
-      {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
-      {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
-      {SOCK_RGBA, "RGBA", 0, "Color", ""},
-      {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   const auto rotation_supported_mix = [ptr](const EnumPropertyItem *item) -> bool {
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(item->value);
     if (U.experimental.use_rotation_socket && data_type == SOCK_ROTATION) {
@@ -5245,14 +5252,6 @@ static void def_sh_mix(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem rna_enum_mix_data_type_items[] = {
-      {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
-      {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
-      {SOCK_RGBA, "RGBA", 0, "Color", ""},
-      {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeShaderMix", "storage");
@@ -5269,6 +5268,12 @@ static void def_sh_mix(StructRNA *srna)
   RNA_def_property_enum_default(prop, NODE_MIX_MODE_UNIFORM);
   RNA_def_property_ui_text(prop, "Factor Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  prop = RNA_def_property(srna, "rotation_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_node_mix_rotations_type_items);
+  RNA_def_property_enum_default(prop, blender::bke::eNodeMixRotationMode::EULER);
+  RNA_def_property_ui_text(prop, "Rotation Mode", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "blend_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "blend_type");

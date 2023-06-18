@@ -356,6 +356,19 @@ extern bNodeSocketType NodeSocketTypeUndefined;
 
 }  // namespace blender::bke
 
+/* -------------------------------------------------------------------- */
+/** \name Node Types
+ * \{ */
+
+namespace blender::bke {
+
+enum eNodeMixRotationMode : int8_t {
+  EULER = 0,
+  QUATERNION = 1,
+};
+
+}
+
 #define NODE_STORAGE_FUNCS(StorageT) \
   [[maybe_unused]] static StorageT &node_storage(bNode &node) \
   { \
