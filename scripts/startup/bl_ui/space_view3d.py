@@ -3056,10 +3056,10 @@ class VIEW3D_MT_object_convert(Menu):
         layout = self.layout
         ob = context.active_object
 
+        layout.operator_enum("object.convert", "target")
+        
         if ob and ob.type == 'GPENCIL' and context.gpencil_data:
             layout.operator_enum("gpencil.convert", "type")
-        else:
-            layout.operator_enum("object.convert", "target")
 
         # Potrace lib dependency.
         if bpy.app.build_options.potrace:
