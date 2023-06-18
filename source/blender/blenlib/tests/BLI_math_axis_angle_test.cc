@@ -4,12 +4,10 @@
 
 #include "testing/testing.h"
 
-#include "BLI_math_axis_ange.hh"
+#include "BLI_math_axis_angle.hh"
 
 namespace blender::math::tests {
 
-TEST(math_rotation, axis_angle_interpolate)
-{
-}
+TEST(math_rotation, axis_angle_interpolate) {}
 
 }  // namespace blender::math::tests

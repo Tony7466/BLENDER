@@ -135,10 +135,10 @@ template<typename T, typename AngleT>
   const T b_angle = b.angle();
 
   const T a_sin = sin(a_angle);
-  const T a_cos = sin(a_angle);
+  const T a_cos = cos(a_angle);
 
   const T b_sin = sin(b_angle);
-  const T b_cos = sin(b_angle);
+  const T b_cos = cos(b_angle);
 
   const T result_sin = a_sin + (b_sin - a_sin) * t;
   const T result_cos = a_cos + (b_cos - a_cos) * t;
