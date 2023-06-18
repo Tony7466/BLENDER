@@ -587,8 +587,24 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
 
   ComputeContextBuilder compute_context_builder;
   compute_context_builder.push<bke::ModifierComputeContext>(parsed_path->modifier_name);
-  for (const int32_t group_node_id : parsed_path->group_node_ids) {
-    compute_context_builder.push<bke::NodeGroupComputeContext>(group_node_id);
+  for (const ViewerPathElem *elem : parsed_path->node_path) {
+    switch (elem->type) {
+      case VIEWER_PATH_ELEM_TYPE_GROUP_NODE: {
+        const auto &typed_elem = *reinterpret_cast<const GroupNodeViewerPathElem *>(elem);
+        compute_context_builder.push<bke::NodeGroupComputeContext>(typed_elem.node_id);
+        break;
+      }
+      case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const SimulationZoneViewerPathElem *>(elem);
+        compute_context_builder.push<bke::SimulationZoneComputeContext>(
+            typed_elem.sim_output_node_id);
+        break;
+      }
+      default: {
+        BLI_assert_unreachable();
+        break;
+      }
+    }
   }
   const ComputeContextHash context_hash = compute_context_builder.hash();
   nodes::geo_eval_log::GeoTreeLog &tree_log = modifier_log->get_tree_log(context_hash);

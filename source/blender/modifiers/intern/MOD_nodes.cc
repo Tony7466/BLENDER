@@ -453,44 +453,67 @@ static void find_side_effect_nodes_for_viewer_path(
   MultiValueMap<ComputeContextHash, const lf::FunctionNode *> local_side_effect_nodes;
 
   const bNodeTree *group = nmd.node_group;
-  for (const int32_t group_node_id : parsed_path->group_node_ids) {
-    const bNode *found_node = group->node_by_id(group_node_id);
-    if (found_node == nullptr) {
-      return;
-    }
-    if (found_node->id == nullptr) {
-      return;
-    }
-    if (found_node->is_muted()) {
+  const TreeZone *zone = nullptr;
+  for (const ViewerPathElem *elem : parsed_path->node_path) {
+    const TreeZones *tree_zones = get_tree_zones(*group);
+    if (tree_zones == nullptr) {
       return;
     }
     const auto *lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*group);
     if (lf_graph_info == nullptr) {
       return;
     }
-    const TreeZones *tree_zones = get_tree_zones(*group);
-    if (tree_zones == nullptr) {
-      return;
-    }
-    const Vector<const TreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(group_node_id);
-    for (const TreeZone *zone : zone_stack) {
-      const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
-          zone, nullptr);
-      if (lf_zone_node == nullptr) {
+    switch (elem->type) {
+      case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const SimulationZoneViewerPathElem *>(elem);
+        const TreeZone *next_zone = tree_zones->get_zone_by_node(typed_elem.sim_output_node_id);
+        if (next_zone == nullptr) {
+          return;
+        }
+        if (next_zone->parent_zone != zone) {
+          return;
+        }
+        const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
+            next_zone, nullptr);
+        if (lf_zone_node == nullptr) {
+          return;
+        }
+        local_side_effect_nodes.add(compute_context_builder.hash(), lf_zone_node);
+        compute_context_builder.push<bke::SimulationZoneComputeContext>(*next_zone->output_node);
+        zone = next_zone;
+        break;
+      }
+      case VIEWER_PATH_ELEM_TYPE_GROUP_NODE: {
+        const auto &typed_elem = *reinterpret_cast<const GroupNodeViewerPathElem *>(elem);
+        const bNode *node = group->node_by_id(typed_elem.node_id);
+        if (node == nullptr) {
+          return;
+        }
+        if (node->id == nullptr) {
+          return;
+        }
+        if (node->is_muted()) {
+          return;
+        }
+        if (zone != tree_zones->get_zone_by_node(node->identifier)) {
+          return;
+        }
+        const lf::FunctionNode *lf_group_node =
+            lf_graph_info->mapping.group_node_map.lookup_default(node, nullptr);
+        if (lf_group_node == nullptr) {
+          return;
+        }
+        local_side_effect_nodes.add(compute_context_builder.hash(), lf_group_node);
+        compute_context_builder.push<bke::NodeGroupComputeContext>(*node);
+        group = reinterpret_cast<const bNodeTree *>(node->id);
+        zone = nullptr;
+        break;
+      }
+      default: {
+        BLI_assert_unreachable();
         return;
       }
-      local_side_effect_nodes.add(compute_context_builder.hash(), lf_zone_node);
-      compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
     }
-
-    const lf::FunctionNode *lf_group_node = lf_graph_info->mapping.group_node_map.lookup_default(
-        found_node, nullptr);
-    if (lf_group_node == nullptr) {
-      return;
-    }
-    local_side_effect_nodes.add(compute_context_builder.hash(), lf_group_node);
-    group = reinterpret_cast<bNodeTree *>(found_node->id);
-    compute_context_builder.push<bke::NodeGroupComputeContext>(*found_node);
   }
 
   const bNode *found_viewer_node = group->node_by_id(parsed_path->viewer_node_id);
@@ -505,16 +528,8 @@ static void find_side_effect_nodes_for_viewer_path(
   if (tree_zones == nullptr) {
     return;
   }
-  const Vector<const TreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
-      parsed_path->viewer_node_id);
-  for (const TreeZone *zone : zone_stack) {
-    const lf::FunctionNode *lf_zone_node = lf_graph_info->mapping.zone_node_map.lookup_default(
-        zone, nullptr);
-    if (lf_zone_node == nullptr) {
-      return;
-    }
-    local_side_effect_nodes.add(compute_context_builder.hash(), lf_zone_node);
-    compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+  if (tree_zones->get_zone_by_node(found_viewer_node->identifier) != zone) {
+    return;
   }
   const lf::FunctionNode *lf_viewer_node = lf_graph_info->mapping.viewer_node_map.lookup_default(
       found_viewer_node, nullptr);

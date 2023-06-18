@@ -56,6 +56,8 @@ class TreeZones {
    */
   const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const;
 
+  const TreeZone *get_zone_by_node(const int32_t node_id) const;
+
   Vector<const TreeZone *> get_zone_stack_for_node(const int32_t node_id) const;
 };
 
