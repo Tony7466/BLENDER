@@ -10,6 +10,8 @@
 #include <set>
 #include <unordered_map>
 
+#include "BLI_listbase.h"
+
 #include "mtl_common.hh"
 
 #include <Cocoa/Cocoa.h>
@@ -183,6 +185,13 @@ class MTLBuffer {
 
   MEM_CXX_CLASS_ALLOC_FUNCS("MTLBuffer");
 };
+
+typedef struct MTLBufferList {
+  ListBase list; /* gpu::MTLBuffer */
+
+  /* List length. */
+  unsigned int count;
+} MTLBufferList;
 
 /* View into part of an MTLBuffer. */
 struct MTLBufferRange {
@@ -398,8 +407,7 @@ class MTLBufferPool {
   blender::Map<MTLBufferResourceOptions, MTLBufferPoolOrderedList *> buffer_pools_;
 
   /* Linked list to track all existing allocations. Prioritizing fast insert/deletion. */
-  gpu::MTLBuffer *allocations_list_base_;
-  uint allocations_list_size_;
+  MTLBufferList allocations_list_;
 
   /* Maintain a queue of all MTLSafeFreeList's that have been released
    * by the GPU and are ready to have their buffers re-inserted into the
