@@ -43,6 +43,17 @@ bool editable_grease_pencil_poll(bContext *C)
   return true;
 }
 
+bool selection_domain_is_point_poll(bContext *C)
+{
+  if (!editable_grease_pencil_poll(C)) {
+    return false;
+  }
+
+  /* Allowed: point and segment selection mode, not allowed: stroke selection mode. */
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  return (ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE);
+}
+
 static int select_all_exec(bContext *C, wmOperator *op)
 {
   int action = RNA_enum_get(op->ptr, "action");
@@ -105,7 +116,7 @@ static void GREASE_PENCIL_OT_select_more(wmOperatorType *ot)
   ot->description = "Grow the selection by one point";
 
   ot->exec = select_more_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = selection_domain_is_point_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
@@ -137,7 +148,7 @@ static void GREASE_PENCIL_OT_select_less(wmOperatorType *ot)
   ot->description = "Shrink the selection by one point";
 
   ot->exec = select_less_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = selection_domain_is_point_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
@@ -169,7 +180,7 @@ static void GREASE_PENCIL_OT_select_linked(wmOperatorType *ot)
   ot->description = "Select all points in curves with any point selection";
 
   ot->exec = select_linked_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = selection_domain_is_point_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
@@ -202,7 +213,7 @@ static void GREASE_PENCIL_OT_select_ends(wmOperatorType *ot)
   ot->description = "Select end points of strokes";
 
   ot->exec = select_ends_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = selection_domain_is_point_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
