@@ -2912,7 +2912,7 @@ static void rna_NodeSocket_update(Main *bmain, Scene * /*scene*/, PointerRNA *pt
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-  const bool skip_tree_update = [=]() -> bool {
+  const bool skip_tree_update = [&]() -> bool {
     if (!sock->is_input()) {
       return false;
     }
