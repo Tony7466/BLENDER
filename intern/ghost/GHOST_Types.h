@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -64,9 +65,9 @@ typedef struct {
 } GHOST_CursorBitmapRef;
 
 typedef enum {
-  GHOST_glStereoVisual = (1 << 0),
-  GHOST_glDebugContext = (1 << 1),
-} GHOST_GLFlags;
+  GHOST_gpuStereoVisual = (1 << 0),
+  GHOST_gpuDebugContext = (1 << 1),
+} GHOST_GPUFlags;
 
 typedef enum GHOST_DialogOptions {
   GHOST_DialogWarning = (1 << 0),
@@ -681,7 +682,7 @@ typedef struct {
 typedef struct {
   int flags;
   GHOST_TDrawingContextType context_type;
-} GHOST_GLSettings;
+} GHOST_GPUSettings;
 
 typedef enum {
   /** Axis that cursor grab will wrap. */
