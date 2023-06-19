@@ -25,7 +25,7 @@ namespace blender::gpu {
 
 VKTexture::~VKTexture()
 {
-  if (is_allocated()) {
+  if (is_allocated() && !is_texture_view()) {
     const VKDevice &device = VKBackend::get().device_get();
     vmaDestroyImage(device.mem_allocator_get(), vk_image_, allocation_);
   }
@@ -39,6 +39,7 @@ void VKTexture::init(VkImage vk_image, VkImageLayout layout)
 
 void VKTexture::generate_mipmap()
 {
+  BLI_assert(!is_texture_view());
   if (mipmaps_ <= 1) {
     return;
   }
@@ -101,6 +102,7 @@ void VKTexture::copy_to(Texture *tex)
   BLI_assert(dst);
   BLI_assert(src->w_ == dst->w_ && src->h_ == dst->h_ && src->d_ == dst->d_);
   BLI_assert(src->format_ == dst->format_);
+  BLI_assert(!is_texture_view());
   UNUSED_VARS_NDEBUG(src);
 
   VKContext &context = *VKContext::get();
@@ -125,6 +127,7 @@ void VKTexture::copy_to(Texture *tex)
 
 void VKTexture::clear(eGPUDataFormat format, const void *data)
 {
+  BLI_assert(!is_texture_view());
   if (!is_allocated()) {
     allocate();
   }
@@ -157,6 +160,7 @@ void VKTexture::mip_range_set(int min, int max)
 
 void VKTexture::read_sub(int mip, eGPUDataFormat format, const int area[4], void *r_data)
 {
+  BLI_assert(!is_texture_view());
   VKContext &context = *VKContext::get();
   layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
@@ -187,6 +191,7 @@ void VKTexture::read_sub(int mip, eGPUDataFormat format, const int area[4], void
 
 void *VKTexture::read(int mip, eGPUDataFormat format)
 {
+  BLI_assert(!is_texture_view());
   int mip_size[3] = {1, 1, 1};
   mip_size_get(mip, mip_size);
   size_t sample_len = mip_size[0] * mip_size[1] * vk_layer_count(1);
@@ -201,6 +206,7 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
 void VKTexture::update_sub(
     int mip, int offset[3], int extent_[3], eGPUDataFormat format, const void *data)
 {
+  BLI_assert(!is_texture_view());
   if (!is_allocated()) {
     allocate();
   }
@@ -259,6 +265,7 @@ void VKTexture::update_sub(int /*offset*/[3],
                            eGPUDataFormat /*format*/,
                            GPUPixelBuffer * /*pixbuf*/)
 {
+  BLI_assert(!is_texture_view());
   NOT_YET_IMPLEMENTED;
 }
 
@@ -312,17 +319,32 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
   return true;
 }
 
-bool VKTexture::init_internal(GPUTexture * /*src*/,
-                              int /*mip_offset*/,
-                              int /*layer_offset*/,
+bool VKTexture::init_internal(GPUTexture *src,
+                              int mip_offset,
+                              int layer_offset,
                               bool /*use_stencil*/)
 {
+  BLI_assert(source_texture_ == nullptr);
+  BLI_assert(src);
+
+  VKTexture *texture = unwrap(unwrap(src));
+  source_texture_ = texture;
   NOT_YET_IMPLEMENTED;
-  return false;
+  mip_min_ = mip_offset;
+  layer_offset_ = layer_offset;
+  flags_ |= IMAGE_VIEW_DIRTY;
+
+  return true;
+}
+
+bool VKTexture::is_texture_view() const
+{
+  return source_texture_ != nullptr;
 }
 
 void VKTexture::ensure_allocated()
 {
+  BLI_assert(!is_texture_view());
   if (!is_allocated()) {
     allocate();
   }
@@ -330,7 +352,7 @@ void VKTexture::ensure_allocated()
 
 bool VKTexture::is_allocated() const
 {
-  return vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE;
+  return (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) || is_texture_view();
 }
 
 static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
@@ -392,6 +414,7 @@ bool VKTexture::allocate()
 {
   BLI_assert(vk_image_ == VK_NULL_HANDLE);
   BLI_assert(!is_allocated());
+  BLI_assert(!is_texture_view());
 
   VKContext &context = *VKContext::get();
   const VKDevice &device = VKBackend::get().device_get();
@@ -488,6 +511,10 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
 void VKTexture::layout_ensure(VKContext &context, const VkImageLayout requested_layout)
 {
   BLI_assert(is_allocated());
+  if (is_texture_view()) {
+    source_texture_->layout_ensure(context, requested_layout);
+    return;
+  }
   const VkImageLayout current_layout = current_layout_get();
   if (current_layout == requested_layout) {
     return;
@@ -532,9 +559,10 @@ void VKTexture::image_view_ensure()
 void VKTexture::image_view_update()
 {
   VK_ALLOCATION_CALLBACKS
+  VkImage vk_image = vk_image_handle();
   VkImageViewCreateInfo image_view_info = {};
   image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-  image_view_info.image = vk_image_;
+  image_view_info.image = vk_image;
   image_view_info.viewType = to_vk_image_view_type(type_, eImageViewUsage::ShaderBinding);
   image_view_info.format = to_vk_format(format_);
   image_view_info.components = to_vk_component_mapping(format_);
@@ -542,7 +570,11 @@ void VKTexture::image_view_update()
   IndexRange mip_range = mip_map_range();
   image_view_info.subresourceRange.baseMipLevel = mip_range.first();
   image_view_info.subresourceRange.levelCount = mip_range.size();
-  image_view_info.subresourceRange.layerCount = vk_layer_count(VK_REMAINING_ARRAY_LAYERS);
+  // TODO: Clean this up. when layer_offset_ is set, layerCount should be 1.
+  image_view_info.subresourceRange.baseArrayLayer = layer_offset_;
+  image_view_info.subresourceRange.layerCount = layer_offset_ == 0 ?
+                                                    vk_layer_count(VK_REMAINING_ARRAY_LAYERS) :
+                                                    1;
 
   const VKDevice &device = VKBackend::get().device_get();
   VkImageView image_view = VK_NULL_HANDLE;

@@ -19,6 +19,8 @@ namespace blender::gpu {
 class VKSampler;
 
 class VKTexture : public Texture, public VKBindableResource {
+  /** When set the instance is considered to be a texture view from `source_texture_` */
+  VKTexture *source_texture_ = nullptr;
   VkImage vk_image_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
 
@@ -30,6 +32,8 @@ class VKTexture : public Texture, public VKBindableResource {
    * conversion should happen. #current_layout_ keep track of the layout so the correct conversion
    * can be done. */
   VkImageLayout current_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
+
+  int layer_offset_ = 0;
 
   enum eDirtyFlags {
     IMAGE_VIEW_DIRTY = (1 << 0),
@@ -65,6 +69,9 @@ class VKTexture : public Texture, public VKBindableResource {
 
   VkImage vk_image_handle() const
   {
+    if (is_texture_view()) {
+      return source_texture_->vk_image_handle();
+    }
     BLI_assert(vk_image_ != VK_NULL_HANDLE);
     return vk_image_;
   }
@@ -77,6 +84,9 @@ class VKTexture : public Texture, public VKBindableResource {
   bool init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil) override;
 
  private:
+  /** Is this texture a view of another texture. */
+  bool is_texture_view() const;
+
   /** Is this texture already allocated on device. */
   bool is_allocated() const;
 
