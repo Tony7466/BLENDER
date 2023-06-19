@@ -455,7 +455,7 @@ static void find_side_effect_nodes_for_viewer_path(
   const bNodeTree *group = nmd.node_group;
   const TreeZone *zone = nullptr;
   for (const ViewerPathElem *elem : parsed_path->node_path) {
-    const TreeZones *tree_zones = get_tree_zones(*group);
+    const TreeZones *tree_zones = group->zones();
     if (tree_zones == nullptr) {
       return;
     }
@@ -524,7 +524,7 @@ static void find_side_effect_nodes_for_viewer_path(
   if (lf_graph_info == nullptr) {
     return;
   }
-  const TreeZones *tree_zones = get_tree_zones(*group);
+  const TreeZones *tree_zones = group->zones();
   if (tree_zones == nullptr) {
     return;
   }

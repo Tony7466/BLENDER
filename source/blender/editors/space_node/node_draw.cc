@@ -3126,7 +3126,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
                             const SpaceNode &snode,
                             const bNodeTree &ntree)
 {
-  const TreeZones *zones = bke::node_tree_zones::get_tree_zones(ntree);
+  const TreeZones *zones = ntree.zones();
   if (zones == nullptr) {
     return;
   }

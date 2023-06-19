@@ -1467,7 +1467,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     mapping_ = &lf_graph_info_->mapping;
     conversions_ = &bke::get_implicit_type_conversions();
-    tree_zones_ = bke::node_tree_zones::get_tree_zones(btree_);
+    tree_zones_ = btree_.zones();
 
     this->initialize_mapping_arrays();
     this->build_zone_functions();

@@ -64,3 +64,8 @@ class TreeZones {
 const TreeZones *get_tree_zones(const bNodeTree &tree);
 
 }  // namespace blender::bke::node_tree_zones
+
+inline const blender::bke::node_tree_zones::TreeZones *bNodeTree::zones() const
+{
+  return blender::bke::node_tree_zones::get_tree_zones(*this);
+}

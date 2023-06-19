@@ -75,7 +75,7 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
     BLI_assert(node != nullptr);
 
     tree->ensure_topology_cache();
-    const TreeZones *tree_zones = get_tree_zones(*tree);
+    const TreeZones *tree_zones = tree->zones();
     if (!tree_zones) {
       return;
     }
@@ -94,7 +94,7 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
   }
 
   snode.edittree->ensure_topology_cache();
-  const TreeZones *tree_zones = get_tree_zones(*snode.edittree);
+  const TreeZones *tree_zones = snode.edittree->zones();
   if (!tree_zones) {
     return;
   }
@@ -257,7 +257,7 @@ bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed
   const TreeZone *zone = nullptr;
   for (const ViewerPathElem *path_elem : parsed_viewer_path.node_path) {
     ngroup->ensure_topology_cache();
-    const TreeZones *tree_zones = get_tree_zones(*ngroup);
+    const TreeZones *tree_zones = ngroup->zones();
     switch (path_elem->type) {
       case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
         const auto &typed_elem = *reinterpret_cast<const SimulationZoneViewerPathElem *>(
@@ -299,7 +299,7 @@ bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed
   if (viewer_node == nullptr) {
     return false;
   }
-  const TreeZones *tree_zones = get_tree_zones(*ngroup);
+  const TreeZones *tree_zones = ngroup->zones();
   if (tree_zones == nullptr) {
     return false;
   }

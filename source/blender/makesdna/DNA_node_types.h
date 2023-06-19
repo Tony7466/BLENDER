@@ -30,7 +30,13 @@ namespace blender::bke {
 class bNodeTreeRuntime;
 class bNodeRuntime;
 class bNodeSocketRuntime;
+class bNodeZones;
+class bNodeZone;
 }  // namespace blender::bke
+namespace blender::bke::node_tree_zones {
+class TreeZones;
+struct TreeZone;
+}  // namespace blender::bke::node_tree_zones
 using NodeDeclarationHandle = blender::nodes::NodeDeclaration;
 using SocketDeclarationHandle = blender::nodes::SocketDeclaration;
 using bNodeTreeRuntimeHandle = blender::bke::bNodeTreeRuntime;
@@ -221,7 +227,6 @@ typedef struct bNodeSocket {
    * forwarded when the node is muted.
    */
   const bNodeSocket *internal_link_input() const;
-
 #endif
 } bNodeSocket;
 
@@ -677,6 +682,8 @@ typedef struct bNodeTree {
 
   blender::Span<const bNodePanel *> panels() const;
   blender::MutableSpan<bNodePanel *> panels_for_write();
+
+  const blender::bke::node_tree_zones::TreeZones *zones() const;
 #endif
 } bNodeTree;
 
