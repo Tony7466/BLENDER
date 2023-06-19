@@ -7,7 +7,7 @@
 #include <boost/python/object.hpp>
 #include <boost/python/call_method.hpp>
 
-#include "BLI_ListBase.h"
+#include "BLI_listbase.h"
 
 #include "bpy_rna.h"
 #include "RNA_access.h"
