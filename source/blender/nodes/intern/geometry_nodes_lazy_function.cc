@@ -2147,17 +2147,22 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const int i : child_zone_info.main_input_indices.index_range()) {
       const bNodeSocket &bsocket = child_zone.input_node->input_socket(i);
-      graph_params.lf_inputs_by_bsocket.add(
-          &bsocket, &child_zone_node.input(child_zone_info.main_input_indices[i]));
-      graph_params.usage_by_bsocket.add(
-          &bsocket, &child_zone_node.output(child_zone_info.main_input_usage_indices[i]));
+      lf::InputSocket &lf_input_socket = child_zone_node.input(
+          child_zone_info.main_input_indices[i]);
+      lf::OutputSocket &lf_usage_socket = child_zone_node.output(
+          child_zone_info.main_input_usage_indices[i]);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_input_socket, &bsocket);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_input_socket);
+      graph_params.usage_by_bsocket.add(&bsocket, &lf_usage_socket);
     }
     for (const int i : child_zone_info.main_output_indices.index_range()) {
       const bNodeSocket &bsocket = child_zone.output_node->output_socket(i);
-      graph_params.lf_output_by_bsocket.add(
-          &bsocket, &child_zone_node.output(child_zone_info.main_output_indices[i]));
+      lf::OutputSocket &lf_output_socket = child_zone_node.output(
+          child_zone_info.main_output_indices[i]);
       lf::InputSocket &lf_usage_input = child_zone_node.input(
           child_zone_info.main_output_usage_indices[i]);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_output_socket, &bsocket);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_output_socket);
       graph_params.socket_usage_inputs.add(&lf_usage_input);
       if (lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(&bsocket,
                                                                                     nullptr)) {
