@@ -49,6 +49,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   if (r_sqr == 0) {
     /* Use intensity instead of radiance for point light. */
     ls->eval_fac /= sqr(ls->t);
+    /* `ls->Ng` is not well-defined for point light, so use the incoming direction instead.  */
     ls->Ng = -ls->D;
   }
   else {
