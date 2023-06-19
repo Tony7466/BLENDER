@@ -1422,7 +1422,11 @@ static char *rna_def_property_set_func(
           }
           else {
             rna_clamp_value_range(f, prop);
-            fprintf(f, "    data->%s = %s", dp->dnaname, (dp->booleannegative) ? "!" : "");
+            fprintf(f,
+                    "    data->%s = %s(typeof(data->%s))",
+                    dp->dnaname,
+                    (dp->booleannegative) ? "!" : "",
+                    dp->dnaname);
             rna_clamp_value(f, prop, 0);
           }
         }
