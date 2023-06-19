@@ -115,8 +115,8 @@ float light_diffuse(sampler2DArray utility_tx,
       /* Outside, treat as disk light spanning the same solid angle. */
       /* The result is the same as passing the scaled radius to #ltc_evaluate_disk_simple (see
        * #light_ltc), using simplified math here. */
-      float r_sqr = sqr(ld._radius / dist);
-      return r_sqr * ltc_diffuse_sphere_integral(utility_tx, dot(N, L), r_sqr);
+      float r_sq = sqr(ld._radius / dist);
+      return r_sq * ltc_diffuse_sphere_integral(utility_tx, dot(N, L), r_sq);
     }
   }
   else if (is_directional || ld.type == LIGHT_SPOT) {
@@ -174,7 +174,8 @@ float light_ltc(sampler2DArray utility_tx,
 
     vec3 points[3];
     if (ld.type == LIGHT_POINT) {
-      /* Sphere light spans a larger angle than a disk light with the same radius (sin -> tan). */
+      /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
+       * half-angle spanned by a disk light with the same radius. */
       float radius = ld._radius * inversesqrt(1.0 - sqr(ld._radius / dist));
 
       points[0] = Px * -radius + Py * -radius;

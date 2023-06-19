@@ -16,15 +16,15 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
                                           ccl_private LightSample *ls)
 {
   float3 lightN = P - klight->co;
-  const float d_sqr = len_squared(lightN);
-  const float d = sqrtf(d_sqr);
+  const float d_sq = len_squared(lightN);
+  const float d = sqrtf(d_sq);
   lightN /= d;
 
-  const float r_sqr = sqr(klight->spot.radius);
+  const float r_sq = sqr(klight->spot.radius);
 
   float cos_theta;
-  if (d_sqr > r_sqr) {
-    const float one_minus_cos = sin_sqr_to_one_minus_cos(r_sqr / d_sqr);
+  if (d_sq > r_sq) {
+    const float one_minus_cos = sin_sqr_to_one_minus_cos(r_sq / d_sq);
     sample_uniform_cone_concentric(-lightN, one_minus_cos, rand, &cos_theta, &ls->D, &ls->pdf);
   }
   else {
@@ -40,13 +40,12 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   }
 
   /* Law of cosines. */
-  ls->t = d * cos_theta -
-          copysignf(safe_sqrtf(r_sqr - d_sqr + d_sqr * sqr(cos_theta)), d_sqr - r_sqr);
+  ls->t = d * cos_theta - copysignf(safe_sqrtf(r_sq - d_sq + d_sq * sqr(cos_theta)), d_sq - r_sq);
 
   ls->P = P + ls->D * ls->t;
 
   ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
-  if (r_sqr == 0) {
+  if (r_sq == 0) {
     /* Use intensity instead of radiance for point light. */
     ls->eval_fac /= sqr(ls->t);
     /* `ls->Ng` is not well-defined for point light, so use the incoming direction instead.  */
@@ -68,10 +67,10 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
 }
 
 ccl_device_forceinline float point_light_pdf(
-    const float d_sqr, const float r_sqr, const float3 N, const float3 D, const uint32_t path_flag)
+    const float d_sq, const float r_sq, const float3 N, const float3 D, const uint32_t path_flag)
 {
-  if (d_sqr > r_sqr) {
-    return M_1_2PI_F / sin_sqr_to_one_minus_cos(r_sqr / d_sqr);
+  if (d_sq > r_sq) {
+    return M_1_2PI_F / sin_sqr_to_one_minus_cos(r_sq / d_sq);
   }
 
   const bool has_transmission = (path_flag & PATH_RAY_MIS_HAD_TRANSMISSION);
@@ -89,14 +88,14 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
   const float radius = klight->spot.radius;
 
   if (radius > 0) {
-    const float d_sqr = len_squared(P - klight->co);
-    const float r_sqr = sqr(radius);
-    const float t_sqr = sqr(ls->t);
+    const float d_sq = len_squared(P - klight->co);
+    const float r_sq = sqr(radius);
+    const float t_sq = sqr(ls->t);
 
-    ls->pdf = point_light_pdf(d_sqr, r_sqr, N, ls->D, path_flag);
+    ls->pdf = point_light_pdf(d_sq, r_sq, N, ls->D, path_flag);
 
     /* NOTE : preserve pdf in area measure. */
-    ls->pdf *= 0.5f * fabsf(d_sqr - r_sqr - t_sqr) / (radius * ls->t * t_sqr);
+    ls->pdf *= 0.5f * fabsf(d_sq - r_sq - t_sq) / (radius * ls->t * t_sq);
 
     ls->Ng = normalize(ls->P - klight->co);
   }

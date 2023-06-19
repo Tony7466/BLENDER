@@ -19,24 +19,24 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      ccl_private float *isect_t)
 {
   const float3 d_vec = sphere_P - ray_P;
-  const float r_sqr = sphere_radius * sphere_radius;
-  const float d_sqr = dot(d_vec, d_vec);
+  const float r_sq = sphere_radius * sphere_radius;
+  const float d_sq = dot(d_vec, d_vec);
   const float d_cos_theta = dot(d_vec, ray_D);
 
-  if (d_sqr > r_sqr && d_cos_theta < 0.0f) {
+  if (d_sq > r_sq && d_cos_theta < 0.0f) {
     /* Ray origin outside sphere and points away from sphere. */
     return false;
   }
 
-  const float d_sin_theta_sqr = d_sqr - d_cos_theta * d_cos_theta;
+  const float d_sin_theta_sq = d_sq - d_cos_theta * d_cos_theta;
 
-  if (d_sin_theta_sqr > r_sqr) {
+  if (d_sin_theta_sq > r_sq) {
     /* Closest point on ray outside sphere. */
     return false;
   }
 
   /* Law of cosines. */
-  const float t = d_cos_theta - copysignf(sqrtf(r_sqr - d_sin_theta_sqr), d_sqr - r_sqr);
+  const float t = d_cos_theta - copysignf(sqrtf(r_sq - d_sin_theta_sq), d_sq - r_sq);
 
   if (t > ray_tmin && t < ray_tmax) {
     *isect_t = t;

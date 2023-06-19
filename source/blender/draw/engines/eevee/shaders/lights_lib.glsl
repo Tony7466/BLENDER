@@ -334,9 +334,9 @@ float light_diffuse(LightData ld, vec3 N, vec3 V, vec4 l_vector)
       /* Outside, treat as disk light spanning the same solid angle. */
       /* The result is the same as passing the scaled radius to #ltc_evaluate_disk_simple (see
        * #light_specular), using simplified math here. */
-      float r_sqr = sqr(ld.l_radius / l_vector.w);
+      float r_sq = sqr(ld.l_radius / l_vector.w);
       vec3 L = l_vector.xyz / l_vector.w;
-      return r_sqr * diffuse_sphere_integral(dot(N, L), r_sqr);
+      return r_sq * diffuse_sphere_integral(dot(N, L), r_sq);
     }
   }
   else {
@@ -371,7 +371,8 @@ float light_specular(LightData ld, vec4 ltc_mat, vec3 N, vec3 V, vec4 l_vector)
     float radius_y = is_ellipse ? ld.l_sizey : ld.l_radius;
 
     if (ld.l_type == POINT) {
-      /* Sphere light spans a larger angle than a disk light with the same radius (sin -> tan). */
+      /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
+       * half-angle spanned by a disk light with the same radius. */
       radius_x *= inversesqrt(1.0 - sqr(radius_x / l_vector.w));
       radius_y *= inversesqrt(1.0 - sqr(radius_y / l_vector.w));
     }
