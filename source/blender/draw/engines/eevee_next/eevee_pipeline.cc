@@ -108,6 +108,9 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
   pass.material_set(manager, gpumat);
   pass.push_constant("world_opacity_fade", 1.0f);
 
+  pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  pass.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+  pass.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
   pass.bind_image("rp_light_img", dummy_renderpass_tx_);
   pass.bind_image("rp_diffuse_color_img", dummy_renderpass_tx_);
