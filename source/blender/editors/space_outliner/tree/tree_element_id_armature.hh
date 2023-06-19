@@ -28,14 +28,13 @@ class TreeElementIDArmature final : public TreeElementID {
  private:
   void expandEditBones(SpaceOutliner &) const;
   void expandBones(SpaceOutliner &) const;
-  
 };
 
 void outliner_add_bone(SpaceOutliner *space_outliner,
-                             ListBase *lb,
-                             ID *id,
-                             Bone *curBone,
-                             TreeElement *parent,
-                             int *a);
+                       ListBase *lb,
+                       ID *id,
+                       Bone *curBone,
+                       TreeElement *parent,
+                       int *a);
 
 }  // namespace blender::ed::outliner

@@ -218,8 +218,6 @@ bool outliner_requires_rebuild_on_select_or_active_change(const SpaceOutliner *s
   return exclude_flags & (SO_FILTER_OB_STATE_SELECTED | SO_FILTER_OB_STATE_ACTIVE);
 }
 
-
-
 #ifdef WITH_FREESTYLE
 static void outliner_add_line_styles(SpaceOutliner *space_outliner,
                                      ListBase *lb,
