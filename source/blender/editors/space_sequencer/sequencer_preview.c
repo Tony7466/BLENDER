@@ -110,14 +110,21 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
   bool keep_looping = true;
 
   BLI_mutex_lock(pj->mutex);
-  while (keep_looping) {
-    /* Blocks the preview job until some work is pushed to the queue. */
-    BLI_condition_wait(&pj->preview_suspend_cond, pj->mutex);
+  int previous_processed = pj->processed;
+  BLI_mutex_unlock(pj->mutex);
 
+  while (keep_looping) {
+    /* Wait until there's either a new audio job to process or one of the previously submitted jobs is done.*/
+    BLI_mutex_lock(pj->mutex);
+    while (pj->previews.first == NULL && previous_processed == pj->processed) {
+      BLI_condition_wait(&pj->preview_suspend_cond, pj->mutex);
+    }
+
+    previous_processed = pj->processed;
     float current_progress = (pj->total > 0) ? (float)pj->processed / (float)pj->total : 1.0f;
-  
+
     if (current_progress != *progress) {
-      *progress = (pj->total > 0) ? (float)pj->processed / (float)pj->total : 1.0f;
+      *progress = current_progress;
       *do_update = true;
     }
 
@@ -150,11 +157,12 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
 
         PreviewJobAudio *next_previewjb = previewjb->next;
         BLI_remlink(&pj->previews, previewjb);
-        previewjb->next = next_previewjb;
-      }
-    }
 
-    BLI_mutex_unlock(pj->mutex);
+        previewjb = next_previewjb;
+      }
+
+      BLI_mutex_unlock(pj->mutex);
+    }
   }
 
   BLI_task_pool_work_and_wait(task_pool);
