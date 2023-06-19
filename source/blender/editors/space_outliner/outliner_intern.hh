@@ -18,7 +18,6 @@
 /* internal exports only */
 
 struct ARegion;
-struct Bone;
 struct EditBone;
 struct ID;
 struct ListBase;
@@ -275,13 +274,6 @@ void outliner_build_tree(struct Main *mainvar,
                          struct ViewLayer *view_layer,
                          struct SpaceOutliner *space_outliner,
                          struct ARegion *region);
-
-void outliner_add_bone(SpaceOutliner *space_outliner,
-                       ListBase *lb,
-                       ID *id,
-                       Bone *curBone,
-                       TreeElement *parent,
-                       int *a);
 
 TreeElement *outliner_add_collection_recursive(SpaceOutliner *space_outliner,
                                                struct Collection *collection,

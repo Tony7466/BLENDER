@@ -88,4 +88,23 @@ void TreeElementIDArmature::expandBones(SpaceOutliner &space_outliner) const
   }
 }
 
+/* special handling of hierarchical non-lib data */
+void outliner_add_bone(SpaceOutliner *space_outliner,
+                       ListBase *lb,
+                       ID *id,
+                       Bone *curBone,
+                       TreeElement *parent,
+                       int *a)
+{
+  TreeElement *te = outliner_add_element(space_outliner, lb, id, parent, TSE_BONE, *a);
+
+  (*a)++;
+  te->name = curBone->name;
+  te->directdata = curBone;
+
+  LISTBASE_FOREACH (Bone *, child_bone, &curBone->childbase) {
+    outliner_add_bone(space_outliner, &te->subtree, id, child_bone, te, a);
+  }
+}
+
 }  // namespace blender::ed::outliner
