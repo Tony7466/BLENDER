@@ -1793,6 +1793,15 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
 {
   size_t items = 0;
 
+  /* add data block container */
+  ANIMCHANNEL_NEW_CHANNEL(grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
+
+  for (blender::bke::greasepencil::Layer *layer : grease_pencil->layers_for_write()) {
+
+    /* add layer channel */
+    ANIMCHANNEL_NEW_CHANNEL(layer, ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+  }
+
   return items;
 }
 
