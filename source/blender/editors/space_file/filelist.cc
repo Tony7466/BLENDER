@@ -1632,6 +1632,13 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     return;
   }
 
+  /* External ID that is also a directory is never previewed. */
+  if ((entry->typeflag & (FILE_TYPE_BLENDERLIB | FILE_TYPE_DIR)) ==
+      (FILE_TYPE_BLENDERLIB | FILE_TYPE_DIR))
+  {
+    return;
+  }
+
   FileListInternEntry *intern_entry = filelist->filelist_intern.filtered[index];
   PreviewImage *preview_in_memory = intern_entry->local_data.preview_image;
   if (preview_in_memory && !BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW)) {
@@ -2604,7 +2611,6 @@ bool filelist_cache_previews_update(FileList *filelist)
         /* Move ownership over icon. */
         entry->preview_icon_id = preview->icon_id;
         preview->icon_id = 0;
-        changed = true;
       }
       else {
         /* We want to avoid re-processing this entry continuously!
@@ -2613,6 +2619,7 @@ bool filelist_cache_previews_update(FileList *filelist)
         entry->flags |= FILE_ENTRY_INVALID_PREVIEW;
       }
       entry->flags &= ~FILE_ENTRY_PREVIEW_LOADING;
+      changed = true;
     }
     else {
       BKE_icon_delete(preview->icon_id);
