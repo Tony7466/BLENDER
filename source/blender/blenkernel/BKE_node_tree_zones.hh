@@ -56,8 +56,16 @@ class TreeZones {
    */
   const TreeZone *get_zone_by_socket(const bNodeSocket &socket) const;
 
+  /**
+   * Get the deepest zone that the node is in. Note that the e.g. Simulation Input and Output nodes
+   * are considered to be inside of the zone they create.
+   */
   const TreeZone *get_zone_by_node(const int32_t node_id) const;
 
+  /**
+   * Get a sorted list of zones that the node is in. First comes the root zone and last the most
+   * nested zone. For nodes that are at the root level, the returned list is empty.
+   */
   Vector<const TreeZone *> get_zone_stack_for_node(const int32_t node_id) const;
 };
 

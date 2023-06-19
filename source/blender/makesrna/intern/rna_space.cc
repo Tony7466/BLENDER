@@ -8072,6 +8072,11 @@ static void rna_def_viewer_path_elem(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, viewer_path_elem_type_items);
   RNA_def_property_ui_text(prop, "Type", "Type of the path element");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "ui_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "UI Name", "Name that can be displayed in the UI for this element");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 static void rna_def_id_viewer_path_elem(BlenderRNA *brna)
