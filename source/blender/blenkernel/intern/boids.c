@@ -1657,7 +1657,7 @@ BoidState *boid_new_state(BoidSettings *boids)
     SNPRINTF(state->name, "State %i", state->id);
   }
   else {
-    STRNCPY(state->name, "State");
+    strcpy(state->name, "State");
   }
 
   state->rule_fuzziness = 0.5;

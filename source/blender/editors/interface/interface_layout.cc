@@ -5636,7 +5636,7 @@ uiBlock *uiLayoutGetBlock(uiLayout *layout)
   return layout->root->block;
 }
 
-wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout)
+int uiLayoutGetOperatorContext(uiLayout *layout)
 {
   return layout->root->opcontext;
 }

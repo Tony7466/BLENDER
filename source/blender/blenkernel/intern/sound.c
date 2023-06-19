@@ -462,7 +462,8 @@ bSound *BKE_sound_new_buffer(Main *bmain, bSound *source)
   bSound *sound = NULL;
 
   char name[MAX_ID_NAME + 5];
-  BLI_string_join(name, sizeof(name), "buf_", source->id.name);
+  strcpy(name, "buf_");
+  strcpy(name + 4, source->id.name);
 
   sound = BKE_libblock_alloc(bmain, ID_SO, name);
 
@@ -479,7 +480,8 @@ bSound *BKE_sound_new_limiter(Main *bmain, bSound *source, float start, float en
   bSound *sound = NULL;
 
   char name[MAX_ID_NAME + 5];
-  BLI_string_join(name, sizeof(name), "lim_", source->id.name);
+  strcpy(name, "lim_");
+  strcpy(name + 4, source->id.name);
 
   sound = BKE_libblock_alloc(bmain, ID_SO, name);
 

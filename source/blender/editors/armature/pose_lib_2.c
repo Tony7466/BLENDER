@@ -497,10 +497,10 @@ static int poselib_blend_modal(bContext *C, wmOperator *op, const wmEvent *event
     ED_slider_status_string_get(pbd->slider, slider_string, sizeof(slider_string));
 
     if (pbd->state == POSE_BLEND_BLENDING) {
-      STRNCPY(tab_string, TIP_("[Tab] - Show original pose"));
+      strcpy(tab_string, TIP_("[Tab] - Show original pose"));
     }
     else {
-      STRNCPY(tab_string, TIP_("[Tab] - Show blended pose"));
+      strcpy(tab_string, TIP_("[Tab] - Show blended pose"));
     }
 
     SNPRINTF(status_string, "%s | %s | [Ctrl] - Flip Pose", tab_string, slider_string);

@@ -20,7 +20,6 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -553,7 +552,7 @@ static int gpencil_modifier_remove_exec(bContext *C, wmOperator *op)
 
   /* Store name temporarily for report. */
   char name[MAX_NAME];
-  STRNCPY(name, md->name);
+  strcpy(name, md->name);
 
   if (!ED_object_gpencil_modifier_remove(op->reports, bmain, ob, md)) {
     return OPERATOR_CANCELLED;
@@ -736,7 +735,7 @@ static int gpencil_modifier_apply_exec(bContext *C, wmOperator *op)
   char name[MAX_NAME];
   if (do_report) {
     reports_len = BLI_listbase_count(&op->reports->list);
-    STRNCPY(name, md->name); /* Store name temporarily since the modifier is removed. */
+    strcpy(name, md->name); /* Store name temporarily since the modifier is removed. */
   }
 
   if (!ED_object_gpencil_modifier_apply(bmain, op->reports, depsgraph, ob, md, apply_as)) {

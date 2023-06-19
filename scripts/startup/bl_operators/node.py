@@ -250,10 +250,13 @@ class NODE_OT_tree_path_parent(Operator):
 class NodePanelOperator():
     @classmethod
     def poll(cls, context):
-        space = context.space_data
-        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree:
+        snode = context.space_data
+        if snode is None:
             return False
-        if space.edit_tree.is_embedded_data:
+        tree = snode.edit_tree
+        if tree is None:
+            return False
+        if tree.is_embedded_data:
             return False
         return True
 

@@ -237,7 +237,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(192, 0)) {
-    STRNCPY(userdef->sounddir, "/");
+    strcpy(userdef->sounddir, "/");
   }
 
   /* patch to set Dupli Armature */
@@ -311,52 +311,52 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     for (km = userdef->user_keymaps.first; km; km = km->next) {
       if (STREQ(km->idname, "Armature_Sketch")) {
-        STRNCPY(km->idname, "Armature Sketch");
+        strcpy(km->idname, "Armature Sketch");
       }
       else if (STREQ(km->idname, "View3D")) {
-        STRNCPY(km->idname, "3D View");
+        strcpy(km->idname, "3D View");
       }
       else if (STREQ(km->idname, "View3D Generic")) {
-        STRNCPY(km->idname, "3D View Generic");
+        strcpy(km->idname, "3D View Generic");
       }
       else if (STREQ(km->idname, "EditMesh")) {
-        STRNCPY(km->idname, "Mesh");
+        strcpy(km->idname, "Mesh");
       }
       else if (STREQ(km->idname, "UVEdit")) {
-        STRNCPY(km->idname, "UV Editor");
+        strcpy(km->idname, "UV Editor");
       }
       else if (STREQ(km->idname, "Animation_Channels")) {
-        STRNCPY(km->idname, "Animation Channels");
+        strcpy(km->idname, "Animation Channels");
       }
       else if (STREQ(km->idname, "GraphEdit Keys")) {
-        STRNCPY(km->idname, "Graph Editor");
+        strcpy(km->idname, "Graph Editor");
       }
       else if (STREQ(km->idname, "GraphEdit Generic")) {
-        STRNCPY(km->idname, "Graph Editor Generic");
+        strcpy(km->idname, "Graph Editor Generic");
       }
       else if (STREQ(km->idname, "Action_Keys")) {
-        STRNCPY(km->idname, "Dopesheet");
+        strcpy(km->idname, "Dopesheet");
       }
       else if (STREQ(km->idname, "NLA Data")) {
-        STRNCPY(km->idname, "NLA Editor");
+        strcpy(km->idname, "NLA Editor");
       }
       else if (STREQ(km->idname, "Node Generic")) {
-        STRNCPY(km->idname, "Node Editor");
+        strcpy(km->idname, "Node Editor");
       }
       else if (STREQ(km->idname, "Logic Generic")) {
-        STRNCPY(km->idname, "Logic Editor");
+        strcpy(km->idname, "Logic Editor");
       }
       else if (STREQ(km->idname, "File")) {
-        STRNCPY(km->idname, "File Browser");
+        strcpy(km->idname, "File Browser");
       }
       else if (STREQ(km->idname, "FileMain")) {
-        STRNCPY(km->idname, "File Browser Main");
+        strcpy(km->idname, "File Browser Main");
       }
       else if (STREQ(km->idname, "FileButtons")) {
-        STRNCPY(km->idname, "File Browser Buttons");
+        strcpy(km->idname, "File Browser Buttons");
       }
       else if (STREQ(km->idname, "Buttons Generic")) {
-        STRNCPY(km->idname, "Property Editor");
+        strcpy(km->idname, "Property Editor");
       }
     }
   }

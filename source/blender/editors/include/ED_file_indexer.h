@@ -130,13 +130,10 @@ void ED_file_indexer_entries_clear(FileIndexerEntries *indexer_entries);
  * Adds all entries from the given `datablock_infos` to the `indexer_entries`.
  * The datablock_infos must only contain data for a single IDType. The specific IDType must be
  * passed in the `idcode` parameter.
- *
- * \note This can "steal" data contained in \a datablock_infos, to avoid expensive copies, which is
- *       supported by the #BLODataBlockInfo type.
  */
 void ED_file_indexer_entries_extend_from_datablock_infos(
     FileIndexerEntries *indexer_entries,
-    struct LinkNode * /*BLODataBlockInfo*/ datablock_infos,
+    const LinkNode * /*BLODataBlockInfo*/ datablock_infos,
     int idcode);
 
 #ifdef __cplusplus

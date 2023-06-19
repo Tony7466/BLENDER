@@ -295,7 +295,7 @@ static VFontData *vfont_get_data(VFont *vfont)
         /* DON'T DO THIS
          * missing file shouldn't modify path! - campbell */
 #if 0
-        STRNCPY(vfont->filepath, FO_BUILTIN_NAME);
+        strcpy(vfont->filepath, FO_BUILTIN_NAME);
 #endif
         pf = get_builtin_packedfile();
       }

@@ -164,11 +164,11 @@ void register_node_tree_type_sh()
   bNodeTreeType *tt = ntreeType_Shader = MEM_cnew<bNodeTreeType>("shader node tree type");
 
   tt->type = NTREE_SHADER;
-  STRNCPY(tt->idname, "ShaderNodeTree");
-  STRNCPY(tt->group_idname, "ShaderNodeGroup");
-  STRNCPY(tt->ui_name, N_("Shader Editor"));
+  strcpy(tt->idname, "ShaderNodeTree");
+  strcpy(tt->group_idname, "ShaderNodeGroup");
+  strcpy(tt->ui_name, N_("Shader Editor"));
   tt->ui_icon = ICON_NODE_MATERIAL;
-  STRNCPY(tt->ui_description, N_("Shader nodes"));
+  strcpy(tt->ui_description, N_("Shader nodes"));
 
   tt->foreach_nodeclass = foreach_nodeclass;
   tt->localize = localize;

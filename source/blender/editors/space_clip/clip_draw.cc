@@ -273,7 +273,7 @@ static void draw_movieclip_notes(SpaceClip *sc, ARegion *region)
   }
   else {
     if (sc->flag & SC_LOCK_SELECTION) {
-      STRNCPY(str, "Locked");
+      strcpy(str, "Locked");
     }
   }
 
@@ -1082,16 +1082,16 @@ static void draw_marker_texts(SpaceClip *sc,
   pos[1] = pos[1] * zoomy - fontsize;
 
   if (marker->flag & MARKER_DISABLED) {
-    STRNCPY(state, "disabled");
+    strcpy(state, "disabled");
   }
   else if (marker->framenr != ED_space_clip_get_clip_frame_number(sc)) {
-    STRNCPY(state, "estimated");
+    strcpy(state, "estimated");
   }
   else if (marker->flag & MARKER_TRACKED) {
-    STRNCPY(state, "tracked");
+    strcpy(state, "tracked");
   }
   else {
-    STRNCPY(state, "keyframed");
+    strcpy(state, "keyframed");
   }
 
   if (state[0]) {

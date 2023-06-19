@@ -3653,6 +3653,9 @@ void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
     if (ntree->typeinfo->local_merge) {
       ntree->typeinfo->local_merge(bmain, localtree, ntree);
     }
+
+    ntreeFreeTree(localtree);
+    MEM_freeN(localtree);
   }
 }
 

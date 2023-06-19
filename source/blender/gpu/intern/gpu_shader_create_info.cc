@@ -198,49 +198,38 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
       }
     };
 
-    auto print_error_msg = [&](const Resource &res, Vector<Resource> &resources) {
-      auto print_resource_name = [&](const Resource &res) {
-        switch (res.bind_type) {
-          case Resource::BindType::UNIFORM_BUFFER:
-            std::cout << "Uniform Buffer " << res.uniformbuf.name;
-            break;
-          case Resource::BindType::STORAGE_BUFFER:
-            std::cout << "Storage Buffer " << res.storagebuf.name;
-            break;
-          case Resource::BindType::SAMPLER:
-            std::cout << "Sampler " << res.sampler.name;
-            break;
-          case Resource::BindType::IMAGE:
-            std::cout << "Image " << res.image.name;
-            break;
-          default:
-            std::cout << "Unknown Type";
-            break;
-        }
-      };
+    auto print_error_msg = [&](const Resource &res) {
+      std::cout << name_ << ": Validation failed : Overlapping ";
 
-      for (const Resource &_res : resources) {
-        if (&res != &_res && res.bind_type == _res.bind_type && res.slot == _res.slot) {
-          std::cout << name_ << ": Validation failed : Overlapping ";
-          print_resource_name(res);
-          std::cout << " and ";
-          print_resource_name(_res);
-          std::cout << " at (" << res.slot << ") while merging " << other_info.name_ << std::endl;
-        }
+      switch (res.bind_type) {
+        case Resource::BindType::UNIFORM_BUFFER:
+          std::cout << "Uniform Buffer " << res.uniformbuf.name;
+          break;
+        case Resource::BindType::STORAGE_BUFFER:
+          std::cout << "Storage Buffer " << res.storagebuf.name;
+          break;
+        case Resource::BindType::SAMPLER:
+          std::cout << "Sampler " << res.sampler.name;
+          break;
+        case Resource::BindType::IMAGE:
+          std::cout << "Image " << res.image.name;
+          break;
+        default:
+          std::cout << "Unknown Type";
+          break;
       }
+      std::cout << " (" << res.slot << ") while merging " << other_info.name_ << std::endl;
     };
 
     for (auto &res : batch_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res, batch_resources_);
-        print_error_msg(res, pass_resources_);
+        print_error_msg(res);
       }
     }
 
     for (auto &res : pass_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res, batch_resources_);
-        print_error_msg(res, pass_resources_);
+        print_error_msg(res);
       }
     }
   }

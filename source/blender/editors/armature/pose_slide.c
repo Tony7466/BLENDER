@@ -941,21 +941,21 @@ static void pose_slide_draw_status(bContext *C, tPoseSlideOp *pso)
 
   switch (pso->mode) {
     case POSESLIDE_PUSH:
-      STRNCPY(mode_str, TIP_("Push Pose"));
+      strcpy(mode_str, TIP_("Push Pose"));
       break;
     case POSESLIDE_RELAX:
-      STRNCPY(mode_str, TIP_("Relax Pose"));
+      strcpy(mode_str, TIP_("Relax Pose"));
       break;
     case POSESLIDE_BREAKDOWN:
-      STRNCPY(mode_str, TIP_("Breakdown"));
+      strcpy(mode_str, TIP_("Breakdown"));
       break;
     case POSESLIDE_BLEND:
-      STRNCPY(mode_str, TIP_("Blend to Neighbor"));
+      strcpy(mode_str, TIP_("Blend to Neighbor"));
       break;
 
     default:
       /* Unknown. */
-      STRNCPY(mode_str, TIP_("Sliding-Tool"));
+      strcpy(mode_str, TIP_("Sliding-Tool"));
       break;
   }
 

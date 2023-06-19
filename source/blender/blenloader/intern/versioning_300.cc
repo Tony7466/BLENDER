@@ -1363,7 +1363,7 @@ static void version_switch_node_input_prefix(Main *bmain)
             if (socket == node->inputs.first) {
               continue;
             }
-            STRNCPY(socket->name, socket->name[0] == 'A' ? "False" : "True");
+            strcpy(socket->name, socket->name[0] == 'A' ? "False" : "True");
 
             /* Replace "A" and "B", but keep the unique number suffix at the end. */
             char number_suffix[8];
@@ -1940,7 +1940,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "FunctionNodeCombineColor");
+          strcpy(node->idname, "FunctionNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -1949,7 +1949,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "FunctionNodeSeparateColor");
+          strcpy(node->idname, "FunctionNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2007,7 +2007,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "CompositorNodeCombineColor");
+          strcpy(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2016,7 +2016,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_HSV;
-          STRNCPY(node->idname, "CompositorNodeCombineColor");
+          strcpy(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2026,7 +2026,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YCC;
           storage->ycc_mode = node->custom1;
-          STRNCPY(node->idname, "CompositorNodeCombineColor");
+          strcpy(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2035,7 +2035,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YUV;
-          STRNCPY(node->idname, "CompositorNodeCombineColor");
+          strcpy(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2044,7 +2044,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "CompositorNodeSeparateColor");
+          strcpy(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2053,7 +2053,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_HSV;
-          STRNCPY(node->idname, "CompositorNodeSeparateColor");
+          strcpy(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2063,7 +2063,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YCC;
           storage->ycc_mode = node->custom1;
-          STRNCPY(node->idname, "CompositorNodeSeparateColor");
+          strcpy(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2072,7 +2072,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YUV;
-          STRNCPY(node->idname, "CompositorNodeSeparateColor");
+          strcpy(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2087,13 +2087,13 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
         case TEX_NODE_COMPOSE_LEGACY: {
           node->type = TEX_NODE_COMBINE_COLOR;
           node->custom1 = NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "TextureNodeCombineColor");
+          strcpy(node->idname, "TextureNodeCombineColor");
           break;
         }
         case TEX_NODE_DECOMPOSE_LEGACY: {
           node->type = TEX_NODE_SEPARATE_COLOR;
           node->custom1 = NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "TextureNodeSeparateColor");
+          strcpy(node->idname, "TextureNodeSeparateColor");
           break;
         }
       }
@@ -2127,7 +2127,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "ShaderNodeCombineColor");
+          strcpy(node->idname, "ShaderNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2136,7 +2136,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_HSV;
-          STRNCPY(node->idname, "ShaderNodeCombineColor");
+          strcpy(node->idname, "ShaderNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2145,7 +2145,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          STRNCPY(node->idname, "ShaderNodeSeparateColor");
+          strcpy(node->idname, "ShaderNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2154,7 +2154,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_HSV;
-          STRNCPY(node->idname, "ShaderNodeSeparateColor");
+          strcpy(node->idname, "ShaderNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2171,7 +2171,7 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
   version_node_output_socket_name(ntree, SH_NODE_MIX_RGB_LEGACY, "Color", "Result_Color");
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == SH_NODE_MIX_RGB_LEGACY) {
-      STRNCPY(node->idname, "ShaderNodeMix");
+      strcpy(node->idname, "ShaderNodeMix");
       node->type = SH_NODE_MIX;
       NodeShaderMix *data = (NodeShaderMix *)MEM_callocN(sizeof(NodeShaderMix), __func__);
       data->blend_type = node->custom1;
@@ -2570,7 +2570,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == GEO_NODE_SUBDIVIDE_MESH) {
-            STRNCPY(node->idname, "GeometryNodeMeshSubdivide");
+            strcpy(node->idname, "GeometryNodeMeshSubdivide");
           }
         }
       }
@@ -3266,7 +3266,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
                 sizeof(NodeFunctionCompare), __func__);
             data->data_type = SOCK_FLOAT;
             data->operation = node->custom1;
-            STRNCPY(node->idname, "FunctionNodeCompare");
+            strcpy(node->idname, "FunctionNodeCompare");
             node->storage = data;
           }
         }

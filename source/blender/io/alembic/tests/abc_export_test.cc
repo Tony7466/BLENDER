@@ -11,7 +11,6 @@
 #include "BKE_main.h"
 #include "BLI_fileops.h"
 #include "BLI_math.h"
-#include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "DNA_scene_types.h"
 
@@ -35,7 +34,7 @@ class AlembicExportTest : public testing::Test {
     /* Fake a 25 FPS scene with a nonzero base (because that's sometimes forgotten) */
     scene.r.frs_sec = 50;
     scene.r.frs_sec_base = 2;
-    STRNCPY(scene.id.name, "SCTestScene");
+    strcpy(scene.id.name, "SCTestScene");
 
     bmain = BKE_main_new();
 

@@ -584,14 +584,13 @@ char *GHOST_GetTitle(GHOST_WindowHandle windowhandle)
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
   std::string title = window->getTitle();
 
-  const size_t ctitle_size = title.size() + 1;
-  char *ctitle = (char *)malloc(ctitle_size);
+  char *ctitle = (char *)malloc(title.size() + 1);
 
   if (ctitle == nullptr) {
     return nullptr;
   }
 
-  memcpy(ctitle, title.c_str(), ctitle_size);
+  strcpy(ctitle, title.c_str());
 
   return ctitle;
 }
