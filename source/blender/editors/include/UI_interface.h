@@ -2175,7 +2175,7 @@ void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
 
-int uiLayoutGetOperatorContext(uiLayout *layout);
+wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
 bool uiLayoutGetActiveDefault(uiLayout *layout);
 bool uiLayoutGetActivateInit(uiLayout *layout);
@@ -2523,7 +2523,7 @@ enum uiTemplateListFlags {
 
   UI_TEMPLATE_LIST_FLAGS_LAST
 };
-ENUM_OPERATORS(enum uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
+ENUM_OPERATORS(uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
 
 void uiTemplateList(uiLayout *layout,
                     const struct bContext *C,
@@ -3268,6 +3268,13 @@ void UI_interface_tag_script_reload(void);
 
 /* Support click-drag motion which presses the button and closes a popover (like a menu). */
 #define USE_UI_POPOVER_ONCE
+
+/**
+ * Call the #ui::AbstractView::begin_filtering() function of the view to enable filtering.
+ * Typically used to enable a filter text button. Triggered on Ctrl+F by default.
+ * \return True when filtering was enabled successfully.
+ */
+bool UI_view_begin_filtering(const struct bContext *C, const uiViewHandle *view_handle);
 
 bool UI_view_item_is_interactive(const uiViewItemHandle *item_handle);
 bool UI_view_item_is_active(const uiViewItemHandle *item_handle);

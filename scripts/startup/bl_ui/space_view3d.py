@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Header,
@@ -745,6 +748,14 @@ class VIEW3D_HT_header(Header):
                 ).domain = 'CURVE'
 
         # Grease Pencil
+        if obj and obj.type == 'GREASEPENCIL':
+            # Select mode for Editing
+            if object_mode == 'EDIT':
+                row = layout.row(align=True)
+                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='POINT')
+                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='STROKE')
+        
+        # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
             gpd = context.gpencil_data
 
@@ -2021,12 +2032,27 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
     def draw(self, context):
         if not context.preferences.experimental.use_grease_pencil_version3:
             self.draw_legacy(context)
+            return
 
         layout = self.layout
 
         layout.operator("grease_pencil.select_all", text="All").action = 'SELECT'
         layout.operator("grease_pencil.select_all", text="None").action = 'DESELECT'
         layout.operator("grease_pencil.select_all", text="Invert").action = 'INVERT'
+
+        layout.separator()
+
+        layout.operator("grease_pencil.select_linked", text="Linked")
+        layout.operator("grease_pencil.select_random", text="Random")
+
+        layout.separator()
+
+        op = layout.operator("grease_pencil.select_ends", text="First")
+        op.amount_start = 1
+        op.amount_end = 0
+        op = layout.operator("grease_pencil.select_ends", text="Last")
+        op.amount_start = 0
+        op.amount_end = 1
 
         layout.separator()
 
@@ -3575,9 +3601,6 @@ class VIEW3D_MT_face_sets_init(Menu):
 
         props = layout.operator("sculpt.face_sets_init", text="By Sharp Edges")
         props.mode = 'SHARP_EDGES'
-
-        props = layout.operator("sculpt.face_sets_init", text="By Face Maps")
-        props.mode = 'FACE_MAPS'
 
 
 class VIEW3D_MT_random_mask(Menu):

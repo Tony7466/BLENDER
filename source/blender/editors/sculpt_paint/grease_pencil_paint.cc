@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -139,7 +139,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   int material_index = 0;
   SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
-  
+
   materials.span.slice(new_curves_range).fill(material_index);
 
   /* Set curve_type attribute. */
