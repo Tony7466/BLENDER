@@ -28,7 +28,7 @@ ccl_device_inline bool distant_light_sample(const ccl_global KernelLight *klight
   ls->t = FLT_MAX;
 
   ls->pdf = klight->distant.pdf;
-  ls->eval_fac = klight->distant.invarea;
+  ls->eval_fac = klight->distant.eval_fac;
 
   return true;
 }
@@ -108,7 +108,7 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
   ls->group = lamp_lightgroup(kg, lamp);
 
   ls->pdf = klight->distant.pdf;
-  ls->eval_fac = klight->distant.invarea;
+  ls->eval_fac = klight->distant.eval_fac;
 
   return true;
 }

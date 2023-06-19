@@ -1378,7 +1378,7 @@ typedef struct KernelDistantLight {
   packed_float3 axis_v;
   float one_minus_cosangle;
   float pdf;
-  float invarea;
+  float eval_fac;
   float pad[2];
 } KernelDistantLight;
 

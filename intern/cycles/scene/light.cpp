@@ -1243,9 +1243,9 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       klights[light_index].distant.angle = angle;
       klights[light_index].distant.one_minus_cosangle = one_minus_cosangle;
       klights[light_index].distant.pdf = pdf;
-      klights[light_index].distant.invarea = (light->normalize && angle > 0) ?
-                                                 M_1_PI_F / sqr(sinf(angle)) :
-                                                 1.0f;
+      klights[light_index].distant.eval_fac = (light->normalize && angle > 0) ?
+                                                  M_1_PI_F / sqr(sinf(angle)) :
+                                                  1.0f;
       klights[light_index].distant.axis_u = axis_u;
       klights[light_index].distant.axis_v = axis_v;
     }
