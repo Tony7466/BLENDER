@@ -4136,6 +4136,9 @@ static void ANIM_init_channel_typeinfo_data()
 
     animchannelTypeInfo[type++] = &ACF_SHAPEKEY; /* ShapeKey */
 
+    animchannelTypeInfo[type++] = &ACF_GPD; /* Grease Pencil Datablock (Legacy) */
+    animchannelTypeInfo[type++] = &ACF_GPL; /* Grease Pencil Layer (Legacy) */
+
     animchannelTypeInfo[type++] = &ACF_GPD; /* Grease Pencil Datablock */
     animchannelTypeInfo[type++] = &ACF_GPL; /* Grease Pencil Layer */
 
