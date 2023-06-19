@@ -170,7 +170,6 @@ typedef struct USDHook {
 void USD_register_hook(struct USDHook *hook);
 void USD_unregister_hook(struct USDHook *hook);
 USDHook *USD_find_hook_name(const char name[]);
-void USD_hooks_exit();
 
 #ifdef __cplusplus
 }

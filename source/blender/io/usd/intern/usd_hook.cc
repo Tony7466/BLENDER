@@ -43,24 +43,6 @@ USDHook *USD_find_hook_name(const char name[])
   return static_cast<USDHook*>(BLI_findstring(&usd_hook_types, name, offsetof(USDHook, idname)));
 }
 
-void USD_hooks_exit()
-{
-  USDHook *hook, *next;
-
-  /* free type infos */
-  for (hook = static_cast<USDHook*>(usd_hook_types.first); hook; hook = next) {
-    next = hook->next;
-
-    /* free extra RNA data, and remove from list */
-    if (hook->rna_ext.free) {
-      hook->rna_ext.free(hook->rna_ext.data);
-    }
-    BLI_freelinkN(&usd_hook_types, hook);
-  }
-
-}
-
-
 namespace blender::io::usd {
 
 
