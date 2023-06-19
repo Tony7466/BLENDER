@@ -120,7 +120,7 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
 }
 
 /* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
-static void version_vertex_weight_edit(Main *bmain)
+static void version_vertex_weight_edit_preserve_threshold_exclusivity(Main *bmain)
 {
   LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
     if (ob->type != OB_MESH) {
@@ -232,10 +232,6 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
-    version_vertex_weight_edit(bmain);
-  }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -250,7 +246,7 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
    */
   {
     /* Convert anisotropic BSDF node to glossy BSDF. */
-
+    version_vertex_weight_edit_preserve_threshold_exclusivity(bmain);
     /* Keep this block, even when empty. */
   }
 }
