@@ -117,6 +117,8 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
   pass.bind_image("rp_specular_color_img", dummy_renderpass_tx_);
   pass.bind_image("rp_emission_img", dummy_renderpass_tx_);
   pass.bind_image("rp_cryptomatte_img", dummy_cryptomatte_tx_);
+  pass.bind_image("rp_color_img", dummy_aov_color_tx_);
+  pass.bind_image("rp_value_img", dummy_aov_value_tx_);
   /* Required by validation layers. */
   inst_.cryptomatte.bind_resources(&pass);
 
