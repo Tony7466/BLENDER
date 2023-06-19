@@ -102,6 +102,7 @@ static bool step_encode(bContext *C, Main *bmain, UndoStep *us_p)
     }
   }
 
+  step_data.root_group.~LayerGroup();
   new (&step_data.root_group) LayerGroup(grease_pencil.root_group.wrap());
 
   bmain->is_memfile_undo_flush_needed = true;
