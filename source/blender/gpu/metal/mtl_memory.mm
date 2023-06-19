@@ -40,8 +40,8 @@ void MTLBufferPool::init(id<MTLDevice> mtl_device)
     allocations_in_pool_ = 0;
 
     /* Live allocations list. */
-    BLI_listbase_clear(&allocations_list_.list);
-    allocations_list_.count = 0;
+    allocations_list_base_ = nullptr;
+    allocations_list_size_ = 0;
 
     /* Free pools -- Create initial safe free pool */
     BLI_assert(current_free_list_ == nullptr);
@@ -358,7 +358,7 @@ void MTLBufferPool::update_memory_pools()
 
   uint framealloc = (uint)per_frame_allocation_count_;
   printf("  Allocations in frame: %u\n", framealloc);
-  printf("  Total Buffers allocated: %u\n", allocations_list_.count);
+  printf("  Total Buffers allocated: %u\n", allocations_list_size_);
   printf("  Total Memory allocated: %u MB\n", (uint)total_allocation_bytes_ / (1024 * 1024));
 
   uint allocs = (uint)(allocations_in_pool_) / 1024 / 2024;
@@ -475,8 +475,16 @@ void MTLBufferPool::allocations_list_insert(gpu::MTLBuffer *buffer)
   BLI_assert(buffer != nullptr);
 
   /* Insert buffer at base of allocations list. */
-  BLI_addhead(&allocations_list_.list, buffer);
-  allocations_list_.count++;
+  gpu::MTLBuffer *current_head = allocations_list_base_;
+  buffer->next = current_head;
+  buffer->prev = nullptr;
+
+  if (current_head != nullptr) {
+    current_head->prev = buffer;
+  }
+
+  allocations_list_base_ = buffer;
+  allocations_list_size_++;
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
   total_allocation_bytes_ += buffer->get_size();
@@ -489,20 +497,45 @@ void MTLBufferPool::allocations_list_delete(gpu::MTLBuffer *buffer)
   /* Remove a buffer link in the allocations chain. */
   BLI_assert(initialized_);
   BLI_assert(buffer != nullptr);
-  BLI_assert(allocations_list_.count >= 1);
+
+  gpu::MTLBuffer *next = buffer->next;
+  gpu::MTLBuffer *prev = buffer->prev;
+
+  if (prev != nullptr) {
+    BLI_assert(prev->next == buffer);
+    prev->next = next;
+  }
+
+  if (next != nullptr) {
+    BLI_assert(next->prev == buffer);
+    next->prev = prev;
+  }
+
+  if (allocations_list_base_ == buffer) {
+    allocations_list_base_ = next;
+    BLI_assert(prev == nullptr);
+  }
+  allocations_list_size_--;
+  BLI_assert(allocations_list_size_ >= 0);
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
   total_allocation_bytes_ -= buffer->get_size();
 #endif
 
-  BLI_freelinkN(&allocations_list_.list, buffer);
-  allocations_list_.count--;
+  /* Delete buffer. */
+  delete buffer;
 }
 
 void MTLBufferPool::allocations_list_delete_all()
 {
-  BLI_freelistN(&allocations_list_.list);
-  allocations_list_.count = 0;
+  gpu::MTLBuffer *current = allocations_list_base_;
+  while (current != nullptr) {
+    gpu::MTLBuffer *next = current->next;
+    delete current;
+    current = next;
+  }
+  allocations_list_size_ = 0;
+  allocations_list_base_ = nullptr;
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
   total_allocation_bytes_ = 0;
