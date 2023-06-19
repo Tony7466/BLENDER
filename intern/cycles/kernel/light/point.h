@@ -178,11 +178,8 @@ ccl_device_forceinline bool point_light_tree_parameters(const ccl_global KernelL
   const float radius = klight->spot.radius;
   if (dist_point_to_centroid > radius) {
     /* Equivalent to a disk light with the same angular span. */
-    const float max_dist = sqrtf(sqr(dist_point_to_centroid) - sqr(radius));
-    cos_theta_u = max_dist / dist_point_to_centroid;
-    /* HACK: pack the change of visible area (a scaling of `1.0f / sqr(cos_theta_u)`) in the
-     * distance. */
-    distance = make_float2(dist_point_to_centroid, max_dist);
+    cos_theta_u = cos_from_sin(radius / dist_point_to_centroid);
+    distance = dist_point_to_centroid * make_float2(1.0f / cos_theta_u, 1.0f);
   }
   else {
     /* Similar to background light. */
