@@ -10,6 +10,8 @@
 
 struct bContext;
 
+struct UndoType;
+
 struct Main;
 struct Object;
 
@@ -25,6 +27,7 @@ extern "C" {
 
 void ED_operatortypes_grease_pencil(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
+void ED_grease_pencil_undosys_type(struct UndoType *ut);
 
 #ifdef __cplusplus
 }

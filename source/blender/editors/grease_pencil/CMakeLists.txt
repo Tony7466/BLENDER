@@ -13,6 +13,7 @@ set(INC
   ../../makesdna
   ../../makesrna
   ../../windowmanager
+  ../../../../intern/clog
   ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -24,6 +25,7 @@ set(INC_SYS
 set(SRC
   intern/grease_pencil_add.cc
   intern/grease_pencil_ops.cc
+  intern/grease_pencil_undo.cc
 )
 
 set(LIB
