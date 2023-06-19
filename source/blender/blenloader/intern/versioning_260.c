@@ -519,13 +519,13 @@ static void do_versions_nodetree_customnodes(bNodeTree *ntree, int UNUSED(is_gro
     /* tree type idname */
     switch (ntree->type) {
       case NTREE_COMPOSIT:
-        strcpy(ntree->idname, "CompositorNodeTree");
+        STRNCPY(ntree->idname, "CompositorNodeTree");
         break;
       case NTREE_SHADER:
-        strcpy(ntree->idname, "ShaderNodeTree");
+        STRNCPY(ntree->idname, "ShaderNodeTree");
         break;
       case NTREE_TEXTURE:
-        strcpy(ntree->idname, "TextureNodeTree");
+        STRNCPY(ntree->idname, "TextureNodeTree");
         break;
     }
 
@@ -821,6 +821,7 @@ if (!MAIN_VERSION_ATLEAST(bmain, 260, 6)) {
     }
   }
 
+<<<<<<< HEAD
   {
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       /* convert delta addition into delta scale */
@@ -829,6 +830,1297 @@ if (!MAIN_VERSION_ATLEAST(bmain, 260, 6)) {
         if ((ob->dsize[i] == 0.0f) || /* simple case, user never touched dsize */
             (ob->scale[i] == 0.0f))   /* can't scale the dsize to give a non zero result,
                                        * so fallback to 1.0f */
+=======
+  if (!MAIN_VERSION_ATLEAST(bmain, 260, 2)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == SH_NODE_MAPPING) {
+            TexMapping *tex_mapping;
+
+            tex_mapping = node->storage;
+            tex_mapping->projx = PROJ_X;
+            tex_mapping->projy = PROJ_Y;
+            tex_mapping->projz = PROJ_Z;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 260, 4)) {
+    {
+      /* Convert node angles to radians! */
+      Scene *sce;
+      Material *mat;
+      bNodeTree *ntree;
+
+      for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+        if (sce->nodetree) {
+          do_versions_nodetree_convert_angle(sce->nodetree);
+        }
+      }
+
+      for (mat = bmain->materials.first; mat; mat = mat->id.next) {
+        if (mat->nodetree) {
+          do_versions_nodetree_convert_angle(mat->nodetree);
+        }
+      }
+
+      for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
+        do_versions_nodetree_convert_angle(ntree);
+      }
+    }
+
+    {
+      /* Tomato compatibility code. */
+      bScreen *screen;
+      MovieClip *clip;
+
+      for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+        ScrArea *area;
+        for (area = screen->areabase.first; area; area = area->next) {
+          SpaceLink *sl;
+          for (sl = area->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              if (v3d->bundle_size == 0.0f) {
+                v3d->bundle_size = 0.2f;
+                v3d->flag2 |= V3D_SHOW_RECONSTRUCTION;
+              }
+
+              if (v3d->bundle_drawtype == 0) {
+                v3d->bundle_drawtype = OB_PLAINAXES;
+              }
+            }
+            else if (sl->spacetype == SPACE_CLIP) {
+              SpaceClip *sclip = (SpaceClip *)sl;
+              if (sclip->scopes.track_preview_height == 0) {
+                sclip->scopes.track_preview_height = 120;
+              }
+            }
+          }
+        }
+      }
+
+      for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
+        MovieTrackingTrack *track;
+
+        if (clip->aspx < 1.0f) {
+          clip->aspx = 1.0f;
+          clip->aspy = 1.0f;
+        }
+
+        clip->proxy.build_tc_flag = IMB_TC_RECORD_RUN | IMB_TC_FREE_RUN |
+                                    IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN;
+
+        if (clip->proxy.build_size_flag == 0) {
+          clip->proxy.build_size_flag = IMB_PROXY_25;
+        }
+
+        if (clip->proxy.quality == 0) {
+          clip->proxy.quality = 90;
+        }
+
+        if (clip->tracking.camera.pixel_aspect < 0.01f) {
+          clip->tracking.camera.pixel_aspect = 1.0f;
+        }
+
+        track = clip->tracking.tracks_legacy.first;
+        while (track) {
+          if (track->minimum_correlation == 0.0f) {
+            track->minimum_correlation = 0.75f;
+          }
+
+          track = track->next;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 260, 6)) {
+    Scene *sce;
+    MovieClip *clip;
+
+    for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      do_versions_image_settings_2_60(sce);
+    }
+
+    for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
+      MovieTrackingSettings *settings = &clip->tracking.settings;
+
+      if (settings->default_pattern_size == 0.0f) {
+        settings->default_motion_model = TRACK_MOTION_MODEL_TRANSLATION;
+        settings->default_minimum_correlation = 0.75;
+        settings->default_pattern_size = 11;
+        settings->default_search_size = 51;
+      }
+    }
+
+    {
+      Object *ob;
+      for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+        /* convert delta addition into delta scale */
+        int i;
+        for (i = 0; i < 3; i++) {
+          if ((ob->dsize[i] == 0.0f) || /* simple case, user never touched dsize */
+              (ob->scale[i] == 0.0f))   /* can't scale the dsize to give a non zero result,
+                                         * so fallback to 1.0f */
+          {
+            ob->dscale[i] = 1.0f;
+          }
+          else {
+            ob->dscale[i] = (ob->scale[i] + ob->dsize[i]) / ob->scale[i];
+          }
+        }
+      }
+    }
+  }
+  /* sigh, this dscale vs dsize version patching was not done right, fix for fix,
+   * this intentionally checks an exact subversion, also note this was never in a release,
+   * at some point this could be removed. */
+  else if (bmain->versionfile == 260 && bmain->subversionfile == 6) {
+    Object *ob;
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      if (is_zero_v3(ob->dscale)) {
+        copy_vn_fl(ob->dscale, 3, 1.0f);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 260, 8)) {
+    Brush *brush;
+
+    for (brush = bmain->brushes.first; brush; brush = brush->id.next) {
+      if (brush->sculpt_tool == SCULPT_TOOL_ROTATE) {
+        brush->alpha = 1.0f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 261, 1)) {
+    {
+      /* update use flags for node sockets (was only temporary before) */
+      Scene *sce;
+      Material *mat;
+      Tex *tex;
+      World *world;
+      bNodeTree *ntree;
+
+      for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+        if (sce->nodetree) {
+          do_versions_nodetree_socket_use_flags_2_62(sce->nodetree);
+        }
+      }
+
+      for (mat = bmain->materials.first; mat; mat = mat->id.next) {
+        if (mat->nodetree) {
+          do_versions_nodetree_socket_use_flags_2_62(mat->nodetree);
+        }
+      }
+
+      for (tex = bmain->textures.first; tex; tex = tex->id.next) {
+        if (tex->nodetree) {
+          do_versions_nodetree_socket_use_flags_2_62(tex->nodetree);
+        }
+      }
+
+      for (Light *la = bmain->lights.first; la; la = la->id.next) {
+        if (la->nodetree) {
+          do_versions_nodetree_socket_use_flags_2_62(la->nodetree);
+        }
+      }
+
+      for (world = bmain->worlds.first; world; world = world->id.next) {
+        if (world->nodetree) {
+          do_versions_nodetree_socket_use_flags_2_62(world->nodetree);
+        }
+      }
+
+      for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
+        do_versions_nodetree_socket_use_flags_2_62(ntree);
+      }
+    }
+    {
+      MovieClip *clip;
+      Object *ob;
+
+      for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
+        MovieTracking *tracking = &clip->tracking;
+        MovieTrackingObject *tracking_object = tracking->objects.first;
+
+        clip->proxy.build_tc_flag |= IMB_TC_RECORD_RUN_NO_GAPS;
+
+        if (!tracking->settings.object_distance) {
+          tracking->settings.object_distance = 1.0f;
+        }
+
+        if (BLI_listbase_is_empty(&tracking->objects)) {
+          BKE_tracking_object_add(tracking, "Camera");
+        }
+
+        while (tracking_object) {
+          if (!tracking_object->scale) {
+            tracking_object->scale = 1.0f;
+          }
+
+          tracking_object = tracking_object->next;
+        }
+      }
+
+      for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+        bConstraint *con;
+        for (con = ob->constraints.first; con; con = con->next) {
+          if (con->type == CONSTRAINT_TYPE_OBJECTSOLVER) {
+            bObjectSolverConstraint *data = (bObjectSolverConstraint *)con->data;
+
+            if (data->invmat[3][3] == 0.0f) {
+              unit_m4(data->invmat);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 261, 2)) {
+    {
+      /* convert deprecated sculpt_paint_unified_* fields to
+       * UnifiedPaintSettings */
+      Scene *scene;
+      for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+        ToolSettings *ts = scene->toolsettings;
+        UnifiedPaintSettings *ups = &ts->unified_paint_settings;
+        ups->size = ts->sculpt_paint_unified_size;
+        ups->unprojected_radius = ts->sculpt_paint_unified_unprojected_radius;
+        ups->alpha = ts->sculpt_paint_unified_alpha;
+        ups->flag = ts->sculpt_paint_settings;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 261, 3)) {
+    {
+      /* convert extended ascii to utf-8 for text editor */
+      Text *text;
+      for (text = bmain->texts.first; text; text = text->id.next) {
+        if (!(text->flags & TXT_ISEXT)) {
+          TextLine *tl;
+
+          for (tl = text->lines.first; tl; tl = tl->next) {
+            int added = txt_extended_ascii_as_utf8(&tl->line);
+            tl->len += added;
+
+            /* reset cursor position if line was changed */
+            if (added && tl == text->curl) {
+              text->curc = 0;
+            }
+          }
+        }
+      }
+    }
+    {
+      /* set new dynamic paint values */
+      Object *ob;
+      for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+        ModifierData *md;
+        for (md = ob->modifiers.first; md; md = md->next) {
+          if (md->type == eModifierType_DynamicPaint) {
+            DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
+            if (pmd->canvas) {
+              DynamicPaintSurface *surface = pmd->canvas->surfaces.first;
+              for (; surface; surface = surface->next) {
+                surface->color_dry_threshold = 1.0f;
+                surface->influence_scale = 1.0f;
+                surface->radius_scale = 1.0f;
+                surface->flags |= MOD_DPAINT_USE_DRYING;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (bmain->versionfile < 262) {
+    Object *ob;
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      ModifierData *md;
+
+      for (md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_Cloth) {
+          ClothModifierData *clmd = (ClothModifierData *)md;
+          if (clmd->sim_parms) {
+            clmd->sim_parms->vel_damping = 1.0f;
+          }
+        }
+      }
+    }
+  }
+
+  if (bmain->versionfile < 263) {
+    /* set fluidsim rate. the version patch for this in 2.62 was wrong, so
+     * try to correct it, if rate is 0.0 that's likely not intentional */
+    Object *ob;
+
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      ModifierData *md;
+      for (md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_Fluidsim) {
+          FluidsimModifierData *fmd = (FluidsimModifierData *)md;
+          if (fmd->fss->animRate == 0.0f) {
+            fmd->fss->animRate = 1.0f;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 262, 1)) {
+    /* update use flags for node sockets (was only temporary before) */
+    Scene *sce;
+    bNodeTree *ntree;
+
+    for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      if (sce->nodetree) {
+        do_versions_nodetree_multi_file_output_format_2_62_1(sce, sce->nodetree);
+      }
+    }
+
+    /* XXX can't associate with scene for group nodes, image format will stay uninitialized */
+    for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
+      do_versions_nodetree_multi_file_output_format_2_62_1(NULL, ntree);
+    }
+  }
+
+  /* only swap for pre-release bmesh merge which had MLoopCol red/blue swap */
+  if (bmain->versionfile == 262 && bmain->subversionfile == 1) {
+    {
+      Mesh *me;
+      for (me = bmain->meshes.first; me; me = me->id.next) {
+        do_versions_mesh_mloopcol_swap_2_62_1(me);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 262, 2)) {
+    /* Set new idname of keyingsets from their now "label-only" name. */
+    Scene *scene;
+    for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      KeyingSet *ks;
+      for (ks = scene->keyingsets.first; ks; ks = ks->next) {
+        if (!ks->idname[0]) {
+          STRNCPY(ks->idname, ks->name);
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 262, 3)) {
+    Object *ob;
+    ModifierData *md;
+
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      for (md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_Lattice) {
+          LatticeModifierData *lmd = (LatticeModifierData *)md;
+          lmd->strength = 1.0f;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 262, 4)) {
+    /* Read Viscosity presets from older files */
+    Object *ob;
+
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      ModifierData *md;
+      for (md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_Fluidsim) {
+          FluidsimModifierData *fmd = (FluidsimModifierData *)md;
+          if (fmd->fss->viscosityMode == 3) {
+            fmd->fss->viscosityValue = 5.0;
+            fmd->fss->viscosityExponent = 5;
+          }
+          else if (fmd->fss->viscosityMode == 4) {
+            fmd->fss->viscosityValue = 2.0;
+            fmd->fss->viscosityExponent = 3;
+          }
+        }
+      }
+    }
+  }
+
+  if (bmain->versionfile < 263) {
+    /* Default for old files is to save particle rotations to pointcache */
+    ParticleSettings *part;
+    for (part = bmain->particles.first; part; part = part->id.next) {
+      part->flag |= PART_ROTATIONS;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 1)) {
+    /* file output node paths are now stored in the file info struct instead socket name */
+    Scene *sce;
+    bNodeTree *ntree;
+
+    for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      if (sce->nodetree) {
+        do_versions_nodetree_multi_file_output_path_2_63_1(sce->nodetree);
+      }
+    }
+    for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
+      do_versions_nodetree_multi_file_output_path_2_63_1(ntree);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 3)) {
+    Scene *scene;
+    Brush *brush;
+
+    /* For weight paint, each brush now gets its own weight;
+     * unified paint settings also have weight. Update unified
+     * paint settings and brushes with a default weight value. */
+
+    for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      ToolSettings *ts = scene->toolsettings;
+      if (ts) {
+        ts->unified_paint_settings.weight = ts->vgroup_weight;
+        ts->unified_paint_settings.flag |= UNIFIED_PAINT_WEIGHT;
+      }
+    }
+
+    for (brush = bmain->brushes.first; brush; brush = brush->id.next) {
+      brush->weight = 0.5;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 2)) {
+    bScreen *screen;
+
+    for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+      ScrArea *area;
+      for (area = screen->areabase.first; area; area = area->next) {
+        SpaceLink *sl;
+
+        for (sl = area->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_CLIP) {
+            SpaceClip *sclip = (SpaceClip *)sl;
+            ARegion *region;
+            bool hide = false;
+
+            for (region = area->regionbase.first; region; region = region->next) {
+              if (region->regiontype == RGN_TYPE_PREVIEW) {
+                if (region->alignment != RGN_ALIGN_NONE) {
+                  region->flag |= RGN_FLAG_HIDDEN;
+                  region->v2d.flag &= ~V2D_IS_INIT;
+                  region->alignment = RGN_ALIGN_NONE;
+
+                  hide = true;
+                }
+              }
+            }
+
+            if (hide) {
+              sclip->view = SC_VIEW_CLIP;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 4)) {
+    Camera *cam;
+    Curve *cu;
+
+    for (cam = bmain->cameras.first; cam; cam = cam->id.next) {
+      if (cam->flag & CAM_PANORAMA) {
+        cam->type = CAM_PANO;
+        cam->flag &= ~CAM_PANORAMA;
+      }
+    }
+
+    for (cu = bmain->curves.first; cu; cu = cu->id.next) {
+      if (cu->bevfac2 == 0.0f) {
+        cu->bevfac1 = 0.0f;
+        cu->bevfac2 = 1.0f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 5)) {
+    {
+      /* file output node paths are now stored in the file info struct instead socket name */
+      Scene *sce;
+      bNodeTree *ntree;
+
+      for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+        if (sce->nodetree) {
+          do_versions_nodetree_file_output_layers_2_64_5(sce->nodetree);
+          do_versions_nodetree_image_layer_2_64_5(sce->nodetree);
+        }
+      }
+      for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
+        do_versions_nodetree_file_output_layers_2_64_5(ntree);
+        do_versions_nodetree_image_layer_2_64_5(ntree);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 6)) {
+    /* update use flags for node sockets (was only temporary before) */
+    Scene *sce;
+    Material *mat;
+    Tex *tex;
+    World *world;
+    bNodeTree *ntree;
+
+    for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      if (sce->nodetree) {
+        do_versions_nodetree_frame_2_64_6(sce->nodetree);
+      }
+    }
+
+    for (mat = bmain->materials.first; mat; mat = mat->id.next) {
+      if (mat->nodetree) {
+        do_versions_nodetree_frame_2_64_6(mat->nodetree);
+      }
+    }
+
+    for (tex = bmain->textures.first; tex; tex = tex->id.next) {
+      if (tex->nodetree) {
+        do_versions_nodetree_frame_2_64_6(tex->nodetree);
+      }
+    }
+
+    for (Light *la = bmain->lights.first; la; la = la->id.next) {
+      if (la->nodetree) {
+        do_versions_nodetree_frame_2_64_6(la->nodetree);
+      }
+    }
+
+    for (world = bmain->worlds.first; world; world = world->id.next) {
+      if (world->nodetree) {
+        do_versions_nodetree_frame_2_64_6(world->nodetree);
+      }
+    }
+
+    for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
+      do_versions_nodetree_frame_2_64_6(ntree);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 7)) {
+    Object *ob;
+
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      ModifierData *md;
+      for (md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_Fluid) {
+          FluidModifierData *fmd = (FluidModifierData *)md;
+          if ((fmd->type & MOD_FLUID_TYPE_DOMAIN) && fmd->domain) {
+            int maxres = max_iii(fmd->domain->res[0], fmd->domain->res[1], fmd->domain->res[2]);
+            fmd->domain->scale = fmd->domain->dx * maxres;
+            fmd->domain->dx = 1.0f / fmd->domain->scale;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 9)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
+            NodeTexImage *tex = node->storage;
+
+            tex->iuser.frames = 1;
+            tex->iuser.sfra = 1;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 10)) {
+    {
+      Scene *scene;
+      /* composite redesign */
+      for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+        if (scene->nodetree) {
+          if (scene->nodetree->chunksize == 0) {
+            scene->nodetree->chunksize = 256;
+          }
+        }
+      }
+
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_COMPOSIT) {
+          bNode *node;
+          for (node = ntree->nodes.first; node; node = node->next) {
+            if (node->type == CMP_NODE_DEFOCUS) {
+              NodeDefocus *data = node->storage;
+              if (data->maxblur == 0.0f) {
+                data->maxblur = 16.0f;
+              }
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
+
+    {
+      bScreen *screen;
+
+      for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+        ScrArea *area;
+
+        for (area = screen->areabase.first; area; area = area->next) {
+          SpaceLink *sl;
+
+          for (sl = area->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_CLIP) {
+              SpaceClip *sclip = (SpaceClip *)sl;
+
+              if (sclip->around == 0) {
+                sclip->around = V3D_AROUND_CENTER_MEDIAN;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    {
+      MovieClip *clip;
+
+      for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
+        clip->start_frame = 1;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 11)) {
+    MovieClip *clip;
+
+    for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
+      MovieTrackingTrack *track;
+
+      track = clip->tracking.tracks_legacy.first;
+      while (track) {
+        do_versions_affine_tracker_track(track);
+
+        track = track->next;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 13)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == CMP_NODE_DILATEERODE) {
+            if (node->storage == NULL) {
+              NodeDilateErode *data = MEM_callocN(sizeof(NodeDilateErode), __func__);
+              data->falloff = PROP_SMOOTH;
+              node->storage = data;
+            }
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 14)) {
+    ParticleSettings *part;
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == CMP_NODE_KEYING) {
+            NodeKeyingData *data = node->storage;
+
+            if (data->despill_balance == 0.0f) {
+              data->despill_balance = 0.5f;
+            }
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    /* keep compatibility for dupliobject particle size */
+    for (part = bmain->particles.first; part; part = part->id.next) {
+      if (ELEM(part->ren_as, PART_DRAW_OB, PART_DRAW_GR)) {
+        if ((part->draw & PART_DRAW_ROTATE_OB) == 0) {
+          part->draw |= PART_DRAW_NO_SCALE_OB;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 17)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == CMP_NODE_MASK) {
+            if (node->storage == NULL) {
+              NodeMask *data = MEM_callocN(sizeof(NodeMask), __func__);
+              /* move settings into own struct */
+              data->size_x = (int)node->custom3;
+              data->size_y = (int)node->custom4;
+              node->custom3 = 0.5f; /* default shutter */
+              node->storage = data;
+            }
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 18)) {
+    Scene *scene;
+
+    for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      if (scene->ed) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_colorbalance_update_cb, NULL);
+      }
+    }
+  }
+
+  /* color management pipeline changes compatibility code */
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 19)) {
+    Scene *scene;
+    Image *ima;
+    bool colormanagement_disabled = false;
+
+    /* make scenes which are not using color management have got None as display device,
+     * so they wouldn't perform linear-to-sRGB conversion on display
+     */
+    for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      if ((scene->r.color_mgt_flag & R_COLOR_MANAGEMENT) == 0) {
+        ColorManagedDisplaySettings *display_settings = &scene->display_settings;
+
+        if (display_settings->display_device[0] == 0) {
+          BKE_scene_disable_color_management(scene);
+        }
+
+        colormanagement_disabled = true;
+      }
+    }
+
+    for (ima = bmain->images.first; ima; ima = ima->id.next) {
+      if (ima->source == IMA_SRC_VIEWER) {
+        ima->flag |= IMA_VIEW_AS_RENDER;
+      }
+      else if (colormanagement_disabled) {
+        /* if color-management not used, set image's color space to raw, so no sRGB->linear
+         * conversion would happen on display and render there's no clear way to check whether
+         * color management is enabled or not in render engine so set all images to raw if there's
+         * at least one scene with color management disabled this would still behave incorrect in
+         * cases when color management was used for only some of scenes, but such a setup is
+         * crazy anyway and think it's fair enough to break compatibility in that cases.
+         */
+
+        STRNCPY(ima->colorspace_settings.name, "Raw");
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 20)) {
+    Key *key;
+    for (key = bmain->shapekeys.first; key; key = key->id.next) {
+      blo_do_versions_key_uidgen(key);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 263, 21)) {
+    {
+      Mesh *me;
+      for (me = bmain->meshes.first; me; me = me->id.next) {
+        CustomData_update_typemap(&me->vdata);
+        CustomData_free_layers(&me->vdata, CD_MSTICKY, me->totvert);
+      }
+    }
+  }
+
+  /* correction for files saved in blender version when BKE_pose_copy_data
+   * didn't copy animation visualization, which lead to deadlocks on motion
+   * path calculation for proxied armatures, see #32742.
+   */
+  if (bmain->versionfile < 264) {
+    Object *ob;
+
+    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+      if (ob->pose) {
+        if (ob->pose->avs.path_step == 0) {
+          animviz_settings_init(&ob->pose->avs);
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 264, 1)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == SH_NODE_TEX_COORD) {
+            node->flag |= NODE_OPTIONS;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 264, 2)) {
+    MovieClip *clip;
+
+    for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
+      MovieTracking *tracking = &clip->tracking;
+      MovieTrackingObject *tracking_object;
+
+      for (tracking_object = tracking->objects.first; tracking_object;
+           tracking_object = tracking_object->next)
+      {
+        if (tracking_object->keyframe1 == 0 && tracking_object->keyframe2 == 0) {
+          tracking_object->keyframe1 = tracking->settings.keyframe1_legacy;
+          tracking_object->keyframe2 = tracking->settings.keyframe2_legacy;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 264, 3)) {
+    /* smoke branch */
+    {
+      Object *ob;
+
+      for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+        ModifierData *md;
+        for (md = ob->modifiers.first; md; md = md->next) {
+          if (md->type == eModifierType_Fluid) {
+            FluidModifierData *fmd = (FluidModifierData *)md;
+            if ((fmd->type & MOD_FLUID_TYPE_DOMAIN) && fmd->domain) {
+              /* keep branch saves if possible */
+              if (!fmd->domain->flame_max_temp) {
+                fmd->domain->burning_rate = 0.75f;
+                fmd->domain->flame_smoke = 1.0f;
+                fmd->domain->flame_vorticity = 0.5f;
+                fmd->domain->flame_ignition = 1.25f;
+                fmd->domain->flame_max_temp = 1.75f;
+                fmd->domain->adapt_threshold = 0.02f;
+                fmd->domain->adapt_margin = 4;
+                fmd->domain->flame_smoke_color[0] = 0.7f;
+                fmd->domain->flame_smoke_color[1] = 0.7f;
+                fmd->domain->flame_smoke_color[2] = 0.7f;
+              }
+            }
+            else if ((fmd->type & MOD_FLUID_TYPE_FLOW) && fmd->flow) {
+              if (!fmd->flow->texture_size) {
+                fmd->flow->fuel_amount = 1.0;
+                fmd->flow->surface_distance = 1.5;
+                fmd->flow->color[0] = 0.7f;
+                fmd->flow->color[1] = 0.7f;
+                fmd->flow->color[2] = 0.7f;
+                fmd->flow->texture_size = 1.0f;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /* render border for viewport */
+    {
+      bScreen *screen;
+
+      for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+        ScrArea *area;
+        for (area = screen->areabase.first; area; area = area->next) {
+          SpaceLink *sl;
+          for (sl = area->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              if (v3d->render_border.xmin == 0.0f && v3d->render_border.ymin == 0.0f &&
+                  v3d->render_border.xmax == 0.0f && v3d->render_border.ymax == 0.0f)
+              {
+                v3d->render_border.xmax = 1.0f;
+                v3d->render_border.ymax = 1.0f;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 264, 5)) {
+    /* set a unwrapping margin and ABF by default */
+    Scene *scene;
+
+    for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      if (scene->toolsettings->uvcalc_margin == 0.0f) {
+        scene->toolsettings->uvcalc_margin = 0.001f;
+        scene->toolsettings->unwrapper = 0;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 264, 7)) {
+    /* convert tiles size from resolution and number of tiles */
+    {
+      Scene *scene;
+
+      for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+        if (scene->r.tilex == 0 || scene->r.tiley == 1) {
+          scene->r.tilex = scene->r.tiley = 64;
+        }
+      }
+    }
+
+    /* collision masks */
+    {
+      Object *ob;
+      for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+        if (ob->col_group == 0) {
+          ob->col_group = 0x01;
+          ob->col_mask = 0xff;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 264, 7)) {
+    LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
+      LISTBASE_FOREACH (MovieTrackingTrack *, track, &clip->tracking.tracks_legacy) {
+        do_versions_affine_tracker_track(track);
+      }
+
+      LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &clip->tracking.objects) {
+        LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking_object->tracks) {
+          do_versions_affine_tracker_track(track);
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 265, 3)) {
+    bScreen *screen;
+    for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+      ScrArea *area;
+      for (area = screen->areabase.first; area; area = area->next) {
+        SpaceLink *sl;
+        for (sl = area->spacedata.first; sl; sl = sl->next) {
+          switch (sl->spacetype) {
+            case SPACE_VIEW3D: {
+              View3D *v3d = (View3D *)sl;
+              v3d->flag2 |= V3D_SHOW_ANNOTATION;
+              break;
+            }
+            case SPACE_SEQ: {
+              SpaceSeq *sseq = (SpaceSeq *)sl;
+              sseq->flag |= SEQ_PREVIEW_SHOW_GPENCIL;
+              break;
+            }
+            case SPACE_IMAGE: {
+              SpaceImage *sima = (SpaceImage *)sl;
+              sima->flag |= SI_SHOW_GPENCIL;
+              break;
+            }
+            case SPACE_NODE: {
+              SpaceNode *snode = (SpaceNode *)sl;
+              snode->flag |= SNODE_SHOW_GPENCIL;
+              break;
+            }
+            case SPACE_CLIP: {
+              SpaceClip *sclip = (SpaceClip *)sl;
+              sclip->flag |= SC_SHOW_ANNOTATION;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 265, 5)) {
+    Scene *scene;
+    Tex *tex;
+
+    for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      if (scene->ed) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_set_alpha_mode_cb, NULL);
+      }
+
+      if (scene->r.bake_samples == 0) {
+        scene->r.bake_samples = 256;
+      }
+    }
+
+    for (Image *image = bmain->images.first; image; image = image->id.next) {
+      if (image->flag & IMA_DO_PREMUL) {
+        image->alpha_mode = IMA_ALPHA_STRAIGHT;
+      }
+      else {
+        BKE_image_alpha_mode_from_extension(image);
+      }
+    }
+
+    for (tex = bmain->textures.first; tex; tex = tex->id.next) {
+      if (tex->type == TEX_IMAGE && (tex->imaflag & TEX_USEALPHA) == 0) {
+        Image *image = blo_do_versions_newlibadr(fd, &tex->id, ID_IS_LINKED(tex), tex->ima);
+
+        if (image && (image->flag & IMA_DO_PREMUL) == 0) {
+          enum { IMA_IGNORE_ALPHA = (1 << 12) };
+          image->flag |= IMA_IGNORE_ALPHA;
+        }
+      }
+    }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == CMP_NODE_IMAGE) {
+            Image *image = blo_do_versions_newlibadr(
+                fd, &ntree->id, ID_IS_LINKED(ntree), node->id);
+
+            if (image) {
+              if ((image->flag & IMA_DO_PREMUL) == 0 && image->alpha_mode == IMA_ALPHA_STRAIGHT) {
+                node->custom1 |= CMP_NODE_IMAGE_USE_STRAIGHT_OUTPUT;
+              }
+            }
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+  else if (!MAIN_VERSION_ATLEAST(bmain, 266, 1)) {
+    /* texture use alpha was removed for 2.66 but added back again for 2.66a,
+     * for compatibility all textures assumed it to be enabled */
+    Tex *tex;
+
+    for (tex = bmain->textures.first; tex; tex = tex->id.next) {
+      if (tex->type == TEX_IMAGE) {
+        tex->imaflag |= TEX_USEALPHA;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 265, 7)) {
+    Curve *cu;
+
+    for (cu = bmain->curves.first; cu; cu = cu->id.next) {
+      if (cu->flag & (CU_FRONT | CU_BACK)) {
+        if (cu->extrude != 0.0f || cu->bevel_radius != 0.0f) {
+          Nurb *nu;
+
+          for (nu = cu->nurb.first; nu; nu = nu->next) {
+            int a;
+
+            if (nu->bezt) {
+              BezTriple *bezt = nu->bezt;
+              a = nu->pntsu;
+
+              while (a--) {
+                bezt->radius = 1.0f;
+                bezt++;
+              }
+            }
+            else if (nu->bp) {
+              BPoint *bp = nu->bp;
+              a = nu->pntsu * nu->pntsv;
+
+              while (a--) {
+                bp->radius = 1.0f;
+                bp++;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 265, 9)) {
+    Mesh *me;
+    for (me = bmain->meshes.first; me; me = me->id.next) {
+      BKE_mesh_do_versions_cd_flag_init(me);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 265, 10)) {
+    Brush *br;
+    for (br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->ob_mode & OB_MODE_TEXTURE_PAINT) {
+        br->mtex.brush_map_mode = MTEX_MAP_MODE_TILED;
+      }
+    }
+  }
+
+  /* add storage for compositor translate nodes when not existing */
+  if (!MAIN_VERSION_ATLEAST(bmain, 265, 11)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        bNode *node;
+        for (node = ntree->nodes.first; node; node = node->next) {
+          if (node->type == CMP_NODE_TRANSLATE && node->storage == NULL) {
+            node->storage = MEM_callocN(sizeof(NodeTranslateData), "node translate data");
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 266, 2)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      do_versions_nodetree_customnodes(ntree, ((ID *)ntree == id));
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 266, 2)) {
+    bScreen *screen;
+    for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+      ScrArea *area;
+      for (area = screen->areabase.first; area; area = area->next) {
+        SpaceLink *sl;
+        for (sl = area->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_NODE) {
+            SpaceNode *snode = (SpaceNode *)sl;
+
+            /* reset pointers to force tree path update from context */
+            snode->nodetree = NULL;
+            snode->edittree = NULL;
+            snode->id = NULL;
+            snode->from = NULL;
+
+            /* convert deprecated treetype setting to tree_idname */
+            switch (snode->treetype) {
+              case NTREE_COMPOSIT:
+                STRNCPY(snode->tree_idname, "CompositorNodeTree");
+                break;
+              case NTREE_SHADER:
+                STRNCPY(snode->tree_idname, "ShaderNodeTree");
+                break;
+              case NTREE_TEXTURE:
+                STRNCPY(snode->tree_idname, "TextureNodeTree");
+                break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 266, 3)) {
+    {
+      /* Fix for a very old issue:
+       * Node names were nominally made unique in r24478 (2.50.8), but the do_versions check
+       * to update existing node names only applied to bmain->nodetree (i.e. group nodes).
+       * Uniqueness is now required for proper preview mapping,
+       * so do this now to ensure old files don't break.
+       */
+      bNode *node;
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (id == &ntree->id) {
+          continue; /* already fixed for node groups */
+        }
+
+        for (node = ntree->nodes.first; node; node = node->next) {
+          nodeUniqueName(ntree, node);
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 266, 4)) {
+    Brush *brush;
+    for (brush = bmain->brushes.first; brush; brush = brush->id.next) {
+      BKE_texture_mtex_default(&brush->mask_mtex);
+
+      if (brush->ob_mode & OB_MODE_TEXTURE_PAINT) {
+        brush->spacing /= 2;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 266, 6)) {
+    Brush *brush;
+#define BRUSH_TEXTURE_OVERLAY (1 << 21)
+
+    for (brush = bmain->brushes.first; brush; brush = brush->id.next) {
+      brush->overlay_flags = 0;
+      if (brush->flag & BRUSH_TEXTURE_OVERLAY) {
+        brush->overlay_flags |= (BRUSH_OVERLAY_PRIMARY | BRUSH_OVERLAY_CURSOR);
+      }
+    }
+#undef BRUSH_TEXTURE_OVERLAY
+  }
+
+  if (bmain->versionfile < 267) {
+    // if (!DNA_struct_elem_find(fd->filesdna, "Brush", "int", "stencil_pos")) {
+    Brush *brush;
+
+    for (brush = bmain->brushes.first; brush; brush = brush->id.next) {
+      if (brush->stencil_dimension[0] == 0) {
+        brush->stencil_dimension[0] = 256;
+        brush->stencil_dimension[1] = 256;
+        brush->stencil_pos[0] = 256;
+        brush->stencil_pos[1] = 256;
+      }
+      if (brush->mask_stencil_dimension[0] == 0) {
+        brush->mask_stencil_dimension[0] = 256;
+        brush->mask_stencil_dimension[1] = 256;
+        brush->mask_stencil_pos[0] = 256;
+        brush->mask_stencil_pos[1] = 256;
+      }
+    }
+
+    /* TIP: to initialize new variables added, use the new function
+     * DNA_struct_elem_find(fd->filesdna, "structname", "typename", "varname")
+     * example:
+     * if (!DNA_struct_elem_find(fd->filesdna, "UserDef", "short", "image_gpubuffer_limit"))
+     *     user->image_gpubuffer_limit = 10;
+     */
+  }
+
+  /* default values in Freestyle settings */
+  if (bmain->versionfile < 267) {
+    Scene *sce;
+    SceneRenderLayer *srl;
+    FreestyleLineStyle *linestyle;
+
+    for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      if (sce->r.line_thickness_mode == 0) {
+        sce->r.line_thickness_mode = R_LINE_THICKNESS_ABSOLUTE;
+        sce->r.unit_line_thickness = 1.0f;
+      }
+      for (srl = sce->r.layers.first; srl; srl = srl->next) {
+        if (srl->freestyleConfig.mode == 0) {
+          srl->freestyleConfig.mode = FREESTYLE_CONTROL_EDITOR_MODE;
+        }
+        if (ELEM(srl->freestyleConfig.raycasting_algorithm,
+                 FREESTYLE_ALGO_CULLED_ADAPTIVE_CUMULATIVE,
+                 FREESTYLE_ALGO_CULLED_ADAPTIVE_TRADITIONAL))
         {
           ob->dscale[i] = 1.0f;
         }
