@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Preferences Data File 'U_default'. */
 
@@ -38,6 +40,8 @@ const UserDef U_default = {
     .sounddir = "//",
     .i18ndir = "",
     .image_editor = "",
+    .text_editor = "",
+    .text_editor_args = "",
     .anim_player = "",
     .anim_player_preset = 0,
     .v2d_min_gridsize = 45,

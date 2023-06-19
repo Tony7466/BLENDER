@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -34,7 +35,7 @@ void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   DRWShadingGroup *points_grp = pd->edit_grease_pencil_points_grp;
   if (points_grp) {
-    struct GPUBatch *geom = DRW_cache_grease_pencil_edit_points_get(ob, pd->cfra);
+    GPUBatch *geom = DRW_cache_grease_pencil_edit_points_get(ob, pd->cfra);
     DRW_shgroup_call_no_cull(points_grp, geom, ob);
   }
 }

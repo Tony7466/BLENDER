@@ -288,7 +288,7 @@ static void id_release_weakref(struct ID *id)
 
 #endif /* USE_PYRNA_INVALIDATE_WEAKREF */
 
-void BPY_id_release(struct ID *id)
+void BPY_id_release(ID *id)
 {
 #ifdef USE_PYRNA_INVALIDATE_GC
   id_release_gc(id);
@@ -2387,9 +2387,9 @@ static PyObject *pyrna_prop_collection_subscript_str(BPy_PropertyRNA *self, cons
   }
   else if (RNA_property_collection_lookup_string_has_nameprop(self->prop)) {
     /* No callback defined, just iterate and find the nth item. */
-    const int keylen = strlen(keyname);
+    const int key_len = strlen(keyname);
     char name[256];
-    int namelen;
+    int name_len;
     PyObject *result = NULL;
     bool found = false;
     CollectionPropertyIterator iter;
@@ -2400,13 +2400,13 @@ static PyObject *pyrna_prop_collection_subscript_str(BPy_PropertyRNA *self, cons
        * Although it's technically possible a sub-type clears the name property,
        * this seems unlikely. */
       BLI_assert(nameprop != NULL);
-      char *nameptr = RNA_property_string_get_alloc(
-          &iter.ptr, nameprop, name, sizeof(name), &namelen);
-      if ((keylen == namelen) && STREQ(nameptr, keyname)) {
+      char *name_ptr = RNA_property_string_get_alloc(
+          &iter.ptr, nameprop, name, sizeof(name), &name_len);
+      if ((key_len == name_len) && STREQ(name_ptr, keyname)) {
         found = true;
       }
-      if (name != nameptr) {
-        MEM_freeN(nameptr);
+      if (name != name_ptr) {
+        MEM_freeN(name_ptr);
       }
       if (found) {
         result = pyrna_struct_CreatePyObject(&iter.ptr);
@@ -4174,8 +4174,8 @@ static void pyrna_dir_members_rna(PyObject *list, PointerRNA *ptr)
     /*
      * Collect RNA attributes
      */
-    char name[256], *nameptr;
-    int namelen;
+    char name[256], *name_ptr;
+    int name_len;
 
     iterprop = RNA_struct_iterator_property(ptr->type);
 
@@ -4184,13 +4184,13 @@ static void pyrna_dir_members_rna(PyObject *list, PointerRNA *ptr)
       if (RNA_property_is_idprop(itemptr.data)) {
         continue;
       }
-      nameptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &namelen);
+      name_ptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &name_len);
 
-      if (nameptr) {
-        PyList_APPEND(list, PyUnicode_FromStringAndSize(nameptr, namelen));
+      if (name_ptr) {
+        PyList_APPEND(list, PyUnicode_FromStringAndSize(name_ptr, name_len));
 
-        if (name != nameptr) {
-          MEM_freeN(nameptr);
+        if (name != name_ptr) {
+          MEM_freeN(name_ptr);
         }
       }
     }
@@ -4956,17 +4956,17 @@ PyDoc_STRVAR(pyrna_prop_collection_keys_doc,
 static PyObject *pyrna_prop_collection_keys(BPy_PropertyRNA *self)
 {
   PyObject *ret = PyList_New(0);
-  char name[256], *nameptr;
-  int namelen;
+  char name[256], *name_ptr;
+  int name_len;
 
   RNA_PROP_BEGIN (&self->ptr, itemptr, self->prop) {
-    nameptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &namelen);
+    name_ptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &name_len);
 
-    if (nameptr) {
-      PyList_APPEND(ret, PyUnicode_FromStringAndSize(nameptr, namelen));
+    if (name_ptr) {
+      PyList_APPEND(ret, PyUnicode_FromStringAndSize(name_ptr, name_len));
 
-      if (name != nameptr) {
-        MEM_freeN(nameptr);
+      if (name != name_ptr) {
+        MEM_freeN(name_ptr);
       }
     }
   }
@@ -4987,19 +4987,19 @@ static PyObject *pyrna_prop_collection_items(BPy_PropertyRNA *self)
 {
   PyObject *ret = PyList_New(0);
   PyObject *item;
-  char name[256], *nameptr;
-  int namelen;
+  char name[256], *name_ptr;
+  int name_len;
   int i = 0;
 
   RNA_PROP_BEGIN (&self->ptr, itemptr, self->prop) {
     if (itemptr.data) {
       /* Add to Python list. */
       item = PyTuple_New(2);
-      nameptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &namelen);
-      if (nameptr) {
-        PyTuple_SET_ITEM(item, 0, PyUnicode_FromStringAndSize(nameptr, namelen));
-        if (name != nameptr) {
-          MEM_freeN(nameptr);
+      name_ptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &name_len);
+      if (name_ptr) {
+        PyTuple_SET_ITEM(item, 0, PyUnicode_FromStringAndSize(name_ptr, name_len));
+        if (name != name_ptr) {
+          MEM_freeN(name_ptr);
         }
       }
       else {
@@ -5208,28 +5208,28 @@ PyDoc_STRVAR(pyrna_prop_collection_find_doc,
              "   :rtype: int\n");
 static PyObject *pyrna_prop_collection_find(BPy_PropertyRNA *self, PyObject *key_ob)
 {
-  Py_ssize_t key_len_ssize_t;
-  const char *key = PyUnicode_AsUTF8AndSize(key_ob, &key_len_ssize_t);
-  const int key_len = (int)key_len_ssize_t; /* Compare with same type. */
+  Py_ssize_t key_len_ssize;
+  const char *key = PyUnicode_AsUTF8AndSize(key_ob, &key_len_ssize);
+  const int key_len = (int)key_len_ssize; /* Compare with same type. */
 
-  char name[256], *nameptr;
-  int namelen;
+  char name[256], *name_ptr;
+  int name_len;
   int i = 0;
   int index = -1;
 
   PYRNA_PROP_CHECK_OBJ(self);
 
   RNA_PROP_BEGIN (&self->ptr, itemptr, self->prop) {
-    nameptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &namelen);
+    name_ptr = RNA_struct_name_get_alloc(&itemptr, name, sizeof(name), &name_len);
 
-    if (nameptr) {
-      if ((key_len == namelen) && memcmp(nameptr, key, key_len) == 0) {
+    if (name_ptr) {
+      if ((key_len == name_len) && memcmp(name_ptr, key, key_len) == 0) {
         index = i;
         break;
       }
 
-      if (name != nameptr) {
-        MEM_freeN(nameptr);
+      if (name != name_ptr) {
+        MEM_freeN(name_ptr);
       }
     }
 
@@ -5803,7 +5803,7 @@ static PyObject *pyrna_prop_collection_iter(BPy_PropertyRNA *self)
 }
 #endif /* # !USE_PYRNA_ITER */
 
-static struct PyMethodDef pyrna_struct_methods[] = {
+static PyMethodDef pyrna_struct_methods[] = {
 
     /* Only for PointerRNA's with ID'props. */
     {"keys", (PyCFunction)pyrna_struct_keys, METH_NOARGS, pyrna_struct_keys_doc},
@@ -5906,7 +5906,7 @@ static struct PyMethodDef pyrna_struct_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef pyrna_prop_methods[] = {
+static PyMethodDef pyrna_prop_methods[] = {
     {"path_from_id",
      (PyCFunction)pyrna_prop_path_from_id,
      METH_NOARGS,
@@ -5917,7 +5917,7 @@ static struct PyMethodDef pyrna_prop_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef pyrna_prop_array_methods[] = {
+static PyMethodDef pyrna_prop_array_methods[] = {
     {"foreach_get",
      (PyCFunction)pyrna_prop_array_foreach_get,
      METH_VARARGS,
@@ -5930,7 +5930,7 @@ static struct PyMethodDef pyrna_prop_array_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef pyrna_prop_collection_methods[] = {
+static PyMethodDef pyrna_prop_collection_methods[] = {
     {"foreach_get",
      (PyCFunction)pyrna_prop_collection_foreach_get,
      METH_VARARGS,
@@ -5955,7 +5955,7 @@ static struct PyMethodDef pyrna_prop_collection_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef pyrna_prop_collection_idprop_methods[] = {
+static PyMethodDef pyrna_prop_collection_idprop_methods[] = {
     {"add", (PyCFunction)pyrna_prop_collection_idprop_add, METH_NOARGS, NULL},
     {"remove", (PyCFunction)pyrna_prop_collection_idprop_remove, METH_O, NULL},
     {"clear", (PyCFunction)pyrna_prop_collection_idprop_clear, METH_NOARGS, NULL},
@@ -7781,14 +7781,14 @@ static PyObject *bpy_types_module_dir(PyObject *self)
   return ret;
 }
 
-static struct PyMethodDef bpy_types_module_methods[] = {
+static PyMethodDef bpy_types_module_methods[] = {
     {"__getattr__", (PyCFunction)bpy_types_module_getattro, METH_O, NULL},
     {"__dir__", (PyCFunction)bpy_types_module_dir, METH_NOARGS, NULL},
     {NULL, NULL, 0, NULL},
 };
 
 PyDoc_STRVAR(bpy_types_module_doc, "Access to internal Blender types");
-static struct PyModuleDef bpy_types_module_def = {
+static PyModuleDef bpy_types_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bpy.types",
     /*m_doc*/ bpy_types_module_doc,
@@ -9153,9 +9153,7 @@ static PyObject *pyrna_unregister_class(PyObject *UNUSED(self), PyObject *py_cla
   Py_RETURN_NONE;
 }
 
-void pyrna_struct_type_extend_capi(struct StructRNA *srna,
-                                   struct PyMethodDef *method,
-                                   struct PyGetSetDef *getset)
+void pyrna_struct_type_extend_capi(StructRNA *srna, PyMethodDef *method, PyGetSetDef *getset)
 {
   /* See 'add_methods' in Python's 'typeobject.c'. */
   PyTypeObject *type = (PyTypeObject *)pyrna_srna_Subtype(srna);

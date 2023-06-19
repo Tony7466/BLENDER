@@ -256,7 +256,7 @@ struct uiWidgetType {
   /* converted colors for state */
   uiWidgetColors wcol;
 
-  void (*state)(struct uiWidgetType *, const uiWidgetStateInfo *state, eUIEmbossType emboss)
+  void (*state)(uiWidgetType *, const uiWidgetStateInfo *state, eUIEmbossType emboss)
       ATTR_NONNULL();
   void (*draw)(uiWidgetColors *,
                rcti *,
@@ -1571,7 +1571,7 @@ float UI_text_clip_middle_ex(const uiFontStyle *fstyle,
     const float parts_strwidth = (okwidth - sep_strwidth) / 2.0f;
 
     if (rpart) {
-      strcpy(rpart_buf, rpart);
+      STRNCPY(rpart_buf, rpart);
       *rpart = '\0';
       rpart = rpart_buf;
     }

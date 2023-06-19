@@ -68,7 +68,7 @@ typedef struct tGraphSliderOp {
   struct tSlider *slider;
 
   /* Each operator has a specific update function. */
-  void (*modal_update)(struct bContext *, struct wmOperator *);
+  void (*modal_update)(bContext *, wmOperator *);
 
   /* If an operator stores custom data, it also needs to provide the function to clean it up. */
   void *operator_data;
@@ -125,7 +125,7 @@ static void common_draw_status_header(bContext *C, tGraphSliderOp *gso, const ch
 
   ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
 
-  strcpy(mode_str, TIP_(operator_name));
+  STRNCPY(mode_str, TIP_(operator_name));
 
   if (hasNumInput(&gso->num)) {
     char str_ofs[NUM_STR_REP_LEN];
@@ -424,7 +424,7 @@ static void decimate_draw_status(bContext *C, tGraphSliderOp *gso)
 
   ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
 
-  strcpy(mode_str, TIP_("Decimate Keyframes"));
+  STRNCPY(mode_str, TIP_("Decimate Keyframes"));
 
   if (hasNumInput(&gso->num)) {
     char str_ofs[NUM_STR_REP_LEN];

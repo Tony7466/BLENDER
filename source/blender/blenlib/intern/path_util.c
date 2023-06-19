@@ -117,7 +117,7 @@ int BLI_path_sequence_decode(const char *path,
   if (head) {
     /* Name_end points to last character of head,
      * make it +1 so null-terminator is nicely placed. */
-    BLI_strncpy(head, path, name_end + 1);
+    BLI_strncpy(head, path, MIN2(head_maxncpy, name_end + 1));
   }
   if (r_digits_len) {
     *r_digits_len = 0;
@@ -1118,9 +1118,7 @@ bool BLI_path_abs(char path[FILE_MAX], const char *basepath)
     BLI_assert(strlen(tmp) == root_dir_len);
 
     /* Step over the slashes at the beginning of the path. */
-    while (BLI_path_slash_is_native_compat(*p)) {
-      p++;
-    }
+    p = (char *)BLI_path_slash_skip(p);
     BLI_strncpy(tmp + root_dir_len, p, sizeof(tmp) - root_dir_len);
   }
   else {
@@ -1956,6 +1954,15 @@ void BLI_path_slash_rstrip(char *path)
       break;
     }
   }
+}
+
+const char *BLI_path_slash_skip(const char *path)
+{
+  /* This accounts for a null byte too. */
+  while (BLI_path_slash_is_native_compat(*path)) {
+    path++;
+  }
+  return path;
 }
 
 void BLI_path_slash_native(char *path)
