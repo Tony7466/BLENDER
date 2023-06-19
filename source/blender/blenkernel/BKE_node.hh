@@ -365,7 +365,7 @@ namespace blender::bke {
 enum eNodeMixRotationMode : int8_t {
   AXIS = 0,
   EULER,
-  QUATERNION = 1,
+  QUATERNION,
 };
 
 }
