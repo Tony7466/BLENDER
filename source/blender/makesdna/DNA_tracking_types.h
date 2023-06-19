@@ -160,7 +160,7 @@ typedef struct MovieTrackingTrack {
    */
   short frames_limit;
   /** Margin from frame boundaries. */
-  short margin;
+  short frame_margin_px;
   /** Denotes which frame is used for the reference during tracking.
    * An enumerator of `eTrackFrameMatch`. */
   short pattern_match;
@@ -172,6 +172,11 @@ typedef struct MovieTrackingTrack {
   int algorithm_flag;
   /** Minimal correlation which is still treated as successful tracking. */
   float minimum_correlation;
+
+  /* Margin between pattern and search area.
+   * Factor relative to the search area size. */
+  float search_margin_factor;
+  float _pad2;
 
   /** Grease-pencil data. */
   struct bGPdata *gpd;
@@ -262,7 +267,7 @@ typedef struct MovieTrackingSettings {
    * (if TRACKING_FRAMES_LIMIT is set). */
   short default_frames_limit;
   /** Margin from frame boundaries. */
-  short default_margin;
+  short default_frame_margin_px;
   /** Denotes which frame is used for the reference during tracking.
    * An enumerator of `eTrackFrameMatch`. */
   short default_pattern_match;
@@ -270,6 +275,10 @@ typedef struct MovieTrackingSettings {
   short default_flag;
   /** Default weight of the track. */
   float default_weight;
+  /* Margin between pattern and search area.
+   * Factor relative to the search area size. */
+  float default_search_margin_factor;
+  float _pad;
 
   /** Flags describes motion type. */
   short motion_flag;

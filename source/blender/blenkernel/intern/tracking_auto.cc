@@ -14,8 +14,11 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_object_types.h" /* SELECT */
 
+#include "BLI_bounds_types.hh"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_math_vector.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -30,6 +33,9 @@
 
 #include "libmv-capi.h"
 #include "tracking_private.h"
+
+using float2 = blender::float2;
+using PatternBounds = blender::Bounds<blender::float2>;
 
 struct AutoTrackClip {
   MovieClip *clip;
@@ -282,25 +288,35 @@ static MovieTrackingMarker libmv_marker_to_dna_marker(const libmv_Marker &libmv_
  *
  * \{ */
 
-/* Returns false if marker crossed margin area from frame bounds. */
-static bool tracking_check_marker_margin(const libmv_Marker &libmv_marker,
-                                         const int margin,
-                                         const int frame_width,
-                                         const int frame_height)
+static PatternBounds libmv_marker_patch_minmax(const libmv_Marker &libmv_marker)
 {
-  float patch_min[2], patch_max[2];
-  float margin_left, margin_top, margin_right, margin_bottom;
+  PatternBounds pattern_bounds;
+  pattern_bounds.min = float2(FLT_MAX);
+  pattern_bounds.max = float2(-FLT_MAX);
 
-  INIT_MINMAX2(patch_min, patch_max);
-  minmax_v2v2_v2(patch_min, patch_max, libmv_marker.patch[0]);
-  minmax_v2v2_v2(patch_min, patch_max, libmv_marker.patch[1]);
-  minmax_v2v2_v2(patch_min, patch_max, libmv_marker.patch[2]);
-  minmax_v2v2_v2(patch_min, patch_max, libmv_marker.patch[3]);
+  blender::unroll<4>([&](auto i) {
+    const float2 point(libmv_marker.patch[i]);
+    pattern_bounds.min = blender::math::min(pattern_bounds.min, point);
+    pattern_bounds.max = blender::math::max(pattern_bounds.max, point);
+  });
 
-  margin_left = max_ff(libmv_marker.center[0] - patch_min[0], margin);
-  margin_top = max_ff(patch_max[1] - libmv_marker.center[1], margin);
-  margin_right = max_ff(patch_max[0] - libmv_marker.center[0], margin);
-  margin_bottom = max_ff(libmv_marker.center[1] - patch_min[1], margin);
+  return pattern_bounds;
+}
+
+/* Returns false if marker crossed margin area from frame bounds. */
+static bool tracking_check_marker_margin_to_frame_bounds(const libmv_Marker &libmv_marker,
+                                                         const int frame_margin_px,
+                                                         const int frame_width,
+                                                         const int frame_height)
+{
+  const PatternBounds pattern_bounds = libmv_marker_patch_minmax(libmv_marker);
+
+  const float margin_left = max_ff(libmv_marker.center[0] - pattern_bounds.min.x, frame_margin_px);
+  const float margin_top = max_ff(pattern_bounds.max.y - libmv_marker.center[1], frame_margin_px);
+  const float margin_right = max_ff(pattern_bounds.max.x - libmv_marker.center[0],
+                                    frame_margin_px);
+  const float margin_bottom = max_ff(libmv_marker.center[1] - pattern_bounds.min.y,
+                                     frame_margin_px);
 
   if (libmv_marker.center[0] < margin_left ||
       libmv_marker.center[0] > frame_width - margin_right ||
@@ -310,6 +326,28 @@ static bool tracking_check_marker_margin(const libmv_Marker &libmv_marker,
   }
 
   return true;
+}
+
+static void tracking_expand_search_area_if_needed(const MovieTrackingTrack &track,
+                                                  libmv_Marker &libmv_marker)
+{
+  const float2 search_region_size = float2(libmv_marker.search_region_max) -
+                                    float2(libmv_marker.search_region_min);
+
+  const float margin_x = search_region_size.x * track.search_margin_factor;
+  const float margin_y = search_region_size.y * track.search_margin_factor;
+
+  const PatternBounds pattern_bounds = libmv_marker_patch_minmax(libmv_marker);
+
+  libmv_marker.search_region_min[0] = min_ff(libmv_marker.search_region_min[0],
+                                             pattern_bounds.min.x - margin_x);
+  libmv_marker.search_region_min[1] = min_ff(libmv_marker.search_region_min[1],
+                                             pattern_bounds.min.y - margin_y);
+
+  libmv_marker.search_region_max[0] = max_ff(libmv_marker.search_region_max[0],
+                                             pattern_bounds.max.x + margin_x);
+  libmv_marker.search_region_max[1] = max_ff(libmv_marker.search_region_max[1],
+                                             pattern_bounds.max.y + margin_y);
 }
 
 /** \} */
@@ -647,8 +685,10 @@ static void autotrack_context_step_cb(void *__restrict userdata,
   const MovieTrackingTrack &track = *autotrack_track.track;
 
   /* Check whether marker is going outside of allowed frame margin. */
-  if (!tracking_check_marker_margin(
-          libmv_current_marker, track.margin, autotrack_clip.width, autotrack_clip.height))
+  if (!tracking_check_marker_margin_to_frame_bounds(libmv_current_marker,
+                                                    track.frame_margin_px,
+                                                    autotrack_clip.width,
+                                                    autotrack_clip.height))
   {
     return;
   }
@@ -688,6 +728,9 @@ static void autotrack_context_step_cb(void *__restrict userdata,
   if (!autotrack_result->success) {
     autotrack_result->libmv_marker = libmv_current_marker;
     autotrack_result->libmv_marker.frame = new_marker_frame;
+  }
+  else {
+    tracking_expand_search_area_if_needed(track, autotrack_result->libmv_marker);
   }
 
   BLI_addtail(&autotrack_tls->results, autotrack_result);

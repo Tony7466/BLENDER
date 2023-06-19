@@ -403,5 +403,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->r.im_format.flag &= ~R_IMF_FLAG_ZBUF_LEGACY;
       }
     }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingTrack", "float", "search_margin_factor"))
+    {
+      LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
+        MovieTracking &tracking = clip->tracking;
+
+        tracking.settings.default_search_margin_factor = 0.05f;
+
+        LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &tracking.objects) {
+          LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking_object->tracks) {
+            track->search_margin_factor = 0.05f;
+          }
+        }
+      }
+    }
   }
 }

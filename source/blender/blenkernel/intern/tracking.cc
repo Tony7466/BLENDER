@@ -332,6 +332,8 @@ void BKE_tracking_settings_init(MovieTracking *tracking)
   tracking->settings.default_minimum_correlation = 0.75;
   tracking->settings.default_pattern_size = 21;
   tracking->settings.default_search_size = 71;
+  tracking->settings.default_frame_margin_px = 0;
+  tracking->settings.default_search_margin_factor = 0.05f;
   tracking->settings.default_algorithm_flag |= TRACK_ALGORITHM_FLAG_USE_BRUTE;
   tracking->settings.default_weight = 1.0f;
   tracking->settings.dist = 1;
@@ -504,7 +506,8 @@ MovieTrackingTrack *BKE_tracking_track_add_empty(MovieTracking *tracking, ListBa
   /* Fill track's settings from default settings. */
   track->motion_model = settings->default_motion_model;
   track->minimum_correlation = settings->default_minimum_correlation;
-  track->margin = settings->default_margin;
+  track->frame_margin_px = settings->default_frame_margin_px;
+  track->search_margin_factor = settings->default_search_margin_factor;
   track->pattern_match = settings->default_pattern_match;
   track->frames_limit = settings->default_frames_limit;
   track->flag = settings->default_flag;

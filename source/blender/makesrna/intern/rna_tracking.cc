@@ -1033,13 +1033,23 @@ static void rna_def_trackingSettings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Pattern Match", "Track pattern from given frame when tracking marker to next frame");
 
-  /* default_margin */
+  /* default frame margin */
   prop = RNA_def_property(srna, "default_margin", PROP_INT, PROP_PIXEL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_int_sdna(prop, nullptr, "default_margin");
+  RNA_def_property_int_sdna(prop, nullptr, "default_frame_margin_px");
   RNA_def_property_range(prop, 0, 300);
   RNA_def_property_ui_text(
-      prop, "Margin", "Default distance from image boundary at which marker stops tracking");
+      prop, "Frame Margin", "Default distance from image boundary at which marker stops tracking");
+
+  /* default search margin */
+  prop = RNA_def_property(srna, "default_search_margin_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_float_sdna(prop, nullptr, "default_search_margin_factor");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop,
+                           "Search Margin",
+                           "Default margin (in percentage of search are size) between pattern and "
+                           "search area when tracking");
 
   /* default_tracking_motion_model */
   prop = RNA_def_property(srna, "default_motion_model", PROP_ENUM, PROP_NONE);
@@ -1533,14 +1543,24 @@ static void rna_def_trackingTrack(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Pattern Match", "Track pattern from given frame when tracking marker to next frame");
 
-  /* margin */
+  /* frame margin */
   prop = RNA_def_property(srna, "margin", PROP_INT, PROP_PIXEL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_int_sdna(prop, nullptr, "margin");
+  RNA_def_property_int_sdna(prop, nullptr, "frame_margin_px");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_range(prop, 0, 300);
   RNA_def_property_ui_text(
-      prop, "Margin", "Distance from image boundary at which marker stops tracking");
+      prop, "Frame Margin", "Distance from image boundary at which marker stops tracking");
+
+  /* search margin */
+  prop = RNA_def_property(srna, "search_margin_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_float_sdna(prop, nullptr, "search_margin_factor");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop,
+                           "Search Margin",
+                           "Default margin (in percentage of search are size) between pattern and "
+                           "search area when tracking");
 
   /* tracking motion model */
   prop = RNA_def_property(srna, "motion_model", PROP_ENUM, PROP_NONE);

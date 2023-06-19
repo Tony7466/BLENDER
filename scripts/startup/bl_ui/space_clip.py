@@ -465,6 +465,7 @@ class CLIP_PT_tracking_settings_extras(CLIP_PT_tracking_panel, Panel):
         col = layout.column(align=True)
         col.prop(settings, "default_correlation_min")
         col.prop(settings, "default_margin")
+        col.prop(settings, "default_search_margin_factor")
         col.prop(settings, "use_default_mask")
 
 
@@ -870,6 +871,7 @@ class CLIP_PT_track_settings_extras(CLIP_PT_tracking_panel, Panel):
         col = layout.column(align=True)
         col.prop(active, "correlation_min")
         col.prop(active, "margin")
+        col.prop(active, "search_margin_factor")
 
         col = layout.column()
         col.prop(active, "use_mask")

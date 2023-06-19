@@ -114,6 +114,7 @@ def CLIP_default_settings_from_track(clip, track, framenr):
     settings.default_frames_limit = track.frames_limit
     settings.default_pattern_match = track.pattern_match
     settings.default_margin = track.margin
+    settings.default_search_margin_factor = track.search_margin_factor
     settings.default_motion_model = track.motion_model
     settings.use_default_brute = track.use_brute
     settings.use_default_normalization = track.use_normalization
@@ -1023,6 +1024,7 @@ class CLIP_OT_track_settings_to_track(Operator):
         "frames_limit",
         "pattern_match",
         "margin",
+        "search_margin_factor",
         "motion_model",
         "use_brute",
         "use_normalization",
