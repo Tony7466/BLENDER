@@ -233,6 +233,7 @@ set(SRC
   intern/multires_versioning.cc
   intern/nla.c
   intern/node.cc
+  intern/node_declaration.cc
   intern/node_runtime.cc
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
@@ -451,6 +452,7 @@ set(SRC
   BKE_nla.h
   BKE_node.h
   BKE_node.hh
+  BKE_node_declaration.hh
   BKE_node_runtime.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
