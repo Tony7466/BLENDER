@@ -497,6 +497,7 @@ void MTLBufferPool::allocations_list_delete(gpu::MTLBuffer *buffer)
   /* Remove a buffer link in the allocations chain. */
   BLI_assert(initialized_);
   BLI_assert(buffer != nullptr);
+  BLI_assert(allocations_list_size_ >= 1);
 
   gpu::MTLBuffer *next = buffer->next;
   gpu::MTLBuffer *prev = buffer->prev;
@@ -516,7 +517,6 @@ void MTLBufferPool::allocations_list_delete(gpu::MTLBuffer *buffer)
     BLI_assert(prev == nullptr);
   }
   allocations_list_size_--;
-  BLI_assert(allocations_list_size_ >= 0);
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
   total_allocation_bytes_ -= buffer->get_size();
