@@ -123,17 +123,14 @@ struct RayCastAll_Data {
   BVHTree_RayCastCallback raycast_callback;
 
   const float (*obmat)[4];
-  const float (*timat)[3];
 
   float len_diff;
   float local_scale;
 
-  Object *ob_eval;
   uint ob_uuid;
 
   /* output data */
   ListBase *hit_list;
-  bool retval;
 };
 
 struct Nearest2dUserData;
