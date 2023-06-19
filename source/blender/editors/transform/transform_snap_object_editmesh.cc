@@ -25,6 +25,17 @@
 /** \name Snap Object Data
  * \{ */
 
+void SnapData_EditMesh::clear()
+{
+  for (int i = 0; i < ARRAY_SIZE(this->bvhtree); i++) {
+    if (!this->cached[i]) {
+      BLI_bvhtree_free(this->bvhtree[i]);
+    }
+    this->bvhtree[i] = nullptr;
+  }
+  free_bvhtree_from_editmesh(&this->treedata_editmesh);
+}
+
 /**
  * Calculate the minimum and maximum coordinates of the box that encompasses this mesh.
  */
