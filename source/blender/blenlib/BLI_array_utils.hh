@@ -159,4 +159,26 @@ inline BooleanMix booleans_mix_calc(const VArray<bool> &varray)
   return booleans_mix_calc(varray, varray.index_range());
 }
 
+template<typename T>
+inline void shift_to_back(const IndexRange range, MutableSpan<T> span, const int64_t steps = 1)
+{
+  BLI_assert(steps > 0);
+  BLI_assert(span.index_range().drop_back(steps).contains(range));
+
+  for (const int64_t i : range.index_range()) {
+    const int64_t index = range[range.size() - i - 1];
+    span[index + steps] = std::move(span[index]);
+  }
+}
+
+template<typename T>
+inline void shift_to_front(const IndexRange range, MutableSpan<T> span, const int64_t steps = 1)
+{
+  BLI_assert(steps > 0);
+  BLI_assert(span.index_range().drop_front(steps).contains(range));
+  for (const int64_t index : range) {
+    span[index - steps] = std::move(span[index]);
+  }
+}
+
 }  // namespace blender::array_utils

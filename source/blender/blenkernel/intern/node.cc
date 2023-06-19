@@ -32,6 +32,7 @@
 #include "DNA_texture_types.h"
 #include "DNA_world_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_color.hh"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -3856,7 +3857,7 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel)
   return ntree->panels().first_index_try(const_cast<bNodePanel *>(panel));
 }
 
-namespace bke {
+namespace blender::bke {
 
 static bNodePanel *new_panel_imp(const char *name)
 {
@@ -3877,7 +3878,7 @@ static bNodePanel *copy_panel_imp(const bNodePanel *other)
   panel->name = BLI_strdup(other->name);
   return panel;
 }
-}  // namespace bke
+}  // namespace blender::bke
 
 bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, const int /*flag*/)
 {
@@ -3888,7 +3889,7 @@ bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, const int /*flag*/
   MutableSpan<bNodePanel *> new_panels = ntree->panels();
 
   new_panels.drop_back(1).copy_from(old_panels);
-  new_panels.last() = bke::new_panel_imp(name);
+  new_panels.last() = blender::bke::new_panel_imp(name);
 
   if (!old_panels.is_empty()) {
     MEM_freeN(old_panels.data());
@@ -3914,8 +3915,9 @@ bNodePanel *ntreeInsertPanel(bNodeTree *ntree,
   MutableSpan<bNodePanel *> new_panels = ntree->panels();
 
   new_panels.drop_back(1).copy_from(old_panels);
-  new_panels.shift_to_back(new_panels.index_range().drop_front(index));
-  new_panels[index] = bke::new_panel_imp(name);
+  const blender::IndexRange shifted_panels = new_panels.index_range().drop_front(index);
+  blender::array_utils::shift_to_back(shifted_panels, new_panels);
+  new_panels[index] = blender::bke::new_panel_imp(name);
 
   if (!old_panels.is_empty()) {
     MEM_freeN(old_panels.data());
@@ -3928,7 +3930,8 @@ bNodePanel *ntreeInsertPanel(bNodeTree *ntree,
 void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel)
 {
   const int index = ntreeGetPanelIndex(ntree, panel);
-  if (index == -1) {
+  const blender::IndexRange old_panels_range = ntree->panels().index_range();
+  if (!old_panels_range.contains(index)) {
     return;
   }
 
@@ -3950,16 +3953,14 @@ void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel)
   MutableSpan<bNodePanel *> new_panels = ntree->panels();
 
   if (!new_panels.is_empty()) {
-    const blender::IndexRange panels_after_removed = old_panels.index_range().drop_front(index +
-                                                                                         1);
-    old_panels.shift_to_front(panels_after_removed);
+    const blender::IndexRange shifted_panels = old_panels_range.drop_front(index + 1);
+    blender::array_utils::shift_to_front(shifted_panels, old_panels);
     new_panels.copy_from(old_panels.drop_back(1));
   }
 
-  bke::free_panel_imp(panel);
-  if (!old_panels.is_empty()) {
-    MEM_freeN(old_panels.data());
-  }
+  blender::bke::free_panel_imp(panel);
+  /* We were able to remove an element from this array, it is not empty. */
+  MEM_freeN(old_panels.data());
 
   ntreeEnsureSocketInterfacePanelOrder(ntree);
 }
@@ -3975,7 +3976,7 @@ void ntreeClearPanels(bNodeTree *ntree)
   }
 
   for (bNodePanel *panel : ntree->panels()) {
-    bke::free_panel_imp(panel);
+    blender::bke::free_panel_imp(panel);
   }
   MEM_SAFE_FREE(ntree->panels_array);
   ntree->panels_array = nullptr;
@@ -3986,11 +3987,9 @@ void ntreeClearPanels(bNodeTree *ntree)
 
 void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, const int new_index)
 {
-  if (!ntree->panels().index_range().contains(new_index)) {
-    return;
-  }
   const int old_index = ntreeGetPanelIndex(ntree, panel);
-  if (old_index == -1) {
+  const blender::IndexRange panels_range = ntree->panels().index_range();
+  if (!panels_range.contains(new_index) || !panels_range.contains(old_index)) {
     return;
   }
   if (old_index == new_index) {

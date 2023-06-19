@@ -243,6 +243,14 @@ class IndexRange {
   }
 
   /**
+   * Returns true when the range contains a start and end of range, otherwise false.
+   */
+  constexpr bool contains(IndexRange range) const
+  {
+    return start_ <= range.start() && range.one_after_last() <= start_ + size_;
+  }
+
+  /**
    * Returns a new range, that contains a sub-interval of the current one.
    */
   constexpr IndexRange slice(int64_t start, int64_t size) const
