@@ -75,7 +75,10 @@ static void snapsource_confirm(TransInfo *t)
   getSnapPoint(t, t->tsnap.snap_source);
   t->tsnap.snap_source_fn = NULL;
   t->tsnap.status |= SNAP_SOURCE_FOUND;
-  t->tsnap.source_type = t->tsnap.target_type;
+
+  if (!(t->tsnap.status & SNAP_MULTI_POINTS)) {
+    t->tsnap.source_type = t->tsnap.target_type;
+  }
 
   t->flag |= T_DRAW_SNAP_SOURCE;
 
@@ -154,6 +157,7 @@ static void snapsource_transform_fn(TransInfo *t, const int UNUSED(mval[2]))
   BLI_assert(t->modifiers & MOD_EDIT_SNAP_SOURCE);
 
   t->tsnap.snap_target_fn(t, NULL);
+  getSnapPoint(t, t->tsnap.snap_source);
   t->redraw |= TREDRAW_SOFT;
 }
 

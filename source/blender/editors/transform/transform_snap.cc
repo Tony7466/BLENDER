@@ -173,7 +173,9 @@ void drawSnapping(const bContext *C, TransInfo *t)
     return;
   }
 
-  const bool draw_source = (t->tsnap.status & SNAP_SOURCE_FOUND) && (t->flag & T_DRAW_SNAP_SOURCE);
+  const bool draw_source = (t->tsnap.status & SNAP_MULTI_POINTS) ||
+                           ((t->tsnap.status & SNAP_SOURCE_FOUND) &&
+                            (t->flag & T_DRAW_SNAP_SOURCE));
   const bool draw_target = (t->tsnap.status & (SNAP_TARGET_FOUND | SNAP_MULTI_POINTS));
 
   if (!(draw_source || draw_target)) {
@@ -1259,7 +1261,7 @@ static void snap_source_center_fn(TransInfo *t)
     TargetSnapOffset(t, nullptr);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
-    t->tsnap.source_type = SCE_SNAP_MODE_VERTEX;
+    t->tsnap.source_type = SCE_SNAP_MODE_NONE;
   }
 }
 
@@ -1270,7 +1272,7 @@ static void snap_source_active_fn(TransInfo *t)
     if (calculateCenterActive(t, true, t->tsnap.snap_source)) {
       TargetSnapOffset(t, nullptr);
       t->tsnap.status |= SNAP_SOURCE_FOUND;
-      t->tsnap.source_type = SCE_SNAP_MODE_VERTEX;
+      t->tsnap.source_type = SCE_SNAP_MODE_NONE;
     }
     else {
       /* No active, default to median, */
@@ -1287,7 +1289,7 @@ static void snap_source_median_fn(TransInfo *t)
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     tranform_snap_target_median_calc(t, t->tsnap.snap_source);
     t->tsnap.status |= SNAP_SOURCE_FOUND;
-    t->tsnap.source_type = SCE_SNAP_MODE_VERTEX;
+    t->tsnap.source_type = SCE_SNAP_MODE_NONE;
   }
 }
 
