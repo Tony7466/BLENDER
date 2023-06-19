@@ -4,6 +4,7 @@
 
 #include "usd.h"
 #include "usd_hierarchy_iterator.h"
+#include "usd_hook.h"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/pxr.h>
@@ -13,8 +14,6 @@
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdUtils/dependencies.h>
-
-#include <boost/python/import.hpp>
 
 #include "MEM_guardedalloc.h"
 
@@ -66,62 +65,6 @@ struct ExportJobData {
     return unarchived_filepath;
   }
 };
-
-
-/* Call the 'usd_on_export' chaser function defined in the chaser Python modules. */
-static void call_export_chasers(pxr::UsdStageRefPtr stage, const ExportJobData *data)
-{
-  if (!data || data->params.chasers[0] == '\0') {
-    return;
-  }
-
-  using namespace boost::python;
-
-  /* Get the chaser module names from the export parameters.  Multiple module names
-   * may be specified in a comma-delimited list. */
-  const std::vector<std::string> module_tokens = pxr::TfStringTokenize(data->params.chasers, ",");
-  if (module_tokens.empty()) {
-    return;
-  }
-
-  PyGILState_STATE gilstate = PyGILState_Ensure();
-
-  /* The chaser function name. */
-  const char *func_name = "usd_on_export";
-
-  for (const std::string &tok : module_tokens) {
-    try {
-      object module = import(tok.c_str());
-      if (module.is_none()) {
-        continue;
-      }
-
-      /* Look up the chaser callback function. */
-      object fn_obj = module.attr(func_name);
-
-      if (fn_obj.is_none()) {
-        continue;
-      }
-
-      /* Ensure fn_obj is callable. */
-      if (!PyCallable_Check(fn_obj.ptr())) {
-        continue;
-      }
-
-      /* Invoke the chaser. Additional arguments could be
-       * provided, e.g., a dictionary mapping Blender objects
-       * to USD prims. */
-      fn_obj(stage);
-    }
-    catch (...) {
-      if (PyErr_Occurred()) {
-        PyErr_Print();
-      }
-    }
-  }
-
-  PyGILState_Release(gilstate);
-}
 
 /* Returns true if the given prim path is valid, per
  * the requirements of the prim path manipulation logic
@@ -354,7 +297,7 @@ static void export_startjob(void *customdata,
     }
   }
 
-  call_export_chasers(usd_stage, data);
+  call_export_hooks(usd_stage, data->depsgraph);
 
   usd_stage->GetRootLayer()->Save();
 

@@ -6,6 +6,8 @@
 
 #include "DEG_depsgraph.h"
 
+#include "RNA_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,7 +54,6 @@ struct USDExportParams {
   bool overwrite_textures;
   bool relative_paths;
   char root_prim_path[1024]; /* FILE_MAX */
-  char chasers[1024];
 };
 
 struct USDImportParams {
@@ -150,6 +151,27 @@ struct CacheReader *CacheReader_open_usd_object(struct CacheArchiveHandle *handl
 
 void USD_CacheReader_incref(struct CacheReader *reader);
 void USD_CacheReader_free(struct CacheReader *reader);
+
+/* Data for registering USD IO hooks. */
+typedef struct USDHook {
+  struct USDHook *next, *prev;
+
+  /* identifier used for class name, which KeyingSet instances reference as "Typeinfo Name" */
+  char idname[64];
+  /* identifier so that user can hook this up to a KeyingSet (used as label). */
+  char name[64];
+  /* short help/description. */
+  char description[1024]; /* #RNA_DYN_DESCR_MAX */
+
+  /* rna_ext.data points to the USDHook class PyObject. */
+  struct ExtensionRNA rna_ext;
+} USDHook;
+
+void USD_register_hook(struct USDHook *hook);
+void USD_unregister_hook(struct USDHook *hook);
+USDHook *USD_find_hook_name(const char name[]);
+void USD_hooks_exit();
+
 #ifdef __cplusplus
 }
 #endif

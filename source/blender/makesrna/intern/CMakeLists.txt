@@ -89,6 +89,13 @@ set(DEFSRC
   rna_xr.c
 )
 
+if(WITH_USD)
+  list(APPEND DEFSRC
+    rna_usd.c
+  )
+  add_definitions(-DWITH_USD)
+endif()
+
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
@@ -227,6 +234,7 @@ set(INC
   ../../gpu
   ../../ikplugin
   ../../imbuf
+  ../../io/usd
   ../../makesdna
   ../../modifiers
   ../../nodes

@@ -859,6 +859,10 @@ class KeyingSetInfo(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
 
+class USDHook(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
 class AddonPreferences(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
