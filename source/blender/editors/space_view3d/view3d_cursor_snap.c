@@ -366,15 +366,109 @@ static void cursor_box_draw(const float dimensions[3], uchar color[4])
   GPU_blend(GPU_BLEND_NONE);
 }
 
-void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
-                                     const float loc_prev[3],
-                                     const float loc_curr[3],
-                                     const float normal[3],
-                                     const uchar color_line[4],
-                                     const uchar color_point[4],
-                                     const eSnapMode snap_elem_type)
+static void snap_draw_point(const float loc[3],
+                            const float size,
+                            const eSnapMode snap_type,
+                            const uchar color[4],
+                            const float view_inv[4][4],
+                            const uint attr_pos)
 {
-  if (!loc_prev && !loc_curr) {
+  immUniformColor4ubv(color);
+
+  if (snap_type & SCE_SNAP_MODE_EDGE_MIDPOINT) {
+    /* Draw a triangle. */
+    float v1[3], v2[3], v3[3], tmp[3];
+    float x_size = size;
+
+    mul_v3_v3fl(v1, view_inv[1], x_size);
+    mul_v3_v3fl(v2, v1, -0.5f);
+    mul_v3_v3fl(v3, v1, -0.5f);
+    mul_v3_v3fl(tmp, view_inv[0], 0.8f * x_size);
+    add_v3_v3(v2, tmp);
+    sub_v3_v3(v3, tmp);
+
+    add_v3_v3(v1, loc);
+    add_v3_v3(v2, loc);
+    add_v3_v3(v3, loc);
+
+    immBegin(GPU_PRIM_LINES, 6);
+    immVertex3fv(attr_pos, v1);
+    immVertex3fv(attr_pos, v2);
+    immVertex3fv(attr_pos, v2);
+    immVertex3fv(attr_pos, v3);
+    immVertex3fv(attr_pos, v3);
+    immVertex3fv(attr_pos, v1);
+    immEnd();
+  }
+  else if (snap_type & SCE_SNAP_MODE_VERTEX) {
+    /* Draw a rectangle. */
+    float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
+    float x_size = 0.8f * size;
+
+    mul_v3_v3fl(vx, view_inv[0], x_size);
+    mul_v3_v3fl(vy, view_inv[1], x_size);
+
+    add_v3_v3v3(v1, vx, vy);
+    sub_v3_v3v3(v2, vx, vy);
+    negate_v3_v3(v3, v1);
+    negate_v3_v3(v4, v2);
+
+    add_v3_v3(v1, loc);
+    add_v3_v3(v2, loc);
+    add_v3_v3(v3, loc);
+    add_v3_v3(v4, loc);
+
+    immBegin(GPU_PRIM_LINES, 8);
+    immVertex3fv(attr_pos, v1);
+    immVertex3fv(attr_pos, v2);
+    immVertex3fv(attr_pos, v2);
+    immVertex3fv(attr_pos, v3);
+    immVertex3fv(attr_pos, v3);
+    immVertex3fv(attr_pos, v4);
+    immVertex3fv(attr_pos, v4);
+    immVertex3fv(attr_pos, v1);
+    immEnd();
+  }
+  else if (snap_type & SCE_SNAP_MODE_EDGE) {
+    /* Draw an "X". */
+    float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
+    float x_size = 0.8f * size;
+
+    mul_v3_v3fl(vx, view_inv[0], x_size);
+    mul_v3_v3fl(vy, view_inv[1], x_size);
+
+    add_v3_v3v3(v1, vx, vy);
+    sub_v3_v3v3(v2, vx, vy);
+    negate_v3_v3(v3, v1);
+    negate_v3_v3(v4, v2);
+
+    add_v3_v3(v1, loc);
+    add_v3_v3(v2, loc);
+    add_v3_v3(v3, loc);
+    add_v3_v3(v4, loc);
+
+    immBegin(GPU_PRIM_LINES, 4);
+    immVertex3fv(attr_pos, v3);
+    immVertex3fv(attr_pos, v1);
+    immVertex3fv(attr_pos, v4);
+    immVertex3fv(attr_pos, v2);
+    immEnd();
+  }
+  else {
+    imm_drawcircball(loc, size, view_inv, attr_pos);
+  }
+}
+
+void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
+                                     const float source_loc[3],
+                                     const float target_loc[3],
+                                     const eSnapMode source_type,
+                                     const eSnapMode target_type,
+                                     const float target_normal[3],
+                                     const uchar color_line[4],
+                                     const uchar color_point[4])
+{
+  if (!source_loc && !target_loc) {
     return;
   }
 
@@ -386,145 +480,40 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
   float radius = 3.2f * UI_GetThemeValuef(TH_VERTEX_SIZE);
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-    GPU_blend(GPU_BLEND_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
   GPU_line_smooth(true);
   GPU_line_width(1.5f);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (loc_curr) {
-    immUniformColor4ubv(color_point);
+  if (target_loc) {
+    snap_draw_point(target_loc,
+                    radius * ED_view3d_pixel_size(rv3d, target_loc),
+                    target_type,
+                    color_point,
+                    view_inv,
+                    pos);
 
-    if (snap_elem_type & SCE_SNAP_MODE_EDGE_MIDPOINT) {
-      /* Draw a triangle. */
-      float v1[3], v2[3], v3[3], tmp[3];
-      float x_size = radius * ED_view3d_pixel_size(rv3d, loc_curr);
-
-      mul_v3_v3fl(v1, view_inv[1], x_size);
-      mul_v3_v3fl(v2, v1, -0.5f);
-      mul_v3_v3fl(v3, v1, -0.5f);
-      mul_v3_v3fl(tmp, view_inv[0], 0.8f * x_size);
-      add_v3_v3(v2, tmp);
-      sub_v3_v3(v3, tmp);
-
-      add_v3_v3(v1, loc_curr);
-      add_v3_v3(v2, loc_curr);
-      add_v3_v3(v3, loc_curr);
-
-      immBegin(GPU_PRIM_LINES, 6);
-      immVertex3fv(pos, v1);
-      immVertex3fv(pos, v2);
-      immVertex3fv(pos, v2);
-      immVertex3fv(pos, v3);
-      immVertex3fv(pos, v3);
-      immVertex3fv(pos, v1);
-      immEnd();
-    }
-    else if (snap_elem_type & SCE_SNAP_MODE_VERTEX) {
-      /* Draw a rectangle. */
-      float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
-      float x_size = 0.8f * radius * ED_view3d_pixel_size(rv3d, loc_curr);
-
-      mul_v3_v3fl(vx, view_inv[0], x_size);
-      mul_v3_v3fl(vy, view_inv[1], x_size);
-
-      add_v3_v3v3(v1, vx, vy);
-      sub_v3_v3v3(v2, vx, vy);
-      negate_v3_v3(v3, v1);
-      negate_v3_v3(v4, v2);
-
-      add_v3_v3(v1, loc_curr);
-      add_v3_v3(v2, loc_curr);
-      add_v3_v3(v3, loc_curr);
-      add_v3_v3(v4, loc_curr);
-
-      immBegin(GPU_PRIM_LINES, 8);
-      immVertex3fv(pos, v1);
-      immVertex3fv(pos, v2);
-      immVertex3fv(pos, v2);
-      immVertex3fv(pos, v3);
-      immVertex3fv(pos, v3);
-      immVertex3fv(pos, v4);
-      immVertex3fv(pos, v4);
-      immVertex3fv(pos, v1);
-      immEnd();
-    }
-    else if (snap_elem_type & SCE_SNAP_MODE_EDGE) {
-      /* Draw an "X". */
-      float vx[3], vy[3], v1[3], v2[3], v3[3], v4[4];
-      float x_size = 0.8f * radius * ED_view3d_pixel_size(rv3d, loc_curr);
-
-      mul_v3_v3fl(vx, view_inv[0], x_size);
-      mul_v3_v3fl(vy, view_inv[1], x_size);
-
-      add_v3_v3v3(v1, vx, vy);
-      sub_v3_v3v3(v2, vx, vy);
-      negate_v3_v3(v3, v1);
-      negate_v3_v3(v4, v2);
-
-      add_v3_v3(v1, loc_curr);
-      add_v3_v3(v2, loc_curr);
-      add_v3_v3(v3, loc_curr);
-      add_v3_v3(v4, loc_curr);
-
-      immBegin(GPU_PRIM_LINES, 4);
-      immVertex3fv(pos, v3);
-      immVertex3fv(pos, v1);
-      immVertex3fv(pos, v4);
-      immVertex3fv(pos, v2);
-      immEnd();
-    }
-    else {
-      imm_drawcircball(loc_curr, ED_view3d_pixel_size(rv3d, loc_curr) * radius, view_inv, pos);
-    }
-
-     /* Draw normal if needed. */
-    if (normal) {
+    /* Draw normal if needed. */
+    if (target_normal) {
       immBegin(GPU_PRIM_LINES, 2);
-      immVertex3fv(pos, loc_curr);
-      immVertex3f(pos, loc_curr[0] + normal[0], loc_curr[1] + normal[1], loc_curr[2] + normal[2]);
+      immVertex3fv(pos, target_loc);
+      immVertex3f(pos,
+                  target_loc[0] + target_normal[0],
+                  target_loc[1] + target_normal[1],
+                  target_loc[2] + target_normal[2]);
       immEnd();
     }
   }
 
-  if (loc_prev) {
-    float view_inv[4][4];
-    copy_m4_m4(view_inv, rv3d->viewinv);
+  if (source_loc) {
+    snap_draw_point(source_loc,
+                    radius * ED_view3d_pixel_size(rv3d, source_loc),
+                    source_type,
+                    color_line,
+                    view_inv,
+                    pos);
 
-    float vx[3], vy[3], v[3];
-    float size_tmp = ED_view3d_pixel_size(rv3d, loc_prev) * radius;
-    float size_fac = 0.5f;
-
-    mul_v3_v3fl(vx, view_inv[0], size_tmp);
-    mul_v3_v3fl(vy, view_inv[1], size_tmp);
-
-    immUniformColor4ubv(color_line);
-
-    imm_drawcircball(loc_prev, size_tmp, view_inv, pos);
-
-    immBegin(GPU_PRIM_LINES, 8);
-    add_v3_v3v3(v, loc_prev, vx);
-    immVertex3fv(pos, v);
-    madd_v3_v3fl(v, vx, size_fac);
-    immVertex3fv(pos, v);
-
-    sub_v3_v3v3(v, loc_prev, vx);
-    immVertex3fv(pos, v);
-    madd_v3_v3fl(v, vx, -size_fac);
-    immVertex3fv(pos, v);
-
-    add_v3_v3v3(v, loc_prev, vy);
-    immVertex3fv(pos, v);
-    madd_v3_v3fl(v, vy, size_fac);
-    immVertex3fv(pos, v);
-
-    sub_v3_v3v3(v, loc_prev, vy);
-    immVertex3fv(pos, v);
-    madd_v3_v3fl(v, vy, -size_fac);
-    immVertex3fv(pos, v);
-
-    immEnd();
-
-    if (loc_curr && (snap_elem_type & SCE_SNAP_MODE_EDGE_PERPENDICULAR)) {
+    if (target_loc && (target_type & SCE_SNAP_MODE_EDGE_PERPENDICULAR)) {
       /* Dashed line. */
       immUnbindProgram();
 
@@ -537,8 +526,8 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
       immUniformColor4ubv(color_line);
 
       immBegin(GPU_PRIM_LINES, 2);
-      immVertex3fv(pos, loc_prev);
-      immVertex3fv(pos, loc_curr);
+      immVertex3fv(pos, source_loc);
+      immVertex3fv(pos, target_loc);
       immEnd();
     }
   }
@@ -720,7 +709,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
       if (snap_data->is_snap_invert != !(ts->snap_flag & SCE_SNAP)) {
         snap_data->is_enabled = false;
         if (!calc_plane_omat) {
-          snap_data->snap_elem = SCE_SNAP_MODE_NONE;
+          snap_data->type_target = SCE_SNAP_MODE_NONE;
           return;
         }
         snap_elements = data_intern->snap_elem_hidden = SCE_SNAP_MODE_FACE;
@@ -870,7 +859,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
     snap_elem_index[2] = index;
   }
 
-  snap_data->snap_elem = snap_elem;
+  snap_data->type_target = snap_elem;
   copy_v3_v3(snap_data->loc, co);
   copy_v3_v3(snap_data->nor, no);
   copy_m4_m4(snap_data->obmat, obmat);
@@ -948,7 +937,7 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void *UNUSED(cust
   }
 
   const bool draw_plane = state->draw_plane || state->draw_box;
-  if (snap_data->snap_elem == SCE_SNAP_MODE_NONE && !draw_plane) {
+  if (snap_data->type_target == SCE_SNAP_MODE_NONE && !draw_plane) {
     return;
   }
 
@@ -966,18 +955,19 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void *UNUSED(cust
     v3d_cursor_plane_draw(rv3d, scene->toolsettings->plane_axis, matrix);
   }
 
-  if (snap_data->snap_elem != SCE_SNAP_MODE_NONE && (state->draw_point || state->draw_box)) {
-    const float *prev_point = (snap_data->snap_elem & SCE_SNAP_MODE_EDGE_PERPENDICULAR) ?
+  if (snap_data->type_target != SCE_SNAP_MODE_NONE && (state->draw_point || state->draw_box)) {
+    const float *source_loc = (snap_data->type_target & SCE_SNAP_MODE_EDGE_PERPENDICULAR) ?
                                   state->prevpoint :
                                   NULL;
 
     ED_view3d_cursor_snap_draw_util(rv3d,
-                                    prev_point,
+                                    source_loc,
                                     snap_data->loc,
+                                    snap_data->type_source,
+                                    snap_data->type_target,
                                     NULL,
                                     state->color_line,
-                                    state->color_point,
-                                    snap_data->snap_elem);
+                                    state->color_point);
   }
 
   if (state->draw_box) {

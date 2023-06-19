@@ -75,6 +75,8 @@ static void snapsource_confirm(TransInfo *t)
   getSnapPoint(t, t->tsnap.snap_source);
   t->tsnap.snap_source_fn = NULL;
   t->tsnap.status |= SNAP_SOURCE_FOUND;
+  t->tsnap.source_type = t->tsnap.target_type;
+
   t->flag |= T_DRAW_SNAP_SOURCE;
 
   struct SnapSouceCustomData *customdata = t->custom.mode.data;

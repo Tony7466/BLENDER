@@ -68,7 +68,6 @@ static void snap_target_sequencer_fn(TransInfo *t, float *vec);
 
 static void snap_source_median_fn(TransInfo *t);
 static void snap_source_center_fn(TransInfo *t);
-static void snap_source_closest_fn(TransInfo *t);
 static void snap_source_active_fn(TransInfo *t);
 
 /** \} */
@@ -244,8 +243,14 @@ void drawSnapping(const bContext *C, TransInfo *t)
       loc_cur = t->tsnap.snap_target;
     }
 
-    ED_view3d_cursor_snap_draw_util(
-        rv3d, loc_prev, loc_cur, normal, col, activeCol, t->tsnap.snapElem);
+    ED_view3d_cursor_snap_draw_util(rv3d,
+                                    loc_prev,
+                                    loc_cur,
+                                    t->tsnap.source_type,
+                                    t->tsnap.target_type,
+                                    normal,
+                                    col,
+                                    activeCol);
 
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
@@ -543,7 +548,8 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
 void resetSnapping(TransInfo *t)
 {
   t->tsnap.status = SNAP_RESETTED;
-  t->tsnap.snapElem = SCE_SNAP_MODE_NONE;
+  t->tsnap.source_type = SCE_SNAP_MODE_NONE;
+  t->tsnap.target_type = SCE_SNAP_MODE_NONE;
   t->tsnap.mode = SCE_SNAP_MODE_NONE;
   t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
   t->tsnap.source_operation = SCE_SNAP_SOURCE_MEDIAN;
@@ -1118,7 +1124,7 @@ static void snap_target_view3d_fn(TransInfo *t, float * /*vec*/)
     t->tsnap.status &= ~SNAP_TARGET_FOUND;
   }
 
-  t->tsnap.snapElem = snap_elem;
+  t->tsnap.target_type = snap_elem;
 }
 
 static void snap_target_uv_fn(TransInfo *t, float * /*vec*/)
@@ -1253,6 +1259,7 @@ static void snap_source_center_fn(TransInfo *t)
     TargetSnapOffset(t, nullptr);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_MODE_VERTEX;
   }
 }
 
@@ -1263,6 +1270,7 @@ static void snap_source_active_fn(TransInfo *t)
     if (calculateCenterActive(t, true, t->tsnap.snap_source)) {
       TargetSnapOffset(t, nullptr);
       t->tsnap.status |= SNAP_SOURCE_FOUND;
+      t->tsnap.source_type = SCE_SNAP_MODE_VERTEX;
     }
     else {
       /* No active, default to median, */
@@ -1279,6 +1287,7 @@ static void snap_source_median_fn(TransInfo *t)
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     tranform_snap_target_median_calc(t, t->tsnap.snap_source);
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_MODE_VERTEX;
   }
 }
 
