@@ -588,11 +588,11 @@ static void find_socket_log_contexts(const NodesModifierData &nmd,
       const SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
       if (sl->spacetype == SPACE_NODE) {
         const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
-        if (const std::optional<ComputeContextHash> hash =
-                geo_log::GeoModifierLog::get_compute_context_hash_for_node_editor(
-                    snode, nmd.modifier.name))
-        {
-          r_socket_log_contexts.add(*hash);
+        const Map<const bke::node_tree_zones::TreeZone *, ComputeContextHash> hash_by_zone =
+            geo_log::GeoModifierLog::get_context_hash_by_zone_for_node_editor(snode,
+                                                                              nmd.modifier.name);
+        for (const ComputeContextHash &hash : hash_by_zone.values()) {
+          r_socket_log_contexts.add(hash);
         }
       }
     }
