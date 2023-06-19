@@ -3056,10 +3056,8 @@ class VIEW3D_MT_object_convert(Menu):
         layout = self.layout
         ob = context.active_object
         
-        if ob and ob.type == 'GPENCIL' and context.gpencil_data:
+        if ob and ob.type == 'GPENCIL' and context.gpencil_data and not context.preferences.experimental.use_grease_pencil_version3:
             layout.operator_enum("gpencil.convert", "type")
-            if context.preferences.experimental.use_grease_pencil_version3:
-                layout.operator_enum("object.convert", "target")
         else:
             layout.operator_enum("object.convert", "target")
 
