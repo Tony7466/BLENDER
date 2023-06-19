@@ -1628,10 +1628,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     lf_graph.update_node_indices();
 
+    auto &logger = scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_);
     auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
 
     const auto &lf_graph_fn = scope_.construct<lf::GraphExecutor>(
-        lf_graph, lf_zone_inputs, lf_zone_outputs, nullptr, &side_effect_provider);
+        lf_graph, lf_zone_inputs, lf_zone_outputs, &logger, &side_effect_provider);
     const auto &zone_function = scope_.construct<LazyFunctionForSimulationZone>(*zone.output_node,
                                                                                 lf_graph_fn);
     zone_info.lazy_function = &zone_function;
