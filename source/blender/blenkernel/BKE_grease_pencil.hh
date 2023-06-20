@@ -193,6 +193,14 @@ class Layer : public ::GreasePencilLayer {
   }
 
   /**
+   * \returns the parent layer group.
+   */
+  LayerGroup &parent_group() const
+  {
+    return this->base.parent->wrap();
+  }
+
+  /**
    * \returns the frames mapping.
    */
   const Map<int, GreasePencilFrame> &frames() const;
