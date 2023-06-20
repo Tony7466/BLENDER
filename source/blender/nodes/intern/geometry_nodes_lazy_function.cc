@@ -1755,8 +1755,30 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void build_serial_loop_zone_function(const bNodeTreeZone &zone)
   {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
+    lf::Graph &lf_graph = scope_.construct<lf::Graph>();
+
+    lf::DummyNode &lf_main_input_node = this->build_serial_loop_input_node(zone, lf_graph);
+
+    BuildGraphParams graph_params{lf_graph};
+    this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
+
     auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
     zone_info.lazy_function = &fn;
+
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+  }
+
+  lf::DummyNode &build_serial_loop_input_node(const bNodeTreeZone &zone, lf::Graph &lf_graph)
+  {
+    Vector<const CPPType *, 16> zone_input_types;
+    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+    debug_info.name = "Zone Input";
+    for (const bNodeSocket *socket : zone.input_node->output_sockets()) {
+      zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
+      debug_info.output_names.append(socket->identifier);
+    }
+    lf::DummyNode &node = lf_graph.add_dummy({}, zone_input_types, &debug_info);
+    return node;
   }
 
   lf::DummyNode &build_zone_border_links_input_node(const bNodeTreeZone &zone, lf::Graph &lf_graph)
