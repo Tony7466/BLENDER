@@ -16,6 +16,7 @@
 #include "BLI_map.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_gizmos.hh"
 
 struct Curves;
 struct Curve;
@@ -39,6 +40,7 @@ enum class GeometryOwnershipType {
 class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
+class GizmosGeometry;
 
 class GeometryComponent;
 using GeometryComponentPtr = ImplicitSharingPtr<GeometryComponent>;
@@ -63,6 +65,7 @@ class GeometryComponent : public ImplicitSharingMixin {
     Volume = 3,
     Curve = 4,
     Edit = 5,
+    Gizmos = 6,
   };
 
  private:
@@ -256,6 +259,10 @@ struct GeometrySet {
    */
   static GeometrySet create_with_pointcloud(
       PointCloud *pointcloud, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+
+  static GeometrySet create_with_gizmos(
+      blender::bke::GizmosGeometry *gizmos,
+      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Create a new geometry set that only contains the given curves.
    */
@@ -289,6 +296,10 @@ struct GeometrySet {
    */
   bool has_curves() const;
   /**
+   * Returns true when the geometry set has a curves component that has a curves data-block.
+   */
+  bool has_gizmos() const;
+  /**
    * Returns true when the geometry set has any data that is not an instance.
    */
   bool has_realized_data() const;
@@ -313,6 +324,10 @@ struct GeometrySet {
    * Returns a read-only curves data-block or null.
    */
   const Curves *get_curves_for_read() const;
+  /**
+   * Returns a read-only curves data-block or null.
+   */
+  const blender::bke::GizmosGeometry *get_gizmos_for_read() const;
   /**
    * Returns read-only instances or null.
    */
@@ -656,6 +671,44 @@ class GeometryComponentEditData final : public GeometryComponent {
   static void remember_deformed_curve_positions_if_necessary(GeometrySet &geometry);
 
   static constexpr inline GeometryComponent::Type static_type = GeometryComponent::Type::Edit;
+};
+
+/**
+ * A geometry component that stores a gizmo points.
+ *
+ * This component is taked at the finishing of modifier evaluation and storend in COW object
+ * runtime.
+ */
+class GizmosComponent : public GeometryComponent {
+ private:
+  blender::bke::GizmosGeometry *gizmos_ = nullptr;
+  GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
+
+ public:
+  GizmosComponent();
+  ~GizmosComponent();
+  GeometryComponent *copy() const final;
+
+  void clear() override;
+  bool has_gizmos() const;
+
+  void replace(blender::bke::GizmosGeometry *gizmos,
+               GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+
+  const blender::bke::GizmosGeometry *get_for_read() const;
+  blender::bke::GizmosGeometry *get_for_write();
+
+  bool is_empty() const final;
+
+  bool owns_direct_data() const override;
+  void ensure_owns_direct_data() override;
+
+  std::optional<blender::bke::AttributeAccessor> attributes() const final;
+  std::optional<blender::bke::MutableAttributeAccessor> attributes_for_write() final;
+
+  static constexpr inline GeometryComponent::Type static_type = GeometryComponent::Type::Gizmos;
+
+ private:
 };
 
 }  // namespace blender::bke

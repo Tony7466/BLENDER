@@ -51,6 +51,8 @@ GeometryComponentPtr GeometryComponent::create(Type component_type)
       return new CurveComponent();
     case Type::Edit:
       return new GeometryComponentEditData();
+    case Type::Gizmos:
+      return new GizmosComponent();
   }
   BLI_assert_unreachable();
   return {};
@@ -331,6 +333,12 @@ const Curves *GeometrySet::get_curves_for_read() const
   return (component == nullptr) ? nullptr : component->get_for_read();
 }
 
+const blender::bke::GizmosGeometry *GeometrySet::get_gizmos_for_read() const
+{
+  const GizmosComponent *component = this->get_component_for_read<GizmosComponent>();
+  return (component == nullptr) ? nullptr : component->get_for_read();
+}
+
 const Instances *GeometrySet::get_instances_for_read() const
 {
   const InstancesComponent *component = this->get_component_for_read<InstancesComponent>();
@@ -369,6 +377,12 @@ bool GeometrySet::has_curves() const
   return component != nullptr && component->has_curves();
 }
 
+bool GeometrySet::has_gizmos() const
+{
+  const GizmosComponent *component = this->get_component_for_read<GizmosComponent>();
+  return component != nullptr && component->has_gizmos();
+}
+
 bool GeometrySet::has_realized_data() const
 {
   for (const GeometryComponentPtr &component_ptr : components_) {
@@ -384,7 +398,7 @@ bool GeometrySet::has_realized_data() const
 bool GeometrySet::is_empty() const
 {
   return !(this->has_mesh() || this->has_curves() || this->has_pointcloud() ||
-           this->has_volume() || this->has_instances());
+           this->has_volume() || this->has_gizmos() || this->has_instances());
 }
 
 GeometrySet GeometrySet::create_with_mesh(Mesh *mesh, GeometryOwnershipType ownership)
@@ -414,6 +428,17 @@ GeometrySet GeometrySet::create_with_pointcloud(PointCloud *pointcloud,
   if (pointcloud != nullptr) {
     PointCloudComponent &component = geometry_set.get_component_for_write<PointCloudComponent>();
     component.replace(pointcloud, ownership);
+  }
+  return geometry_set;
+}
+
+GeometrySet GeometrySet::create_with_gizmos(blender::bke::GizmosGeometry *gizmos,
+                                            GeometryOwnershipType ownership)
+{
+  GeometrySet geometry_set;
+  if (gizmos != nullptr) {
+    GizmosComponent &component = geometry_set.get_component_for_write<GizmosComponent>();
+    component.replace(gizmos, ownership);
   }
   return geometry_set;
 }

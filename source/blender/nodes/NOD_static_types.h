@@ -446,6 +446,8 @@ DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, def_geo_volume_to_mesh, "VOLUME_T
 
 DefNode(GeometryNode, GEO_NODE_INTERPOLATE_CURVES, 0, "INTERPOLATE_CURVES", InterpolateCurves, "Interpolate Curves", "Generate new curves on points by interpolating between existing curves")
 
+DefNode(GeometryNode, GEO_NODE_ARROW_GIZMO, def_geo_arrow_gizmos, "ARROW_GIZMO", ArrowGizmo, "Arrow Gizmo", "")
+
 /* undefine macros */
 #undef DefNode
 

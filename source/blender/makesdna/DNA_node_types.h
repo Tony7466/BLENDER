@@ -1693,6 +1693,11 @@ typedef struct NodeCombSepColor {
   int8_t mode;
 } NodeCombSepColor;
 
+typedef struct NodeGeometryArrowGizmo {
+  /* NodeGeometryArrowGizmoValue */
+  float value;
+} NodeGeometryArrowGizmo;
+
 typedef struct NodeShaderMix {
   /* eNodeSocketDatatype */
   int8_t data_type;
