@@ -32,8 +32,8 @@ def draw_ui_list(
         class_name="UI_UL_list",
         *,
         unique_id="",
-        list_path,
-        active_index_path,
+        list_path="",
+        active_index_path="",
         insertion_operators=True,
         move_operators=True,
         menu_class_name="",
@@ -69,6 +69,8 @@ def draw_ui_list(
     """
 
     row = layout.row()
+    if not list_path or not list_owner_path:
+        return
 
     list_owner_path, list_prop_name = list_path.rsplit('.', 1)
     list_owner = _get_context_attr(context, list_owner_path)
