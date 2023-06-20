@@ -1222,6 +1222,13 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     }
 
     if (mti->type == eModifierTypeType_OnlyDeform) {
+      if (mesh_final == mesh_cage) {
+        mesh_final = BKE_mesh_copy_for_eval(mesh_final);
+        mesh_final->edit_mesh = static_cast<BMEditMesh *>(MEM_dupallocN(mesh_cage->edit_mesh));
+        mesh_final->edit_mesh->is_shallow_copy = true;
+        BKE_mesh_runtime_ensure_edit_data(mesh_final);
+      }
+
       if (mti->deformVertsEM) {
         BKE_modifier_deform_vertsEM(md,
                                     &mectx,
@@ -1245,6 +1252,9 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
       non_deform_modifier_applied = true;
       if (mesh_final == mesh_cage) {
         mesh_final = BKE_mesh_copy_for_eval(mesh_final);
+        mesh_final->edit_mesh = static_cast<BMEditMesh *>(MEM_dupallocN(mesh_cage->edit_mesh));
+        mesh_final->edit_mesh->is_shallow_copy = true;
+        BKE_mesh_runtime_ensure_edit_data(mesh_final);
       }
 
       /* create an orco derivedmesh in parallel */
