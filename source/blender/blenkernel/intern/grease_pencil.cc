@@ -1180,7 +1180,7 @@ blender::Span<blender::bke::greasepencil::Layer *> GreasePencil::layers_for_writ
   return this->root_group.wrap().layers_for_write();
 }
 
-static bool unique_layer_cb(void *arg, const char *name)
+static bool check_unique_layer_cb(void *arg, const char *name)
 {
   using namespace blender;
   VectorSet<StringRefNull> &names = *reinterpret_cast<VectorSet<StringRefNull> *>(arg);
@@ -1189,7 +1189,7 @@ static bool unique_layer_cb(void *arg, const char *name)
 
 static bool unique_layer_name(VectorSet<blender::StringRefNull> &names, char *name)
 {
-  return BLI_uniquename_cb(unique_layer_cb, &names, "GP_Layer", '.', name, INT16_MAX);
+  return BLI_uniquename_cb(check_unique_layer_cb, &names, "GP_Layer", '.', name, MAX_NAME);
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
@@ -1200,21 +1200,23 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
   for (const blender::bke::greasepencil::Layer *layer : this->layers()) {
     names.add(layer->name());
   }
-  char *unique_name = BLI_strdup(name.c_str());
-  unique_layer_name(names, unique_name);
+  std::string unique_name(name.c_str());
+  unique_layer_name(names, unique_name.data());
   return group.add_layer(unique_name);
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer_after(
-    blender::bke::greasepencil::LayerGroup &group, blender::bke::greasepencil::Layer *layer, const blender::StringRefNull name)
+    blender::bke::greasepencil::LayerGroup &group,
+    blender::bke::greasepencil::Layer *layer,
+    const blender::StringRefNull name)
 {
   using namespace blender;
   VectorSet<StringRefNull> names;
   for (const blender::bke::greasepencil::Layer *layer : this->layers()) {
     names.add(layer->name());
   }
-  char *unique_name = BLI_strdup(name.c_str());
-  unique_layer_name(names, unique_name);
+  std::string unique_name(name.c_str());
+  unique_layer_name(names, unique_name.data());
   return group.add_layer_after(unique_name, layer);
 }
 
