@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 `Erik de Castro Lopo <erikd@mega-nerd.com>`
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # Backported (with some minor modifications) from libsndfile 1.2.0
 
 # - Find lame
@@ -8,8 +12,8 @@
 #  LAME_FOUND        - True if Lame found.
 
 if (LAME_INCLUDE_DIR)
-    # Already in cache, be silent
-    set(LAME_FIND_QUIETLY TRUE)
+  # Already in cache, be silent
+  set(LAME_FIND_QUIETLY TRUE)
 endif ()
 
 find_path (LAME_INCLUDE_DIR lame/lame.h

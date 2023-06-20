@@ -1214,6 +1214,9 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       shader_id &= ~SHADER_AREA_LIGHT;
 
       float radius = light->size;
+      /* TODO: `invarea` was used for disk sampling, with the current solid angle sampling this
+       * becomes unnecessary. We could store `eval_fac` instead, but currently it shares the same
+       * #KernelSpotLight type with #LIGHT_SPOT, so keep it know until refactor for spot light. */
       float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
                                                             1.0f;
 
@@ -1236,8 +1239,6 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
 
       const float one_minus_cosangle = 2.0f * sqr(sinf(0.5f * angle));
       const float pdf = (angle > 0.0f) ? (M_1_2PI_F / one_minus_cosangle) : 1.0f;
-      float3 axis_u, axis_v;
-      make_orthonormals(dir, &axis_u, &axis_v);
 
       klights[light_index].co = dir;
       klights[light_index].distant.angle = angle;
@@ -1246,8 +1247,6 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       klights[light_index].distant.eval_fac = (light->normalize && angle > 0) ?
                                                   M_1_PI_F / sqr(sinf(angle)) :
                                                   1.0f;
-      klights[light_index].distant.axis_u = axis_u;
-      klights[light_index].distant.axis_v = axis_v;
     }
     else if (light->light_type == LIGHT_BACKGROUND) {
       uint visibility = scene->background->get_visibility();

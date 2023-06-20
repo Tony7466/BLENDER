@@ -14,20 +14,14 @@ ccl_device_inline bool distant_light_sample(const ccl_global KernelLight *klight
                                             const float2 rand,
                                             ccl_private LightSample *ls)
 {
-  /* distant light */
-  float3 D = klight->co;
+  float unused;
+  sample_uniform_cone_concentric(
+      klight->co, klight->distant.one_minus_cosangle, rand, &unused, &ls->Ng, &ls->pdf);
 
-  if (klight->distant.angle > 0.0f) {
-    const float3 cone = concentric_sample_uniform_cone(rand, klight->distant.one_minus_cosangle);
-    D = cone.z * D + cone.x * klight->distant.axis_u + cone.y * klight->distant.axis_v;
-  }
-
-  ls->P = D;
-  ls->Ng = D;
-  ls->D = -D;
+  ls->P = ls->Ng;
+  ls->D = -ls->Ng;
   ls->t = FLT_MAX;
 
-  ls->pdf = klight->distant.pdf;
   ls->eval_fac = klight->distant.eval_fac;
 
   return true;

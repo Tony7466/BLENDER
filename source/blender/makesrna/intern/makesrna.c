@@ -1422,8 +1422,20 @@ static char *rna_def_property_set_func(
           }
           else {
             rna_clamp_value_range(f, prop);
+            /* C++ may require casting to an enum type.  */
+            fprintf(f, "#ifdef __cplusplus\n");
+            fprintf(f,
+                    /* If #rna_clamp_value() adds an expression like `CLAMPIS(...)` (instead of an
+                       lvalue), #decltype() yields a reference, so that has to be removed.*/
+                    "    data->%s = %s(std::remove_reference_t<decltype(data->%s)>)",
+                    dp->dnaname,
+                    (dp->booleannegative) ? "!" : "",
+                    dp->dnaname);
+            rna_clamp_value(f, prop, 0);
+            fprintf(f, "#else\n");
             fprintf(f, "    data->%s = %s", dp->dnaname, (dp->booleannegative) ? "!" : "");
             rna_clamp_value(f, prop, 0);
+            fprintf(f, "#endif\n");
           }
         }
 
@@ -4112,7 +4124,8 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
           prop->totarraylength);
   fprintf(f,
           "\t%s%s, %d, %s, %s, %s, %s, %s,\n",
-          (prop->flag & PROP_CONTEXT_UPDATE) ? "(UpdateFunc)" : "",
+          /* NOTE: void cast is needed to quiet function cast warning in C++. */
+          (prop->flag & PROP_CONTEXT_UPDATE) ? "(UpdateFunc)(void *)" : "",
           rna_function_string(prop->update),
           prop->noteflag,
           rna_function_string(prop->editable),
@@ -4597,7 +4610,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_text.c", "rna_text_api.c", RNA_def_text},
     {"rna_timeline.c", NULL, RNA_def_timeline_marker},
     {"rna_sound.c", "rna_sound_api.c", RNA_def_sound},
-    {"rna_ui.c", "rna_ui_api.c", RNA_def_ui},
+    {"rna_ui.cc", "rna_ui_api.cc", RNA_def_ui},
     {"rna_userdef.c", NULL, RNA_def_userdef},
     {"rna_vfont.c", "rna_vfont_api.c", RNA_def_vfont},
     {"rna_volume.c", NULL, RNA_def_volume},

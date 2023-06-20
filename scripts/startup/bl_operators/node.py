@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 
 import bpy
@@ -247,13 +250,10 @@ class NODE_OT_tree_path_parent(Operator):
 class NodePanelOperator():
     @classmethod
     def poll(cls, context):
-        snode = context.space_data
-        if snode is None:
+        space = context.space_data
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree:
             return False
-        tree = snode.edit_tree
-        if tree is None:
-            return False
-        if tree.is_embedded_data:
+        if space.edit_tree.is_embedded_data:
             return False
         return True
 

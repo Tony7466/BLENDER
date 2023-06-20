@@ -1083,7 +1083,7 @@ static int rna_Object_active_material_editable(PointerRNA *ptr, const char ** /*
     is_editable = ob->data ? !ID_IS_LINKED(ob->data) : false;
   }
 
-  return is_editable ? PROP_EDITABLE : 0;
+  return is_editable ? int(PROP_EDITABLE) : 0;
 }
 
 static void rna_Object_active_particle_system_index_range(
@@ -1269,7 +1269,7 @@ static int rna_MaterialSlot_material_editable(PointerRNA *ptr, const char ** /*r
     is_editable = ob->data ? !ID_IS_LINKED(ob->data) : false;
   }
 
-  return is_editable ? PROP_EDITABLE : 0;
+  return is_editable ? int(PROP_EDITABLE) : 0;
 }
 
 static PointerRNA rna_MaterialSlot_material_get(PointerRNA *ptr)
@@ -1357,7 +1357,7 @@ static int rna_MaterialSlot_name_length(PointerRNA *ptr)
   return 0;
 }
 
-static void rna_MaterialSlot_name_get(PointerRNA *ptr, char *str)
+static void rna_MaterialSlot_name_get(PointerRNA *ptr, char *value)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   Material *ma;
@@ -1366,10 +1366,10 @@ static void rna_MaterialSlot_name_get(PointerRNA *ptr, char *str)
   ma = BKE_object_material_get(ob, index + 1);
 
   if (ma) {
-    strcpy(str, ma->id.name + 2);
+    strcpy(value, ma->id.name + 2);
   }
   else {
-    str[0] = '\0';
+    value[0] = '\0';
   }
 }
 
