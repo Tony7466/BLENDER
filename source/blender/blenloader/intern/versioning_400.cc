@@ -10,7 +10,6 @@
 
 #include "CLG_log.h"
 
-#include "DNA_light_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
@@ -36,17 +35,8 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+void do_versions_after_linking_400(FileData * /*fd*/, Main * /*bmain*/)
 {
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
-    /* Fix area light scaling. */
-    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-      if (light->type == LA_AREA) {
-        light->energy *= M_PI_4;
-      }
-    }
-  }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
