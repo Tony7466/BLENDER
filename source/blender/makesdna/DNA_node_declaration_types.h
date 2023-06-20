@@ -35,7 +35,7 @@ typedef struct bNodeSocketDeclaration {
   char _pad[4];
 } bNodeSocketDeclaration;
 
-typedef struct bNodeTreeDeclaration {
+typedef struct bNodeTreeInterface {
   bNodeSocketDeclaration **sockets_array;
   int sockets_num;
   char _pad[4];
@@ -67,4 +67,4 @@ typedef struct bNodeTreeDeclaration {
   void clear_panels();
   bool move_panel(bNodePanel &panel, int new_index);
 #endif
-} bNodeTreeDeclaration;
+} bNodeTreeInterface;

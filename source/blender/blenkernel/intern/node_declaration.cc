@@ -8,13 +8,13 @@
 
 #include "DNA_node_types.h"
 
-int bNodeTreeDeclaration::socket_index(bNodeSocketDeclaration &socket_decl) const
+int bNodeTreeInterface::socket_index(bNodeSocketDeclaration &socket_decl) const
 {
   return sockets().first_index_try(&socket_decl);
 }
 
-bNodeSocketDeclaration *bNodeTreeDeclaration::add_socket(blender::StringRef name,
-                                                         const eNodeSocketDeclarationInOut in_out)
+bNodeSocketDeclaration *bNodeTreeInterface::add_socket(blender::StringRef name,
+                                                       const eNodeSocketDeclarationInOut in_out)
 {
   bNodeSocketDeclaration *new_socket = MEM_cnew<bNodeSocketDeclaration>(__func__);
   new_socket->name = BLI_strdup(name.data());
@@ -33,8 +33,9 @@ bNodeSocketDeclaration *bNodeTreeDeclaration::add_socket(blender::StringRef name
   return new_socket;
 }
 
-bNodeSocketDeclaration *bNodeTreeDeclaration::insert_socket(
-    blender::StringRef name, const eNodeSocketDeclarationInOut in_out, const int index)
+bNodeSocketDeclaration *bNodeTreeInterface::insert_socket(blender::StringRef name,
+                                                          const eNodeSocketDeclarationInOut in_out,
+                                                          const int index)
 {
   if (!blender::IndexRange(sockets().size() + 1).contains(index)) {
     return nullptr;
@@ -58,7 +59,7 @@ bNodeSocketDeclaration *bNodeTreeDeclaration::insert_socket(
   return new_socket;
 }
 
-bool bNodeTreeDeclaration::remove_socket(bNodeSocketDeclaration &socket_decl)
+bool bNodeTreeInterface::remove_socket(bNodeSocketDeclaration &socket_decl)
 {
   const int index = socket_index(socket_decl);
   if (!sockets().index_range().contains(index)) {
@@ -79,7 +80,7 @@ bool bNodeTreeDeclaration::remove_socket(bNodeSocketDeclaration &socket_decl)
   return true;
 }
 
-void bNodeTreeDeclaration::clear_sockets()
+void bNodeTreeInterface::clear_sockets()
 {
   for (bNodeSocketDeclaration *socket : sockets()) {
     MEM_SAFE_FREE(socket->name);
@@ -91,7 +92,7 @@ void bNodeTreeDeclaration::clear_sockets()
   sockets_array = nullptr;
 }
 
-bool bNodeTreeDeclaration::move_socket(bNodeSocketDeclaration &socket_decl, const int new_index)
+bool bNodeTreeInterface::move_socket(bNodeSocketDeclaration &socket_decl, const int new_index)
 {
   const int old_index = socket_index(socket_decl);
   if (!sockets().index_range().contains(old_index) || !sockets().index_range().contains(new_index))
@@ -122,12 +123,12 @@ bool bNodeTreeDeclaration::move_socket(bNodeSocketDeclaration &socket_decl, cons
   return true;
 }
 
-int bNodeTreeDeclaration::panel_index(bNodePanel &panel) const
+int bNodeTreeInterface::panel_index(bNodePanel &panel) const
 {
   return panels().first_index_try(&panel);
 }
 
-bNodePanel *bNodeTreeDeclaration::add_panel(blender::StringRef name)
+bNodePanel *bNodeTreeInterface::add_panel(blender::StringRef name)
 {
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
   new_panel->name = BLI_strdup(name.data());
@@ -145,7 +146,7 @@ bNodePanel *bNodeTreeDeclaration::add_panel(blender::StringRef name)
   return new_panel;
 }
 
-bNodePanel *bNodeTreeDeclaration::insert_panel(blender::StringRef name, const int index)
+bNodePanel *bNodeTreeInterface::insert_panel(blender::StringRef name, const int index)
 {
   if (!blender::IndexRange(panels().size() + 1).contains(index)) {
     return nullptr;
@@ -168,7 +169,7 @@ bNodePanel *bNodeTreeDeclaration::insert_panel(blender::StringRef name, const in
   return old_panel;
 }
 
-bool bNodeTreeDeclaration::remove_panel(bNodePanel &panel)
+bool bNodeTreeInterface::remove_panel(bNodePanel &panel)
 {
   const int index = panel_index(panel);
   if (!panels().index_range().contains(index)) {
@@ -188,7 +189,7 @@ bool bNodeTreeDeclaration::remove_panel(bNodePanel &panel)
   return true;
 }
 
-void bNodeTreeDeclaration::clear_panels()
+void bNodeTreeInterface::clear_panels()
 {
   for (bNodePanel *panel : panels()) {
     MEM_SAFE_FREE(panel->name);
@@ -199,7 +200,7 @@ void bNodeTreeDeclaration::clear_panels()
   panels_array = nullptr;
 }
 
-bool bNodeTreeDeclaration::move_panel(bNodePanel &panel, const int new_index)
+bool bNodeTreeInterface::move_panel(bNodePanel &panel, const int new_index)
 {
   const int old_index = panel_index(panel);
   if (!panels().index_range().contains(old_index) || !panels().index_range().contains(new_index)) {

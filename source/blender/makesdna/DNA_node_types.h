@@ -590,7 +590,7 @@ typedef struct bNodeTree {
    */
   ListBase inputs, outputs;
 
-  bNodeTreeDeclaration declaration;
+  bNodeTreeInterface interface;
 
   /* Node preview hash table
    * Only available in base node trees (e.g. scene->node_tree)
