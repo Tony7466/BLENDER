@@ -40,11 +40,16 @@ class ReflectionProbe {
  public:
   enum Type { Unused, World, Probe };
 
-  Type type;
+  Type type = Type::Unused;
   bool is_dirty = false;
   /* When reflection probe is a probe its ObjectKey.hash_value is copied here to keep track between
    * draws.*/
   uint32_t object_hash_value = 0;
+
+  /**
+   * Probes that aren't used during a draw can be cleared.
+   */
+  bool is_used = false;
 
   bool needs_update() const;
 };
@@ -82,6 +87,7 @@ class ReflectionProbeModule {
 
   void sync();
   void sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle, bool is_dirty);
+  void end_sync();
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {

@@ -210,6 +210,7 @@ void Instance::end_sync()
   lights.end_sync();
   sampling.end_sync();
   subsurface.end_sync();
+  reflection_probes.end_sync();
   film.end_sync();
   cryptomatte.end_sync();
   pipelines.end_sync();

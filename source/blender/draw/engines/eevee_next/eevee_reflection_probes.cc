@@ -25,12 +25,17 @@ void ReflectionProbeModule::init()
                                    MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(cubemaps_tx_, true, true);
   }
+
+  for (ReflectionProbe &reflection_probe : cubemaps_) {
+    if (reflection_probe.type == ReflectionProbe::Type::Probe) {
+      reflection_probe.is_used = false;
+    }
+  }
 }
 
 void ReflectionProbeModule::sync()
 {
-  for (int index : IndexRange(MAX_PROBES)) {
-    ReflectionProbe &cubemap = cubemaps_[index];
+  for (ReflectionProbe &cubemap : cubemaps_) {
     if (!cubemap.needs_update()) {
       continue;
     }
@@ -75,7 +80,10 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle)
 {
   ReflectionProbe *first_unused = nullptr;
   for (ReflectionProbe &reflection_probe : cubemaps_) {
-    if (reflection_probe.object_hash_value == ob_handle.object_key.hash_value) {
+    if (reflection_probe.type == ReflectionProbe::Type::Probe &&
+        reflection_probe.object_hash_value == ob_handle.object_key.hash_value)
+    {
+      reflection_probe.is_used = true;
       return reflection_probe;
     }
     if (first_unused == nullptr && reflection_probe.type == ReflectionProbe::Type::Unused) {
@@ -90,12 +98,21 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle)
   }
   BLI_assert(first_unused != nullptr);
   first_unused->is_dirty = true;
+  first_unused->is_used = true;
   first_unused->object_hash_value = ob_handle.object_key.hash_value;
   first_unused->type = ReflectionProbe::Type::Probe;
 
-  /* TODO: We should free slots that aren't used anymore. This could be implemented with a tag
-   * or priority list. */
   return *first_unused;
+}
+
+void ReflectionProbeModule::end_sync()
+{
+  for (ReflectionProbe &probe : cubemaps_) {
+    if (probe.type == ReflectionProbe::Type::Probe && !probe.is_used) {
+      probe.type = ReflectionProbe::Type::Unused;
+      probe.object_hash_value = 0;
+    }
+  }
 }
 
 /* -------------------------------------------------------------------- */
@@ -105,7 +122,15 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle)
 
 bool ReflectionProbe::needs_update() const
 {
-  return type != Type::Unused && is_dirty;
+  switch (type) {
+    case Type::Unused:
+      return false;
+    case Type::World:
+      return is_dirty;
+    case Type::Probe:
+      return is_dirty && is_used;
+  }
+  return false;
 }
 
 /** \} */
