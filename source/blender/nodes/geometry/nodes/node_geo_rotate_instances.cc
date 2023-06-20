@@ -41,15 +41,15 @@ static void rotate_instances(GeoNodeExecParams &params, bke::Instances &instance
 
   MutableSpan<float4x4> transforms = instances.transforms();
 
-  selection.foreach_index_optimized<int>(GrainSize(512), [&](const int index, const int position) {
-    const float3 pivot = pivots[index];
-    const float3 euler = rotations[index];
-    float4x4 &instance_transform = transforms[index];
+  selection.foreach_index_optimized<int>(GrainSize(512), [&](const int i) {
+    const float3 pivot = pivots[i];
+    const float3 euler = rotations[i];
+    float4x4 &instance_transform = transforms[i];
 
     float4x4 rotation_matrix;
     float3 used_pivot;
 
-    if (local_spaces[index]) {
+    if (local_spaces[i]) {
       /* Find rotation axis from the matrix. This should work even if the instance is skewed. */
       /* Create rotations around the individual axis. This could be optimized to skip some axis
        * when the angle is zero. */
