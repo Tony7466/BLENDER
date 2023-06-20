@@ -8,6 +8,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_base_safe.h"
 
 #include "NOD_socket_search_link.hh"
@@ -215,7 +216,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           data.resize(next_data_index + selection.size());
           MutableSpan<float> selected_data = data.as_mutable_span().slice(next_data_index,
                                                                           selection.size());
-          component_data.materialize_compressed(selection, selected_data);
+          array_utils::gather(component_data, selection, selected_data);
         }
       }
 
@@ -293,7 +294,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           data.resize(data.size() + selection.size());
           MutableSpan<float3> selected_data = data.as_mutable_span().slice(next_data_index,
                                                                            selection.size());
-          component_data.materialize_compressed(selection, selected_data);
+          array_utils::gather(component_data, selection, selected_data);
         }
       }
 

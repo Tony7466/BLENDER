@@ -41,7 +41,7 @@ static void rotate_instances(GeoNodeExecParams &params, bke::Instances &instance
 
   MutableSpan<float4x4> transforms = instances.transforms();
 
-  selection.foreach_index_optimized<int>(GrainSize(512), [&](const int i) {
+  selection.foreach_index(GrainSize(512), [&](const int64_t i) {
     const float3 pivot = pivots[i];
     const float3 euler = rotations[i];
     float4x4 &instance_transform = transforms[i];
