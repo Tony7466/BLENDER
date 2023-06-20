@@ -1315,9 +1315,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     }
 
     if (r_cage && i == cageIndex) {
-      if (mesh_final) {
         mesh_cage = mesh_final;
-      }
     }
   }
 
