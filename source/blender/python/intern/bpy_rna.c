@@ -5312,6 +5312,13 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
   *r_tot = PySequence_Size(*r_seq);
 
   if (*r_tot > 0) {
+    int src_len = RNA_property_collection_length(&self->ptr, self->prop);
+    if (src_len != *r_tot) {
+      PyErr_Format(PyExc_AttributeError,
+                   "Array length mismatch (expected %d, got %d)  ", *r_tot, src_len);
+      return -1;
+    }
+
     if (!foreach_attr_type(self, *r_attr, r_raw_type, r_attr_tot, r_attr_signed)) {
       PyErr_Format(PyExc_AttributeError,
                    "foreach_get/set '%.200s.%200s[...]' elements have no attribute '%.200s'",
