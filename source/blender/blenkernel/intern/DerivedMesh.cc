@@ -1221,14 +1221,19 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
       }
     }
 
-    if (mti->type == eModifierTypeType_OnlyDeform) {
-      if (mesh_final == mesh_cage) {
-        mesh_final = BKE_mesh_copy_for_eval(mesh_final);
+    if (mesh_final == mesh_cage) {
+      /* If the cage mesh has already been assigned, we have already passed the cage index in the
+       * modifier list. If the cage and final meshes are still the same, duplicate the final mesh
+       * so the cage mesh isn't modified anymore. */
+      mesh_final = BKE_mesh_copy_for_eval(mesh_final);
+      if (mesh_cage->edit_mesh) {
         mesh_final->edit_mesh = static_cast<BMEditMesh *>(MEM_dupallocN(mesh_cage->edit_mesh));
         mesh_final->edit_mesh->is_shallow_copy = true;
-        BKE_mesh_runtime_ensure_edit_data(mesh_final);
       }
+      BKE_mesh_runtime_ensure_edit_data(mesh_final);
+    }
 
+    if (mti->type == eModifierTypeType_OnlyDeform) {
       if (mti->deformVertsEM) {
         BKE_modifier_deform_vertsEM(md,
                                     &mectx,
@@ -1250,12 +1255,6 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     }
     else {
       non_deform_modifier_applied = true;
-      if (mesh_final == mesh_cage) {
-        mesh_final = BKE_mesh_copy_for_eval(mesh_final);
-        mesh_final->edit_mesh = static_cast<BMEditMesh *>(MEM_dupallocN(mesh_cage->edit_mesh));
-        mesh_final->edit_mesh->is_shallow_copy = true;
-        BKE_mesh_runtime_ensure_edit_data(mesh_final);
-      }
 
       /* create an orco derivedmesh in parallel */
       CustomData_MeshMasks mask = md_datamask->mask;
@@ -1315,7 +1314,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     }
 
     if (r_cage && i == cageIndex) {
-        mesh_cage = mesh_final;
+      mesh_cage = mesh_final;
     }
   }
 
