@@ -30,14 +30,14 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
       op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
 
   if (grease_pencil.has_active_layer()) {
-    LayerGroup &active_group = grease_pencil.active_layer->base.parent->wrap();
+    LayerGroup &active_group = grease_pencil.get_active_layer()->base.parent->wrap();
     Layer &new_layer = grease_pencil.add_layer_after(
-        active_group, &grease_pencil.active_layer->wrap(), new_layer_name);
-    grease_pencil.active_layer = reinterpret_cast<GreasePencilLayer *>(&new_layer);
+        active_group, grease_pencil.get_active_layer_for_write(), new_layer_name);
+    grease_pencil.set_active_layer(&new_layer);
   }
   else {
     Layer &new_layer = grease_pencil.add_layer(new_layer_name);
-    grease_pencil.active_layer = reinterpret_cast<GreasePencilLayer *>(&new_layer);
+    grease_pencil.set_active_layer(&new_layer);
   }
 
   MEM_SAFE_FREE(new_layer_name);

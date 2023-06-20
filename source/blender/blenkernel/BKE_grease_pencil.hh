@@ -184,6 +184,9 @@ class Layer : public ::GreasePencilLayer {
   Layer(const Layer &other);
   ~Layer();
 
+  /**
+   * \returns the layer name.
+   */
   StringRefNull name() const
   {
     return this->base.name;
@@ -276,13 +279,13 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   Layer &add_layer(StringRefNull name);
 
   /**
-   * Adds a layer before \a link and returns it. 
+   * Adds a layer before \a link and returns it.
    */
   Layer &add_layer_before(Layer *layer, Layer *link);
   Layer &add_layer_before(StringRefNull name, Layer *link);
 
   /**
-   * Adds a layer after \a link and returns it. 
+   * Adds a layer after \a link and returns it.
    */
   Layer &add_layer_after(Layer *layer, Layer *link);
   Layer &add_layer_after(StringRefNull name, Layer *link);

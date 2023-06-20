@@ -111,8 +111,8 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
 
   /* Set active layer. */
   if (grease_pencil_src->has_active_layer()) {
-    grease_pencil_dst->active_layer = grease_pencil_dst->find_layer_by_name(
-        grease_pencil_src->active_layer->wrap().name());
+    grease_pencil_dst->set_active_layer(
+        grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().name()));
   }
 
   /* Make sure the runtime pointer exists. */
@@ -1178,6 +1178,27 @@ blender::Span<blender::bke::greasepencil::Layer *> GreasePencil::layers_for_writ
 {
   BLI_assert(this->runtime != nullptr);
   return this->root_group.wrap().layers_for_write();
+}
+
+const blender::bke::greasepencil::Layer *GreasePencil::get_active_layer() const
+{
+  if (this->active_layer == nullptr) {
+    return nullptr;
+  }
+  return &this->active_layer->wrap();
+}
+
+blender::bke::greasepencil::Layer *GreasePencil::get_active_layer_for_write()
+{
+  if (this->active_layer == nullptr) {
+    return nullptr;
+  }
+  return &this->active_layer->wrap();
+}
+
+void GreasePencil::set_active_layer(blender::bke::greasepencil::Layer *layer)
+{
+  this->active_layer = reinterpret_cast<GreasePencilLayer *>(layer);
 }
 
 static bool check_unique_layer_cb(void *arg, const char *name)
