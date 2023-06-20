@@ -49,7 +49,10 @@ enum eUVPackIsland_ShapeMethod {
 enum eUVPackIsland_PinMethod {
   /** Pin has no impact on packing. */
   ED_UVPACK_PIN_NONE = 0,
-  /** Ignore islands containing any pinned UV's. */
+  /**
+   * Ignore islands containing any pinned UV's.
+   * \note Not exposed in the UI, used only for live-unwrap.
+   */
   ED_UVPACK_PIN_IGNORE,
   ED_UVPACK_PIN_LOCK_ROTATION,
   ED_UVPACK_PIN_LOCK_ROTATION_SCALE,

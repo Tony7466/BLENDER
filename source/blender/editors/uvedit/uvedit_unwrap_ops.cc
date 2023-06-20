@@ -1597,17 +1597,21 @@ static const EnumPropertyItem pack_shape_method_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+/**
+ * \note #ED_UVPACK_PIN_NONE is exposed as a boolean "pin".
+ * \note #ED_UVPACK_PIN_IGNORE is intentionally not exposed as it is confusing from the UI level
+ * (users can simply not select these islands).
+ * The option is kept kept internally because it's used for live unwrap.
+ */
 static const EnumPropertyItem pinned_islands_method_items[] = {
-    /* NOTE: #ED_UVPACK_PIN_NONE is exposed as a boolean "pin". */
-    {ED_UVPACK_PIN_LOCK_SCALE, "SCALE", 0, "Lock Scale", "Pinned islands won't rescale"},
-    {ED_UVPACK_PIN_LOCK_ROTATION, "ROTATION", 0, "Lock Rotation", "Pinned islands won't rotate"},
+    {ED_UVPACK_PIN_LOCK_SCALE, "SCALE", 0, "Scale", "Pinned islands won't rescale"},
+    {ED_UVPACK_PIN_LOCK_ROTATION, "ROTATION", 0, "Rotation", "Pinned islands won't rotate"},
     {ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
      "ROTATION_SCALE",
      0,
-     "Lock Rotation and Scale",
+     "Rotation and Scale",
      "Pinned islands will translate only"},
-    {ED_UVPACK_PIN_LOCK_ALL, "LOCKED", 0, "Lock in Place", "Pinned islands are locked in place"},
-    {ED_UVPACK_PIN_IGNORE, "IGNORE", 0, "Ignore", "Pinned islands are not packed"},
+    {ED_UVPACK_PIN_LOCK_ALL, "LOCKED", 0, "All", "Pinned islands are locked in place"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1632,7 +1636,7 @@ static void uv_pack_islands_ui(bContext * /*C*/, wmOperator *op)
     uiItemR(layout, op->ptr, "pin", 0, nullptr, ICON_NONE);
     uiLayout *sub = uiLayoutRow(layout, true);
     uiLayoutSetActive(sub, RNA_boolean_get(op->ptr, "pin"));
-    uiItemR(sub, op->ptr, "pin_method", 0, nullptr, ICON_NONE);
+    uiItemR(sub, op->ptr, "pin_method", 0, IFACE_("Lock Method"), ICON_NONE);
     uiItemS(layout);
   }
   uiItemR(layout, op->ptr, "merge_overlap", 0, nullptr, ICON_NONE);
@@ -1700,8 +1704,11 @@ void UV_OT_pack_islands(wmOperatorType *ot)
                "");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
-  RNA_def_boolean(
-      ot->srna, "pin", false, "Use Pin", "Constrain islands containing any pinned UV's");
+  RNA_def_boolean(ot->srna,
+                  "pin",
+                  false,
+                  "Lock Pinned Islands",
+                  "Constrain islands containing any pinned UV's");
   RNA_def_enum(ot->srna,
                "pin_method",
                pinned_islands_method_items,
