@@ -1726,11 +1726,43 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
     }
 
+    lf::Node &lf_main_input_usage_node = this->build_dummy_node_for_socket_usages(
+        "Input Usages", zone.input_node->output_sockets(), {}, lf_graph);
+    lf::Node &lf_main_output_usage_node = this->build_dummy_node_for_socket_usages(
+        "Output Usages", {}, zone.output_node->input_sockets(), lf_graph);
+    for (const int i : zone.output_node->input_sockets().index_range()) {
+      const bNodeSocket &bsocket = zone.output_node->input_socket(i);
+      lf::OutputSocket &lf_usage = lf_main_output_usage_node.output(i);
+      graph_params.usage_by_bsocket.add(&bsocket, &lf_usage);
+    }
+
+    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone, lf_graph);
+    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone, lf_graph);
+
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
+
+    this->build_output_socket_usages(*zone.input_node, graph_params);
+    for (const int i : zone.input_node->output_sockets().index_range()) {
+      const bNodeSocket &bsocket = zone.input_node->output_socket(i);
+      lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(&bsocket, nullptr);
+      lf::InputSocket &lf_usage_output = lf_main_input_usage_node.input(i);
+      if (lf_usage) {
+        lf_graph.add_link(*lf_usage, lf_usage_output);
+      }
+      else {
+        static const bool static_false = false;
+        lf_usage_output.set_default_value(&static_false);
+      }
+    }
 
     for (const auto item : graph_params.lf_output_by_bsocket.items()) {
       this->insert_links_from_socket(*item.key, *item.value, graph_params);
     }
+
+    this->link_border_link_inputs_and_usages(
+        zone, lf_border_link_input_node, lf_border_link_usage_node, graph_params);
+
+    this->add_default_inputs(graph_params);
 
     auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
     zone_info.lazy_function = &fn;
