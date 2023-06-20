@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -151,9 +151,9 @@ static void grease_pencil_stroke_cancel(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_brush_stroke(wmOperatorType *ot)
 {
-  ot->name = "Stroke Curves Sculpt";
+  ot->name = "Grease Pencil Draw";
   ot->idname = "GREASE_PENCIL_OT_brush_stroke";
-  ot->description = "Sculpt curves using a brush";
+  ot->description = "Draw a new stroke in the active Grease Pencil object";
 
   ot->invoke = grease_pencil_stroke_invoke;
   ot->modal = grease_pencil_stroke_modal;

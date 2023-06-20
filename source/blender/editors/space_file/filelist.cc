@@ -1345,7 +1345,7 @@ static void parent_dir_until_exists_or_default_root(char *dir)
 #ifdef WIN32
     BLI_windows_get_default_root_dir(dir);
 #else
-    strcpy(dir, "/");
+    ARRAY_SET_ITEMS(dir, '/', '\0');
 #endif
   }
 }
@@ -3187,7 +3187,7 @@ static void filelist_readjob_list_lib_add_datablock(FileListReadJob *job_params,
         datablock_info->free_asset_data = false;
 
         entry->asset = &job_params->load_asset_library->add_external_asset(
-            entry->relpath, datablock_info->name, std::move(metadata));
+            entry->relpath, datablock_info->name, idcode, std::move(metadata));
       }
     }
   }

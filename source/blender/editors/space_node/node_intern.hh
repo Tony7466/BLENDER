@@ -294,6 +294,7 @@ void NODE_OT_group_edit(wmOperatorType *ot);
 /* node_relationships.cc */
 
 void update_multi_input_indices_for_removed_links(bNode &node);
+bool all_links_muted(const bNodeSocket &socket);
 
 void NODE_OT_link(wmOperatorType *ot);
 void NODE_OT_link_make(wmOperatorType *ot);
@@ -334,6 +335,8 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         eNodeSocketInOut in_out);
 float node_link_dim_factor(const View2D &v2d, const bNodeLink &link);
 bool node_link_is_hidden_or_dimmed(const View2D &v2d, const bNodeLink &link);
+
+void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &node_map);
 
 void NODE_OT_duplicate(wmOperatorType *ot);
 void NODE_OT_delete(wmOperatorType *ot);
