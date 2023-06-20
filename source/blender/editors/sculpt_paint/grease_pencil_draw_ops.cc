@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
 
-#include "ED_grease_pencil_draw.h"
+#include "ED_grease_pencil.h"
 #include "ED_object.h"
 #include "ED_screen.h"
 
@@ -151,9 +151,9 @@ static void grease_pencil_stroke_cancel(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_brush_stroke(wmOperatorType *ot)
 {
-  ot->name = "Stroke Curves Sculpt";
+  ot->name = "Grease Pencil Draw";
   ot->idname = "GREASE_PENCIL_OT_brush_stroke";
-  ot->description = "Sculpt curves using a brush";
+  ot->description = "Draw a new stroke in the active Grease Pencil object";
 
   ot->invoke = grease_pencil_stroke_invoke;
   ot->modal = grease_pencil_stroke_modal;
