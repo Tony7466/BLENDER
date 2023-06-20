@@ -1421,6 +1421,54 @@ struct ZoneBuildInfo {
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
+class LazyFunctionForSerialLoopZone : public LazyFunction {
+ private:
+  const bNode &loop_output_bnode_;
+
+ public:
+  LazyFunctionForSerialLoopZone(const bNodeTreeZone &zone, ZoneBuildInfo &zone_info)
+      : loop_output_bnode_(*zone.output_node)
+  {
+    debug_name_ = "Serial Loop Zone";
+
+    for (const bNodeSocket *socket : zone.input_node->input_sockets()) {
+      inputs_.append_as(socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type);
+    }
+    zone_info.main_input_indices = inputs_.index_range();
+
+    for (const bNodeLink *link : zone.border_links) {
+      inputs_.append_as(link->fromsock->identifier,
+                        *link->tosock->typeinfo->geometry_nodes_cpp_type);
+    }
+    zone_info.border_link_input_indices = inputs_.index_range().take_back(
+        zone.border_links.size());
+
+    for (const bNodeSocket *socket : zone.output_node->output_sockets()) {
+      inputs_.append_as("Usage", CPPType::get<bool>());
+      outputs_.append_as(socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type);
+    }
+    zone_info.main_output_usage_indices = inputs_.index_range().take_back(
+        zone.output_node->output_sockets().size());
+    zone_info.main_output_indices = outputs_.index_range();
+
+    for ([[maybe_unused]] const bNodeSocket *socket : zone.input_node->input_sockets()) {
+      outputs_.append_as("Usage", CPPType::get<bool>());
+    }
+    zone_info.main_input_usage_indices = outputs_.index_range().take_back(
+        zone.input_node->input_sockets().size());
+    for ([[maybe_unused]] const bNodeLink *link : zone.border_links) {
+      outputs_.append_as("Border Link Usage", CPPType::get<bool>());
+    }
+    zone_info.border_link_input_usage_indices = outputs_.index_range().take_back(
+        zone.border_links.size());
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  {
+    params.set_default_remaining_outputs();
+  }
+};
+
 /**
  * Utility class to build a lazy-function graph based on a geometry nodes tree.
  * This is mainly a separate class because it makes it easier to have variables that can be
@@ -1498,8 +1546,20 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const int zone_i : zone_build_order) {
       const bNodeTreeZone &zone = *tree_zones_->zones[zone_i];
-      BLI_assert(zone.output_node->type == GEO_NODE_SIMULATION_OUTPUT);
-      this->build_simulation_zone_function(zone);
+      switch (zone.output_node->type) {
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          this->build_simulation_zone_function(zone);
+          break;
+        }
+        case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+          this->build_serial_loop_zone_function(zone);
+          break;
+        }
+        default: {
+          BLI_assert_unreachable();
+          break;
+        }
+      }
     }
   }
 
@@ -1690,6 +1750,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     debug_info.output_names.append_n_times("Usage", types.size());
     lf::DummyNode &node = lf_graph.add_dummy({}, types, &debug_info);
     return node;
+  }
+
+  void build_serial_loop_zone_function(const bNodeTreeZone &zone)
+  {
+    ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
+    auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
+    zone_info.lazy_function = &fn;
   }
 
   lf::DummyNode &build_zone_border_links_input_node(const bNodeTreeZone &zone, lf::Graph &lf_graph)
