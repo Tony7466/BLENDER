@@ -61,7 +61,7 @@ struct SnapObjectContext {
     BVHTreeNearest nearest;
 
     /* Matrix of target object (may not be #Object.object_to_world with dupli-instances). */
-    float obmat[4][4];
+    blender::float4x4 obmat;
     /* Snapped object. */
     Object *ob;
     /* Snapped data. */
@@ -101,30 +101,32 @@ struct Nearest2dUserData {
   Nearest2dUserData(SnapObjectContext *sctx,
                     Object *ob_eval,
                     const ID *data_eval,
-                    const float obmat[4][4] = nullptr,
+                    const blender::float4x4 &obmat = blender::float4x4::identity(),
                     bool skip_occlusion_plane = false);
 
   float dist_px_sq(void);
-  float snap_dist_px_sq(const float co[3]);
-  bool snap_boundbox(float min[3], float max[3]);
+  float snap_dist_px_sq(const blender::float3 &co);
+  bool snap_boundbox(const blender::float3 &min, const blender::float3 &max);
   bool snap_point(int index, const float co[3]);
-  bool snap_edge(
-      int edge_index, int v0_index, int v1_index, const float v0_co[3], const float v1_co[3]);
+  bool snap_edge(int edge_index,
+                 int v0_index,
+                 int v1_index,
+                 const blender::float3 &v0_co,
+                 const blender::float3 &v1_co);
   bool confirm(SnapObjectContext *sctx);
 
   eSnapMode m_snap_to_flag;
 
   Object *m_ob;
   const ID *m_data;
-  float m_obmat[4][4];
+  blender::float4x4 m_obmat;
 
   DistProjectedAABBPrecalc m_nearest_precalc;
-  float m_pmat_local[4][4];
-  float m_clip_plane[MAX_CLIPPLANE_LEN][4];
-  int m_clip_plane_len;
+  blender::float4x4 m_pmat_local;
+  blender::Vector<blender::float4, MAX_CLIPPLANE_LEN> m_clip_plane;
 
-  float m_prev_co[3];
-  float m_normal_fallback[3];
+  blender::float3 m_prev_co;
+  blender::float3 m_normal_fallback;
 
   bool m_use_backface_culling;
 
