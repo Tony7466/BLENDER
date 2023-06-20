@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_attribute.h"
+
 struct bContext;
 
 struct UndoType;
@@ -26,8 +28,14 @@ extern "C" {
  * \{ */
 
 void ED_operatortypes_grease_pencil(void);
+void ED_operatortypes_grease_pencil_draw(void);
+void ED_operatortypes_grease_pencil_select(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 void ED_grease_pencil_undosys_type(struct UndoType *ut);
+/**
+ * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
+ */
+eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
 
 #ifdef __cplusplus
 }
@@ -35,9 +43,12 @@ void ED_grease_pencil_undosys_type(struct UndoType *ut);
 
 #ifdef __cplusplus
 
+#  include "BLI_math_matrix_types.hh"
+
 namespace blender::ed::greasepencil {
 
 bool editable_grease_pencil_poll(bContext *C);
+bool editable_grease_pencil_point_selection_poll(bContext *C);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
