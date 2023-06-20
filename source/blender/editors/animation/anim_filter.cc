@@ -975,6 +975,16 @@ static bAnimListElem *make_new_animlistelem(void *data,
         ale->datatype = ALE_GPFRAME;
         break;
       }
+      case ANIMTYPE_GREASE_PENCIL_LAYER: {
+        using namespace blender::bke::greasepencil;
+        Layer *gpl = reinterpret_cast<Layer *>(data);
+
+        // ale->flag = gpl->flag;
+
+        ale->key_data = nullptr;
+        ale->datatype = ALE_CEL;
+        break;
+      }
       case ANIMTYPE_MASKLAYER: {
         MaskLayer *masklay = (MaskLayer *)data;
 
