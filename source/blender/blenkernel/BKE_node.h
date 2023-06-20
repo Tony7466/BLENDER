@@ -547,6 +547,12 @@ void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree);
 
 void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
 
+void ntreeMoveSocketInterface(struct bNodeTree *ntree, struct bNodeSocket *socket, int new_index);
+
+void ntreeInsertSocketInterfaceBefore(struct bNodeTree *ntree,
+                                      struct bNodeSocket *socket,
+                                      struct bNodeSocket *before);
+
 struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             eNodeSocketInOut in_out,
                                             const char *idname,
@@ -597,6 +603,8 @@ void ntreeClearPanels(bNodeTree *ntree);
  * \param index: Index to which to move the panel.
  */
 void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index);
+
+void ntreeInsertPanelBefore(bNodeTree *ntree, bNodePanel *panel, bNodePanel *before);
 
 /** \} */
 

@@ -1981,6 +1981,13 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(func,
                                   "Visualization of a content of a light linking collection");
   api_ui_item_rna_common(func);
+
+  func = RNA_def_function(
+      srna, "template_node_tree_declaration", "uiTemplateNodeTreeDeclaration");
+  RNA_def_function_ui_description(func,
+                                  "Show a node tree interface declaration");
+  parm = RNA_def_pointer(func, "node_tree", "NodeTree", "Node Tree", "Node tree for which to draw the interface declaration");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
 #endif
