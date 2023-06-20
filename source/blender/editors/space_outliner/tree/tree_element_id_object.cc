@@ -88,18 +88,6 @@ void TreeElementIDObject::expandPose(SpaceOutliner &space_outliner) const
           LISTBASE_FOREACH (bConstraint *, con, &pchan->constraints) {
             TreeElement *ten1 = outliner_add_element(
                 &space_outliner, &tenla1->subtree, &object_, tenla1, TSE_CONSTRAINT, const_index);
-#if 0 /* disabled as it needs to be reworked for recoded constraints system */
-            target = get_constraint_target(con, &str);
-            if (str && str[0]) {
-              ten1->name = str;
-            }
-            else if (target) {
-              ten1->name = target->id.name + 2;
-            }
-            else {
-              ten1->name = con->name;
-            }
-#endif
             ten1->name = con->name;
             ten1->directdata = con;
             /* possible add all other types links? */
@@ -161,18 +149,6 @@ void TreeElementIDObject::expandConstraints(SpaceOutliner &space_outliner) const
     LISTBASE_FOREACH_INDEX (bConstraint *, con, &object_.constraints, index) {
       TreeElement *ten = outliner_add_element(
           &space_outliner, &tenla->subtree, &object_, tenla, TSE_CONSTRAINT, index);
-#if 0 /* disabled due to constraints system targets recode... code here needs review */
-        target = get_constraint_target(con, &str);
-        if (str && str[0]) {
-          ten->name = str;
-        }
-        else if (target) {
-          ten->name = target->id.name + 2;
-        }
-        else {
-          ten->name = con->name;
-        }
-#endif
       ten->name = con->name;
       ten->directdata = con;
       /* possible add all other types links? */
