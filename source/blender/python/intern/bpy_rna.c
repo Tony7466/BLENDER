@@ -5313,9 +5313,9 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
 
   if (*r_tot > 0) {
     int src_len = RNA_property_collection_length(&self->ptr, self->prop);
-    if (src_len != *r_tot) {
+    if (src_len == 0) {
       PyErr_Format(PyExc_AttributeError,
-                   "Array length mismatch (expected %d, got %d)  ", *r_tot, src_len);
+                   "Can't determine type of zero length collection");
       return -1;
     }
 
