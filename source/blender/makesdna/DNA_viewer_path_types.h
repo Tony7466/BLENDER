@@ -15,6 +15,7 @@ typedef enum ViewerPathElemType {
   VIEWER_PATH_ELEM_TYPE_GROUP_NODE = 2,
   VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE = 3,
   VIEWER_PATH_ELEM_TYPE_VIEWER_NODE = 4,
+  VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE = 5,
 } ViewerPathElemType;
 
 typedef struct ViewerPathElem {
@@ -47,6 +48,13 @@ typedef struct SimulationZoneViewerPathElem {
   int32_t sim_output_node_id;
   char _pad1[4];
 } SimulationZoneViewerPathElem;
+
+typedef struct SerialLoopZoneViewerPathElem {
+  ViewerPathElem base;
+
+  int loop_output_node_id;
+  int iteration;
+} SerialLoopZoneViewerPathElem;
 
 typedef struct ViewerNodeViewerPathElem {
   ViewerPathElem base;

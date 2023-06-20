@@ -638,6 +638,12 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
             typed_elem.sim_output_node_id);
         break;
       }
+      case VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const SerialLoopZoneViewerPathElem *>(elem);
+        compute_context_builder.push<bke::SerialLoopZoneComputeContext>(
+            typed_elem.loop_output_node_id, typed_elem.iteration);
+        break;
+      }
       default: {
         BLI_assert_unreachable();
         break;
