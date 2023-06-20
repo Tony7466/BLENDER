@@ -71,8 +71,7 @@ class TEXT_OT_jump_to_file_at_point(Operator):
             return {'CANCELLED'}
 
         try:
-            # With `check=True` if `process.returncode != 0` an exception will be raised.
-            subprocess.run(args, check=True)
+            subprocess.Popen(args)
         except Exception as ex:
             self.report({'ERROR'}, "Exception running external editor: %r" % ex)
             return {'CANCELLED'}
