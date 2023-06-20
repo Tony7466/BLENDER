@@ -217,7 +217,7 @@ void ED_grease_pencil_undosys_type(UndoType *ut)
   using namespace blender::ed;
 
   ut->name = "Edit Grease Pencil";
-  ut->poll = greasepencil::editable_grease_pencil_poll;
+  ut->poll = greasepencil::active_grease_pencil_edit_mode_poll;
   ut->step_encode = greasepencil::undo::step_encode;
   ut->step_decode = greasepencil::undo::step_decode;
   ut->step_free = greasepencil::undo::step_free;

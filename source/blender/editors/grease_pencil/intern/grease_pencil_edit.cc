@@ -15,16 +15,25 @@
 
 namespace blender::ed::greasepencil {
 
-bool editable_grease_pencil_poll(bContext *C)
+bool active_grease_pencil_edit_mode_poll(bContext *C)
 {
   Object *object = CTX_data_active_object(C);
   if (object == nullptr || object->type != OB_GREASE_PENCIL) {
     return false;
   }
-  if (!ED_operator_object_active_editable_ex(C, object)) {
+  if ((object->mode & OB_MODE_EDIT) == 0) {
     return false;
   }
-  if ((object->mode & OB_MODE_EDIT) == 0) {
+  return true;
+}
+
+bool editable_grease_pencil_poll(bContext *C)
+{
+  if (!active_grease_pencil_edit_mode_poll(C)) {
+    return false;
+  }
+  Object *object = CTX_data_active_object(C);
+  if (!ED_operator_object_active_editable_ex(C, object)) {
     return false;
   }
   return true;
