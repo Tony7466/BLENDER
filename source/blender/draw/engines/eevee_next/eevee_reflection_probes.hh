@@ -57,7 +57,7 @@ class ReflectionProbe {
 class ReflectionProbeModule {
  private:
   /** The max number of probes to track. */
-  static constexpr int MAX_PROBES = 8;
+  static constexpr int INITIAL_PROBES = 1;
 
   /**
    * The maximum resolution of a cubemap side.
@@ -97,6 +97,9 @@ class ReflectionProbeModule {
  private:
   void sync(const ReflectionProbe &cubemap);
   ReflectionProbe &find_or_insert(ObjectHandle &ob_handle);
+
+  /** Get the number of layers that is needed to store probes. */
+  int needed_layers_get() const;
 
   friend class WorldProbePipeline;
 };

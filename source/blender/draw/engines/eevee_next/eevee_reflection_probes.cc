@@ -9,7 +9,7 @@ namespace blender::eevee {
 void ReflectionProbeModule::init()
 {
   if (cubemaps_.is_empty()) {
-    cubemaps_.reserve(MAX_PROBES);
+    cubemaps_.reserve(INITIAL_PROBES);
 
     /* Initialize the world cubemap. */
     ReflectionProbe world_cubemap;
@@ -19,7 +19,7 @@ void ReflectionProbeModule::init()
 
     cubemaps_tx_.ensure_cube_array(GPU_RGBA16F,
                                    MAX_RESOLUTION,
-                                   MAX_PROBES,
+                                   INITIAL_PROBES,
                                    GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT,
                                    NULL,
                                    MIPMAP_LEVELS);
@@ -35,13 +35,44 @@ void ReflectionProbeModule::init()
 
 void ReflectionProbeModule::sync()
 {
+  int number_layers_needed = needed_layers_get();
+  bool resize_layers = cubemaps_tx_.depth() < number_layers_needed;
+  if (resize_layers) {
+    cubemaps_tx_.ensure_cube_array(GPU_RGBA16F,
+                                   MAX_RESOLUTION,
+                                   number_layers_needed,
+                                   GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT,
+                                   NULL,
+                                   MIPMAP_LEVELS);
+  }
+
   for (ReflectionProbe &cubemap : cubemaps_) {
+    cubemap.is_dirty |= resize_layers;
     if (!cubemap.needs_update()) {
       continue;
     }
     sync(cubemap);
     cubemap.is_dirty = false;
   }
+}
+
+int ReflectionProbeModule::needed_layers_get() const
+{
+  int max_layer = 0;
+  for (int index : cubemaps_.index_range()) {
+    const ReflectionProbe &cubemap = cubemaps_[index];
+
+    if (cubemap.type == ReflectionProbe::Type::Unused) {
+      continue;
+    }
+    if (cubemap.type == ReflectionProbe::Type::World) {
+      max_layer = max_ii(max_layer, index);
+    }
+    if (cubemap.type == ReflectionProbe::Type::Probe && cubemap.is_used) {
+      max_layer = max_ii(max_layer, index);
+    }
+  }
+  return max_layer + 1;
 }
 
 void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
@@ -53,6 +84,7 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
       break;
     }
     case ReflectionProbe::Type::Probe: {
+      // upload the baked probe to the cubemaps.
       /* TODO: Implement*/
       break;
     }
