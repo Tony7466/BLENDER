@@ -43,6 +43,8 @@ void register_node_type_geo_serial_loop_input()
       &ntype, GEO_NODE_SERIAL_LOOP_INPUT, "Serial Loop Input", NODE_CLASS_INTERFACE);
   ntype.initfunc = file_ns::node_init;
   ntype.declare = file_ns::node_declare;
+  ntype.gather_add_node_search_ops = nullptr;
+  ntype.gather_link_search_ops = nullptr;
   node_type_storage(&ntype,
                     "NodeGeometrySerialLoopInput",
                     node_free_standard_storage,
