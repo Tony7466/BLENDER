@@ -15,7 +15,7 @@ inline blender::Span<const bNodeSocketDeclaration *> bNodeTreeDeclaration::socke
   return blender::Span(sockets_array, sockets_num);
 }
 
-inline blender::MutableSpan<bNodeSocketDeclaration *> bNodeTreeDeclaration::sockets_for_write()
+inline blender::MutableSpan<bNodeSocketDeclaration *> bNodeTreeDeclaration::sockets()
 {
   return blender::MutableSpan(sockets_array, sockets_num);
 }
@@ -25,7 +25,7 @@ inline blender::Span<const bNodePanel *> bNodeTreeDeclaration::panels() const
   return blender::Span(panels_array, panels_num);
 }
 
-inline blender::MutableSpan<bNodePanel *> bNodeTreeDeclaration::panels_for_write()
+inline blender::MutableSpan<bNodePanel *> bNodeTreeDeclaration::panels()
 {
   return blender::MutableSpan(panels_array, panels_num);
 }

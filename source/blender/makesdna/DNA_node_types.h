@@ -10,6 +10,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
+#include "DNA_node_declaration_types.h"
 #include "DNA_scene_types.h" /* for #ImageFormatData */
 #include "DNA_vec_types.h"   /* for #rctf */
 
@@ -588,6 +589,8 @@ typedef struct bNodeTree {
    * These sockets are used only for generating external interfaces.
    */
   ListBase inputs, outputs;
+
+  bNodeTreeDeclaration declaration;
 
   /* Node preview hash table
    * Only available in base node trees (e.g. scene->node_tree)
