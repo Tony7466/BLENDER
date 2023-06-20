@@ -1708,28 +1708,34 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
     lf::Graph &lf_graph = scope_.construct<lf::Graph>();
 
-    lf::DummyNode &lf_main_input_node = this->build_serial_loop_input_node(zone, lf_graph);
-
     BuildGraphParams graph_params{lf_graph};
+
+    lf::DummyNode &lf_main_input_node = this->build_dummy_node_for_sockets(
+        "Loop Input", {}, zone.input_node->output_sockets(), lf_graph);
+    for (const int i : zone.input_node->output_sockets().index_range()) {
+      const bNodeSocket &bsocket = zone.input_node->output_socket(i);
+      lf::OutputSocket &lf_socket = lf_main_input_node.output(i);
+      graph_params.lf_output_by_bsocket.add_new(&bsocket, &lf_socket);
+    }
+
+    lf::DummyNode &lf_main_output_node = this->build_dummy_node_for_sockets(
+        "Loop Output", zone.output_node->input_sockets(), {}, lf_graph);
+    for (const int i : zone.output_node->input_sockets().index_range()) {
+      const bNodeSocket &bsocket = zone.output_node->input_socket(i);
+      lf::InputSocket &lf_socket = lf_main_output_node.input(i);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+    }
+
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
+
+    for (const auto item : graph_params.lf_output_by_bsocket.items()) {
+      this->insert_links_from_socket(*item.key, *item.value, graph_params);
+    }
 
     auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
     zone_info.lazy_function = &fn;
 
     std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
-  }
-
-  lf::DummyNode &build_serial_loop_input_node(const bNodeTreeZone &zone, lf::Graph &lf_graph)
-  {
-    Vector<const CPPType *, 16> zone_input_types;
-    auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
-    debug_info.name = "Zone Input";
-    for (const bNodeSocket *socket : zone.input_node->output_sockets()) {
-      zone_input_types.append(socket->typeinfo->geometry_nodes_cpp_type);
-      debug_info.output_names.append(socket->identifier);
-    }
-    lf::DummyNode &node = lf_graph.add_dummy({}, zone_input_types, &debug_info);
-    return node;
   }
 
   lf::DummyNode &build_zone_border_links_input_node(const bNodeTreeZone &zone, lf::Graph &lf_graph)
