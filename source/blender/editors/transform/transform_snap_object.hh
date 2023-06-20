@@ -117,11 +117,13 @@ struct Nearest2dUserData {
  public:
   /* Constructor. */
   Nearest2dUserData(SnapObjectContext *sctx,
-                    const blender::float4x4 &obmat = blender::float4x4::identity(),
-                    bool skip_occlusion_plane = false);
+                    const blender::float4x4 &obmat = blender::float4x4::identity());
 
   /* Test BoundBox. */
   bool snap_boundbox(const blender::float3 &min, const blender::float3 &max, float dist_px_sq);
+  void clip_planes_locals_calc(SnapObjectContext *sctx,
+                               const float4x4 &obmat,
+                               bool skip_occlusion_plane = false);
 
   DistProjectedAABBPrecalc nearest_precalc;
   blender::float4x4 pmat_local;

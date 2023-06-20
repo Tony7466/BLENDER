@@ -36,9 +36,7 @@
 
 using namespace blender;
 
-Nearest2dUserData::Nearest2dUserData(SnapObjectContext *sctx,
-                                     const float4x4 &obmat,
-                                     bool skip_occlusion_plane)
+Nearest2dUserData::Nearest2dUserData(SnapObjectContext *sctx, const float4x4 &obmat)
     : use_backface_culling(sctx->runtime.params.use_backface_culling),
       get_vert_co(nullptr),
       get_edge_verts_index(nullptr),
@@ -57,9 +55,38 @@ Nearest2dUserData::Nearest2dUserData(SnapObjectContext *sctx,
 
   dist_squared_to_projected_aabb_precalc(
       &this->nearest_precalc, this->pmat_local.ptr(), sctx->runtime.win_size, sctx->runtime.mval);
+}
 
-  /* Clip Planes Local. */
+bool Nearest2dUserData::snap_boundbox(const float3 &min, const float3 &max, float dist_px_sq)
+{
+  /* In vertex and edges you need to get the pixel distance from ray to BoundBox,
+   * see: #46099, #46816 */
 
+#ifdef TEST_CLIPPLANES_IN BOUNDBOX
+  int isect_type = isect_aabb_planes_v3(
+      reinterpret_cast<const float(*)[4]>(this->clip_planes.data()),
+      this->clip_planes.size(),
+      min,
+      max);
+
+  if (isect_type == ISECT_AABB_PLANE_BEHIND_ANY) {
+    return false;
+  }
+#endif
+
+  bool dummy[3];
+  float bb_dist_px_sq = dist_squared_to_projected_aabb(&this->nearest_precalc, min, max, dummy);
+  if (bb_dist_px_sq > dist_px_sq) {
+    return false;
+  }
+
+  return true;
+}
+
+void Nearest2dUserData::clip_planes_locals_calc(SnapObjectContext *sctx,
+                                                const float4x4 &obmat,
+                                                bool skip_occlusion_plane)
+{
   float(*clip_planes)[4] = sctx->runtime.clip_plane;
   int clip_plane_len = sctx->runtime.clip_plane_len;
 
@@ -75,30 +102,6 @@ Nearest2dUserData::Nearest2dUserData(SnapObjectContext *sctx,
   }
 
   BLI_assert(this->clip_planes.size() == clip_plane_len);
-}
-
-bool Nearest2dUserData::snap_boundbox(const float3 &min, const float3 &max, float dist_px_sq)
-{
-  /* In vertex and edges you need to get the pixel distance from ray to BoundBox,
-   * see: #46099, #46816 */
-
-  int isect_type = isect_aabb_planes_v3(
-      reinterpret_cast<const float(*)[4]>(this->clip_planes.data()),
-      this->clip_planes.size(),
-      min,
-      max);
-
-  if (isect_type == ISECT_AABB_PLANE_BEHIND_ANY) {
-    return false;
-  }
-
-  bool dummy[3];
-  float bb_dist_px_sq = dist_squared_to_projected_aabb(&this->nearest_precalc, min, max, dummy);
-  if (bb_dist_px_sq > dist_px_sq) {
-    return false;
-  }
-
-  return true;
 }
 
 /* -------------------------------------------------------------------- */
@@ -876,6 +879,8 @@ static eSnapMode snapArmature(SnapObjectContext *sctx,
     }
   }
 
+  nearest2d.clip_planes_locals_calc(sctx, float4x4(obmat));
+
   const bool is_posemode = is_object_active && (ob_eval->mode & OB_MODE_POSE);
   const bool skip_selected = (is_editmode || is_posemode) &&
                              (sctx->runtime.params.snap_target_select &
@@ -1010,7 +1015,7 @@ static eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const float
 
   Curve *cu = static_cast<Curve *>(ob_eval->data);
 
-  Nearest2dUserData nearest2d(sctx, float4x4(obmat), true);
+  Nearest2dUserData nearest2d(sctx, float4x4(obmat));
 
   const bool use_obedit = BKE_object_is_in_editmode(ob_eval);
 
@@ -1021,6 +1026,8 @@ static eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const float
       return SCE_SNAP_MODE_NONE;
     }
   }
+
+  nearest2d.clip_planes_locals_calc(sctx, float4x4(obmat), true);
 
   bool skip_selected = (sctx->runtime.params.snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) !=
                        0;
