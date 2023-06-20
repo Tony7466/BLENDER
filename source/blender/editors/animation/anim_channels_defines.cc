@@ -22,6 +22,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_curves_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
@@ -3478,7 +3479,7 @@ static bAnimChannelType ACF_GPD = {
     /*setting_ptr*/ acf_gpd_setting_ptr,
 };
 
-/* GPencil Layer ------------------------------------------- */
+/* GPencil Layer (Legacy) ------------------------------------------- */
 
 /* name for grease pencil layer entries */
 static void acf_gpl_name(bAnimListElem *ale, char *name)
@@ -3559,7 +3560,7 @@ static void *acf_gpl_setting_ptr(bAnimListElem *ale,
 }
 
 /** Grease-pencil layer type define. */
-static bAnimChannelType ACF_GPL = {
+static bAnimChannelType ACF_GPL_LEGACY = {
     /*channel_type_name*/ "GPencil Layer",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
@@ -3571,6 +3572,27 @@ static bAnimChannelType ACF_GPL = {
     /*name*/ acf_gpl_name,
     /*name_prop*/ acf_gpl_name_prop,
     /*icon*/ nullptr,
+
+    /*has_setting*/ acf_gpl_setting_valid,
+    /*setting_flag*/ acf_gpl_setting_flag,
+    /*setting_ptr*/ acf_gpl_setting_ptr,
+};
+
+/* Grease Pencil Layer ------------------------------------------- */
+
+/** Grease-pencil layer type define. */
+static bAnimChannelType ACF_GPLAYER = {
+    /*channel_type_name*/ "Grease Pencil Layer",
+    /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
+
+    /*get_backdrop_color*/ acf_gpencil_channel_color,
+    /*draw_backdrop*/ acf_generic_channel_backdrop,
+    /*get_indent_level*/ acf_generic_indentation_flexible,
+    /*get_offset*/ acf_generic_group_offset,
+
+    /*name*/ acf_gpl_name,
+    /*name_prop*/ acf_gpl_name_prop,
+    /*icon*/ NULL,
 
     /*has_setting*/ acf_gpl_setting_valid,
     /*setting_flag*/ acf_gpl_setting_flag,
@@ -4136,11 +4158,11 @@ static void ANIM_init_channel_typeinfo_data()
 
     animchannelTypeInfo[type++] = &ACF_SHAPEKEY; /* ShapeKey */
 
-    animchannelTypeInfo[type++] = &ACF_GPD; /* Grease Pencil Datablock (Legacy) */
-    animchannelTypeInfo[type++] = &ACF_GPL; /* Grease Pencil Layer (Legacy) */
+    animchannelTypeInfo[type++] = &ACF_GPD;        /* Grease Pencil Datablock (Legacy) */
+    animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
-    animchannelTypeInfo[type++] = &ACF_GPD; /* Grease Pencil Datablock */
-    animchannelTypeInfo[type++] = &ACF_GPL; /* Grease Pencil Layer */
+    animchannelTypeInfo[type++] = &ACF_GPD;     /* Grease Pencil Datablock */
+    animchannelTypeInfo[type++] = &ACF_GPLAYER; /* Grease Pencil Layer */
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
