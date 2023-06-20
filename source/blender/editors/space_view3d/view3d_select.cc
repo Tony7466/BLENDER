@@ -5,7 +5,6 @@
  /** \file
   * \ingroup spview3d
   */
-
 #include <cfloat>
 #include <cmath>
 #include <cstdio>
@@ -97,7 +96,8 @@
 #include "DRW_engine.h"
 #include "DRW_select_buffer.h"
 
-#include "view3d_intern.h" /* own include */
+ /* own include */
+#include "view3d_intern.h"
 
 // #include "PIL_time_utildefines.h"
 
