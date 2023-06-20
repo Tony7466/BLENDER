@@ -40,24 +40,21 @@ static void scale_instances(GeoNodeExecParams &params, bke::Instances &instances
 
   MutableSpan<float4x4> transforms = instances.transforms();
 
-  threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-    for (const int i_selection : range) {
-      const int i = selection[i_selection];
-      const float3 pivot = pivots[i];
-      float4x4 &instance_transform = transforms[i];
+  selection.foreach_index_optimized<int>(GrainSize(512), [&](const int index) {
+    const float3 pivot = pivots[index];
+    float4x4 &instance_transform = transforms[index];
 
-      if (local_spaces[i]) {
-        instance_transform *= math::from_location<float4x4>(pivot);
-        rescale_m4(instance_transform.ptr(), scales[i]);
-        instance_transform *= math::from_location<float4x4>(-pivot);
-      }
-      else {
-        const float4x4 original_transform = instance_transform;
-        instance_transform = math::from_location<float4x4>(pivot);
-        rescale_m4(instance_transform.ptr(), scales[i]);
-        instance_transform *= math::from_location<float4x4>(-pivot);
-        instance_transform *= original_transform;
-      }
+    if (local_spaces[index]) {
+      instance_transform *= math::from_location<float4x4>(pivot);
+      rescale_m4(instance_transform.ptr(), scales[index]);
+      instance_transform *= math::from_location<float4x4>(-pivot);
+    }
+    else {
+      const float4x4 original_transform = instance_transform;
+      instance_transform = math::from_location<float4x4>(pivot);
+      rescale_m4(instance_transform.ptr(), scales[index]);
+      instance_transform *= math::from_location<float4x4>(-pivot);
+      instance_transform *= original_transform;
     }
   });
 }

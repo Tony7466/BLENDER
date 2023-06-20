@@ -215,9 +215,10 @@ static void node_geo_exec(GeoNodeExecParams params)
           data.resize(next_data_index + selection.size());
           MutableSpan<float> selected_data = data.as_mutable_span().slice(next_data_index,
                                                                           selection.size());
-          for (const int i : selection.index_range()) {
-            selected_data[i] = component_data[selection[i]];
-          }
+          selection.foreach_index_optimized<int>(GrainSize(2048),
+                                                 [&](const int index, const int position) {
+                                                   selected_data[position] = component_data[index];
+                                                 });
         }
       }
 
@@ -295,9 +296,10 @@ static void node_geo_exec(GeoNodeExecParams params)
           data.resize(data.size() + selection.size());
           MutableSpan<float3> selected_data = data.as_mutable_span().slice(next_data_index,
                                                                            selection.size());
-          for (const int i : selection.index_range()) {
-            selected_data[i] = component_data[selection[i]];
-          }
+          selection.foreach_index_optimized<int>(GrainSize(2048),
+                                                 [&](const int index, const int position) {
+                                                   selected_data[position] = component_data[index];
+                                                 });
         }
       }
 
