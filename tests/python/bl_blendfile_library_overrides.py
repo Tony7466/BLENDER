@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
 
 # ./blender.bin --background -noaudio --python tests/python/bl_blendfile_library_overrides.py -- --output-dir=/tmp/
@@ -316,10 +318,10 @@ class TestLibraryOverridesFromProxies(TestHelper, unittest.TestCase):
 
         # Check stability of 'same name' fixing for IDs.
         direct_linked_A = bpy.data.libraries["lib.002"]
-        assert direct_linked_A.filepath == "//libraries/direct_linked_A.blend"
+        assert direct_linked_A.filepath == os.path.join("//libraries", "direct_linked_A.blend")
 
         assert bpy.data.objects['HairCubeArmatureGroup_proxy'].library == direct_linked_A
-        assert bpy.data.objects['HairCubeArmatureGroup_proxy'].override_library != None
+        assert bpy.data.objects['HairCubeArmatureGroup_proxy'].override_library is not None
 
 
 TESTS = (

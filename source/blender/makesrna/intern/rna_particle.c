@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 AutoCRC (adaptive time step). */
+/* SPDX-FileCopyrightText: 2011 AutoCRC (adaptive time step).
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -1167,7 +1168,7 @@ static void rna_ParticleSystem_active_particle_target_index_set(struct PointerRN
   }
 }
 
-static void rna_ParticleTarget_name_get(PointerRNA *ptr, char *str)
+static void rna_ParticleTarget_name_get(PointerRNA *ptr, char *value)
 {
   ParticleTarget *pt = ptr->data;
 
@@ -1184,28 +1185,28 @@ static void rna_ParticleTarget_name_get(PointerRNA *ptr, char *str)
 
     if (psys) {
       if (pt->ob) {
-        BLI_sprintf(str, "%s: %s", pt->ob->id.name + 2, psys->name);
+        BLI_sprintf(value, "%s: %s", pt->ob->id.name + 2, psys->name);
       }
       else {
-        strcpy(str, psys->name);
+        strcpy(value, psys->name);
       }
     }
     else {
-      strcpy(str, TIP_("Invalid target!"));
+      strcpy(value, TIP_("Invalid target!"));
     }
   }
   else {
-    strcpy(str, TIP_("Invalid target!"));
+    strcpy(value, TIP_("Invalid target!"));
   }
 }
 
 static int rna_ParticleTarget_name_length(PointerRNA *ptr)
 {
-  char tstr[MAX_ID_NAME + MAX_ID_NAME + 64];
+  char tvalue[MAX_ID_NAME + MAX_ID_NAME + 64];
 
-  rna_ParticleTarget_name_get(ptr, tstr);
+  rna_ParticleTarget_name_get(ptr, tvalue);
 
-  return strlen(tstr);
+  return strlen(tvalue);
 }
 
 static int particle_id_check(const PointerRNA *ptr)
@@ -1303,7 +1304,7 @@ static void rna_ParticleDupliWeight_active_index_set(struct PointerRNA *ptr, int
   }
 }
 
-static void rna_ParticleDupliWeight_name_get(PointerRNA *ptr, char *str)
+static void rna_ParticleDupliWeight_name_get(PointerRNA *ptr, char *value)
 {
   ParticleSettings *part = (ParticleSettings *)ptr->owner_id;
   psys_find_group_weights(part);
@@ -1311,20 +1312,20 @@ static void rna_ParticleDupliWeight_name_get(PointerRNA *ptr, char *str)
   ParticleDupliWeight *dw = ptr->data;
 
   if (dw->ob) {
-    BLI_sprintf(str, "%s: %i", dw->ob->id.name + 2, dw->count);
+    BLI_sprintf(value, "%s: %i", dw->ob->id.name + 2, dw->count);
   }
   else {
-    strcpy(str, "No object");
+    strcpy(value, "No object");
   }
 }
 
 static int rna_ParticleDupliWeight_name_length(PointerRNA *ptr)
 {
-  char tstr[MAX_ID_NAME + 64];
+  char tvalue[MAX_ID_NAME + 64];
 
-  rna_ParticleDupliWeight_name_get(ptr, tstr);
+  rna_ParticleDupliWeight_name_get(ptr, tvalue);
 
-  return strlen(tstr);
+  return strlen(tvalue);
 }
 
 static const EnumPropertyItem *rna_Particle_type_itemf(bContext *UNUSED(C),
@@ -3143,9 +3144,7 @@ static void rna_def_particle_settings(BlenderRNA *brna)
 
   /* children */
 
-  /* NOTE(@ideasman42): name is not following conventions: `nbr`.
-   * Could be changed next major version. */
-  prop = RNA_def_property(srna, "child_nbr", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "child_percent", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(
       prop, NULL, "child_percent"); /* Optional if prop names are the same. */
   RNA_def_property_range(prop, 0, 100000);

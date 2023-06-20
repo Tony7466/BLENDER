@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -9,6 +11,7 @@
 #include "BLI_index_mask.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_color.hh"
+#include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
 
 namespace blender::length_parameterize {

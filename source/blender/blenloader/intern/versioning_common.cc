@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -189,7 +191,7 @@ void version_node_id(bNodeTree *ntree, const int node_type, const char *new_name
   for (bNode *node : ntree->all_nodes()) {
     if (node->type == node_type) {
       if (!STREQ(node->idname, new_name)) {
-        strcpy(node->idname, new_name);
+        STRNCPY(node->idname, new_name);
       }
     }
   }

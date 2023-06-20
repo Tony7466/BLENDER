@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -703,7 +704,15 @@ static std::pair<int, LightTreeMeasure> light_tree_specialize_nodes_flatten(
     }
 
     assert(first_emitter != -1);
-    new_node.make_leaf(first_emitter, num_emitters);
+
+    /* Preserve the type of the node, so that the kernel can do proper decision when sampling node
+     * with multiple distant lights in it. */
+    if (node->is_leaf()) {
+      new_node.make_leaf(first_emitter, num_emitters);
+    }
+    else {
+      new_node.make_distant(first_emitter, num_emitters);
+    }
   }
   else {
     assert(node->is_inner());
@@ -1205,6 +1214,9 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       shader_id &= ~SHADER_AREA_LIGHT;
 
       float radius = light->size;
+      /* TODO: `invarea` was used for disk sampling, with the current solid angle sampling this
+       * becomes unnecessary. We could store `eval_fac` instead, but currently it shares the same
+       * #KernelSpotLight type with #LIGHT_SPOT, so keep it know until refactor for spot light. */
       float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
                                                             1.0f;
 

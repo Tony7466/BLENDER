@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -7,6 +8,7 @@
 
 #pragma once
 
+#include "BKE_attribute.h"
 #include "BLI_utildefines.h"
 #include "DNA_scene_types.h"
 
@@ -1055,11 +1057,6 @@ void ED_view3d_check_mats_rv3d(struct RegionView3D *rv3d);
 struct RV3DMatrixStore *ED_view3d_mats_rv3d_backup(struct RegionView3D *rv3d);
 void ED_view3d_mats_rv3d_restore(struct RegionView3D *rv3d, struct RV3DMatrixStore *rv3dmat);
 
-void ED_draw_object_facemap(struct Depsgraph *depsgraph,
-                            struct Object *ob,
-                            const float col[4],
-                            int facemap);
-
 struct RenderEngineType *ED_view3d_engine_type(const struct Scene *scene, int drawtype);
 
 bool ED_view3d_context_activate(struct bContext *C);
@@ -1331,7 +1328,7 @@ void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrAr
 #define OVERLAY_RETOPOLOGY_ENABLED(overlay) \
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)
 #ifdef __APPLE__
-/* Apple silicon tile depth test requires a higher value to reduce drawing artifacts.*/
+/* Apple silicon tile depth test requires a higher value to reduce drawing artifacts. */
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED 0.0015f
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0015f
 #else

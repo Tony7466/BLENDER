@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -24,6 +25,15 @@
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
+namespace blender::bke {
+struct GeometrySet;
+}
+using GeometrySetHandle = blender::bke::GeometrySet;
+#else
+typedef struct GeometrySetHandle GeometrySetHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -32,7 +42,6 @@ struct BoundBox;
 struct Collection;
 struct Curve;
 struct FluidsimSettings;
-struct GeometrySet;
 struct Ipo;
 struct LightgroupMembership;
 struct LightProbeGridCacheFrame;
@@ -54,15 +63,6 @@ typedef struct bDeformGroup {
   /* need this flag for locking weights */
   char flag, _pad0[7];
 } bDeformGroup;
-
-/** Face Maps. */
-typedef struct bFaceMap {
-  struct bFaceMap *next, *prev;
-  /** MAX_VGROUP_NAME. */
-  char name[64];
-  char flag;
-  char _pad0[7];
-} bFaceMap;
 
 #define MAX_VGROUP_NAME 64
 
@@ -157,7 +157,7 @@ typedef struct Object_Runtime {
    * #geometry_set_eval might reference the ID pointed to by #data_eval as well, but does not own
    * the data.
    */
-  struct GeometrySet *geometry_set_eval;
+  GeometrySetHandle *geometry_set_eval;
 
   /**
    * Mesh structure created during object evaluation.
@@ -352,8 +352,6 @@ typedef struct Object {
   ListBase modifiers;
   /** List of GpencilModifierData structures. */
   ListBase greasepencil_modifiers;
-  /** List of facemaps. */
-  ListBase fmaps;
   /** List of viewport effects. Actually only used by grease pencil. */
   ListBase shader_fx;
 
@@ -444,8 +442,7 @@ typedef struct Object {
   /** Current deformation group, NOTE: index starts at 1. */
   unsigned short actdef DNA_DEPRECATED;
   /** Current face map, NOTE: index starts at 1. */
-  unsigned short actfmap;
-  char _pad2[2];
+  char _pad2[4];
   /** Object color (in most cases the material color is used for drawing). */
   float color[4];
 
@@ -503,7 +500,7 @@ typedef struct Object {
 
   ObjectLineArt lineart;
 
-  /** Lightgroup membership information. */
+  /** Light-group membership information. */
   struct LightgroupMembership *lightgroup;
 
   /** Light linking information. */
@@ -572,7 +569,6 @@ typedef enum ObjectType {
 
   OB_ARMATURE = 25,
 
-  /** Grease Pencil object used in 3D view but not used for annotation in 2D. */
   OB_GPENCIL_LEGACY = 26,
 
   OB_CURVES = 27,
@@ -581,6 +577,8 @@ typedef enum ObjectType {
 
   OB_VOLUME = 29,
 
+  OB_GREASE_PENCIL = 30,
+
   /* Keep last. */
   OB_TYPE_MAX,
 } ObjectType;
@@ -588,7 +586,7 @@ typedef enum ObjectType {
 /* check if the object type supports materials */
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
   (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
-   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_VOLUME))
+   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_GREASE_PENCIL))
 /** Does the object have some render-able geometry (unlike empties, cameras, etc.). True for
  * #OB_CURVES_LEGACY, since these often evaluate to objects with geometry. */
 #define OB_TYPE_IS_GEOMETRY(_type) \
@@ -601,7 +599,8 @@ typedef enum ObjectType {
         OB_CURVES_LEGACY, \
         OB_CURVES, \
         OB_POINTCLOUD, \
-        OB_VOLUME))
+        OB_VOLUME, \
+        OB_GREASE_PENCIL))
 #define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL_LEGACY))
 #define OB_TYPE_SUPPORT_EDITMODE(_type) \
   (ELEM(_type, \
@@ -612,13 +611,14 @@ typedef enum ObjectType {
         OB_MBALL, \
         OB_LATTICE, \
         OB_ARMATURE, \
-        OB_CURVES))
+        OB_CURVES, \
+        OB_GREASE_PENCIL))
 #define OB_TYPE_SUPPORT_PARVERT(_type) \
   (ELEM(_type, OB_MESH, OB_SURF, OB_CURVES_LEGACY, OB_LATTICE))
 
 /** Matches #OB_TYPE_SUPPORT_EDITMODE. */
 #define OB_DATA_SUPPORT_EDITMODE(_type) \
-  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR, ID_CV))
+  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR, ID_CV, ID_GP))
 
 /* is this ID type used as object data */
 #define OB_DATA_SUPPORT_ID(_id_type) \
@@ -635,7 +635,8 @@ typedef enum ObjectType {
         ID_AR, \
         ID_CV, \
         ID_PT, \
-        ID_VO))
+        ID_VO, \
+        ID_GP))
 
 #define OB_DATA_SUPPORT_ID_CASE \
   ID_ME: \
@@ -650,7 +651,8 @@ typedef enum ObjectType {
   case ID_AR: \
   case ID_CV: \
   case ID_PT: \
-  case ID_VO
+  case ID_VO: \
+  case ID_GP
 
 /** #Object.partype: first 4 bits: type. */
 enum {

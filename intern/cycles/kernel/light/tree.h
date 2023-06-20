@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* This code implements a modified version of the paper [Importance Sampling of Many Lights with
  * Adaptive Tree Splitting](http://www.aconty.com/pdf/many-lights-hpg2018.pdf) by Alejandro Conty
@@ -316,7 +317,7 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
       return;
     }
     point_to_centroid = -bcone.axis;
-    cos_theta_u = fast_cosf(bcone.theta_o);
+    cos_theta_u = fast_cosf(bcone.theta_o + bcone.theta_e);
     distance = 1.0f;
   }
   else {
@@ -509,6 +510,19 @@ ccl_device void sample_reservoir(const int current_index,
     return;
   }
   total_weight += current_weight;
+
+  /* When `-ffast-math` is used it is possible that the threshold is almost 1 but not quite.
+   * For this case we check the first assignment explicitly (instead of relying on the threshold to
+   * be 1, giving it certain probability). */
+  if (selected_index == -1) {
+    selected_index = current_index;
+    selected_weight = current_weight;
+    /* The threshold is expected to be 1 in this case with strict mathematics, so no need to divide
+     * the rand. In fact, division in such case could lead the rand to exceed 1 because of division
+     * by something smaller than 1. */
+    return;
+  }
+
   float thresh = current_weight / total_weight;
   if (rand <= thresh) {
     selected_index = current_index;
@@ -518,8 +532,10 @@ ccl_device void sample_reservoir(const int current_index,
   else {
     rand = (rand - thresh) / (1.0f - thresh);
   }
-  kernel_assert(rand >= 0.0f && rand <= 1.0f);
-  return;
+
+  /* Ensure the `rand` is always within 0..1 range, which could be violated above when
+   * `-ffast-math` is used. */
+  rand = saturatef(rand);
 }
 
 /* Pick an emitter from a leaf node using reservoir sampling, keep two reservoirs for upper and
@@ -745,7 +761,9 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
                                          float3_to_float2(rand),
                                          time,
                                          P,
+                                         N_or_D,
                                          object_receiver,
+                                         shader_flags,
                                          bounce,
                                          path_flag,
                                          selected_emitter,
