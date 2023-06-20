@@ -1244,7 +1244,6 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     else {
       non_deform_modifier_applied = true;
       if (mesh_final == mesh_cage) {
-        /* 'me' may be changed by this modifier, so we need to copy it. */
         mesh_final = BKE_mesh_copy_for_eval(mesh_final);
       }
 
