@@ -38,7 +38,9 @@ void BKE_mesh_foreach_mapped_vert(
     void *userData,
     MeshForeachFlag flag)
 {
-  if (mesh->edit_mesh != nullptr && mesh->runtime->edit_data != nullptr) {
+  if (mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH && mesh->edit_mesh != nullptr &&
+      mesh->runtime->edit_data != nullptr)
+  {
     BMEditMesh *em = mesh->edit_mesh;
     BMesh *bm = em->bm;
     BMIter iter;
