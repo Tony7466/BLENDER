@@ -3482,7 +3482,7 @@ static bAnimChannelType ACF_GPD = {
 /* GPencil Layer (Legacy) ------------------------------------------- */
 
 /* name for grease pencil layer entries */
-static void acf_gpl_name(bAnimListElem *ale, char *name)
+static void acf_gpl_name_legacy(bAnimListElem *ale, char *name)
 {
   bGPDlayer *gpl = (bGPDlayer *)ale->data;
 
@@ -3569,7 +3569,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*get_indent_level*/ acf_generic_indentation_flexible,
     /*get_offset*/ acf_generic_group_offset,
 
-    /*name*/ acf_gpl_name,
+    /*name*/ acf_gpl_name_legacy,
     /*name_prop*/ acf_gpl_name_prop,
     /*icon*/ nullptr,
 
@@ -3579,6 +3579,16 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 };
 
 /* Grease Pencil Layer ------------------------------------------- */
+
+/* name for grease pencil layer entries */
+static void acf_gpl_name(bAnimListElem *ale, char *name)
+{
+  GreasePencilLayer *gpl = (GreasePencilLayer *)ale->data;
+
+  if (gpl && name) {
+    BLI_strncpy(name, gpl->base.name, ANIM_CHAN_NAME_SIZE);
+  }
+}
 
 /** Grease-pencil layer type define. */
 static bAnimChannelType ACF_GPLAYER = {
