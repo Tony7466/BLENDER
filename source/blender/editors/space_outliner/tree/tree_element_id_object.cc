@@ -35,6 +35,9 @@ TreeElementIDObject::TreeElementIDObject(TreeElement &legacy_te, Object &object)
 
 void TreeElementIDObject::expand(SpaceOutliner &space_outliner) const
 {
+  /* tuck pointer back in object, to construct hierarchy */
+  object_.id.newid = (ID *)(&legacy_te_);
+
   expand_animation_data(space_outliner, object_.adt);
 
   expandData(space_outliner);

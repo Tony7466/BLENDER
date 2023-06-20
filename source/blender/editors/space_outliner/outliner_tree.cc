@@ -235,11 +235,6 @@ static void outliner_add_id_contents(SpaceOutliner *space_outliner,
                                      TreeStoreElem *tselem,
                                      ID *id)
 {
-  /* tuck pointer back in object, to construct hierarchy */
-  if (GS(id->name) == ID_OB) {
-    id->newid = (ID *)te;
-  }
-
   /* expand specific data always */
   switch (GS(id->name)) {
     case ID_LI:
