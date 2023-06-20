@@ -289,22 +289,23 @@ void TreeElementIDObject::expandGPencilEffects(SpaceOutliner &space_outliner) co
 
 void TreeElementIDObject::expandVertexGroups(SpaceOutliner &space_outliner) const
 {
-  if (ELEM(object_.type, OB_MESH, OB_GPENCIL_LEGACY, OB_LATTICE)) {
-    const ListBase *defbase = BKE_object_defgroup_list(&object_);
-    if (BLI_listbase_is_empty(defbase)) {
-      return;
-    }
-    TreeElement *tenla = outliner_add_element(
-        &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_DEFGROUP_BASE, 0);
-    tenla->name = IFACE_("Vertex Groups");
+  if (!ELEM(object_.type, OB_MESH, OB_GPENCIL_LEGACY, OB_LATTICE)) {
+    return;
+  }
+  const ListBase *defbase = BKE_object_defgroup_list(&object_);
+  if (BLI_listbase_is_empty(defbase)) {
+    return;
+  }
+  TreeElement *tenla = outliner_add_element(
+      &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_DEFGROUP_BASE, 0);
+  tenla->name = IFACE_("Vertex Groups");
 
-    int index;
-    LISTBASE_FOREACH_INDEX (bDeformGroup *, defgroup, defbase, index) {
-      TreeElement *ten = outliner_add_element(
-          &space_outliner, &tenla->subtree, &object_, tenla, TSE_DEFGROUP, index);
-      ten->name = defgroup->name;
-      ten->directdata = defgroup;
-    }
+  int index;
+  LISTBASE_FOREACH_INDEX (bDeformGroup *, defgroup, defbase, index) {
+    TreeElement *ten = outliner_add_element(
+        &space_outliner, &tenla->subtree, &object_, tenla, TSE_DEFGROUP, index);
+    ten->name = defgroup->name;
+    ten->directdata = defgroup;
   }
 }
 
