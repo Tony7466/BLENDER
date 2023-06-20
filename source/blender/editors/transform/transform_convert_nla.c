@@ -892,6 +892,7 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
         }
         else {
           /* if destination track is locked, we need revert strip to source track. */
+          printf("Cannot moved. Target track '%s' is locked. \n", trans_data->nlt->name);
           int old_track_index = BLI_findindex(tracks, trans_data->oldTrack);
           NlaTrack *old_track = BLI_findlink(tracks, old_track_index);
 
