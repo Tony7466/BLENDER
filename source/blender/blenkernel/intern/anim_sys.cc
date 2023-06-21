@@ -980,8 +980,15 @@ NlaEvalStrip *nlastrips_ctime_get_strip(ListBase *list,
     }
 
     if (in_range) {
-      /* this strip is active, so try to use it */
-      estrip = strip;
+      /* If we are at the last frame of the current strip and a non-muted strip starts immediately
+       * after, return the first frame of the next strip instead. */
+      if (strip->next && ctime == strip->next->start && !(strip->next->flag & NLASTRIP_FLAG_MUTED))
+      {
+        estrip = strip->next;
+      }
+      else {
+        estrip = strip;
+      }
       side = NES_TIME_WITHIN;
       break;
     }
