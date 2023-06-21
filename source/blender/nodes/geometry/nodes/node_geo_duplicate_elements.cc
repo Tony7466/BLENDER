@@ -78,7 +78,7 @@ static OffsetIndices<int> accumulate_counts_to_offsets(const IndexMask &selectio
     r_offset_data.last() = count * selection.size();
   }
   else {
-    array_utils::gather(counts, selection, r_offset_data.as_mutable_span());
+    array_utils::gather(counts, selection, r_offset_data.as_mutable_span(), 1024);
     offset_indices::accumulate_counts_to_offsets(r_offset_data);
   }
   return OffsetIndices<int>(r_offset_data);
@@ -92,7 +92,7 @@ static void threaded_slice_fill(const OffsetIndices<int> offsets,
                                 MutableSpan<T> dst)
 {
   BLI_assert(offsets.total_size() == dst.size());
-  selection.foreach_index(GrainSize(1024), [&](const int64_t index, const int64_t i) {
+  selection.foreach_index(GrainSize(512), [&](const int64_t index, const int64_t i) {
     dst.slice(offsets[i]).fill(src[index]);
   });
 }
