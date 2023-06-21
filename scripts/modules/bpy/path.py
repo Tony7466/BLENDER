@@ -264,21 +264,23 @@ def display_name_from_filepath(name):
     return name
 
 
-def resolve_ncase(path):
+def resolve_ncase(path, default_orig=True):
     """
     Resolve a case insensitive path on a case sensitive system,
-    returning a string with the path if found else return the original path.
+    returning a string with the path if found else return the original path or None.
 
     :arg path: The path name to resolve.
     :type path: string
-    :return: The resolved path.
+    :arg default_orig: Return the original path if not found.
+    :type default_orig: boolean
+    :return: The resolved path or None.
     :rtype: string
     """
     if not path:
         # An empty string may be interpreted as the current directory by os.path.realpath and os.path.abspath, but it is
         # not a valid path to a directory/file, so it will not be found. It has no characters whose case needs to be
         # resolved anyway.
-        return path
+        return path if default_orig else None
 
     def _ncase_path_found(path):
         if _os.path.exists(path):
@@ -342,7 +344,10 @@ def resolve_ncase(path):
             return path, False
 
     ncase_path, found = _ncase_path_found(path)
-    return ncase_path if found else path
+    if found:
+        return ncase_path
+    else:
+        return path if default_orig else None
 
 
 def ensure_ext(filepath, ext, *, case_sensitive=False):

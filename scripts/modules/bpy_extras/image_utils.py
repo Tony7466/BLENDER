@@ -151,18 +151,21 @@ def load_image(
             os.path.join(dirname, bpy.path.basename(imagepath)),
         ]
 
+    checked_paths = set()
     for filepath_test in variants:
-        if ncase_cmp:
-            ncase_variants = (
-                filepath_test,
-                bpy.path.resolve_ncase(filepath_test),
-            )
-        else:
-            ncase_variants = (filepath_test, )
+        if filepath_test in checked_paths:
+            continue
+        checked_paths.add(filepath_test)
 
-        for nfilepath in ncase_variants:
-            if os.path.exists(nfilepath):
-                return _image_load(nfilepath)
+        if ncase_cmp:
+            # resolve_ncase first checks whether filepath_test exists and then tries additional paths to find either the
+            # correct letter case of the path or that the path does not exist.
+            found_filepath = bpy.path.resolve_ncase(filepath_test, default_orig=False)
+            if found_filepath is not None:
+                return _image_load(found_filepath)
+        else:
+            if os.path.exists(filepath_test):
+                return _image_load(filepath_test)
 
     if recursive:
         search_paths = []
