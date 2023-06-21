@@ -33,6 +33,9 @@ typedef struct bNodeSocketDeclaration {
   /* eNodeSocketDeclarationInOut */
   int in_out;
   char _pad[4];
+
+  /* Panel in which to display the socket. */
+  struct bNodePanel *panel;
 } bNodeSocketDeclaration;
 
 typedef struct bNodeTreeInterface {
@@ -66,5 +69,13 @@ typedef struct bNodeTreeInterface {
   bool remove_panel(bNodePanel &panel);
   void clear_panels();
   bool move_panel(bNodePanel &panel, int new_index);
+
+ protected:
+  void update_order();
+
+ private:
+  void update_panels_order();
+  void update_sockets_order();
+
 #endif
 } bNodeTreeInterface;
