@@ -27,8 +27,8 @@ extern "C" {
 
 void ED_operatortypes_grease_pencil(void);
 void ED_operatortypes_grease_pencil_draw(void);
-void ED_operatortypes_grease_pencil_select(void);
 void ED_operatortypes_grease_pencil_layers(void);
+void ED_operatortypes_grease_pencil_select(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
