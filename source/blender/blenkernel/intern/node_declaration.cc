@@ -4,9 +4,14 @@
 
 #include "BKE_node_declaration.hh"
 
+#include "BLI_array.hh"
+#include "BLI_stack.hh"
 #include "BLI_string.h"
+#include "BLI_vector.hh"
 
 #include "DNA_node_types.h"
+
+#include <queue>
 
 int bNodeTreeInterface::socket_index(bNodeSocketDeclaration &socket_decl) const
 {
@@ -228,4 +233,126 @@ bool bNodeTreeInterface::move_panel(bNodePanel &panel, const int new_index)
   }
 
   return true;
+}
+
+#if 0
+struct NodePanelSortState {
+  int index;
+  bNodePanel *panel;
+  /* Forms a singly linked list of siblings of the same parent */
+  NodePanelSortState *next_sibling = nullptr;
+  /* First child panel */
+  NodePanelSortState *first_child = nullptr;
+};
+
+void bNodeTreeInterface::update_order()
+{
+  /* Topological sorting for panels. */
+
+  blender::Vector<bNodePanel *> sorted_panels;
+  sorted_panels.reserve(panels().size());
+
+  blender::Array<NodePanelSortState> panel_states(panels().size());
+  blender::Stack<NodePanelSortState> ready_nodes;
+  for (const int i : panels().index_range()) {
+    bNodePanel *panel = panels()[i];
+    panel_states[i] = {i, panel};
+
+    //    /* Build sibling lists. */
+    //    if (panel->parent) {
+    //    }
+
+    /* Initial panels with zero in-degree: all panels at depth 0 */
+    if (!panel->parent) {
+      ready_nodes.push(panel_states[i]);
+    }
+  }
+
+  while (!ready_nodes.is_empty()) {
+    NodePanelSortState state = ready_nodes.pop();
+
+    sorted_panels.append(state.panel);
+
+    /* Put all child panels before the next sibling. */
+    /* XXX children should be cached */
+    for (NodePanelSortState &child_state : panel_states) {
+      if (child_state.panel->parent != state.panel->parent) {
+        continue;
+      }
+
+      ready_nodes.push(child_state);
+    }
+  }
+
+  /* Topological sorting for sockets. */
+}
+#endif
+
+void bNodeTreeInterface::update_panels_order()
+{
+  /* Topological sorting for panels. */
+  blender::Vector<bNodePanel *> sorted_panels;
+  sorted_panels.reserve(panels().size());
+
+  std::queue<bNodePanel *> ready_panels;
+  for (const int i : panels().index_range()) {
+    bNodePanel *panel = panels()[i];
+
+    /* Initial panels with zero in-degree: all panels at depth 0 */
+    if (!panel->parent) {
+      ready_panels.emplace(panel);
+    }
+  }
+
+  while (!ready_panels.empty()) {
+    bNodePanel *panel = ready_panels.front();
+    ready_panels.pop();
+
+    sorted_panels.append(panel);
+
+    /* Put all child panels before the next sibling. */
+    /* XXX children should be cached:
+     * - Build a simple linked list temporarily for sorting (O(n)).
+     * - After sorting direct child panels can be returned as a span.
+     */
+    for (bNodePanel *child_panel : panels()) {
+      if (child_panel->parent != panel->parent) {
+        continue;
+      }
+
+      ready_panels.push(child_panel);
+    }
+  }
+}
+
+void bNodeTreeInterface::update_sockets_order()
+{
+  /* Topological sorting for sockets. */
+  /* Warning: Panels must be sorted at this point. */
+
+  blender::Vector<bNodeSocketDeclaration *> sorted_sockets;
+  sorted_sockets.reserve(sockets().size());
+
+  for (const int i : panels().index_range()) {
+    bNodePanel *panel = panels()[i];
+
+    /* Sort sockets by order of parents. */
+    /* XXX children should be cached:
+     * - Build a simple linked list temporarily for sorting (O(n)).
+     * - After sorting direct child panels can be returned as a span.
+     */
+    for (bNodeSocketDeclaration *socket_decl : sockets()) {
+      if (socket_decl->panel != panel) {
+        continue;
+      }
+
+      sorted_sockets.append(socket_decl);
+    }
+  }
+}
+
+void bNodeTreeInterface::update_order()
+{
+  update_panels_order();
+  update_sockets_order();
 }
