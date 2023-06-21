@@ -47,6 +47,14 @@ static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float thr
   return ret;
 }
 
+static void rna_Mesh_sharp_from_angle_set(Mesh *mesh, const float angle)
+{
+  mesh->attributes_for_write().remove("sharp_edge");
+  mesh->attributes_for_write().remove("sharp_face");
+  BKE_mesh_sharp_edges_set_from_angle(mesh, angle);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+}
+
 static void rna_Mesh_calc_tangents(Mesh *mesh, ReportList *reports, const char *uvmap)
 {
   float(*r_looptangents)[4];
@@ -219,10 +227,19 @@ void RNA_api_mesh(StructRNA *srna)
                                   "Invert winding of all polygons "
                                   "(clears tessellation, does not handle custom normals)");
 
-  func = RNA_def_function(srna, "set_sharp_from_angle", "ED_mesh_sharp_from_angle_set");
-  RNA_def_function_ui_description(
-      func, "Set the sharp edge status for edges based on the angle of incident faces");
-  RNA_def_float(func, "angle", M_PI, 0.0f, M_PI, "Angle", "", 0.0f, M_PI);
+  func = RNA_def_function(srna, "set_sharp_from_angle", "rna_Mesh_sharp_from_angle_set");
+  RNA_def_function_ui_description(func,
+                                  "Reset and fill the \"sharp_edge\" attribute based on the angle "
+                                  "of faces neighboring manifold edges");
+  RNA_def_float(func,
+                "angle",
+                M_PI,
+                0.0f,
+                M_PI,
+                "Angle",
+                "Angle between faces beyond which edges are marked sharp",
+                0.0f,
+                M_PI);
 
   func = RNA_def_function(srna, "split_faces", "ED_mesh_split_faces");
   RNA_def_function_ui_description(func, "Split faces based on the edge angle");
