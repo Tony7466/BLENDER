@@ -38,7 +38,9 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         row = layout.row()
         row.template_grease_pencil_layer_tree()
 
-        row.operator("grease_pencil.layer_add", icon='ADD', text="")
+        col = row.column()
+        col.operator("grease_pencil.layer_add", icon='ADD', text="")
+        col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
 
 
 classes = (

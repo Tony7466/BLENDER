@@ -448,7 +448,7 @@ typedef struct GreasePencil {
   bool has_active_layer() const;
   const blender::bke::greasepencil::Layer *get_active_layer() const;
   blender::bke::greasepencil::Layer *get_active_layer_for_write();
-  void set_active_layer(blender::bke::greasepencil::Layer *layer);
+  void set_active_layer(const blender::bke::greasepencil::Layer *layer);
 
   blender::bke::greasepencil::Layer &add_layer(blender::bke::greasepencil::LayerGroup &group,
                                                blender::StringRefNull name);
@@ -461,6 +461,8 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);
 
   void rename_layer(blender::bke::greasepencil::Layer &layer, blender::StringRefNull new_name);
+
+  void remove_layer(blender::bke::greasepencil::Layer &layer);
 
   void add_empty_drawings(int add_num);
   void remove_drawing(int index);

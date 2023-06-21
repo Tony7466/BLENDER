@@ -612,6 +612,15 @@ void LayerGroup::remove_child(int64_t index)
   this->tag_nodes_cache_dirty();
 }
 
+bool LayerGroup::unlink_layer(Layer *link)
+{
+  if (BLI_remlink_safe(&this->children, link)) {
+    this->tag_nodes_cache_dirty();
+    return true;
+  }
+  return false;
+}
+
 Span<const TreeNode *> LayerGroup::nodes() const
 {
   this->ensure_nodes_cache();
@@ -1207,9 +1216,10 @@ blender::bke::greasepencil::Layer *GreasePencil::get_active_layer_for_write()
   return &this->active_layer->wrap();
 }
 
-void GreasePencil::set_active_layer(blender::bke::greasepencil::Layer *layer)
+void GreasePencil::set_active_layer(const blender::bke::greasepencil::Layer *layer)
 {
-  this->active_layer = reinterpret_cast<GreasePencilLayer *>(layer);
+  this->active_layer = const_cast<GreasePencilLayer *>(
+      reinterpret_cast<const GreasePencilLayer *>(layer));
 }
 
 static blender::VectorSet<blender::StringRefNull> get_node_names(GreasePencil &grease_pencil)
@@ -1284,6 +1294,42 @@ void GreasePencil::rename_layer(blender::bke::greasepencil::Layer &layer,
   std::string unique_name(new_name.c_str());
   unique_layer_name(names, unique_name.data());
   layer.set_name(unique_name);
+}
+
+void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
+{
+  using namespace blender::bke::greasepencil;
+  /* If the layer is active, update the active layer. */
+  const Layer *active_layer = this->get_active_layer();
+  if (active_layer == &layer) {
+    Span<const Layer *> layers = this->layers();
+    /* If there is no other layer available , unset the active layer. */
+    if (layers.size() == 1) {
+      this->set_active_layer(nullptr);
+    }
+    else {
+      /* Make the layer below active (if possible). */
+      if (active_layer == layers.first()) {
+        this->set_active_layer(layers[1]);
+      }
+      else {
+        int64_t active_index = layers.first_index(active_layer);
+        this->set_active_layer(layers[active_index - 1]);
+      }
+    }
+  }
+
+  /* Unlink the layer from the parent group. */
+  layer.parent_group().unlink_layer(&layer);
+
+  /* Remove drawings. */
+  /* TODO: In the future this should only remove drawings when the user count hits zero. */
+  for (GreasePencilFrame frame : layer.frames_for_write().values()) {
+    this->remove_drawing(frame.drawing_index);
+  }
+
+  /* Delete the layer. */
+  MEM_delete(&layer);
 }
 
 void GreasePencil::print_layer_tree()

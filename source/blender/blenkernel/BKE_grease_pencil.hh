@@ -309,6 +309,12 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   void remove_child(int64_t index);
 
   /**
+   * Tries to unlink the layer from the list of nodes in this group.
+   * \returns true, if the layer was successfully unlinked.
+   */
+  bool unlink_layer(Layer *link);
+
+  /**
    * Returns a `Span` of pointers to all the `TreeNode`s in this group.
    */
   Span<const TreeNode *> nodes() const;
