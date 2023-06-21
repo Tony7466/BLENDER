@@ -1,5 +1,6 @@
 
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 /** \a unormalized_uv is the uv coordinates for the whole tilemap [0..SHADOW_TILEMAP_RES]. */
 vec2 shadow_page_uv_transform(
@@ -218,5 +219,105 @@ ShadowSample shadow_sample(const bool is_directional,
     return shadow_punctual_sample_get(atlas_tx, tilemaps_tx, light, lL, lNg);
   }
 }
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Shadow Tracing Functions
+ * \{ */
+
+#ifdef EEVEE_SAMPLING_DATA
+
+/* Note: Shadow ray space is either local or world position depending on the type of light. */
+struct ShadowRay {
+  vec3 origin;
+  vec3 direction;
+};
+
+ShadowRay shadow_ray_create(const bool is_directional, LightData light, vec3 lP, vec3 P, vec3 lNg)
+{
+  vec2 random_2d = sampling_rng_2D_get(SAMPLING_SHADOW_X);
+  /* TODO(fclem) Random noise. */
+
+  ShadowRay ray;
+  if (is_directional) {
+    random_2d = sample_disk(random_2d) * light._radius;
+    /* Using world space. */
+    ray.origin = P;
+    ray.direction = light._back + light._right * random_2d.x + light._up * random_2d.y;
+    /* TODO(fclem): Correct Penumbra search radius:
+     * - Scale by distance to nearplane.
+     * - Scale by distance to camera. (because texel density diminishes).
+     * - Limit by scene / light maximum parameter. */
+    ray.direction *= 10.0;
+  }
+  else {
+    if (light.type != LIGHT_RECT) {
+      random_2d = sample_disk(random_2d);
+    }
+
+    vec3 right = vec3(1.0, 0.0, 0.0), up = vec3(0.0, 1.0, 0.0);
+    if (is_area_light(light.type)) {
+      random_2d *= vec2(light._area_size_x, light._area_size_y);
+    }
+    else {
+      /* Disk rotated towards light vector. */
+      /* TODO: Can we avoid this normalize? */
+      make_orthonormal_basis(normalize(lP), right, up);
+      random_2d *= light._radius;
+    }
+    /* Using local space. */
+    ray.origin = lP;
+    ray.direction = -lP + right * random_2d.x + up * random_2d.y;
+  }
+  return ray;
+}
+
+ShadowSample shadow_map_trace(const int sample_count,
+                              const bool is_directional,
+                              usampler2D atlas_tx,
+                              usampler2D tilemaps_tx,
+                              LightData light,
+                              vec3 lP,
+                              vec3 lNg,
+                              vec3 P)
+{
+  ShadowRay ray = shadow_ray_create(is_directional, light, lP, P, lNg);
+
+  ShadowSample samp;
+
+  /**
+   * We trace from a point on the light towards the shading point.
+   * for each sample along the ray:
+   *   if the ray is well behind an occluder:
+   *     test intersection with last known non-occluder surface
+   *   else:
+   *     test intersection with occluder
+   *
+   * This reverse tracing allows to approximate the geometry behind occluders while minimizing
+   * light-leaks.
+   */
+  float time_offset = sampling_rng_1D_get(SAMPLING_SHADOW_X);
+  /* We trace the ray in reverse. From 1.0 (light) to 0.0 (shading point). */
+  const float ray_time_mul = -1.0 / float(sample_count);
+  const float ray_time_bias = 1.0 + time_offset * ray_time_mul;
+  for (int i = 0; i <= sample_count; i++) {
+    /* Saturate to always cover the shading point position when i == sample_count. */
+    float ray_time = saturate(float(i) * ray_time_mul + ray_time_bias);
+    /* Note: P is either local or world position depending on the type of light. */
+    vec3 ray_P = ray.origin + ray.direction * ray_time;
+
+    samp = shadow_sample(is_directional, atlas_tx, tilemaps_tx, light, ray_P, lNg, ray_P);
+
+    if (samp.occluder_delta < 0.0) {
+      /* Intersection. */
+      return samp;
+    }
+  }
+  /* No hit. */
+  return samp;
+}
+
+#endif
 
 /** \} */

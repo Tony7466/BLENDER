@@ -41,8 +41,8 @@ void light_eval_ex(ClosureDiffuse diffuse,
     vec3 lL = light_world_to_local(light, -L) * dist;
     vec3 lNg = light_world_to_local(light, Ng);
 
-    ShadowSample samp = shadow_sample(
-        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+    ShadowSample samp = shadow_map_trace(
+        16, is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
 
 #ifdef SSS_TRANSMITTANCE
     /* Transmittance evaluation first to use initial visibility without shadow. */
