@@ -1143,7 +1143,6 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                      Mesh **r_final,
                                      GeometrySet **r_geometry_set)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   /* Input and final mesh. Final mesh is only created the moment the first
    * constructive modifier is executed, or a deform modifier needs normals
    * or certain data layers. */
