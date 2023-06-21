@@ -1666,10 +1666,36 @@ typedef struct NodeGeometrySimulationOutput {
 #endif
 } NodeGeometrySimulationOutput;
 
+typedef struct NodeSerialLoopItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeSerialLoopItem;
+
 typedef struct NodeGeometrySerialLoopInput {
   /** bNode.identifier of the corresponding output node. */
   int32_t output_node_id;
 } NodeGeometrySerialLoopInput;
+
+typedef struct NodeGeometrySerialLoopOutput {
+  NodeSerialLoopItem *items;
+  int items_num;
+  int active_index;
+  /** Identifier to give to the next loop item. */
+  int next_identifier;
+  char _pad[4];
+
+#ifdef __cplusplus
+  blender::Span<NodeSerialLoopItem> items_span() const;
+  blender::MutableSpan<NodeSerialLoopItem> items_span();
+#endif
+} NodeGeometrySerialLoopOutput;
 
 typedef struct NodeGeometryDistributePointsInVolume {
   /* GeometryNodePointDistributeVolumeMode. */

@@ -338,6 +338,98 @@ class SimulationZoneItemMoveOperator(SimulationZoneOperator, Operator):
         return {'FINISHED'}
 
 
+class SerialLoopZoneOperator:
+    input_node_type = 'GeometryNodeSerialLoopInput'
+    output_node_type = 'GeometryNodeSerialLoopOutput'
+
+    @classmethod
+    def get_output_node(cls, context):
+        node = context.active_node
+        if node.bl_idname == cls.input_node_type:
+            return node.paired_output
+        if node.bl_idname == cls.output_node_type:
+            return node
+        return None
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        # Needs active node editor and a tree.
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname not in [cls.input_node_type, cls.output_node_type]:
+            return False
+        if cls.get_output_node(context) is None:
+            return False
+        return True
+
+
+class SerialLoopZoneItemAddOperator(SerialLoopZoneOperator, Operator):
+    """Add a loop item to the serial loop zone"""
+    bl_idname = "node.serial_loop_zone_item_add"
+    bl_label = "Add Loop Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    default_socket_type = 'GEOMETRY'
+
+    def execute(self, context):
+        node = self.get_output_node(context)
+        loop_items = node.loop_items
+
+        # Remember index to move the item.
+        dst_index = min(node.active_index + 1, len(loop_items))
+        # Empty name so it is based on the type only.
+        loop_items.new(self.default_socket_type, "")
+        loop_items.move(len(loop_items) - 1, dst_index)
+        node.active_index = dst_index
+
+        return {'FINISHED'}
+
+
+class SerialLoopZoneItemRemoveOperator(SerialLoopZoneOperator, Operator):
+    """Remove a loop item from the serial loop zone"""
+    bl_idname = "node.serial_loop_zone_item_remove"
+    bl_label = "Remove Loop Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = self.get_output_node(context)
+        loop_items = node.loop_items
+
+        if node.active_item:
+            loop_items.remove(node.active_item)
+            node.active_index = min(node.active_index, len(loop_items) - 1)
+
+        return {'FINISHED'}
+
+
+class SerialLoopZoneItemMoveOperator(SimulationZoneOperator, Operator):
+    """Move a serial loop state item up or down in the list"""
+    bl_idname = "node.serial_loop_zone_item_move"
+    bl_label = "Move Loop Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default='UP',
+    )
+
+    def execute(self, context):
+        node = self.get_output_node(context)
+        loop_items = node.loop_items
+
+        if self.direction == 'UP' and node.active_index > 0:
+            loop_items.move(node.active_index, node.active_index - 1)
+            node.active_index = node.active_index - 1
+        elif self.direction == 'DOWN' and node.active_index < len(loop_items) - 1:
+            loop_items.move(node.active_index, node.active_index + 1)
+            node.active_index = node.active_index + 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
@@ -345,4 +437,7 @@ classes = (
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,
     SimulationZoneItemMoveOperator,
+    SerialLoopZoneItemAddOperator,
+    SerialLoopZoneItemRemoveOperator,
+    SerialLoopZoneItemMoveOperator,
 )

@@ -413,7 +413,7 @@ DefNode(GeometryNode, GEO_NODE_SELF_OBJECT, 0, "SELF_OBJECT", SelfObject, "Self 
 DefNode(GeometryNode, GEO_NODE_SEPARATE_COMPONENTS, 0, "SEPARATE_COMPONENTS",SeparateComponents, "Separate Components", "Split a geometry into a separate output for each type of data in the geometry")
 DefNode(GeometryNode, GEO_NODE_SEPARATE_GEOMETRY, def_geo_separate_geometry, "SEPARATE_GEOMETRY", SeparateGeometry, "Separate Geometry", "Split a geometry into two geometry outputs based on a selection")
 DefNode(GeometryNode, GEO_NODE_SERIAL_LOOP_INPUT, def_geo_serial_loop_input, "SERIAL_LOOP_INPUT", SerialLoopInput, "Serial Loop Input", "")
-DefNode(GeometryNode, GEO_NODE_SERIAL_LOOP_OUTPUT, 0, "SERIAL_LOOP_OUTPUT", SerialLoopOutput, "Serial Loop Output", "")
+DefNode(GeometryNode, GEO_NODE_SERIAL_LOOP_OUTPUT, def_geo_serial_loop_output, "SERIAL_LOOP_OUTPUT", SerialLoopOutput, "Serial Loop Output", "")
 DefNode(GeometryNode, GEO_NODE_SET_CURVE_HANDLES, def_geo_curve_set_handle_positions, "SET_CURVE_HANDLES", SetCurveHandlePositions, "Set Handle Positions", "Set the positions for the handles of Bézier curves")
 DefNode(GeometryNode, GEO_NODE_SET_CURVE_NORMAL, def_geo_set_curve_normal, "SET_CURVE_NORMAL", SetCurveNormal, "Set Curve Normal", "Set the evaluation mode for curve normals")
 DefNode(GeometryNode, GEO_NODE_SET_CURVE_RADIUS, 0, "SET_CURVE_RADIUS", SetCurveRadius, "Set Curve Radius", "Set the radius of the curve at each control point")
