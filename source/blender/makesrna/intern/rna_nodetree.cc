@@ -33,6 +33,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_image.h"
 #include "BKE_node.h"
+#include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
@@ -4256,8 +4257,36 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
   NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
 }
 
-static void rna_SerialLoopItem_name_set(PointerRNA * /*ptr*/, const char * /*value*/)
-{ /* TODO */
+static bNode *find_node_by_serial_loop_item(PointerRNA *ptr)
+{
+  const NodeSerialLoopItem *item = static_cast<const NodeSerialLoopItem *>(ptr->data);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ntree->ensure_topology_cache();
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeSerialLoopOutput")) {
+    auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
+    if (storage->items_span().contains_ptr(item)) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+static bool set_serial_loop_item_unique_name(NodeGeometrySerialLoopOutput *storage,
+                                             NodeSerialLoopItem *item,
+                                             const char *name,
+                                             const char *defname)
+{
+  /* TODO */
+  return true;
+}
+
+static void rna_SerialLoopItem_name_set(PointerRNA *ptr, const char *value)
+{
+  bNode *node = find_node_by_serial_loop_item(ptr);
+  NodeSerialLoopItem *item = static_cast<NodeSerialLoopItem *>(ptr->data);
+  auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
+  const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
+  set_serial_loop_item_unique_name(storage, item, value, defname);
 }
 
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
