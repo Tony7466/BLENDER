@@ -1180,6 +1180,12 @@ blender::Span<blender::bke::greasepencil::Layer *> GreasePencil::layers_for_writ
   return this->root_group.wrap().layers_for_write();
 }
 
+blender::Span<const blender::bke::greasepencil::TreeNode *> GreasePencil::nodes() const
+{
+  BLI_assert(this->runtime != nullptr);
+  return this->root_group.wrap().nodes();
+}
+
 const blender::bke::greasepencil::Layer *GreasePencil::get_active_layer() const
 {
   if (this->active_layer == nullptr) {
@@ -1201,11 +1207,21 @@ void GreasePencil::set_active_layer(blender::bke::greasepencil::Layer *layer)
   this->active_layer = reinterpret_cast<GreasePencilLayer *>(layer);
 }
 
+static blender::VectorSet<blender::StringRefNull> get_node_names(GreasePencil &grease_pencil)
+{
+  using namespace blender;
+  VectorSet<StringRefNull> names;
+  for (const blender::bke::greasepencil::TreeNode *node : grease_pencil.nodes()) {
+    names.add(node->name);
+  }
+  return names;
+}
+
 static bool check_unique_layer_cb(void *arg, const char *name)
 {
   using namespace blender;
   VectorSet<StringRefNull> &names = *reinterpret_cast<VectorSet<StringRefNull> *>(arg);
-  return names.contains(StringRefNull(name));
+  return names.contains(name);
 }
 
 static bool unique_layer_name(VectorSet<blender::StringRefNull> &names, char *name)
@@ -1217,10 +1233,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &group, const blender::StringRefNull name)
 {
   using namespace blender;
-  VectorSet<StringRefNull> names;
-  for (const blender::bke::greasepencil::Layer *layer : this->layers()) {
-    names.add(layer->name());
-  }
+  VectorSet<StringRefNull> names = get_node_names(*this);
   std::string unique_name(name.c_str());
   unique_layer_name(names, unique_name.data());
   return group.add_layer(unique_name);
@@ -1232,10 +1245,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer_after(
     const blender::StringRefNull name)
 {
   using namespace blender;
-  VectorSet<StringRefNull> names;
-  for (const blender::bke::greasepencil::Layer *layer : this->layers()) {
-    names.add(layer->name());
-  }
+  VectorSet<StringRefNull> names = get_node_names(*this);
   std::string unique_name(name.c_str());
   unique_layer_name(names, unique_name.data());
   return group.add_layer_after(unique_name, layer);
