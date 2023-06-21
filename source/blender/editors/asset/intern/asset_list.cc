@@ -459,6 +459,7 @@ asset_system::AssetRepresentation *ED_assetlist_asset_get_by_index(
 
 ImBuf *ED_assetlist_asset_image_get(const AssetHandle *asset_handle)
 {
+  /* TODO rework this? Preview isn't an imbuf anymore. */
   ImBuf *imbuf = filelist_file_getimage(asset_handle->file_data);
   if (imbuf) {
     return imbuf;

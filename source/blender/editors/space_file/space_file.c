@@ -217,6 +217,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
   filelist_setdir(sfile->files, params->dir);
   filelist_setrecursion(sfile->files, params->recursion_level);
   filelist_setsorting(sfile->files, params->sort, params->flag & FILE_SORT_INVERT);
+  filelist_setpreviews(sfile->files, params->display == FILE_IMGDISPLAY);
   filelist_setlibrary(sfile->files, asset_params ? &asset_params->asset_library_ref : NULL);
   filelist_setfilter_options(
       sfile->files,

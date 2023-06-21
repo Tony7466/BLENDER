@@ -48,6 +48,7 @@ void filelist_setfilter_options(struct FileList *filelist,
                                 bool filter_assets_only,
                                 const char *filter_glob,
                                 const char *filter_search);
+void filelist_setpreviews(struct FileList *filelist, bool use_previews);
 /**
  * Set the indexer to be used by the filelist.
  *
@@ -75,6 +76,8 @@ void filelist_free_icons(void);
 void filelist_file_get_full_path(const struct FileList *filelist,
                                  const FileDirEntry *file,
                                  char r_filepath[/*FILE_MAX_LIBEXTRA*/]);
+struct PreviewImage *filelist_file_request_preview(const struct FileList *filelist,
+                                                   struct FileDirEntry *file);
 struct ImBuf *filelist_getimage(struct FileList *filelist, int index);
 struct ImBuf *filelist_file_getimage(const FileDirEntry *file);
 struct ImBuf *filelist_geticon_image_ex(const FileDirEntry *file);
@@ -156,7 +159,7 @@ void filelist_file_cache_slidingwindow_set(struct FileList *filelist, size_t win
 /**
  * Load in cache all entries "around" given index (as much as block cache may hold).
  */
-bool filelist_file_cache_block(struct FileList *filelist, int index);
+bool filelist_file_cache_block(const struct bContext *C, struct FileList *filelist, int index);
 
 bool filelist_needs_force_reset(struct FileList *filelist);
 void filelist_tag_force_reset(struct FileList *filelist);
@@ -213,6 +216,7 @@ void filelist_readjob_stop(struct FileList *filelist, struct wmWindowManager *wm
 int filelist_readjob_running(struct FileList *filelist, struct wmWindowManager *wm);
 
 bool filelist_cache_previews_update(struct FileList *filelist);
+
 void filelist_cache_previews_set(struct FileList *filelist, bool use_previews);
 bool filelist_cache_previews_running(struct FileList *filelist);
 bool filelist_cache_previews_done(struct FileList *filelist);

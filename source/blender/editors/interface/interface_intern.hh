@@ -1203,7 +1203,6 @@ void uiStyleInit();
 
 /* interface_icons.cc */
 
-void ui_icon_ensure_deferred(const bContext *C, int icon_id, bool big);
 int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */

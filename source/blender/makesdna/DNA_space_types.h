@@ -1147,6 +1147,7 @@ typedef struct FileDirEntry {
 
   /* The icon_id for the preview image. */
   int preview_icon_id;
+  PreviewImage *preview;
 
   short flags;
   /* eFileAttributes defined in BLI_fileops.h */

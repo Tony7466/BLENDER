@@ -578,6 +578,7 @@ enum ePreviewImage_Flag {
   PRV_USER_EDITED = (1 << 1),
   /* Rendering was invoked. Cleared on file read. */
   PRV_RENDERING = (1 << 2),
+  PRV_DEFERRED_NOT_FOUND = (1 << 3),
 };
 
 /* PreviewImage.tag */

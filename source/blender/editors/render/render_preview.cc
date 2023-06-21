@@ -141,7 +141,7 @@ struct IconPreview {
   Depsgraph *depsgraph; /* May be nullptr (see #WM_OT_previews_ensure). */
   Scene *scene;
   void *owner;
-  /** May be nullptr! (see #ICON_TYPE_PREVIEW case in #ui_icon_ensure_deferred()). */
+  /** May be nullptr! (see #ICON_TYPE_PREVIEW case in #Uu_icon_ensure_deferred()). */
   ID *id;
   ID *id_copy;
   ListBase sizes;
@@ -1787,6 +1787,12 @@ void PreviewLoadJob::load_jobless(PreviewImage *preview, const eIconSizes icon_s
 void PreviewLoadJob::push_load_request(PreviewImage *preview, const eIconSizes icon_size)
 {
   BLI_assert(preview->tag & PRV_TAG_DEFFERED);
+
+  /* Don't re-load a preview that wasn't found. */
+  if (preview->flag[icon_size] & PRV_DEFERRED_NOT_FOUND) {
+    return;
+  }
+
   RequestedPreview requested_preview{};
   requested_preview.preview = preview;
   requested_preview.icon_size = icon_size;
@@ -1834,7 +1840,12 @@ void PreviewLoadJob::run_fn(void *customdata, bool *stop, bool *do_update, float
                      preview->rect[request->icon_size]);
       IMB_freeImBuf(thumb);
     }
+    else {
+      preview->flag[request->icon_size] |= PRV_DEFERRED_NOT_FOUND;
+    }
 
+    preview->tag &= ~PRV_TAG_DEFFERED_RENDERING;
+    BKE_previewimg_finish(preview, request->icon_size);
     *do_update = true;
   }
 

@@ -67,10 +67,12 @@
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
+#include "IMB_thumbs.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "UI_interface.h"
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
 
@@ -162,7 +164,6 @@ struct FileListEntryCache {
 /** #FileListCache.flags */
 enum {
   FLC_IS_INIT = 1 << 0,
-  FLC_PREVIEWS_ACTIVE = 1 << 1,
 };
 
 struct FileListEntryPreview {
@@ -271,6 +272,7 @@ enum {
   FL_NEED_SORTING = 1 << 4,
   FL_NEED_FILTERING = 1 << 5,
   FL_SORT_INVERT = 1 << 6,
+  FL_USE_PREVIEWS = 1 << 7,
 };
 
 /** #FileList.tags */
@@ -1011,6 +1013,13 @@ void filelist_setfilter_options(FileList *filelist,
   }
 }
 
+void filelist_setpreviews(FileList *filelist, const bool use_previews)
+{
+  if ((filelist->flags & FL_USE_PREVIEWS) != use_previews) {
+    filelist->flags ^= FL_USE_PREVIEWS;
+  }
+}
+
 void filelist_setindexer(FileList *filelist, const FileIndexerType *indexer)
 {
   BLI_assert(filelist);
@@ -1144,6 +1153,64 @@ void filelist_file_get_full_path(const FileList *filelist,
 
   const char *root = filelist_dir(filelist);
   BLI_path_join(r_filepath, FILE_MAX_LIBEXTRA, root, file->relpath);
+}
+
+static bool filelist_file_supports_preview(const FileDirEntry *file)
+{
+  /* External ID that is also a directory is never previewed. */
+  if ((file->typeflag & (FILE_TYPE_BLENDERLIB | FILE_TYPE_DIR)) ==
+      (FILE_TYPE_BLENDERLIB | FILE_TYPE_DIR))
+  {
+    return false;
+  }
+
+  /* If we know this is an external ID without a preview, skip loading the preview. Can save quite
+   * some time in heavy files, because otherwise for each missing preview and for each preview
+   * reload, we'd reopen the .blend to look for the preview. */
+  if ((file->typeflag & FILE_TYPE_BLENDERLIB) && (file->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW))
+  {
+    return false;
+  }
+
+  return file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT |
+                           FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB);
+}
+
+static std::optional<ThumbSource> file_thumbnail_source_get(const FileDirEntry *file)
+{
+  if (file->typeflag & FILE_TYPE_IMAGE) {
+    return THB_SOURCE_IMAGE;
+  }
+  else if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB))
+  {
+    return THB_SOURCE_BLEND;
+  }
+  else if (file->typeflag & FILE_TYPE_MOVIE) {
+    return THB_SOURCE_MOVIE;
+  }
+  else if (file->typeflag & FILE_TYPE_FTFONT) {
+    return THB_SOURCE_FONT;
+  }
+  return std::nullopt;
+}
+
+PreviewImage *filelist_file_request_preview(const FileList *filelist, FileDirEntry *file)
+{
+  if (file->preview) {
+    return file->preview;
+  }
+
+  const std::optional thumb_source = file_thumbnail_source_get(file);
+  if (!thumb_source) {
+    return nullptr;
+  }
+
+  char fullpath[FILE_MAX_LIBEXTRA];
+  filelist_file_get_full_path(filelist, file, fullpath);
+  /* Creates the preview image, but doesn't actually read the thumbnail. */
+  file->preview = BKE_previewimg_cached_thumbnail_read(fullpath, fullpath, *thumb_source, false);
+
+  return file->preview;
 }
 
 static FileDirEntry *filelist_geticon_get_file(FileList *filelist, const int index)
@@ -1394,10 +1461,11 @@ static void filelist_entry_clear(FileDirEntry *entry)
   if (entry->redirection_path) {
     MEM_freeN(entry->redirection_path);
   }
-  if (entry->preview_icon_id) {
-    BKE_icon_delete(entry->preview_icon_id);
-    entry->preview_icon_id = 0;
-  }
+  /* TODO clear previews. */
+  //  if (entry->preview_icon_id) {
+  //    BKE_icon_delete(entry->preview_icon_id);
+  //    entry->preview_icon_id = 0;
+  //  }
 }
 
 static void filelist_entry_free(FileDirEntry *entry)
@@ -1472,6 +1540,19 @@ static int filelist_intern_free_main_files(FileList *filelist)
 
   MEM_SAFE_FREE(filelist_intern->filtered);
   return removed_counter;
+}
+
+static void filelist_cache_preview_request(const bContext *C,
+                                           FileList *filelist,
+                                           FileDirEntry *entry)
+{
+  if (!filelist_file_supports_preview(entry)) {
+    return;
+  }
+
+  PreviewImage *preview = filelist_file_request_preview(filelist, entry);
+  entry->preview_icon_id = BKE_icon_preview_ensure(entry->id, preview);
+  UI_icon_ensure_deferred(C, entry->preview_icon_id, true);
 }
 
 static void filelist_cache_init(FileListEntryCache *cache, size_t cache_size)
@@ -1889,14 +1970,7 @@ static FileDirEntry *filelist_file_create_entry(FileList *filelist, const int in
   ret->id = entry->local_data.id;
   ret->asset = reinterpret_cast<::AssetRepresentation *>(entry->asset);
   /* For some file types the preview is already available. */
-  if (entry->local_data.preview_image &&
-      BKE_previewimg_is_finished(entry->local_data.preview_image, ICON_SIZE_PREVIEW))
-  {
-    ImBuf *ibuf = BKE_previewimg_to_imbuf(entry->local_data.preview_image, ICON_SIZE_PREVIEW);
-    if (ibuf) {
-      ret->preview_icon_id = BKE_icon_imbuf_create(ibuf);
-    }
-  }
+  ret->preview = entry->local_data.preview_image;
   if (entry->blenderlib_has_no_preview) {
     ret->flags |= FILE_ENTRY_BLENDERLIB_NO_PREVIEW;
   }
@@ -1957,12 +2031,6 @@ FileDirEntry *filelist_file_ex(FileList *filelist, const int index, const bool u
 
   cache->misc_entries_indices[cache->misc_cursor] = index;
   cache->misc_cursor = (cache->misc_cursor + 1) % cache->size;
-
-#if 0 /* Actually no, only block cached entries should have preview IMHO. */
-  if (cache->previews_pool) {
-    filelist_cache_previews_push(filelist, ret, index);
-  }
-#endif
 
   return ret;
 }
@@ -2115,7 +2183,7 @@ static void filelist_file_cache_block_release(FileList *filelist, const int size
   }
 }
 
-bool filelist_file_cache_block(FileList *filelist, const int index)
+bool filelist_file_cache_block(const bContext *C, FileList *filelist, const int index)
 {
   FileListEntryCache *cache = &filelist->filelist_cache;
   const size_t cache_size = cache->size;
@@ -2289,7 +2357,7 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
 
   //  printf("Re-queueing previews...\n");
 
-  if (cache->flags & FLC_PREVIEWS_ACTIVE) {
+  if (filelist->flags & FL_USE_PREVIEWS) {
     /* Note we try to preview first images around given index - i.e. assumed visible ones. */
     int block_index = cache->block_cursor + (index - start_index);
     int offs_max = max_ii(end_index - index, index - start_index);
@@ -2298,8 +2366,8 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
       do {
         int offs_idx = index + offs;
         if (start_index <= offs_idx && offs_idx < end_index) {
-          int offs_block_idx = (block_index + offs) % int(cache_size);
-          /* TODO prefetch previews. */
+          const int offs_block_idx = (block_index + offs) % int(cache_size);
+          filelist_cache_preview_request(C, filelist, cache->block_entries[offs_block_idx]);
         }
       } while ((offs = -offs) < 0); /* Switch between negative and positive offset. */
     }
