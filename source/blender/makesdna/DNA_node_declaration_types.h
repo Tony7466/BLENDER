@@ -17,7 +17,35 @@
 #  include <memory>
 #endif
 
-struct bNodePanel;
+struct bNodeTreeInterfacePanel;
+struct bNodeTreeInterfaceSocket;
+
+/** Socket side (input/output). */
+typedef enum eNodeTreeInterfaceItemType {
+  NODE_INTERFACE_SOCKET = 0,
+  NODE_INTERFACE_PANEL = 1,
+} eNodeTreeInterfaceItemType;
+
+/** Describes a socket and all necessary details for a node declaration. */
+typedef struct bNodeTreeInterfaceItem {
+  /* eNodeTreeInterfaceItemType */
+  char item_type;
+  char _pad[3];
+
+  /* Index in final item sequence. */
+  int index;
+
+  /* Panel in which to display the item. */
+  struct bNodeTreeInterfacePanel *parent;
+
+#ifdef __cplusplus
+  template<typename T> T &get_as();
+  template<typename T> const T &get_as() const;
+
+  template<typename T> T *get_as_ptr();
+  template<typename T> const T *get_as_ptr() const;
+#endif
+} bNodeTreeInterfaceItem;
 
 /** Socket side (input/output). */
 typedef enum eNodeSocketDeclarationInOut {
@@ -26,56 +54,62 @@ typedef enum eNodeSocketDeclarationInOut {
 } eNodeSocketDeclarationInOut;
 ENUM_OPERATORS(eNodeSocketDeclarationInOut, SOCKDECL_OUT);
 
-/** Describes a socket and all necessary details for a node declaration. */
-typedef struct bNodeSocketDeclaration {
+typedef struct bNodeTreeInterfaceSocket {
+  bNodeTreeInterfaceItem item;
+
   char *name;
   char *description;
+  char *type;
   /* eNodeSocketDeclarationInOut */
   int in_out;
   char _pad[4];
+} bNodeTreeInterfaceSocket;
 
-  /* Panel in which to display the socket. */
-  struct bNodePanel *panel;
-} bNodeSocketDeclaration;
+typedef struct bNodeTreeInterfacePanel {
+  bNodeTreeInterfaceItem item;
+
+  char *name;
+} bNodeTreeInterfacePanel;
 
 typedef struct bNodeTreeInterface {
-  bNodeSocketDeclaration **sockets_array;
-  int sockets_num;
-  char _pad[4];
-
-  struct bNodePanel **panels_array;
-  int panels_num;
-  char _pad2[4];
+  bNodeTreeInterfaceItem **items_array;
+  int items_num;
+  int active_item;
 
 #ifdef __cplusplus
-  blender::Span<const bNodeSocketDeclaration *> sockets() const;
-  blender::MutableSpan<bNodeSocketDeclaration *> sockets();
+  blender::Span<const bNodeTreeInterfaceItem *> items() const;
+  blender::MutableSpan<bNodeTreeInterfaceItem *> items();
 
-  int socket_index(bNodeSocketDeclaration &socket_decl) const;
-  bNodeSocketDeclaration *add_socket(blender::StringRef name, eNodeSocketDeclarationInOut in_out);
-  bNodeSocketDeclaration *insert_socket(blender::StringRef name,
-                                        eNodeSocketDeclarationInOut in_out,
-                                        int index);
-  bool remove_socket(bNodeSocketDeclaration &socket_decl);
-  void clear_sockets();
-  bool move_socket(bNodeSocketDeclaration &socket_decl, int new_index);
+  bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
+                                       blender::StringRef description,
+                                       blender::StringRef type,
+                                       eNodeSocketDeclarationInOut in_out);
+  bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
+                                          blender::StringRef description,
+                                          blender::StringRef type,
+                                          eNodeSocketDeclarationInOut in_out,
+                                          int index);
+  bNodeTreeInterfacePanel *add_panel(blender::StringRef name);
+  bNodeTreeInterfacePanel *insert_panel(blender::StringRef name, int index);
 
-  blender::Span<const bNodePanel *> panels() const;
-  blender::MutableSpan<bNodePanel *> panels();
-
-  int panel_index(bNodePanel &panel) const;
-  bNodePanel *add_panel(blender::StringRef name);
-  bNodePanel *insert_panel(blender::StringRef name, int index);
-  bool remove_panel(bNodePanel &panel);
-  void clear_panels();
-  bool move_panel(bNodePanel &panel, int new_index);
+  bool remove_item(bNodeTreeInterfaceItem &item);
+  void clear_item_type(eNodeTreeInterfaceItemType type);
+  void clear_items();
+  bool move_item(bNodeTreeInterfaceItem &item, int new_index);
 
  protected:
+  int item_index(bNodeTreeInterfaceItem &item) const;
+
+  void add_item(bNodeTreeInterfaceItem &item);
+  void insert_item(bNodeTreeInterfaceItem &item, int index);
+  void free_item(bNodeTreeInterfaceItem &item);
+
   void update_order();
 
  private:
   void update_panels_order();
   void update_sockets_order();
+  void update_index();
 
 #endif
 } bNodeTreeInterface;

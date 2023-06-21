@@ -49,6 +49,7 @@ set(SRC
   node_relationships.cc
   node_select.cc
   node_templates.cc
+  node_tree_interface.cc
   node_view.cc
   space_node.cc
 
