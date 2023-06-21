@@ -478,8 +478,7 @@ static void rna_MeshLoop_normal_get(PointerRNA *ptr, float *values)
 {
   Mesh *me = rna_mesh(ptr);
   const int index = rna_MeshLoop_index_get(ptr);
-  const blender::Span<blender::float3> loop_normals = me->corner_normals();
-  copy_v3_v3(values, loop_normals[index]);
+  copy_v3_v3(values, me->corner_normals()[index]);
 }
 
 static void rna_MeshLoop_tangent_get(PointerRNA *ptr, float *values)
@@ -511,12 +510,11 @@ static void rna_MeshLoop_bitangent_get(PointerRNA *ptr, float *values)
 {
   Mesh *me = rna_mesh(ptr);
   const int index = rna_MeshLoop_index_get(ptr);
-  const blender::Span<blender::float3> loop_normals = me->corner_normals();
   const float(*vec)[4] = static_cast<const float(*)[4]>(
       CustomData_get_layer(&me->ldata, CD_MLOOPTANGENT));
 
   if (vec) {
-    cross_v3_v3v3(values, loop_normals[index], vec[index]);
+    cross_v3_v3v3(values, me->corner_normals()[index], vec[index]);
     mul_v3_fl(values, vec[index][3]);
   }
   else {
@@ -1619,8 +1617,7 @@ int rna_Mesh_loops_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 
 static int rna_Mesh_normal_domain_all_info_get(PointerRNA *ptr)
 {
-  const Mesh *mesh = rna_mesh(ptr);
-  return ED_mesh_normal_domain_all_info_get(mesh);
+  return rna_mesh(ptr)->normal_domain_all_info();
 }
 
 static void rna_Mesh_vertex_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)

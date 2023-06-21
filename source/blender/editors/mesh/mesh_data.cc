@@ -806,11 +806,6 @@ bool ED_mesh_edge_is_loose(const Mesh *mesh, const int index)
   return loose_edges.count > 0 && loose_edges.is_loose_bits[index];
 }
 
-int ED_mesh_normal_domain_all_info_get(const Mesh *mesh)
-{
-  return mesh->normal_domain_all_info();
-}
-
 static void mesh_add_verts(Mesh *mesh, int len)
 {
   using namespace blender;

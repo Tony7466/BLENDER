@@ -584,7 +584,6 @@ const bool *ED_mesh_uv_map_edge_select_layer_get(const struct Mesh *mesh, int uv
 const bool *ED_mesh_uv_map_pin_layer_get(const struct Mesh *mesh, int uv_map_index);
 
 bool ED_mesh_edge_is_loose(const struct Mesh *mesh, int index);
-int ED_mesh_normal_domain_all_info_get(const struct Mesh *mesh);
 
 void ED_mesh_uv_ensure(struct Mesh *me, const char *name);
 int ED_mesh_uv_add(
