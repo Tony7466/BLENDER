@@ -1256,8 +1256,8 @@ static void extrude_individual_mesh_faces(
           using T = decltype(dummy);
           MutableSpan<T> data = attribute.span.typed<T>();
           MutableSpan<T> connect_data = data.slice(connect_edge_range);
-          poly_selection.foreach_index_optimized<int>(
-              GrainSize(512), [&](const int index, const int i_selection) {
+          poly_selection.foreach_index(
+              GrainSize(512), [&](const int64_t index, const int64_t i_selection) {
                 const IndexRange poly = polys[index];
                 const IndexRange extrude_range = group_per_face[i_selection];
 
