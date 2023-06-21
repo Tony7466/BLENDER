@@ -512,12 +512,12 @@ static void do_multires_bake(MultiresBakeRender *bkr,
   const blender::Span<int> corner_verts = temp_mesh->corner_verts();
   const blender::Span<blender::float3> vert_normals = temp_mesh->vert_normals();
   const blender::Span<blender::float3> poly_normals = temp_mesh->poly_normals();
-  const blender::Span<blender::float3> corner_normals = temp_mesh->corner_normals();
   const blender::Span<MLoopTri> looptris = temp_mesh->looptris();
   const blender::Span<int> looptri_polys = temp_mesh->looptri_polys();
 
   if (require_tangent) {
     if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1) {
+      const blender::Span<blender::float3> corner_normals = temp_mesh->corner_normals();
       BKE_mesh_calc_loop_tangent_ex(
           reinterpret_cast<const float(*)[3]>(positions.data()),
           polys,

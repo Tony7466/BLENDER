@@ -336,30 +336,31 @@ static void compute_normal_outputs(const Mesh &mesh,
 {
   switch (mesh.normal_domain_all_info()) {
     case ATTR_DOMAIN_POINT: {
-      bke::mesh_surface_sample::sample_point_normals(mesh.corner_verts(),
-                                                     mesh.looptris(),
-                                                     looptri_indices,
-                                                     bary_coords,
-                                                     mesh.vert_normals(),
-                                                     IndexMask(looptri_indices.index_range()),
-                                                     r_normals);
+      const Span<int> corner_verts = mesh.corner_verts();
+      const Span<MLoopTri> looptris = mesh.looptris();
+      const Span<float3> vert_normals = mesh.vert_normals();
+      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
+        bke::mesh_surface_sample::sample_point_normals(
+            corner_verts, looptris, looptri_indices, bary_coords, vert_normals, range, r_normals);
+      });
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_polys(),
-                                                      looptri_indices,
-                                                      VArray<float3>::ForSpan(mesh.poly_normals()),
-                                                      IndexMask(looptri_indices.index_range()),
-                                                      r_normals);
+      const Span<int> looptri_polys = mesh.looptri_polys();
+      VArray<float3> poly_normals = VArray<float3>::ForSpan(mesh.poly_normals());
+      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
+        bke::mesh_surface_sample::sample_face_attribute(
+            looptri_polys, looptri_indices, poly_normals, range, r_normals);
+      });
       break;
     }
     case ATTR_DOMAIN_CORNER: {
-      bke::mesh_surface_sample::sample_corner_normals(mesh.looptris(),
-                                                      looptri_indices,
-                                                      bary_coords,
-                                                      mesh.corner_normals(),
-                                                      IndexMask(looptri_indices.index_range()),
-                                                      r_normals);
+      const Span<MLoopTri> looptris = mesh.looptris();
+      const Span<float3> corner_normals = mesh.corner_normals();
+      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
+        bke::mesh_surface_sample::sample_corner_normals(
+            looptris, looptri_indices, bary_coords, corner_normals, range, r_normals);
+      });
       break;
     }
     default:
