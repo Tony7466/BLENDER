@@ -935,16 +935,14 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
             float dist_fac = 0.0f, alpha = 0.0f;
 
             if (az->direction == AZ_SCROLL_HOR) {
-              float hide_width = V2D_SCROLL_HIDE_WIDTH;
-              dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / hide_width;
+              dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / V2D_SCROLL_HIDE_WIDTH;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
 
               v2d->alpha_hor = alpha * 255;
             }
             else if (az->direction == AZ_SCROLL_VERT) {
-              float hide_width = V2D_SCROLL_HIDE_HEIGHT;
-              dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / hide_width;
+              dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / V2D_SCROLL_HIDE_HEIGHT;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
 

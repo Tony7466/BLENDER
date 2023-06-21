@@ -3121,16 +3121,12 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
   /* scrollers */
   bool use_mask = false;
   rcti mask;
-  if (region->runtime.category &&
-      (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_RIGHT) &&
-      UI_panel_category_is_visible(region))
+  if (region->runtime.category && (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_RIGHT))
   {
     use_mask = true;
     UI_view2d_mask_from_win(v2d, &mask);
-    const int category_tabs_width = round_fl_to_int(UI_view2d_scale_get_x(&region->v2d) *
-                                                    UI_PANEL_CATEGORY_MARGIN_WIDTH);
-    mask.xmax -= category_tabs_width;
-    BLI_rcti_translate(&region->v2d.vert, -category_tabs_width, 0);
+    mask.xmax -= round_fl_to_int(UI_view2d_scale_get_x(&region->v2d) *
+                                 UI_PANEL_CATEGORY_MARGIN_WIDTH);
   }
   bool use_full_hide = false;
   if (region->overlap) {
