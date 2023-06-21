@@ -3,3 +3,4 @@ Referenced by commit 32bbfbb06ed331f021b89401f12adecf13d9eaa0, Fix #108643: Blen
 Referenced by issue #108746, Defaults / Save startup file don't save the window size in Blender 4.0 alpha
 Referenced by commit 7ef8389dad6b65264a5aee7de6a579256d0a01e2, Fix #108746: Defaults / Save startup file don't save the window size.
 Referenced by issue #108923, Regression: crash and assert hit in curve sculpt mode after undo
+Referenced by commit 94e6ab6d718735b9646bd11fb3196c5fe224fd74, Fix #108923: Serious issues in 'undo_preserve' process of Scene's toolsettings.
