@@ -325,6 +325,11 @@ static void duplicate_curves(GeometrySet &geometry_set,
     dst_points_num += count * points_by_curve[index].size();
   });
 
+  if (dst_points_num == 0) {
+    geometry_set.remove_geometry_during_modify();
+    return;
+  }
+
   curve_offset_data.last() = dst_curves_num;
   point_offset_data.last() = dst_points_num;
 
