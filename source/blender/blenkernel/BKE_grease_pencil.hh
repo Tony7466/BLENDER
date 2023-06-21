@@ -186,18 +186,13 @@ class Layer : public ::GreasePencilLayer {
   /**
    * \returns the layer name.
    */
-  StringRefNull name() const
-  {
-    return this->base.name;
-  }
+  StringRefNull name() const;
+  void set_name(StringRefNull new_name);
 
   /**
    * \returns the parent layer group.
    */
-  LayerGroup &parent_group() const
-  {
-    return this->base.parent->wrap();
-  }
+  LayerGroup &parent_group() const;
 
   /**
    * \returns the frames mapping.
@@ -340,6 +335,16 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   void ensure_nodes_cache() const;
   void tag_nodes_cache_dirty() const;
 };
+
+inline StringRefNull Layer::name() const
+{
+  return this->base.name;
+}
+
+inline LayerGroup &Layer::parent_group() const
+{
+  return this->base.parent->wrap();
+}
 
 namespace convert {
 

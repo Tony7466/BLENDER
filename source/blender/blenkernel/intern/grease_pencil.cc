@@ -387,6 +387,11 @@ Layer::~Layer()
   this->runtime = nullptr;
 }
 
+void Layer::set_name(StringRefNull new_name)
+{
+  this->base.name = BLI_strdup(new_name.c_str());
+}
+
 const Map<int, GreasePencilFrame> &Layer::frames() const
 {
   return this->runtime->frames_;
@@ -1266,6 +1271,19 @@ blender::bke::greasepencil::Layer *GreasePencil::find_layer_by_name(
     const blender::StringRefNull name)
 {
   return this->root_group.wrap().find_layer_by_name(name);
+}
+
+void GreasePencil::rename_layer(blender::bke::greasepencil::Layer &layer,
+                                blender::StringRefNull new_name)
+{
+  using namespace blender;
+  if (layer.name() == new_name) {
+    return;
+  }
+  VectorSet<StringRefNull> names = get_node_names(*this);
+  std::string unique_name(new_name.c_str());
+  unique_layer_name(names, unique_name.data());
+  layer.set_name(unique_name);
 }
 
 void GreasePencil::print_layer_tree()

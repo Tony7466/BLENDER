@@ -460,6 +460,8 @@ typedef struct GreasePencil {
   const blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name) const;
   blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);
 
+  void rename_layer(blender::bke::greasepencil::Layer &layer, blender::StringRefNull new_name);
+
   void add_empty_drawings(int add_num);
   void remove_drawing(int index);
 
