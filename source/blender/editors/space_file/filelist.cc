@@ -39,7 +39,6 @@
 #include "BLI_math.h"
 #include "BLI_stack.h"
 #include "BLI_string_utils.h"
-#include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 #include "BLI_uuid.h"
@@ -68,9 +67,6 @@
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
-
-#include "PIL_time.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -161,14 +157,6 @@ struct FileListEntryCache {
 
   /* Allows to quickly get a cached entry from its UID. */
   GHash *uids;
-
-  /* Previews handling. */
-  TaskPool *previews_pool;
-  ThreadQueue *previews_done;
-  /** Counter for previews that are not fully loaded and ready to display yet. So includes all
-   * previews either in `previews_pool` or `previews_done`. #filelist_cache_previews_update() makes
-   * previews in `preview_done` ready for display, so the counter is decremented there. */
-  int previews_todo_count;
 };
 
 /** #FileListCache.flags */
@@ -1486,206 +1474,6 @@ static int filelist_intern_free_main_files(FileList *filelist)
   return removed_counter;
 }
 
-static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdata)
-{
-  FileListEntryCache *cache = static_cast<FileListEntryCache *>(BLI_task_pool_user_data(pool));
-  FileListEntryPreviewTaskData *preview_taskdata = static_cast<FileListEntryPreviewTaskData *>(
-      taskdata);
-  FileListEntryPreview *preview = preview_taskdata->preview;
-
-  /* XXX #THB_SOURCE_IMAGE for "historic" reasons. The case of an undefined source should be
-   * handled better. */
-  ThumbSource source = THB_SOURCE_IMAGE;
-
-  //  printf("%s: Start (%d)...\n", __func__, threadid);
-
-  //  printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
-  BLI_assert(preview->flags &
-             (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_BLENDER |
-              FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
-
-  if (preview->flags & FILE_TYPE_IMAGE) {
-    source = THB_SOURCE_IMAGE;
-  }
-  else if (preview->flags & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB))
-  {
-    source = THB_SOURCE_BLEND;
-  }
-  else if (preview->flags & FILE_TYPE_MOVIE) {
-    source = THB_SOURCE_MOVIE;
-  }
-  else if (preview->flags & FILE_TYPE_FTFONT) {
-    source = THB_SOURCE_FONT;
-  }
-
-  IMB_thumb_path_lock(preview->filepath);
-  /* Always generate biggest preview size for now, it's simpler and avoids having to re-generate
-   * in case user switch to a bigger preview size. Do not create preview when file is offline. */
-  ImBuf *imbuf = (preview->attributes & FILE_ATTR_OFFLINE) ?
-                     IMB_thumb_read(preview->filepath, THB_LARGE) :
-                     IMB_thumb_manage(preview->filepath, THB_LARGE, source);
-  IMB_thumb_path_unlock(preview->filepath);
-  if (imbuf) {
-    preview->icon_id = BKE_icon_imbuf_create(imbuf);
-  }
-
-  /* Move ownership to the done queue. */
-  preview_taskdata->preview = nullptr;
-
-  BLI_thread_queue_push(cache->previews_done, preview);
-
-  //  printf("%s: End (%d)...\n", __func__, threadid);
-}
-
-static void filelist_cache_preview_freef(TaskPool *__restrict /*pool*/, void *taskdata)
-{
-  FileListEntryPreviewTaskData *preview_taskdata = static_cast<FileListEntryPreviewTaskData *>(
-      taskdata);
-
-  /* In case the preview wasn't moved to the "done" queue yet. */
-  if (preview_taskdata->preview) {
-    MEM_freeN(preview_taskdata->preview);
-  }
-
-  MEM_freeN(preview_taskdata);
-}
-
-static void filelist_cache_preview_ensure_running(FileListEntryCache *cache)
-{
-  if (!cache->previews_pool) {
-    cache->previews_pool = BLI_task_pool_create_background(cache, TASK_PRIORITY_LOW);
-    cache->previews_done = BLI_thread_queue_init();
-    cache->previews_todo_count = 0;
-
-    IMB_thumb_locks_acquire();
-  }
-}
-
-static void filelist_cache_previews_clear(FileListEntryCache *cache)
-{
-  if (cache->previews_pool) {
-    BLI_task_pool_cancel(cache->previews_pool);
-
-    LISTBASE_FOREACH (FileDirEntry *, entry, &cache->cached_entries) {
-      entry->flags &= ~FILE_ENTRY_PREVIEW_LOADING;
-    }
-
-    FileListEntryPreview *preview;
-    while ((preview = static_cast<FileListEntryPreview *>(
-                BLI_thread_queue_pop_timeout(cache->previews_done, 0))))
-    {
-      // printf("%s: DONE %d - %s - %p\n", __func__, preview->index, preview->path,
-      // preview->img);
-      if (preview->icon_id) {
-        BKE_icon_delete(preview->icon_id);
-      }
-      MEM_freeN(preview);
-    }
-    cache->previews_todo_count = 0;
-  }
-}
-
-static void filelist_cache_previews_free(FileListEntryCache *cache)
-{
-  if (cache->previews_pool) {
-    BLI_thread_queue_nowait(cache->previews_done);
-
-    filelist_cache_previews_clear(cache);
-
-    BLI_thread_queue_free(cache->previews_done);
-    BLI_task_pool_free(cache->previews_pool);
-    cache->previews_pool = nullptr;
-    cache->previews_done = nullptr;
-    cache->previews_todo_count = 0;
-
-    IMB_thumb_locks_release();
-  }
-
-  cache->flags &= ~FLC_PREVIEWS_ACTIVE;
-}
-
-static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry, const int index)
-{
-  FileListEntryCache *cache = &filelist->filelist_cache;
-
-  BLI_assert(cache->flags & FLC_PREVIEWS_ACTIVE);
-
-  if (entry->preview_icon_id) {
-    return;
-  }
-
-  if (entry->flags & (FILE_ENTRY_INVALID_PREVIEW | FILE_ENTRY_PREVIEW_LOADING)) {
-    return;
-  }
-
-  if (!(entry->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT |
-                           FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
-  {
-    return;
-  }
-
-  /* If we know this is an external ID without a preview, skip loading the preview. Can save quite
-   * some time in heavy files, because otherwise for each missing preview and for each preview
-   * reload, we'd reopen the .blend to look for the preview. */
-  if ((entry->typeflag & FILE_TYPE_BLENDERLIB) &&
-      (entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW)) {
-    return;
-  }
-
-  /* External ID that is also a directory is never previewed. */
-  if ((entry->typeflag & (FILE_TYPE_BLENDERLIB | FILE_TYPE_DIR)) ==
-      (FILE_TYPE_BLENDERLIB | FILE_TYPE_DIR))
-  {
-    return;
-  }
-
-  FileListInternEntry *intern_entry = filelist->filelist_intern.filtered[index];
-  PreviewImage *preview_in_memory = intern_entry->local_data.preview_image;
-  if (preview_in_memory && !BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW)) {
-    /* Nothing to set yet. Wait for next call. */
-    return;
-  }
-
-  filelist_cache_preview_ensure_running(cache);
-  entry->flags |= FILE_ENTRY_PREVIEW_LOADING;
-
-  FileListEntryPreview *preview = MEM_new<FileListEntryPreview>(__func__);
-  preview->index = index;
-  preview->flags = entry->typeflag;
-  preview->attributes = entry->attributes;
-  preview->icon_id = 0;
-
-  if (preview_in_memory) {
-    /* TODO(mano-wii): No need to use the thread API here. */
-    BLI_assert(BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW));
-    preview->filepath[0] = '\0';
-    ImBuf *imbuf = BKE_previewimg_to_imbuf(preview_in_memory, ICON_SIZE_PREVIEW);
-    if (imbuf) {
-      preview->icon_id = BKE_icon_imbuf_create(imbuf);
-    }
-    BLI_thread_queue_push(cache->previews_done, preview);
-  }
-  else {
-    if (entry->redirection_path) {
-      BLI_strncpy(preview->filepath, entry->redirection_path, FILE_MAXDIR);
-    }
-    else {
-      filelist_file_get_full_path(filelist, entry, preview->filepath);
-    }
-    // printf("%s: %d - %s\n", __func__, preview->index, preview->filepath);
-
-    FileListEntryPreviewTaskData *preview_taskdata = MEM_new<FileListEntryPreviewTaskData>(
-        __func__);
-    preview_taskdata->preview = preview;
-    BLI_task_pool_push(cache->previews_pool,
-                       filelist_cache_preview_runf,
-                       preview_taskdata,
-                       true,
-                       filelist_cache_preview_freef);
-  }
-  cache->previews_todo_count++;
-}
-
 static void filelist_cache_init(FileListEntryCache *cache, size_t cache_size)
 {
   BLI_listbase_clear(&cache->cached_entries);
@@ -1706,8 +1494,6 @@ static void filelist_cache_init(FileListEntryCache *cache, size_t cache_size)
 
   cache->size = cache_size;
   cache->flags = FLC_IS_INIT;
-
-  cache->previews_todo_count = 0;
 }
 
 static void filelist_cache_free(FileListEntryCache *cache)
@@ -1715,8 +1501,6 @@ static void filelist_cache_free(FileListEntryCache *cache)
   if (!(cache->flags & FLC_IS_INIT)) {
     return;
   }
-
-  filelist_cache_previews_free(cache);
 
   MEM_freeN(cache->block_entries);
 
@@ -1736,8 +1520,6 @@ static void filelist_cache_clear(FileListEntryCache *cache, size_t new_size)
   if (!(cache->flags & FLC_IS_INIT)) {
     return;
   }
-
-  filelist_cache_previews_clear(cache);
 
   cache->block_cursor = cache->block_start_index = cache->block_center_index =
       cache->block_end_index = 0;
@@ -2377,10 +2159,6 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
 
       //          printf("Full Recaching!\n");
 
-      if (cache->flags & FLC_PREVIEWS_ACTIVE) {
-        filelist_cache_previews_clear(cache);
-      }
-
       if (idx1 + size1 > cache_size) {
         size2 = idx1 + size1 - cache_size;
         size1 -= size2;
@@ -2400,16 +2178,6 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
     }
     else {
       //          printf("Partial Recaching!\n");
-
-      /* At this point, we know we keep part of currently cached entries, so update previews
-       * if needed, and remove everything from working queue - we'll add all newly needed
-       * entries at the end. */
-      if (cache->flags & FLC_PREVIEWS_ACTIVE) {
-        filelist_cache_previews_update(filelist);
-        filelist_cache_previews_clear(cache);
-      }
-
-      //          printf("\tpreview cleaned up...\n");
 
       if (start_index > cache->block_start_index) {
         int size1 = start_index - cache->block_start_index;
@@ -2518,11 +2286,6 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
       //          printf("\tend-extended...\n");
     }
   }
-  else if ((cache->block_center_index != index) && (cache->flags & FLC_PREVIEWS_ACTIVE)) {
-    /* We try to always preview visible entries first, so 'restart' preview background task. */
-    filelist_cache_previews_update(filelist);
-    filelist_cache_previews_clear(cache);
-  }
 
   //  printf("Re-queueing previews...\n");
 
@@ -2536,7 +2299,7 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
         int offs_idx = index + offs;
         if (start_index <= offs_idx && offs_idx < end_index) {
           int offs_block_idx = (block_index + offs) % int(cache_size);
-          filelist_cache_previews_push(filelist, cache->block_entries[offs_block_idx], offs_idx);
+          /* TODO prefetch previews. */
         }
       } while ((offs = -offs) < 0); /* Switch between negative and positive offset. */
     }
@@ -2547,108 +2310,6 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
   //  printf("%s Finished!\n", __func__);
 
   return true;
-}
-
-void filelist_cache_previews_set(FileList *filelist, const bool use_previews)
-{
-  FileListEntryCache *cache = &filelist->filelist_cache;
-
-  if (use_previews == ((cache->flags & FLC_PREVIEWS_ACTIVE) != 0)) {
-    return;
-  }
-  /* Do not start preview work while listing, gives nasty flickering! */
-  if (use_previews && (filelist->flags & FL_IS_READY)) {
-    cache->flags |= FLC_PREVIEWS_ACTIVE;
-
-    BLI_assert((cache->previews_pool == nullptr) && (cache->previews_done == nullptr) &&
-               (cache->previews_todo_count == 0));
-
-    //      printf("%s: Init Previews...\n", __func__);
-
-    /* No need to populate preview queue here, filelist_file_cache_block() handles this. */
-  }
-  else {
-    //      printf("%s: Clear Previews...\n", __func__);
-
-    filelist_cache_previews_free(cache);
-  }
-}
-
-bool filelist_cache_previews_update(FileList *filelist)
-{
-  FileListEntryCache *cache = &filelist->filelist_cache;
-  TaskPool *pool = cache->previews_pool;
-  bool changed = false;
-
-  if (!pool) {
-    return changed;
-  }
-
-  //  printf("%s: Update Previews...\n", __func__);
-
-  while (!BLI_thread_queue_is_empty(cache->previews_done)) {
-    FileListEntryPreview *preview = static_cast<FileListEntryPreview *>(
-        BLI_thread_queue_pop(cache->previews_done));
-    FileDirEntry *entry;
-
-    /* Paranoid (should never happen currently
-     * since we consume this queue from a single thread), but... */
-    if (!preview) {
-      continue;
-    }
-    /* entry might have been removed from cache in the mean time,
-     * we do not want to cache it again here. */
-    entry = filelist_file_ex(filelist, preview->index, false);
-
-    // printf("%s: %d - %s - %p\n", __func__, preview->index, preview->filepath, preview->img);
-
-    if (entry) {
-      if (preview->icon_id) {
-        /* The FILE_ENTRY_PREVIEW_LOADING flag should have prevented any other asynchronous
-         * process from trying to generate the same preview icon. */
-        BLI_assert_msg(!entry->preview_icon_id, "Preview icon should not have been generated yet");
-
-        /* Move ownership over icon. */
-        entry->preview_icon_id = preview->icon_id;
-        preview->icon_id = 0;
-      }
-      else {
-        /* We want to avoid re-processing this entry continuously!
-         * Note that, since entries only live in cache,
-         * preview will be retried quite often anyway. */
-        entry->flags |= FILE_ENTRY_INVALID_PREVIEW;
-      }
-      entry->flags &= ~FILE_ENTRY_PREVIEW_LOADING;
-      changed = true;
-    }
-    else {
-      BKE_icon_delete(preview->icon_id);
-    }
-
-    MEM_freeN(preview);
-    cache->previews_todo_count--;
-  }
-
-  return changed;
-}
-
-bool filelist_cache_previews_running(FileList *filelist)
-{
-  FileListEntryCache *cache = &filelist->filelist_cache;
-
-  return (cache->previews_pool != nullptr);
-}
-
-bool filelist_cache_previews_done(FileList *filelist)
-{
-  FileListEntryCache *cache = &filelist->filelist_cache;
-  if ((cache->flags & FLC_PREVIEWS_ACTIVE) == 0) {
-    /* There are no previews. */
-    return false;
-  }
-
-  return (cache->previews_pool == nullptr) || (cache->previews_done == nullptr) ||
-         (cache->previews_todo_count == 0);
 }
 
 /* would recognize .blend as well */

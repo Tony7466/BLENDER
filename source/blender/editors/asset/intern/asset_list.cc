@@ -75,32 +75,9 @@ class FileListWrapper {
   }
 };
 
-class PreviewTimer {
-  /* Non-owning! The Window-Manager registers and owns this. */
-  wmTimer *timer_ = nullptr;
-
- public:
-  void ensureRunning(const bContext *C)
-  {
-    if (!timer_) {
-      timer_ = WM_event_add_timer_notifier(
-          CTX_wm_manager(C), CTX_wm_window(C), NC_ASSET | ND_ASSET_LIST_PREVIEW, 0.01);
-    }
-  }
-
-  void stop(const bContext *C)
-  {
-    if (timer_) {
-      WM_event_remove_timer_notifier(CTX_wm_manager(C), CTX_wm_window(C), timer_);
-      timer_ = nullptr;
-    }
-  }
-};
-
 class AssetList : NonCopyable {
   FileListWrapper filelist_;
   AssetLibraryReference library_ref_;
-  PreviewTimer previews_timer_;
 
  public:
   AssetList() = delete;
@@ -112,7 +89,6 @@ class AssetList : NonCopyable {
 
   void setup();
   void fetch(const bContext &C);
-  void ensurePreviewsJob(const bContext *C);
   void clear(bContext *C);
 
   AssetHandle asset_get_by_index(int index) const;
@@ -225,31 +201,6 @@ void AssetList::iterate(AssetListIterFn fn) const
   });
 }
 
-void AssetList::ensurePreviewsJob(const bContext *C)
-{
-  FileList *files = filelist_;
-  int numfiles = filelist_files_ensure(files);
-
-  filelist_cache_previews_set(files, true);
-  /* TODO fetch all previews for now. */
-  /* Add one extra entry to ensure nothing is lost because of integer division. */
-  filelist_file_cache_slidingwindow_set(files, numfiles / 2 + 1);
-  filelist_file_cache_block(files, 0);
-  filelist_cache_previews_update(files);
-
-  {
-    const bool previews_running = filelist_cache_previews_running(files) &&
-                                  !filelist_cache_previews_done(files);
-    if (previews_running) {
-      previews_timer_.ensureRunning(C);
-    }
-    else {
-      /* Preview is not running, no need to keep generating update events! */
-      previews_timer_.stop(C);
-    }
-  }
-}
-
 void AssetList::clear(bContext *C)
 {
   /* Based on #ED_fileselect_clear() */
@@ -280,7 +231,7 @@ bool AssetList::listen(const wmNotifier &notifier)
       break;
     }
     case NC_ASSET:
-      if (ELEM(notifier.data, ND_ASSET_LIST, ND_ASSET_LIST_READING, ND_ASSET_LIST_PREVIEW)) {
+      if (ELEM(notifier.data, ND_ASSET_LIST, ND_ASSET_LIST_READING)) {
         return true;
       }
       if (ELEM(notifier.action, NA_ADDED, NA_REMOVED, NA_EDITED)) {
@@ -450,16 +401,6 @@ bool ED_assetlist_is_loaded(const AssetLibraryReference *library_reference)
     return false;
   }
   return list->isLoaded();
-}
-
-void ED_assetlist_ensure_previews_job(const AssetLibraryReference *library_reference,
-                                      const bContext *C)
-{
-
-  AssetList *list = AssetListStorage::lookup_list(*library_reference);
-  if (list) {
-    list->ensurePreviewsJob(C);
-  }
 }
 
 void ED_assetlist_clear(const AssetLibraryReference *library_reference, bContext *C)

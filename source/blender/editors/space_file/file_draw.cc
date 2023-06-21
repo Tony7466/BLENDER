@@ -963,27 +963,6 @@ void file_draw_list(const bContext *C, ARegion *region)
         files, min_ii(offset + (numfiles_layout / 2), numfiles - 1));
     BLI_assert(success);
     UNUSED_VARS_NDEBUG(success);
-
-    filelist_cache_previews_update(files);
-
-    /* Handle preview timer here,
-     * since it's filelist_file_cache_block() and filelist_cache_previews_update()
-     * which controls previews task. */
-    {
-      const bool previews_running = filelist_cache_previews_running(files) &&
-                                    !filelist_cache_previews_done(files);
-      //          printf("%s: preview task: %d\n", __func__, previews_running);
-      if (previews_running && !sfile->previews_timer) {
-        sfile->previews_timer = WM_event_add_timer_notifier(
-            wm, win, NC_SPACE | ND_SPACE_FILE_PREVIEW, 0.01);
-      }
-      if (!previews_running && sfile->previews_timer) {
-        /* Preview is not running, no need to keep generating update events! */
-        //              printf("%s: Inactive preview task, sleeping!\n", __func__);
-        WM_event_remove_timer_notifier(wm, win, sfile->previews_timer);
-        sfile->previews_timer = nullptr;
-      }
-    }
   }
 
   BLF_batch_draw_begin();

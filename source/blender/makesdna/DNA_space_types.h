@@ -924,7 +924,6 @@ typedef struct SpaceFile {
   struct wmOperator *op;
 
   struct wmTimer *smoothscroll_timer;
-  struct wmTimer *previews_timer;
 
   struct FileLayout *layout;
 

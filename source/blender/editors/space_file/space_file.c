@@ -112,8 +112,6 @@ static void file_free(SpaceLink *sl)
 {
   SpaceFile *sfile = (SpaceFile *)sl;
 
-  BLI_assert(sfile->previews_timer == NULL);
-
   if (sfile->files) {
     /* XXX would need to do thumbnails_stop here, but no context available */
     filelist_freelib(sfile->files);
@@ -151,11 +149,6 @@ static void file_exit(wmWindowManager *wm, ScrArea *area)
 {
   SpaceFile *sfile = (SpaceFile *)area->spacedata.first;
 
-  if (sfile->previews_timer) {
-    WM_event_remove_timer_notifier(wm, NULL, sfile->previews_timer);
-    sfile->previews_timer = NULL;
-  }
-
   ED_fileselect_exit(wm, sfile);
 }
 
@@ -168,7 +161,6 @@ static SpaceLink *file_duplicate(SpaceLink *sl)
   sfilen->op = NULL; /* file window doesn't own operators */
   sfilen->runtime = NULL;
 
-  sfilen->previews_timer = NULL;
   sfilen->smoothscroll_timer = NULL;
 
   FileSelectParams *active_params_old = ED_fileselect_get_active_params(sfileo);
@@ -195,7 +187,6 @@ static SpaceLink *file_duplicate(SpaceLink *sl)
 static void file_refresh(const bContext *C, ScrArea *area)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  wmWindow *win = CTX_wm_window(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
   FileSelectParams *params = ED_fileselect_ensure_active_params(sfile);
   FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
@@ -268,17 +259,6 @@ static void file_refresh(const bContext *C, ScrArea *area)
 
   filelist_sort(sfile->files);
   filelist_filter(sfile->files);
-
-  if (params->display == FILE_IMGDISPLAY) {
-    filelist_cache_previews_set(sfile->files, true);
-  }
-  else {
-    filelist_cache_previews_set(sfile->files, false);
-    if (sfile->previews_timer) {
-      WM_event_remove_timer_notifier(wm, win, sfile->previews_timer);
-      sfile->previews_timer = NULL;
-    }
-  }
 
   if (params->rename_flag != 0) {
     file_params_renamefile_activate(sfile, params);
@@ -356,11 +336,6 @@ static void file_listener(const wmSpaceTypeListenerParams *listener_params)
           break;
         case ND_SPACE_FILE_PARAMS:
           ED_area_tag_refresh(area);
-          break;
-        case ND_SPACE_FILE_PREVIEW:
-          if (sfile->files && filelist_cache_previews_update(sfile->files)) {
-            ED_area_tag_refresh(area);
-          }
           break;
         case ND_SPACE_ASSET_PARAMS:
           if (sfile->browse_mode == FILE_BROWSE_MODE_ASSETS) {
@@ -960,7 +935,6 @@ static void file_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   sfile->files = NULL;
   sfile->layout = NULL;
   sfile->op = NULL;
-  sfile->previews_timer = NULL;
   sfile->tags = 0;
   sfile->runtime = NULL;
   BLO_read_data_address(reader, &sfile->params);
