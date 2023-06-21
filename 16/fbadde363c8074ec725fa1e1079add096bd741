@@ -13,3 +13,4 @@ Referenced by issue #109043, Regression: Mask modifier's smoothing option is bro
 Referenced by commit 17aaff69c68b7903b905c08648200f120b6f2bbb, Fix #109043: Mask modifier smooth option broken
 Referenced by issue #109060, Regression: Crash when enabling Mask modifier Smooth option
 Referenced by issue #109161, Baking UDIM multires freezes (or crashes)
+Referenced by commit ef9d9c6856d9e85f5dff30870898c206e5ffe103, Fix unnecessary corner edge computation in multires bake
