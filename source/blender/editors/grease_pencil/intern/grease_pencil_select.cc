@@ -323,13 +323,13 @@ Vector<bool> point_selection_get(const GreasePencilDrawing *drawing)
   return point_selection;
 }
 
-static void expand_changed_point_to_segment(const int segment_stroke_index,
-                                            const int segment_point_start,
-                                            const IndexRange points,
-                                            MutableSpan<bool> &new_selection,
-                                            Vector<bool> &stored_selection,
-                                            const Vector<Stroke2DSpace> &strokes_2d,
-                                            const bool selection_state)
+static void expand_changed_selection_point_to_segment(const int segment_stroke_index,
+                                                      const int segment_point_start,
+                                                      const IndexRange points,
+                                                      MutableSpan<bool> &new_selection,
+                                                      Vector<bool> &stored_selection,
+                                                      const Vector<Stroke2DSpace> &strokes_2d,
+                                                      const bool selection_state)
 {
   /* Get 2D stroke with segment to expand. */
   const Stroke2DSpace stroke_2d = strokes_2d[segment_stroke_index];
@@ -394,13 +394,13 @@ void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
     for (int point_i = points.first(); point_i <= points.last(); point_i++) {
       /* Expand to segment when selection is changed. */
       if (stored_selection[point_i] != new_selection[point_i]) {
-        expand_changed_point_to_segment(curve_i + curve_offset,
-                                        point_i,
-                                        points,
-                                        new_selection,
-                                        stored_selection,
-                                        strokes_2d,
-                                        new_selection[point_i]);
+        expand_changed_selection_point_to_segment(curve_i + curve_offset,
+                                                  point_i,
+                                                  points,
+                                                  new_selection,
+                                                  stored_selection,
+                                                  strokes_2d,
+                                                  new_selection[point_i]);
       }
     }
   }
