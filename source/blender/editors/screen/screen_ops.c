@@ -816,9 +816,11 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   return false;
 }
 
+/* Return the azone's calculated rect. */
 static void area_actionzone_get_rect(AZone *az, rcti *rect)
 {
   if (az->type == AZONE_REGION_SCROLL) {
+    /* For scroll azones use the area around the region's scrollbar location. */
     rcti scroller_vert = (az->direction == AZ_SCROLL_HOR) ? az->region->v2d.hor :
                                                             az->region->v2d.vert;
     BLI_rcti_translate(&scroller_vert, az->region->winrct.xmin, az->region->winrct.ymin);
@@ -830,11 +832,8 @@ static void area_actionzone_get_rect(AZone *az, rcti *rect)
     rect->ymax = scroller_vert.ymax +
                   ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
   }
-  else if (az->type == AZONE_REGION) {
-    azone_clipped_rect_calc(az, rect);
-  }
   else {
-    *rect = az->rect;
+    azone_clipped_rect_calc(az, rect);
   }
 }
 

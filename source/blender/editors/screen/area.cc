@@ -1075,7 +1075,8 @@ static void region_azone_scrollbar_init(ScrArea *area,
     az->region->v2d.alpha_hor = 0;
   }
 
-  /* No need to set az sizes. For intersection we'll use region's scroller rect instead. */
+  /* No need to specify rect for scrollbar az. For intersection we'll test against the area around
+   * the region's scroller instead, in `area_actionzone_get_rect`. */
 }
 
 static void region_azones_scrollbars_init(ScrArea *area, ARegion *region)
@@ -3121,7 +3122,9 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
   /* scrollers */
   bool use_mask = false;
   rcti mask;
-  if (region->runtime.category && (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_RIGHT))
+  if (region->runtime.category &&
+      (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_RIGHT) &&
+      UI_panel_category_is_visible(region))
   {
     use_mask = true;
     UI_view2d_mask_from_win(v2d, &mask);
