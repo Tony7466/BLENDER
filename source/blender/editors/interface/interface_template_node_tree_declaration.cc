@@ -9,7 +9,7 @@
 #include "UI_interface.h"
 
 #include "BKE_context.h"
-#include "BKE_node.hh"
+#include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 
 #include "BLI_color.hh"
@@ -518,7 +518,8 @@ bool NodePanelDropTarget::on_drop(bContext *C, const wmDrag &drag) const
     case eNodeTreeDeclarationType::NODE_SOCKET: {
       bNodeSocket *drag_socket = static_cast<bNodeSocket *>(drag_data->item);
 
-      bNodeSocket *before = find_first_socket_in_panel(nodetree, panel_, eNodeSocketInOut(drag_socket->in_out));
+      bNodeSocket *before = find_first_socket_in_panel(
+          nodetree, panel_, eNodeSocketInOut(drag_socket->in_out));
       ntreeSetSocketInterfacePanel(&nodetree, drag_socket, &panel_);
       ntreeInsertSocketInterfaceBefore(&nodetree, drag_socket, before);
       break;
