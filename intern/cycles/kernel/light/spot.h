@@ -17,65 +17,37 @@ ccl_device float spot_light_attenuation(const ccl_global KernelSpotLight *spot, 
   return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) * spot->spot_smooth);
 }
 
+/* TODO: is attenuation needed inside the sphere? */
+/* TODO: sampling valid cone. */
+/* TODO: what's the expected behaviour of texturing? */
 template<bool in_volume_segment>
 ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
                                          const float2 rand,
                                          const float3 P,
+                                         const float3 N,
+                                         const int shader_flags,
                                          ccl_private LightSample *ls)
 {
-  ls->P = klight->co;
+  point_light_sample(klight, rand, P, N, shader_flags, ls);
 
-  const float3 center = klight->co;
-  const float radius = klight->spot.radius;
-  /* disk oriented normal */
-  const float3 lightN = normalize(P - center);
-  ls->P = center;
-
-  if (radius > 0.0f) {
-    /* disk light */
-    ls->P += disk_light_sample(lightN, rand) * radius;
-  }
-
-  const float invarea = klight->spot.invarea;
-  ls->pdf = invarea;
-
-  ls->D = normalize_len(ls->P - P, &ls->t);
-  /* we set the light normal to the outgoing direction to support texturing */
-  ls->Ng = -ls->D;
-
-  ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
-
-  /* spot light attenuation */
+  /* Spot light attenuation. */
   ls->eval_fac *= spot_light_attenuation(&klight->spot, -ls->D);
   if (!in_volume_segment && ls->eval_fac == 0.0f) {
     return false;
   }
 
-  float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
-
-  ls->pdf *= lamp_light_pdf(lightN, -ls->D, ls->t);
   return true;
 }
 
 ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global KernelLight *klight,
                                                           ccl_private LightSample *ls,
-                                                          const float3 P)
+                                                          const float3 P,
+                                                          const float3 N,
+                                                          const uint32_t path_flag)
 {
-  ls->D = normalize_len(ls->P - P, &ls->t);
-  ls->Ng = -ls->D;
+  point_light_mnee_sample_update(klight, ls, P, N, path_flag);
 
-  float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
-
-  float invarea = klight->spot.invarea;
-  ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
-  /* NOTE : preserve pdf in area measure. */
-  ls->pdf = invarea;
-
-  /* spot light attenuation */
+  /* Spot light attenuation. */
   ls->eval_fac *= spot_light_attenuation(&klight->spot, ls->Ng);
 }
 
@@ -83,21 +55,13 @@ ccl_device_inline bool spot_light_intersect(const ccl_global KernelLight *klight
                                             const ccl_private Ray *ccl_restrict ray,
                                             ccl_private float *t)
 {
-  /* Spot/Disk light. */
-  const float3 lightP = klight->co;
-  const float radius = klight->spot.radius;
-  if (radius == 0.0f) {
-    return false;
-  }
-  /* disk oriented normal */
-  const float3 lightN = normalize(ray->P - lightP);
   /* One sided. */
-  if (dot(ray->D, lightN) >= 0.0f) {
+  if (dot(ray->D, ray->P - klight->co) >= 0.0f) {
     return false;
   }
 
-  float3 P;
-  return ray_disk_intersect(ray->P, ray->D, ray->tmin, ray->tmax, lightP, lightN, radius, &P, t);
+  /* TODO: when to check if outside cone? */
+  return point_light_intersect(klight, ray, t);
 }
 
 ccl_device_inline bool spot_light_sample_from_intersection(
@@ -105,37 +69,16 @@ ccl_device_inline bool spot_light_sample_from_intersection(
     ccl_private const Intersection *ccl_restrict isect,
     const float3 ray_P,
     const float3 ray_D,
+    const float3 N,
+    const uint32_t path_flag,
     ccl_private LightSample *ccl_restrict ls)
 {
-  /* the normal of the oriented disk */
-  const float3 lightN = normalize(ray_P - klight->co);
-  /* We set the light normal to the outgoing direction to support texturing. */
-  ls->Ng = -ls->D;
+  point_light_sample_from_intersection(klight, isect, ray_P, ray_D, N, path_flag, ls);
 
-  float invarea = klight->spot.invarea;
-  ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
-  ls->pdf = invarea;
-
-  /* spot light attenuation */
+  /* Spot light attenuation. */
   ls->eval_fac *= spot_light_attenuation(&klight->spot, -ls->D);
 
-  if (ls->eval_fac == 0.0f) {
-    return false;
-  }
-
-  float2 uv = map_to_sphere(ls->Ng);
-  ls->u = uv.x;
-  ls->v = uv.y;
-
-  /* compute pdf */
-  if (ls->t != FLT_MAX) {
-    ls->pdf *= lamp_light_pdf(lightN, -ls->D, ls->t);
-  }
-  else {
-    ls->pdf = 0.f;
-  }
-
-  return true;
+  return (ls->eval_fac > 0);
 }
 
 template<bool in_volume_segment>
@@ -146,18 +89,20 @@ ccl_device_forceinline bool spot_light_tree_parameters(const ccl_global KernelLi
                                                        ccl_private float2 &distance,
                                                        ccl_private float3 &point_to_centroid)
 {
-  float min_distance;
-  const float3 point_to_centroid_ = safe_normalize_len(centroid - P, &min_distance);
+  float dist_point_to_centroid;
+  const float3 point_to_centroid_ = safe_normalize_len(centroid - P, &dist_point_to_centroid);
 
   const float radius = klight->spot.radius;
-  const float hypotenus = sqrtf(sqr(radius) + sqr(min_distance));
-  cos_theta_u = min_distance / hypotenus;
+  cos_theta_u = (dist_point_to_centroid > radius) ? cos_from_sin(radius / dist_point_to_centroid) :
+                                                    -1.0f;
 
   if (in_volume_segment) {
     return true;
   }
 
-  distance = make_float2(hypotenus, min_distance);
+  distance = (dist_point_to_centroid > radius) ?
+                 dist_point_to_centroid * make_float2(1.0f / cos_theta_u, 1.0f) :
+                 one_float2() * radius / M_SQRT2_F;
   point_to_centroid = point_to_centroid_;
 
   return true;
