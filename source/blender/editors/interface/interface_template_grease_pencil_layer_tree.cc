@@ -21,7 +21,11 @@ using namespace blender::bke::greasepencil;
 
 class LayerViewItem : public AbstractTreeViewItem {
  public:
-  LayerViewItem(const Layer &layer) : layer_(layer) {}
+  LayerViewItem(GreasePencil &grease_pencil, Layer &layer)
+      : grease_pencil_(grease_pencil), layer_(layer)
+  {
+    this->label_ = layer.name();
+  }
 
   void build_row(uiLayout &row) override
   {
@@ -34,8 +38,36 @@ class LayerViewItem : public AbstractTreeViewItem {
     return false;
   }
 
+  std::optional<bool> should_be_active() const override
+  {
+    if (this->grease_pencil_.has_active_layer()) {
+      return reinterpret_cast<GreasePencilLayer *>(&layer_) == this->grease_pencil_.active_layer;
+    }
+    return {};
+  }
+
+  void on_activate()
+  {
+    this->grease_pencil_.set_active_layer(&layer_);
+  }
+
+  bool supports_renaming() const override
+  {
+    return true;
+  }
+  bool rename(StringRefNull new_name) override
+  {
+    grease_pencil_.rename_layer(layer_, new_name);
+    return true;
+  }
+  StringRef get_rename_string() const override
+  {
+    return layer_.name();
+  }
+
  private:
-  const Layer &layer_;
+  GreasePencil &grease_pencil_;
+  Layer &layer_;
 };
 
 class LayerGroupViewItem : public AbstractTreeViewItem {
@@ -75,13 +107,13 @@ void LayerTreeView::build_tree()
   LISTBASE_FOREACH_BACKWARD (
       GreasePencilLayerTreeNode *, node_, &this->grease_pencil_.root_group.children)
   {
-    const TreeNode &node = node_->wrap();
+    TreeNode &node = node_->wrap();
     /* TODO: use build_tree_node_recursive. */
     if (node.is_group()) {
       /* TODO */
     }
     else if (node.is_layer()) {
-      add_tree_item<LayerViewItem>(node.as_layer());
+      add_tree_item<LayerViewItem>(this->grease_pencil_, node.as_layer_for_write());
     }
   }
 }
