@@ -142,26 +142,6 @@ void ED_view3d_viewcontext_init_object(ViewContext *vc, Object *obact)
   }
 }
 
-eAttrDomain ED_view3d_grease_pencil_selection_domain_get(bContext *C, bool *segment_mode)
-{
-  ToolSettings *ts = CTX_data_tool_settings(C);
-  *segment_mode = false;
-
-  switch (ts->gpencil_selectmode_edit) {
-    case GP_SELECTMODE_POINT:
-      return ATTR_DOMAIN_POINT;
-      break;
-    case GP_SELECTMODE_STROKE:
-      return ATTR_DOMAIN_CURVE;
-      break;
-    case GP_SELECTMODE_SEGMENT:
-      *segment_mode = true;
-      return ATTR_DOMAIN_POINT;
-      break;
-  }
-  return ATTR_DOMAIN_POINT;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1205,8 +1185,7 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
 
   /* Get selection domain from tool settings. */
   bool segment_mode;
-  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(vc->C,
-                                                                                    &segment_mode);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(vc->C, &segment_mode);
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
@@ -3219,8 +3198,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
 
   /* Get selection domain from tool settings. */
   bool segment_mode;
-  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(C,
-                                                                                    &segment_mode);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C, &segment_mode);
 
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
       drawings.index_range(),
@@ -4254,8 +4232,7 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
 
   /* Get selection domain from tool settings. */
   bool segment_mode;
-  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(vc->C,
-                                                                                    &segment_mode);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(vc->C, &segment_mode);
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */

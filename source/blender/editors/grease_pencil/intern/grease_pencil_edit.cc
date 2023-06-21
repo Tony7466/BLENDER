@@ -41,6 +41,17 @@ bool editable_grease_pencil_point_selection_poll(bContext *C)
   return (ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE);
 }
 
+bool editable_grease_pencil_no_segment_selection_poll(bContext *C)
+{
+  if (!editable_grease_pencil_poll(C)) {
+    return false;
+  }
+
+  /* Allowed: point and stroke selection mode, not allowed: segment selection mode. */
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  return (ts->gpencil_selectmode_edit != GP_SELECTMODE_SEGMENT);
+}
+
 static void keymap_grease_pencil_editing(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Edit Mode", 0, 0);

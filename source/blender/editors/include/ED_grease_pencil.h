@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BKE_attribute.h"
+#include "BLI_rect.h"
 
 struct bContext;
 
@@ -33,9 +34,11 @@ void ED_operatortypes_grease_pencil_draw(void);
 void ED_operatortypes_grease_pencil_select(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 /**
- * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
+ * Get the selection domain for Grease Pencil selection operators: point, stroke, segment.
+ * \param C: Context.
+ * \param segment_mode: Pointer to bool, indicating 'select segment' mode is active.
  */
-eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
+eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C, bool *segment_mode);
 
 #ifdef __cplusplus
 }
@@ -43,6 +46,7 @@ eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
 
 #ifdef __cplusplus
 
+#  include "BKE_curves.hh"
 #  include "BLI_math_matrix_types.hh"
 
 namespace blender::ed::greasepencil {
