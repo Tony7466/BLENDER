@@ -232,7 +232,7 @@ static void v3d_cursor_plane_draw_grid(const int resolution,
 
   const size_t coords_len = resolution * resolution;
   float(*coords)[3] = static_cast<float(*)[3]>(
-      MEM_mallocN(sizeof(float[3]) * coords_len, __func__));
+      MEM_mallocN(sizeof(*coords) * coords_len, __func__));
 
   const int axis_x = (plane_axis + 0) % 3;
   const int axis_y = (plane_axis + 1) % 3;
