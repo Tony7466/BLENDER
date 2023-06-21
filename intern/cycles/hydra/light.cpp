@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2022 NVIDIA Corporation
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "hydra/light.h"
 #include "hydra/session.h"
@@ -168,7 +169,8 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
   }
   // Need to update shader graph when transform changes in case transform was baked into it
   else if (_light->tfm_is_modified() && (_lightType == HdPrimTypeTokens->domeLight ||
-                                         _light->get_shader()->has_surface_spatial_varying)) {
+                                         _light->get_shader()->has_surface_spatial_varying))
+  {
     PopulateShaderGraph(sceneDelegate);
   }
 

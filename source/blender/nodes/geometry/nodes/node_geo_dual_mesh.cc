@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 #include "BLI_task.hh"
@@ -16,7 +18,7 @@ namespace blender::nodes::node_geo_dual_mesh_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Mesh").supported_type(GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Keep Boundaries")
       .default_value(false)
       .description(
@@ -149,52 +151,58 @@ static void transfer_attributes(
   });
 
   for (const AttributeIDRef &id : attribute_ids) {
-    GAttributeReader src_attribute = src_attributes.lookup(id);
+    GAttributeReader src = src_attributes.lookup(id);
 
     eAttrDomain out_domain;
-    if (src_attribute.domain == ATTR_DOMAIN_FACE) {
+    if (src.domain == ATTR_DOMAIN_FACE) {
       out_domain = ATTR_DOMAIN_POINT;
     }
-    else if (src_attribute.domain == ATTR_DOMAIN_POINT) {
+    else if (src.domain == ATTR_DOMAIN_POINT) {
       out_domain = ATTR_DOMAIN_FACE;
     }
     else {
       /* Edges and Face Corners. */
-      out_domain = src_attribute.domain;
+      out_domain = src.domain;
     }
-    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(
-        src_attribute.varray.type());
-    GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
+    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(src.varray.type());
+    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
         id, out_domain, data_type);
-    if (!dst_attribute) {
+    if (!dst) {
       continue;
     }
 
-    attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
-      using T = decltype(dummy);
-      VArraySpan<T> span{src_attribute.varray.typed<T>()};
-      MutableSpan<T> dst_span = dst_attribute.span.typed<T>();
-      switch (src_attribute.domain) {
-        case ATTR_DOMAIN_POINT:
-          copy_data_based_on_vertex_types(span, dst_span, vertex_types, keep_boundaries);
-          break;
-        case ATTR_DOMAIN_EDGE:
-          array_utils::gather(span, new_to_old_edges_map, dst_span);
-          break;
-        case ATTR_DOMAIN_FACE:
-          dst_span.take_front(span.size()).copy_from(span);
-          if (keep_boundaries) {
-            copy_data_based_on_pairs(span, dst_span, boundary_vertex_to_relevant_face_map);
-          }
-          break;
-        case ATTR_DOMAIN_CORNER:
-          array_utils::gather(span, new_to_old_face_corners_map, dst_span);
-          break;
-        default:
-          BLI_assert_unreachable();
+    switch (src.domain) {
+      case ATTR_DOMAIN_POINT: {
+        const GVArraySpan src_span(*src);
+        bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+          using T = decltype(dummy);
+          copy_data_based_on_vertex_types(
+              src_span.typed<T>(), dst.span.typed<T>(), vertex_types, keep_boundaries);
+        });
+        break;
       }
-    });
-    dst_attribute.finish();
+      case ATTR_DOMAIN_EDGE:
+        bke::attribute_math::gather(*src, new_to_old_edges_map, dst.span);
+        break;
+      case ATTR_DOMAIN_FACE: {
+        const GVArraySpan src_span(*src);
+        dst.span.take_front(src_span.size()).copy_from(src_span);
+        bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+          using T = decltype(dummy);
+          if (keep_boundaries) {
+            copy_data_based_on_pairs(
+                src_span.typed<T>(), dst.span.typed<T>(), boundary_vertex_to_relevant_face_map);
+          }
+        });
+        break;
+      }
+      case ATTR_DOMAIN_CORNER:
+        bke::attribute_math::gather(*src, new_to_old_face_corners_map, dst.span);
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+    dst.finish();
   }
 }
 
@@ -355,7 +363,8 @@ static bool sort_vertex_polys(const Span<int2> edges,
       const int corner_1 = poly_vertex_corners[i].first;
       const int corner_2 = poly_vertex_corners[i].second;
       if (edge_types[corner_edges[corner_1]] == EdgeType::Boundary &&
-          corner_verts[corner_1] == vertex_index) {
+          corner_verts[corner_1] == vertex_index)
+      {
         shared_edge_i = corner_edges[corner_2];
         r_sorted_corners[0] = poly_vertex_corners[i].first;
         std::swap(connected_polys[i], connected_polys[0]);
@@ -363,7 +372,8 @@ static bool sort_vertex_polys(const Span<int2> edges,
         break;
       }
       if (edge_types[corner_edges[corner_2]] == EdgeType::Boundary &&
-          corner_verts[corner_2] == vertex_index) {
+          corner_verts[corner_2] == vertex_index)
+      {
         shared_edge_i = corner_edges[corner_1];
         r_sorted_corners[0] = poly_vertex_corners[i].second;
         std::swap(connected_polys[i], connected_polys[0]);
@@ -526,7 +536,7 @@ static bool vertex_needs_dissolving(const int vertex,
                                     const int first_poly_index,
                                     const int second_poly_index,
                                     const Span<VertexType> vertex_types,
-                                    const Span<Vector<int>> vert_to_poly_map)
+                                    const GroupedSpan<int> vert_to_poly_map)
 {
   /* Order is guaranteed to be the same because 2poly verts that are not on the boundary are
    * ignored in `sort_vertex_polys`. */
@@ -545,7 +555,7 @@ static bool vertex_needs_dissolving(const int vertex,
 static void dissolve_redundant_verts(const Span<int2> edges,
                                      const OffsetIndices<int> polys,
                                      const Span<int> corner_edges,
-                                     const Span<Vector<int>> vert_to_poly_map,
+                                     const GroupedSpan<int> vert_to_poly_map,
                                      MutableSpan<VertexType> vertex_types,
                                      MutableSpan<int> old_to_new_edges_map,
                                      Vector<int2> &new_edges,
@@ -564,13 +574,15 @@ static void dissolve_redundant_verts(const Span<int2> edges,
       const int2 &edge = edges[edge_i];
       bool mark_edge = false;
       if (vertex_needs_dissolving(
-              edge[0], first_poly_index, second_poly_index, vertex_types, vert_to_poly_map)) {
+              edge[0], first_poly_index, second_poly_index, vertex_types, vert_to_poly_map))
+      {
         /* This vertex is now 'removed' and should be ignored elsewhere. */
         vertex_types[edge[0]] = VertexType::Loose;
         mark_edge = true;
       }
       if (vertex_needs_dissolving(
-              edge[1], first_poly_index, second_poly_index, vertex_types, vert_to_poly_map)) {
+              edge[1], first_poly_index, second_poly_index, vertex_types, vert_to_poly_map))
+      {
         /* This vertex is now 'removed' and should be ignored elsewhere. */
         vertex_types[edge[1]] = VertexType::Loose;
         mark_edge = true;
@@ -618,18 +630,28 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
   /* Stores the indices of the polygons connected to the vertex. Because the polygons are looped
    * over in order of their indices, the polygon's indices will be sorted in ascending order.
    * (This can change once they are sorted using `sort_vertex_polys`). */
-  Array<Vector<int>> vert_to_poly_map = bke::mesh_topology::build_vert_to_poly_map(
-      src_polys, src_corner_verts, src_positions.size());
+  Array<int> vert_to_poly_offset_data;
+  Array<int> vert_to_poly_indices;
+  const GroupedSpan<int> vert_to_poly_map = bke::mesh::build_vert_to_poly_map(
+      src_polys,
+      src_corner_verts,
+      src_positions.size(),
+      vert_to_poly_offset_data,
+      vert_to_poly_indices);
+  const OffsetIndices<int> vert_to_poly_offsets(vert_to_poly_offset_data);
+
   Array<Array<int>> vertex_shared_edges(src_mesh.totvert);
   Array<Array<int>> vertex_corners(src_mesh.totvert);
-  threading::parallel_for(vert_to_poly_map.index_range(), 512, [&](IndexRange range) {
+  threading::parallel_for(src_positions.index_range(), 512, [&](IndexRange range) {
     for (const int i : range) {
       if (vertex_types[i] == VertexType::Loose || vertex_types[i] >= VertexType::NonManifold ||
-          (!keep_boundaries && vertex_types[i] == VertexType::Boundary)) {
+          (!keep_boundaries && vertex_types[i] == VertexType::Boundary))
+      {
         /* Bad vertex that we can't work with. */
         continue;
       }
-      MutableSpan<int> loop_indices = vert_to_poly_map[i];
+      MutableSpan<int> loop_indices = vert_to_poly_indices.as_mutable_span().slice(
+          vert_to_poly_offsets[i]);
       Array<int> sorted_corners(loop_indices.size());
       bool vertex_ok = true;
       if (vertex_types[i] == VertexType::Normal) {
@@ -721,7 +743,8 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
 
   for (const int i : IndexRange(src_mesh.totvert)) {
     if (vertex_types[i] == VertexType::Loose || vertex_types[i] >= VertexType::NonManifold ||
-        (!keep_boundaries && vertex_types[i] == VertexType::Boundary)) {
+        (!keep_boundaries && vertex_types[i] == VertexType::Boundary))
+    {
       /* Bad vertex that we can't work with. */
       continue;
     }

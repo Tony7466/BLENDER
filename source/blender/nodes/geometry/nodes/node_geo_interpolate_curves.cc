@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 
@@ -15,39 +17,40 @@ namespace blender::nodes::node_geo_interpolate_curves_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Guide Curves"))
-      .description(N_("Base curves that new curves are interpolated between"));
-  b.add_input<decl::Vector>(N_("Guide Up"))
+  b.add_input<decl::Geometry>("Guide Curves")
+      .description("Base curves that new curves are interpolated between");
+  b.add_input<decl::Vector>("Guide Up")
       .field_on({0})
       .hide_value()
-      .description(N_("Optional up vector that is typically a surface normal"));
-  b.add_input<decl::Int>(N_("Guide Group ID"))
+      .description("Optional up vector that is typically a surface normal");
+  b.add_input<decl::Int>("Guide Group ID")
       .field_on({0})
       .hide_value()
-      .description(N_("Splits guides into separate groups. New curves interpolate existing curves "
-                      "from a single group"));
-  b.add_input<decl::Geometry>(N_("Points"))
-      .description(N_("First control point positions for new interpolated curves"));
-  b.add_input<decl::Vector>(N_("Point Up"))
+      .description(
+          "Splits guides into separate groups. New curves interpolate existing curves "
+          "from a single group");
+  b.add_input<decl::Geometry>("Points").description(
+      "First control point positions for new interpolated curves");
+  b.add_input<decl::Vector>("Point Up")
       .field_on({3})
       .hide_value()
-      .description(N_("Optional up vector that is typically a surface normal"));
-  b.add_input<decl::Int>(N_("Point Group ID"))
+      .description("Optional up vector that is typically a surface normal");
+  b.add_input<decl::Int>("Point Group ID")
       .field_on({3})
       .hide_value()
-      .description(N_("The curve group to interpolate in"));
-  b.add_input<decl::Int>(N_("Max Neighbors"))
+      .description("The curve group to interpolate in");
+  b.add_input<decl::Int>("Max Neighbors")
       .default_value(4)
       .min(1)
-      .description(N_(
-          "Maximum amount of close guide curves that are taken into account for interpolation"));
-  b.add_output<decl::Geometry>(N_("Curves")).propagate_all();
-  b.add_output<decl::Int>(N_("Closest Index"))
+      .description(
+          "Maximum amount of close guide curves that are taken into account for interpolation");
+  b.add_output<decl::Geometry>("Curves").propagate_all();
+  b.add_output<decl::Int>("Closest Index")
       .field_on_all()
-      .description(N_("Index of the closest guide curve for each generated curve"));
-  b.add_output<decl::Float>(N_("Closest Weight"))
+      .description("Index of the closest guide curve for each generated curve");
+  b.add_output<decl::Float>("Closest Weight")
       .field_on_all()
-      .description(N_("Weight of the closest guide curve for each generated curve"));
+      .description("Weight of the closest guide curve for each generated curve");
 }
 
 /**
@@ -450,8 +453,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (type == CD_PROP_STRING) {
       return true;
     }
-    if (guide_curve_attributes.is_builtin(id) &&
-        !ELEM(id.name(), "radius", "tilt", "resolution")) {
+    if (guide_curve_attributes.is_builtin(id) && !ELEM(id.name(), "radius", "tilt", "resolution"))
+    {
       return true;
     }
 
@@ -463,12 +466,12 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
       if (!dst_generic) {
         return true;
       }
-      attribute_math::convert_to_static_type(type, [&](auto dummy) {
+      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         const Span<T> src = src_generic.typed<T>();
         MutableSpan<T> dst = dst_generic.span.typed<T>();
 
-        attribute_math::DefaultMixer<T> mixer(dst);
+        bke::attribute_math::DefaultMixer<T> mixer(dst);
         threading::parallel_for(child_curves.curves_range(), 256, [&](const IndexRange range) {
           for (const int child_curve_i : range) {
             const int neighbor_count = all_neighbor_counts[child_curve_i];
@@ -497,12 +500,12 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
         return true;
       }
 
-      attribute_math::convert_to_static_type(type, [&](auto dummy) {
+      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         const Span<T> src = src_generic.typed<T>();
         MutableSpan<T> dst = dst_generic.span.typed<T>();
 
-        attribute_math::DefaultMixer<T> mixer(dst);
+        bke::attribute_math::DefaultMixer<T> mixer(dst);
         threading::parallel_for(child_curves.curves_range(), 256, [&](const IndexRange range) {
           Vector<float, 16> sample_lengths;
           Vector<int, 16> sample_segments;
@@ -831,7 +834,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(guide_curves_geometry);
   if (const auto *curve_edit_data =
-          guide_curves_geometry.get_component_for_read<GeometryComponentEditData>()) {
+          guide_curves_geometry.get_component_for_read<GeometryComponentEditData>())
+  {
     new_curves.add(*curve_edit_data);
   }
 

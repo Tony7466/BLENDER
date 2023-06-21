@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 NVIDIA Corporation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 NVIDIA Corporation. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_asset_utils.h"
 
@@ -64,10 +65,10 @@ static std::string get_asset_base_name(const char *src_path)
                  src_path);
       return src_path;
     }
-    BLI_split_file_part(split.second.c_str(), base_name, sizeof(base_name));
+    BLI_path_split_file_part(split.second.c_str(), base_name, sizeof(base_name));
   }
   else {
-    BLI_split_file_part(src_path, base_name, sizeof(base_name));
+    BLI_path_split_file_part(src_path, base_name, sizeof(base_name));
   }
 
   return base_name;

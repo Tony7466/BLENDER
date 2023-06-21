@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
@@ -180,7 +182,8 @@ static void weld_assert_poly_and_loop_kill_len(WeldMesh *weld_mesh,
                                         corner_verts,
                                         corner_edges,
                                         weld_mesh->loop_map,
-                                        nullptr)) {
+                                        nullptr))
+      {
         poly_kills++;
         continue;
       }
@@ -1186,7 +1189,8 @@ static int poly_find_doubles(const OffsetIndices<int> poly_corners_offsets,
 
     for (int corner_index = poly_corners_offsets[poly_index].last();
          corner_index >= poly_corners_offsets[poly_index].first();
-         corner_index--) {
+         corner_index--)
+    {
       const int elem_index = corners[corner_index];
       linked_polys_buffer[--linked_polys_offset[elem_index]] = poly_index;
     }
@@ -1453,6 +1457,8 @@ static void customdata_weld(
   int src_i, dest_i;
   int j;
 
+  int vs_flag = 0;
+
   /* interpolates a layer at a time */
   dest_i = 0;
   for (src_i = 0; src_i < source->totlayer; src_i++) {
@@ -1473,7 +1479,21 @@ static void customdata_weld(
     /* if we found a matching layer, add the data */
     if (dest->layers[dest_i].type == type) {
       void *src_data = source->layers[src_i].data;
-      if (CustomData_layer_has_interp(dest, dest_i)) {
+      if (type == CD_MVERT_SKIN) {
+        /* The `typeInfo->interp` of #CD_MVERT_SKIN does not include the flags, so #MVERT_SKIN_ROOT
+         * and #MVERT_SKIN_LOOSE are lost after the interpolation.
+         *
+         * This behavior is not incorrect. Ideally, islands should be checked to avoid repeated
+         * roots.
+         *
+         * However, for now, to prevent the loss of flags, they are simply re-added if any of the
+         * merged vertices have them. */
+        for (j = 0; j < count; j++) {
+          MVertSkin *vs = &((MVertSkin *)src_data)[src_indices[j]];
+          vs_flag |= vs->flag;
+        }
+      }
+      else if (CustomData_layer_has_interp(dest, dest_i)) {
         /* Already calculated.
          * TODO: Optimize by exposing `typeInfo->interp`. */
       }
@@ -1503,7 +1523,11 @@ static void customdata_weld(
   for (dest_i = 0; dest_i < dest->totlayer; dest_i++) {
     CustomDataLayer *layer_dst = &dest->layers[dest_i];
     const eCustomDataType type = eCustomDataType(layer_dst->type);
-    if (CustomData_layer_has_interp(dest, dest_i)) {
+    if (type == CD_MVERT_SKIN) {
+      MVertSkin *vs = &((MVertSkin *)layer_dst->data)[dest_index];
+      vs->flag = vs_flag;
+    }
+    else if (CustomData_layer_has_interp(dest, dest_i)) {
       /* Already calculated. */
     }
     else if (CustomData_layer_has_math(dest, dest_i)) {
@@ -1660,7 +1684,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
                                         src_corner_verts,
                                         src_corner_edges,
                                         weld_mesh.loop_map,
-                                        group_buffer.data())) {
+                                        group_buffer.data()))
+      {
         continue;
       }
 
@@ -1692,7 +1717,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
                                       src_corner_verts,
                                       src_corner_edges,
                                       weld_mesh.loop_map,
-                                      group_buffer.data())) {
+                                      group_buffer.data()))
+    {
       continue;
     }
 
@@ -1723,7 +1749,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
  * \{ */
 
 std::optional<Mesh *> mesh_merge_by_distance_all(const Mesh &mesh,
-                                                 const IndexMask selection,
+                                                 const IndexMask &selection,
                                                  const float merge_distance)
 {
   Array<int> vert_dest_map(mesh.totvert, OUT_OF_CONTEXT);
@@ -1731,13 +1757,11 @@ std::optional<Mesh *> mesh_merge_by_distance_all(const Mesh &mesh,
   KDTree_3d *tree = BLI_kdtree_3d_new(selection.size());
 
   const Span<float3> positions = mesh.vert_positions();
-  for (const int i : selection) {
-    BLI_kdtree_3d_insert(tree, i, positions[i]);
-  }
+  selection.foreach_index([&](const int64_t i) { BLI_kdtree_3d_insert(tree, i, positions[i]); });
 
   BLI_kdtree_3d_balance(tree);
   const int vert_kill_len = BLI_kdtree_3d_calc_duplicates_fast(
-      tree, merge_distance, false, vert_dest_map.data());
+      tree, merge_distance, true, vert_dest_map.data());
   BLI_kdtree_3d_free(tree);
 
   if (vert_kill_len == 0) {

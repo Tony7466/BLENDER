@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -46,8 +47,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 static void initData(ModifierData *md)
 {
@@ -99,7 +100,7 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
   int i, p, v1, v2, v3, v4 = 0;
   const bool invert_vgroup = (emd->flag & eExplodeFlag_INVERT_VGROUP) != 0;
 
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(mesh);
+  blender::MutableSpan<blender::float3> positions = mesh->vert_positions_for_write();
   mface = (MFace *)CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface);
   totvert = mesh->totvert;
   totface = mesh->totface;
@@ -950,7 +951,8 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
       if ((pa->alive == PARS_UNBORN && (emd->flag & eExplodeFlag_Unborn) == 0) ||
           (pa->alive == PARS_ALIVE && (emd->flag & eExplodeFlag_Alive) == 0) ||
-          (pa->alive == PARS_DEAD && (emd->flag & eExplodeFlag_Dead) == 0)) {
+          (pa->alive == PARS_DEAD && (emd->flag & eExplodeFlag_Dead) == 0))
+      {
         delface++;
         continue;
       }
@@ -999,7 +1001,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
   psys_sim_data_init(&sim);
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
+  const blender::Span<blender::float3> positions = mesh->vert_positions();
   float(*explode_positions)[3] = BKE_mesh_vert_positions_for_write(explode);
 
   /* duplicate & displace vertices */
@@ -1161,7 +1163,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     /* 1. find faces to be exploded if needed */
     if (emd->facepa == nullptr || psmd->flag & eParticleSystemFlag_Pars ||
         emd->flag & eExplodeFlag_CalcFaces ||
-        MEM_allocN_len(emd->facepa) / sizeof(int) != mesh->totface) {
+        MEM_allocN_len(emd->facepa) / sizeof(int) != mesh->totface)
+    {
       if (psmd->flag & eParticleSystemFlag_Pars) {
         psmd->flag &= ~eParticleSystemFlag_Pars;
       }

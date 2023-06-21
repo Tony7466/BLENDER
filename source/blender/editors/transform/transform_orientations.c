@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -477,7 +479,7 @@ TransformOrientation *addMatrixSpace(bContext *C,
     ts = findOrientationName(transform_orientations, name);
   }
   else {
-    BLI_strncpy(name_unique, name, sizeof(name_unique));
+    STRNCPY(name_unique, name);
     uniqueOrientationName(transform_orientations, name_unique);
     name = name_unique;
   }
@@ -486,7 +488,7 @@ TransformOrientation *addMatrixSpace(bContext *C,
   if (ts == NULL) {
     ts = MEM_callocN(sizeof(TransformOrientation), "UserTransSpace from matrix");
     BLI_addtail(transform_orientations, ts);
-    BLI_strncpy(ts->name, name, sizeof(ts->name));
+    STRNCPY(ts->name, name);
   }
 
   /* copy matrix into transform space */
@@ -585,9 +587,12 @@ static void handle_armature_parent_orientation(Object *ob, float r_mat[3][3])
   bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
 
   /* Check if target bone is a child. */
-  if (active_pchan->parent) {
+  if (active_pchan && active_pchan->parent) {
     /* For child, show parent local regardless if "local location" is set for parent bone. */
     transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->pose_mat));
+    float ob_orientations_mat[3][3];
+    transform_orientations_create_from_axis(ob_orientations_mat, UNPACK3(ob->object_to_world));
+    mul_m3_m3_pre(r_mat, ob_orientations_mat);
     return;
   }
 
@@ -800,7 +805,7 @@ void transform_orientations_current_set(TransInfo *t, const short orient_index)
   const short orientation = t->orient[orient_index].type;
   const char *spacename = transform_orientations_spacename_get(t, orientation);
 
-  BLI_strncpy(t->spacename, spacename, sizeof(t->spacename));
+  STRNCPY(t->spacename, spacename);
   copy_m3_m3(t->spacemtx, t->orient[orient_index].matrix);
   invert_m3_m3_safe_ortho(t->spacemtx_inv, t->spacemtx);
   t->orient_curr = orient_index;
@@ -886,8 +891,8 @@ static uint bm_mesh_faces_select_get_n(BMesh *bm, BMVert **elems, const uint n)
 int getTransformOrientation_ex(const Scene *scene,
                                ViewLayer *view_layer,
                                const View3D *v3d,
-                               struct Object *ob,
-                               struct Object *obedit,
+                               Object *ob,
+                               Object *obedit,
                                float normal[3],
                                float plane[3],
                                const short around)
@@ -1177,7 +1182,8 @@ int getTransformOrientation_ex(const Scene *scene,
               if (flag) {
                 float tvec[3];
                 if ((around == V3D_AROUND_LOCAL_ORIGINS) ||
-                    ELEM(flag, SEL_F2, SEL_F1 | SEL_F3, SEL_F1 | SEL_F2 | SEL_F3)) {
+                    ELEM(flag, SEL_F2, SEL_F1 | SEL_F3, SEL_F1 | SEL_F2 | SEL_F3))
+                {
                   BKE_nurb_bezt_calc_normal(nu, bezt, tvec);
                   add_v3_v3(normal, tvec);
                 }
@@ -1301,10 +1307,10 @@ int getTransformOrientation_ex(const Scene *scene,
               add_v3_v3(plane, tmat[1]);
               ok = true;
             }
-            else if ((ok == false) &&
-                     ((ebone->flag & BONE_TIPSEL) ||
-                      ((ebone->flag & BONE_ROOTSEL) &&
-                       (ebone->parent && ebone->flag & BONE_CONNECTED) == false))) {
+            else if ((ok == false) && ((ebone->flag & BONE_TIPSEL) ||
+                                       ((ebone->flag & BONE_ROOTSEL) &&
+                                        (ebone->parent && ebone->flag & BONE_CONNECTED) == false)))
+            {
               ED_armature_ebone_to_mat3(ebone, tmat);
               add_v3_v3(fallback_normal, tmat[2]);
               add_v3_v3(fallback_plane, tmat[1]);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -106,6 +107,7 @@ static uint gpu_component_size_for_attribute_type(eCustomDataType type)
       return 3;
     case CD_PROP_COLOR:
     case CD_PROP_BYTE_COLOR:
+    case CD_PROP_QUATERNION:
       return 4;
     default:
       return 0;
@@ -157,7 +159,7 @@ static void init_vbo_for_attribute(const MeshRenderData &mr,
   char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
   GPU_vertformat_safe_attr_name(request.attribute_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
   /* Attributes use auto-name. */
-  BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+  SNPRINTF(attr_name, "a%s", attr_safe_name);
 
   GPUVertFormat format = {0};
   GPU_vertformat_deinterleave(&format);
@@ -314,6 +316,7 @@ static void extract_attr(const MeshRenderData *mr,
     case CD_PROP_FLOAT3:
       extract_attr_generic<float3>(mr, vbo, request);
       break;
+    case CD_PROP_QUATERNION:
     case CD_PROP_COLOR:
       extract_attr_generic<float4>(mr, vbo, request);
       break;

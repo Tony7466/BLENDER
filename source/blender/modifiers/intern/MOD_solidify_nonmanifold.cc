@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -18,9 +20,9 @@
 #include "BKE_mesh.hh"
 #include "BKE_particle.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 #include "MOD_solidify_util.hh" /* Own include. */
-#include "MOD_util.h"
+#include "MOD_util.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -183,7 +185,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
   const bool do_flat_faces = dvert && (smd->flag & MOD_SOLIDIFY_NONMANIFOLD_FLAT_FACES);
 
-  const float(*orig_vert_positions)[3] = BKE_mesh_vert_positions(mesh);
+  const blender::Span<blender::float3> orig_vert_positions = mesh->vert_positions();
   const blender::Span<int2> orig_edges = mesh->edges();
   const blender::OffsetIndices orig_polys = mesh->polys();
   const blender::Span<int> orig_corner_verts = mesh->corner_verts();
@@ -191,11 +193,11 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
   /* These might be null. */
   const float *orig_vert_bweight = static_cast<const float *>(
-      CustomData_get_layer(&mesh->vdata, CD_BWEIGHT));
+      CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "bevel_weight_vert"));
   const float *orig_edge_bweight = static_cast<const float *>(
-      CustomData_get_layer(&mesh->edata, CD_BWEIGHT));
+      CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge"));
   const float *orig_edge_crease = static_cast<const float *>(
-      CustomData_get_layer(&mesh->edata, CD_CREASE));
+      CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "crease_edge"));
 
   uint new_verts_num = 0;
   uint new_edges_num = 0;
@@ -388,7 +390,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
             bool can_merge = true;
             for (uint k = 0; k < edges_num && can_merge; k++) {
               if (k != i && edge_adj_faces_len[k] > 0 &&
-                  (ELEM(vm[orig_edges[k][0]], v1, v2) != ELEM(vm[orig_edges[k][1]], v1, v2))) {
+                  (ELEM(vm[orig_edges[k][0]], v1, v2) != ELEM(vm[orig_edges[k][1]], v1, v2)))
+              {
                 for (uint j = 0; j < edge_adj_faces[k]->faces_len && can_merge; j++) {
                   const blender::IndexRange poly = orig_polys[edge_adj_faces[k]->faces[j]];
                   uint changes = 0;
@@ -550,7 +553,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
             for (uint k = 0; k < i_adj_faces->faces_len; k++) {
               for (uint l = 0; l < invalid_adj_faces->faces_len; l++) {
                 if (i_adj_faces->faces[k] == invalid_adj_faces->faces[l] &&
-                    i_adj_faces->faces[k] != MOD_SOLIDIFY_EMPTY_TAG) {
+                    i_adj_faces->faces[k] != MOD_SOLIDIFY_EMPTY_TAG)
+                {
                   i_adj_faces->faces[k] = MOD_SOLIDIFY_EMPTY_TAG;
                   invalid_adj_faces->faces[l] = MOD_SOLIDIFY_EMPTY_TAG;
                   j++;
@@ -974,7 +978,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
               while (!edge && j < unassigned_edges_len) {
                 edge = unassigned_edges[j++];
                 if (edge && last_open_edge_track &&
-                    (edge->faces[0] != last_open_edge_track || edge->faces[1] != nullptr)) {
+                    (edge->faces[0] != last_open_edge_track || edge->faces[1] != nullptr))
+                {
                   edge = nullptr;
                 }
               }
@@ -1160,7 +1165,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                          (g.is_orig_closed &&
                           (real_k <=
                                (first_unique_end == -1 ? 0 : first_unique_end) + int(edges_len) ||
-                           first_split != last_split))) {
+                           first_split != last_split)))
+                  {
                     const uint k = real_k % edges_len;
                     if (!doubles[k]) {
                       if (first_unique_end != -1 && unique_start == -1) {
@@ -1442,7 +1448,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
             if (smd->nonmanifold_offset_mode == MOD_SOLIDIFY_NONMANIFOLD_OFFSET_MODE_CONSTRAINTS) {
               NewEdgeRef *first_edge = nullptr;
               NewEdgeRef **edge_ptr = g->edges;
-              /* Contains normal and offset [nx, ny, nz, ofs]. */
+              /* Contains normal and offset `[nx, ny, nz, ofs]`. */
               float(*planes_queue)[4] = static_cast<float(*)[4]>(
                   MEM_malloc_arrayN(g->edges_len + 1, sizeof(*planes_queue), __func__));
               uint queue_index = 0;
@@ -1457,7 +1463,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                   for (uint l = 0; l < 2; l++) {
                     NewFaceRef *face = edge->faces[l];
                     if (face && (first_edge == nullptr ||
-                                 (first_edge->faces[0] != face && first_edge->faces[1] != face))) {
+                                 (first_edge->faces[0] != face && first_edge->faces[1] != face)))
+                    {
                       float ofs = face->reversed ? ofs_back_clamped : ofs_front_clamped;
                       /* Use face_weight here to make faces thinner. */
                       if (do_flat_faces) {
@@ -1669,7 +1676,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                   for (uint l = 0; l < 2; l++) {
                     NewFaceRef *face = edge->faces[l];
                     if (face && (first_edge == nullptr ||
-                                 (first_edge->faces[0] != face && first_edge->faces[1] != face))) {
+                                 (first_edge->faces[0] != face && first_edge->faces[1] != face)))
+                    {
                       float angle = 1.0f;
                       float ofs = face->reversed ? -ofs_back_clamped : ofs_front_clamped;
                       /* Use face_weight here to make faces thinner. */
@@ -1984,7 +1992,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   result = BKE_mesh_new_nomain_from_template(
       mesh, int(new_verts_num), int(new_edges_num), int(new_polys_num), int(new_loops_num));
 
-  float(*vert_positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<float3> vert_positions = result->vert_positions_for_write();
   blender::MutableSpan<int2> edges = result->edges_for_write();
   blender::MutableSpan<int> poly_offsets = result->poly_offsets_for_write();
   blender::MutableSpan<int> corner_verts = result->corner_verts_for_write();
@@ -1995,11 +2003,11 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   int *origindex_poly = static_cast<int *>(
       CustomData_get_layer_for_write(&result->pdata, CD_ORIGINDEX, result->totpoly));
 
-  float *result_edge_bweight = static_cast<float *>(
-      CustomData_get_layer_for_write(&result->edata, CD_BWEIGHT, result->totedge));
+  float *result_edge_bweight = static_cast<float *>(CustomData_get_layer_named_for_write(
+      &result->edata, CD_PROP_FLOAT, "bevel_weight_edge", result->totedge));
   if (bevel_convex != 0.0f || orig_vert_bweight != nullptr) {
-    result_edge_bweight = static_cast<float *>(
-        CustomData_add_layer(&result->edata, CD_BWEIGHT, CD_SET_DEFAULT, result->totedge));
+    result_edge_bweight = static_cast<float *>(CustomData_add_layer_named(
+        &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "bevel_weight_edge"));
   }
 
   /* Checks that result has dvert data. */
@@ -2011,14 +2019,14 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   /* Get vertex crease layer and ensure edge creases are active if vertex creases are found, since
    * they will introduce edge creases in the used custom interpolation method. */
   const float *vertex_crease = static_cast<const float *>(
-      CustomData_get_layer(&mesh->vdata, CD_CREASE));
+      CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "crease_vert"));
   float *result_edge_crease = nullptr;
   if (vertex_crease) {
-    result_edge_crease = (float *)CustomData_add_layer(
-        &result->edata, CD_CREASE, CD_SET_DEFAULT, result->totedge);
+    result_edge_crease = (float *)CustomData_add_layer_named(
+        &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "crease_edge");
     /* delete all vertex creases in the result if a rim is used. */
     if (do_rim) {
-      CustomData_free_layers(&result->vdata, CD_CREASE, result->totvert);
+      CustomData_free_layer_named(&result->vdata, "crease_vert", result->totvert);
     }
   }
 
@@ -2050,7 +2058,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
             const uint v2 = (*l)->link_edge_groups[1]->new_vert;
             uint insert = edge_index;
             if (has_singularities && ((*l)->link_edge_groups[0]->is_singularity &&
-                                      (*l)->link_edge_groups[1]->is_singularity)) {
+                                      (*l)->link_edge_groups[1]->is_singularity))
+            {
               uint j = 0;
               for (uint(*p)[2] = singularity_edges; j < totsingularity; p++, j++) {
                 if (((*p)[0] == v1 && (*p)[1] == v2) || ((*p)[0] == v2 && (*p)[1] == v1)) {
@@ -2525,7 +2534,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
       uint valid_edges = 0;
       uint k = 0;
       while (totloop > 0 && (!fr->link_edges[totloop - 1] ||
-                             fr->link_edges[totloop - 1]->new_edge == MOD_SOLIDIFY_EMPTY_TAG)) {
+                             fr->link_edges[totloop - 1]->new_edge == MOD_SOLIDIFY_EMPTY_TAG))
+      {
         totloop--;
       }
       if (totloop > 0) {

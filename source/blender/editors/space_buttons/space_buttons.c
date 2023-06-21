@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spbuttons
@@ -86,7 +87,7 @@ static SpaceLink *buttons_create(const ScrArea *UNUSED(area), const Scene *UNUSE
   return (SpaceLink *)sbuts;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void buttons_free(SpaceLink *sl)
 {
   SpaceProperties *sbuts = (SpaceProperties *)sl;
@@ -108,7 +109,7 @@ static void buttons_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void buttons_init(struct wmWindowManager *UNUSED(wm), ScrArea *area)
+static void buttons_init(wmWindowManager *UNUSED(wm), ScrArea *area)
 {
   SpaceProperties *sbuts = (SpaceProperties *)area->spacedata.first;
 
@@ -316,14 +317,14 @@ const char *ED_buttons_search_string_get(SpaceProperties *sbuts)
   return sbuts->runtime->search_string;
 }
 
-int ED_buttons_search_string_length(struct SpaceProperties *sbuts)
+int ED_buttons_search_string_length(SpaceProperties *sbuts)
 {
   return BLI_strnlen(sbuts->runtime->search_string, sizeof(sbuts->runtime->search_string));
 }
 
 void ED_buttons_search_string_set(SpaceProperties *sbuts, const char *value)
 {
-  BLI_strncpy(sbuts->runtime->search_string, value, sizeof(sbuts->runtime->search_string));
+  STRNCPY(sbuts->runtime->search_string, value);
 }
 
 bool ED_buttons_tab_has_search_result(SpaceProperties *sbuts, const int index)
@@ -531,7 +532,7 @@ static void buttons_operatortypes(void)
   WM_operatortype_append(BUTTONS_OT_directory_browse);
 }
 
-static void buttons_keymap(struct wmKeyConfig *keyconf)
+static void buttons_keymap(wmKeyConfig *keyconf)
 {
   WM_keymap_ensure(keyconf, "Property Editor", SPACE_PROPERTIES, 0);
 }
@@ -860,7 +861,8 @@ static void buttons_id_remap(ScrArea *UNUSED(area),
   SpaceProperties *sbuts = (SpaceProperties *)slink;
 
   if (BKE_id_remapper_apply(mappings, &sbuts->pinid, ID_REMAP_APPLY_DEFAULT) ==
-      ID_REMAP_RESULT_SOURCE_UNASSIGNED) {
+      ID_REMAP_RESULT_SOURCE_UNASSIGNED)
+  {
     sbuts->flag &= ~SB_PIN_CONTEXT;
   }
 
@@ -921,7 +923,7 @@ static void buttons_space_blend_read_data(BlendDataReader *UNUSED(reader), Space
 static void buttons_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceProperties *sbuts = (SpaceProperties *)sl;
-  BLO_read_id_address(reader, parent_id->lib, &sbuts->pinid);
+  BLO_read_id_address(reader, parent_id, &sbuts->pinid);
   if (sbuts->pinid == NULL) {
     sbuts->flag &= ~SB_PIN_CONTEXT;
   }

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # these must be all lower case for comparisons
@@ -75,6 +77,7 @@ dict_custom = {
     "deallocate",
     "deallocated",
     "deallocating",
+    "decompressor",
     "decorrelated",
     "decrement",
     "decrementing",
@@ -178,6 +181,7 @@ dict_custom = {
     "monospaced",
     "mutators",
     "natively",
+    "nullable",
     "occludee",
     "occluder",
     "occluders",
@@ -248,6 +252,7 @@ dict_custom = {
     "rasterizes",
     "rasterizing",
     "reallocations",
+    "realtime",
     "rebalancing",
     "rebase",
     "recomputation",
@@ -278,6 +283,7 @@ dict_custom = {
     "reprojection",
     "reprojections",
     "repurpose",
+    "rescaled",
     "respecialized",
     "resynced",
     "resyncing",
@@ -300,6 +306,7 @@ dict_custom = {
     "subdirectories",
     "subdirectory",
     "suboptimally",
+    "subrange",
     "subtractive",
     "superset",
     "symmetrize",
@@ -311,6 +318,7 @@ dict_custom = {
     "tertiarily",
     "tokenize",
     "tokenizing",
+    "transcode",
     "transmissive",
     "triangulations",
     "triangulator",
@@ -430,6 +438,7 @@ dict_custom = {
     "volumetrics",
     "vortices",
     "voxelize",
+    "workspaces",
     "writeable",
     "zoomable",
 
@@ -451,6 +460,7 @@ dict_custom = {
     "addon",
     "addons",
     "autocomplete",
+    "bitmask",
     "codegen",
     "colospace",
     "datablock",
@@ -594,6 +604,10 @@ dict_custom = {
     "shader",
     "shaders",
     "specular",
+
+    # Mathematical terms.
+    "egenvalue",
+    "egenvalues",
 
     # Blender specific terms.
     "animsys",

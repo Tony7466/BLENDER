@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -240,6 +241,10 @@ void BKE_fcurves_free(ListBase *list);
  */
 void BKE_fcurves_copy(ListBase *dst, ListBase *src);
 
+/* Set fcurve modifier name and ensure uniqueness.
+ * Pass new name string when it's been edited otherwise pass empty string. */
+void BKE_fmodifier_name_set(struct FModifier *fcm, const char *name);
+
 /**
  * Callback used by lib_query to walk over all ID usages
  * (mimics `foreach_id` callback of #IDTypeInfo structure).
@@ -476,7 +481,7 @@ bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,
 /**
  * Resize the FCurve 'bezt' array to fit the given length.
  *
- * \param new_totvert new number of elements in the FCurve's `bezt` array.
+ * \param new_totvert: new number of elements in the FCurve's `bezt` array.
  * Constraint: `0 <= new_totvert <= fcu->totvert`
  */
 void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);

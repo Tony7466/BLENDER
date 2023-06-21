@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -102,7 +103,8 @@ static CCGSubSurf *_getSubSurf(CCGSubSurf *prevSS, int subdivLevels, int numLaye
     ccgSubSurf_getUseAgeCounts(prevSS, &oldUseAging, nullptr, nullptr, nullptr);
 
     if ((oldUseAging != useAging) ||
-        (ccgSubSurf_getSimpleSubdiv(prevSS) != !!(flags & CCG_SIMPLE_SUBDIV))) {
+        (ccgSubSurf_getSimpleSubdiv(prevSS) != !!(flags & CCG_SIMPLE_SUBDIV)))
+    {
       ccgSubSurf_free(prevSS);
     }
     else {
@@ -390,7 +392,8 @@ static void set_subsurf_legacy_uv(CCGSubSurf *ss, DerivedMesh *dm, DerivedMesh *
   CCGFace **faceMap = static_cast<CCGFace **>(
       MEM_mallocN(totface * sizeof(*faceMap), "facemapuv"));
   for (ccgSubSurf_initFaceIterator(uvss, &fi); !ccgFaceIterator_isStopped(&fi);
-       ccgFaceIterator_next(&fi)) {
+       ccgFaceIterator_next(&fi))
+  {
     CCGFace *f = ccgFaceIterator_getCurrent(&fi);
     faceMap[POINTER_AS_INT(ccgSubSurf_getFaceFaceHandle(f))] = f;
   }
@@ -563,7 +566,8 @@ static void ss_sync_ccg_from_derivedmesh(CCGSubSurf *ss,
   }
 
   index = (int *)dm->getEdgeDataArray(dm, CD_ORIGINDEX);
-  const float *creases = (const float *)dm->getEdgeDataArray(dm, CD_CREASE);
+  const float *creases = (const float *)CustomData_get_layer_named(
+      &dm->edgeData, CD_PROP_FLOAT, "crease_edge");
   for (i = 0; i < totedge; i++) {
     CCGEdge *e;
     float crease;
@@ -597,7 +601,8 @@ static void ss_sync_ccg_from_derivedmesh(CCGSubSurf *ss,
      * other parts of code significantly to handle missing faces.
      * since this really shouldn't even be possible we just bail. */
     if (ccgSubSurf_syncFace(ss, POINTER_FROM_INT(i), poly.size(), fverts.data(), &f) ==
-        eCCGError_InvalidValue) {
+        eCCGError_InvalidValue)
+    {
       static int hasGivenError = 0;
 
       if (!hasGivenError) {
@@ -682,7 +687,8 @@ static void UNUSED_FUNCTION(ccgDM_getMinMax)(DerivedMesh *dm, float r_min[3], fl
   }
 
   for (ccgSubSurf_initVertIterator(ss, &vi); !ccgVertIterator_isStopped(&vi);
-       ccgVertIterator_next(&vi)) {
+       ccgVertIterator_next(&vi))
+  {
     CCGVert *v = ccgVertIterator_getCurrent(&vi);
     float *co = static_cast<float *>(ccgSubSurf_getVertData(ss, v));
 
@@ -690,7 +696,8 @@ static void UNUSED_FUNCTION(ccgDM_getMinMax)(DerivedMesh *dm, float r_min[3], fl
   }
 
   for (ccgSubSurf_initEdgeIterator(ss, &ei); !ccgEdgeIterator_isStopped(&ei);
-       ccgEdgeIterator_next(&ei)) {
+       ccgEdgeIterator_next(&ei))
+  {
     CCGEdge *e = ccgEdgeIterator_getCurrent(&ei);
     CCGElem *edgeData = static_cast<CCGElem *>(ccgSubSurf_getEdgeDataArray(ss, e));
 
@@ -700,7 +707,8 @@ static void UNUSED_FUNCTION(ccgDM_getMinMax)(DerivedMesh *dm, float r_min[3], fl
   }
 
   for (ccgSubSurf_initFaceIterator(ss, &fi); !ccgFaceIterator_isStopped(&fi);
-       ccgFaceIterator_next(&fi)) {
+       ccgFaceIterator_next(&fi))
+  {
     CCGFace *f = ccgFaceIterator_getCurrent(&fi);
     int S, x, y, numVerts = ccgSubSurf_getFaceNumVerts(f);
 
@@ -1016,7 +1024,8 @@ static void ccgDM_release(DerivedMesh *dm)
   if (ccgdm->multires.modified_flags) {
     /* Check that mmd still exists */
     if (!ccgdm->multires.local_mmd &&
-        BLI_findindex(&ccgdm->multires.ob->modifiers, ccgdm->multires.mmd) < 0) {
+        BLI_findindex(&ccgdm->multires.ob->modifiers, ccgdm->multires.mmd) < 0)
+    {
       ccgdm->multires.mmd = nullptr;
     }
 
@@ -1356,7 +1365,8 @@ static void create_ccgdm_maps(CCGDerivedMesh *ccgdm, CCGSubSurf *ss)
   ccgdm->vertMap = static_cast<decltype(CCGDerivedMesh::vertMap)>(
       MEM_mallocN(totvert * sizeof(*ccgdm->vertMap), "vertMap"));
   for (ccgSubSurf_initVertIterator(ss, &vi); !ccgVertIterator_isStopped(&vi);
-       ccgVertIterator_next(&vi)) {
+       ccgVertIterator_next(&vi))
+  {
     CCGVert *v = ccgVertIterator_getCurrent(&vi);
 
     ccgdm->vertMap[POINTER_AS_INT(ccgSubSurf_getVertVertHandle(v))].vert = v;
@@ -1366,7 +1376,8 @@ static void create_ccgdm_maps(CCGDerivedMesh *ccgdm, CCGSubSurf *ss)
   ccgdm->edgeMap = static_cast<decltype(CCGDerivedMesh::edgeMap)>(
       MEM_mallocN(totedge * sizeof(*ccgdm->edgeMap), "edgeMap"));
   for (ccgSubSurf_initEdgeIterator(ss, &ei); !ccgEdgeIterator_isStopped(&ei);
-       ccgEdgeIterator_next(&ei)) {
+       ccgEdgeIterator_next(&ei))
+  {
     CCGEdge *e = ccgEdgeIterator_getCurrent(&ei);
 
     ccgdm->edgeMap[POINTER_AS_INT(ccgSubSurf_getEdgeEdgeHandle(e))].edge = e;
@@ -1376,7 +1387,8 @@ static void create_ccgdm_maps(CCGDerivedMesh *ccgdm, CCGSubSurf *ss)
   ccgdm->faceMap = static_cast<decltype(CCGDerivedMesh::faceMap)>(
       MEM_mallocN(totface * sizeof(*ccgdm->faceMap), "faceMap"));
   for (ccgSubSurf_initFaceIterator(ss, &fi); !ccgFaceIterator_isStopped(&fi);
-       ccgFaceIterator_next(&fi)) {
+       ccgFaceIterator_next(&fi))
+  {
     CCGFace *f = ccgFaceIterator_getCurrent(&fi);
 
     ccgdm->faceMap[POINTER_AS_INT(ccgSubSurf_getFaceFaceHandle(f))].face = f;
@@ -1558,7 +1570,6 @@ static void set_ccgdm_all_geometry(CCGDerivedMesh *ccgdm,
                             loopindex2);
           loopindex2++;
 
-          /* Copy over poly data, e.g. #CD_FACEMAP. */
           CustomData_copy_data(&dm->polyData, &ccgdm->dm.polyData, origIndex, faceNum, 1);
 
           if (polyOrigIndex) {
@@ -1866,7 +1877,8 @@ void subsurf_calculate_limit_positions(Mesh *me, float (*r_positions)[3])
   ss_sync_from_derivedmesh(ss, dm, nullptr, 0, 0);
 
   for (ccgSubSurf_initVertIterator(ss, &vi); !ccgVertIterator_isStopped(&vi);
-       ccgVertIterator_next(&vi)) {
+       ccgVertIterator_next(&vi))
+  {
     CCGVert *v = ccgVertIterator_getCurrent(&vi);
     int idx = POINTER_AS_INT(ccgSubSurf_getVertVertHandle(v));
     int N = ccgSubSurf_getVertNumEdges(v);

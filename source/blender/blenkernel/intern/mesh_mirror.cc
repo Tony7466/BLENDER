@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,7 +25,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 
 Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mmd,
                                                           const Mesh *mesh,
@@ -84,7 +85,7 @@ Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mm
   return result;
 }
 
-void BKE_mesh_mirror_apply_mirror_on_axis(struct Main *bmain,
+void BKE_mesh_mirror_apply_mirror_on_axis(Main *bmain,
                                           Mesh *mesh,
                                           const int axis,
                                           const float dist)
@@ -216,7 +217,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   }
 
   /* mirror vertex coordinates */
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<blender::float3> positions = result->vert_positions_for_write();
   for (int i = 0; i < src_verts_num; i++) {
     const int vert_index_prev = i;
     const int vert_index = src_verts_num + i;
@@ -343,7 +344,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   /* handle uvs,
    * let tessface recalc handle updating the MTFace data */
   if (mmd->flag & (MOD_MIR_MIRROR_U | MOD_MIR_MIRROR_V) ||
-      (is_zero_v2(mmd->uv_offset_copy) == false)) {
+      (is_zero_v2(mmd->uv_offset_copy) == false))
+  {
     const bool do_mirr_u = (mmd->flag & MOD_MIR_MIRROR_U) != 0;
     const bool do_mirr_v = (mmd->flag & MOD_MIR_MIRROR_V) != 0;
     /* If set, flip around center of each tile. */
@@ -383,12 +385,13 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
   /* handle custom split normals */
   if (ob->type == OB_MESH && (((Mesh *)ob->data)->flag & ME_AUTOSMOOTH) &&
-      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0) {
+      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0)
+  {
     blender::Array<blender::float3> loop_normals(result_corner_verts.size());
     CustomData *ldata = &result->ldata;
     blender::short2 *clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, result->totloop));
-    MLoopNorSpaceArray lnors_spacearr = {nullptr};
+    blender::bke::mesh::CornerNormalSpaceArray lnors_spacearr;
 
     /* The transform matrix of a normal must be
      * the transpose of inverse of transform matrix of the geometry... */
@@ -428,14 +431,15 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
         if (j > src_poly.start()) {
           mirrorj += result_polys[mirror_i].size() - (j - src_poly.start());
         }
+
         copy_v3_v3(loop_normals[mirrorj], loop_normals[j]);
         mul_m4_v3(mtx_nor, loop_normals[mirrorj]);
-        BKE_lnor_space_custom_normal_to_data(
-            lnors_spacearr.lspacearr[mirrorj], loop_normals[mirrorj], clnors[mirrorj]);
+
+        const int space_index = lnors_spacearr.corner_space_indices[mirrorj];
+        blender::bke::mesh::lnor_space_custom_normal_to_data(
+            &lnors_spacearr.spaces[space_index], loop_normals[mirrorj], clnors[mirrorj]);
       }
     }
-
-    BKE_lnor_spacearr_free(&lnors_spacearr);
   }
 
   /* handle vgroup stuff */
@@ -451,8 +455,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
               ((*r_vert_merge_map)[i + src_verts_num] != -1)) {
             BKE_defvert_flip_merged(dvert - src_verts_num, flip_map, flip_map_len);
           }
-          else if (!use_correct_order_on_merge && do_vtargetmap &&
-                   ((*r_vert_merge_map)[i] != -1)) {
+          else if (!use_correct_order_on_merge && do_vtargetmap && ((*r_vert_merge_map)[i] != -1))
+          {
             BKE_defvert_flip_merged(dvert, flip_map, flip_map_len);
           }
           else {

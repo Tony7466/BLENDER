@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -256,7 +258,7 @@ struct ImBuf *imb_load_filepath_thumbnail_webp(const char *filepath,
                                                char colorspace[],
                                                size_t *r_width,
                                                size_t *r_height);
-bool imb_savewebp(struct ImBuf *ibuf, const char *name, int flags);
+bool imb_savewebp(struct ImBuf *ibuf, const char *filepath, int flags);
 
 /** \} */
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -388,7 +389,8 @@ static int voxel_size_edit_modal(bContext *C, wmOperator *op, const wmEvent *eve
 
   /* Cancel modal operator */
   if ((event->type == EVT_ESCKEY && event->val == KM_PRESS) ||
-      (event->type == RIGHTMOUSE && event->val == KM_PRESS)) {
+      (event->type == RIGHTMOUSE && event->val == KM_PRESS))
+  {
     voxel_size_edit_cancel(C, op);
     ED_region_tag_redraw(region);
     return OPERATOR_FINISHED;
@@ -397,7 +399,8 @@ static int voxel_size_edit_modal(bContext *C, wmOperator *op, const wmEvent *eve
   /* Finish modal operator */
   if ((event->type == LEFTMOUSE && event->val == KM_RELEASE) ||
       (event->type == EVT_RETKEY && event->val == KM_PRESS) ||
-      (event->type == EVT_PADENTER && event->val == KM_PRESS)) {
+      (event->type == EVT_PADENTER && event->val == KM_PRESS))
+  {
     ED_region_draw_cb_exit(region->type, cd->draw_handle);
     mesh->remesh_voxel_size = cd->voxel_size;
     MEM_freeN(op->customdata);
@@ -650,11 +653,11 @@ enum eSymmetryAxes {
 
 struct QuadriFlowJob {
   /* from wmJob */
-  struct Object *owner;
+  Object *owner;
   bool *stop, *do_update;
   float *progress;
 
-  const struct wmOperator *op;
+  const wmOperator *op;
   Scene *scene;
   int target_faces;
   int seed;

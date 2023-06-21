@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -74,6 +76,8 @@ const char *viewops_operator_idname_get(eV3D_OpMode nav_type)
     case V3D_OP_MODE_NDOF_ORBIT_ZOOM:
       return "VIEW3D_OT_ndof_orbit_zoom";
 #endif
+    case V3D_OP_MODE_NONE:
+      break;
   }
   BLI_assert(false);
   return nullptr;
@@ -97,6 +101,8 @@ static eV3D_OpEvent view3d_navigate_event(ViewOpsData *vod, const wmEvent *event
 {
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
+      case VIEW_MODAL_CANCEL:
+        return VIEW_CANCEL;
       case VIEW_MODAL_CONFIRM:
         return VIEW_CONFIRM;
       case VIEWROT_MODAL_AXIS_SNAP_ENABLE:
@@ -432,7 +438,8 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
 
   if (ob_act && (ob_act->mode & OB_MODE_ALL_PAINT) &&
       /* with weight-paint + pose-mode, fall through to using calculateTransformCenter */
-      ((ob_act->mode & OB_MODE_WEIGHT_PAINT) && BKE_object_pose_armature_get(ob_act)) == 0) {
+      ((ob_act->mode & OB_MODE_WEIGHT_PAINT) && BKE_object_pose_armature_get(ob_act)) == 0)
+  {
     BKE_paint_stroke_get_average(scene, ob_act_eval, lastofs);
     is_set = true;
   }
@@ -936,7 +943,8 @@ static bool view3d_object_skip_minmax(const View3D *v3d,
   }
 
   if ((ob->type == OB_EMPTY) && (ob->empty_drawtype == OB_EMPTY_IMAGE) &&
-      !BKE_object_empty_image_frame_is_visible_in_view3d(ob, rv3d)) {
+      !BKE_object_empty_image_frame_is_visible_in_view3d(ob, rv3d))
+  {
     *r_only_center = true;
     return false;
   }
@@ -1209,7 +1217,8 @@ static int viewselected_exec(bContext *C, wmOperator *op)
      * active/selection callback interface once... */
     Base *base_eval;
     for (base_eval = (Base *)BKE_view_layer_object_bases_get(view_layer_eval)->first; base_eval;
-         base_eval = base_eval->next) {
+         base_eval = base_eval->next)
+    {
       if (BASE_SELECTED_EDITABLE(v3d, base_eval)) {
         if (base_eval->object->type == OB_ARMATURE) {
           if (base_eval->object->mode & OB_MODE_POSE) {
@@ -1260,14 +1269,16 @@ static int viewselected_exec(bContext *C, wmOperator *op)
   else if (obedit) {
     /* only selected */
     FOREACH_OBJECT_IN_MODE_BEGIN (
-        scene_eval, view_layer_eval, v3d, obedit->type, obedit->mode, ob_eval_iter) {
+        scene_eval, view_layer_eval, v3d, obedit->type, obedit->mode, ob_eval_iter)
+    {
       ok |= ED_view3d_minmax_verts(ob_eval_iter, min, max);
     }
     FOREACH_OBJECT_IN_MODE_END;
   }
   else if (ob_eval && (ob_eval->mode & OB_MODE_POSE)) {
     FOREACH_OBJECT_IN_MODE_BEGIN (
-        scene_eval, view_layer_eval, v3d, ob_eval->type, ob_eval->mode, ob_eval_iter) {
+        scene_eval, view_layer_eval, v3d, ob_eval->type, ob_eval->mode, ob_eval_iter)
+    {
       ok |= BKE_pose_minmax(ob_eval_iter, min, max, true, true);
     }
     FOREACH_OBJECT_IN_MODE_END;
@@ -1279,7 +1290,8 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     ok = PE_minmax(depsgraph, scene, CTX_data_view_layer(C), min, max);
   }
   else if (ob_eval && (ob_eval->mode & (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT |
-                                        OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT))) {
+                                        OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)))
+  {
     BKE_paint_stroke_get_average(scene, ob_eval, min);
     copy_v3_v3(max, min);
     ok = true;
@@ -1933,6 +1945,142 @@ void VIEW3D_OT_view_pan(wmOperatorType *ot)
   /* Properties */
   ot->prop = RNA_def_enum(
       ot->srna, "type", prop_view_pan_items, 0, "Pan", "Direction of View Pan");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Navigation Utilities
+ * \{ */
+
+/* Detect the navigation operation, by the name of the navigation operator (obtained by
+ * `wmKeyMapItem::idname`) */
+static eV3D_OpMode view3d_navigation_type_from_idname(const char *idname)
+{
+  const char *op_name = idname + sizeof("VIEW3D_OT_");
+  for (int i = 0; i < V3D_OP_MODE_LEN; i++) {
+    if (STREQ(op_name, viewops_operator_idname_get((eV3D_OpMode)i) + sizeof("VIEW3D_OT_"))) {
+      return (eV3D_OpMode)i;
+    }
+  }
+  return V3D_OP_MODE_NONE;
+}
+
+/* Unlike `viewops_data_create`, `ED_view3d_navigation_init` creates a navigation context along
+ * with an array of `wmKeyMapItem`s used for navigation. */
+ViewOpsData *ED_view3d_navigation_init(bContext *C)
+{
+  if (!CTX_wm_region_view3d(C)) {
+    return nullptr;
+  }
+
+  ViewOpsData *vod = MEM_cnew<ViewOpsData>(__func__);
+  viewops_data_init_context(C, vod);
+
+  vod->keymap = WM_keymap_find_all(CTX_wm_manager(C), "3D View", SPACE_VIEW3D, 0);
+  return vod;
+}
+
+/* Checks and initializes the navigation modal operation. */
+static int view3d_navigation_invoke(
+    bContext *C, ViewOpsData *vod, const wmEvent *event, wmKeyMapItem *kmi, eV3D_OpMode nav_type)
+{
+  switch (nav_type) {
+    case V3D_OP_MODE_ZOOM:
+      if (!view3d_zoom_or_dolly_poll(C)) {
+        return OPERATOR_CANCELLED;
+      }
+      break;
+    case V3D_OP_MODE_MOVE:
+    case V3D_OP_MODE_VIEW_PAN:
+      if (!view3d_location_poll(C)) {
+        return OPERATOR_CANCELLED;
+      }
+      break;
+    case V3D_OP_MODE_ROTATE:
+      if (!view3d_rotation_poll(C)) {
+        return OPERATOR_CANCELLED;
+      }
+      break;
+    case V3D_OP_MODE_VIEW_ROLL:
+    case V3D_OP_MODE_DOLLY:
+#ifdef WITH_INPUT_NDOF
+    case V3D_OP_MODE_NDOF_ORBIT:
+    case V3D_OP_MODE_NDOF_ORBIT_ZOOM:
+#endif
+    case V3D_OP_MODE_NONE:
+      break;
+  }
+
+  return view3d_navigation_invoke_generic(C, vod, event, kmi->ptr, nav_type);
+}
+
+bool ED_view3d_navigation_do(bContext *C, ViewOpsData *vod, const wmEvent *event)
+{
+  if (!vod) {
+    return false;
+  }
+
+  wmEvent event_tmp;
+  if (event->type == EVT_MODAL_MAP) {
+    /* Workaround to use the original event values. */
+    event_tmp = *event;
+    event_tmp.type = event->prev_type;
+    event_tmp.val = event->prev_val;
+    event = &event_tmp;
+  }
+
+  int op_return = OPERATOR_CANCELLED;
+
+  if (vod->is_modal_event) {
+    const eV3D_OpEvent event_code = view3d_navigate_event(vod, event);
+    op_return = view3d_navigation_modal(C, vod, event_code, event->xy);
+    if (op_return != OPERATOR_RUNNING_MODAL) {
+      viewops_data_end_navigation(C, vod);
+      vod->is_modal_event = false;
+    }
+  }
+  else {
+    eV3D_OpMode nav_type;
+    LISTBASE_FOREACH (wmKeyMapItem *, kmi, &vod->keymap->items) {
+      if (!STRPREFIX(kmi->idname, "VIEW3D")) {
+        continue;
+      }
+      if (kmi->flag & KMI_INACTIVE) {
+        continue;
+      }
+      if ((nav_type = view3d_navigation_type_from_idname(kmi->idname)) == V3D_OP_MODE_NONE) {
+        continue;
+      }
+      if (!WM_event_match(event, kmi)) {
+        continue;
+      }
+
+      op_return = view3d_navigation_invoke(C, vod, event, kmi, nav_type);
+      if (op_return == OPERATOR_RUNNING_MODAL) {
+        vod->is_modal_event = true;
+      }
+      else {
+        viewops_data_end_navigation(C, vod);
+      }
+      break;
+    }
+  }
+
+  if (op_return != OPERATOR_CANCELLED) {
+    /* Although #ED_view3d_update_viewmat is already called when redrawing the 3D View, do it here
+     * as well, so the updated matrix values can be accessed by the operator. */
+    ED_view3d_update_viewmat(
+        vod->depsgraph, vod->scene, vod->v3d, vod->region, nullptr, nullptr, nullptr, false);
+
+    return true;
+  }
+  return false;
+}
+
+void ED_view3d_navigation_free(bContext *C, ViewOpsData *vod)
+{
+  viewops_data_free(C, vod);
 }
 
 /** \} */

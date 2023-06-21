@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -37,6 +39,14 @@ bool ghost_wl_output_own(const struct wl_output *wl_output);
 void ghost_wl_output_tag(struct wl_output *wl_output);
 struct GWL_Output *ghost_wl_output_user_data(struct wl_output *wl_output);
 
+/**
+ * Enter/exit handlers may be called with a null window surface (when the window just closed),
+ * so add a version of the function that checks this.
+ *
+ * All of the functions could in fact however paranoid null checks make the expected
+ * state difficult to reason about, so only use this in cases the surface may be null.
+ */
+bool ghost_wl_surface_own_with_null_check(const struct wl_surface *wl_surface);
 bool ghost_wl_surface_own(const struct wl_surface *wl_surface);
 void ghost_wl_surface_tag(struct wl_surface *wl_surface);
 GHOST_WindowWayland *ghost_wl_surface_user_data(struct wl_surface *wl_surface);
@@ -149,7 +159,7 @@ class GHOST_SystemWayland : public GHOST_System {
 
   void getAllDisplayDimensions(uint32_t &width, uint32_t &height) const override;
 
-  GHOST_IContext *createOffscreenContext(GHOST_GLSettings glSettings) override;
+  GHOST_IContext *createOffscreenContext(GHOST_GPUSettings gpuSettings) override;
 
   GHOST_TSuccess disposeContext(GHOST_IContext *context) override;
 
@@ -159,7 +169,7 @@ class GHOST_SystemWayland : public GHOST_System {
                               uint32_t width,
                               uint32_t height,
                               GHOST_TWindowState state,
-                              GHOST_GLSettings glSettings,
+                              GHOST_GPUSettings gpuSettings,
                               const bool exclusive,
                               const bool is_dialog,
                               const GHOST_IWindow *parentWindow) override;

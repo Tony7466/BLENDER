@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -447,7 +449,7 @@ class WXFaceLayer {
     if (iDotP > 0.0f) {
       ++_nPosDotP;
     }
-    if (iDotP == 0.0f) {  // TODO: this comparison is weak, check if it actually works
+    if (iDotP == 0.0f) { /* TODO: this comparison is weak, check if it actually works. */
       ++_nNullDotP;
     }
   }
@@ -466,7 +468,7 @@ class WXFaceLayer {
       if ((*d) > 0.0f) {
         ++_nPosDotP;
       }
-      if ((*d) == 0.0f) {  // TODO: ditto
+      if ((*d) == 0.0f) { /* TODO: ditto. */
         ++_nNullDotP;
       }
     }
@@ -503,7 +505,8 @@ class WXFace : public WFace {
     for (vector<WXFaceLayer *>::iterator wxf = iBrother._SmoothLayers.begin(),
                                          wxfend = iBrother._SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       _SmoothLayers.push_back(new WXFaceLayer(**wxf));
     }
   }
@@ -520,7 +523,8 @@ class WXFace : public WFace {
       for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(),
                                            wxfend = _SmoothLayers.end();
            wxf != wxfend;
-           ++wxf) {
+           ++wxf)
+      {
         delete (*wxf);
       }
       _SmoothLayers.clear();
@@ -559,7 +563,8 @@ class WXFace : public WFace {
     for (vector<WXFaceLayer *>::const_iterator wxf = _SmoothLayers.begin(),
                                                wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       if ((*wxf)->hasSmoothEdge()) {
         return true;
       }
@@ -577,7 +582,8 @@ class WXFace : public WFace {
   {
     for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(), wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       if ((*wxf)->hasSmoothEdge() && ((*wxf)->_Nature & iNature)) {
         oSmoothEdges.push_back((*wxf)->_pSmoothEdge);
       }
@@ -588,7 +594,8 @@ class WXFace : public WFace {
   {
     for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(), wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       if ((*wxf)->hasSmoothEdge() && ((*wxf)->_Nature & iNature)) {
         oSmoothEdgesLayers.push_back((*wxf));
       }
@@ -599,7 +606,8 @@ class WXFace : public WFace {
   {
     for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(), wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       if ((*wxf)->_Nature & iNature) {
         oSmoothLayers.push_back(*wxf);
       }
@@ -645,7 +653,8 @@ class WXFace : public WFace {
     vector<WXFaceLayer *> layersToKeep;
     for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(), wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       if ((*wxf)->isViewDependant()) {
         delete (*wxf);
       }
@@ -661,7 +670,8 @@ class WXFace : public WFace {
   {
     for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(), wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       delete (*wxf);
     }
     _SmoothLayers.clear();
@@ -672,7 +682,8 @@ class WXFace : public WFace {
     WFace::ResetUserData();
     for (vector<WXFaceLayer *>::iterator wxf = _SmoothLayers.begin(), wxfend = _SmoothLayers.end();
          wxf != wxfend;
-         ++wxf) {
+         ++wxf)
+    {
       (*wxf)->userdata = NULL;
     }
   }

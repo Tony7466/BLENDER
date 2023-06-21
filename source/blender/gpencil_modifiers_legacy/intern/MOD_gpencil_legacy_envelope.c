@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -319,7 +320,8 @@ static void deformStroke(GpencilModifierData *md,
                                       mmd->flag & GP_ENVELOPE_INVERT_LAYER,
                                       mmd->flag & GP_ENVELOPE_INVERT_PASS,
                                       mmd->flag & GP_ENVELOPE_INVERT_LAYERPASS,
-                                      mmd->flag & GP_ENVELOPE_INVERT_MATERIAL)) {
+                                      mmd->flag & GP_ENVELOPE_INVERT_MATERIAL))
+  {
     return;
   }
 
@@ -481,7 +483,8 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
                                         mmd->flag & GP_ENVELOPE_INVERT_LAYER,
                                         mmd->flag & GP_ENVELOPE_INVERT_PASS,
                                         mmd->flag & GP_ENVELOPE_INVERT_LAYERPASS,
-                                        mmd->flag & GP_ENVELOPE_INVERT_MATERIAL)) {
+                                        mmd->flag & GP_ENVELOPE_INVERT_MATERIAL))
+    {
       continue;
     }
 

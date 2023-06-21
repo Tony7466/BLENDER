@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -63,6 +64,7 @@ struct PBVH_GPU_Args {
   int node_verts_num;
 
   const MLoopTri *mlooptri;
+  const int *looptri_polys;
   PBVHNode *node;
 
   /* BMesh. */

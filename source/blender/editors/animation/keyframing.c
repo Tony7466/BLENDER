@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edanimation
@@ -139,7 +140,7 @@ bAction *ED_id_action_ensure(Main *bmain, ID *id)
   if (adt->action == NULL) {
     /* init action name from name of ID block */
     char actname[sizeof(id->name) - 2];
-    BLI_snprintf(actname, sizeof(actname), "%sAction", id->name + 2);
+    SNPRINTF(actname, "%sAction", id->name + 2);
 
     /* create action */
     adt->action = BKE_action_add(bmain, actname);
@@ -160,7 +161,7 @@ bAction *ED_id_action_ensure(Main *bmain, ID *id)
   return adt->action;
 }
 
-FCurve *ED_action_fcurve_find(struct bAction *act, const char rna_path[], const int array_index)
+FCurve *ED_action_fcurve_find(bAction *act, const char rna_path[], const int array_index)
 {
   /* Sanity checks. */
   if (ELEM(NULL, act, rna_path)) {
@@ -169,10 +170,10 @@ FCurve *ED_action_fcurve_find(struct bAction *act, const char rna_path[], const 
   return BKE_fcurve_find(&act->curves, rna_path, array_index);
 }
 
-FCurve *ED_action_fcurve_ensure(struct Main *bmain,
-                                struct bAction *act,
+FCurve *ED_action_fcurve_ensure(Main *bmain,
+                                bAction *act,
                                 const char group[],
-                                struct PointerRNA *ptr,
+                                PointerRNA *ptr,
                                 const char rna_path[],
                                 const int array_index)
 {
@@ -277,7 +278,7 @@ void update_autoflags_fcurve(FCurve *fcu, bContext *C, ReportList *reports, Poin
   int old_flag = fcu->flag;
 
   if ((ptr->owner_id == NULL) && (ptr->data == NULL)) {
-    BKE_report(reports, RPT_ERROR, "No RNA pointer available to retrieve values for this fcurve");
+    BKE_report(reports, RPT_ERROR, "No RNA pointer available to retrieve values for this F-curve");
     return;
   }
 
@@ -288,7 +289,7 @@ void update_autoflags_fcurve(FCurve *fcu, bContext *C, ReportList *reports, Poin
 
     BKE_reportf(reports,
                 RPT_ERROR,
-                "Could not update flags for this fcurve, as RNA path is invalid for the given ID "
+                "Could not update flags for this F-curve, as RNA path is invalid for the given ID "
                 "(ID = %s, path = %s)",
                 idname,
                 fcu->rna_path);
@@ -429,8 +430,8 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
         if (flag & INSERTKEY_CYCLE_AWARE) {
           /* If replacing an end point of a cyclic curve without offset,
            * modify the other end too. */
-          if (ELEM(i, 0, fcu->totvert - 1) &&
-              BKE_fcurve_get_cycle_type(fcu) == FCU_CYCLE_PERFECT) {
+          if (ELEM(i, 0, fcu->totvert - 1) && BKE_fcurve_get_cycle_type(fcu) == FCU_CYCLE_PERFECT)
+          {
             replace_bezt_keyframe_ypos(&fcu->bezt[i == 0 ? fcu->totvert - 1 : 0], bezt);
           }
         }
@@ -1169,11 +1170,11 @@ static float *get_keyframe_values(ReportList *reports,
                                   PointerRNA ptr,
                                   PropertyRNA *prop,
                                   int index,
-                                  struct NlaKeyframingContext *nla_context,
+                                  NlaKeyframingContext *nla_context,
                                   eInsertKeyFlags flag,
                                   float *buffer,
                                   int buffer_size,
-                                  const struct AnimationEvalContext *anim_eval_context,
+                                  const AnimationEvalContext *anim_eval_context,
                                   int *r_count,
                                   bool *r_force_all,
                                   BLI_bitmap **r_successful_remaps)
@@ -1302,7 +1303,7 @@ bool insert_keyframe_direct(ReportList *reports,
                             FCurve *fcu,
                             const AnimationEvalContext *anim_eval_context,
                             eBezTriple_KeyframeType keytype,
-                            struct NlaKeyframingContext *nla_context,
+                            NlaKeyframingContext *nla_context,
                             eInsertKeyFlags flag)
 {
   float curval = 0.0f;
@@ -1567,7 +1568,8 @@ int insert_keyframe(Main *bmain,
                                          &remapped_context,
                                          values[array_index],
                                          keytype,
-                                         flag)) {
+                                         flag))
+        {
           ret++;
           exclude = array_index;
           break;
@@ -1624,7 +1626,8 @@ int insert_keyframe(Main *bmain,
   /* Key a single index. */
   else {
     if (array_index >= 0 && array_index < value_count &&
-        BLI_BITMAP_TEST_BOOL(successful_remaps, array_index)) {
+        BLI_BITMAP_TEST_BOOL(successful_remaps, array_index))
+    {
       ret += insert_keyframe_fcurve_value(bmain,
                                           reports,
                                           &ptr,
@@ -2307,8 +2310,8 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator *UNUSED(op))
             /* Get bone-name, and check if this bone is selected. */
             bPoseChannel *pchan = NULL;
             char bone_name[sizeof(pchan->name)];
-            if (BLI_str_quoted_substr(
-                    fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name))) {
+            if (BLI_str_quoted_substr(fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name)))
+            {
               pchan = BKE_pose_channel_find_name(ob->pose, bone_name);
               /* Delete if bone is selected. */
               if ((pchan) && (pchan->bone)) {
@@ -2358,13 +2361,14 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
   ot->idname = "ANIM_OT_keyframe_clear_v3d";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = clear_anim_v3d_exec;
 
   ot->poll = ED_operator_areaactive;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  WM_operator_properties_confirm_or_exec(ot);
 }
 
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
@@ -2499,13 +2503,14 @@ void ANIM_OT_keyframe_delete_v3d(wmOperatorType *ot)
   ot->idname = "ANIM_OT_keyframe_delete_v3d";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = delete_key_v3d_exec;
 
   ot->poll = ED_operator_areaactive;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /* Insert Key Button Operator ------------------------ */
@@ -2593,7 +2598,8 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         }
         else if ((ptr.type == &RNA_Object) &&
                  (strstr(identifier, "location") || strstr(identifier, "rotation") ||
-                  strstr(identifier, "scale"))) {
+                  strstr(identifier, "scale")))
+        {
           /* NOTE: Keep this label in sync with the "ID" case in
            * keyingsets_utils.py :: get_transform_generators_base_info()
            */

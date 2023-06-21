@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -17,7 +18,6 @@
 #  include "BLI_implicit_sharing.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_shared_cache.hh"
-#  include "BLI_span.hh"
 #  include "BLI_vector.hh"
 
 #  include "DNA_meshdata_types.h"
@@ -119,6 +119,7 @@ struct MeshRuntime {
 
   /** Cache for derived triangulation of the mesh, accessed with #Mesh::looptris(). */
   SharedCache<Array<MLoopTri>> looptris_cache;
+  SharedCache<Array<int>> looptri_polys_cache;
 
   /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
   BVHCache *bvh_cache = nullptr;

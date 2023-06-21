@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -37,7 +38,8 @@ static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_viewport)
   }
 
   if (((fx->mode & eShaderFxMode_Realtime) && (is_viewport == true)) ||
-      ((fx->mode & eShaderFxMode_Render) && (is_viewport == false))) {
+      ((fx->mode & eShaderFxMode_Render) && (is_viewport == false)))
+  {
     return true;
   }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -195,7 +196,8 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
                                         mmd->flag & GP_MIRROR_INVERT_LAYER,
                                         mmd->flag & GP_MIRROR_INVERT_PASS,
                                         mmd->flag & GP_MIRROR_INVERT_LAYERPASS,
-                                        mmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
+                                        mmd->flag & GP_MIRROR_INVERT_MATERIAL))
+    {
       continue;
     }
     if (mmd->duplications > 0) {

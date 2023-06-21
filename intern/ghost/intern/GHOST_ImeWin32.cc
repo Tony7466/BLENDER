@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * The Original Code is Copyright 2010 The Chromium Authors. All rights reserved. */
+/* SPDX-FileCopyrightText: 2010 The Chromium Authors. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -325,7 +326,8 @@ void GHOST_ImeWin32::GetCaret(HIMC imm_context, LPARAM lparam, ImeComposition *c
             target_start = 0;
           }
           if (target_start != -1 && target_start < attribute_size &&
-              attribute_data[target_start] == ATTR_TARGET_NOTCONVERTED) {
+              attribute_data[target_start] == ATTR_TARGET_NOTCONVERTED)
+          {
             composition->cursor_position = target_start;
           }
         }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -135,8 +136,8 @@ void mesh_render_data_update_loose_geom(MeshRenderData *mr,
                                         const eMRIterType iter_type,
                                         const eMRDataType data_flag)
 {
-  if ((iter_type & (MR_ITER_LOOSE_EDGE | MR_ITER_LOOSE_VERT)) ||
-      (data_flag & MR_DATA_LOOSE_GEOM)) {
+  if ((iter_type & (MR_ITER_LOOSE_EDGE | MR_ITER_LOOSE_VERT)) || (data_flag & MR_DATA_LOOSE_GEOM))
+  {
     mesh_render_data_loose_geom_ensure(mr, cache);
     mr->loose_edges = cache->loose_geom.edges;
     mr->loose_verts = cache->loose_geom.verts;
@@ -310,6 +311,7 @@ void mesh_render_data_update_looptris(MeshRenderData *mr,
     /* Mesh */
     if ((iter_type & MR_ITER_LOOPTRI) || (data_flag & MR_DATA_LOOPTRI)) {
       mr->looptris = mr->me->looptris();
+      mr->looptri_polys = mr->me->looptri_polys();
     }
   }
   else {
@@ -451,9 +453,12 @@ MeshRenderData *mesh_render_data_create(Object *object,
     mr->eed_act = BM_mesh_active_edge_get(mr->bm);
     mr->eve_act = BM_mesh_active_vert_get(mr->bm);
 
-    mr->vert_crease_ofs = CustomData_get_offset(&mr->bm->vdata, CD_CREASE);
-    mr->edge_crease_ofs = CustomData_get_offset(&mr->bm->edata, CD_CREASE);
-    mr->bweight_ofs = CustomData_get_offset(&mr->bm->edata, CD_BWEIGHT);
+    mr->vert_crease_ofs = CustomData_get_offset_named(
+        &mr->bm->vdata, CD_PROP_FLOAT, "crease_vert");
+    mr->edge_crease_ofs = CustomData_get_offset_named(
+        &mr->bm->edata, CD_PROP_FLOAT, "crease_edge");
+    mr->bweight_ofs = CustomData_get_offset_named(
+        &mr->bm->edata, CD_PROP_FLOAT, "bevel_weight_edge");
 #ifdef WITH_FREESTYLE
     mr->freestyle_edge_ofs = CustomData_get_offset(&mr->bm->edata, CD_FREESTYLE_EDGE);
     mr->freestyle_face_ofs = CustomData_get_offset(&mr->bm->pdata, CD_FREESTYLE_FACE);
@@ -464,7 +469,8 @@ MeshRenderData *mesh_render_data_create(Object *object,
      * using the cage mesh with deformed coordinates. */
     if ((is_mode_active && mr->me->runtime->is_original_bmesh &&
          mr->me->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) ||
-        (do_uvedit && !do_final)) {
+        (do_uvedit && !do_final))
+    {
       mr->extract_type = MR_EXTRACT_BMESH;
     }
     else {

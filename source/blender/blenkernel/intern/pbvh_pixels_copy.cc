@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
@@ -296,7 +297,8 @@ struct Rows {
           tile_pixels.pixel_rows, [&](const PackedPixelRow &encoded_pixels) {
             for (int x = encoded_pixels.start_image_coordinate.x;
                  x < encoded_pixels.start_image_coordinate.x + encoded_pixels.num_pixels;
-                 x++) {
+                 x++)
+            {
               int64_t index = encoded_pixels.start_image_coordinate.y * resolution.x + x;
               pixels[index].type = PixelType::Brush;
               pixels[index].distance = 0.0f;

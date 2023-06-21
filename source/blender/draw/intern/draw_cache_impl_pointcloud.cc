@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -192,8 +193,8 @@ void DRW_pointcloud_batch_cache_free_old(PointCloud *pointcloud, int ctime)
 
   bool do_discard = false;
 
-  if (drw_attributes_overlap(&cache->eval_cache.attr_used_over_time,
-                             &cache->eval_cache.attr_used)) {
+  if (drw_attributes_overlap(&cache->eval_cache.attr_used_over_time, &cache->eval_cache.attr_used))
+  {
     cache->eval_cache.last_attr_matching_time = ctime;
   }
 

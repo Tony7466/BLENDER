@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2014-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Turn everything ON that's expected for an official release builds.
@@ -84,4 +86,7 @@ if(NOT APPLE)
   set(WITH_CYCLES_HIP_BINARIES    ON  CACHE BOOL "" FORCE)
   set(WITH_CYCLES_DEVICE_ONEAPI   ON  CACHE BOOL "" FORCE)
   set(WITH_CYCLES_ONEAPI_BINARIES ON  CACHE BOOL "" FORCE)
+endif()
+if(WIN32)
+  set(WITH_CYCLES_DEVICE_HIPRT    ON  CACHE BOOL "" FORCE)
 endif()

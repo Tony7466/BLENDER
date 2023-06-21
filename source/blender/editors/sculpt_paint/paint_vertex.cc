@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -65,7 +66,7 @@
 #include "BKE_ccg.h"
 #include "bmesh.h"
 
-#include "paint_intern.h" /* own include */
+#include "paint_intern.hh" /* own include */
 #include "sculpt_intern.hh"
 
 using blender::IndexRange;
@@ -291,7 +292,8 @@ static bool weight_paint_poll_ex(bContext *C, bool check_tool)
 
   if ((ob != nullptr) && (ob->mode & OB_MODE_WEIGHT_PAINT) &&
       (BKE_paint_brush(&CTX_data_tool_settings(C)->wpaint->paint) != nullptr) &&
-      (area = CTX_wm_area(C)) && (area->spacetype == SPACE_VIEW3D)) {
+      (area = CTX_wm_area(C)) && (area->spacetype == SPACE_VIEW3D))
+  {
     ARegion *region = CTX_wm_region(C);
     if (ELEM(region->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_HUD)) {
       if (!check_tool || WM_toolsystem_active_tool_is_brush(C)) {
@@ -382,8 +384,8 @@ static Color vpaint_blend(const VPaint *vp,
     }
   }
 
-  if ((brush->flag & BRUSH_LOCK_ALPHA) &&
-      !ELEM(blend, IMB_BLEND_ERASE_ALPHA, IMB_BLEND_ADD_ALPHA)) {
+  if ((brush->flag & BRUSH_LOCK_ALPHA) && !ELEM(blend, IMB_BLEND_ERASE_ALPHA, IMB_BLEND_ADD_ALPHA))
+  {
     Value *cp, *cc;
     cp = (Value *)&color_blend;
     cc = (Value *)&color_curr;
@@ -450,7 +452,8 @@ static void paint_and_tex_color_alpha_intern(VPaint *vp,
             vc->region,
             co,
             co_ss,
-            (eV3DProjTest)(V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_NEAR)) == V3D_PROJ_RET_OK) {
+            (eV3DProjTest)(V3D_PROJ_TEST_CLIP_BB | V3D_PROJ_TEST_CLIP_NEAR)) == V3D_PROJ_RET_OK)
+    {
       const float co_ss_3d[3] = {co_ss[0], co_ss[1], 0.0f}; /* we need a 3rd empty value */
       BKE_brush_sample_tex_3d(vc->scene, brush, mtex, co_ss_3d, r_rgba, 0, nullptr);
     }
@@ -754,17 +757,19 @@ static void multipaint_apply_change(MDeformVert *dvert,
  * Variables stored both for 'active' and 'mirror' sides.
  */
 struct WeightPaintGroupData {
-  /** index of active group or its mirror
+  /**
+   * Index of active group or its mirror:
    *
    * - 'active' is always `ob->actdef`.
    * - 'mirror' is -1 when 'ME_EDIT_MIRROR_X' flag id disabled,
    *   otherwise this will be set to the mirror or the active group (if the group isn't mirrored).
    */
   int index;
-  /** lock that includes the 'index' as locked too
+  /**
+   * Lock that includes the 'index' as locked too:
    *
-   * - 'active' is set of locked or active/selected groups
-   * - 'mirror' is set of locked or mirror groups
+   * - 'active' is set of locked or active/selected groups.
+   * - 'mirror' is set of locked or mirror groups.
    */
   const bool *lock;
 };
@@ -1178,7 +1183,7 @@ static void vertex_paint_init_session(Depsgraph *depsgraph,
   BKE_sculpt_toolsettings_data_ensure(scene);
 
   BLI_assert(ob->sculpt == nullptr);
-  ob->sculpt = (SculptSession *)MEM_callocN(sizeof(SculptSession), "sculpt session");
+  ob->sculpt = MEM_new<SculptSession>(__func__);
   ob->sculpt->mode_type = object_mode;
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
 
@@ -1244,15 +1249,11 @@ static void vertex_paint_init_session_data(const ToolSettings *ts, Object *ob)
   const blender::OffsetIndices polys = me->polys();
   const Span<int> corner_verts = me->corner_verts();
 
-  if (gmap->vert_to_loop == nullptr) {
-    gmap->vert_map_mem = nullptr;
-    gmap->vert_to_loop = nullptr;
-    gmap->poly_map_mem = nullptr;
-    gmap->vert_to_poly = nullptr;
-    BKE_mesh_vert_loop_map_create(
-        &gmap->vert_to_loop, &gmap->vert_map_mem, polys, corner_verts.data(), me->totvert);
-    BKE_mesh_vert_poly_map_create(
-        &gmap->vert_to_poly, &gmap->poly_map_mem, polys, corner_verts.data(), me->totvert);
+  if (gmap->vert_to_loop_indices.is_empty()) {
+    gmap->vert_to_loop = blender::bke::mesh::build_vert_to_loop_map(
+        corner_verts, me->totvert, gmap->vert_to_loop_offsets, gmap->vert_to_loop_indices);
+    gmap->vert_to_poly = blender::bke::mesh::build_vert_to_poly_map(
+        polys, corner_verts, me->totvert, gmap->vert_to_poly_offsets, gmap->vert_to_poly_indices);
   }
 
   /* Create average brush arrays */
@@ -1449,7 +1450,7 @@ void ED_object_wpaintmode_exit(bContext *C)
 static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   Object *ob = CTX_data_active_object(C);
   const int mode_flag = OB_MODE_WEIGHT_PAINT;
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
@@ -1560,8 +1561,7 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
   Brush *brush = paint->brush;
   int cur_brush_size = BKE_brush_size_get(scene, brush);
 
-  BLI_strncpy(
-      cache->saved_active_brush_name, brush->id.name + 2, sizeof(cache->saved_active_brush_name));
+  STRNCPY(cache->saved_active_brush_name, brush->id.name + 2);
 
   /* Switch to the blur (smooth) brush. */
   brush = BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR);
@@ -1655,6 +1655,8 @@ static void vwpaint_update_cache_invariants(
   copy_v3_v3(cache->view_normal, cache->true_view_normal);
   cache->bstrength = BKE_brush_alpha_get(scene, brush);
   cache->is_last_valid = false;
+
+  cache->accum = true;
 }
 
 /* Initialize the stroke cache variants from operator properties */
@@ -1689,8 +1691,8 @@ static void vwpaint_update_cache_variants(bContext *C, VPaint *vp, Object *ob, P
     BKE_brush_unprojected_radius_set(scene, brush, cache->initial_radius);
   }
 
-  if (BKE_brush_use_size_pressure(brush) &&
-      paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT)) {
+  if (BKE_brush_use_size_pressure(brush) && paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT))
+  {
     cache->radius = cache->initial_radius * cache->pressure;
   }
   else {
@@ -1797,7 +1799,8 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
       BKE_object_defgroup_check_lock_relative(
           wpd->lock_flags, wpd->vgroup_validmap, wpd->active.index) &&
       (!wpd->do_multipaint || BKE_object_defgroup_check_lock_relative_multi(
-                                  defbase_tot, wpd->lock_flags, defbase_sel, defbase_tot_sel))) {
+                                  defbase_tot, wpd->lock_flags, defbase_sel, defbase_tot_sel)))
+  {
     wpd->do_lock_relative = true;
   }
 
@@ -1971,8 +1974,7 @@ static void do_wpaint_brush_blur_task_cb_ex(void *__restrict userdata,
         /* Get the average poly weight */
         int total_hit_loops = 0;
         float weight_final = 0.0f;
-        for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-          const int p_index = gmap->vert_to_poly[v_index].indices[j];
+        for (const int p_index : gmap->vert_to_poly[v_index]) {
           const blender::IndexRange poly = ss->polys[p_index];
 
           total_hit_loops += poly.size();
@@ -1990,7 +1992,8 @@ static void do_wpaint_brush_blur_task_cb_ex(void *__restrict userdata,
           if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
               ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
                view_angle_limits_apply_falloff(
-                   &data->wpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                   &data->wpd->normal_angle_precalc, angle_cos, &brush_strength)))
+          {
             const float brush_fade = BKE_brush_curve_strength(
                 brush, sqrtf(test.dist), cache->radius);
             const float final_alpha = brush_fade * brush_strength * grid_alpha *
@@ -2074,7 +2077,8 @@ static void do_wpaint_brush_smear_task_cb_ex(void *__restrict userdata,
           if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
               ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
                view_angle_limits_apply_falloff(
-                   &data->wpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                   &data->wpd->normal_angle_precalc, angle_cos, &brush_strength)))
+          {
             bool do_color = false;
             /* Minimum dot product between brush direction and current
              * to neighbor direction is 0.0, meaning orthogonal. */
@@ -2083,8 +2087,7 @@ static void do_wpaint_brush_smear_task_cb_ex(void *__restrict userdata,
             /* Get the color of the loop in the opposite direction of the brush movement
              * (this callback is specifically for smear.) */
             float weight_final = 0.0;
-            for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-              const int p_index = gmap->vert_to_poly[v_index].indices[j];
+            for (const int p_index : gmap->vert_to_poly[v_index]) {
               for (const int v_other_index : ss->corner_verts.slice(ss->polys[p_index])) {
                 if (v_other_index != v_index) {
                   const float3 &mv_other = ss->vert_positions[v_other_index];
@@ -2180,7 +2183,8 @@ static void do_wpaint_brush_draw_task_cb_ex(void *__restrict userdata,
         if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
             ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
              view_angle_limits_apply_falloff(
-                 &data->wpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                 &data->wpd->normal_angle_precalc, angle_cos, &brush_strength)))
+        {
           const float brush_fade = BKE_brush_curve_strength(
               brush, sqrtf(test.dist), cache->radius);
           const float final_alpha = brush_fade * brush_strength * grid_alpha *
@@ -2239,7 +2243,8 @@ static void do_wpaint_brush_calc_average_weight_cb_ex(void *__restrict userdata,
       const float angle_cos = (use_normal && vd.no) ? dot_v3v3(sculpt_normal_frontface, vd.no) :
                                                       1.0f;
       if (angle_cos > 0.0 &&
-          BKE_brush_curve_strength(data->brush, sqrtf(test.dist), cache->radius) > 0.0) {
+          BKE_brush_curve_strength(data->brush, sqrtf(test.dist), cache->radius) > 0.0)
+      {
         const int v_index = has_grids ? ss->corner_verts[vd.grid_indices[vd.g]] :
                                         vd.vert_indices[vd.i];
 
@@ -2720,7 +2725,7 @@ void PAINT_OT_weight_paint(wmOperatorType *ot)
 static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   Object *ob = CTX_data_active_object(C);
   const int mode_flag = OB_MODE_VERTEX_PAINT;
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
@@ -2812,7 +2817,7 @@ struct VPaintData : public VPaintDataBase {
 
   Color paintcol;
 
-  struct VertProjHandle *vp_handle;
+  VertProjHandle *vp_handle;
   CoNo *vertexcosnos;
 
   bool is_texbrush;
@@ -3003,7 +3008,8 @@ static void do_vpaint_brush_blur_loops(bContext *C,
             if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
                 ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
                  view_angle_limits_apply_falloff(
-                     &vpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                     &vpd->normal_angle_precalc, angle_cos, &brush_strength)))
+            {
               const float brush_fade = BKE_brush_curve_strength(
                   brush, sqrtf(test.dist), cache->radius);
 
@@ -3013,8 +3019,7 @@ static void do_vpaint_brush_blur_loops(bContext *C,
               int total_hit_loops = 0;
               Blend blend[4] = {0};
 
-              for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                int p_index = gmap->vert_to_poly[v_index].indices[j];
+              for (const int p_index : gmap->vert_to_poly[v_index]) {
                 if (!use_face_sel || select_poly[p_index]) {
                   const blender::IndexRange poly = ss->polys[p_index];
                   total_hit_loops += poly.size();
@@ -3045,9 +3050,9 @@ static void do_vpaint_brush_blur_loops(bContext *C,
 
                 /* For each poly owning this vert,
                  * paint each loop belonging to this vert. */
-                for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                  const int p_index = gmap->vert_to_poly[v_index].indices[j];
-                  const int l_index = gmap->vert_to_loop[v_index].indices[j];
+                for (const int j : gmap->vert_to_poly[v_index].index_range()) {
+                  const int p_index = gmap->vert_to_poly[v_index][j];
+                  const int l_index = gmap->vert_to_loop[v_index][j];
                   BLI_assert(ss->corner_verts[l_index] == v_index);
                   if (!use_face_sel || select_poly[p_index]) {
                     Color color_orig(0, 0, 0, 0); /* unused when array is nullptr */
@@ -3146,7 +3151,8 @@ static void do_vpaint_brush_blur_verts(bContext *C,
             if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
                 ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
                  view_angle_limits_apply_falloff(
-                     &vpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                     &vpd->normal_angle_precalc, angle_cos, &brush_strength)))
+            {
               const float brush_fade = BKE_brush_curve_strength(
                   brush, sqrtf(test.dist), cache->radius);
 
@@ -3156,8 +3162,7 @@ static void do_vpaint_brush_blur_verts(bContext *C,
               int total_hit_loops = 0;
               Blend blend[4] = {0};
 
-              for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                int p_index = gmap->vert_to_poly[v_index].indices[j];
+              for (const int p_index : gmap->vert_to_poly[v_index]) {
                 if (!use_face_sel || select_poly[p_index]) {
                   const blender::IndexRange poly = ss->polys[p_index];
                   total_hit_loops += poly.size();
@@ -3188,11 +3193,7 @@ static void do_vpaint_brush_blur_verts(bContext *C,
 
                 /* For each poly owning this vert,
                  * paint each loop belonging to this vert. */
-                for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                  const int p_index = gmap->vert_to_poly[v_index].indices[j];
-
-                  BLI_assert(ss->corner_verts[gmap->vert_to_loop[v_index].indices[j]] == v_index);
-
+                for (const int p_index : gmap->vert_to_poly[v_index]) {
                   if (!use_face_sel || select_poly[p_index]) {
                     Color color_orig(0, 0, 0, 0); /* unused when array is nullptr */
 
@@ -3290,7 +3291,7 @@ static void do_vpaint_brush_smear(bContext *C,
 
             /* if the vertex is selected for painting. */
             if (!use_vert_sel || select_vert[v_index]) {
-              /* Calc the dot prod. between ray norm on surf and current vert
+              /* Calculate the dot prod. between ray norm on surf and current vert
                * (ie splash prevention factor), and only paint front facing verts. */
               float brush_strength = cache->bstrength;
               const float angle_cos = (use_normal && vd.no) ?
@@ -3299,7 +3300,8 @@ static void do_vpaint_brush_smear(bContext *C,
               if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
                   ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
                    view_angle_limits_apply_falloff(
-                       &vpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                       &vpd->normal_angle_precalc, angle_cos, &brush_strength)))
+              {
                 const float brush_fade = BKE_brush_curve_strength(
                     brush, sqrtf(test.dist), cache->radius);
 
@@ -3312,9 +3314,9 @@ static void do_vpaint_brush_smear(bContext *C,
                  * direction of the brush movement */
                 Color color_final(0, 0, 0, 0);
 
-                for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                  const int p_index = gmap->vert_to_poly[v_index].indices[j];
-                  const int l_index = gmap->vert_to_loop[v_index].indices[j];
+                for (const int j : gmap->vert_to_poly[v_index].index_range()) {
+                  const int p_index = gmap->vert_to_poly[v_index][j];
+                  const int l_index = gmap->vert_to_loop[v_index][j];
                   BLI_assert(ss->corner_verts[l_index] == v_index);
                   UNUSED_VARS_NDEBUG(l_index);
                   if (!use_face_sel || select_poly[p_index]) {
@@ -3357,15 +3359,15 @@ static void do_vpaint_brush_smear(bContext *C,
 
                   /* For each poly owning this vert,
                    * paint each loop belonging to this vert. */
-                  for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                    const int p_index = gmap->vert_to_poly[v_index].indices[j];
+                  for (const int j : gmap->vert_to_poly[v_index].index_range()) {
+                    const int p_index = gmap->vert_to_poly[v_index][j];
 
                     int elem_index;
                     if constexpr (domain == ATTR_DOMAIN_POINT) {
                       elem_index = v_index;
                     }
                     else {
-                      const int l_index = gmap->vert_to_loop[v_index].indices[j];
+                      const int l_index = gmap->vert_to_loop[v_index][j];
                       elem_index = l_index;
                       BLI_assert(ss->corner_verts[l_index] == v_index);
                     }
@@ -3449,13 +3451,13 @@ static void calculate_average_color(VPaintData<Color, Traits, domain> *vpd,
           if (BKE_brush_curve_strength(brush, 0.0, cache->radius) > 0.0) {
             /* If the vertex is selected for painting. */
             if (!use_vert_sel || select_vert[v_index]) {
-              accum2->len += gmap->vert_to_loop[v_index].count;
+              accum2->len += gmap->vert_to_poly[v_index].size();
               /* if a vertex is within the brush region, then add its color to the blend. */
-              for (int j = 0; j < gmap->vert_to_loop[v_index].count; j++) {
+              for (int j = 0; j < gmap->vert_to_poly[v_index].size(); j++) {
                 int elem_index;
 
                 if constexpr (domain == ATTR_DOMAIN_CORNER) {
-                  elem_index = gmap->vert_to_loop[v_index].indices[j];
+                  elem_index = gmap->vert_to_loop[v_index][j];
                 }
                 else {
                   elem_index = v_index;
@@ -3582,7 +3584,8 @@ static void vpaint_do_draw(bContext *C,
             if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
                 ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
                  view_angle_limits_apply_falloff(
-                     &vpd->normal_angle_precalc, angle_cos, &brush_strength))) {
+                     &vpd->normal_angle_precalc, angle_cos, &brush_strength)))
+            {
               const float brush_fade = BKE_brush_curve_strength(
                   brush, sqrtf(test.dist), cache->radius);
 
@@ -3620,9 +3623,9 @@ static void vpaint_do_draw(bContext *C,
               }
               else {
                 /* For each poly owning this vert, paint each loop belonging to this vert. */
-                for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-                  const int p_index = gmap->vert_to_poly[v_index].indices[j];
-                  const int l_index = gmap->vert_to_loop[v_index].indices[j];
+                for (const int j : gmap->vert_to_poly[v_index].index_range()) {
+                  const int p_index = gmap->vert_to_poly[v_index][j];
+                  const int l_index = gmap->vert_to_loop[v_index][j];
                   BLI_assert(ss->corner_verts[l_index] == v_index);
                   if (!use_face_sel || select_poly[p_index]) {
                     Color color_orig = Color(0, 0, 0, 0); /* unused when array is nullptr */

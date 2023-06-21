@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "kernel/camera/projection.h"
 
@@ -183,7 +184,7 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
   /* Sample diffuse surface scatter into the object. */
   float3 D;
   float pdf;
-  sample_cos_hemisphere(-N, rand_bsdf.x, rand_bsdf.y, &D, &pdf);
+  sample_cos_hemisphere(-N, rand_bsdf, &D, &pdf);
   if (dot(-Ng, D) <= 0.0f) {
     return false;
   }
@@ -203,6 +204,7 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
   ray.self.prim = prim;
   ray.self.light_object = OBJECT_NONE;
   ray.self.light_prim = PRIM_NONE;
+  ray.self.light = LAMP_NONE;
 
   /* Convert subsurface to volume coefficients.
    * The single-scattering albedo is named alpha to avoid confusion with the surface albedo. */
@@ -331,8 +333,7 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
         ray.D = newD;
       }
       else {
-        float3 newD = henyey_greenstrein_sample(
-            ray.D, anisotropy, rand_scatter.x, rand_scatter.y, &hg_pdf);
+        float3 newD = henyey_greenstrein_sample(ray.D, anisotropy, rand_scatter, &hg_pdf);
         cos_theta = dot(newD, N);
         ray.D = newD;
       }

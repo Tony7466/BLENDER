@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -38,7 +39,6 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "ED_asset_handle.h"
 #include "ED_fileselect.h"
 #include "ED_screen.h"
 
@@ -155,17 +155,10 @@ static void file_but_enable_drag(uiBut *but,
   }
   else if (sfile->browse_mode == FILE_BROWSE_MODE_ASSETS &&
            (file->typeflag & FILE_TYPE_ASSET) != 0) {
-    char blend_path[FILE_MAX_LIBEXTRA];
-    if (BKE_blendfile_library_path_explode(path, blend_path, nullptr, nullptr)) {
-      const int import_method = ED_fileselect_asset_import_method_get(sfile, file);
-      BLI_assert(import_method > -1);
+    const int import_method = ED_fileselect_asset_import_method_get(sfile, file);
+    BLI_assert(import_method > -1);
 
-      AssetHandle asset{};
-      asset.file_data = file;
-
-      UI_but_drag_set_asset(
-          but, &asset, BLI_strdup(blend_path), import_method, icon, preview_image, scale);
-    }
+    UI_but_drag_set_asset(but, file->asset, import_method, icon, preview_image, scale);
   }
   else if (preview_image) {
     UI_but_drag_set_image(but, path, icon, preview_image, scale);
@@ -217,7 +210,7 @@ static void file_draw_string(int sx,
 {
   uiFontStyle fs;
   rcti rect;
-  char fname[FILE_MAXFILE];
+  char filename[FILE_MAXFILE];
 
   if (string[0] == '\0' || width < 1) {
     return;
@@ -226,8 +219,8 @@ static void file_draw_string(int sx,
   const uiStyle *style = UI_style_get();
   fs = style->widget;
 
-  BLI_strncpy(fname, string, FILE_MAXFILE);
-  UI_text_clip_middle_ex(&fs, fname, width, UI_ICON_SIZE, sizeof(fname), '\0');
+  STRNCPY(filename, string);
+  UI_text_clip_middle_ex(&fs, filename, width, UI_ICON_SIZE, sizeof(filename), '\0');
 
   /* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict
    * (for buttons it works) */
@@ -239,7 +232,7 @@ static void file_draw_string(int sx,
   uiFontStyleDraw_Params font_style_params{};
   font_style_params.align = align;
 
-  UI_fontstyle_draw(&fs, &rect, fname, sizeof(fname), col, &font_style_params);
+  UI_fontstyle_draw(&fs, &rect, filename, sizeof(filename), col, &font_style_params);
 }
 
 /**
@@ -366,6 +359,7 @@ static void file_draw_preview(const FileDirEntry *file,
   bool show_outline = !is_icon &&
                       (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
+  const bool is_loading = file->flags & FILE_ENTRY_PREVIEW_LOADING;
 
   BLI_assert(imb != nullptr);
 
@@ -373,7 +367,8 @@ static void file_draw_preview(const FileDirEntry *file,
   ui_imby = imb->y * UI_SCALE_FAC;
   /* Unlike thumbnails, icons are not scaled up. */
   if (((ui_imbx > layout->prv_w) || (ui_imby > layout->prv_h)) ||
-      (!is_icon && ((ui_imbx < layout->prv_w) || (ui_imby < layout->prv_h)))) {
+      (!is_icon && ((ui_imbx < layout->prv_w) || (ui_imby < layout->prv_h))))
+  {
     if (imb->x > imb->y) {
       scaledx = float(layout->prv_w);
       scaledy = (float(imb->y) / float(imb->x)) * layout->prv_w;
@@ -404,21 +399,21 @@ static void file_draw_preview(const FileDirEntry *file,
 
   /* the large image */
 
-  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float document_img_col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   if (is_icon) {
     if (file->typeflag & FILE_TYPE_DIR) {
-      UI_GetThemeColor4fv(TH_ICON_FOLDER, col);
+      UI_GetThemeColor4fv(TH_ICON_FOLDER, document_img_col);
     }
     else {
-      UI_GetThemeColor4fv(TH_TEXT, col);
+      UI_GetThemeColor4fv(TH_TEXT, document_img_col);
     }
   }
   else if (file->typeflag & FILE_TYPE_FTFONT) {
-    UI_GetThemeColor4fv(TH_TEXT, col);
+    UI_GetThemeColor4fv(TH_TEXT, document_img_col);
   }
 
   if (dimmed) {
-    col[3] *= 0.3f;
+    document_img_col[3] *= 0.3f;
   }
 
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
@@ -426,20 +421,23 @@ static void file_draw_preview(const FileDirEntry *file,
     GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   }
 
-  IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
-  immDrawPixelsTexTiled_scaling(&state,
-                                float(xco),
-                                float(yco),
-                                imb->x,
-                                imb->y,
-                                GPU_RGBA8,
-                                true,
-                                imb->rect,
-                                scale,
-                                scale,
-                                1.0f,
-                                1.0f,
-                                col);
+  if (!is_loading) {
+    /* Don't show outer document image if loading - too flashy. */
+    IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
+    immDrawPixelsTexTiled_scaling(&state,
+                                  float(xco),
+                                  float(yco),
+                                  imb->x,
+                                  imb->y,
+                                  GPU_RGBA8,
+                                  true,
+                                  imb->byte_buffer.data,
+                                  scale,
+                                  scale,
+                                  1.0f,
+                                  1.0f,
+                                  document_img_col);
+  }
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -449,18 +447,22 @@ static void file_draw_preview(const FileDirEntry *file,
     const float icon_size = 16.0f / icon_aspect * UI_SCALE_FAC;
     float icon_opacity = 0.3f;
     uchar icon_color[4] = {0, 0, 0, 255};
-    float bgcolor[4];
-    UI_GetThemeColor4fv(TH_ICON_FOLDER, bgcolor);
-    if (rgb_to_grayscale(bgcolor) < 0.5f) {
+    if (rgb_to_grayscale(document_img_col) < 0.5f) {
       icon_color[0] = 255;
       icon_color[1] = 255;
       icon_color[2] = 255;
     }
+
+    if (is_loading) {
+      /* Contrast with background since we are not showing the large document image. */
+      UI_GetThemeColor4ubv(TH_TEXT, icon_color);
+    }
+
     icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
     icon_y = yco + (ey / 2.0f) - (icon_size * ((file->typeflag & FILE_TYPE_DIR) ? 0.78f : 0.75f));
     UI_icon_draw_ex(icon_x,
                     icon_y,
-                    icon,
+                    is_loading ? ICON_TEMP : icon,
                     icon_aspect / UI_SCALE_FAC,
                     icon_opacity,
                     0.0f,
@@ -515,7 +517,7 @@ static void file_draw_preview(const FileDirEntry *file,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
   }
-  else if (icon && !is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) {
+  else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading)) {
     /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
     float icon_x, icon_y;
     const uchar dark[4] = {0, 0, 0, 255};
@@ -598,8 +600,8 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 
   BLI_path_join(orgname, sizeof(orgname), params->dir, oldname);
-  BLI_strncpy(filename, params->renamefile, sizeof(filename));
-  BLI_filename_make_safe(filename);
+  STRNCPY(filename, params->renamefile);
+  BLI_path_make_safe_filename(filename);
   BLI_path_join(newname, sizeof(newname), params->dir, filename);
 
   if (!STREQ(orgname, newname)) {
@@ -611,7 +613,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
       }
       else {
         /* If rename is successful, scroll to newly renamed entry. */
-        BLI_strncpy(params->renamefile, filename, sizeof(params->renamefile));
+        STRNCPY(params->renamefile, filename);
         file_params_invoke_rename_postscroll(wm, win, sfile);
       }
 
@@ -620,7 +622,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
     }
     else {
       /* Renaming failed, reset the name for further renaming handling. */
-      BLI_strncpy(params->renamefile, oldname, sizeof(params->renamefile));
+      STRNCPY(params->renamefile, oldname);
     }
 
     ED_region_tag_redraw(region);
@@ -812,13 +814,9 @@ static const char *filelist_get_details_column_string(
               nullptr, file->time, small_size, time, date, &is_today, &is_yesterday);
 
           if (is_today || is_yesterday) {
-            BLI_strncpy(date, is_today ? N_("Today") : N_("Yesterday"), sizeof(date));
+            STRNCPY(date, is_today ? N_("Today") : N_("Yesterday"));
           }
-          BLI_snprintf(file->draw_data.datetime_str,
-                       sizeof(file->draw_data.datetime_str),
-                       "%s %s",
-                       date,
-                       time);
+          SNPRINTF(file->draw_data.datetime_str, "%s %s", date, time);
         }
 
         return file->draw_data.datetime_str;
@@ -826,7 +824,8 @@ static const char *filelist_get_details_column_string(
       break;
     case COLUMN_SIZE:
       if ((file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) ||
-          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB))) {
+          !(file->typeflag & (FILE_TYPE_DIR | FILE_TYPE_BLENDERLIB)))
+      {
         if ((file->draw_data.size_str[0] == '\0') || update_stat_strings) {
           BLI_filelist_entry_size_to_string(
               nullptr, file->size, small_size, file->draw_data.size_str);
@@ -1007,7 +1006,8 @@ void file_draw_list(const bContext *C, ARegion *region)
 
     if (!(file_selflag & FILE_SEL_EDITING)) {
       if ((params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ||
-          (file_selflag & FILE_SEL_SELECTED)) {
+          (file_selflag & FILE_SEL_SELECTED))
+      {
         int colorid = (file_selflag & FILE_SEL_SELECTED) ? TH_HILITE : TH_BACK;
         int shade = (params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ? 35 :
                                                                                              0;
@@ -1240,7 +1240,8 @@ bool file_draw_hint_if_invalid(const bContext *C, const SpaceFile *sfile, ARegio
   }
   /* Check if the library exists. */
   if ((asset_params->asset_library_ref.type == ASSET_LIBRARY_LOCAL) ||
-      filelist_is_dir(sfile->files, asset_params->base_params.dir)) {
+      filelist_is_dir(sfile->files, asset_params->base_params.dir))
+  {
     return false;
   }
 

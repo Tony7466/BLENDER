@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # note, properties_animviz is a helper module only.
@@ -41,6 +43,7 @@ _modules = [
     "properties_physics_common",
     "properties_physics_dynamicpaint",
     "properties_physics_field",
+    "properties_physics_geometry_nodes",
     "properties_physics_rigidbody",
     "properties_physics_rigidbody_constraint",
     "properties_physics_fluid",

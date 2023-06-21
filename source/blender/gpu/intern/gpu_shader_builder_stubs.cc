@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -17,7 +18,7 @@
 #include "BKE_global.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_subdiv_ccg.h"
@@ -119,7 +120,9 @@ eAttrDomain BKE_id_attribute_domain(const struct ID * /*id*/,
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BKE_paint.h
  * \{ */
-bool paint_is_face_hidden(const struct MLoopTri * /*lt*/, const bool * /*hide_poly*/)
+bool paint_is_face_hidden(const int * /*looptri_polys*/,
+                          const bool * /*hide_poly*/,
+                          int /*tri_index*/)
 {
   BLI_assert_unreachable();
   return false;
@@ -266,6 +269,37 @@ void DRW_cdlayer_attr_aliases_add(struct GPUVertFormat * /*format*/,
                                   bool /*is_active_render*/,
                                   bool /*is_active_layer*/)
 {
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Stubs of IMB_imbuf.h
+ * \{ */
+struct ImBuf *IMB_ibImageFromMemory(const unsigned char * /*mem*/,
+                                    size_t /*size*/,
+                                    int /*flags*/,
+                                    char /*colorspace*/[IM_MAX_SPACE],
+                                    const char * /*descr*/)
+{
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+struct ImBuf *IMB_allocFromBuffer(const uint8_t * /*rect*/,
+                                  const float * /*rectf*/,
+                                  unsigned int /*w*/,
+                                  unsigned int /*h*/,
+                                  unsigned int /*channels*/)
+{
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+bool IMB_saveiff(struct ImBuf * /*ibuf*/, const char * /*filepath*/, int /*flags*/)
+{
+  BLI_assert_unreachable();
+  return false;
 }
 
 /** \} */

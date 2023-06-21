@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -225,7 +227,8 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   m_gpu_binding = GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType(),
                                                         *m_gpu_ctx);
   if (!m_gpu_binding->checkVersionRequirements(
-          *m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str)) {
+          *m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str))
+  {
     std::ostringstream strstream;
     strstream << "Available graphics context version does not meet the following requirements: "
               << requirement_str;

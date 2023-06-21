@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -268,7 +269,8 @@ int SVMCompiler::stack_assign(ShaderInput *input)
       else if (input->type() == SocketType::VECTOR || input->type() == SocketType::NORMAL ||
                input->type() == SocketType::POINT || input->type() == SocketType::COLOR ||
                (input->type() == SocketType::SPECTRUM &&
-                !!this->scene->integrator->get_use_spectral_rendering())) {
+                !!this->scene->integrator->get_use_spectral_rendering()))
+      {
 
         add_node(NODE_VALUE_V, input->stack_offset);
         add_node(NODE_VALUE_V, node->get_float3(input->socket_type));
@@ -431,7 +433,8 @@ void SVMCompiler::find_dependencies(ShaderNodeSet &dependencies,
 {
   ShaderNode *node = (input->link) ? input->link->parent : NULL;
   if (node != NULL && done.find(node) == done.end() && node != skip_node &&
-      dependencies.find(node) == dependencies.end()) {
+      dependencies.find(node) == dependencies.end())
+  {
     foreach (ShaderInput *in, node->inputs) {
       find_dependencies(dependencies, done, in, skip_node);
     }

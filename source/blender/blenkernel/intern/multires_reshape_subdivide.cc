@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -85,8 +86,8 @@ void multires_subdivide_create_tangent_displacement_linear_grids(Object *object,
   /* Convert the new grids to tangent displacement. */
   multires_set_tot_level(object, mmd, new_top_level);
 
-  if (!multires_reshape_context_create_from_modifier(
-          &reshape_context, object, mmd, new_top_level)) {
+  if (!multires_reshape_context_create_from_modifier(&reshape_context, object, mmd, new_top_level))
+  {
     return;
   }
 

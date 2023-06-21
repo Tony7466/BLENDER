@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -183,7 +184,7 @@ static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
   /* Happens on first uniform or if chunk is full. */
   if (!unichunk || unichunk->uniform_used == unichunk->uniform_len) {
     unichunk = static_cast<DRWUniformChunk *>(BLI_memblock_alloc(DST.vmempool->uniforms));
-    unichunk->uniform_len = ARRAY_SIZE(shgroup->uniforms->uniforms);
+    unichunk->uniform_len = BOUNDED_ARRAY_TYPE_SIZE<decltype(shgroup->uniforms->uniforms)>();
     unichunk->uniform_used = 0;
     BLI_LINKS_PREPEND(shgroup->uniforms, unichunk);
   }
@@ -1425,7 +1426,7 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
       attrs[attrs_num].type = eCustomDataType(layer->type);
       attrs[attrs_num].domain = domain;
 
-      BLI_strncpy(attrs[attrs_num].name, layer->name, sizeof(attrs[attrs_num].name));
+      STRNCPY(attrs[attrs_num].name, layer->name);
       attrs_num++;
     }
   }
@@ -1437,7 +1438,7 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
 
       attrs[attrs_num].type = CD_PROP_FLOAT2;
       attrs[attrs_num].domain = ATTR_DOMAIN_CORNER;
-      BLI_strncpy(attrs[attrs_num].name, layer->name, sizeof(attrs[attrs_num].name));
+      STRNCPY(attrs[attrs_num].name, layer->name);
 
       attrs_num++;
     }
@@ -1483,7 +1484,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
 
     attrs[attrs_i].type = req->cd_type;
     attrs[attrs_i].domain = req->domain;
-    BLI_strncpy(attrs[attrs_i].name, req->attribute_name, sizeof(PBVHAttrReq::name));
+    STRNCPY(attrs[attrs_i].name, req->attribute_name);
     attrs_i++;
   }
 
@@ -1498,7 +1499,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
       if (layer) {
         attrs[attrs_i].type = CD_PROP_FLOAT2;
         attrs[attrs_i].domain = ATTR_DOMAIN_CORNER;
-        BLI_strncpy(attrs[attrs_i].name, layer->name, sizeof(PBVHAttrReq::name));
+        STRNCPY(attrs[attrs_i].name, layer->name);
         attrs_i++;
       }
     }
@@ -2414,7 +2415,7 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
   DRWPass *pass = static_cast<DRWPass *>(BLI_memblock_alloc(DST.vmempool->passes));
   pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
   if (G.debug & G_DEBUG_GPU) {
-    BLI_strncpy(pass->name, name, MAX_PASS_NAME);
+    STRNCPY(pass->name, name);
   }
 
   pass->shgroups.first = nullptr;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -59,40 +60,40 @@ typedef struct tGPDinterpolate_layer {
   struct tGPDinterpolate_layer *next, *prev;
 
   /** layer */
-  struct bGPDlayer *gpl;
+  bGPDlayer *gpl;
   /** frame before current frame (interpolate-from) */
-  struct bGPDframe *prevFrame;
+  bGPDframe *prevFrame;
   /** frame after current frame (interpolate-to) */
-  struct bGPDframe *nextFrame;
+  bGPDframe *nextFrame;
   /** interpolated frame */
-  struct bGPDframe *interFrame;
+  bGPDframe *interFrame;
   /** interpolate factor */
   float factor;
 
   /* List of strokes and Hash tablets to create temp relationship between strokes. */
-  struct ListBase selected_strokes;
-  struct GHash *used_strokes;
-  struct GHash *pair_strokes;
+  ListBase selected_strokes;
+  GHash *used_strokes;
+  GHash *pair_strokes;
 
 } tGPDinterpolate_layer;
 
 typedef struct tGPDinterpolate {
   /** Current depsgraph from context */
-  struct Depsgraph *depsgraph;
+  Depsgraph *depsgraph;
   /** current scene from context */
-  struct Scene *scene;
+  Scene *scene;
   /** area where painting originated */
-  struct ScrArea *area;
+  ScrArea *area;
   /** region where painting originated */
-  struct ARegion *region;
+  ARegion *region;
   /** current object */
-  struct Object *ob;
+  Object *ob;
   /** current GP datablock */
-  struct bGPdata *gpd;
+  bGPdata *gpd;
   /** current material */
   struct Material *mat;
   /* Space Conversion Data */
-  struct GP_SpaceConversion gsc;
+  GP_SpaceConversion gsc;
 
   /** current frame number */
   int cframe;
@@ -418,7 +419,8 @@ static bGPDframe *gpencil_get_previous_keyframe(bGPDlayer *gpl,
 {
   if (gpl->actframe != NULL && gpl->actframe->framenum < cfra) {
     if ((!exclude_breakdowns) ||
-        ((exclude_breakdowns) && (gpl->actframe->key_type != BEZT_KEYTYPE_BREAKDOWN))) {
+        ((exclude_breakdowns) && (gpl->actframe->key_type != BEZT_KEYTYPE_BREAKDOWN)))
+    {
       return gpl->actframe;
     }
   }
@@ -535,8 +537,8 @@ static void gpencil_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
         BKE_gpencil_stroke_flip(gps_to);
       }
       else if (tgpi->flipmode == GP_INTERPOLATE_FLIPAUTO) {
-        if (gpencil_stroke_need_flip(
-                tgpi->depsgraph, tgpi->ob, gpl, &tgpi->gsc, gps_from, gps_to)) {
+        if (gpencil_stroke_need_flip(tgpi->depsgraph, tgpi->ob, gpl, &tgpi->gsc, gps_from, gps_to))
+        {
           BKE_gpencil_stroke_flip(gps_to);
         }
       }
@@ -594,20 +596,16 @@ static void gpencil_interpolate_status_indicators(bContext *C, tGPDinterpolate *
   char status_str[UI_MAX_DRAW_STR];
   char msg_str[UI_MAX_DRAW_STR];
 
-  BLI_strncpy(msg_str, TIP_("GPencil Interpolation: "), UI_MAX_DRAW_STR);
+  STRNCPY(msg_str, TIP_("GPencil Interpolation: "));
 
   if (hasNumInput(&p->num)) {
     char str_ofs[NUM_STR_REP_LEN];
 
     outputNumInput(&p->num, str_ofs, &scene->unit);
-    BLI_snprintf(status_str, sizeof(status_str), "%s%s", msg_str, str_ofs);
+    SNPRINTF(status_str, "%s%s", msg_str, str_ofs);
   }
   else {
-    BLI_snprintf(status_str,
-                 sizeof(status_str),
-                 "%s%d %%",
-                 msg_str,
-                 (int)((p->init_factor + p->shift) * 100.0f));
+    SNPRINTF(status_str, "%s%d %%", msg_str, (int)((p->init_factor + p->shift) * 100.0f));
   }
 
   ED_area_status_text(p->area, status_str);
@@ -1310,8 +1308,8 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
     LISTBASE_FOREACH (bGPDstroke *, gps_from, &prevFrame->strokes) {
       bGPDstroke *gps_to = NULL;
       /* Only selected. */
-      if (GPENCIL_EDIT_MODE(gpd) && (only_selected) &&
-          ((gps_from->flag & GP_STROKE_SELECT) == 0)) {
+      if (GPENCIL_EDIT_MODE(gpd) && (only_selected) && ((gps_from->flag & GP_STROKE_SELECT) == 0))
+      {
         continue;
       }
       /* Skip strokes that are invalid for current view. */

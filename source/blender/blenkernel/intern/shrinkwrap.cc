@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -473,7 +474,8 @@ bool BKE_shrinkwrap_project_normal(char options,
       /* Apply back-face. */
       const float dot = dot_v3v3(dir, hit_tmp.no);
       if (((options & MOD_SHRINKWRAP_CULL_TARGET_FRONTFACE) && dot <= 0.0f) ||
-          ((options & MOD_SHRINKWRAP_CULL_TARGET_BACKFACE) && dot >= 0.0f)) {
+          ((options & MOD_SHRINKWRAP_CULL_TARGET_BACKFACE) && dot >= 0.0f))
+      {
         return false; /* Ignore hit */
       }
     }
@@ -511,7 +513,7 @@ static void shrinkwrap_calc_normal_projection_cb_ex(void *__restrict userdata,
 
   const float proj_limit_squared = calc->smd->projLimit * calc->smd->projLimit;
   float *co = calc->vertexCos[i];
-  float tmp_co[3], tmp_no[3];
+  const float *tmp_co, *tmp_no;
   float weight = BKE_defvert_array_find_weight_safe(calc->dvert, i, calc->vgroup);
 
   if (calc->invert_vgroup) {
@@ -522,18 +524,18 @@ static void shrinkwrap_calc_normal_projection_cb_ex(void *__restrict userdata,
     return;
   }
 
-  if (calc->vert_positions != nullptr &&
-      calc->smd->projAxis == MOD_SHRINKWRAP_PROJECT_OVER_NORMAL) {
+  if (calc->vert_positions != nullptr && calc->smd->projAxis == MOD_SHRINKWRAP_PROJECT_OVER_NORMAL)
+  {
     /* calc->vert_positions contains verts from evaluated mesh. */
     /* These coordinates are deformed by vertexCos only for normal projection
      * (to get correct normals) for other cases calc->verts contains undeformed coordinates and
      * vertexCos should be used */
-    copy_v3_v3(tmp_co, calc->vert_positions[i]);
-    copy_v3_v3(tmp_no, calc->vert_normals[i]);
+    tmp_co = calc->vert_positions[i];
+    tmp_no = calc->vert_normals[i];
   }
   else {
-    copy_v3_v3(tmp_co, co);
-    copy_v3_v3(tmp_no, proj_axis);
+    tmp_co = co;
+    tmp_no = proj_axis;
   }
 
   hit->index = -1;
@@ -552,7 +554,8 @@ static void shrinkwrap_calc_normal_projection_cb_ex(void *__restrict userdata,
     }
 
     if (BKE_shrinkwrap_project_normal(
-            calc->smd->shrinkOpts, tmp_co, tmp_no, 0.0, &calc->local2target, tree, hit)) {
+            calc->smd->shrinkOpts, tmp_co, tmp_no, 0.0, &calc->local2target, tree, hit))
+    {
       is_aux = false;
     }
   }
@@ -638,7 +641,8 @@ static void shrinkwrap_calc_normal_projection(ShrinkwrapCalcData *calc)
   /* If the user doesn't allows to project in any direction of projection axis
    * then there's nothing todo. */
   if ((calc->smd->shrinkOpts &
-       (MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR | MOD_SHRINKWRAP_PROJECT_ALLOW_NEG_DIR)) == 0) {
+       (MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR | MOD_SHRINKWRAP_PROJECT_ALLOW_NEG_DIR)) == 0)
+  {
     return;
   }
 
@@ -678,7 +682,8 @@ static void shrinkwrap_calc_normal_projection(ShrinkwrapCalcData *calc)
   }
 
   if (BKE_shrinkwrap_init_tree(
-          &aux_tree_stack, auxMesh, calc->smd->shrinkType, calc->smd->shrinkMode, false)) {
+          &aux_tree_stack, auxMesh, calc->smd->shrinkType, calc->smd->shrinkMode, false))
+  {
     aux_tree = &aux_tree_stack;
   }
 
@@ -1184,9 +1189,10 @@ void BKE_shrinkwrap_compute_smooth_normal(const ShrinkwrapTreeData *tree,
   const BVHTreeFromMesh *treeData = &tree->treeData;
   const MLoopTri *tri = &treeData->looptri[looptri_idx];
   const float(*vert_normals)[3] = tree->vert_normals;
+  const int poly_i = tree->mesh->looptri_polys()[looptri_idx];
 
   /* Interpolate smooth normals if enabled. */
-  if (!(tree->sharp_faces && tree->sharp_faces[tri->poly])) {
+  if (!(tree->sharp_faces && tree->sharp_faces[poly_i])) {
     const int vert_indices[3] = {treeData->corner_verts[tri->tri[0]],
                                  treeData->corner_verts[tri->tri[1]],
                                  treeData->corner_verts[tri->tri[2]]};
@@ -1230,7 +1236,7 @@ void BKE_shrinkwrap_compute_smooth_normal(const ShrinkwrapTreeData *tree,
   }
   /* Use the polygon normal if flat. */
   else if (tree->poly_normals != nullptr) {
-    copy_v3_v3(r_no, tree->poly_normals[tri->poly]);
+    copy_v3_v3(r_no, tree->poly_normals[poly_i]);
   }
   /* Finally fallback to the looptri normal. */
   else {
@@ -1562,7 +1568,6 @@ void BKE_shrinkwrap_mesh_nearest_surface_deform(bContext *C, Object *ob_source, 
 void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object *ob_target)
 {
   ShrinkwrapModifierData ssmd = {{nullptr}};
-  int totvert;
 
   ssmd.target = ob_target;
   ssmd.shrinkType = MOD_SHRINKWRAP_PROJECT;
@@ -1575,13 +1580,11 @@ void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object 
   const float projLimitTolerance = 5.0f;
   ssmd.projLimit = target_me->remesh_voxel_size * projLimitTolerance;
 
-  float(*vertexCos)[3] = BKE_mesh_vert_coords_alloc(src_me, &totvert);
-
   ShrinkwrapCalcData calc = NULL_ShrinkwrapCalcData;
 
   calc.smd = &ssmd;
   calc.numVerts = src_me->totvert;
-  calc.vertexCos = vertexCos;
+  calc.vertexCos = BKE_mesh_vert_positions_for_write(src_me);
   calc.vert_normals = src_me->vert_normals();
   calc.vgroup = -1;
   calc.target = target_me;
@@ -1596,7 +1599,5 @@ void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object 
     BKE_shrinkwrap_free_tree(&tree);
   }
 
-  BKE_mesh_vert_coords_apply(src_me, vertexCos);
-
-  MEM_freeN(vertexCos);
+  BKE_mesh_tag_positions_changed(src_me);
 }

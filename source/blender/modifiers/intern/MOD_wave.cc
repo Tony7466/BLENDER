@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -40,9 +41,9 @@
 
 #include "RE_texture.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -112,7 +113,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
     r_cddata_masks->fmask |= CD_MASK_MTFACE;
   }
 
-  /* ask for vertexgroups if we need them */
+  /* Ask for vertex-groups if we need them. */
   if (wmd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
@@ -257,9 +258,8 @@ static void waveModifier_do(WaveModifierData *md,
 
         /* Apply texture. */
         if (tex_co) {
-          Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
           TexResult texres;
-          BKE_texture_get_value(scene, tex_target, tex_co[i], &texres, false);
+          BKE_texture_get_value(tex_target, tex_co[i], &texres, false);
           amplit *= texres.tin;
         }
 
@@ -299,10 +299,10 @@ static void deformVerts(ModifierData *md,
   Mesh *mesh_src = nullptr;
 
   if (wmd->flag & MOD_WAVE_NORM) {
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, vertexCos, verts_num, false);
+    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, vertexCos);
   }
   else if (wmd->texture != nullptr || wmd->defgrp_name[0] != '\0') {
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
   }
 
   waveModifier_do(wmd, ctx, ctx->object, mesh_src, vertexCos, verts_num);
@@ -323,10 +323,10 @@ static void deformVertsEM(ModifierData *md,
   Mesh *mesh_src = nullptr;
 
   if (wmd->flag & MOD_WAVE_NORM) {
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, vertexCos, verts_num, false);
+    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, vertexCos);
   }
   else if (wmd->texture != nullptr || wmd->defgrp_name[0] != '\0') {
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr, verts_num, false);
+    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
   }
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
@@ -436,7 +436,8 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
     uiItemR(col, ptr, "texture_coords_object", 0, IFACE_("Object"), ICON_NONE);
     PointerRNA texture_coords_obj_ptr = RNA_pointer_get(ptr, "texture_coords_object");
     if (!RNA_pointer_is_null(&texture_coords_obj_ptr) &&
-        (RNA_enum_get(&texture_coords_obj_ptr, "type") == OB_ARMATURE)) {
+        (RNA_enum_get(&texture_coords_obj_ptr, "type") == OB_ARMATURE))
+    {
       PointerRNA texture_coords_obj_data_ptr = RNA_pointer_get(&texture_coords_obj_ptr, "data");
       uiItemPointerR(col,
                      ptr,

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -686,8 +688,9 @@ static UndoMesh **mesh_undostep_reference_elems_from_objects(Object **object, in
   UndoMesh *um_iter = static_cast<UndoMesh *>(um_arraystore.local_links.last);
   while (um_iter && (uuid_map_len != 0)) {
     UndoMesh **um_p;
-    if ((um_p = static_cast<UndoMesh **>(BLI_ghash_popkey(
-             uuid_map, POINTER_FROM_INT(um_iter->me.id.session_uuid), nullptr)))) {
+    if ((um_p = static_cast<UndoMesh **>(
+             BLI_ghash_popkey(uuid_map, POINTER_FROM_INT(um_iter->me.id.session_uuid), nullptr))))
+    {
       *um_p = um_iter;
       uuid_map_len--;
     }
@@ -734,7 +737,7 @@ static void *undomesh_from_editmesh(UndoMesh *um, BMEditMesh *em, Key *key, Undo
 
   /* Copy the ID name characters to the mesh so code that depends on accessing the ID type can work
    * on it. Necessary to use the attribute API. */
-  strcpy(um->me.id.name, "MEundomesh_from_editmesh");
+  STRNCPY(um->me.id.name, "MEundomesh_from_editmesh");
 
   /* Runtime data is necessary for some asserts in other code, and the overhead of creating it for
    * undo meshes should be low. */

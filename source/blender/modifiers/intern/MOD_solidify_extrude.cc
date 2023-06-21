@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -20,9 +22,9 @@
 #include "BKE_mesh.hh"
 #include "BKE_particle.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 #include "MOD_solidify_util.hh" /* own include */
-#include "MOD_util.h"
+#include "MOD_util.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name High Quality Normal Calculation Function
@@ -93,7 +95,8 @@ static void mesh_calc_hq_normal(Mesh *mesh,
     int i;
     const blender::int2 *edge;
     for (i = 0, edge = edges.data(), edge_ref = edge_ref_array; i < edges.size();
-         i++, edge++, edge_ref++) {
+         i++, edge++, edge_ref++)
+    {
       /* Get the edge vert indices, and edge value (the face indices that use it) */
 
       if (edgeref_is_init(edge_ref) && (edge_ref->p1 != -1)) {
@@ -201,7 +204,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 
   MOD_get_vgroup(ctx->object, mesh, smd->defgrp_name, &dvert, &defgrp_index);
 
-  const float(*orig_vert_positions)[3] = BKE_mesh_vert_positions(mesh);
+  const blender::Span<blender::float3> orig_vert_positions = mesh->vert_positions();
   const blender::Span<blender::int2> orig_edges = mesh->edges();
   const blender::OffsetIndices orig_polys = mesh->polys();
   const blender::Span<int> orig_corner_verts = mesh->corner_verts();
@@ -324,7 +327,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
                                              int((polys_num * stride) + newPolys),
                                              int((loops_num * stride) + newLoops));
 
-  float(*vert_positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<blender::float3> vert_positions = result->vert_positions_for_write();
   blender::MutableSpan<blender::int2> edges = result->edges_for_write();
   blender::MutableSpan<int> poly_offsets = result->poly_offsets_for_write();
   blender::MutableSpan<int> corner_verts = result->corner_verts_for_write();
@@ -384,8 +387,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 
   float *result_edge_bweight = nullptr;
   if (do_bevel_convex) {
-    result_edge_bweight = static_cast<float *>(
-        CustomData_add_layer(&result->edata, CD_BWEIGHT, CD_SET_DEFAULT, result->totedge));
+    result_edge_bweight = static_cast<float *>(CustomData_add_layer_named(
+        &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "bevel_weight_edge"));
   }
 
   /* Initializes: (`i_end`, `do_shell_align`, `vert_index`). */
@@ -534,7 +537,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
       for (uint i = 0; i < edges_num; i++) {
         const blender::int2 &edge = orig_edges[i];
         if (!ELEM(edge_user_pairs[i][0], INVALID_UNUSED, INVALID_PAIR) &&
-            !ELEM(edge_user_pairs[i][1], INVALID_UNUSED, INVALID_PAIR)) {
+            !ELEM(edge_user_pairs[i][1], INVALID_UNUSED, INVALID_PAIR))
+        {
           const float *n0 = poly_normals[edge_user_pairs[i][0]];
           const float *n1 = poly_normals[edge_user_pairs[i][1]];
           sub_v3_v3v3(e, orig_vert_positions[edge[0]], orig_vert_positions[edge[1]]);
@@ -744,7 +748,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
         /* skip 3+ face user edges */
         if ((check_non_manifold == false) ||
             LIKELY(!BLI_BITMAP_TEST(edge_tmp_tag, poly_edges[i_curr]) &&
-                   !BLI_BITMAP_TEST(edge_tmp_tag, poly_edges[i_next]))) {
+                   !BLI_BITMAP_TEST(edge_tmp_tag, poly_edges[i_next])))
+        {
           vert_angles[vidx] += shell_v3v3_normalized_to_dist(vert_nors[vidx], poly_normals[i]) *
                                angle;
         }
@@ -838,7 +843,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
       for (i = 0; i < edges_num; i++) {
         const blender::int2 &edge = orig_edges[i];
         if (!ELEM(edge_user_pairs[i][0], INVALID_UNUSED, INVALID_PAIR) &&
-            !ELEM(edge_user_pairs[i][1], INVALID_UNUSED, INVALID_PAIR)) {
+            !ELEM(edge_user_pairs[i][1], INVALID_UNUSED, INVALID_PAIR))
+        {
           const float *n0 = poly_normals[edge_user_pairs[i][0]];
           const float *n1 = poly_normals[edge_user_pairs[i][1]];
           if (do_angle_clamp) {
@@ -1038,8 +1044,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 
     float *result_edge_crease = nullptr;
     if (crease_rim || crease_outer || crease_inner) {
-      result_edge_crease = (float *)CustomData_add_layer(
-          &result->edata, CD_CREASE, CD_SET_DEFAULT, result->totedge);
+      result_edge_crease = (float *)CustomData_add_layer_named(
+          &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "crease_edge");
     }
 
     /* add faces & edges */

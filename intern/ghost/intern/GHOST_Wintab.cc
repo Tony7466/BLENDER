@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -404,7 +406,8 @@ GHOST_TButton GHOST_Wintab::mapWintabToGhostButton(uint cursor, WORD physicalBut
   BYTE systemButtons[numButtons] = {0};
 
   if (!m_fpInfo(WTI_CURSORS + cursor, CSR_BUTTONMAP, &logicalButtons) ||
-      !m_fpInfo(WTI_CURSORS + cursor, CSR_SYSBTNMAP, &systemButtons)) {
+      !m_fpInfo(WTI_CURSORS + cursor, CSR_SYSBTNMAP, &systemButtons))
+  {
     return GHOST_kButtonMaskNone;
   }
 

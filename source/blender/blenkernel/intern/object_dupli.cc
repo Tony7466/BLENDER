@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -37,8 +38,8 @@
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_cache.h"
-#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_instances.hh"
@@ -72,6 +73,7 @@ using blender::float3;
 using blender::float4x4;
 using blender::Span;
 using blender::Vector;
+using blender::bke::GeometrySet;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
 namespace geo_log = blender::nodes::geo_eval_log;
@@ -789,7 +791,7 @@ static void make_duplis_font(const DupliContext *ctx)
   GHash *family_gh;
   Object *ob;
   Curve *cu;
-  struct CharTrans *ct, *chartransdata = nullptr;
+  CharTrans *ct, *chartransdata = nullptr;
   float vec[3], obmat[4][4], pmat[4][4], fsize, xof, yof;
   int text_len, a;
   size_t family_len;
@@ -899,7 +901,9 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
     }
   }
   if (!ELEM(ctx->object->type, OB_CURVES_LEGACY, OB_FONT, OB_CURVES) || geometry_set_is_instance) {
-    if (const CurveComponent *component = geometry_set.get_component_for_read<CurveComponent>()) {
+    if (const blender::bke::CurveComponent *component =
+            geometry_set.get_component_for_read<blender::bke::CurveComponent>())
+    {
       if (use_new_curves_type) {
         if (const Curves *curves = component->get_for_read()) {
           make_dupli(ctx, ctx->object, &curves->id, parent_transform, component_index++);
@@ -981,7 +985,8 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
                                 nullptr,
                                 id,
                                 &geometry_set,
-                                i)) {
+                                i))
+        {
           break;
         }
 
@@ -1012,7 +1017,8 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
                                nullptr,
                                id,
                                &geometry_set,
-                               i)) {
+                               i))
+        {
           make_duplis_geometry_set_impl(
               &sub_ctx, reference.geometry_set(), new_transform, true, false);
         }
@@ -1383,7 +1389,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
   totchild = psys->totchild;
 
   if ((for_render || part->draw_as == PART_DRAW_REND) &&
-      ELEM(part->ren_as, PART_DRAW_OB, PART_DRAW_GR)) {
+      ELEM(part->ren_as, PART_DRAW_OB, PART_DRAW_GR))
+  {
     ParticleSimulationData sim = {nullptr};
     sim.depsgraph = ctx->depsgraph;
     sim.scene = scene;
@@ -1454,8 +1461,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         }
       }
       else {
-        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-            part->instance_collection, object, mode) {
+        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (part->instance_collection, object, mode)
+        {
           (void)object;
           totcollection++;
         }
@@ -1482,8 +1489,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
       }
       else {
         a = 0;
-        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-            part->instance_collection, object, mode) {
+        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (part->instance_collection, object, mode)
+        {
           oblist[a] = object;
           a++;
         }
@@ -1526,7 +1533,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
       /* Some hair paths might be non-existent so they can't be used for duplication. */
       if (hair && psys->pathcache &&
           ((a < totpart && psys->pathcache[a]->segments < 0) ||
-           (a >= totpart && psys->childcache[a - totpart]->segments < 0))) {
+           (a >= totpart && psys->childcache[a - totpart]->segments < 0)))
+      {
         continue;
       }
 
@@ -1577,8 +1585,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
 
       if (part->ren_as == PART_DRAW_GR && psys->part->draw & PART_DRAW_WHOLE_GR) {
         b = 0;
-        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-            part->instance_collection, object, mode) {
+        FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (part->instance_collection, object, mode)
+        {
           copy_m4_m4(tmat, oblist[b]->object_to_world);
 
           /* Apply collection instance offset. */
@@ -1705,7 +1713,8 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
 
   /* Should the dupli's be generated for this object? - Respect restrict flags. */
   if (DEG_get_mode(ctx->depsgraph) == DAG_EVAL_RENDER ? (visibility_flag & OB_HIDE_RENDER) :
-                                                        (visibility_flag & OB_HIDE_VIEWPORT)) {
+                                                        (visibility_flag & OB_HIDE_VIEWPORT))
+  {
     return nullptr;
   }
 
@@ -1718,7 +1727,7 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
   }
 
   if (ctx->object->runtime.geometry_set_eval != nullptr) {
-    if (BKE_object_has_geometry_set_instances(ctx->object)) {
+    if (blender::bke::object_has_geometry_set_instances(*ctx->object)) {
       return &gen_dupli_geometry_set;
     }
   }
@@ -1789,7 +1798,8 @@ ListBase *object_duplilist_preview(Depsgraph *depsgraph,
       continue;
     }
     if (const geo_log::ViewerNodeLog *viewer_log =
-            geo_log::GeoModifierLog::find_viewer_node_log_for_path(*viewer_path)) {
+            geo_log::GeoModifierLog::find_viewer_node_log_for_path(*viewer_path))
+    {
       ctx.preview_base_geometry = &viewer_log->geometry;
       make_duplis_geometry_set_impl(
           &ctx, viewer_log->geometry, ob_eval->object_to_world, true, ob_eval->type == OB_CURVES);
@@ -1816,6 +1826,7 @@ static bool find_geonode_attribute_rgba(const DupliObject *dupli,
                                         float r_value[4])
 {
   using namespace blender;
+  using namespace blender::bke;
 
   /* Loop over layers from innermost to outermost. */
   for (const int i : IndexRange(ARRAY_SIZE(dupli->instance_data))) {
@@ -1961,8 +1972,8 @@ bool BKE_object_dupli_find_rgba_attribute(
   return false;
 }
 
-bool BKE_view_layer_find_rgba_attribute(struct Scene *scene,
-                                        struct ViewLayer *layer,
+bool BKE_view_layer_find_rgba_attribute(Scene *scene,
+                                        ViewLayer *layer,
                                         const char *name,
                                         float r_value[4])
 {

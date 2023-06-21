@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -1453,8 +1454,8 @@ GHOST_TSuccess GHOST_WindowX11::setWindowCursorGrab(GHOST_TGrabCursorMode mode)
        * properly unless the user moves the mouse */
 
 #if defined(WITH_X11_XINPUT) && defined(USE_X11_XINPUT_WARP)
-      if ((m_system->m_xinput_version.present) &&
-          (m_system->m_xinput_version.major_version >= 2)) {
+      if ((m_system->m_xinput_version.present) && (m_system->m_xinput_version.major_version >= 2))
+      {
         int device_id;
         if (XIGetClientPointer(m_display, None, &device_id) != False) {
           XIWarpPointer(m_display, device_id, None, None, 0, 0, 0, 0, 0, 0);

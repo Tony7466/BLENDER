@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -84,7 +85,8 @@ GPUTexture *DRW_texture_pool_query(DRWTexturePool *pool,
     if ((GPU_texture_format(handle.texture) == format) &&
         (GPU_texture_width(handle.texture) == width) &&
         (GPU_texture_height(handle.texture) == height) &&
-        (GPU_texture_usage(handle.texture) == usage)) {
+        (GPU_texture_usage(handle.texture) == usage))
+    {
       handle.users_bits |= user_bit;
       return handle.texture;
     }

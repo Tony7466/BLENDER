@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -215,19 +217,19 @@ void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
       const PolyCorner &curr_corner = mesh_geometry_.face_corners_[curr_face.start_index_ + idx];
       corner_verts[tot_loop_idx] = mesh_geometry_.global_to_local_vertices_.lookup_default(
           curr_corner.vert_index, 0);
-      tot_loop_idx++;
 
       /* Setup vertex group data, if needed. */
-      if (dverts.is_empty()) {
-        continue;
+      if (!dverts.is_empty()) {
+        const int group_index = curr_face.vertex_group_index;
+        /* Note: face might not belong to any group */
+        if (group_index >= 0 || 1) {
+          MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[corner_verts[tot_loop_idx]],
+                                                       group_index);
+          dw->weight = 1.0f;
+        }
       }
-      const int group_index = curr_face.vertex_group_index;
-      /* Note: face might not belong to any group */
-      if (group_index >= 0 || 1) {
-        MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[corner_verts[tot_loop_idx]],
-                                                     group_index);
-        dw->weight = 1.0f;
-      }
+
+      tot_loop_idx++;
     }
   }
 
@@ -283,7 +285,8 @@ void MeshFromGeometry::create_uv_verts(Mesh *mesh)
     for (int idx = 0; idx < curr_face.corner_count_; ++idx) {
       const PolyCorner &curr_corner = mesh_geometry_.face_corners_[curr_face.start_index_ + idx];
       if (curr_corner.uv_vert_index >= 0 &&
-          curr_corner.uv_vert_index < global_vertices_.uv_vertices.size()) {
+          curr_corner.uv_vert_index < global_vertices_.uv_vertices.size())
+      {
         uv_map.span[tot_loop_idx] = global_vertices_.uv_vertices[curr_corner.uv_vert_index];
         added_uv = true;
       }
@@ -396,7 +399,8 @@ void MeshFromGeometry::create_colors(Mesh *mesh)
   /* Find which vertex color block is for this mesh (if any). */
   for (const auto &block : global_vertices_.vertex_colors) {
     if (mesh_geometry_.vertex_index_min_ >= block.start_vertex_index &&
-        mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size()) {
+        mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size())
+    {
       /* This block is suitable, use colors from it. */
       CustomDataLayer *color_layer = BKE_id_attribute_new(
           &mesh->id, "Color", CD_PROP_COLOR, ATTR_DOMAIN_POINT, nullptr);

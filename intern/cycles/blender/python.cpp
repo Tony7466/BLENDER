@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <Python.h>
 
@@ -163,7 +164,8 @@ static PyObject *create_func(PyObject * /*self*/, PyObject *args)
                         &pyregion,
                         &pyv3d,
                         &pyrv3d,
-                        &preview_osl)) {
+                        &preview_osl))
+  {
     return NULL;
   }
 
@@ -522,7 +524,8 @@ static PyObject *osl_update_node_func(PyObject * /*self*/, PyObject *args)
     }
     else if (param->type.vecsemantics == TypeDesc::POINT ||
              param->type.vecsemantics == TypeDesc::VECTOR ||
-             param->type.vecsemantics == TypeDesc::NORMAL) {
+             param->type.vecsemantics == TypeDesc::NORMAL)
+    {
       socket_type = "NodeSocketVector";
       data_type = BL::NodeSocket::type_VECTOR;
 
@@ -738,7 +741,8 @@ static PyObject *denoise_func(PyObject * /*self*/, PyObject *args, PyObject *key
                                    &pyscene,
                                    &pyviewlayer,
                                    &pyinput,
-                                   &pyoutput)) {
+                                   &pyoutput))
+  {
     return NULL;
   }
 

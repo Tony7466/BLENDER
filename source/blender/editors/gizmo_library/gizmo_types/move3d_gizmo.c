@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgizmolib
@@ -75,7 +77,7 @@ typedef struct MoveInteraction {
   } prev;
 
   /* We could have other snap contexts, for now only support 3D view. */
-  struct SnapObjectContext *snap_context_v3d;
+  SnapObjectContext *snap_context_v3d;
 
 } MoveInteraction;
 
@@ -251,7 +253,8 @@ static int gizmo_move_modal(bContext *C,
     float mval_proj_init[2], mval_proj_curr[2];
     if ((gizmo_window_project_2d(C, gz, inter->init.mval, 2, false, mval_proj_init) == false) ||
         (gizmo_window_project_2d(
-             C, gz, (const float[2]){UNPACK2(event->mval)}, 2, false, mval_proj_curr) == false)) {
+             C, gz, (const float[2]){UNPACK2(event->mval)}, 2, false, mval_proj_curr) == false))
+    {
       return OPERATOR_RUNNING_MODAL;
     }
     sub_v2_v2v2(prop_delta, mval_proj_curr, mval_proj_init);
@@ -277,7 +280,7 @@ static int gizmo_move_modal(bContext *C,
               CTX_data_ensure_evaluated_depsgraph(C),
               region,
               CTX_wm_view3d(C),
-              (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE_RAYCAST),
+              (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE),
               &(const struct SnapObjectParams){
                   .snap_target_select = SCE_SNAP_TARGET_ALL,
                   .edit_mode_type = SNAP_GEOM_EDIT,
@@ -288,7 +291,8 @@ static int gizmo_move_modal(bContext *C,
               NULL,
               &dist_px,
               co,
-              NULL)) {
+              NULL))
+      {
         float matrix_space_inv[4][4];
         invert_m4_m4(matrix_space_inv, gz->matrix_space);
         mul_v3_m4v3(move->prop_co, matrix_space_inv, co);

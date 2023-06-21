@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2015 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -158,12 +159,12 @@ static tGP_Selected *gpencil_select_buffer_ensure(tGP_Selected *buffer_array,
    * This is done in order to keep cache small and improve speed. */
   if (*buffer_used + 1 > *buffer_size) {
     if ((*buffer_size == 0) || (buffer_array == NULL)) {
-      p = MEM_callocN(sizeof(struct tGP_Selected) * GP_SELECT_BUFFER_CHUNK, __func__);
+      p = MEM_callocN(sizeof(tGP_Selected) * GP_SELECT_BUFFER_CHUNK, __func__);
       *buffer_size = GP_SELECT_BUFFER_CHUNK;
     }
     else {
       *buffer_size += GP_SELECT_BUFFER_CHUNK;
-      p = MEM_recallocN(buffer_array, sizeof(struct tGP_Selected) * *buffer_size);
+      p = MEM_recallocN(buffer_array, sizeof(tGP_Selected) * *buffer_size);
     }
 
     if (p == NULL) {
@@ -892,7 +893,8 @@ static bool gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
 
       /* Check that point segment of the bound-box of the selection stroke. */
       if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1]) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) ||
-          (!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1]) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1]))) {
+          (!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1]) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1])))
+      {
         /* Check if point segment of stroke had anything to do with
          * brush region  (either within stroke painted, or on its lines)
          * - this assumes that line-width is irrelevant.
@@ -904,8 +906,8 @@ static bool gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
           pt_active = pt->runtime.pt_orig;
           if (pt_active != NULL) {
             /* If masked and the point is not selected, skip it. */
-            if (GPENCIL_ANY_VERTEX_MASK(gso->mask) &&
-                ((pt_active->flag & GP_SPOINT_SELECT) == 0)) {
+            if (GPENCIL_ANY_VERTEX_MASK(gso->mask) && ((pt_active->flag & GP_SPOINT_SELECT) == 0))
+            {
               continue;
             }
             index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;

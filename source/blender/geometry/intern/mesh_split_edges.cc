@@ -1,7 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_ordered_edge.hh"
+#include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
@@ -12,24 +16,9 @@
 
 namespace blender::geometry {
 
-/* Naively checks if the first vertices and the second vertices are the same. */
-static inline bool naive_edges_equal(const int2 &edge1, const int2 &edge2)
-{
-  return edge1 == edge2;
-}
-
-template<typename T>
-static void copy_to_new_verts(MutableSpan<T> data, const Span<int> new_to_old_verts_map)
-{
-  const Span<T> old_data = data.drop_back(new_to_old_verts_map.size());
-  MutableSpan<T> new_data = data.take_back(new_to_old_verts_map.size());
-  array_utils::gather(old_data, new_to_old_verts_map, new_data);
-}
-
 static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
 {
   /* These types aren't supported for interpolation below. */
-  CustomData_free_layers(&mesh.vdata, CD_BWEIGHT, mesh.totvert);
   CustomData_free_layers(&mesh.vdata, CD_SHAPEKEY, mesh.totvert);
   CustomData_free_layers(&mesh.vdata, CD_CLOTH_ORCO, mesh.totvert);
   CustomData_free_layers(&mesh.vdata, CD_MVERT_SKIN, mesh.totvert);
@@ -46,20 +35,26 @@ static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
       continue;
     }
 
-    attribute_math::convert_to_static_type(attribute.span.type(), [&](auto dummy) {
-      using T = decltype(dummy);
-      copy_to_new_verts(attribute.span.typed<T>(), new_to_old_verts_map);
-    });
+    bke::attribute_math::gather(attribute.span,
+                                new_to_old_verts_map,
+                                attribute.span.take_back(new_to_old_verts_map.size()));
 
     attribute.finish();
   }
   if (float3 *orco = static_cast<float3 *>(
-          CustomData_get_layer_for_write(&mesh.vdata, CD_ORCO, mesh.totvert))) {
-    copy_to_new_verts<float3>({orco, mesh.totvert}, new_to_old_verts_map);
+          CustomData_get_layer_for_write(&mesh.vdata, CD_ORCO, mesh.totvert)))
+  {
+    array_utils::gather(Span(orco, mesh.totvert),
+                        new_to_old_verts_map,
+                        MutableSpan(orco, mesh.totvert).take_back(new_to_old_verts_map.size()));
   }
   if (int *orig_indices = static_cast<int *>(
-          CustomData_get_layer_for_write(&mesh.vdata, CD_ORIGINDEX, mesh.totvert))) {
-    copy_to_new_verts<int>({orig_indices, mesh.totvert}, new_to_old_verts_map);
+          CustomData_get_layer_for_write(&mesh.vdata, CD_ORIGINDEX, mesh.totvert)))
+  {
+    array_utils::gather(
+        Span(orig_indices, mesh.totvert),
+        new_to_old_verts_map,
+        MutableSpan(orig_indices, mesh.totvert).take_back(new_to_old_verts_map.size()));
   }
 }
 
@@ -117,12 +112,8 @@ static void add_new_edges(Mesh &mesh,
     const CPPType &type = attribute.varray.type();
     void *new_data = MEM_malloc_arrayN(new_edges.size(), type.size(), __func__);
 
-    attribute_math::convert_to_static_type(type, [&](auto dummy) {
-      using T = decltype(dummy);
-      const VArray<T> src = attribute.varray.typed<T>();
-      MutableSpan<T> dst(static_cast<T *>(new_data), new_edges.size());
-      array_utils::gather(src, new_to_old_edges_map, dst);
-    });
+    bke::attribute_math::gather(
+        attribute.varray, new_to_old_edges_map, GMutableSpan(type, new_data, new_edges.size()));
 
     /* Free the original attribute as soon as possible to lower peak memory usage. */
     attributes.remove(local_id);
@@ -131,7 +122,8 @@ static void add_new_edges(Mesh &mesh,
 
   int *new_orig_indices = nullptr;
   if (const int *orig_indices = static_cast<const int *>(
-          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX))) {
+          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX)))
+  {
     new_orig_indices = static_cast<int *>(
         MEM_malloc_arrayN(new_edges.size(), sizeof(int), __func__));
     array_utils::gather(Span(orig_indices, mesh.totedge),
@@ -158,70 +150,6 @@ static void add_new_edges(Mesh &mesh,
   }
 }
 
-/**
- * Merge the new_edge into the original edge.
- *
- * NOTE: This function is very specific to the situation and makes a lot of assumptions.
- */
-static void merge_edges(const int orig_edge_i,
-                        const int new_edge_i,
-                        MutableSpan<int> new_corner_edges,
-                        Vector<Vector<int>> &edge_to_loop_map,
-                        Vector<int2> &new_edges,
-                        Vector<int> &new_to_old_edges_map)
-{
-  /* Merge back into the original edge by undoing the topology changes. */
-  BLI_assert(edge_to_loop_map[new_edge_i].size() == 1);
-  const int loop_i = edge_to_loop_map[new_edge_i][0];
-  new_corner_edges[loop_i] = orig_edge_i;
-
-  /* We are putting the last edge in the location of new_edge in all the maps, to remove
-   * new_edge efficiently. We have to update the topology information for this last edge
-   * though. Essentially we are replacing every instance of last_edge_i with new_edge_i. */
-  const int last_edge_i = new_edges.size() - 1;
-  if (last_edge_i != new_edge_i) {
-    BLI_assert(edge_to_loop_map[last_edge_i].size() == 1);
-    const int last_edge_loop_i = edge_to_loop_map[last_edge_i][0];
-    new_corner_edges[last_edge_loop_i] = new_edge_i;
-  }
-
-  /* We can now safely swap-remove. */
-  new_edges.remove_and_reorder(new_edge_i);
-  edge_to_loop_map.remove_and_reorder(new_edge_i);
-  new_to_old_edges_map.remove_and_reorder(new_edge_i);
-}
-
-/**
- * Replace the vertex of an edge with a new one, and update the connected loops.
- *
- * NOTE: This only updates the loops containing the edge and the old vertex. It should therefore
- * also be called on the adjacent edge.
- */
-static void swap_vertex_of_edge(int2 &edge,
-                                const int old_vert,
-                                const int new_vert,
-                                MutableSpan<int> corner_verts,
-                                const Span<int> connected_loops)
-{
-  if (edge[0] == old_vert) {
-    edge[0] = new_vert;
-  }
-  else if (edge[1] == old_vert) {
-    edge[1] = new_vert;
-  }
-  else {
-    BLI_assert_unreachable();
-  }
-
-  for (const int loop_i : connected_loops) {
-    if (corner_verts[loop_i] == old_vert) {
-      corner_verts[loop_i] = new_vert;
-    }
-    /* The old vertex is on the loop containing the adjacent edge. Since this function is also
-     * called on the adjacent edge, we don't replace it here. */
-  }
-}
-
 /** Split the vertex into duplicates so that each fan has a different vertex. */
 static void split_vertex_per_fan(const int vertex,
                                  const int start_offset,
@@ -229,7 +157,6 @@ static void split_vertex_per_fan(const int vertex,
                                  const Span<int> fans,
                                  const Span<int> fan_sizes,
                                  const Span<Vector<int>> edge_to_loop_map,
-                                 MutableSpan<int2> new_edges,
                                  MutableSpan<int> corner_verts,
                                  MutableSpan<int> new_to_old_verts_map)
 {
@@ -241,8 +168,13 @@ static void split_vertex_per_fan(const int vertex,
     new_to_old_verts_map[new_vert_i - orig_verts_num] = vertex;
 
     for (const int edge_i : fans.slice(fan_start, fan_sizes[i])) {
-      swap_vertex_of_edge(
-          new_edges[edge_i], vertex, new_vert_i, corner_verts, edge_to_loop_map[edge_i]);
+      for (const int loop_i : edge_to_loop_map[edge_i]) {
+        if (corner_verts[loop_i] == vertex) {
+          corner_verts[loop_i] = new_vert_i;
+        }
+        /* The old vertex is on the loop containing the adjacent edge. Since this function is also
+         * called on the adjacent edge, we don't replace it here. */
+      }
     }
     fan_start += fan_sizes[i];
   }
@@ -271,7 +203,7 @@ static int adjacent_edge(const Span<int> corner_verts,
  * be used to retrieve the fans from connected_edges.
  */
 static void calc_vertex_fans(const int vertex,
-                             const Span<int> new_corner_verts,
+                             const Span<int> corner_verts,
                              const Span<int> new_corner_edges,
                              const OffsetIndices<int> polys,
                              const Span<Vector<int>> edge_to_loop_map,
@@ -302,7 +234,7 @@ static void calc_vertex_fans(const int vertex,
       /* Add adjacent edges to search stack. */
       for (const int loop_i : edge_to_loop_map[curr_edge_i]) {
         const int adjacent_edge_i = adjacent_edge(
-            new_corner_verts, new_corner_edges, loop_i, polys[loop_to_poly_map[loop_i]], vertex);
+            corner_verts, new_corner_edges, loop_i, polys[loop_to_poly_map[loop_i]], vertex);
 
         /* Find out if this edge was visited already. */
         int i = curr_i + 1;
@@ -344,18 +276,13 @@ static void calc_vertex_fans(const int vertex,
 static void split_edge_per_poly(const int edge_i,
                                 const int new_edge_start,
                                 MutableSpan<Vector<int>> edge_to_loop_map,
-                                MutableSpan<int> corner_edges,
-                                MutableSpan<int2> new_edges,
-                                MutableSpan<int> new_to_old_edges_map)
+                                MutableSpan<int> corner_edges)
 {
   if (edge_to_loop_map[edge_i].size() <= 1) {
     return;
   }
   int new_edge_index = new_edge_start;
   for (const int loop_i : edge_to_loop_map[edge_i].as_span().drop_front(1)) {
-    const int2 &new_edge(new_edges[edge_i]);
-    new_edges[new_edge_index] = new_edge;
-    new_to_old_edges_map[new_edge_index] = edge_i;
     edge_to_loop_map[new_edge_index].append({loop_i});
     corner_edges[loop_i] = new_edge_index;
     new_edge_index++;
@@ -365,71 +292,83 @@ static void split_edge_per_poly(const int edge_i,
 }
 
 void split_edges(Mesh &mesh,
-                 const IndexMask mask,
+                 const IndexMask &mask,
                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   /* Flag vertices that need to be split. */
   Array<bool> should_split_vert(mesh.totvert, false);
   const Span<int2> edges = mesh.edges();
-  for (const int edge_i : mask) {
+  mask.foreach_index([&](const int edge_i) {
     const int2 &edge = edges[edge_i];
     should_split_vert[edge[0]] = true;
     should_split_vert[edge[1]] = true;
-  }
+  });
 
   /* Precalculate topology info. */
-  Array<Vector<int>> vert_to_edge_map = bke::mesh_topology::build_vert_to_edge_map(edges,
-                                                                                   mesh.totvert);
-  Vector<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map_resizable(
-      mesh.corner_edges(), mesh.totedge);
-  Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(mesh.polys());
+  Array<Vector<int>> vert_to_edge_map(mesh.totvert);
+  for (const int i : edges.index_range()) {
+    vert_to_edge_map[edges[i][0]].append(i);
+    vert_to_edge_map[edges[i][1]].append(i);
+  }
+
+  Array<int> orig_edge_to_loop_offsets;
+  Array<int> orig_edge_to_loop_indices;
+  const GroupedSpan<int> orig_edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
+      mesh.corner_edges(), mesh.totedge, orig_edge_to_loop_offsets, orig_edge_to_loop_indices);
+
+  Array<int> loop_to_poly_map = bke::mesh::build_loop_to_poly_map(mesh.polys());
 
   /* Store offsets, so we can split edges in parallel. */
   Array<int> edge_offsets(edges.size());
   Array<int> num_edge_duplicates(edges.size());
   int new_edges_size = edges.size();
-  for (const int edge : mask) {
+  mask.foreach_index([&](const int edge) {
     edge_offsets[edge] = new_edges_size;
     /* We add duplicates of the edge for each poly (except the first). */
-    const int num_connected_loops = edge_to_loop_map[edge].size();
+    const int num_connected_loops = orig_edge_to_loop_map[edge].size();
     const int num_duplicates = std::max(0, num_connected_loops - 1);
     new_edges_size += num_duplicates;
     num_edge_duplicates[edge] = num_duplicates;
-  }
+  });
 
   const OffsetIndices polys = mesh.polys();
+  const Array<int> orig_corner_edges = mesh.corner_edges();
+  IndexMaskMemory memory;
+  const IndexMask loose_edges = IndexMask::from_bits(mesh.loose_edges().is_loose_bits, memory);
 
-  MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
-  Vector<int2> new_edges(new_edges_size);
-  new_edges.as_mutable_span().take_front(edges.size()).copy_from(edges);
 
-  edge_to_loop_map.resize(new_edges_size);
-
-  /* Used for transferring attributes. */
-  Vector<int> new_to_old_edges_map(IndexRange(new_edges.size()).as_span());
+  Vector<Vector<int>> edge_to_loop_map(new_edges_size);
+  threading::parallel_for(edges.index_range(), 512, [&](const IndexRange range) {
+    for (const int i : range) {
+      edge_to_loop_map[i].extend(orig_edge_to_loop_map[i]);
+    }
+  });
 
   /* Step 1: Split the edges. */
   threading::parallel_for(mask.index_range(), 512, [&](IndexRange range) {
     for (const int mask_i : range) {
       const int edge_i = mask[mask_i];
-      split_edge_per_poly(edge_i,
-                          edge_offsets[edge_i],
-                          edge_to_loop_map,
-                          corner_edges,
-                          new_edges,
-                          new_to_old_edges_map);
+      split_edge_per_poly(edge_i, edge_offsets[edge_i], edge_to_loop_map, corner_edges);
     }
   });
 
+  /* Step 1: Split the edges. */
+
+  mask.foreach_index([&](const int edge_i) {
+    split_edge_per_poly(edge_i, edge_offsets[edge_i], edge_to_loop_map, corner_edges);
+  });
+
   /* Step 1.5: Update topology information (can't parallelize). */
-  for (const int edge_i : mask) {
+  mask.foreach_index([&](const int edge_i) {
     const int2 &edge = edges[edge_i];
     for (const int duplicate_i : IndexRange(edge_offsets[edge_i], num_edge_duplicates[edge_i])) {
       vert_to_edge_map[edge[0]].append(duplicate_i);
       vert_to_edge_map[edge[1]].append(duplicate_i);
     }
-  }
+  });
+
+  MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
 
   /* Step 2: Calculate vertex fans. */
   Array<Vector<int>> vertex_fan_sizes(mesh.totvert);
@@ -476,39 +415,43 @@ void split_edges(Mesh &mesh,
                            vert_to_edge_map[vert],
                            vertex_fan_sizes[vert],
                            edge_to_loop_map,
-                           new_edges,
                            corner_verts,
                            new_to_old_verts_map);
     }
   });
 
-  /* Step 4: Deduplicate edges. We loop backwards so we can use remove_and_reorder. Although this
-   * does look bad (3 nested loops), in practice the inner loops are very small. For most meshes,
-   * there are at most 2 polygons connected to each edge, and hence you'll only get at most 1
-   * duplicate per edge. */
-  for (int mask_i = mask.size() - 1; mask_i >= 0; mask_i--) {
-    const int edge = mask[mask_i];
-    int start_of_duplicates = edge_offsets[edge];
-    int end_of_duplicates = start_of_duplicates + num_edge_duplicates[edge] - 1;
-    for (int duplicate = end_of_duplicates; duplicate >= start_of_duplicates; duplicate--) {
-      if (naive_edges_equal(new_edges[edge], new_edges[duplicate])) {
-        merge_edges(
-            edge, duplicate, corner_edges, edge_to_loop_map, new_edges, new_to_old_edges_map);
-        break;
-      }
-      for (int other = start_of_duplicates; other < duplicate; other++) {
-        if (naive_edges_equal(new_edges[other], new_edges[duplicate])) {
-          merge_edges(
-              other, duplicate, corner_edges, edge_to_loop_map, new_edges, new_to_old_edges_map);
-          break;
-        }
-      }
+  VectorSet<OrderedEdge> new_edges;
+  new_edges.reserve(new_edges_size + loose_edges.size());
+  for (const int i : polys.index_range()) {
+    const IndexRange poly = polys[i];
+    for (const int corner : poly) {
+      const int vert_1 = corner_verts[corner];
+      const int vert_2 = corner_verts[bke::mesh::poly_corner_next(poly, corner)];
+      corner_edges[corner] = new_edges.index_of_or_add_as(OrderedEdge(vert_1, vert_2));
+    }
+  }
+  loose_edges.foreach_index([&](const int64_t i) { new_edges.add(OrderedEdge(edges[i])); });
+
+  Array<int> new_to_old_edges_map(new_edges.size());
+  auto index_mask_to_indices = [&](const IndexMask &mask, MutableSpan<int> indices) {
+    for (const int i : mask.index_range()) {
+      indices[i] = mask[i];
+    }
+  };
+  index_mask_to_indices(loose_edges,
+                        new_to_old_edges_map.as_mutable_span().take_back(loose_edges.size()));
+  for (const int i : polys.index_range()) {
+    const IndexRange poly = polys[i];
+    for (const int corner : poly) {
+      const int new_edge_i = corner_edges[corner];
+      const int old_edge_i = orig_corner_edges[corner];
+      new_to_old_edges_map[new_edge_i] = old_edge_i;
     }
   }
 
   /* Step 5: Resize the mesh to add the new vertices and rebuild the edges. */
   add_new_vertices(mesh, new_to_old_verts_map);
-  add_new_edges(mesh, new_edges, new_to_old_edges_map, propagation_info);
+  add_new_edges(mesh, new_edges.as_span().cast<int2>(), new_to_old_edges_map, propagation_info);
 
   BKE_mesh_tag_edges_split(&mesh);
 }

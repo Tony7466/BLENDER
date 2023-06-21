@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -134,6 +135,7 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   mesh_dst->runtime->verts_no_face_cache = mesh_src->runtime->verts_no_face_cache;
   mesh_dst->runtime->loose_edges_cache = mesh_src->runtime->loose_edges_cache;
   mesh_dst->runtime->looptris_cache = mesh_src->runtime->looptris_cache;
+  mesh_dst->runtime->looptri_polys_cache = mesh_src->runtime->looptri_polys_cache;
 
   /* Only do tessface if we have no polys. */
   const bool do_tessface = ((mesh_src->totface != 0) && (mesh_src->totpoly == 0));
@@ -180,7 +182,7 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   }
 }
 
-void BKE_mesh_free_editmesh(struct Mesh *mesh)
+void BKE_mesh_free_editmesh(Mesh *mesh)
 {
   if (mesh->edit_mesh == nullptr) {
     return;
@@ -256,68 +258,10 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
     mesh->poly_offset_indices = nullptr;
   }
   else {
-    Set<std::string> names_to_skip;
-    if (!BLO_write_is_undo(writer)) {
-      /* When converting to the old mesh format, don't save redundant attributes. */
-      names_to_skip.add_multiple_new({"position",
-                                      ".edge_verts",
-                                      ".corner_vert",
-                                      ".corner_edge",
-                                      ".hide_vert",
-                                      ".hide_edge",
-                                      ".hide_poly",
-                                      ".uv_seam",
-                                      ".select_vert",
-                                      ".select_edge",
-                                      ".select_poly",
-                                      "material_index",
-                                      "sharp_face",
-                                      "sharp_edge"});
-
-      mesh->mvert = BKE_mesh_legacy_convert_positions_to_verts(
-          mesh, temp_arrays_for_legacy_format, vert_layers);
-      mesh->mloop = BKE_mesh_legacy_convert_corners_to_loops(
-          mesh, temp_arrays_for_legacy_format, loop_layers);
-      mesh->medge = BKE_mesh_legacy_convert_edges_to_medge(
-          mesh, temp_arrays_for_legacy_format, edge_layers);
-
-      MutableSpan<MPoly> legacy_polys = BKE_mesh_legacy_convert_offsets_to_polys(
-          mesh, temp_arrays_for_legacy_format, poly_layers);
-
-      BKE_mesh_legacy_convert_hide_layers_to_flags(mesh, legacy_polys);
-      BKE_mesh_legacy_convert_selection_layers_to_flags(mesh, legacy_polys);
-      BKE_mesh_legacy_convert_material_indices_to_mpoly(mesh, legacy_polys);
-      BKE_mesh_legacy_sharp_faces_to_flags(mesh, legacy_polys);
-      BKE_mesh_legacy_bevel_weight_from_layers(mesh);
-      BKE_mesh_legacy_edge_crease_from_layers(mesh);
-      BKE_mesh_legacy_sharp_edges_to_flags(mesh);
-      BKE_mesh_legacy_uv_seam_to_flags(mesh);
-      BKE_mesh_legacy_attribute_strings_to_flags(mesh);
-      mesh->active_color_attribute = nullptr;
-      mesh->default_color_attribute = nullptr;
-      BKE_mesh_legacy_convert_loose_edges_to_flag(mesh);
-      mesh->poly_offset_indices = nullptr;
-
-      /* Set deprecated mesh data pointers for forward compatibility. */
-      mesh->mpoly = legacy_polys.data();
-      mesh->dvert = const_cast<MDeformVert *>(mesh->deform_verts().data());
-    }
-
-    CustomData_blend_write_prepare(mesh->vdata, vert_layers, names_to_skip);
-    CustomData_blend_write_prepare(mesh->edata, edge_layers, names_to_skip);
-    CustomData_blend_write_prepare(mesh->ldata, loop_layers, names_to_skip);
-    CustomData_blend_write_prepare(mesh->pdata, poly_layers, names_to_skip);
-
-    if (!BLO_write_is_undo(writer)) {
-      /* #CustomData expects the layers to be sorted in increasing order based on type. */
-      std::stable_sort(
-          poly_layers.begin(),
-          poly_layers.end(),
-          [](const CustomDataLayer &a, const CustomDataLayer &b) { return a.type < b.type; });
-
-      BKE_mesh_legacy_convert_uvs_to_struct(mesh, temp_arrays_for_legacy_format, loop_layers);
-      BKE_mesh_legacy_face_set_from_generic(poly_layers);
-    }
+    CustomData_blend_write_prepare(mesh->vdata, vert_layers, {});
+    CustomData_blend_write_prepare(mesh->edata, edge_layers, {});
+    CustomData_blend_write_prepare(mesh->ldata, loop_layers, {});
+    CustomData_blend_write_prepare(mesh->pdata, poly_layers, {});
   }
 
   mesh->runtime = nullptr;
@@ -419,16 +363,16 @@ static void mesh_blend_read_lib(BlendLibReader *reader, ID *id)
   /* this check added for python created meshes */
   if (me->mat) {
     for (int i = 0; i < me->totcol; i++) {
-      BLO_read_id_address(reader, me->id.lib, &me->mat[i]);
+      BLO_read_id_address(reader, id, &me->mat[i]);
     }
   }
   else {
     me->totcol = 0;
   }
 
-  BLO_read_id_address(reader, me->id.lib, &me->ipo);  // XXX: deprecated: old anim sys
-  BLO_read_id_address(reader, me->id.lib, &me->key);
-  BLO_read_id_address(reader, me->id.lib, &me->texcomesh);
+  BLO_read_id_address(reader, id, &me->ipo);  // XXX: deprecated: old anim sys
+  BLO_read_id_address(reader, id, &me->key);
+  BLO_read_id_address(reader, id, &me->texcomesh);
 }
 
 static void mesh_read_expand(BlendExpander *expander, ID *id)
@@ -565,7 +509,8 @@ static int customdata_compare(
   for (int i = 0; i < c1->totlayer; i++) {
     l1 = &c1->layers[i];
     if ((CD_TYPE_AS_MASK(l1->type) & cd_mask_all_attr) && l1->anonymous_id == nullptr &&
-        !is_uv_bool_sublayer(*l1)) {
+        !is_uv_bool_sublayer(*l1))
+    {
       layer_count1++;
     }
   }
@@ -573,7 +518,8 @@ static int customdata_compare(
   for (int i = 0; i < c2->totlayer; i++) {
     l2 = &c2->layers[i];
     if ((CD_TYPE_AS_MASK(l2->type) & cd_mask_all_attr) && l2->anonymous_id == nullptr &&
-        !is_uv_bool_sublayer(*l2)) {
+        !is_uv_bool_sublayer(*l2))
+    {
       layer_count2++;
     }
   }
@@ -715,6 +661,26 @@ static int customdata_compare(
           }
           break;
         }
+        case CD_PROP_QUATERNION: {
+          const float(*l1_data)[4] = (float(*)[4])l1->data;
+          const float(*l2_data)[4] = (float(*)[4])l2->data;
+
+          for (int i = 0; i < total_length; i++) {
+            if (compare_threshold_relative(l1_data[i][0], l2_data[i][0], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+            if (compare_threshold_relative(l1_data[i][1], l2_data[i][1], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+            if (compare_threshold_relative(l1_data[i][2], l2_data[i][2], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+            if (compare_threshold_relative(l1_data[i][3], l2_data[i][3], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+          }
+          break;
+        }
         case CD_PROP_INT32: {
           const int *l1_data = (int *)l1->data;
           const int *l2_data = (int *)l2->data;
@@ -800,7 +766,8 @@ const char *BKE_mesh_cmp(Mesh *me1, Mesh *me2, float thresh)
   }
 
   if (!std::equal(
-          me1->poly_offsets().begin(), me1->poly_offsets().end(), me2->poly_offsets().begin())) {
+          me1->poly_offsets().begin(), me1->poly_offsets().end(), me2->poly_offsets().begin()))
+  {
     return "Face sizes don't match";
   }
 
@@ -859,44 +826,6 @@ void BKE_mesh_ensure_skin_customdata(Mesh *me)
       }
     }
   }
-}
-
-bool BKE_mesh_ensure_facemap_customdata(struct Mesh *me)
-{
-  BMesh *bm = me->edit_mesh ? me->edit_mesh->bm : nullptr;
-  bool changed = false;
-  if (bm) {
-    if (!CustomData_has_layer(&bm->pdata, CD_FACEMAP)) {
-      BM_data_layer_add(bm, &bm->pdata, CD_FACEMAP);
-      changed = true;
-    }
-  }
-  else {
-    if (!CustomData_has_layer(&me->pdata, CD_FACEMAP)) {
-      CustomData_add_layer(&me->pdata, CD_FACEMAP, CD_SET_DEFAULT, me->totpoly);
-      changed = true;
-    }
-  }
-  return changed;
-}
-
-bool BKE_mesh_clear_facemap_customdata(struct Mesh *me)
-{
-  BMesh *bm = me->edit_mesh ? me->edit_mesh->bm : nullptr;
-  bool changed = false;
-  if (bm) {
-    if (CustomData_has_layer(&bm->pdata, CD_FACEMAP)) {
-      BM_data_layer_free(bm, &bm->pdata, CD_FACEMAP);
-      changed = true;
-    }
-  }
-  else {
-    if (CustomData_has_layer(&me->pdata, CD_FACEMAP)) {
-      CustomData_free_layers(&me->pdata, CD_FACEMAP, me->totpoly);
-      changed = true;
-    }
-  }
-  return changed;
 }
 
 bool BKE_mesh_has_custom_loop_normals(Mesh *me)
@@ -1007,31 +936,26 @@ void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
   mesh->poly_offset_indices[mesh->totpoly] = mesh->totloop;
 }
 
-int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
+MutableSpan<int> Mesh::poly_offsets_for_write()
 {
+  if (this->totpoly == 0) {
+    return {};
+  }
   blender::implicit_sharing::make_trivial_data_mutable(
-      &mesh->poly_offset_indices, &mesh->runtime->poly_offsets_sharing_info, mesh->totpoly + 1);
-  return mesh->poly_offset_indices;
+      &this->poly_offset_indices, &this->runtime->poly_offsets_sharing_info, this->totpoly + 1);
+  return {this->poly_offset_indices, this->totpoly + 1};
 }
 
 static void mesh_ensure_cdlayers_primary(Mesh &mesh)
 {
-  if (!CustomData_get_layer_named(&mesh.vdata, CD_PROP_FLOAT3, "position")) {
-    CustomData_add_layer_named(
-        &mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh.totvert, "position");
-  }
-  if (!CustomData_get_layer_named(&mesh.edata, CD_PROP_INT32_2D, ".edge_verts")) {
-    CustomData_add_layer_named(
-        &mesh.edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
-  }
-  if (!CustomData_get_layer_named(&mesh.ldata, CD_PROP_INT32, ".corner_vert")) {
-    CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh.totloop, ".corner_vert");
-  }
-  if (!CustomData_get_layer_named(&mesh.ldata, CD_PROP_INT32, ".corner_edge")) {
-    CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh.totloop, ".corner_edge");
-  }
+  blender::bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  blender::bke::AttributeInitConstruct attribute_init;
+
+  /* Try to create attributes if they do not exist. */
+  attributes.add("position", ATTR_DOMAIN_POINT, CD_PROP_FLOAT3, attribute_init);
+  attributes.add(".edge_verts", ATTR_DOMAIN_EDGE, CD_PROP_INT32_2D, attribute_init);
+  attributes.add(".corner_vert", ATTR_DOMAIN_CORNER, CD_PROP_INT32, attribute_init);
+  attributes.add(".corner_edge", ATTR_DOMAIN_CORNER, CD_PROP_INT32, attribute_init);
 }
 
 Mesh *BKE_mesh_new_nomain(const int verts_num,
@@ -1168,7 +1092,7 @@ Mesh *BKE_mesh_new_nomain_from_template(const Mesh *me_src,
       me_src, verts_num, edges_num, 0, polys_num, loops_num, CD_MASK_EVERYTHING);
 }
 
-void BKE_mesh_eval_delete(struct Mesh *mesh_eval)
+void BKE_mesh_eval_delete(Mesh *mesh_eval)
 {
   /* Evaluated mesh may point to edit mesh, but never owns it. */
   mesh_eval->edit_mesh = nullptr;
@@ -1184,8 +1108,8 @@ Mesh *BKE_mesh_copy_for_eval(const Mesh *source)
 }
 
 BMesh *BKE_mesh_to_bmesh_ex(const Mesh *me,
-                            const struct BMeshCreateParams *create_params,
-                            const struct BMeshFromMeshParams *convert_params)
+                            const BMeshCreateParams *create_params,
+                            const BMeshFromMeshParams *convert_params)
 {
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(me);
 
@@ -1198,7 +1122,7 @@ BMesh *BKE_mesh_to_bmesh_ex(const Mesh *me,
 BMesh *BKE_mesh_to_bmesh(Mesh *me,
                          Object *ob,
                          const bool add_key_index,
-                         const struct BMeshCreateParams *params)
+                         const BMeshCreateParams *params)
 {
   BMeshFromMeshParams bmesh_from_mesh_params{};
   bmesh_from_mesh_params.calc_face_normal = false;
@@ -1210,7 +1134,7 @@ BMesh *BKE_mesh_to_bmesh(Mesh *me,
 }
 
 Mesh *BKE_mesh_from_bmesh_nomain(BMesh *bm,
-                                 const struct BMeshToMeshParams *params,
+                                 const BMeshToMeshParams *params,
                                  const Mesh *me_settings)
 {
   BLI_assert(params->calc_object_remap == false);
@@ -1316,7 +1240,8 @@ void BKE_mesh_texspace_calc(Mesh *me)
 void BKE_mesh_texspace_ensure(Mesh *me)
 {
   if ((me->texspace_flag & ME_TEXSPACE_FLAG_AUTO) &&
-      !(me->texspace_flag & ME_TEXSPACE_FLAG_AUTO_EVALUATED)) {
+      !(me->texspace_flag & ME_TEXSPACE_FLAG_AUTO_EVALUATED))
+  {
     BKE_mesh_texspace_calc(me);
   }
 }
@@ -1348,18 +1273,6 @@ void BKE_mesh_texspace_get_reference(Mesh *me,
   }
   if (r_texspace_size != nullptr) {
     *r_texspace_size = me->texspace_size;
-  }
-}
-
-void BKE_mesh_texspace_copy_from_object(Mesh *me, Object *ob)
-{
-  float *texspace_location, *texspace_size;
-  char *texspace_flag;
-
-  if (BKE_object_obdata_texspace_get(ob, &texspace_flag, &texspace_location, &texspace_size)) {
-    me->texspace_flag = *texspace_flag;
-    copy_v3_v3(me->texspace_location, texspace_location);
-    copy_v3_v3(me->texspace_size, texspace_size);
   }
 }
 
@@ -1589,21 +1502,15 @@ void BKE_mesh_looptri_get_real_edges(const blender::int2 *edges,
   }
 }
 
-bool BKE_mesh_minmax(const Mesh *me, float r_min[3], float r_max[3])
+std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
 {
   using namespace blender;
-  if (me->totvert == 0) {
-    return false;
+  if (this->totvert == 0) {
+    return std::nullopt;
   }
-
-  me->runtime->bounds_cache.ensure(
-      [me](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(me->vert_positions()); });
-
-  const Bounds<float3> &bounds = me->runtime->bounds_cache.data();
-  copy_v3_v3(r_min, math::min(bounds.min, float3(r_min)));
-  copy_v3_v3(r_max, math::max(bounds.max, float3(r_max)));
-
-  return true;
+  this->runtime->bounds_cache.ensure(
+      [&](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(this->vert_positions()); });
+  return this->runtime->bounds_cache.data();
 }
 
 void Mesh::bounds_set_eager(const blender::Bounds<float3> &bounds)

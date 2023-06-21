@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -381,7 +382,8 @@ void scene_minimize_unused_view_layers(const Depsgraph *depsgraph,
   for (ViewLayer *view_layer_cow = reinterpret_cast<ViewLayer *>(scene_cow->view_layers.first),
                  *view_layer_next;
        view_layer_cow != nullptr;
-       view_layer_cow = view_layer_next) {
+       view_layer_cow = view_layer_next)
+  {
     view_layer_next = view_layer_cow->next;
     if (view_layer_input != nullptr && STREQ(view_layer_input->name, view_layer_cow->name)) {
       view_layer_eval = view_layer_cow;
@@ -887,7 +889,8 @@ ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph, const IDNode 
     /* In case we don't need to do a copy-on-write, we can use the update cache of the grease
      * pencil data to do an update-on-write. */
     if (id_type == ID_GD_LEGACY && BKE_gpencil_can_avoid_full_copy_on_write(
-                                       (const ::Depsgraph *)depsgraph, (bGPdata *)id_orig)) {
+                                       (const ::Depsgraph *)depsgraph, (bGPdata *)id_orig))
+    {
       BKE_gpencil_update_on_write((bGPdata *)id_orig, (bGPdata *)id_cow);
       return id_cow;
     }
@@ -1022,7 +1025,7 @@ void deg_free_copy_on_write_datablock(ID *id_cow)
   id_cow->name[0] = '\0';
 }
 
-void deg_evaluate_copy_on_write(struct ::Depsgraph *graph, const IDNode *id_node)
+void deg_evaluate_copy_on_write(::Depsgraph *graph, const IDNode *id_node)
 {
   const Depsgraph *depsgraph = reinterpret_cast<const Depsgraph *>(graph);
   DEG_debug_print_eval(graph, __func__, id_node->id_orig->name, id_node->id_cow);

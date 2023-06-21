@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -84,7 +85,8 @@ static void deformStroke(GpencilModifierData *md,
                                       mmd->flag & GP_SHRINKWRAP_INVERT_LAYER,
                                       mmd->flag & GP_SHRINKWRAP_INVERT_PASS,
                                       mmd->flag & GP_SHRINKWRAP_INVERT_LAYERPASS,
-                                      mmd->flag & GP_SHRINKWRAP_INVERT_MATERIAL)) {
+                                      mmd->flag & GP_SHRINKWRAP_INVERT_MATERIAL))
+  {
     return;
   }
 
@@ -253,7 +255,8 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   if (ELEM(wrap_method,
            MOD_SHRINKWRAP_PROJECT,
            MOD_SHRINKWRAP_NEAREST_SURFACE,
-           MOD_SHRINKWRAP_TARGET_PROJECT)) {
+           MOD_SHRINKWRAP_TARGET_PROJECT))
+  {
     uiItemR(layout, ptr, "wrap_mode", 0, NULL, ICON_NONE);
   }
 
