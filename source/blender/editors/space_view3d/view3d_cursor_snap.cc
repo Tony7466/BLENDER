@@ -1013,7 +1013,8 @@ V3DSnapCursorState *ED_view3d_cursor_snap_state_create(void)
     v3d_cursor_snap_activate();
   }
 
-  SnapStateIntern *state_intern = MEM_cnew<SnapStateIntern>(__func__);
+  SnapStateIntern *state_intern = static_cast<SnapStateIntern *>(
+      MEM_mallocN(sizeof(*state_intern), __func__));
   state_intern->snap_state = g_data_intern.state_default;
   BLI_addtail(&g_data_intern.state_intern, state_intern);
 
