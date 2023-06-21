@@ -45,6 +45,7 @@ eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
 
 namespace blender::ed::greasepencil {
 
+bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 
