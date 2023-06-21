@@ -297,7 +297,7 @@ ShadowSample shadow_map_trace(const int sample_count,
    * This reverse tracing allows to approximate the geometry behind occluders while minimizing
    * light-leaks.
    */
-  float time_offset = sampling_rng_1D_get(SAMPLING_SHADOW_X);
+  float time_offset = sampling_rng_1D_get(SAMPLING_SHADOW_U);
   /* We trace the ray in reverse. From 1.0 (light) to 0.0 (shading point). */
   const float ray_time_mul = -1.0 / float(sample_count);
   const float ray_time_bias = 1.0 + time_offset * ray_time_mul;
