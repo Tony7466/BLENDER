@@ -847,6 +847,7 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
     area_actionzone_get_rect(az, &az_rect);
     if (BLI_rcti_isect_pt_v(&az_rect, xy))
     {
+
       if (az->type == AZONE_AREA) {
         break;
       }
@@ -934,7 +935,7 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
             float dist_fac = 0.0f, alpha = 0.0f;
 
             if (az->direction == AZ_SCROLL_HOR) {
-              float hide_width = (az->y2 - az->y1) / 2.0f;
+              float hide_width = V2D_SCROLL_HIDE_WIDTH;
               dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / hide_width;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
@@ -942,7 +943,7 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
               v2d->alpha_hor = alpha * 255;
             }
             else if (az->direction == AZ_SCROLL_VERT) {
-              float hide_width = (az->x2 - az->x1) / 2.0f;
+              float hide_width = V2D_SCROLL_HIDE_HEIGHT;
               dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / hide_width;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
