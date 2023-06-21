@@ -45,6 +45,8 @@ static bool rna_USDHook_unregister(Main *bmain, StructRNA *type)
   /* unlink Blender-side data */
    USD_unregister_hook(hook);
 
+   MEM_freeN(hook);
+
    return true;
 }
 

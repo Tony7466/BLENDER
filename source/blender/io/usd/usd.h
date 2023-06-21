@@ -154,13 +154,12 @@ void USD_CacheReader_free(struct CacheReader *reader);
 
 /* Data for registering USD IO hooks. */
 typedef struct USDHook {
-  struct USDHook *next, *prev;
 
-  /* identifier used for class name, which KeyingSet instances reference as "Typeinfo Name" */
+  /* Identifier used for class name. */
   char idname[64];
-  /* identifier so that user can hook this up to a KeyingSet (used as label). */
+  /* Identifier used as label. */
   char name[64];
-  /* short help/description. */
+  /* Short help/description. */
   char description[1024]; /* #RNA_DYN_DESCR_MAX */
 
   /* rna_ext.data points to the USDHook class PyObject. */
@@ -168,6 +167,10 @@ typedef struct USDHook {
 } USDHook;
 
 void USD_register_hook(struct USDHook *hook);
+/* Remove the given entry from the list of registered hooks.
+ * Note that this does not free the allocated memory for the
+ * hook instance, so a separate call to MEM_freeN(hook) is
+ * required.  */
 void USD_unregister_hook(struct USDHook *hook);
 USDHook *USD_find_hook_name(const char name[]);
 
