@@ -61,6 +61,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "BLI_string_utils.h"
+
 const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {{SOCK_IN, "IN", 0, "Input", ""},
                                                               {SOCK_OUT, "OUT", 0, "Output", ""},
                                                               {0, nullptr, 0, nullptr, nullptr}};
@@ -4276,8 +4278,33 @@ static bool set_serial_loop_item_unique_name(NodeGeometrySerialLoopOutput *stora
                                              const char *name,
                                              const char *defname)
 {
-  /* TODO */
-  return true;
+  char unique_name[MAX_NAME + 4];
+  STRNCPY(unique_name, name);
+
+  struct Args {
+    NodeGeometrySerialLoopOutput *storage;
+    const NodeSerialLoopItem *item;
+  } args = {storage, item};
+
+  const bool name_changed = BLI_uniquename_cb(
+      [](void *arg, const char *name) {
+        const Args &args = *static_cast<Args *>(arg);
+        for (const NodeSerialLoopItem &item : args.storage->items_span()) {
+          if (&item != args.item) {
+            if (STREQ(item.name, name)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      &args,
+      defname,
+      '.',
+      unique_name,
+      ARRAY_SIZE(unique_name));
+  item->name = BLI_strdup(unique_name);
+  return name_changed;
 }
 
 static void rna_SerialLoopItem_name_set(PointerRNA *ptr, const char *value)
