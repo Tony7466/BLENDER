@@ -111,7 +111,7 @@ static openvdb::FloatGrid::Ptr mesh_to_fog_volume_grid(
     const float interior_band_width,
     const float density)
 {
-  if (voxel_size < 1e-5f || interior_band_width <= 0.0f) {
+  if (voxel_size < 1e-5f) {
     return nullptr;
   }
 
@@ -121,7 +121,7 @@ static openvdb::FloatGrid::Ptr mesh_to_fog_volume_grid(
   mesh_to_index_space_transform.location() -= 0.5f;
 
   OpenVDBMeshAdapter mesh_adapter{*mesh, mesh_to_index_space_transform};
-  const float interior = std::max(1.0f, interior_band_width / voxel_size);
+  const float interior = std::max(1.0f, std::max(interior_band_width, 0.00001f) / voxel_size);
 
   openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(
       voxel_size);
