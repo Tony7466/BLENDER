@@ -75,6 +75,7 @@
 #include "ED_curve.h"
 #include "ED_curves.h"
 #include "ED_gpencil_legacy.h"
+#include "ED_grease_pencil.h"
 #include "ED_lattice.h"
 #include "ED_mball.h"
 #include "ED_mesh.h"
@@ -141,9 +142,10 @@ void ED_view3d_viewcontext_init_object(ViewContext *vc, Object *obact)
   }
 }
 
-eAttrDomain ED_view3d_grease_pencil_selection_domain_get(bContext *C)
+eAttrDomain ED_view3d_grease_pencil_selection_domain_get(bContext *C, bool *segment_mode)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
+  *segment_mode = false;
 
   switch (ts->gpencil_selectmode_edit) {
     case GP_SELECTMODE_POINT:
@@ -153,6 +155,7 @@ eAttrDomain ED_view3d_grease_pencil_selection_domain_get(bContext *C)
       return ATTR_DOMAIN_CURVE;
       break;
     case GP_SELECTMODE_SEGMENT:
+      *segment_mode = true;
       return ATTR_DOMAIN_POINT;
       break;
   }
@@ -1201,7 +1204,17 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
 
   /* Get selection domain from tool settings. */
-  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(vc->C);
+  bool segment_mode;
+  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(vc->C,
+                                                                                    &segment_mode);
+
+  /* In segment mode, we expand the point selection to segments after the selection has changed.
+   * For checking segment intersections, we use strokes converted to viewport 2D space. */
+  int curve_offset = 0;
+  Vector<ed::greasepencil::Stroke2DSpace> strokes_2d;
+  if (segment_mode) {
+    strokes_2d = ed::greasepencil::editable_strokes_in_2d_space_get(vc, &grease_pencil);
+  }
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
@@ -1210,13 +1223,27 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, drawing_index);
 
-        changed = ed::curves::select_lasso(
+        /* In segment mode, store the pre-change point selection. */
+        Vector<bool> selection_before;
+        if (segment_mode) {
+          selection_before = ed::greasepencil::point_selection_get(&drawing);
+        }
+
+        const bool selection_changed = ed::curves::select_lasso(
             *vc,
             drawing.geometry.wrap(),
             deformation.positions,
             selection_domain,
             Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
             sel_op);
+        changed |= selection_changed;
+
+        /* In segment mode, expand the changed point selection to segments. */
+        if (segment_mode && selection_changed) {
+          ed::greasepencil::expand_changed_selection_to_segments(
+              selection_before, drawing.geometry.wrap(), curve_offset, strokes_2d);
+        }
+        curve_offset += drawing.geometry.curve_num;
       });
 
   if (changed) {
@@ -3191,7 +3218,9 @@ static bool ed_grease_pencil_select_pick(bContext *C,
                                          });
 
   /* Get selection domain from tool settings. */
-  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(C);
+  bool segment_mode;
+  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(C,
+                                                                                    &segment_mode);
 
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
       drawings.index_range(),
@@ -3250,11 +3279,28 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     return deselected;
   }
 
+  /* In segment mode, we expand the point selection to segments after the selection has changed.
+   * For checking segment intersections, we use strokes converted to viewport 2D space. */
+  Vector<ed::greasepencil::Stroke2DSpace> strokes_2d;
+  Vector<bool> selection_before;
+  if (segment_mode) {
+    strokes_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
+    /* Store the pre-change point selection. */
+    selection_before = ed::greasepencil::point_selection_get(closest.drawing);
+  }
+
+  /* Apply the 'select pick'. */
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       closest.drawing->geometry.wrap(), selection_domain, CD_PROP_BOOL);
   ed::curves::apply_selection_operation_at_index(
       selection.span, closest.elem.index, params.sel_op);
   selection.finish();
+
+  /* In segment mode, expand the changed point selection to segments. */
+  if (segment_mode) {
+    ed::greasepencil::expand_changed_selection_to_segments(
+        selection_before, closest.drawing->geometry.wrap(), 0, strokes_2d);
+  }
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
    * generic attribute for now. */
@@ -4207,7 +4253,17 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
 
   /* Get selection domain from tool settings. */
-  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(vc->C);
+  bool segment_mode;
+  const eAttrDomain selection_domain = ED_view3d_grease_pencil_selection_domain_get(vc->C,
+                                                                                    &segment_mode);
+
+  /* In segment mode, we expand the point selection to segments after the selection has changed.
+   * For checking segment intersections, we use strokes converted to viewport 2D space. */
+  int curve_offset = 0;
+  Vector<ed::greasepencil::Stroke2DSpace> strokes_2d;
+  if (segment_mode) {
+    strokes_2d = ed::greasepencil::editable_strokes_in_2d_space_get(vc, &grease_pencil);
+  }
 
   bool changed = false;
   grease_pencil.foreach_editable_drawing(
@@ -4215,8 +4271,28 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, drawing_index);
-        changed |= ed::curves::select_box(
+
+        /* In segment mode, store the pre-change point selection. */
+        Vector<bool> selection_before;
+        if (segment_mode) {
+          selection_before = ed::greasepencil::point_selection_get(&drawing);
+
+          /* When the box selection will be replaced, clear the stored selection. */
+          if (sel_op == SEL_OP_SET) {
+            selection_before.fill(false);
+          }
+        }
+
+        const bool selection_changed = ed::curves::select_box(
             *vc, drawing.geometry.wrap(), deformation.positions, selection_domain, *rect, sel_op);
+        changed |= selection_changed;
+
+        /* In segment mode, expand the changed point selection to segments. */
+        if (segment_mode && selection_changed) {
+          ed::greasepencil::expand_changed_selection_to_segments(
+              selection_before, drawing.geometry.wrap(), curve_offset, strokes_2d);
+        }
+        curve_offset += drawing.geometry.curve_num;
       });
 
   if (changed) {
