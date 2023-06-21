@@ -215,10 +215,6 @@ void ED_area_tag_refresh(ScrArea *area);
  * Only exported for WM.
  */
 void ED_area_do_refresh(struct bContext *C, ScrArea *area);
-
-struct AZone *ED_area_actionzone_find_by_type(const struct ScrArea *area,
-                                              const struct ARegion *region,
-                                              int azone_type);
 struct AZone *ED_area_azones_update(ScrArea *area, const int mouse_xy[2]);
 
 /**

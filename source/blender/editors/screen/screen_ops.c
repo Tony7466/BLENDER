@@ -816,17 +816,37 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   return false;
 }
 
+static void area_actionzone_get_rect(AZone *az, rcti *rect)
+{
+  if (az->type == AZONE_REGION_SCROLL) {
+    rcti scroller_vert = (az->direction == AZ_SCROLL_HOR) ? az->region->v2d.hor :
+                                                            az->region->v2d.vert;
+    BLI_rcti_translate(&scroller_vert, az->region->winrct.xmin, az->region->winrct.ymin);
+    rect->xmin = scroller_vert.xmin - ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymin = scroller_vert.ymin -
+                  ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+    rect->xmax = scroller_vert.xmax +
+                  ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymax = scroller_vert.ymax +
+                  ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+  }
+  else if (az->type == AZONE_REGION) {
+    azone_clipped_rect_calc(az, rect);
+  }
+  else {
+    *rect = az->rect;
+  }
+}
+
 static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const bool test_only)
 {
   AZone *az = NULL;
 
   for (az = area->actionzones.first; az; az = az->next) {
-    rcti az_rect_clip;
-    if (BLI_rcti_isect_pt_v(&az->rect, xy) &&
-        /* Check clipping if this is clipped */
-        (!azone_clipped_rect_calc(az, &az_rect_clip) || BLI_rcti_isect_pt_v(&az_rect_clip, xy)))
+    rcti az_rect;
+    area_actionzone_get_rect(az, &az_rect);
+    if (BLI_rcti_isect_pt_v(&az_rect, xy))
     {
-
       if (az->type == AZONE_AREA) {
         break;
       }
@@ -995,16 +1015,6 @@ static ScrArea *screen_actionzone_area(bScreen *screen, const AZone *az)
 AZone *ED_area_actionzone_find_xy(ScrArea *area, const int xy[2])
 {
   return area_actionzone_refresh_xy(area, xy, true);
-}
-
-AZone *ED_area_actionzone_find_by_type(ScrArea *area, ARegion *region, int azone_type)
-{
-  LISTBASE_FOREACH (AZone *, az, &area->actionzones) {
-    if (az->region == region && az->type == azone_type) {
-      return az;
-    }
-  }
-  return NULL;
 }
 
 AZone *ED_area_azones_update(ScrArea *area, const int xy[2])

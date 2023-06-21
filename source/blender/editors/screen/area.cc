@@ -3140,14 +3140,6 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
                                                     UI_PANEL_CATEGORY_MARGIN_WIDTH);
     mask.xmax -= category_tabs_width;
     BLI_rcti_translate(&region->v2d.vert, -category_tabs_width, 0);
-
-    /* Adjust the scroller's action zone. */
-    AZone *az = ED_area_actionzone_find_by_type(CTX_wm_area(C), region, AZONE_REGION_SCROLL);
-    if (az) {
-      az->x1 = region->winrct.xmin + region->v2d.vert.xmin - V2D_SCROLL_HIDE_WIDTH;
-      az->x2 = region->winrct.xmin + region->v2d.vert.xmax + V2D_SCROLL_HIDE_WIDTH;
-      BLI_rcti_init(&az->rect, az->x1, az->x2, az->y1, az->y2);
-    }
   }
   bool use_full_hide = false;
   if (region->overlap) {
