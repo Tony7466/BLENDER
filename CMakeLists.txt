@@ -764,6 +764,13 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
   endif()
 endif()
 
+if(CMAKE_COMPILER_IS_GNUCC OR MSVC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
+  option(WITH_COMPILER_DEPRECATE_WARN "Warn on depreated API use." ON)
+  mark_as_advanced(WITH_COMPILER_DEPRECATE_WARN)
+else()
+  set(WITH_COMPILER_DEPRECATE_WARN OFF)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
   option(WITH_COMPILER_SHORT_FILE_MACRO "Make paths in macros like __FILE__ relative to top level source and build directories." ON)
   mark_as_advanced(WITH_COMPILER_SHORT_FILE_MACRO)

@@ -815,6 +815,18 @@ function(ADD_CHECK_CXX_COMPILER_FLAG
   endif()
 endfunction()
 
+macro(add_deprecated_flags)
+  set(_header "${CMAKE_SOURCE_DIR}/intern/deprecate_api/deprecate_api.h")
+  if(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
+    string(APPEND CMAKE_C_FLAGS " -include ${_header}")
+    string(APPEND CMAKE_CXX_FLAGS " -include ${_header}")
+  elseif(MSVC)
+    string(APPEND CMAKE_C_FLAGS " /FI ${_header}")
+    string(APPEND CMAKE_CXX_FLAGS " /FI ${_header}")
+  endif()
+  unset(_header)
+endmacro()
+
 function(get_blender_version)
   # extracts header vars and defines them in the parent scope:
   #

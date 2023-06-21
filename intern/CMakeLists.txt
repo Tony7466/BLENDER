@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+if(WITH_COMPILER_DEPRECATE_WARN)
+  add_deprecated_flags()
+endif()
+
 # add_subdirectory(atomic)  # header only
 add_subdirectory(atomic)
 add_subdirectory(clog)
