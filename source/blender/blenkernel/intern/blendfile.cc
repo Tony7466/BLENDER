@@ -219,11 +219,13 @@ static void setup_app_userdef(BlendFileData *bfd)
   }
 }
 
-/** Helper struct to manage IDs that are re-used across blendfile loading (i.e. moved from the old
- * Main the the new one).
+/**
+ * Helper struct to manage IDs that are re-used across blend-file loading (i.e. moved from the old
+ * Main the new one).
  *
- * NOTE: this is only used when actually loading a real .blend file, loading of memfile undo steps
- * does not need it. */
+ * NOTE: this is only used when actually loading a real `.blend` file,
+ * loading of memfile undo steps does not need it.
+ */
 typedef struct ReuseOldBMainData {
   Main *new_bmain;
   Main *old_bmain;
@@ -416,7 +418,7 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
    * for further processing in WM code. */
   if (load_ui && new_wm != nullptr) {
     /* Support window-manager ID references being held between file load operations by keeping
-     * #Main.wm.first memory address in-place, while swapping all of it's contents.
+     * #Main.wm.first memory address in-place, while swapping all of its contents.
      *
      * This is needed so items such as key-maps can be held by an add-on,
      * without it pointing to invalid memory, see: #86431. */
