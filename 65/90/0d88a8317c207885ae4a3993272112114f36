@@ -3,3 +3,4 @@ Referenced by issue #102337, Regression: Dragging move gizmo causes crash in scu
 Referenced by issue #102067, Regression: Sculpt mode shows entire mesh using only the first material
 Referenced by issue #101467, Regression: Sculpt Mode: Hiding Face Sets will cause glitches
 Referenced by issue #101453, Regression: Immediate crash when switching to sculpt mode
+Referenced by issue #109191, Dyntopo Smooth Shading Bug
