@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -32,6 +31,7 @@
 #include "eevee_sampling.hh"
 #include "eevee_shader.hh"
 #include "eevee_shadow.hh"
+#include "eevee_subsurface.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
 #include "eevee_world.hh"
@@ -50,6 +50,7 @@ class Instance {
   ShaderModule &shaders;
   SyncModule sync;
   MaterialModule materials;
+  SubsurfaceModule subsurface;
   PipelineModule pipelines;
   ShadowModule shadows;
   LightModule lights;
@@ -100,6 +101,7 @@ class Instance {
       : shaders(*ShaderModule::module_get()),
         sync(*this),
         materials(*this),
+        subsurface(*this),
         pipelines(*this),
         shadows(*this),
         lights(*this),

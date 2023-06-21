@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -71,8 +71,7 @@ class Layer;
 /**
  * A TreeNode represents one node in the layer tree.
  * It can either be a layer or a group. The node has zero children if it is a layer or zero or
- more
- * children if it is a group.
+ * more children if it is a group.
  */
 class TreeNode : public ::GreasePencilLayerTreeNode {
  public:

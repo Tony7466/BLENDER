@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -87,6 +86,8 @@ enum eShaderType {
   SHADOW_TILEMAP_TAG_USAGE_OPAQUE,
   SHADOW_TILEMAP_TAG_USAGE_SURFELS,
   SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT,
+
+  SUBSURFACE_EVAL,
 
   SURFEL_LIGHT,
   SURFEL_LIST_BUILD,

@@ -1071,6 +1071,7 @@ using ShadowPageCacheBuf = draw::StorageArrayBuffer<uint2, SHADOW_MAX_PAGE, true
 using ShadowTileMapDataBuf = draw::StorageVectorBuffer<ShadowTileMapData, SHADOW_MAX_TILEMAP>;
 using ShadowTileMapClipBuf = draw::StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, true>;
 using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_MAX_TILE, true>;
+using SubsurfaceDataBuf = draw::UniformBuffer<SubsurfaceData>;
 using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
 using SurfelRadianceBuf = draw::StorageArrayBuffer<SurfelRadiance, 64>;
 using CaptureInfoBuf = draw::StorageBuffer<CaptureInfoData>;

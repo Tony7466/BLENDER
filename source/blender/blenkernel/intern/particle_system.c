@@ -1765,7 +1765,7 @@ static void sph_particle_courant(SPHData *sphdata, SPHRangeData *pfr)
       dist += len_v3(offset);
       add_v3_v3(flow, npa->prev_state.vel);
     }
-    dist += sphdata->psys[0]->part->fluid->radius;  // TODO: remove this? - z0r
+    dist += sphdata->psys[0]->part->fluid->radius; /* TODO(@z0r): remove this? */
     sphdata->element_size = dist / pfr->tot_neighbors;
     mul_v3_v3fl(sphdata->flow, flow, 1.0f / pfr->tot_neighbors);
   }
@@ -3449,7 +3449,6 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
   EffectorWeights *clmd_effweights;
   int totpoint;
   int totedge;
-  float(*deformedVerts)[3];
   bool realloc_roots;
 
   if (!psys->clmd) {
@@ -3505,12 +3504,14 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
   psys->clmd->sim_parms->effector_weights = psys->part->effector_weights;
 
   BKE_id_copy_ex(NULL, &psys->hair_in_mesh->id, (ID **)&psys->hair_out_mesh, LIB_ID_COPY_LOCALIZE);
-  deformedVerts = BKE_mesh_vert_coords_alloc(psys->hair_out_mesh, NULL);
-  clothModifier_do(
-      psys->clmd, sim->depsgraph, sim->scene, sim->ob, psys->hair_in_mesh, deformedVerts);
-  BKE_mesh_vert_coords_apply(psys->hair_out_mesh, deformedVerts);
 
-  MEM_freeN(deformedVerts);
+  clothModifier_do(psys->clmd,
+                   sim->depsgraph,
+                   sim->scene,
+                   sim->ob,
+                   psys->hair_in_mesh,
+                   BKE_mesh_vert_positions_for_write(psys->hair_out_mesh));
+  BKE_mesh_tag_positions_changed(psys->hair_out_mesh);
 
   /* restore cloth effector weights */
   psys->clmd->sim_parms->effector_weights = clmd_effweights;
