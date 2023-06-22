@@ -1431,7 +1431,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
   {
     debug_name_ = "Serial Loop Zone";
 
-    for (const bNodeSocket *socket : zone.input_node->input_sockets()) {
+    for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
       inputs_.append_as(socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type);
     }
     zone_info.main_input_indices = inputs_.index_range();
@@ -1443,19 +1443,20 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
     zone_info.border_link_input_indices = inputs_.index_range().take_back(
         zone.border_links.size());
 
-    for (const bNodeSocket *socket : zone.output_node->output_sockets()) {
+    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
       inputs_.append_as("Usage", CPPType::get<bool>());
       outputs_.append_as(socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type);
     }
     zone_info.main_output_usage_indices = inputs_.index_range().take_back(
-        zone.output_node->output_sockets().size());
+        zone.output_node->output_sockets().drop_back(1).size());
     zone_info.main_output_indices = outputs_.index_range();
 
-    for ([[maybe_unused]] const bNodeSocket *socket : zone.input_node->input_sockets()) {
+    for ([[maybe_unused]] const bNodeSocket *socket :
+         zone.input_node->input_sockets().drop_back(1)) {
       outputs_.append_as("Usage", CPPType::get<bool>());
     }
     zone_info.main_input_usage_indices = outputs_.index_range().take_back(
-        zone.input_node->input_sockets().size());
+        zone.input_node->input_sockets().drop_back(1).size());
     for ([[maybe_unused]] const bNodeLink *link : zone.border_links) {
       outputs_.append_as("Border Link Usage", CPPType::get<bool>());
     }
