@@ -180,6 +180,32 @@ static void split_vertex_per_fan(const int vertex,
   }
 }
 
+static void split_vertex_loose_edges(const int vertex,
+                                     const int start_offset,
+                                     const Span<int> fans,
+                                     const Span<int> fan_sizes,
+                                     const BoundedBitSpan loose_edges,
+                                     MutableSpan<int2> edges)
+{
+  int fan_start = 0;
+  /* We don't need to create a new vertex for the last fan. That fan can just be connected to the
+   * original vertex. */
+  for (const int i : fan_sizes.index_range().drop_back(1)) {
+    const int new_vert = start_offset + i;
+    for (const int edge_i : fans.slice(fan_start, fan_sizes[i])) {
+      if (loose_edges[edge_i]) {
+        if (edges[edge_i][0] == vertex) {
+          edges[edge_i][0] = new_vert;
+        }
+        else if (edges[edge_i][1] == vertex) {
+          edges[edge_i][1] = new_vert;
+        }
+      }
+    }
+    fan_start += fan_sizes[i];
+  }
+}
+
 /**
  * Get the index of the adjacent edge to a loop connected to a vertex. In other words, for the
  * given polygon return the unique edge connected to the given vertex and not on the given loop.
@@ -438,6 +464,23 @@ void split_edges(Mesh &mesh,
   /* Step 5: Resize the mesh to add the new vertices and rebuild the edges. */
   add_new_vertices(mesh, new_to_old_verts_map);
   add_new_edges(mesh, new_edges.as_span().cast<int2>(), new_to_old_edges_map, propagation_info);
+
+  if (loose_edges_cache.count > 0) {
+    MutableSpan<int2> new_edges_span = mesh.edges_for_write();
+    threading::parallel_for(should_split_vert.index_range(), 512, [&](IndexRange range) {
+      for (const int vert : range) {
+        if (!should_split_vert[vert]) {
+          continue;
+        }
+        split_vertex_loose_edges(vert,
+                                 vert_offsets[vert],
+                                 vert_to_edge_map[vert],
+                                 vertex_fan_sizes[vert],
+                                 loose_edges_cache.is_loose_bits,
+                                 new_edges_span);
+      }
+    });
+  }
 
   BKE_mesh_tag_edges_split(&mesh);
 }
