@@ -2624,6 +2624,7 @@ static void customData_update_offsets(CustomData *data)
   }
 
   data->totsize = offset;
+  CustomData_update_typemap(data);
 }
 
 /* to use when we're in the middle of modifying layers */
