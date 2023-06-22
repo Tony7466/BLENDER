@@ -35,7 +35,7 @@ set(SRC
   drivers.c
   fmodifier_ui.c
   keyframes_draw.cc
-  keyframes_edit.c
+  keyframes_edit.cc
   keyframes_general.c
   keyframes_keylist.cc
   keyframing.c
