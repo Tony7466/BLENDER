@@ -288,14 +288,8 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
         continue;
       }
 
-      bool prev_selected = deselect_ends;
-      for (int point_i = points.first(); point_i <= points.last(); point_i++) {
-        if (prev_selected) {
-          selection_typed[point_i] = prev_selected = false;
-        }
-        else {
-          selection_typed[point_i] = prev_selected = true;
-        }
+      for (const int offset : IndexRange(points.size())) {
+        selection_typed[points.first() + offset] = deselect_ends ? offset % 2 : !(offset % 2);
       }
 
       if (cyclic[curve_i]) {
