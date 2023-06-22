@@ -118,7 +118,6 @@ void Instance::begin_sync()
   hiz_buffer.sync();
   main_view.sync();
   world.sync();
-  reflection_probes.sync();
   film.sync();
   render_buffers.sync();
   irradiance_cache.sync();
@@ -141,7 +140,8 @@ void Instance::scene_sync()
 
 void Instance::object_sync(Object *ob)
 {
-  const bool is_renderable_type = ELEM(ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_LAMP);
+  const bool is_renderable_type = ELEM(
+      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_LAMP, OB_LIGHTPROBE);
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
                                   (ob->type == OB_MESH);
