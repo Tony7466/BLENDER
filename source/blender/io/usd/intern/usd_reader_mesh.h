@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
  * Adapted from the Blender Alembic importer implementation.
  * Modifications Copyright 2021 Tangent Animation and. NVIDIA Corporation. All rights reserved. */
 #pragma once
@@ -66,13 +68,19 @@ class USDMeshReader : public USDGeomReader {
 
   void read_mpolys(Mesh *mesh);
   void read_uvs(Mesh *mesh, double motionSampleTime, bool load_uvs = false);
-  void read_colors(Mesh *mesh, double motionSampleTime);
   void read_vertex_creases(Mesh *mesh, double motionSampleTime);
 
   void read_mesh_sample(ImportSettings *settings,
                         Mesh *mesh,
                         double motionSampleTime,
                         bool new_mesh);
+
+  void read_custom_data(const ImportSettings *settings, Mesh *mesh, double motionSampleTime);
+
+  void read_color_data_all_primvars(Mesh *mesh, const double motionSampleTime);
+  void read_color_data_primvar(Mesh *mesh,
+                               const pxr::UsdGeomPrimvar &color_primvar,
+                               const double motionSampleTime);
 };
 
 }  // namespace blender::io::usd

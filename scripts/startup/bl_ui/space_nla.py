@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import Header, Menu, Panel
@@ -150,7 +152,7 @@ class NLA_MT_marker(Menu):
 
 
 class NLA_MT_marker_select(Menu):
-    bl_label = 'Select'
+    bl_label = "Select"
 
     def draw(self, _context):
         layout = self.layout

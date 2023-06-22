@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
@@ -32,20 +33,14 @@ const char *kernel_type_as_string(MetalPipelineType pso_type)
   return "";
 }
 
-bool kernel_has_intersection(DeviceKernel device_kernel)
-{
-  return (device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE);
-}
-
 struct ShaderCache {
   ShaderCache(id<MTLDevice> _mtlDevice) : mtlDevice(_mtlDevice)
   {
     /* Initialize occupancy tuning LUT. */
+
+    // TODO: Look into tuning for DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT and
+    // DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT.
+
     if (MetalInfo::get_device_vendor(mtlDevice) == METAL_GPU_APPLE) {
       switch (MetalInfo::get_apple_gpu_architecture(mtlDevice)) {
         default:
@@ -263,7 +258,8 @@ bool ShaderCache::should_load_kernel(DeviceKernel device_kernel,
   if (pso_type != PSO_GENERIC) {
     /* Only specialize kernels where it can make an impact. */
     if (device_kernel < DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
-        device_kernel > DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL) {
+        device_kernel > DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL)
+    {
       return false;
     }
 
@@ -342,7 +338,7 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
 
 MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const MetalDevice *device)
 {
-  while (running) {
+  while (running && !device->has_error) {
     /* Search all loaded pipelines with matching kernels_md5 checksums. */
     MetalKernelPipeline *best_match = nullptr;
     {
@@ -392,6 +388,11 @@ bool MetalKernelPipeline::should_use_binary_archive() const
       }
     }
 
+    if (use_metalrt && device_kernel_has_intersection(device_kernel)) {
+      /* Binary linked functions aren't supported in binary archives. */
+      return false;
+    }
+
     if (pso_type == PSO_GENERIC) {
       /* Archive the generic kernels. */
       return true;
@@ -400,7 +401,8 @@ bool MetalKernelPipeline::should_use_binary_archive() const
     if ((device_kernel >= DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND &&
          device_kernel <= DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW) ||
         (device_kernel >= DEVICE_KERNEL_SHADER_EVAL_DISPLACE &&
-         device_kernel <= DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY)) {
+         device_kernel <= DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY))
+    {
       /* Archive all shade kernels - they take a long time to compile. */
       return true;
     }
@@ -445,12 +447,10 @@ void MetalKernelPipeline::compile()
   const std::string function_name = std::string("cycles_metal_") +
                                     device_kernel_as_string(device_kernel);
 
-  NSString *entryPoint = [@(function_name.c_str()) copy];
-
   NSError *error = NULL;
   if (@available(macOS 11.0, *)) {
     MTLFunctionDescriptor *func_desc = [MTLIntersectionFunctionDescriptor functionDescriptor];
-    func_desc.name = entryPoint;
+    func_desc.name = [@(function_name.c_str()) copy];
 
     if (pso_type != PSO_GENERIC) {
       func_desc.constantValues = GetConstantValues(&kernel_data_);
@@ -462,8 +462,6 @@ void MetalKernelPipeline::compile()
     function = [mtlLibrary newFunctionWithDescriptor:func_desc error:&error];
   }
 
-  [entryPoint release];
-
   if (function == nil) {
     NSString *err = [error localizedDescription];
     string errors = [err UTF8String];
@@ -471,7 +469,7 @@ void MetalKernelPipeline::compile()
     return;
   }
 
-  function.label = [entryPoint copy];
+  function.label = [@(function_name.c_str()) copy];
 
   if (use_metalrt) {
     if (@available(macOS 11.0, *)) {
@@ -583,7 +581,7 @@ void MetalKernelPipeline::compile()
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL_PRIM]];
 
-    if (kernel_has_intersection(device_kernel)) {
+    if (device_kernel_has_intersection(device_kernel)) {
       linked_functions = [[NSArray arrayWithArray:[unique_functions allObjects]]
           sortedArrayUsingComparator:^NSComparisonResult(id<MTLFunction> f1, id<MTLFunction> f2) {
             return [f1.label compare:f2.label];
@@ -621,6 +619,8 @@ void MetalKernelPipeline::compile()
   MTLPipelineOption pipelineOptions = MTLPipelineOptionNone;
 
   bool use_binary_archive = should_use_binary_archive();
+  bool loading_existing_archive = false;
+  bool creating_new_archive = false;
 
   id<MTLBinaryArchive> archive = nil;
   string metalbin_path;
@@ -650,42 +650,39 @@ void MetalKernelPipeline::compile()
     metalbin_path = path_cache_get(path_join("kernels", metalbin_name));
     path_create_directories(metalbin_path);
 
-    /* Retrieve shader binary from disk, and update the file timestamp for LRU purging to work as
-     * intended. */
-    if (use_binary_archive && path_cache_kernel_exists_and_mark_used(metalbin_path)) {
-      if (@available(macOS 11.0, *)) {
-        MTLBinaryArchiveDescriptor *archiveDesc = [[MTLBinaryArchiveDescriptor alloc] init];
+    /* Check if shader binary exists on disk, and if so, update the file timestamp for LRU purging
+     * to work as intended. */
+    loading_existing_archive = path_cache_kernel_exists_and_mark_used(metalbin_path);
+    creating_new_archive = !loading_existing_archive;
+
+    if (@available(macOS 11.0, *)) {
+      MTLBinaryArchiveDescriptor *archiveDesc = [[MTLBinaryArchiveDescriptor alloc] init];
+      if (loading_existing_archive) {
         archiveDesc.url = [NSURL fileURLWithPath:@(metalbin_path.c_str())];
-        archive = [mtlDevice newBinaryArchiveWithDescriptor:archiveDesc error:nil];
-        [archiveDesc release];
       }
-    }
-  }
-
-  bool creating_new_archive = false;
-  bool recreate_archive = false;
-
-  if (@available(macOS 11.0, *)) {
-    if (use_binary_archive) {
+      NSError *error = nil;
+      archive = [mtlDevice newBinaryArchiveWithDescriptor:archiveDesc error:&error];
       if (!archive) {
-        MTLBinaryArchiveDescriptor *archiveDesc = [[MTLBinaryArchiveDescriptor alloc] init];
-        archiveDesc.url = nil;
-        archive = [mtlDevice newBinaryArchiveWithDescriptor:archiveDesc error:nil];
-        creating_new_archive = true;
+        const char *err = error ? [[error localizedDescription] UTF8String] : nullptr;
+        metal_printf("newBinaryArchiveWithDescriptor failed: %s\n", err ? err : "nil");
       }
-      else {
+      [archiveDesc release];
+
+      if (loading_existing_archive) {
         pipelineOptions = MTLPipelineOptionFailOnBinaryArchiveMiss;
         computePipelineStateDescriptor.binaryArchives = [NSArray arrayWithObjects:archive, nil];
       }
     }
   }
 
+  bool recreate_archive = false;
+
   /* Lambda to do the actual pipeline compilation. */
   auto do_compilation = [&]() {
     __block bool compilation_finished = false;
     __block string error_str;
 
-    if (archive && path_exists(metalbin_path)) {
+    if (loading_existing_archive || !DebugFlags().metal.use_async_pso_creation) {
       /* Use the blocking variant of newComputePipelineStateWithDescriptor if an archive exists on
        * disk. It should load almost instantaneously, and will fail gracefully when loading a
        * corrupt archive (unlike the async variant). */
@@ -699,7 +696,7 @@ void MetalKernelPipeline::compile()
     }
     else {
       /* Use the async variant of newComputePipelineStateWithDescriptor if no archive exists on
-       * disk. This allows us responds to app shutdown. */
+       * disk. This allows us to respond to app shutdown. */
       [mtlDevice
           newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
                                         options:pipelineOptions
@@ -727,19 +724,18 @@ void MetalKernelPipeline::compile()
       }
     }
 
-    if (creating_new_archive && pipeline && ShaderCache::running) {
-      /* Add pipeline into the new archive. It should be instantaneous following
-       * newComputePipelineStateWithDescriptor. */
+    if (creating_new_archive && pipeline) {
+      /* Add pipeline into the new archive. */
       NSError *error;
-
-      computePipelineStateDescriptor.binaryArchives = [NSArray arrayWithObjects:archive, nil];
       if (![archive addComputePipelineFunctionsWithDescriptor:computePipelineStateDescriptor
-                                                        error:&error]) {
+                                                        error:&error])
+      {
         NSString *errStr = [error localizedDescription];
         metal_printf("Failed to add PSO to archive:\n%s\n", errStr ? [errStr UTF8String] : "nil");
       }
     }
-    else if (!pipeline) {
+
+    if (!pipeline) {
       metal_printf(
           "newComputePipelineStateWithDescriptor failed for \"%s\"%s. "
           "Error:\n%s\n",

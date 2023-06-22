@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -16,6 +17,8 @@
 #ifdef __cplusplus
 namespace blender {
 template<typename T> class Span;
+template<typename T> class MutableSpan;
+class IndexRange;
 class StringRef;
 class StringRefNull;
 }  // namespace blender
@@ -27,6 +30,10 @@ namespace blender::bke {
 class bNodeTreeRuntime;
 class bNodeRuntime;
 class bNodeSocketRuntime;
+}  // namespace blender::bke
+namespace blender::bke {
+class bNodeTreeZones;
+class bNodeTreeZone;
 }  // namespace blender::bke
 using NodeDeclarationHandle = blender::nodes::NodeDeclaration;
 using SocketDeclarationHandle = blender::nodes::SocketDeclaration;
@@ -165,6 +172,9 @@ typedef struct bNodeSocket {
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
 
+  /* UI panel of the socket. */
+  struct bNodePanel *panel;
+
   bNodeSocketRuntimeHandle *runtime;
 
 #ifdef __cplusplus
@@ -176,6 +186,7 @@ typedef struct bNodeSocket {
   bool is_output() const;
 
   /** Utility to access the value of the socket. */
+  template<typename T> T *default_value_typed();
   template<typename T> const T *default_value_typed() const;
 
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
@@ -226,7 +237,6 @@ typedef enum eNodeSocketDatatype {
   SOCK_RGBA = 2,
   SOCK_SHADER = 3,
   SOCK_BOOLEAN = 4,
-  __SOCK_MESH = 5, /* deprecated */
   SOCK_INT = 6,
   SOCK_STRING = 7,
   SOCK_OBJECT = 8,
@@ -235,6 +245,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_COLLECTION = 11,
   SOCK_TEXTURE = 12,
   SOCK_MATERIAL = 13,
+  SOCK_ROTATION = 14,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
@@ -527,6 +538,12 @@ typedef struct bNodeLink {
 #define NTREE_CHUNKSIZE_512 512
 #define NTREE_CHUNKSIZE_1024 1024
 
+/** Panel in node tree for grouping sockets. */
+typedef struct bNodePanel {
+  /* UI name of the panel (not unique) */
+  char *name;
+} bNodePanel;
+
 /* the basis for a Node tree, all links and nodes reside internal here */
 /* only re-usable node trees are in the library though,
  * materials and textures allocate own tree struct */
@@ -590,6 +607,11 @@ typedef struct bNodeTree {
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
 
+  /* UI panels */
+  struct bNodePanel **panels_array;
+  int panels_num;
+  int active_panel;
+
   bNodeTreeRuntimeHandle *runtime;
 
 #ifdef __cplusplus
@@ -628,6 +650,9 @@ typedef struct bNodeTree {
   blender::Span<const bNode *> nodes_by_type(blender::StringRefNull type_idname) const;
   /** Frame nodes without any parents. */
   blender::Span<bNode *> root_frames() const;
+  /** A span containing all links in the node tree. */
+  blender::Span<bNodeLink *> all_links();
+  blender::Span<const bNodeLink *> all_links() const;
   /**
    * Cached toposort of all nodes. If there are cycles, the returned array is not actually a
    * toposort. However, if a connected component does not contain a cycle, this component is sorted
@@ -653,6 +678,11 @@ typedef struct bNodeTree {
   /** Inputs and outputs of the entire node group. */
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
+
+  blender::Span<const bNodePanel *> panels() const;
+  blender::MutableSpan<bNodePanel *> panels_for_write();
+  /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
+  const blender::bke::bNodeTreeZones *zones() const;
 #endif
 } bNodeTree;
 
@@ -680,6 +710,7 @@ typedef struct bNodeTree {
 typedef enum eNodeTreeExecutionMode {
   NTREE_EXECUTION_MODE_TILED = 0,
   NTREE_EXECUTION_MODE_FULL_FRAME = 1,
+  NTREE_EXECUTION_MODE_REALTIME = 2,
 } eNodeTreeExecutionMode;
 
 typedef enum eNodeTreeRuntimeFlag {
@@ -687,6 +718,8 @@ typedef enum eNodeTreeRuntimeFlag {
   NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION = 1 << 0,
   /** There is a material output node in the group. */
   NTREE_RUNTIME_FLAG_HAS_MATERIAL_OUTPUT = 1 << 1,
+  /** There is a simulation zone in the group. */
+  NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE = 1 << 2,
 } eNodeTreeRuntimeFlag;
 
 /* socket value structs for input buttons
@@ -717,6 +750,10 @@ typedef struct bNodeSocketValueVector {
   float value[3];
   float min, max;
 } bNodeSocketValueVector;
+
+typedef struct bNodeSocketValueRotation {
+  float value_euler[3];
+} bNodeSocketValueRotation;
 
 typedef struct bNodeSocketValueRGBA {
   float value[4];
@@ -769,15 +806,15 @@ enum {
   CMP_NODE_INPAINT_SIMPLE = 0,
 };
 
-enum {
+typedef enum CMPNodeMaskFlags {
   /* CMP_NODEFLAG_MASK_AA          = (1 << 0), */ /* DEPRECATED */
-  CMP_NODEFLAG_MASK_NO_FEATHER = (1 << 1),
-  CMP_NODEFLAG_MASK_MOTION_BLUR = (1 << 2),
+  CMP_NODE_MASK_FLAG_NO_FEATHER = (1 << 1),
+  CMP_NODE_MASK_FLAG_MOTION_BLUR = (1 << 2),
 
   /* We may want multiple aspect options, exposed as an rna enum. */
-  CMP_NODEFLAG_MASK_FIXED = (1 << 8),
-  CMP_NODEFLAG_MASK_FIXED_SCENE = (1 << 9),
-};
+  CMP_NODE_MASK_FLAG_SIZE_FIXED = (1 << 8),
+  CMP_NODE_MASK_FLAG_SIZE_FIXED_SCENE = (1 << 9),
+} CMPNodeMaskFlags;
 
 enum {
   CMP_NODEFLAG_BLUR_VARIABLE_SIZE = (1 << 0),
@@ -874,6 +911,12 @@ typedef struct NodeBilateralBlurData {
   short iter;
   char _pad[2];
 } NodeBilateralBlurData;
+
+typedef struct NodeKuwaharaData {
+  short size;
+  short variation;
+  int smoothing;
+} NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
   float threshold;
@@ -1096,7 +1139,9 @@ typedef struct NodeTexVoronoi {
   int dimensions;
   int feature;
   int distance;
+  int normalize;
   int coloring DNA_DEPRECATED;
+  char _pad[4];
 } NodeTexVoronoi;
 
 typedef struct NodeTexMusgrave {
@@ -1513,11 +1558,6 @@ typedef struct NodeGeometryRaycast {
 
   /* eCustomDataType. */
   int8_t data_type;
-
-  /* Deprecated input types in new Ray-cast node. Can be removed when legacy nodes are no longer
-   * supported. */
-  uint8_t input_type_ray_direction;
-  uint8_t input_type_ray_length;
 } NodeGeometryRaycast;
 
 typedef struct NodeGeometryCurveFill {
@@ -1593,10 +1633,50 @@ typedef struct NodeGeometryUVUnwrap {
   uint8_t method;
 } NodeGeometryUVUnwrap;
 
+typedef struct NodeSimulationItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  /** #eAttrDomain. */
+  short attribute_domain;
+  /**
+   * Generates unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeSimulationItem;
+
+typedef struct NodeGeometrySimulationInput {
+  /** bNode.identifier of the corresponding output node. */
+  int32_t output_node_id;
+} NodeGeometrySimulationInput;
+
+typedef struct NodeGeometrySimulationOutput {
+  NodeSimulationItem *items;
+  int items_num;
+  int active_index;
+  /** Number to give unique IDs to state items. */
+  int next_identifier;
+  int _pad;
+
+#ifdef __cplusplus
+  blender::Span<NodeSimulationItem> items_span() const;
+  blender::MutableSpan<NodeSimulationItem> items_span();
+  blender::IndexRange items_range() const;
+#endif
+} NodeGeometrySimulationOutput;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /* GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
+
+typedef struct NodeGeometrySampleVolume {
+  /* eCustomDataType. */
+  int8_t grid_type;
+  /* GeometryNodeSampleVolumeInterpolationMode */
+  int8_t interpolation_mode;
+} NodeGeometrySampleVolume;
 
 typedef struct NodeFunctionCompare {
   /* NodeCompareOperation */
@@ -1653,7 +1733,7 @@ typedef struct NodeShaderMix {
 
 /* glossy distributions */
 #define SHD_GLOSSY_BECKMANN 0
-#define SHD_GLOSSY_SHARP 1
+#define SHD_GLOSSY_SHARP_DEPRECATED 1 /* deprecated */
 #define SHD_GLOSSY_GGX 2
 #define SHD_GLOSSY_ASHIKHMIN_SHIRLEY 3
 #define SHD_GLOSSY_MULTI_GGX 4
@@ -2095,17 +2175,30 @@ typedef enum CMPNodeGlareType {
   CMP_NODE_GLARE_GHOST = 3,
 } CMPNodeGlareType;
 
+/* Kuwahara Node. Stored in variation */
+typedef enum CMPNodeKuwahara {
+  CMP_NODE_KUWAHARA_CLASSIC = 0,
+  CMP_NODE_KUWAHARA_ANISOTROPIC = 1,
+} CMPNodeKuwahara;
+
+/* Stabilize 2D node. Stored in custom1. */
+typedef enum CMPNodeStabilizeInterpolation {
+  CMP_NODE_STABILIZE_INTERPOLATION_NEAREST = 0,
+  CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR = 1,
+  CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC = 2,
+} CMPNodeStabilizeInterpolation;
+
+/* Stabilize 2D node. Stored in custom2. */
+typedef enum CMPNodeStabilizeInverse {
+  CMP_NODE_STABILIZE_FLAG_INVERSE = 1,
+} CMPNodeStabilizeInverse;
+
+#define CMP_NODE_PLANE_TRACK_DEFORM_MOTION_BLUR_SAMPLES_MAX 64
+
 /* Plane track deform node. */
-
-enum {
-  CMP_NODEFLAG_PLANETRACKDEFORM_MOTION_BLUR = 1,
-};
-
-/* Stabilization node. */
-
-enum {
-  CMP_NODEFLAG_STABILIZE_INVERSE = 1,
-};
+typedef enum CMPNodePlaneTrackDeformFlags {
+  CMP_NODE_PLANE_TRACK_DEFORM_FLAG_MOTION_BLUR = 1,
+} CMPNodePlaneTrackDeformFlags;
 
 /* Set Alpha Node. */
 
@@ -2133,8 +2226,6 @@ typedef enum CMPNodeCombSepColorMode {
   CMP_NODE_COMBSEP_COLOR_YCC = 3,
   CMP_NODE_COMBSEP_COLOR_YUV = 4,
 } CMPNodeCombSepColorMode;
-
-#define CMP_NODE_PLANETRACKDEFORM_MBLUR_SAMPLES_MAX 64
 
 /* Point Density shader node */
 
@@ -2387,14 +2478,16 @@ typedef enum GeometryNodeDeleteGeometryMode {
   GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE = 2,
 } GeometryNodeDeleteGeometryMode;
 
-typedef enum GeometryNodeRealizeInstancesFlag {
-  GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR = (1 << 0),
-} GeometryNodeRealizeInstancesFlag;
-
 typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
+
+typedef enum GeometryNodeSampleVolumeInterpolationMode {
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST = 0,
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
+} GeometryNodeSampleVolumeInterpolationMode;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,

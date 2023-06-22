@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -868,7 +869,8 @@ static int do_lasso_select_marker(bContext *C,
 
       if (BLI_rcti_isect_pt(&rect, screen_co[0], screen_co[1]) &&
           BLI_lasso_is_point_inside(
-              mcoords, mcoords_len, screen_co[0], screen_co[1], V2D_IS_CLIPPED)) {
+              mcoords, mcoords_len, screen_co[0], screen_co[1], V2D_IS_CLIPPED))
+      {
         if (select) {
           BKE_tracking_track_flag_set(track, TRACK_AREA_ALL, SELECT);
         }
@@ -897,7 +899,8 @@ static int do_lasso_select_marker(bContext *C,
 
       if (BLI_rcti_isect_pt(&rect, screen_co[0], screen_co[1]) &&
           BLI_lasso_is_point_inside(
-              mcoords, mcoords_len, screen_co[0], screen_co[1], V2D_IS_CLIPPED)) {
+              mcoords, mcoords_len, screen_co[0], screen_co[1], V2D_IS_CLIPPED))
+      {
         if (select) {
           plane_track->flag |= SELECT;
         }
@@ -1030,7 +1033,8 @@ static int circle_select_exec(bContext *C, wmOperator *op)
     const MovieTrackingMarker *marker = BKE_tracking_marker_get(track, framenr);
 
     if (ED_space_clip_marker_is_visible(sc, tracking_object, track, marker) &&
-        marker_inside_ellipse(marker, offset, ellipse)) {
+        marker_inside_ellipse(marker, offset, ellipse))
+    {
       if (select) {
         BKE_tracking_track_flag_set(track, TRACK_AREA_ALL, SELECT);
       }

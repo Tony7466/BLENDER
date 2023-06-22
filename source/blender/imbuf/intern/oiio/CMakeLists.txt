@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2013 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2013 Blender Foundation. All rights reserved.
 
 set(INC
   .
@@ -18,8 +19,10 @@ set(INC_SYS
 
 set(SRC
   openimageio_api.h
+  openimageio_support.hh
 
   openimageio_api.cpp
+  openimageio_support.cc
 )
 
 set(LIB

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -104,6 +106,9 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
       case CTX_MODE_EDIT_LATTICE:
         km_id = "Lattice";
         break;
+      case CTX_MODE_EDIT_GREASE_PENCIL:
+        km_id = "Grease Pencil Edit Mode";
+        break;
       case CTX_MODE_POSE:
         km_id = "Pose";
         break;
@@ -128,7 +133,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
       case CTX_MODE_PAINT_GPENCIL:
         km_id = "Grease Pencil Stroke Paint Mode";
         break;
-      case CTX_MODE_EDIT_GPENCIL:
+      case CTX_MODE_EDIT_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Edit Mode";
         break;
       case CTX_MODE_SCULPT_GPENCIL:
@@ -183,7 +188,6 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
    *     ED_OT
    *     FLUID_OT
    *     TEXTURE_OT
-   *     UI_OT
    *     WORLD_OT
    */
 
@@ -203,11 +207,15 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   }
   /* Screen & Render */
   else if (STRPREFIX(opname, "SCREEN_OT") || STRPREFIX(opname, "RENDER_OT") ||
-           STRPREFIX(opname, "SOUND_OT") || STRPREFIX(opname, "SCENE_OT")) {
+           STRPREFIX(opname, "SOUND_OT") || STRPREFIX(opname, "SCENE_OT"))
+  {
     km = WM_keymap_find_all(wm, "Screen", 0, 0);
   }
   /* Grease Pencil */
   else if (STRPREFIX(opname, "GPENCIL_OT")) {
+    km = WM_keymap_find_all(wm, "Grease Pencil", 0, 0);
+  }
+  else if (STRPREFIX(opname, "GREASE_PENCIL_OT")) {
     km = WM_keymap_find_all(wm, "Grease Pencil", 0, 0);
   }
   /* Markers */
@@ -234,7 +242,8 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   }
   /* Object mode related */
   else if (STRPREFIX(opname, "GROUP_OT") || STRPREFIX(opname, "MATERIAL_OT") ||
-           STRPREFIX(opname, "PTCACHE_OT") || STRPREFIX(opname, "RIGIDBODY_OT")) {
+           STRPREFIX(opname, "PTCACHE_OT") || STRPREFIX(opname, "RIGIDBODY_OT"))
+  {
     km = WM_keymap_find_all(wm, "Object Mode", 0, 0);
   }
 
@@ -279,7 +288,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   else if (STRPREFIX(opname, "MBALL_OT")) {
     km = WM_keymap_find_all(wm, "Metaball", 0, 0);
 
-    /* some mball operators are active in object mode too, like add-prim */
+    /* Some meta-ball operators are active in object mode too, like add-primitive. */
     if (km && !WM_keymap_poll((bContext *)C, km)) {
       km = WM_keymap_find_all(wm, "Object Mode", 0, 0);
     }
@@ -446,6 +455,10 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
         break;
     }
   }
+  /* User Interface */
+  else if (STRPREFIX(opname, "UI_OT")) {
+    km = WM_keymap_find_all(wm, "User Interface", 0, 0);
+  }
 
   return km;
 }
@@ -490,8 +503,6 @@ bool WM_keymap_uses_event_modifier(const wmKeyMap *keymap, const int event_modif
   return false;
 }
 
-void WM_keymap_fix_linking(void)
-{
-}
+void WM_keymap_fix_linking(void) {}
 
 /** \} */

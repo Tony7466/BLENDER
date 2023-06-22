@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -119,7 +121,7 @@ class TriangleToEdgeMap {
 struct MeshData {
  public:
   const Span<MLoopTri> looptris;
-  const Span<MLoop> loops;
+  const Span<int> corner_verts;
   const Span<float2> uv_map;
   const Span<float3> vert_positions;
 
@@ -140,7 +142,7 @@ struct MeshData {
 
  public:
   explicit MeshData(Span<MLoopTri> looptris,
-                    Span<MLoop> loops,
+                    Span<int> corner_verts,
                     const Span<float2> uv_map,
                     const Span<float3> vert_positions);
 };

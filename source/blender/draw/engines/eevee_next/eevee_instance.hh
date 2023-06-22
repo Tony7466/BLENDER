@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -19,7 +19,9 @@
 #include "eevee_cryptomatte.hh"
 #include "eevee_depth_of_field.hh"
 #include "eevee_film.hh"
+#include "eevee_gbuffer.hh"
 #include "eevee_hizbuffer.hh"
+#include "eevee_irradiance_cache.hh"
 #include "eevee_light.hh"
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
@@ -28,6 +30,7 @@
 #include "eevee_sampling.hh"
 #include "eevee_shader.hh"
 #include "eevee_shadow.hh"
+#include "eevee_subsurface.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
 #include "eevee_world.hh"
@@ -46,6 +49,7 @@ class Instance {
   ShaderModule &shaders;
   SyncModule sync;
   MaterialModule materials;
+  SubsurfaceModule subsurface;
   PipelineModule pipelines;
   ShadowModule shadows;
   LightModule lights;
@@ -53,6 +57,7 @@ class Instance {
   MotionBlurModule motion_blur;
   DepthOfField depth_of_field;
   Cryptomatte cryptomatte;
+  GBuffer gbuffer;
   HiZBuffer hiz_buffer;
   Sampling sampling;
   Camera camera;
@@ -60,6 +65,7 @@ class Instance {
   RenderBuffers render_buffers;
   MainView main_view;
   World world;
+  IrradianceCache irradiance_cache;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -90,6 +96,7 @@ class Instance {
       : shaders(*ShaderModule::module_get()),
         sync(*this),
         materials(*this),
+        subsurface(*this),
         pipelines(*this),
         shadows(*this),
         lights(*this),
@@ -103,7 +110,8 @@ class Instance {
         film(*this),
         render_buffers(*this),
         main_view(*this),
-        world(*this){};
+        world(*this),
+        irradiance_cache(*this){};
   ~Instance(){};
 
   void init(const int2 &output_res,

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -917,7 +919,7 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
   {
     const char *owner_id = RNA_struct_state_owner_get();
     if (owner_id) {
-      BLI_strncpy(gzgt->owner_id, owner_id, sizeof(gzgt->owner_id));
+      STRNCPY(gzgt->owner_id, owner_id);
     }
   }
 
@@ -1333,7 +1335,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_api_gizmo(srna);
 
   srna = RNA_def_struct(brna, "GizmoProperties", NULL);
-  RNA_def_struct_ui_text(srna, "Gizmo Properties", "Input properties of an Gizmo");
+  RNA_def_struct_ui_text(srna, "Gizmo Properties", "Input properties of a Gizmo");
   RNA_def_struct_refine_func(srna, "rna_GizmoProperties_refine");
   RNA_def_struct_idprops_func(srna, "rna_GizmoProperties_idprops");
   RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES);

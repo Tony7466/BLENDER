@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2003-2009 Blender Foundation.
- *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -53,7 +54,16 @@ float seq_time_media_playback_rate_factor_get(const Scene *scene, const Sequence
   return seq->media_playback_rate / scene_playback_rate;
 }
 
-float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_frame)
+int seq_time_strip_original_content_length_get(const Scene *scene, const Sequence *seq)
+{
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
+    return seq->len;
+  }
+
+  return seq->len / seq_time_media_playback_rate_factor_get(scene, seq);
+}
+
+float SEQ_give_frame_index(const Scene *scene, Sequence *seq, float timeline_frame)
 {
   float frame_index;
   float sta = SEQ_time_start_frame_get(scene, seq);
@@ -85,7 +95,7 @@ float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
   frame_index *= seq_time_media_playback_rate_factor_get(scene, seq);
 
   if (SEQ_retiming_is_active(seq)) {
-    const float retiming_factor = seq_retiming_evaluate(seq, frame_index);
+    const float retiming_factor = seq_retiming_evaluate(scene, seq, frame_index);
     frame_index = retiming_factor * (length);
   }
   /* Clamp frame index to strip content frame range. */
@@ -156,7 +166,6 @@ void seq_update_sound_bounds_recursive(const Scene *scene, Sequence *metaseq)
                                          SEQ_time_right_handle_frame_get(scene, metaseq));
 }
 
-/* Update meta strip content start and end, update sound playback range. */
 void SEQ_time_update_meta_strip_range(const Scene *scene, Sequence *seq_meta)
 {
   if (seq_meta == NULL) {
@@ -225,7 +234,6 @@ void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
   seq->len = SEQ_time_frames_to_seconds(scene, seq->enddisp - seq->startdisp);
 }
 
-/* Update strip startdisp and enddisp (n-input effects have no len to calculate these). */
 void seq_time_update_effects_strip_range(const Scene *scene, SeqCollection *effects)
 {
   if (effects == NULL) {
@@ -498,10 +506,6 @@ void SEQ_time_strip_length_set(const Scene *scene, Sequence *seq, double length_
 
 int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
 {
-  if (seq->type == SEQ_TYPE_SOUND_RAM) {
-    return SEQ_time_seconds_to_frames(scene, seq->len);
-  }
-
   if (SEQ_retiming_is_active(seq)) {
     SeqRetimingHandle *handle_start = seq->retiming_handles;
     SeqRetimingHandle *handle_end = seq->retiming_handles + (SEQ_retiming_handles_count(seq) - 1);

@@ -1,10 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
  */
 
+#include "DNA_modifier_types.h"
+#include "DNA_windowmanager_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_hash.h"
@@ -13,10 +16,13 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_meshdata_types.h"
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
+#include "BKE_modifier.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 
@@ -26,9 +32,10 @@
 #include "WM_types.h"
 
 #include "ED_screen.h"
+#include "ED_util.h"
 #include "ED_view3d.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -111,7 +118,7 @@ void SCULPT_filter_cache_init(bContext *C,
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ob->sculpt->pbvh;
 
-  ss->filter_cache = MEM_cnew<FilterCache>(__func__);
+  ss->filter_cache = MEM_new<FilterCache>(__func__);
   ss->filter_cache->start_filter_strength = start_strength;
   ss->filter_cache->random_seed = rand();
 
@@ -126,14 +133,11 @@ void SCULPT_filter_cache_init(bContext *C,
   search_data.radius_squared = FLT_MAX;
   search_data.ignore_fully_ineffective = true;
 
-  BKE_pbvh_search_gather(pbvh,
-                         SCULPT_search_sphere_cb,
-                         &search_data,
-                         &ss->filter_cache->nodes,
-                         &ss->filter_cache->totnode);
+  ss->filter_cache->nodes = blender::bke::pbvh::search_gather(
+      pbvh, SCULPT_search_sphere_cb, &search_data);
 
-  for (int i = 0; i < ss->filter_cache->totnode; i++) {
-    BKE_pbvh_node_mark_normals_update(ss->filter_cache->nodes[i]);
+  for (PBVHNode *node : ss->filter_cache->nodes) {
+    BKE_pbvh_node_mark_normals_update(node);
   }
 
   /* `mesh->runtime.subdiv_ccg` is not available. Updating of the normals is done during drawing.
@@ -149,9 +153,9 @@ void SCULPT_filter_cache_init(bContext *C,
   data.filter_undo_type = undo_type;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->totnode);
+  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
   BLI_task_parallel_range(
-      0, ss->filter_cache->totnode, &data, filter_cache_init_task_cb, &settings);
+      0, ss->filter_cache->nodes.size(), &data, filter_cache_init_task_cb, &settings);
 
   /* Setup orientation matrices. */
   copy_m4_m4(ss->filter_cache->obmat, ob->object_to_world);
@@ -174,8 +178,7 @@ void SCULPT_filter_cache_init(bContext *C,
   float mval_fl[2] = {float(mval[0]), float(mval[1])};
 
   if (vc.rv3d && SCULPT_stroke_get_location(C, co, mval_fl, false)) {
-    PBVHNode **nodes;
-    int totnode;
+    Vector<PBVHNode *> nodes;
 
     /* Get radius from brush. */
     Brush *brush = BKE_paint_brush(&sd->paint);
@@ -200,18 +203,16 @@ void SCULPT_filter_cache_init(bContext *C,
     search_data2.radius_squared = radius * radius;
     search_data2.ignore_fully_ineffective = true;
 
-    BKE_pbvh_search_gather(pbvh, SCULPT_search_sphere_cb, &search_data2, &nodes, &totnode);
+    nodes = blender::bke::pbvh::search_gather(pbvh, SCULPT_search_sphere_cb, &search_data2);
 
     if (BKE_paint_brush(&sd->paint) &&
-        SCULPT_pbvh_calc_area_normal(
-            brush, ob, nodes, totnode, true, ss->filter_cache->initial_normal)) {
+        SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, ss->filter_cache->initial_normal))
+    {
       copy_v3_v3(ss->last_normal, ss->filter_cache->initial_normal);
     }
     else {
       copy_v3_v3(ss->filter_cache->initial_normal, ss->last_normal);
     }
-
-    MEM_SAFE_FREE(nodes);
 
     /* Update last stroke location */
 
@@ -251,7 +252,6 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   if (ss->filter_cache->automasking) {
     SCULPT_automasking_cache_free(ss->filter_cache->automasking);
   }
-  MEM_SAFE_FREE(ss->filter_cache->nodes);
   MEM_SAFE_FREE(ss->filter_cache->mask_update_it);
   MEM_SAFE_FREE(ss->filter_cache->prev_mask);
   MEM_SAFE_FREE(ss->filter_cache->normal_factor);
@@ -261,7 +261,8 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   MEM_SAFE_FREE(ss->filter_cache->detail_directions);
   MEM_SAFE_FREE(ss->filter_cache->limit_surface_co);
   MEM_SAFE_FREE(ss->filter_cache->pre_smoothed_color);
-  MEM_SAFE_FREE(ss->filter_cache);
+  MEM_delete<FilterCache>(ss->filter_cache);
+  ss->filter_cache = nullptr;
 }
 
 typedef enum eSculptMeshFilterType {
@@ -354,11 +355,11 @@ static bool sculpt_mesh_filter_needs_pmap(eSculptMeshFilterType filter_type)
 
 static bool sculpt_mesh_filter_is_continuous(eSculptMeshFilterType type)
 {
-  return (ELEM(type,
-               MESH_FILTER_SHARPEN,
-               MESH_FILTER_SMOOTH,
-               MESH_FILTER_RELAX,
-               MESH_FILTER_RELAX_FACE_SETS));
+  return ELEM(type,
+              MESH_FILTER_SHARPEN,
+              MESH_FILTER_SMOOTH,
+              MESH_FILTER_RELAX,
+              MESH_FILTER_RELAX_FACE_SETS);
 }
 
 static void mesh_filter_task_cb(void *__restrict userdata,
@@ -403,7 +404,8 @@ static void mesh_filter_task_cb(void *__restrict userdata,
     }
 
     if (ELEM(filter_type, MESH_FILTER_RELAX, MESH_FILTER_RELAX_FACE_SETS) ||
-        ss->filter_cache->no_orig_co) {
+        ss->filter_cache->no_orig_co)
+    {
       copy_v3_v3(orig_co, vd.co);
     }
     else {
@@ -646,7 +648,8 @@ static void mesh_filter_sharpen_init(SculptSession *ss,
   /* Smooth the calculated factors and directions to remove high frequency detail. */
   for (int smooth_iterations = 0;
        smooth_iterations < filter_cache->sharpen_curvature_smooth_iterations;
-       smooth_iterations++) {
+       smooth_iterations++)
+  {
     for (int i = 0; i < totvert; i++) {
       PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
@@ -705,6 +708,54 @@ static void mesh_filter_surface_smooth_displace_task_cb(void *__restrict userdat
   BKE_pbvh_vertex_iter_end;
 }
 
+enum {
+  FILTER_MESH_MODAL_CANCEL = 1,
+  FILTER_MESH_MODAL_CONFIRM,
+};
+
+wmKeyMap *filter_mesh_modal_keymap(wmKeyConfig *keyconf)
+{
+  static const EnumPropertyItem modal_items[] = {
+      {FILTER_MESH_MODAL_CANCEL, "CANCEL", 0, "Cancel", ""},
+      {FILTER_MESH_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Mesh Filter Modal Map");
+
+  /* This function is called for each space-type, only needs to add map once. */
+  if (keymap && keymap->modal_items) {
+    return nullptr;
+  }
+
+  keymap = WM_modalkeymap_ensure(keyconf, "Mesh Filter Modal Map", modal_items);
+
+  WM_modalkeymap_assign(keymap, "SCULPT_OT_mesh_filter");
+
+  return keymap;
+}
+
+static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
+{
+  char header[UI_MAX_DRAW_STR];
+  char buf[UI_MAX_DRAW_STR];
+  int available_len = sizeof(buf);
+
+  char *p = buf;
+#define WM_MODALKEY(_id) \
+  WM_modalkeymap_operator_items_to_string_buf( \
+      op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
+
+  SNPRINTF(header,
+           TIP_("%s: Confirm, %s: Cancel"),
+           WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
+           WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
+
+#undef WM_MODALKEY
+
+  ED_workspace_status_text(C, TIP_(header));
+}
+
 static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
@@ -723,12 +774,13 @@ static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
   data.filter_strength = filter_strength;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->totnode);
-  BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, mesh_filter_task_cb, &settings);
+  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
+  BLI_task_parallel_range(
+      0, ss->filter_cache->nodes.size(), &data, mesh_filter_task_cb, &settings);
 
   if (filter_type == MESH_FILTER_SURFACE_SMOOTH) {
     BLI_task_parallel_range(0,
-                            ss->filter_cache->totnode,
+                            ss->filter_cache->nodes.size(),
                             &data,
                             mesh_filter_surface_smooth_displace_task_cb,
                             &settings);
@@ -755,7 +807,7 @@ static void sculpt_mesh_update_strength(wmOperator *op,
 {
   const float len = prev_press_mouse[0] - mouse[0];
 
-  float filter_strength = ss->filter_cache->start_filter_strength * -len * 0.001f * UI_DPI_FAC;
+  float filter_strength = ss->filter_cache->start_filter_strength * -len * 0.001f * UI_SCALE_FAC;
   RNA_float_set(op->ptr, "strength", filter_strength);
 }
 static void sculpt_mesh_filter_apply_with_history(bContext *C, wmOperator *op)
@@ -790,36 +842,46 @@ static void sculpt_mesh_filter_apply_with_history(bContext *C, wmOperator *op)
   RNA_float_set(op->ptr, "strength", initial_strength);
 }
 
-static void sculpt_mesh_filter_end(bContext *C, wmOperator * /*op*/)
+static void sculpt_mesh_filter_end(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
   SCULPT_filter_cache_free(ss);
-  SCULPT_undo_push_end(ob);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
 }
 
-static void UNUSED_FUNCTION(sculpt_mesh_filter_cancel)(bContext *C, wmOperator * /*op*/)
+static int sculpt_mesh_filter_confirm(SculptSession *ss,
+                                      wmOperator *op,
+                                      const eSculptMeshFilterType filter_type)
+{
+
+  float initial_strength = ss->filter_cache->start_filter_strength;
+  /* Don't update strength property if we're storing an event history. */
+  if (sculpt_mesh_filter_is_continuous(filter_type)) {
+    RNA_float_set(op->ptr, "strength", initial_strength);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  PBVHNode **nodes;
-  int nodes_num;
 
   if (!ss || !ss->pbvh) {
     return;
   }
 
   /* Gather all PBVH leaf nodes. */
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &nodes_num);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
-  for (int i : IndexRange(nodes_num)) {
-    PBVHNode *node = nodes[i];
+  for (PBVHNode *node : nodes) {
     PBVHVertexIter vd;
 
     SculptOrigVertData orig_data;
-    SCULPT_orig_vert_data_init(&orig_data, ob, nodes[i], SCULPT_UNDO_COORDS);
+    SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
 
     BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
       SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -841,16 +903,29 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   SculptSession *ss = ob->sculpt;
   const eSculptMeshFilterType filter_type = eSculptMeshFilterType(RNA_enum_get(op->ptr, "type"));
 
-  if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
-    float initial_strength = ss->filter_cache->start_filter_strength;
-    sculpt_mesh_filter_end(C, op);
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
+  sculpt_mesh_update_status_bar(C, op);
 
-    /* Don't update strength property if we're storing an event history. */
-    if (sculpt_mesh_filter_is_continuous(filter_type)) {
-      RNA_float_set(op->ptr, "strength", initial_strength);
+  if (event->type == EVT_MODAL_MAP) {
+    int ret = OPERATOR_FINISHED;
+    switch (event->val) {
+      case FILTER_MESH_MODAL_CANCEL:
+        sculpt_mesh_filter_cancel(C, op);
+        SCULPT_undo_push_end_ex(ob, true);
+        ret = OPERATOR_CANCELLED;
+        break;
+
+      case FILTER_MESH_MODAL_CONFIRM:
+        ret = sculpt_mesh_filter_confirm(ss, op, filter_type);
+        SCULPT_undo_push_end_ex(ob, false);
+        break;
     }
 
-    return OPERATOR_FINISHED;
+    sculpt_mesh_filter_end(C);
+    ED_workspace_status_text(C, nullptr); /* Clear status bar */
+    WM_cursor_modal_restore(CTX_wm_window(C));
+
+    return ret;
   }
 
   if (event->type != MOUSEMOVE) {
@@ -890,6 +965,41 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   sculpt_mesh_filter_apply(C, op);
 
   return OPERATOR_RUNNING_MODAL;
+}
+
+static void sculpt_filter_specific_init(const eSculptMeshFilterType filter_type,
+                                        wmOperator *op,
+                                        SculptSession *ss)
+{
+  switch (filter_type) {
+    case MESH_FILTER_SURFACE_SMOOTH: {
+      const float shape_preservation = RNA_float_get(op->ptr, "surface_smooth_shape_preservation");
+      const float current_vertex_displacement = RNA_float_get(op->ptr,
+                                                              "surface_smooth_current_vertex");
+      mesh_filter_surface_smooth_init(ss, shape_preservation, current_vertex_displacement);
+      break;
+    }
+    case MESH_FILTER_SHARPEN: {
+      const float smooth_ratio = RNA_float_get(op->ptr, "sharpen_smooth_ratio");
+      const float intensify_detail_strength = RNA_float_get(op->ptr,
+                                                            "sharpen_intensify_detail_strength");
+      const int curvature_smooth_iterations = RNA_int_get(op->ptr,
+                                                          "sharpen_curvature_smooth_iterations");
+      mesh_filter_sharpen_init(
+          ss, smooth_ratio, intensify_detail_strength, curvature_smooth_iterations);
+      break;
+    }
+    case MESH_FILTER_ENHANCE_DETAILS: {
+      mesh_filter_enhance_details_init_directions(ss);
+      break;
+    }
+    case MESH_FILTER_ERASE_DISPLACEMENT: {
+      mesh_filter_init_limit_surface_co(ss);
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 /* Returns OPERATOR_PASS_THROUGH on success. */
@@ -946,35 +1056,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
   filter_cache->active_face_set = SCULPT_FACE_SET_NONE;
   filter_cache->automasking = SCULPT_automasking_cache_init(sd, nullptr, ob);
 
-  switch (filter_type) {
-    case MESH_FILTER_SURFACE_SMOOTH: {
-      const float shape_preservation = RNA_float_get(op->ptr, "surface_smooth_shape_preservation");
-      const float current_vertex_displacement = RNA_float_get(op->ptr,
-                                                              "surface_smooth_current_vertex");
-      mesh_filter_surface_smooth_init(ss, shape_preservation, current_vertex_displacement);
-      break;
-    }
-    case MESH_FILTER_SHARPEN: {
-      const float smooth_ratio = RNA_float_get(op->ptr, "sharpen_smooth_ratio");
-      const float intensify_detail_strength = RNA_float_get(op->ptr,
-                                                            "sharpen_intensify_detail_strength");
-      const int curvature_smooth_iterations = RNA_int_get(op->ptr,
-                                                          "sharpen_curvature_smooth_iterations");
-      mesh_filter_sharpen_init(
-          ss, smooth_ratio, intensify_detail_strength, curvature_smooth_iterations);
-      break;
-    }
-    case MESH_FILTER_ENHANCE_DETAILS: {
-      mesh_filter_enhance_details_init_directions(ss);
-      break;
-    }
-    case MESH_FILTER_ERASE_DISPLACEMENT: {
-      mesh_filter_init_limit_surface_co(ss);
-      break;
-    }
-    default:
-      break;
-  }
+  sculpt_filter_specific_init(filter_type, op, ss);
 
   ss->filter_cache->enabled_axis[0] = deform_axis & MESH_FILTER_DEFORM_X;
   ss->filter_cache->enabled_axis[1] = deform_axis & MESH_FILTER_DEFORM_Y;
@@ -1021,7 +1103,7 @@ static int sculpt_mesh_filter_exec(bContext *C, wmOperator *op)
       ss->filter_cache->no_orig_co = true;
     }
 
-    sculpt_mesh_filter_end(C, op);
+    sculpt_mesh_filter_end(C);
 
     return OPERATOR_FINISHED;
   }
@@ -1087,7 +1169,12 @@ void SCULPT_OT_mesh_filter(wmOperatorType *ot)
   ot->exec = sculpt_mesh_filter_exec;
   ot->ui = sculpt_mesh_ui_exec;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  /* Doesn't seem to actually be called?
+   * Check `sculpt_mesh_filter_modal` to see where it's really called. */
+  ot->cancel = sculpt_mesh_filter_cancel;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_X | OPTYPE_BLOCKING |
+             OPTYPE_DEPENDS_ON_CURSOR;
 
   /* RNA. */
   SCULPT_mesh_filter_properties(ot);
