@@ -14,8 +14,12 @@
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
 #include "WM_types.h"
+
+const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
+    {NODE_INTERFACE_SOCKET, "SOCKET", 0, "Socket", ""},
+    {NODE_INTERFACE_PANEL, "PANEL", 0, "Panel", ""},
+    {0, nullptr, 0, nullptr, nullptr}};
 
 const EnumPropertyItem rna_enum_node_tree_interface_socket_kind_items[] = {
     {NODE_INTERFACE_INPUT, "INPUT", 0, "Input", ""},
@@ -24,8 +28,10 @@ const EnumPropertyItem rna_enum_node_tree_interface_socket_kind_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_node.h"
 #  include "BKE_node_tree_update.h"
 #  include "ED_node.h"
+#  include "WM_api.h"
 
 static void rna_NodeTreeInterface_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -67,6 +73,58 @@ static int rna_NodeTreeInterfaceSocket_identifier_length(struct PointerRNA *ptr)
   return socket->socket_identifier().length();
 }
 
+static int rna_NodeTreeInterfaceSocket_data_type_get(PointerRNA *ptr)
+{
+  bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  return rna_node_socket_idname_to_enum(socket->data_type);
+}
+
+static void rna_NodeTreeInterfaceSocket_data_type_set(PointerRNA *ptr, int value)
+{
+  bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(value);
+
+  if (typeinfo) {
+    bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+    socket->data_type = BLI_strdup(typeinfo->idname);
+  }
+}
+
+static bool rna_NodeTreeInterfaceSocket_data_type_poll(void *userdata,
+                                                       bNodeSocketType *socket_type)
+{
+  /* Check if the node tree supports the socket type. */
+  bNodeTreeType *ntreetype = static_cast<bNodeTreeType *>(userdata);
+  if (ntreetype->valid_socket_type && !ntreetype->valid_socket_type(ntreetype, socket_type)) {
+    return false;
+  }
+
+  /* Only use basic socket types for this enum. */
+  if (socket_type->subtype != PROP_NONE) {
+    return false;
+  }
+
+  if (!U.experimental.use_rotation_socket && socket_type->type == SOCK_ROTATION) {
+    return false;
+  }
+
+  return true;
+}
+
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_data_type_itemf(bContext * /*C*/,
+                                                                           PointerRNA *ptr,
+                                                                           PropertyRNA * /*prop*/,
+                                                                           bool *r_free)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+
+  if (!ntree) {
+    return DummyRNA_NULL_items;
+  }
+
+  return rna_node_socket_type_itemf(
+      ntree->typeinfo, rna_NodeTreeInterfaceSocket_data_type_poll, r_free);
+}
+
 static PointerRNA rna_NodeTreeInterfaceItems_active_get(PointerRNA *ptr)
 {
   bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
@@ -96,11 +154,11 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     ReportList *reports,
     const char *name,
     const char *description,
-    const char *type,
+    const char *data_type,
     int in_out)
 {
   bNodeTreeInterfaceSocket *socket = interface->add_socket(
-      name, description, type, eNodeTreeInterfaceSocketKind(in_out));
+      name, description, data_type, eNodeTreeInterfaceSocketKind(in_out));
 
   if (socket == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
@@ -176,11 +234,18 @@ static void rna_NodeTreeInterfaceItems_move(
 static void rna_def_node_interface_item(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "NodeTreeInterfaceItem", nullptr);
   RNA_def_struct_ui_text(srna, "Node Tree Interface Item", "Item in a node tree interface");
   RNA_def_struct_sdna(srna, "bNodeTreeInterfaceItem");
   RNA_def_struct_refine_func(srna, "rna_NodeTreeInterfaceItem_refine");
+
+  prop = RNA_def_property(srna, "item_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "item_type");
+  RNA_def_property_enum_items(prop, rna_enum_node_tree_interface_item_type_items);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Item Type", "Type of interface item");
 }
 
 static void rna_def_node_interface_socket(BlenderRNA *brna)
@@ -207,7 +272,16 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "description");
-  RNA_def_property_ui_text(prop, "Tooltip", "Socket tooltip");
+  RNA_def_property_ui_text(prop, "Description", "Socket description");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
+  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items);
+  RNA_def_property_enum_funcs(prop,
+                              "rna_NodeTreeInterfaceSocket_data_type_get",
+                              "rna_NodeTreeInterfaceSocket_data_type_set",
+                              "rna_NodeTreeInterfaceSocket_data_type_itemf");
+  RNA_def_property_ui_text(prop, "Data Type", "Socket data type");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
   prop = RNA_def_property(srna, "kind", PROP_ENUM, PROP_NONE);
@@ -263,10 +337,10 @@ static void rna_def_node_tree_interface_items_api(BlenderRNA *brna, PropertyRNA 
   parm = RNA_def_string(func, "name", nullptr, 0, "Name", "Name of the socket");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_string(func, "description", nullptr, 0, "Description", "Description of the socket");
-  parm = RNA_def_string(func, "type", nullptr, 0, "Type", "Type of the socket");
+  parm = RNA_def_string(func, "data_type", nullptr, 0, "Data Type", "Data type of the socket");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_enum_flag(func,
-                    "in_out",
+                    "kind",
                     rna_enum_node_tree_interface_socket_kind_items,
                     NODE_INTERFACE_INPUT,
                     "Socket Kind",

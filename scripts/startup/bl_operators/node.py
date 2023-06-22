@@ -323,6 +323,84 @@ class NODE_OT_panel_move(NodePanelOperator, Operator):
         return {'FINISHED'}
 
 
+class NODE_OT_interface_item_new(NodePanelOperator, Operator):
+    '''Add a new item to the interface'''
+    bl_idname = "node.interface_item_new"
+    bl_label = "New Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    item_type : EnumProperty(
+        name="Item Type",
+        description="Type of the item to create",
+        items=[('SOCKET', "Socket", ""), ('PANEL', "Panel", "")],
+        default='SOCKET',
+    )
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        items = tree.interface.interface_items
+
+        # Remember index to move the item.
+        dst_index = min(items.active_index + 1, len(items))
+        if self.item_type == 'SOCKET':
+            item = items.new_socket("Socket", description="", data_type='Float', kind={'INPUT'})
+        elif self.item_type == 'PANEL':
+            item = items.new_panel("Panel")
+        else:
+            return {'CANCELLED'}
+
+        items.move(item, dst_index)
+        items.active_index = dst_index
+
+        return {'FINISHED'}
+
+
+class NODE_OT_interface_item_remove(NodePanelOperator, Operator):
+    '''Remove active item from the interface'''
+    bl_idname = "node.interface_item_remove"
+    bl_label = "Remove Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        items = tree.interface.interface_items
+
+        if items.active:
+            items.remove(items.active)
+            items.active_index = min(items.active_index, len(items) - 1)
+
+        return {'FINISHED'}
+
+
+class NODE_OT_interface_item_move(NodePanelOperator, Operator):
+    '''Move an item up or down in the interface'''
+    bl_idname = "node.interface_item_move"
+    bl_label = "Move Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default='UP',
+    )
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        items = tree.interface.interface_items
+
+        if self.direction == 'UP' and items.active_index > 0:
+            items.move(items.active, items.active_index - 1)
+            items.active_index -= 1
+        elif self.direction == 'DOWN' and items.active_index < len(items) - 1:
+            items.move(items.active, items.active_index + 1)
+            items.active_index += 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
@@ -332,5 +410,8 @@ classes = (
     NODE_OT_panel_add,
     NODE_OT_panel_remove,
     NODE_OT_panel_move,
+    NODE_OT_interface_item_new,
+    NODE_OT_interface_item_remove,
+    NODE_OT_interface_item_move,
     NODE_OT_tree_path_parent,
 )

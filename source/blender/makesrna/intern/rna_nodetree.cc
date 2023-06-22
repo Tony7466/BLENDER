@@ -13420,6 +13420,12 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Panels", "UI panels for structuring the node tree interface");
   rna_def_node_tree_socket_panels_api(brna, prop);
 
+  prop = RNA_def_property(srna, "interface", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "interface");
+  RNA_def_property_struct_type(prop, "NodeTreeInterface");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Interface", "Interface declaration for this node tree");
+
   /* exposed as a function for runtime interface type properties */
   func = RNA_def_function(srna, "interface_update", "rna_NodeTree_interface_update");
   RNA_def_function_ui_description(func, "Updated node group interface");

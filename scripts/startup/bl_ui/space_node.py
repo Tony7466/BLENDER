@@ -968,7 +968,28 @@ class NODE_PT_node_tree_declaration(Panel):
         layout = self.layout
         snode = context.space_data
         tree = snode.edit_tree
-        layout.template_node_tree_declaration(tree)
+
+        split = layout.row()
+
+        split.template_node_tree_declaration(tree)
+
+        ops_col = split.column()
+
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.interface_item_new", icon='ADD', text="")
+        add_remove_col.operator("node.interface_item_remove", icon='REMOVE', text="")
+
+        ops_col.separator()
+
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.interface_item_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.interface_item_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
+
+        active_item = tree.interface.interface_items.active
+        if active_item is not None:
+            layout.prop(active_item, "name")
 
 
 class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):
