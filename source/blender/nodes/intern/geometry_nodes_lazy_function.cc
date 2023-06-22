@@ -1765,6 +1765,24 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     this->add_default_inputs(graph_params);
 
+    Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
+    Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
+    Vector<const lf::OutputSocket *, 16> lf_zone_inputs;
+    this->build_attribute_set_inputs_for_zone(graph_params,
+                                              zone_info,
+                                              lf_attribute_set_by_field_source_index,
+                                              lf_attribute_set_by_caller_propagation_index,
+                                              lf_zone_inputs);
+    this->link_attribute_set_inputs(lf_graph,
+                                    graph_params,
+                                    lf_attribute_set_by_field_source_index,
+                                    lf_attribute_set_by_caller_propagation_index);
+    this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
+
+    /* TODO */
+    zone_info.attribute_set_input_by_caller_propagation_index.clear();
+    zone_info.attribute_set_input_by_field_source_index.clear();
+
     auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
     zone_info.lazy_function = &fn;
 
@@ -2279,6 +2297,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       const int caller_propagation_index = item.key;
       const int child_zone_input_index = item.value;
       lf::InputSocket &lf_attribute_set_input = child_zone_node.input(child_zone_input_index);
+      BLI_assert(lf_attribute_set_input.type().is<bke::AnonymousAttributeSet>());
       graph_params.lf_attribute_set_input_by_caller_propagation_index.add(caller_propagation_index,
                                                                           &lf_attribute_set_input);
     }
