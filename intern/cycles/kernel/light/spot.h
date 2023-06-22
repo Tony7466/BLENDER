@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -13,7 +14,7 @@ ccl_device float spot_light_attenuation(const ccl_global KernelSpotLight *spot, 
       make_float3(dot(ray, spot->axis_u), dot(ray, spot->axis_v), dot(ray, spot->dir)) /
       spot->len);
 
-  return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) / spot->spot_smooth);
+  return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) * spot->spot_smooth);
 }
 
 template<bool in_volume_segment>
@@ -58,9 +59,9 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
   return true;
 }
 
-ccl_device_forceinline void spot_light_update_position(const ccl_global KernelLight *klight,
-                                                       ccl_private LightSample *ls,
-                                                       const float3 P)
+ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global KernelLight *klight,
+                                                          ccl_private LightSample *ls,
+                                                          const float3 P)
 {
   ls->D = normalize_len(ls->P - P, &ls->t);
   ls->Ng = -ls->D;
@@ -71,6 +72,7 @@ ccl_device_forceinline void spot_light_update_position(const ccl_global KernelLi
 
   float invarea = klight->spot.invarea;
   ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
+  /* NOTE : preserve pdf in area measure. */
   ls->pdf = invarea;
 
   /* spot light attenuation */

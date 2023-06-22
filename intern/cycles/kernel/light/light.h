@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -95,6 +96,8 @@ ccl_device_inline bool light_sample(KernelGlobals kg,
                                     const int lamp,
                                     const float2 rand,
                                     const float3 P,
+                                    const float3 N,
+                                    const int shader_flags,
                                     const uint32_t path_flag,
                                     ccl_private LightSample *ls)
 {
@@ -149,7 +152,7 @@ ccl_device_inline bool light_sample(KernelGlobals kg,
     }
   }
   else if (type == LIGHT_POINT) {
-    if (!point_light_sample<in_volume_segment>(klight, rand, P, ls)) {
+    if (!point_light_sample(klight, rand, P, N, shader_flags, ls)) {
       return false;
     }
   }
@@ -170,7 +173,9 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
                                       const float2 rand,
                                       const float time,
                                       const float3 P,
+                                      const float3 N,
                                       const int object_receiver,
+                                      const int shader_flags,
                                       const int bounce,
                                       const uint32_t path_flag,
                                       const int emitter_index,
@@ -232,7 +237,7 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
       return false;
     }
 
-    if (!light_sample<in_volume_segment>(kg, light, rand, P, path_flag, ls)) {
+    if (!light_sample<in_volume_segment>(kg, light, rand, P, N, shader_flags, path_flag, ls)) {
       return false;
     }
   }
@@ -311,7 +316,7 @@ ccl_device_forceinline int lights_intersect_impl(KernelGlobals kg,
 
 #ifdef __LIGHT_LINKING__
     /* Light linking. */
-    if (!light_link_light_match(kg, receiver_forward, lamp)) {
+    if (!light_link_light_match(kg, receiver_forward, lamp) && !(path_flag & PATH_RAY_CAMERA)) {
       continue;
     }
 #endif
@@ -445,6 +450,8 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
                                                ccl_private const Intersection *ccl_restrict isect,
                                                const float3 ray_P,
                                                const float3 ray_D,
+                                               const float3 N,
+                                               const uint32_t path_flag,
                                                ccl_private LightSample *ccl_restrict ls)
 {
   const int lamp = isect->prim;
@@ -467,7 +474,7 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
     }
   }
   else if (type == LIGHT_POINT) {
-    if (!point_light_sample_from_intersection(klight, isect, ray_P, ray_D, ls)) {
+    if (!point_light_sample_from_intersection(klight, isect, ray_P, ray_D, N, path_flag, ls)) {
       return false;
     }
   }
@@ -482,25 +489,6 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
   }
 
   return true;
-}
-
-/* Update light sample for changed new position, for MNEE. */
-
-ccl_device_forceinline void light_update_position(KernelGlobals kg,
-                                                  ccl_private LightSample *ls,
-                                                  const float3 P)
-{
-  const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
-
-  if (ls->type == LIGHT_POINT) {
-    point_light_update_position(klight, ls, P);
-  }
-  else if (ls->type == LIGHT_SPOT) {
-    spot_light_update_position(klight, ls, P);
-  }
-  else if (ls->type == LIGHT_AREA) {
-    area_light_update_position(klight, ls, P);
-  }
 }
 
 CCL_NAMESPACE_END
