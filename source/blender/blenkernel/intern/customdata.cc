@@ -2591,6 +2591,7 @@ static void customData_update_offsets(CustomData *data)
 {
   if (data->totlayer == 0) {
     data->totsize = 0;
+    CustomData_update_typemap(data);
     return;
   }
 
