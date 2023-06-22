@@ -284,8 +284,7 @@ void NodeGeometrySerialLoopOutput::set_item_name(NodeSerialLoopItem &item, const
   } args = {this, &item};
 
   const char *default_name = nodeStaticSocketLabel(item.socket_type, 0);
-
-  const bool name_changed = BLI_uniquename_cb(
+  BLI_uniquename_cb(
       [](void *arg, const char *name) {
         const Args &args = *static_cast<Args *>(arg);
         for (const NodeSerialLoopItem &item : args.storage->items_span()) {
