@@ -32,6 +32,10 @@ class bNodeTreeRuntime;
 class bNodeRuntime;
 class bNodeSocketRuntime;
 }  // namespace blender::bke
+namespace blender::bke {
+class bNodeTreeZones;
+class bNodeTreeZone;
+}  // namespace blender::bke
 using NodeDeclarationHandle = blender::nodes::NodeDeclaration;
 using SocketDeclarationHandle = blender::nodes::SocketDeclaration;
 using bNodeTreeRuntimeHandle = blender::bke::bNodeTreeRuntime;
@@ -540,6 +544,10 @@ typedef struct bNodePanel {
   /* UI name of the panel (not unique) */
   char *name;
 
+  /* Index in final item sequence. */
+  int index;
+  char _pad[4];
+
   /* Parent for nested panels, or nullptr for top-level panels */
   struct bNodePanel *parent;
 } bNodePanel;
@@ -683,6 +691,8 @@ typedef struct bNodeTree {
 
   blender::Span<const bNodePanel *> panels() const;
   blender::MutableSpan<bNodePanel *> panels_for_write();
+  /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
+  const blender::bke::bNodeTreeZones *zones() const;
 #endif
 } bNodeTree;
 
@@ -1661,7 +1671,7 @@ typedef struct NodeGeometrySimulationOutput {
 
 #ifdef __cplusplus
   blender::Span<NodeSimulationItem> items_span() const;
-  blender::MutableSpan<NodeSimulationItem> items_span_for_write();
+  blender::MutableSpan<NodeSimulationItem> items_span();
   blender::IndexRange items_range() const;
 #endif
 } NodeGeometrySimulationOutput;

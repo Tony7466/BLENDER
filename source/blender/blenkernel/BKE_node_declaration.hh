@@ -9,25 +9,87 @@
 #include "BLI_span.hh"
 
 #ifdef __cplusplus
+#  include <type_traits>
+#endif
 
-inline blender::Span<const bNodeSocketDeclaration *> bNodeTreeInterface::sockets() const
+#ifdef __cplusplus
+
+inline blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterface::items() const
 {
-  return blender::Span(sockets_array, sockets_num);
+  return blender::Span(items_array, items_num);
 }
 
-inline blender::MutableSpan<bNodeSocketDeclaration *> bNodeTreeInterface::sockets()
+inline blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::items()
 {
-  return blender::MutableSpan(sockets_array, sockets_num);
+  return blender::MutableSpan(items_array, items_num);
 }
 
-inline blender::Span<const bNodePanel *> bNodeTreeInterface::panels() const
+template<typename T> T &bNodeTreeInterfaceItem::get_as()
 {
-  return blender::Span(panels_array, panels_num);
+#  ifndef NDEBUG
+  switch (item_type) {
+    case NODE_INTERFACE_PANEL: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
+      BLI_assert(is_valid_type);
+    }
+    default:
+    case NODE_INTERFACE_SOCKET: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
+      BLI_assert(is_valid_type);
+    }
+  }
+#  endif
+
+  return *reinterpret_cast<T *>(this);
 }
 
-inline blender::MutableSpan<bNodePanel *> bNodeTreeInterface::panels()
+template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
 {
-  return blender::MutableSpan(panels_array, panels_num);
+#  ifndef NDEBUG
+  switch (item_type) {
+    case NODE_INTERFACE_PANEL: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
+      BLI_assert(is_valid_type);
+    }
+    default:
+    case NODE_INTERFACE_SOCKET: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
+      BLI_assert(is_valid_type);
+    }
+  }
+#  endif
+
+  return *reinterpret_cast<const T *>(this);
+}
+
+template<typename T> T *bNodeTreeInterfaceItem::get_as_ptr()
+{
+  switch (item_type) {
+    case NODE_INTERFACE_PANEL: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
+      return is_valid_type ? reinterpret_cast<T *>(this) : nullptr;
+    }
+    case NODE_INTERFACE_SOCKET: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
+      return is_valid_type ? reinterpret_cast<T *>(this) : nullptr;
+    }
+    default:
+      return nullptr;
+  }
+}
+
+template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
+{
+  switch (item_type) {
+    case NODE_INTERFACE_PANEL: {
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
+      return is_valid_type ? reinterpret_cast<const T *>(this) : nullptr;
+    }
+    default:
+    case NODE_INTERFACE_SOCKET:
+      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
+      return is_valid_type ? reinterpret_cast<const T *>(this) : nullptr;
+  }
 }
 
 #endif

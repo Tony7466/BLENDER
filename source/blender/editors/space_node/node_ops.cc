@@ -114,6 +114,11 @@ void node_operatortypes()
 
   WM_operatortype_append(NODE_OT_cryptomatte_layer_add);
   WM_operatortype_append(NODE_OT_cryptomatte_layer_remove);
+
+  WM_operatortype_append(NODE_OT_tree_interface_socket_new);
+  WM_operatortype_append(NODE_OT_tree_interface_panel_new);
+  WM_operatortype_append(NODE_OT_tree_interface_item_remove);
+  WM_operatortype_append(NODE_OT_tree_interface_item_move);
 }
 
 void node_keymap(wmKeyConfig *keyconf)
