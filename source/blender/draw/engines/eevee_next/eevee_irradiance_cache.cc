@@ -89,8 +89,7 @@ Vector<IrradianceBrickPacked> IrradianceCache::bricks_alloc(int brick_len)
     /* Fail allocation. Not enough brick in the atlas. */
     return {};
   }
-  Vector<IrradianceBrickPacked> allocated;
-  allocated.resize(brick_len);
+  Vector<IrradianceBrickPacked> allocated(brick_len);
   /* Copy bricks to return vector. */
   allocated.as_mutable_span().copy_from(brick_pool_.as_span().take_back(brick_len));
   /* Remove bricks from the pool. */
@@ -389,7 +388,7 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     display_grids_ps_.bind_texture("irradiance_c_tx", &irradiance_c_tx);
     display_grids_ps_.bind_texture("irradiance_d_tx", &irradiance_d_tx);
 
-    int sample_count = static_cast<int>(BKE_lightprobe_grid_cache_frame_sample_count(cache));
+    int sample_count = int(BKE_lightprobe_grid_cache_frame_sample_count(cache));
     int triangle_count = sample_count * 2;
     display_grids_ps_.draw_procedural(GPU_PRIM_TRIS, 1, triangle_count * 3);
 

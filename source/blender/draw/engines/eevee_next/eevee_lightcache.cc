@@ -68,9 +68,9 @@ class LightBake {
   std::mutex result_mutex_;
 
  public:
-  LightBake(struct Main *bmain,
-            struct ViewLayer *view_layer,
-            struct Scene *scene,
+  LightBake(Main *bmain,
+            ViewLayer *view_layer,
+            Scene *scene,
             Span<Object *> probes,
             bool run_as_job,
             int frame,
@@ -276,12 +276,12 @@ using namespace blender::eevee;
 /** \name Light Bake Job
  * \{ */
 
-wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
-                                       struct wmWindow *win,
-                                       struct Main *bmain,
-                                       struct ViewLayer *view_layer,
-                                       struct Scene *scene,
-                                       blender::Vector<struct Object *> original_probes,
+wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
+                                       wmWindow *win,
+                                       Main *bmain,
+                                       ViewLayer *view_layer,
+                                       Scene *scene,
+                                       blender::Vector<Object *> original_probes,
                                        int delay_ms,
                                        int frame)
 {

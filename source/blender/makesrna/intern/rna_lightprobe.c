@@ -158,7 +158,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "grid_bake_samples", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Bake Samples", "Number of rays direction to evaluate when baking");
+      prop, "Bake Samples", "Number of ray directions to evaluate when baking");
   RNA_def_property_range(prop, 1, INT_MAX);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 

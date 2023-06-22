@@ -485,14 +485,14 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
 
 void Instance::light_bake_irradiance(
     Object &probe,
-    std::function<void()> context_enable,
-    std::function<void()> context_disable,
-    std::function<bool()> stop,
-    std::function<void(LightProbeGridCacheFrame *, float progress)> result_update)
+    FunctionRef<void()> context_enable,
+    FunctionRef<void()> context_disable,
+    FunctionRef<bool()> stop,
+    FunctionRef<void(LightProbeGridCacheFrame *, float progress)> result_update)
 {
   BLI_assert(is_baking());
 
-  auto custom_pipeline_wrapper = [&](std::function<void()> callback) {
+  auto custom_pipeline_wrapper = [&](FunctionRef<void()> callback) {
     context_enable();
     DRW_custom_pipeline_begin(&draw_engine_eevee_next_type, depsgraph);
     callback();
@@ -500,7 +500,7 @@ void Instance::light_bake_irradiance(
     context_disable();
   };
 
-  auto context_wrapper = [&](std::function<void()> callback) {
+  auto context_wrapper = [&](FunctionRef<void()> callback) {
     context_enable();
     callback();
     context_disable();
