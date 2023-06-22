@@ -520,34 +520,29 @@ static void duplicate_faces(GeometrySet &geometry_set,
 
   int poly_index = 0;
   int loop_index = 0;
-  {
-    SCOPED_TIMER_AVERAGED("???");
-    // for (const int i_selection : selection.index_range()){
-    //  const int index = selection[i_selection];
-    selection.foreach_index_optimized<int>([&](const int index, const int i_selection) {
-      const IndexRange poly_range = duplicates[i_selection];
-      const IndexRange source = polys[index];
-      for ([[maybe_unused]] const int i_duplicate : poly_range.index_range()) {
-        new_poly_offsets[poly_index] = loop_index;
-        for (const int src_corner : source) {
-          loop_mapping[loop_index] = src_corner;
-          vert_mapping[loop_index] = corner_verts[src_corner];
-          edge_mapping[loop_index] = corner_edges[src_corner];
-          new_edges[loop_index][0] = loop_index;
-          if (src_corner != source.last()) {
-            new_edges[loop_index][1] = loop_index + 1;
-          }
-          else {
-            new_edges[loop_index][1] = new_poly_offsets[poly_index];
-          }
-          loop_index++;
+  selection.foreach_index_optimized<int>([&](const int index, const int i_selection) {
+    const IndexRange poly_range = duplicates[i_selection];
+    const IndexRange source = polys[index];
+    for ([[maybe_unused]] const int i_duplicate : poly_range.index_range()) {
+      new_poly_offsets[poly_index] = loop_index;
+      for (const int src_corner : source) {
+        loop_mapping[loop_index] = src_corner;
+        vert_mapping[loop_index] = corner_verts[src_corner];
+        edge_mapping[loop_index] = corner_edges[src_corner];
+        new_edges[loop_index][0] = loop_index;
+        if (src_corner != source.last()) {
+          new_edges[loop_index][1] = loop_index + 1;
         }
-        poly_index++;
+        else {
+          new_edges[loop_index][1] = new_poly_offsets[poly_index];
+        }
+        loop_index++;
       }
-    });
-    std::iota(new_corner_verts.begin(), new_corner_verts.end(), 0);
-    std::iota(new_corner_edges.begin(), new_corner_edges.end(), 0);
-  }
+      poly_index++;
+    }
+  });
+  std::iota(new_corner_verts.begin(), new_corner_verts.end(), 0);
+  std::iota(new_corner_edges.begin(), new_corner_edges.end(), 0);
 
   new_mesh->tag_loose_verts_none();
   new_mesh->tag_loose_edges_none();
