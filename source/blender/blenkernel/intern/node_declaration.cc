@@ -106,6 +106,8 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name
                                                          const eNodeTreeInterfaceSocketKind kind)
 {
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
+  new_socket->item.item_type = NODE_INTERFACE_SOCKET;
+  new_socket->item.parent = nullptr;
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
   new_socket->data_type = BLI_strdup(data_type.data());
@@ -129,6 +131,8 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   }
 
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
+  new_socket->item.item_type = NODE_INTERFACE_SOCKET;
+  new_socket->item.parent = nullptr;
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
   new_socket->data_type = BLI_strdup(data_type.data());
@@ -143,6 +147,8 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
 bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name)
 {
   bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
+  new_panel->item.item_type = NODE_INTERFACE_PANEL;
+  new_panel->item.parent = nullptr;
   new_panel->name = BLI_strdup(name.data());
 
   add_item(new_panel->item);
@@ -157,6 +163,8 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef nam
   }
 
   bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
+  new_panel->item.item_type = NODE_INTERFACE_PANEL;
+  new_panel->item.parent = nullptr;
   new_panel->name = BLI_strdup(name.data());
 
   insert_item(new_panel->item, index);
