@@ -34,11 +34,17 @@ void ED_operatortypes_grease_pencil_draw(void);
 void ED_operatortypes_grease_pencil_select(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 /**
- * Get the selection domain for Grease Pencil selection operators: point, stroke, segment.
+ * Get the selection domain for Grease Pencil selection operators.
  * \param C: Context.
- * \param segment_mode: Pointer to bool, indicating 'select segment' mode is active.
+ * \return The selection domain: point or curve.
  */
-eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C, bool *segment_mode);
+eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
+/**
+ * Check if the selection mode for Grease Pencil selection operators is 'segment'.
+ * \param C: Context.
+ * \return True when the selection mode is 'segment'.
+ */
+bool ED_grease_pencil_segment_selection_mode(struct bContext *C);
 
 #ifdef __cplusplus
 }
@@ -53,7 +59,6 @@ namespace blender::ed::greasepencil {
 
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
-bool editable_grease_pencil_no_segment_selection_poll(bContext *C);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
@@ -121,6 +126,23 @@ void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
                                           bke::CurvesGeometry &curves,
                                           const int curve_offset,
                                           const Vector<Stroke2DSpace> &strokes_2d);
+
+/**
+ * Expand the point selection in a Grease Pencil drawing to stroke segments.
+ * A segment is the part of a stroke between other, intersecting strokes.
+ *
+ * \param curves: The curves in a Grease Pencil drawing.
+ * \param curve_offset: The curve offset index for the curves in the GP geometry array.
+ * \param strokes_2d: A vector with the 2D representation of all editable strokes.
+ * Obtained by #editable_strokes_in_2d_space_get.
+ * \param random_seed: Seed for the random generator.
+ * \param probability: Higher probability means more segments are selected.
+ */
+void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
+                                         const int curve_offset,
+                                         const Vector<Stroke2DSpace> &strokes_2d,
+                                         const uint32_t random_seed,
+                                         const float probability);
 
 }  // namespace blender::ed::greasepencil
 #endif

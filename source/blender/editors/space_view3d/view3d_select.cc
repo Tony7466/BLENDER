@@ -1184,8 +1184,8 @@ static bool do_lasso_select_grease_pencil(ViewContext *vc,
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
 
   /* Get selection domain from tool settings. */
-  bool segment_mode;
-  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(vc->C, &segment_mode);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(vc->C);
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(vc->C);
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
@@ -3197,8 +3197,8 @@ static bool ed_grease_pencil_select_pick(bContext *C,
                                          });
 
   /* Get selection domain from tool settings. */
-  bool segment_mode;
-  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C, &segment_mode);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C);
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
 
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
       drawings.index_range(),
@@ -4231,8 +4231,8 @@ static bool do_grease_pencil_box_select(ViewContext *vc, const rcti *rect, const
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
 
   /* Get selection domain from tool settings. */
-  bool segment_mode;
-  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(vc->C, &segment_mode);
+  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(vc->C);
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(vc->C);
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
