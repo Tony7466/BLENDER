@@ -330,17 +330,17 @@ void *EEVEE_NEXT_lightbake_job_data_alloc(Main *bmain,
 
 void EEVEE_NEXT_lightbake_job_data_free(void *job_data)
 {
-  delete reinterpret_cast<LightBake *>(job_data);
+  delete static_cast<LightBake *>(job_data);
 }
 
 void EEVEE_NEXT_lightbake_update(void *job_data)
 {
-  reinterpret_cast<LightBake *>(job_data)->update();
+  static_cast<LightBake *>(job_data)->update();
 }
 
 void EEVEE_NEXT_lightbake_job(void *job_data, bool *stop, bool *do_update, float *progress)
 {
-  reinterpret_cast<LightBake *>(job_data)->run(stop, do_update, progress);
+  static_cast<LightBake *>(job_data)->run(stop, do_update, progress);
 }
 
 /** \} */
