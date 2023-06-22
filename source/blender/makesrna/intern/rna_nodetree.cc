@@ -4283,7 +4283,7 @@ static const EnumPropertyItem *rna_SerialLoopItem_socket_type_itemf(bContext * /
                                                                     PropertyRNA * /*prop*/,
                                                                     bool *r_free)
 {
-  *r_free = false;
+  *r_free = true;
   return itemf_function_check(node_socket_data_type_items,
                               rna_SerialLoopItem_socket_type_supported);
 }
