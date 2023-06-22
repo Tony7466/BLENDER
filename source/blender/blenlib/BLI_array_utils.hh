@@ -163,11 +163,14 @@ template<typename T>
 inline void shift_to_back(const IndexRange range, MutableSpan<T> span, const int64_t steps = 1)
 {
   BLI_assert(steps > 0);
-  BLI_assert(span.index_range().drop_back(steps).contains(range));
+  const IndexRange shift = range.shift(steps);
+  BLI_assert(span.index_range().contains(range));
+  BLI_assert(span.index_range().contains(shift));
 
-  for (const int64_t i : range.index_range()) {
-    const int64_t index = range[range.size() - i - 1];
-    span[index + steps] = std::move(span[index]);
+  for (const int64_t index : range.index_range()) {
+    const int64_t index_from = range[range.size() - index - 1];
+    const int64_t index_to = shift[shift.size() - index - 1];
+    span[index_to] = std::move(span[index_from]);
   }
 }
 
@@ -175,9 +178,14 @@ template<typename T>
 inline void shift_to_front(const IndexRange range, MutableSpan<T> span, const int64_t steps = 1)
 {
   BLI_assert(steps > 0);
-  BLI_assert(span.index_range().drop_front(steps).contains(range));
-  for (const int64_t index : range) {
-    span[index - steps] = std::move(span[index]);
+  const IndexRange shift = range.shift(-steps);
+  BLI_assert(span.index_range().contains(range));
+  BLI_assert(span.index_range().contains(shift));
+
+  for (const int64_t index : range.index_range()) {
+    const int64_t index_from = range[index];
+    const int64_t index_to = shift[index];
+    span[index_to] = std::move(span[index_from]);
   }
 }
 
