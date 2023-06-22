@@ -716,7 +716,7 @@ static void do_lasso_select_pose__do_tag(void *userData,
 
   if (BLI_rctf_isect_segment(data->rect_fl, screen_co_a, screen_co_b) &&
       BLI_lasso_is_edge_inside(
-          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX)) {
+          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX, false)) {
     pchan->bone->flag |= BONE_DONE;
     data->is_changed = true;
   }
@@ -1329,7 +1329,7 @@ static void do_lasso_select_armature__doSelectBone(void *userData,
                                  data->mcoords_len,
                                  UNPACK2(screen_co_a),
                                  UNPACK2(screen_co_b),
-                                 INT_MAX)) {
+                                 INT_MAX, false)) {
       is_inside_flag |= BONESEL_BONE;
     }
   }
@@ -1358,7 +1358,7 @@ static void do_lasso_select_armature__doSelectBone_clip_content(void *userData,
   }
 
   if (BLI_lasso_is_edge_inside(
-          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX)) {
+          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX, false)) {
     is_inside_flag |= BONESEL_BONE;
   }
 
