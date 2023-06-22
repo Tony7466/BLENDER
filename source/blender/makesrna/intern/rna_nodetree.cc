@@ -4411,12 +4411,63 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
   return item;
 }
 
+bool static serial_loop_socket_type_supported(const eNodeSocketDatatype socket_type)
+{
+  return ELEM(socket_type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_ROTATION,
+              SOCK_INT,
+              SOCK_STRING,
+              SOCK_GEOMETRY,
+              SOCK_OBJECT,
+              SOCK_MATERIAL,
+              SOCK_IMAGE,
+              SOCK_COLLECTION);
+}
+
 static NodeSerialLoopItem *rna_NodeGeometrySerialLoopOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  /* TODO */
-  UNUSED_VARS(id, node, bmain, reports, socket_type, name);
-  return nullptr;
+  NodeSerialLoopItem *item = [&]() -> NodeSerialLoopItem * {
+    if (!serial_loop_socket_type_supported(eNodeSocketDatatype(socket_type))) {
+      return nullptr;
+    }
+    NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+        node->storage);
+    const int insert_index = storage->items_num;
+    NodeSerialLoopItem *old_items = storage->items;
+
+    storage->items = MEM_cnew_array<NodeSerialLoopItem>(storage->items_num + 1, __func__);
+    std::copy_n(old_items, insert_index, storage->items);
+    NodeSerialLoopItem &new_item = storage->items[insert_index];
+    std::copy_n(old_items + insert_index + 1,
+                storage->items_num - insert_index,
+                storage->items + insert_index + 1);
+
+    const char *defname = nodeStaticSocketLabel(socket_type, 0);
+    new_item.identifier = storage->next_identifier++;
+    set_serial_loop_item_unique_name(storage, &new_item, name, defname);
+    new_item.socket_type = socket_type;
+
+    storage->items_num++;
+    MEM_SAFE_FREE(old_items);
+    return &new_item;
+  }();
+
+  if (item == nullptr) {
+    BKE_report(reports, RPT_ERROR, "Unable to create socket");
+  }
+  else {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  return item;
 }
 
 static void rna_NodeGeometrySimulationOutput_items_remove(
