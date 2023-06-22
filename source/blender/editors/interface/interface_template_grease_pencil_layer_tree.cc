@@ -33,7 +33,7 @@ class LayerViewItem : public AbstractTreeViewItem {
     uiItemL(sub, IFACE_(layer_.name().c_str()), ICON_GREASEPENCIL);
   }
 
-  bool supports_collapsing() const
+  bool supports_collapsing() const override
   {
     return false;
   }
@@ -46,7 +46,7 @@ class LayerViewItem : public AbstractTreeViewItem {
     return {};
   }
 
-  void on_activate()
+  void on_activate() override
   {
     this->grease_pencil_.set_active_layer(&layer_);
   }
@@ -56,7 +56,7 @@ class LayerViewItem : public AbstractTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext & /*C*/, StringRefNull new_name) override
   {
     grease_pencil_.rename_layer(layer_, new_name);
     return true;
