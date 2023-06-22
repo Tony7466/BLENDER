@@ -1740,8 +1740,23 @@ static bool vfont_to_curve(Object *ob,
       }
     }
   }
+  if (cursor_params && cu->textoncurve != NULL) {
 
-  if (cursor_params && slen) {
+    int best_match = -1;
+    float closest_distance = FLT_MAX;
+
+    for (i = 0; i <= slen; i++, ct++) {
+      const float char_location[2] = {chartransdata[i].xof, chartransdata[i].yof};
+      const float distance = len_squared_v2v2(cursor_params->cursor_location, char_location);
+      if (closest_distance > distance) {
+        best_match = i;
+        closest_distance = distance;
+      }
+    }
+    
+    cursor_params->r_string_offset = best_match;
+  }
+  if (cursor_params && cu->textoncurve == NULL) {
     cursor_params->r_string_offset = -1;
 
     // Loop until find the line where the mouse is over
