@@ -4490,8 +4490,29 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
 static void rna_NodeGeometrySerialLoopOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSerialLoopItem *item)
 {
-  /* TODO */
-  UNUSED_VARS(id, node, bmain, reports, item);
+  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+      node->storage);
+  if (!storage->items_span().contains_ptr(item)) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
+    return;
+  }
+
+  const int remove_index = item - storage->items;
+  NodeSerialLoopItem *old_items = storage->items;
+  storage->items = MEM_cnew_array<NodeSerialLoopItem>(storage->items_num - 1, __func__);
+  std::copy_n(old_items, remove_index, storage->items);
+  std::copy_n(old_items + remove_index + 1,
+              storage->items_num - remove_index,
+              storage->items + remove_index);
+
+  MEM_SAFE_FREE(old_items[remove_index].name);
+  storage->items_num--;
+  MEM_SAFE_FREE(old_items);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
@@ -4548,9 +4569,15 @@ static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *p
 
 static PointerRNA rna_NodeGeometrySerialLoopOutput_active_item_get(PointerRNA *ptr)
 {
-  /* TODO */
-  UNUSED_VARS(ptr);
-  return {};
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+      node->storage);
+  blender::MutableSpan<NodeSerialLoopItem> items = storage->items_span();
+  PointerRNA r_ptr{};
+  if (items.index_range().contains(storage->active_index)) {
+    RNA_pointer_create(ptr->owner_id, &RNA_SerialLoopItem, &items[storage->active_index], &r_ptr);
+  }
+  return r_ptr;
 }
 
 static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
@@ -4567,8 +4594,13 @@ static void rna_NodeGeometrySerialLoopOutput_active_item_set(PointerRNA *ptr,
                                                              PointerRNA value,
                                                              ReportList * /*reports*/)
 {
-  /* TODO */
-  UNUSED_VARS(ptr, value);
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+      node->storage);
+  NodeSerialLoopItem *item = static_cast<NodeSerialLoopItem *>(value.data);
+  if (storage->items_span().contains_ptr(item)) {
+    storage->active_index = item - storage->items;
+  }
 }
 
 /* ******** Node Socket Types ******** */

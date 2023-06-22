@@ -1173,7 +1173,7 @@ class NODE_PT_serial_loop_zone_items(Panel):
         active_item = output_node.active_item
         if active_item is not None:
             layout.use_property_split = True
-            layout.property_decorate = False
+            layout.use_property_decorate = False
             layout.prop(active_item, "socket_type")
 
 
