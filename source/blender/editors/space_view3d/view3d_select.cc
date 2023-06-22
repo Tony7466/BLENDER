@@ -1315,7 +1315,7 @@ static void do_lasso_select_armature__doSelectBone(void *userData,
   if (screen_co_b[0] != IS_CLIPPED) {
     if (BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_b)) &&
         BLI_lasso_is_point_inside(
-                data->mcoords, data->mcoords_len, UNPACK2(screen_co_b), INT_MAX)) {
+            data->mcoords, data->mcoords_len, UNPACK2(screen_co_b), INT_MAX)) {
       is_inside_flag |= BONESEL_TIP;
     }
   }
