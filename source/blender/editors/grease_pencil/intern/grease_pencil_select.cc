@@ -348,7 +348,8 @@ static int expand_changed_selection_point_to_segment(const int segment_stroke_in
                                                      MutableSpan<bool> &new_selection,
                                                      Vector<bool> &stored_selection,
                                                      const Vector<Stroke2DSpace> &strokes_2d,
-                                                     const bool selection_state)
+                                                     const bool selection_state,
+                                                     const bool is_cyclic)
 {
   /* Get 2D stroke with segment to expand. */
   const Stroke2DSpace stroke_2d = strokes_2d[segment_stroke_index];
@@ -383,6 +384,16 @@ static int expand_changed_selection_point_to_segment(const int segment_stroke_in
       }
 
       point_abs += direction;
+
+      /* Handle cyclic curves. */
+      if (is_cyclic) {
+        if (direction == -1 && point_abs == points.first()) {
+          point_abs = points.last();
+        }
+        if (direction == 1 && point_abs == points.last()) {
+          point_abs = points.first();
+        }
+      }
     }
 
     /* Handle last point. */
@@ -406,6 +417,7 @@ void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
    * execution.
    */
   const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   MutableSpan<bool> new_selection = selection.span.typed<bool>();
@@ -422,7 +434,8 @@ void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
                                                   new_selection,
                                                   stored_selection,
                                                   strokes_2d,
-                                                  new_selection[point_i]);
+                                                  new_selection[point_i],
+                                                  cyclic[curve_i]);
       }
     }
   }
@@ -443,6 +456,7 @@ void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
   const auto next_bool_random_value = [&]() { return rng.get_float() <= probability; };
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   MutableSpan<bool> new_selection = selection.span.typed<bool>();
@@ -463,7 +477,8 @@ void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
                                                           new_selection,
                                                           stored_selection,
                                                           strokes_2d,
-                                                          random_value);
+                                                          random_value,
+                                                          cyclic[curve_i]);
       point_i++;
     }
   }
