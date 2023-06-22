@@ -2630,6 +2630,8 @@ void uiTemplateLightLinkingCollection(struct uiLayout *layout,
                                       struct PointerRNA *ptr,
                                       const char *propname);
 
+void uiTemplateGreasePencilLayerTree(uiLayout *layout, struct bContext *C);
+
 void uiTemplateNodeTreeDeclaration(struct uiLayout *layout, struct PointerRNA *ptr);
 
 /**

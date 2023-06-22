@@ -1983,6 +1983,11 @@ void RNA_api_ui_layout(StructRNA *srna)
   api_ui_item_rna_common(func);
 
   func = RNA_def_function(
+      srna, "template_grease_pencil_layer_tree", "uiTemplateGreasePencilLayerTree");
+  RNA_def_function_ui_description(func, "View of the active grease pencil layer tree");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+
+  func = RNA_def_function(
       srna, "template_node_tree_declaration", "uiTemplateNodeTreeDeclaration");
   RNA_def_function_ui_description(func,
                                   "Show a node tree interface declaration");
