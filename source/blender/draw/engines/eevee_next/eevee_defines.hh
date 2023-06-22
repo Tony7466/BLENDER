@@ -99,7 +99,6 @@
 
 /* Resource bindings. */
 
-
 /* Textures. */
 /* Used anywhere. (Starts at index 2, since 0 and 1 are used by draw_gpencil) */
 #define RBUFS_UTILITY_TEX_SLOT 2

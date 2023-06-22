@@ -10,8 +10,8 @@
 
 #include "CLG_log.h"
 
-#include "DNA_modifier_types.h"
 #include "DNA_lightprobe_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
 #include "DNA_genfile.h"
@@ -201,7 +201,7 @@ static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
   }
 }
 
-void blo_do_versions_400(FileData * fd, Library * /*lib*/, Main *bmain)
+void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {

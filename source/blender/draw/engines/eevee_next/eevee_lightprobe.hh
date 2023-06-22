@@ -42,7 +42,8 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   int grid_index;
 };
 
-struct ReflectionCube : public LightProbe {};
+struct ReflectionCube : public LightProbe {
+};
 
 class LightProbeModule {
   friend class IrradianceCache;

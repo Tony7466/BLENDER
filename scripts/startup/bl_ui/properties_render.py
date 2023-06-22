@@ -620,6 +620,7 @@ class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
         row.prop(props, "gi_irradiance_display_size", text="Irradiance Size")
         row.prop(props, "gi_show_irradiance", text="", toggle=True)
 
+
 class RENDER_PT_eevee_next_indirect_lighting_display(RenderButtonsPanel, Panel):
     bl_label = "Display"
     bl_parent_id = "RENDER_PT_eevee_next_indirect_lighting"

@@ -1171,8 +1171,7 @@ static void drw_engines_enable_from_engine(const RenderEngineType *engine_type, 
     case OB_WIRE:
     case OB_SOLID:
       if (U.experimental.enable_workbench_next &&
-          STREQ(engine_type->idname, "BLENDER_WORKBENCH_NEXT"))
-      {
+          STREQ(engine_type->idname, "BLENDER_WORKBENCH_NEXT")) {
         use_drw_engine(DRW_engine_viewport_workbench_next_type.draw_engine);
         break;
       }
