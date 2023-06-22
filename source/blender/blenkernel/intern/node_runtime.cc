@@ -200,8 +200,9 @@ static void find_logical_origins_for_socket_recursive(
   sockets_in_current_chain.pop_last();
 }
 
-static void update_logical_origins(const bNodeTree &ntree)
+static void update_logically_linked_sockets(const bNodeTree &ntree)
 {
+  /* Compute logically linked sockets to inputs. */
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   Span<bNode *> nodes = tree_runtime.nodes_by_id;
   threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
@@ -217,6 +218,29 @@ static void update_logical_origins(const bNodeTree &ntree)
             sockets_in_current_chain,
             socket->runtime->logically_linked_sockets,
             socket->runtime->logically_linked_skipped_sockets);
+      }
+    }
+  });
+
+  /* Clear logically linked sockets to outputs. */
+  threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
+    for (const int i : range) {
+      bNode &node = *nodes[i];
+      for (bNodeSocket *socket : node.runtime->outputs) {
+        socket->runtime->logically_linked_sockets.clear();
+      }
+    }
+  });
+
+  /* Compute logically linked sockets to outputs using the previously computed logically linked
+   * sockets to inputs. */
+  threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
+    for (const int i : range) {
+      bNode &node = *nodes[i];
+      for (bNodeSocket *input_socket : node.runtime->inputs) {
+        for (bNodeSocket *output_socket : input_socket->runtime->logically_linked_sockets) {
+          output_socket->runtime->logically_linked_sockets.append(input_socket);
+        }
       }
     }
   });
@@ -499,7 +523,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
     update_nodes_by_type(ntree);
     threading::parallel_invoke(
         tree_runtime.nodes_by_id.size() > 32,
-        [&]() { update_logical_origins(ntree); },
+        [&]() { update_logically_linked_sockets(ntree); },
         [&]() { update_sockets_by_identifier(ntree); },
         [&]() {
           update_toposort(ntree,
