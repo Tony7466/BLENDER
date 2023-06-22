@@ -64,7 +64,7 @@ short ANIM_fcurve_keyframes_loop(KeyframeEditData *ked,
   uint i;
 
   /* sanity check */
-  if (ELEM(NULL, fcu, fcu->bezt)) {
+  if (ELEM(nullptr, fcu, fcu->bezt)) {
     return 0;
   }
 
@@ -121,7 +121,7 @@ short ANIM_fcurve_keyframes_loop(KeyframeEditData *ked,
 
   /* unset the F-Curve from the editdata now that it's done */
   if (ked) {
-    ked->fcu = NULL;
+    ked->fcu = nullptr;
     ked->curIndex = 0;
     ked->curflags = KEYFRAME_NONE;
   }
@@ -145,7 +145,7 @@ static short agrp_keyframes_loop(KeyframeEditData *ked,
                                  FcuEditFunc fcu_cb)
 {
   /* sanity check */
-  if (agrp == NULL) {
+  if (agrp == nullptr) {
     return 0;
   }
 
@@ -169,7 +169,7 @@ static short act_keyframes_loop(KeyframeEditData *ked,
                                 FcuEditFunc fcu_cb)
 {
   /* sanity check */
-  if (act == NULL) {
+  if (act == nullptr) {
     return 0;
   }
 
@@ -191,15 +191,15 @@ static short ob_keyframes_loop(KeyframeEditData *ked,
                                KeyframeEditFunc key_cb,
                                FcuEditFunc fcu_cb)
 {
-  bAnimContext ac = {NULL};
-  ListBase anim_data = {NULL, NULL};
+  bAnimContext ac = {nullptr};
+  ListBase anim_data = {nullptr, nullptr};
   int filter;
   int ret = 0;
 
-  bAnimListElem dummy_chan = {NULL};
-  Base dummy_base = {NULL};
+  bAnimListElem dummy_chan = {nullptr};
+  Base dummy_base = {nullptr};
 
-  if (ob == NULL) {
+  if (ob == nullptr) {
     return 0;
   }
 
@@ -243,14 +243,14 @@ static short scene_keyframes_loop(KeyframeEditData *ked,
                                   KeyframeEditFunc key_cb,
                                   FcuEditFunc fcu_cb)
 {
-  bAnimContext ac = {NULL};
-  ListBase anim_data = {NULL, NULL};
+  bAnimContext ac = {nullptr};
+  ListBase anim_data = {nullptr, nullptr};
   int filter;
   int ret = 0;
 
-  bAnimListElem dummy_chan = {NULL};
+  bAnimListElem dummy_chan = {nullptr};
 
-  if (sce == NULL) {
+  if (sce == nullptr) {
     return 0;
   }
 
@@ -291,11 +291,11 @@ static short summary_keyframes_loop(KeyframeEditData *ked,
                                     KeyframeEditFunc key_cb,
                                     FcuEditFunc fcu_cb)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   int filter, ret_code = 0;
 
   /* sanity check */
-  if (ac == NULL) {
+  if (ac == nullptr) {
     return 0;
   }
 
@@ -368,7 +368,7 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
                                       FcuEditFunc fcu_cb)
 {
   /* sanity checks */
-  if (ale == NULL) {
+  if (ale == nullptr) {
     return 0;
   }
 
@@ -407,7 +407,7 @@ short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked,
                                           FcuEditFunc fcu_cb)
 {
   /* sanity checks */
-  if (data == NULL) {
+  if (data == nullptr) {
     return 0;
   }
 
@@ -440,14 +440,17 @@ void ANIM_animdata_keyframe_callback(bAnimContext *ac,
                                      eAnimFilter_Flags filter,
                                      KeyframeEditFunc callback_fn)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
 
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    ANIM_fcurve_keyframes_loop(
-        NULL, static_cast<FCurve *>(ale->key_data), NULL, callback_fn, BKE_fcurve_handles_recalc);
+    ANIM_fcurve_keyframes_loop(nullptr,
+                               static_cast<FCurve *>(ale->key_data),
+                               nullptr,
+                               callback_fn,
+                               BKE_fcurve_handles_recalc);
     ale->update |= ANIM_UPDATE_DEFAULT;
   }
 
@@ -460,7 +463,7 @@ void ANIM_animdata_keyframe_callback(bAnimContext *ac,
 
 void ANIM_editkeyframes_refresh(bAnimContext *ac)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   int filter;
 
   /* filter animation data */
@@ -756,7 +759,7 @@ KeyframeEditFunc ANIM_editkeyframes_ok(short mode)
       /* same as BEZT_OK_REGION_CIRCLE, but we're only using the x-value of the points */
       return ok_bezier_channel_circle;
     default: /* nothing was ok */
-      return NULL;
+      return nullptr;
   }
 }
 
