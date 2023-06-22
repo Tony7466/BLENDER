@@ -178,6 +178,13 @@ void gpencil_to_keylist(struct bDopeSheet *ads,
                         struct bGPdata *gpd,
                         struct AnimKeylist *keylist,
                         bool active);
+
+/* Cels */
+void cels_to_keylist(struct AnimData *adt,
+                     const blender::bke::greasepencil::Layer *gpl,
+                     struct AnimKeylist *keylist,
+                     int saction_flag);
+
 /* Grease Pencil Layer */
 void gpl_to_keylist(struct bDopeSheet *ads, struct bGPDlayer *gpl, struct AnimKeylist *keylist);
 /* Mask */

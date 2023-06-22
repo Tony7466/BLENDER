@@ -91,6 +91,15 @@ void draw_summary_channel(struct AnimKeylistDrawList *draw_list,
                           float ypos,
                           float yscale_fac,
                           int saction_flag);
+
+/* Cel-framed channels */
+void draw_cels_channel(struct AnimKeylistDrawList *draw_list,
+                       struct bDopeSheet *ads,
+                       const blender::bke::greasepencil::Layer *gpl,
+                       float ypos,
+                       float yscale_fac,
+                       int saction_flag);
+
 /* Grease Pencil Layer */
 void draw_gpl_channel(struct AnimKeylistDrawList *draw_list,
                       struct bDopeSheet *ads,

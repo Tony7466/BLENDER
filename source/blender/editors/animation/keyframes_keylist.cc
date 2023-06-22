@@ -33,6 +33,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_fcurve.h"
+#include "BKE_grease_pencil.hh"
 
 #include "ED_anim_api.h"
 #include "ED_keyframes_keylist.h"
@@ -53,6 +54,12 @@ BLI_INLINE bool is_cfra_lt(const float a, const float b)
 }
 
 /* --------------- */
+
+/* Just for GreasePencil for now. */
+struct Cel {
+  int frame_number;
+  GreasePencilFrame frame;
+};
 
 struct AnimKeylist {
   /* Number of ActKeyColumn's in the keylist. */
@@ -499,6 +506,48 @@ static void nupdate_ak_bezt(ActKeyColumn *ak, void *data)
       ak->extreme_type |= (new_extreme | KEYFRAME_EXTREME_MIXED);
     }
   }
+}
+
+/* ......... */
+/* New node callback used for building ActKeyColumns from GPencil frames */
+static ActKeyColumn *nalloc_ak_cel(void *data)
+{
+  ActKeyColumn *ak = static_cast<ActKeyColumn *>(
+      MEM_callocN(sizeof(ActKeyColumn), "ActKeyColumnCel"));
+  Cel &cel = *static_cast<Cel *>(data);
+
+  /* store settings based on state of BezTriple */
+  ak->cfra = cel.frame_number;               // cel->framenum;
+  ak->sel = (cel.frame.flag & SELECT) != 0;  // cel->selected ?
+  ak->key_type = cel.frame.type;             // cel->key_type ?
+
+  /* count keyframes in this column */
+  ak->totkey = 1;
+  /* Set as visible block. */
+  ak->totblock = 1;
+  ak->block.sel = ak->sel;
+
+  return ak;
+}
+
+/* Node updater callback used for building ActKeyColumns from GPencil frames */
+static void nupdate_ak_cel(ActKeyColumn *ak, void *data)
+{
+  // TODO : Cel *cel = static_cast<Cel *> data;
+
+  /* set selection status and 'touched' status */
+  // if (cel->select) {
+  //   ak->sel = SELECT;
+  // }
+
+  /* count keyframes in this column */
+  ak->totkey++;
+
+  /* for keyframe type, 'proper' keyframes have priority over breakdowns
+   * (and other types for now). */
+  // if (gpf->key_type == BEZT_KEYTYPE_KEYFRAME) {
+  //   ak->key_type = BEZT_KEYTYPE_KEYFRAME;
+  // }
 }
 
 /* ......... */
@@ -1107,6 +1156,21 @@ void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, con
         }
       }
     }
+  }
+}
+
+void cels_to_keylist(AnimData *adt,
+                     const blender::bke::greasepencil::Layer *gpl,
+                     AnimKeylist *keylist,
+                     int saction_flag)
+{
+  using namespace blender::bke::greasepencil;
+  for (auto [frame_nb, gpf] : gpl.frames()) {
+    Cel cel(frame_nb, gpf);
+
+    float cfra = float(frame_nb);
+    ED_keylist_add_or_update_column(
+        keylist, cfra, nalloc_ak_cel, nupdate_ak_cel, static_cast<void *>(&cel));
   }
 }
 
