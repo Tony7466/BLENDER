@@ -382,7 +382,9 @@ static void file_draw_preview(const FileList *files,
   bool show_outline = !is_icon &&
                       (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
-  const bool is_loading = !filelist_is_ready(files) || file->flags & FILE_ENTRY_PREVIEW_LOADING;
+  /* Don't show previews while loading the file list, even when available already. Too much
+   * flickering while things move around in the view. */
+  const bool is_loading = !filelist_is_ready(files) || preview.is_loading;
 
   BLI_assert(preview.buffer != nullptr);
 
@@ -444,7 +446,7 @@ static void file_draw_preview(const FileList *files,
     GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   }
 
-  if (!preview.is_loading) {
+  if (!is_loading) {
     /* Don't show outer document image if loading - too flashy. */
     IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
     immDrawPixelsTexTiled_scaling(&state,
@@ -464,7 +466,7 @@ static void file_draw_preview(const FileList *files,
 
   GPU_blend(GPU_BLEND_ALPHA);
 
-  if ((icon && is_icon) || preview.is_loading) {
+  if ((icon && is_icon) || is_loading) {
     /* Small icon in the middle of large image, scaled to fit container and UI scale */
     float icon_x, icon_y;
     const float icon_size = 16.0f / icon_aspect * UI_SCALE_FAC;
@@ -476,7 +478,7 @@ static void file_draw_preview(const FileList *files,
       icon_color[2] = 255;
     }
 
-    if (preview.is_loading) {
+    if (is_loading) {
       /* Contrast with background since we are not showing the large document image. */
       UI_GetThemeColor4ubv(TH_TEXT, icon_color);
     }
@@ -485,7 +487,7 @@ static void file_draw_preview(const FileList *files,
     icon_y = yco + (ey / 2.0f) - (icon_size * ((file->typeflag & FILE_TYPE_DIR) ? 0.78f : 0.75f));
     UI_icon_draw_ex(icon_x,
                     icon_y,
-                    preview.is_loading ? ICON_TEMP : icon,
+                    is_loading ? ICON_TEMP : icon,
                     icon_aspect / UI_SCALE_FAC,
                     icon_opacity,
                     0.0f,
@@ -540,7 +542,7 @@ static void file_draw_preview(const FileList *files,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
   }
-  else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || preview.is_loading)) {
+  else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading)) {
     /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
     float icon_x, icon_y;
     const uchar dark[4] = {0, 0, 0, 255};
