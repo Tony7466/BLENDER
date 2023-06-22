@@ -1560,6 +1560,8 @@ static void filelist_cache_preview_request(const bContext *C,
   }
 
   PreviewImage *preview = filelist_file_request_preview(filelist, entry);
+  BLI_assert(preview != nullptr);
+
   entry->preview_icon_id = BKE_icon_preview_ensure(entry->id, preview);
   UI_icon_ensure_deferred(C, entry->preview_icon_id, true);
 }
