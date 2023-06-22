@@ -17,7 +17,7 @@ struct Object;
 struct wmJob;
 
 /** Opaque type hiding eevee::LightBake. */
-typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
+struct EEVEE_NEXT_LightBake;
 
 /* -------------------------------------------------------------------- */
 /** \name Light Bake Job

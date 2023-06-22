@@ -301,7 +301,7 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
                               WM_JOB_TYPE_LIGHT_BAKE);
 
   LightBake *bake = new LightBake(
-      bmain, view_layer, scene, original_probes, true, frame, delay_ms);
+      bmain, view_layer, scene, std::move(original_probes), true, frame, delay_ms);
 
   WM_jobs_customdata_set(wm_job, bake, EEVEE_NEXT_lightbake_job_data_free);
   WM_jobs_timer(wm_job, 0.4, NC_SCENE | NA_EDITED, 0);
@@ -316,13 +316,14 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
   return wm_job;
 }
 
-void *EEVEE_NEXT_lightbake_job_data_alloc(struct Main *bmain,
-                                          struct ViewLayer *view_layer,
-                                          struct Scene *scene,
-                                          blender::Vector<struct Object *> original_probes,
+void *EEVEE_NEXT_lightbake_job_data_alloc(Main *bmain,
+                                          ViewLayer *view_layer,
+                                          Scene *scene,
+                                          blender::Vector<Object *> original_probes,
                                           int frame)
 {
-  LightBake *bake = new LightBake(bmain, view_layer, scene, original_probes, false, frame);
+  LightBake *bake = new LightBake(
+      bmain, view_layer, scene, std::move(original_probes), false, frame);
   /* TODO(fclem): Can remove this cast once we remove the previous EEVEE light cache. */
   return reinterpret_cast<void *>(bake);
 }
