@@ -1353,7 +1353,7 @@ typedef struct KernelSpotLight {
   packed_float3 scaled_axis_u;
   float radius;
   packed_float3 scaled_axis_v;
-  float invarea;
+  float eval_fac;
   packed_float3 dir;
   float cos_half_spot_angle;
   float inv_len_z;
@@ -1361,6 +1361,7 @@ typedef struct KernelSpotLight {
   float pad[2];
 } KernelSpotLight;
 
+/* TODO: maybe rename spot to sphere */
 /* PointLight is SpotLight with only radius and invarea being used. */
 
 typedef struct KernelAreaLight {
