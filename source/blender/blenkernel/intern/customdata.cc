@@ -2603,7 +2603,7 @@ static void customData_update_offsets(CustomData *data)
     for (int i = 0; i < data->totlayer; i++) {
       CustomDataLayer *layer = data->layers + i;
 
-      int layer_align = customData_get_alignment(eCustomDataType(layer->type));
+      const int layer_align = customData_get_alignment(eCustomDataType(layer->type));
       if (layer_align != align) {
         continue;
       }
