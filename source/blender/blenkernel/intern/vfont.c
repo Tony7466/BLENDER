@@ -1741,36 +1741,32 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  if (cursor_params) {
+  if (cursor_params && slen) {
     cursor_params->r_string_offset = -1;
+
+    // Loop until find the line where the mouse is over
     for (i = 0; i <= slen; i++, ct++) {
-      info = &custrinfo[i];
-      ascii = mem[i];
-      if (info->flag & CU_CHINFO_SMALLCAPS_CHECK) {
-        ascii = towupper(ascii);
-      }
-      ct = &chartransdata[i];
-      che = find_vfont_char(vfd, ascii);
-      float charwidth = char_width(cu, che, info);
-      float charhalf = (charwidth / 2.0f);
-      if (cursor_params->cursor_location[1] >= (ct->yof - (0.25f * linedist)) * font_size &&
-          cursor_params->cursor_location[1] <= (ct->yof + (0.75f * linedist)) * font_size)
-      {
-        /* On this row. */
-        if (cursor_params->cursor_location[0] >= (ct->xof * font_size) &&
-            cursor_params->cursor_location[0] <= ((ct->xof + charhalf) * font_size))
-        {
-          /* Left half of character. */
-          cursor_params->r_string_offset = i;
-        }
-        else if (cursor_params->cursor_location[0] >= ((ct->xof + charhalf) * font_size) &&
-                 cursor_params->cursor_location[0] <= ((ct->xof + charwidth) * font_size))
-        {
-          /* Right half of character. */
-          cursor_params->r_string_offset = i + 1;
-        }
+      if (cursor_params->cursor_location[1] >= (chartransdata[i].yof * font_size)) {
+        break;
       }
     }
+
+    i = slen < i ? slen : i;
+    float yof = chartransdata[i].yof;
+
+    // Loop until find the first character of line, this because the mouse can be positioned
+    // further below the text, so the last character of the last line can be the at index i.
+    for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
+    }
+    // Loop until find the first character that is to the rigth of the mouse
+    for (i; i <= slen && yof == chartransdata[i].yof; i++) {
+      if (cursor_params->cursor_location[0] < (chartransdata[i].xof * font_size)) {
+        break;
+      }
+    }
+
+    // The first character that is to the right of the mouse is found, use the one on the left
+    cursor_params->r_string_offset = i && chartransdata[i - 1].yof == yof ? i - 1 : i;
   }
 
   /* Scale to fit only works for single text box layouts. */
