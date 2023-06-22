@@ -374,7 +374,7 @@ static void draw_keylist_keys(const DrawKeylistUIData *ctx,
 }
 
 /* *************************** Drawing Stack *************************** */
-typedef enum eAnimKeylistDrawListElemType {
+enum eAnimKeylistDrawListElemType {
   ANIM_KEYLIST_SUMMARY,
   ANIM_KEYLIST_SCENE,
   ANIM_KEYLIST_OBJECT,
@@ -383,9 +383,9 @@ typedef enum eAnimKeylistDrawListElemType {
   ANIM_KEYLIST_AGROUP,
   ANIM_KEYLIST_GP_LAYER,
   ANIM_KEYLIST_MASK_LAYER,
-} eAnimKeylistDrawListElemType;
+};
 
-typedef struct AnimKeylistDrawListElem {
+struct AnimKeylistDrawListElem {
   struct AnimKeylistDrawListElem *next, *prev;
   struct AnimKeylist *keylist;
   eAnimKeylistDrawListElemType type;
@@ -405,8 +405,7 @@ typedef struct AnimKeylistDrawListElem {
   bActionGroup *agrp;
   bGPDlayer *gpl;
   MaskLayer *masklay;
-
-} AnimKeylistDrawListElem;
+};
 
 static void ED_keylist_draw_list_elem_build_keylist(AnimKeylistDrawListElem *elem)
 {
@@ -473,9 +472,9 @@ static void ED_keylist_draw_list_elem_prepare_for_drawing(AnimKeylistDrawListEle
   ED_keylist_prepare_for_direct_access(elem->keylist);
 }
 
-typedef struct AnimKeylistDrawList {
+struct AnimKeylistDrawList {
   ListBase /*AnimKeylistDrawListElem*/ channels;
-} AnimKeylistDrawList;
+};
 
 AnimKeylistDrawList *ED_keylist_draw_list_create(void)
 {
