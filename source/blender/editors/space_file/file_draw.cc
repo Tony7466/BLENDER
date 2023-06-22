@@ -360,7 +360,8 @@ struct FilePreview {
   bool is_not_found = false;
 };
 
-static void file_draw_preview(const FileDirEntry *file,
+static void file_draw_preview(const FileList *files,
+                              const FileDirEntry *file,
                               const rcti *tile_draw_rect,
                               const float icon_aspect,
                               const FilePreview &preview,
@@ -381,6 +382,7 @@ static void file_draw_preview(const FileDirEntry *file,
   bool show_outline = !is_icon &&
                       (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
+  const bool is_loading = !filelist_is_ready(files) || file->flags & FILE_ENTRY_PREVIEW_LOADING;
 
   BLI_assert(preview.buffer != nullptr);
 
@@ -1044,7 +1046,8 @@ void file_draw_list(const bContext *C, ARegion *region)
       }
 
       float scale = 0;
-      file_draw_preview(file,
+      file_draw_preview(files,
+                        file,
                         &tile_draw_rect,
                         thumb_icon_aspect,
                         preview,

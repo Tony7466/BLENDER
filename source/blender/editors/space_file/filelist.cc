@@ -247,7 +247,9 @@ struct FileList {
    * \param do_change: When true, the callback may change given string in place to a valid value.
    * \return True when `dirpath` is valid.
    */
-  bool (*check_dir_fn)(FileList *filelist, char dirpath[FILE_MAX_LIBEXTRA], const bool do_change);
+  bool (*check_dir_fn)(const FileList *filelist,
+                       char dirpath[FILE_MAX_LIBEXTRA],
+                       const bool do_change);
 
   /** Fill `filelist` (to be called by read job). */
   void (*read_job_fn)(FileListReadJob *job_params, bool *stop, bool *do_update, float *progress);
@@ -1405,7 +1407,7 @@ static void parent_dir_until_exists_or_default_root(char *dir)
   }
 }
 
-static bool filelist_checkdir_dir(FileList * /*filelist*/,
+static bool filelist_checkdir_dir(const FileList * /*filelist*/,
                                   char dirpath[FILE_MAX_LIBEXTRA],
                                   const bool do_change)
 {
@@ -1416,7 +1418,7 @@ static bool filelist_checkdir_dir(FileList * /*filelist*/,
   return BLI_is_dir(dirpath);
 }
 
-static bool filelist_checkdir_lib(FileList * /*filelist*/,
+static bool filelist_checkdir_lib(const FileList * /*filelist*/,
                                   char dirpath[FILE_MAX_LIBEXTRA],
                                   const bool do_change)
 {
@@ -1435,7 +1437,7 @@ static bool filelist_checkdir_lib(FileList * /*filelist*/,
   return is_valid;
 }
 
-static bool filelist_checkdir_main(FileList *filelist,
+static bool filelist_checkdir_main(const FileList *filelist,
                                    char dirpath[FILE_MAX_LIBEXTRA],
                                    const bool do_change)
 {
@@ -1443,7 +1445,7 @@ static bool filelist_checkdir_main(FileList *filelist,
   return filelist_checkdir_lib(filelist, dirpath, do_change);
 }
 
-static bool filelist_checkdir_return_always_valid(FileList * /*filelist*/,
+static bool filelist_checkdir_return_always_valid(const FileList * /*filelist*/,
                                                   char /*dirpath*/[FILE_MAX_LIBEXTRA],
                                                   const bool /*do_change*/)
 {
@@ -1868,7 +1870,7 @@ const char *filelist_dir(const FileList *filelist)
   return filelist->filelist.root;
 }
 
-bool filelist_is_dir(FileList *filelist, const char *path)
+bool filelist_is_dir(const FileList *filelist, const char *path)
 {
   return filelist->check_dir_fn(filelist, (char *)path, false);
 }
@@ -1898,7 +1900,7 @@ void filelist_setrecursion(FileList *filelist, const int recursion_level)
   }
 }
 
-bool filelist_needs_force_reset(FileList *filelist)
+bool filelist_needs_force_reset(const FileList *filelist)
 {
   return (filelist->flags & (FL_FORCE_RESET | FL_FORCE_RESET_MAIN_FILES)) != 0;
 }
@@ -1916,12 +1918,12 @@ void filelist_tag_force_reset_mainfiles(FileList *filelist)
   filelist->flags |= FL_FORCE_RESET_MAIN_FILES;
 }
 
-bool filelist_is_ready(FileList *filelist)
+bool filelist_is_ready(const FileList *filelist)
 {
   return (filelist->flags & FL_IS_READY) != 0;
 }
 
-bool filelist_pending(FileList *filelist)
+bool filelist_pending(const FileList *filelist)
 {
   return (filelist->flags & FL_IS_PENDING) != 0;
 }
@@ -2529,7 +2531,7 @@ int ED_file_extension_icon(const char *path)
   }
 }
 
-int filelist_needs_reading(FileList *filelist)
+int filelist_needs_reading(const FileList *filelist)
 {
   return (filelist->filelist.entries_num == FILEDIR_NBR_ENTRIES_UNSET) ||
          filelist_needs_force_reset(filelist);
