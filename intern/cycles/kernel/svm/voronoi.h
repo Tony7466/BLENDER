@@ -110,7 +110,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0f;
+  float smoothDistance = 8.0f;
   float smoothPosition = 0.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   for (int i = -2; i <= 2; i++) {
@@ -270,7 +270,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0f;
+  float smoothDistance = 8.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float2 smoothPosition = make_float2(0.0f, 0.0f);
   for (int j = -2; j <= 2; j++) {
@@ -466,7 +466,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0f;
+  float smoothDistance = 8.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float3 smoothPosition = make_float3(0.0f, 0.0f, 0.0f);
   for (int k = -2; k <= 2; k++) {
@@ -679,7 +679,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0f;
+  float smoothDistance = 8.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float4 smoothPosition = zero_float4();
   for (int u = -2; u <= 2; u++) {

@@ -183,7 +183,7 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, float coord)
   float cellPosition = floor(coord);
   float localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0;
+  float smoothDistance = 8.0;
   float smoothPosition = 0.0;
   vector3 smoothColor = vector3(0.0, 0.0, 0.0);
   for (int i = -2; i <= 2; i++) {
@@ -340,7 +340,7 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vector2 coord)
   vector2 cellPosition = floor(coord);
   vector2 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0;
+  float smoothDistance = 8.0;
   vector3 smoothColor = vector3(0.0, 0.0, 0.0);
   vector2 smoothPosition = vector2(0.0, 0.0);
   for (int j = -2; j <= 2; j++) {
@@ -535,7 +535,7 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vector3 coord)
   vector3 cellPosition = floor(coord);
   vector3 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0;
+  float smoothDistance = 8.0;
   vector3 smoothColor = vector3(0.0, 0.0, 0.0);
   vector3 smoothPosition = vector3(0.0, 0.0, 0.0);
   for (int k = -2; k <= 2; k++) {
@@ -744,7 +744,7 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vector4 coord)
   vector4 cellPosition = floor(coord);
   vector4 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8000000000.0;
+  float smoothDistance = 8.0;
   vector3 smoothColor = vector3(0.0, 0.0, 0.0);
   vector4 smoothPosition = vector4(0.0, 0.0, 0.0, 0.0);
   for (int u = -2; u <= 2; u++) {
