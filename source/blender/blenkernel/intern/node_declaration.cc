@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_node.h"
 #include "BKE_node_declaration.hh"
 
 #include "BLI_array.hh"
@@ -12,11 +13,39 @@
 #include "DNA_node_declaration_types.h"
 #include "DNA_node_types.h"
 
+#include "RNA_access.h"
+
 #include <queue>
 
 std::string bNodeTreeInterfaceSocket::socket_identifier() const
 {
   return "Socket" + std::to_string(uid);
+}
+
+blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
+{
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(data_type);
+  if (typeinfo && typeinfo->draw_color) {
+    /* XXX Warning! Color callbacks for sockets are overly general,
+     * using instance pointers for potential context-based colors.
+     * This is not used by the standard socket types, but might be used
+     * by python nodes.
+     *
+     * There should be a simplified "base color" callback that does not
+     * depend on context, for drawing socket type colors without any
+     * actual socket instance. We just set pointers to null here and
+     * hope for the best until the situation can be improved ...
+     */
+    PointerRNA socket_ptr = PointerRNA_NULL;
+    PointerRNA node_ptr = PointerRNA_NULL;
+    bContext *C = nullptr;
+    float color[4];
+    typeinfo->draw_color(C, &socket_ptr, &node_ptr, color);
+    return blender::ColorGeometry4f(color);
+  }
+  else {
+    return blender::ColorGeometry4f(1.0f, 0.0f, 1.0f, 1.0f);
+  }
 }
 
 int bNodeTreeInterface::item_index(bNodeTreeInterfaceItem &item) const

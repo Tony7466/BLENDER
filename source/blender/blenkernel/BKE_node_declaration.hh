@@ -24,6 +24,27 @@ inline blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::items(
   return blender::MutableSpan(items_array, items_num);
 }
 
+inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
+{
+  if (items().index_range().contains(active_index)) {
+    return items()[active_index];
+  }
+  return nullptr;
+}
+
+inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
+{
+  if (items().index_range().contains(active_index)) {
+    return items()[active_index];
+  }
+  return nullptr;
+}
+
+inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
+{
+  active_index = items().as_span().first_index_try(item);
+}
+
 template<typename T> T &bNodeTreeInterfaceItem::get_as()
 {
 #  ifndef NDEBUG

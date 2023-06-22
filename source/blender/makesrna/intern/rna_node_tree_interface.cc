@@ -29,16 +29,10 @@ const EnumPropertyItem rna_enum_node_tree_interface_socket_kind_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "BKE_node.h"
+#  include "BKE_node_declaration.hh"
 #  include "BKE_node_tree_update.h"
 #  include "ED_node.h"
 #  include "WM_api.h"
-
-static void rna_NodeTreeInterface_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  BKE_ntree_update_tag_interface(ntree);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-}
 
 static void rna_NodeTreeInterfaceItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -128,13 +122,8 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_data_type_itemf(bCont
 static PointerRNA rna_NodeTreeInterfaceItems_active_get(PointerRNA *ptr)
 {
   bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
-  bNodeTreeInterfaceItem *item = nullptr;
-  if (interface->items().index_range().contains(interface->active_item)) {
-    item = interface->items()[interface->active_item];
-  }
-
   PointerRNA r_ptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, item, &r_ptr);
+  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, interface->active_item(), &r_ptr);
   return r_ptr;
 }
 
@@ -144,7 +133,7 @@ static void rna_NodeTreeInterfaceItems_active_set(PointerRNA *ptr,
 {
   bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
   bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(value.data);
-  interface->active_item = interface->items().as_span().first_index_try(item);
+  interface->active_item_set(item);
 }
 
 static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
@@ -315,7 +304,7 @@ static void rna_def_node_tree_interface_items_api(BlenderRNA *brna, PropertyRNA 
       srna, "Node Tree Interface Items", "Collection of items in a node tree interface");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "active_item");
+  RNA_def_property_int_sdna(prop, nullptr, "active_index");
   RNA_def_property_ui_text(prop, "Active Index", "Index of the active item");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE, nullptr);

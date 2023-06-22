@@ -1078,8 +1078,8 @@ typedef enum eWM_DragDataType {
   WM_DRAG_COLOR,
   WM_DRAG_DATASTACK,
   WM_DRAG_ASSET_CATALOG,
-  /* Socket or panel declaration in a node tree interface declaration. */
-  WM_DRAG_NODE_TREE_DECLARATION,
+  /* Socket or panel declaration in a node tree interface. */
+  WM_DRAG_NODE_TREE_INTERFACE,
 } eWM_DragDataType;
 
 typedef enum eWM_DragFlags {
@@ -1112,12 +1112,9 @@ typedef struct wmDragAssetCatalog {
   bUUID drag_catalog_id;
 } wmDragAssetCatalog;
 
-typedef struct wmDragNodeTreeDeclaration {
-  /* eNodeTreeDeclarationType */
-  int type;
-  char _pad[4];
-  void *item;
-} wmDragNodeTreeDeclaration;
+typedef struct wmDragNodeTreeInterface {
+  struct bNodeTreeInterfaceItem *item;
+} wmDragNodeTreeInterface;
 
 /**
  * For some specific cases we support dragging multiple assets (#WM_DRAG_ASSET_LIST). There is no

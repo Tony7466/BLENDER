@@ -11,6 +11,7 @@
 #include "BLI_utildefines.h"
 
 #ifdef __cplusplus
+#  include "BLI_color.hh"
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"
 
@@ -68,6 +69,7 @@ typedef struct bNodeTreeInterfaceSocket {
 
 #ifdef __cplusplus
   std::string socket_identifier() const;
+  blender::ColorGeometry4f socket_color() const;
 #endif
 } bNodeTreeInterfaceSocket;
 
@@ -80,13 +82,18 @@ typedef struct bNodeTreeInterfacePanel {
 typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceItem **items_array;
   int items_num;
-  int active_item;
+  int active_index;
   int next_socket_uid;
   char _pad[4];
 
 #ifdef __cplusplus
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
+  int item_index(bNodeTreeInterfaceItem &item) const;
+
+  bNodeTreeInterfaceItem *active_item();
+  const bNodeTreeInterfaceItem *active_item() const;
+  void active_item_set(bNodeTreeInterfaceItem *item);
 
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
@@ -106,8 +113,6 @@ typedef struct bNodeTreeInterface {
   bool move_item(bNodeTreeInterfaceItem &item, int new_index);
 
  protected:
-  int item_index(bNodeTreeInterfaceItem &item) const;
-
   void add_item(bNodeTreeInterfaceItem &item);
   void insert_item(bNodeTreeInterfaceItem &item, int index);
   void free_item(bNodeTreeInterfaceItem &item);

@@ -971,7 +971,7 @@ class NODE_PT_node_tree_declaration(Panel):
 
         split = layout.row()
 
-        split.template_node_tree_declaration(tree)
+        split.template_node_tree_declaration(tree.interface)
 
         ops_col = split.column()
 
