@@ -290,6 +290,7 @@ set(SRC
   engines/eevee_next/eevee_instance.hh
   engines/eevee_next/eevee_irradiance_cache.hh
   engines/eevee_next/eevee_light.hh
+  engines/eevee_next/eevee_lightcache.hh
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
