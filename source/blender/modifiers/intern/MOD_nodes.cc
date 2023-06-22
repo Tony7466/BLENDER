@@ -121,9 +121,12 @@ static void initData(ModifierData *md)
   nmd->simulation_cache = new_simulation_cache();
 }
 
-static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
+static void add_used_ids_from_sockets(const Span<const bNodeSocket *> sockets, Set<ID *> &ids)
 {
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &sockets) {
+  for (const bNodeSocket *socket : sockets) {
+    if (socket->flag & SOCK_IS_LINKED) {
+      continue;
+    }
     switch (socket->type) {
       case SOCK_OBJECT: {
         if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
@@ -201,8 +204,8 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
 
   tree.ensure_topology_cache();
   for (const bNode *node : tree.all_nodes()) {
-    add_used_ids_from_sockets(node->inputs, ids);
-    add_used_ids_from_sockets(node->outputs, ids);
+    add_used_ids_from_sockets(node->input_sockets(), ids);
+    add_used_ids_from_sockets(node->output_sockets(), ids);
     r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
   }
 
