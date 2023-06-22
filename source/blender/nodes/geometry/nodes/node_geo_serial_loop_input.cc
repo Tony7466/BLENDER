@@ -41,6 +41,39 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  const bNode *output_node = ntree->node_by_id(node_storage(*node).output_node_id);
+  if (!output_node) {
+    return true;
+  }
+  NodeGeometrySerialLoopOutput &storage = *static_cast<NodeGeometrySerialLoopOutput *>(
+      output_node->storage);
+  if (link->tonode == node) {
+    if (link->tosock->identifier == StringRef("__extend__")) {
+      if (const NodeSerialLoopItem *item = storage.add_item(
+              link->fromsock->name, eNodeSocketDatatype(link->fromsock->type)))
+      {
+        update_node_declaration_and_sockets(*ntree, *node);
+        link->tosock = nodeFindSocket(node, SOCK_IN, item->identifier_str().c_str());
+        return true;
+      }
+    }
+  }
+  if (link->fromnode == node) {
+    if (link->fromsock->identifier == StringRef("__extend__")) {
+      if (const NodeSerialLoopItem *item = storage.add_item(
+              link->tosock->name, eNodeSocketDatatype(link->tosock->type)))
+      {
+        update_node_declaration_and_sockets(*ntree, *node);
+        link->fromsock = nodeFindSocket(node, SOCK_OUT, item->identifier_str().c_str());
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace blender::nodes::node_geo_serial_loop_input_cc
 
 void register_node_type_geo_serial_loop_input()
@@ -54,6 +87,7 @@ void register_node_type_geo_serial_loop_input()
   ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.gather_add_node_search_ops = nullptr;
   ntype.gather_link_search_ops = nullptr;
+  ntype.insert_link = file_ns::node_insert_link;
   node_type_storage(&ntype,
                     "NodeGeometrySerialLoopInput",
                     node_free_standard_storage,
