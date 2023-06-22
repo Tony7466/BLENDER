@@ -1676,6 +1676,10 @@ typedef struct NodeSerialLoopItem {
    * names change.
    */
   int identifier;
+
+#ifdef __cplusplus
+  static bool supports_type(eNodeSocketDatatype type);
+#endif
 } NodeSerialLoopItem;
 
 typedef struct NodeGeometrySerialLoopInput {
@@ -1694,6 +1698,8 @@ typedef struct NodeGeometrySerialLoopOutput {
 #ifdef __cplusplus
   blender::Span<NodeSerialLoopItem> items_span() const;
   blender::MutableSpan<NodeSerialLoopItem> items_span();
+  NodeSerialLoopItem *add_item(const char *name, eNodeSocketDatatype type);
+  void set_item_name(NodeSerialLoopItem &item, const char *name);
 #endif
 } NodeGeometrySerialLoopOutput;
 

@@ -4256,26 +4256,9 @@ static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContex
                               rna_SimulationStateItem_socket_type_supported);
 }
 
-bool static serial_loop_socket_type_supported(const eNodeSocketDatatype socket_type)
-{
-  return ELEM(socket_type,
-              SOCK_FLOAT,
-              SOCK_VECTOR,
-              SOCK_RGBA,
-              SOCK_BOOLEAN,
-              SOCK_ROTATION,
-              SOCK_INT,
-              SOCK_STRING,
-              SOCK_GEOMETRY,
-              SOCK_OBJECT,
-              SOCK_MATERIAL,
-              SOCK_IMAGE,
-              SOCK_COLLECTION);
-}
-
 static bool rna_SerialLoopItem_socket_type_supported(const EnumPropertyItem *item)
 {
-  return serial_loop_socket_type_supported(eNodeSocketDatatype(item->value));
+  return NodeSerialLoopItem::supports_type(eNodeSocketDatatype(item->value));
 }
 
 static const EnumPropertyItem *rna_SerialLoopItem_socket_type_itemf(bContext * /*C*/,
@@ -4299,47 +4282,12 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
   NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
 }
 
-static bool set_serial_loop_item_unique_name(NodeGeometrySerialLoopOutput *storage,
-                                             NodeSerialLoopItem *item,
-                                             const char *name,
-                                             const char *defname)
-{
-  char unique_name[MAX_NAME + 4];
-  STRNCPY(unique_name, name);
-
-  struct Args {
-    NodeGeometrySerialLoopOutput *storage;
-    const NodeSerialLoopItem *item;
-  } args = {storage, item};
-
-  const bool name_changed = BLI_uniquename_cb(
-      [](void *arg, const char *name) {
-        const Args &args = *static_cast<Args *>(arg);
-        for (const NodeSerialLoopItem &item : args.storage->items_span()) {
-          if (&item != args.item) {
-            if (STREQ(item.name, name)) {
-              return true;
-            }
-          }
-        }
-        return false;
-      },
-      &args,
-      defname,
-      '.',
-      unique_name,
-      ARRAY_SIZE(unique_name));
-  item->name = BLI_strdup(unique_name);
-  return name_changed;
-}
-
 static void rna_SerialLoopItem_name_set(PointerRNA *ptr, const char *value)
 {
   bNode *node = find_node_by_serial_loop_item(ptr);
   NodeSerialLoopItem *item = static_cast<NodeSerialLoopItem *>(ptr->data);
   auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
-  const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
-  set_serial_loop_item_unique_name(storage, item, value, defname);
+  storage->set_item_name(*item, value);
 }
 
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
@@ -4444,32 +4392,9 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
 static NodeSerialLoopItem *rna_NodeGeometrySerialLoopOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  NodeSerialLoopItem *item = [&]() -> NodeSerialLoopItem * {
-    if (!serial_loop_socket_type_supported(eNodeSocketDatatype(socket_type))) {
-      return nullptr;
-    }
-    NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-        node->storage);
-    const int insert_index = storage->items_num;
-    NodeSerialLoopItem *old_items = storage->items;
-
-    storage->items = MEM_cnew_array<NodeSerialLoopItem>(storage->items_num + 1, __func__);
-    std::copy_n(old_items, insert_index, storage->items);
-    NodeSerialLoopItem &new_item = storage->items[insert_index];
-    std::copy_n(old_items + insert_index + 1,
-                storage->items_num - insert_index,
-                storage->items + insert_index + 1);
-
-    const char *defname = nodeStaticSocketLabel(socket_type, 0);
-    new_item.identifier = storage->next_identifier++;
-    set_serial_loop_item_unique_name(storage, &new_item, name, defname);
-    new_item.socket_type = socket_type;
-
-    storage->items_num++;
-    MEM_SAFE_FREE(old_items);
-    return &new_item;
-  }();
-
+  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+      node->storage);
+  NodeSerialLoopItem *item = storage->add_item(name, eNodeSocketDatatype(socket_type));
   if (item == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
   }

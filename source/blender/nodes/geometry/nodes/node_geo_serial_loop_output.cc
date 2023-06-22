@@ -12,6 +12,8 @@
 #include "NOD_geometry.h"
 #include "NOD_socket.h"
 
+#include "BLI_string_utils.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
@@ -198,6 +200,82 @@ blender::Span<NodeSerialLoopItem> NodeGeometrySerialLoopOutput::items_span() con
 blender::MutableSpan<NodeSerialLoopItem> NodeGeometrySerialLoopOutput::items_span()
 {
   return blender::MutableSpan<NodeSerialLoopItem>(items, items_num);
+}
+
+bool NodeSerialLoopItem::supports_type(const eNodeSocketDatatype type)
+{
+  return ELEM(type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_ROTATION,
+              SOCK_INT,
+              SOCK_STRING,
+              SOCK_GEOMETRY,
+              SOCK_OBJECT,
+              SOCK_MATERIAL,
+              SOCK_IMAGE,
+              SOCK_COLLECTION);
+}
+
+NodeSerialLoopItem *NodeGeometrySerialLoopOutput::add_item(const char *name,
+                                                           const eNodeSocketDatatype type)
+{
+  if (!NodeSerialLoopItem::supports_type(type)) {
+    return nullptr;
+  }
+  const int insert_index = this->items_num;
+  NodeSerialLoopItem *old_items = this->items;
+
+  this->items = MEM_cnew_array<NodeSerialLoopItem>(this->items_num + 1, __func__);
+  std::copy_n(old_items, insert_index, this->items);
+  NodeSerialLoopItem &new_item = this->items[insert_index];
+  std::copy_n(old_items + insert_index + 1,
+              this->items_num - insert_index,
+              this->items + insert_index + 1);
+
+  new_item.identifier = this->next_identifier++;
+  this->set_item_name(new_item, name);
+  new_item.socket_type = type;
+
+  this->items_num++;
+  MEM_SAFE_FREE(old_items);
+  return &new_item;
+}
+
+void NodeGeometrySerialLoopOutput::set_item_name(NodeSerialLoopItem &item, const char *name)
+{
+  char unique_name[MAX_NAME + 4];
+  STRNCPY(unique_name, name);
+
+  struct Args {
+    NodeGeometrySerialLoopOutput *storage;
+    const NodeSerialLoopItem *item;
+  } args = {this, &item};
+
+  const char *default_name = nodeStaticSocketLabel(item.socket_type, 0);
+
+  const bool name_changed = BLI_uniquename_cb(
+      [](void *arg, const char *name) {
+        const Args &args = *static_cast<Args *>(arg);
+        for (const NodeSerialLoopItem &item : args.storage->items_span()) {
+          if (&item != args.item) {
+            if (STREQ(item.name, name)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      &args,
+      default_name,
+      '.',
+      unique_name,
+      ARRAY_SIZE(unique_name));
+
+  MEM_SAFE_FREE(item.name);
+  item.name = BLI_strdup(unique_name);
 }
 
 void register_node_type_geo_serial_loop_output()
