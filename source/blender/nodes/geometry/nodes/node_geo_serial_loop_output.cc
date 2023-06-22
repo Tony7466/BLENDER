@@ -14,16 +14,92 @@
 
 #include "node_geometry_util.hh"
 
+namespace blender::nodes {
+std::string socket_identifier_for_serial_loop_item(const NodeSerialLoopItem &item)
+{
+  return "Item_" + std::to_string(item.identifier);
+}
+
+static std::unique_ptr<SocketDeclaration> socket_declaration_for_serial_loop_item(
+    const NodeSerialLoopItem &item, const eNodeSocketInOut in_out, const int index)
+{
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+
+  std::unique_ptr<SocketDeclaration> decl;
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      decl = std::make_unique<decl::Float>();
+      break;
+    case SOCK_VECTOR:
+      decl = std::make_unique<decl::Vector>();
+      break;
+    case SOCK_RGBA:
+      decl = std::make_unique<decl::Color>();
+      break;
+    case SOCK_BOOLEAN:
+      decl = std::make_unique<decl::Bool>();
+      break;
+    case SOCK_ROTATION:
+      decl = std::make_unique<decl::Rotation>();
+      break;
+    case SOCK_INT:
+      decl = std::make_unique<decl::Int>();
+      break;
+    case SOCK_STRING:
+      decl = std::make_unique<decl::String>();
+      break;
+    case SOCK_GEOMETRY:
+      decl = std::make_unique<decl::Geometry>();
+      break;
+    case SOCK_OBJECT:
+      decl = std::make_unique<decl::Object>();
+      break;
+    case SOCK_IMAGE:
+      decl = std::make_unique<decl::Image>();
+      break;
+    case SOCK_COLLECTION:
+      decl = std::make_unique<decl::Collection>();
+      break;
+    case SOCK_MATERIAL:
+      decl = std::make_unique<decl::Material>();
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  decl->name = item.name ? item.name : "";
+  decl->identifier = socket_identifier_for_serial_loop_item(item);
+  decl->in_out = in_out;
+  return decl;
+}
+
+void socket_declarations_for_serial_loop_items(const Span<NodeSerialLoopItem> items,
+                                               NodeDeclaration &r_declaration)
+{
+  for (const int i : items.index_range()) {
+    const NodeSerialLoopItem &item = items[i];
+    r_declaration.inputs.append(socket_declaration_for_serial_loop_item(item, SOCK_IN, i));
+    r_declaration.outputs.append(socket_declaration_for_serial_loop_item(item, SOCK_OUT, i));
+  }
+  r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
+  r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+}
+}  // namespace blender::nodes
 namespace blender::nodes::node_geo_serial_loop_output_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometrySerialLoopOutput);
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclaration &r_declaration)
 {
-  b.add_input<decl::Bool>(N_("Break")).hide_value();
-  b.add_input<decl::Bool>(N_("Output Previous"));
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+  NodeDeclarationBuilder b{r_declaration};
+  b.add_input<decl::Bool>(N_("Break Before")).hide_value();
+  b.add_input<decl::Bool>(N_("Break After")).hide_value();
+
+  const NodeGeometrySerialLoopOutput &storage = node_storage(node);
+  socket_declarations_for_serial_loop_items(storage.items_span(), r_declaration);
 }
 
 static void search_node_add_ops(GatherAddNodeSearchParams &params)
@@ -112,7 +188,7 @@ void register_node_type_geo_serial_loop_output()
   geo_node_type_base(
       &ntype, GEO_NODE_SERIAL_LOOP_OUTPUT, "Serial Loop Output", NODE_CLASS_INTERFACE);
   ntype.initfunc = file_ns::node_init;
-  ntype.declare = file_ns::node_declare;
+  ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   node_type_storage(&ntype,
                     "NodeGeometrySerialLoopOutput",

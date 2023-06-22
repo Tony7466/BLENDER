@@ -17,11 +17,20 @@ namespace blender::nodes::node_geo_serial_loop_input_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometrySerialLoopInput);
 
-static void node_declare(NodeDeclarationBuilder &b)
+static void node_declare_dynamic(const bNodeTree &tree,
+                                 const bNode &node,
+                                 NodeDeclaration &r_declaration)
 {
+  NodeDeclarationBuilder b{r_declaration};
   b.add_input<decl::Int>(N_("Max Iterations"));
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+
+  const NodeGeometrySerialLoopInput &storage = node_storage(node);
+  const bNode *output_node = tree.node_by_id(storage.output_node_id);
+  if (output_node != nullptr) {
+    const NodeGeometrySerialLoopOutput &output_storage =
+        *static_cast<const NodeGeometrySerialLoopOutput *>(output_node->storage);
+    socket_declarations_for_serial_loop_items(output_storage.items_span(), r_declaration);
+  }
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -42,7 +51,7 @@ void register_node_type_geo_serial_loop_input()
   geo_node_type_base(
       &ntype, GEO_NODE_SERIAL_LOOP_INPUT, "Serial Loop Input", NODE_CLASS_INTERFACE);
   ntype.initfunc = file_ns::node_init;
-  ntype.declare = file_ns::node_declare;
+  ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.gather_add_node_search_ops = nullptr;
   ntype.gather_link_search_ops = nullptr;
   node_type_storage(&ntype,
