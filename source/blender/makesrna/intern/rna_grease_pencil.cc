@@ -61,10 +61,10 @@ static char *rna_GreasePencilLayer_path(const PointerRNA *ptr)
   BLI_assert(layer->base.name);
   const size_t name_length = strlen(layer->base.name);
 
-  char name_esc[name_length * 2];
-  BLI_str_escape(name_esc, layer->base.name, sizeof(name_esc));
+  std::string name_esc(name_length * 2, '\0');
+  BLI_str_escape(name_esc.data(), layer->base.name, name_length * 2);
 
-  return BLI_sprintfN("layers[\"%s\"]", name_esc);
+  return BLI_sprintfN("layers[\"%s\"]", name_esc.c_str());
 }
 
 static void rna_GreasePencilLayer_name_get(PointerRNA *ptr, char *value)
