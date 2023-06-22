@@ -4256,14 +4256,36 @@ static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContex
                               rna_SimulationStateItem_socket_type_supported);
 }
 
+bool static serial_loop_socket_type_supported(const eNodeSocketDatatype socket_type)
+{
+  return ELEM(socket_type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_ROTATION,
+              SOCK_INT,
+              SOCK_STRING,
+              SOCK_GEOMETRY,
+              SOCK_OBJECT,
+              SOCK_MATERIAL,
+              SOCK_IMAGE,
+              SOCK_COLLECTION);
+}
+
+static bool rna_SerialLoopItem_socket_type_supported(const EnumPropertyItem *item)
+{
+  return serial_loop_socket_type_supported(eNodeSocketDatatype(item->value));
+}
+
 static const EnumPropertyItem *rna_SerialLoopItem_socket_type_itemf(bContext * /*C*/,
                                                                     PointerRNA * /*ptr*/,
                                                                     PropertyRNA * /*prop*/,
                                                                     bool *r_free)
 {
   *r_free = false;
-  /* TODO */
-  return node_socket_data_type_items;
+  return itemf_function_check(node_socket_data_type_items,
+                              rna_SerialLoopItem_socket_type_supported);
 }
 
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
@@ -4348,9 +4370,13 @@ static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *
 
 static PointerRNA rna_NodeGeometrySerialLoopInput_paired_output_get(PointerRNA *ptr)
 {
-  /* TODO */
-  UNUSED_VARS(ptr);
-  return {};
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeGeometrySerialLoopInput *storage = static_cast<NodeGeometrySerialLoopInput *>(node->storage);
+  bNode *output_node = ntree->node_by_id(storage->output_node_id);
+  PointerRNA r_ptr;
+  RNA_pointer_create(&ntree->id, &RNA_Node, output_node, &r_ptr);
+  return r_ptr;
 }
 
 static bool rna_GeometryNodeSimulationInput_pair_with_output(
@@ -4413,23 +4439,6 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
   }
 
   return item;
-}
-
-bool static serial_loop_socket_type_supported(const eNodeSocketDatatype socket_type)
-{
-  return ELEM(socket_type,
-              SOCK_FLOAT,
-              SOCK_VECTOR,
-              SOCK_RGBA,
-              SOCK_BOOLEAN,
-              SOCK_ROTATION,
-              SOCK_INT,
-              SOCK_STRING,
-              SOCK_GEOMETRY,
-              SOCK_OBJECT,
-              SOCK_MATERIAL,
-              SOCK_IMAGE,
-              SOCK_COLLECTION);
 }
 
 static NodeSerialLoopItem *rna_NodeGeometrySerialLoopOutput_items_new(
@@ -4506,7 +4515,7 @@ static void rna_NodeGeometrySerialLoopOutput_items_remove(
   storage->items = MEM_cnew_array<NodeSerialLoopItem>(storage->items_num - 1, __func__);
   std::copy_n(old_items, remove_index, storage->items);
   std::copy_n(old_items + remove_index + 1,
-              storage->items_num - remove_index,
+              storage->items_num - remove_index - 1,
               storage->items + remove_index);
 
   MEM_SAFE_FREE(old_items[remove_index].name);
@@ -4530,10 +4539,18 @@ static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Ma
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-static void rna_NodeGeometrySerialLoopOutput_items_clear(ID *id, bNode *node, Main *bmain)
+static void rna_NodeGeometrySerialLoopOutput_items_clear(ID * /*id*/,
+                                                         bNode *node,
+                                                         Main * /*bmain*/)
 {
-  /* TODO */
-  UNUSED_VARS(id, node, bmain);
+  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+      node->storage);
+  for (NodeSerialLoopItem &item : storage->items_span()) {
+    MEM_SAFE_FREE(item.name);
+  }
+  MEM_SAFE_FREE(storage->items);
+  storage->items_num = 0;
+  storage->active_index = 0;
 }
 
 static void rna_NodeGeometrySimulationOutput_items_move(
@@ -4555,10 +4572,30 @@ static void rna_NodeGeometrySimulationOutput_items_move(
 }
 
 static void rna_NodeGeometrySerialLoopOutput_items_move(
-    ID *id, bNode *node, Main *bmain, int from_index, int to_index)
+    ID * /*id*/, bNode *node, Main * /*bmain*/, int from_index, int to_index)
 {
-  /* TODO */
-  UNUSED_VARS(id, node, bmain, from_index, to_index);
+  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
+      node->storage);
+  if (from_index < 0 || from_index >= storage->items_num || to_index < 0 ||
+      to_index >= storage->items_num)
+  {
+    return;
+  }
+
+  if (from_index < to_index) {
+    const NodeSerialLoopItem tmp = storage->items[from_index];
+    for (int i = from_index; i < to_index; i++) {
+      storage->items[i] = storage->items[i + 1];
+    }
+    storage->items[to_index] = tmp;
+  }
+  else if (from_index > to_index) {
+    const NodeSerialLoopItem tmp = storage->items[from_index];
+    for (int i = from_index; i > to_index; i--) {
+      storage->items[i] = storage->items[i - 1];
+    }
+    storage->items[to_index] = tmp;
+  }
 }
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)

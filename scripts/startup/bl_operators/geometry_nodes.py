@@ -404,7 +404,7 @@ class SerialLoopZoneItemRemoveOperator(SerialLoopZoneOperator, Operator):
         return {'FINISHED'}
 
 
-class SerialLoopZoneItemMoveOperator(SimulationZoneOperator, Operator):
+class SerialLoopZoneItemMoveOperator(SerialLoopZoneOperator, Operator):
     """Move a serial loop state item up or down in the list"""
     bl_idname = "node.serial_loop_zone_item_move"
     bl_label = "Move Loop Item"
