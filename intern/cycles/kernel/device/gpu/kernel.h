@@ -279,6 +279,27 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
 }
 ccl_gpu_kernel_postfix
 
+#ifdef __KERNEL_ONEAPI__
+/* The NODE_VOLUME feature adds a lot of code, including the entire NanoVDB library,
+ * causing GPU compilers to spend additional registers while the feature is not used often,
+ * leading to suboptimal execution.
+ * The use of a specialized version below gives a noticeable speed-up for oneAPI execution. */
+ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
+    ccl_gpu_kernel_signature(integrator_shade_surface_no_volume,
+                             ccl_global const int *path_index_array,
+                             ccl_global float *render_buffer,
+                             const int work_size)
+{
+  const int global_index = ccl_gpu_global_id_x();
+
+  if (ccl_gpu_kernel_within_bounds(global_index, work_size)) {
+    const int state = (path_index_array) ? path_index_array[global_index] : global_index;
+    ccl_gpu_kernel_call(integrator_shade_surface_no_volume(NULL, state, render_buffer));
+  }
+}
+ccl_gpu_kernel_postfix
+#endif
+
 #if defined(__KERNEL_METAL_APPLE__) && defined(__METALRT__)
 constant int __dummy_constant [[function_constant(Kernel_DummyConstant)]];
 #endif

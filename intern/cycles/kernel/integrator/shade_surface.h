@@ -799,6 +799,15 @@ ccl_device_forceinline void integrator_shade_surface(KernelGlobals kg,
   integrator_shade_surface_next_kernel<current_kernel>(kg, state);
 }
 
+#ifdef __KERNEL_ONEAPI__
+ccl_device_forceinline void integrator_shade_surface_no_volume(
+    KernelGlobals kg, IntegratorState state, ccl_global float *ccl_restrict render_buffer)
+{
+  integrator_shade_surface<KERNEL_FEATURE_NODE_MASK_SURFACE & ~KERNEL_FEATURE_NODE_RAYTRACE &
+                           ~KERNEL_FEATURE_NODE_VOLUME>(kg, state, render_buffer);
+}
+#endif
+
 ccl_device_forceinline void integrator_shade_surface_raytrace(
     KernelGlobals kg, IntegratorState state, ccl_global float *ccl_restrict render_buffer)
 {

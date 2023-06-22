@@ -463,8 +463,18 @@ bool oneapi_enqueue_kernel(KernelContext *kernel_context,
           break;
         }
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE: {
-          oneapi_call(
-              kg, cgh, global_size, local_size, args, oneapi_kernel_integrator_shade_surface);
+          if (kernel_features & KERNEL_FEATURE_NODE_VOLUME) {
+            oneapi_call(
+                kg, cgh, global_size, local_size, args, oneapi_kernel_integrator_shade_surface);
+          }
+          else {
+            oneapi_call(kg,
+                        cgh,
+                        global_size,
+                        local_size,
+                        args,
+                        oneapi_kernel_integrator_shade_surface_no_volume);
+          }
           break;
         }
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE: {
