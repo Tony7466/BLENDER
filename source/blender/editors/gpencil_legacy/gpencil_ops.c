@@ -59,6 +59,15 @@ static bool gpencil_stroke_editmode_curve_poll(bContext *C)
 /* Poll callback for stroke painting mode */
 static bool gpencil_stroke_paintmode_poll(bContext *C)
 {
+  if (U.experimental.use_grease_pencil_version3) {
+    Object *object = CTX_data_active_object(C);
+    if (object == NULL || object->type != OB_GREASE_PENCIL) {
+      return false;
+    }
+
+    return (object->mode & OB_MODE_PAINT_GPENCIL);
+  }
+
   /* TODO: limit this to mode, but review 2D editors */
   bGPdata *gpd = CTX_data_gpencil_data(C);
   return (gpd && (gpd->flag & GP_DATA_STROKE_PAINTMODE));

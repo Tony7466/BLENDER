@@ -3811,30 +3811,38 @@ def km_grease_pencil_stroke_paint_mode(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
-        # Draw delete menu
-        op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'X', "value": 'PRESS'}),
-        # Animation menu
-        ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
-        ("gpencil.active_frames_delete_all", {"type": 'X', "value": 'PRESS', "shift": True}, None),
-        ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
-        # Interpolation
-        op_tool_optional(
-            ("gpencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
-            (op_tool_cycle, "builtin.interpolate"), params),
-        ("gpencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
-        # Show/hide
-        *_template_items_hide_reveal_actions("gpencil.hide", "gpencil.reveal"),
-        # Active layer
-        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
-        # Merge Layer
-        ("gpencil.layer_merge", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
-        # Active material
-        op_menu("GPENCIL_MT_material_active", {"type": 'U', "value": 'PRESS'}),
-        # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
-        # Draw context menu
-        *_template_items_context_panel("VIEW3D_PT_gpencil_draw_context_menu", params.context_menu_event),
     ])
+    
+    if params.experimental and params.experimental.use_grease_pencil_version3:
+        items.extend([
+            # None
+        ])
+    else:
+        items.extend([
+            # Draw delete menu
+            op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'X', "value": 'PRESS'}),
+            # Animation menu
+            ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
+            ("gpencil.active_frames_delete_all", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+            ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
+            # Interpolation
+            op_tool_optional(
+                ("gpencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
+                (op_tool_cycle, "builtin.interpolate"), params),
+            ("gpencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
+            # Show/hide
+            *_template_items_hide_reveal_actions("gpencil.hide", "gpencil.reveal"),
+            # Active layer
+            op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+            # Merge Layer
+            ("gpencil.layer_merge", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
+            # Active material
+            op_menu("GPENCIL_MT_material_active", {"type": 'U', "value": 'PRESS'}),
+            # Keyframe menu
+            op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+            # Draw context menu
+            *_template_items_context_panel("VIEW3D_PT_gpencil_draw_context_menu", params.context_menu_event),
+        ])
 
     return keymap
 
