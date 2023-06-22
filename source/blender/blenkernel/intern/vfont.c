@@ -1746,7 +1746,9 @@ static bool vfont_to_curve(Object *ob,
 
     // Loop until find the line where the mouse is over
     for (i = 0; i <= slen; i++, ct++) {
-      if (cursor_params->cursor_location[1] >= (chartransdata[i].yof * font_size)) {
+      if (cursor_params->cursor_location[1] >=
+          ((chartransdata[i].yof - (linedist / 4)) * font_size))
+      {
         break;
       }
     }
@@ -1758,11 +1760,15 @@ static bool vfont_to_curve(Object *ob,
     // further below the text, so the last character of the last line can be the at index i.
     for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
     }
+    float prev_xoffset = chartransdata[i].xof;
     // Loop until find the first character that is to the rigth of the mouse
     for (i; i <= slen && yof == chartransdata[i].yof; i++) {
-      if (cursor_params->cursor_location[0] < (chartransdata[i].xof * font_size)) {
+      if (cursor_params->cursor_location[0] <
+          ((chartransdata[i].xof + ((prev_xoffset - chartransdata[i].xof) / 2)) * font_size))
+      {
         break;
       }
+      prev_xoffset = chartransdata[i].xof;
     }
 
     // The first character that is to the right of the mouse is found, use the one on the left
