@@ -55,11 +55,13 @@ class LayerViewItem : public AbstractTreeViewItem {
   {
     return true;
   }
+
   bool rename(StringRefNull new_name) override
   {
     grease_pencil_.rename_layer(layer_, new_name);
     return true;
   }
+
   StringRef get_rename_string() const override
   {
     return layer_.name();
@@ -72,7 +74,11 @@ class LayerViewItem : public AbstractTreeViewItem {
 
 class LayerGroupViewItem : public AbstractTreeViewItem {
  public:
-  LayerGroupViewItem(const LayerGroup &group) : group_(group) {}
+  LayerGroupViewItem(GreasePencil &grease_pencil, LayerGroup &group)
+      : grease_pencil_(grease_pencil), group_(group)
+  {
+    this->label_ = group_.name();
+  }
 
   void build_row(uiLayout &row) override
   {
@@ -81,7 +87,8 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
   }
 
  private:
-  const LayerGroup &group_;
+  GreasePencil &grease_pencil_;
+  LayerGroup &group_;
 };
 
 class LayerTreeView : public AbstractTreeView {
@@ -91,30 +98,31 @@ class LayerTreeView : public AbstractTreeView {
   void build_tree() override;
 
  private:
-  void build_tree_node_recursive(const TreeNode &node);
+  void build_tree_node_recursive(TreeNode &node);
   GreasePencil &grease_pencil_;
 };
 
-void LayerTreeView::build_tree_node_recursive(const TreeNode & /*node*/)
+void LayerTreeView::build_tree_node_recursive(TreeNode &node)
 {
   using namespace blender::bke::greasepencil;
-  /* TODO */
+  if (node.is_layer()) {
+    add_tree_item<LayerViewItem>(this->grease_pencil_, node.as_layer_for_write());
+  }
+  else if (node.is_group()) {
+    add_tree_item<LayerGroupViewItem>(this->grease_pencil_, node.as_group_for_write());
+    LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &node.as_group().children) {
+      build_tree_node_recursive(node_->wrap());
+    }
+  }
 }
 
 void LayerTreeView::build_tree()
 {
   using namespace blender::bke::greasepencil;
   LISTBASE_FOREACH_BACKWARD (
-      GreasePencilLayerTreeNode *, node_, &this->grease_pencil_.root_group.children)
+      GreasePencilLayerTreeNode *, node, &this->grease_pencil_.root_group.children)
   {
-    TreeNode &node = node_->wrap();
-    /* TODO: use build_tree_node_recursive. */
-    if (node.is_group()) {
-      /* TODO */
-    }
-    else if (node.is_layer()) {
-      add_tree_item<LayerViewItem>(this->grease_pencil_, node.as_layer_for_write());
-    }
+    this->build_tree_node_recursive(node->wrap());
   }
 }
 
