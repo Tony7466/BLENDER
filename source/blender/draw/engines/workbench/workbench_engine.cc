@@ -15,6 +15,8 @@
 #include "ED_view3d.h"
 #include "GPU_capabilities.h"
 
+#include "draw_sculpt.hh"
+
 #include "workbench_private.hh"
 
 #include "workbench_engine.h" /* Own include. */
@@ -128,6 +130,7 @@ class Instance {
      * when switching from eevee to workbench).
      */
     if (ob_ref.object->sculpt && ob_ref.object->sculpt->pbvh) {
+      /* TODO(Miguel Pozo): Could this me moved to sculpt_batches_get()? */
       BKE_pbvh_is_drawing_set(ob_ref.object->sculpt->pbvh, object_state.sculpt_pbvh);
     }
 
@@ -207,9 +210,27 @@ class Instance {
     bool has_transparent_material = false;
 
     if (object_state.sculpt_pbvh) {
-#if 0 /* TODO(@pragma37): */
-      workbench_cache_sculpt_populate(wpd, ob, object_state.color_type);
-#endif
+      if (!object_state.use_per_material_batches) {
+        bool use_color = object_state.color_type == V3D_SHADING_VERTEX_COLOR;
+        bool use_uv = object_state.color_type == V3D_SHADING_TEXTURE_COLOR;
+
+        Material mat = get_material(ob_ref, object_state.color_type);
+        has_transparent_material = has_transparent_material || mat.is_transparent();
+
+        for (SculptBatch &batch :
+             sculpt_batches_get(ob_ref.object, false, false, false, use_color, use_uv))
+        {
+          draw_mesh(ob_ref,
+                    mat,
+                    batch.batch,
+                    handle,
+                    object_state.image_paint_override,
+                    object_state.override_sampler_state);
+        }
+      }
+      else {
+        /* TODO */
+      }
     }
     else {
       if (object_state.use_per_material_batches) {
