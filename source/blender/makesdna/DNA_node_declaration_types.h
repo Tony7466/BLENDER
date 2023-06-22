@@ -48,11 +48,11 @@ typedef struct bNodeTreeInterfaceItem {
 } bNodeTreeInterfaceItem;
 
 /** Socket side (input/output). */
-typedef enum eNodeSocketDeclarationInOut {
-  SOCKDECL_IN = 1 << 0,
-  SOCKDECL_OUT = 1 << 1,
-} eNodeSocketDeclarationInOut;
-ENUM_OPERATORS(eNodeSocketDeclarationInOut, SOCKDECL_OUT);
+typedef enum eNodeTreeInterfaceSocketKind {
+  NODE_INTERFACE_INPUT = 1 << 0,
+  NODE_INTERFACE_OUTPUT = 1 << 1,
+} eNodeTreeInterfaceSocketKind;
+ENUM_OPERATORS(eNodeTreeInterfaceSocketKind, NODE_INTERFACE_OUTPUT);
 
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
@@ -60,9 +60,15 @@ typedef struct bNodeTreeInterfaceSocket {
   char *name;
   char *description;
   char *type;
-  /* eNodeSocketDeclarationInOut */
-  int in_out;
-  char _pad[4];
+  /* eNodeTreeInterfaceSocketKind */
+  int kind;
+
+  /* Unique id for constructing socket identifiers. */
+  int uid;
+
+#ifdef __cplusplus
+  std::string socket_identifier() const;
+#endif
 } bNodeTreeInterfaceSocket;
 
 typedef struct bNodeTreeInterfacePanel {
@@ -75,6 +81,8 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceItem **items_array;
   int items_num;
   int active_item;
+  int next_socket_uid;
+  char _pad[4];
 
 #ifdef __cplusplus
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
@@ -83,11 +91,11 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
                                        blender::StringRef type,
-                                       eNodeSocketDeclarationInOut in_out);
+                                       eNodeTreeInterfaceSocketKind in_out);
   bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
                                           blender::StringRef description,
                                           blender::StringRef type,
-                                          eNodeSocketDeclarationInOut in_out,
+                                          eNodeTreeInterfaceSocketKind in_out,
                                           int index);
   bNodeTreeInterfacePanel *add_panel(blender::StringRef name);
   bNodeTreeInterfacePanel *insert_panel(blender::StringRef name, int index);

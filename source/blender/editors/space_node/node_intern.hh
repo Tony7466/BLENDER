@@ -414,11 +414,4 @@ void invoke_add_node_search_menu(bContext &C, const float2 &cursor, bool use_tra
 MenuType add_catalog_assets_menu_type();
 MenuType add_root_catalogs_menu_type();
 
-/* node_tree_interface.cc */
-
-void NODE_OT_tree_interface_socket_new(wmOperatorType *ot);
-void NODE_OT_tree_interface_panel_new(wmOperatorType *ot);
-void NODE_OT_tree_interface_item_remove(wmOperatorType *ot);
-void NODE_OT_tree_interface_item_move(wmOperatorType *ot);
-
 }  // namespace blender::ed::space_node

@@ -4586,6 +4586,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_shader_fx.c", NULL, RNA_def_shader_fx},
     {"rna_nla.c", NULL, RNA_def_nla},
     {"rna_nodetree.cc", NULL, RNA_def_nodetree},
+    {"rna_node_tree_interface.cc", NULL, RNA_def_node_tree_interface},
     {"rna_object.cc", "rna_object_api.cc", RNA_def_object},
     {"rna_object_force.c", NULL, RNA_def_object_force},
     {"rna_depsgraph.c", NULL, RNA_def_depsgraph},
