@@ -15,9 +15,19 @@ struct SculptBatch {
   int material_slot;
 };
 
-enum class SculptBatchFeature { WIRE, MASK, FSET, VERTEX_COLOR, UV };
+enum SculptBatchFeature {
+  SCULPT_BATCH_DEFAULT = 0,
+  SCULPT_BATCH_WIREFRAME = 1 << 0,
+  SCULPT_BATCH_MASK = 1 << 1,
+  SCULPT_BATCH_FSET = 1 << 2,
+  SCULPT_BATCH_VERTEX_COLOR = 1 << 3,
+  SCULPT_BATCH_UV = 1 << 4
+};
+ENUM_OPERATORS(SculptBatchFeature, SCULPT_BATCH_UV);
 
-Vector<SculptBatch> sculpt_batches_get(
-    Object *ob, bool use_wire, bool use_mask, bool use_fset, bool use_color, bool use_uv);
+Vector<SculptBatch> sculpt_batches_get(Object *ob, SculptBatchFeature features);
+
+Vector<SculptBatch> sculpt_batches_per_material_get(Object *ob,
+                                                    MutableSpan<GPUMaterial *> materials);
 
 }  // namespace blender::draw
