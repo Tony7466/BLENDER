@@ -23,7 +23,7 @@ set(INC_SYS
 )
 
 set(SRC
-  anim_channels_defines.c
+  anim_channels_defines.cc
   anim_channels_edit.c
   anim_deps.c
   anim_draw.c
