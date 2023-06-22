@@ -55,6 +55,7 @@ set(DEFSRC
   rna_movieclip.c
   rna_nla.c
   rna_nodetree.cc
+  rna_node_tree_interface.cc
   rna_object.cc
   rna_object_force.c
   rna_packedfile.c

@@ -171,6 +171,7 @@ DEF_ENUM(rna_enum_navigation_mode_items)
 
 DEF_ENUM(rna_enum_node_socket_in_out_items)
 DEF_ENUM(rna_enum_node_socket_declaration_in_out_items)
+DEF_ENUM(rna_enum_node_tree_interface_socket_kind_items)
 
 DEF_ENUM(rna_enum_node_math_items)
 DEF_ENUM(rna_enum_mapping_type_items)

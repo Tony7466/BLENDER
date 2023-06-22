@@ -65,8 +65,8 @@ const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {{SOCK_IN, "IN", 0,
                                                               {0, nullptr, 0, nullptr, nullptr}};
 
 const EnumPropertyItem rna_enum_node_socket_declaration_in_out_items[] = {
-    {SOCKDECL_IN, "IN", 0, "Input", ""},
-    {SOCKDECL_OUT, "OUT", 0, "Output", ""},
+    {NODE_INTERFACE_INPUT, "IN", 0, "Input", ""},
+    {NODE_INTERFACE_INPUT, "OUT", 0, "Output", ""},
     {0, nullptr, 0, nullptr, nullptr}};
 
 static const EnumPropertyItem node_socket_data_type_items[] = {

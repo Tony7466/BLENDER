@@ -32,8 +32,8 @@ static int ntree_interface_socket_new_exec(bContext *C, wmOperator *op)
   //  char name_buf[MAX_NAME];
   //  const char *name = RNA_string_get_alloc(op->ptr, "name", name_buf, sizeof(name_buf),
   //  nullptr); char type_buf[MAX_NAME]; const char *type = RNA_string_get_alloc(op->ptr, "type",
-  //  type_buf, sizeof(type_buf), nullptr); const eNodeSocketDeclarationInOut in_out =
-  //  eNodeSocketDeclarationInOut(
+  //  type_buf, sizeof(type_buf), nullptr); const eNodeTreeInterfaceSocketKind in_out =
+  //  eNodeTreeInterfaceSocketKind(
   //      RNA_enum_get(op->ptr, "in_out"));
 
   //  const bNodeSocketDeclaration *new_socket = interface.insert_socket(
@@ -68,7 +68,7 @@ void NODE_OT_tree_interface_socket_new(wmOperatorType *ot)
   RNA_def_enum_flag(ot->srna,
                     "in_out",
                     rna_enum_node_socket_declaration_in_out_items,
-                    SOCKDECL_IN,
+                    NODE_INTERFACE_INPUT,
                     "Socket Kind",
                     "");
 }

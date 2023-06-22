@@ -14,6 +14,11 @@
 
 #include <queue>
 
+std::string bNodeTreeInterfaceSocket::socket_identifier() const
+{
+  return "Socket" + std::to_string(uid);
+}
+
 int bNodeTreeInterface::item_index(bNodeTreeInterfaceItem &item) const
 {
   return items().first_index_try(&item);
@@ -69,13 +74,14 @@ void bNodeTreeInterface::free_item(bNodeTreeInterfaceItem &item)
 bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
                                                          blender::StringRef description,
                                                          blender::StringRef type,
-                                                         const eNodeSocketDeclarationInOut in_out)
+                                                         const eNodeTreeInterfaceSocketKind kind)
 {
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
   new_socket->type = BLI_strdup(type.data());
-  new_socket->in_out = in_out;
+  new_socket->kind = kind;
+  new_socket->uid = next_socket_uid++;
 
   add_item(new_socket->item);
 
@@ -86,7 +92,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
     blender::StringRef name,
     blender::StringRef description,
     blender::StringRef type,
-    const eNodeSocketDeclarationInOut in_out,
+    const eNodeTreeInterfaceSocketKind kind,
     const int index)
 {
   if (!blender::IndexRange(items().size() + 1).contains(index)) {
@@ -97,7 +103,8 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
   new_socket->type = BLI_strdup(type.data());
-  new_socket->in_out = in_out;
+  new_socket->kind = kind;
+  new_socket->uid = next_socket_uid++;
 
   insert_item(new_socket->item, index);
 
