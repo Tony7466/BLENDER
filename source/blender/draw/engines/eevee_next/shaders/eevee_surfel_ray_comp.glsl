@@ -62,7 +62,7 @@ void radiance_transfer_surfel(inout Surfel receiver, Surfel sender)
   radiance_transfer(receiver, radiance, L);
 }
 
-void radiance_transfer_sky(inout Surfel receiver, vec3 sky_L)
+void radiance_transfer_world(inout Surfel receiver, vec3 sky_L)
 {
   /* TODO(fclem): Sky radiance. */
   vec3 radiance = vec3(0.0);
@@ -85,7 +85,7 @@ void main()
     radiance_transfer_surfel(surfel, surfel_next);
   }
   else {
-    radiance_transfer_sky(surfel, sky_L);
+    radiance_transfer_world(surfel, sky_L);
   }
 
   if (surfel.prev > -1) {
@@ -93,7 +93,7 @@ void main()
     radiance_transfer_surfel(surfel, surfel_prev);
   }
   else {
-    radiance_transfer_sky(surfel, -sky_L);
+    radiance_transfer_world(surfel, -sky_L);
   }
 
   surfel_buf[surfel_index] = surfel;
