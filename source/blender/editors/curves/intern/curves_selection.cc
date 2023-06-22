@@ -272,47 +272,46 @@ void select_linked(bke::CurvesGeometry &curves)
   selection.finish();
 }
 
-void select_alternate(bke::CurvesGeometry& curves, const bool select_ends) {
+void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
+{
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   const VArray<bool> cyclic = curves.cyclic();
-
-  BLI_assert_msg(selection.span.type().is<bool>(), "Error: Cannot alternate select on selection type different than bool.");
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
   threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
 
-      if (has_anything_selected(selection.span.slice(points))) {
-        bool prev_selected = !select_ends;
-        
-        for (int point_i = points.first(); point_i <= points.last(); point_i++) {
-          if (prev_selected) {
-            selection_typed[point_i] = false;
-            prev_selected = false;
-          }
-          else {
-            selection_typed[point_i] = true;
-            prev_selected = true;
-          }
-        }
+      if (!has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
 
-        if (cyclic[curve_i]) {
-          if (!select_ends) {
-            selection_typed[points.last()] = false;
-          }
-          else {
-            selection_typed[points.last()] = true;
-            if (points.last() > points.first() + 1) {
-              selection_typed[points.last() - 1] = false;
-            }
-          }
+      bool prev_selected = deselect_ends;
+      for (int point_i = points.first(); point_i <= points.last(); point_i++) {
+        if (prev_selected) {
+          selection_typed[point_i] = prev_selected = false;
         }
         else {
-          if (!select_ends)
-            selection_typed[points.last()] = false;
+          selection_typed[point_i] = prev_selected = true;
+        }
+      }
+
+      if (cyclic[curve_i]) {
+        if (deselect_ends) {
+          selection_typed[points.last()] = false;
+        }
+        else {
+          selection_typed[points.last()] = true;
+          if (points.last() > points.first() + 1) {
+            selection_typed[points.last() - 1] = false;
+          }
+        }
+      }
+      else {
+        if (deselect_ends) {
+          selection_typed[points.last()] = false;
         }
       }
     }

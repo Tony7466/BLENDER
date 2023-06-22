@@ -197,7 +197,7 @@ static void GREASE_PENCIL_OT_select_random(wmOperatorType *ot)
 
 static int select_alternate_exec(bContext *C, wmOperator *op)
 {
-  const bool select_ends = RNA_boolean_get(op->ptr, "select_ends");
+  const bool deselect_ends = RNA_boolean_get(op->ptr, "deselect_ends");
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -206,8 +206,7 @@ static int select_alternate_exec(bContext *C, wmOperator *op)
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
         // todo: check that some points of stroke are selected
-        blender::ed::curves::select_alternate(
-            drawing.geometry.wrap(), select_ends);
+        blender::ed::curves::select_alternate(drawing.geometry.wrap(), deselect_ends);
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -230,10 +229,10 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(ot->srna,
-                  "select_ends",
-                  true,
-                  "Select Ends",
-                  "Select the first and enable the selection of the last point of each stroke");
+                  "deselect_ends",
+                  false,
+                  "Deselect Ends",
+                  "(De)select the first and last point of each stroke");
 }
 
 static int select_ends_exec(bContext *C, wmOperator *op)
