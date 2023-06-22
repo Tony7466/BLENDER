@@ -21,29 +21,48 @@ std::string socket_identifier_for_serial_loop_item(const NodeSerialLoopItem &ite
 }
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_serial_loop_item(
-    const NodeSerialLoopItem &item, const eNodeSocketInOut in_out, const int index)
+    const NodeSerialLoopItem &item,
+    const eNodeSocketInOut in_out,
+    const int corresponding_input = -1)
 {
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
 
   std::unique_ptr<SocketDeclaration> decl;
+
+  auto handle_field_decl = [&](SocketDeclaration &decl) {
+    if (in_out == SOCK_IN) {
+      decl.input_field_type = InputSocketFieldType::IsSupported;
+    }
+    else {
+      decl.output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
+          {corresponding_input});
+    }
+  };
+
   switch (socket_type) {
     case SOCK_FLOAT:
       decl = std::make_unique<decl::Float>();
+      handle_field_decl(*decl);
       break;
     case SOCK_VECTOR:
       decl = std::make_unique<decl::Vector>();
+      handle_field_decl(*decl);
       break;
     case SOCK_RGBA:
       decl = std::make_unique<decl::Color>();
+      handle_field_decl(*decl);
       break;
     case SOCK_BOOLEAN:
       decl = std::make_unique<decl::Bool>();
+      handle_field_decl(*decl);
       break;
     case SOCK_ROTATION:
       decl = std::make_unique<decl::Rotation>();
+      handle_field_decl(*decl);
       break;
     case SOCK_INT:
       decl = std::make_unique<decl::Int>();
+      handle_field_decl(*decl);
       break;
     case SOCK_STRING:
       decl = std::make_unique<decl::String>();
@@ -79,8 +98,9 @@ void socket_declarations_for_serial_loop_items(const Span<NodeSerialLoopItem> it
 {
   for (const int i : items.index_range()) {
     const NodeSerialLoopItem &item = items[i];
-    r_declaration.inputs.append(socket_declaration_for_serial_loop_item(item, SOCK_IN, i));
-    r_declaration.outputs.append(socket_declaration_for_serial_loop_item(item, SOCK_OUT, i));
+    r_declaration.inputs.append(socket_declaration_for_serial_loop_item(item, SOCK_IN));
+    r_declaration.outputs.append(
+        socket_declaration_for_serial_loop_item(item, SOCK_OUT, r_declaration.inputs.size() - 1));
   }
   r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
   r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
