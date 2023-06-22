@@ -18,6 +18,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BLI_array.hh"
 #include "BLI_bitmap.h"
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
@@ -61,6 +62,7 @@
 /* only for customdata_data_transfer_interp_normal_normals */
 #include "data_transfer_intern.h"
 
+using blender::Array;
 using blender::float2;
 using blender::ImplicitSharingInfo;
 using blender::IndexRange;
@@ -2539,20 +2541,89 @@ void CustomData_free_typemask(CustomData *data, const int totelem, eCustomDataMa
   CustomData_reset(data);
 }
 
+static int customData_get_alignment(eCustomDataType type)
+{
+  /* Handle array types. */
+  if (ELEM(type,
+           CD_PROP_FLOAT2,
+           CD_PROP_FLOAT3,
+           CD_PROP_QUATERNION,
+           CD_PROP_COLOR,
+           CD_NORMAL,
+           CD_TANGENT,
+           CD_SHAPEKEY,
+           CD_ORIGSPACE_MLOOP,
+           CD_PROP_INT32_2D))
+  {
+    return 4;
+  }
+
+  if (ELEM(type, CD_TESSLOOPNORMAL)) {
+    return 2;
+  }
+
+  if (type == CD_PROP_BYTE_COLOR) {
+    return 1;
+  }
+
+  /* Derive the alignment from the element size. */
+  int size = CustomData_sizeof(type);
+
+  if (size >= 8) {
+    return 8;
+  }
+  if (size >= 4) {
+    return 4;
+  }
+  if (size >= 2) {
+    return 2;
+  }
+
+  return 1;
+}
+
+/* Update BMesh block offsets, respects alignment. */
 static void customData_update_offsets(CustomData *data)
 {
   const LayerTypeInfo *typeInfo;
+
+  if (data->totlayer == 0) {
+    data->totsize = 0;
+    return;
+  }
+
+  int max_alignment = 1;
+
+  int aligns[] = {8, 4, 2, 1};
   int offset = 0;
 
-  for (int i = 0; i < data->totlayer; i++) {
-    typeInfo = layerType_getInfo(eCustomDataType(data->layers[i].type));
+  for (int i = 0; i < ARRAY_SIZE(aligns) + 1; i++) {
+    for (int j = 0; j < data->totlayer; j++) {
+      CustomDataLayer *layer = data->layers + j;
 
-    data->layers[i].offset = offset;
-    offset += typeInfo->size;
+      int align = customData_get_alignment(eCustomDataType(layer->type));
+      max_alignment = max_ii(max_alignment, align);
+
+      if (align != aligns[i]) {
+        continue;
+      }
+
+      layer->offset = offset;
+
+      int size = CustomData_sizeof(eCustomDataType(layer->type));
+      if (size % align != 0) {
+        size += align - (size % align);
+      }
+
+      offset += size;
+    }
+  }
+
+  if (offset % max_alignment != 0) {
+    offset += max_alignment - (offset % max_alignment);
   }
 
   data->totsize = offset;
-  CustomData_update_typemap(data);
 }
 
 /* to use when we're in the middle of modifying layers */
