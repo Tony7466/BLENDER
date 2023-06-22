@@ -596,7 +596,7 @@ static void rna_MeshPolygon_use_smooth_set(PointerRNA *ptr, bool value)
   bool *sharp_faces = (bool *)CustomData_get_layer_named_for_write(
       &mesh->pdata, CD_PROP_BOOL, "sharp_face", mesh->totpoly);
   if (!sharp_faces) {
-    if (!value) {
+    if (value) {
       /* Skip adding layer if the value is the same as the default. */
       return;
     }
@@ -1436,7 +1436,8 @@ static bool rna_MeshEdge_is_loose_get(PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
   const int index = rna_MeshEdge_index_get(ptr);
-  return ED_mesh_edge_is_loose(mesh, index);
+  const blender::bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
+  return loose_edges.count > 0 && loose_edges.is_loose_bits[index];
 }
 
 static int rna_MeshLoopTriangle_material_index_get(PointerRNA *ptr)
