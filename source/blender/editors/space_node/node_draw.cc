@@ -3242,16 +3242,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     zone_draw_order.append(zone_i);
   }
   std::sort(zone_draw_order.begin(), zone_draw_order.end(), [&](const int a, const int b) {
-    const int depth_a = zones->zones[a]->depth;
-    const int depth_b = zones->zones[b]->depth;
-    if (depth_a < depth_b) {
-      return true;
-    }
-    if (depth_a == depth_b) {
-      /* Draw zones with smaller bounding box on top to make them visible. */
-      return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
-    }
-    return false;
+    /* Draw zones with smaller bounding box on top to make them visible. */
+    return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
   });
 
   /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
