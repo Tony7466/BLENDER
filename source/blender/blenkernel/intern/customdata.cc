@@ -2599,8 +2599,8 @@ static void customData_update_offsets(CustomData *data)
   int max_alignment = 1;
 
   int offset = 0;
-  for (int align : aligns) {
-    for (int i = 0; i < data->totlayer; i++) {
+  for (const int align : aligns) {
+    for (const int i : IndexRange(data->totlayer)) {
       CustomDataLayer *layer = data->layers + i;
 
       const int layer_align = customData_get_alignment(eCustomDataType(layer->type));
