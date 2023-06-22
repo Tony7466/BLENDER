@@ -154,7 +154,6 @@ void copy_with_checked_indices(const GVArray &src,
                                const IndexMask &mask,
                                GMutableSpan dst);
 
-std::string socket_identifier_for_serial_loop_item(const NodeSerialLoopItem &item);
 void socket_declarations_for_serial_loop_items(const Span<NodeSerialLoopItem> items,
                                                NodeDeclaration &r_declaration);
 

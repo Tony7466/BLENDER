@@ -15,6 +15,8 @@
 
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
+#  include <string>
+
 namespace blender {
 template<typename T> class Span;
 template<typename T> class MutableSpan;
@@ -1679,6 +1681,7 @@ typedef struct NodeSerialLoopItem {
 
 #ifdef __cplusplus
   static bool supports_type(eNodeSocketDatatype type);
+  std::string identifier_str() const;
 #endif
 } NodeSerialLoopItem;
 

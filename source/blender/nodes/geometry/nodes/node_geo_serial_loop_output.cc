@@ -17,10 +17,6 @@
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
-std::string socket_identifier_for_serial_loop_item(const NodeSerialLoopItem &item)
-{
-  return "Item_" + std::to_string(item.identifier);
-}
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_serial_loop_item(
     const NodeSerialLoopItem &item,
@@ -90,7 +86,7 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_serial_loop_ite
   }
 
   decl->name = item.name ? item.name : "";
-  decl->identifier = socket_identifier_for_serial_loop_item(item);
+  decl->identifier = item.identifier_str();
   decl->in_out = in_out;
   return decl;
 }
@@ -190,6 +186,34 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   dst_node->storage = dst_storage;
 }
 
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  NodeGeometrySerialLoopOutput &storage = node_storage(*node);
+  if (link->tonode == node) {
+    if (link->tosock->identifier == StringRef("__extend__")) {
+      if (const NodeSerialLoopItem *item = storage.add_item(
+              link->fromsock->name, eNodeSocketDatatype(link->fromsock->type)))
+      {
+        update_node_declaration_and_sockets(*ntree, *node);
+        link->tosock = nodeFindSocket(node, SOCK_IN, item->identifier_str().c_str());
+        return true;
+      }
+    }
+  }
+  if (link->fromnode == node) {
+    if (link->fromsock->identifier == StringRef("__extend__")) {
+      if (const NodeSerialLoopItem *item = storage.add_item(
+              link->tosock->name, eNodeSocketDatatype(link->tosock->type)))
+      {
+        update_node_declaration_and_sockets(*ntree, *node);
+        link->fromsock = nodeFindSocket(node, SOCK_OUT, item->identifier_str().c_str());
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace blender::nodes::node_geo_serial_loop_output_cc
 
 blender::Span<NodeSerialLoopItem> NodeGeometrySerialLoopOutput::items_span() const
@@ -217,6 +241,11 @@ bool NodeSerialLoopItem::supports_type(const eNodeSocketDatatype type)
               SOCK_MATERIAL,
               SOCK_IMAGE,
               SOCK_COLLECTION);
+}
+
+std::string NodeSerialLoopItem::identifier_str() const
+{
+  return "Item_" + std::to_string(this->identifier);
 }
 
 NodeSerialLoopItem *NodeGeometrySerialLoopOutput::add_item(const char *name,
@@ -288,6 +317,7 @@ void register_node_type_geo_serial_loop_output()
   ntype.initfunc = file_ns::node_init;
   ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
+  ntype.insert_link = file_ns::node_insert_link;
   node_type_storage(&ntype,
                     "NodeGeometrySerialLoopOutput",
                     file_ns::node_free_storage,
