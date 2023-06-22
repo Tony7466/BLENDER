@@ -59,6 +59,9 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
         return true;
       }
     }
+    else {
+      return true;
+    }
   }
   if (link->fromnode == node) {
     if (link->fromsock->identifier == StringRef("__extend__")) {
@@ -69,6 +72,9 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
         link->fromsock = nodeFindSocket(node, SOCK_OUT, item->identifier_str().c_str());
         return true;
       }
+    }
+    else {
+      return true;
     }
   }
   return false;
