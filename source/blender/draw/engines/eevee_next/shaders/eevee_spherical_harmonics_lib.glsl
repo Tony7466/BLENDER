@@ -264,11 +264,12 @@ float spherical_harmonics_evaluate_non_linear(vec3 N, float R0, vec3 R1)
   R1 /= 2.0;
 
   float R1_len;
-  vec3 R1_dir = normalize_and_get_length(R1, R1_len);
+  vec3 R1_dir = safe_normalize_and_get_length(R1, R1_len);
+  float rcp_R0 = safe_rcp(R0);
 
   float q = (1.0 + dot(R1_dir, N)) / 2.0;
-  float p = 1.0 + 2.0 * R1_len / R0;
-  float a = (1.0 - R1_len / R0) / (1.0 + R1_len / R0);
+  float p = 1.0 + 2.0 * R1_len * rcp_R0;
+  float a = (1.0 - R1_len * rcp_R0) * safe_rcp(1.0 + R1_len * rcp_R0);
 
   return R0 * (a + (1.0 - a) * (p + 1.0) * pow(q, p));
 }
