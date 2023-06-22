@@ -715,12 +715,8 @@ static void do_lasso_select_pose__do_tag(void *userData,
   }
 
   if (BLI_rctf_isect_segment(data->rect_fl, screen_co_a, screen_co_b) &&
-      BLI_lasso_is_edge_inside(data->mcoords,
-                               data->mcoords_len,
-                               UNPACK2(screen_co_a),
-                               UNPACK2(screen_co_b),
-                               INT_MAX,
-                               false)) {
+      BLI_lasso_is_edge_inside(
+          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX)) {
     pchan->bone->flag |= BONE_DONE;
     data->is_changed = true;
   }
@@ -1308,8 +1304,7 @@ static void do_lasso_select_armature__doSelectBone(void *userData,
   if (screen_co_a[0] != IS_CLIPPED) {
     if (BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_a)) &&
         BLI_lasso_is_point_inside(
-                data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), INT_MAX),
-        false) {
+            data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), INT_MAX)) {
       is_inside_flag |= BONESEL_ROOT;
     }
   }
@@ -1320,8 +1315,7 @@ static void do_lasso_select_armature__doSelectBone(void *userData,
   if (screen_co_b[0] != IS_CLIPPED) {
     if (BLI_rcti_isect_pt(data->rect, UNPACK2(screen_co_b)) &&
         BLI_lasso_is_point_inside(
-                data->mcoords, data->mcoords_len, UNPACK2(screen_co_b), INT_MAX),
-        false) {
+                data->mcoords, data->mcoords_len, UNPACK2(screen_co_b), INT_MAX)) {
       is_inside_flag |= BONESEL_TIP;
     }
   }
@@ -1335,8 +1329,7 @@ static void do_lasso_select_armature__doSelectBone(void *userData,
                                  data->mcoords_len,
                                  UNPACK2(screen_co_a),
                                  UNPACK2(screen_co_b),
-                                 INT_MAX,
-                                 false)) {
+                                 INT_MAX)) {
       is_inside_flag |= BONESEL_BONE;
     }
   }
@@ -1365,7 +1358,7 @@ static void do_lasso_select_armature__doSelectBone_clip_content(void *userData,
   }
 
   if (BLI_lasso_is_edge_inside(
-          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX, false)) {
+          data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), UNPACK2(screen_co_b), INT_MAX)) {
     is_inside_flag |= BONESEL_BONE;
   }
 

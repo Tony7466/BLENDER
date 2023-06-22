@@ -705,8 +705,7 @@ bool select_lasso(const ViewContext &vc,
                                        int(pos1_proj.y),
                                        int(pos2_proj.x),
                                        int(pos2_proj.y),
-                                       IS_CLIPPED,
-                                       false)) {
+                                       IS_CLIPPED)) {
             apply_selection_operation_at_index(selection.span, curve_i, sel_op);
             changed = true;
             break;
