@@ -62,6 +62,8 @@
 /* only for customdata_data_transfer_interp_normal_normals */
 #include "data_transfer_intern.h"
 
+#include <array>
+
 using blender::Array;
 using blender::float2;
 using blender::ImplicitSharingInfo;
@@ -2544,6 +2546,8 @@ void CustomData_free_typemask(CustomData *data, const int totelem, eCustomDataMa
 static int customData_get_alignment(eCustomDataType type)
 {
   /* Handle array types. */
+
+  /* Float and integer arrays. */
   if (ELEM(type,
            CD_PROP_FLOAT2,
            CD_PROP_FLOAT3,
@@ -2558,10 +2562,12 @@ static int customData_get_alignment(eCustomDataType type)
     return 4;
   }
 
+  /* Short arrays. */
   if (ELEM(type, CD_TESSLOOPNORMAL)) {
     return 2;
   }
 
+  /* Byte arrays. */
   if (type == CD_PROP_BYTE_COLOR) {
     return 1;
   }
@@ -2585,26 +2591,21 @@ static int customData_get_alignment(eCustomDataType type)
 /* Update BMesh block offsets, respects alignment. */
 static void customData_update_offsets(CustomData *data)
 {
-  const LayerTypeInfo *typeInfo;
-
   if (data->totlayer == 0) {
     data->totsize = 0;
     return;
   }
 
+  const std::array<int, 4> aligns = {8, 4, 2, 1};
   int max_alignment = 1;
 
-  int aligns[] = {8, 4, 2, 1};
   int offset = 0;
+  for (int align : aligns) {
+    for (int i = 0; i < data->totlayer; i++) {
+      CustomDataLayer *layer = data->layers + i;
 
-  for (int i = 0; i < ARRAY_SIZE(aligns) + 1; i++) {
-    for (int j = 0; j < data->totlayer; j++) {
-      CustomDataLayer *layer = data->layers + j;
-
-      int align = customData_get_alignment(eCustomDataType(layer->type));
-      max_alignment = max_ii(max_alignment, align);
-
-      if (align != aligns[i]) {
+      int layer_align = customData_get_alignment(eCustomDataType(layer->type));
+      if (layer_align != align) {
         continue;
       }
 
@@ -2616,6 +2617,7 @@ static void customData_update_offsets(CustomData *data)
       }
 
       offset += size;
+      max_alignment = max_ii(max_alignment, align);
     }
   }
 
