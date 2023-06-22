@@ -18,7 +18,6 @@
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BLI_array.hh"
 #include "BLI_bitmap.h"
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
@@ -64,7 +63,6 @@
 
 #include <array>
 
-using blender::Array;
 using blender::float2;
 using blender::ImplicitSharingInfo;
 using blender::IndexRange;
