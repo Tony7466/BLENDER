@@ -1060,7 +1060,6 @@ static void region_azone_scrollbar_init(ScrArea *area,
                                         ARegion *region,
                                         AZScrollDirection direction)
 {
-  rcti scroller_vert = (direction == AZ_SCROLL_VERT) ? region->v2d.vert : region->v2d.hor;
   AZone *az = static_cast<AZone *>(MEM_callocN(sizeof(*az), __func__));
 
   BLI_addtail(&area->actionzones, az);
