@@ -4217,9 +4217,27 @@ static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, Point
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-static void rna_SerialLoopItem_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
+static bNode *find_node_by_serial_loop_item(PointerRNA *ptr)
 {
-  /* TODO */
+  const NodeSerialLoopItem *item = static_cast<const NodeSerialLoopItem *>(ptr->data);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ntree->ensure_topology_cache();
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeSerialLoopOutput")) {
+    auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
+    if (storage->items_span().contains_ptr(item)) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+static void rna_SerialLoopItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node = find_node_by_serial_loop_item(ptr);
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
 static bool rna_SimulationStateItem_socket_type_supported(const EnumPropertyItem *item)
@@ -4257,20 +4275,6 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 
   const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
   NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
-}
-
-static bNode *find_node_by_serial_loop_item(PointerRNA *ptr)
-{
-  const NodeSerialLoopItem *item = static_cast<const NodeSerialLoopItem *>(ptr->data);
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeSerialLoopOutput")) {
-    auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
-    if (storage->items_span().contains_ptr(item)) {
-      return node;
-    }
-  }
-  return nullptr;
 }
 
 static bool set_serial_loop_item_unique_name(NodeGeometrySerialLoopOutput *storage,
