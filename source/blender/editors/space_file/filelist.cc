@@ -1017,8 +1017,15 @@ void filelist_setfilter_options(FileList *filelist,
 
 void filelist_setpreviews(FileList *filelist, const bool use_previews)
 {
-  if ((filelist->flags & FL_USE_PREVIEWS) != use_previews) {
-    filelist->flags ^= FL_USE_PREVIEWS;
+  if (bool(filelist->flags & FL_USE_PREVIEWS) == use_previews) {
+    return;
+  }
+
+  if (use_previews && filelist_is_ready(filelist)) {
+    filelist->flags |= FL_USE_PREVIEWS;
+  }
+  else {
+    filelist->flags &= ~FL_USE_PREVIEWS;
   }
 }
 
