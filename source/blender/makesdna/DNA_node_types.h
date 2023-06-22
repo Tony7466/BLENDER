@@ -543,13 +543,6 @@ typedef struct bNodeLink {
 typedef struct bNodePanel {
   /* UI name of the panel (not unique) */
   char *name;
-
-  /* Index in final item sequence. */
-  int index;
-  char _pad[4];
-
-  /* Parent for nested panels, or nullptr for top-level panels */
-  struct bNodePanel *parent;
 } bNodePanel;
 
 /* the basis for a Node tree, all links and nodes reside internal here */
