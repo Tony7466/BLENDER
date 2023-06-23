@@ -1217,9 +1217,9 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
     }
 
     if (mesh_final == mesh_cage) {
-      /* If the cage mesh has already been assigned, we have already passed the cage index in the
-       * modifier list. If the cage and final meshes are still the same, duplicate the final mesh
-       * so the cage mesh isn't modified anymore. */
+      /* If the cage mesh has already been assigned, we have passed the cage index in the modifier
+       * list. If the cage and final meshes are still the same, duplicate the final mesh so the
+       * cage mesh isn't modified anymore. */
       mesh_final = BKE_mesh_copy_for_eval(mesh_final);
       if (mesh_cage->edit_mesh) {
         mesh_final->edit_mesh = static_cast<BMEditMesh *>(MEM_dupallocN(mesh_cage->edit_mesh));
