@@ -431,7 +431,7 @@ static void rna_Sequence_start_frame_set(PointerRNA *ptr, float value)
   Sequence *seq = (Sequence *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
 
-  SEQ_transform_translate_sequence(scene, seq, value - seq->start);
+  SEQ_transform_translate_sequence(scene, seq, value - SEQ_time_start_frame_get(scene, seq));
   do_sequence_frame_change_update(scene, seq);
   SEQ_relations_invalidate_cache_composite(scene, seq);
 }
@@ -443,13 +443,27 @@ static float rna_Sequence_start_frame_get(PointerRNA *ptr)
   return SEQ_time_start_frame_get(scene, seq);
 }
 
+static float rna_Sequence_frame_offset_start_get(PointerRNA *ptr)
+{
+  Sequence *seq = (Sequence *)ptr->data;
+  Scene *scene = (Scene *)ptr->owner_id;
+  return SEQ_time_seconds_to_frames(scene, seq->startofs);
+}
+
+static float rna_Sequence_frame_offset_end_get(PointerRNA *ptr)
+{
+  Sequence *seq = (Sequence *)ptr->data;
+  Scene *scene = (Scene *)ptr->owner_id;
+  return SEQ_time_seconds_to_frames(scene, seq->endofs);
+}
+
 static void rna_Sequence_frame_offset_start_set(PointerRNA *ptr, float value)
 {
   Sequence *seq = (Sequence *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
 
   SEQ_relations_invalidate_cache_composite(scene, seq);
-  seq->startofs = value;
+  seq->startofs = SEQ_time_frames_to_seconds(scene, value);
 }
 
 static void rna_Sequence_frame_offset_end_set(PointerRNA *ptr, float value)
@@ -458,7 +472,7 @@ static void rna_Sequence_frame_offset_end_set(PointerRNA *ptr, float value)
   Scene *scene = (Scene *)ptr->owner_id;
 
   SEQ_relations_invalidate_cache_composite(scene, seq);
-  seq->endofs = value;
+  seq->endofs = SEQ_time_frames_to_seconds(scene, value);
 }
 
 static void rna_Sequence_anim_startofs_final_set(PointerRNA *ptr, int value)
@@ -505,16 +519,18 @@ static void rna_Sequence_frame_offset_start_range(
     PointerRNA *ptr, float *min, float *max, float *UNUSED(softmin), float *UNUSED(softmax))
 {
   Sequence *seq = (Sequence *)ptr->data;
+  Scene *scene = (Scene *)ptr->owner_id;
   *min = ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) ? 0 : INT_MIN;
-  *max = seq->len - seq->endofs - 1;
+  *max = SEQ_time_seconds_to_frames(scene, seq->len - seq->endofs) - 1;
 }
 
 static void rna_Sequence_frame_offset_end_range(
     PointerRNA *ptr, float *min, float *max, float *UNUSED(softmin), float *UNUSED(softmax))
 {
   Sequence *seq = (Sequence *)ptr->data;
+  Scene *scene = (Scene *)ptr->owner_id;
   *min = ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) ? 0 : INT_MIN;
-  *max = seq->len - seq->startofs - 1;
+  *max = SEQ_time_seconds_to_frames(scene, seq->len - seq->startofs) - 1;
 }
 
 static void rna_Sequence_frame_final_duration_set(PointerRNA *ptr, int value)
@@ -2181,16 +2197,20 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "startofs");
   RNA_def_property_ui_text(prop, "Start Offset", "");
   RNA_def_property_ui_range(prop, MINFRAME, MAXFRAME, 100.0f, 0);
-  RNA_def_property_float_funcs(
-      prop, NULL, "rna_Sequence_frame_offset_start_set", "rna_Sequence_frame_offset_start_range");
+  RNA_def_property_float_funcs(prop,
+                               "rna_Sequence_frame_offset_start_get",
+                               "rna_Sequence_frame_offset_start_set",
+                               "rna_Sequence_frame_offset_start_range");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_frame_change_update");
 
   prop = RNA_def_property(srna, "frame_offset_end", PROP_FLOAT, PROP_TIME);
   RNA_def_property_float_sdna(prop, NULL, "endofs");
   RNA_def_property_ui_text(prop, "End Offset", "");
   RNA_def_property_ui_range(prop, MINFRAME, MAXFRAME, 100.0f, 0);
-  RNA_def_property_float_funcs(
-      prop, NULL, "rna_Sequence_frame_offset_end_set", "rna_Sequence_frame_offset_end_range");
+  RNA_def_property_float_funcs(prop,
+                               "rna_Sequence_frame_offset_end_get",
+                               "rna_Sequence_frame_offset_end_set",
+                               "rna_Sequence_frame_offset_end_range");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_frame_change_update");
 
   prop = RNA_def_property(srna, "channel", PROP_INT, PROP_UNSIGNED);
