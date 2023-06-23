@@ -321,7 +321,8 @@ class Instance {
 
   void sculpt_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
   {
-    ResourceHandle handle = manager.resource_handle(ob_ref);
+    /* Disable frustum culling for sculpt meshes. */
+    ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
 
     if (object_state.use_per_material_batches) {
       const int material_count = DRW_cache_object_material_count_get(ob_ref.object);
