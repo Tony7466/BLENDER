@@ -202,6 +202,32 @@ static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
   return panel;
 }
 
+static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
+                                                               bNodeTreeInterface *interface,
+                                                               Main *bmain,
+                                                               ReportList *reports,
+                                                               bNodeTreeInterfaceItem *item)
+{
+  const int index = interface->items().as_span().first_index_try(item);
+  if (!interface->items().index_range().contains(index)) {
+    return nullptr;
+  }
+
+  bNodeTreeInterfaceItem *item_copy = interface->insert_item_copy(*item, index + 1);
+
+  if (item_copy == nullptr) {
+    BKE_report(reports, RPT_ERROR, "Unable to copy item");
+  }
+  else {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_interface(ntree);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  return item_copy;
+}
+
 static void rna_NodeTreeInterfaceItems_remove(ID *id,
                                               bNodeTreeInterface *interface,
                                               Main *bmain,
@@ -398,6 +424,16 @@ static void rna_def_node_tree_interface_items_api(BlenderRNA *brna, PropertyRNA 
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfacePanel", "Panel", "New panel");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "copy", "rna_NodeTreeInterfaceItems_copy");
+  RNA_def_function_ui_description(func, "Add a copy of an item to the interface");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "Item to copy");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_pointer(
+      func, "item_copy", "NodeTreeInterfaceItem", "Item Copy", "Copy of the item");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "remove", "rna_NodeTreeInterfaceItems_remove");

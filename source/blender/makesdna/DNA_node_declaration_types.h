@@ -107,8 +107,12 @@ typedef struct bNodeTreeInterface {
                                           blender::StringRef data_type,
                                           eNodeTreeInterfaceSocketKind in_out,
                                           int index);
+
   bNodeTreeInterfacePanel *add_panel(blender::StringRef name);
   bNodeTreeInterfacePanel *insert_panel(blender::StringRef name, int index);
+
+  bNodeTreeInterfaceItem *add_item_copy(const bNodeTreeInterfaceItem &item);
+  bNodeTreeInterfaceItem *insert_item_copy(const bNodeTreeInterfaceItem &item, int index);
 
   bool remove_item(bNodeTreeInterfaceItem &item);
   void clear_item_type(eNodeTreeInterfaceItemType type);

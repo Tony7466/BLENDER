@@ -356,6 +356,25 @@ class NODE_OT_interface_item_new(NodePanelOperator, Operator):
         return {'FINISHED'}
 
 
+class NODE_OT_interface_item_copy(NodePanelOperator, Operator):
+    '''Add a copy of the active item to the interface'''
+    bl_idname = "node.interface_item_copy"
+    bl_label = "Copy Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        items = tree.interface.interface_items
+
+        if items.active:
+            dst_index = min(items.active_index + 1, len(items))
+            items.copy(items.active)
+            items.active_index = dst_index
+
+        return {'FINISHED'}
+
+
 class NODE_OT_interface_item_remove(NodePanelOperator, Operator):
     '''Remove active item from the interface'''
     bl_idname = "node.interface_item_remove"
@@ -411,6 +430,7 @@ classes = (
     NODE_OT_panel_remove,
     NODE_OT_panel_move,
     NODE_OT_interface_item_new,
+    NODE_OT_interface_item_copy,
     NODE_OT_interface_item_remove,
     NODE_OT_interface_item_move,
     NODE_OT_tree_path_parent,

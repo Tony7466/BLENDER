@@ -127,22 +127,60 @@ void bNodeTreeInterface::free_item(bNodeTreeInterfaceItem &item)
   }
 }
 
-bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
-                                                         blender::StringRef description,
-                                                         blender::StringRef data_type,
-                                                         const eNodeTreeInterfaceSocketKind kind)
+bNodeTreeInterfaceSocket *make_socket(const int uid,
+                                      blender::StringRef name,
+                                      blender::StringRef description,
+                                      blender::StringRef data_type,
+                                      const eNodeTreeInterfaceSocketKind kind)
 {
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
+  new_socket->uid = uid;
   new_socket->item.item_type = NODE_INTERFACE_SOCKET;
   new_socket->item.parent = nullptr;
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
   new_socket->data_type = BLI_strdup(data_type.data());
   new_socket->kind = kind;
-  new_socket->uid = next_socket_uid++;
+  return new_socket;
+}
 
+bNodeTreeInterfacePanel *make_panel(blender::StringRef name)
+{
+  bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
+  new_panel->item.item_type = NODE_INTERFACE_PANEL;
+  new_panel->item.parent = nullptr;
+  new_panel->name = BLI_strdup(name.data());
+  return new_panel;
+}
+
+bNodeTreeInterfaceItem *make_item_copy(const bNodeTreeInterfaceItem &item)
+{
+  bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
+  switch (item.item_type) {
+    case NODE_INTERFACE_SOCKET: {
+      bNodeTreeInterfaceSocket *csocket = reinterpret_cast<bNodeTreeInterfaceSocket *>(citem);
+      csocket->name = BLI_strdup(csocket->name);
+      csocket->description = BLI_strdup(csocket->description);
+      csocket->data_type = BLI_strdup(csocket->data_type);
+      break;
+    }
+    case NODE_INTERFACE_PANEL: {
+      bNodeTreeInterfacePanel *cpanel = reinterpret_cast<bNodeTreeInterfacePanel *>(citem);
+      cpanel->name = BLI_strdup(cpanel->name);
+      break;
+    }
+  }
+  return citem;
+}
+
+bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
+                                                         blender::StringRef description,
+                                                         blender::StringRef data_type,
+                                                         const eNodeTreeInterfaceSocketKind kind)
+{
+  bNodeTreeInterfaceSocket *new_socket = make_socket(
+      next_socket_uid++, name, description, data_type, kind);
   add_item(new_socket->item);
-
   return new_socket;
 }
 
@@ -157,29 +195,16 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
     return nullptr;
   }
 
-  bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
-  new_socket->item.item_type = NODE_INTERFACE_SOCKET;
-  new_socket->item.parent = nullptr;
-  new_socket->name = BLI_strdup(name.data());
-  new_socket->description = BLI_strdup(description.data());
-  new_socket->data_type = BLI_strdup(data_type.data());
-  new_socket->kind = kind;
-  new_socket->uid = next_socket_uid++;
-
+  bNodeTreeInterfaceSocket *new_socket = make_socket(
+      next_socket_uid++, name, description, data_type, kind);
   insert_item(new_socket->item, index);
-
   return new_socket;
 }
 
 bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name)
 {
-  bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
-  new_panel->item.item_type = NODE_INTERFACE_PANEL;
-  new_panel->item.parent = nullptr;
-  new_panel->name = BLI_strdup(name.data());
-
+  bNodeTreeInterfacePanel *new_panel = make_panel(name);
   add_item(new_panel->item);
-
   return new_panel;
 }
 
@@ -189,14 +214,32 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef nam
     return nullptr;
   }
 
-  bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
-  new_panel->item.item_type = NODE_INTERFACE_PANEL;
-  new_panel->item.parent = nullptr;
-  new_panel->name = BLI_strdup(name.data());
-
+  bNodeTreeInterfacePanel *new_panel = make_panel(name);
   insert_item(new_panel->item, index);
-
   return new_panel;
+}
+
+bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfaceItem &item)
+{
+  BLI_assert(items().as_span().contains(const_cast<bNodeTreeInterfaceItem *>(&item)));
+
+  bNodeTreeInterfaceItem *citem = make_item_copy(item);
+  add_item(*citem);
+  return citem;
+}
+
+bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInterfaceItem &item,
+                                                             int index)
+{
+  BLI_assert(items().as_span().contains(const_cast<bNodeTreeInterfaceItem *>(&item)));
+
+  if (!blender::IndexRange(items().size() + 1).contains(index)) {
+    return nullptr;
+  }
+
+  bNodeTreeInterfaceItem *citem = make_item_copy(item);
+  insert_item(*citem, index);
+  return citem;
 }
 
 bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item)
