@@ -1178,9 +1178,11 @@ void BKE_ntree_update_tag_link_removed(bNodeTree *ntree)
   add_tree_tag(ntree, NTREE_CHANGED_LINK);
 }
 
-void BKE_ntree_update_tag_link_added(bNodeTree *ntree, bNodeLink * /*link*/)
+void BKE_ntree_update_tag_link_added(bNodeTree *ntree, bNodeLink *link)
 {
   add_tree_tag(ntree, NTREE_CHANGED_LINK);
+  if (link != nullptr && link->tosock != nullptr) {
+  }
 }
 
 void BKE_ntree_update_tag_link_mute(bNodeTree *ntree, bNodeLink * /*link*/)

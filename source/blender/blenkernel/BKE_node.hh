@@ -354,6 +354,8 @@ extern bNodeTreeType NodeTreeTypeUndefined;
 extern bNodeType NodeTypeUndefined;
 extern bNodeSocketType NodeSocketTypeUndefined;
 
+bool socket_is_useless(const bNode &node, const bNodeSocket &socket);
+
 }  // namespace blender::bke
 
 #define NODE_STORAGE_FUNCS(StorageT) \
