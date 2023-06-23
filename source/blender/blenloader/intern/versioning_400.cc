@@ -256,7 +256,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       const ToolSettings *ts_default = DNA_struct_default_get(ToolSettings);
       ToolSettings *ts = scene->toolsettings;
