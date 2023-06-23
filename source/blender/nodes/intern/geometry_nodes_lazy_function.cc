@@ -1427,29 +1427,47 @@ class LazyFunctionForSerialLoopStatus : public LazyFunction {
   LazyFunctionForSerialLoopStatus()
   {
     debug_name_ = "Loop Status";
+    inputs_.append_as("Index", CPPType::get<int>());
+    inputs_.append_as("Max Iterations", CPPType::get<int>());
     inputs_.append_as("Break Before", CPPType::get<ValueOrField<bool>>());
     inputs_.append_as("Break After", CPPType::get<ValueOrField<bool>>(), lf::ValueUsage::Maybe);
+    outputs_.append_as("Index", CPPType::get<int>());
     outputs_.append_as("Status", CPPType::get<lf::SerialLoopStatus>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    const ValueOrField<bool> &break_before = params.get_input<ValueOrField<bool>>(0);
+    const int index = params.get_input<int>(0);
+    const int next_index = index + 1;
+    if (params.output_was_set(0)) {
+      params.set_output(0, next_index);
+    }
+    const int max_iterations = params.get_input<int>(1);
+    if (index == max_iterations) {
+      params.set_output(1, lf::SerialLoopStatus::UsePrevious);
+      return;
+    }
+    if (next_index == max_iterations) {
+      params.set_output(1, lf::SerialLoopStatus::UseCurrent);
+      return;
+    }
+
+    const ValueOrField<bool> &break_before = params.get_input<ValueOrField<bool>>(2);
     if (break_before.as_value()) {
-      params.set_output(0, lf::SerialLoopStatus::UsePrevious);
+      params.set_output(1, lf::SerialLoopStatus::UsePrevious);
       return;
     }
     const ValueOrField<bool> *break_after =
-        params.try_get_input_data_ptr_or_request<ValueOrField<bool>>(1);
+        params.try_get_input_data_ptr_or_request<ValueOrField<bool>>(3);
     if (break_after == nullptr) {
       /* Wait until the value is available. */
       return;
     }
     if (break_after->as_value()) {
-      params.set_output(0, lf::SerialLoopStatus::UseCurrent);
+      params.set_output(1, lf::SerialLoopStatus::UseCurrent);
       return;
     }
-    params.set_output(0, lf::SerialLoopStatus::Continue);
+    params.set_output(1, lf::SerialLoopStatus::Continue);
   }
 };
 
@@ -1464,6 +1482,9 @@ struct SerialLoopBodyIndices {
   IndexRange border_link_usage_outputs;
   Map<int, int> attribute_set_input_by_field_source_index;
   Map<int, int> attribute_set_input_by_caller_propagation_index;
+  int index_input;
+  int max_iterations_inputs;
+  int index_output;
 };
 
 class LazyFunctionForSerialLoopZone : public LazyFunction {
@@ -1833,11 +1854,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::Node &lf_status_output_node = [&]() -> lf::Node & {
       auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
       debug_info.name = "Loop Status";
+      debug_info.input_names.append("Index");
       debug_info.input_names.append("Status");
-      return lf_body_graph.add_dummy({&CPPType::get<lf::SerialLoopStatus>()}, {}, &debug_info);
+      return lf_body_graph.add_dummy(
+          {&CPPType::get<int>(), &CPPType::get<lf::SerialLoopStatus>()}, {}, &debug_info);
     }();
-    body_indices.status_output = lf_body_outputs.size();
-    lf_body_outputs.append(&lf_status_output_node.input(0));
+    body_indices.index_output = lf_body_outputs.append_and_get_index(
+        &lf_status_output_node.input(0));
+    body_indices.status_output = lf_body_outputs.append_and_get_index(
+        &lf_status_output_node.input(1));
 
     lf::Node &lf_status_usage_node = [&]() -> lf::Node & {
       auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
@@ -1856,10 +1881,27 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     graph_params.usage_by_bsocket.add_new(&break_before_bsocket, &lf_status_usage);
     graph_params.usage_by_bsocket.add_new(&break_after_bsocket, &lf_status_usage);
 
-    graph_params.lf_inputs_by_bsocket.add(&break_before_bsocket, &lf_loop_status_node.input(0));
-    graph_params.lf_inputs_by_bsocket.add(&break_after_bsocket, &lf_loop_status_node.input(1));
+    graph_params.lf_inputs_by_bsocket.add(&break_before_bsocket, &lf_loop_status_node.input(2));
+    graph_params.lf_inputs_by_bsocket.add(&break_after_bsocket, &lf_loop_status_node.input(3));
 
     lf_body_graph.add_link(lf_loop_status_node.output(0), lf_status_output_node.input(0));
+    lf_body_graph.add_link(lf_loop_status_node.output(1), lf_status_output_node.input(1));
+
+    lf::Node &lf_index_iterations_input_node = [&]() -> lf::Node & {
+      auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+      debug_info.name = "Input";
+      debug_info.output_names.append("Index");
+      debug_info.output_names.append("Max Iterations");
+      return lf_body_graph.add_dummy(
+          {}, {&CPPType::get<int>(), &CPPType::get<int>()}, &debug_info);
+    }();
+    body_indices.index_input = lf_body_inputs.append_and_get_index(
+        &lf_index_iterations_input_node.output(0));
+    body_indices.max_iterations_inputs = lf_body_inputs.append_and_get_index(
+        &lf_index_iterations_input_node.output(1));
+
+    lf_body_graph.add_link(lf_index_iterations_input_node.output(0), lf_loop_status_node.input(0));
+    lf_body_graph.add_link(lf_index_iterations_input_node.output(1), lf_loop_status_node.input(1));
 
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
 
