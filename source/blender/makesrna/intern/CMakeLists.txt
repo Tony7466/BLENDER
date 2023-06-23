@@ -18,7 +18,7 @@ set(DEFSRC
   rna_action.c
   rna_animation.c
   rna_animviz.c
-  rna_armature.c
+  rna_armature.cc
   rna_asset.c
   rna_attribute.c
   rna_boid.c
@@ -71,14 +71,14 @@ set(DEFSRC
   rna_sequencer.c
   rna_shader_fx.c
   rna_sound.c
-  rna_space.c
+  rna_space.cc
   rna_speaker.c
   rna_test.c
   rna_text.c
   rna_texture.c
   rna_timeline.c
   rna_tracking.c
-  rna_ui.c
+  rna_ui.cc
   rna_userdef.c
   rna_vfont.c
   rna_volume.c
@@ -94,14 +94,14 @@ if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
   list(APPEND DEFSRC
     rna_simulation.c
-    rna_grease_pencil.c
+    rna_grease_pencil.cc
   )
 endif()
 
 set(APISRC
   rna_action_api.c
   rna_animation_api.c
-  rna_armature_api.c
+  rna_armature_api.cc
   rna_camera_api.c
   rna_curve_api.cc
   rna_fcurve_api.c
@@ -116,10 +116,10 @@ set(APISRC
   rna_scene_api.c
   rna_sequencer_api.c
   rna_sound_api.c
-  rna_space_api.c
+  rna_space_api.cc
   rna_text_api.c
   rna_texture_api.c
-  rna_ui_api.c
+  rna_ui_api.cc
   rna_vfont_api.c
   rna_wm_api.c
   rna_wm_gizmo_api.c
