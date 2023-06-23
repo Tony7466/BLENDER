@@ -96,7 +96,7 @@ void ED_gizmotypes_snap_3d_data_get(const bContext *C,
     copy_v3_v3_int(r_elem_index, snap_data->elem_index);
   }
   if (r_snap_elem) {
-    *r_snap_elem = snap_data->snap_elem;
+    *r_snap_elem = snap_data->type_target;
   }
 }
 
@@ -169,6 +169,21 @@ static void gizmo_snap_rna_snap_elem_index_get_fn(PointerRNA *UNUSED(ptr),
 {
   V3DSnapCursorData *snap_data = ED_view3d_cursor_snap_data_get();
   copy_v3_v3_int(values, snap_data->elem_index);
+}
+
+static int gizmo_snap_rna_snap_srouce_type_get_fn(PointerRNA *UNUSED(ptr),
+                                                  PropertyRNA *UNUSED(prop))
+{
+  V3DSnapCursorData *snap_data = ED_view3d_cursor_snap_data_get();
+  return (int)snap_data->type_source;
+}
+
+static void gizmo_snap_rna_snap_srouce_type_set_fn(PointerRNA *UNUSED(ptr),
+                                                   PropertyRNA *UNUSED(prop),
+                                                   const int value)
+{
+  V3DSnapCursorData *snap_data = ED_view3d_cursor_snap_data_get();
+  snap_data->type_source = (eSnapMode)value;
 }
 
 /** \} */
@@ -266,7 +281,7 @@ static int snap_gizmo_test_select(bContext *C, wmGizmo *gz, const int mval[2])
   ED_view3d_cursor_snap_data_update(snap_gizmo->snap_state, C, x, y);
   V3DSnapCursorData *snap_data = ED_view3d_cursor_snap_data_get();
 
-  if (snap_data->snap_elem != SCE_SNAP_TO_NONE) {
+  if (snap_data->type_target != SCE_SNAP_TO_NONE) {
     return 0;
   }
   return -1;
@@ -373,6 +388,15 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
                             INT_MAX);
   RNA_def_property_int_array_funcs_runtime(
       prop, gizmo_snap_rna_snap_elem_index_get_fn, NULL, NULL);
+
+  prop = RNA_def_enum(gzt->srna,
+                      "snap_source_type",
+                      rna_enum_snap_element_items,
+                      SCE_SNAP_TO_NONE,
+                      "Snap Source Type",
+                      "Snap Source type (influences drawing)");
+  RNA_def_property_enum_funcs_runtime(
+      prop, gizmo_snap_rna_snap_srouce_type_get_fn, gizmo_snap_rna_snap_srouce_type_set_fn, NULL);
 }
 
 void ED_gizmotypes_snap_3d(void)

@@ -245,8 +245,14 @@ void drawSnapping(const bContext *C, TransInfo *t)
       target_loc = t->tsnap.snap_target;
     }
 
-    ED_view3d_cursor_snap_draw_util(
-        rv3d, source_loc, target_loc, target_normal, col, activeCol, t->tsnap.target_type);
+    ED_view3d_cursor_snap_draw_util(rv3d,
+                                    source_loc,
+                                    target_loc,
+                                    target_normal,
+                                    t->tsnap.source_type,
+                                    t->tsnap.target_type,
+                                    col,
+                                    activeCol);
 
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
@@ -544,6 +550,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
 void resetSnapping(TransInfo *t)
 {
   t->tsnap.status = SNAP_RESETTED;
+  t->tsnap.source_type = SCE_SNAP_TO_NONE;
   t->tsnap.target_type = SCE_SNAP_TO_NONE;
   t->tsnap.mode = SCE_SNAP_TO_NONE;
   t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
@@ -1259,6 +1266,7 @@ static void snap_source_center_fn(TransInfo *t)
     TargetSnapOffset(t, nullptr);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
@@ -1269,6 +1277,7 @@ static void snap_source_active_fn(TransInfo *t)
     if (calculateCenterActive(t, true, t->tsnap.snap_source)) {
       TargetSnapOffset(t, nullptr);
       t->tsnap.status |= SNAP_SOURCE_FOUND;
+      t->tsnap.source_type = SCE_SNAP_TO_NONE;
     }
     else {
       /* No active, default to median, */
@@ -1285,6 +1294,7 @@ static void snap_source_median_fn(TransInfo *t)
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     tranform_snap_target_median_calc(t, t->tsnap.snap_source);
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
@@ -1375,6 +1385,7 @@ static void snap_source_closest_fn(TransInfo *t)
     TargetSnapOffset(t, closest);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 

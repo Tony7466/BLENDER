@@ -307,7 +307,8 @@ typedef enum {
 } eV3DSnapCursor;
 
 typedef struct V3DSnapCursorData {
-  eSnapMode snap_elem;
+  eSnapMode type_source;
+  eSnapMode type_target;
   float loc[3];
   float nor[3];
   float obmat[4][4];
@@ -352,9 +353,10 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
                                      const float target_normal[3],
+                                     const eSnapMode source_type,
+                                     const eSnapMode target_type,
                                      const uchar source_color[4],
-                                     const uchar target_color[4],
-                                     const eSnapMode target_type);
+                                     const uchar target_color[4]);
 
 /* view3d_iterators.cc */
 

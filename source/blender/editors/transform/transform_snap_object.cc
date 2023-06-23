@@ -864,7 +864,7 @@ eSnapMode snap_object_center(SnapObjectContext *sctx,
 
   if (nearest2d.snap_point(float3(0.0f))) {
     nearest2d.register_result(sctx, ob_eval, static_cast<const ID *>(ob_eval->data));
-    return SCE_SNAP_TO_VERTEX;
+    return SCE_SNAP_TO_POINT;
   }
 
   return SCE_SNAP_TO_NONE;
