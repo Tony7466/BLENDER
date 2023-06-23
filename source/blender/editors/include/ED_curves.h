@@ -90,6 +90,24 @@ bool curves_poll(bContext *C);
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Mask Functions
+ * \{ */
+
+/**
+ * Return a mask of all the end points in the curves.
+ * \param amount_start: The amount of points to mask from the front.
+ * \param amount_end: The amount of points to mask from the back.
+ * \param inverted: Invert the resulting mask.
+ */
+IndexMask end_points(bke::CurvesGeometry &curves,
+                     int amount_start,
+                     int amount_end,
+                     bool inverted,
+                     IndexMaskMemory &memory);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Selection
  *
  * Selection on curves can be stored on either attribute domain: either per-curve or per-point. It
