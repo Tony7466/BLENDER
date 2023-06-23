@@ -1486,6 +1486,17 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
     }
     zone_info.border_link_input_usage_indices = outputs_.index_range().take_back(
         zone.border_links.size());
+
+    for (const auto item : body_indices.attribute_set_input_by_field_source_index.items()) {
+      const int index = inputs_.append_and_get_index_as(
+          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>());
+      zone_info.attribute_set_input_by_field_source_index.add_new(item.key, index);
+    }
+    for (const auto item : body_indices.attribute_set_input_by_caller_propagation_index.items()) {
+      const int index = inputs_.append_and_get_index_as(
+          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>());
+      zone_info.attribute_set_input_by_caller_propagation_index.add_new(item.key, index);
+    }
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
