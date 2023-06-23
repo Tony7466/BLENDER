@@ -72,6 +72,7 @@ static bool step_encode(bContext *C, Main *bmain, UndoStep *us_p)
   Span<const Layer *> layers = grease_pencil.layers();
   Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
   step_data.drawings_at_frame.reinitialize(layers.size());
+  step_data.drawings_at_frame.fill(nullptr);
   for (const int i : layers.index_range()) {
     const Layer &layer = *layers[i];
     int drawing_index = layer.drawing_index_at(step_data.frame);
@@ -138,19 +139,25 @@ static void step_decode(
 
     GreasePencilDrawingBase *drawing_base = drawings[drawing_index];
     if (drawing_base->type == GP_DRAWING) {
-      GreasePencilDrawing &src_drawing = *reinterpret_cast<GreasePencilDrawing *>(
+      GreasePencilDrawing *src_drawing = reinterpret_cast<GreasePencilDrawing *>(
           step->drawings_at_frame[i]);
+      if (!src_drawing) {
+        continue;
+      }
       GreasePencilDrawing *dst_drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
 
-      dst_drawing->base.type = src_drawing.base.type;
-      dst_drawing->base.flag = src_drawing.base.flag;
+      dst_drawing->base.type = src_drawing->base.type;
+      dst_drawing->base.flag = src_drawing->base.flag;
 
-      new (&dst_drawing->geometry) blender::bke::CurvesGeometry(src_drawing.geometry.wrap());
+      new (&dst_drawing->geometry) blender::bke::CurvesGeometry(src_drawing->geometry.wrap());
       dst_drawing->runtime = MEM_new<bke::greasepencil::DrawingRuntime>(__func__);
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
       GreasePencilUndoDrawingReference *src_reference =
           reinterpret_cast<GreasePencilUndoDrawingReference *>(step->drawings_at_frame[i]);
+      if (!src_reference) {
+        continue;
+      }
       GreasePencilDrawingReference *dst_reference =
           reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
 
@@ -173,6 +180,9 @@ static void step_free(UndoStep *us_p)
   using namespace blender::bke::greasepencil;
   GreasePencilUndoStep *us = reinterpret_cast<GreasePencilUndoStep *>(us_p);
   for (GreasePencilDrawingBase *drawing_base : us->data->drawings_at_frame) {
+    if (!drawing_base) {
+      continue;
+    }
     if (drawing_base->type == GP_DRAWING) {
       GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
       drawing->geometry.wrap().~CurvesGeometry();
@@ -198,6 +208,9 @@ static void foreach_ID_ref(UndoStep *us_p,
   GreasePencilUndoStep *us = reinterpret_cast<GreasePencilUndoStep *>(us_p);
 
   for (GreasePencilDrawingBase *drawing_base : us->data->drawings_at_frame) {
+    if (!drawing_base) {
+      continue;
+    }
     if (drawing_base->type == GP_DRAWING_REFERENCE) {
       GreasePencilUndoDrawingReference *drawing_ref =
           reinterpret_cast<GreasePencilUndoDrawingReference *>(drawing_base);
