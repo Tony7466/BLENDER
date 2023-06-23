@@ -266,7 +266,7 @@ static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
 
   /* Avoid crashes with RenderDoc on Windows + Nvidia. */
   if (G.debug & G_DEBUG_GPU_RENDERDOC &&
-      GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_WIN, GPU_DRIVER_OFFICIAL))
+      GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL))
   {
     deferred = false;
   }
