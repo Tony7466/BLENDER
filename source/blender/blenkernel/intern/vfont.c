@@ -1775,22 +1775,26 @@ static bool vfont_to_curve(Object *ob,
     i = slen < i ? slen : i;
     float yof = chartransdata[i].yof;
 
-    // Loop until find the first character of line, this because the mouse can be positioned
-    // further below the text, so the last character of the last line can be the at index i.
+    // Loop back until find the first character of the line, this because the mouse can be
+    // positioned further below the text, so #i can be the last character of the last line.
     for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
     }
-    float prev_xoffset = chartransdata[i].xof;
-    // Loop until find the first character that is to the rigth of the mouse
+
+    // Loop until find the first character with the mouse to its rigth, or the last character of
+    // the line
     for (i; i <= slen && yof == chartransdata[i].yof; i++) {
-      const float half_xsize = (prev_xoffset - chartransdata[i].xof - xtrax);
-      if (cursor_params->cursor_location[0] < ((chartransdata[i].xof + half_xsize) * font_size)) {
+      info = &custrinfo[i];
+      ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
+      che = find_vfont_char(vfd, ascii);
+      const float charwidth = char_width(cu, che, info);
+      const float charhalf = (charwidth / 2.0f);
+      if (cursor_params->cursor_location[0] <= ((chartransdata[i].xof + charhalf) * font_size)) {
         break;
       }
-      prev_xoffset = chartransdata[i].xof;
     }
 
     // The first character that is to the right of the mouse is found, use the one on the left
-    cursor_params->r_string_offset = i && chartransdata[i - 1].yof == yof ? i - 1 : i;
+    cursor_params->r_string_offset = i <= slen ? i : slen;
   }
 
   /* Scale to fit only works for single text box layouts. */
