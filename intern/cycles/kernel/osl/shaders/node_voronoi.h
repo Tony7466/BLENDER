@@ -156,7 +156,7 @@ VoronoiOutput voronoi_f1(VoronoiParams params, float coord)
   float cellPosition = floor(coord);
   float localPosition = coord - cellPosition;
 
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   float targetOffset = 0.0;
   float targetPosition = 0.0;
   for (int i = -1; i <= 1; i++) {
@@ -267,7 +267,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, float coord)
 
   float closestPoint = 0.0;
   float closestPointOffset = 0.0;
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
@@ -280,7 +280,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, float coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   float closestPointToClosestPoint = 0.0;
   for (int i = -1; i <= 1; i++) {
     if (i == 0) {
@@ -311,7 +311,7 @@ VoronoiOutput voronoi_f1(VoronoiParams params, vector2 coord)
   vector2 cellPosition = floor(coord);
   vector2 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   vector2 targetOffset = vector2(0.0, 0.0);
   vector2 targetPosition = vector2(0.0, 0.0);
   for (int j = -1; j <= 1; j++) {
@@ -413,7 +413,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
   vector2 localPosition = coord - cellPosition;
 
   vector2 vectorToClosest = vector2(0.0, 0.0);
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vector2 cellOffset = vector2(i, j);
@@ -429,7 +429,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vector2 cellOffset = vector2(i, j);
@@ -456,7 +456,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vector2 coord)
 
   vector2 closestPoint = vector2(0.0, 0.0);
   vector2 closestPointOffset = vector2(0.0, 0.0);
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vector2 cellOffset = vector2(i, j);
@@ -471,7 +471,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vector2 coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   vector2 closestPointToClosestPoint = vector2(0.0, 0.0);
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
@@ -504,7 +504,7 @@ VoronoiOutput voronoi_f1(VoronoiParams params, vector3 coord)
   vector3 cellPosition = floor(coord);
   vector3 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   vector3 targetOffset = vector3(0.0, 0.0, 0.0);
   vector3 targetPosition = vector3(0.0, 0.0, 0.0);
   for (int k = -1; k <= 1; k++) {
@@ -612,7 +612,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
   vector3 localPosition = coord - cellPosition;
 
   vector3 vectorToClosest = vector3(0.0, 0.0, 0.0);
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -630,7 +630,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -659,7 +659,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vector3 coord)
 
   vector3 closestPoint = vector3(0.0, 0.0, 0.0);
   vector3 closestPointOffset = vector3(0.0, 0.0, 0.0);
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -676,7 +676,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vector3 coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   vector3 closestPointToClosestPoint = vector3(0.0, 0.0, 0.0);
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
@@ -711,7 +711,7 @@ VoronoiOutput voronoi_f1(VoronoiParams params, vector4 coord)
   vector4 cellPosition = floor(coord);
   vector4 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   vector4 targetOffset = vector4(0.0, 0.0, 0.0, 0.0);
   vector4 targetPosition = vector4(0.0, 0.0, 0.0, 0.0);
   for (int u = -1; u <= 1; u++) {
@@ -825,7 +825,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
   vector4 localPosition = coord - cellPosition;
 
   vector4 vectorToClosest = vector4(0.0, 0.0, 0.0, 0.0);
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -845,7 +845,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -876,7 +876,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vector4 coord)
 
   vector4 closestPoint = vector4(0.0, 0.0, 0.0, 0.0);
   vector4 closestPointOffset = vector4(0.0, 0.0, 0.0, 0.0);
-  float minDistance = 8.0;
+  float minDistance = params.max_distance;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -895,7 +895,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vector4 coord)
     }
   }
 
-  minDistance = 8.0;
+  minDistance = params.max_distance;
   vector4 closestPointToClosestPoint = vector4(0.0, 0.0, 0.0, 0.0);
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {

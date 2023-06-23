@@ -82,7 +82,7 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   float targetOffset = 0.0f;
   float targetPosition = 0.0f;
   for (int i = -1; i <= 1; i++) {
@@ -196,7 +196,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
 
   float closestPoint = 0.0f;
   float closestPointOffset = 0.0f;
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
@@ -209,7 +209,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   float closestPointToClosestPoint = 0.0f;
   for (int i = -1; i <= 1; i++) {
     if (i == 0) {
@@ -240,7 +240,7 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   float2 targetOffset = make_float2(0.0f, 0.0f);
   float2 targetPosition = make_float2(0.0f, 0.0f);
   for (int j = -1; j <= 1; j++) {
@@ -344,7 +344,7 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   float2 localPosition = coord - cellPosition;
 
   float2 vectorToClosest = make_float2(0.0f, 0.0f);
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       float2 cellOffset = make_float2(i, j);
@@ -359,7 +359,7 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       float2 cellOffset = make_float2(i, j);
@@ -386,7 +386,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
 
   float2 closestPoint = make_float2(0.0f, 0.0f);
   float2 closestPointOffset = make_float2(0.0f, 0.0f);
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       float2 cellOffset = make_float2(i, j);
@@ -401,7 +401,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   float2 closestPointToClosestPoint = make_float2(0.0f, 0.0f);
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
@@ -434,7 +434,7 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   float3 targetOffset = make_float3(0.0f, 0.0f, 0.0f);
   float3 targetPosition = make_float3(0.0f, 0.0f, 0.0f);
   for (int k = -1; k <= 1; k++) {
@@ -544,7 +544,7 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   float3 localPosition = coord - cellPosition;
 
   float3 vectorToClosest = make_float3(0.0f, 0.0f, 0.0f);
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -562,7 +562,7 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -592,7 +592,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
 
   float3 closestPoint = make_float3(0.0f, 0.0f, 0.0f);
   float3 closestPointOffset = make_float3(0.0f, 0.0f, 0.0f);
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -609,7 +609,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   float3 closestPointToClosestPoint = make_float3(0.0f, 0.0f, 0.0f);
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
@@ -644,7 +644,7 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   float4 targetOffset = zero_float4();
   float4 targetPosition = zero_float4();
   for (int u = -1; u <= 1; u++) {
@@ -763,7 +763,7 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   float4 localPosition = coord - cellPosition;
 
   float4 vectorToClosest = zero_float4();
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       ccl_loop_no_unroll for (int j = -1; j <= 1; j++)
@@ -784,7 +784,7 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       ccl_loop_no_unroll for (int j = -1; j <= 1; j++)
@@ -817,7 +817,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
 
   float4 closestPoint = zero_float4();
   float4 closestPointOffset = zero_float4();
-  float minDistance = 8.0f;
+  float minDistance = params.max_distance;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       ccl_loop_no_unroll for (int j = -1; j <= 1; j++)
@@ -837,7 +837,7 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = params.max_distance;
   float4 closestPointToClosestPoint = zero_float4();
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
