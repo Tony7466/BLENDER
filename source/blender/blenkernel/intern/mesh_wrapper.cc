@@ -126,9 +126,6 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
 
         EditMeshData *edit_data = me->runtime->edit_data;
         if (edit_data->vertexCos) {
-          /* Avoid freeing the edit data SoA vertex position array, since it
-           * may be referenced elsewhere and ensuring mesh data shouldn't free it. */
-          BKE_mesh_vert_coords_apply(me, edit_data->vertexCos);
           CustomData_free_layer_named(&me->vdata, "position", me->totvert);
           CustomData_add_layer_named_with_data(
               &me->vdata, CD_PROP_FLOAT3, edit_data->vertexCos, me->totvert, "position", nullptr);
