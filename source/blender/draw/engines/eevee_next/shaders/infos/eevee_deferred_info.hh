@@ -37,7 +37,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .additional_info("eevee_shared",
                      "eevee_utility_texture",
                      "eevee_light_data",
-                     "eevee_reflection_probe_world_data",
+                     "eevee_reflection_probe_data",
                      "eevee_shadow_data",
                      "eevee_deferred_base",
                      "eevee_transmittance_data",

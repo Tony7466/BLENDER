@@ -16,12 +16,21 @@ void ReflectionProbeModule::init()
   if (cubemaps_.is_empty()) {
     cubemaps_.reserve(INITIAL_PROBES);
 
+    ReflectionProbeData init_probe_data = {};
+    init_probe_data.layer = -1;
+    for (int i : IndexRange(REFLECTION_PROBES_MAX)) {
+      data_buf_[i] = init_probe_data;
+    }
+
     /* Initialize the world cubemap. */
     ReflectionProbeData world_probe_data{};
     world_probe_data.layer = 0;
     world_probe_data.layer_subdivision = WORLD_SUBDIVISION_LEVEL;
     world_probe_data.area_index = 0;
     world_probe_data.color = float4(0.0f);
+    world_probe_data.pos = float3(0.0f);
+    world_probe_data.influence_distance = 999999.0f;
+    world_probe_data.falloff = 0.0f;
     data_buf_[0] = world_probe_data;
 
     ReflectionProbe world_cubemap;
@@ -87,11 +96,17 @@ void ReflectionProbeModule::sync_object(Object *ob,
                                         ResourceHandle res_handle,
                                         bool is_dirty)
 {
+  const LightProbe *light_probe = (LightProbe *)ob->data;
   ReflectionProbe &probe = find_or_insert(ob_handle, REFLECTION_PROBE_SUBDIVISION_LEVEL);
-  /* TODO: remove debug color.*/
-  data_buf_[probe.index].color = ob->color;
   probe.is_dirty |= is_dirty;
   probe.is_used = true;
+
+  /* TODO: remove debug color.*/
+  ReflectionProbeData &probe_data = data_buf_[probe.index];
+  probe_data.color = ob->color;
+  probe_data.influence_distance = light_probe->distinf;
+  probe_data.falloff = light_probe->falloff;
+  probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
 }
 
 ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
@@ -115,13 +130,14 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
     first_unused = &cubemaps_.last();
   }
   BLI_assert(first_unused != nullptr);
+  first_unused->index = -1;
+  ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
+
   first_unused->is_dirty = true;
   first_unused->object_hash_value = ob_handle.object_key.hash_value;
   first_unused->type = ReflectionProbe::Type::PROBE;
   first_unused->index = reflection_probe_data_index_max() + 1;
 
-  /* TODO: support different subdivision levels. */
-  ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
   data_buf_[first_unused->index] = probe_data;
 
   return *first_unused;
@@ -288,8 +304,8 @@ void ReflectionProbeModule::remove_unused_probes()
 
 void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_data_index)
 {
-  int max_index = reflection_probe_data_index_max() + 1;
-  for (int index = reflection_probe_data_index; index < max_index - 1; index++) {
+  int max_index = reflection_probe_data_index_max();
+  for (int index = reflection_probe_data_index; index < max_index; index++) {
     data_buf_[index] = data_buf_[index + 1];
   }
   for (ReflectionProbe &probe : cubemaps_) {
@@ -300,7 +316,8 @@ void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_da
       probe.index--;
     }
   }
-  BLI_assert(reflection_probe_data_index_max() + 1 == max_index - 1);
+  data_buf_[max_index].layer = -1;
+  BLI_assert(reflection_probe_data_index_max() == max_index - 1);
 }
 
 void ReflectionProbeModule::debug_print() const
@@ -394,7 +411,7 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
 
   /* Generate dummy checker pattern. */
   int index = 0;
-  const int BLOCK_SIZE = max_ii(256 >> probe_data.layer_subdivision, 1);
+  const int BLOCK_SIZE = max_ii(512 >> probe_data.layer_subdivision, 1);
   for (int y : IndexRange(resolution)) {
     for (int x : IndexRange(resolution)) {
       int tx = (x / BLOCK_SIZE) & 1;

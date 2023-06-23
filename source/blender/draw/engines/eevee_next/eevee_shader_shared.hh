@@ -931,6 +931,19 @@ struct ReflectionProbeData {
    * NOTE: alpha channel is not used, but here for alignment reasons.
    */
   float4 color;
+  packed_float3 pos;
+
+  /**
+   * Max distance in world units that is effected by this probe. (including falloff)
+   */
+  float influence_distance;
+  /**
+   * Percentage of the radius when the falloff starts counting from the outside of the radius.
+   *
+   * 0.0: no falloff
+   * 1.0: falloff starts at the center of the reflection probe
+   */
+  float falloff;
 
   /** On which layer of the cubemaps array is this reflection probe stored. */
   int layer;
@@ -950,9 +963,7 @@ struct ReflectionProbeData {
    */
   int area_index;
 
-  /* TODO: add ranges, and world position */
-
-  int _pad1;
+  // int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
