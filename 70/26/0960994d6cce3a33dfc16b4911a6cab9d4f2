@@ -5,3 +5,4 @@ Referenced by commit 15f59470a30f200a98ca2bb7c2537ab07a33fdb5, Fix #105314: Cust
 Referenced by pull request #105975, Add helper function to node_utils to create links to virtual sockets
 Referenced by commit 81815681d0aeaae719c6cb736f0326201c87ba4a, Python API: Add function to create links to virtual sockets
 Referenced by issue #109231, In custom trees socket type in group input nodes is not changing.
+Referenced by pull request #109298, Fix #109231: Python defined socket type switching broken
