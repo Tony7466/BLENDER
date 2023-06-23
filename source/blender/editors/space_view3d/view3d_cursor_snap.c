@@ -388,7 +388,7 @@ static void cursor_point_draw(uint attr_pos,
   copy_v3_fl3(model_view[2], 0.0f, 0.0f, size);
   GPU_matrix_set(model_view);
 
-  int nsegments = 12;
+  int nsegments = 24;
   if (snap_type &
       (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE_MIDPOINT | SCE_SNAP_MODE_EDGE_PERPENDICULAR))
   {
