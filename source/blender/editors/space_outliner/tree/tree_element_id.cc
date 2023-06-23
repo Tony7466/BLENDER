@@ -127,7 +127,11 @@ bool TreeElementID::expandPoll(const SpaceOutliner &space_outliner) const
 
 void TreeElementID::expand(SpaceOutliner &space_outliner) const
 {
-  expand_animation_data(space_outliner, BKE_animdata_from_id(&id_));
+  /* Not all IDs support animation data. Will be null then. */
+  const AnimData *anim_data = BKE_animdata_from_id(&id_);
+  if (anim_data) {
+    expand_animation_data(space_outliner, anim_data);
+  }
 }
 
 void TreeElementID::expand_animation_data(SpaceOutliner &space_outliner,
