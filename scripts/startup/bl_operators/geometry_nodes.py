@@ -279,8 +279,6 @@ class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
     bl_label = "Add State Item"
     bl_options = {'REGISTER', 'UNDO'}
 
-    default_socket_type = 'GEOMETRY'
-
     def execute(self, context):
         node = self.get_output_node(context)
         state_items = node.state_items
