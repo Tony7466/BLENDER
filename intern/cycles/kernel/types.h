@@ -1362,7 +1362,6 @@ typedef struct KernelSpotLight {
   float pad;
 } KernelSpotLight;
 
-/* TODO: maybe rename spot to sphere */
 /* PointLight is SpotLight with only radius and invarea being used. */
 
 typedef struct KernelAreaLight {

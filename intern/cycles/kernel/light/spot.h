@@ -188,7 +188,6 @@ ccl_device_inline bool spot_light_intersect(const ccl_global KernelLight *klight
     return false;
   }
 
-  /* TODO: when to check if outside cone? */
   return point_light_intersect(klight, ray, t);
 }
 
