@@ -22,7 +22,7 @@ void ReflectionProbeModule::init()
                                    MAX_PROBES,
                                    GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT,
                                    NULL,
-                                   12);
+                                   MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(cubemaps_tx_, true, true);
 
     dummy_tx_.ensure_cube_array(

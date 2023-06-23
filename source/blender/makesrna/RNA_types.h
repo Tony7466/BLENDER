@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -308,6 +310,7 @@ typedef enum PropertyFlag {
    **/
   PROP_PATH_OUTPUT = (1 << 2),
 } PropertyFlag;
+ENUM_OPERATORS(PropertyFlag, PROP_NO_DEG_UPDATE)
 
 /**
  * Flags related to comparing and overriding RNA properties.
@@ -344,13 +347,15 @@ typedef enum PropertyOverrideFlag {
   /** The property supports insertion (collections only). */
   PROPOVERRIDE_LIBRARY_INSERTION = (1 << 10),
 
-  /** Only use indices to compare items in the property, never names (collections only).
+  /**
+   * Only use indices to compare items in the property, never names (collections only).
    *
    * Useful when nameprop of the items is generated from other data
    * (e.g. name of material slots is actually name of assigned material).
    */
   PROPOVERRIDE_NO_PROP_NAME = (1 << 11),
 } PropertyOverrideFlag;
+ENUM_OPERATORS(PropertyOverrideFlag, PROPOVERRIDE_NO_PROP_NAME);
 
 /**
  * Function parameters flags.

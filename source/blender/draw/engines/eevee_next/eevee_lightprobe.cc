@@ -52,8 +52,8 @@ void LightProbeModule::sync_cube(ObjectHandle &handle)
 
 void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
 {
-  const ::LightProbe *light_probe = (const ::LightProbe *)ob->data;
-  switch (light_probe->type) {
+  const ::LightProbe *lightprobe = static_cast<const ::LightProbe *>(ob->data);
+  switch (lightprobe->type) {
     case LIGHTPROBE_TYPE_CUBE:
       sync_cube(handle);
       return;

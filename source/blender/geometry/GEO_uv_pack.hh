@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_heap.h"
 #include "BLI_math_matrix.hh"
@@ -47,13 +49,18 @@ enum eUVPackIsland_ShapeMethod {
 };
 
 enum eUVPackIsland_PinMethod {
-  ED_UVPACK_PIN_IGNORED = 0,
-  ED_UVPACK_PIN_DEFAULT,
+  /** Pin has no impact on packing. */
+  ED_UVPACK_PIN_NONE = 0,
+  /**
+   * Ignore islands containing any pinned UV's.
+   * \note Not exposed in the UI, used only for live-unwrap.
+   */
+  ED_UVPACK_PIN_IGNORE,
   ED_UVPACK_PIN_LOCK_ROTATION,
   ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
   ED_UVPACK_PIN_LOCK_SCALE,
-  ED_UVPACK_PIN_LOCK_TRANSLATION,
-  ED_UVPACK_PIN_LOCK_ALL, /* Lock translation, rotation and scale. */
+  /** Lock the island in-place (translation, rotation and scale). */
+  ED_UVPACK_PIN_LOCK_ALL,
 };
 
 namespace blender::geometry {
@@ -92,6 +99,8 @@ class UVPackIsland_Params {
   eUVPackIsland_MarginMethod margin_method;
   /** Additional translation for bottom left corner. */
   float udim_base_offset[2];
+  /** Target vertical extent. Should be 1.0f for the unit square. */
+  float target_extent;
   /** Target aspect ratio. */
   float target_aspect_y;
   /** Which shape to use when packing. */

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -104,6 +106,9 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
       case CTX_MODE_EDIT_LATTICE:
         km_id = "Lattice";
         break;
+      case CTX_MODE_EDIT_GREASE_PENCIL:
+        km_id = "Grease Pencil Edit Mode";
+        break;
       case CTX_MODE_POSE:
         km_id = "Pose";
         break;
@@ -128,7 +133,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
       case CTX_MODE_PAINT_GPENCIL:
         km_id = "Grease Pencil Stroke Paint Mode";
         break;
-      case CTX_MODE_EDIT_GPENCIL:
+      case CTX_MODE_EDIT_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Edit Mode";
         break;
       case CTX_MODE_SCULPT_GPENCIL:
@@ -208,6 +213,9 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   }
   /* Grease Pencil */
   else if (STRPREFIX(opname, "GPENCIL_OT")) {
+    km = WM_keymap_find_all(wm, "Grease Pencil", 0, 0);
+  }
+  else if (STRPREFIX(opname, "GREASE_PENCIL_OT")) {
     km = WM_keymap_find_all(wm, "Grease Pencil", 0, 0);
   }
   /* Markers */

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -307,7 +308,7 @@ static bool dir_create_recursive(char *dirname, int len)
     *dirname_parent_end = '\0';
 #ifdef WIN32
     /* Check special case `c:\foo`, don't try create `c:`, harmless but unnecessary. */
-    if (dirname[0] && !(isalpha(dirname[0]) && (dirname[1] == ':') && dirname[2] == '\0'))
+    if (dirname[0] && !BLI_path_is_win32_drive_only(dirname))
 #endif
     {
       const int mode = BLI_exists(dirname);
@@ -342,7 +343,7 @@ bool BLI_dir_create_recursive(const char *dirname)
   if (mode != 0) {
     /* The file exists, either it's a directory (ok), or not,
      * in which case this function can't do anything useful
-     * (the caller could remove it and re-run this function).  */
+     * (the caller could remove it and re-run this function). */
     return S_ISDIR(mode) ? true : false;
   }
 

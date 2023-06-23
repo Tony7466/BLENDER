@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "eevee_defines.hh"
 #include "gpu_shader_create_info.hh"
@@ -63,12 +65,6 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_light)
     .compute_source("eevee_surfel_light_comp.glsl")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(eevee_surfel_bounce)
-    .local_group_size(SURFEL_GROUP_SIZE)
-    .additional_info("eevee_shared", "eevee_surfel_common")
-    .compute_source("eevee_surfel_bounce_comp.glsl")
-    .do_static_compilation(true);
-
 GPU_SHADER_CREATE_INFO(eevee_surfel_list_build)
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
@@ -91,6 +87,8 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_ray)
                      "eevee_surfel_common",
                      "eevee_reflection_probe_data",
                      "draw_view")
+    .push_constant(Type::INT, "radiance_src")
+    .push_constant(Type::INT, "radiance_dst")
     .compute_source("eevee_surfel_ray_comp.glsl")
     .do_static_compilation(true);
 
@@ -112,12 +110,13 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_ray)
                      "eevee_surfel_common",
                      "eevee_reflection_probe_data",
                      "draw_view")
+    .push_constant(Type::INT, "radiance_src")
     .storage_buf(0, Qualifier::READ, "int", "list_start_buf[]")
     .storage_buf(6, Qualifier::READ, "SurfelListInfoData", "list_info_buf")
-    .image(0, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L0_img")
-    .image(1, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L1_a_img")
-    .image(2, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L1_b_img")
-    .image(3, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L1_c_img")
+    .image(0, GPU_RGBA32F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L0_img")
+    .image(1, GPU_RGBA32F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L1_a_img")
+    .image(2, GPU_RGBA32F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L1_b_img")
+    .image(3, GPU_RGBA32F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L1_c_img")
     .compute_source("eevee_lightprobe_irradiance_ray_comp.glsl")
     .do_static_compilation(true);
 
@@ -147,7 +146,8 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_data)
     .uniform_buf(IRRADIANCE_GRID_BUF_SLOT,
                  "IrradianceGridData",
                  "grids_infos_buf[IRRADIANCE_GRID_MAX]")
-    /* NOTE: Use uint instead of IrradianceBrickPacked because Metal need to know the exact type.*/
+    /* NOTE: Use uint instead of IrradianceBrickPacked because Metal needs to know the exact
+     * type.*/
     .storage_buf(IRRADIANCE_BRICK_BUF_SLOT, Qualifier::READ, "uint", "bricks_infos_buf[]")
     .sampler(IRRADIANCE_ATLAS_TEX_SLOT, ImageType::FLOAT_3D, "irradiance_atlas_tx");
 

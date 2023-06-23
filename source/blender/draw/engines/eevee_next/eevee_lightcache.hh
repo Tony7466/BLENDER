@@ -17,7 +17,7 @@ struct Object;
 struct wmJob;
 
 /** Opaque type hiding eevee::LightBake. */
-typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
+struct EEVEE_NEXT_LightBake;
 
 /* -------------------------------------------------------------------- */
 /** \name Light Bake Job
@@ -29,14 +29,14 @@ typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
  * The actual work will be done by `EEVEE_NEXT_lightbake_job()`.
  * IMPORTANT: Must run on the main thread because of potential GPUContext creation.
  */
-struct wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
-                                              struct wmWindow *win,
-                                              struct Main *bmain,
-                                              struct ViewLayer *view_layer,
-                                              struct Scene *scene,
-                                              blender::Vector<struct Object *> original_probes,
-                                              int delay_ms,
-                                              int frame);
+wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
+                                       wmWindow *win,
+                                       Main *bmain,
+                                       ViewLayer *view_layer,
+                                       Scene *scene,
+                                       blender::Vector<Object *> original_probes,
+                                       int delay_ms,
+                                       int frame);
 
 /**
  * Allocate dependency graph and job description (EEVEE_NEXT_LightBake).
@@ -46,10 +46,10 @@ struct wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
  * Return `EEVEE_NEXT_LightBake *` but cast to `void *` because of compatibility with existing
  * EEVEE function.
  */
-void *EEVEE_NEXT_lightbake_job_data_alloc(struct Main *bmain,
-                                          struct ViewLayer *view_layer,
-                                          struct Scene *scene,
-                                          blender::Vector<struct Object *> original_probes,
+void *EEVEE_NEXT_lightbake_job_data_alloc(Main *bmain,
+                                          ViewLayer *view_layer,
+                                          Scene *scene,
+                                          blender::Vector<Object *> original_probes,
                                           int frame);
 
 /**

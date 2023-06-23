@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -66,6 +66,7 @@ class Sampling {
   ~Sampling(){};
 
   void init(const Scene *scene);
+  void init(const Object &probe_object);
   void end_sync();
   void step();
 
@@ -82,14 +83,8 @@ class Sampling {
     return reset_;
   }
 
-  void bind_resources(DRWShadingGroup *grp)
-  {
-    DRW_shgroup_storage_block_ref(grp, "sampling_buf", &data_);
-  }
-
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
-    /* Storage Buffer. */
     pass->bind_ssbo(SAMPLING_BUF_SLOT, &data_);
   }
 
@@ -171,6 +166,13 @@ class Sampling {
    * Returns point on a Z positive hemisphere of radius 1 and centered on the origin.
    */
   static float3 sample_hemisphere(const float2 &rand);
+
+  /**
+   * Uniform sphere distribution.
+   * \a rand is 2 random float in the [0..1] range.
+   * Returns point on the sphere of radius 1 and centered on the origin.
+   */
+  static float3 sample_sphere(const float2 &rand);
 
   /**
    * Uniform disc distribution using Fibonacci spiral sampling.

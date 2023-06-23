@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -32,6 +32,7 @@
 #include "eevee_sampling.hh"
 #include "eevee_shader.hh"
 #include "eevee_shadow.hh"
+#include "eevee_subsurface.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
 #include "eevee_world.hh"
@@ -50,6 +51,7 @@ class Instance {
   ShaderModule &shaders;
   SyncModule sync;
   MaterialModule materials;
+  SubsurfaceModule subsurface;
   PipelineModule pipelines;
   ShadowModule shadows;
   LightModule lights;
@@ -101,6 +103,7 @@ class Instance {
       : shaders(*ShaderModule::module_get()),
         sync(*this),
         materials(*this),
+        subsurface(*this),
         pipelines(*this),
         shadows(*this),
         lights(*this),
@@ -151,10 +154,10 @@ class Instance {
   void init_light_bake(Depsgraph *depsgraph, draw::Manager *manager);
   void light_bake_irradiance(
       Object &probe,
-      std::function<void()> context_enable,
-      std::function<void()> context_disable,
-      std::function<bool()> stop,
-      std::function<void(LightProbeGridCacheFrame *, float progress)> result_update);
+      FunctionRef<void()> context_enable,
+      FunctionRef<void()> context_disable,
+      FunctionRef<bool()> stop,
+      FunctionRef<void(LightProbeGridCacheFrame *, float progress)> result_update);
 
   static void update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view_layer);
 

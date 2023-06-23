@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -150,6 +150,7 @@ void Instance::begin_sync()
   world.sync();
   reflection_probes.sync();
   film.sync();
+  render_buffers.sync();
   irradiance_cache.sync();
 }
 
@@ -240,6 +241,7 @@ void Instance::end_sync()
   shadows.end_sync(); /** \note: Needs to be before lights. */
   lights.end_sync();
   sampling.end_sync();
+  subsurface.end_sync();
   film.end_sync();
   cryptomatte.end_sync();
   pipelines.end_sync();
@@ -248,13 +250,20 @@ void Instance::end_sync()
 
 void Instance::render_sync()
 {
+  /* TODO: Remove old draw manager calls. */
   DRW_cache_restart();
+
+  manager->begin_sync();
 
   begin_sync();
   DRW_render_object_iter(this, render, depsgraph, object_sync_render);
   end_sync();
 
+  manager->end_sync();
+
+  /* TODO: Remove old draw manager calls. */
   DRW_render_instance_buffer_finish();
+
   /* Also we weed to have a correct FBO bound for #DRW_hair_update */
   // GPU_framebuffer_bind();
   // DRW_hair_update();
@@ -316,6 +325,28 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
         RE_pass_set_buffer_data(rp, result);
         BLI_mutex_unlock(&render->update_render_passes_mutex);
       }
+    }
+  }
+
+  /* AOVs. */
+  LISTBASE_FOREACH (ViewLayerAOV *, aov, &view_layer->aovs) {
+    if ((aov->flag & AOV_CONFLICT) != 0) {
+      continue;
+    }
+    RenderPass *rp = RE_pass_find_by_name(render_layer, aov->name, view_name);
+    if (!rp) {
+      continue;
+    }
+    float *result = film.read_aov(aov);
+
+    if (result) {
+      BLI_mutex_lock(&render->update_render_passes_mutex);
+      /* WORKAROUND: We use texture read to avoid using a framebuffer to get the render result.
+       * However, on some implementation, we need a buffer with a few extra bytes for the read to
+       * happen correctly (see GLTexture::read()). So we need a custom memory allocation. */
+      /* Avoid memcpy(), replace the pointer directly. */
+      RE_pass_set_buffer_data(rp, result);
+      BLI_mutex_unlock(&render->update_render_passes_mutex);
     }
   }
 
@@ -457,14 +488,14 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
 
 void Instance::light_bake_irradiance(
     Object &probe,
-    std::function<void()> context_enable,
-    std::function<void()> context_disable,
-    std::function<bool()> stop,
-    std::function<void(LightProbeGridCacheFrame *, float progress)> result_update)
+    FunctionRef<void()> context_enable,
+    FunctionRef<void()> context_disable,
+    FunctionRef<bool()> stop,
+    FunctionRef<void(LightProbeGridCacheFrame *, float progress)> result_update)
 {
   BLI_assert(is_baking());
 
-  auto custom_pipeline_wrapper = [&](std::function<void()> callback) {
+  auto custom_pipeline_wrapper = [&](FunctionRef<void()> callback) {
     context_enable();
     DRW_custom_pipeline_begin(&draw_engine_eevee_next_type, depsgraph);
     callback();
@@ -472,11 +503,13 @@ void Instance::light_bake_irradiance(
     context_disable();
   };
 
-  auto context_wrapper = [&](std::function<void()> callback) {
+  auto context_wrapper = [&](FunctionRef<void()> callback) {
     context_enable();
     callback();
     context_disable();
   };
+
+  irradiance_cache.bake.init(probe);
 
   custom_pipeline_wrapper([&]() {
     /* TODO: lightprobe visibility group option. */
@@ -490,50 +523,40 @@ void Instance::light_bake_irradiance(
     irradiance_cache.bake.surfels_lights_eval();
   });
 
-  int bounce_len = scene->eevee.gi_diffuse_bounces;
-  for (int bounce = 0; bounce <= bounce_len; bounce++) {
-    /* Last iteration only captures lighting. */
-    const bool is_last_bounce = (bounce == bounce_len);
-    /* First bounce includes world lighting. */
-    const bool is_first_bounce = bounce == 0;
+  sampling.init(probe);
+  while (!sampling.finished()) {
+    context_wrapper([&]() {
+      /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
+       * switch. */
+      /* TODO(fclem): Could make the number of iteration depend on the computation time. */
+      for (int i = 0; i < 16 && !sampling.finished(); i++) {
+        sampling.step();
 
-    sampling.init(scene);
-    while (!sampling.finished()) {
-      context_wrapper([&]() {
-        /* Batch ray cast by pack of 16 to avoid too much overhead of
-         * the update function & context switch. */
-        for (int i = 0; i < 16 && !sampling.finished(); i++) {
-          sampling.step();
-
-          irradiance_cache.bake.raylists_build();
-          if (!is_last_bounce) {
-            irradiance_cache.bake.propagate_light(is_first_bounce);
-          }
-          if (is_last_bounce) {
-            irradiance_cache.bake.irradiance_capture();
-          }
-        }
-        if (sampling.finished() && !is_last_bounce) {
-          irradiance_cache.bake.accumulate_bounce();
-        }
-
-        LightProbeGridCacheFrame *cache_frame;
-        if (bounce != bounce_len) {
-          /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
-          cache_frame = irradiance_cache.bake.read_result_unpacked();
-        }
-        else {
-          cache_frame = irradiance_cache.bake.read_result_packed();
-        }
-
-        float bounce_progress = sampling.sample_index() / float(sampling.sample_count());
-        float progress = (bounce + bounce_progress) / float(bounce_len + 1);
-        result_update(cache_frame, progress);
-      });
-
-      if (stop()) {
-        return;
+        irradiance_cache.bake.raylists_build();
+        irradiance_cache.bake.propagate_light();
+        irradiance_cache.bake.irradiance_capture();
       }
+
+      if (sampling.finished()) {
+        /* TODO(fclem): Dilation, filter etc... */
+        // irradiance_cache.bake.irradiance_finalize();
+      }
+
+      LightProbeGridCacheFrame *cache_frame;
+      if (sampling.finished()) {
+        cache_frame = irradiance_cache.bake.read_result_packed();
+      }
+      else {
+        /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
+        cache_frame = irradiance_cache.bake.read_result_unpacked();
+      }
+
+      float progress = sampling.sample_index() / float(sampling.sample_count());
+      result_update(cache_frame, progress);
+    });
+
+    if (stop()) {
+      return;
     }
   }
 }

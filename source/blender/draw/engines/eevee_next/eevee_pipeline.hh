@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -53,12 +53,23 @@ class WorldProbePipeline {
  private:
   Instance &inst_;
 
+  Texture dummy_renderpass_tx_;
+  Texture dummy_cryptomatte_tx_;
+  Texture dummy_aov_color_tx_;
+  Texture dummy_aov_value_tx_;
+
   struct CubemapSide {
     PassSimple cubemap_face_ps;
     View view;
     Framebuffer cubemap_face_fb;
     void render(Instance &instance);
   };
+
+  /**
+   * Keep track if the world probe needs to be updated. This should only be the case when the
+   * world is updated. This flag is used to skip updating mipmaps when the world isn't changed.
+   */
+  bool has_draw_commands_ = false;
 
   CubemapSide sides_[6] = {
       {{"PosX"}, {"PosX"}},

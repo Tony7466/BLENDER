@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* This code implements a modified version of the paper [Importance Sampling of Many Lights with
  * Adaptive Tree Splitting](http://www.aconty.com/pdf/many-lights-hpg2018.pdf) by Alejandro Conty
@@ -316,7 +317,7 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
       return;
     }
     point_to_centroid = -bcone.axis;
-    cos_theta_u = fast_cosf(bcone.theta_o);
+    cos_theta_u = fast_cosf(bcone.theta_o + bcone.theta_e);
     distance = 1.0f;
   }
   else {
@@ -498,17 +499,30 @@ ccl_device void light_tree_child_importance(KernelGlobals kg,
   }
 }
 
-ccl_device void sample_resevoir(const int current_index,
-                                const float current_weight,
-                                ccl_private int &selected_index,
-                                ccl_private float &selected_weight,
-                                ccl_private float &total_weight,
-                                ccl_private float &rand)
+ccl_device void sample_reservoir(const int current_index,
+                                 const float current_weight,
+                                 ccl_private int &selected_index,
+                                 ccl_private float &selected_weight,
+                                 ccl_private float &total_weight,
+                                 ccl_private float &rand)
 {
   if (current_weight == 0.0f) {
     return;
   }
   total_weight += current_weight;
+
+  /* When `-ffast-math` is used it is possible that the threshold is almost 1 but not quite.
+   * For this case we check the first assignment explicitly (instead of relying on the threshold to
+   * be 1, giving it certain probability). */
+  if (selected_index == -1) {
+    selected_index = current_index;
+    selected_weight = current_weight;
+    /* The threshold is expected to be 1 in this case with strict mathematics, so no need to divide
+     * the rand. In fact, division in such case could lead the rand to exceed 1 because of division
+     * by something smaller than 1. */
+    return;
+  }
+
   float thresh = current_weight / total_weight;
   if (rand <= thresh) {
     selected_index = current_index;
@@ -518,11 +532,13 @@ ccl_device void sample_resevoir(const int current_index,
   else {
     rand = (rand - thresh) / (1.0f - thresh);
   }
-  kernel_assert(rand >= 0.0f && rand <= 1.0f);
-  return;
+
+  /* Ensure the `rand` is always within 0..1 range, which could be violated above when
+   * `-ffast-math` is used. */
+  rand = saturatef(rand);
 }
 
-/* Pick an emitter from a leaf node using resevoir sampling, keep two reservoirs for upper and
+/* Pick an emitter from a leaf node using reservoir sampling, keep two reservoirs for upper and
  * lower bounds. */
 template<bool in_volume_segment>
 ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
@@ -540,7 +556,7 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
   const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes, *node_index);
   *node_index = -1;
 
-  /* Mark emitters with zero importance. Used for resevoir when total minimum importance = 0. */
+  /* Mark emitters with zero importance. Used for reservoir when total minimum importance = 0. */
   kernel_assert(knode->num_emitters <= sizeof(uint) * 8);
   uint has_importance = 0;
 
@@ -556,12 +572,12 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
     light_tree_emitter_importance<in_volume_segment>(
         kg, P, N_or_D, t, has_transmission, current_index, importance[0], importance[1]);
 
-    sample_resevoir(current_index,
-                    importance[!sample_max],
-                    selected_index,
-                    selected_importance[!sample_max],
-                    total_importance[!sample_max],
-                    rand);
+    sample_reservoir(current_index,
+                     importance[!sample_max],
+                     selected_index,
+                     selected_importance[!sample_max],
+                     total_importance[!sample_max],
+                     rand);
     if (selected_index == current_index) {
       selected_importance[sample_max] = importance[sample_max];
     }
@@ -584,12 +600,12 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
       selected_index = -1;
       for (int i = 0; i < knode->num_emitters; i++) {
         int current_index = knode->leaf.first_emitter + i;
-        sample_resevoir(current_index,
-                        float(has_importance & 1),
-                        selected_index,
-                        selected_importance[1],
-                        total_importance[1],
-                        rand);
+        sample_reservoir(current_index,
+                         float(has_importance & 1),
+                         selected_index,
+                         selected_importance[1],
+                         total_importance[1],
+                         rand);
         has_importance >>= 1;
       }
 
@@ -730,7 +746,7 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
     float discard;
     float total_prob = left_prob;
     node_index = left_index;
-    sample_resevoir(
+    sample_reservoir(
         right_index, 1.0f - left_prob, node_index, discard, total_prob, rand_selection);
     pdf_leaf *= (node_index == left_index) ? left_prob : (1.0f - left_prob);
   }
@@ -745,7 +761,9 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
                                          float3_to_float2(rand),
                                          time,
                                          P,
+                                         N_or_D,
                                          object_receiver,
+                                         shader_flags,
                                          bounce,
                                          path_flag,
                                          selected_emitter,

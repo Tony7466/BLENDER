@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -790,7 +791,7 @@ IDProperty *IDP_GetProperties(ID *id, const bool create_if_needed)
     /* NOTE(@ideasman42): Don't overwrite the data's name and type
      * some functions might need this if they
      * don't have a real ID, should be named elsewhere. */
-    // strcpy(id->name, "top_level_group");
+    // STRNCPY(id->name, "top_level_group");
   }
   return id->properties;
 }
@@ -1510,7 +1511,7 @@ void IDP_BlendReadLib(BlendLibReader *reader, ID *self_id, IDProperty *prop)
   }
 }
 
-void IDP_BlendReadExpand(struct BlendExpander *expander, IDProperty *prop)
+void IDP_BlendReadExpand(BlendExpander *expander, IDProperty *prop)
 {
   if (!prop) {
     return;

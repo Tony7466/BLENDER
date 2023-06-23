@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -99,29 +99,25 @@
 
 /* Resource bindings. */
 
-/* Texture. */
-#define IRRADIANCE_ATLAS_TEX_SLOT 11
-#define SHADOW_TILEMAPS_TEX_SLOT 12
-/* Only during surface shading. */
-#define SHADOW_ATLAS_TEX_SLOT 13
+/* Textures. */
+/* Used anywhere. (Starts at index 2, since 0 and 1 are used by draw_gpencil) */
+#define RBUFS_UTILITY_TEX_SLOT 2
+#define HIZ_TEX_SLOT 3
+/* Only during surface shading (forward and deferred eval). */
+#define SHADOW_TILEMAPS_TEX_SLOT 4
+#define SHADOW_ATLAS_TEX_SLOT 5
+#define SSS_TRANSMITTANCE_TEX_SLOT 6
+#define IRRADIANCE_ATLAS_TEX_SLOT 7
+#define REFLECTION_PROBE_TEX_SLOT 8
 /* Only during shadow rendering. */
-#define SHADOW_RENDER_MAP_SLOT 13
-#define RBUFS_UTILITY_TEX_SLOT 14
-#define HIZ_TEX_SLOT 15
-#define REFLECTION_PROBE_TEX_SLOT 16
+#define SHADOW_RENDER_MAP_SLOT 4
 
 /* Images. */
-#define RBUFS_NORMAL_SLOT 0
-#define RBUFS_LIGHT_SLOT 1
-#define RBUFS_DIFF_COLOR_SLOT 2
-#define RBUFS_SPEC_COLOR_SLOT 3
-#define RBUFS_EMISSION_SLOT 4
-#define RBUFS_AOV_COLOR_SLOT 5
-#define RBUFS_AOV_VALUE_SLOT 6
-#define RBUFS_CRYPTOMATTE_SLOT 7
-/* G-buffer reuses render passes slots. */
-#define GBUF_CLOSURE_SLOT RBUFS_LIGHT_SLOT
-#define GBUF_COLOR_SLOT RBUFS_DIFF_COLOR_SLOT
+#define RBUFS_COLOR_SLOT 0
+#define RBUFS_VALUE_SLOT 1
+#define RBUFS_CRYPTOMATTE_SLOT 2
+#define GBUF_CLOSURE_SLOT 3
+#define GBUF_COLOR_SLOT 4
 
 /* Uniform Buffers. */
 #define IRRADIANCE_GRID_BUF_SLOT 3
@@ -132,6 +128,7 @@
 #define VELOCITY_CAMERA_NEXT_BUF 5
 
 #define CAMERA_BUF_SLOT 6
+#define RBUFS_BUF_SLOT 7
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0
@@ -143,10 +140,8 @@
 #define SURFEL_BUF_SLOT 4
 /* Only during surface capture. */
 #define CAPTURE_BUF_SLOT 5
-/* Only during surface shading. */
-#define RBUFS_AOV_BUF_SLOT 5
 /* Only during shadow rendering. */
-#define SHADOW_PAGE_INFO_SLOT 5
+#define SHADOW_PAGE_INFO_SLOT 4
 #define SAMPLING_BUF_SLOT 6
 #define CRYPTOMATTE_BUF_SLOT 7
 

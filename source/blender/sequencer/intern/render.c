@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2003-2009 Blender Foundation.
- *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -191,7 +192,7 @@ void SEQ_render_imbuf_from_sequencer_space(Scene *scene, ImBuf *ibuf)
   }
 }
 
-void SEQ_render_pixel_from_sequencer_space_v4(struct Scene *scene, float pixel[4])
+void SEQ_render_pixel_from_sequencer_space_v4(Scene *scene, float pixel[4])
 {
   const char *from_colorspace = scene->sequencer_colorspace_settings.name;
   const char *to_colorspace = IMB_colormanagement_role_colorspace_name_get(
@@ -213,7 +214,7 @@ void SEQ_render_pixel_from_sequencer_space_v4(struct Scene *scene, float pixel[4
  * \{ */
 
 void SEQ_render_new_render_data(Main *bmain,
-                                struct Depsgraph *depsgraph,
+                                Depsgraph *depsgraph,
                                 Scene *scene,
                                 int rectx,
                                 int recty,
@@ -1053,7 +1054,7 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
   StripProxy *proxy = seq->strip->proxy;
 
   if (proxy->anim == NULL) {
-    if (seq_proxy_get_custom_file_fname(seq, filepath, context->view_id)) {
+    if (seq_proxy_get_custom_file_filepath(seq, filepath, context->view_id)) {
       proxy->anim = openanim(filepath, IB_rect, 0, seq->strip->colorspace_settings.name);
     }
     if (proxy->anim == NULL) {

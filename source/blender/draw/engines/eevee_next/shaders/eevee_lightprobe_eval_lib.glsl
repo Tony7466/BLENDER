@@ -43,11 +43,10 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(sampler3D atlas_tx, vec3 P)
     /* Last grid is tagged as invalid to stop the iteration. */
     if (grids_infos_buf[grid_index].grid_size.x == -1) {
       /* Sample the last grid instead. */
-      /* TODO: Avoid this by using a default world grid. */
       grid_index -= 1;
       break;
     }
-    /* If. */
+    /* If sample fall inside the grid, step out of the loop. */
     if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[grid_index], P, lP)) {
       break;
     }
@@ -76,5 +75,5 @@ void lightprobe_eval(ClosureDiffuse diffuse,
 {
   SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(irradiance_atlas_tx, P);
 
-  out_diffuse += spherical_harmonics_evaluate_lambert(diffuse.N, irradiance);
+  out_diffuse += spherical_harmonics_evaluate_lambert_non_linear(diffuse.N, irradiance);
 }

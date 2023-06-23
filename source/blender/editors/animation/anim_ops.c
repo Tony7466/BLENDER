@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edanimation
@@ -262,6 +263,10 @@ static bool need_extra_redraw_after_scrubbing_ends(bContext *C)
   if (CTX_wm_space_seq(C)) {
     /* During scrubbing in the sequencer, a preview of the final video might be drawn. After
      * scrubbing, the actual result should be shown again. */
+    return true;
+  }
+  Scene *scene = CTX_data_scene(C);
+  if (scene->eevee.taa_samples != 1) {
     return true;
   }
   wmWindowManager *wm = CTX_wm_manager(C);

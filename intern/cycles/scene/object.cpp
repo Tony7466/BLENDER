@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/object.h"
 #include "device/device.h"
@@ -400,6 +401,32 @@ bool Object::usable_as_light() const
       return true;
     }
   }
+  return false;
+}
+
+bool Object::has_light_linking() const
+{
+  if (get_receiver_light_set()) {
+    return true;
+  }
+
+  if (get_light_set_membership() != LIGHT_LINK_MASK_ALL) {
+    return true;
+  }
+
+  return false;
+}
+
+bool Object::has_shadow_linking() const
+{
+  if (get_blocker_shadow_set()) {
+    return true;
+  }
+
+  if (get_shadow_set_membership() != LIGHT_LINK_MASK_ALL) {
+    return true;
+  }
+
   return false;
 }
 

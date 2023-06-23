@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -61,6 +61,15 @@ void Sampling::init(const Scene *scene)
 
   /* Only multiply after to have full the full DoF web pattern for each time steps. */
   sample_count_ *= motion_blur_steps_;
+}
+
+void Sampling::init(const Object &probe_object)
+{
+  BLI_assert(inst_.is_baking());
+  const ::LightProbe *lightprobe = static_cast<::LightProbe *>(probe_object.data);
+
+  sample_count_ = max_ii(1, lightprobe->grid_bake_samples);
+  sample_ = 0;
 }
 
 void Sampling::end_sync()
@@ -188,6 +197,14 @@ float3 Sampling::sample_hemisphere(const float2 &rand)
 {
   const float omega = rand.y * 2.0f * M_PI;
   const float cos_theta = rand.x;
+  const float sin_theta = safe_sqrtf(1.0f - square_f(cos_theta));
+  return float3(sin_theta * float2(cosf(omega), sinf(omega)), cos_theta);
+}
+
+float3 Sampling::sample_sphere(const float2 &rand)
+{
+  const float omega = rand.y * 2.0f * M_PI;
+  const float cos_theta = rand.x * 2.0f - 1.0f;
   const float sin_theta = safe_sqrtf(1.0f - square_f(cos_theta));
   return float3(sin_theta * float2(cosf(omega), sinf(omega)), cos_theta);
 }

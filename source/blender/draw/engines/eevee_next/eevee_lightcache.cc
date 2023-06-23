@@ -68,9 +68,9 @@ class LightBake {
   std::mutex result_mutex_;
 
  public:
-  LightBake(struct Main *bmain,
-            struct ViewLayer *view_layer,
-            struct Scene *scene,
+  LightBake(Main *bmain,
+            ViewLayer *view_layer,
+            Scene *scene,
             Span<Object *> probes,
             bool run_as_job,
             int frame,
@@ -86,7 +86,7 @@ class LightBake {
 
     if (run_as_job && !GPU_use_main_context_workaround()) {
       /* This needs to happen in main thread. */
-      gl_context_ = WM_opengl_context_create();
+      gl_context_ = WM_system_gpu_context_create();
       wm_window_reset_drawable();
     }
   }
@@ -189,21 +189,21 @@ class LightBake {
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
       GPU_context_main_lock();
-      DRW_opengl_context_enable();
+      DRW_gpu_context_enable();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
-      DRW_opengl_context_enable();
+      DRW_gpu_context_enable();
     }
     else {
       /* Worker thread case. */
-      DRW_opengl_render_context_enable(gl_context_);
+      DRW_system_gpu_render_context_enable(gl_context_);
       if (gpu_context_ == nullptr) {
         /* Create GPUContext in worker thread as it needs the correct gl context bound (which can
          * only be bound in worker thread because of some GL driver requirements). */
         gpu_context_ = GPU_context_create(nullptr, gl_context_);
       }
-      DRW_gpu_render_context_enable(gpu_context_);
+      DRW_blender_gpu_render_context_enable(gpu_context_);
     }
 
     if (render_begin) {
@@ -215,20 +215,20 @@ class LightBake {
   {
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
       GPU_render_end();
       GPU_context_main_unlock();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
       GPU_render_end();
     }
     else {
       /* Worker thread case. */
-      DRW_gpu_render_context_disable(gpu_context_);
+      DRW_blender_gpu_render_context_disable(gpu_context_);
       GPU_render_end();
-      DRW_opengl_render_context_disable(gl_context_);
+      DRW_system_gpu_render_context_disable(gl_context_);
     }
   }
 
@@ -250,20 +250,20 @@ class LightBake {
     /* Delete / unbind the GL & GPU context. Assumes it is currently bound. */
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
       GPU_context_main_unlock();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
     }
     else {
       /* Worker thread case. */
       if (gpu_context_ != nullptr) {
         GPU_context_discard(gpu_context_);
       }
-      DRW_opengl_render_context_disable(gl_context_);
-      WM_opengl_context_dispose(gl_context_);
+      DRW_system_gpu_render_context_disable(gl_context_);
+      WM_system_gpu_context_dispose(gl_context_);
     }
   }
 };
@@ -276,12 +276,12 @@ using namespace blender::eevee;
 /** \name Light Bake Job
  * \{ */
 
-wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
-                                       struct wmWindow *win,
-                                       struct Main *bmain,
-                                       struct ViewLayer *view_layer,
-                                       struct Scene *scene,
-                                       blender::Vector<struct Object *> original_probes,
+wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
+                                       wmWindow *win,
+                                       Main *bmain,
+                                       ViewLayer *view_layer,
+                                       Scene *scene,
+                                       blender::Vector<Object *> original_probes,
                                        int delay_ms,
                                        int frame)
 {
@@ -301,7 +301,7 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
                               WM_JOB_TYPE_LIGHT_BAKE);
 
   LightBake *bake = new LightBake(
-      bmain, view_layer, scene, original_probes, true, frame, delay_ms);
+      bmain, view_layer, scene, std::move(original_probes), true, frame, delay_ms);
 
   WM_jobs_customdata_set(wm_job, bake, EEVEE_NEXT_lightbake_job_data_free);
   WM_jobs_timer(wm_job, 0.4, NC_SCENE | NA_EDITED, 0);
@@ -316,30 +316,31 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
   return wm_job;
 }
 
-void *EEVEE_NEXT_lightbake_job_data_alloc(struct Main *bmain,
-                                          struct ViewLayer *view_layer,
-                                          struct Scene *scene,
-                                          blender::Vector<struct Object *> original_probes,
+void *EEVEE_NEXT_lightbake_job_data_alloc(Main *bmain,
+                                          ViewLayer *view_layer,
+                                          Scene *scene,
+                                          blender::Vector<Object *> original_probes,
                                           int frame)
 {
-  LightBake *bake = new LightBake(bmain, view_layer, scene, original_probes, false, frame);
+  LightBake *bake = new LightBake(
+      bmain, view_layer, scene, std::move(original_probes), false, frame);
   /* TODO(fclem): Can remove this cast once we remove the previous EEVEE light cache. */
   return reinterpret_cast<void *>(bake);
 }
 
 void EEVEE_NEXT_lightbake_job_data_free(void *job_data)
 {
-  delete reinterpret_cast<LightBake *>(job_data);
+  delete static_cast<LightBake *>(job_data);
 }
 
 void EEVEE_NEXT_lightbake_update(void *job_data)
 {
-  reinterpret_cast<LightBake *>(job_data)->update();
+  static_cast<LightBake *>(job_data)->update();
 }
 
 void EEVEE_NEXT_lightbake_job(void *job_data, bool *stop, bool *do_update, float *progress)
 {
-  reinterpret_cast<LightBake *>(job_data)->run(stop, do_update, progress);
+  static_cast<LightBake *>(job_data)->run(stop, do_update, progress);
 }
 
 /** \} */

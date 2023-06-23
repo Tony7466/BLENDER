@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -33,7 +34,7 @@ void ObjectRuntimeBackup::init_from_object(Object *object)
     light_linking_runtime = object->light_linking->runtime;
   }
   BKE_object_runtime_reset(object);
-  /* Keep bbox (for now at least). */
+  /* Keep bounding-box (for now at least). */
   object->runtime.bb = runtime.bb;
   /* Object update will override actual object->data to an evaluated version.
    * Need to make sure we don't have data set to evaluated one before free
@@ -114,7 +115,7 @@ void ObjectRuntimeBackup::restore_to_object(Object *object)
       }
     }
   }
-  else if (ELEM(object->type, OB_CURVES, OB_POINTCLOUD, OB_VOLUME)) {
+  else if (ELEM(object->type, OB_CURVES, OB_POINTCLOUD, OB_VOLUME, OB_GREASE_PENCIL)) {
     if (object->id.recalc & ID_RECALC_GEOMETRY) {
       /* Free evaluated caches. */
       object->data = data_orig;
