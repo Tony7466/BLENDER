@@ -1944,6 +1944,19 @@ void PointDensityTextureNode::compile(OSLCompiler &compiler)
   }
 }
 
+int PointDensityTextureNode::get_feature()
+{
+  ShaderOutput *density_out = output("Density");
+  ShaderOutput *color_out = output("Color");
+
+  const bool use_density = !density_out->links.empty();
+  const bool use_color = !color_out->links.empty();
+
+  /* NOTE: A need for NODE_VOLUME feature is conditional and based on
+   * the coresponding logic in ::compile implementation. */
+  return ShaderNode::get_feature() | ((use_density || use_color) ? KERNEL_FEATURE_NODE_VOLUME : 0);
+}
+
 /* Normal */
 
 NODE_DEFINE(NormalNode)

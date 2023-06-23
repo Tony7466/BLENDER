@@ -346,6 +346,8 @@ class PointDensityTextureNode : public ShaderNode {
  public:
   SHADER_NODE_NO_CLONE_CLASS(PointDensityTextureNode)
 
+  virtual int get_feature();
+
   ~PointDensityTextureNode();
   ShaderNode *clone(ShaderGraph *graph) const;
   void attributes(Shader *shader, AttributeRequestSet *attributes);
