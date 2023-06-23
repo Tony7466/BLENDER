@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
@@ -164,7 +165,7 @@ static void versioning_replace_legacy_glossy_node(bNodeTree *ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == SH_NODE_BSDF_GLOSSY_LEGACY) {
-      strcpy(node->idname, "ShaderNodeBsdfAnisotropic");
+      STRNCPY(node->idname, "ShaderNodeBsdfAnisotropic");
       node->type = SH_NODE_BSDF_GLOSSY;
     }
   }
@@ -200,7 +201,7 @@ static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
   }
 }
 
-void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
+void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
@@ -273,5 +274,12 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     /* Convert anisotropic BSDF node to glossy BSDF. */
 
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_sample_count")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->grid_bake_samples = 2048;
+        lightprobe->surfel_density = 1.0f;
+      }
+    }
   }
 }

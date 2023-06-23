@@ -196,8 +196,8 @@ static int path_normalize_impl(char *path, bool check_blend_relative_prefix)
   /* NOTE(@ideasman42):
    *   `memmove(start, eind, strlen(eind) + 1);`
    * is the same as
-   *   `strcpy(start, eind);`
-   * except `strcpy` should not be used because there is overlap,
+   *   `BLI_strncpy(start, eind, ...);`
+   * except string-copy should not be used because there is overlap,
    * so use `memmove` 's slightly more obscure syntax. */
 
   /* Inline replacement:
@@ -793,7 +793,7 @@ void BLI_path_rel(char path[FILE_MAX], const char *basepath)
 #ifdef WIN32
     BLI_str_replace_char(res + 2, '/', '\\');
 #endif
-    strcpy(path, res);
+    BLI_strncpy(path, res, FILE_MAX);
   }
 }
 
