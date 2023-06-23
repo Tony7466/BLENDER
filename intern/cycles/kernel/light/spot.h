@@ -35,7 +35,6 @@ ccl_device void spot_light_uv(const float3 ray,
   *v = -(ray.x + ray.y) * factor;
 }
 
-/* TODO: is attenuation needed inside the sphere? */
 template<bool in_volume_segment>
 ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
                                          const float2 rand,
@@ -99,7 +98,11 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
   }
 
   const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, local_ray);
+  ls->eval_fac = klight->spot.eval_fac;
+  if (d_sq > r_sq) {
+    ls->eval_fac *= spot_light_attenuation(&klight->spot, local_ray);
+  }
+
   if (!in_volume_segment && ls->eval_fac == 0.0f) {
     return false;
   }
@@ -144,6 +147,9 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
 {
   ls->D = normalize_len(ls->P - P, &ls->t);
 
+  const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
+  ls->eval_fac = klight->spot.eval_fac;
+
   const float radius = klight->spot.radius;
 
   if (radius > 0) {
@@ -157,15 +163,19 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
     ls->pdf *= 0.5f * fabsf(d_sq - r_sq - t_sq) / (radius * ls->t * t_sq);
 
     ls->Ng = normalize(ls->P - klight->co);
+
+    if (d_sq > r_sq) {
+      ls->eval_fac *= spot_light_attenuation(&klight->spot, local_ray);
+    }
   }
   else {
     ls->Ng = -ls->D;
 
+    ls->eval_fac *= spot_light_attenuation(&klight->spot, local_ray);
+
     /* PDF does not change. */
   }
 
-  const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, local_ray);
   spot_light_uv(local_ray, klight->spot.half_cot_half_spot_angle, &ls->u, &ls->v);
 }
 
@@ -191,29 +201,23 @@ ccl_device_inline bool spot_light_sample_from_intersection(
     const uint32_t path_flag,
     ccl_private LightSample *ccl_restrict ls)
 {
+  const float d_sq = len_squared(ray_P - klight->co);
+  const float r_sq = sqr(klight->spot.radius);
+
+  ls->pdf = spot_light_pdf(klight->spot.cos_half_spot_angle, d_sq, r_sq, N, ray_D, path_flag);
+
   const float3 local_ray = spot_light_local_ray(&klight->spot, -ray_D);
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, local_ray);
+  ls->eval_fac = klight->spot.eval_fac;
+  if (d_sq > r_sq) {
+    ls->eval_fac *= spot_light_attenuation(&klight->spot, local_ray);
+  }
   if (ls->eval_fac == 0) {
     return false;
   }
 
-  const float radius = klight->spot.radius;
-
-  ls->Ng = radius > 0 ? normalize(ls->P - klight->co) : -ray_D;
+  ls->Ng = r_sq > 0 ? normalize(ls->P - klight->co) : -ray_D;
 
   spot_light_uv(local_ray, klight->spot.half_cot_half_spot_angle, &ls->u, &ls->v);
-
-  if (ls->t == FLT_MAX) {
-    ls->pdf = 0.0f;
-  }
-  else {
-    ls->pdf = spot_light_pdf(klight->spot.cos_half_spot_angle,
-                             len_squared(ray_P - klight->co),
-                             sqr(radius),
-                             N,
-                             ray_D,
-                             path_flag);
-  }
 
   return true;
 }
