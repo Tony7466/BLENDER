@@ -1816,6 +1816,13 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     LazyFunction &loop_status_fn = scope_.construct<LazyFunctionForSerialLoopStatus>();
     lf::Node &lf_loop_status_node = lf_body_graph.add_function(loop_status_fn);
 
+    lf::Node &lf_status_output_node = [&]() -> lf::Node & {
+      auto &debug_info = scope_.construct<lf::SimpleDummyDebugInfo>();
+      debug_info.name = "Loop Status";
+      debug_info.input_names.append("Status");
+      return lf_body_graph.add_dummy({&CPPType::get<lf::SerialLoopStatus>()}, {}, &debug_info);
+    }();
+
     std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
     /* TODO */
