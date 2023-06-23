@@ -49,14 +49,14 @@ class AbstractTreeElement {
   }
 
   /**
-     * Just while transitioning to the new tree-element design: Some types are only partially ported,
-     * and the expanding isn't done yet.
-     */
-    virtual bool isExpandValid() const
-    {
-      return true;
-    }
-  
+   * Just while transitioning to the new tree-element design: Some types are only partially ported,
+   * and the expanding isn't done yet.
+   */
+  virtual bool isExpandValid() const
+  {
+    return true;
+  }
+
   TreeElement &getLegacyElement()
   {
     return legacy_te_;

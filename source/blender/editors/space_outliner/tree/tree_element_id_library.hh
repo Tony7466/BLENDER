@@ -19,7 +19,7 @@ class TreeElementIDLibrary final : public TreeElementID {
   TreeElementIDLibrary(TreeElement &legacy_te, Library &library);
 
   bool isExpandValid() const override;
-  
+
   blender::StringRefNull getWarning() const override;
 };
 
