@@ -112,10 +112,6 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclaration &r_declaration)
 {
-  NodeDeclarationBuilder b{r_declaration};
-  b.add_input<decl::Bool>(N_("Break Before")).hide_value();
-  b.add_input<decl::Bool>(N_("Break After")).hide_value();
-
   const NodeGeometrySerialLoopOutput &storage = node_storage(node);
   socket_declarations_for_serial_loop_items(storage.items_span(), r_declaration);
 }
