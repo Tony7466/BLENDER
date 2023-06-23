@@ -1710,10 +1710,23 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Map<int, lf::OutputSocket *> lf_attribute_set_by_field_source_index;
     Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
     this->build_attribute_set_inputs_for_zone(graph_params,
-                                              zone_info,
                                               lf_attribute_set_by_field_source_index,
-                                              lf_attribute_set_by_caller_propagation_index,
-                                              lf_zone_inputs);
+                                              lf_attribute_set_by_caller_propagation_index);
+    for (const auto item : lf_attribute_set_by_field_source_index.items()) {
+      lf::OutputSocket &lf_attribute_set_socket = *item.value;
+      if (lf_attribute_set_socket.node().is_dummy()) {
+        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
+        zone_info.attribute_set_input_by_field_source_index.add_new(item.key, zone_input_index);
+      }
+    }
+    for (const auto item : lf_attribute_set_by_caller_propagation_index.items()) {
+      lf::OutputSocket &lf_attribute_set_socket = *item.value;
+      if (lf_attribute_set_socket.node().is_dummy()) {
+        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
+        zone_info.attribute_set_input_by_caller_propagation_index.add_new(item.key,
+                                                                          zone_input_index);
+      }
+    }
     this->link_attribute_set_inputs(lf_graph,
                                     graph_params,
                                     lf_attribute_set_by_field_source_index,
@@ -1922,10 +1935,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void build_attribute_set_inputs_for_zone(
       BuildGraphParams &graph_params,
-      ZoneBuildInfo &zone_info,
       Map<int, lf::OutputSocket *> &lf_attribute_set_by_field_source_index,
-      Map<int, lf::OutputSocket *> &lf_attribute_set_by_caller_propagation_index,
-      Vector<const lf::OutputSocket *, 16> &lf_zone_inputs)
+      Map<int, lf::OutputSocket *> &lf_attribute_set_by_caller_propagation_index)
   {
     const Vector<int> all_required_field_sources = this->find_all_required_field_source_indices(
         graph_params.lf_attribute_set_input_by_output_geometry_bsocket,
@@ -1983,10 +1994,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         const int attribute_set_index = item.value;
         lf::OutputSocket &lf_attribute_set_socket = node.output(attribute_set_index);
         lf_attribute_set_by_field_source_index.add(field_source_index, &lf_attribute_set_socket);
-
-        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.attribute_set_input_by_field_source_index.add(field_source_index,
-                                                                zone_input_index);
       }
       for (const int i : all_required_caller_propagation_indices.index_range()) {
         const int caller_propagation_index = all_required_caller_propagation_indices[i];
@@ -1994,9 +2001,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             input_by_field_source_index.size() + i);
         lf_attribute_set_by_caller_propagation_index.add_new(caller_propagation_index,
                                                              &lf_attribute_set_socket);
-        const int zone_input_index = lf_zone_inputs.append_and_get_index(&lf_attribute_set_socket);
-        zone_info.attribute_set_input_by_caller_propagation_index.add(caller_propagation_index,
-                                                                      zone_input_index);
       }
     }
   }
