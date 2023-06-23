@@ -610,11 +610,6 @@ static bool raycastObjects(SnapObjectContext *sctx)
 /** \name Surface Snap Functions
  * \{ */
 
-struct NearestWorldObjUserData {
-  const float *init_co;
-  const float *curr_co;
-};
-
 static void nearest_world_tree_co(BVHTree *tree,
                                   BVHTree_NearestPointCallback nearest_cb,
                                   void *treedata,
