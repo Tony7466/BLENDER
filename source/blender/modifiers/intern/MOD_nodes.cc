@@ -128,7 +128,7 @@ static bool ignore_socket_value_for_relationships(const bNode &node, const bNode
     return false;
   }
   if (node.type == NODE_GROUP_OUTPUT) {
-    /* If this node tree is processed, it outputs is used. */
+    /* If this node tree is processed, it output node and it sockets is used. */
     return true;
   }
   if (!node.is_muted()) {
@@ -156,17 +156,12 @@ static void add_used_ids_from_sockets(const bNode &node,
     if (ignore_socket_value_for_relationships(node, *socket)) {
       continue;
     }
-    switch (eNodeSocketDatatype(socket->type)) {
-      case SOCK_OBJECT:
-      case SOCK_COLLECTION:
-      case SOCK_MATERIAL:
-      case SOCK_TEXTURE:
-      case SOCK_IMAGE:
-        if (const ID *id = socket->default_value_to_id()) {
-          ids.add(const_cast<ID *>(id));
-        }
-      default:
-        break;
+    if (!ELEM(socket->type, SOCK_OBJECT, SOCK_COLLECTION, SOCK_MATERIAL, SOCK_TEXTURE, SOCK_IMAGE))
+    {
+      continue;
+    }
+    if (const ID *id = socket->default_value_to_id()) {
+      ids.add(const_cast<ID *>(id));
     }
   }
 }
@@ -179,7 +174,7 @@ static void add_used_ids_from_sockets(const bNode &node,
  */
 static bool node_needs_own_transform_relation(const bNode &node)
 {
-  if (node->is_muted()) {
+  if (node.is_muted()) {
     return false;
   }
   if (node.type == GEO_NODE_COLLECTION_INFO) {
