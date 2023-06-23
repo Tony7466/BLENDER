@@ -1740,7 +1740,12 @@ static bool vfont_to_curve(Object *ob,
       }
     }
   }
-  if (cursor_params && cu->textoncurve != NULL) {
+
+  // Erasing all text could give slen = 0
+  if (slen == 0) {
+    cursor_params->r_string_offset = -1;
+  }
+  else if (cursor_params && cu->textoncurve != NULL) {
 
     int best_match = -1;
     float closest_distance = FLT_MAX;
@@ -1756,7 +1761,7 @@ static bool vfont_to_curve(Object *ob,
 
     cursor_params->r_string_offset = best_match;
   }
-  if (cursor_params && cu->textoncurve == NULL) {
+  else if (cursor_params && cu->textoncurve == NULL) {
     cursor_params->r_string_offset = -1;
     const float half_space_between_lines = linedist >= 0.915f ?
                                                ((linedist - 0.915f) / 2) * font_size :
@@ -1778,8 +1783,8 @@ static bool vfont_to_curve(Object *ob,
     for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
     }
 
-    // Loop until find the first character with the mouse to its rigth, or the last character of
-    // the line
+    // Loop until find the first character to the right of the mouse (using the midpoint on the
+    // x-axis as a reference)
     for (i; i <= slen && yof == chartransdata[i].yof; i++) {
       info = &custrinfo[i];
       ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
@@ -1790,9 +1795,13 @@ static bool vfont_to_curve(Object *ob,
         break;
       }
     }
+    i = i <= slen ? i : slen;
 
-    // The first character that is to the right of the mouse is found, use the one on the left
-    cursor_params->r_string_offset = i <= slen ? i : slen;
+    // if there is no character to the right of the cursor we are on the next line, go back to the
+    // last character of the previous line
+    i = i > 0 && chartransdata[i].yof != yof ? i - 1 : i;
+
+    cursor_params->r_string_offset = i;
   }
 
   /* Scale to fit only works for single text box layouts. */
