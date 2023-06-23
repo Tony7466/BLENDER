@@ -35,24 +35,19 @@ namespace blender::ui::light_linking {
 
 namespace {
 
-class CollectionDropTarget : public AbstractViewItemDropTarget {
+class CollectionDropTarget : public DropTargetInterface {
  public:
-  CollectionDropTarget(AbstractView &view, Collection &collection)
-      : AbstractViewItemDropTarget(view), collection_(collection)
-  {
-  }
+  CollectionDropTarget(Collection &collection) : collection_(collection) {}
 
-  DropLocation can_drop(const wmDrag &drag,
-                        const wmEvent &event,
-                        const char **r_disabled_hint) const override
+  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override
   {
     if (drag.type != WM_DRAG_ID) {
-      return DROP_DISABLE;
+      return false;
     }
 
     const wmDragID *drag_id = static_cast<wmDragID *>(drag.ids.first);
     if (!drag_id) {
-      return DROP_DISABLE;
+      return false;
     }
 
     /* The dragged IDs are guaranteed to be the same type, so only check the type of the first one.
@@ -60,13 +55,13 @@ class CollectionDropTarget : public AbstractViewItemDropTarget {
     const ID_Type id_type = GS(drag_id->id->name);
     if (!ELEM(id_type, ID_OB, ID_GR)) {
       *r_disabled_hint = "Can only add objects and collections to the light linking collection";
-      return DROP_DISABLE;
+      return false;
     }
 
-    return DROP_INTO;
+    return true;
   }
 
-  std::string drop_tooltip(const DragInfo & /*drag_info*/) const override
+  std::string drop_tooltip(const DragInfo & /*drag*/) const override
   {
     return TIP_("Add to light linking collection");
   }
@@ -224,9 +219,9 @@ class CollectionView : public AbstractTreeView {
     }
   }
 
-  std::unique_ptr<AbstractViewDropTarget> create_drop_target() override
+  std::unique_ptr<DropTargetInterface> create_drop_target() override
   {
-    return std::make_unique<CollectionDropTarget>(*this, collection_);
+    return std::make_unique<CollectionDropTarget>(collection_);
   }
 
  private:

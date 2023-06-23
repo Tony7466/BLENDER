@@ -116,6 +116,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
 
   friend class AbstractTreeViewItem;
   friend class TreeViewBuilder;
+  friend class AbstractTreeViewItemDropTarget;
 
  public:
   virtual ~AbstractTreeView() = default;
@@ -127,12 +128,6 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
    * drop target of the view includes them, but they are not interactive (e.g. no mouse-hover
    * highlight). */
   void set_min_rows(int min_rows);
-
-  /**
-   * Determine if dropping should insert before, into or after the hovered element. To be used in
-   * #AbstractViewItemDropTarget::can_drop() implementations.
-   */
-  DropLocation tree_insert_drop_location(const wmEvent &event);
 
  protected:
   virtual void build_tree() = 0;
@@ -184,6 +179,9 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   virtual ~AbstractTreeViewItem() = default;
 
   virtual void build_row(uiLayout &row) = 0;
+
+  virtual std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
+  virtual std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target();
 
   AbstractTreeView &get_tree_view() const;
 
@@ -320,6 +318,37 @@ class BasicTreeViewItem : public AbstractTreeViewItem {
 /** \} */
 
 /* ---------------------------------------------------------------------- */
+/** \name Drag & Drop
+ * \{ */
+
+/**
+ * Class to define the behavior when dropping something onto/into a view item, plus the behavior
+ * when dragging over this item. An item can return a drop target for itself via a custom
+ * implementation of #AbstractTreeViewItem::create_drop_target().
+ *
+ * By default the drop target only supports dropping into/onto itself. To support
+ * inserting/reordering behavior, where dropping before or after the drop-target is supported, pass
+ * a different #DropBehavior to the constructor.
+ */
+class AbstractTreeViewItemDropTarget : public DropTargetInterface {
+ protected:
+  AbstractTreeView &view_;
+  const DropBehavior behavior_;
+
+ public:
+  AbstractTreeViewItemDropTarget(AbstractTreeView &view,
+                                 DropBehavior behavior = DropBehavior::Insert);
+
+  std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
+
+  /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
+   * exception if the view is not of the requested type. */
+  template<class ViewType> inline ViewType &get_view() const;
+};
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
 /** \name Tree-View Builder
  * \{ */
 
@@ -343,6 +372,13 @@ inline ItemT &TreeViewItemContainer::add_tree_item(Args &&...args)
 
   return dynamic_cast<ItemT &>(
       add_tree_item(std::make_unique<ItemT>(std::forward<Args>(args)...)));
+}
+
+template<class ViewType> ViewType &AbstractTreeViewItemDropTarget::get_view() const
+{
+  static_assert(std::is_base_of<AbstractTreeView, ViewType>::value,
+                "Type must derive from and implement the ui::AbstractTreeView interface");
+  return dynamic_cast<ViewType &>(view_);
 }
 
 }  // namespace blender::ui

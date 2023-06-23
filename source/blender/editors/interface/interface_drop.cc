@@ -15,12 +15,17 @@ DragInfo::DragInfo(const wmDrag &drag, const wmEvent &event, const DropLocation 
 {
 }
 
+std::optional<DropLocation> DropTargetInterface::determine_drop_location(
+    const wmEvent & /*event*/) const
+{
+  return DROP_INTO;
+}
+
 bool drop_target_can_drop(const DropTargetInterface &drop_target,
                           const wmDrag &drag,
-                          const wmEvent &event,
                           const char **r_disabled_hint)
 {
-  return drop_target.can_drop(drag, event, r_disabled_hint) != DROP_DISABLE;
+  return drop_target.can_drop(drag, r_disabled_hint);
 }
 
 bool drop_target_apply_drop(bContext &C,
@@ -31,12 +36,16 @@ bool drop_target_apply_drop(bContext &C,
 
   const char *disabled_hint_dummy = nullptr;
   LISTBASE_FOREACH (const wmDrag *, drag, &drags) {
-    DropLocation drop_location = drop_target.can_drop(*drag, event, &disabled_hint_dummy);
-    if (drop_location == DROP_DISABLE) {
+    if (!drop_target.can_drop(*drag, &disabled_hint_dummy)) {
       return false;
     }
 
-    const DragInfo drag_info{*drag, event, drop_location};
+    std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
+    if (!drop_location) {
+      return false;
+    }
+
+    const DragInfo drag_info{*drag, event, *drop_location};
     return drop_target.on_drop(&C, drag_info);
   }
 
@@ -48,12 +57,16 @@ char *drop_target_tooltip(const DropTargetInterface &drop_target,
                           const wmEvent &event)
 {
   const char *disabled_hint_dummy = nullptr;
-  DropLocation drop_location = drop_target.can_drop(drag, event, &disabled_hint_dummy);
-  if (drop_location == DROP_DISABLE) {
+  if (!drop_target.can_drop(drag, &disabled_hint_dummy)) {
     return nullptr;
   }
 
-  const DragInfo drag_info{drag, event, drop_location};
+  std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
+  if (!drop_location) {
+    return nullptr;
+  }
+
+  const DragInfo drag_info{drag, event, *drop_location};
   const std::string tooltip = drop_target.drop_tooltip(drag_info);
   return tooltip.empty() ? nullptr : BLI_strdup(tooltip.c_str());
 }

@@ -22,6 +22,102 @@ namespace blender::ui::greasepencil {
 
 using namespace blender::bke::greasepencil;
 
+class LayerTreeView : public AbstractTreeView {
+ public:
+  explicit LayerTreeView(GreasePencil &grease_pencil) : grease_pencil_(grease_pencil) {}
+
+  void build_tree() override;
+
+ private:
+  void build_tree_node_recursive(TreeNode &node);
+  GreasePencil &grease_pencil_;
+};
+
+class LayerViewItemDropTarget : public AbstractTreeViewItemDropTarget {
+  Layer &drop_layer_;
+
+ public:
+  LayerViewItemDropTarget(AbstractTreeView &view, Layer &layer)
+      : AbstractTreeViewItemDropTarget(view, DropBehavior::Reorder), drop_layer_(layer)
+  {
+  }
+
+  bool can_drop(const wmDrag &drag, const char ** /*r_disabled_hint*/) const override
+  {
+    return drag.type == WM_DRAG_GREASE_PENCIL_LAYER;
+  }
+
+  std::string drop_tooltip(const DragInfo &drag_info) const override
+  {
+    switch (drag_info.drop_location) {
+      case DROP_BEFORE:
+        return TIP_("Before");
+      case DROP_AFTER:
+        return TIP_("After");
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+
+    return "";
+  }
+
+  bool on_drop(struct bContext * /*C*/, const DragInfo &drag_info) const override
+  {
+    const wmDragGreasePencilLayer *drag_grease_pencil =
+        static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
+    Layer &drag_layer = drag_grease_pencil->layer->wrap();
+    LayerGroup &drop_group = drop_layer_.parent_group();
+
+    switch (drag_info.drop_location) {
+      case DROP_INTO:
+        return false;
+      case DROP_BEFORE:
+        drop_group.unlink_layer(&drag_layer);
+        /* Draw order is inverted, so inserting before means inserting below. */
+        drop_group.add_layer_after(&drag_layer, &drop_layer_);
+        return true;
+      case DROP_AFTER:
+        drop_group.unlink_layer(&drag_layer);
+        /* Draw order is inverted, so inserting after means inserting above. */
+        drop_group.add_layer_before(&drag_layer, &drop_layer_);
+        return true;
+      default:
+        return false;
+    }
+  }
+};
+
+class LayerViewItemDragController : public AbstractViewItemDragController {
+  GreasePencil &grease_pencil_;
+  Layer &dragged_layer_;
+
+ public:
+  LayerViewItemDragController(LayerTreeView &tree_view, GreasePencil &grease_pencil, Layer &layer)
+      : AbstractViewItemDragController(tree_view),
+        grease_pencil_(grease_pencil),
+        dragged_layer_(layer)
+  {
+  }
+
+  eWM_DragDataType get_drag_type() const override
+  {
+    return WM_DRAG_GREASE_PENCIL_LAYER;
+  }
+
+  void *create_drag_data() const override
+  {
+    wmDragGreasePencilLayer *drag_data = MEM_new<wmDragGreasePencilLayer>(__func__);
+    drag_data->layer = &dragged_layer_;
+    return drag_data;
+  }
+
+  void on_drag_start() override
+  {
+    grease_pencil_.set_active_layer(&dragged_layer_);
+  }
+};
+
 class LayerViewItem : public AbstractTreeViewItem {
  public:
   LayerViewItem(GreasePencil &grease_pencil, Layer &layer)
@@ -74,6 +170,17 @@ class LayerViewItem : public AbstractTreeViewItem {
     return layer_.name();
   }
 
+  std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override
+  {
+    return std::make_unique<LayerViewItemDragController>(
+        static_cast<LayerTreeView &>(get_tree_view()), grease_pencil_, layer_);
+  }
+
+  std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target() override
+  {
+    return std::make_unique<LayerViewItemDropTarget>(get_tree_view(), layer_);
+  }
+
  private:
   GreasePencil &grease_pencil_;
   Layer &layer_;
@@ -114,17 +221,6 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
  private:
   /* GreasePencil &grease_pencil_; */
   LayerGroup &group_;
-};
-
-class LayerTreeView : public AbstractTreeView {
- public:
-  explicit LayerTreeView(GreasePencil &grease_pencil) : grease_pencil_(grease_pencil) {}
-
-  void build_tree() override;
-
- private:
-  void build_tree_node_recursive(TreeNode &node);
-  GreasePencil &grease_pencil_;
 };
 
 void LayerTreeView::build_tree_node_recursive(TreeNode &node)

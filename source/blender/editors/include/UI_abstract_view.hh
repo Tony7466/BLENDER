@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+﻿/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -44,13 +44,7 @@ struct wmNotifier;
 namespace blender::ui {
 
 class AbstractViewItem;
-class AbstractViewItemDropTarget;
 class AbstractViewItemDragController;
-
-/**
- * The view drop target can share logic with the view item drop target for now, so just an alias.
- */
-using AbstractViewDropTarget = AbstractViewItemDropTarget;
 
 class AbstractView {
   friend class AbstractViewItem;
@@ -78,12 +72,12 @@ class AbstractView {
 
   /**
    * If a view wants to support dropping data into it, it has to return a drop target here.
-   * That is an object implementing #AbstractViewDropTarget.
+   * That is an object implementing #DropTargetInterface.
    *
    * \note This drop target may be requested for each event. The view doesn't keep the drop target
    *       around currently. So it cannot contain persistent state.
    */
-  virtual std::unique_ptr<AbstractViewDropTarget> create_drop_target();
+  virtual std::unique_ptr<DropTargetInterface> create_drop_target();
 
   /** Listen to a notifier, returning true if a redraw is needed. */
   virtual bool listen(const wmNotifier &) const;
@@ -187,7 +181,7 @@ class AbstractViewItem {
    * \note This drop target may be requested for each event. The view doesn't keep a drop target
    *       around currently. So it can not contain persistent state.
    */
-  virtual std::unique_ptr<AbstractViewItemDropTarget> create_drop_target();
+  virtual std::unique_ptr<DropTargetInterface> create_item_drop_target();
 
   /** Return the result of #is_filtered_visible(), but ensure the result is cached so it's only
    * queried once per redraw. */
@@ -285,31 +279,7 @@ class AbstractViewItemDragController {
   template<class ViewType> inline ViewType &get_view() const;
 };
 
-/**
- * Class to define the behavior when dropping something onto/into a view item, plus the behavior
- * when dragging over this item. An item can return a drop target for itself via a custom
- * implementation of #AbstractViewItem::create_drop_target().
- */
-class AbstractViewItemDropTarget : public DropTargetInterface {
- protected:
-  AbstractView &view_;
-
- public:
-  AbstractViewItemDropTarget(AbstractView &view);
-
-  /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
-   * exception if the view is not of the requested type. */
-  template<class ViewType> inline ViewType &get_view() const;
-};
-
 template<class ViewType> ViewType &AbstractViewItemDragController::get_view() const
-{
-  static_assert(std::is_base_of<AbstractView, ViewType>::value,
-                "Type must derive from and implement the ui::AbstractView interface");
-  return dynamic_cast<ViewType &>(view_);
-}
-
-template<class ViewType> ViewType &AbstractViewItemDropTarget::get_view() const
 {
   static_assert(std::is_base_of<AbstractView, ViewType>::value,
                 "Type must derive from and implement the ui::AbstractView interface");

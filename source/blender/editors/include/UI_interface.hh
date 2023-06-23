@@ -69,7 +69,6 @@ void attribute_search_add_items(StringRefNull str,
                                 bool is_first);
 
 enum DropLocation {
-  DROP_DISABLE,
   DROP_INTO,
   DROP_BEFORE,
   DROP_AFTER,
@@ -84,14 +83,29 @@ struct DragInfo {
 };
 
 /**
+ * Drop targets sometimes want to support multiple behaviors (e.g. inserting into vs. inserting
+ * before/after). This can be used to toggle that, #DropTargetInterface::determine_drop_location()
+ * can then use this to return the wanted drop location (before, into or after).
+ */
+enum class DropBehavior {
+  Reorder,
+  Insert,
+  Reorder_and_Insert,
+};
+
+/**
  * This provides a common interface for UI elements that want to support dragging & dropping
  * entities into/onto them. With it, the element can determine if the dragged entity can be dropped
  * onto itself, provide feedback while dragging and run custom code for the dropping.
  *
- * Note that this is just an interface. A #wmDropBox is needed to request instances of it from a UI
- * element and call its functions. For example the drop box using "UI_OT_view_drop" implements
- * dropping for views and view items via this interface. To support other kinds of UI elements,
- * similar drop boxes would be necessary.
+ * By default the drop target behaves so that data can be dragged into or onto it.
+ * #determine_drop_location() can be overridden to change that.
+ *
+ * Note that this is just an interface (not in the strict sense of a Java/C# interface though). A
+ * #wmDropBox is needed to request instances of it from a UI element and call its functions. For
+ * example the drop box using "UI_OT_view_drop" implements dropping for views and view items via
+ * this interface. To support other kinds of UI elements, similar drop boxes would be necessary.
+ *
  */
 class DropTargetInterface {
  public:
@@ -106,9 +120,9 @@ class DropTargetInterface {
    *                         can but there's another reason it can't be dropped. Can assume this is
    *                         a non-null pointer.
    */
-  virtual DropLocation can_drop(const wmDrag &drag,
-                                const wmEvent &event,
-                                const char **r_disabled_hint) const = 0;
+  virtual bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const = 0;
+
+  virtual std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
   /**
    * Custom text to display when dragging over the element using this drop target. Should
    * explain what happens when dropping the data onto this UI element. Will only be used if
@@ -125,7 +139,6 @@ class DropTargetInterface {
 
 bool drop_target_can_drop(const DropTargetInterface &drop_target,
                           const wmDrag &drag,
-                          const wmEvent &event,
                           const char **r_disabled_hint);
 
 /**

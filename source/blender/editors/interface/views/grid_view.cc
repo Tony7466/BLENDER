@@ -226,6 +226,29 @@ AbstractGridView &AbstractGridViewItem::get_view() const
 
 /* ---------------------------------------------------------------------- */
 
+std::unique_ptr<DropTargetInterface> AbstractGridViewItem::create_item_drop_target()
+{
+  return create_drop_target();
+}
+
+std::unique_ptr<AbstractGridViewItemDropTarget> AbstractGridViewItem::create_drop_target()
+{
+  return nullptr;
+}
+
+AbstractGridViewItemDropTarget::AbstractGridViewItemDropTarget(AbstractGridView &view)
+    : view_(view)
+{
+}
+
+std::optional<DropLocation> AbstractGridViewItemDropTarget::determine_drop_location(
+    const wmEvent & /*event*/) const
+{
+  return DROP_INTO;
+}
+
+/* ---------------------------------------------------------------------- */
+
 /**
  * Helper for only adding layout items for grid items that are actually in view. 3 main functions:
  * - #is_item_visible(): Query if an item of a given index is visible in the view (others should be

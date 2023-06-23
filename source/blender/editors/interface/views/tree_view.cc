@@ -81,39 +81,6 @@ void AbstractTreeView::set_min_rows(int min_rows)
   min_rows_ = min_rows;
 }
 
-DropLocation AbstractTreeView::tree_insert_drop_location(const wmEvent &event)
-{
-  BLI_assert_msg(is_reconstructed(),
-                 "Location queries cannot be performed until reconstruction is completed");
-
-  /* Note that iterating over items here and getting the view button doesn't work, since this is
-   * typically called when these buttons were freed already (by drop-box interaction code). */
-
-  uiButViewItem *hovered_but = static_cast<uiButViewItem *>(
-      ui_view_item_find_mouse_over(region_, event.xy));
-  BLI_assert(!hovered_but || (hovered_but->type == UI_BTYPE_VIEW_ITEM));
-  if (!hovered_but || !hovered_but->view_item) {
-    return DROP_DISABLE;
-  }
-  /* Check that the item is actually from this tree. */
-  AbstractViewItem &hovered_item = reinterpret_cast<AbstractViewItem &>(*hovered_but->view_item);
-  if (&hovered_item.get_view() != this) {
-    return DROP_DISABLE;
-  }
-
-  rctf win_rect;
-  ui_block_to_window_rctf(region_, block_, &win_rect, &hovered_but->rect);
-  const float item_height = BLI_rctf_size_y(&win_rect);
-  if (event.xy[1] - win_rect.ymin > (item_height * 0.66)) {
-    return DROP_BEFORE;
-  }
-  if (event.xy[1] - win_rect.ymin < (item_height * 0.33)) {
-    return DROP_AFTER;
-  }
-
-  return DROP_INTO;
-}
-
 void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
 {
   const AbstractTreeView &old_tree_view = dynamic_cast<const AbstractTreeView &>(old_view);
@@ -170,6 +137,64 @@ void AbstractTreeView::change_state_delayed()
 #endif
 
   foreach_item([](AbstractTreeViewItem &item) { item.change_state_delayed(); });
+}
+
+/* ---------------------------------------------------------------------- */
+
+AbstractTreeViewItemDropTarget::AbstractTreeViewItemDropTarget(AbstractTreeView &view,
+                                                               DropBehavior behavior)
+    : view_(view), behavior_(behavior)
+{
+}
+
+std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_location(
+    const wmEvent &event) const
+{
+  if (behavior_ == DropBehavior::Insert) {
+    return DROP_INTO;
+  }
+
+  /* Note that iterating over items here and getting the view button doesn't work, since this is
+   * typically called when these buttons were freed already (by drop-box interaction code). */
+
+  uiButViewItem *hovered_but = static_cast<uiButViewItem *>(
+      ui_view_item_find_mouse_over(view_.region_, event.xy));
+  BLI_assert(!hovered_but || (hovered_but->type == UI_BTYPE_VIEW_ITEM));
+  if (!hovered_but || !hovered_but->view_item) {
+    return std::nullopt;
+  }
+  /* Check that the item is actually from this tree. */
+  AbstractViewItem &hovered_item = reinterpret_cast<AbstractViewItem &>(*hovered_but->view_item);
+  if (&hovered_item.get_view() != &view_) {
+    return std::nullopt;
+  }
+
+  BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::Reorder_and_Insert));
+
+  rctf win_rect;
+  ui_block_to_window_rctf(view_.region_, view_.block_, &win_rect, &hovered_but->rect);
+  const float item_height = BLI_rctf_size_y(&win_rect);
+  if (!BLI_rctf_isect_y(&win_rect, event.xy[1])) {
+    return std::nullopt;
+  }
+
+  const int segment_count =
+      (behavior_ == DropBehavior::Reorder) ?
+          /* Divide into upper (insert before) and lower (insert after) half. */
+          2 :
+          /* Upper (insert before), middle (insert into) and lower (insert after) third. */
+          3;
+  const float segment_height = item_height / segment_count;
+
+  if (event.xy[1] - win_rect.ymin > (item_height - segment_height)) {
+    return DROP_BEFORE;
+  }
+  if (event.xy[1] - win_rect.ymin <= (item_height + segment_height)) {
+    return DROP_AFTER;
+  }
+
+  BLI_assert(behavior_ == DropBehavior::Reorder_and_Insert);
+  return DROP_INTO;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -327,6 +352,16 @@ void AbstractTreeViewItem::update_from_old(const AbstractViewItem &old)
 bool AbstractTreeViewItem::matches_single(const AbstractTreeViewItem &other) const
 {
   return label_ == other.label_;
+}
+
+std::unique_ptr<DropTargetInterface> AbstractTreeViewItem::create_item_drop_target()
+{
+  return create_drop_target();
+}
+
+std::unique_ptr<AbstractTreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target()
+{
+  return nullptr;
 }
 
 AbstractTreeView &AbstractTreeViewItem::get_tree_view() const

@@ -1078,6 +1078,7 @@ typedef enum eWM_DragDataType {
   WM_DRAG_COLOR,
   WM_DRAG_DATASTACK,
   WM_DRAG_ASSET_CATALOG,
+  WM_DRAG_GREASE_PENCIL_LAYER,
 } eWM_DragDataType;
 
 typedef enum eWM_DragFlags {
@@ -1135,6 +1136,10 @@ typedef struct wmDragPath {
    * set, so `ELEM()` like comparison is possible. */
   int file_type; /* eFileSel_File_Types */
 } wmDragPath;
+
+typedef struct wmDragGreasePencilLayer {
+  struct GreasePencilLayer *layer;
+} wmDragGreasePencilLayer;
 
 typedef char *(*WMDropboxTooltipFunc)(struct bContext *,
                                       struct wmDrag *,
