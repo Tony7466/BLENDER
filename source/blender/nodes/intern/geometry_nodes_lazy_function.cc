@@ -43,6 +43,7 @@
 #include "BKE_type_conversions.hh"
 
 #include "FN_field_cpp_type.hh"
+#include "FN_lazy_function_execute.hh"
 #include "FN_lazy_function_graph_executor.hh"
 #include "FN_lazy_function_serial_loop.hh"
 
@@ -1487,13 +1488,139 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         zone.border_links.size());
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    const int max_iterations =
-        params.get_input<ValueOrField<int>>(zone_info_.main_input_indices[0]).as_value();
-    std::cout << "Max iterations: " << max_iterations << "\n";
+    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
 
-    params.set_default_remaining_outputs();
+    const NodeGeometrySerialLoopOutput &node_storage =
+        *static_cast<const NodeGeometrySerialLoopOutput *>(loop_output_bnode_.storage);
+
+    const int iterations = std::max<int>(
+        0, params.get_input<ValueOrField<int>>(zone_info_.main_input_indices[0]).as_value());
+    const int loop_items_num = node_storage.items_num;
+    Array<void *, 64> loop_item_values((iterations + 1) * loop_items_num, nullptr);
+    Array<const CPPType *> loop_item_types(loop_items_num);
+    for (const int i : body_indices_.main_inputs.index_range()) {
+      const int input_i = body_indices_.main_inputs[i];
+      const CPPType &type = *body_fn_.inputs()[input_i].type;
+      loop_item_types[i] = &type;
+    }
+    LinearAllocator<> allocator;
+    for (const int iteration : IndexRange(iterations)) {
+      MutableSpan<void *> item_values = loop_item_values.as_mutable_span().slice(
+          (iteration + 1) * loop_items_num, loop_items_num);
+      for (const int item_i : IndexRange(loop_items_num)) {
+        const CPPType &type = *loop_item_types[item_i];
+        void *buffer = allocator.allocate(type.size(), type.alignment());
+        item_values[item_i] = buffer;
+      }
+    }
+
+    MutableSpan<void *> first_item_values = loop_item_values.as_mutable_span().take_front(
+        loop_items_num);
+    for (const int i : IndexRange(loop_items_num)) {
+      /* +1 because of the iterations input. */
+      const int input_index = zone_info_.main_input_indices[i + 1];
+      void *value = params.try_get_input_data_ptr(input_index);
+      BLI_assert(value != nullptr);
+      first_item_values[i] = value;
+    }
+
+    const int border_links_num = zone_info_.border_link_input_indices.size();
+    Array<void *> border_link_input_values(border_links_num, nullptr);
+    for (const int i : IndexRange(border_links_num)) {
+      const int input_index = zone_info_.border_link_input_indices[i];
+      void *value = params.try_get_input_data_ptr(input_index);
+      BLI_assert(value != nullptr);
+      border_link_input_values[i] = value;
+    }
+
+    Map<int, bke::AnonymousAttributeSet *> attribute_set_by_field_source_index;
+    Map<int, bke::AnonymousAttributeSet *> attribute_set_by_caller_propagation_index;
+
+    for (const auto item : zone_info_.attribute_set_input_by_field_source_index.items()) {
+      bke::AnonymousAttributeSet &attribute_set = params.get_input<bke::AnonymousAttributeSet>(
+          item.value);
+      attribute_set_by_field_source_index.add_new(item.key, &attribute_set);
+    }
+    for (const auto item : zone_info_.attribute_set_input_by_caller_propagation_index.items()) {
+      bke::AnonymousAttributeSet &attribute_set = params.get_input<bke::AnonymousAttributeSet>(
+          item.value);
+      attribute_set_by_caller_propagation_index.add_new(item.key, &attribute_set);
+    }
+
+    const int body_inputs_num = body_fn_.inputs().size();
+    const int body_outputs_num = body_fn_.outputs().size();
+    for (const int iteration : IndexRange(iterations)) {
+      Array<GMutablePointer> inputs(body_inputs_num);
+      Array<GMutablePointer> outputs(body_outputs_num);
+      Array<std::optional<lf::ValueUsage>> input_usages(body_inputs_num);
+      Array<lf::ValueUsage> output_usages(body_outputs_num, lf::ValueUsage::Used);
+      Array<bool> set_outputs(body_outputs_num, false);
+
+      Array<bool> tmp_main_input_usages(loop_items_num);
+      for (const int i : IndexRange(loop_items_num)) {
+        const CPPType &type = *loop_item_types[i];
+        void *prev_value = loop_item_values[iteration * loop_items_num + i];
+        void *next_value = loop_item_values[(iteration + 1) * loop_items_num + i];
+        inputs[body_indices_.main_inputs[i]] = {type, prev_value};
+        outputs[body_indices_.main_outputs[i]] = {type, next_value};
+        outputs[body_indices_.main_input_usages[i]] = &tmp_main_input_usages[i];
+      }
+      static bool static_true = true;
+      for (const int input_index : body_indices_.main_output_usages) {
+        inputs[input_index] = &static_true;
+      }
+      /* TODO: Make copies of border link inputs and attribute sets. */
+      Array<bool> tmp_border_link_usages(border_links_num);
+      for (const int i : IndexRange(border_links_num)) {
+        const int input_index = body_indices_.border_link_inputs[i];
+        const int usage_index = body_indices_.border_link_usages[i];
+        const CPPType &type = *body_fn_.inputs()[input_index].type;
+        inputs[input_index] = {type, border_link_input_values[i]};
+        outputs[usage_index] = &tmp_border_link_usages[i];
+      }
+
+      for (const auto item : body_indices_.attribute_set_input_by_field_source_index.items()) {
+        inputs[item.value] = attribute_set_by_field_source_index.lookup(item.key);
+      }
+      for (const auto item : body_indices_.attribute_set_input_by_caller_propagation_index.items())
+      {
+        inputs[item.value] = attribute_set_by_caller_propagation_index.lookup(item.key);
+      }
+
+      bke::SerialLoopZoneComputeContext body_compute_context{
+          user_data.compute_context, loop_output_bnode_, iteration};
+      GeoNodesLFUserData body_user_data = user_data;
+      body_user_data.compute_context = &body_compute_context;
+      if (user_data.modifier_data->socket_log_contexts) {
+        body_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
+            body_compute_context.hash());
+      }
+      GeoNodesLFLocalUserData body_local_user_data{body_user_data};
+      void *body_storage = body_fn_.init_storage(allocator);
+      lf::Context body_context{body_storage, &body_user_data, &body_local_user_data};
+
+      lf::BasicParams body_params{
+          body_fn_, inputs, outputs, input_usages, output_usages, set_outputs};
+      body_fn_.execute(body_params, body_context);
+
+      body_fn_.destruct_storage(body_storage);
+    }
+
+    for (const int i : IndexRange(loop_items_num)) {
+      void *computed_value = loop_item_values[iterations * loop_items_num + i];
+      const int output_index = zone_info_.main_output_indices[i];
+      void *r_value = params.get_output_data_ptr(output_index);
+      const CPPType &type = *loop_item_types[i];
+      type.move_construct(computed_value, r_value);
+      params.output_set(output_index);
+
+      params.set_output(zone_info_.main_input_usage_indices[i], true);
+    }
+    for (const int i : IndexRange(border_links_num)) {
+      params.set_output(zone_info_.border_link_input_usage_indices[i], true);
+    }
   }
 };
 
@@ -1522,7 +1649,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   Map<const bNode *, lf::Node *> simulation_inputs_usage_nodes_;
 
   const bNodeTreeZones *tree_zones_;
-  Array<ZoneBuildInfo> zone_build_infos_;
+  MutableSpan<ZoneBuildInfo> zone_build_infos_;
 
   friend class UsedSocketVisualizeOptions;
 
@@ -1568,7 +1695,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   void build_zone_functions()
   {
-    zone_build_infos_.reinitialize(tree_zones_->zones.size());
+    zone_build_infos_ = scope_.linear_allocator().construct_array<ZoneBuildInfo>(
+        tree_zones_->zones.size());
 
     const Array<int> zone_build_order = this->compute_zone_build_order();
 
@@ -1853,6 +1981,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                     lf_attribute_set_by_field_source_index,
                                     lf_attribute_set_by_caller_propagation_index);
     this->fix_link_cycles(lf_body_graph, graph_params.socket_usage_inputs);
+
+    lf_body_graph.update_node_indices();
 
     auto &logger = scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_);
     auto &side_effect_provider = scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>();
