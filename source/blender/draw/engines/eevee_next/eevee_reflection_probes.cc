@@ -96,7 +96,7 @@ void ReflectionProbeModule::sync_object(Object *ob,
                                         ResourceHandle res_handle,
                                         bool is_dirty)
 {
-  const LightProbe *light_probe = (LightProbe *)ob->data;
+  const ::LightProbe *light_probe = (::LightProbe *)ob->data;
   ReflectionProbe &probe = find_or_insert(ob_handle, REFLECTION_PROBE_SUBDIVISION_LEVEL);
   probe.is_dirty |= is_dirty;
   probe.is_used = true;
