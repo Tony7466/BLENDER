@@ -22,7 +22,7 @@ static void node_declare_dynamic(const bNodeTree &tree,
                                  NodeDeclaration &r_declaration)
 {
   NodeDeclarationBuilder b{r_declaration};
-  b.add_input<decl::Int>(N_("Iterations"));
+  b.add_input<decl::Int>(N_("Iterations")).min(0).default_value(1);
 
   const NodeGeometrySerialLoopInput &storage = node_storage(node);
   const bNode *output_node = tree.node_by_id(storage.output_node_id);
