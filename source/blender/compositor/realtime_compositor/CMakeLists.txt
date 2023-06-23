@@ -135,6 +135,7 @@ set(GLSL_SRC
   shaders/compositor_glare_streaks_filter.glsl
   shaders/compositor_id_mask.glsl
   shaders/compositor_image_crop.glsl
+  shaders/compositor_kuwahara_classic.glsl
   shaders/compositor_map_uv.glsl
   shaders/compositor_morphological_distance.glsl
   shaders/compositor_morphological_distance_feather.glsl
@@ -239,6 +240,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_glare_info.hh
   shaders/infos/compositor_id_mask_info.hh
   shaders/infos/compositor_image_crop_info.hh
+  shaders/infos/compositor_kuwahara_info.hh
   shaders/infos/compositor_map_uv_info.hh
   shaders/infos/compositor_morphological_distance_feather_info.hh
   shaders/infos/compositor_morphological_distance_info.hh
