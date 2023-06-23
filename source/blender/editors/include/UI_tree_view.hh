@@ -33,6 +33,7 @@ namespace blender::ui {
 
 class AbstractTreeView;
 class AbstractTreeViewItem;
+class AbstractTreeViewItemDropTarget;
 
 /* ---------------------------------------------------------------------- */
 /** \name Tree-View Item Container
@@ -126,6 +127,12 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
    * drop target of the view includes them, but they are not interactive (e.g. no mouse-hover
    * highlight). */
   void set_min_rows(int min_rows);
+
+  /**
+   * Determine if dropping should insert before, into or after the hovered element. To be used in
+   * #AbstractViewItemDropTarget::can_drop() implementations.
+   */
+  DropLocation tree_insert_drop_location(const wmEvent &event);
 
  protected:
   virtual void build_tree() = 0;
@@ -247,7 +254,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   void ensure_parents_uncollapsed();
 
-  uiButViewItem *view_item_button();
+  uiButViewItem *view_item_button() const;
 
  private:
   static void tree_row_click_fn(struct bContext *, void *, void *);

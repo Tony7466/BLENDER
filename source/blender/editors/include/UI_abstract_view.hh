@@ -69,6 +69,10 @@ class AbstractView {
   /* See #get_bounds(). */
   std::optional<rcti> bounds_;
 
+ protected:
+  const ARegion *region_ = nullptr;
+  const uiBlock *block_ = nullptr;
+
  public:
   virtual ~AbstractView() = default;
 

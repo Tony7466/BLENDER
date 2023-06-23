@@ -114,9 +114,11 @@ class AssetCatalogDropTarget : public ui::AbstractViewItemDropTarget {
  public:
   AssetCatalogDropTarget(AssetCatalogTreeView &tree_view, AssetCatalogTreeItem &catalog_item);
 
-  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
-  std::string drop_tooltip(const wmDrag &drag) const override;
-  bool on_drop(bContext *C, const wmDrag &drag) const override;
+  ui::DropLocation can_drop(const wmDrag &drag,
+                            const wmEvent &event,
+                            const char **r_disabled_hint) const override;
+  std::string drop_tooltip(const ui::DragInfo &drag_info) const override;
+  bool on_drop(bContext *C, const ui::DragInfo &drag_info) const override;
 
   ::AssetLibrary &get_asset_library() const;
 
@@ -152,9 +154,11 @@ class AssetCatalogTreeViewAllItem : public ui::BasicTreeViewItem {
   struct DropTarget : public ui::AbstractViewItemDropTarget {
     DropTarget(AssetCatalogTreeView &tree_view);
 
-    bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
-    std::string drop_tooltip(const wmDrag &drag) const override;
-    bool on_drop(bContext *C, const wmDrag &drag) const override;
+    ui::DropLocation can_drop(const wmDrag &drag,
+                              const wmEvent &event,
+                              const char **r_disabled_hint) const override;
+    std::string drop_tooltip(const ui::DragInfo &drag_info) const override;
+    bool on_drop(bContext *C, const ui::DragInfo &drag_info) const override;
   };
 
   std::unique_ptr<ui::AbstractViewItemDropTarget> create_drop_target() override;
@@ -166,9 +170,11 @@ class AssetCatalogTreeViewUnassignedItem : public ui::BasicTreeViewItem {
   struct DropTarget : public ui::AbstractViewItemDropTarget {
     DropTarget(AssetCatalogTreeView &tree_view);
 
-    bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
-    std::string drop_tooltip(const wmDrag &drag) const override;
-    bool on_drop(bContext *C, const wmDrag &drag) const override;
+    ui::DropLocation can_drop(const wmDrag &drag,
+                              const wmEvent &event,
+                              const char **r_disabled_hint) const override;
+    std::string drop_tooltip(const ui::DragInfo &drag_info) const override;
+    bool on_drop(bContext *C, const ui::DragInfo &drag_info) const override;
   };
 
   std::unique_ptr<ui::AbstractViewItemDropTarget> create_drop_target() override;
@@ -363,12 +369,14 @@ AssetCatalogDropTarget::AssetCatalogDropTarget(AssetCatalogTreeView &tree_view,
 {
 }
 
-bool AssetCatalogDropTarget::can_drop(const wmDrag &drag, const char **r_disabled_hint) const
+ui::DropLocation AssetCatalogDropTarget::can_drop(const wmDrag &drag,
+                                                  const wmEvent & /*event*/,
+                                                  const char **r_disabled_hint) const
 {
   if (drag.type == WM_DRAG_ASSET_CATALOG) {
     const ::AssetLibrary &library = get_asset_library();
     if (!can_modify_catalogs(library, r_disabled_hint)) {
-      return false;
+      return ui::DROP_DISABLE;
     }
 
     const AssetCatalog *drag_catalog = get_drag_catalog(drag, library);
@@ -377,26 +385,27 @@ bool AssetCatalogDropTarget::can_drop(const wmDrag &drag, const char **r_disable
      * appear broken to users, so disabling entirely. */
     if (catalog_item_.catalog_path().is_contained_in(drag_catalog->path)) {
       *r_disabled_hint = TIP_("Catalog cannot be dropped into itself");
-      return false;
+      return ui::DROP_DISABLE;
     }
     if (catalog_item_.catalog_path() == drag_catalog->path.parent()) {
       *r_disabled_hint = TIP_("Catalog is already placed inside this catalog");
-      return false;
+      return ui::DROP_DISABLE;
     }
-    return true;
+    return ui::DROP_INTO;
   }
-  if (drag.type == WM_DRAG_ASSET_LIST) {
-    return has_droppable_asset(drag, r_disabled_hint);
+
+  if (drag.type == WM_DRAG_ASSET_LIST && has_droppable_asset(drag, r_disabled_hint)) {
+    return ui::DROP_INTO;
   }
-  return false;
+  return ui::DROP_DISABLE;
 }
 
-std::string AssetCatalogDropTarget::drop_tooltip(const wmDrag &drag) const
+std::string AssetCatalogDropTarget::drop_tooltip(const ui::DragInfo &drag_info) const
 {
-  if (drag.type == WM_DRAG_ASSET_CATALOG) {
-    return drop_tooltip_asset_catalog(drag);
+  if (drag_info.drag_data.type == WM_DRAG_ASSET_CATALOG) {
+    return drop_tooltip_asset_catalog(drag_info.drag_data);
   }
-  return drop_tooltip_asset_list(drag);
+  return drop_tooltip_asset_list(drag_info.drag_data);
 }
 
 std::string AssetCatalogDropTarget::drop_tooltip_asset_catalog(const wmDrag &drag) const
@@ -432,15 +441,15 @@ std::string AssetCatalogDropTarget::drop_tooltip_asset_list(const wmDrag &drag) 
   return basic_tip;
 }
 
-bool AssetCatalogDropTarget::on_drop(bContext *C, const wmDrag &drag) const
+bool AssetCatalogDropTarget::on_drop(bContext *C, const ui::DragInfo &drag) const
 {
-  if (drag.type == WM_DRAG_ASSET_CATALOG) {
+  if (drag.drag_data.type == WM_DRAG_ASSET_CATALOG) {
     return drop_asset_catalog_into_catalog(
-        drag, get_view<AssetCatalogTreeView>(), catalog_item_.get_catalog_id());
+        drag.drag_data, get_view<AssetCatalogTreeView>(), catalog_item_.get_catalog_id());
   }
   return drop_assets_into_catalog(C,
                                   get_view<AssetCatalogTreeView>(),
-                                  drag,
+                                  drag.drag_data,
                                   catalog_item_.get_catalog_id(),
                                   catalog_item_.get_simple_name());
 }
@@ -593,41 +602,43 @@ AssetCatalogTreeViewAllItem::DropTarget::DropTarget(AssetCatalogTreeView &tree_v
 {
 }
 
-bool AssetCatalogTreeViewAllItem::DropTarget::can_drop(const wmDrag &drag,
-                                                       const char **r_disabled_hint) const
+ui::DropLocation AssetCatalogTreeViewAllItem::DropTarget::can_drop(
+    const wmDrag &drag, const wmEvent & /*event*/, const char **r_disabled_hint) const
 {
   if (drag.type != WM_DRAG_ASSET_CATALOG) {
-    return false;
+    return ui::DROP_DISABLE;
   }
   ::AssetLibrary &library = *get_view<AssetCatalogTreeView>().asset_library_;
   if (!AssetCatalogDropTarget::can_modify_catalogs(library, r_disabled_hint)) {
-    return false;
+    return ui::DROP_DISABLE;
   }
 
   const AssetCatalog *drag_catalog = AssetCatalogDropTarget::get_drag_catalog(drag, library);
   if (drag_catalog->path.parent() == "") {
     *r_disabled_hint = TIP_("Catalog is already placed at the highest level");
-    return false;
+    return ui::DROP_DISABLE;
   }
 
-  return true;
+  return ui::DROP_INTO;
 }
 
-std::string AssetCatalogTreeViewAllItem::DropTarget::drop_tooltip(const wmDrag &drag) const
+std::string AssetCatalogTreeViewAllItem::DropTarget::drop_tooltip(
+    const ui::DragInfo &drag_info) const
 {
-  BLI_assert(drag.type == WM_DRAG_ASSET_CATALOG);
+  BLI_assert(drag_info.drag_data.type == WM_DRAG_ASSET_CATALOG);
   const AssetCatalog *drag_catalog = AssetCatalogDropTarget::get_drag_catalog(
-      drag, *get_view<AssetCatalogTreeView>().asset_library_);
+      drag_info.drag_data, *get_view<AssetCatalogTreeView>().asset_library_);
 
   return fmt::format(TIP_("Move catalog {} to the top level of the tree"),
                      std::string_view(drag_catalog->path.name()));
 }
 
-bool AssetCatalogTreeViewAllItem::DropTarget::on_drop(bContext * /*C*/, const wmDrag &drag) const
+bool AssetCatalogTreeViewAllItem::DropTarget::on_drop(bContext * /*C*/,
+                                                      const ui::DragInfo &drag) const
 {
-  BLI_assert(drag.type == WM_DRAG_ASSET_CATALOG);
+  BLI_assert(drag.drag_data.type == WM_DRAG_ASSET_CATALOG);
   return AssetCatalogDropTarget::drop_asset_catalog_into_catalog(
-      drag,
+      drag.drag_data,
       get_view<AssetCatalogTreeView>(),
       /* No value to drop into the root level. */
       std::nullopt);
@@ -647,29 +658,35 @@ AssetCatalogTreeViewUnassignedItem::DropTarget::DropTarget(AssetCatalogTreeView 
 {
 }
 
-bool AssetCatalogTreeViewUnassignedItem::DropTarget::can_drop(const wmDrag &drag,
-                                                              const char **r_disabled_hint) const
+ui::DropLocation AssetCatalogTreeViewUnassignedItem::DropTarget::can_drop(
+    const wmDrag &drag, const wmEvent & /*event*/, const char **r_disabled_hint) const
 {
   if (drag.type != WM_DRAG_ASSET_LIST) {
-    return false;
+    return ui::DROP_DISABLE;
   }
-  return AssetCatalogDropTarget::has_droppable_asset(drag, r_disabled_hint);
+  if (!AssetCatalogDropTarget::has_droppable_asset(drag, r_disabled_hint)) {
+    return ui::DROP_DISABLE;
+  }
+
+  return ui::DROP_INTO;
 }
 
-std::string AssetCatalogTreeViewUnassignedItem::DropTarget::drop_tooltip(const wmDrag &drag) const
+std::string AssetCatalogTreeViewUnassignedItem::DropTarget::drop_tooltip(
+    const ui::DragInfo &drag_info) const
 {
-  const ListBase *asset_drags = WM_drag_asset_list_get(&drag);
+  const ListBase *asset_drags = WM_drag_asset_list_get(&drag_info.drag_data);
   const bool is_multiple_assets = !BLI_listbase_is_single(asset_drags);
 
   return is_multiple_assets ? TIP_("Move assets out of any catalog") :
                               TIP_("Move asset out of any catalog");
 }
 
-bool AssetCatalogTreeViewUnassignedItem::DropTarget::on_drop(bContext *C, const wmDrag &drag) const
+bool AssetCatalogTreeViewUnassignedItem::DropTarget::on_drop(bContext *C,
+                                                             const ui::DragInfo &drag) const
 {
   /* Assign to nil catalog ID. */
   return AssetCatalogDropTarget::drop_assets_into_catalog(
-      C, get_view<AssetCatalogTreeView>(), drag, CatalogID{});
+      C, get_view<AssetCatalogTreeView>(), drag.drag_data, CatalogID{});
 }
 
 }  // namespace blender::ed::asset_browser

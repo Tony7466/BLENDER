@@ -23,6 +23,7 @@
 
 #include "DNA_screen_types.h"
 
+#include "BKE_context.h"
 #include "BKE_screen.h"
 
 #include "BLI_listbase.h"
@@ -49,10 +50,14 @@ struct ViewLink : public Link {
   std::unique_ptr<AbstractView> view;
 
   static void views_bounds_calc(const uiBlock &block);
+  template<class T>
+  static T *block_add_view_impl(uiBlock &block,
+                                StringRef idname,
+                                std::unique_ptr<AbstractView> view);
 };
 
 template<class T>
-static T *ui_block_add_view_impl(uiBlock &block,
+T *ViewLink::block_add_view_impl(uiBlock &block,
                                  StringRef idname,
                                  std::unique_ptr<AbstractView> view)
 {
@@ -61,6 +66,8 @@ static T *ui_block_add_view_impl(uiBlock &block,
 
   view_link->view = std::move(view);
   view_link->idname = idname;
+  view_link->view->block_ = &block;
+  view_link->view->region_ = CTX_wm_region(static_cast<bContext *>(block.evil_C));
 
   return dynamic_cast<T *>(view_link->view.get());
 }
@@ -69,14 +76,14 @@ AbstractGridView *UI_block_add_view(uiBlock &block,
                                     StringRef idname,
                                     std::unique_ptr<AbstractGridView> grid_view)
 {
-  return ui_block_add_view_impl<AbstractGridView>(block, idname, std::move(grid_view));
+  return ViewLink::block_add_view_impl<AbstractGridView>(block, idname, std::move(grid_view));
 }
 
 AbstractTreeView *UI_block_add_view(uiBlock &block,
                                     StringRef idname,
                                     std::unique_ptr<AbstractTreeView> tree_view)
 {
-  return ui_block_add_view_impl<AbstractTreeView>(block, idname, std::move(tree_view));
+  return ViewLink::block_add_view_impl<AbstractTreeView>(block, idname, std::move(tree_view));
 }
 
 void ui_block_free_views(uiBlock *block)

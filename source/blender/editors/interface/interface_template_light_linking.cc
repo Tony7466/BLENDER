@@ -42,15 +42,17 @@ class CollectionDropTarget : public AbstractViewItemDropTarget {
   {
   }
 
-  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override
+  DropLocation can_drop(const wmDrag &drag,
+                        const wmEvent &event,
+                        const char **r_disabled_hint) const override
   {
     if (drag.type != WM_DRAG_ID) {
-      return false;
+      return DROP_DISABLE;
     }
 
     const wmDragID *drag_id = static_cast<wmDragID *>(drag.ids.first);
     if (!drag_id) {
-      return false;
+      return DROP_DISABLE;
     }
 
     /* The dragged IDs are guaranteed to be the same type, so only check the type of the first one.
@@ -58,23 +60,23 @@ class CollectionDropTarget : public AbstractViewItemDropTarget {
     const ID_Type id_type = GS(drag_id->id->name);
     if (!ELEM(id_type, ID_OB, ID_GR)) {
       *r_disabled_hint = "Can only add objects and collections to the light linking collection";
-      return false;
+      return DROP_DISABLE;
     }
 
-    return true;
+    return DROP_INTO;
   }
 
-  std::string drop_tooltip(const wmDrag & /*drag*/) const override
+  std::string drop_tooltip(const DragInfo & /*drag_info*/) const override
   {
     return TIP_("Add to light linking collection");
   }
 
-  bool on_drop(struct bContext *C, const wmDrag &drag) const override
+  bool on_drop(struct bContext *C, const DragInfo &drag) const override
   {
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
 
-    LISTBASE_FOREACH (wmDragID *, drag_id, &drag.ids) {
+    LISTBASE_FOREACH (wmDragID *, drag_id, &drag.drag_data.ids) {
       BKE_light_linking_add_receiver_to_collection(
           bmain, &collection_, drag_id->id, COLLECTION_LIGHT_LINKING_STATE_INCLUDE);
     }
