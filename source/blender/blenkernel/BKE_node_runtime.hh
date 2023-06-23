@@ -825,6 +825,50 @@ template<typename T> const T *bNodeSocket::default_value_typed() const
   return static_cast<const T *>(this->default_value);
 }
 
+inline ID *bNodeSocket::default_value_to_id()
+{
+  switch (eNodeSocketDatatype(this->type)) {
+    case SOCK_OBJECT:
+      return reinterpret_cast<ID *>(this->default_value_typed<bNodeSocketValueObject>()->value);
+    case SOCK_COLLECTION:
+      return reinterpret_cast<ID *>(
+          this->default_value_typed<bNodeSocketValueCollection>()->value);
+    case SOCK_MATERIAL:
+      return reinterpret_cast<ID *>(this->default_value_typed<bNodeSocketValueMaterial>()->value);
+    case SOCK_TEXTURE:
+      return reinterpret_cast<ID *>(this->default_value_typed<bNodeSocketValueTexture>()->value);
+    case SOCK_IMAGE:
+      return reinterpret_cast<ID *>(this->default_value_typed<bNodeSocketValueImage>()->value);
+    default:
+      BLI_assert_unreachable();
+  }
+  return nullptr;
+}
+
+inline const ID *bNodeSocket::default_value_to_id() const
+{
+  switch (eNodeSocketDatatype(this->type)) {
+    case SOCK_OBJECT:
+      return reinterpret_cast<const ID *>(
+          this->default_value_typed<bNodeSocketValueObject>()->value);
+    case SOCK_COLLECTION:
+      return reinterpret_cast<const ID *>(
+          this->default_value_typed<bNodeSocketValueCollection>()->value);
+    case SOCK_MATERIAL:
+      return reinterpret_cast<const ID *>(
+          this->default_value_typed<bNodeSocketValueMaterial>()->value);
+    case SOCK_TEXTURE:
+      return reinterpret_cast<const ID *>(
+          this->default_value_typed<bNodeSocketValueTexture>()->value);
+    case SOCK_IMAGE:
+      return reinterpret_cast<const ID *>(
+          this->default_value_typed<bNodeSocketValueImage>()->value);
+    default:
+      BLI_assert_unreachable();
+  }
+  return nullptr;
+}
+
 inline bool bNodeSocket::is_input() const
 {
   return this->in_out == SOCK_IN;

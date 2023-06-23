@@ -121,44 +121,52 @@ static void initData(ModifierData *md)
   nmd->simulation_cache = new_simulation_cache();
 }
 
-static void add_used_ids_from_sockets(const Span<const bNodeSocket *> sockets, Set<ID *> &ids)
+static bool ignore_socket_value_for_relationships(const bNode &node, const bNodeSocket &socket)
+{
+  if (socket.is_output()) {
+    /* Output sockets can not contains value. */
+    return false;
+  }
+  if (node.type == NODE_GROUP_OUTPUT) {
+    /* If this node tree is processed, it outputs is used. */
+    return true;
+  }
+  if (!node.is_muted()) {
+    /* Node is worked, socket is used. */
+    if (socket.flag & SOCK_IS_LINKED) {
+      /* Socket value is not used. */
+      return true;
+    }
+    return false;
+  }
+  for (const bNodeLink &link : node.internal_links()) {
+    if (link.fromsock == &socket) {
+      /* Can not ignore value even if node is muted. */
+      return false;
+    }
+  }
+  return true;
+}
+
+static void add_used_ids_from_sockets(const bNode &node,
+                                      const Span<const bNodeSocket *> sockets,
+                                      Set<ID *> &ids)
 {
   for (const bNodeSocket *socket : sockets) {
-    if (socket->flag & SOCK_IS_LINKED) {
+    if (ignore_socket_value_for_relationships(node, *socket)) {
       continue;
     }
-    switch (socket->type) {
-      case SOCK_OBJECT: {
-        if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
-          ids.add(&object->id);
+    switch (eNodeSocketDatatype(socket->type)) {
+      case SOCK_OBJECT:
+      case SOCK_COLLECTION:
+      case SOCK_MATERIAL:
+      case SOCK_TEXTURE:
+      case SOCK_IMAGE:
+        if (const ID *id = socket->default_value_to_id()) {
+          ids.add(const_cast<ID *>(id));
         }
+      default:
         break;
-      }
-      case SOCK_COLLECTION: {
-        if (Collection *collection = ((bNodeSocketValueCollection *)socket->default_value)->value)
-        {
-          ids.add(&collection->id);
-        }
-        break;
-      }
-      case SOCK_MATERIAL: {
-        if (Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value) {
-          ids.add(&material->id);
-        }
-        break;
-      }
-      case SOCK_TEXTURE: {
-        if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
-          ids.add(&texture->id);
-        }
-        break;
-      }
-      case SOCK_IMAGE: {
-        if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
-          ids.add(&image->id);
-        }
-        break;
-      }
     }
   }
 }
@@ -171,6 +179,9 @@ static void add_used_ids_from_sockets(const Span<const bNodeSocket *> sockets, S
  */
 static bool node_needs_own_transform_relation(const bNode &node)
 {
+  if (node->is_muted()) {
+    return false;
+  }
   if (node.type == GEO_NODE_COLLECTION_INFO) {
     const NodeGeometryCollectionInfo &storage = *static_cast<const NodeGeometryCollectionInfo *>(
         node.storage);
@@ -204,12 +215,15 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
 
   tree.ensure_topology_cache();
   for (const bNode *node : tree.all_nodes()) {
-    add_used_ids_from_sockets(node->input_sockets(), ids);
-    add_used_ids_from_sockets(node->output_sockets(), ids);
+    add_used_ids_from_sockets(*node, node->input_sockets(), ids);
+    add_used_ids_from_sockets(*node, node->output_sockets(), ids);
     r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
   }
 
   for (const bNode *node : tree.group_nodes()) {
+    if (node->is_muted()) {
+      continue;
+    }
     if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
       process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation, checked_groups);
     }
