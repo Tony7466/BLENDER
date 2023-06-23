@@ -132,6 +132,7 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
           edit_data->vertexCos = nullptr;
           me->runtime->is_original_bmesh = false;
         }
+        me->runtime->edit_data = nullptr;
         break;
       }
     }
@@ -170,7 +171,19 @@ bool BKE_mesh_wrapper_minmax(const Mesh *me, float min[3], float max[3])
 /** \name Mesh Coordinate Access
  * \{ */
 
-float (*BKE_mesh_wrapper_vert_coords_for_write(Mesh *mesh))[3]
+const float (*BKE_mesh_wrapper_vert_coords(const Mesh *mesh))[3]
+{
+  switch (mesh->runtime->wrapper_type) {
+    case ME_WRAPPER_TYPE_BMESH:
+      return mesh->runtime->edit_data->vertexCos;
+    case ME_WRAPPER_TYPE_MDATA:
+    case ME_WRAPPER_TYPE_SUBD:
+      return reinterpret_cast<const float(*)[3]>(mesh->vert_positions().data());
+  }
+  return nullptr;
+}
+
+float (*BKE_mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh))[3]
 {
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_BMESH:
@@ -181,6 +194,19 @@ float (*BKE_mesh_wrapper_vert_coords_for_write(Mesh *mesh))[3]
     case ME_WRAPPER_TYPE_MDATA:
     case ME_WRAPPER_TYPE_SUBD:
       return reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data());
+  }
+  return nullptr;
+}
+
+const float (*BKE_mesh_wrapper_poly_normals(Mesh *mesh))[3]
+{
+  switch (mesh->runtime->wrapper_type) {
+    case ME_WRAPPER_TYPE_BMESH:
+      BKE_editmesh_cache_ensure_poly_normals(mesh->edit_mesh, mesh->runtime->edit_data);
+      return mesh->runtime->edit_data->polyNos;
+    case ME_WRAPPER_TYPE_MDATA:
+    case ME_WRAPPER_TYPE_SUBD:
+      return reinterpret_cast<const float(*)[3]>(mesh->poly_normals().data());
   }
   return nullptr;
 }

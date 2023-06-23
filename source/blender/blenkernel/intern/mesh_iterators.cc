@@ -16,6 +16,7 @@
 #include "BKE_editmesh_cache.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.h"
+#include "BKE_mesh_wrapper.h"
 
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
@@ -38,9 +39,7 @@ void BKE_mesh_foreach_mapped_vert(
     void *userData,
     MeshForeachFlag flag)
 {
-  if (mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH && mesh->edit_mesh != nullptr &&
-      mesh->runtime->edit_data != nullptr)
-  {
+  if (mesh->edit_mesh != nullptr && mesh->runtime->edit_data != nullptr) {
     BMEditMesh *em = mesh->edit_mesh;
     BMesh *bm = em->bm;
     BMIter iter;

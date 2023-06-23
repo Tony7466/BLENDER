@@ -26,7 +26,23 @@ int BKE_mesh_wrapper_edge_len(const struct Mesh *me);
 int BKE_mesh_wrapper_loop_len(const struct Mesh *me);
 int BKE_mesh_wrapper_poly_len(const struct Mesh *me);
 
-float (*BKE_mesh_wrapper_vert_coords_for_write(struct Mesh *mesh))[3];
+/**
+ * Return a contiguous array of vertex position values, if available.
+ * Otherwise, vertex positions are stored in BMesh vertices.
+ */
+const float (*BKE_mesh_wrapper_vert_coords(const struct Mesh *mesh))[3];
+
+/**
+ * Return the mesh's contiguous array of vertices, creating it if necessary.
+ */
+float (*BKE_mesh_wrapper_vert_coords_ensure_for_write(struct Mesh *mesh))[3];
+
+/**
+ * Return a contiguous array of face normal values, if available.
+ * Otherwise, normals are stored in BMesh faces.
+ */
+const float (*BKE_mesh_wrapper_poly_normals(struct Mesh *mesh))[3];
+
 void BKE_mesh_wrapper_vert_coords_copy(const struct Mesh *me,
                                        float (*vert_coords)[3],
                                        int vert_coords_len);
