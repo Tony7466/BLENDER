@@ -122,7 +122,6 @@ ccl_device_forceinline float spot_light_pdf(const float cos_half_spread,
   return has_transmission ? M_1_2PI_F * 0.5f : pdf_cos_hemisphere(N, D);
 }
 
-/* TODO: verify */
 ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global KernelLight *klight,
                                                           ccl_private LightSample *ls,
                                                           const float3 P,
@@ -157,7 +156,7 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
   ls->u = uv.y;
   ls->v = 1.0f - uv.x - uv.y;
 
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, ls->Ng);
+  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, -ls->D);
 }
 
 ccl_device_inline bool spot_light_intersect(const ccl_global KernelLight *klight,
