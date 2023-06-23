@@ -641,7 +641,7 @@ class VIEW3D_HT_header(Header):
                     icon = snap_items[elem].icon
                     break
             else:
-                text = "Mix"
+                text = "Multi"
                 icon = 'NONE'
             del snap_items, snap_elements
 
