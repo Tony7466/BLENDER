@@ -21,6 +21,11 @@ TreeElementIDScene::TreeElementIDScene(TreeElement &legacy_te, Scene &scene)
 {
 }
 
+bool TreeElementIDScene::isExpandValid() const
+{
+  return true;
+}
+
 void TreeElementIDScene::expand(SpaceOutliner &space_outliner) const
 {
   expandViewLayers(space_outliner);

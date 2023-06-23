@@ -324,7 +324,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   if (!expand) {
     /* Pass */
   }
-  else if (te->abstract_element) {
+  else if (te->abstract_element && te->abstract_element->isExpandValid()) {
     tree_element_expand(*te->abstract_element, *space_outliner);
   }
   else if (ELEM(type,

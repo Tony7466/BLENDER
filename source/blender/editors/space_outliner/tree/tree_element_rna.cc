@@ -44,6 +44,11 @@ TreeElementRNACommon::TreeElementRNACommon(TreeElement &legacy_te, PointerRNA &r
   }
 }
 
+bool TreeElementRNACommon::isExpandValid() const
+{
+  return true;
+}
+
 bool TreeElementRNACommon::isRNAValid() const
 {
   return rna_ptr_.data != nullptr;

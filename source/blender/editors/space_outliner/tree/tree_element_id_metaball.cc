@@ -21,6 +21,11 @@ TreeElementIDMetaBall::TreeElementIDMetaBall(TreeElement &legacy_te, MetaBall &m
 {
 }
 
+bool TreeElementIDMetaBall::isExpandValid() const
+{
+  return true;
+}
+
 void TreeElementIDMetaBall::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, metaball_.adt);

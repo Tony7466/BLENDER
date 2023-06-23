@@ -28,6 +28,7 @@ class TreeElementRNACommon : public AbstractTreeElement {
 
  public:
   TreeElementRNACommon(TreeElement &legacy_te, PointerRNA &rna_ptr);
+  bool isExpandValid() const override;
   bool expandPoll(const SpaceOutliner &) const override;
 
   const PointerRNA &getPointerRNA() const;

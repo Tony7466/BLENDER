@@ -19,6 +19,7 @@ class TreeElementIDScene final : public TreeElementID {
   TreeElementIDScene(TreeElement &legacy_te, Scene &scene);
 
   void expand(SpaceOutliner &) const override;
+  bool isExpandValid() const override;
 
  private:
   void expandViewLayers(SpaceOutliner &) const;

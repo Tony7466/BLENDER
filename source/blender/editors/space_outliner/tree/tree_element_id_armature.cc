@@ -30,7 +30,7 @@ TreeElementIDArmature::TreeElementIDArmature(TreeElement &legacy_te, bArmature &
 void TreeElementIDArmature::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, arm_.adt);
-
+  
   if (arm_.edbo) {
     expandEditBones(space_outliner);
   }
@@ -46,6 +46,11 @@ void TreeElementIDArmature::expand(SpaceOutliner &space_outliner) const
       expandBones(space_outliner);
     }
   }
+}
+
+bool TreeElementIDArmature::isExpandValid() const
+{
+  return true;
 }
 
 void TreeElementIDArmature::expandEditBones(SpaceOutliner &space_outiner) const
