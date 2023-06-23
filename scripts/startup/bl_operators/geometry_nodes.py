@@ -279,15 +279,22 @@ class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
     bl_label = "Add State Item"
     bl_options = {'REGISTER', 'UNDO'}
 
+    default_socket_type = 'GEOMETRY'
+
     def execute(self, context):
         node = self.get_output_node(context)
         state_items = node.state_items
 
         # Remember index to move the item.
-        dst_index = min(node.active_index + 1, len(state_items))
-        dst_type = node.active_item.socket_type
-        dst_name = node.active_item.name
-        # Empty name so it is based on the type only.
+        if node.active_item:
+            dst_index = node.active_index + 1
+            dst_type = node.active_item.socket_type
+            dst_name = node.active_item.name
+        else:
+            dst_index = len(state_items)
+            dst_type = self.default_socket_type
+            # Empty name so it is based on the type.
+            dst_name = ""
         state_items.new(dst_type, dst_name)
         state_items.move(len(state_items) - 1, dst_index)
         node.active_index = dst_index
