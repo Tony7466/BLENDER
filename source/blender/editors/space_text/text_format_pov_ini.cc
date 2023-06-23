@@ -30,6 +30,7 @@
 /* Language Directives */
 
 static const char *text_format_pov_ini_literals_keyword_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "A",
     "C",
@@ -83,6 +84,7 @@ static const Span<const char *> text_format_pov_ini_literals_keyword(
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
 static const char *text_format_pov_ini_literals_reserved_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "AlertOnCompletion",
     "AlertSound",
@@ -282,6 +284,7 @@ static const Span<const char *> text_format_pov_ini_literals_reserved(
 
 /** POV INI Built-in Constants */
 static const char *text_format_pov_ini_literals_bool_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "%h",
     "%k",

@@ -7,9 +7,8 @@
  */
 
 #pragma once
-#include "BLI_array.hh"
+
 #include "BLI_span.hh"
-#include "BLI_string_ref.hh"
 
 using blender::Span;
 
@@ -130,9 +129,12 @@ void ED_text_format_register_pov_ini();
 const int text_format_string_literal_find(const Span<const char *> string_literals,
                                           const char *text);
 
+#ifndef NDEBUG
 /**
  * Check if #string_literals array is shorted. This validation is required since text formatters do
  * binary search on these string literals arrays. Used only for assertions.
  */
 const bool text_format_string_literals_check_sorted_array(
     const Span<const char *> &string_literals);
+
+#endif

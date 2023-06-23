@@ -49,7 +49,7 @@
  * http://docs.python.org/py3k/reference/lexical_analysis.html#keywords
  */
 static const char *text_format_py_literals_builtinfunc_data[]{
-    /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
+    /* Force single column, sorted list. */
     /* clang-format off */
     "and",
     "as",
@@ -91,7 +91,7 @@ static const Span<const char *> text_format_py_literals_builtinfunc(
 
 /** Python special name.*/
 static const char *text_format_py_literals_specialvar_data[]{
-    /* Prevent wrapping onto multiple lines, avoid re-wrapping when values change. */
+    /* Force single column, sorted list. */
     /* clang-format off */
     "class",
     "def",
@@ -102,6 +102,7 @@ static const Span<const char *> text_format_py_literals_specialvar(
 
 /** Python bool values.*/
 static const char *text_format_py_literals_bool_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "False",
     "None",

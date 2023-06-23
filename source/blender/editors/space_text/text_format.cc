@@ -244,11 +244,11 @@ bool ED_text_is_syntax_highlight_supported(Text *text)
 const int text_format_string_literal_find(const Span<const char *> string_literals,
                                           const char *text)
 {
-  auto predicate_func = [](const char *text, const char *string_literal) {
+  auto cmp_fn = [](const char *text, const char *string_literal) {
     return strcmp(text, string_literal) < 0;
   };
   auto string_literal = std::upper_bound(
-      std::begin(string_literals), std::end(string_literals), text, predicate_func);
+      std::begin(string_literals), std::end(string_literals), text, cmp_fn);
 
   if (string_literal == std::begin(string_literals)) {
     return -1;
@@ -262,6 +262,7 @@ const int text_format_string_literal_find(const Span<const char *> string_litera
   return -1;
 }
 
+#ifndef NDEBUG
 const bool text_format_string_literals_check_sorted_array(
     const Span<const char *> &string_literals)
 {
@@ -269,3 +270,4 @@ const bool text_format_string_literals_check_sorted_array(
                         string_literals.end(),
                         [](const char *a, const char *b) { return strcmp(a, b) < 0; });
 }
+#endif

@@ -23,6 +23,7 @@
 
 /** Language Directives */
 static const char *text_format_pov_literals_keyword_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "append",
     "break",
@@ -68,6 +69,7 @@ static const Span<const char *> text_format_pov_literals_keyword(
 
 /** Float Functions */
 static const char *text_format_pov_literals_reserved_data[]{
+    /* Force single column, sorted list. */
     /* clang-format on */
     "SRGB",
     "abs",
@@ -215,6 +217,7 @@ static const Span<const char *> text_format_pov_literals_reserved(
 
 /* Language Keywords */
 static const char *text_format_pov_literals_builtins_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "aa_threshold",
     "absorption",
@@ -436,6 +439,7 @@ static const Span<const char *> text_format_pov_literals_builtins(
  * http://www.povray.org/documentation/view/3.7.0/212/
  */
 static const char *text_format_pov_literals_specialvar_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "aa_level",
     "accuracy",
@@ -638,6 +642,7 @@ static const Span<const char *> text_format_pov_literals_specialvar(
 
 /** POV Built-in Constants. */
 static const char *text_format_pov_literals_bool_data[]{
+    /* Force single column, sorted list. */
     /* clang-format off */
     "ascii",
     "bt2020",
