@@ -367,12 +367,14 @@ void split_edges(Mesh &mesh,
 
   MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
 
-  /* Step 1: Split the edges. */
+  /* Split corner edge indices and update the edge to corner map. This step does not take into
+   * account future deduplication of the new edges, but is necessary in order to calculate the
+   * new fans around each vertex. */
   mask.foreach_index([&](const int edge_i) {
     split_edge_per_poly(edge_i, edge_offsets[edge_i], edge_to_loop_map, corner_edges);
   });
 
-  /* Step 1.5: Update topology information (can't parallelize). */
+  /* Update vertex to edge map with new vertices from duplicated edges. */
   for (const int edge_i : mask) {
     const int2 &edge = edges[edge_i];
     for (const int duplicate_i : IndexRange(edge_offsets[edge_i], num_edge_duplicates[edge_i])) {
@@ -383,7 +385,8 @@ void split_edges(Mesh &mesh,
 
   MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
 
-  /* Step 2: Calculate vertex fans. */
+  /* Calculate vertex fans by reordering the vertex to edge maps. Fans are the the ordered
+   * groups of consecutive edges between consecutive faces looping around a vertex.  */
   Array<Vector<int>> vertex_fan_sizes(mesh.totvert);
   threading::parallel_for(IndexRange(mesh.totvert), 512, [&](IndexRange range) {
     for (const int vert : range) {
@@ -401,7 +404,7 @@ void split_edges(Mesh &mesh,
     }
   });
 
-  /* Step 2.5: Calculate offsets for next step. */
+  /* Calculate result indices per source vertex as offsets for parallelizing the next step. */
   Array<int> vert_offsets(mesh.totvert);
   int total_verts_num = mesh.totvert;
   for (const int vert : IndexRange(mesh.totvert)) {
@@ -413,7 +416,7 @@ void split_edges(Mesh &mesh,
     total_verts_num += vertex_fan_sizes[vert].size() - 1;
   }
 
-  /* Step 3: Split the vertices.
+  /* Split the vertices into their duplicates so that each fan has its own result vertex.
    * Build a map from each new vertex to an old vertex to use for transferring attributes later. */
   const int new_verts_num = total_verts_num - mesh.totvert;
   Array<int> new_to_old_verts_map(new_verts_num);
@@ -433,6 +436,7 @@ void split_edges(Mesh &mesh,
     }
   });
 
+  /* Create deduplicated new edges based on the corner vertices at each polygon. */
   VectorSet<OrderedEdge> new_edges;
   new_edges.reserve(new_edges_size + loose_edges.size());
   for (const int i : polys.index_range()) {
@@ -445,6 +449,7 @@ void split_edges(Mesh &mesh,
   }
   loose_edges.foreach_index([&](const int64_t i) { new_edges.add(OrderedEdge(edges[i])); });
 
+  /* Build a map of old to new edges for transferring attributes. */
   Array<int> new_to_old_edges_map(new_edges.size());
   auto index_mask_to_indices = [&](const IndexMask &mask, MutableSpan<int> indices) {
     for (const int i : mask.index_range()) {
@@ -462,10 +467,11 @@ void split_edges(Mesh &mesh,
     }
   }
 
-  /* Step 5: Resize the mesh to add the new vertices and rebuild the edges. */
+  /* Resize the mesh to add the new vertices and rebuild the edges. */
   add_new_vertices(mesh, new_to_old_verts_map);
   add_new_edges(mesh, new_edges.as_span().cast<int2>(), new_to_old_edges_map, propagation_info);
 
+  /* Connect loose edges to duplicated vertices. */
   if (loose_edges_cache.count > 0) {
     MutableSpan<int2> new_edges_span = mesh.edges_for_write();
     threading::parallel_for(should_split_vert.index_range(), 512, [&](IndexRange range) {
