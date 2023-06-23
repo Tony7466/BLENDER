@@ -136,15 +136,15 @@ Vector<SculptBatch> sculpt_batches_get(Object *ob, SculptBatchFeature features)
   int attrs_len = 0;
 
   /* NOTE: these are NOT #eCustomDataType, they are extended values, ASAN may warn about this. */
-  attrs[attrs_len++].type = (eCustomDataType)CD_PBVH_CO_TYPE;
-  attrs[attrs_len++].type = (eCustomDataType)CD_PBVH_NO_TYPE;
+  attrs[attrs_len++].type = eCustomDataType(CD_PBVH_CO_TYPE);
+  attrs[attrs_len++].type = eCustomDataType(CD_PBVH_NO_TYPE);
 
   if (features & SCULPT_BATCH_MASK) {
-    attrs[attrs_len++].type = (eCustomDataType)CD_PBVH_MASK_TYPE;
+    attrs[attrs_len++].type = eCustomDataType(CD_PBVH_MASK_TYPE);
   }
 
-  if (features & SCULPT_BATCH_FSET) {
-    attrs[attrs_len++].type = (eCustomDataType)CD_PBVH_FSET_TYPE;
+  if (features & SCULPT_BATCH_FACE_SET) {
+    attrs[attrs_len++].type = eCustomDataType(CD_PBVH_FSET_TYPE);
   }
 
   Mesh *mesh = BKE_object_get_original_mesh(ob);
@@ -189,8 +189,8 @@ Vector<SculptBatch> sculpt_batches_per_material_get(Object *ob,
   int attrs_len = 0;
 
   /* NOTE: these are NOT #eCustomDataType, they are extended values, ASAN may warn about this. */
-  attrs[attrs_len++].type = (eCustomDataType)CD_PBVH_CO_TYPE;
-  attrs[attrs_len++].type = (eCustomDataType)CD_PBVH_NO_TYPE;
+  attrs[attrs_len++].type = eCustomDataType(CD_PBVH_CO_TYPE);
+  attrs[attrs_len++].type = eCustomDataType(CD_PBVH_NO_TYPE);
 
   for (int i = 0; i < draw_attrs.num_requests; i++) {
     DRW_AttributeRequest *req = draw_attrs.requests + i;
