@@ -234,16 +234,13 @@ static void update_logically_linked_sockets(const bNodeTree &ntree)
 
   /* Compute logically linked sockets to outputs using the previously computed logically linked
    * sockets to inputs. */
-  threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
-    for (const int i : range) {
-      bNode &node = *nodes[i];
-      for (bNodeSocket *input_socket : node.runtime->inputs) {
-        for (bNodeSocket *output_socket : input_socket->runtime->logically_linked_sockets) {
-          output_socket->runtime->logically_linked_sockets.append(input_socket);
-        }
+  for (const bNode *node : nodes) {
+    for (bNodeSocket *input_socket : node->runtime->inputs) {
+      for (bNodeSocket *output_socket : input_socket->runtime->logically_linked_sockets) {
+        output_socket->runtime->logically_linked_sockets.append(input_socket);
       }
     }
-  });
+  }
 }
 
 static void update_nodes_by_type(const bNodeTree &ntree)
