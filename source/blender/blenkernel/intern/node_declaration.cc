@@ -14,6 +14,7 @@
 #include "DNA_node_types.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include <queue>
 
@@ -57,8 +58,13 @@ blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
      * actual socket instance. We just set pointers to null here and
      * hope for the best until the situation can be improved ...
      */
-    PointerRNA socket_ptr = PointerRNA_NULL;
-    PointerRNA node_ptr = PointerRNA_NULL;
+    //    bNode dummy_node{0};
+    bNodeSocket dummy_socket{0};
+    dummy_socket.typeinfo = typeinfo;
+    PointerRNA socket_ptr, node_ptr;
+    //    RNA_pointer_create(nullptr, &RNA_Node, &dummy_node, &node_ptr);
+    node_ptr = PointerRNA_NULL;
+    RNA_pointer_create(nullptr, &RNA_NodeSocket, &dummy_socket, &socket_ptr);
     bContext *C = nullptr;
     float color[4];
     typeinfo->draw_color(C, &socket_ptr, &node_ptr, color);
