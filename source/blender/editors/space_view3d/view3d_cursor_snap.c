@@ -25,12 +25,14 @@
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
+#include "GPU_state.h"
 
 #include "ED_screen.h"
 #include "ED_transform.h"
 #include "ED_transform_snap_object_context.h"
 #include "ED_view3d.h"
 
+#include "UI_interface_icons.h"
 #include "UI_resources.h"
 
 #include "RNA_access.h"
@@ -366,15 +368,58 @@ static void cursor_box_draw(const float dimensions[3], uchar color[4])
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void snap_draw_point(const float loc[3],
-                            const float size,
-                            const eSnapMode snap_type,
-                            const uchar color[4],
-                            const float view_inv[4][4],
-                            const uint attr_pos)
+static void cursor_point_draw(uint attr_pos,
+                              const float loc[3],
+                              const float size,
+                              eSnapMode snap_type,
+                              int icon_id,
+                              const uchar color[4])
 {
   immUniformColor4ubv(color);
 
+#if 1
+  GPU_matrix_push();
+
+  float model_view[4][4];
+  GPU_matrix_model_view_get(model_view);
+  translate_m4(model_view, UNPACK3(loc));
+  copy_v3_fl3(model_view[0], 0.0f, size, 0.0f);
+  copy_v3_fl3(model_view[1], -size, 0.0f, 0.0f);
+  copy_v3_fl3(model_view[2], 0.0f, 0.0f, size);
+  GPU_matrix_set(model_view);
+
+  int nsegments = 12;
+  if (snap_type &
+      (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE_MIDPOINT | SCE_SNAP_MODE_EDGE_PERPENDICULAR))
+  {
+    nsegments = 3;
+  }
+  else if (snap_type & SCE_SNAP_MODE_EDGE) {
+    nsegments = 4;
+  }
+  else if (snap_type & SCE_SNAP_MODE_FACE) {
+    nsegments = 5;
+  }
+
+  imm_draw_circle_wire_3d(attr_pos, 0.0f, 0.0f, 1.0f, nsegments);
+
+  if (icon_id != ICON_NONE) {
+    float icon_size = 0.1f * size;
+    copy_v3_fl3(model_view[0], icon_size, 0.0f, 0.0f);
+    copy_v3_fl3(model_view[1], 0.0f, icon_size, 0.0f);
+    copy_v3_fl3(model_view[2], 0.0f, 0.0f, icon_size);
+    model_view[3][0] += 10 * icon_size;
+    model_view[3][1] -= 25 * icon_size;
+    GPU_matrix_set(model_view);
+
+    GPU_blend(true);
+    UI_icon_draw_ex(0.0f, 0.0f, icon_id, 1.0f, 0.5f, 0.0f, color, false, UI_NO_ICON_OVERLAY_TEXT);
+    GPU_blend(false);
+  }
+
+  GPU_matrix_pop();
+
+#else
   if (snap_type & SCE_SNAP_MODE_EDGE_MIDPOINT) {
     /* Draw a triangle. */
     float v1[3], v2[3], v3[3], tmp[3];
@@ -457,14 +502,15 @@ static void snap_draw_point(const float loc[3],
   else {
     imm_drawcircball(loc, size, view_inv, attr_pos);
   }
+#endif
 }
 
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
+                                     const float target_normal[3],
                                      const eSnapMode source_type,
                                      const eSnapMode target_type,
-                                     const float target_normal[3],
                                      const uchar color_line[4],
                                      const uchar color_point[4])
 {
@@ -486,12 +532,36 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   if (target_loc) {
-    snap_draw_point(target_loc,
-                    radius * ED_view3d_pixel_size(rv3d, target_loc),
-                    target_type,
-                    color_point,
-                    view_inv,
-                    pos);
+    int icon_id = ICON_NONE;
+    switch (target_type) {
+      case SCE_SNAP_MODE_VERTEX:
+        icon_id = ICON_SNAP_VERTEX;
+        break;
+      case SCE_SNAP_MODE_EDGE:
+        icon_id = ICON_SNAP_EDGE;
+        break;
+      case SCE_SNAP_MODE_FACE:
+        icon_id = ICON_SNAP_FACE;
+        break;
+      case SCE_SNAP_MODE_VOLUME:
+        icon_id = ICON_SNAP_VOLUME;
+        break;
+      case SCE_SNAP_MODE_EDGE_MIDPOINT:
+        icon_id = ICON_SNAP_MIDPOINT;
+        break;
+      case SCE_SNAP_MODE_EDGE_PERPENDICULAR:
+        icon_id = ICON_SNAP_PERPENDICULAR;
+        break;
+      default:
+        break;
+    }
+
+    cursor_point_draw(pos,
+                      target_loc,
+                      radius * ED_view3d_pixel_size(rv3d, target_loc),
+                      target_type,
+                      icon_id,
+                      color_point);
 
     /* Draw normal if needed. */
     if (target_normal) {
@@ -506,12 +576,12 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
   }
 
   if (source_loc) {
-    snap_draw_point(source_loc,
-                    radius * ED_view3d_pixel_size(rv3d, source_loc),
-                    source_type,
-                    color_line,
-                    view_inv,
-                    pos);
+    cursor_point_draw(pos,
+                      source_loc,
+                      radius * ED_view3d_pixel_size(rv3d, source_loc),
+                      source_type,
+                      ICON_NONE,
+                      color_line);
 
     if (target_loc && (target_type & SCE_SNAP_MODE_EDGE_PERPENDICULAR)) {
       /* Dashed line. */
@@ -963,9 +1033,9 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void *UNUSED(cust
     ED_view3d_cursor_snap_draw_util(rv3d,
                                     source_loc,
                                     snap_data->loc,
+                                    NULL,
                                     snap_data->type_source,
                                     snap_data->type_target,
-                                    NULL,
                                     state->color_line,
                                     state->color_point);
   }

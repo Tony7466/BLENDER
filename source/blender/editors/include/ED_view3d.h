@@ -352,9 +352,9 @@ struct SnapObjectContext *ED_view3d_cursor_snap_context_ensure(struct Scene *sce
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
+                                     const float target_normal[3],
                                      const eSnapMode source_type,
                                      const eSnapMode target_type,
-                                     const float target_normal[3],
                                      const uchar color_line[4],
                                      const uchar color_point[4]);
 

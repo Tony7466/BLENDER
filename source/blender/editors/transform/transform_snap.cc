@@ -198,9 +198,9 @@ void drawSnapping(const bContext *C, TransInfo *t)
   }
 
   if (t->spacetype == SPACE_VIEW3D) {
-    const float *loc_cur = nullptr;
-    const float *loc_prev = nullptr;
-    const float *normal = nullptr;
+    const float *source_loc = nullptr;
+    const float *target_loc = nullptr;
+    const float *target_normal = nullptr;
 
     GPU_depth_test(GPU_DEPTH_NONE);
 
@@ -234,23 +234,23 @@ void drawSnapping(const bContext *C, TransInfo *t)
 
     /* draw normal if needed */
     if (usingSnappingNormal(t) && validSnappingNormal(t)) {
-      normal = t->tsnap.snapNormal;
+      target_normal = t->tsnap.snapNormal;
     }
 
     if (draw_source) {
-      loc_prev = t->tsnap.snap_source;
+      source_loc = t->tsnap.snap_source;
     }
 
     if (t->tsnap.status & SNAP_TARGET_FOUND) {
-      loc_cur = t->tsnap.snap_target;
+      target_loc = t->tsnap.snap_target;
     }
 
     ED_view3d_cursor_snap_draw_util(rv3d,
-                                    loc_prev,
-                                    loc_cur,
+                                    source_loc,
+                                    target_loc,
+                                    target_normal,
                                     t->tsnap.source_type,
                                     t->tsnap.target_type,
-                                    normal,
                                     col,
                                     activeCol);
 
