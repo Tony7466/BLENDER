@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -49,7 +50,7 @@ ccl_device int shadow_linking_pick_mesh_intersection(KernelGlobals kg,
     }
 
     /* Only record primitives that potentially have emission.
-     * TODO: optimize with a dedicated ray visiblity flag, which could then also be
+     * TODO: optimize with a dedicated ray visibility flag, which could then also be
      * used once lights are in the BVH as geometry? */
     const int shader = intersection_get_shader(kg, &current_isect);
     const int shader_flags = kernel_data_fetch(shaders, shader).flags;
@@ -61,7 +62,7 @@ ccl_device int shadow_linking_pick_mesh_intersection(KernelGlobals kg,
       if (set_membership != LIGHT_LINK_MASK_ALL) {
         ++num_hits;
 
-        if ((linked_isect->prim == PRIM_NONE) && (lcg_step_float(lcg_state) < 1.0f / num_hits)) {
+        if ((linked_isect->prim == PRIM_NONE) || (lcg_step_float(lcg_state) < 1.0f / num_hits)) {
           *linked_isect = current_isect;
         }
       }

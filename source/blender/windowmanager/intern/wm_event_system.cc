@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -81,6 +82,8 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+#include "RE_pipeline.h"
 
 /**
  * When a gizmo is highlighted and uses click/drag events,
@@ -714,6 +717,8 @@ void wm_event_do_notifiers(bContext *C)
   }
 
   wm_event_do_refresh_wm_and_depsgraph(C);
+
+  RE_FreeGPUTextureCaches(true);
 
   /* Status bar. */
   if (wm->winactive) {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 
@@ -70,7 +72,7 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask &mask) const final
   {
-    if (context.type() != GEO_COMPONENT_TYPE_MESH) {
+    if (context.type() != GeometryComponent::Type::Mesh) {
       return {};
     }
     const Mesh *mesh = context.mesh();

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -256,12 +258,9 @@ class CurvesGeometry : public ::CurvesGeometry {
   MutableSpan<float2> surface_uv_coords_for_write();
 
   /**
-   * Calculate the largest and smallest position values, only including control points
-   * (rather than evaluated points). The existing values of `min` and `max` are taken into account.
-   *
-   * \return Whether there are any points. If the curve is empty, the inputs will be unaffected.
+   * The largest and smallest position values of evaluated points.
    */
-  bool bounds_min_max(float3 &min, float3 &max) const;
+  std::optional<Bounds<float3>> bounds_min_max() const;
 
  private:
   /* --------------------------------------------------------------------
@@ -804,6 +803,16 @@ Curves *curves_new_nomain_single(int points_num, CurveType type);
  * copy high-level parameters when a geometry-altering operation creates a new curves data-block.
  */
 void curves_copy_parameters(const Curves &src, Curves &dst);
+
+CurvesGeometry curves_copy_point_selection(
+    const CurvesGeometry &curves,
+    const IndexMask &points_to_copy,
+    const AnonymousAttributePropagationInfo &propagation_info);
+
+CurvesGeometry curves_copy_curve_selection(
+    const CurvesGeometry &curves,
+    const IndexMask &curves_to_copy,
+    const AnonymousAttributePropagationInfo &propagation_info);
 
 std::array<int, CURVE_TYPES_NUM> calculate_type_counts(const VArray<int8_t> &types);
 

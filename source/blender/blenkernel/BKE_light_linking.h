@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2001-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -27,6 +28,9 @@ typedef enum LightLinkingType {
   LIGHT_LINKING_RECEIVER,
   LIGHT_LINKING_BLOCKER,
 } LightLinkingType;
+
+/* Free object's light_linking if it is not needed to hold any of collections. */
+void BKE_light_linking_free_if_empty(struct Object *object);
 
 /* Get a collection of the given light linking type of the given object. */
 struct Collection *BKE_light_linking_collection_get(const struct Object *object,

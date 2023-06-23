@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -12,11 +14,11 @@
 
 #ifdef __cplusplus
 namespace blender::bke::sim {
-class ModifierSimulationCache;
+struct ModifierSimulationCachePtr;
 }
-using ModifierSimulationCacheHandle = blender::bke::sim::ModifierSimulationCache;
+using ModifierSimulationCachePtrHandle = blender::bke::sim::ModifierSimulationCachePtr;
 #else
-typedef struct ModifierSimulationCacheHandle ModifierSimulationCacheHandle;
+typedef struct ModifierSimulationCachePtrHandle ModifierSimulationCachePtrHandle;
 #endif
 
 #ifdef __cplusplus
@@ -1171,8 +1173,9 @@ typedef struct ShrinkwrapModifierData {
   /** Axis to project over. */
   char projAxis;
 
-  /** If using projection over vertex normal this controls the level of subsurface that must be
-   * done before getting the vertex coordinates and normal
+  /**
+   * If using projection over vertex normal this controls the level of subsurface that must be
+   * done before getting the vertex coordinates and normal.
    */
   char subsurfLevels;
 
@@ -2336,7 +2339,12 @@ typedef struct NodesModifierData {
    */
   void *runtime_eval_log;
 
-  ModifierSimulationCacheHandle *simulation_cache;
+  /**
+   * Simulation cache that is shared between original and evaluated modifiers. This allows the
+   * original modifier to be removed, without also removing the simulation state which may still be
+   * used by the evaluated modifier.
+   */
+  ModifierSimulationCachePtrHandle *simulation_cache;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {

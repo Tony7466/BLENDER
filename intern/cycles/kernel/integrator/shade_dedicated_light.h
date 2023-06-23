@@ -1,12 +1,16 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
 #include "kernel/integrator/path_state.h"
-#include "kernel/integrator/shade_surface.h"
+
 #include "kernel/light/distant.h"
 #include "kernel/light/light.h"
+#include "kernel/light/sample.h"
+
+#include "kernel/integrator/shade_surface.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -16,6 +20,8 @@ ccl_device_inline bool shadow_linking_light_sample_from_intersection(
     KernelGlobals kg,
     ccl_private const Intersection &ccl_restrict isect,
     ccl_private const Ray &ccl_restrict ray,
+    const float3 N,
+    const uint32_t path_flag,
     ccl_private LightSample *ccl_restrict ls)
 {
   const int lamp = isect.prim;
@@ -27,7 +33,7 @@ ccl_device_inline bool shadow_linking_light_sample_from_intersection(
     return distant_light_sample_from_intersection(kg, ray.D, lamp, ls);
   }
 
-  return light_sample_from_intersection(kg, &isect, ray.P, ray.D, ls);
+  return light_sample_from_intersection(kg, &isect, ray.P, ray.D, N, path_flag, ls);
 }
 
 ccl_device_inline float shadow_linking_light_sample_mis_weight(KernelGlobals kg,
@@ -84,8 +90,11 @@ ccl_device bool shadow_linking_shade_light(KernelGlobals kg,
                                            ccl_private float &mis_weight,
                                            ccl_private int &ccl_restrict light_group)
 {
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
   LightSample ls ccl_optional_struct_init;
-  const bool use_light_sample = shadow_linking_light_sample_from_intersection(kg, isect, ray, &ls);
+  const bool use_light_sample = shadow_linking_light_sample_from_intersection(
+      kg, isect, ray, N, path_flag, &ls);
   if (!use_light_sample) {
     /* No light to be sampled, so no direct light contribution either. */
     return false;
@@ -96,7 +105,6 @@ ccl_device bool shadow_linking_shade_light(KernelGlobals kg,
     return false;
   }
 
-  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
   if (!is_light_shader_visible_to_path(ls.shader, path_flag)) {
     return false;
   }
@@ -215,7 +223,7 @@ ccl_device void shadow_linking_shade(KernelGlobals kg,
 
   /* Branch off shadow kernel. */
   IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_common(
-      kg, state, &ray, bsdf_spectrum, 0, light_group);
+      kg, state, &ray, bsdf_spectrum, light_group, 0);
 
   /* The light is accumulated from the shade_surface kernel, which will make the clamping decision
    * based on the actual value of the bounce. For the dedicated shadow ray we want to follow the

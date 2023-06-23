@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 
@@ -44,10 +46,10 @@
 
 /**
  * The code below uses a prefix naming convention to indicate the coordinate space:
- * cu: Local space of the curves object that is being edited.
- * su: Local space of the surface object.
- * wo: World space.
- * re: 2D coordinates within the region.
+ * `cu`: Local space of the curves object that is being edited.
+ * `su`: Local space of the surface object.
+ * `wo`: World space.
+ * `re`: 2D coordinates within the region.
  */
 
 namespace blender::ed::sculpt_paint {

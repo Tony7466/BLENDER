@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/light_tree.h"
 #include "scene/mesh.h"
@@ -417,6 +418,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
                    root_->get_inner().children[right]->measure;
   root_->light_link = root_->get_inner().children[left]->light_link +
                       root_->get_inner().children[right]->light_link;
+
+  /* Root nodes are never meant to be be shared, even if the local and distant lights are from the
+   * same light linking set. Attempting to sharing it will make it so the specialized tree will
+   * try to use the same root as the default tree. */
+  root_->light_link.shareable = false;
 
   std::move(distant_lights_.begin(), distant_lights_.end(), std::back_inserter(emitters_));
 

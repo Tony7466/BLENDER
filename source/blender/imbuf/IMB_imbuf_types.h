@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -190,12 +191,16 @@ typedef struct ImBufByteBuffer {
   uint8_t *data;
   ImBufOwnership ownership;
   const ImplicitSharingInfoHandle *implicit_sharing;
+
+  struct ColorSpace *colorspace;
 } ImBufByteBuffer;
 
 typedef struct ImBufFloatBuffer {
   float *data;
   ImBufOwnership ownership;
   const ImplicitSharingInfoHandle *implicit_sharing;
+
+  struct ColorSpace *colorspace;
 } ImBufFloatBuffer;
 
 /** \} */
@@ -223,13 +228,15 @@ typedef struct ImBuf {
 
   /* pixels */
 
-  /** Image pixel buffer (8bit representation):
+  /**
+   * Image pixel buffer (8bit representation):
    * - color space defaults to `sRGB`.
    * - alpha defaults to 'straight'.
    */
   ImBufByteBuffer byte_buffer;
 
-  /** Image pixel buffer (float representation):
+  /**
+   * Image pixel buffer (float representation):
    * - color space defaults to 'linear' (`rec709`).
    * - alpha defaults to 'premul'.
    * \note May need gamma correction to `sRGB` when generating 8bit representations.
@@ -286,10 +293,6 @@ typedef struct ImBuf {
   unsigned int encoded_buffer_size;
 
   /* color management */
-  /** color space of byte buffer */
-  struct ColorSpace *rect_colorspace;
-  /** color space of float buffer, used by sequencer only */
-  struct ColorSpace *float_colorspace;
   /** array of per-display display buffers dirty flags */
   unsigned int *display_buffer_flags;
   /** cache used by color management */

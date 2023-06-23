@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 #include "BLI_map.hh"
@@ -300,7 +302,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
     geometry_set.remove_geometry_during_modify();
     return;
   }
-  geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_CURVE});
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
   GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
 
   const Curves &curves_id = *geometry_set.get_curves_for_read();
@@ -329,6 +331,12 @@ static void duplicate_curves(GeometrySet &geometry_set,
     dst_curves_num += count;
     dst_points_num += count * points_by_curve[selection[i_curve]].size();
   }
+
+  if (dst_points_num == 0) {
+    geometry_set.remove_geometry_during_modify();
+    return;
+  }
+
   curve_offset_data.last() = dst_curves_num;
   point_offset_data.last() = dst_points_num;
 
@@ -479,10 +487,9 @@ static void duplicate_faces(GeometrySet &geometry_set,
     geometry_set.remove_geometry_during_modify();
     return;
   }
-  geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
 
   const Mesh &mesh = *geometry_set.get_mesh_for_read();
-  const Span<int2> edges = mesh.edges();
   const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> corner_edges = mesh.corner_edges();
@@ -530,7 +537,6 @@ static void duplicate_faces(GeometrySet &geometry_set,
         const int src_corner = source[i_loops];
         loop_mapping[loop_index] = src_corner;
         vert_mapping[loop_index] = corner_verts[src_corner];
-        new_edges[loop_index] = edges[corner_edges[src_corner]];
         edge_mapping[loop_index] = corner_edges[src_corner];
         new_edges[loop_index][0] = loop_index;
         if (i_loops + 1 != source.size()) {
@@ -539,13 +545,13 @@ static void duplicate_faces(GeometrySet &geometry_set,
         else {
           new_edges[loop_index][1] = new_poly_offsets[poly_index];
         }
-        new_corner_verts[loop_index] = loop_index;
-        new_corner_edges[loop_index] = loop_index;
         loop_index++;
       }
       poly_index++;
     }
   }
+  std::iota(new_corner_verts.begin(), new_corner_verts.end(), 0);
+  std::iota(new_corner_edges.begin(), new_corner_edges.end(), 0);
 
   new_mesh->tag_loose_verts_none();
   new_mesh->tag_loose_edges_none();
@@ -926,22 +932,23 @@ static void duplicate_points(GeometrySet &geometry_set,
                              const IndexAttributes &attribute_outputs,
                              const AnonymousAttributePropagationInfo &propagation_info)
 {
-  Vector<GeometryComponentType> component_types = geometry_set.gather_component_types(true, true);
-  for (const GeometryComponentType component_type : component_types) {
+  Vector<GeometryComponent::Type> component_types = geometry_set.gather_component_types(true,
+                                                                                        true);
+  for (const GeometryComponent::Type component_type : component_types) {
     switch (component_type) {
-      case GEO_COMPONENT_TYPE_POINT_CLOUD:
+      case GeometryComponent::Type::PointCloud:
         if (geometry_set.has_pointcloud()) {
           duplicate_points_pointcloud(
               geometry_set, count_field, selection_field, attribute_outputs, propagation_info);
         }
         break;
-      case GEO_COMPONENT_TYPE_MESH:
+      case GeometryComponent::Type::Mesh:
         if (geometry_set.has_mesh()) {
           duplicate_points_mesh(
               geometry_set, count_field, selection_field, attribute_outputs, propagation_info);
         }
         break;
-      case GEO_COMPONENT_TYPE_CURVE:
+      case GeometryComponent::Type::Curve:
         if (geometry_set.has_curves()) {
           duplicate_points_curve(
               geometry_set, count_field, selection_field, attribute_outputs, propagation_info);
@@ -951,7 +958,7 @@ static void duplicate_points(GeometrySet &geometry_set,
         break;
     }
   }
-  component_types.append(GEO_COMPONENT_TYPE_INSTANCES);
+  component_types.append(GeometryComponent::Type::Instance);
   geometry_set.keep_only_during_modify(component_types);
 }
 
