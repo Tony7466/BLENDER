@@ -125,7 +125,7 @@ class Context : public realtime_compositor::Context {
 
   const Scene &get_scene() const override
   {
-    return scene_;
+    return *input_data_.scene;
   }
 
   const bNodeTree &get_node_tree() const override
