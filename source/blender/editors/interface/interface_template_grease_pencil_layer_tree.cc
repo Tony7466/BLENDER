@@ -18,6 +18,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
+#include <fmt/format.h>
+
 namespace blender::ui::greasepencil {
 
 using namespace blender::bke::greasepencil;
@@ -49,11 +51,18 @@ class LayerViewItemDropTarget : public AbstractTreeViewItemDropTarget {
 
   std::string drop_tooltip(const DragInfo &drag_info) const override
   {
+    const wmDragGreasePencilLayer *drag_grease_pencil =
+        static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
+    Layer &drag_layer = drag_grease_pencil->layer->wrap();
+
+    std::string_view drag_name = drag_layer.name();
+    std::string_view drop_name = drop_layer_.name();
+
     switch (drag_info.drop_location) {
       case DROP_BEFORE:
-        return TIP_("Before");
+        return fmt::format(TIP_("Move layer {} before {}"), drag_name, drop_name);
       case DROP_AFTER:
-        return TIP_("After");
+        return fmt::format(TIP_("Move layer {} after {}"), drag_name, drop_name);
       default:
         BLI_assert_unreachable();
         break;
