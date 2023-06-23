@@ -274,6 +274,10 @@ void select_linked(bke::CurvesGeometry &curves)
 
 void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
 {
+  if (!has_anything_selected(curves)) {
+    return;
+  }
+
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
