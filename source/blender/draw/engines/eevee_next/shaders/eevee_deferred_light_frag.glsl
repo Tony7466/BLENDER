@@ -54,7 +54,7 @@ void main()
   vec3 reflection_light = vec3(0.0);
   float shadow = 1.0;
 
-  light_world_eval(reflection_data, P, V, reflection_light);
+  light_probes_eval(reflection_data, P, V, reflection_light);
   light_eval(diffuse_data,
              reflection_data,
              P,

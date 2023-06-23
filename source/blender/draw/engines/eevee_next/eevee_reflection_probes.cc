@@ -19,7 +19,7 @@ void ReflectionProbeModule::init()
     /* Initialize the world cubemap. */
     ReflectionProbeData world_probe_data{};
     world_probe_data.layer = 0;
-    world_probe_data.layer_subdivision = 0;
+    world_probe_data.layer_subdivision = WORLD_SUBDIVISION_LEVEL;
     world_probe_data.area_index = 0;
     world_probe_data.color = float4(0.0f);
     data_buf_[0] = world_probe_data;
@@ -87,14 +87,15 @@ void ReflectionProbeModule::sync_object(Object *ob,
                                         ResourceHandle res_handle,
                                         bool is_dirty)
 {
-  ReflectionProbe &probe = find_or_insert(ob_handle);
+  ReflectionProbe &probe = find_or_insert(ob_handle, REFLECTION_PROBE_SUBDIVISION_LEVEL);
   /* TODO: remove debug color.*/
   data_buf_[probe.index].color = ob->color;
   probe.is_dirty |= is_dirty;
   probe.is_used = true;
 }
 
-ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle)
+ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
+                                                       int subdivision_level)
 {
   ReflectionProbe *first_unused = nullptr;
   for (ReflectionProbe &reflection_probe : cubemaps_) {
@@ -120,7 +121,6 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle)
   first_unused->index = reflection_probe_data_index_max() + 1;
 
   /* TODO: support different subdivision levels. */
-  int subdivision_level = 0;
   ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
   data_buf_[first_unused->index] = probe_data;
 
@@ -138,32 +138,90 @@ int ReflectionProbeModule::reflection_probe_data_index_max() const
   return result;
 }
 
-ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(
-    int subdivision_level) const
-{
-  BLI_assert_msg(subdivision_level == 0, "Currently only supports subdivision level 0");
-  ReflectionProbeData result = {};
-  result.layer_subdivision = subdivision_level;
+/**
+ * Utility class to find a location in the cubemap that can be used to store a new probe cubemap in
+ * a specified subdivision level.
+ */
+class ProbeLocationFinder {
+  BitVector<> taken_spots_;
+  int probes_per_dimension_;
+  int probes_per_layer_;
+  int subdivision_level_;
 
-  int num_spots = needed_layers_get() + 1;
-  BitVector<> taken_layers(num_spots);
-
-  for (const ReflectionProbeData &data :
-       Span<ReflectionProbeData>(data_buf_.data(), reflection_probe_data_index_max() + 1))
+ public:
+  ProbeLocationFinder(int num_layers, int subdivision_level)
   {
-    taken_layers[data.layer].set();
+    subdivision_level_ = subdivision_level;
+    probes_per_dimension_ = 1 << subdivision_level_;
+    probes_per_layer_ = probes_per_dimension_ * probes_per_dimension_;
+    int num_spots = num_layers * probes_per_layer_;
+    taken_spots_.resize(num_spots, false);
   }
 
-  for (int index : taken_layers.index_range()) {
-    if (!taken_layers[index]) {
-      result.layer = index;
-      result.area_index = 0;
-      return result;
+  /**
+   * Mark space to be occupied by the given probe_data.
+   *
+   * The input probe data can be stored in a different subdivision level and should be converted to
+   * the subdivision level what we are looking for.
+   */
+  void mark_space_used(const ReflectionProbeData &probe_data)
+  {
+    /* Number of spots that the probe data will occupied in a single dimension. */
+    int clamped_subdivision_shift = max_ii(probe_data.layer_subdivision - subdivision_level_, 0);
+    int spots_per_dimension = 1 << max_ii(subdivision_level_ - probe_data.layer_subdivision, 0);
+    int probes_per_dimension_in_probe_data = 1 << probe_data.layer_subdivision;
+    int2 pos_in_probe_data = int2(probe_data.area_index % probes_per_dimension_in_probe_data,
+                                  probe_data.area_index / probes_per_dimension_in_probe_data);
+    int2 pos_in_location_finder = int2(pos_in_probe_data.x >> clamped_subdivision_shift,
+                                       pos_in_probe_data.y >> clamped_subdivision_shift);
+    int layer_offset = probe_data.layer * probes_per_layer_;
+    for (int y : IndexRange(spots_per_dimension)) {
+      for (int x : IndexRange(spots_per_dimension)) {
+        int2 pos = pos_in_location_finder + int2(x, y);
+        int area_index = pos.x + pos.y * probes_per_dimension_;
+        taken_spots_[area_index + layer_offset].set();
+      }
     }
   }
 
-  BLI_assert_unreachable();
-  return result;
+  /**
+   * Get the first free spot.
+   *
+   * .x contains the layer the first free spot was detected.
+   * .y contains the area_index to use.
+   *
+   * Asserts when no free spot is found. ProbeLocationFinder should always be initialized with an
+   * additional layer to make sure that there is always a free spot.
+   */
+  ReflectionProbeData first_free_spot() const
+  {
+    ReflectionProbeData result = {};
+    result.layer_subdivision = subdivision_level_;
+    for (int index : taken_spots_.index_range()) {
+      if (!taken_spots_[index]) {
+        int layer = index / probes_per_layer_;
+        int area_index = index % probes_per_layer_;
+        result.layer = layer;
+        result.area_index = area_index;
+        return result;
+      }
+    }
+
+    BLI_assert_unreachable();
+    return result;
+  }
+};
+
+ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(
+    int subdivision_level) const
+{
+  ProbeLocationFinder location_finder(needed_layers_get() + 1, subdivision_level);
+  for (const ReflectionProbeData &data :
+       Span<ReflectionProbeData>(data_buf_.data(), reflection_probe_data_index_max() + 1))
+  {
+    location_finder.mark_space_used(data);
+  }
+  return location_finder.first_free_spot();
 }
 
 void ReflectionProbeModule::end_sync()
@@ -178,7 +236,6 @@ void ReflectionProbeModule::end_sync()
 
   int number_layers_needed = needed_layers_get();
   int current_layers = cubemaps_tx_.depth() / 6;
-  printf("%s: should resize:  %d < %d\n", __func__, current_layers, number_layers_needed);
   bool resize_layers = current_layers < number_layers_needed;
   if (resize_layers) {
     cubemaps_tx_.ensure_cube_array(GPU_RGBA16F,
@@ -250,7 +307,7 @@ void ReflectionProbeModule::debug_print() const
 {
   std::stringstream out;
 
-  out << __func__ << "\n";
+  out << "\n *** " << __func__ << " ***\n";
   for (const ReflectionProbe &probe : cubemaps_) {
     switch (probe.type) {
       case ReflectionProbe::Type::UNUSED: {
@@ -331,14 +388,15 @@ bool ReflectionProbe::needs_update() const
 void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
 {
   const ReflectionProbeData &probe_data = data_buf_[probe.index];
+  const int resolution = MAX_RESOLUTION >> probe_data.layer_subdivision;
   float4 *data = static_cast<float4 *>(
-      MEM_mallocN(sizeof(float4) * MAX_RESOLUTION * MAX_RESOLUTION, __func__));
+      MEM_mallocN(sizeof(float4) * resolution * resolution, __func__));
 
   /* Generate dummy checker pattern. */
   int index = 0;
-  const int BLOCK_SIZE = 256;
-  for (int y : IndexRange(MAX_RESOLUTION)) {
-    for (int x : IndexRange(MAX_RESOLUTION)) {
+  const int BLOCK_SIZE = max_ii(256 >> probe_data.layer_subdivision, 1);
+  for (int y : IndexRange(resolution)) {
+    for (int x : IndexRange(resolution)) {
       int tx = (x / BLOCK_SIZE) & 1;
       int ty = (y / BLOCK_SIZE) & 1;
       bool solid = (tx + ty) & 1;
@@ -354,10 +412,14 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
   }
 
   /* Upload the checker pattern to each side of the cubemap*/
+  int probes_per_dimension = 1 << probe_data.layer_subdivision;
+  int2 probe_area_pos(probe_data.area_index % probes_per_dimension,
+                      probe_data.area_index / probes_per_dimension);
+  int2 pos = probe_area_pos * int2(MAX_RESOLUTION / probes_per_dimension);
   for (int side : IndexRange(6)) {
     int layer = 6 * probe_data.layer + side;
     GPU_texture_update_sub(
-        cubemaps_tx_, GPU_DATA_FLOAT, data, 0, 0, layer, MAX_RESOLUTION, MAX_RESOLUTION, 1);
+        cubemaps_tx_, GPU_DATA_FLOAT, data, UNPACK2(pos), layer, resolution, resolution, 1);
   }
 
   MEM_freeN(data);

@@ -75,6 +75,13 @@ class ReflectionProbeModule {
   static constexpr int MIPMAP_LEVELS = 12;
 
   /**
+   * Which subdivision level to use for storing the world/reflection probes to the cubemap.
+   * Currently set to 0 as the evaluation only supports subdivision level 0.
+   */
+  static constexpr int WORLD_SUBDIVISION_LEVEL = 0;
+  static constexpr int REFLECTION_PROBE_SUBDIVISION_LEVEL = 0;
+
+  /**
    * Index of the probe that is used for world background.
    *
    * NOTE: First probe always contains the world probe.
@@ -106,7 +113,7 @@ class ReflectionProbeModule {
 
  private:
   void sync(const ReflectionProbe &cubemap);
-  ReflectionProbe &find_or_insert(ObjectHandle &ob_handle);
+  ReflectionProbe &find_or_insert(ObjectHandle &ob_handle, int subdivision_level);
 
   /** Get the number of layers that is needed to store probes. */
   int needed_layers_get() const;
