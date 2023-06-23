@@ -1957,10 +1957,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
-    /* TODO */
-    zone_info.attribute_set_input_by_caller_propagation_index.clear();
-    zone_info.attribute_set_input_by_field_source_index.clear();
-
     auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
     zone_info.lazy_function = &fn;
   }
