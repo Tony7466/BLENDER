@@ -1321,6 +1321,7 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       klights[light_index].spot.scaled_axis_v = scaled_axis_v;
       klights[light_index].spot.dir = dir;
       klights[light_index].spot.cos_half_spot_angle = cos_half_spot_angle;
+      klights[light_index].spot.half_cot_half_spot_angle = 0.5f / tanf(light->spot_angle * 0.5f);
       klights[light_index].spot.inv_len_z = 1.0f / len_z;
       klights[light_index].spot.spot_smooth = spot_smooth;
     }

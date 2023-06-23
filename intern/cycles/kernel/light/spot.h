@@ -8,17 +8,34 @@
 
 CCL_NAMESPACE_BEGIN
 
-ccl_device float spot_light_attenuation(const ccl_global KernelSpotLight *spot, float3 ray)
+/* Transform ray to spot light local coordinate system. */
+ccl_device float3 spot_light_local_ray(const ccl_global KernelSpotLight *spot, const float3 ray)
 {
-  const float3 scaled_ray = safe_normalize(make_float3(dot(ray, spot->scaled_axis_u),
-                                                       dot(ray, spot->scaled_axis_v),
-                                                       dot(ray, spot->dir * spot->inv_len_z)));
+  return safe_normalize(make_float3(dot(ray, spot->scaled_axis_u),
+                                    dot(ray, spot->scaled_axis_v),
+                                    dot(ray, spot->dir * spot->inv_len_z)));
+}
 
-  return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) * spot->spot_smooth);
+/* Compute spot light attenuation of a ray given in local coordinate system. */
+ccl_device float spot_light_attenuation(const ccl_global KernelSpotLight *spot, const float3 ray)
+{
+  return smoothstepf((ray.z - spot->cos_half_spot_angle) * spot->spot_smooth);
+}
+
+ccl_device void spot_light_uv(const float3 ray,
+                              const float half_cot_half_spot_angle,
+                              ccl_private float *u,
+                              ccl_private float *v)
+{
+  /* Ensures that the spot light projects the full image regarless of the spot angle. */
+  const float factor = half_cot_half_spot_angle / ray.z;
+
+  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
+  *u = ray.y * factor + 0.5f;
+  *v = -(ray.x + ray.y) * factor;
 }
 
 /* TODO: is attenuation needed inside the sphere? */
-/* TODO: what's the expected behaviour of texturing? */
 template<bool in_volume_segment>
 ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
                                          const float2 rand,
@@ -81,7 +98,8 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
     /* Already computed when sampling the spread cone. */
   }
 
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, -ls->D);
+  const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
+  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, local_ray);
   if (!in_volume_segment && ls->eval_fac == 0.0f) {
     return false;
   }
@@ -98,11 +116,7 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
     ls->P = ls->Ng * radius + center;
   }
 
-  const Transform itfm = klight->itfm;
-  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
-  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
-  ls->u = uv.y;
-  ls->v = 1.0f - uv.x - uv.y;
+  spot_light_uv(local_ray, klight->spot.half_cot_half_spot_angle, &ls->u, &ls->v);
 
   return true;
 }
@@ -150,13 +164,9 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
     /* PDF does not change. */
   }
 
-  const Transform itfm = klight->itfm;
-  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
-  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
-  ls->u = uv.y;
-  ls->v = 1.0f - uv.x - uv.y;
-
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, -ls->D);
+  const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
+  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, local_ray);
+  spot_light_uv(local_ray, klight->spot.half_cot_half_spot_angle, &ls->u, &ls->v);
 }
 
 ccl_device_inline bool spot_light_intersect(const ccl_global KernelLight *klight,
@@ -181,7 +191,8 @@ ccl_device_inline bool spot_light_sample_from_intersection(
     const uint32_t path_flag,
     ccl_private LightSample *ccl_restrict ls)
 {
-  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, -ray_D);
+  const float3 local_ray = spot_light_local_ray(&klight->spot, -ray_D);
+  ls->eval_fac = klight->spot.eval_fac * spot_light_attenuation(&klight->spot, local_ray);
   if (ls->eval_fac == 0) {
     return false;
   }
@@ -190,11 +201,7 @@ ccl_device_inline bool spot_light_sample_from_intersection(
 
   ls->Ng = radius > 0 ? normalize(ls->P - klight->co) : -ray_D;
 
-  const Transform itfm = klight->itfm;
-  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
-  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
-  ls->u = uv.y;
-  ls->v = 1.0f - uv.x - uv.y;
+  spot_light_uv(local_ray, klight->spot.half_cot_half_spot_angle, &ls->u, &ls->v);
 
   if (ls->t == FLT_MAX) {
     ls->pdf = 0.0f;

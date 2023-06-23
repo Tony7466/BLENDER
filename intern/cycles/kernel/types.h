@@ -1356,9 +1356,10 @@ typedef struct KernelSpotLight {
   float eval_fac;
   packed_float3 dir;
   float cos_half_spot_angle;
+  float half_cot_half_spot_angle;
   float inv_len_z;
   float spot_smooth;
-  float pad[2];
+  float pad;
 } KernelSpotLight;
 
 /* TODO: maybe rename spot to sphere */
