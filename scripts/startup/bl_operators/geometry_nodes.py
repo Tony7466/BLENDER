@@ -287,8 +287,10 @@ class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
 
         # Remember index to move the item.
         dst_index = min(node.active_index + 1, len(state_items))
+        dst_type = node.active_item.socket_type
+        dst_name = node.active_item.name
         # Empty name so it is based on the type only.
-        state_items.new(self.default_socket_type, "")
+        state_items.new(dst_type, dst_name)
         state_items.move(len(state_items) - 1, dst_index)
         node.active_index = dst_index
 
