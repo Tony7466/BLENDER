@@ -1212,7 +1212,8 @@ static bool vfont_to_curve(Object *ob,
       }
       for (i = 0; i <= slen; i++) {
         for (j = i; !ELEM(mem[j], '\0', '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* do nothing */
         }
 
@@ -1226,7 +1227,8 @@ static bool vfont_to_curve(Object *ob,
       float curofs = 0.0f;
       for (i = 0; i <= slen; i++) {
         for (j = i; (mem[j]) && (mem[j] != '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* pass */
         }
 
@@ -1753,16 +1755,18 @@ static bool vfont_to_curve(Object *ob,
         closest_distance = distance;
       }
     }
-    
+
     cursor_params->r_string_offset = best_match;
   }
   if (cursor_params && cu->textoncurve == NULL) {
     cursor_params->r_string_offset = -1;
-
+    const float half_space_between_lines = linedist >= 0.915f ?
+                                               ((linedist - 0.915f) / 2) * font_size :
+                                               0;
     // Loop until find the line where the mouse is over
     for (i = 0; i <= slen; i++, ct++) {
       if (cursor_params->cursor_location[1] >=
-          ((chartransdata[i].yof - (linedist / 4)) * font_size))
+          ((chartransdata[i].yof * font_size) - half_space_between_lines))
       {
         break;
       }
@@ -1778,9 +1782,8 @@ static bool vfont_to_curve(Object *ob,
     float prev_xoffset = chartransdata[i].xof;
     // Loop until find the first character that is to the rigth of the mouse
     for (i; i <= slen && yof == chartransdata[i].yof; i++) {
-      if (cursor_params->cursor_location[0] <
-          ((chartransdata[i].xof + ((prev_xoffset - chartransdata[i].xof) / 2)) * font_size))
-      {
+      const float half_xsize = (prev_xoffset - chartransdata[i].xof - xtrax);
+      if (cursor_params->cursor_location[0] < ((chartransdata[i].xof + half_xsize) * font_size)) {
         break;
       }
       prev_xoffset = chartransdata[i].xof;
