@@ -138,23 +138,25 @@ static void button2d_draw_intern(const bContext *C,
     PropertyRNA *icon_value = RNA_struct_find_property(gz->ptr, "icon_value");
     if (RNA_property_is_set(gz->ptr, icon_value)) {
       button->icon = RNA_property_int_get(gz->ptr, icon_value);
-      return;
-    }
-    PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
-    if (RNA_property_is_set(gz->ptr, prop)) {
-      button->icon = RNA_property_enum_get(gz->ptr, prop);
     }
     else {
-      prop = RNA_struct_find_property(gz->ptr, "shape");
-      const uint polys_len = RNA_property_string_length(gz->ptr, prop);
-      /* We shouldn't need the +1, but a NULL char is set. */
-      char *polys = MEM_mallocN(polys_len + 1, __func__);
-      RNA_property_string_get(gz->ptr, prop, polys);
-      button->shape_batch[0] = GPU_batch_tris_from_poly_2d_encoded(
-          (uchar *)polys, polys_len, NULL);
-      button->shape_batch[1] = GPU_batch_wire_from_poly_2d_encoded(
-          (uchar *)polys, polys_len, NULL);
-      MEM_freeN(polys);
+      
+      PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
+      if (RNA_property_is_set(gz->ptr, prop)) {
+        button->icon = RNA_property_enum_get(gz->ptr, prop);
+      }
+      else {
+        prop = RNA_struct_find_property(gz->ptr, "shape");
+        const uint polys_len = RNA_property_string_length(gz->ptr, prop);
+        /* We shouldn't need the +1, but a NULL char is set. */
+        char *polys = MEM_mallocN(polys_len + 1, __func__);
+        RNA_property_string_get(gz->ptr, prop, polys);
+        button->shape_batch[0] = GPU_batch_tris_from_poly_2d_encoded(
+            (uchar *)polys, polys_len, NULL);
+        button->shape_batch[1] = GPU_batch_wire_from_poly_2d_encoded(
+            (uchar *)polys, polys_len, NULL);
+        MEM_freeN(polys);
+      }
     }
   }
 
