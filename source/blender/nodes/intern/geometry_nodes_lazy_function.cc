@@ -44,6 +44,7 @@
 
 #include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_graph_executor.hh"
+#include "FN_lazy_function_serial_loop.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1421,6 +1422,37 @@ struct ZoneBuildInfo {
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
+class LazyFunctionForSerialLoopStatus : public LazyFunction {
+ public:
+  LazyFunctionForSerialLoopStatus()
+  {
+    debug_name_ = "Loop Status";
+    inputs_.append_as("Break Before", CPPType::get<ValueOrField<bool>>());
+    inputs_.append_as("Break After", CPPType::get<ValueOrField<bool>>(), lf::ValueUsage::Maybe);
+    outputs_.append_as("Status", CPPType::get<lf::SerialLoopStatus>());
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  {
+    const ValueOrField<bool> &break_before = params.get_input<ValueOrField<bool>>(0);
+    if (break_before.as_value()) {
+      params.set_output(0, lf::SerialLoopStatus::UsePrevious);
+      return;
+    }
+    const ValueOrField<bool> *break_after =
+        params.try_get_input_data_ptr_or_request<ValueOrField<bool>>(1);
+    if (break_after == nullptr) {
+      /* Wait until the value is available. */
+      return;
+    }
+    if (break_after->as_value()) {
+      params.set_output(0, lf::SerialLoopStatus::UseCurrent);
+      return;
+    }
+    params.set_output(0, lf::SerialLoopStatus::Continue);
+  }
+};
+
 class LazyFunctionForSerialLoopZone : public LazyFunction {
  private:
   const bNode &loop_output_bnode_;
@@ -1707,12 +1739,12 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void build_serial_loop_zone_function(const bNodeTreeZone &zone)
   {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
-    lf::Graph &lf_graph = scope_.construct<lf::Graph>();
+    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>();
 
-    BuildGraphParams graph_params{lf_graph};
+    BuildGraphParams graph_params{lf_body_graph};
 
     lf::DummyNode &lf_main_input_node = this->build_dummy_node_for_sockets(
-        "Loop Input", {}, zone.input_node->output_sockets(), lf_graph);
+        "Loop Input", {}, zone.input_node->output_sockets().drop_back(1), lf_body_graph);
     for (const int i : zone.input_node->output_sockets().index_range()) {
       const bNodeSocket &bsocket = zone.input_node->output_socket(i);
       lf::OutputSocket &lf_socket = lf_main_input_node.output(i);
@@ -1720,7 +1752,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     lf::DummyNode &lf_main_output_node = this->build_dummy_node_for_sockets(
-        "Loop Output", zone.output_node->input_sockets(), {}, lf_graph);
+        "Loop Output", zone.output_node->input_sockets().drop_back(1), {}, lf_body_graph);
     for (const int i : zone.output_node->input_sockets().index_range()) {
       const bNodeSocket &bsocket = zone.output_node->input_socket(i);
       lf::InputSocket &lf_socket = lf_main_output_node.input(i);
@@ -1728,17 +1760,19 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     lf::Node &lf_main_input_usage_node = this->build_dummy_node_for_socket_usages(
-        "Input Usages", zone.input_node->output_sockets(), {}, lf_graph);
+        "Input Usages", zone.input_node->output_sockets().drop_back(1), {}, lf_body_graph);
     lf::Node &lf_main_output_usage_node = this->build_dummy_node_for_socket_usages(
-        "Output Usages", {}, zone.output_node->input_sockets(), lf_graph);
+        "Output Usages", {}, zone.output_node->input_sockets().drop_back(1), lf_body_graph);
     for (const int i : zone.output_node->input_sockets().index_range()) {
       const bNodeSocket &bsocket = zone.output_node->input_socket(i);
       lf::OutputSocket &lf_usage = lf_main_output_usage_node.output(i);
       graph_params.usage_by_bsocket.add(&bsocket, &lf_usage);
     }
 
-    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone, lf_graph);
-    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone, lf_graph);
+    lf::Node &lf_border_link_input_node = this->build_zone_border_links_input_node(zone,
+                                                                                   lf_body_graph);
+    lf::Node &lf_border_link_usage_node = this->build_border_link_input_usage_node(zone,
+                                                                                   lf_body_graph);
 
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
 
@@ -1748,7 +1782,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(&bsocket, nullptr);
       lf::InputSocket &lf_usage_output = lf_main_input_usage_node.input(i);
       if (lf_usage) {
-        lf_graph.add_link(*lf_usage, lf_usage_output);
+        lf_body_graph.add_link(*lf_usage, lf_usage_output);
       }
       else {
         static const bool static_false = false;
@@ -1773,11 +1807,16 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                               lf_attribute_set_by_field_source_index,
                                               lf_attribute_set_by_caller_propagation_index,
                                               lf_zone_inputs);
-    this->link_attribute_set_inputs(lf_graph,
+    this->link_attribute_set_inputs(lf_body_graph,
                                     graph_params,
                                     lf_attribute_set_by_field_source_index,
                                     lf_attribute_set_by_caller_propagation_index);
-    this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
+    this->fix_link_cycles(lf_body_graph, graph_params.socket_usage_inputs);
+
+    LazyFunction &loop_status_fn = scope_.construct<LazyFunctionForSerialLoopStatus>();
+    lf::Node &lf_loop_status_node = lf_body_graph.add_function(loop_status_fn);
+
+    std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
     /* TODO */
     zone_info.attribute_set_input_by_caller_propagation_index.clear();
@@ -1785,8 +1824,6 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(zone, zone_info);
     zone_info.lazy_function = &fn;
-
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   lf::DummyNode &build_zone_border_links_input_node(const bNodeTreeZone &zone, lf::Graph &lf_graph)
