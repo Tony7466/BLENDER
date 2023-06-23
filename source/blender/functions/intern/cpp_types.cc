@@ -11,7 +11,6 @@
 
 #include "FN_field_cpp_type_make.hh"
 #include "FN_init.h"
-#include "FN_lazy_function_serial_loop.hh"
 
 FN_FIELD_CPP_TYPE_MAKE(float);
 FN_FIELD_CPP_TYPE_MAKE(blender::float2);
@@ -26,8 +25,6 @@ FN_FIELD_CPP_TYPE_MAKE(blender::int2);
 FN_FIELD_CPP_TYPE_MAKE(std::string);
 
 BLI_VECTOR_CPP_TYPE_MAKE(blender::fn::ValueOrField<std::string>);
-
-BLI_CPP_TYPE_MAKE(blender::fn::lazy_function::SerialLoopStatus, CPPTypeFlags::BasicType);
 
 void FN_register_cpp_types()
 {
@@ -44,6 +41,4 @@ void FN_register_cpp_types()
   FN_FIELD_CPP_TYPE_REGISTER(std::string);
 
   BLI_VECTOR_CPP_TYPE_REGISTER(blender::fn::ValueOrField<std::string>);
-
-  BLI_CPP_TYPE_REGISTER(blender::fn::lazy_function::SerialLoopStatus);
 }

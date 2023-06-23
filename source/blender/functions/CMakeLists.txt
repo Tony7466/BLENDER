@@ -20,7 +20,6 @@ set(SRC
   intern/lazy_function_execute.cc
   intern/lazy_function_graph.cc
   intern/lazy_function_graph_executor.cc
-  intern/lazy_function_serial_loop.cc
   intern/multi_function.cc
   intern/multi_function_builder.cc
   intern/multi_function_params.cc
@@ -37,7 +36,6 @@ set(SRC
   FN_lazy_function_execute.hh
   FN_lazy_function_graph.hh
   FN_lazy_function_graph_executor.hh
-  FN_lazy_function_serial_loop.hh
   FN_multi_function.hh
   FN_multi_function_builder.hh
   FN_multi_function_context.hh
