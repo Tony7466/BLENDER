@@ -2272,9 +2272,10 @@ ENUM_OPERATORS(eSnapFlag, SCE_SNAP_BACKFACE_CULLING)
 
 /** See #ToolSettings.snap_target (to be renamed `snap_source`) and #TransSnap.source_operation */
 typedef enum eSnapSourceOP {
-  SCE_SNAP_SOURCE_MEDIAN = 0,
-  SCE_SNAP_SOURCE_CENTER = 1,
-  SCE_SNAP_SOURCE_ACTIVE = 2,
+  SCE_SNAP_SOURCE_CLOSEST = 0,
+  SCE_SNAP_SOURCE_MEDIAN = 1,
+  SCE_SNAP_SOURCE_CENTER = 2,
+  SCE_SNAP_SOURCE_ACTIVE = 3,
 } eSnapSourceOP;
 
 ENUM_OPERATORS(eSnapSourceOP, SCE_SNAP_SOURCE_ACTIVE)

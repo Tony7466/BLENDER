@@ -100,6 +100,7 @@ static const EnumPropertyItem uv_sculpt_relaxation_items[] = {
 #endif
 
 const EnumPropertyItem rna_enum_snap_source_items[] = {
+    {SCE_SNAP_SOURCE_CLOSEST, "CLOSEST", 0, "Closest", "Snap closest point onto target"},
     {SCE_SNAP_SOURCE_CENTER, "CENTER", 0, "Center", "Snap transformation center onto target"},
     {SCE_SNAP_SOURCE_MEDIAN, "MEDIAN", 0, "Median", "Snap median onto target"},
     {SCE_SNAP_SOURCE_ACTIVE, "ACTIVE", 0, "Active", "Snap active onto target"},

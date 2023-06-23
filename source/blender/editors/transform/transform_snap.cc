@@ -68,6 +68,7 @@ static void snap_target_sequencer_fn(TransInfo *t, float *vec);
 
 static void snap_source_median_fn(TransInfo *t);
 static void snap_source_center_fn(TransInfo *t);
+static void snap_source_closest_fn(TransInfo *t);
 static void snap_source_active_fn(TransInfo *t);
 
 /** \} */
@@ -554,7 +555,7 @@ void resetSnapping(TransInfo *t)
   t->tsnap.target_type = SCE_SNAP_MODE_NONE;
   t->tsnap.mode = SCE_SNAP_MODE_NONE;
   t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
-  t->tsnap.source_operation = SCE_SNAP_SOURCE_MEDIAN;
+  t->tsnap.source_operation = SCE_SNAP_SOURCE_CLOSEST;
   t->tsnap.last = 0;
 
   t->tsnap.snapNormal[0] = 0;
@@ -958,6 +959,9 @@ static void setSnappingCallback(TransInfo *t)
   }
 
   switch (t->tsnap.source_operation) {
+    case SCE_SNAP_SOURCE_CLOSEST:
+      t->tsnap.snap_source_fn = snap_source_closest_fn;
+      break;
     case SCE_SNAP_SOURCE_CENTER:
       if (!ELEM(t->mode, TFM_ROTATION, TFM_RESIZE)) {
         t->tsnap.snap_source_fn = snap_source_center_fn;
@@ -1261,6 +1265,97 @@ static void snap_source_center_fn(TransInfo *t)
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     copy_v3_v3(t->tsnap.snap_source, t->center_global);
     TargetSnapOffset(t, nullptr);
+
+    t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_MODE_NONE;
+  }
+}
+
+static void snap_source_closest_fn(TransInfo *t)
+{
+  /* Only valid if a snap point has been selected. */
+  if (t->tsnap.status & SNAP_TARGET_FOUND) {
+    float dist_closest = 0.0f;
+    TransData *closest = nullptr;
+
+    /* Object mode */
+    if (t->options & CTX_OBJECT) {
+      int i;
+      FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+        TransData *td;
+        for (td = tc->data, i = 0; i < tc->data_len && td->flag & TD_SELECTED; i++, td++) {
+          const BoundBox *bb = nullptr;
+
+          if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
+            bb = BKE_object_boundbox_get(td->ob);
+          }
+
+          /* use boundbox if possible */
+          if (bb) {
+            int j;
+
+            for (j = 0; j < 8; j++) {
+              float loc[3];
+              float dist;
+
+              copy_v3_v3(loc, bb->vec[j]);
+              mul_m4_v3(td->ext->obmat, loc);
+
+              dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
+
+              if ((dist != TRANSFORM_DIST_INVALID) &&
+                  (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
+                copy_v3_v3(t->tsnap.snap_source, loc);
+                closest = td;
+                dist_closest = dist;
+              }
+            }
+          }
+          /* use element center otherwise */
+          else {
+            float loc[3];
+            float dist;
+
+            copy_v3_v3(loc, td->center);
+
+            dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
+
+            if ((dist != TRANSFORM_DIST_INVALID) &&
+                (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
+              copy_v3_v3(t->tsnap.snap_source, loc);
+              closest = td;
+            }
+          }
+        }
+      }
+    }
+    else {
+      FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+        TransData *td = tc->data;
+        int i;
+        for (i = 0; i < tc->data_len && td->flag & TD_SELECTED; i++, td++) {
+          float loc[3];
+          float dist;
+
+          copy_v3_v3(loc, td->center);
+
+          if (tc->use_local_mat) {
+            mul_m4_v3(tc->mat, loc);
+          }
+
+          dist = t->mode_info->snap_distance_fn(t, loc, t->tsnap.snap_target);
+
+          if ((dist != TRANSFORM_DIST_INVALID) &&
+              (closest == nullptr || fabsf(dist) < fabsf(dist_closest))) {
+            copy_v3_v3(t->tsnap.snap_source, loc);
+            closest = td;
+            dist_closest = dist;
+          }
+        }
+      }
+    }
+
+    TargetSnapOffset(t, closest);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
     t->tsnap.source_type = SCE_SNAP_MODE_NONE;

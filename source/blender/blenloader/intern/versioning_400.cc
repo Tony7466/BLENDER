@@ -259,10 +259,6 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       const ToolSettings *ts_default = DNA_struct_default_get(ToolSettings);
       ToolSettings *ts = scene->toolsettings;
-      if (ts->snap_target != 0) {
-        ts->snap_target -= 1;
-      }
-
       ts->snap_mode = ts_default->snap_mode;
       ts->snap_transform_mode_flag = ts_default->snap_transform_mode_flag;
     }
