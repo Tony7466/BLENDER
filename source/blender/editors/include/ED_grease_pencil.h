@@ -29,6 +29,7 @@ extern "C" {
 
 void ED_operatortypes_grease_pencil(void);
 void ED_operatortypes_grease_pencil_draw(void);
+void ED_operatortypes_grease_pencil_layers(void);
 void ED_operatortypes_grease_pencil_select(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 void ED_grease_pencil_undosys_type(struct UndoType *ut);
@@ -47,6 +48,7 @@ eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
 
 namespace blender::ed::greasepencil {
 
+bool active_grease_pencil_poll(bContext *C);
 bool active_grease_pencil_edit_mode_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
