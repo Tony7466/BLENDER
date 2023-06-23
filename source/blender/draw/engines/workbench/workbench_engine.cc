@@ -329,6 +329,10 @@ class Instance {
                ob_ref.object, {get_dummy_gpu_materials(material_count), material_count}))
       {
         Material mat = get_material(ob_ref, object_state.color_type, batch.material_slot);
+        if (SCULPT_DEBUG_DRAW) {
+          mat.base_color = batch.debug_color();
+        }
+
         draw_mesh(ob_ref,
                   mat,
                   batch.batch,
@@ -348,6 +352,10 @@ class Instance {
       }
 
       for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, features)) {
+        if (SCULPT_DEBUG_DRAW) {
+          mat.base_color = batch.debug_color();
+        }
+
         draw_mesh(ob_ref,
                   mat,
                   batch.batch,

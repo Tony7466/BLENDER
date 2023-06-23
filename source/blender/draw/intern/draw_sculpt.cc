@@ -15,6 +15,23 @@
 
 namespace blender::draw {
 
+float3 SculptBatch::debug_color()
+{
+  static float3 colors[9] = {
+      {1.0f, 0.2f, 0.2f},
+      {0.2f, 1.0f, 0.2f},
+      {0.2f, 0.2f, 1.0f},
+      {1.0f, 1.0f, 0.2f},
+      {0.2f, 1.0f, 1.0f},
+      {1.0f, 0.2f, 1.0f},
+      {1.0f, 0.7f, 0.2f},
+      {0.2f, 1.0f, 0.7f},
+      {0.7f, 0.2f, 1.0f},
+  };
+
+  return colors[debug_index % 9];
+}
+
 struct SculptCallbackData {
   bool use_wire;
   bool fast_mode;
@@ -46,6 +63,8 @@ static void sculpt_draw_cb(SculptCallbackData *data,
   }
 
   batch.material_slot = drw_pbvh_material_index_get(batches);
+  /** NOTE: This doesn't match the index used in DRW_sculpt_debug_cb (debug_node_nr). */
+  batch.debug_index = data->batches.size();
 
   data->batches.append(batch);
 }

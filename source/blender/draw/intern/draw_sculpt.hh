@@ -10,9 +10,13 @@
 
 namespace blender::draw {
 
+#define SCULPT_DEBUG_DRAW (G.debug_value == 889)
+
 struct SculptBatch {
   GPUBatch *batch;
   int material_slot;
+  int debug_index;
+  float3 debug_color();
 };
 
 enum SculptBatchFeature {
