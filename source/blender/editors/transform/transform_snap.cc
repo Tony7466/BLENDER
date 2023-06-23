@@ -205,7 +205,6 @@ void drawSnapping(TransInfo *t)
   if (t->spacetype == SPACE_VIEW3D) {
     const float *source_loc = nullptr;
     const float *target_loc = nullptr;
-    const float *target_normal = nullptr;
 
     GPU_depth_test(GPU_DEPTH_NONE);
 
@@ -237,11 +236,6 @@ void drawSnapping(TransInfo *t)
       immUnbindProgram();
     }
 
-    /* draw normal if needed */
-    if (usingSnappingNormal(t) && validSnappingNormal(t)) {
-      target_normal = t->tsnap.snapNormal;
-    }
-
     if (draw_source) {
       source_loc = t->tsnap.snap_source;
     }
@@ -250,8 +244,31 @@ void drawSnapping(TransInfo *t)
       target_loc = t->tsnap.snap_target;
     }
 
-    ED_view3d_cursor_snap_draw_util(
-        rv3d, source_loc, target_loc, target_normal, col, activeCol, t->tsnap.target_type);
+    ED_view3d_cursor_snap_draw_util(rv3d,
+                                    source_loc,
+                                    target_loc,
+                                    t->tsnap.snapNormal,
+                                    t->tsnap.source_type,
+                                    t->tsnap.target_type,
+                                    col,
+                                    activeCol);
+
+    /* Draw normal if needed. */
+    if (usingSnappingNormal(t) && validSnappingNormal(t)) {
+      uint pos = GPU_vertformat_attr_add(
+          immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+
+      immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+      immUniformColor4ubv(activeCol);
+      immBegin(GPU_PRIM_LINES, 2);
+      immVertex3fv(pos, target_loc);
+      immVertex3f(pos,
+                  target_loc[0] + t->tsnap.snapNormal[0],
+                  target_loc[1] + t->tsnap.snapNormal[1],
+                  target_loc[2] + t->tsnap.snapNormal[2]);
+      immEnd();
+      immUnbindProgram();
+    }
 
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
@@ -549,6 +566,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
 void resetSnapping(TransInfo *t)
 {
   t->tsnap.status = SNAP_RESETTED;
+  t->tsnap.source_type = SCE_SNAP_TO_NONE;
   t->tsnap.target_type = SCE_SNAP_TO_NONE;
   t->tsnap.mode = SCE_SNAP_TO_NONE;
   t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
@@ -1259,6 +1277,7 @@ static void snap_source_center_fn(TransInfo *t)
     TargetSnapOffset(t, nullptr);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
@@ -1269,6 +1288,7 @@ static void snap_source_active_fn(TransInfo *t)
     if (calculateCenterActive(t, true, t->tsnap.snap_source)) {
       TargetSnapOffset(t, nullptr);
       t->tsnap.status |= SNAP_SOURCE_FOUND;
+      t->tsnap.source_type = SCE_SNAP_TO_NONE;
     }
     else {
       /* No active, default to median, */
@@ -1285,6 +1305,7 @@ static void snap_source_median_fn(TransInfo *t)
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     tranform_snap_target_median_calc(t, t->tsnap.snap_source);
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
@@ -1375,6 +1396,7 @@ static void snap_source_closest_fn(TransInfo *t)
     TargetSnapOffset(t, closest);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
+    t->tsnap.source_type = SCE_SNAP_TO_NONE;
   }
 }
 
