@@ -1113,32 +1113,11 @@ static void node_socket_undefined_draw(bContext * /*C*/,
   uiItemL(layout, IFACE_("Undefined Socket Type"), ICON_ERROR);
 }
 
-static void node_socket_undefined_draw_color(bContext * /*C*/,
-                                             PointerRNA * /*ptr*/,
-                                             PointerRNA * /*node_ptr*/,
-                                             float *r_color)
-{
-  r_color[0] = 1.0f;
-  r_color[1] = 0.0f;
-  r_color[2] = 0.0f;
-  r_color[3] = 1.0f;
-}
-
 static void node_socket_undefined_interface_draw(bContext * /*C*/,
                                                  uiLayout *layout,
                                                  PointerRNA * /*ptr*/)
 {
   uiItemL(layout, IFACE_("Undefined Socket Type"), ICON_ERROR);
-}
-
-static void node_socket_undefined_interface_draw_color(bContext * /*C*/,
-                                                       PointerRNA * /*ptr*/,
-                                                       float *r_color)
-{
-  r_color[0] = 1.0f;
-  r_color[1] = 0.0f;
-  r_color[2] = 0.0f;
-  r_color[3] = 1.0f;
 }
 
 /** \} */
@@ -1156,13 +1135,14 @@ void ED_node_init_butfuncs()
   using blender::bke::NodeSocketTypeUndefined;
   using blender::bke::NodeTypeUndefined;
 
+  static const float default_color[] = {1.0f, 0.0f, 0.0f, 1.0f};
+
   NodeTypeUndefined.draw_buttons = nullptr;
   NodeTypeUndefined.draw_buttons_ex = nullptr;
 
   NodeSocketTypeUndefined.draw = node_socket_undefined_draw;
-  NodeSocketTypeUndefined.draw_color = node_socket_undefined_draw_color;
+  copy_v4_v4(NodeSocketTypeUndefined.base_color, default_color);
   NodeSocketTypeUndefined.interface_draw = node_socket_undefined_interface_draw;
-  NodeSocketTypeUndefined.interface_draw_color = node_socket_undefined_interface_draw_color;
 
   /* node type ui functions */
   NODE_TYPES_BEGIN (ntype) {
@@ -1207,23 +1187,6 @@ static const float std_node_socket_colors[][4] = {
     {0.92, 0.46, 0.51, 1.0}, /* SOCK_MATERIAL */
     {0.92, 0.46, 0.7, 1.0},  /* SOCK_ROTATION */
 };
-
-/* common color callbacks for standard types */
-static void std_node_socket_draw_color(bContext * /*C*/,
-                                       PointerRNA *ptr,
-                                       PointerRNA * /*node_ptr*/,
-                                       float *r_color)
-{
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
-  copy_v4_v4(r_color, std_node_socket_colors[type]);
-}
-static void std_node_socket_interface_draw_color(bContext * /*C*/, PointerRNA *ptr, float *r_color)
-{
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
-  copy_v4_v4(r_color, std_node_socket_colors[type]);
-}
 
 /* draw function for file output node sockets,
  * displays only sub-path and format, no value button */
@@ -1493,30 +1456,21 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   }
 }
 
-static void node_socket_virtual_draw_color(bContext * /*C*/,
-                                           PointerRNA * /*ptr*/,
-                                           PointerRNA * /*node_ptr*/,
-                                           float *r_color)
-{
-  copy_v4_v4(r_color, virtual_node_socket_color);
-}
-
 }  // namespace blender::ed::space_node
 
 void ED_init_standard_node_socket_type(bNodeSocketType *stype)
 {
   using namespace blender::ed::space_node;
   stype->draw = std_node_socket_draw;
-  stype->draw_color = std_node_socket_draw_color;
+  copy_v4_v4(stype->base_color, std_node_socket_colors[stype->type]);
   stype->interface_draw = std_node_socket_interface_draw;
-  stype->interface_draw_color = std_node_socket_interface_draw_color;
 }
 
 void ED_init_node_socket_type_virtual(bNodeSocketType *stype)
 {
   using namespace blender::ed::space_node;
   stype->draw = node_socket_button_label;
-  stype->draw_color = node_socket_virtual_draw_color;
+  copy_v4_v4(stype->base_color, virtual_node_socket_color);
 }
 
 void ED_node_type_draw_color(const char *idname, float *r_color)
@@ -1524,7 +1478,7 @@ void ED_node_type_draw_color(const char *idname, float *r_color)
   using namespace blender::ed::space_node;
 
   const bNodeSocketType *typeinfo = nodeSocketTypeFind(idname);
-  if (!typeinfo || typeinfo->type == SOCK_CUSTOM) {
+  if (!typeinfo) {
     r_color[0] = 0.0f;
     r_color[1] = 0.0f;
     r_color[2] = 0.0f;
@@ -1532,8 +1486,7 @@ void ED_node_type_draw_color(const char *idname, float *r_color)
     return;
   }
 
-  BLI_assert(typeinfo->type < ARRAY_SIZE(std_node_socket_colors));
-  copy_v4_v4(r_color, std_node_socket_colors[typeinfo->type]);
+  copy_v4_v4(r_color, typeinfo->base_color);
 }
 
 namespace blender::ed::space_node {

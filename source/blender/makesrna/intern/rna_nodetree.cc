@@ -3217,9 +3217,14 @@ static void rna_NodeSocketStandard_draw(ID *id,
 static void rna_NodeSocketStandard_draw_color(
     ID *id, bNodeSocket *sock, struct bContext *C, PointerRNA *nodeptr, float r_color[4])
 {
-  PointerRNA ptr;
-  RNA_pointer_create(id, &RNA_NodeSocket, sock, &ptr);
-  sock->typeinfo->draw_color(C, &ptr, nodeptr, r_color);
+  if (sock->typeinfo->draw_color) {
+    PointerRNA ptr;
+    RNA_pointer_create(id, &RNA_NodeSocket, sock, &ptr);
+    sock->typeinfo->draw_color(C, &ptr, nodeptr, r_color);
+  }
+  else {
+    copy_v4_v4(r_color, sock->typeinfo->base_color);
+  }
 }
 
 static void rna_NodeSocketInterfaceStandard_draw(ID *id,
@@ -3237,9 +3242,14 @@ static void rna_NodeSocketInterfaceStandard_draw_color(ID *id,
                                                        struct bContext *C,
                                                        float r_color[4])
 {
-  PointerRNA ptr;
-  RNA_pointer_create(id, &RNA_NodeSocketInterface, sock, &ptr);
-  sock->typeinfo->interface_draw_color(C, &ptr, r_color);
+  if (sock->typeinfo->interface_draw_color) {
+    PointerRNA ptr;
+    RNA_pointer_create(id, &RNA_NodeSocketInterface, sock, &ptr);
+    sock->typeinfo->interface_draw_color(C, &ptr, r_color);
+  }
+  else {
+    copy_v4_v4(r_color, sock->typeinfo->base_color);
+  }
 }
 
 static void rna_NodeSocketStandard_float_range(
@@ -11688,10 +11698,18 @@ static void rna_def_node_socket(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Subtype Label", "Label to display for the socket subtype in the UI");
 
+  prop = RNA_def_property(srna, "bl_base_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_float_sdna(prop, nullptr, "typeinfo->base_color");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_array_default(prop, default_draw_color);
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+  RNA_def_property_ui_text(prop, "Base Color", "Color of the socket type");
+
   /* draw socket */
   func = RNA_def_function(srna, "draw", nullptr);
   RNA_def_function_ui_description(func, "Draw socket");
-  RNA_def_function_flag(func, FUNC_REGISTER);
+  RNA_def_function_flag(func, PROP_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_property(func, "layout", PROP_POINTER, PROP_NONE);
@@ -11821,6 +11839,14 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
   RNA_def_property_ui_text(
       prop, "Subtype Label", "Label to display for the socket subtype in the UI");
+
+  prop = RNA_def_property(srna, "bl_base_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_float_sdna(prop, nullptr, "typeinfo->base_color");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_array_default(prop, default_draw_color);
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+  RNA_def_property_ui_text(prop, "Base Color", "Color of the socket type");
 
   func = RNA_def_function(srna, "draw", nullptr);
   RNA_def_function_ui_description(func, "Draw template settings");

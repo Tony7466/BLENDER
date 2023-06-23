@@ -816,12 +816,16 @@ void node_socket_color_get(const bContext &C,
                            const bNodeSocket &sock,
                            float r_color[4])
 {
-  PointerRNA ptr;
-  BLI_assert(RNA_struct_is_a(node_ptr.type, &RNA_Node));
-  RNA_pointer_create(
-      &const_cast<ID &>(ntree.id), &RNA_NodeSocket, &const_cast<bNodeSocket &>(sock), &ptr);
-
-  sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
+  if (sock.typeinfo->draw_color) {
+    PointerRNA ptr;
+    BLI_assert(RNA_struct_is_a(node_ptr.type, &RNA_Node));
+    RNA_pointer_create(
+        &const_cast<ID &>(ntree.id), &RNA_NodeSocket, &const_cast<bNodeSocket &>(sock), &ptr);
+    sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
+  }
+  else {
+    copy_v4_v4(r_color, sock.typeinfo->base_color);
+  }
 }
 
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
