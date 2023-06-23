@@ -281,7 +281,7 @@ static int snap_gizmo_test_select(bContext *C, wmGizmo *gz, const int mval[2])
   ED_view3d_cursor_snap_data_update(snap_gizmo->snap_state, C, x, y);
   V3DSnapCursorData *snap_data = ED_view3d_cursor_snap_data_get();
 
-  if (snap_data->type_target != SCE_SNAP_MODE_NONE) {
+  if (snap_data->type_target != SCE_SNAP_TO_NONE) {
     return 0;
   }
   return -1;
@@ -392,7 +392,7 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
   prop = RNA_def_enum(gzt->srna,
                       "snap_source_type",
                       rna_enum_snap_element_items,
-                      SCE_SNAP_MODE_VERTEX,
+                      SCE_SNAP_TO_NONE,
                       "Snap Source Type",
                       "Snap Source type (influences drawing)");
   RNA_def_property_enum_funcs_runtime(

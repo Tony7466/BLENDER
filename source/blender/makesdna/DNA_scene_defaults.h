@@ -336,9 +336,9 @@
     .autokey_mode = AUTOKEY_MODE_NORMAL, \
  \
     .transform_pivot_point = V3D_AROUND_CENTER_MEDIAN, \
-    .snap_mode = SCE_SNAP_MODE_GEOM, \
-    .snap_node_mode = SCE_SNAP_MODE_GRID, \
-    .snap_uv_mode = SCE_SNAP_MODE_INCREMENT, \
+    .snap_mode = SCE_SNAP_TO_GEOM, \
+    .snap_node_mode = SCE_SNAP_TO_GRID, \
+    .snap_uv_mode = SCE_SNAP_TO_INCREMENT, \
     .snap_flag = SCE_SNAP_TO_INCLUDE_EDITED | SCE_SNAP_TO_INCLUDE_NONEDITED, \
     .snap_transform_mode_flag = (SCE_SNAP_TRANSFORM_MODE_TRANSLATE | SCE_SNAP_TRANSFORM_MODE_ROTATE |SCE_SNAP_TRANSFORM_MODE_SCALE), \
     .snap_face_nearest_steps = 1, \

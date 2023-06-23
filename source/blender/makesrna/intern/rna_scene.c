@@ -153,23 +153,23 @@ const EnumPropertyItem rna_enum_mesh_select_mode_uv_items[] = {
 
 /* clang-format off */
 #define RNA_SNAP_ELEMENTS_BASE \
-  {SCE_SNAP_MODE_INCREMENT, "INCREMENT", ICON_SNAP_INCREMENT, "Increment", "Snap to increments"}, \
-  {SCE_SNAP_MODE_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
-  {SCE_SNAP_MODE_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
-  {SCE_SNAP_MODE_EDGE_MIDPOINT, "EDGE_MIDPOINT", ICON_SNAP_MIDPOINT, "Edge Center", "Snap to the middle of edges"}, \
-  {SCE_SNAP_MODE_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}, \
-  {SCE_SNAP_MODE_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
-  {SCE_SNAP_MODE_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}
+  {SCE_SNAP_TO_INCREMENT, "INCREMENT", ICON_SNAP_INCREMENT, "Increment", "Snap to increments"}, \
+  {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
+  {SCE_SNAP_TO_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
+  {SCE_SNAP_TO_EDGE_MIDPOINT, "EDGE_MIDPOINT", ICON_SNAP_MIDPOINT, "Edge Center", "Snap to the middle of edges"}, \
+  {SCE_SNAP_TO_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}, \
+  {SCE_SNAP_TO_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
+  {SCE_SNAP_TO_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}
 /* clang-format on */
 
 const EnumPropertyItem rna_enum_snap_element_items[] = {
     RNA_SNAP_ELEMENTS_BASE,
-    {SCE_SNAP_MODE_FACE_RAYCAST,
+    {SCE_SNAP_INDIVIDUAL_PROJECT,
      "FACE_PROJECT",
      ICON_SNAP_FACE,
      "Face Project",
      "Snap by projecting onto faces"},
-    {SCE_SNAP_MODE_FACE_NEAREST,
+    {SCE_SNAP_INDIVIDUAL_NEAREST,
      "FACE_NEAREST",
      ICON_SNAP_FACE_NEAREST,
      "Face Nearest",
@@ -189,10 +189,10 @@ static const EnumPropertyItem *rna_enum_snap_element_individual_items =
 #endif
 
 const EnumPropertyItem rna_enum_snap_node_element_items[] = {
-    {SCE_SNAP_MODE_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"},
-    {SCE_SNAP_MODE_NODE_X, "NODE_X", ICON_NODE_SIDE, "Node X", "Snap to left/right node border"},
-    {SCE_SNAP_MODE_NODE_Y, "NODE_Y", ICON_NODE_TOP, "Node Y", "Snap to top/bottom node border"},
-    {SCE_SNAP_MODE_NODE_X | SCE_SNAP_MODE_NODE_Y,
+    {SCE_SNAP_TO_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"},
+    {SCE_SNAP_TO_NODE_X, "NODE_X", ICON_NODE_SIDE, "Node X", "Snap to left/right node border"},
+    {SCE_SNAP_TO_NODE_Y, "NODE_Y", ICON_NODE_TOP, "Node Y", "Snap to top/bottom node border"},
+    {SCE_SNAP_TO_NODE_X | SCE_SNAP_TO_NODE_Y,
      "NODE_XY",
      ICON_NODE_CORNER,
      "Node X / Y",
@@ -202,12 +202,12 @@ const EnumPropertyItem rna_enum_snap_node_element_items[] = {
 
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem snap_uv_element_items[] = {
-    {SCE_SNAP_MODE_INCREMENT,
+    {SCE_SNAP_TO_INCREMENT,
      "INCREMENT",
      ICON_SNAP_INCREMENT,
      "Increment",
      "Snap to increments of grid"},
-    {SCE_SNAP_MODE_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"},
+    {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -3407,7 +3407,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_enum_funcs(
       prop, "rna_ToolSettings_snap_mode_get", "rna_ToolSettings_snap_mode_set", NULL);
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
-  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM);
+  RNA_def_property_enum_default(prop, SCE_SNAP_TO_GEOM);
   RNA_def_property_ui_text(prop, "Snap Element", "Type of element to snap to");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 

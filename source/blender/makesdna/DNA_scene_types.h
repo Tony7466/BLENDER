@@ -2297,37 +2297,41 @@ ENUM_OPERATORS(eSnapTargetOP, SCE_SNAP_TARGET_NOT_NONEDITED)
 
 /** #ToolSettings.snap_mode */
 typedef enum eSnapMode {
-  SCE_SNAP_MODE_NONE = 0,
+  SCE_SNAP_TO_NONE = 0,
 
-  SCE_SNAP_MODE_VERTEX = (1 << 0),
-  SCE_SNAP_MODE_EDGE = (1 << 1),
-  SCE_SNAP_MODE_FACE = (1 << 2),
-  SCE_SNAP_MODE_VOLUME = (1 << 3),
-  SCE_SNAP_MODE_EDGE_MIDPOINT = (1 << 4),
-  SCE_SNAP_MODE_EDGE_PERPENDICULAR = (1 << 5),
+  SCE_SNAP_TO_POINT = (1 << 0),
+
+  SCE_SNAP_TO_EDGE = (1 << 1),
+  SCE_SNAP_TO_EDGE_ENDPOINT = (1 << 2),
+  SCE_SNAP_TO_EDGE_MIDPOINT = (1 << 3),
+  SCE_SNAP_TO_EDGE_PERPENDICULAR = (1 << 4),
+
+  SCE_SNAP_TO_FACE = (1 << 5),
+  SCE_SNAP_TO_VOLUME = (1 << 6),
 
   /* For snap individual elements. */
-  SCE_SNAP_MODE_FACE_NEAREST = (1 << 8),
-  /** Project individual elements instead of whole object. */
-  SCE_SNAP_MODE_FACE_RAYCAST = (1 << 9),
+  SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 7),
+  SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 8),
 
   /** #ToolSettings.snap_node_mode */
-  SCE_SNAP_MODE_NODE_X = (1 << 0),
-  SCE_SNAP_MODE_NODE_Y = (1 << 1),
+  SCE_SNAP_TO_NODE_X = (1 << 0),
+  SCE_SNAP_TO_NODE_Y = (1 << 1),
 
   /** #ToolSettings.snap_mode and #ToolSettings.snap_node_mode and #ToolSettings.snap_uv_mode */
-  SCE_SNAP_MODE_INCREMENT = (1 << 6),
-  SCE_SNAP_MODE_GRID = (1 << 7),
+  SCE_SNAP_TO_INCREMENT = (1 << 9),
+  SCE_SNAP_TO_GRID = (1 << 10),
 } eSnapMode;
 /* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
 /* TODO: move this macro to a more general place. */
 #ifdef ENUM_OPERATORS
-ENUM_OPERATORS(eSnapMode, SCE_SNAP_MODE_FACE_RAYCAST)
+ENUM_OPERATORS(eSnapMode, SCE_SNAP_TO_GRID)
 #endif
 
-#define SCE_SNAP_MODE_GEOM \
-  (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE | \
-   SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT)
+#define SCE_SNAP_TO_VERTEX (SCE_SNAP_TO_POINT | SCE_SNAP_TO_EDGE_ENDPOINT)
+
+#define SCE_SNAP_TO_GEOM \
+  (SCE_SNAP_TO_VERTEX | SCE_SNAP_TO_EDGE | SCE_SNAP_TO_FACE | SCE_SNAP_TO_EDGE_MIDPOINT | \
+   SCE_SNAP_TO_EDGE_PERPENDICULAR)
 
 /** #SequencerToolSettings.snap_mode */
 #define SEQ_SNAP_TO_STRIPS (1 << 0)

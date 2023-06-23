@@ -10,6 +10,10 @@
 
 #define MAX_CLIPPLANE_LEN 3
 
+#define SNAP_TO_EDGE_ELEMENTS \
+  (SCE_SNAP_TO_EDGE | SCE_SNAP_TO_EDGE_ENDPOINT | SCE_SNAP_TO_EDGE_MIDPOINT | \
+   SCE_SNAP_TO_EDGE_PERPENDICULAR)
+
 struct SnapData_EditMesh;
 
 struct SnapObjectContext {
@@ -118,7 +122,7 @@ class Nearest2dUserData {
   bool snap_boundbox(const blender::float3 &min, const blender::float3 &max);
   bool snap_point(const blender::float3 &co, int index = -1);
   bool snap_edge(const blender::float3 &va, const blender::float3 &vb, int edge_index = -1);
-  eSnapMode snap_edge_points(int edge_index, float dist_px_sq_orig);
+  eSnapMode snap_edge_points_impl(int edge_index, float dist_px_sq_orig);
 
   virtual void get_vert_co(const int /*index*/, const float ** /*r_co*/){};
   virtual void get_edge_verts_index(const int /*index*/, int /*r_v_index*/[2]){};
@@ -186,7 +190,7 @@ eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const float obmat[
 /* transform_snap_object_editmesh.cc */
 
 struct SnapData_EditMesh {
-  /* Verts, Edges. */
+  /* Loose Verts, Edges. */
   BVHTree *bvhtree[2];
   bool cached[2];
 

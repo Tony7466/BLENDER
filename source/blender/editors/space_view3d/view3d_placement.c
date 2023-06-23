@@ -690,7 +690,7 @@ static bool view3d_interactive_add_calc_snap(bContext *UNUSED(C),
   if (r_is_snap_invert) {
     *r_is_snap_invert = snap_data->is_snap_invert;
   }
-  return snap_data->type_target != SCE_SNAP_MODE_NONE;
+  return snap_data->type_target != SCE_SNAP_TO_NONE;
 }
 
 /** \} */
@@ -761,9 +761,9 @@ static void view3d_interactive_add_begin(bContext *C, wmOperator *op, const wmEv
 
   ipd->step_index = STEP_BASE;
 
-  ipd->snap_to = tool_settings->snap_mode & SCE_SNAP_MODE_GEOM;
-  if (ipd->snap_to == SCE_SNAP_MODE_NONE) {
-    ipd->snap_to = SCE_SNAP_MODE_GEOM;
+  ipd->snap_to = tool_settings->snap_mode & SCE_SNAP_TO_GEOM;
+  if (ipd->snap_to == SCE_SNAP_TO_NONE) {
+    ipd->snap_to = SCE_SNAP_TO_GEOM;
   }
 
   plane_from_point_normal_v3(ipd->step[0].plane, ipd->co_src, ipd->matrix_orient[plane_axis]);
@@ -1204,7 +1204,7 @@ static int view3d_interactive_add_modal(bContext *C, wmOperator *op, const wmEve
           /* pass */
         }
 
-        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_MODE_INCREMENT)) {
+        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_TO_INCREMENT)) {
           if (idp_snap_calc_incremental(
                   ipd->scene, ipd->v3d, ipd->region, ipd->co_src, ipd->step[STEP_BASE].co_dst))
           {
@@ -1228,7 +1228,7 @@ static int view3d_interactive_add_modal(bContext *C, wmOperator *op, const wmEve
           /* pass */
         }
 
-        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_MODE_INCREMENT)) {
+        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_TO_INCREMENT)) {
           if (idp_snap_calc_incremental(
                   ipd->scene, ipd->v3d, ipd->region, ipd->co_src, ipd->step[STEP_DEPTH].co_dst))
           {

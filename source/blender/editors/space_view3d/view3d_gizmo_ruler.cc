@@ -379,7 +379,7 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
                                                               depsgraph,
                                                               ruler_info->region,
                                                               v3d,
-                                                              SCE_SNAP_MODE_FACE,
+                                                              SCE_SNAP_TO_FACE,
                                                               &snap_object_params,
                                                               nullptr,
                                                               mval_fl,
@@ -1166,7 +1166,7 @@ static int gizmo_ruler_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
     eSnapMode snap_type;
     if (ruler_item_pick->flag & RULERITEM_USE_ANGLE) {
       prev_point = (inter->co_index != 1) ? &ruler_item_pick->co[1] : nullptr;
-      snap_type = (inter->co_index != 1) ? ruler_item_pick->snap_type[1] : SCE_SNAP_MODE_VERTEX;
+      snap_type = (inter->co_index != 1) ? ruler_item_pick->snap_type[1] : SCE_SNAP_TO_VERTEX;
     }
     else if (inter->co_index == 0) {
       prev_point = &ruler_item_pick->co[2];
