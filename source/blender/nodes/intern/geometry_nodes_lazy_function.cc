@@ -1581,22 +1581,35 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       for (const int input_index : body_indices_.main_output_usages) {
         inputs[input_index] = &static_true;
       }
-      /* TODO: Make copies of border link inputs and attribute sets. */
       Array<bool> tmp_border_link_usages(border_links_num);
       for (const int i : IndexRange(border_links_num)) {
         const int input_index = body_indices_.border_link_inputs[i];
         const int usage_index = body_indices_.border_link_usages[i];
         const CPPType &type = *body_fn_.inputs()[input_index].type;
-        inputs[input_index] = {type, border_link_input_values[i]};
+        /* Need to copy because a lazy function is allowed to modify the input (e.g. move from
+         * it). */
+        void *value_copy = allocator.allocate(type.size(), type.alignment());
+        type.copy_construct(border_link_input_values[i], value_copy);
+        inputs[input_index] = {type, value_copy};
         outputs[usage_index] = &tmp_border_link_usages[i];
       }
 
       for (const auto item : body_indices_.attribute_set_input_by_field_source_index.items()) {
-        inputs[item.value] = attribute_set_by_field_source_index.lookup(item.key);
+        bke::AnonymousAttributeSet &attribute_set =
+            *allocator
+                 .construct<bke::AnonymousAttributeSet>(
+                     *attribute_set_by_field_source_index.lookup(item.key))
+                 .release();
+        inputs[item.value] = &attribute_set;
       }
       for (const auto item : body_indices_.attribute_set_input_by_caller_propagation_index.items())
       {
-        inputs[item.value] = attribute_set_by_caller_propagation_index.lookup(item.key);
+        bke::AnonymousAttributeSet &attribute_set =
+            *allocator
+                 .construct<bke::AnonymousAttributeSet>(
+                     *attribute_set_by_caller_propagation_index.lookup(item.key))
+                 .release();
+        inputs[item.value] = &attribute_set;
       }
 
       bke::SerialLoopZoneComputeContext body_compute_context{
@@ -1616,6 +1629,16 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       body_fn_.execute(body_params, body_context);
 
       body_fn_.destruct_storage(body_storage);
+
+      for (const int i : body_indices_.border_link_inputs) {
+        inputs[i].destruct();
+      }
+      for (const int i : body_indices_.attribute_set_input_by_field_source_index.values()) {
+        inputs[i].destruct();
+      }
+      for (const int i : body_indices_.attribute_set_input_by_caller_propagation_index.values()) {
+        inputs[i].destruct();
+      }
     }
 
     for (const int i : IndexRange(loop_items_num)) {
@@ -1630,6 +1653,15 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
     }
     for (const int i : IndexRange(border_links_num)) {
       params.set_output(zone_info_.border_link_input_usage_indices[i], true);
+    }
+
+    for (const int iteration : IndexRange(iterations)) {
+      MutableSpan<void *> item_values = loop_item_values.as_mutable_span().slice(
+          (iteration + 1) * loop_items_num, loop_items_num);
+      for (const int item_i : IndexRange(loop_items_num)) {
+        const CPPType &type = *loop_item_types[item_i];
+        type.destruct(item_values[item_i]);
+      }
     }
   }
 };
