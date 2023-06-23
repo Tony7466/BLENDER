@@ -17,6 +17,27 @@
 
 #include <queue>
 
+bool bNodeTreeInterfaceItem::is_valid_parent(const bNodeTreeInterfacePanel *new_parent) const
+{
+  const bNodeTreeInterfacePanel *panel = new_parent;
+  while (panel) {
+    if (&panel->item == this) {
+      return false;
+    }
+    panel = panel->item.parent;
+  }
+  return true;
+}
+
+bool bNodeTreeInterfaceItem::parent_set(bNodeTreeInterfacePanel *new_parent)
+{
+  if (!is_valid_parent(new_parent)) {
+    return false;
+  }
+  parent = new_parent;
+  return true;
+}
+
 std::string bNodeTreeInterfaceSocket::socket_identifier() const
 {
   return "Socket" + std::to_string(uid);

@@ -45,6 +45,9 @@ typedef struct bNodeTreeInterfaceItem {
 
   template<typename T> T *get_as_ptr();
   template<typename T> const T *get_as_ptr() const;
+
+  bool is_valid_parent(const bNodeTreeInterfacePanel *new_parent) const;
+  bool parent_set(bNodeTreeInterfacePanel *new_parent);
 #endif
 } bNodeTreeInterfaceItem;
 

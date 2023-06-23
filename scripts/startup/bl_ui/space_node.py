@@ -989,7 +989,17 @@ class NODE_PT_node_tree_declaration(Panel):
 
         active_item = tree.interface.interface_items.active
         if active_item is not None:
-            layout.prop(active_item, "name")
+            if active_item.item_type == 'SOCKET':
+                layout.prop(active_item, "name")
+                layout.prop(active_item, "description")
+                layout.prop(active_item, "kind", toggle=True)
+                # layout.prop(active_item, "is_input", toggle=True)
+                # layout.prop(active_item, "is_output", toggle=True)
+                layout.prop(active_item, "data_type")
+            if active_item.item_type == 'PANEL':
+                layout.prop(active_item, "name")
+
+            layout.prop_search(active_item, "parent", tree.interface, "interface_items")
 
 
 class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):
