@@ -205,7 +205,6 @@ static int select_alternate_exec(bContext *C, wmOperator *op)
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
-        // todo: check that some points of stroke are selected
         blender::ed::curves::select_alternate(drawing.geometry.wrap(), deselect_ends);
       });
 
