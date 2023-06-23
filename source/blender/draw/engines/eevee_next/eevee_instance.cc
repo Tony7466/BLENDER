@@ -19,6 +19,7 @@
 #include "DNA_modifier_types.h"
 #include "RE_pipeline.h"
 
+#include "eevee_engine.h"
 #include "eevee_instance.hh"
 
 namespace blender::eevee {
@@ -37,14 +38,12 @@ void Instance::init(const int2 &output_res,
                     const rcti *output_rect,
                     RenderEngine *render_,
                     Depsgraph *depsgraph_,
-                    const LightProbe *light_probe_,
                     Object *camera_object_,
                     const RenderLayer *render_layer_,
                     const DRWView *drw_view_,
                     const View3D *v3d_,
                     const RegionView3D *rv3d_)
 {
-  UNUSED_VARS(light_probe_);
   render = render_;
   depsgraph = depsgraph_;
   camera_orig_object = camera_object_;
@@ -72,6 +71,35 @@ void Instance::init(const int2 &output_res,
   main_view.init();
   irradiance_cache.init();
   reflection_probes.init();
+}
+
+void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
+{
+  this->depsgraph = depsgraph;
+  this->manager = manager;
+  camera_orig_object = nullptr;
+  render = nullptr;
+  render_layer = nullptr;
+  drw_view = nullptr;
+  v3d = nullptr;
+  rv3d = nullptr;
+
+  is_light_bake = true;
+  debug_mode = (eDebugMode)G.debug_value;
+  info = "";
+
+  update_eval_members();
+
+  sampling.init(scene);
+  camera.init();
+  /* Film isn't used but init to avoid side effects in other module. */
+  rcti empty_rect{0, 0, 0, 0};
+  film.init(int2(1), &empty_rect);
+  velocity.init();
+  depth_of_field.init();
+  shadows.init();
+  main_view.init();
+  irradiance_cache.init();
 }
 
 void Instance::set_time(float time)
@@ -108,6 +136,7 @@ void Instance::begin_sync()
   shadows.begin_sync();
   pipelines.begin_sync();
   cryptomatte.begin_sync();
+  light_probes.begin_sync();
 
   gpencil_engine_enabled = false;
 
@@ -184,6 +213,9 @@ void Instance::object_sync(Object *ob)
         break;
       case OB_LIGHTPROBE:
         sync.sync_light_probe(ob, ob_handle, res_handle);
+        /* TODO: should be moved into sync module? */
+        light_probes.sync_probe(ob, ob_handle);
+        break;
       default:
         break;
     }
@@ -214,6 +246,7 @@ void Instance::end_sync()
   film.end_sync();
   cryptomatte.end_sync();
   pipelines.end_sync();
+  light_probes.end_sync();
 }
 
 void Instance::render_sync()
@@ -452,6 +485,79 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
   register_cryptomatte_passes(VIEW_LAYER_CRYPTOMATTE_ASSET, EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET);
   register_cryptomatte_passes(VIEW_LAYER_CRYPTOMATTE_MATERIAL,
                               EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
+}
+
+void Instance::light_bake_irradiance(
+    Object &probe,
+    FunctionRef<void()> context_enable,
+    FunctionRef<void()> context_disable,
+    FunctionRef<bool()> stop,
+    FunctionRef<void(LightProbeGridCacheFrame *, float progress)> result_update)
+{
+  BLI_assert(is_baking());
+
+  auto custom_pipeline_wrapper = [&](FunctionRef<void()> callback) {
+    context_enable();
+    DRW_custom_pipeline_begin(&draw_engine_eevee_next_type, depsgraph);
+    callback();
+    DRW_custom_pipeline_end();
+    context_disable();
+  };
+
+  auto context_wrapper = [&](FunctionRef<void()> callback) {
+    context_enable();
+    callback();
+    context_disable();
+  };
+
+  irradiance_cache.bake.init(probe);
+
+  custom_pipeline_wrapper([&]() {
+    /* TODO: lightprobe visibility group option. */
+    manager->begin_sync();
+    render_sync();
+    manager->end_sync();
+
+    irradiance_cache.bake.surfels_create(probe);
+    irradiance_cache.bake.surfels_lights_eval();
+  });
+
+  sampling.init(probe);
+  while (!sampling.finished()) {
+    context_wrapper([&]() {
+      /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
+       * switch. */
+      /* TODO(fclem): Could make the number of iteration depend on the computation time. */
+      for (int i = 0; i < 16 && !sampling.finished(); i++) {
+        sampling.step();
+
+        irradiance_cache.bake.raylists_build();
+        irradiance_cache.bake.propagate_light();
+        irradiance_cache.bake.irradiance_capture();
+      }
+
+      if (sampling.finished()) {
+        /* TODO(fclem): Dilation, filter etc... */
+        // irradiance_cache.bake.irradiance_finalize();
+      }
+
+      LightProbeGridCacheFrame *cache_frame;
+      if (sampling.finished()) {
+        cache_frame = irradiance_cache.bake.read_result_packed();
+      }
+      else {
+        /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
+        cache_frame = irradiance_cache.bake.read_result_unpacked();
+      }
+
+      float progress = sampling.sample_index() / float(sampling.sample_count());
+      result_update(cache_frame, progress);
+    });
+
+    if (stop()) {
+      return;
+    }
+  }
 }
 
 /** \} */
