@@ -93,7 +93,8 @@ static void do_versions_nodetree_convert_angle(bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == CMP_NODE_ROTATE) {
       /* Convert degrees to radians. */
-      bNodeSocket *sock = static_cast<bNodeSocket *>(static_cast<bNodeSocket *>(node->inputs.first)->next);
+      bNodeSocket *sock = static_cast<bNodeSocket *>(
+          static_cast<bNodeSocket *>(node->inputs.first)->next);
       ((bNodeSocketValueFloat *)sock->default_value)->value = DEG2RADF(
           ((bNodeSocketValueFloat *)sock->default_value)->value);
     }
@@ -613,7 +614,7 @@ LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
 }
 }
 
-static bool seq_colorbalance_update_cb(Sequence *seq, void */*user_data*/)
+static bool seq_colorbalance_update_cb(Sequence *seq, void * /*user_data*/)
 {
   Strip *strip = seq->strip;
 
@@ -636,7 +637,7 @@ static bool seq_colorbalance_update_cb(Sequence *seq, void */*user_data*/)
   return true;
 }
 
-static bool seq_set_alpha_mode_cb(Sequence *seq, void */*user_data*/)
+static bool seq_set_alpha_mode_cb(Sequence *seq, void * /*user_data*/)
 {
   enum { SEQ_MAKE_PREMUL = (1 << 6) };
   if (seq->flag & SEQ_MAKE_PREMUL) {
@@ -648,7 +649,7 @@ static bool seq_set_alpha_mode_cb(Sequence *seq, void */*user_data*/)
   return true;
 }
 
-static bool seq_set_wipe_angle_cb(Sequence *seq, void */*user_data*/)
+static bool seq_set_wipe_angle_cb(Sequence *seq, void * /*user_data*/)
 {
   if (seq->type == SEQ_TYPE_WIPE) {
     WipeVars *wv = static_cast<WipeVars *>(seq->effectdata);
@@ -658,7 +659,7 @@ static bool seq_set_wipe_angle_cb(Sequence *seq, void */*user_data*/)
 }
 
 /* NOLINTNEXTLINE: readability-function-size */
-void blo_do_versions_260(FileData *fd, Library */*lib*/, Main *bmain)
+void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (bmain->versionfile < 260) {
     {/* set default alpha value of Image outputs in image and render layer nodes to 0 */
@@ -791,7 +792,8 @@ LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       clip->tracking.camera.pixel_aspect = 1.0f;
     }
 
-    MovieTrackingTrack *track = static_cast<MovieTrackingTrack *>(clip->tracking.tracks_legacy.first);
+    MovieTrackingTrack *track = static_cast<MovieTrackingTrack *>(
+        clip->tracking.tracks_legacy.first);
     while (track) {
       if (track->minimum_correlation == 0.0f) {
         track->minimum_correlation = 0.75f;
@@ -894,7 +896,8 @@ LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
 {
   LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
     MovieTracking *tracking = &clip->tracking;
-    MovieTrackingObject *tracking_object = static_cast<MovieTrackingObject *>(tracking->objects.first);
+    MovieTrackingObject *tracking_object = static_cast<MovieTrackingObject *>(
+        tracking->objects.first);
 
     clip->proxy.build_tc_flag |= IMB_TC_RECORD_RUN_NO_GAPS;
 
@@ -966,7 +969,8 @@ if (!MAIN_VERSION_ATLEAST(bmain, 261, 3)) {
       if (md->type == eModifierType_DynamicPaint) {
         DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)md;
         if (pmd->canvas) {
-          DynamicPaintSurface *surface = static_cast<DynamicPaintSurface *>(pmd->canvas->surfaces.first);
+          DynamicPaintSurface *surface = static_cast<DynamicPaintSurface *>(
+              pmd->canvas->surfaces.first);
           for (; surface; surface = static_cast<DynamicPaintSurface *>(surface->next)) {
             surface->color_dry_threshold = 1.0f;
             surface->influence_scale = 1.0f;
@@ -1285,7 +1289,8 @@ if (!MAIN_VERSION_ATLEAST(bmain, 263, 10)) {
 
 if (!MAIN_VERSION_ATLEAST(bmain, 263, 11)) {
   LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
-    MovieTrackingTrack *track = static_cast<MovieTrackingTrack *>(clip->tracking.tracks_legacy.first);
+    MovieTrackingTrack *track = static_cast<MovieTrackingTrack *>(
+        clip->tracking.tracks_legacy.first);
     while (track) {
       do_versions_affine_tracker_track(track);
 
@@ -1612,7 +1617,8 @@ if (!MAIN_VERSION_ATLEAST(bmain, 265, 5)) {
 
   LISTBASE_FOREACH (Tex *, tex, &bmain->textures) {
     if (tex->type == TEX_IMAGE && (tex->imaflag & TEX_USEALPHA) == 0) {
-      Image *image = static_cast<Image *>(blo_do_versions_newlibadr(fd, &tex->id, ID_IS_LINKED(tex), tex->ima));
+      Image *image = static_cast<Image *>(
+          blo_do_versions_newlibadr(fd, &tex->id, ID_IS_LINKED(tex), tex->ima));
 
       if (image && (image->flag & IMA_DO_PREMUL) == 0) {
         enum { IMA_IGNORE_ALPHA = (1 << 12) };
@@ -1625,7 +1631,8 @@ if (!MAIN_VERSION_ATLEAST(bmain, 265, 5)) {
     if (ntree->type == NTREE_COMPOSIT) {
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (node->type == CMP_NODE_IMAGE) {
-          Image *image = static_cast<Image *>(blo_do_versions_newlibadr(fd, &ntree->id, ID_IS_LINKED(ntree), node->id));
+          Image *image = static_cast<Image *>(
+              blo_do_versions_newlibadr(fd, &ntree->id, ID_IS_LINKED(ntree), node->id));
 
           if (image) {
             if ((image->flag & IMA_DO_PREMUL) == 0 && image->alpha_mode == IMA_ALPHA_STRAIGHT) {
@@ -2327,7 +2334,8 @@ void do_versions_after_linking_260(Main *bmain)
        * If the fromnode/tonode pointers are nullptr, this means a link from/to
        * the ntree interface sockets, which need to be redirected to new interface nodes.
        */
-      for (link = static_cast<bNodeLink *>(ntree->links.first); link != nullptr; link = next_link) {
+      for (link = static_cast<bNodeLink *>(ntree->links.first); link != nullptr; link = next_link)
+      {
         bool free_link = false;
         next_link = static_cast<bNodeLink *>(link->next);
 
@@ -2393,7 +2401,8 @@ void do_versions_after_linking_260(Main *bmain)
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       bNodeLink *link, *next_link;
 
-      for (link = static_cast<bNodeLink *>(ntree->links.first); link != nullptr; link = next_link) {
+      for (link = static_cast<bNodeLink *>(ntree->links.first); link != nullptr; link = next_link)
+      {
         next_link = static_cast<bNodeLink *>(link->next);
         if (link->fromnode == nullptr || link->tonode == nullptr) {
           nodeRemLink(ntree, link);
