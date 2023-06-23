@@ -1461,8 +1461,9 @@ struct SerialLoopBodyIndices {
   int status_usage_input;
   int status_output;
   IndexRange border_link_inputs;
-  IndexRange attribute_set_inputs;
   IndexRange border_link_usage_outputs;
+  Map<int, int> attribute_set_input_by_field_source_index;
+  Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
 class LazyFunctionForSerialLoopZone : public LazyFunction {
@@ -1889,10 +1890,23 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     Map<int, lf::OutputSocket *> lf_attribute_set_by_caller_propagation_index;
 
     this->build_attribute_set_inputs_for_zone(graph_params,
-                                              zone_info,
                                               lf_attribute_set_by_field_source_index,
-                                              lf_attribute_set_by_caller_propagation_index,
-                                              lf_body_inputs);
+                                              lf_attribute_set_by_caller_propagation_index);
+    for (const auto item : lf_attribute_set_by_field_source_index.items()) {
+      lf::OutputSocket &lf_attribute_set_socket = *item.value;
+      if (lf_attribute_set_socket.node().is_dummy()) {
+        const int body_input_index = lf_body_inputs.append_and_get_index(&lf_attribute_set_socket);
+        body_indices.attribute_set_input_by_field_source_index.add_new(item.key, body_input_index);
+      }
+    }
+    for (const auto item : lf_attribute_set_by_caller_propagation_index.items()) {
+      lf::OutputSocket &lf_attribute_set_socket = *item.value;
+      if (lf_attribute_set_socket.node().is_dummy()) {
+        const int body_input_index = lf_body_inputs.append_and_get_index(&lf_attribute_set_socket);
+        body_indices.attribute_set_input_by_caller_propagation_index.add_new(item.key,
+                                                                             body_input_index);
+      }
+    }
     this->link_attribute_set_inputs(lf_body_graph,
                                     graph_params,
                                     lf_attribute_set_by_field_source_index,
