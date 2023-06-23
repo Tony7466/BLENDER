@@ -14,7 +14,7 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(cubemap_lib.glsl)
 
-void radiance_transfer(inout Surfel surfel, vec3 irradiance, vec3 L)
+void radiance_transfer(inout Surfel surfel, vec3 in_radiance, vec3 L)
 {
   float NL = dot(surfel.normal, L);
   /* Lambertian BSDF. Albedo applied later depending on which side of the surfel was hit. */
@@ -70,6 +70,11 @@ void radiance_transfer_world(inout Surfel receiver, vec3 sky_L)
   radiance_transfer(receiver, radiance, -sky_L);
 }
 
+vec3 radiance_sky_sample(vec3 R)
+{
+  return textureLod_cubemapArray(reflectionProbes, vec4(R, 0.0), 0.0).rgb;
+}
+
 void main()
 {
   int surfel_index = int(gl_GlobalInvocationID.x);
@@ -99,6 +104,5 @@ void main()
     radiance_transfer(surfel, world_radiance, -sky_L);
   }
 
-  surfel_buf[surfel_index].incomming_light_front = surfel.incomming_light_front;
-  surfel_buf[surfel_index].incomming_light_back = surfel.incomming_light_back;
+  surfel_buf[surfel_index] = surfel;
 }

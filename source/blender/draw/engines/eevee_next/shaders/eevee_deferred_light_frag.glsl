@@ -58,10 +58,7 @@ void main()
 
   lightprobe_eval(diffuse_data, reflection_data, P, Ng, V, diffuse_light, reflection_light);
 
-  light_world_eval(diffuse_data, reflection_data, P, V, diffuse_light, reflection_light);
-
-  light_eval(
-      diffuse_data, reflection_data, P, Ng, V, vP_z, thickness, diffuse_light, reflection_light);
+  light_world_eval(reflection_data, P, V, reflection_light);
 
   light_eval(diffuse_data,
              reflection_data,
