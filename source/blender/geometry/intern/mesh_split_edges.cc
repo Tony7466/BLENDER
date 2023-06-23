@@ -180,12 +180,13 @@ static void split_vertex_per_fan(const int vertex,
   }
 }
 
-static void split_vertex_loose_edges(const int vertex,
-                                     const int start_offset,
-                                     const Span<int> fans,
-                                     const Span<int> fan_sizes,
-                                     const BoundedBitSpan loose_edges,
-                                     MutableSpan<int2> edges)
+/** Assign the newly created vertex duplicates to the loose edges around this vertex. */
+static void reassign_loose_edge_verts(const int vertex,
+                                      const int start_offset,
+                                      const Span<int> fans,
+                                      const Span<int> fan_sizes,
+                                      const BoundedBitSpan loose_edges,
+                                      MutableSpan<int2> edges)
 {
   int fan_start = 0;
   /* We don't need to create a new vertex for the last fan. That fan can just be connected to the
@@ -472,12 +473,12 @@ void split_edges(Mesh &mesh,
         if (!should_split_vert[vert]) {
           continue;
         }
-        split_vertex_loose_edges(vert,
-                                 vert_offsets[vert],
-                                 vert_to_edge_map[vert],
-                                 vertex_fan_sizes[vert],
-                                 loose_edges_cache.is_loose_bits,
-                                 new_edges_span);
+        reassign_loose_edge_verts(vert,
+                                  vert_offsets[vert],
+                                  vert_to_edge_map[vert],
+                                  vertex_fan_sizes[vert],
+                                  loose_edges_cache.is_loose_bits,
+                                  new_edges_span);
       }
     });
   }
