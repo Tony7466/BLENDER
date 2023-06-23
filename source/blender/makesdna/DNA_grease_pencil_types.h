@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
+#  include "BLI_bounds_types.hh"
 #  include "BLI_function_ref.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_vector_types.hh"
@@ -442,12 +443,26 @@ typedef struct GreasePencil {
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
 
+  blender::Span<const blender::bke::greasepencil::TreeNode *> nodes() const;
+
   bool has_active_layer() const;
+  const blender::bke::greasepencil::Layer *get_active_layer() const;
+  blender::bke::greasepencil::Layer *get_active_layer_for_write();
+  void set_active_layer(const blender::bke::greasepencil::Layer *layer);
+
   blender::bke::greasepencil::Layer &add_layer(blender::bke::greasepencil::LayerGroup &group,
                                                blender::StringRefNull name);
+  blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
+  blender::bke::greasepencil::Layer &add_layer_after(blender::bke::greasepencil::LayerGroup &group,
+                                                     blender::bke::greasepencil::Layer *layer,
+                                                     blender::StringRefNull name);
 
   const blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name) const;
   blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);
+
+  void rename_layer(blender::bke::greasepencil::Layer &layer, blender::StringRefNull new_name);
+
+  void remove_layer(blender::bke::greasepencil::Layer &layer);
 
   void add_empty_drawings(int add_num);
   void remove_drawing(int index);
@@ -457,7 +472,7 @@ typedef struct GreasePencil {
   void foreach_editable_drawing(int frame,
                                 blender::FunctionRef<void(int, GreasePencilDrawing &)> function);
 
-  bool bounds_min_max(blender::float3 &min, blender::float3 &max) const;
+  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
   /* For debugging purposes. */
   void print_layer_tree();

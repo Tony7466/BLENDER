@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgreasepencil
@@ -1199,7 +1200,7 @@ void create_blank(Main &bmain, Object &object, const int frame_number)
   object.actcol = material_index + 1;
 
   Layer &new_layer = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "GP_Layer");
-  grease_pencil.active_layer = &new_layer;
+  grease_pencil.set_active_layer(&new_layer);
 
   grease_pencil.add_empty_drawings(1);
 
@@ -1223,7 +1224,7 @@ void create_stroke(Main &bmain, Object &object, float4x4 matrix, const int frame
 
   Layer &layer_lines = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "Lines");
   Layer &layer_color = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "Color");
-  grease_pencil.active_layer = &layer_lines;
+  grease_pencil.set_active_layer(&layer_lines);
 
   grease_pencil.add_empty_drawings(2);
 
@@ -1288,7 +1289,7 @@ void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int fram
 
   Layer &layer_fills = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "Fills");
   Layer &layer_lines = grease_pencil.add_layer(grease_pencil.root_group.wrap(), "Lines");
-  grease_pencil.active_layer = &layer_lines;
+  grease_pencil.set_active_layer(&layer_lines);
 
   grease_pencil.add_empty_drawings(2);
 

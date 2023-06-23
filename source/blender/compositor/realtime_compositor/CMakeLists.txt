@@ -112,6 +112,7 @@ set(GLSL_SRC
   shaders/compositor_blur_variable_size.glsl
   shaders/compositor_bokeh_image.glsl
   shaders/compositor_box_mask.glsl
+  shaders/compositor_compute_preview.glsl
   shaders/compositor_convert.glsl
   shaders/compositor_despeckle.glsl
   shaders/compositor_directional_blur.glsl
@@ -226,6 +227,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_blur_variable_size_info.hh
   shaders/infos/compositor_bokeh_image_info.hh
   shaders/infos/compositor_box_mask_info.hh
+  shaders/infos/compositor_compute_preview_info.hh
   shaders/infos/compositor_convert_info.hh
   shaders/infos/compositor_despeckle_info.hh
   shaders/infos/compositor_directional_blur_info.hh
@@ -298,3 +300,6 @@ if(WITH_OPENCOLORIO)
 endif()
 
 blender_add_lib(bf_realtime_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# Needed so we can use dna_type_offsets.h
+add_dependencies(bf_realtime_compositor bf_dna)
