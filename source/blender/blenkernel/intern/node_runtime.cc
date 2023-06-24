@@ -224,13 +224,7 @@ static void update_logically_linked_sockets(const bNodeTree &ntree)
             socket->runtime->logically_linked_sockets,
             socket->runtime->logically_linked_skipped_sockets);
       }
-    }
-  });
 
-  /* Clear logically linked sockets to outputs. */
-  threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
-    for (const int i : range) {
-      bNode &node = *nodes[i];
       for (bNodeSocket *socket : node.runtime->outputs) {
         socket->runtime->logically_linked_sockets.clear();
       }
@@ -519,7 +513,6 @@ static void ensure_topology_cache(const bNodeTree &ntree)
     update_interface_sockets(ntree);
 
     threading::parallel_invoke(
-<<<<<<< HEAD
         tree_runtime.nodes_by_id.size() > 64,
         [&] { update_node_vector(ntree); },
         [&] { update_link_vector(ntree); },
@@ -530,11 +523,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
 
     threading::parallel_invoke(
         tree_runtime.nodes_by_id.size() > 64,
-        [&]() { update_logical_origins(ntree); },
-=======
-        tree_runtime.nodes_by_id.size() > 32,
         [&]() { update_logically_linked_sockets(ntree); },
->>>>>>> main
         [&]() { update_sockets_by_identifier(ntree); },
         [&]() {
           update_toposort(ntree,
