@@ -54,9 +54,13 @@ struct PaintOperationExecutor {
      */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
     if (!grease_pencil.has_active_layer()) {
-      /* TODO: create a new layer. */
-      BLI_assert_unreachable();
-      // grease_pencil.runtime->set_active_layer_index(0);
+      bke::greasepencil::Layer &new_layer = grease_pencil.add_layer("GP_Layer");
+      grease_pencil.set_active_layer(&new_layer);
+
+      grease_pencil.add_empty_drawings(1);
+
+      GreasePencilFrame frame{0, 0, BEZT_KEYTYPE_KEYFRAME};
+      new_layer.insert_frame(scene->r.cfra, frame);
     }
     const bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
     int index = active_layer.drawing_index_at(scene->r.cfra);
@@ -94,6 +98,15 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(obact->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(ob_eval->data);
+  if (!grease_pencil_orig.has_active_layer()) {
+    bke::greasepencil::Layer &new_layer = grease_pencil_orig.add_layer("GP_Layer");
+    grease_pencil_orig.set_active_layer(&new_layer);
+
+    grease_pencil_orig.add_empty_drawings(1);
+
+    GreasePencilFrame frame{0, 0, BEZT_KEYTYPE_KEYFRAME};
+    new_layer.insert_frame(scene->r.cfra, frame);
+  }
   BLI_assert(grease_pencil_orig.has_active_layer() && grease_pencil_eval.has_active_layer());
   const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
   const bke::greasepencil::Layer &active_layer_eval = *grease_pencil_eval.get_active_layer();
