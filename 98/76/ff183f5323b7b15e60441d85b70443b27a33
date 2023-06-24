@@ -1,2 +1,2 @@
 Referenced by commit c1292b4a8043b1d85ca22e770d5c9ff2e6d25c81, Revert "Fix: Revert changes in Mesh to Volume node and modifier to Blender 3.6"
-Referenced by issue #109334, Buffer overflow when hitting backspace or delete in text editor
+Referenced by issue #109334, Regression: Buffer overflow when hitting backspace or delete in text editor
