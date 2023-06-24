@@ -274,9 +274,14 @@ def resolve_ncase(path):
     :return: The resolved path.
     :rtype: string
     """
+    if not path:
+        # An empty string may be interpreted as the current directory by os.path.realpath and os.path.abspath, but it is
+        # not a valid path to a directory/file, so it will not be found. It has no characters whose case needs to be
+        # resolved anyway.
+        return path
 
     def _ncase_path_found(path):
-        if not path or _os.path.exists(path):
+        if _os.path.exists(path):
             return path, True
 
         # filename may be a directory or a file
@@ -291,25 +296,35 @@ def resolve_ncase(path):
             filename = _os.path.basename(dirpath)
             dirpath = _os.path.dirname(dirpath)
 
-        if not _os.path.exists(dirpath):
-            if dirpath == path:
+        if dirpath:
+            if not _os.path.exists(dirpath):
+                if dirpath == path:
+                    return path, False
+
+                # Try to find the correct case for `dirpath`.
+                dirpath, found = _ncase_path_found(dirpath)
+
+                if not found:
+                    return path, False
+
+            # at this point, the directory exists but not the file
+
+            # we are expecting `dirpath` to be a directory, but it could be a file
+            if not _os.path.isdir(dirpath):
                 return path, False
 
-            dirpath, found = _ncase_path_found(dirpath)
-
-            if not found:
-                return path, False
-
-        # at this point, the directory exists but not the file
-
-        # we are expecting 'dirpath' to be a directory, but it could be a file
-        if _os.path.isdir(dirpath):
-            try:
-                files = _os.listdir(dirpath)
-            except PermissionError:
-                # We might not have the permission to list dirpath...
-                return path, False
+            search_dirpath = dirpath
         else:
+            # `dirpath` can be an empty string when `path` is a relative path without an explicit leading "./", such as
+            # "myfile". However, an empty string is not a valid path to the current directory, so "." must be used
+            # explicitly when listing the files in the current directory.
+            # `dirpath` is included in the returned path when found, so it should not be modified here.
+            search_dirpath = "."
+
+        try:
+            files = _os.listdir(search_dirpath)
+        except PermissionError:
+            # We might not have the permission to list `search_dirpath`...
             return path, False
 
         filename_low = filename.lower()
