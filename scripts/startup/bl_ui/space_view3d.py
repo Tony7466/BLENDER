@@ -905,7 +905,7 @@ class VIEW3D_HT_header(Header):
         sub.active = overlay.show_overlays
         sub.popover(panel="VIEW3D_PT_overlay", text="")
 
-        row = layout.row()
+        row = layout.row(align=True)
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
@@ -922,6 +922,7 @@ class VIEW3D_HT_header(Header):
             icon='XRAY',
             depress=draw_depressed,
         )
+        row.popover(panel="VIEW3D_PT_xray", text="")
 
         row = layout.row(align=True)
         row.prop(shading, "type", text="", expand=True)
@@ -6251,17 +6252,7 @@ class VIEW3D_PT_shading_options(Panel):
 
         row = col.row(align=True)
 
-        if shading.type == 'WIREFRAME':
-            row.prop(shading, "show_xray_wireframe", text="")
-            sub = row.row()
-            sub.active = shading.show_xray_wireframe
-            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray")
-        elif shading.type == 'SOLID':
-            row.prop(shading, "show_xray", text="")
-            sub = row.row()
-            sub.active = shading.show_xray
-            sub.prop(shading, "xray_alpha", text="X-Ray")
-            # X-ray mode is off when alpha is 1.0
+        if shading.type == 'SOLID':
             xray_active = shading.show_xray and shading.xray_alpha != 1
 
             row = col.row(align=True)
@@ -6444,6 +6435,56 @@ class VIEW3D_PT_gizmo_display(Panel):
         col.label(text="Camera")
         col.prop(view, "show_gizmo_camera_lens", text="Lens")
         col.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
+
+
+class VIEW3D_PT_xray(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "X-Ray"
+    bl_ui_units_x = 13
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="X-Ray Settings")
+        shading = VIEW3D_PT_shading.get_shading(context)
+
+        col = layout.column()
+        row = col.row(align=True)
+        if shading.type == 'WIREFRAME':
+            row.prop(shading, "show_xray_wireframe", text="")
+            sub = row.row()
+            sub.active = shading.show_xray_wireframe
+            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray Wireframe")
+        elif shading.type == 'SOLID':
+            row.prop(shading, "show_xray", text="")
+            sub = row.row()
+            sub.active = shading.show_xray
+            sub.prop(shading, "xray_alpha", text="X-Ray Solid")
+
+
+class VIEW3D_PT_select_through(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_parent_id = 'VIEW3D_PT_xray'
+    bl_label = "Select Through"
+    bl_ui_units_x = 10
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+
+        row = layout.row()
+        row.prop(tool_settings, "select_through", text="Enable")
+        sub = row.row()
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_object", text="Object")
+        sub.prop(tool_settings, "select_through_edit", text="Edit")
+        row = layout.row()
+        sub = row.row(align=True)
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_box", text="Box", toggle=True)
+        sub.prop(tool_settings, "select_through_lasso", text="Lasso", toggle=True)
+        sub.prop(tool_settings, "select_through_circle", text="Circle", toggle=True)
 
 
 class VIEW3D_PT_overlay(Panel):
@@ -8405,6 +8446,8 @@ classes = (
     VIEW3D_PT_shading_render_pass,
     VIEW3D_PT_shading_compositor,
     VIEW3D_PT_gizmo_display,
+    VIEW3D_PT_xray,
+    VIEW3D_PT_select_through,
     VIEW3D_PT_overlay,
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,

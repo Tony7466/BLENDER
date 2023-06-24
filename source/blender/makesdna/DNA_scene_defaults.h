@@ -372,6 +372,13 @@
     /* Placement */ \
     .snap_mode_tools = SCE_SNAP_TO_GEOM,\
     .plane_axis = 2,\
+\
+    /* Select through */ \
+    .select_through = true, \
+    .select_through_object = true, \
+    .select_through_box = true, \
+    .select_through_lasso = true, \
+    .select_through_circle = true, \
   }
 
 /* clang-format off */
