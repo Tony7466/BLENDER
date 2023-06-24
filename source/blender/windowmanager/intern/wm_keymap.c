@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -21,6 +22,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
@@ -176,7 +178,7 @@ static bool wm_keymap_item_equals(wmKeyMapItem *a, wmKeyMapItem *b)
            (a->flag & KMI_REPEAT_IGNORE) == (b->flag & KMI_REPEAT_IGNORE)));
 }
 
-void WM_keymap_item_properties_reset(wmKeyMapItem *kmi, struct IDProperty *properties)
+void WM_keymap_item_properties_reset(wmKeyMapItem *kmi, IDProperty *properties)
 {
   if (LIKELY(kmi->ptr)) {
     WM_operator_properties_free(kmi->ptr);
@@ -348,7 +350,7 @@ void WM_keyconfig_set_active(wmWindowManager *wm, const char *idname)
   WM_keyconfig_update(wm);
 
   STRNCPY(U.keyconfigstr, idname);
-  if (wm->initialized & WM_KEYCONFIG_IS_INIT) {
+  if (wm->init_flag & WM_INIT_FLAG_KEYCONFIG) {
     U.runtime.is_dirty = true;
   }
 
@@ -366,7 +368,7 @@ void WM_keyconfig_set_active(wmWindowManager *wm, const char *idname)
 
 static wmKeyMap *wm_keymap_new(const char *idname, int spaceid, int regionid)
 {
-  wmKeyMap *km = MEM_callocN(sizeof(struct wmKeyMap), "keymap list");
+  wmKeyMap *km = MEM_callocN(sizeof(wmKeyMap), "keymap list");
 
   STRNCPY(km->idname, idname);
   km->spaceid = spaceid;
@@ -524,7 +526,7 @@ wmKeyMapItem *WM_keymap_add_item(wmKeyMap *keymap,
   return kmi;
 }
 
-wmKeyMapItem *WM_keymap_add_item_copy(struct wmKeyMap *keymap, wmKeyMapItem *kmi_src)
+wmKeyMapItem *WM_keymap_add_item_copy(wmKeyMap *keymap, wmKeyMapItem *kmi_src)
 {
   wmKeyMapItem *kmi_dst = wm_keymap_item_copy(kmi_src);
 
@@ -657,7 +659,7 @@ static void wm_keymap_patch(wmKeyMap *km, wmKeyMap *diff_km)
       /* We seek only for exact copy here! See #42137. */
       wmKeyMapItem *kmi_add = wm_keymap_find_item_equals(km, kmdi->add_item);
 
-      /** If kmi_add is same as kmi_remove (can happen in some cases,
+      /* If kmi_add is same as kmi_remove (can happen in some cases,
        * typically when we got kmi_remove from #wm_keymap_find_item_equals_result()),
        * no need to add or remove anything, see #45579. */
 
@@ -1154,67 +1156,57 @@ int WM_keymap_item_raw_to_string(const short shift,
                                  const int result_maxncpy)
 {
   /* TODO: also support (some) value, like e.g. double-click? */
+  const char *result_array[12];
+  int i = 0;
 
-#define ADD_SEP \
-  if (p != buf) { \
-    *p++ = ' '; \
-  } \
-  (void)0
-
-  char buf[128];
-  char *p = buf;
-
-  buf[0] = '\0';
+  const char *space = " ";
 
   if (shift == KM_ANY && ctrl == KM_ANY && alt == KM_ANY && oskey == KM_ANY) {
     /* Don't show anything for any mapping. */
   }
   else {
     if (shift) {
-      ADD_SEP;
-      p += BLI_strcpy_rlen(p, WM_key_event_string(EVT_LEFTSHIFTKEY, true));
+      result_array[i++] = WM_key_event_string(EVT_LEFTSHIFTKEY, true);
+      result_array[i++] = space;
     }
-
     if (ctrl) {
-      ADD_SEP;
-      p += BLI_strcpy_rlen(p, WM_key_event_string(EVT_LEFTCTRLKEY, true));
+      result_array[i++] = WM_key_event_string(EVT_LEFTCTRLKEY, true);
+      result_array[i++] = space;
     }
-
     if (alt) {
-      ADD_SEP;
-      p += BLI_strcpy_rlen(p, WM_key_event_string(EVT_LEFTALTKEY, true));
+      result_array[i++] = WM_key_event_string(EVT_LEFTALTKEY, true);
+      result_array[i++] = space;
     }
-
     if (oskey) {
-      ADD_SEP;
-      p += BLI_strcpy_rlen(p, WM_key_event_string(EVT_OSKEY, true));
+      result_array[i++] = WM_key_event_string(EVT_OSKEY, true);
+      result_array[i++] = space;
     }
   }
 
   if (keymodifier) {
-    ADD_SEP;
-    p += BLI_strcpy_rlen(p, WM_key_event_string(keymodifier, compact));
+    result_array[i++] = WM_key_event_string(keymodifier, compact);
+    result_array[i++] = space;
   }
 
   if (type) {
-    ADD_SEP;
     if (val == KM_DBL_CLICK) {
-      p += BLI_strcpy_rlen(p, IFACE_("dbl-"));
+      result_array[i++] = IFACE_("dbl-");
     }
     else if (val == KM_CLICK_DRAG) {
-      p += BLI_strcpy_rlen(p, IFACE_("drag-"));
+      result_array[i++] = IFACE_("drag-");
     }
-    p += BLI_strcpy_rlen(p, WM_key_event_string(type, compact));
+    result_array[i++] = WM_key_event_string(type, compact);
   }
 
   /* We assume size of buf is enough to always store any possible shortcut,
    * but let's add a debug check about it! */
-  BLI_assert(p - buf < sizeof(buf));
+  BLI_assert(i < ARRAY_SIZE(result_array));
 
-  /* We need utf8 here, otherwise we may 'cut' some unicode chars like arrows... */
-  return BLI_strncpy_utf8_rlen(result, buf, result_maxncpy);
+  if (i > 0 && result_array[i - 1] == space) {
+    i--;
+  }
 
-#undef ADD_SEP
+  return BLI_string_join_array(result, result_maxncpy, result_array, i);
 }
 
 int WM_keymap_item_to_string(const wmKeyMapItem *kmi,
