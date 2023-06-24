@@ -16,6 +16,8 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
+#include "DNA_scene_types.h"
+
 #include "WM_api.h"
 
 namespace blender::ed::greasepencil {
@@ -24,7 +26,9 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
+  Scene *scene = CTX_data_scene(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  GreasePencilFrame frame{0, 0, BEZT_KEYTYPE_KEYFRAME};
 
   int new_layer_name_length;
   char *new_layer_name = RNA_string_get_alloc(
@@ -35,10 +39,12 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
     Layer &new_layer = grease_pencil.add_layer_after(
         active_group, grease_pencil.get_active_layer_for_write(), new_layer_name);
     grease_pencil.set_active_layer(&new_layer);
+    new_layer.insert_frame(scene->r.cfra, frame);
   }
   else {
     Layer &new_layer = grease_pencil.add_layer(new_layer_name);
     grease_pencil.set_active_layer(&new_layer);
+    new_layer.insert_frame(scene->r.cfra, frame);
   }
 
   MEM_SAFE_FREE(new_layer_name);
