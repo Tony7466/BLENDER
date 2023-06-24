@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
@@ -201,6 +202,37 @@ static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
   }
 }
 
+static void version_replace_texcoord_normal_socket(bNodeTree *ntree)
+{
+  /* The normal of a spot light was set to the incoming light direction, replace with the
+   * `Incoming` socket from the Geometry shader node. */
+  bNode *geometry_node = nullptr;
+  bNode *transform_node = nullptr;
+  bNodeSocket *incoming_socket = nullptr;
+  bNodeSocket *vec_in_socket = nullptr;
+  bNodeSocket *vec_out_socket = nullptr;
+
+  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
+    if (link->fromnode->type == SH_NODE_TEX_COORD && STREQ(link->fromsock->identifier, "Normal")) {
+      if (geometry_node == nullptr) {
+        geometry_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_NEW_GEOMETRY);
+        incoming_socket = nodeFindSocket(geometry_node, SOCK_OUT, "Incoming");
+
+        transform_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECT_TRANSFORM);
+        vec_in_socket = nodeFindSocket(transform_node, SOCK_IN, "Vector");
+        vec_out_socket = nodeFindSocket(transform_node, SOCK_OUT, "Vector");
+
+        NodeShaderVectTransform *nodeprop = (NodeShaderVectTransform *)transform_node->storage;
+        nodeprop->type = SHD_VECT_TRANSFORM_TYPE_NORMAL;
+
+        nodeAddLink(ntree, geometry_node, incoming_socket, transform_node, vec_in_socket);
+      }
+      nodeAddLink(ntree, transform_node, vec_out_socket, link->tonode, link->tosock);
+      nodeRemLink(ntree, link);
+    }
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
@@ -255,6 +287,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_crease_generic(*bmain);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 9)) {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      if (light->type == LA_SPOT && light->nodetree) {
+        version_replace_texcoord_normal_socket(light->nodetree);
+      }
     }
   }
 
