@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2003-2009 Blender Foundation.
- *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -55,7 +56,7 @@
 
 StripProxy *seq_strip_proxy_alloc(void)
 {
-  StripProxy *strip_proxy = MEM_callocN(sizeof(struct StripProxy), "StripProxy");
+  StripProxy *strip_proxy = MEM_callocN(sizeof(StripProxy), "StripProxy");
   strip_proxy->quality = 50;
   strip_proxy->build_tc_flags = SEQ_PROXY_TC_ALL;
   strip_proxy->tc = SEQ_PROXY_TC_RECORD_RUN;
@@ -67,13 +68,13 @@ static Strip *seq_strip_alloc(int type)
   Strip *strip = MEM_callocN(sizeof(Strip), "strip");
 
   if (ELEM(type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) == 0) {
-    strip->transform = MEM_callocN(sizeof(struct StripTransform), "StripTransform");
+    strip->transform = MEM_callocN(sizeof(StripTransform), "StripTransform");
     strip->transform->scale_x = 1;
     strip->transform->scale_y = 1;
     strip->transform->origin[0] = 0.5f;
     strip->transform->origin[1] = 0.5f;
     strip->transform->filter = SEQ_TRANSFORM_FILTER_BILINEAR;
-    strip->crop = MEM_callocN(sizeof(struct StripCrop), "StripCrop");
+    strip->crop = MEM_callocN(sizeof(StripCrop), "StripCrop");
   }
 
   strip->us = 1;
@@ -568,12 +569,12 @@ static Sequence *seq_dupli(const Scene *scene_src,
     BLI_assert_unreachable();
   }
 
-  /* When using SEQ_DUPE_UNIQUE_NAME, it is mandatory to add new sequences in relevant container
+  /* When using #SEQ_DUPE_UNIQUE_NAME, it is mandatory to add new sequences in relevant container
    * (scene or meta's one), *before* checking for unique names. Otherwise the meta's list is empty
-   * and hence we miss all seqs in that meta that have already been duplicated (see #55668).
-   * Note that unique name check itself could be done at a later step in calling code, once all
-   * seqs have bee duplicated (that was first, simpler solution), but then handling of animation
-   * data will be broken (see #60194). */
+   * and hence we miss all sequence-strips in that meta that have already been duplicated,
+   * (see #55668). Note that unique name check itself could be done at a later step in calling
+   * code, once all sequence-strips have bee duplicated (that was first, simpler solution),
+   * but then handling of animation data will be broken (see #60194). */
   if (new_seq_list != NULL) {
     BLI_addtail(new_seq_list, seqn);
   }
@@ -743,7 +744,7 @@ static bool seq_write_data_cb(Sequence *seq, void *userdata)
     if (seq->type == SEQ_TYPE_IMAGE) {
       BLO_write_struct_array(writer,
                              StripElem,
-                             MEM_allocN_len(strip->stripdata) / sizeof(struct StripElem),
+                             MEM_allocN_len(strip->stripdata) / sizeof(StripElem),
                              strip->stripdata);
     }
     else if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
@@ -860,25 +861,25 @@ static bool seq_read_lib_cb(Sequence *seq, void *user_data)
   BlendLibReader *reader = data->reader;
   Scene *sce = data->scene;
 
-  IDP_BlendReadLib(reader, sce->id.lib, seq->prop);
+  IDP_BlendReadLib(reader, &sce->id, seq->prop);
 
   if (seq->ipo) {
     /* XXX: deprecated - old animation system. */
-    BLO_read_id_address(reader, sce->id.lib, &seq->ipo);
+    BLO_read_id_address(reader, &sce->id, &seq->ipo);
   }
   seq->scene_sound = NULL;
   if (seq->scene) {
-    BLO_read_id_address(reader, sce->id.lib, &seq->scene);
+    BLO_read_id_address(reader, &sce->id, &seq->scene);
     seq->scene_sound = NULL;
   }
   if (seq->clip) {
-    BLO_read_id_address(reader, sce->id.lib, &seq->clip);
+    BLO_read_id_address(reader, &sce->id, &seq->clip);
   }
   if (seq->mask) {
-    BLO_read_id_address(reader, sce->id.lib, &seq->mask);
+    BLO_read_id_address(reader, &sce->id, &seq->mask);
   }
   if (seq->scene_camera) {
-    BLO_read_id_address(reader, sce->id.lib, &seq->scene_camera);
+    BLO_read_id_address(reader, &sce->id, &seq->scene_camera);
   }
   if (seq->sound) {
     seq->scene_sound = NULL;
@@ -886,7 +887,7 @@ static bool seq_read_lib_cb(Sequence *seq, void *user_data)
       seq->type = SEQ_TYPE_SOUND_RAM;
     }
     else {
-      BLO_read_id_address(reader, sce->id.lib, &seq->sound);
+      BLO_read_id_address(reader, &sce->id, &seq->sound);
     }
     if (seq->sound) {
       id_us_plus_no_lib((ID *)seq->sound);
@@ -895,7 +896,7 @@ static bool seq_read_lib_cb(Sequence *seq, void *user_data)
   }
   if (seq->type == SEQ_TYPE_TEXT) {
     TextVars *t = seq->effectdata;
-    BLO_read_id_address(reader, sce->id.lib, &t->text_font);
+    BLO_read_id_address(reader, &sce->id, &t->text_font);
   }
   BLI_listbase_clear(&seq->anims);
 
@@ -979,7 +980,8 @@ static bool seq_update_seq_cb(Sequence *seq, void *user_data)
     if (seq->type == SEQ_TYPE_SCENE && seq->scene != NULL) {
       BKE_sound_set_scene_volume(seq->scene, seq->scene->audio.volume);
       if ((seq->flag & SEQ_SCENE_STRIPS) == 0 && seq->scene->sound_scene != NULL &&
-          seq->scene->ed != NULL) {
+          seq->scene->ed != NULL)
+      {
         SEQ_for_each_callback(&seq->scene->ed->seqbase, seq_disable_sound_strips_cb, seq->scene);
       }
     }
@@ -990,9 +992,7 @@ static bool seq_update_seq_cb(Sequence *seq, void *user_data)
     }
     BKE_sound_set_scene_sound_volume(
         seq->scene_sound, seq->volume, (seq->flag & SEQ_AUDIO_VOLUME_ANIMATED) != 0);
-    BKE_sound_set_scene_sound_pitch(seq->scene_sound,
-                                    SEQ_sound_pitch_get(scene, seq),
-                                    (seq->flag & SEQ_AUDIO_PITCH_ANIMATED) != 0);
+    SEQ_retiming_sound_animation_data_set(scene, seq);
     BKE_sound_set_scene_sound_pan(
         seq->scene_sound, seq->pan, (seq->flag & SEQ_AUDIO_PAN_ANIMATED) != 0);
   }

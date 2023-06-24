@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -20,7 +21,7 @@
 
 #include "BLI_jitter_2d.h"
 
-#include "smaa_textures.h"
+#include "BLI_smaa_textures.h"
 
 #include "workbench_private.h"
 

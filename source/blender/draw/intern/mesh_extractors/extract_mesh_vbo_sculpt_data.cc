@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -9,7 +10,7 @@
 
 #include "BLI_string.h"
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_paint.h"
 
 #include "draw_subdivision.h"
@@ -39,7 +40,6 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPUVertFormat *format = get_sculpt_data_format();
 
-  CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
   CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vdata;
   CustomData *cd_pdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->pdata : &mr->me->pdata;
 
@@ -56,7 +56,6 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
   };
 
   gpuSculptData *vbo_data = (gpuSculptData *)GPU_vertbuf_get_data(vbo);
-  const MLoop *loops = (const MLoop *)CustomData_get_layer(cd_ldata, CD_MLOOP);
 
   if (mr->extract_type == MR_EXTRACT_BMESH) {
     int cd_mask_ofs = CustomData_get_offset(cd_vdata, CD_PAINT_MASK);
@@ -86,13 +85,11 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
     }
   }
   else {
-    int mp_loop = 0;
     for (int poly_index = 0; poly_index < mr->poly_len; poly_index++) {
-      const MPoly &poly = mr->polys[poly_index];
-      for (int l = 0; l < poly.totloop; l++) {
+      for (const int corner : mr->polys[poly_index]) {
         float v_mask = 0.0f;
         if (cd_mask) {
-          v_mask = cd_mask[loops[mp_loop].v];
+          v_mask = cd_mask[mr->corner_verts[corner]];
         }
         vbo_data->mask = v_mask;
 
@@ -106,7 +103,6 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
           }
         }
         copy_v3_v3_uchar(vbo_data->face_set_color, face_set_color);
-        mp_loop++;
         vbo_data++;
       }
     }
@@ -130,8 +126,8 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *subdiv_mask_vbo = nullptr;
   const float *cd_mask = (const float *)CustomData_get_layer(cd_vdata, CD_PAINT_MASK);
 
-  const Span<MPoly> coarse_polys = coarse_mesh->polys();
-  const Span<MLoop> coarse_loops = coarse_mesh->loops();
+  const OffsetIndices coarse_polys = coarse_mesh->polys();
+  const Span<int> coarse_corner_verts = coarse_mesh->corner_verts();
 
   if (cd_mask) {
     GPUVertFormat mask_format = {0};
@@ -143,12 +139,8 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
     float *v_mask = static_cast<float *>(GPU_vertbuf_get_data(mask_vbo));
 
     for (int i = 0; i < coarse_mesh->totpoly; i++) {
-      const MPoly &poly = coarse_polys[i];
-
-      for (int loop_index = poly.loopstart; loop_index < poly.loopstart + poly.totloop;
-           loop_index++) {
-        const MLoop *ml = &coarse_loops[loop_index];
-        *v_mask++ = cd_mask[ml->v];
+      for (const int vert : coarse_corner_verts.slice(coarse_polys[i])) {
+        *v_mask++ = cd_mask[vert];
       }
     }
 

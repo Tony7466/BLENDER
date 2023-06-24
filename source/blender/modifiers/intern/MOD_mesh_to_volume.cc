@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -34,8 +36,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #include "BLI_index_range.hh"
 #include "BLI_math_matrix_types.hh"
@@ -173,15 +175,15 @@ static Volume *mesh_to_volume(ModifierData *md,
   }
 
   /* Convert mesh to grid and add to volume. */
-  geometry::volume_grid_add_from_mesh(volume,
-                                      "density",
-                                      mesh,
-                                      mesh_to_own_object_space_transform,
-                                      voxel_size,
-                                      mvmd->fill_volume,
-                                      mvmd->exterior_band_width,
-                                      mvmd->interior_band_width,
-                                      mvmd->density);
+  geometry::fog_volume_grid_add_from_mesh(volume,
+                                          "density",
+                                          mesh,
+                                          mesh_to_own_object_space_transform,
+                                          voxel_size,
+                                          mvmd->fill_volume,
+                                          mvmd->exterior_band_width,
+                                          mvmd->interior_band_width,
+                                          mvmd->density);
 
   return volume;
 
@@ -194,7 +196,7 @@ static Volume *mesh_to_volume(ModifierData *md,
 
 static void modifyGeometrySet(ModifierData *md,
                               const ModifierEvalContext *ctx,
-                              GeometrySet *geometry_set)
+                              blender::bke::GeometrySet *geometry_set)
 {
   Volume *input_volume = geometry_set->get_volume_for_write();
   Volume *result_volume = mesh_to_volume(md, ctx, input_volume);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -72,13 +73,17 @@ int EEVEE_screen_raytrace_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     common_data->ssr_uv_scale[1] = size_fs[1] / ((float)tracing_res[1] * divisor);
 
     /* MRT for the shading pass in order to output needed data for the SSR pass. */
-    effects->ssr_specrough_input = DRW_texture_pool_query_2d(UNPACK2(size_fs), format, owner);
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
+    effects->ssr_specrough_input = DRW_texture_pool_query_2d_ex(
+        UNPACK2(size_fs), format, usage, owner);
 
     GPU_framebuffer_texture_attach(fbl->main_fb, effects->ssr_specrough_input, 2, 0);
 
     /* Ray-tracing output. */
-    effects->ssr_hit_output = DRW_texture_pool_query_2d(UNPACK2(tracing_res), GPU_RGBA16F, owner);
-    effects->ssr_hit_depth = DRW_texture_pool_query_2d(UNPACK2(tracing_res), GPU_R16F, owner);
+    effects->ssr_hit_output = DRW_texture_pool_query_2d_ex(
+        UNPACK2(tracing_res), GPU_RGBA16F, usage, owner);
+    effects->ssr_hit_depth = DRW_texture_pool_query_2d_ex(
+        UNPACK2(tracing_res), GPU_R16F, usage, owner);
 
     GPU_framebuffer_ensure_config(&fbl->screen_tracing_fb,
                                   {
@@ -114,13 +119,14 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
   LightCache *lcache = stl->g_data->light_cache;
 
   if ((effects->enabled_effects & EFFECT_SSR) != 0) {
-    struct GPUShader *trace_shader = EEVEE_shaders_effect_reflection_trace_sh_get();
-    struct GPUShader *resolve_shader = EEVEE_shaders_effect_reflection_resolve_sh_get();
+    GPUShader *trace_shader = EEVEE_shaders_effect_reflection_trace_sh_get();
+    GPUShader *resolve_shader = EEVEE_shaders_effect_reflection_resolve_sh_get();
 
     int hitbuf_size[3];
     GPU_texture_get_mipmap_size(effects->ssr_hit_output, 0, hitbuf_size);
 
-    /** Screen space ray-tracing overview
+    /**
+     * Screen space ray-tracing overview.
      *
      * Following Frostbite stochastic SSR.
      *
@@ -150,22 +156,20 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
         grp, "randomScale", effects->reflection_trace_full ? 0.0f : 0.5f);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
-    eGPUSamplerState no_filter = GPU_SAMPLER_DEFAULT;
+    GPUSamplerState no_filter = GPU_SAMPLER_DEFAULT;
 
     if (effects->use_split_ssr_pass) {
       /* Prepare passes for split reflections resolve variant. */
       for (int i = 0; i < 2; i++) {
         if (i == 0) {
           /* Prepare Reflection Probes resolve pass. */
-          struct GPUShader *resolve_shader_probe =
-              EEVEE_shaders_effect_reflection_resolve_probe_sh_get();
+          GPUShader *resolve_shader_probe = EEVEE_shaders_effect_reflection_resolve_probe_sh_get();
           DRW_PASS_CREATE(psl->ssr_resolve_probe, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
           grp = DRW_shgroup_create(resolve_shader_probe, psl->ssr_resolve_probe);
         }
         else if (i == 1) {
           /* Prepare SSR resolve pass. */
-          struct GPUShader *resolve_shader_refl =
-              EEVEE_shaders_effect_reflection_resolve_refl_sh_get();
+          GPUShader *resolve_shader_refl = EEVEE_shaders_effect_reflection_resolve_refl_sh_get();
           DRW_PASS_CREATE(psl->ssr_resolve_refl, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
           grp = DRW_shgroup_create(resolve_shader_refl, psl->ssr_resolve_refl);
         }

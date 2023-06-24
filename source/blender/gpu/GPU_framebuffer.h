@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -140,7 +141,8 @@ typedef struct GPULoadStore {
     GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE \
   }
 
-/* Load store config array (load_store_actions) matches attachment structure of
+/**
+ * Load store config array (load_store_actions) matches attachment structure of
  * GPU_framebuffer_config_array. This allows us to explicitly specify whether attachment data needs
  * to be loaded and stored on a per-attachment basis. This enables a number of bandwidth
  * optimizations:
@@ -157,7 +159,7 @@ typedef struct GPULoadStore {
  *         {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, // Color attachment 1
  *         {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE} // Color attachment 2
  * })
- * \encode
+ * \endcode
  */
 void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
                                     const GPULoadStore *load_store_actions,
@@ -185,7 +187,7 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
  *         GPU_ATTACHMENT_TEXTURE_CUBEFACE(tex2, 0),
  *         GPU_ATTACHMENT_TEXTURE_LAYER_MIP(tex2, 0, 0)
  * })
- * \encode
+ * \endcode
  *
  * \note Unspecified attachments (i.e: those beyond the last
  * GPU_ATTACHMENT_* in GPU_framebuffer_ensure_config list) are left unchanged.
@@ -313,15 +315,15 @@ bool GPU_framebuffer_check_valid(GPUFrameBuffer *framebuffer, char err_out[256])
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Empty framebuffer
+/** \name Empty frame-buffer
  *
- * An empty framebuffer is a framebuffer with no attachments. This allow to rasterize geometry
+ * An empty frame-buffer is a frame-buffer with no attachments. This allow to rasterize geometry
  * without creating any dummy attachments and write some computation results using other means
  * (SSBOs, Images).
  * \{ */
 
 /**
- * Default size is used if the framebuffer contains no attachments.
+ * Default size is used if the frame-buffer contains no attachments.
  * It needs to be re-specified each time an attachment is added.
  */
 void GPU_framebuffer_default_size(GPUFrameBuffer *framebuffer, int width, int height);
@@ -349,7 +351,7 @@ void GPU_framebuffer_viewport_set(
 void GPU_framebuffer_viewport_get(GPUFrameBuffer *framebuffer, int r_viewport[4]);
 
 /**
- * Reset a framebuffer viewport bounds to its attachment(s) size.
+ * Reset a frame-buffer viewport bounds to its attachment(s) size.
  * \note Viewport and scissor size is stored per frame-buffer.
  */
 void GPU_framebuffer_viewport_reset(GPUFrameBuffer *framebuffer);
@@ -361,7 +363,7 @@ void GPU_framebuffer_viewport_reset(GPUFrameBuffer *framebuffer);
  * \{ */
 
 /**
- * Clear the framebuffer attachments.
+ * Clear the frame-buffer attachments.
  * \a buffers controls the types of attachments to clear. Setting GPU_COLOR_BIT will clear *all*
  * the color attachment.
  * Each attachment gets cleared to the value of its type:
@@ -438,19 +440,19 @@ void GPU_framebuffer_clear_color_depth_stencil(GPUFrameBuffer *fb,
 void GPU_framebuffer_multi_clear(GPUFrameBuffer *framebuffer, const float (*clear_colors)[4]);
 
 /**
- * Clear all color attachment textures of the active framebuffer with the given red, green, blue,
+ * Clear all color attachment textures of the active frame-buffer with the given red, green, blue,
  * alpha values.
  * \note `GPU_write_mask`, and stencil test do not affect this command.
  * \note Viewport and scissor regions affect this command but are not efficient nor recommended.
- * DEPRECATED: Use `GPU_framebuffer_clear_color` with explicit framebuffer.
+ * DEPRECATED: Use `GPU_framebuffer_clear_color` with explicit frame-buffer.
  */
 void GPU_clear_color(float red, float green, float blue, float alpha);
 
 /**
- * Clear the depth attachment texture of the active framebuffer with the given depth value.
+ * Clear the depth attachment texture of the active frame-buffer with the given depth value.
  * \note `GPU_write_mask`, and stencil test do not affect this command.
  * \note Viewport and scissor regions affect this command but are not efficient nor recommended.
- * DEPRECATED: Use `GPU_framebuffer_clear_color` with explicit framebuffer.
+ * DEPRECATED: Use `GPU_framebuffer_clear_color` with explicit frame-buffer.
  */
 void GPU_clear_depth(float depth);
 
@@ -467,7 +469,7 @@ const char *GPU_framebuffer_get_name(GPUFrameBuffer *framebuffer);
 /* -------------------------------------------------------------------- */
 /** \name Python API & meta-data
  *
- * These are not intrinsic properties of a framebuffer but they are stored inside the
+ * These are not intrinsic properties of a frame-buffer but they are stored inside the
  * gpu::FrameBuffer structure for tracking purpose.
  * \{ */
 
@@ -481,8 +483,8 @@ void GPU_framebuffer_py_reference_set(GPUFrameBuffer *framebuffer, void **py_ref
 #endif
 
 /**
- * Keep a stack of bound framebuffer to allow scoped binding of framebuffer in python.
- * This is also used by #GPUOffScreen to save/restore the current framebuffers.
+ * Keep a stack of bound frame-buffer to allow scoped binding of frame-buffer in python.
+ * This is also used by #GPUOffScreen to save/restore the current frame-buffers.
  * \note This isn't thread safe.
  */
 /* TODO(fclem): This has nothing to do with the GPU module and should be move to the pyGPU module.
@@ -539,7 +541,7 @@ void GPU_framebuffer_read_color(GPUFrameBuffer *framebuffer,
  * TODO: Emulate this by doing some slow texture copy on the backend side or try to read the areas
  * offscreen textures directly.
  */
-void GPU_frontbuffer_read_pixels(
+void GPU_frontbuffer_read_color(
     int x, int y, int width, int height, int channels, eGPUDataFormat data_format, void *r_data);
 
 /**
@@ -547,7 +549,7 @@ void GPU_frontbuffer_read_pixels(
  * The attachments types are chosen by \a blit_buffers .
  * Only one color buffer can by copied at a time and its index is chosen by \a read_slot and \a
  * write_slot.
- * The source and destination framebuffers dimensions have to match.
+ * The source and destination frame-buffers dimensions have to match.
  * DEPRECATED: Prefer using `GPU_texture_copy()`.
  */
 void GPU_framebuffer_blit(GPUFrameBuffer *fb_read,
@@ -588,9 +590,14 @@ typedef struct GPUOffScreen GPUOffScreen;
  * \a format is the format of the color buffer.
  * If \a err_out is not `nullptr` it will be use to write any configuration error message..
  * \note This function binds the framebuffer to the active context.
+ * \note `GPU_TEXTURE_USAGE_ATTACHMENT` is added to the usage parameter by default.
  */
-GPUOffScreen *GPU_offscreen_create(
-    int width, int height, bool with_depth_buffer, eGPUTextureFormat format, char err_out[256]);
+GPUOffScreen *GPU_offscreen_create(int width,
+                                   int height,
+                                   bool with_depth_buffer,
+                                   eGPUTextureFormat format,
+                                   eGPUTextureUsage usage,
+                                   char err_out[256]);
 
 /**
  * Free a #GPUOffScreen.
@@ -618,7 +625,12 @@ void GPU_offscreen_unbind(GPUOffScreen *offscreen, bool restore);
  * attachment type.
  * IMPORTANT: \a r_data must be big enough for all pixels in \a data_format .
  */
-void GPU_offscreen_read_pixels(GPUOffScreen *offscreen, eGPUDataFormat data_format, void *r_data);
+void GPU_offscreen_read_color(GPUOffScreen *offscreen, eGPUDataFormat data_format, void *r_data);
+/**
+ * A version of #GPU_offscreen_read_color that reads into a region.
+ */
+void GPU_offscreen_read_color_region(
+    GPUOffScreen *offscreen, eGPUDataFormat data_format, int x, int y, int w, int h, void *r_data);
 
 /**
  * Blit the offscreen color texture to the active framebuffer at the `(x, y)` location.

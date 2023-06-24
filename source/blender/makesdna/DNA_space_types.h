@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 /** \file
  * \ingroup DNA
  *
@@ -341,12 +342,12 @@ typedef enum eSpaceOutliner_Filter {
 
   SO_FILTER_ID_TYPE = (1 << 19),
 
-  SO_FILTER_NO_OB_GPENCIL = (1 << 20),
+  SO_FILTER_NO_OB_GPENCIL_LEGACY = (1 << 20),
 } eSpaceOutliner_Filter;
 
 #define SO_FILTER_OB_TYPE \
   (SO_FILTER_NO_OB_MESH | SO_FILTER_NO_OB_ARMATURE | SO_FILTER_NO_OB_EMPTY | \
-   SO_FILTER_NO_OB_LAMP | SO_FILTER_NO_OB_CAMERA | SO_FILTER_NO_OB_GPENCIL | \
+   SO_FILTER_NO_OB_LAMP | SO_FILTER_NO_OB_CAMERA | SO_FILTER_NO_OB_GPENCIL_LEGACY | \
    SO_FILTER_NO_OB_OTHERS)
 
 #define SO_FILTER_OB_STATE \
@@ -488,8 +489,6 @@ typedef enum eGraphEdit_Flag {
   /* SIPO_NODRAWCFRANUM = (1 << 3), DEPRECATED */
   /* show timing in seconds instead of frames */
   SIPO_DRAWTIME = (1 << 4),
-  /* only show keyframes for selected F-Curves */
-  SIPO_SELCUVERTSONLY = (1 << 5),
   /* draw names of F-Curves beside the respective curves */
   /* NOTE: currently not used */
   /* SIPO_DRAWNAMES = (1 << 6), */ /* UNUSED */
@@ -501,8 +500,6 @@ typedef enum eGraphEdit_Flag {
   SIPO_SELVHANDLESONLY = (1 << 9),
   /* don't perform realtime updates */
   SIPO_NOREALTIMEUPDATES = (1 << 11),
-  /* don't draw curves with AA ("beauty-draw") for performance */
-  SIPO_BEAUTYDRAW_OFF = (1 << 12),
   /* draw grouped channels with colors set in group */
   /* SIPO_NODRAWGCOLORS = (1 << 13), DEPRECATED */
   /* normalize curves on display */
@@ -1948,7 +1945,7 @@ typedef struct SpaceSpreadsheet {
   /* eSpaceSpreadsheet_FilterFlag. */
   uint8_t filter_flag;
 
-  /* #GeometryComponentType. */
+  /* #GeometryComponent::Type. */
   uint8_t geometry_component_type;
   /* #eAttrDomain. */
   uint8_t attribute_domain;
@@ -1984,6 +1981,7 @@ typedef struct SpreadsheetRowFilter {
   char _pad0[2];
 
   int value_int;
+  int value_int2[2];
   char *value_string;
   float value_float;
   float threshold;
@@ -2029,6 +2027,8 @@ typedef enum eSpreadsheetColumnValueType {
   SPREADSHEET_VALUE_TYPE_STRING = 7,
   SPREADSHEET_VALUE_TYPE_BYTE_COLOR = 8,
   SPREADSHEET_VALUE_TYPE_INT8 = 9,
+  SPREADSHEET_VALUE_TYPE_INT32_2D = 10,
+  SPREADSHEET_VALUE_TYPE_QUATERNION = 11,
 } eSpreadsheetColumnValueType;
 
 /**

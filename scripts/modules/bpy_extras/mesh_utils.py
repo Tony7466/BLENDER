@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 __all__ = (
@@ -417,7 +419,7 @@ def ngon_tessellate(from_data, indices, fix_loops=True, debug_print=True):
 
         if not flip:
             for i, fi in enumerate(fill):
-                fill[i] = tuple([ii for ii in reversed(fi)])
+                fill[i] = tuple(reversed(fi))
 
     return fill
 

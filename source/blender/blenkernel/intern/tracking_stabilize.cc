@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -267,7 +268,8 @@ static void retrieve_next_higher_usable_frame(
   BLI_assert(0 <= i && i < end);
 
   while (i < end &&
-         (markers[i].framenr < ref_frame || is_effectively_disabled(ctx, track, &markers[i]))) {
+         (markers[i].framenr < ref_frame || is_effectively_disabled(ctx, track, &markers[i])))
+  {
     i++;
   }
   if (i < end && markers[i].framenr < *next_higher) {
@@ -282,7 +284,8 @@ static void retrieve_next_lower_usable_frame(
   MovieTrackingMarker *markers = track->markers;
   BLI_assert(0 <= i && i < track->markersnr);
   while (i >= 0 &&
-         (markers[i].framenr > ref_frame || is_effectively_disabled(ctx, track, &markers[i]))) {
+         (markers[i].framenr > ref_frame || is_effectively_disabled(ctx, track, &markers[i])))
+  {
     i--;
   }
   if (0 <= i && markers[i].framenr > *next_lower) {
@@ -1116,7 +1119,8 @@ static float calculate_autoscale_factor(StabContext *ctx, int size, float aspect
   /* Calculate maximal frame range of tracks where stabilization is active. */
   LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking_camera_object->tracks) {
     if ((track->flag & TRACK_USE_2D_STAB) ||
-        ((stab->flag & TRACKING_STABILIZE_ROTATION) && (track->flag & TRACK_USE_2D_STAB_ROT))) {
+        ((stab->flag & TRACKING_STABILIZE_ROTATION) && (track->flag & TRACK_USE_2D_STAB_ROT)))
+    {
       int first_frame = track->markers[0].framenr;
       int last_frame = track->markers[track->markersnr - 1].framenr;
       sfra = min_ii(sfra, first_frame);
@@ -1267,7 +1271,8 @@ void BKE_tracking_stabilization_data_get(MovieClip *clip,
   }
 
   if (enabled && stabilization_determine_offset_for_frame(
-                     ctx, framenr, aspect, translation, pivot, angle, &scale_step)) {
+                     ctx, framenr, aspect, translation, pivot, angle, &scale_step))
+  {
     stabilization_calculate_data(
         ctx, framenr, size, aspect, do_compensate, scale_step, translation, pivot, scale, angle);
     compensate_rotation_center(size, aspect, *angle, *scale, pivot, translation);
@@ -1280,7 +1285,7 @@ void BKE_tracking_stabilization_data_get(MovieClip *clip,
   discard_stabilization_working_context(ctx);
 }
 
-typedef void (*interpolation_func)(const struct ImBuf *, struct ImBuf *, float, float, int, int);
+typedef void (*interpolation_func)(const ImBuf *, ImBuf *, float, float, int, int);
 
 typedef struct TrackingStabilizeFrameInterpolationData {
   ImBuf *ibuf;
@@ -1352,10 +1357,10 @@ ImBuf *BKE_tracking_stabilize_frame(
 
   /* Allocate frame for stabilization result, copy alpha mode and color-space. */
   ibuf_flags = 0;
-  if (ibuf->rect) {
+  if (ibuf->byte_buffer.data) {
     ibuf_flags |= IB_rect;
   }
-  if (ibuf->rect_float) {
+  if (ibuf->float_buffer.data) {
     ibuf_flags |= IB_rectfloat;
   }
 
@@ -1398,7 +1403,7 @@ ImBuf *BKE_tracking_stabilize_frame(
   BLI_task_parallel_range(
       0, tmpibuf->y, &data, tracking_stabilize_frame_interpolation_cb, &settings);
 
-  if (tmpibuf->rect_float) {
+  if (tmpibuf->float_buffer.data) {
     tmpibuf->userflags |= IB_RECT_INVALID;
   }
 

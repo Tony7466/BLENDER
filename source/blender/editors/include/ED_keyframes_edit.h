@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -58,6 +59,7 @@ typedef enum eEditKeyframes_Select {
   SELECT_SUBTRACT = (1 << 2),
   /* flip ok status of keyframes based on key status */
   SELECT_INVERT = (1 << 3),
+  SELECT_EXTEND_RANGE = (1 << 4),
 } eEditKeyframes_Select;
 
 /* "selection map" building modes */
@@ -148,6 +150,7 @@ typedef enum eKeyframeIterFlags {
    * iterator callbacks then. */
   KEYFRAME_ITER_HANDLES_DEFAULT_INVISIBLE = (1 << 3),
 } eKeyframeIterFlags;
+ENUM_OPERATORS(eKeyframeIterFlags, KEYFRAME_ITER_HANDLES_DEFAULT_INVISIBLE)
 
 /** \} */
 
@@ -424,14 +427,34 @@ void blend_to_neighbor_fcurve_segment(struct FCurve *fcu,
                                       struct FCurveSegment *segment,
                                       float factor);
 void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+/**
+ * Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
+ * \param sigma: The shape of the gauss distribution.
+ * \param kernel_size: How long the kernel array is.
+ */
+void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
+void smooth_fcurve_segment(struct FCurve *fcu,
+                           struct FCurveSegment *segment,
+                           float *samples,
+                           float factor,
+                           int kernel_size,
+                           double *kernel);
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
+
+/**
+ * Blends the selected keyframes to the default value of the property the F-curve drives.
+ */
 void blend_to_default_fcurve(struct PointerRNA *id_ptr, struct FCurve *fcu, float factor);
 /**
  * Use a weighted moving-means method to reduce intensity of fluctuations.
  */
 void smooth_fcurve(struct FCurve *fcu);
 void sample_fcurve(struct FCurve *fcu);
+void sample_fcurve_segment(struct FCurve *fcu,
+                           float start_frame,
+                           float *r_samples,
+                           int sample_count);
 
 /* ----------- */
 

@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2011 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2011 Blender Foundation.
 
 set(INC
   ../include
@@ -34,7 +35,6 @@ set(SRC
   clip_graph_draw.cc
   clip_graph_ops.cc
   clip_ops.cc
-  clip_toolbar.cc
   clip_utils.cc
   space_clip.cc
   tracking_ops.cc

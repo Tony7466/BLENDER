@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "bvh/bvh.h"
 
@@ -93,13 +94,9 @@ NODE_DEFINE(PointCloud)
   return type;
 }
 
-PointCloud::PointCloud() : Geometry(node_type, Geometry::POINTCLOUD)
-{
-}
+PointCloud::PointCloud() : Geometry(node_type, Geometry::POINTCLOUD) {}
 
-PointCloud::~PointCloud()
-{
-}
+PointCloud::~PointCloud() {}
 
 void PointCloud::resize(int numpoints)
 {

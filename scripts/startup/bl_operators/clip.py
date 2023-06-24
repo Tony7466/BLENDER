@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Operator
 from bpy.props import FloatProperty
@@ -488,7 +491,7 @@ class CLIP_OT_constraint_to_fcurve(Operator):
                 efra = max(efra, track.markers[-1].frame)
 
         if sfra is None or efra is None:
-            return
+            return {'CANCELLED'}
 
         # Store object matrices.
         for x in range(sfra, efra + 1):
@@ -515,6 +518,8 @@ class CLIP_OT_constraint_to_fcurve(Operator):
         ob.constraints.remove(con)
 
         scene.frame_set(frame_current)
+
+        return {'FINISHED'}
 
     def execute(self, context):
         scene = context.scene
@@ -662,8 +667,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
                 if collection.collection.name == collection_name:
                     setattr(collection, attr_name, True)
                     break
-                else:
-                    setup_collection_recursively(collection.children, collection_name, attr_name)
+                setup_collection_recursively(collection.children, collection_name, attr_name)
 
         collections = context.scene.collection.children
         vlayers = context.scene.view_layers
@@ -868,7 +872,6 @@ class CLIP_OT_setup_tracking_scene(Operator):
         mesh.polygons.add(nbr_polys)
 
         mesh.polygons.foreach_set("loop_start", range(0, nbr_loops, 4))
-        mesh.polygons.foreach_set("loop_total", (4,) * nbr_polys)
         mesh.loops.foreach_set("vertex_index", faces)
 
         mesh.update()

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import enchant
@@ -108,6 +110,7 @@ class SpellChecker:
         "dataset", "datasets",
         "de",
         "deadzone",
+        "decomposable",
         "deconstruct",
         "defocus",
         "denoise", "denoised", "denoising", "denoiser",
@@ -196,7 +199,7 @@ class SpellChecker:
         "restpose",
         "resync", "resynced",
         "retarget", "retargets", "retargeting", "retargeted",
-        "retiming",
+        "retime", "retimed", "retiming",
         "rigidbody",
         "ringnoise",
         "rolloff",
@@ -243,6 +246,7 @@ class SpellChecker:
         "undeformed",
         "undistort", "undistorted", "undistortion",
         "ungroup", "ungrouped",
+        "unhandled",
         "unhide",
         "unindent",
         "unitless",
@@ -525,6 +529,7 @@ class SpellChecker:
         "refractions",
         "remesher", "remeshing", "remesh",
         "renderfarm",
+        "retopology",
         "scanfill",
         "shader", "shaders",
         "shadowmap", "shadowmaps",
@@ -748,6 +753,7 @@ class SpellChecker:
         "rgb", "rgba",
         "rhs",
         "rv",
+        "sdf",
         "sdl",
         "sdls",
         "sl",
@@ -805,10 +811,12 @@ class SpellChecker:
         "ffmpeg",
         "flac",
         "gltf",
+        "gprim",  # From USD.
         "gzip",
         "ico",
         "jpg", "jpeg", "jpegs",
         "json",
+        "lightwave",
         "lzw",
         "matroska",
         "mdd",

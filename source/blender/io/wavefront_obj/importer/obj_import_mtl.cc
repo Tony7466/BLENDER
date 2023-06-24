@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -6,7 +8,7 @@
 
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
@@ -315,6 +317,7 @@ static void set_bsdf_socket_values(bNode *bsdf, Material *mat, const MTLMaterial
   }
   if (do_tranparency || (alpha >= 0.0f && alpha < 1.0f)) {
     mat->blend_method = MA_BM_BLEND;
+    mat->blend_flag |= MA_BL_HIDE_BACKFACE;
   }
 
   if (mtl_mat.sheen >= 0) {
@@ -393,6 +396,7 @@ static void add_image_textures(Main *bmain,
     else if (key == int(MTLTexMapType::Alpha)) {
       link_sockets(ntree, image_node, "Alpha", bsdf, tex_map_type_to_socket_id[key]);
       mat->blend_method = MA_BM_BLEND;
+      mat->blend_flag |= MA_BL_HIDE_BACKFACE;
     }
     else {
       link_sockets(ntree, image_node, "Color", bsdf, tex_map_type_to_socket_id[key]);
@@ -408,7 +412,7 @@ bNodeTree *create_mtl_node_tree(Main *bmain,
                                 Material *mat,
                                 bool relative_paths)
 {
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &mat->id, "Shader Nodetree", ntreeType_Shader->idname);
 
   bNode *bsdf = add_node(ntree, SH_NODE_BSDF_PRINCIPLED, node_locx_bsdf, node_locy_top);

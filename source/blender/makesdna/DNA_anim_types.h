@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -322,6 +323,13 @@ typedef struct DriverTarget {
   short flag;
   /** Type of ID-block that this target can use. */
   int idtype;
+
+  /* Context-dependent property of a "Context Property" type target.
+   * The `rna_path` of this property is used as a target.
+   * This is a value of enumerator #eDriverTarget_ContextProperty. */
+  int context_property;
+
+  int _pad1;
 } DriverTarget;
 
 /** Driver Target flags. */
@@ -386,6 +394,11 @@ typedef enum eDriverTarget_RotationMode {
   DTAR_ROTMODE_EULER_MAX = DTAR_ROTMODE_EULER_ZYX,
 } eDriverTarget_RotationMode;
 
+typedef enum eDriverTarget_ContextProperty {
+  DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE = 0,
+  DTAR_CONTEXT_PROPERTY_ACTIVE_VIEW_LAYER = 1,
+} eDriverTarget_ContextProperty;
+
 /* --- */
 
 /* maximum number of driver targets per variable */
@@ -432,6 +445,8 @@ typedef enum eDriverVar_Types {
   DVAR_TYPE_LOC_DIFF,
   /** 'final' transform for object/bones */
   DVAR_TYPE_TRANSFORM_CHAN,
+  /** Property within a current evaluation context */
+  DVAR_TYPE_CONTEXT_PROP,
 
   /**
    * Maximum number of variable types.
@@ -794,8 +809,10 @@ typedef enum eNlaStrip_Flag {
   // NLASTRIP_FLAG_SELECT_L      = (1 << 2),   /* left handle selected. */
   // NLASTRIP_FLAG_SELECT_R      = (1 << 3),   /* right handle selected. */
 
-  /** NLA strip uses the same action that the action being tweaked uses
-   * (not set for the tweaking one though). */
+  /**
+   * NLA strip uses the same action that the action being tweaked uses
+   * (not set for the tweaking one though).
+   */
   NLASTRIP_FLAG_TWEAKUSER = (1 << 4),
 
   /* controls driven by local F-Curves */
@@ -818,6 +835,13 @@ typedef enum eNlaStrip_Flag {
   /* NLASTRIP_FLAG_MIRROR = (1 << 13), */ /* UNUSED */
 
   /* temporary editing flags */
+
+  /**
+   * When transforming strips, this flag is set when the strip is placed in an invalid location
+   * such as overlapping another strip or moved to a locked track. In such cases, the strip's
+   * location must be corrected after the transform operator is done.
+   */
+  NLASTRIP_FLAG_INVALID_LOCATION = (1 << 28),
   /** NLA strip should ignore frame range and hold settings, and evaluate at global time. */
   NLASTRIP_FLAG_NO_TIME_MAP = (1 << 29),
   /** NLA-Strip is really just a temporary meta used to facilitate easier transform code */
@@ -881,6 +905,10 @@ typedef enum eNlaTrack_Flag {
   /** track is not allowed to execute,
    * usually as result of tweaking being enabled (internal flag) */
   NLATRACK_DISABLED = (1 << 10),
+
+  /** Marks tracks automatically added for space while dragging strips vertically.
+   * Internal flag that's only set during transform operator. */
+  NLATRACK_TEMPORARILY_ADDED = (1 << 11),
 
   /** This NLA track is added to an override ID, which means it is fully editable.
    * Irrelevant in case the owner ID is not an override. */
@@ -1012,9 +1040,11 @@ typedef enum eInsertKeyFlags {
   INSERTKEY_XYZ2RGB = (1 << 5),
   /** ignore user-prefs (needed for predictable API use) */
   INSERTKEY_NO_USERPREF = (1 << 6),
-  /** Allow to make a full copy of new key into existing one, if any,
+  /**
+   * Allow to make a full copy of new key into existing one, if any,
    * instead of 'reusing' existing handles.
-   * Used by copy/paste code. */
+   * Used by copy/paste code.
+   */
   INSERTKEY_OVERWRITE_FULL = (1 << 7),
   /** for driver FCurves, use driver's "input" value - for easier corrective driver setup */
   INSERTKEY_DRIVER = (1 << 8),
@@ -1070,11 +1100,13 @@ typedef struct AnimOverride {
 typedef struct AnimData {
   /**
    * Active action - acts as the 'tweaking track' for the NLA.
-   * Either use BKE_animdata_set_action() to set this, or call BKE_animdata_action_ensure_idroot()
-   * after setting. */
+   * Either use BKE_animdata_set_action() to set this, or call
+   * #BKE_animdata_action_ensure_idroot() after setting.
+   */
   bAction *action;
 
-  /** temp-storage for the 'real' active action (i.e. the one used before the tweaking-action
+  /**
+   * Temp-storage for the 'real' active action (i.e. the one used before the tweaking-action
    * took over to be edited in the Animation Editors)
    */
   bAction *tmpact;

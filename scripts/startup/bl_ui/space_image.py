@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import (
@@ -184,6 +186,8 @@ class IMAGE_MT_image(Menu):
     bl_label = "Image"
 
     def draw(self, context):
+        import sys
+
         layout = self.layout
 
         sima = context.space_data
@@ -206,6 +210,11 @@ class IMAGE_MT_image(Menu):
             layout.operator("image.external_edit", text="Edit Externally")
 
         layout.separator()
+
+        if sys.platform[:3] == "win":
+            layout.operator("image.clipboard_copy", text="Copy")
+            layout.operator("image.clipboard_paste", text="Paste")
+            layout.separator()
 
         if ima:
             layout.operator("image.save", text="Save", icon='FILE_TICK')
@@ -428,7 +437,9 @@ class IMAGE_MT_uvs(Menu):
 
         layout.separator()
 
+        layout.operator_context = 'INVOKE_DEFAULT'
         layout.operator("uv.pack_islands")
+        layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("uv.average_islands_scale")
 
         layout.separator()
@@ -994,6 +1005,7 @@ class IMAGE_PT_proportional_edit(Panel):
         col.separator()
 
         col.prop(tool_settings, "proportional_edit_falloff", expand=True)
+        col.prop(tool_settings, "proportional_size")
 
 
 class IMAGE_PT_image_properties(Panel):
@@ -1211,7 +1223,7 @@ class IMAGE_PT_tools_brush_display(Panel, BrushButtonsPanel, DisplayPanel):
     bl_context = ".paint_common_2d"
     bl_parent_id = "IMAGE_PT_paint_settings"
     bl_category = "Tool"
-    bl_label = "Brush Tip"
+    bl_label = "Cursor"
     bl_options = {'DEFAULT_CLOSED'}
     bl_ui_units_x = 15
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -23,6 +24,7 @@
 #include "DNA_customdata_types.h" /* Scene's runtime custom-data masks. */
 #include "DNA_layer_types.h"
 #include "DNA_listBase.h"
+#include "DNA_scene_enums.h"
 #include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
 
@@ -177,6 +179,8 @@ typedef struct AudioData {
   char _pad2[4];
 } AudioData;
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Render Layers
  * \{ */
@@ -309,6 +313,7 @@ typedef enum eScenePassType {
 #define RE_PASSNAME_FREESTYLE "Freestyle"
 #define RE_PASSNAME_BLOOM "BloomCol"
 #define RE_PASSNAME_VOLUME_LIGHT "VolumeDir"
+#define RE_PASSNAME_TRANSPARENT "Transp"
 
 #define RE_PASSNAME_CRYPTOMATTE_OBJECT "CryptoObject"
 #define RE_PASSNAME_CRYPTOMATTE_ASSET "CryptoAsset"
@@ -670,8 +675,7 @@ typedef struct RenderData {
   /** Frames to jump during render/playback. */
   int frame_step;
 
-  /** Standalone player stereo settings. */ /* XXX deprecated since .2.5 */
-  short stereomode DNA_DEPRECATED;
+  char _pad10[2];
 
   /** For the dimensions presets menu. */
   short dimensionspreset;
@@ -1693,6 +1697,13 @@ typedef struct ToolSettings {
 
   struct SequencerToolSettings *sequencer_tool_settings;
 
+  short snap_mode_tools; /* If SCE_SNAP_TO_NONE, use #ToolSettings::snap_mode. #eSnapMode. */
+  char plane_axis;       /* X, Y or Z. */
+  char plane_depth;      /* #eV3DPlaceDepth. */
+  char plane_orient;     /* #eV3DPlaceOrient. */
+  char use_plane_axis_auto;
+  char _pad7[2];
+
 } ToolSettings;
 
 /** \} */
@@ -1781,6 +1792,7 @@ typedef struct SceneEEVEE {
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
+  char _pad0[4];
 
   float gi_cubemap_draw_size;
   float gi_irradiance_draw_size;
@@ -1832,7 +1844,6 @@ typedef struct SceneEEVEE {
   int shadow_cube_size;
   int shadow_cascade_size;
   int shadow_pool_size;
-  char _pad[4];
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
@@ -1980,6 +1991,7 @@ typedef struct Scene {
 
   struct PreviewImage *preview;
 
+  /** ViewLayer, defined in DNA_layer_types.h */
   ListBase view_layers;
   /** Not an actual data-block, but memory owned by scene. */
   struct Collection *master_collection;
@@ -2190,7 +2202,7 @@ extern const char *RE_engine_id_CYCLES;
 #define BASE_EDITABLE(v3d, base) \
   (BASE_VISIBLE(v3d, base) && !ID_IS_LINKED((base)->object) && \
    (!ID_IS_OVERRIDE_LIBRARY_REAL((base)->object) || \
-    ((base)->object->id.override_library->flag & IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED) == 0))
+    ((base)->object->id.override_library->flag & LIBOVERRIDE_FLAG_SYSTEM_DEFINED) == 0))
 #define BASE_SELECTED_EDITABLE(v3d, base) \
   (BASE_EDITABLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 
@@ -2242,8 +2254,7 @@ typedef enum eSnapFlag {
   SCE_SNAP = (1 << 0),
   SCE_SNAP_ROTATE = (1 << 1),
   SCE_SNAP_PEEL_OBJECT = (1 << 2),
-  /** Project individual elements instead of whole object. */
-  SCE_SNAP_PROJECT = (1 << 3),
+  // SCE_SNAP_PROJECT = (1 << 3), /* DEPRECATED, see #SCE_SNAP_INDIVIDUAL_PROJECT. */
   /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
   SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
   SCE_SNAP_ABS_GRID = (1 << 5),
@@ -2287,32 +2298,35 @@ ENUM_OPERATORS(eSnapTargetOP, SCE_SNAP_TARGET_NOT_NONEDITED)
 
 /** #ToolSettings.snap_mode */
 typedef enum eSnapMode {
-  SCE_SNAP_MODE_NONE = 0,
-  SCE_SNAP_MODE_VERTEX = (1 << 0),
-  SCE_SNAP_MODE_EDGE = (1 << 1),
-  SCE_SNAP_MODE_FACE_RAYCAST = (1 << 2),
-  SCE_SNAP_MODE_VOLUME = (1 << 3),
-  SCE_SNAP_MODE_EDGE_MIDPOINT = (1 << 4),
-  SCE_SNAP_MODE_EDGE_PERPENDICULAR = (1 << 5),
-  SCE_SNAP_MODE_FACE_NEAREST = (1 << 8),
-
-  SCE_SNAP_MODE_GEOM = (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE_RAYCAST |
-                        SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT |
-                        SCE_SNAP_MODE_FACE_NEAREST),
+  SCE_SNAP_TO_NONE = 0,
 
   /** #ToolSettings.snap_node_mode */
-  SCE_SNAP_MODE_NODE_X = (1 << 0),
-  SCE_SNAP_MODE_NODE_Y = (1 << 1),
+  SCE_SNAP_TO_NODE_X = (1 << 0),
+  SCE_SNAP_TO_NODE_Y = (1 << 1),
 
   /** #ToolSettings.snap_mode and #ToolSettings.snap_node_mode and #ToolSettings.snap_uv_mode */
-  SCE_SNAP_MODE_INCREMENT = (1 << 6),
-  SCE_SNAP_MODE_GRID = (1 << 7),
+  SCE_SNAP_TO_VERTEX = (1 << 0),
+  SCE_SNAP_TO_EDGE = (1 << 1),
+  SCE_SNAP_TO_FACE = (1 << 2),
+  SCE_SNAP_TO_VOLUME = (1 << 3),
+  SCE_SNAP_TO_EDGE_MIDPOINT = (1 << 4),
+  SCE_SNAP_TO_EDGE_PERPENDICULAR = (1 << 5),
+  SCE_SNAP_TO_INCREMENT = (1 << 6),
+  SCE_SNAP_TO_GRID = (1 << 7),
+
+  /** For snap individual elements. */
+  SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 8),
+  SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 9),
 } eSnapMode;
 /* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
 /* TODO: move this macro to a more general place. */
 #ifdef ENUM_OPERATORS
-ENUM_OPERATORS(eSnapMode, SCE_SNAP_MODE_GRID)
+ENUM_OPERATORS(eSnapMode, SCE_SNAP_INDIVIDUAL_PROJECT)
 #endif
+
+#define SCE_SNAP_TO_GEOM \
+  (SCE_SNAP_TO_VERTEX | SCE_SNAP_TO_EDGE | SCE_SNAP_TO_FACE | SCE_SNAP_TO_EDGE_PERPENDICULAR | \
+   SCE_SNAP_TO_EDGE_MIDPOINT)
 
 /** #SequencerToolSettings.snap_mode */
 #define SEQ_SNAP_TO_STRIPS (1 << 0)
@@ -2374,15 +2388,6 @@ enum {
 };
 
 /* object_vgroup.cc */
-
-/** #ToolSettings.vgroupsubset */
-typedef enum eVGroupSelect {
-  WT_VGROUP_ALL = 0,
-  WT_VGROUP_ACTIVE = 1,
-  WT_VGROUP_BONE_SELECT = 2,
-  WT_VGROUP_BONE_DEFORM = 3,
-  WT_VGROUP_BONE_DEFORM_OFF = 4,
-} eVGroupSelect;
 
 #define WT_VGROUP_MASK_ALL \
   ((1 << WT_VGROUP_ACTIVE) | (1 << WT_VGROUP_BONE_SELECT) | (1 << WT_VGROUP_BONE_DEFORM) | \

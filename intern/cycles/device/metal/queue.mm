@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
@@ -278,7 +279,7 @@ int MetalDeviceQueue::num_concurrent_states(const size_t state_size) const
   if (metal_device_->device_vendor == METAL_GPU_APPLE) {
     result *= 4;
 
-    /* Increasing the state count doesn't notably benefit M1-family systems.  */
+    /* Increasing the state count doesn't notably benefit M1-family systems. */
     if (MetalInfo::get_apple_gpu_architecture(metal_device_->mtlDevice) != APPLE_M1) {
       size_t system_ram = system_physical_ram();
       size_t allocated_so_far = [metal_device_->mtlDevice currentAllocatedSize];
@@ -531,6 +532,7 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW:
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
+        case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE:
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
           break;
@@ -590,11 +592,10 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
     [mtlComputeCommandEncoder setThreadgroupMemoryLength:shared_mem_bytes atIndex:0];
   }
 
-  MTLSize size_threadgroups_per_dispatch = MTLSizeMake(
-      divide_up(work_size, num_threads_per_block), 1, 1);
+  MTLSize size_threads_per_dispatch = MTLSizeMake(work_size, 1, 1);
   MTLSize size_threads_per_threadgroup = MTLSizeMake(num_threads_per_block, 1, 1);
-  [mtlComputeCommandEncoder dispatchThreadgroups:size_threadgroups_per_dispatch
-                           threadsPerThreadgroup:size_threads_per_threadgroup];
+  [mtlComputeCommandEncoder dispatchThreads:size_threads_per_dispatch
+                      threadsPerThreadgroup:size_threads_per_threadgroup];
 
   [mtlCommandBuffer_ addCompletedHandler:^(id<MTLCommandBuffer> command_buffer) {
     NSString *kernel_name = metal_kernel_pso->function.label;
@@ -893,7 +894,8 @@ id<MTLComputeCommandEncoder> MetalDeviceQueue::get_compute_encoder(DeviceKernel 
 
     if (mtlComputeEncoder_) {
       if (mtlComputeEncoder_.dispatchType == concurrent ? MTLDispatchTypeConcurrent :
-                                                          MTLDispatchTypeSerial) {
+                                                          MTLDispatchTypeSerial)
+      {
         /* declare usage of MTLBuffers etc */
         prepare_resources(kernel);
 

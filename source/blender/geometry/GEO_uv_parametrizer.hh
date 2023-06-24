@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -10,7 +12,7 @@
 
 namespace blender::geometry {
 
-struct ParamHandle;         /* Handle to an array of charts. */
+class ParamHandle;          /* A collection of charts. */
 using ParamKey = uintptr_t; /* Key (hash) for identifying verts and faces. */
 #define PARAM_KEY_MAX UINTPTR_MAX
 
@@ -31,7 +33,7 @@ using ParamKey = uintptr_t; /* Key (hash) for identifying verts and faces. */
 
 ParamHandle *uv_parametrizer_construct_begin();
 
-void uv_parametrizer_aspect_ratio(ParamHandle *handle, float aspx, float aspy);
+void uv_parametrizer_aspect_ratio(ParamHandle *handle, float aspect_y);
 
 void uv_prepare_pin_index(ParamHandle *handle, const int bmvertindex, const float uv[2]);
 
@@ -49,9 +51,9 @@ void uv_parametrizer_face_add(ParamHandle *handle,
 void uv_parametrizer_edge_set_seam(ParamHandle *handle, ParamKey *vkeys);
 
 void uv_parametrizer_construct_end(ParamHandle *handle,
-                                   bool fill,
+                                   bool fill_holes,
                                    bool topology_from_uvs,
-                                   int *count_fail);
+                                   int *r_count_failed = nullptr);
 void uv_parametrizer_delete(ParamHandle *handle);
 
 /** \} */
@@ -99,14 +101,6 @@ void uv_parametrizer_pack(ParamHandle *handle, float margin, bool do_rotate, boo
  * \{ */
 
 void uv_parametrizer_average(ParamHandle *handle, bool ignore_pinned, bool scale_uv, bool shear);
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Simple x,y scale
- * \{ */
-
-void uv_parametrizer_scale(ParamHandle *handle, float x, float y);
 
 /** \} */
 

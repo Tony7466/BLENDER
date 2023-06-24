@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edutil
@@ -35,9 +36,10 @@
 
 #include "ED_transverts.h" /* own include */
 
-/* copied from editobject.c, now uses (almost) proper depsgraph. */
 void ED_transverts_update_obedit(TransVertStore *tvs, Object *obedit)
 {
+  /* NOTE: copied from  `editobject.c`, now uses (almost) proper depsgraph. */
+
   const int mode = tvs->mode;
   BLI_assert(ED_transverts_check_obedit(obedit) == true);
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -17,7 +18,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
@@ -31,11 +32,11 @@
 #include "BKE_armature.h"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
-#include "BKE_gpencil_geom.h"
+#include "BKE_gpencil_geom_legacy.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_scene.h"
 
 #include "bmesh.h"
@@ -155,7 +156,8 @@ static void edit_armature_coords_and_quats_get(const bArmature *arm, ElemData_Ar
 {
   ElemData_Armature *elem = elem_array;
   for (EditBone *ebone = static_cast<EditBone *>(arm->edbo->first); ebone;
-       ebone = ebone->next, elem++) {
+       ebone = ebone->next, elem++)
+  {
 
 #define COPY_PTR(member) memcpy(elem->member, ebone->member, sizeof(ebone->member))
 #define COPY_VAL(member) memcpy(&elem->member, &ebone->member, sizeof(ebone->member))
@@ -179,7 +181,8 @@ static void edit_armature_coords_and_quats_apply_with_mat4(bArmature *arm,
 {
   const ElemData_Armature *elem = elem_array;
   for (EditBone *ebone = static_cast<EditBone *>(arm->edbo->first); ebone;
-       ebone = ebone->next, elem++) {
+       ebone = ebone->next, elem++)
+  {
 
 #define COPY_PTR(member) memcpy(ebone->member, elem->member, sizeof(ebone->member))
 #define COPY_VAL(member) memcpy(&ebone->member, &elem->member, sizeof(ebone->member))
@@ -216,11 +219,12 @@ struct ElemData_MetaBall {
   float rad;
 };
 
-static void metaball_coords_and_quats_get(const MetaBall *mb, struct ElemData_MetaBall *elem_array)
+static void metaball_coords_and_quats_get(const MetaBall *mb, ElemData_MetaBall *elem_array)
 {
-  struct ElemData_MetaBall *elem = elem_array;
+  ElemData_MetaBall *elem = elem_array;
   for (const MetaElem *ml = static_cast<const MetaElem *>(mb->elems.first); ml;
-       ml = ml->next, elem++) {
+       ml = ml->next, elem++)
+  {
     copy_v3_v3(elem->co, &ml->x);
     copy_qt_qt(elem->quat, ml->quat);
     copy_v3_v3(elem->exp, &ml->expx);
@@ -229,10 +233,10 @@ static void metaball_coords_and_quats_get(const MetaBall *mb, struct ElemData_Me
 }
 
 static void metaball_coords_and_quats_apply_with_mat4(MetaBall *mb,
-                                                      const struct ElemData_MetaBall *elem_array,
+                                                      const ElemData_MetaBall *elem_array,
                                                       const float mat[4][4])
 {
-  const struct ElemData_MetaBall *elem = elem_array;
+  const ElemData_MetaBall *elem = elem_array;
   for (MetaElem *ml = static_cast<MetaElem *>(mb->elems.first); ml; ml = ml->next, elem++) {
     copy_v3_v3(&ml->x, elem->co);
     copy_qt_qt(ml->quat, elem->quat);
@@ -242,8 +246,7 @@ static void metaball_coords_and_quats_apply_with_mat4(MetaBall *mb,
   BKE_mball_transform(mb, mat, true);
 }
 
-static void metaball_coords_and_quats_apply(MetaBall *mb,
-                                            const struct ElemData_MetaBall *elem_array)
+static void metaball_coords_and_quats_apply(MetaBall *mb, const ElemData_MetaBall *elem_array)
 {
   /* Avoid code duplication by using a unit matrix. */
   float mat[4][4];
@@ -461,7 +464,7 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
       xod_base = &xod->base;
       break;
     }
-    case ID_GD: {
+    case ID_GD_LEGACY: {
       bGPdata *gpd = (bGPdata *)id;
       const int elem_array_len = BKE_gpencil_stroke_point_count(gpd);
       XFormObjectData_GPencil *xod = static_cast<XFormObjectData_GPencil *>(
@@ -483,17 +486,17 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
   return xod_base;
 }
 
-struct XFormObjectData *ED_object_data_xform_create(ID *id)
+XFormObjectData *ED_object_data_xform_create(ID *id)
 {
   return ED_object_data_xform_create_ex(id, false);
 }
 
-struct XFormObjectData *ED_object_data_xform_create_from_edit_mode(ID *id)
+XFormObjectData *ED_object_data_xform_create_from_edit_mode(ID *id)
 {
   return ED_object_data_xform_create_ex(id, true);
 }
 
-void ED_object_data_xform_destroy(struct XFormObjectData *xod_base)
+void ED_object_data_xform_destroy(XFormObjectData *xod_base)
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
@@ -524,7 +527,7 @@ void ED_object_data_xform_destroy(struct XFormObjectData *xod_base)
   MEM_freeN(xod_base);
 }
 
-void ED_object_data_xform_by_mat4(struct XFormObjectData *xod_base, const float mat[4][4])
+void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][4])
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
@@ -619,7 +622,7 @@ void ED_object_data_xform_by_mat4(struct XFormObjectData *xod_base, const float 
       metaball_coords_and_quats_apply_with_mat4(mb, xod->elem_array, mat);
       break;
     }
-    case ID_GD: {
+    case ID_GD_LEGACY: {
       bGPdata *gpd = (bGPdata *)xod_base->id;
       XFormObjectData_GPencil *xod = (XFormObjectData_GPencil *)xod_base;
       BKE_gpencil_point_coords_apply_with_mat4(gpd, xod->elem_array, mat);
@@ -631,7 +634,7 @@ void ED_object_data_xform_by_mat4(struct XFormObjectData *xod_base, const float 
   }
 }
 
-void ED_object_data_xform_restore(struct XFormObjectData *xod_base)
+void ED_object_data_xform_restore(XFormObjectData *xod_base)
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
@@ -718,7 +721,7 @@ void ED_object_data_xform_restore(struct XFormObjectData *xod_base)
       metaball_coords_and_quats_apply(mb, xod->elem_array);
       break;
     }
-    case ID_GD: {
+    case ID_GD_LEGACY: {
       bGPdata *gpd = (bGPdata *)xod_base->id;
       XFormObjectData_GPencil *xod = (XFormObjectData_GPencil *)xod_base;
       BKE_gpencil_point_coords_apply(gpd, xod->elem_array);
@@ -730,7 +733,7 @@ void ED_object_data_xform_restore(struct XFormObjectData *xod_base)
   }
 }
 
-void ED_object_data_xform_tag_update(struct XFormObjectData *xod_base)
+void ED_object_data_xform_tag_update(XFormObjectData *xod_base)
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
@@ -770,7 +773,7 @@ void ED_object_data_xform_tag_update(struct XFormObjectData *xod_base)
       DEG_id_tag_update(&mb->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
       break;
     }
-    case ID_GD: {
+    case ID_GD_LEGACY: {
       /* Generic update. */
       bGPdata *gpd = (bGPdata *)xod_base->id;
       DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
