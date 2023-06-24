@@ -1348,9 +1348,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_IMAGE 1191
 #define GEO_NODE_INTERPOLATE_CURVES 1192
 #define GEO_NODE_EDGES_TO_FACE_GROUPS 1193
-<<<<<<< HEAD
-#define GEO_NODE_RESAMPLE_TOPOLOGY 1194
-=======
 #define GEO_NODE_POINTS_TO_SDF_VOLUME 1194
 #define GEO_NODE_MESH_TO_SDF_VOLUME 1195
 #define GEO_NODE_SDF_VOLUME_SPHERE 1196
@@ -1363,7 +1360,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
 #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
->>>>>>> main
+#define GEO_NODE_RESAMPLE_TOPOLOGY 2105
 
 /** \} */
 

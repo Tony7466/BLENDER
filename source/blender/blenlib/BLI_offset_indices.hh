@@ -89,11 +89,6 @@ template<typename T> class OffsetIndices {
     return OffsetIndices(offsets_.slice(range.start(), range.one_after_last()));
   }
 
-<<<<<<< HEAD
-  const IndexRange index_range() const
-  {
-    return IndexRange(offsets_.drop_back(1).size());
-=======
   const T *data() const
   {
     return offsets_.data();
@@ -136,7 +131,6 @@ template<typename T> struct GroupedSpan {
   bool is_empty() const
   {
     return this->data.size() == 0;
->>>>>>> main
   }
 };
 
