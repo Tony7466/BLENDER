@@ -1742,7 +1742,7 @@ static bool vfont_to_curve(Object *ob,
   }
 
   // Erasing all text could give slen = 0
-  if (slen == 0) {
+  if (cursor_params && slen == 0) {
     cursor_params->r_string_offset = -1;
   }
   else if (cursor_params && cu->textoncurve != NULL) {
@@ -1783,8 +1783,8 @@ static bool vfont_to_curve(Object *ob,
     for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
     }
 
-    // Loop until find the first character to the right of the mouse (using the midpoint on the
-    // x-axis as a reference)
+    // Loop until find the first character to the right of the mouse (using the character midpoint
+    // on the x-axis as a reference)
     for (i; i <= slen && yof == chartransdata[i].yof; i++) {
       info = &custrinfo[i];
       ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
