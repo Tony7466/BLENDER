@@ -284,9 +284,9 @@ def resolve_ncase(path):
         dirpath = _os.path.dirname(path)
 
         suffix = path[:0]  # "" but ensure byte/str match
-        if not filename:  # dir ends with a slash?
+        if not filename:  # dir ends with a slash? Common cases are where `path` is like "H:/" or "file//"
             if len(dirpath) < len(path):
-                suffix = path[:len(path) - len(dirpath)]
+                suffix = path[len(dirpath) - len(path):]
 
             filename = _os.path.basename(dirpath)
             dirpath = _os.path.dirname(dirpath)
