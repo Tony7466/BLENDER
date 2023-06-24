@@ -1039,7 +1039,9 @@ static bool brush_colors_flip_poll(bContext *C)
   else {
     Object *ob = CTX_data_active_object(C);
     if (ob != nullptr) {
-      if (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_TEXTURE_PAINT | OB_MODE_SCULPT)) {
+      if (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_TEXTURE_PAINT | OB_MODE_SCULPT |
+                      OB_MODE_PAINT_GPENCIL | OB_MODE_VERTEX_GPENCIL))
+      {
         return true;
       }
     }

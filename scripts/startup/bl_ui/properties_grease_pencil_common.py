@@ -609,7 +609,7 @@ class GreasePencilVertexcolorPanel:
             sub_row.prop(brush, "color", text="")
             sub_row.prop(brush, "secondary_color", text="")
 
-            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+            sub_row.operator("paint.brush_colors_flip", icon='FILE_REFRESH', text="")
 
             row = layout.row(align=True)
             row.template_ID(gpencil_paint, "palette", new="palette.new")
@@ -855,50 +855,6 @@ class GreasePencilLayerDisplayPanel:
         row.prop(gpl, "use_solo_mode", text="Show Only on Keyframed")
 
 
-class GreasePencilFlipTintColors(Operator):
-    bl_label = "Flip Colors"
-    bl_idname = "gpencil.tint_flip"
-    bl_description = "Switch tint colors"
-
-    @classmethod
-    def poll(cls, context):
-        tool_settings = context.tool_settings
-        settings = None
-        if context.mode == 'PAINT_GPENCIL':
-            settings = tool_settings.gpencil_paint
-        if context.mode == 'SCULPT_GPENCIL':
-            settings = tool_settings.gpencil_sculpt_paint
-        elif context.mode == 'WEIGHT_GPENCIL':
-            settings = tool_settings.gpencil_weight_paint
-        elif context.mode == 'VERTEX_GPENCIL':
-            settings = tool_settings.gpencil_vertex_paint
-
-        return settings and settings.brush
-
-    def execute(self, context):
-        tool_settings = context.tool_settings
-        settings = None
-        if context.mode == 'PAINT_GPENCIL':
-            settings = tool_settings.gpencil_paint
-        if context.mode == 'SCULPT_GPENCIL':
-            settings = tool_settings.gpencil_sculpt_paint
-        elif context.mode == 'WEIGHT_GPENCIL':
-            settings = tool_settings.gpencil_weight_paint
-        elif context.mode == 'VERTEX_GPENCIL':
-            settings = tool_settings.gpencil_vertex_paint
-
-        brush = settings.brush
-        color = brush.color
-        secondary_color = brush.secondary_color
-
-        orig_prim = color.hsv
-        orig_sec = secondary_color.hsv
-
-        color.hsv = orig_sec
-        secondary_color.hsv = orig_prim
-        return {'FINISHED'}
-
-
 classes = (
     GPENCIL_MT_snap,
     GPENCIL_MT_snap_pie,
@@ -913,8 +869,6 @@ classes = (
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,
     GPENCIL_UL_masks,
-
-    GreasePencilFlipTintColors,
 )
 
 if __name__ == "__main__":  # only for live edit.
