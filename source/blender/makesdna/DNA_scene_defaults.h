@@ -372,6 +372,13 @@
     /* Placement */ \
     .snap_mode_tools = SCE_SNAP_TO_GEOM,\
     .plane_axis = 2,\
+\
+    /* Auto X-Ray */ \
+    .auto_xray_object = true, \
+    .auto_xray_edit = true, \
+    .auto_xray_box = true, \
+    .auto_xray_lasso = true, \
+    .auto_xray_circle = true, \
   }
 
 /* clang-format off */

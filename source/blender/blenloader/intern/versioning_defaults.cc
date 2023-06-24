@@ -375,6 +375,13 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
+
+  /* Auto X-Ray. */
+  ts->auto_xray_object = true;
+  ts->auto_xray_edit = true;
+  ts->auto_xray_box = true;
+  ts->auto_xray_lasso = true;
+  ts->auto_xray_circle = true;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)

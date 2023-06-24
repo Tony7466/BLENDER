@@ -1561,7 +1561,16 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
+
+  /* X-Ray Options */
+  char auto_xray;
+  char auto_xray_reset;
+  char auto_xray_object;
+  char auto_xray_edit;
+  char auto_xray_box;
+  char auto_xray_lasso;
+  char auto_xray_circle;
+  char _pad0[3];
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
