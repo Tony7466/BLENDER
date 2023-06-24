@@ -108,9 +108,9 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
   }
 
   if (r_sq == 0) {
-    /* Use intensity instead of radiance for point light. */
+    /* Use intensity instead of radiance when the radius is zero. */
     ls->eval_fac /= sqr(ls->t);
-    /* `ls->Ng` is not well-defined for point light, so use the incoming direction instead.  */
+    /* `ls->Ng` is not well-defined when the radius is zero, use the incoming direction instead. */
     ls->Ng = -ls->D;
   }
   else {
