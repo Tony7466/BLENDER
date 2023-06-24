@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al.
- *                         All Rights Reserved (BSD-3-Clause).
+ *                         All Rights Reserved. (BSD-3-Clause).
  * SPDX-FileCopyrightText: 2011 Blender Foundation (GPL-2.0-or-later).
  *
  * SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause */
@@ -2262,11 +2262,12 @@ VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
                           params.lacunarity == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
-    VoronoiOutput octave = (params.feature == NOISE_SHD_VORONOI_F1) ?
-                               voronoi_f1(params, coord * scale) :
-                           (params.feature == NOISE_SHD_VORONOI_SMOOTH_F1) ?
+    VoronoiOutput octave = (params.feature == NOISE_SHD_VORONOI_F2) ?
+                               voronoi_f2(params, coord * scale) :
+                           (params.feature == NOISE_SHD_VORONOI_SMOOTH_F1 &&
+                            params.smoothness != 0.0f) ?
                                voronoi_smooth_f1(params, coord * scale, calc_color) :
-                               voronoi_f2(params, coord * scale);
+                               voronoi_f1(params, coord * scale);
 
     if (zero_input) {
       max_amplitude = 1.0f;
