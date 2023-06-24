@@ -366,13 +366,6 @@
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
     .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
- \
-    /* Auto X-Ray */ \
-    .auto_xray_object = true, \
-    .auto_xray_edit = true, \
-    .auto_xray_box = true, \
-    .auto_xray_lasso = true, \
-    .auto_xray_circle = true, \
   }
 
 /* clang-format off */
