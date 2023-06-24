@@ -512,6 +512,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
   tree_runtime.topology_cache_mutex.ensure([&]() {
     update_interface_sockets(ntree);
 
+    /* Cache kinds based only on a dna node data. */
     threading::parallel_invoke(
         tree_runtime.nodes_by_id.size() > 64,
         [&] { update_node_vector(ntree); },
