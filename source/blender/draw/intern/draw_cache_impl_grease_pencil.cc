@@ -332,8 +332,9 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         "hardness", ATTR_DOMAIN_CURVE, 1.0f);
     const VArray<float> stroke_point_aspect_ratios = *attributes.lookup_or_default<float>(
         "point_aspect_ratio", ATTR_DOMAIN_CURVE, 1.0f);
-    const VArray<ColorGeometry4f> stroke_fill_colors = *attributes.lookup_or_default<ColorGeometry4f>(
-        "fill_color", ATTR_DOMAIN_CURVE, ColorGeometry4f(float4(0.0f, 0.0f, 0.0f, 0.0f)));
+    const VArray<ColorGeometry4f> stroke_fill_colors =
+        *attributes.lookup_or_default<ColorGeometry4f>(
+            "fill_color", ATTR_DOMAIN_CURVE, ColorGeometry4f(float4(0.0f, 0.0f, 0.0f, 0.0f)));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, -1);
     const Span<uint3> triangles = drawing.triangles();
@@ -362,8 +363,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       s_vert.stroke_id = verts_range.first();
       s_vert.mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
 
-      s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(rotations[point_i], 
-          stroke_point_aspect_ratios[curve_i], stroke_hardnesses[curve_i]);
+      s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(
+          rotations[point_i], stroke_point_aspect_ratios[curve_i], stroke_hardnesses[curve_i]);
       /* TODO: Populate stroke UVs. */
       s_vert.u_stroke = 0;
       /* TODO: Populate fill UVs. */
