@@ -121,7 +121,7 @@ static void vfont_foreach_path(ID *id, BPathForeachPathData *bpath_data)
     return;
   }
 
-  BKE_bpath_foreach_path_fixed_process(bpath_data, vfont->filepath);
+  BKE_bpath_foreach_path_fixed_process(bpath_data, vfont->filepath, sizeof(vfont->filepath));
 }
 
 static void vfont_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -295,7 +295,7 @@ static VFontData *vfont_get_data(VFont *vfont)
         /* DON'T DO THIS
          * missing file shouldn't modify path! - campbell */
 #if 0
-        strcpy(vfont->filepath, FO_BUILTIN_NAME);
+        STRNCPY(vfont->filepath, FO_BUILTIN_NAME);
 #endif
         pf = get_builtin_packedfile();
       }

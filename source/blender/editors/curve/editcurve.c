@@ -1273,7 +1273,6 @@ void ED_curve_editnurb_make(Object *obedit)
     actkey = BKE_keyblock_from_object(obedit);
 
     if (actkey) {
-      // XXX strcpy(G.editModeTitleExtra, "(Key) ");
       /* TODO(@ideasman42): undo_system: investigate why this was needed. */
 #if 0
       undo_editmode_clear();
@@ -5610,7 +5609,7 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     Curve *cu;
     float location[3];
     const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                           (vc.scene->toolsettings->snap_mode == SCE_SNAP_MODE_FACE));
+                           (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
 
     Nurb *nu;
     BezTriple *bezt;
@@ -5642,7 +5641,7 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
           vc.depsgraph,
           vc.region,
           vc.v3d,
-          SCE_SNAP_MODE_FACE,
+          SCE_SNAP_TO_FACE,
           &(const struct SnapObjectParams){
               .snap_target_select = (vc.obedit != NULL) ? SCE_SNAP_TARGET_NOT_ACTIVE :
                                                           SCE_SNAP_TARGET_ALL,
