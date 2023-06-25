@@ -73,6 +73,7 @@ struct PaintOperationExecutor {
         proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
 
     drawing.runtime->stroke_cache.points.append(std::move(new_point));
+    drawing.runtime->stroke_cache.mat = obact->actcol - 1;
 
     BKE_grease_pencil_batch_cache_dirty_tag(&grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
@@ -136,7 +137,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   }
 
   /* Set material index attribute. */
-  int material_index = 0;
+  int material_index = drawing_eval.runtime->stroke_cache.mat;
   SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
 
