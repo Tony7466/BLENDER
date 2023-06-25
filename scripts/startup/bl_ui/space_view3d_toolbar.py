@@ -2269,13 +2269,29 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         col = layout.column()
         col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
 
-        col.template_color_picker(brush, "color", value_slider=True)
+        if context.preferences.experimental.use_grease_pencil_version3:
+            from bl_ui.properties_paint_common import (
+                UnifiedPaintPanel,
+            )
 
-        sub_row = col.row(align=True)
-        sub_row.prop(brush, "color", text="")
-        sub_row.prop(brush, "secondary_color", text="")
+            ups = context.scene.tool_settings.unified_paint_settings
 
-        sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+            UnifiedPaintPanel.prop_unified_color_picker(col, context, brush, "color", value_slider=True)
+
+            sub_row = col.row(align=True)
+            UnifiedPaintPanel.prop_unified_color(sub_row, context, brush, "color", text="")
+            UnifiedPaintPanel.prop_unified_color(sub_row, context, brush, "secondary_color", text="")
+            sub_row.separator()
+            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="", emboss=False)
+            sub_row.prop(ups, "use_unified_color", text="", icon='BRUSHES_ALL')
+        else:
+            col.template_color_picker(brush, "color", value_slider=True)
+
+            sub_row = col.row(align=True)
+            sub_row.prop(brush, "color", text="")
+            sub_row.prop(brush, "secondary_color", text="")
+
+            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
         if brush.gpencil_tool in {'DRAW', 'FILL'}:
             col.prop(gp_settings, "vertex_mode", text="Mode")

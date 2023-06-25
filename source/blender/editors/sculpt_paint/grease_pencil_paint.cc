@@ -2,11 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_scene.h"
+
+#include "BLI_color.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -45,6 +48,9 @@ struct PaintOperationExecutor {
     ARegion *region = CTX_wm_region(&C);
     Object *obact = CTX_data_active_object(&C);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+    Paint *paint = BKE_paint_get_active_from_context(&C);
+    Brush *brush = BKE_paint_brush(paint);
+    ToolSettings *ts = scene->toolsettings;
 
     /**
      * Note: We write to the evaluated object here, so that the additional copy from orig -> eval
@@ -62,10 +68,38 @@ struct PaintOperationExecutor {
     float3 proj_pos;
     ED_view3d_win_to_3d_on_plane(region, plane, stroke_extension.mouse_position, false, proj_pos);
 
+    float4 stroke_color = float4(0.0f);
+    float4 fill_color = float4(0.0f);
+
+    const bool is_vertex_fill =
+        (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush) &&
+         (brush->gpencil_settings->brush_draw_mode != GP_BRUSH_MODE_MATERIAL)) ||
+        (!GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush) &&
+         (brush->gpencil_settings->brush_draw_mode == GP_BRUSH_MODE_VERTEXCOLOR));
+
+    const bool is_vertex_stroke =
+        (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) &&
+         (brush->gpencil_settings->brush_draw_mode != GP_BRUSH_MODE_MATERIAL)) ||
+        (!GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) &&
+         (brush->gpencil_settings->brush_draw_mode == GP_BRUSH_MODE_VERTEXCOLOR));
+
+    if (is_vertex_fill) {
+      copy_v3_v3(fill_color, BKE_brush_color_get(scene, brush));
+      fill_color[3] = brush->gpencil_settings->vertex_factor;
+      srgb_to_linearrgb_v4(fill_color, fill_color);
+    }
+
+    if (is_vertex_stroke) {
+      copy_v3_v3(stroke_color, BKE_brush_color_get(scene, brush));
+      stroke_color[3] = brush->gpencil_settings->vertex_factor;
+      srgb_to_linearrgb_v4(stroke_color, stroke_color);
+    }
+
     bke::greasepencil::StrokePoint new_point{
-        proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
+        proj_pos, stroke_extension.pressure * 100.0f, 1.0f, stroke_color};
 
     grease_pencil.runtime->stroke_cache.points.append(std::move(new_point));
+    grease_pencil.runtime->stroke_cache.fill_color = fill_color;
 
     BKE_grease_pencil_batch_cache_dirty_tag(&grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
@@ -119,12 +153,15 @@ void PaintOperation::on_stroke_done(const bContext &C)
       "radius", ATTR_DOMAIN_POINT);
   SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<ColorGeometry4f> vertex_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", ATTR_DOMAIN_POINT);
   for (const int i : IndexRange(stroke_points.size())) {
     const bke::greasepencil::StrokePoint &point = stroke_points[i];
     const int point_i = new_points_range[i];
     positions[point_i] = point.position;
     radii.span[point_i] = point.radius;
     opacities.span[point_i] = point.opacity;
+    vertex_colors.span[point_i] = ColorGeometry4f(point.color);
   }
 
   /* Set material index attribute. */
@@ -134,12 +171,24 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   materials.span.slice(new_curves_range).fill(material_index);
 
+  /* Set fill color attribute. */
+  float4 fill_color = drawing_eval.runtime->stroke_cache.fill_color;
+  SpanAttributeWriter<ColorGeometry4f> stroke_fill_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
+
+  stroke_fill_colors.span.slice(new_curves_range).fill(ColorGeometry4f(fill_color));
+
   /* Set curve_type attribute. */
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_POLY);
 
   /* Explicitly set all other attributes besides those processed above to default values. */
-  Set<std::string> attributes_to_skip{
-      {"position", "radius", "opacity", "material_index", "curve_type"}};
+  Set<std::string> attributes_to_skip{{"position",
+                                       "radius",
+                                       "opacity",
+                                       "vertex_color",
+                                       "material_index",
+                                       "fill_color",
+                                       "curve_type"}};
   attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
         if (attributes_to_skip.contains(id.name())) {
@@ -159,7 +208,9 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   radii.finish();
   opacities.finish();
+  vertex_colors.finish();
   materials.finish();
+  stroke_fill_colors.finish();
 
   DEG_id_tag_update(&grease_pencil_orig.id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GEOM | ND_DATA, &grease_pencil_orig.id);

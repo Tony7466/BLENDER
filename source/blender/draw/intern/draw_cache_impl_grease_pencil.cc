@@ -435,6 +435,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
     MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
     const int material_nr = grease_pencil.runtime->stroke_cache.mat;
+    const float4 fill_color = grease_pencil.runtime->stroke_cache.fill_color;
 
     verts_slice.first().mat = -1;
     for (const int i : IndexRange(points.size())) {
@@ -457,9 +458,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       /* TODO */
       s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
 
-      /* TODO */
-      copy_v4_v4(c_vert.vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-      copy_v4_v4(c_vert.fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+      copy_v4_v4(c_vert.vcol, point.color);
+      copy_v4_v4(c_vert.fcol, fill_color);
 
       /* TODO */
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
