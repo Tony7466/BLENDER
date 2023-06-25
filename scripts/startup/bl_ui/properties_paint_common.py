@@ -1269,7 +1269,7 @@ def brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
         row.prop(props, "subdivision")
 
 
-def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False):
+def brush_basic_gpencil_legacy_paint_settings(layout, context, brush, *, compact=False):
     tool_settings = context.tool_settings
     settings = tool_settings.gpencil_paint
     gp_settings = brush.gpencil_settings
@@ -1370,6 +1370,63 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
             if settings.use_thickness_curve:
                 # Curve
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
+
+
+def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=False):
+    tool_settings = context.tool_settings
+    settings = tool_settings.gpencil_paint
+    gp_settings = brush.gpencil_settings
+    tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
+    if gp_settings is None:
+        return
+
+    if brush.gpencil_tool == 'ERASE':
+        pass
+
+    elif brush.gpencil_tool == 'FILL':
+        pass
+
+    else:  # brush.gpencil_tool == 'DRAW/TINT':
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "size",
+            pressure_name="use_pressure_size",
+            unified_name="use_unified_size",
+            slider=True,
+            text="Radius",
+            header=compact,
+        )
+
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "strength",
+            pressure_name="use_pressure_strength",
+            unified_name="use_unified_strength",
+            header=compact,
+        )
+
+        if brush.gpencil_tool == 'TINT':
+            pass
+        else:
+            row = layout.row(align=True)
+            if context.region.type == 'TOOL_HEADER':
+                row.prop(gp_settings, "caps_type", text="", expand=True)
+            else:
+                row.prop(gp_settings, "caps_type", text="Caps Type")
+
+    if tool.idname in {
+            "builtin.arc",
+            "builtin.curve",
+            "builtin.line",
+            "builtin.box",
+            "builtin.circle",
+            "builtin.polyline",
+    }:
+        pass
 
 
 def brush_basic_gpencil_sculpt_settings(layout, _context, brush, *, compact=False):

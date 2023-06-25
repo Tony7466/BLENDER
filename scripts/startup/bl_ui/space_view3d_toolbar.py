@@ -1453,15 +1453,22 @@ class GreasePencilPaintPanel:
     @classmethod
     def poll(cls, context):
         if context.space_data.type in {'VIEW_3D', 'PROPERTIES'}:
-            if context.gpencil_data is None:
-                return False
+            if context.preferences.experimental.use_grease_pencil_version3:
+                # Hide for tools not using bruhses
+                if tool_use_brush(context) is False:
+                    return False
 
-            # Hide for tools not using bruhses
-            if tool_use_brush(context) is False:
-                return False
+                return True
+            else:
+                if context.gpencil_data is None:
+                    return False
 
-            gpd = context.gpencil_data
-            return bool(gpd.is_stroke_paint_mode)
+                # Hide for tools not using brushes
+                if tool_use_brush(context) is False:
+                    return False
+
+                gpd = context.gpencil_data
+                return bool(gpd.is_stroke_paint_mode)
         else:
             return True
 
@@ -1525,10 +1532,16 @@ class VIEW3D_PT_tools_grease_pencil_brush_settings(Panel, View3DPanel, GreasePen
                 row.prop(gp_settings, "use_material_pin", text="")
 
             if not self.is_popover:
-                from bl_ui.properties_paint_common import (
-                    brush_basic_gpencil_paint_settings,
-                )
-                brush_basic_gpencil_paint_settings(layout, context, brush, compact=False)
+                if context.preferences.experimental.use_grease_pencil_version3:
+                    from bl_ui.properties_paint_common import (
+                        brush_basic_grease_pencil_paint_settings,
+                    )
+                    brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=False)
+                else:
+                    from bl_ui.properties_paint_common import (
+                        brush_basic_gpencil_legacy_paint_settings,
+                    )
+                    brush_basic_gpencil_legacy_paint_settings(layout, context, brush, compact=False)
 
 
 class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):

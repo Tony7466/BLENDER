@@ -390,10 +390,17 @@ class _draw_tool_settings_context_mode:
             row.separator(factor=0.4)
             row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
-        from bl_ui.properties_paint_common import (
-            brush_basic_gpencil_paint_settings,
-        )
-        brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
+        if context.preferences.experimental.use_grease_pencil_version3:
+            from bl_ui.properties_paint_common import (
+                brush_basic_grease_pencil_paint_settings,
+            )
+            brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
+        else:
+            from bl_ui.properties_paint_common import (
+                brush_basic_gpencil_legacy_paint_settings,
+            )
+            brush_basic_gpencil_legacy_paint_settings(layout, context, brush, compact=True)
+
 
         return True
 

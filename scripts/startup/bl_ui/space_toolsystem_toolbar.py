@@ -1961,13 +1961,23 @@ class _defs_gpencil_paint:
         settings = tool_settings.gpencil_paint
         row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
-        from bl_ui.properties_paint_common import (
-            brush_basic_gpencil_paint_settings,
-            brush_basic__draw_color_selector,
-        )
+        if context.preferences.experimental.use_grease_pencil_version3:
+            from bl_ui.properties_paint_common import (
+                brush_basic_grease_pencil_paint_settings,
+                brush_basic__draw_color_selector,
+            )
 
-        brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
-        brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
+            brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
+            brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
+        else:
+            from bl_ui.properties_paint_common import (
+                brush_basic_gpencil_legacy_paint_settings,
+                brush_basic__draw_color_selector,
+            )
+
+            brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
+            brush_basic_gpencil_legacy_paint_settings(layout, context, brush, compact=True)
+
         return True
 
     @staticmethod

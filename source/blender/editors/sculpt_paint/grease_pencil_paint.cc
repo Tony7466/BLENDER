@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.h"
@@ -46,6 +47,8 @@ struct PaintOperationExecutor {
     ARegion *region = CTX_wm_region(&C);
     Object *obact = CTX_data_active_object(&C);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+    Paint *paint = BKE_paint_get_active_from_context(&C);
+    Brush *brush = BKE_paint_brush(paint);
 
     /**
      * Note: We write to the evaluated object here, so that the additional copy from orig -> eval
@@ -69,8 +72,20 @@ struct PaintOperationExecutor {
     float3 proj_pos;
     ED_view3d_win_to_3d_on_plane(region, plane, stroke_extension.mouse_position, false, proj_pos);
 
-    bke::greasepencil::StrokePoint new_point{
-        proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
+    float radius = BKE_brush_size_get(scene, brush);
+    float opacity = BKE_brush_alpha_get(scene, brush);
+
+    if (BKE_brush_use_size_pressure(brush)) {
+      /* TODO: use pressure curve. */
+      radius *= stroke_extension.pressure;
+    }
+
+    if (BKE_brush_use_alpha_pressure(brush)) {
+      /* TODO: use pressure curve. */
+      opacity *= stroke_extension.pressure;
+    }
+
+    bke::greasepencil::StrokePoint new_point{proj_pos, radius, opacity, float4(1.0f)};
 
     drawing.runtime->stroke_cache.points.append(std::move(new_point));
 
