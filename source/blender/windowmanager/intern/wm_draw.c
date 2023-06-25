@@ -881,126 +881,178 @@ GPUViewport *WM_draw_region_get_bound_viewport(ARegion *region)
   return viewport;
 }
 
+static bool is_viewport_region(ScrArea *area, ARegion *region)
+{
+  if (area && area->spacetype == SPACE_VIEW3D && region->regiondata &&
+      region->type->regionid == RGN_TYPE_WINDOW)
+  {
+    return true;
+  }
+
+  return false;
+}
+
+static bool draw_skip_ui_region(ScrArea *area, ARegion *region, int *state, bool draw_ui)
+{
+  if (!region->visible) {
+    return false;
+  }
+
+  /* If we hit a non-viewport region, defer all viewports to the next
+   *  call to wm_draw_update.
+   */
+  if (draw_ui && !is_viewport_region(area, region) &&
+      (region->do_draw & (RGN_DRAW | RGN_DRAW_PARTIAL | RGN_DRAW_NO_REBUILD)))
+  {
+    *state = true;
+  }
+
+  if (!draw_ui && *state) {
+    return true;
+  }
+
+  if (is_viewport_region(area, region) != !draw_ui) {
+    return true;
+  }
+
+  return false;
+}
+
 static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   bScreen *screen = WM_window_get_active_screen(win);
 
-  /* Draw screen areas into own frame buffer. */
-  ED_screen_areas_iter (win, screen, area) {
-    CTX_wm_area_set(C, area);
-    GPU_debug_group_begin(wm_area_name(area));
+  int draw_ui_state = 0;
 
-    /* Compute UI layouts for dynamically size regions. */
-    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-      if (region->flag & RGN_FLAG_POLL_FAILED) {
-        continue;
+  for (int draw_ui = 1; draw_ui >= 0; draw_ui--) {
+    /* Draw screen areas into own frame buffer. */
+    ED_screen_areas_iter (win, screen, area) {
+      CTX_wm_area_set(C, area);
+      GPU_debug_group_begin(wm_area_name(area));
+
+      /* Compute UI layouts for dynamically size regions. */
+      LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+        if (draw_skip_ui_region(area, region, &draw_ui_state, draw_ui)) {
+          continue;
+        }
+
+        if (region->flag & RGN_FLAG_POLL_FAILED) {
+          continue;
+        }
+        /* Dynamic region may have been flagged as too small because their size on init is 0.
+         * ARegion.visible is false then, as expected. The layout should still be created then, so
+         * the region size can be updated (it may turn out to be not too small then). */
+        const bool ignore_visibility = (region->flag & RGN_FLAG_DYNAMIC_SIZE) &&
+                                       (region->flag & RGN_FLAG_TOO_SMALL) &&
+                                       !(region->flag & RGN_FLAG_HIDDEN);
+
+        if ((region->visible || ignore_visibility) && region->do_draw && region->type &&
+            region->type->layout)
+        {
+          CTX_wm_region_set(C, region);
+          ED_region_do_layout(C, region);
+          CTX_wm_region_set(C, NULL);
+        }
       }
-      /* Dynamic region may have been flagged as too small because their size on init is 0.
-       * ARegion.visible is false then, as expected. The layout should still be created then, so
-       * the region size can be updated (it may turn out to be not too small then). */
-      const bool ignore_visibility = (region->flag & RGN_FLAG_DYNAMIC_SIZE) &&
-                                     (region->flag & RGN_FLAG_TOO_SMALL) &&
-                                     !(region->flag & RGN_FLAG_HIDDEN);
 
-      if ((region->visible || ignore_visibility) && region->do_draw && region->type &&
-          region->type->layout)
-      {
+      ED_area_update_region_sizes(wm, win, area);
+
+      if (area->flag & AREA_FLAG_ACTIVE_TOOL_UPDATE) {
+        if ((1 << area->spacetype) & WM_TOOLSYSTEM_SPACE_MASK) {
+          WM_toolsystem_update_from_context(
+              C, CTX_wm_workspace(C), CTX_data_scene(C), CTX_data_view_layer(C), area);
+        }
+        area->flag &= ~AREA_FLAG_ACTIVE_TOOL_UPDATE;
+      }
+
+      /* Then do actual drawing of regions. */
+      LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+        if (draw_skip_ui_region(area, region, &draw_ui_state, draw_ui)) {
+          continue;
+        }
+
+        if (!region->visible || !region->do_draw) {
+          continue;
+        }
+
         CTX_wm_region_set(C, region);
-        ED_region_do_layout(C, region);
-        CTX_wm_region_set(C, NULL);
-      }
-    }
+        bool use_viewport = WM_region_use_viewport(area, region);
 
-    ED_area_update_region_sizes(wm, win, area);
+        GPU_debug_group_begin(use_viewport ? "Viewport" : "ARegion");
 
-    if (area->flag & AREA_FLAG_ACTIVE_TOOL_UPDATE) {
-      if ((1 << area->spacetype) & WM_TOOLSYSTEM_SPACE_MASK) {
-        WM_toolsystem_update_from_context(
-            C, CTX_wm_workspace(C), CTX_data_scene(C), CTX_data_view_layer(C), area);
-      }
-      area->flag &= ~AREA_FLAG_ACTIVE_TOOL_UPDATE;
-    }
+        if (stereo && wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID)) {
+          wm_draw_region_buffer_create(region, true, use_viewport);
 
-    /* Then do actual drawing of regions. */
-    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-      if (!region->visible || !region->do_draw) {
-        continue;
-      }
+          for (int view = 0; view < 2; view++) {
+            eStereoViews sview;
+            if (view == 0) {
+              sview = STEREO_LEFT_ID;
+            }
+            else {
+              sview = STEREO_RIGHT_ID;
+              wm_draw_region_stereo_set(bmain, area, region, sview);
+            }
 
-      CTX_wm_region_set(C, region);
-      bool use_viewport = WM_region_use_viewport(area, region);
-
-      GPU_debug_group_begin(use_viewport ? "Viewport" : "ARegion");
-
-      if (stereo && wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID)) {
-        wm_draw_region_buffer_create(region, true, use_viewport);
-
-        for (int view = 0; view < 2; view++) {
-          eStereoViews sview;
-          if (view == 0) {
-            sview = STEREO_LEFT_ID;
+            wm_draw_region_bind(region, view);
+            ED_region_do_draw(C, region);
+            wm_draw_region_unbind(region);
           }
-          else {
-            sview = STEREO_RIGHT_ID;
-            wm_draw_region_stereo_set(bmain, area, region, sview);
+          if (use_viewport) {
+            GPUViewport *viewport = region->draw_buffer->viewport;
+            GPU_viewport_stereo_composite(viewport, win->stereo3d_format);
           }
-
-          wm_draw_region_bind(region, view);
+        }
+        else {
+          wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID);
+          wm_draw_region_buffer_create(region, false, use_viewport);
+          wm_draw_region_bind(region, 0);
           ED_region_do_draw(C, region);
           wm_draw_region_unbind(region);
         }
-        if (use_viewport) {
-          GPUViewport *viewport = region->draw_buffer->viewport;
-          GPU_viewport_stereo_composite(viewport, win->stereo3d_format);
-        }
+
+        GPU_debug_group_end();
+
+        region->do_draw = false;
+        CTX_wm_region_set(C, NULL);
       }
-      else {
-        wm_draw_region_stereo_set(bmain, area, region, STEREO_LEFT_ID);
-        wm_draw_region_buffer_create(region, false, use_viewport);
-        wm_draw_region_bind(region, 0);
-        ED_region_do_draw(C, region);
-        wm_draw_region_unbind(region);
+
+      CTX_wm_area_set(C, NULL);
+
+      GPU_debug_group_end();
+    }
+
+    /* Draw menus into their own frame-buffer. */
+    LISTBASE_FOREACH (ARegion *, region, &screen->regionbase) {
+      if (draw_skip_ui_region(NULL, region, &draw_ui_state, draw_ui)) {
+        continue;
       }
+      if (!region->visible) {
+        continue;
+      }
+      CTX_wm_menu_set(C, region);
+
+      GPU_debug_group_begin("Menu");
+
+      if (region->type && region->type->layout) {
+        /* UI code reads the OpenGL state, but we have to refresh
+         * the UI layout beforehand in case the menu size changes. */
+        wmViewport(&region->winrct);
+        region->type->layout(C, region);
+      }
+
+      wm_draw_region_buffer_create(region, false, false);
+      wm_draw_region_bind(region, 0);
+      GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
+      ED_region_do_draw(C, region);
+      wm_draw_region_unbind(region);
 
       GPU_debug_group_end();
 
       region->do_draw = false;
-      CTX_wm_region_set(C, NULL);
+      CTX_wm_menu_set(C, NULL);
     }
-
-    CTX_wm_area_set(C, NULL);
-
-    GPU_debug_group_end();
-  }
-
-  /* Draw menus into their own frame-buffer. */
-  LISTBASE_FOREACH (ARegion *, region, &screen->regionbase) {
-    if (!region->visible) {
-      continue;
-    }
-    CTX_wm_menu_set(C, region);
-
-    GPU_debug_group_begin("Menu");
-
-    if (region->type && region->type->layout) {
-      /* UI code reads the OpenGL state, but we have to refresh
-       * the UI layout beforehand in case the menu size changes. */
-      wmViewport(&region->winrct);
-      region->type->layout(C, region);
-    }
-
-    wm_draw_region_buffer_create(region, false, false);
-    wm_draw_region_bind(region, 0);
-    GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
-    ED_region_do_draw(C, region);
-    wm_draw_region_unbind(region);
-
-    GPU_debug_group_end();
-
-    region->do_draw = false;
-    CTX_wm_menu_set(C, NULL);
   }
 }
 
