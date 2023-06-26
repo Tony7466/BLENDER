@@ -170,7 +170,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
         bke::CurvesGeometry &curves = drawing.geometry.wrap();
 
         IndexMaskMemory memory;
-        IndexMask random_elements = ed::curves::random_mask(
+        const IndexMask random_elements = ed::curves::random_mask(
             curves,
             selection_domain,
             blender::get_default_hash_2<int>(seed, drawing_index),
