@@ -156,7 +156,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
     bl_label = "Options"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_ui_units_x = 12
+    bl_ui_units_x = 13
 
     def draw(self, _context):
         # layout = self.layout
@@ -207,6 +207,39 @@ class VIEW3D_PT_tools_meshedit_options_transform(View3DPanel, Panel):
         sub.active = tool_settings.use_mesh_automerge
         sub.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
         sub.prop(tool_settings, "double_threshold", text="Threshold")
+
+
+class VIEW3D_PT_tools_meshedit_options_viewport_facing_select(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
+    bl_label = "Viewport Facing Select"
+    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object
+
+    def draw_header(self, context):
+        tool_settings = context.tool_settings
+
+        self.layout.prop(tool_settings, "viewport_facing_select", text="", toggle=False)
+
+    def draw(self, context):
+        layout = self.layout
+
+        tool_settings = context.tool_settings
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column(align=True)
+        col.active = tool_settings.viewport_facing_select
+        col.prop(tool_settings, "viewport_facing_select_mode")
+        col.prop(tool_settings, "viewport_facing_select_threshold", text="Threshold")
+        col.prop(tool_settings, "viewport_facing_select_vert")
+        col.prop(tool_settings, "viewport_facing_select_edge")
+        col.prop(tool_settings, "viewport_facing_select_face")
 
 
 class VIEW3D_PT_tools_meshedit_options_uvs(View3DPanel, Panel):
@@ -2374,6 +2407,7 @@ classes = (
     VIEW3D_PT_tools_object_options_transform,
     VIEW3D_PT_tools_meshedit_options,
     VIEW3D_PT_tools_meshedit_options_transform,
+    VIEW3D_PT_tools_meshedit_options_viewport_facing_select,
     VIEW3D_PT_tools_meshedit_options_uvs,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,

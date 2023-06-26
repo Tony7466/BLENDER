@@ -372,6 +372,12 @@
     /* Placement */ \
     .snap_mode_tools = SCE_SNAP_TO_GEOM,\
     .plane_axis = 2,\
+\
+    /* Viewport-Facing Select */ \
+    .viewport_facing_select_mode = 1, \
+    .viewport_facing_select_vert = 1, \
+    .viewport_facing_select_edge = 1, \
+    .viewport_facing_select_face = 1, \
   }
 
 /* clang-format off */

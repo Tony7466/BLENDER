@@ -375,6 +375,12 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
+
+  /* Viewport-Facing Select */
+  ts->viewport_facing_select_mode = 1;
+  ts->viewport_facing_select_vert = 1;
+  ts->viewport_facing_select_edge = 1;
+  ts->viewport_facing_select_face = 1;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
