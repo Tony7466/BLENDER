@@ -1599,6 +1599,11 @@ typedef struct NodeGeometryCurveTrim {
   uint8_t mode;
 } NodeGeometryCurveTrim;
 
+typedef struct NodeGeometryCurveIntersections {
+  /* GeometryNodeCurveIntersectionMode. */
+  uint8_t mode;
+} NodeGeometryCurveIntersections;
+
 typedef struct NodeGeometryCurveToPoints {
   /** #GeometryNodeCurveResampleMode. */
   uint8_t mode;
@@ -2600,6 +2605,12 @@ typedef enum GeometryNodeCurveSampleMode {
   GEO_NODE_CURVE_SAMPLE_FACTOR = 0,
   GEO_NODE_CURVE_SAMPLE_LENGTH = 1,
 } GeometryNodeCurveSampleMode;
+
+typedef enum GeometryNodeCurveIntersectionMode {
+  GEO_NODE_CURVE_INTERSECT_SELF = 0,
+  GEO_NODE_CURVE_INTERSECT_ALL = 1,
+  GEO_NODE_CURVE_INTERSECT_PLANE = 2,
+} GeometryNodeCurveIntersectionMode;
 
 typedef enum GeometryNodeCurveFilletMode {
   GEO_NODE_CURVE_FILLET_BEZIER = 0,

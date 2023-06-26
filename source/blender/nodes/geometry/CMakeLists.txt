@@ -39,6 +39,7 @@ set(SRC
   nodes/node_geo_curve_fill.cc
   nodes/node_geo_curve_fillet.cc
   nodes/node_geo_curve_handle_type_selection.cc
+  nodes/node_geo_curve_intersection.cc
   nodes/node_geo_curve_length.cc
   nodes/node_geo_curve_primitive_arc.cc
   nodes/node_geo_curve_primitive_bezier_segment.cc

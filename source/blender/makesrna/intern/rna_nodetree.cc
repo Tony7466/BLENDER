@@ -10714,6 +10714,37 @@ static void def_geo_curve_trim(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_geo_curve_intersections(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_CURVE_INTERSECT_SELF,
+       "SELF",
+       0,
+       "Self",
+       "Find the self intersection positions for each curve"},
+      {GEO_NODE_CURVE_INTERSECT_ALL,
+       "ALL",
+       0,
+       "All",
+       "Find all the intersection positions for all curves"},
+      {GEO_NODE_CURVE_INTERSECT_PLANE,
+       "PLANE",
+       0,
+       "Plane",
+       "Find all the intersection positions for each curve in reference to a plane"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryCurveIntersections", "storage");
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "How to find intersection positions for the spline");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
 static void def_geo_sample_index(StructRNA *srna)
 {
   PropertyRNA *prop;

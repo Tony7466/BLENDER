@@ -22,6 +22,7 @@ void register_node_type_geo_curve_endpoint_selection();
 void register_node_type_geo_curve_fill();
 void register_node_type_geo_curve_fillet();
 void register_node_type_geo_curve_handle_type_selection();
+void register_node_type_geo_curve_intersections();
 void register_node_type_geo_curve_length();
 void register_node_type_geo_curve_primitive_arc();
 void register_node_type_geo_curve_primitive_bezier_segment();

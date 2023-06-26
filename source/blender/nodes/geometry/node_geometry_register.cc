@@ -25,6 +25,7 @@ void register_geometry_nodes()
   register_node_type_geo_curve_fill();
   register_node_type_geo_curve_fillet();
   register_node_type_geo_curve_handle_type_selection();
+  register_node_type_geo_curve_intersections();
   register_node_type_geo_curve_length();
   register_node_type_geo_curve_primitive_arc();
   register_node_type_geo_curve_primitive_bezier_segment();
