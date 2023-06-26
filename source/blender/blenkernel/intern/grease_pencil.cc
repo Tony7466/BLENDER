@@ -605,17 +605,11 @@ int64_t LayerGroup::num_nodes_total() const
   return this->runtime->nodes_cache_.size();
 }
 
-void LayerGroup::remove_child(int64_t index)
-{
-  BLI_assert(index >= 0 && index < this->num_direct_nodes());
-  BLI_remlink(&this->children, BLI_findlink(&this->children, index));
-  this->tag_nodes_cache_dirty();
-}
-
 bool LayerGroup::unlink_layer(Layer *link)
 {
   if (BLI_remlink_safe(&this->children, link)) {
     this->tag_nodes_cache_dirty();
+    link->base.parent = nullptr;
     return true;
   }
   return false;

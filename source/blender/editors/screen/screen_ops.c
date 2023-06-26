@@ -31,6 +31,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_fcurve.h"
@@ -825,13 +826,14 @@ static void area_actionzone_get_rect(AZone *az, rcti *rect)
     rcti scroller_vert = (az->direction == AZ_SCROLL_HOR) ? az->region->v2d.hor :
                                                             az->region->v2d.vert;
     BLI_rcti_translate(&scroller_vert, az->region->winrct.xmin, az->region->winrct.ymin);
-    rect->xmin = scroller_vert.xmin - ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->xmin = scroller_vert.xmin -
+                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
     rect->ymin = scroller_vert.ymin -
-                  ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
     rect->xmax = scroller_vert.xmax +
-                  ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
+                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
     rect->ymax = scroller_vert.ymax +
-                  ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
   }
   else {
     azone_clipped_rect_calc(az, rect);
@@ -845,8 +847,7 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
   for (az = area->actionzones.first; az; az = az->next) {
     rcti az_rect;
     area_actionzone_get_rect(az, &az_rect);
-    if (BLI_rcti_isect_pt_v(&az_rect, xy))
-    {
+    if (BLI_rcti_isect_pt_v(&az_rect, xy)) {
 
       if (az->type == AZONE_AREA) {
         break;
@@ -4877,18 +4878,26 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 {
   bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
-  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_ensure_evaluated_depsgraph(C));
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Main *bmain = DEG_get_bmain(depsgraph);
 
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0);
     BKE_sound_stop_scene(scene_eval);
 
+    BKE_callback_exec_id_depsgraph(
+        bmain, &scene->id, depsgraph, BKE_CB_EVT_ANIMATION_PLAYBACK_POST);
+
     /* Triggers redraw of sequencer preview so that it does not show to fps anymore after stopping
      * playback. */
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SEQUENCER, scene);
   }
   else {
+    BKE_callback_exec_id_depsgraph(
+        bmain, &scene->id, depsgraph, BKE_CB_EVT_ANIMATION_PLAYBACK_PRE);
+
     /* these settings are currently only available from a menu in the TimeLine */
     if (mode == 1) { /* XXX only play audio forwards!? */
       BKE_sound_play_scene(scene_eval);
