@@ -1231,7 +1231,6 @@ classes = (
     NODE_PT_node_color_presets,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
-    NODE_PT_active_node_properties,
     NODE_PT_texture_mapping,
     NODE_PT_active_tool,
     NODE_PT_backdrop,
@@ -1247,6 +1246,7 @@ classes = (
     NODE_PT_simulation_zone_items,
     NODE_UL_serial_loop_zone_items,
     NODE_PT_serial_loop_zone_items,
+    NODE_PT_active_node_properties,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
     node_panel(MATERIAL_PT_viewport),
