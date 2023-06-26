@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Header,
@@ -745,6 +748,14 @@ class VIEW3D_HT_header(Header):
                 ).domain = 'CURVE'
 
         # Grease Pencil
+        if obj and obj.type == 'GREASEPENCIL':
+            # Select mode for Editing
+            if object_mode == 'EDIT':
+                row = layout.row(align=True)
+                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='POINT')
+                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='STROKE')
+
+        # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
             gpd = context.gpencil_data
 
@@ -945,11 +956,11 @@ class VIEW3D_MT_editor_menus(Menu):
                          tool_settings.use_gpencil_select_mask_stroke or
                          tool_settings.use_gpencil_select_mask_segment)
                 ):
-                    layout.menu("VIEW3D_MT_select_gpencil")
+                    layout.menu("VIEW3D_MT_select_edit_gpencil")
                 elif mode_string == 'EDIT_GPENCIL':
-                    layout.menu("VIEW3D_MT_select_gpencil")
+                    layout.menu("VIEW3D_MT_select_edit_gpencil")
                 elif mode_string == 'VERTEX_GPENCIL':
-                    layout.menu("VIEW3D_MT_select_gpencil")
+                    layout.menu("VIEW3D_MT_select_edit_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             mesh = obj.data
             if mesh.use_paint_mask:
@@ -1967,6 +1978,37 @@ class VIEW3D_MT_select_edit_armature(Menu):
         layout.operator("object.select_pattern", text="Select Pattern...")
 
 
+class VIEW3D_MT_select_edit_grease_pencil(Menu):
+    bl_label = "Select"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("grease_pencil.select_all", text="All").action = 'SELECT'
+        layout.operator("grease_pencil.select_all", text="None").action = 'DESELECT'
+        layout.operator("grease_pencil.select_all", text="Invert").action = 'INVERT'
+
+        layout.separator()
+
+        layout.operator("grease_pencil.select_linked", text="Linked")
+        layout.operator("grease_pencil.select_alternate", text="Alternated")
+        layout.operator("grease_pencil.select_random", text="Random")
+
+        layout.separator()
+
+        props = layout.operator("grease_pencil.select_ends", text="First")
+        props.amount_start = 1
+        props.amount_end = 0
+        props = layout.operator("grease_pencil.select_ends", text="Last")
+        props.amount_start = 0
+        props.amount_end = 1
+
+        layout.separator()
+
+        layout.operator("grease_pencil.select_more")
+        layout.operator("grease_pencil.select_less")
+
+
 class VIEW3D_MT_paint_gpencil(Menu):
     bl_label = "Paint"
 
@@ -2091,7 +2133,7 @@ class VIEW3D_MT_select_edit_curves(Menu):
         layout.separator()
 
         layout.operator("curves.select_random", text="Random")
-        layout.operator("curves.select_end", text="Endpoints")
+        layout.operator("curves.select_ends", text="Endpoints")
         layout.operator("curves.select_linked", text="Linked")
 
         layout.separator()
@@ -2109,7 +2151,7 @@ class VIEW3D_MT_select_sculpt_curves(Menu):
         layout.operator("curves.select_all", text="None").action = 'DESELECT'
         layout.operator("curves.select_all", text="Invert").action = 'INVERT'
         layout.operator("sculpt_curves.select_random", text="Random")
-        layout.operator("curves.select_end", text="Endpoints")
+        layout.operator("curves.select_ends", text="Endpoints")
         layout.operator("sculpt_curves.select_grow", text="Grow")
 
 
@@ -3025,7 +3067,7 @@ class VIEW3D_MT_object_convert(Menu):
         layout = self.layout
         ob = context.active_object
 
-        if ob and ob.type == 'GPENCIL' and context.gpencil_data:
+        if ob and ob.type == 'GPENCIL' and context.gpencil_data and not context.preferences.experimental.use_grease_pencil_version3:
             layout.operator_enum("gpencil.convert", "type")
         else:
             layout.operator_enum("object.convert", "target")
@@ -3560,9 +3602,6 @@ class VIEW3D_MT_face_sets_init(Menu):
 
         props = layout.operator("sculpt.face_sets_init", text="By Sharp Edges")
         props.mode = 'SHARP_EDGES'
-
-        props = layout.operator("sculpt.face_sets_init", text="By Face Maps")
-        props.mode = 'FACE_MAPS'
 
 
 class VIEW3D_MT_random_mask(Menu):
@@ -7055,72 +7094,70 @@ class VIEW3D_PT_snapping(Panel):
 
     def draw(self, context):
         tool_settings = context.tool_settings
-        snap_elements = tool_settings.snap_elements
         obj = context.active_object
         object_mode = 'OBJECT' if obj is None else obj.mode
 
         layout = self.layout
         col = layout.column()
+
+        col.label(text="Snap With")
+        row = col.row(align=True)
+        row.prop(tool_settings, "snap_target", expand=True)
+
         col.label(text="Snap To")
-        col.prop(tool_settings, "snap_elements", expand=True)
+        col.prop(tool_settings, "snap_elements_base", expand=True)
+
+        col.label(text="Snap Individual Elements To")
+        col.prop(tool_settings, "snap_elements_individual", expand=True)
 
         col.separator()
-        if 'INCREMENT' in snap_elements:
+
+        if 'INCREMENT' in tool_settings.snap_elements:
             col.prop(tool_settings, "use_snap_grid_absolute")
 
-        if snap_elements != {'INCREMENT'}:
-            if snap_elements != {'FACE_NEAREST'}:
-                col.label(text="Snap With")
-                row = col.row(align=True)
-                row.prop(tool_settings, "snap_target", expand=True)
+        if 'VOLUME' in tool_settings.snap_elements:
+            col.prop(tool_settings, "use_snap_peel_object")
 
-            if obj:
-                col.label(text="Target Selection")
-                col_targetsel = col.column(align=True)
-                if object_mode == 'EDIT' and obj.type not in {'LATTICE', 'META', 'FONT'}:
-                    col_targetsel.prop(
-                        tool_settings,
-                        "use_snap_self",
-                        text="Include Active",
-                        icon='EDITMODE_HLT',
-                    )
-                    col_targetsel.prop(
-                        tool_settings,
-                        "use_snap_edit",
-                        text="Include Edited",
-                        icon='OUTLINER_DATA_MESH',
-                    )
-                    col_targetsel.prop(
-                        tool_settings,
-                        "use_snap_nonedit",
-                        text="Include Non-Edited",
-                        icon='OUTLINER_OB_MESH',
-                    )
+        if 'FACE_NEAREST' in tool_settings.snap_elements:
+            col.prop(tool_settings, "use_snap_to_same_target")
+            if object_mode == 'EDIT':
+                col.prop(tool_settings, "snap_face_nearest_steps")
+
+        col.separator()
+
+        col.prop(tool_settings, "use_snap_align_rotation")
+        col.prop(tool_settings, "use_snap_backface_culling")
+
+        col.separator()
+
+        if obj:
+            col.label(text="Target Selection")
+            col_targetsel = col.column(align=True)
+            if object_mode == 'EDIT' and obj.type not in {'LATTICE', 'META', 'FONT'}:
                 col_targetsel.prop(
                     tool_settings,
-                    "use_snap_selectable",
-                    text="Exclude Non-Selectable",
-                    icon='RESTRICT_SELECT_OFF',
+                    "use_snap_self",
+                    text="Include Active",
+                    icon='EDITMODE_HLT',
                 )
-
-                if object_mode in {'OBJECT', 'POSE', 'EDIT', 'WEIGHT_PAINT'}:
-                    col.prop(tool_settings, "use_snap_align_rotation")
-
-            col.prop(tool_settings, "use_snap_backface_culling")
-
-            is_face_nearest_enabled = 'FACE_NEAREST' in snap_elements
-            if is_face_nearest_enabled or 'FACE' in snap_elements:
-                sub = col.column()
-                sub.active = not is_face_nearest_enabled
-                sub.prop(tool_settings, "use_snap_project")
-
-                if is_face_nearest_enabled:
-                    col.prop(tool_settings, "use_snap_to_same_target")
-                    if object_mode == 'EDIT':
-                        col.prop(tool_settings, "snap_face_nearest_steps")
-
-            if 'VOLUME' in snap_elements:
-                col.prop(tool_settings, "use_snap_peel_object")
+                col_targetsel.prop(
+                    tool_settings,
+                    "use_snap_edit",
+                    text="Include Edited",
+                    icon='OUTLINER_DATA_MESH',
+                )
+                col_targetsel.prop(
+                    tool_settings,
+                    "use_snap_nonedit",
+                    text="Include Non-Edited",
+                    icon='OUTLINER_OB_MESH',
+                )
+            col_targetsel.prop(
+                tool_settings,
+                "use_snap_selectable",
+                text="Exclude Non-Selectable",
+                icon='RESTRICT_SELECT_OFF',
+            )
 
         col.label(text="Affect")
         row = col.row(align=True)
@@ -8199,6 +8236,7 @@ classes = (
     VIEW3D_MT_edit_lattice_context_menu,
     VIEW3D_MT_select_edit_lattice,
     VIEW3D_MT_select_edit_armature,
+    VIEW3D_MT_select_edit_grease_pencil,
     VIEW3D_MT_select_edit_gpencil,
     VIEW3D_MT_select_paint_mask,
     VIEW3D_MT_select_paint_mask_vertex,

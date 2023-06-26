@@ -122,7 +122,7 @@ static bool ui_but_is_unit_radians(const uiBut *but)
 
 /* ************* window matrix ************** */
 
-void ui_block_to_region_fl(const ARegion *region, uiBlock *block, float *r_x, float *r_y)
+void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y)
 {
   const int getsizex = BLI_rcti_size_x(&region->winrct) + 1;
   const int getsizey = BLI_rcti_size_y(&region->winrct) + 1;
@@ -141,14 +141,14 @@ void ui_block_to_region_fl(const ARegion *region, uiBlock *block, float *r_x, fl
                                            block->winmat[3][1]));
 }
 
-void ui_block_to_window_fl(const ARegion *region, uiBlock *block, float *r_x, float *r_y)
+void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y)
 {
   ui_block_to_region_fl(region, block, r_x, r_y);
   *r_x += region->winrct.xmin;
   *r_y += region->winrct.ymin;
 }
 
-void ui_block_to_window(const ARegion *region, uiBlock *block, int *r_x, int *r_y)
+void ui_block_to_window(const ARegion *region, const uiBlock *block, int *r_x, int *r_y)
 {
   float fx = *r_x;
   float fy = *r_y;
@@ -160,7 +160,7 @@ void ui_block_to_window(const ARegion *region, uiBlock *block, int *r_x, int *r_
 }
 
 void ui_block_to_region_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src)
 {
@@ -170,7 +170,7 @@ void ui_block_to_region_rctf(const ARegion *region,
 }
 
 void ui_block_to_window_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src)
 {
@@ -179,7 +179,7 @@ void ui_block_to_window_rctf(const ARegion *region,
   ui_block_to_window_fl(region, block, &rct_dst->xmax, &rct_dst->ymax);
 }
 
-float ui_block_to_window_scale(const ARegion *region, uiBlock *block)
+float ui_block_to_window_scale(const ARegion *region, const uiBlock *block)
 {
   /* We could have function for this to avoid dummy arg. */
   float min_y = 0, max_y = 1;
@@ -190,7 +190,7 @@ float ui_block_to_window_scale(const ARegion *region, uiBlock *block)
   return max_y - min_y;
 }
 
-void ui_window_to_block_fl(const ARegion *region, uiBlock *block, float *r_x, float *r_y)
+void ui_window_to_block_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y)
 {
   const int getsizex = BLI_rcti_size_x(&region->winrct) + 1;
   const int getsizey = BLI_rcti_size_y(&region->winrct) + 1;
@@ -218,7 +218,7 @@ void ui_window_to_block_fl(const ARegion *region, uiBlock *block, float *r_x, fl
 }
 
 void ui_window_to_block_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src)
 {
@@ -227,7 +227,7 @@ void ui_window_to_block_rctf(const ARegion *region,
   ui_window_to_block_fl(region, block, &rct_dst->xmax, &rct_dst->ymax);
 }
 
-void ui_window_to_block(const ARegion *region, uiBlock *block, int *r_x, int *r_y)
+void ui_window_to_block(const ARegion *region, const uiBlock *block, int *r_x, int *r_y)
 {
   float fx = *r_x;
   float fy = *r_y;
@@ -2552,7 +2552,7 @@ double ui_but_value_get(uiBut *but)
   if (but->rnaprop) {
     PropertyRNA *prop = but->rnaprop;
 
-    BLI_assert(RNA_property_array_check(prop) ? but->rnaindex != -1 : true);
+    BLI_assert(but->rnaindex != -1);
 
     switch (RNA_property_type(prop)) {
       case PROP_BOOLEAN:
@@ -2699,7 +2699,7 @@ void ui_but_value_set(uiBut *but, double value)
   ui_but_update_select_flag(but, &value);
 }
 
-int ui_but_string_get_max_length(uiBut *but)
+int ui_but_string_get_maxncpy(uiBut *but)
 {
   if (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
     return but->hardmax;
@@ -3920,23 +3920,13 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
         const uiButHotkeyEvent *hotkey_but = (uiButHotkeyEvent *)but;
 
         if (hotkey_but->modifier_key) {
-          char *str = but->drawstr;
-          but->drawstr[0] = '\0';
-
-          if (hotkey_but->modifier_key & KM_SHIFT) {
-            str += BLI_strcpy_rlen(str, "Shift ");
-          }
-          if (hotkey_but->modifier_key & KM_CTRL) {
-            str += BLI_strcpy_rlen(str, "Ctrl ");
-          }
-          if (hotkey_but->modifier_key & KM_ALT) {
-            str += BLI_strcpy_rlen(str, "Alt ");
-          }
-          if (hotkey_but->modifier_key & KM_OSKEY) {
-            str += BLI_strcpy_rlen(str, "Cmd ");
-          }
-
-          (void)str; /* UNUSED */
+          /* Rely on #KM_NOTHING being zero for `type`, `val` ... etc. */
+          wmKeyMapItem kmi_dummy = {nullptr};
+          kmi_dummy.shift = (hotkey_but->modifier_key & KM_SHIFT) ? KM_PRESS : KM_NOTHING;
+          kmi_dummy.ctrl = (hotkey_but->modifier_key & KM_CTRL) ? KM_PRESS : KM_NOTHING;
+          kmi_dummy.alt = (hotkey_but->modifier_key & KM_ALT) ? KM_PRESS : KM_NOTHING;
+          kmi_dummy.oskey = (hotkey_but->modifier_key & KM_OSKEY) ? KM_PRESS : KM_NOTHING;
+          WM_keymap_item_to_string(&kmi_dummy, true, but->drawstr, sizeof(but->drawstr));
         }
         else {
           STRNCPY_UTF8(but->drawstr, IFACE_("Press a key"));
@@ -4722,7 +4712,7 @@ static uiBut *ui_def_but_rna(uiBlock *block,
     but->rnaindex = index;
   }
   else {
-    but->rnaindex = -1;
+    but->rnaindex = 0;
   }
 
   if (icon) {
@@ -4937,20 +4927,20 @@ static int findBitIndex(uint x)
 
 /* Auto-complete helper functions. */
 struct AutoComplete {
-  size_t maxlen;
+  size_t maxncpy;
   int matches;
   char *truncate;
   const char *startname;
 };
 
-AutoComplete *UI_autocomplete_begin(const char *startname, size_t maxlen)
+AutoComplete *UI_autocomplete_begin(const char *startname, size_t maxncpy)
 {
   AutoComplete *autocpl;
 
   autocpl = MEM_cnew<AutoComplete>(__func__);
-  autocpl->maxlen = maxlen;
+  autocpl->maxncpy = maxncpy;
   autocpl->matches = 0;
-  autocpl->truncate = static_cast<char *>(MEM_callocN(sizeof(char) * maxlen, __func__));
+  autocpl->truncate = static_cast<char *>(MEM_callocN(sizeof(char) * maxncpy, __func__));
   autocpl->startname = startname;
 
   return autocpl;
@@ -4961,7 +4951,7 @@ void UI_autocomplete_update_name(AutoComplete *autocpl, const char *name)
   char *truncate = autocpl->truncate;
   const char *startname = autocpl->startname;
   int match_index = 0;
-  for (int a = 0; a < autocpl->maxlen - 1; a++) {
+  for (int a = 0; a < autocpl->maxncpy - 1; a++) {
     if (startname[a] == 0 || startname[a] != name[a]) {
       match_index = a;
       break;
@@ -4973,11 +4963,11 @@ void UI_autocomplete_update_name(AutoComplete *autocpl, const char *name)
     autocpl->matches++;
     /* first match */
     if (truncate[0] == 0) {
-      BLI_strncpy(truncate, name, autocpl->maxlen);
+      BLI_strncpy(truncate, name, autocpl->maxncpy);
     }
     else {
       /* remove from truncate what is not in bone->name */
-      for (int a = 0; a < autocpl->maxlen - 1; a++) {
+      for (int a = 0; a < autocpl->maxncpy - 1; a++) {
         if (name[a] == 0) {
           truncate[a] = 0;
           break;
@@ -5000,11 +4990,11 @@ int UI_autocomplete_end(AutoComplete *autocpl, char *autoname)
     else {
       match = AUTOCOMPLETE_PARTIAL_MATCH;
     }
-    BLI_strncpy(autoname, autocpl->truncate, autocpl->maxlen);
+    BLI_strncpy(autoname, autocpl->truncate, autocpl->maxncpy);
   }
   else {
     if (autoname != autocpl->startname) { /* don't copy a string over itself */
-      BLI_strncpy(autoname, autocpl->startname, autocpl->maxlen);
+      BLI_strncpy(autoname, autocpl->startname, autocpl->maxncpy);
     }
   }
 
@@ -6271,7 +6261,7 @@ uiBut *uiDefSearchBut(uiBlock *block,
                       void *arg,
                       int retval,
                       int icon,
-                      int maxlen,
+                      int maxncpy,
                       int x,
                       int y,
                       short width,
@@ -6280,8 +6270,20 @@ uiBut *uiDefSearchBut(uiBlock *block,
                       float a2,
                       const char *tip)
 {
-  uiBut *but = ui_def_but(
-      block, UI_BTYPE_SEARCH_MENU, retval, "", x, y, width, height, arg, 0.0, maxlen, a1, a2, tip);
+  uiBut *but = ui_def_but(block,
+                          UI_BTYPE_SEARCH_MENU,
+                          retval,
+                          "",
+                          x,
+                          y,
+                          width,
+                          height,
+                          arg,
+                          0.0,
+                          maxncpy,
+                          a1,
+                          a2,
+                          tip);
 
   ui_def_but_icon(but, icon, UI_HAS_ICON);
 
@@ -6466,7 +6468,7 @@ uiBut *uiDefSearchButO_ptr(uiBlock *block,
                            void *arg,
                            int retval,
                            int icon,
-                           int maxlen,
+                           int maxncpy,
                            int x,
                            int y,
                            short width,
@@ -6475,7 +6477,7 @@ uiBut *uiDefSearchButO_ptr(uiBlock *block,
                            float a2,
                            const char *tip)
 {
-  uiBut *but = uiDefSearchBut(block, arg, retval, icon, maxlen, x, y, width, height, a1, a2, tip);
+  uiBut *but = uiDefSearchBut(block, arg, retval, icon, maxncpy, x, y, width, height, a1, a2, tip);
   UI_but_func_search_set(but,
                          ui_searchbox_create_generic,
                          operator_enum_search_update_fn,

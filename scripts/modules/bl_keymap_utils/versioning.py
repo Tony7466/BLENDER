@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Update Blender version this key-map was written in:
@@ -80,7 +82,7 @@ def keyconfig_update(keyconfig_data, keyconfig_version):
                 km_items.append(('ROTATE_NORMALS', {"type": 'N', "value": 'PRESS'}, None))
                 break
 
-    if keyconfig_version <= (3, 6, 3):
+    if keyconfig_version <= (4, 0, 3):
         if not has_copy:
             keyconfig_data = copy.deepcopy(keyconfig_data)
             has_copy = True

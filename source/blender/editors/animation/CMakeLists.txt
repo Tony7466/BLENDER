@@ -23,19 +23,19 @@ set(INC_SYS
 )
 
 set(SRC
-  anim_channels_defines.c
+  anim_channels_defines.cc
   anim_channels_edit.c
   anim_deps.c
   anim_draw.c
-  anim_filter.c
+  anim_filter.cc
   anim_ipo_utils.c
   anim_markers.c
   anim_motion_paths.c
   anim_ops.c
   drivers.c
   fmodifier_ui.c
-  keyframes_draw.c
-  keyframes_edit.c
+  keyframes_draw.cc
+  keyframes_edit.cc
   keyframes_general.c
   keyframes_keylist.cc
   keyframing.c

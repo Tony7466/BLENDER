@@ -240,8 +240,7 @@ struct uiBut {
   /* RNA data */
   PointerRNA rnapoin = {};
   PropertyRNA *rnaprop = nullptr;
-  /** The index (arrays only), otherwise set to -1. */
-  int rnaindex = -1;
+  int rnaindex = 0;
 
   /* Operator data */
   wmOperatorType *optype = nullptr;
@@ -596,25 +595,25 @@ struct uiSafetyRct {
 
 void ui_fontscale(float *points, float aspect);
 
-void ui_block_to_region_fl(const ARegion *region, uiBlock *block, float *r_x, float *r_y);
-void ui_block_to_window_fl(const ARegion *region, uiBlock *block, float *x, float *y);
-void ui_block_to_window(const ARegion *region, uiBlock *block, int *x, int *y);
+void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y);
+void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
+void ui_block_to_window(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_block_to_region_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
 void ui_block_to_window_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
-float ui_block_to_window_scale(const ARegion *region, uiBlock *block);
+float ui_block_to_window_scale(const ARegion *region, const uiBlock *block);
 /**
  * For mouse cursor.
  */
-void ui_window_to_block_fl(const ARegion *region, uiBlock *block, float *x, float *y);
-void ui_window_to_block(const ARegion *region, uiBlock *block, int *x, int *y);
+void ui_window_to_block_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
+void ui_window_to_block(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_window_to_block_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
 void ui_window_to_region(const ARegion *region, int *x, int *y);
@@ -676,7 +675,7 @@ void ui_but_string_get_ex(uiBut *but,
 void ui_but_string_get(uiBut *but, char *str, size_t str_maxncpy) ATTR_NONNULL();
 /**
  * A version of #ui_but_string_get_ex for dynamic buffer sizes
- * (where #ui_but_string_get_max_length returns 0).
+ * (where #ui_but_string_get_maxncpy returns 0).
  *
  * \param r_str_size: size of the returned string (including terminator).
  */
@@ -688,7 +687,7 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t str_maxncpy) 
 bool ui_but_string_set(bContext *C, uiBut *but, const char *str) ATTR_NONNULL();
 bool ui_but_string_eval_number(bContext *C, const uiBut *but, const char *str, double *value)
     ATTR_NONNULL();
-int ui_but_string_get_max_length(uiBut *but);
+int ui_but_string_get_maxncpy(uiBut *but);
 /**
  * Clear & exit the active button's string..
  */

@@ -40,7 +40,7 @@
 #include "BKE_simulation.h"
 #include "BKE_simulation_state.hh"
 
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 
 #include "BLI_map.hh"
 #include "BLT_translation.h"
@@ -196,7 +196,7 @@ void BKE_simulation_reset_scene(Scene *scene)
         continue;
       }
       NodesModifierData *nmd = (NodesModifierData *)md;
-      nmd->simulation_cache->reset();
+      nmd->simulation_cache->ptr->reset();
     }
   }
   FOREACH_SCENE_OBJECT_END;

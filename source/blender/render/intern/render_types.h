@@ -16,6 +16,7 @@
 
 #include "BLI_threads.h"
 
+#include "RE_compositor.hh"
 #include "RE_pipeline.h"
 
 struct Depsgraph;
@@ -53,6 +54,8 @@ struct Render {
    * write lock, all external code must use a read lock. internal code is assumed
    * to not conflict with writes, so no lock used for that */
   ThreadRWMutex resultmutex;
+  /* True if result has GPU textures, to quickly skip cache clear. */
+  bool result_has_gpu_texture_caches;
 
   /* Guard for drawing render result using engine's `draw()` callback. */
   ThreadMutex engine_draw_mutex;
@@ -92,6 +95,10 @@ struct Render {
   struct Depsgraph *pipeline_depsgraph;
   Scene *pipeline_scene_eval;
 
+  /* Realtime GPU Compositor. */
+  blender::render::RealtimeCompositor *gpu_compositor;
+  ThreadMutex gpu_compositor_mutex;
+
   /* callbacks */
   void (*display_init)(void *handle, RenderResult *rr);
   void *dih;
@@ -124,8 +131,8 @@ struct Render {
   char viewname[MAX_NAME];
 
   /* TODO: replace by a whole draw manager. */
-  void *gl_context;
-  void *gpu_context;
+  void *system_gpu_context;
+  void *blender_gpu_context;
 };
 
 /* **************** defines ********************* */

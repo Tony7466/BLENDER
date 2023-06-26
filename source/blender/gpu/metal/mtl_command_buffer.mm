@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_userdef_types.h"
 
@@ -139,7 +141,7 @@ bool MTLCommandBufferManager::submit(bool wait)
         "completed. Consider increasing GHOST_ContextCGL::max_command_buffer_count or reducing "
         "work fragmentation to better utilise system hardware. Command buffers are flushed upon "
         "GPUContext switches, this is the most common cause of excessive command buffer "
-        "generation.\n");
+        "generation.");
   }
 
   if (wait || (G.debug & G_DEBUG_GPU)) {
@@ -155,15 +157,6 @@ bool MTLCommandBufferManager::submit(bool wait)
         if (error != nil) {
           NSLog(@"%@", error);
           BLI_assert(false);
-
-          @autoreleasepool {
-            const char *stringAsChar = [[NSString stringWithFormat:@"%@", error] UTF8String];
-
-            std::ofstream outfile;
-            outfile.open("command_buffer_error.txt", std::fstream::out | std::fstream::app);
-            outfile << stringAsChar;
-            outfile.close();
-          }
         }
       }
     }

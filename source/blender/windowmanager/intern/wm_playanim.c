@@ -191,7 +191,7 @@ typedef enum eWS_Qual {
 static struct WindowStateGlobal {
   GHOST_SystemHandle ghost_system;
   void *ghost_window;
-  GPUContext *gpu_context;
+  GPUContext *blender_gpu_context;
 
   /* events */
   eWS_Qual qual;
@@ -424,10 +424,10 @@ static void *ocio_transform_ibuf(PlayState *ps,
       *r_format = GPU_RGB16F;
     }
 
-    if (ibuf->float_colorspace) {
+    if (ibuf->float_buffer.colorspace) {
       *r_glsl_used = IMB_colormanagement_setup_glsl_draw_from_space(&ps->view_settings,
                                                                     &ps->display_settings,
-                                                                    ibuf->float_colorspace,
+                                                                    ibuf->float_buffer.colorspace,
                                                                     ibuf->dither,
                                                                     false,
                                                                     false);
@@ -441,7 +441,7 @@ static void *ocio_transform_ibuf(PlayState *ps,
     display_buffer = ibuf->byte_buffer.data;
     *r_glsl_used = IMB_colormanagement_setup_glsl_draw_from_space(&ps->view_settings,
                                                                   &ps->display_settings,
-                                                                  ibuf->rect_colorspace,
+                                                                  ibuf->byte_buffer.colorspace,
                                                                   ibuf->dither,
                                                                   false,
                                                                   false);
@@ -1350,9 +1350,9 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 
 static void playanim_window_open(const char *title, int posx, int posy, int sizex, int sizey)
 {
-  GHOST_GLSettings glsettings = {0};
+  GHOST_GPUSettings gpusettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
-  glsettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpusettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
   uint32_t scr_w, scr_h;
 
   GHOST_GetMainDisplayDimensions(g_WS.ghost_system, &scr_w, &scr_h);
@@ -1369,7 +1369,7 @@ static void playanim_window_open(const char *title, int posx, int posy, int size
                                          /* Could optionally start full-screen. */
                                          GHOST_kWindowStateNormal,
                                          false,
-                                         glsettings);
+                                         gpusettings);
 }
 
 static void playanim_window_zoom(PlayState *ps, const float zoom_offset)
@@ -1569,7 +1569,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   // GHOST_ActivateWindowDrawingContext(g_WS.ghost_window);
 
   /* initialize OpenGL immediate mode */
-  g_WS.gpu_context = GPU_context_create(g_WS.ghost_window, NULL);
+  g_WS.blender_gpu_context = GPU_context_create(g_WS.ghost_window, NULL);
   GPU_init();
 
   /* initialize the font */
@@ -1832,11 +1832,11 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
   BLF_exit();
 
-  if (g_WS.gpu_context) {
-    GPU_context_active_set(g_WS.gpu_context);
+  if (g_WS.blender_gpu_context) {
+    GPU_context_active_set(g_WS.blender_gpu_context);
     GPU_exit();
-    GPU_context_discard(g_WS.gpu_context);
-    g_WS.gpu_context = NULL;
+    GPU_context_discard(g_WS.blender_gpu_context);
+    g_WS.blender_gpu_context = NULL;
   }
 
   GHOST_DisposeWindow(g_WS.ghost_system, g_WS.ghost_window);
