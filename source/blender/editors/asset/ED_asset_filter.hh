@@ -49,6 +49,6 @@ struct AssetItemTree {
 AssetItemTree build_filtered_all_catalog_tree(
     const bContext &C,
     const AssetFilterSettings &filter_settings,
-    FunctionRef<bool(const AssetMetaData &)> meta_data_filter);
+    FunctionRef<bool(const AssetMetaData &)> meta_data_filter = {});
 
 }  // namespace blender::ed::asset

@@ -78,7 +78,7 @@ AssetItemTree build_filtered_all_catalog_tree(
       return true;
     }
 
-    if (!meta_data_filter(meta_data)) {
+    if (meta_data_filter && !meta_data_filter(meta_data)) {
       return true;
     }
 
