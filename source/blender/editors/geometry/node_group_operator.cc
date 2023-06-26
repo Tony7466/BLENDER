@@ -476,7 +476,8 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
     uiItemO(col, IFACE_(asset->get_name().c_str()), ICON_NONE, "GEOMETRY_OT_execute_node_group");
   }
 
-  asset_system::AssetLibrary *all_library = asset::get_all_library_once_available();
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
@@ -515,7 +516,8 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
   if (!item) {
     return;
   }
-  asset_system::AssetLibrary *all_library = asset::get_all_library_once_available();
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
@@ -547,7 +549,8 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
     uiItemL(&layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
-  asset_system::AssetLibrary *all_library = asset::get_all_library_once_available();
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
   if (!all_library) {
     return;
   }

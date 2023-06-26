@@ -138,7 +138,8 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
     uiItemO(col, IFACE_(asset->get_name().c_str()), ICON_NONE, "NODE_OT_add_group_asset");
   }
 
-  asset_system::AssetLibrary *all_library = asset::get_all_library_once_available();
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
@@ -216,7 +217,8 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
     return menus;
   }();
 
-  asset_system::AssetLibrary *all_library = asset::get_all_library_once_available();
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
@@ -272,7 +274,8 @@ void uiTemplateNodeAssetMenuItems(uiLayout *layout, bContext *C, const char *cat
   if (!item) {
     return;
   }
-  asset_system::AssetLibrary *all_library = asset::get_all_library_once_available();
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
