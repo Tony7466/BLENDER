@@ -135,6 +135,8 @@ IndexMask random_mask(const bke::CurvesGeometry &curves,
 
 void fill_selection_false(GMutableSpan span);
 void fill_selection_true(GMutableSpan span);
+void fill_selection_false(GMutableSpan selection, const IndexMask &mask);
+void fill_selection_true(GMutableSpan selection, const IndexMask &mask);
 
 /**
  * Return true if any element is selected, on either domain with either type.

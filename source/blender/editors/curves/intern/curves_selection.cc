@@ -126,6 +126,26 @@ void fill_selection_true(GMutableSpan selection)
   }
 }
 
+void fill_selection_false(GMutableSpan selection, const IndexMask &mask)
+{
+  if (selection.type().is<bool>()) {
+    index_mask::masked_fill(selection.typed<bool>(), false, mask);
+  }
+  else if (selection.type().is<float>()) {
+    index_mask::masked_fill(selection.typed<float>(), 0.0f, mask);
+  }
+}
+
+void fill_selection_true(GMutableSpan selection, const IndexMask &mask)
+{
+  if (selection.type().is<bool>()) {
+    index_mask::masked_fill(selection.typed<bool>(), true, mask);
+  }
+  else if (selection.type().is<float>()) {
+    index_mask::masked_fill(selection.typed<float>(), 1.0f, mask);
+  }
+}
+
 static bool contains(const VArray<bool> &varray, const IndexRange range_to_check, const bool value)
 {
   const CommonVArrayInfo info = varray.common_info();

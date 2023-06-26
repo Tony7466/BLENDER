@@ -902,12 +902,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
       curves::fill_selection_true(selection.span);
     }
 
-    if (selection.span.type().is<bool>()) {
-      index_mask::masked_fill(selection.span.typed<bool>(), false, random_elements);
-    }
-    if (selection.span.type().is<float>()) {
-      index_mask::masked_fill(selection.span.typed<float>(), 0.0f, random_elements);
-    }
+    curves::fill_selection_false(selection.span, random_elements);
     selection.finish();
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
