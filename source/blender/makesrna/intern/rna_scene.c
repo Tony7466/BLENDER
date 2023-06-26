@@ -947,6 +947,10 @@ static bool fps_update_movie_strip_offsets(Sequence *seq, void *data)
   seq->startofs *= *fps_fac;
   seq->endofs *= *fps_fac;
 
+  seq->startofs = floorf(seq->startofs);
+  seq->endofs = ceilf(seq->endofs);
+  seq->start = floorf(seq->start);
+
   return true;
 }
 
