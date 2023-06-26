@@ -127,25 +127,30 @@ void bNodeTreeInterface::free_item(bNodeTreeInterfaceItem &item)
   }
 }
 
-bNodeTreeInterfaceSocket *make_socket(const int uid,
-                                      blender::StringRef name,
-                                      blender::StringRef description,
-                                      blender::StringRef data_type,
-                                      const eNodeTreeInterfaceSocketKind kind)
+static bNodeTreeInterfaceSocket *make_socket(const int uid,
+                                             blender::StringRef name,
+                                             blender::StringRef description,
+                                             blender::StringRef data_type,
+                                             const eNodeTreeInterfaceSocketKind kind)
 {
+  BLI_assert(name.data() != nullptr);
+  BLI_assert(data_type.data() != nullptr);
+
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
   new_socket->uid = uid;
   new_socket->item.item_type = NODE_INTERFACE_SOCKET;
   new_socket->item.parent = nullptr;
   new_socket->name = BLI_strdup(name.data());
-  new_socket->description = BLI_strdup(description.data());
+  new_socket->description = description.data() ? BLI_strdup(description.data()) : nullptr;
   new_socket->data_type = BLI_strdup(data_type.data());
   new_socket->kind = kind;
   return new_socket;
 }
 
-bNodeTreeInterfacePanel *make_panel(blender::StringRef name)
+static bNodeTreeInterfacePanel *make_panel(blender::StringRef name)
 {
+  BLI_assert(name.data() != nullptr);
+
   bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
   new_panel->item.item_type = NODE_INTERFACE_PANEL;
   new_panel->item.parent = nullptr;
@@ -153,19 +158,22 @@ bNodeTreeInterfacePanel *make_panel(blender::StringRef name)
   return new_panel;
 }
 
-bNodeTreeInterfaceItem *make_item_copy(const bNodeTreeInterfaceItem &item)
+static bNodeTreeInterfaceItem *make_item_copy(const bNodeTreeInterfaceItem &item)
 {
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket *csocket = reinterpret_cast<bNodeTreeInterfaceSocket *>(citem);
+      BLI_assert(csocket->name != nullptr);
+      BLI_assert(csocket->data_type != nullptr);
       csocket->name = BLI_strdup(csocket->name);
-      csocket->description = BLI_strdup(csocket->description);
+      csocket->description = csocket->description ? BLI_strdup(csocket->description) : nullptr;
       csocket->data_type = BLI_strdup(csocket->data_type);
       break;
     }
     case NODE_INTERFACE_PANEL: {
       bNodeTreeInterfacePanel *cpanel = reinterpret_cast<bNodeTreeInterfacePanel *>(citem);
+      BLI_assert(cpanel->name != nullptr);
       cpanel->name = BLI_strdup(cpanel->name);
       break;
     }

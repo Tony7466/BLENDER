@@ -355,7 +355,7 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         # Remember index to move the item.
         dst_index = min(items.active_index + 1, len(items))
         if self.item_type == 'SOCKET':
-            item = items.new_socket("Socket", description="", data_type='Float', kind={'INPUT'})
+            item = items.new_socket("Socket", kind={'INPUT'})
         elif self.item_type == 'PANEL':
             item = items.new_panel("Panel")
         else:

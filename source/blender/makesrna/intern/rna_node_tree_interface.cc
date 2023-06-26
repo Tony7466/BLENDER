@@ -165,9 +165,16 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     ReportList *reports,
     const char *name,
     const char *description,
-    const char *data_type,
+    int data_type_enum,
     int in_out)
 {
+  const bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(data_type_enum);
+  if (typeinfo == nullptr) {
+    BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Unknown socket type");
+    return nullptr;
+  }
+  const char *data_type = typeinfo->idname;
+
   bNodeTreeInterfaceSocket *socket = interface->add_socket(
       name, description, data_type, eNodeTreeInterfaceSocketKind(in_out));
 
@@ -405,8 +412,11 @@ static void rna_def_node_tree_interface_items_api(BlenderRNA *brna, PropertyRNA 
   parm = RNA_def_string(func, "name", nullptr, 0, "Name", "Name of the socket");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_string(func, "description", nullptr, 0, "Description", "Description of the socket");
-  parm = RNA_def_string(func, "data_type", nullptr, 0, "Data Type", "Data type of the socket");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_enum(
+      func, "data_type", DummyRNA_DEFAULT_items, 0, "Data Type", "Socket data type");
+  /* Note: itemf callback works for the function parameter, it does not require a data pointer. */
+  RNA_def_property_enum_funcs(
+      parm, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_data_type_itemf");
   RNA_def_enum_flag(func,
                     "kind",
                     rna_enum_node_tree_interface_socket_kind_items,
