@@ -59,7 +59,7 @@ struct PaintOperationExecutor {
 
       grease_pencil.add_empty_drawings(1);
 
-      GreasePencilFrame frame{0, 0, BEZT_KEYTYPE_KEYFRAME};
+      GreasePencilFrame frame{int(grease_pencil.drawings().index_range().last()), 0, BEZT_KEYTYPE_KEYFRAME};
       new_layer.insert_frame(scene->r.cfra, frame);
     }
 
@@ -98,7 +98,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
     grease_pencil_orig.add_empty_drawings(1);
 
-    GreasePencilFrame frame{0, 0, BEZT_KEYTYPE_KEYFRAME};
+    GreasePencilFrame frame{int(grease_pencil_orig.drawings().index_range().last()), 0, BEZT_KEYTYPE_KEYFRAME};
     new_layer.insert_frame(scene->r.cfra, frame);
   }
   BLI_assert(grease_pencil_orig.has_active_layer() && grease_pencil_eval.has_active_layer());
