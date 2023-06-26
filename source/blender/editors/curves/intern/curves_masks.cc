@@ -6,6 +6,8 @@
  * \ingroup edcurves
  */
 
+#include "BLI_rand.hh"
+
 #include "BKE_curves.hh"
 
 #include "ED_curves.h"
@@ -30,6 +32,48 @@ IndexMask end_points(const bke::CurvesGeometry &curves,
   });
 
   return IndexMask::from_bools(end_points, memory);
+}
+
+IndexMask random_mask(const bke::CurvesGeometry &curves,
+                      const eAttrDomain selection_domain,
+                      const uint32_t random_seed,
+                      const float probability,
+                      IndexMaskMemory &memory)
+{
+  RandomNumberGenerator rng{random_seed};
+  const auto next_bool_random_value = [&]() { return rng.get_float() <= probability; };
+
+  int64_t domain_size = 0;
+  switch (selection_domain) {
+    case ATTR_DOMAIN_POINT:
+      domain_size = curves.points_num();
+      break;
+    case ATTR_DOMAIN_CURVE:
+      domain_size = curves.curves_num();
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+
+  Array<bool> random(domain_size, false);
+  switch (selection_domain) {
+    case ATTR_DOMAIN_POINT: {
+      for (const int point_i : IndexRange(domain_size)) {
+        random[point_i] = next_bool_random_value();
+      }
+      break;
+    }
+    case ATTR_DOMAIN_CURVE: {
+      for (const int curve_i : IndexRange(domain_size)) {
+        random[curve_i] = next_bool_random_value();
+      }
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
+  }
+
+  return IndexMask::from_bools(random, memory);
 }
 
 }  // namespace blender::ed::curves

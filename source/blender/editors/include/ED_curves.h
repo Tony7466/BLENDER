@@ -105,6 +105,19 @@ IndexMask end_points(const bke::CurvesGeometry &curves,
                      bool inverted,
                      IndexMaskMemory &memory);
 
+/**
+ * Return a mask of random points or curves.
+ *
+ * \param random_seed: The seed for the \a RandomNumberGenerator.
+ * \param probability: Determins how likely a point/curve will be chosen. If set to 0.0, nothing
+ * will be in the mask, if set to 1.0 everything will be in the mask.
+ */
+IndexMask random_mask(const bke::CurvesGeometry &curves,
+                      eAttrDomain selection_domain,
+                      uint32_t random_seed,
+                      float probability,
+                      IndexMaskMemory &memory);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -179,18 +192,6 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends);
  * (De)select all the adjacent points of the current selected points.
  */
 void select_adjacent(bke::CurvesGeometry &curves, bool deselect);
-
-/**
- * Select random points or curves.
- *
- * \param random_seed: The seed for the \a RandomNumberGenerator.
- * \param probability: Determins how likely a point/curve will be selected. If set to 0.0, nothing
- * will be selected, if set to 1.0 everything will be selected.
- */
-void select_random(bke::CurvesGeometry &curves,
-                   eAttrDomain selection_domain,
-                   uint32_t random_seed,
-                   float probability);
 
 /**
  * Helper struct for `closest_elem_find_screen_space`.
