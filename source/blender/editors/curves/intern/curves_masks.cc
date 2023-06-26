@@ -43,17 +43,7 @@ IndexMask random_mask(const bke::CurvesGeometry &curves,
   RandomNumberGenerator rng{random_seed};
   const auto next_bool_random_value = [&]() { return rng.get_float() <= probability; };
 
-  int64_t domain_size = 0;
-  switch (selection_domain) {
-    case ATTR_DOMAIN_POINT:
-      domain_size = curves.points_num();
-      break;
-    case ATTR_DOMAIN_CURVE:
-      domain_size = curves.curves_num();
-      break;
-    default:
-      BLI_assert_unreachable();
-  }
+  int64_t domain_size = curves.attributes().domain_size(selection_domain);
 
   Array<bool> random(domain_size, false);
   switch (selection_domain) {
