@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -261,6 +261,13 @@ static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
   /* Do not defer the compilation if we are rendering for image.
    * deferred rendering is only possible when `evil_C` is available */
   if (DST.draw_ctx.evil_C == NULL || DRW_state_is_image_render() || !USE_DEFERRED_COMPILATION) {
+    deferred = false;
+  }
+
+  /* Avoid crashes with RenderDoc on Windows + Nvidia. */
+  if (G.debug & G_DEBUG_GPU_RENDERDOC &&
+      GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL))
+  {
     deferred = false;
   }
 

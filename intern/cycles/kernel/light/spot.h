@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -9,11 +10,11 @@ CCL_NAMESPACE_BEGIN
 
 ccl_device float spot_light_attenuation(const ccl_global KernelSpotLight *spot, float3 ray)
 {
-  const float3 scaled_ray = safe_normalize(
-      make_float3(dot(ray, spot->axis_u), dot(ray, spot->axis_v), dot(ray, spot->dir)) /
-      spot->len);
+  const float3 scaled_ray = safe_normalize(make_float3(dot(ray, spot->scaled_axis_u),
+                                                       dot(ray, spot->scaled_axis_v),
+                                                       dot(ray, spot->dir * spot->inv_len_z)));
 
-  return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) / spot->spot_smooth);
+  return smoothstepf((scaled_ray.z - spot->cos_half_spot_angle) * spot->spot_smooth);
 }
 
 template<bool in_volume_segment>
