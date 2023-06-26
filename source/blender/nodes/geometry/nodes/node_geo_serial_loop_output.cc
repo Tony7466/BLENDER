@@ -127,6 +127,18 @@ static void search_node_add_ops(GatherAddNodeSearchParams &params)
     static_cast<NodeGeometrySerialLoopInput *>(input->storage)->output_node_id =
         output->identifier;
 
+    NodeSerialLoopItem &item = node_storage(*output).items[0];
+
+    update_node_declaration_and_sockets(node_tree, *input);
+    update_node_declaration_and_sockets(node_tree, *output);
+
+    const std::string identifier = item.identifier_str();
+    nodeAddLink(&node_tree,
+                input,
+                nodeFindSocket(input, SOCK_OUT, identifier.c_str()),
+                output,
+                nodeFindSocket(output, SOCK_IN, identifier.c_str()));
+
     input->locx = cursor.x / UI_SCALE_FAC - 150;
     input->locy = cursor.y / UI_SCALE_FAC + 20;
     output->locx = cursor.x / UI_SCALE_FAC + 150;
