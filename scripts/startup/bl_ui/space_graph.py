@@ -221,6 +221,7 @@ class GRAPH_MT_select(Menu):
         layout.operator("graph.select_handles", text="Select Handles").mode = 'BOTH'
         layout.operator("graph.select_handles", text="Select Handles Left").mode = 'LEFT'
         layout.operator("graph.select_handles", text="Select Handles Right").mode = 'RIGHT'
+        layout.operator("graph.select_handles", text="Select Keyframes").mode = 'KEY'
 
         layout.separator()
         layout.operator("graph.select_more")
