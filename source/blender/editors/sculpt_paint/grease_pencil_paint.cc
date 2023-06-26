@@ -45,6 +45,7 @@ struct PaintOperationExecutor {
   {
     using namespace blender::bke;
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+    Scene *scene = CTX_data_scene(&C);
     ARegion *region = CTX_wm_region(&C);
     Object *obact = CTX_data_active_object(&C);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
@@ -172,7 +173,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   materials.span.slice(new_curves_range).fill(material_index);
 
   /* Set fill color attribute. */
-  float4 fill_color = drawing_eval.runtime->stroke_cache.fill_color;
+  float4 fill_color = grease_pencil_eval.runtime->stroke_cache.fill_color;
   SpanAttributeWriter<ColorGeometry4f> stroke_fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
 
