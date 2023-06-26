@@ -11,6 +11,7 @@
 #include "CLG_log.h"
 
 #include "DNA_light_types.h"
+#include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
@@ -52,8 +53,6 @@ void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_400 in this file.
-   * - "versioning_cycles.cc", #blo_do_versions_cycles
-   * - "versioning_cycles.cc", #do_versions_after_linking_cycles
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *
@@ -142,7 +141,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -210,7 +210,7 @@ static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
   }
 }
 
-void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
+void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
@@ -238,13 +238,13 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 5)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *ts = scene->toolsettings;
-      if (ts->snap_mode_tools != SCE_SNAP_MODE_NONE) {
-        ts->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      if (ts->snap_mode_tools != SCE_SNAP_TO_NONE) {
+        ts->snap_mode_tools = SCE_SNAP_TO_GEOM;
       }
 
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
-        ts->snap_mode |= SCE_SNAP_MODE_FACE_RAYCAST;
+        ts->snap_mode |= SCE_SNAP_INDIVIDUAL_PROJECT;
       }
 #undef SCE_SNAP_PROJECT
     }
@@ -272,8 +272,6 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_400 in this file.
-   * - "versioning_cycles.cc", #blo_do_versions_cycles
-   * - "versioning_cycles.cc", #do_versions_after_linking_cycles
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *
@@ -283,5 +281,12 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     /* Convert anisotropic BSDF node to glossy BSDF. */
 
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_sample_count")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->grid_bake_samples = 2048;
+        lightprobe->surfel_density = 1.0f;
+      }
+    }
   }
 }
