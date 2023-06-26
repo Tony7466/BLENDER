@@ -67,7 +67,7 @@ void bNodeTreeInterface::free_item(bNodeTreeInterfaceItem &item)
       auto &socket = item.get_as<bNodeTreeInterfaceSocket>();
       MEM_SAFE_FREE(socket.name);
       MEM_SAFE_FREE(socket.description);
-      MEM_SAFE_FREE(socket.type);
+      MEM_SAFE_FREE(socket.data_type);
       break;
     }
   }
@@ -75,13 +75,13 @@ void bNodeTreeInterface::free_item(bNodeTreeInterfaceItem &item)
 
 bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
                                                          blender::StringRef description,
-                                                         blender::StringRef type,
+                                                         blender::StringRef data_type,
                                                          const eNodeTreeInterfaceSocketKind kind)
 {
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
-  new_socket->type = BLI_strdup(type.data());
+  new_socket->data_type = BLI_strdup(data_type.data());
   new_socket->kind = kind;
   new_socket->uid = next_socket_uid++;
 
@@ -93,7 +93,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name
 bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
     blender::StringRef name,
     blender::StringRef description,
-    blender::StringRef type,
+    blender::StringRef data_type,
     const eNodeTreeInterfaceSocketKind kind,
     const int index)
 {
@@ -104,7 +104,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
   new_socket->name = BLI_strdup(name.data());
   new_socket->description = BLI_strdup(description.data());
-  new_socket->type = BLI_strdup(type.data());
+  new_socket->data_type = BLI_strdup(data_type.data());
   new_socket->kind = kind;
   new_socket->uid = next_socket_uid++;
 

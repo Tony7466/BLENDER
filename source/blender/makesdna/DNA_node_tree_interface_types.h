@@ -59,7 +59,7 @@ typedef struct bNodeTreeInterfaceSocket {
 
   char *name;
   char *description;
-  char *type;
+  char *data_type;
   /* eNodeTreeInterfaceSocketKind */
   int kind;
 
@@ -90,11 +90,11 @@ typedef struct bNodeTreeInterface {
 
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
-                                       blender::StringRef type,
+                                       blender::StringRef data_type,
                                        eNodeTreeInterfaceSocketKind in_out);
   bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
                                           blender::StringRef description,
-                                          blender::StringRef type,
+                                          blender::StringRef data_type,
                                           eNodeTreeInterfaceSocketKind in_out,
                                           int index);
   bNodeTreeInterfacePanel *add_panel(blender::StringRef name);
