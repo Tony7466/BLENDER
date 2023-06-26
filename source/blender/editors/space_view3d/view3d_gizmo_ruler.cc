@@ -628,9 +628,7 @@ void ED_view3d_gizmo_ruler_remove_all(bContext *C)
   wmGizmoGroup *gzgroup = WM_gizmomap_group_find(gzmap, view3d_gzgt_ruler_id);
 
   RulerItem *ruler_item;
-  for (ruler_item = gzgroup_ruler_item_first_get(gzgroup); ruler_item;
-       ruler_item = (RulerItem *)ruler_item->gz.next)
-  {
+  while ((ruler_item = gzgroup_ruler_item_first_get(gzgroup))) {
     ruler_item_remove(C, gzgroup, ruler_item);
   }
 
