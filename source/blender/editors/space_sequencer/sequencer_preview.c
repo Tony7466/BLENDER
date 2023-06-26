@@ -35,6 +35,7 @@ typedef struct PreviewJob {
   int total;
   int processed;
   ThreadCondition preview_suspend_cond;
+  bool running;
 } PreviewJob;
 
 typedef struct PreviewJobAudio {
@@ -111,6 +112,7 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
 
   BLI_mutex_lock(pj->mutex);
   int previous_processed = pj->processed;
+  pj->running = true;
   BLI_mutex_unlock(pj->mutex);
 
   while (keep_looping) {
@@ -130,6 +132,7 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
 
     if (pj->processed == pj->total) {
       keep_looping = false;
+      pj->running = false;
     } else if (*stop || G.is_break) {
       BLI_task_pool_cancel(task_pool);
 
@@ -142,6 +145,7 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
       pj->total = 0;
 
       keep_looping = false;
+      pj->running = false;
     } else {
       /* Push all available jobs to the processing queue. */
       PreviewJobAudio *previewjb = pj->previews.first;
@@ -192,12 +196,27 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
   /* Get the preview job if it exists. */
   pj = WM_jobs_customdata_get(wm_job);
 
-  if (!pj) {
+  /* If the job exists but is not running, bail and try again on the next draw call. */
+  if (pj) {
+    BLI_mutex_lock(pj->mutex);
+
+    if (!pj->running) {
+      BLI_mutex_unlock(pj->mutex);
+
+      /* Clear the sound loading tag to that it can be reattempted. */
+      clear_sound_waveform_loading_tag(seq->sound);
+      WM_event_add_notifier(C, NC_SCENE | ND_SPACE_SEQUENCER, CTX_data_scene(C));
+      return;
+    }
+
+    BLI_mutex_unlock(pj->mutex);
+  } else { /* There's no existig preview job. */
     pj = MEM_callocN(sizeof(PreviewJob), "preview rebuild job");
 
     pj->mutex = BLI_mutex_alloc();
     BLI_condition_init(&pj->preview_suspend_cond);
     pj->scene = CTX_data_scene(C);
+    pj->running = false;
 
     WM_jobs_customdata_set(wm_job, pj, free_preview_job);
     WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_SEQUENCER, NC_SCENE | ND_SEQUENCER);
