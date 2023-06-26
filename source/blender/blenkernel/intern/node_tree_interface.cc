@@ -2,14 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_node_declaration.hh"
+#include "BKE_node_tree_interface.hh"
 
 #include "BLI_array.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
-#include "DNA_node_declaration_types.h"
+#include "DNA_node_tree_interface_types.h"
 #include "DNA_node_types.h"
 
 #include <queue>

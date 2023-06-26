@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include "DNA_node_declaration_types.h"
+#include "DNA_node_tree_interface_types.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -24,6 +24,7 @@ const EnumPropertyItem rna_enum_node_tree_interface_socket_kind_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
 #  include "ED_node.h"
 

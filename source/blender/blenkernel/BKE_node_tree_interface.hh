@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "DNA_node_declaration_types.h"
+#include "DNA_node_tree_interface_types.h"
 
 #include "BLI_span.hh"
 
