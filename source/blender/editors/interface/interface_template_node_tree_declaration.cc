@@ -9,7 +9,7 @@
 #include "UI_interface.h"
 
 #include "BKE_context.h"
-#include "BKE_node_declaration.hh"
+#include "BKE_node_tree_interface.hh"
 #include "BKE_node_tree_update.h"
 
 #include "BLI_color.hh"
@@ -17,7 +17,7 @@
 
 #include "BLT_translation.h"
 
-#include "DNA_node_declaration_types.h"
+#include "DNA_node_tree_interface_types.h"
 
 #include "ED_node.h"
 
