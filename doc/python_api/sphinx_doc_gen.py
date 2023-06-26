@@ -1248,6 +1248,7 @@ context_type_map = {
     "weight_paint_object": ("Object", False),
     "volume": ("Volume", False),
     "world": ("World", False),
+    "grease_pencil": ("GreasePencilv3", False),
 }
 
 
