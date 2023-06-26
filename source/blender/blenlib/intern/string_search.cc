@@ -15,7 +15,7 @@
 
 /* Right arrow, keep in sync with #UI_MENU_ARROW_SEP in `UI_interface.h`. */
 #define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
-#define UI_MENU_ARROW_SEP_UNICODE BLI_STR_UTF32_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
+#define UI_MENU_ARROW_SEP_UNICODE 0x25b8
 
 namespace blender::string_search {
 
@@ -348,8 +348,8 @@ void extract_normalized_words(StringRef str,
                               LinearAllocator<> &allocator,
                               Vector<StringRef, 64> &r_words)
 {
-  const uint32_t unicode_space = BLI_STR_UTF32_SPACE;
-  const uint32_t unicode_slash = BLI_STR_UTF32_SLASH;
+  const uint32_t unicode_space = uint32_t(' ');
+  const uint32_t unicode_slash = uint32_t('/');
   const uint32_t unicode_right_triangle = UI_MENU_ARROW_SEP_UNICODE;
 
   BLI_assert(unicode_space == BLI_str_utf8_as_unicode(" "));

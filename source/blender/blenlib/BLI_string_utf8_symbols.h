@@ -39,13 +39,6 @@ extern "C" {
 #define BLI_STR_UTF8_HORIZONTAL_TAB_KEY u8"\u2B7E"                                     /* ⭾ */
 #define BLI_STR_UTF8_BLACK_DIAMOND_MINUS_WHITE_X u8"\u2756"                            /* ❖ */
 
-/* Unicode characters as UTF-32 codepoints. Last portion should include the official assigned name.
- * Please do not add defines here that are not actually in use.  */
-
-#define BLI_STR_UTF32_SPACE U'\u0020'                               /*   */
-#define BLI_STR_UTF32_SLASH U'\u002F'                               /* / */
-#define BLI_STR_UTF32_BLACK_RIGHT_POINTING_SMALL_TRIANGLE U'\u25B8' /* ▸ */
-
 #ifdef __cplusplus
 }
 #endif
