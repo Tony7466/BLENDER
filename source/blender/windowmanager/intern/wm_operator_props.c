@@ -414,6 +414,9 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
 
   WM_operator_properties_border(ot);
 
+  prop = RNA_def_boolean(ot->srna, "select_origin_box", false, "Select Object Origin", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
   if (deselect) {
     prop = RNA_def_boolean(
         ot->srna, "deselect", false, "Deselect", "Deselect rather than select items");
@@ -566,6 +569,7 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
 
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(ot->srna, "select_origin_circle", true, "Select Object Origin", "");
 }
 
 void WM_operator_properties_mouse_select(wmOperatorType *ot)
