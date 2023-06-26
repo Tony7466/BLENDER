@@ -8,8 +8,6 @@
 
 #include <algorithm>
 
-#include "BLI_math_axis_angle.hh"
-#include "BLI_math_euler.hh"
 #include "BLI_math_quaternion.hh"
 
 #include "UI_interface.h"
