@@ -3810,11 +3810,10 @@ static const EnumPropertyItem *rna_ShaderNodeMix_data_type_itemf(bContext * /*C*
 {
   *r_free = true;
 
-  const auto rotation_supported_mix = [ptr](const EnumPropertyItem *item) -> bool {
+  const auto rotation_supported_mix = [&](const EnumPropertyItem *item) -> bool {
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(item->value);
     if (U.experimental.use_rotation_socket && data_type == SOCK_ROTATION) {
       const bNodeTree *tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
-      BLI_assert(tree != nullptr);
       if (tree->type == NTREE_GEOMETRY) {
         return true;
       }

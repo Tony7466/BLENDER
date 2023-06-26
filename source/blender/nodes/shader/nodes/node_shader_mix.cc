@@ -332,11 +332,11 @@ static const char *gpu_shader_get_name(eNodeSocketDatatype data_type,
           return nullptr;
       }
     case SOCK_ROTATION:
-      break;
+      return nullptr;
     default:
       BLI_assert_unreachable();
+      return nullptr;
   }
-  return nullptr;
 }
 
 static int gpu_shader_mix(GPUMaterial *mat,
@@ -449,10 +449,10 @@ class MixColorFunction : public mf::MultiFunction {
 
 static const mf::MultiFunction *get_multi_function(const bNode &node)
 {
-  const NodeShaderMix *data = static_cast<NodeShaderMix *>(node.storage);
-  const bool uniform_factor = data->factor_mode == NODE_MIX_MODE_UNIFORM;
+  const NodeShaderMix *data = (NodeShaderMix *)node.storage;
+  bool uniform_factor = data->factor_mode == NODE_MIX_MODE_UNIFORM;
   const bool clamp_factor = data->clamp_factor;
-  switch (eNodeSocketDatatype(data->data_type)) {
+  switch (data->data_type) {
     case SOCK_FLOAT: {
       if (clamp_factor) {
         static auto fn = mf::build::SI3_SO<float, float, float, float>(
@@ -524,8 +524,6 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
         return &fn;
       }
     }
-    default:
-      BLI_assert_unreachable();
   }
   return nullptr;
 }
@@ -534,14 +532,13 @@ static void sh_node_mix_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeShaderMix &storage = node_storage(builder.node());
 
-  switch (eNodeSocketDatatype(storage.data_type)) {
-    case SOCK_RGBA:
-      builder.construct_and_set_matching_fn<MixColorFunction>(
-          storage.clamp_factor, storage.clamp_result, storage.blend_type);
-      break;
-    default:
-      const mf::MultiFunction *fn = get_multi_function(builder.node());
-      builder.set_matching_fn(fn);
+  if (storage.data_type == SOCK_RGBA) {
+    builder.construct_and_set_matching_fn<MixColorFunction>(
+        storage.clamp_factor, storage.clamp_result, storage.blend_type);
+  }
+  else {
+    const mf::MultiFunction *fn = get_multi_function(builder.node());
+    builder.set_matching_fn(fn);
   }
 }
 
