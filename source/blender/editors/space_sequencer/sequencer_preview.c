@@ -112,7 +112,6 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
 
   BLI_mutex_lock(pj->mutex);
   int previous_processed = pj->processed;
-  pj->running = true;
   BLI_mutex_unlock(pj->mutex);
 
   while (keep_looping) {
@@ -196,10 +195,10 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
   /* Get the preview job if it exists. */
   pj = WM_jobs_customdata_get(wm_job);
 
-  /* If the job exists but is not running, bail and try again on the next draw call. */
   if (pj) {
     BLI_mutex_lock(pj->mutex);
 
+    /* If the job exists but is not running, bail and try again on the next draw call. */
     if (!pj->running) {
       BLI_mutex_unlock(pj->mutex);
 
@@ -216,7 +215,7 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
     pj->mutex = BLI_mutex_alloc();
     BLI_condition_init(&pj->preview_suspend_cond);
     pj->scene = CTX_data_scene(C);
-    pj->running = false;
+    pj->running = true;
 
     WM_jobs_customdata_set(wm_job, pj, free_preview_job);
     WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_SEQUENCER, NC_SCENE | ND_SEQUENCER);
