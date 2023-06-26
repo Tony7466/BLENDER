@@ -129,7 +129,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   }
 
   /* Set material index attribute. */
-  int material_index = drawing_eval.runtime->stroke_cache.mat;
+  int material_index = grease_pencil_eval.runtime->stroke_cache.mat;
   SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
 
