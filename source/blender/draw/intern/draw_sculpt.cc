@@ -63,7 +63,6 @@ static void sculpt_draw_cb(SculptCallbackData *data,
   }
 
   batch.material_slot = drw_pbvh_material_index_get(batches);
-  /** NOTE: This doesn't match the index used in DRW_sculpt_debug_cb (debug_node_nr). */
   batch.debug_index = data->batches.size();
 
   data->batches.append(batch);
