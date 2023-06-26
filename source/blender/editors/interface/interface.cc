@@ -2304,7 +2304,8 @@ int ui_but_is_pushed(uiBut *but)
 
 static void ui_but_update_select_flag(uiBut *but, double *value)
 {
-  switch (ui_but_is_pushed_ex(but, value)) {
+  switch (ui_but_is_pushed_ex(but, value) && (!(but->drawflag & UI_BUT_INDETERMINATE)))
+  {
     case true:
       but->flag |= UI_SELECT;
       break;
@@ -3785,11 +3786,15 @@ static void ui_but_build_drawstr_int(uiBut *but, int value)
  */
 static void ui_but_update_ex(uiBut *but, const bool validate)
 {
+  if (but->type != UI_BTYPE_LABEL) {
+    but->drawflag |= UI_BUT_INDETERMINATE;
+  }
+
   /* if something changed in the button */
   double value = UI_BUT_VALUE_UNSET;
 
   /* Use emdash in place of text when in indeterminate state. */
-  const char *emdash = "\u2014";
+  const char *UI_VALUE_INDETERMINATE_CHAR = "\u2014";
 
   ui_but_update_select_flag(but, &value);
 
@@ -3798,13 +3803,6 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
     if ((but->rnaprop != nullptr) || (but->poin && (but->pointype & UI_BUT_POIN_TYPES))) {
       ui_but_range_set_soft(but);
     }
-  }
-
-  if (but->drawflag & UI_BUT_INDETERMINATE) {
-    /* Center text. */
-    but->drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
-    /* Do not show toggles as selected. */
-    but->flag &= ~(UI_SELECT);
   }
 
   /* test for min and max, icon sliders, etc */
@@ -3872,7 +3870,8 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
           }
         }
         if (but->drawflag & UI_BUT_INDETERMINATE) {
-          STRNCPY(but->drawstr, emdash);
+          STRNCPY(but->drawstr, UI_VALUE_INDETERMINATE_CHAR);
+          but->drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
         }
         else {
           STRNCPY(but->drawstr, but->str);
@@ -3887,7 +3886,8 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
       }
       UI_GET_BUT_VALUE_INIT(but, value);
       if (but->drawflag & UI_BUT_INDETERMINATE) {
-        STRNCPY(but->drawstr, emdash);
+        STRNCPY(but->drawstr, UI_VALUE_INDETERMINATE_CHAR);
+        but->drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
       }
       else if (ui_but_is_float(but)) {
         ui_but_build_drawstr_float(but, value);
@@ -3913,7 +3913,8 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
     case UI_BTYPE_SEARCH_MENU:
       if (!but->editstr) {
         if (but->drawflag & UI_BUT_INDETERMINATE) {
-          STRNCPY(but->drawstr, emdash);
+          STRNCPY(but->drawstr, UI_VALUE_INDETERMINATE_CHAR);
+          but->drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
         }
         else {
           char str[UI_MAX_DRAW_STR];
