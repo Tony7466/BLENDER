@@ -10,10 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "BLI_function_ref.hh"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
-
-#include "BLI_function_ref.hh"
 
 #include "BLF_api.h"
 
