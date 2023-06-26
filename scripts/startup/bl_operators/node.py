@@ -323,7 +323,18 @@ class NODE_OT_panel_move(NodePanelOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_interface_item_new(NodePanelOperator, Operator):
+class NodeInterfaceOperator():
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree:
+            return False
+        if space.edit_tree.is_embedded_data:
+            return False
+        return True
+
+
+class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
     '''Add a new item to the interface'''
     bl_idname = "node.interface_item_new"
     bl_label = "New Item"
@@ -356,11 +367,21 @@ class NODE_OT_interface_item_new(NodePanelOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_interface_item_copy(NodePanelOperator, Operator):
+class NODE_OT_interface_item_copy(NodeInterfaceOperator, Operator):
     '''Add a copy of the active item to the interface'''
     bl_idname = "node.interface_item_copy"
     bl_label = "Copy Item"
     bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if not super().poll(context):
+            return False
+
+        snode = context.space_data
+        tree = snode.edit_tree
+        items = tree.interface.interface_items
+        return items.active is not None
 
     def execute(self, context):
         snode = context.space_data
@@ -375,7 +396,7 @@ class NODE_OT_interface_item_copy(NodePanelOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_interface_item_remove(NodePanelOperator, Operator):
+class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
     '''Remove active item from the interface'''
     bl_idname = "node.interface_item_remove"
     bl_label = "Remove Item"
@@ -393,7 +414,7 @@ class NODE_OT_interface_item_remove(NodePanelOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_interface_item_move(NodePanelOperator, Operator):
+class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
     '''Move an item up or down in the interface'''
     bl_idname = "node.interface_item_move"
     bl_label = "Move Item"

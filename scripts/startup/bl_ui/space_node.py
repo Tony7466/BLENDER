@@ -977,6 +977,7 @@ class NODE_PT_node_tree_declaration(Panel):
 
         add_remove_col = ops_col.column(align=True)
         add_remove_col.operator_menu_enum("node.interface_item_new", "item_type", icon='ADD', text="")
+        add_remove_col.operator("node.interface_item_copy", icon='DUPLICATE', text="")
         add_remove_col.operator("node.interface_item_remove", icon='REMOVE', text="")
 
         ops_col.separator()
