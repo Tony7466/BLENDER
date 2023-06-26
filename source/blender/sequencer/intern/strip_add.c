@@ -617,6 +617,12 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
       seq->len = IMB_anim_get_duration(
           sanim->anim, seq->strip->proxy ? seq->strip->proxy->tc : IMB_TC_RECORD_RUN);
 
+      short frs_sec;
+      float frs_sec_base;
+      if (IMB_anim_get_fps(sanim->anim, &frs_sec, &frs_sec_base, true)) {
+        seq->media_playback_rate = (float)frs_sec / frs_sec_base;
+      }
+
       seq->len -= seq->anim_startofs;
       seq->len -= seq->anim_endofs;
       if (seq->len < 0) {
