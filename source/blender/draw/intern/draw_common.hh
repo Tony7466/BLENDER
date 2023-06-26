@@ -12,14 +12,28 @@
 
 namespace blender::draw {
 
+GPUBatch *hair_sub_pass_setup(PassMain::Sub &sub_ps,
+                              const Scene *scene,
+                              Object *object,
+                              ParticleSystem *psys,
+                              ModifierData *md,
+                              GPUMaterial *gpu_material = nullptr);
+
+GPUBatch *hair_sub_pass_setup(PassSimple::Sub &sub_ps,
+                              const Scene *scene,
+                              Object *object,
+                              ParticleSystem *psys,
+                              ModifierData *md,
+                              GPUMaterial *gpu_material = nullptr);
+
 GPUBatch *curves_sub_pass_setup(PassMain::Sub &ps,
                                 const Scene *scene,
                                 Object *ob,
-                                GPUMaterial *gpu_material);
+                                GPUMaterial *gpu_material = nullptr);
 
 GPUBatch *curves_sub_pass_setup(PassSimple::Sub &ps,
                                 const Scene *scene,
                                 Object *ob,
-                                GPUMaterial *gpu_material);
+                                GPUMaterial *gpu_material = nullptr);
 
 }  // namespace blender::draw

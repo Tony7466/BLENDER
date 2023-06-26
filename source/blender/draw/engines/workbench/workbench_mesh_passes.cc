@@ -58,13 +58,12 @@ void MeshPass::init_subpasses(ePipelineType pipeline,
 }
 
 PassMain::Sub &MeshPass::get_subpass(
-    ObjectRef &ref,
+    eGeometryType geometry_type,
     ::Image *image /* = nullptr */,
     GPUSamplerState sampler_state /* = GPUSamplerState::default_sampler() */,
     ImageUser *iuser /* = nullptr */)
 {
   is_empty_ = false;
-  eGeometryType geometry_type = geometry_type_from_object(ref.object);
 
   if (image) {
     GPUTexture *texture = nullptr;
@@ -112,7 +111,8 @@ void MeshPass::draw(ObjectRef &ref,
                     GPUSamplerState sampler_state /* = GPUSamplerState::default_sampler() */,
                     ImageUser *iuser /* = nullptr */)
 {
-  get_subpass(ref, image, sampler_state, iuser).draw(batch, handle, material_index);
+  get_subpass(geometry_type_from_object(ref.object), image, sampler_state, iuser)
+      .draw(batch, handle, material_index);
 }
 
 /** \} */

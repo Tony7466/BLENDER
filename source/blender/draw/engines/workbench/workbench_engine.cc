@@ -103,7 +103,7 @@ class Instance {
       case V3D_SHADING_VERTEX_COLOR:
         return scene_state.material_attribute_color;
       case V3D_SHADING_MATERIAL_COLOR:
-        if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, slot + 1)) {
+        if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, slot)) {
           return Material(*_mat);
         }
         ATTR_FALLTHROUGH;
@@ -134,7 +134,6 @@ class Instance {
     }
 
     if (ob->type == OB_MESH && ob->modifiers.first != nullptr) {
-
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
         if (md->type != eModifierType_ParticleSystem) {
           continue;
@@ -147,15 +146,7 @@ class Instance {
         const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
 
         if (draw_as == PART_DRAW_PATH) {
-#if 0 /* TODO(@pragma37): */
-          workbench_cache_hair_populate(wpd,
-                                        ob,
-                                        psys,
-                                        md,
-                                        object_state.color_type,
-                                        object_state.texture_paint_mode,
-                                        part->omat);
-#endif
+          hair_sync(manager, ob_ref, object_state, psys, md);
         }
       }
     }
@@ -271,14 +262,16 @@ class Instance {
               continue;
             }
 
-            Material mat = get_material(ob_ref, object_state.color_type, i);
+            /* Material slots start from 1. */
+            int material_slot = i + 1;
+            Material mat = get_material(ob_ref, object_state.color_type, material_slot);
             has_transparent_material = has_transparent_material || mat.is_transparent();
 
             ::Image *image = nullptr;
             ImageUser *iuser = nullptr;
             GPUSamplerState sampler_state = GPUSamplerState::default_sampler();
             if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
-              get_material_image(ob_ref.object, i + 1, image, iuser, sampler_state);
+              get_material_image(ob_ref.object, material_slot, image, iuser, sampler_state);
             }
 
             draw_mesh(ob_ref, mat, batches[i], handle, image, sampler_state, iuser);
@@ -321,6 +314,35 @@ class Instance {
     }
   }
 
+  void hair_sync(Manager &manager,
+                 ObjectRef &ob_ref,
+                 const ObjectState &object_state,
+                 ParticleSystem *psys,
+                 ModifierData *md)
+  {
+    /* Skip frustum culling. */
+    /* TODO(Miguel Pozo):
+     * Using different handle generates outlines at the object-hair boundaries.*/
+    ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
+
+    Material mat = get_material(ob_ref, object_state.color_type, psys->part->omat);
+    ::Image *image = nullptr;
+    ImageUser *iuser = nullptr;
+    GPUSamplerState sampler_state = GPUSamplerState::default_sampler();
+    if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
+      get_material_image(ob_ref.object, psys->part->omat, image, iuser, sampler_state);
+    }
+    resources.material_buf.append(mat);
+    int material_index = resources.material_buf.size() - 1;
+
+    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
+                              .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
+                              .sub(ob_ref.object->id.name);
+
+    GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
+    pass.draw(batch, handle, material_index);
+  }
+
   void curves_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
   {
     /* Skip frustum culling. */
@@ -331,10 +353,10 @@ class Instance {
     int material_index = resources.material_buf.size() - 1;
 
     PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
-                              .get_subpass(ob_ref)
+                              .get_subpass(eGeometryType::CURVES)
                               .sub(ob_ref.object->id.name);
 
-    GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object, nullptr);
+    GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object);
     pass.draw(batch, handle, material_index);
   }
 
