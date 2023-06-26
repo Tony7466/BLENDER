@@ -201,7 +201,6 @@ static int select_alternate_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C);
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
@@ -223,7 +222,7 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
   ot->description = "Select alternated points in strokes with already selected points";
 
   ot->exec = select_alternate_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = editable_grease_pencil_point_selection_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
