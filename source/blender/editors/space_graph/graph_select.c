@@ -29,6 +29,9 @@
 #include "BKE_fcurve.h"
 #include "BKE_nla.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
 #include "UI_view2d.h"
 
 #include "ED_anim_api.h"
@@ -2039,9 +2042,10 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 
 /* Defines for handle select tool. */
 static const EnumPropertyItem prop_graphkeys_leftright_handle_select_types[] = {
-    {GRAPHKEYS_HANDLESEL_LR, "BOTH", 0, "Select Both Handles", ""},
+    {GRAPHKEYS_HANDLESEL_BOTH, "BOTH", 0, "Select Both Handles", ""},
     {GRAPHKEYS_HANDLESEL_L, "LEFT", 0, "Select Left Handles", ""},
     {GRAPHKEYS_HANDLESEL_R, "RIGHT", 0, "Select Right Handles", ""},
+    {GRAPHKEYS_HANDLESEL_KEY, "KEY", 0, "Select Keyframes", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -2072,6 +2076,16 @@ static short bezt_sel_both_handles(KeyframeEditData *UNUSED(ked), BezTriple *bez
   return 0;
 }
 
+static short bezt_sel_keys(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
+{
+  if (BEZT_ISSEL_ANY(bezt)) {
+    BEZT_DESEL_IDX(bezt, 0);
+    BEZT_SEL_IDX(bezt, 1);
+    BEZT_DESEL_IDX(bezt, 2);
+  }
+  return 0;
+}
+
 static short bezt_desel_keys(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
 {
   if (BEZT_ISSEL_ANY(bezt)) {
@@ -2080,18 +2094,24 @@ static short bezt_desel_keys(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
   return 0;
 }
 
-static void graphkeys_de_select_handles(
-    bAnimContext *ac,
-    const short mode,  // prop_graphkeys_leftright_handle_select_types
-    const bool deselect_keyframe)
+/*
+ * Select keyframe handles left/right/both or keys based on the given selection.
+ *
+ * mode: Determines which handles to select - left, right, or both.
+ * deselect_keyframe: Specifies whether keyframes should be deselected (true) or if the current
+ * selection should be preserved (false).
+ */
+static void graph_keys_select_handles(bAnimContext *ac,
+                                      const enum eGraphKey_HandleSelect_Side mode,
+                                      const bool deselect_keyframe)
 {
   ListBase anim_data = {NULL, NULL};
 
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
                       ANIMFILTER_NODUPLIS);
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
-
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    BLI_assert(ale->type & ANIMTYPE_FCURVE);
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* Only continue if F-Curve has keyframes. */
@@ -2099,7 +2119,7 @@ static void graphkeys_de_select_handles(
       continue;
     }
     switch (mode) {
-      case GRAPHKEYS_HANDLESEL_LR: {
+      case GRAPHKEYS_HANDLESEL_BOTH: {
         ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_both_handles, NULL);
         break;
       }
@@ -2111,8 +2131,11 @@ static void graphkeys_de_select_handles(
         ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_left_handles, NULL);
         break;
       }
+      case GRAPHKEYS_HANDLESEL_KEY: {
+        ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_sel_keys, NULL);
+      }
     }
-    if (deselect_keyframe) {
+    if (deselect_keyframe && (mode != GRAPHKEYS_HANDLESEL_KEY)) {
       ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, bezt_desel_keys, NULL);
     }
   }
@@ -2130,10 +2153,10 @@ static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  short leftright = RNA_enum_get(op->ptr, "mode");
-  bool deselect_keyframe = RNA_boolean_get(op->ptr, "deselect_keyframe");
+  const short leftright = RNA_enum_get(op->ptr, "mode");
+  const bool deselect_keyframe = RNA_boolean_get(op->ptr, "deselect_keyframe");
   /* Perform selection changes. */
-  graphkeys_de_select_handles(&ac, leftright, deselect_keyframe);
+  graph_keys_select_handles(&ac, leftright, deselect_keyframe);
 
   /* Set notifier that keyframe selection has changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
@@ -2141,25 +2164,46 @@ static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void graphkeys_select_handles_ui(bContext *UNUSED(C), wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  uiLayout *row;
+
+  bool keyframe_selection = RNA_enum_get(op->ptr, "mode") == GRAPHKEYS_HANDLESEL_KEY;
+  row = uiLayoutRow(layout, false);
+  uiItemR(row, op->ptr, "mode", 0, NULL, ICON_NONE);
+
+  if (!keyframe_selection) {
+    uiItemR(layout, op->ptr, "deselect_keyframe", 0, NULL, ICON_NONE);
+  }
+}
+
 void GRAPH_OT_select_handles(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Select Handles";
   ot->idname = "GRAPH_OT_select_handles";
-  ot->description = "(De)Select handles of based on the active selection";
+  ot->description = "Select keyframe handles left/right/both or keys based on the given selection";
 
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
   ot->exec = graphkeys_select_handles_exec;
+  ot->ui = graphkeys_select_handles_ui;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
-  ot->prop = RNA_def_enum(ot->srna,
-                          "mode",
-                          prop_graphkeys_leftright_handle_select_types,
-                          GRAPHKEYS_HANDLESEL_LR,
-                          "Mode",
-                          "(De)Select handles based on selection");
-  ot->prop = RNA_def_boolean(ot->srna, "deselect_keyframe", 1, "Deselect Keyframes", "");
+  RNA_def_enum(
+      ot->srna,
+      "mode",
+      prop_graphkeys_leftright_handle_select_types,
+      GRAPHKEYS_HANDLESEL_BOTH,
+      "Mode",
+      "Selects corresponding keyframe handles (left, right, both or keys) based on the given "
+      "selection");
+  RNA_def_boolean(ot->srna,
+                  "deselect_keyframe",
+                  1,
+                  "Deselect Keyframes",
+                  "Deselect keyframes or preserve the given keyframe selection");
 }
