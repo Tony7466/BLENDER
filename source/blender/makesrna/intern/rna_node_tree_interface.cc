@@ -105,11 +105,9 @@ static void rna_NodeTreeInterfaceSocket_data_type_set(PointerRNA *ptr, int value
   }
 }
 
-static bool rna_NodeTreeInterfaceSocket_data_type_poll(void *userdata,
-                                                       bNodeSocketType *socket_type)
+static bool is_data_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
 {
   /* Check if the node tree supports the socket type. */
-  bNodeTreeType *ntreetype = static_cast<bNodeTreeType *>(userdata);
   if (ntreetype->valid_socket_type && !ntreetype->valid_socket_type(ntreetype, socket_type)) {
     return false;
   }
@@ -124,6 +122,24 @@ static bool rna_NodeTreeInterfaceSocket_data_type_poll(void *userdata,
   }
 
   return true;
+}
+
+static bNodeSocketType *find_supported_data_type(bNodeTreeType *ntree_type)
+{
+  NODE_SOCKET_TYPES_BEGIN (socket_type) {
+    if (is_data_type_supported(ntree_type, socket_type)) {
+      return socket_type;
+    }
+  }
+  NODE_SOCKET_TYPES_END;
+  return nullptr;
+}
+
+static bool rna_NodeTreeInterfaceSocket_data_type_poll(void *userdata,
+                                                       bNodeSocketType *socket_type)
+{
+  bNodeTreeType *ntreetype = static_cast<bNodeTreeType *>(userdata);
+  return is_data_type_supported(ntreetype, socket_type);
 }
 
 static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_data_type_itemf(bContext * /*C*/,
@@ -168,10 +184,20 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     int data_type_enum,
     int in_out)
 {
-  const bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(data_type_enum);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(data_type_enum);
   if (typeinfo == nullptr) {
     BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Unknown socket type");
     return nullptr;
+  }
+
+  /* If data type is unsupported try to find a valid type. */
+  if (!is_data_type_supported(ntree->typeinfo, typeinfo)) {
+    typeinfo = find_supported_data_type(ntree->typeinfo);
+    if (typeinfo == nullptr) {
+      BKE_report(reports, RPT_ERROR, "Could not find supported socket type");
+      return nullptr;
+    }
   }
   const char *data_type = typeinfo->idname;
 
@@ -182,7 +208,6 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
   }
   else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
     BKE_ntree_update_tag_interface(ntree);
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
