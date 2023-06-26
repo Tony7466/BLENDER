@@ -121,6 +121,11 @@ template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
 extern "C" {
 #endif
 
+void BKE_nodetree_interface_init(struct bNodeTreeInterface *interface);
+void BKE_nodetree_interface_copy(struct bNodeTreeInterface *interface_dst,
+                                 const struct bNodeTreeInterface *interface_src);
+void BKE_nodetree_interface_free(struct bNodeTreeInterface *interface);
+
 /* .blend file I/O */
 
 void BKE_nodetree_interface_write(struct BlendWriter *writer,

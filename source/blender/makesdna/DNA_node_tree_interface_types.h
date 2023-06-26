@@ -12,6 +12,7 @@
 
 #ifdef __cplusplus
 #  include "BLI_color.hh"
+#  include "BLI_map.hh"
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"
 
@@ -45,6 +46,11 @@ typedef struct bNodeTreeInterfaceItem {
 
   template<typename T> T *get_as_ptr();
   template<typename T> const T *get_as_ptr() const;
+
+  using ParentMap = blender::Map<const bNodeTreeInterfacePanel *, bNodeTreeInterfacePanel *>;
+
+  void copy_data(const bNodeTreeInterfaceItem &src, std::optional<ParentMap> parent_map);
+  void free_data();
 
   bool is_valid_parent(const bNodeTreeInterfacePanel *new_parent) const;
   bool parent_set(bNodeTreeInterfacePanel *new_parent);
@@ -90,6 +96,9 @@ typedef struct bNodeTreeInterface {
   char _pad[4];
 
 #ifdef __cplusplus
+  void copy_data(const bNodeTreeInterface &src);
+  void free_data();
+
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
   int item_index(bNodeTreeInterfaceItem &item) const;
@@ -116,8 +125,10 @@ typedef struct bNodeTreeInterface {
 
   bool remove_item(bNodeTreeInterfaceItem &item);
   void clear_item_type(eNodeTreeInterfaceItemType type);
-  void clear_items();
   bool move_item(bNodeTreeInterfaceItem &item, int new_index);
+
+  void copy_items(blender::Span<const bNodeTreeInterfaceItem *> new_items);
+  void clear_items();
 
  protected:
   void add_item(bNodeTreeInterfaceItem &item);

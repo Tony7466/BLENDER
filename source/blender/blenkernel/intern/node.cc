@@ -140,6 +140,8 @@ static void ntree_init_data(ID *id)
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
   ntree_set_typeinfo(ntree, nullptr);
+
+  BKE_nodetree_interface_init(&ntree->interface);
 }
 
 static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
@@ -211,6 +213,8 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     panel_ptr = static_cast<bNodePanel *>(MEM_dupallocN(panel_ptr));
     panel_ptr->name = BLI_strdup(panel_ptr->name);
   }
+
+  BKE_nodetree_interface_copy(&ntree_dst->interface, &ntree_src->interface);
 
   /* copy preview hash */
   if (ntree_src->previews && (flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
@@ -307,6 +311,8 @@ static void ntree_free_data(ID *id)
     MEM_SAFE_FREE(panel);
   }
   MEM_SAFE_FREE(ntree->panels_array);
+
+  BKE_nodetree_interface_free(&ntree->interface);
 
   /* free preview hash */
   if (ntree->previews) {
