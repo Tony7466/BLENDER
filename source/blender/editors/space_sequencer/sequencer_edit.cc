@@ -14,6 +14,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_string.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -2016,7 +2017,7 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
   }
 
   seqm->machine = active_seq ? active_seq->machine : channel_max;
-  strcpy(seqm->name + 2, "MetaStrip");
+  BLI_strncpy(seqm->name + 2, "MetaStrip", sizeof(seqm->name) - 2);
   SEQ_sequence_base_unique_name_recursive(scene, &ed->seqbase, seqm);
   seqm->start = meta_start_frame;
   seqm->len = meta_end_frame - meta_start_frame;
@@ -2740,9 +2741,9 @@ void SEQUENCER_OT_swap_data(wmOperatorType *ot)
  * \{ */
 
 static const EnumPropertyItem prop_change_effect_input_types[] = {
-    {0, "A_B", 0, "A -> B", ""},
-    {1, "B_C", 0, "B -> C", ""},
-    {2, "A_C", 0, "A -> C", ""},
+    {0, "A_B", 0, "A " BLI_STR_UTF8_RIGHTWARDS_ARROW " B", ""},
+    {1, "B_C", 0, "B " BLI_STR_UTF8_RIGHTWARDS_ARROW " C", ""},
+    {2, "A_C", 0, "A " BLI_STR_UTF8_RIGHTWARDS_ARROW " C", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

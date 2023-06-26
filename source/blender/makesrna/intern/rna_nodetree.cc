@@ -57,7 +57,7 @@
 #include "RE_texture.h"
 
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_socket.h"
 
 #include "DEG_depsgraph.h"
@@ -592,7 +592,7 @@ static EnumPropertyItem rna_node_geometry_mesh_circle_fill_type_items[] = {
 
 #  include "NOD_common.h"
 #  include "NOD_composite.h"
-#  include "NOD_geometry.h"
+#  include "NOD_geometry.hh"
 #  include "NOD_shader.h"
 #  include "NOD_socket.h"
 #  include "NOD_texture.h"
@@ -12920,7 +12920,8 @@ static void rna_def_node(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
 
   prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_MUTED);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", NODE_MUTED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Mute", "");
   RNA_def_property_update(prop, 0, "rna_Node_update");
 

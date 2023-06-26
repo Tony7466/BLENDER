@@ -20,6 +20,7 @@
 
 #include "../outliner_intern.hh"
 #include "common.hh"
+#include "tree_element_id_armature.hh"
 #include "tree_element_id_collection.hh"
 #include "tree_element_id_curve.hh"
 #include "tree_element_id_gpencil_legacy.hh"
@@ -27,6 +28,7 @@
 #include "tree_element_id_linestyle.hh"
 #include "tree_element_id_mesh.hh"
 #include "tree_element_id_metaball.hh"
+#include "tree_element_id_object.hh"
 #include "tree_element_id_scene.hh"
 #include "tree_element_id_texture.hh"
 
@@ -60,7 +62,10 @@ std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_t
       return std::make_unique<TreeElementIDGPLegacy>(legacy_te, (bGPdata &)id);
     case ID_GR:
       return std::make_unique<TreeElementIDCollection>(legacy_te, (Collection &)id);
+    case ID_AR:
+      return std::make_unique<TreeElementIDArmature>(legacy_te, (bArmature &)id);
     case ID_OB:
+      return std::make_unique<TreeElementIDObject>(legacy_te, (Object &)id);
     case ID_MA:
     case ID_LT:
     case ID_LA:
@@ -85,7 +90,6 @@ std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_t
     case ID_VF:
     case ID_TXT:
     case ID_SO:
-    case ID_AR:
     case ID_AC:
     case ID_PAL:
     case ID_PC:
