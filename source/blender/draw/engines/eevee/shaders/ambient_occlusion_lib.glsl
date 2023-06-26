@@ -118,7 +118,7 @@ float search_horizon(vec3 vI,
   }
 
   float prev_time, time = 0.0;
-  for (float iter = 0.0; time < ssray.max_time && iter < sample_count; iter++) {
+  for (int iter = 0; time < ssray.max_time && iter < sample_count; iter++) {
     prev_time = time;
     /* Gives us good precision at center and ensure we cross at least one pixel per iteration. */
     time = 1.0 + iter + sqr((iter + noise) / sample_count) * ssray.max_time;
