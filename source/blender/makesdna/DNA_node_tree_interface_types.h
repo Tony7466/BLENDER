@@ -127,12 +127,14 @@ typedef struct bNodeTreeInterface {
   void clear_item_type(eNodeTreeInterfaceItemType type);
   bool move_item(bNodeTreeInterfaceItem &item, int new_index);
 
-  void copy_items(blender::Span<const bNodeTreeInterfaceItem *> new_items);
   void clear_items();
 
  protected:
+  void copy_items(blender::Span<const bNodeTreeInterfaceItem *> items_src);
+
   void add_item(bNodeTreeInterfaceItem &item);
   void insert_item(bNodeTreeInterfaceItem &item, int index);
+  bool unlink_item(bNodeTreeInterfaceItem &item);
   void free_item(bNodeTreeInterfaceItem &item);
 
   void update_order();

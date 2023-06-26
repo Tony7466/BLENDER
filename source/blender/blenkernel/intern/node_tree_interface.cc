@@ -161,6 +161,25 @@ void bNodeTreeInterface::insert_item(bNodeTreeInterfaceItem &item, int index)
   }
 }
 
+bool bNodeTreeInterface::unlink_item(bNodeTreeInterfaceItem &item)
+{
+  bool changed = false;
+
+  const bNodeTreeInterfacePanel *panel = nullptr;
+  if (item.item_type == NODE_INTERFACE_PANEL) {
+    panel = reinterpret_cast<bNodeTreeInterfacePanel *>(&item);
+  }
+
+  for (bNodeTreeInterfaceItem *titem : items()) {
+    if (panel && titem->parent == panel) {
+      titem->parent = nullptr;
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
 void bNodeTreeInterface::free_item(bNodeTreeInterfaceItem &item)
 {
   switch (item.item_type) {
@@ -290,12 +309,15 @@ bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item)
     return false;
   }
 
+  unlink_item(item);
+
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = items();
   items_num--;
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
   items().take_front(index).copy_from(old_items.take_front(index));
   items().drop_front(index).copy_from(old_items.drop_front(index + 1));
 
+  unlink_item(item);
   free_item(item);
 
   /* Guaranteed not empty, contains at least the removed item */
@@ -334,16 +356,16 @@ bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_i
   return true;
 }
 
-void bNodeTreeInterface::copy_items(const blender::Span<const bNodeTreeInterfaceItem *> new_items)
+void bNodeTreeInterface::copy_items(const blender::Span<const bNodeTreeInterfaceItem *> items_src)
 {
   bNodeTreeInterfaceItem::ParentMap parent_map;
 
-  items_num = new_items.size();
+  items_num = items_src.size();
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
 
   /* Copy buffers and build pointer map. */
-  for (const int i : new_items.index_range()) {
-    const bNodeTreeInterfaceItem *item_src = new_items[i];
+  for (const int i : items_src.index_range()) {
+    const bNodeTreeInterfaceItem *item_src = items_src[i];
     bNodeTreeInterfaceItem *item_dst = items_array[i] = static_cast<bNodeTreeInterfaceItem *>(
         MEM_dupallocN(item_src));
 
@@ -356,9 +378,9 @@ void bNodeTreeInterface::copy_items(const blender::Span<const bNodeTreeInterface
   }
 
   /* Copy data and remap pointers. */
-  for (const int i : new_items.index_range()) {
+  for (const int i : items_src.index_range()) {
+    const bNodeTreeInterfaceItem &item_src = *items_src[i];
     bNodeTreeInterfaceItem &item_dst = *items()[i];
-    const bNodeTreeInterfaceItem &item_src = *new_items[i];
 
     item_dst.copy_data(item_src, parent_map);
   }
@@ -367,6 +389,7 @@ void bNodeTreeInterface::copy_items(const blender::Span<const bNodeTreeInterface
 void bNodeTreeInterface::clear_items()
 {
   for (bNodeTreeInterfaceItem *item : items()) {
+    /* No need to unlink from other items, everything is freed here. */
     free_item(*item);
   }
 
