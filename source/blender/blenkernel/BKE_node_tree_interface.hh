@@ -73,11 +73,13 @@ template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
     case NODE_INTERFACE_PANEL: {
       constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
       BLI_assert(is_valid_type);
+      break;
     }
     default:
     case NODE_INTERFACE_SOCKET: {
       constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
       BLI_assert(is_valid_type);
+      break;
     }
   }
 #  endif
