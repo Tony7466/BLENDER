@@ -525,7 +525,18 @@ static void find_tree_zone_hash_recursive(
     ComputeContextBuilder &compute_context_builder,
     Map<const bNodeTreeZone *, ComputeContextHash> &r_hash_by_zone)
 {
-  compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone.output_node);
+  switch (zone.output_node->type) {
+    case GEO_NODE_SIMULATION_OUTPUT: {
+      compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone.output_node);
+      break;
+    }
+    case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+      const int iteration = 0;
+      compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*zone.output_node,
+                                                                      iteration);
+      break;
+    }
+  }
   r_hash_by_zone.add_new(&zone, compute_context_builder.hash());
   for (const bNodeTreeZone *child_zone : zone.child_zones) {
     find_tree_zone_hash_recursive(*child_zone, compute_context_builder, r_hash_by_zone);
@@ -558,7 +569,18 @@ Map<const bNodeTreeZone *, ComputeContextHash> GeoModifierLog::
     const Vector<const bNodeTreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
         group_node->identifier);
     for (const bNodeTreeZone *zone : zone_stack) {
-      compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+      switch (zone->output_node->type) {
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
+          break;
+        }
+        case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+          const int loop_iteration = 0;
+          compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*zone->output_node,
+                                                                          loop_iteration);
+          break;
+        }
+      }
     }
     compute_context_builder.push<bke::NodeGroupComputeContext>(*group_node);
   }
