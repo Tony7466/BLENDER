@@ -105,6 +105,9 @@ struct RayTraceParameters {
 
 /* Returns true on hit. */
 /* TODO(fclem): remove the back-face check and do it the SSR resolve code. */
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+__attribute__((noinline))
+#endif
 bool raytrace(Ray ray,
               RayTraceParameters params,
               const bool discard_backface,
@@ -139,7 +142,7 @@ bool raytrace(Ray ray,
 #endif
   const int max_steps = 255;
   for (int iter = 1; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
-    float stride = 1.0 + iter * params.trace_quality;
+    float stride = 1.0 + float(iter) * params.trace_quality;
     float lod = log2(stride) * lod_fac;
 
     prev_time = time;
@@ -212,7 +215,7 @@ bool raytrace_planar(Ray ray, RayTraceParameters params, int planar_ref_id, out 
   bool hit = false;
   const int max_steps = 255;
   for (int iter = 1; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
-    float stride = 1.0 + iter * params.trace_quality;
+    float stride = 1.0 + float(iter) * params.trace_quality;
 
     prev_time = time;
     prev_delta = delta;
