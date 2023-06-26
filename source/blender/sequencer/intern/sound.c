@@ -47,8 +47,6 @@ static bool sequencer_refresh_sound_length_recursive(Main *bmain, Scene *scene, 
         continue;
       }
 
-      float fac;
-
       const int left_handle = SEQ_time_left_handle_frame_get(scene, seq);
       const int right_handle = SEQ_time_right_handle_frame_get(scene, seq);
       SEQ_time_strip_length_set(

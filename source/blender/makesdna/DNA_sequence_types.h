@@ -128,13 +128,13 @@ typedef enum eSeqRetimingHandleFlag {
 } eSeqRetimingHandleFlag;
 
 typedef struct SeqRetimingHandle {
-  int strip_frame_index;
-  int flag; /* eSeqRetimingHandleFlag */
-  int _pad0;
+  double strip_frame_index; /* -> strip_position in seconds. */
+  int flag;                 /* eSeqRetimingHandleFlag */
+  int _pad0[2];
   float retiming_factor; /* Value between 0-1 mapped to original content range. */
 
-  int original_strip_frame_index; /* Used for transition handles only. */
-  float original_retiming_factor; /* Used for transition handles only. */
+  double original_strip_frame_index; /* Used for transition handles only. */
+  double original_retiming_factor;   /* Used for transition handles only. */
 } SeqRetimingHandle;
 
 typedef struct SequenceRuntime {

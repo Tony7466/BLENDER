@@ -336,7 +336,8 @@ static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
   }
 
   const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(scene, seq);
-  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(
+      scene, seq, frame_index);
 
   if (SEQ_retiming_handle_is_transition_type(handle)) {
     BKE_report(op->reports, RPT_ERROR, "Can not create handle inside of speed transition");

@@ -337,7 +337,7 @@ static void rna_Sequence_retiming_handle_remove(ID *id, SeqRetimingHandle *handl
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
 }
 
-static int rna_Sequence_retiming_handle_frame_get(PointerRNA *ptr)
+static float rna_Sequence_retiming_handle_frame_get(PointerRNA *ptr)
 {
   SeqRetimingHandle *handle = (SeqRetimingHandle *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
@@ -350,7 +350,7 @@ static int rna_Sequence_retiming_handle_frame_get(PointerRNA *ptr)
   return SEQ_time_start_frame_get(scene, seq) + handle->strip_frame_index;
 }
 
-static void rna_Sequence_retiming_handle_frame_set(PointerRNA *ptr, int value)
+static void rna_Sequence_retiming_handle_frame_set(PointerRNA *ptr, float value)
 {
   SeqRetimingHandle *handle = (SeqRetimingHandle *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
@@ -1624,12 +1624,12 @@ static void rna_def_retiming_handle(BlenderRNA *brna)
       "Handle mapped to particular frame that can be moved to change playback speed");
   RNA_def_struct_sdna(srna, "SeqRetimingHandle");
 
-  prop = RNA_def_property(srna, "timeline_frame", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, NULL, "strip_frame_index");
-  RNA_def_property_int_funcs(prop,
-                             "rna_Sequence_retiming_handle_frame_get",
-                             "rna_Sequence_retiming_handle_frame_set",
-                             NULL);
+  prop = RNA_def_property(srna, "timeline_frame", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "strip_frame_index");
+  RNA_def_property_float_funcs(prop,
+                               "rna_Sequence_retiming_handle_frame_get",
+                               "rna_Sequence_retiming_handle_frame_set",
+                               NULL);
   RNA_def_property_ui_text(prop, "Timeline Frame", "Position of retiming handle in timeline");
 
   FunctionRNA *func = RNA_def_function(srna, "remove", "rna_Sequence_retiming_handle_remove");

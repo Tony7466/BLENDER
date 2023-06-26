@@ -223,7 +223,8 @@ static void gizmo_retime_handle_add_draw(const bContext *C, wmGizmo *gz)
   const Scene *scene = CTX_data_scene(C);
   const Sequence *seq = active_seq_from_context(C);
   const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(scene, seq);
-  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(
+      scene, seq, frame_index);
 
   if (handle != nullptr && (SEQ_retiming_handle_is_transition_type(handle) ||
                             SEQ_retiming_handle_is_freeze_frame(handle)))
