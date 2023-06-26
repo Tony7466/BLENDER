@@ -1843,7 +1843,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     for (const int caller_propagation_index :
-         attribute_inferencing_.propagated_output_geometry_indices)
+         attribute_inferencing_.propagated_output_geometry_indices.index_range())
     {
       const int group_output_index =
           attribute_inferencing_.propagated_output_geometry_indices[caller_propagation_index];
@@ -3343,6 +3343,10 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
 {
   btree.ensure_topology_cache();
   if (btree.has_available_link_cycle()) {
+    return nullptr;
+  }
+  const bNodeTreeZones *tree_zones = btree.zones();
+  if (tree_zones == nullptr) {
     return nullptr;
   }
   if (const ID *id_orig = DEG_get_original_id(const_cast<ID *>(&btree.id))) {
