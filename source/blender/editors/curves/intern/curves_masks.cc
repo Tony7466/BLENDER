@@ -45,22 +45,9 @@ IndexMask random_mask(const bke::CurvesGeometry &curves,
 
   int64_t domain_size = curves.attributes().domain_size(selection_domain);
 
-  Array<bool> random(domain_size, false);
-  switch (selection_domain) {
-    case ATTR_DOMAIN_POINT: {
-      for (const int point_i : IndexRange(domain_size)) {
-        random[point_i] = next_bool_random_value();
-      }
-      break;
-    }
-    case ATTR_DOMAIN_CURVE: {
-      for (const int curve_i : IndexRange(domain_size)) {
-        random[curve_i] = next_bool_random_value();
-      }
-      break;
-    }
-    default:
-      BLI_assert_unreachable();
+  Array<bool> random(domain_size);
+  for (const int i : IndexRange(domain_size)) {
+    random[i] = next_bool_random_value();
   }
 
   return IndexMask::from_bools(random, memory);
