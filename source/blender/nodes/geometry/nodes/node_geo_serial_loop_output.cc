@@ -9,7 +9,7 @@
 #include "UI_resources.h"
 
 #include "NOD_add_node_search.hh"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_socket.h"
 
 #include "BLI_string_utils.h"

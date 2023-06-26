@@ -8,7 +8,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_socket.h"
 
 #include "node_geometry_util.hh"
