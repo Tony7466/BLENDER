@@ -183,6 +183,10 @@ class MeshPass : public PassMain {
                       bool clip,
                       ShaderCache &shaders);
 
+  PassMain::Sub &get_subpass(ObjectRef &ref,
+                             ::Image *image = nullptr,
+                             GPUSamplerState sampler_state = GPUSamplerState::default_sampler(),
+                             ImageUser *iuser = nullptr);
   void draw(ObjectRef &ref,
             GPUBatch *batch,
             ResourceHandle handle,

@@ -45,8 +45,12 @@ GPU_SHADER_CREATE_INFO(workbench_next_mesh)
     .additional_info("draw_modelmat_new_with_custom_id", "draw_resource_handle_new");
 
 GPU_SHADER_CREATE_INFO(workbench_next_curves)
-    /* TODO Adding workbench_next_mesh to avoid shader compilation errors */
-    .additional_info("workbench_next_mesh");
+    .sampler(0, ImageType::FLOAT_BUFFER, "ac", Frequency::BATCH)
+    .sampler(1, ImageType::FLOAT_BUFFER, "au", Frequency::BATCH)
+    .vertex_source("workbench_prepass_hair_vert.glsl")
+    .additional_info("draw_modelmat_new_with_custom_id",
+                     "draw_resource_handle_new",
+                     "draw_hair_new");
 
 GPU_SHADER_CREATE_INFO(workbench_next_pointcloud)
     /* TODO Adding workbench_next_mesh to avoid shader compilation errors */

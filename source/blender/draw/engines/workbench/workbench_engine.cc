@@ -15,6 +15,8 @@
 #include "ED_view3d.h"
 #include "GPU_capabilities.h"
 
+#include "draw_common.hh"
+
 #include "workbench_private.hh"
 
 #include "workbench_engine.h" /* Own include. */
@@ -184,11 +186,7 @@ class Instance {
       mesh_sync(manager, ob_ref, object_state);
     }
     else if (ob->type == OB_CURVES) {
-#if 0 /* TODO(@pragma37): */
-      DRWShadingGroup *grp = workbench_material_hair_setup(
-          wpd, ob, CURVES_MATERIAL_NR, object_state.color_type);
-      DRW_shgroup_curves_create_sub(ob, grp, nullptr);
-#endif
+      curves_sync(manager, ob_ref, object_state);
     }
     else if (ob->type == OB_VOLUME) {
       if (scene_state.shading.type != OB_WIRE) {
@@ -199,6 +197,49 @@ class Instance {
                                      get_material(ob_ref, object_state.color_type).base_color);
       }
     }
+  }
+
+  MeshPass &get_mesh_pass(ObjectRef &ob_ref, bool is_transparent)
+  {
+    const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
+
+    if (scene_state.xray_mode || is_transparent) {
+      if (in_front) {
+        return transparent_ps.accumulation_in_front_ps_;
+        if (scene_state.draw_transparent_depth) {
+          return transparent_depth_ps.in_front_ps_;
+        }
+      }
+      else {
+        return transparent_ps.accumulation_ps_;
+        if (scene_state.draw_transparent_depth) {
+          return transparent_depth_ps.main_ps_;
+        }
+      }
+    }
+    else {
+      if (in_front) {
+        return opaque_ps.gbuffer_in_front_ps_;
+      }
+      else {
+        return opaque_ps.gbuffer_ps_;
+      }
+    }
+  }
+
+  void draw_mesh(ObjectRef &ob_ref,
+                 Material &material,
+                 GPUBatch *batch,
+                 ResourceHandle handle,
+                 ::Image *image = nullptr,
+                 GPUSamplerState sampler_state = GPUSamplerState::default_sampler(),
+                 ImageUser *iuser = nullptr)
+  {
+    resources.material_buf.append(material);
+    int material_index = resources.material_buf.size() - 1;
+
+    get_mesh_pass(ob_ref, material.is_transparent())
+        .draw(ob_ref, batch, handle, material_index, image, sampler_state, iuser);
   }
 
   void mesh_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
@@ -280,44 +321,21 @@ class Instance {
     }
   }
 
-  void draw_mesh(ObjectRef &ob_ref,
-                 Material &material,
-                 GPUBatch *batch,
-                 ResourceHandle handle,
-                 ::Image *image = nullptr,
-                 GPUSamplerState sampler_state = GPUSamplerState::default_sampler(),
-                 ImageUser *iuser = nullptr)
+  void curves_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
   {
-    const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
-    resources.material_buf.append(material);
+    /* Skip frustum culling. */
+    ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
+
+    Material mat = get_material(ob_ref, object_state.color_type);
+    resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
 
-    auto draw = [&](MeshPass &pass) {
-      pass.draw(ob_ref, batch, handle, material_index, image, sampler_state, iuser);
-    };
+    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
+                              .get_subpass(ob_ref)
+                              .sub(ob_ref.object->id.name);
 
-    if (scene_state.xray_mode || material.is_transparent()) {
-      if (in_front) {
-        draw(transparent_ps.accumulation_in_front_ps_);
-        if (scene_state.draw_transparent_depth) {
-          draw(transparent_depth_ps.in_front_ps_);
-        }
-      }
-      else {
-        draw(transparent_ps.accumulation_ps_);
-        if (scene_state.draw_transparent_depth) {
-          draw(transparent_depth_ps.main_ps_);
-        }
-      }
-    }
-    else {
-      if (in_front) {
-        draw(opaque_ps.gbuffer_in_front_ps_);
-      }
-      else {
-        draw(opaque_ps.gbuffer_ps_);
-      }
-    }
+    GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object, nullptr);
+    pass.draw(batch, handle, material_index);
   }
 
   void draw(Manager &manager, GPUTexture *depth_tx, GPUTexture *color_tx)
