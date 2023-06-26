@@ -67,6 +67,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
+#include "BKE_node_tree_interface.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_type_conversions.hh"
@@ -678,6 +679,8 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     write_node_socket_interface(writer, sock);
   }
 
+  BKE_nodetree_interface_write(writer, &ntree->interface);
+
   BLO_write_pointer_array(writer, ntree->panels_num, ntree->panels_array);
   for (const bNodePanel *panel : ntree->panels()) {
     BLO_write_struct(writer, bNodePanel, panel);
@@ -898,6 +901,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     direct_link_node_socket(reader, sock);
   }
 
+  BKE_nodetree_interface_read_data(reader, &ntree->interface);
+
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     BLO_read_data_address(reader, &link->fromnode);
     BLO_read_data_address(reader, &link->tonode);
@@ -1002,6 +1007,8 @@ void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
   lib_link_node_sockets(reader, &ntree->id, &ntree->inputs);
   lib_link_node_sockets(reader, &ntree->id, &ntree->outputs);
 
+  BKE_nodetree_interface_read_lib(reader, &ntree->id, &ntree->interface);
+
   /* Set `node->typeinfo` pointers. This is done in lib linking, after the
    * first versioning that can change types still without functions that
    * update the `typeinfo` pointers. Versioning after lib linking needs
@@ -1098,6 +1105,8 @@ void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree)
 
   expand_node_sockets(expander, &ntree->inputs);
   expand_node_sockets(expander, &ntree->outputs);
+
+  BKE_nodetree_interface_read_expand(expander, &ntree->interface);
 }
 
 static void ntree_blend_read_expand(BlendExpander *expander, ID *id)

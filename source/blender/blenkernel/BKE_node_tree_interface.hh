@@ -97,3 +97,23 @@ template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
 }
 
 #endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* .blend file I/O */
+
+void BKE_nodetree_interface_write(struct BlendWriter *writer,
+                                  struct bNodeTreeInterface *interface);
+void BKE_nodetree_interface_read_data(struct BlendDataReader *reader,
+                                      struct bNodeTreeInterface *interface);
+void BKE_nodetree_interface_read_lib(struct BlendLibReader *reader,
+                                     struct ID *id,
+                                     struct bNodeTreeInterface *interface);
+void BKE_nodetree_interface_read_expand(struct BlendExpander *expander,
+                                        struct bNodeTreeInterface *interface);
+
+#ifdef __cplusplus
+}
+#endif

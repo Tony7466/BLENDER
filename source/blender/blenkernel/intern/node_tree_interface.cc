@@ -9,6 +9,8 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
+#include "BLO_read_write.h"
+
 #include "DNA_node_tree_interface_types.h"
 #include "DNA_node_types.h"
 
@@ -335,4 +337,89 @@ void bNodeTreeInterface::update_order()
 {
   update_panels_order();
   update_sockets_order();
+}
+
+static void interface_item_write(BlendWriter *writer, bNodeTreeInterfaceItem *item)
+{
+  switch (item->item_type) {
+    case NODE_INTERFACE_SOCKET: {
+      bNodeTreeInterfaceSocket *socket = reinterpret_cast<bNodeTreeInterfaceSocket *>(item);
+      BLO_write_struct(writer, bNodeTreeInterfaceSocket, socket);
+      BLO_write_string(writer, socket->name);
+      BLO_write_string(writer, socket->description);
+      BLO_write_string(writer, socket->data_type);
+      break;
+    }
+    case NODE_INTERFACE_PANEL: {
+      bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+      BLO_write_struct(writer, bNodeTreeInterfacePanel, panel);
+      BLO_write_string(writer, panel->name);
+      break;
+    }
+  }
+}
+
+static void interface_item_read_data(BlendDataReader *reader, bNodeTreeInterfaceItem *item)
+{
+  BLO_read_data_address(reader, &item->parent);
+
+  switch (item->item_type) {
+    case NODE_INTERFACE_SOCKET: {
+      bNodeTreeInterfaceSocket *socket = reinterpret_cast<bNodeTreeInterfaceSocket *>(item);
+      BLO_read_data_address(reader, &socket->name);
+      BLO_read_data_address(reader, &socket->description);
+      BLO_read_data_address(reader, &socket->data_type);
+      break;
+    }
+    case NODE_INTERFACE_PANEL: {
+      bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+      BLO_read_data_address(reader, &panel->name);
+      break;
+    }
+  }
+}
+
+static void interface_item_read_lib(BlendLibReader * /*reader*/,
+                                    ID * /*id*/,
+                                    bNodeTreeInterfaceItem * /*item*/)
+{
+}
+
+static void interface_item_read_expand(BlendExpander * /*reader*/,
+                                       bNodeTreeInterfaceItem * /*item*/)
+{
+}
+
+void BKE_nodetree_interface_write(BlendWriter *writer, bNodeTreeInterface *interface)
+{
+  BLO_write_struct(writer, bNodeTreeInterface, interface);
+
+  BLO_write_pointer_array(writer, interface->items_num, interface->items_array);
+  for (bNodeTreeInterfaceItem *item : interface->items()) {
+    interface_item_write(writer, item);
+  }
+}
+
+void BKE_nodetree_interface_read_data(BlendDataReader *reader, bNodeTreeInterface *interface)
+{
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&interface->items_array));
+
+  for (const int i : blender::IndexRange(interface->items_num)) {
+    BLO_read_data_address(reader, &interface->items_array[i]);
+    interface_item_read_data(reader, interface->items_array[i]);
+  }
+}
+
+void BKE_nodetree_interface_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterface *interface)
+{
+  for (bNodeTreeInterfaceItem *item : interface->items()) {
+    interface_item_read_lib(reader, id, item);
+  }
+}
+
+void BKE_nodetree_interface_read_expand(BlendExpander *expander, bNodeTreeInterface *interface)
+{
+  for (bNodeTreeInterfaceItem *item : interface->items()) {
+    interface_item_read_expand(expander, item);
+  }
 }
