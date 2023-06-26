@@ -2534,7 +2534,6 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   /* flags for inserting keyframes */
   flag = ANIM_get_keyframing_flags(scene, true);
 
-  /* try to insert keyframe using property retrieved from UI */
   if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
@@ -2701,7 +2700,6 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
 
-  /* try to insert keyframe using property retrieved from UI */
   if (!UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
@@ -2809,7 +2807,6 @@ static int clear_key_button_exec(bContext *C, wmOperator *op)
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
 
-  /* try to insert keyframe using property retrieved from UI */
   if (!UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
