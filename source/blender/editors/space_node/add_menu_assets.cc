@@ -95,7 +95,8 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C, const bNodeTre
     }
     return true;
   };
-  return asset::build_filtered_all_catalog_tree(C, type_filter, meta_data_filter);
+  const AssetLibraryReference library = asset_system::all_library_reference();
+  return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
 static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)

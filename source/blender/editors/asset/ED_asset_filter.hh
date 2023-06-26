@@ -17,6 +17,7 @@
 #include "AS_asset_catalog_tree.hh"
 
 struct AssetFilterSettings;
+struct AssetLibraryReference;
 struct bContext;
 
 namespace blender::asset_system {
@@ -47,6 +48,7 @@ struct AssetItemTree {
 };
 
 AssetItemTree build_filtered_all_catalog_tree(
+    const AssetLibraryReference &library_ref,
     const bContext &C,
     const AssetFilterSettings &filter_settings,
     FunctionRef<bool(const AssetMetaData &)> meta_data_filter = {});

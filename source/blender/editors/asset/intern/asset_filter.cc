@@ -52,6 +52,7 @@ bool ED_asset_filter_matches_asset(const AssetFilterSettings *filter,
 namespace blender::ed::asset {
 
 AssetItemTree build_filtered_all_catalog_tree(
+    const AssetLibraryReference &library_ref,
     const bContext &C,
     const AssetFilterSettings &filter_settings,
     const FunctionRef<bool(const AssetMetaData &)> meta_data_filter)
@@ -59,17 +60,14 @@ AssetItemTree build_filtered_all_catalog_tree(
   MultiValueMap<asset_system::AssetCatalogPath, asset_system::AssetRepresentation *>
       assets_per_path;
 
-  const AssetLibraryReference all_library_ref = asset_system::all_library_reference();
-
-  ED_assetlist_storage_fetch(&all_library_ref, &C);
-  ED_assetlist_ensure_previews_job(&all_library_ref, &C);
-
-  asset_system::AssetLibrary *all_library = get_all_library_once_available();
-  if (!all_library) {
+  ED_assetlist_storage_fetch(&library_ref, &C);
+  ED_assetlist_ensure_previews_job(&library_ref, &C);
+  asset_system::AssetLibrary *library = ED_assetlist_library_get_once_available(library_ref);
+  if (!library) {
     return {};
   }
 
-  ED_assetlist_iterate(all_library_ref, [&](asset_system::AssetRepresentation &asset) {
+  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
     if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
       return true;
     }
@@ -82,7 +80,7 @@ AssetItemTree build_filtered_all_catalog_tree(
       return true;
     }
 
-    const asset_system::AssetCatalog *catalog = all_library->catalog_service->find_catalog(
+    const asset_system::AssetCatalog *catalog = library->catalog_service->find_catalog(
         meta_data.catalog_id);
     if (catalog == nullptr) {
       return true;
@@ -93,12 +91,12 @@ AssetItemTree build_filtered_all_catalog_tree(
 
   /* Build an own tree without any of the catalogs that don't have proper node group assets. */
   asset_system::AssetCatalogTree catalogs_with_node_assets;
-  asset_system::AssetCatalogTree &catalog_tree = *all_library->catalog_service->get_catalog_tree();
+  asset_system::AssetCatalogTree &catalog_tree = *library->catalog_service->get_catalog_tree();
   catalog_tree.foreach_item([&](asset_system::AssetCatalogTreeItem &item) {
     if (assets_per_path.lookup(item.catalog_path()).is_empty()) {
       return;
     }
-    asset_system::AssetCatalog *catalog = all_library->catalog_service->find_catalog(
+    asset_system::AssetCatalog *catalog = library->catalog_service->find_catalog(
         item.get_catalog_id());
     if (catalog == nullptr) {
       return;
