@@ -1031,6 +1031,16 @@ static void shape_preset_trias_from_rect_checkmark(uiWidgetTrias *tria, const rc
   tria->index = g_shape_preset_checkmark_face;
 }
 
+static void shape_preset_trias_from_rect_dash(uiWidgetTrias *tria, const rcti *rect)
+{
+  tria->type = ROUNDBOX_TRIA_DASH;
+
+  /* Center position and size. */
+  tria->center[0] = rect->xmin + 0.5f * BLI_rcti_size_y(rect);
+  tria->center[1] = rect->ymin + 0.5f * BLI_rcti_size_y(rect);
+  tria->size = 0.5f * BLI_rcti_size_y(rect);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -4157,43 +4167,21 @@ static void widget_optionbut(uiWidgetColors *wcol,
 
   if (state->but_drawflag & UI_BUT_INDETERMINATE) {
     /* The same muted background color regardless of state. */
-    wcol->inner[0] = wcol->inner_sel[0];
-    wcol->inner[1] = wcol->inner_sel[1];
-    wcol->inner[2] = wcol->inner_sel[2];
-    wcol->inner[3] = 60;
+    color_blend_v4_v4v4(wcol->inner, wcol->inner, wcol->inner_sel, 0.75f);
   }
 
   const float rad = widget_radius_from_rcti(&recttemp, wcol);
   round_box_edges(&wtb, UI_CNR_ALL, &recttemp, rad);
 
   /* decoration */
-  if (state->but_flag & UI_SELECT && !(state->but_drawflag & UI_BUT_INDETERMINATE)) {
+  if (state->but_drawflag & UI_BUT_INDETERMINATE) {
+    shape_preset_trias_from_rect_dash(&wtb.tria1, &recttemp);
+  }
+  else if (state->but_flag & UI_SELECT) {
     shape_preset_trias_from_rect_checkmark(&wtb.tria1, &recttemp);
   }
 
   widgetbase_draw(&wtb, wcol);
-
-  if (state->but_drawflag & UI_BUT_INDETERMINATE) {
-
-    /* Flush the widget cache so we can draw on top. */
-    GPU_blend(GPU_BLEND_ALPHA);
-    UI_widgetbase_draw_cache_flush();
-
-    /* Draw a horizontal line instead of checkmark. */
-    const uint pos = GPU_vertformat_attr_add(
-        immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformColor3ubvAlpha(wcol->text, 192);
-
-    const float extent = (recttemp.ymax - recttemp.ymin);
-    const float w = extent * 0.6f;
-    const float h = MAX2(w / 6.0f, U.pixelsize);
-    const float x = recttemp.xmin + (extent * 0.2f);
-    const float y = recttemp.ymin + (extent * 0.5f) - (h * 0.5f);
-    immRectf(pos, x, y, x + w, y + h);
-    immUnbindProgram();
-    GPU_blend(GPU_BLEND_NONE);
-  }
 
   /* Text space - factor is really just eyeballed. */
   const float offset = delta * 0.9;

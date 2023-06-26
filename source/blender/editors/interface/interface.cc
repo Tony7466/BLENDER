@@ -2304,7 +2304,7 @@ int ui_but_is_pushed(uiBut *but)
 
 static void ui_but_update_select_flag(uiBut *but, double *value)
 {
-  switch (ui_but_is_pushed_ex(but, value) && (!(but->drawflag & UI_BUT_INDETERMINATE)))
+  switch (ui_but_is_pushed_ex(but, value))
   {
     case true:
       but->flag |= UI_SELECT;
@@ -3786,10 +3786,6 @@ static void ui_but_build_drawstr_int(uiBut *but, int value)
  */
 static void ui_but_update_ex(uiBut *but, const bool validate)
 {
-  if (but->type != UI_BTYPE_LABEL) {
-    but->drawflag |= UI_BUT_INDETERMINATE;
-  }
-
   /* if something changed in the button */
   double value = UI_BUT_VALUE_UNSET;
 
@@ -3797,6 +3793,10 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
   const char *UI_VALUE_INDETERMINATE_CHAR = "\u2014";
 
   ui_but_update_select_flag(but, &value);
+
+  if ((but->drawflag & UI_BUT_INDETERMINATE) && (but->flag & UI_SELECT)) {
+    but->flag &= ~UI_SELECT;
+  }
 
   /* only update soft range while not editing */
   if (!ui_but_is_editing(but)) {
