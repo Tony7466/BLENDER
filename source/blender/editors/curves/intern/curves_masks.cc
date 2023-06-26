@@ -12,7 +12,7 @@
 
 namespace blender::ed::curves {
 
-IndexMask end_points(bke::CurvesGeometry &curves,
+IndexMask end_points(const bke::CurvesGeometry &curves,
                      const int amount_start,
                      const int amount_end,
                      const bool inverted,

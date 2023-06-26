@@ -99,7 +99,7 @@ bool curves_poll(bContext *C);
  * \param amount_end: The amount of points to mask from the back.
  * \param inverted: Invert the resulting mask.
  */
-IndexMask end_points(bke::CurvesGeometry &curves,
+IndexMask end_points(const bke::CurvesGeometry &curves,
                      int amount_start,
                      int amount_end,
                      bool inverted,

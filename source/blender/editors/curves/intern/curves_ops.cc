@@ -949,16 +949,16 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   for (Curves *curves_id : unique_curves) {
     CurvesGeometry &curves = curves_id->geometry.wrap();
 
+    IndexMaskMemory memory;
+    const IndexMask inverted_end_points_mask = end_points(
+        curves, amount_start, amount_end, true, memory);
+
     const bool was_anything_selected = has_anything_selected(curves);
     bke::GSpanAttributeWriter selection = ensure_selection_attribute(
         curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
     if (!was_anything_selected) {
       fill_selection_true(selection.span);
     }
-
-    IndexMaskMemory memory;
-    IndexMask inverted_end_points_mask = end_points(
-        curves, amount_start, amount_end, true, memory);
 
     if (selection.span.type().is<bool>()) {
       index_mask::masked_fill(selection.span.typed<bool>(), false, inverted_end_points_mask);
