@@ -15,9 +15,10 @@ fi
 git clone https://gitlab.com/libeigen/eigen.git eigen.git
 if [ -d eigen.git ]
 then
+    rm -rf Eigen
     cd eigen.git
     # put here the version you want to use
-    git checkout 3.3.7
+    git checkout 3.4.0
     rm -f `find Eigen/ -type f -name "CMakeLists.txt"`
     cp -r Eigen ..
     cd ..
