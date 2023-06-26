@@ -525,6 +525,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
       }
     }
   }
+  BLI_assert_unreachable();
   return nullptr;
 }
 
