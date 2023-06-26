@@ -8,8 +8,8 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Transform ray to spot light local coordinate system. */
-ccl_device float3 spot_light_local_ray(const ccl_global KernelSpotLight *spot, const float3 ray)
+/* Transform vector to spot light's local coordinate system. */
+ccl_device float3 spot_light_to_local(const ccl_global KernelSpotLight *spot, const float3 ray)
 {
   return safe_normalize(make_float3(dot(ray, spot->scaled_axis_u),
                                     dot(ray, spot->scaled_axis_v),
@@ -97,7 +97,7 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
     /* Already computed when sampling the spread cone. */
   }
 
-  const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
+  const float3 local_ray = spot_light_to_local(&klight->spot, -ls->D);
   ls->eval_fac = klight->spot.eval_fac;
   if (d_sq > r_sq) {
     ls->eval_fac *= spot_light_attenuation(&klight->spot, local_ray);
@@ -147,7 +147,7 @@ ccl_device_forceinline void spot_light_mnee_sample_update(const ccl_global Kerne
 {
   ls->D = normalize_len(ls->P - P, &ls->t);
 
-  const float3 local_ray = spot_light_local_ray(&klight->spot, -ls->D);
+  const float3 local_ray = spot_light_to_local(&klight->spot, -ls->D);
   ls->eval_fac = klight->spot.eval_fac;
 
   const float radius = klight->spot.radius;
@@ -205,7 +205,7 @@ ccl_device_inline bool spot_light_sample_from_intersection(
 
   ls->pdf = spot_light_pdf(klight->spot.cos_half_spot_angle, d_sq, r_sq, N, ray_D, path_flag);
 
-  const float3 local_ray = spot_light_local_ray(&klight->spot, -ray_D);
+  const float3 local_ray = spot_light_to_local(&klight->spot, -ray_D);
   ls->eval_fac = klight->spot.eval_fac;
   if (d_sq > r_sq) {
     ls->eval_fac *= spot_light_attenuation(&klight->spot, local_ray);
