@@ -83,22 +83,20 @@ static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *p
   uiItemR(layout, ptr, "data_type", 0, "", ICON_NONE);
   switch (data.data_type) {
     case SOCK_FLOAT:
-      uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
+      break;
     case SOCK_VECTOR:
       uiItemR(layout, ptr, "factor_mode", 0, "", ICON_NONE);
       break;
     case SOCK_RGBA:
       uiItemR(layout, ptr, "blend_type", 0, "", ICON_NONE);
       uiItemR(layout, ptr, "clamp_result", 0, nullptr, ICON_NONE);
-      uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
       break;
     case SOCK_ROTATION:
-      uiItemR(layout, ptr, "rotation_mode", 0, "", ICON_NONE);
-      uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
       break;
     default:
       BLI_assert_unreachable();
   }
+  uiItemR(layout, ptr, "clamp_factor", 0, nullptr, ICON_NONE);
 }
 
 static void sh_node_mix_label(const bNodeTree * /*ntree*/,
@@ -106,29 +104,14 @@ static void sh_node_mix_label(const bNodeTree * /*ntree*/,
                               char *label,
                               int label_maxncpy)
 {
-  const auto get_enum_value_name = [&](const EnumPropertyItem *item,
-                                       const int value) -> const char * {
+  const NodeShaderMix &storage = node_storage(*node);
+  if (storage.data_type == SOCK_RGBA) {
     const char *name;
-    const bool incorrect_enum_value = !RNA_enum_name(item, value, &name);
-    if (incorrect_enum_value) {
+    bool enum_label = RNA_enum_name(rna_enum_ramp_blend_items, storage.blend_type, &name);
+    if (!enum_label) {
       name = "Unknown";
     }
-    return name;
-  };
-
-  const NodeShaderMix &storage = node_storage(*node);
-  switch (eNodeSocketDatatype(storage.data_type)) {
-    case SOCK_RGBA: {
-      const char *name = get_enum_value_name(rna_enum_ramp_blend_items, storage.blend_type);
-      BLI_strncpy_utf8(label, IFACE_(name), label_maxncpy);
-    }
-    case SOCK_ROTATION: {
-      const char *name = get_enum_value_name(rna_node_mix_rotations_type_items,
-                                             storage.rotation_mode);
-      BLI_strncpy_utf8(label, IFACE_(name), label_maxncpy);
-    }
-    default:
-      break;
+    BLI_strncpy_utf8(label, IFACE_(name), label_maxncpy);
   }
 }
 
@@ -198,6 +181,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
       break;
     case SOCK_RGBA:
       type = SOCK_RGBA;
+      break;
     case SOCK_ROTATION:
       type = SOCK_ROTATION;
       break;
@@ -244,15 +228,21 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
           weight);
       weight--;
     }
-    params.add_item(
-        IFACE_("Factor"),
-        [type](LinkSearchOpParams &params) {
-          bNode &node = params.add_node("ShaderNodeMix");
-          node_storage(node).data_type = type;
-          params.update_and_connect_available_socket(node, "Factor");
-        },
-        weight);
-    weight--;
+    if (type != SOCK_ROTATION) {
+      params.add_item(
+          IFACE_("Factor"),
+          [type](LinkSearchOpParams &params) {
+            bNode &node = params.add_node("ShaderNodeMix");
+            node_storage(node).data_type = type;
+            params.update_and_connect_available_socket(node, "Factor");
+          },
+          weight);
+      weight--;
+    }
+  }
+
+  if (type == SOCK_ROTATION) {
+    return;
   }
 
   if (type != SOCK_RGBA) {
@@ -283,7 +273,6 @@ static void node_mix_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeShaderMix *data = MEM_cnew<NodeShaderMix>(__func__);
   data->data_type = SOCK_FLOAT;
-  data->rotation_mode = bke::eNodeMixRotationMode::EULER;
   data->factor_mode = NODE_MIX_MODE_UNIFORM;
   data->clamp_factor = 1;
   data->clamp_result = 0;
@@ -460,64 +449,6 @@ class MixColorFunction : public mf::MultiFunction {
   }
 };
 
-class MixRotationFunction : public mf::MultiFunction {
- private:
-  const bool clamp_factor_;
-  const bke::eNodeMixRotationMode rotation_type_;
-
- public:
-  MixRotationFunction(const bool clamp_factor, const bke::eNodeMixRotationMode rotation_type)
-      : clamp_factor_(clamp_factor), rotation_type_(rotation_type)
-  {
-    static const mf::Signature signature = []() {
-      mf::Signature signature;
-      mf::SignatureBuilder builder{"MixRotation", signature};
-      builder.single_input<float>("Factor");
-      builder.single_input<math::Quaternion>("A");
-      builder.single_input<math::Quaternion>("B");
-      builder.single_output<math::Quaternion>("Result");
-      return signature;
-    }();
-    this->set_signature(&signature);
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    const VArray<float> &factor_varray = params.readonly_single_input<float>(0, "Factor");
-    const VArray<math::Quaternion> &rotation_a_varray =
-        params.readonly_single_input<math::Quaternion>(1, "A");
-    const VArray<math::Quaternion> &rotation_b_varray =
-        params.readonly_single_input<math::Quaternion>(2, "B");
-    MutableSpan<math::Quaternion> results = params.uninitialized_single_output<math::Quaternion>(
-        3, "Result");
-
-    Array<float> factors(mask.size());
-    factor_varray.materialize_compressed(mask, factors.as_mutable_span());
-    if (clamp_factor_) {
-      mask.foreach_index_optimized<int>([&](const int /*index*/, const int position) {
-        factors[position] = math::clamp(factors[position], 0.0f, 1.0f);
-      });
-    }
-
-    switch (rotation_type_) {
-      case bke::eNodeMixRotationMode::AXIS:
-        break;
-      case bke::eNodeMixRotationMode::EULER:
-        break;
-      case bke::eNodeMixRotationMode::QUATERNION:
-        mask.foreach_index_optimized<int>([&](const int index, const int position) {
-          const float factor = factors[position];
-          const math::Quaternion &rotation_a = rotation_a_varray[index];
-          const math::Quaternion &rotation_b = rotation_b_varray[index];
-          results[index] = math::interpolate(rotation_a, rotation_b, factor);
-        });
-        break;
-      default:
-        BLI_assert_unreachable();
-    }
-  }
-};
-
 static const mf::MultiFunction *get_multi_function(const bNode &node)
 {
   const NodeShaderMix *data = static_cast<NodeShaderMix *>(node.storage);
@@ -575,6 +506,26 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
         }
       }
     }
+    case SOCK_ROTATION: {
+      if (clamp_factor) {
+        static auto fn =
+            mf::build::SI3_SO<float, math::Quaternion, math::Quaternion, math::Quaternion>(
+                "Clamp Mix Rotation",
+                [](const float t, const math::Quaternion &a, const math::Quaternion &b) {
+                  return math::interpolate(a, b, math::clamp(t, 0.0f, 1.0f));
+                });
+        return &fn;
+      }
+      else {
+        static auto fn =
+            mf::build::SI3_SO<float, math::Quaternion, math::Quaternion, math::Quaternion>(
+                "Mix Rotation",
+                [](const float t, const math::Quaternion &a, const math::Quaternion &b) {
+                  return math::interpolate(a, b, t);
+                });
+        return &fn;
+      }
+    }
     default:
       BLI_assert_unreachable();
   }
@@ -589,10 +540,6 @@ static void sh_node_mix_build_multi_function(NodeMultiFunctionBuilder &builder)
     case SOCK_RGBA:
       builder.construct_and_set_matching_fn<MixColorFunction>(
           storage.clamp_factor, storage.clamp_result, storage.blend_type);
-      break;
-    case SOCK_ROTATION:
-      builder.construct_and_set_matching_fn<MixRotationFunction>(
-          storage.clamp_factor, bke::eNodeMixRotationMode(storage.rotation_mode));
       break;
     default:
       const mf::MultiFunction *fn = get_multi_function(builder.node());

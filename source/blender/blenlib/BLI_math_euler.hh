@@ -111,18 +111,4 @@ AxisAngleBase<T, AngleT> to_axis_angle(const Euler3Base<T> &euler)
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Euler slerp
- * \{ */
-
-template<typename T>
-[[nodiscard]] inline EulerXYZBase<T> interpolate(const EulerXYZBase<T> &a,
-                                                 const EulerXYZBase<T> &b,
-                                                 T t)
-{
-  return EulerXYZBase<T>();
-}
-
-/** \} */
-
 }  // namespace blender::math
