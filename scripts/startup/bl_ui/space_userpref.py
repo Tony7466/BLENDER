@@ -1372,7 +1372,7 @@ class USERPREF_PT_file_paths_script_directories(FilePathsPanel, Panel):
 
         row = path_col.row(align=True)  # Padding
         row.separator()
-        row.label(text="Path")
+        row.label(text="Path", text_ctxt=i18n_contexts.editor_filebrowser)
 
         row.operator("preferences.script_directory_add", text="", icon='ADD', emboss=False)
 
@@ -2431,7 +2431,7 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
                 ({"property": "enable_workbench_next"}, ("blender/blender/issues/101619", "#101619")),
-                ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/40", "Grease Pencil 3.0")),
+                ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
             ),
         )

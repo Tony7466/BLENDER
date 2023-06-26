@@ -266,7 +266,7 @@ static void rna_userdef_theme_update_icons(Main *bmain, Scene *scene, PointerRNA
 }
 
 /* also used by buffer swap switching */
-static void rna_userdef_dpi_update(Main *UNUSED(bmain),
+static void rna_userdef_gpu_update(Main *UNUSED(bmain),
                                    Scene *UNUSED(scene),
                                    PointerRNA *UNUSED(ptr))
 {
@@ -1191,7 +1191,7 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
   RNA_def_property_range(prop, 6.0f, 32.0f);
   RNA_def_property_ui_range(prop, 8.0f, 20.0f, 10.0f, 1);
   RNA_def_property_ui_text(prop, "Points", "Font size in points");
-  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "shadow", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 0, 5);
@@ -4346,6 +4346,7 @@ static void rna_def_userdef_pathcompare(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "path", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_ui_text(prop, "Path", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "use_glob", PROP_BOOLEAN, PROP_NONE);
@@ -4642,7 +4643,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
       prop, "UI Scale", "Changes the size of the fonts and widgets in the interface");
   RNA_def_property_range(prop, 0.25f, 4.0f);
   RNA_def_property_ui_range(prop, 0.5f, 2.0f, 1, 2);
-  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "ui_line_width", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, line_width);
@@ -4650,7 +4651,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
       prop,
       "UI Line Width",
       "Changes the thickness of widget outlines, lines and dots in the interface");
-  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   /* display */
   prop = RNA_def_property(srna, "show_tooltips", PROP_BOOLEAN, PROP_NONE);
@@ -5652,7 +5653,7 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "gpu_flag", USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE);
   RNA_def_property_ui_text(
       prop, "Overlay Smooth Wires", "Enable overlay smooth wires, reducing aliasing");
-  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "use_edit_mode_smooth_wire", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(
@@ -5661,13 +5662,13 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       prop,
       "Edit Mode Smooth Wires",
       "Enable edit mode edge smoothing, reducing aliasing (requires restart)");
-  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "use_region_overlap", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "uiflag2", USER_REGION_OVERLAP);
   RNA_def_property_ui_text(
       prop, "Region Overlap", "Display tool/property regions over the main region");
-  RNA_def_property_update(prop, 0, "rna_userdef_dpi_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "viewport_aa", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_userdef_viewport_aa_items);
@@ -6275,6 +6276,7 @@ static void rna_def_userdef_filepaths_asset_library(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "dirpath");
   RNA_def_property_ui_text(
       prop, "Path", "Path to a directory with .blend files to use as an asset library");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_userdef_asset_library_path_set");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 

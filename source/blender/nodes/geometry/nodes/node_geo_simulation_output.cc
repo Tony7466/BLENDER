@@ -169,10 +169,10 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
     if (bke::Instances *instances = geometry.get_instances_for_write()) {
       instances->attributes_for_write().remove_anonymous();
     }
-    geometry.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH,
-                                      GEO_COMPONENT_TYPE_CURVE,
-                                      GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                      GEO_COMPONENT_TYPE_INSTANCES});
+    geometry.keep_only_during_modify({GeometryComponent::Type::Mesh,
+                                      GeometryComponent::Type::Curve,
+                                      GeometryComponent::Type::PointCloud,
+                                      GeometryComponent::Type::Instance});
   });
 }
 
@@ -274,10 +274,10 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
 
   /* Make some attributes anonymous. */
   for (GeometrySet *geometry : geometries) {
-    for (const GeometryComponentType type : {GEO_COMPONENT_TYPE_MESH,
-                                             GEO_COMPONENT_TYPE_CURVE,
-                                             GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                             GEO_COMPONENT_TYPE_INSTANCES})
+    for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
+                                               GeometryComponent::Type::Curve,
+                                               GeometryComponent::Type::PointCloud,
+                                               GeometryComponent::Type::Instance})
     {
       if (!geometry->has(type)) {
         continue;
@@ -995,7 +995,7 @@ blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() con
   return blender::Span<NodeSimulationItem>(items, items_num);
 }
 
-blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_span_for_write()
+blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_span()
 {
   return blender::MutableSpan<NodeSimulationItem>(items, items_num);
 }
@@ -1047,6 +1047,7 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
                                               '.',
                                               unique_name,
                                               ARRAY_SIZE(unique_name));
+  MEM_delete(item->name);
   item->name = BLI_strdup(unique_name);
   return name_changed;
 }
@@ -1077,7 +1078,7 @@ void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                              const char *name)
 {
-  for (NodeSimulationItem &item : sim->items_span_for_write()) {
+  for (NodeSimulationItem &item : sim->items_span()) {
     if (STREQ(item.name, name)) {
       return &item;
     }
@@ -1164,7 +1165,7 @@ void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *si
 
 void NOD_geometry_simulation_output_clear_items(NodeGeometrySimulationOutput *sim)
 {
-  for (NodeSimulationItem &item : sim->items_span_for_write()) {
+  for (NodeSimulationItem &item : sim->items_span()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(sim->items);
