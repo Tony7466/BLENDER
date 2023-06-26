@@ -166,14 +166,6 @@ void apply_selection_operation_at_index(GMutableSpan selection, int index, eSele
 void select_all(bke::CurvesGeometry &curves, eAttrDomain selection_domain, int action);
 
 /**
- * Select the ends (front or back) of all the curves.
- *
- * \param amount_start: The amount of points to select from the front.
- * \param amount_end: The amount of points to select from the back.
- */
-void select_ends(bke::CurvesGeometry &curves, int amount_start, int amount_end);
-
-/**
  * Select the points of all curves that have at least one point selected.
  */
 void select_linked(bke::CurvesGeometry &curves);
