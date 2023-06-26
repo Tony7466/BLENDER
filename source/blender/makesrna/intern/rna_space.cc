@@ -3326,7 +3326,7 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
 static StructRNA *rna_viewer_path_elem_refine(PointerRNA *ptr)
 {
   ViewerPathElem *elem = static_cast<ViewerPathElem *>(ptr->data);
-  switch (elem->type) {
+  switch (ViewerPathElemType(elem->type)) {
     case VIEWER_PATH_ELEM_TYPE_ID:
       return &RNA_IDViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_MODIFIER:
@@ -3337,6 +3337,8 @@ static StructRNA *rna_viewer_path_elem_refine(PointerRNA *ptr)
       return &RNA_SimulationZoneViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
       return &RNA_ViewerNodeViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE:
+      return &RNA_SerialLoopZoneViewerPathElem;
   }
   BLI_assert_unreachable();
   return nullptr;

@@ -26,6 +26,25 @@ namespace blender::ed::viewer_path {
 using bke::bNodeTreeZone;
 using bke::bNodeTreeZones;
 
+static ViewerPathElem *viewer_path_elem_for_zone(const bNodeTreeZone &zone)
+{
+  switch (zone.output_node->type) {
+    case GEO_NODE_SIMULATION_OUTPUT: {
+      SimulationZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_simulation_zone();
+      node_elem->sim_output_node_id = zone.output_node->identifier;
+      return &node_elem->base;
+    }
+    case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+      SerialLoopZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_serial_loop_zone();
+      node_elem->loop_output_node_id = zone.output_node->identifier;
+      node_elem->iteration = 0;
+      return &node_elem->base;
+    }
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
 static void viewer_path_for_geometry_node(const SpaceNode &snode,
                                           const bNode &node,
                                           ViewerPath &r_dst)
@@ -83,20 +102,8 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
     const Vector<const bNodeTreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
         node->identifier);
     for (const bNodeTreeZone *zone : zone_stack) {
-      switch (zone->output_node->type) {
-        case GEO_NODE_SIMULATION_OUTPUT: {
-          SimulationZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_simulation_zone();
-          node_elem->sim_output_node_id = zone->output_node->identifier;
-          BLI_addtail(&r_dst.path, node_elem);
-          break;
-        }
-        case GEO_NODE_SERIAL_LOOP_OUTPUT: {
-          SerialLoopZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_serial_loop_zone();
-          node_elem->loop_output_node_id = zone->output_node->identifier;
-          BLI_addtail(&r_dst.path, node_elem);
-          break;
-        }
-      }
+      ViewerPathElem *zone_elem = viewer_path_elem_for_zone(*zone);
+      BLI_addtail(&r_dst.path, zone_elem);
     }
 
     GroupNodeViewerPathElem *node_elem = BKE_viewer_path_elem_new_group_node();
@@ -113,9 +120,8 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
   const Vector<const bNodeTreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
       node.identifier);
   for (const bNodeTreeZone *zone : zone_stack) {
-    SimulationZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_simulation_zone();
-    node_elem->sim_output_node_id = zone->output_node->identifier;
-    BLI_addtail(&r_dst.path, node_elem);
+    ViewerPathElem *zone_elem = viewer_path_elem_for_zone(*zone);
+    BLI_addtail(&r_dst.path, zone_elem);
   }
 
   ViewerNodeViewerPathElem *viewer_node_elem = BKE_viewer_path_elem_new_viewer_node();
