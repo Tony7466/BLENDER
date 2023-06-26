@@ -944,8 +944,10 @@ static bool fps_update_movie_strip_offsets(Sequence *seq, void *data)
   }
 
   float *fps_fac = (float *)data;
+  const float prev_offset = seq->startofs;
   seq->startofs *= *fps_fac;
   seq->endofs *= *fps_fac;
+  seq->start -= seq->startofs - prev_offset;
 
   seq->startofs = floorf(seq->startofs);
   seq->endofs = ceilf(seq->endofs);
