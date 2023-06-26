@@ -735,6 +735,7 @@ static const EnumPropertyItem snap_to_items[] = {
 #  include "DEG_depsgraph_build.h"
 #  include "DEG_depsgraph_query.h"
 
+#  include "SEQ_iterator.h"
 #  include "SEQ_relations.h"
 #  include "SEQ_sequencer.h"
 #  include "SEQ_sound.h"
@@ -934,6 +935,49 @@ static void rna_Scene_camera_update(Main *bmain, Scene *UNUSED(scene_unused), Po
   WM_windows_scene_data_sync(&wm->windows, scene);
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
   DEG_relations_tag_update(bmain);
+}
+
+static bool fps_update_movie_strip_offsets(Sequence *seq, void *data)
+{
+  if (seq->type != SEQ_TYPE_MOVIE) {
+    return true;
+  }
+
+  float *fps_fac = (float *)data;
+  seq->startofs *= *fps_fac;
+  seq->endofs *= *fps_fac;
+
+  return true;
+}
+
+static void rna_Scene_fps_base_set(PointerRNA *ptr, float value)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+  Editing *ed = SEQ_editing_get(scene);
+
+  const float old_fps = scene->r.frs_sec / scene->r.frs_sec_base;
+  const float new_fps = scene->r.frs_sec / value;
+  const float fps_fac = new_fps / old_fps;
+
+  if (ed) {
+    SEQ_for_each_callback(&ed->seqbase, fps_update_movie_strip_offsets, &fps_fac);
+  }
+  scene->r.frs_sec_base = value;
+}
+
+static void rna_Scene_fps_set(PointerRNA *ptr, int value)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+  Editing *ed = SEQ_editing_get(scene);
+
+  const float old_fps = scene->r.frs_sec / scene->r.frs_sec_base;
+  const float new_fps = value / scene->r.frs_sec_base;
+  const float fps_fac = new_fps / old_fps;
+
+  if (ed) {
+    SEQ_for_each_callback(&ed->seqbase, fps_update_movie_strip_offsets, &fps_fac);
+  }
+  scene->r.frs_sec = value;
 }
 
 static void rna_Scene_fps_update(Main *bmain, Scene *UNUSED(active_scene), PointerRNA *ptr)
@@ -6465,6 +6509,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_range(prop, 1, SHRT_MAX);
   RNA_def_property_ui_range(prop, 1, 240, 1, -1);
   RNA_def_property_ui_text(prop, "FPS", "Framerate, expressed in frames per second");
+  RNA_def_property_int_funcs(prop, NULL, "rna_Scene_fps_set", NULL);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_fps_update");
 
   prop = RNA_def_property(srna, "fps_base", PROP_FLOAT, PROP_NONE);
@@ -6474,6 +6519,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   /* Important to show at least 3 decimal points because multiple presets set this to 1.001. */
   RNA_def_property_ui_range(prop, 0.1f, 120.0f, 2, 3);
   RNA_def_property_ui_text(prop, "FPS Base", "Framerate base");
+  RNA_def_property_float_funcs(prop, NULL, "rna_Scene_fps_base_set", NULL);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_fps_update");
 
   /* frame mapping */
