@@ -531,6 +531,7 @@ static void find_tree_zone_hash_recursive(
       break;
     }
     case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+      /* Only show data from the first iteration for now. */
       const int iteration = 0;
       compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*zone.output_node,
                                                                       iteration);
@@ -575,6 +576,7 @@ Map<const bNodeTreeZone *, ComputeContextHash> GeoModifierLog::
           break;
         }
         case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+          /* Only show data from the first iteration for now. */
           const int loop_iteration = 0;
           compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*zone->output_node,
                                                                           loop_iteration);

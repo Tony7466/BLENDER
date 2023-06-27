@@ -1422,6 +1422,10 @@ struct ZoneBuildInfo {
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
+/**
+ * Describes what the individual inputs and outputs of the #LazyFunction mean that's created for
+ * the serial loop body.
+ */
 struct SerialLoopBodyIndices {
   IndexRange main_inputs;
   IndexRange main_outputs;
@@ -1505,17 +1509,22 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
     const NodeGeometrySerialLoopOutput &node_storage =
         *static_cast<const NodeGeometrySerialLoopOutput *>(loop_output_bnode_.storage);
 
+    /* Number of iterations to evaluate. */
     const int iterations = std::max<int>(
         0, params.get_input<ValueOrField<int>>(zone_info_.main_input_indices[0]).as_value());
+
     const int loop_items_num = node_storage.items_num;
-    Array<void *, 64> loop_item_values((iterations + 1) * loop_items_num, nullptr);
+    /* Gather data types of the loop items. */
     Array<const CPPType *> loop_item_types(loop_items_num);
     for (const int i : body_indices_.main_inputs.index_range()) {
       const int input_i = body_indices_.main_inputs[i];
       const CPPType &type = *body_fn_.inputs()[input_i].type;
       loop_item_types[i] = &type;
     }
+
     LinearAllocator<> allocator;
+    Array<void *, 64> loop_item_values((iterations + 1) * loop_items_num, nullptr);
+    /* Allocate memory for the looped values. */
     for (const int iteration : IndexRange(iterations)) {
       MutableSpan<void *> item_values = loop_item_values.as_mutable_span().slice(
           (iteration + 1) * loop_items_num, loop_items_num);
@@ -1526,6 +1535,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       }
     }
 
+    /* Load the inputs of the first loop iteration. */
     MutableSpan<void *> first_item_values = loop_item_values.as_mutable_span().take_front(
         loop_items_num);
     for (const int i : IndexRange(loop_items_num)) {
@@ -1536,6 +1546,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       first_item_values[i] = value;
     }
 
+    /* Load border link values. */
     const int border_links_num = zone_info_.border_link_input_indices.size();
     Array<void *> border_link_input_values(border_links_num, nullptr);
     for (const int i : IndexRange(border_links_num)) {
@@ -1545,9 +1556,9 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       border_link_input_values[i] = value;
     }
 
+    /* Load attribute sets that are needed to propagate attributes correctly in the loop. */
     Map<int, bke::AnonymousAttributeSet *> attribute_set_by_field_source_index;
     Map<int, bke::AnonymousAttributeSet *> attribute_set_by_caller_propagation_index;
-
     for (const auto item : zone_info_.attribute_set_input_by_field_source_index.items()) {
       bke::AnonymousAttributeSet &attribute_set = params.get_input<bke::AnonymousAttributeSet>(
           item.value);
@@ -1561,7 +1572,10 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
 
     const int body_inputs_num = body_fn_.inputs().size();
     const int body_outputs_num = body_fn_.outputs().size();
+    /* Evaluate the loop eagerly, one iteration at a time.
+     * This can be made more lazy as a separate step. */
     for (const int iteration : IndexRange(iterations)) {
+      /* Prepare all data that has to be passed into the evaluation of the loop body. */
       Array<GMutablePointer> inputs(body_inputs_num);
       Array<GMutablePointer> outputs(body_outputs_num);
       Array<std::optional<lf::ValueUsage>> input_usages(body_inputs_num);
@@ -1626,10 +1640,11 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
 
       lf::BasicParams body_params{
           body_fn_, inputs, outputs, input_usages, output_usages, set_outputs};
+      /* Actually evaluate the loop body. */
       body_fn_.execute(body_params, body_context);
 
+      /* Destruct values that are not needed after the evaluation anymore. */
       body_fn_.destruct_storage(body_storage);
-
       for (const int i : body_indices_.border_link_inputs) {
         inputs[i].destruct();
       }
@@ -1641,6 +1656,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       }
     }
 
+    /* Set outputs of the serial loop zone. */
     for (const int i : IndexRange(loop_items_num)) {
       void *computed_value = loop_item_values[iterations * loop_items_num + i];
       const int output_index = zone_info_.main_output_indices[i];
@@ -1655,6 +1671,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       params.set_output(zone_info_.border_link_input_usage_indices[i], true);
     }
 
+    /* Destruct remaining values. */
     for (const int iteration : IndexRange(iterations)) {
       MutableSpan<void *> item_values = loop_item_values.as_mutable_span().slice(
           (iteration + 1) * loop_items_num, loop_items_num);
@@ -1914,6 +1931,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
+  /**
+   * Builds a #LazyFunction for a serial loop zone. For that it first builds a lazy-function graph
+   * from all the nodes in the zone, and then wraps that in another lazy-function that implements
+   * the looping behavior.
+   */
   void build_serial_loop_zone_function(const bNodeTreeZone &zone)
   {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];

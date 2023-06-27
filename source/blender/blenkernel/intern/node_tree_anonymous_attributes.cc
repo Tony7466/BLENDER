@@ -102,7 +102,7 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
   if (ELEM(node.type, GEO_NODE_SERIAL_LOOP_INPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
     aal::RelationsInNode &relations = scope.construct<aal::RelationsInNode>();
     /* Add all possible relations for now. The inferencing algorithm has to be updated to detect a
-     * smaller set of relations. Add all relations should also be correct though. */
+     * smaller set of relations. Adding all relations is also correct though. */
     for (const bNodeSocket *socket : node.output_sockets()) {
       if (socket->type == SOCK_GEOMETRY) {
         for (const bNodeSocket *other_output : node.output_sockets()) {

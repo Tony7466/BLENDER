@@ -3187,6 +3187,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
   Array<Vector<float2>> bounds_by_zone(zones->zones.size());
   Array<bke::CurvesGeometry> fillet_curve_by_zone(zones->zones.size());
+  /* Bounding box area of zones is used to determine draw order. */
   Array<float> bounding_box_area_by_zone(zones->zones.size());
 
   for (const int zone_i : zones->zones.index_range()) {
