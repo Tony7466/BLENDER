@@ -123,8 +123,8 @@ void channel_draw_context_init(const struct bContext *C,
 
 struct View2D;
 void seq_rectf(const struct Scene *scene, struct Sequence *seq, struct rctf *rectf);
-struct Sequence *find_nearest_seq(struct Scene *scene,
-                                  struct View2D *v2d,
+struct Sequence *find_nearest_seq(const struct Scene *scene,
+                                  const struct View2D *v2d,
                                   int *hand,
                                   const int mval[2]);
 struct Sequence *find_neighboring_sequence(struct Scene *scene,
@@ -313,12 +313,12 @@ void SEQUENCER_OT_retiming_handle_move(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_handle_add(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_handle_remove(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(struct wmOperatorType *ot);
+void SEQUENCER_OT_retiming_handle_select(struct wmOperatorType *ot);
 
 /* sequencer_gizmo_retime.c */
 void SEQUENCER_GGT_gizmo_retime(struct wmGizmoGroupType *gzgt);
 
 /* sequencer_gizmo_retime_type.c */
-void GIZMO_GT_retime_handle_add(struct wmGizmoType *gzt);
 void GIZMO_GT_retime_handle(struct wmGizmoType *gzt);
 void GIZMO_GT_retime_remove(struct wmGizmoType *gzt);
 void GIZMO_GT_speed_set_remove(struct wmGizmoType *gzt);

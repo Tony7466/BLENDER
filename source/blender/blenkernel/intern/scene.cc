@@ -1083,6 +1083,9 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
     LISTBASE_FOREACH (SeqTimelineChannel *, channel, &ed->channels) {
       BLO_write_struct(writer, SeqTimelineChannel, channel);
     }
+    LISTBASE_FOREACH (SeqRetimingHandleSelection *, elem, &ed->retiming_selection) {
+      BLO_write_struct(writer, SeqRetimingHandleSelection, elem);
+    }
     /* new; meta stack too, even when its nasty restore code */
     LISTBASE_FOREACH (MetaStack *, ms, &ed->metastack) {
       BLO_write_struct(writer, MetaStack, ms);
@@ -1318,6 +1321,7 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     /* Read in sequence member data. */
     SEQ_blend_read(reader, &ed->seqbase);
     BLO_read_list(reader, &ed->channels);
+    BLO_read_list(reader, &ed->retiming_selection);
 
     /* link metastack, slight abuse of structs here,
      * have to restore pointer to internal part in struct */

@@ -27,6 +27,7 @@
 #include "SEQ_transform.h"
 
 #include "WM_api.h"
+#include "WM_toolsystem.h"
 
 #include "RNA_define.h"
 
@@ -70,6 +71,33 @@ static void retiming_handle_overlap(Scene *scene, Sequence *seq)
   SEQ_collection_free(dependant);
 }
 
+static SeqRetimingHandle *closest_retiming_handle_get(const bContext *C,
+                                                      const Sequence *seq,
+                                                      const float mouse_x)
+{
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+  int best_distance = INT_MAX;
+  SeqRetimingHandle *closest_handle = nullptr;
+
+  // XXX this is not needed. Gizmo has own threshold which must be met in order to execute op
+  // anyway.
+  const float distance_threshold = 10 / UI_view2d_scale_get_x(v2d);
+  const float mouse_x_view = UI_view2d_region_to_view_x(v2d, mouse_x);
+
+  for (int i = 0; i < SEQ_retiming_handles_count(seq); i++) {
+    SeqRetimingHandle *handle = seq->retiming_handles + i;
+    const int distance = round_fl_to_int(
+        fabsf(SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) - mouse_x_view));
+
+    if (distance < distance_threshold && distance < best_distance) {
+      best_distance = distance;
+      closest_handle = handle;
+    }
+  }
+  return closest_handle;
+}
+
 /*-------------------------------------------------------------------- */
 /** \name Retiming Reset
  * \{ */
@@ -108,66 +136,8 @@ void SEQUENCER_OT_retiming_reset(wmOperatorType *ot)
 /** \name Retiming Move Handle
  * \{ */
 
-static SeqRetimingHandle *closest_retiming_handle_get(const bContext *C,
-                                                      const Sequence *seq,
-                                                      const float mouse_x)
-{
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Scene *scene = CTX_data_scene(C);
-  int best_distance = INT_MAX;
-  SeqRetimingHandle *closest_handle = nullptr;
-
-  const float distance_threshold = UI_view2d_region_to_view_x(v2d, 10);
-  const float mouse_x_view = UI_view2d_region_to_view_x(v2d, mouse_x);
-
-  for (int i = 0; i < SEQ_retiming_handles_count(seq); i++) {
-    SeqRetimingHandle *handle = seq->retiming_handles + i;
-    const int distance = round_fl_to_int(
-        fabsf(SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) - mouse_x_view));
-
-    if (distance < distance_threshold && distance < best_distance) {
-      best_distance = distance;
-      closest_handle = handle;
-    }
-  }
-  return closest_handle;
-}
-
 static int sequencer_retiming_handle_move_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
-
-  int handle_index = 0;
-  if (RNA_struct_property_is_set(op->ptr, "handle_index")) {
-    handle_index = RNA_int_get(op->ptr, "handle_index");
-  }
-
-  /* Ensure retiming handle at left handle position. This way user gets more predictable result
-   * when strips have offsets. */
-  const int left_handle_frame = SEQ_time_left_handle_frame_get(scene, seq);
-  if (SEQ_retiming_add_handle(scene, seq, left_handle_frame) != nullptr) {
-    handle_index++; /* Advance index, because new handle was created. */
-  }
-
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-  SeqRetimingHandle *handle = nullptr;
-  if (RNA_struct_property_is_set(op->ptr, "handle_index")) {
-    BLI_assert(handle_index < handles.size());
-    handle = &handles[handle_index];
-  }
-  else {
-    handle = closest_retiming_handle_get(C, seq, event->mval[0]);
-  }
-
-  if (handle == nullptr) {
-    BKE_report(op->reports, RPT_ERROR, "No handle available");
-    return OPERATOR_CANCELLED;
-  }
-
-  RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
-
   /* Pass pressed modifier key to exec function. */
   op->customdata = POINTER_FROM_UINT(event->modifier & (KM_SHIFT | KM_CTRL));
 
@@ -322,10 +292,6 @@ void SEQUENCER_OT_retiming_handle_move(wmOperatorType *ot)
 static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
-
-  SEQ_retiming_data_ensure(scene, seq);
 
   float timeline_frame;
   if (RNA_struct_property_is_set(op->ptr, "timeline_frame")) {
@@ -335,19 +301,25 @@ static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
     timeline_frame = BKE_scene_frame_get(scene);
   }
 
-  const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
-  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
-
-  if (SEQ_retiming_handle_is_transition_type(handle)) {
-    BKE_report(op->reports, RPT_ERROR, "Can not create handle inside of speed transition");
-    return OPERATOR_CANCELLED;
-  }
-
   bool inserted = false;
-  const float end_frame = seq->start + SEQ_time_strip_length_get(scene, seq);
-  if (seq->start < timeline_frame && end_frame > timeline_frame) {
-    SEQ_retiming_add_handle(scene, seq, timeline_frame);
-    inserted = true;
+
+  SeqCollection *strips = selected_strips_from_context(C);
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    SEQ_retiming_data_ensure(scene, seq);
+    const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
+    const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+
+    if (SEQ_retiming_handle_is_transition_type(handle)) {
+      BKE_report(op->reports, RPT_WARNING, "Can not create handle inside of speed transition");
+      continue;
+    }
+
+    const float end_frame = seq->start + SEQ_time_strip_length_get(scene, seq);
+    if (seq->start < timeline_frame && end_frame > timeline_frame) {
+      SEQ_retiming_add_handle(scene, seq, timeline_frame);
+      inserted = true;
+    }
   }
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -386,50 +358,35 @@ void SEQUENCER_OT_retiming_handle_add(wmOperatorType *ot)
 /** \name Retiming Remove Handle
  * \{ */
 
-static int sequencer_retiming_handle_remove_exec(bContext *C, wmOperator *op)
+static int sequencer_retiming_handle_remove_exec(bContext *C, wmOperator * /* op */)
 {
   Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
 
-  SeqRetimingHandle *handle = (SeqRetimingHandle *)op->customdata;
-  SEQ_retiming_remove_handle(scene, seq, handle);
-  SEQ_relations_invalidate_cache_raw(scene, seq);
+  blender::Vector<Sequence *> strips_to_handle;
+
+  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+    strips_to_handle.append_non_duplicates(elem->seq);
+    elem->handle->flag |= DELETE_HANDLE;
+  }
+
+  for (Sequence *seq : strips_to_handle) {
+    for (int i = 0; i < seq->retiming_handle_num;) {
+      SeqRetimingHandle *handle = seq->retiming_handles + i;
+
+      if ((handle->flag & DELETE_HANDLE) == 0) {
+        i++;
+        continue;
+      }
+
+      SEQ_retiming_remove_handle(scene, seq, handle);
+    }
+    SEQ_relations_invalidate_cache_raw(scene, seq);
+  }
+
+  SEQ_retiming_selection_clear(SEQ_editing_get(scene));
+
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
-}
-
-static int sequencer_retiming_handle_remove_invoke(bContext *C,
-                                                   wmOperator *op,
-                                                   const wmEvent *event)
-{
-  const Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
-  const Sequence *seq = ed->act_seq;
-
-  if (seq == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-  SeqRetimingHandle *handle = nullptr;
-
-  if (RNA_struct_property_is_set(op->ptr, "handle_index")) {
-    const int handle_index = RNA_int_get(op->ptr, "handle_index");
-    BLI_assert(handle_index < handles.size());
-    handle = &handles[handle_index];
-  }
-  else {
-    handle = closest_retiming_handle_get(C, seq, event->mval[0]);
-  }
-
-  if (handle == nullptr) {
-    BKE_report(op->reports, RPT_ERROR, "No handle available");
-    return OPERATOR_CANCELLED;
-  }
-
-  op->customdata = handle;
-  return sequencer_retiming_handle_remove_exec(C, op);
 }
 
 void SEQUENCER_OT_retiming_handle_remove(wmOperatorType *ot)
@@ -440,7 +397,6 @@ void SEQUENCER_OT_retiming_handle_remove(wmOperatorType *ot)
   ot->idname = "SEQUENCER_OT_retiming_handle_remove";
 
   /* api callbacks */
-  ot->invoke = sequencer_retiming_handle_remove_invoke;
   ot->exec = sequencer_retiming_handle_remove_exec;
   ot->poll = retiming_poll;
 
@@ -550,6 +506,72 @@ void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
                        "New speed of retimed segment",
                        0.1f,
                        FLT_MAX);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Retiming Handle Select
+ * \{ */
+
+static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  int handle_clicked;
+  int mval[2] = {RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y")};
+
+  Sequence *seq = find_nearest_seq(scene, v2d, &handle_clicked, mval);
+
+  if (seq == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "No handle available");
+    return OPERATOR_CANCELLED;
+  }
+
+  SeqRetimingHandle *handle = closest_retiming_handle_get(C, seq, mval[0]);
+
+  if (handle == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "No handle available");
+    return OPERATOR_CANCELLED;
+  }
+
+  SEQ_retiming_selection_append(ed, seq, handle);
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
+}
+
+static int sequencer_retiming_handle_select_invoke(bContext *C,
+                                                   wmOperator *op,
+                                                   const wmEvent *event)
+{
+  RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
+  RNA_int_set(op->ptr, "mouse_y", event->mval[1]);
+  return sequencer_retiming_handle_select_exec(C, op);
+}
+
+void SEQUENCER_OT_retiming_handle_select(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select Retiming Handle";
+  ot->description = "Select Retiming Handle";
+  ot->idname = "SEQUENCER_OT_retiming_handle_select";
+
+  /* api callbacks */
+  ot->exec = sequencer_retiming_handle_select_exec;
+  ot->invoke = sequencer_retiming_handle_select_invoke;
+  ot->poll = retiming_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  PropertyRNA *prop = RNA_def_int(
+      ot->srna, "mouse_x", 0, INT_MIN, INT_MAX, "Mouse X", "", INT_MIN, INT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  prop = RNA_def_int(ot->srna, "mouse_y", 0, INT_MIN, INT_MAX, "Mouse Y", "", INT_MIN, INT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 /** \} */

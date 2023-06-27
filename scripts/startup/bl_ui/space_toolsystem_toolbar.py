@@ -2545,8 +2545,7 @@ class _defs_sequencer_generic:
             label="Retime",
             icon="ops.sequencer.retime",
             widget="SEQUENCER_GGT_gizmo_retime",
-            operator=None,
-            keymap=None,
+            keymap="Sequencer Tool: Retime",
             options={'KEYMAP_FALLBACK'},
         )
 

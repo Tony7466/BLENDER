@@ -500,7 +500,8 @@ SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
   }
 
   if (SEQ_retiming_handle_is_freeze_frame(handle) ||
-      SEQ_retiming_handle_is_freeze_frame(handle - 1)) {
+      SEQ_retiming_handle_is_freeze_frame(handle - 1))
+  {
     return nullptr;
   }
 
@@ -806,4 +807,74 @@ float SEQ_retiming_handle_timeline_frame_get(const Scene *scene,
 {
   return SEQ_time_start_frame_get(seq) +
          handle->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq);
+}
+
+void SEQ_retiming_selection_clear(Editing *ed)
+{
+  BLI_listbase_clear(&ed->retiming_selection);
+}
+
+void SEQ_retiming_selection_append(Editing *ed,
+                                   const Sequence *seq,
+                                   const SeqRetimingHandle *handle)
+{
+  SeqRetimingHandleSelection *elem = MEM_cnew<SeqRetimingHandleSelection>(__func__);
+  elem->index = SEQ_retiming_handle_index_get(seq, handle);
+  elem->strip_name = BLI_strdup(seq->name + 2);
+
+  /* Ensure unique elements in selection. */
+  LISTBASE_FOREACH (SeqRetimingHandleSelection *, existing, &ed->retiming_selection) {
+    if (elem->index == existing->index && STREQ(elem->strip_name, existing->strip_name)) {
+      return;
+    }
+  }
+
+  BLI_addtail(&ed->retiming_selection, elem);
+}
+
+void SEQ_retiming_selection_remove(Editing *ed,
+                                   const Sequence *seq,
+                                   const SeqRetimingHandle *handle)
+{
+  LISTBASE_FOREACH (SeqRetimingHandleSelection *, elem, &ed->retiming_selection) {
+    if (!STREQ(elem->strip_name, seq->name + 2)) {
+      continue;
+    }
+    if (elem->index != SEQ_retiming_handle_index_get(seq, handle)) {
+      continue;
+    }
+    BLI_remlink(&ed->retiming_selection, elem);
+    break;
+  }
+}
+
+static Sequence *seq_retiming_selection_strip_get(const Scene *scene,
+                                                  const SeqRetimingHandleSelection *elem)
+{
+  return SEQ_sequence_lookup_seq_by_name(scene, elem->strip_name);
+}
+
+blender::Vector<RetimingSelectionElem *> SEQ_retiming_selection_get(const Scene *scene)
+{
+  Editing *ed = SEQ_editing_get(scene);
+  blender::Vector<RetimingSelectionElem *> selection;
+
+  LISTBASE_FOREACH (SeqRetimingHandleSelection *, elem, &ed->retiming_selection) {
+    Sequence *seq = seq_retiming_selection_strip_get(scene, elem);
+    SeqRetimingHandle *handle;
+    if (seq == nullptr) {
+      continue;
+    }
+    if (seq->retiming_handle_num <= elem->index) {
+      continue;
+    }
+
+    handle = seq->retiming_handles + elem->index;
+
+    RetimingSelectionElem *selection_elem = MEM_cnew<RetimingSelectionElem>(__func__);
+    selection_elem->handle = handle;
+    selection_elem->seq = seq;
+    selection.append(selection_elem);
+  }
+  return selection;
 }

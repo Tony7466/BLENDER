@@ -8139,6 +8139,18 @@ def km_sequencer_editor_tool_blade(_params):
     )
 
 
+def km_sequencer_editor_tool_retime(_params):
+    return (
+        "Sequencer Tool: Retime",
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sequencer.retiming_handle_add", {"type": 'A', "value": 'PRESS', "shift": True}, None),
+            ("sequencer.retiming_handle_remove", {"type": 'DEL', "value": 'PRESS'},None),
+            ("sequencer.retiming_handle_remove", {"type": 'X', "value": 'PRESS'},None),
+
+        ]},
+    )
+
 # ------------------------------------------------------------------------------
 # Tool System (Sequencer, Preview)
 
@@ -8450,6 +8462,7 @@ def generate_keymaps(params=None):
         *(km_sequencer_editor_tool_generic_select_box(params, fallback=fallback) for fallback in (False, True)),
         km_sequencer_editor_tool_generic_cursor(params),
         km_sequencer_editor_tool_blade(params),
+        km_sequencer_editor_tool_retime(params),
         km_sequencer_editor_tool_sample(params),
         km_sequencer_editor_tool_move(params),
         km_sequencer_editor_tool_rotate(params),

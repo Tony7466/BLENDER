@@ -1057,7 +1057,7 @@ class SEQUENCER_MT_image_apply(Menu):
 class SEQUENCER_MT_context_menu(Menu):
     bl_label = "Sequencer Context Menu"
 
-    def draw(self, context):
+    def draw_generic(self, context):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_REGION_WIN'
@@ -1154,6 +1154,24 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.separator()
 
         layout.menu("SEQUENCER_MT_strip_lock_mute")
+
+    def draw_retime(self, context):
+        layout = self.layout
+
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        layout.operator("sequencer.retiming_handle_add")
+
+
+        layout.separator()
+
+    def draw(self, context):
+        tool = context.workspace.tools.from_space_sequencer('SEQUENCER')
+
+        if tool.idname == 'builtin.retime':
+            self.draw_retime(context)
+        else:
+            self.draw_generic(context)
 
 
 class SEQUENCER_MT_preview_context_menu(Menu):

@@ -137,6 +137,35 @@ static Sequence *active_seq_from_context(const bContext *C)
   return ed->act_seq;
 }
 
+blender::Vector<Sequence *> visible_strips_get(const bContext *C)
+{
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
+  blender::Vector<Sequence *> strips;
+
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(seq)) >
+        v2d->cur.xmax)
+    {
+      continue;
+    }
+    if (max_ii(SEQ_time_right_handle_frame_get(scene, seq),
+               SEQ_time_content_end_frame_get(scene, seq)) < v2d->cur.xmin)
+    {
+      continue;
+    }
+    if (seq->machine + 1.0f < v2d->cur.ymin) {
+      continue;
+    }
+    if (seq->machine > v2d->cur.ymax) {
+      continue;
+    }
+    strips.append(seq);
+  }
+  return strips;
+}
+
 static rctf strip_box_get(const bContext *C, const Sequence *seq)
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
@@ -161,163 +190,6 @@ static bool mouse_is_inside_box(const rctf *box, const int mval[2])
   return mval[0] >= box->xmin && mval[0] <= box->xmax && mval[1] >= box->ymin &&
          mval[1] <= box->ymax;
 }
-
-/* -------------------------------------------------------------------- */
-/** \name Retiming Add Handle Gizmo
- * \{ */
-
-typedef struct RetimeButtonGizmo {
-  wmGizmo gizmo;
-  int icon_id;
-  const Sequence *seq_under_mouse;
-  bool is_mouse_over_gizmo;
-} RetimeButtonGizmo;
-
-typedef struct ButtonDimensions {
-  float height;
-  float width;
-  float x;
-  float y;
-} ButtonDimensions;
-
-static ButtonDimensions button_dimensions_get(const bContext *C, const RetimeButtonGizmo *gizmo)
-{
-  const Scene *scene = CTX_data_scene(C);
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Sequence *seq = active_seq_from_context(C);
-
-  const float icon_height = UI_icon_get_height(gizmo->icon_id) * UI_SCALE_FAC;
-  const float icon_width = UI_icon_get_width(gizmo->icon_id) * UI_SCALE_FAC;
-  const float icon_x = UI_view2d_view_to_region_x(v2d, BKE_scene_frame_get(scene)) +
-                       icon_width / 2;
-  const float icon_y = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.5)) -
-                       icon_height / 2;
-  const ButtonDimensions dimensions = {icon_height, icon_width, icon_x, icon_y};
-  return dimensions;
-}
-
-static rctf button_box_get(const bContext *C, const RetimeButtonGizmo *gizmo)
-{
-  ButtonDimensions button_dimensions = button_dimensions_get(C, gizmo);
-
-  float x_range = button_dimensions.width;
-  float y_range = button_dimensions.height;
-
-  rctf rect;
-  rect.xmin = button_dimensions.x;
-  rect.xmax = button_dimensions.x + x_range;
-  rect.ymin = button_dimensions.y;
-  rect.ymax = button_dimensions.y + y_range;
-
-  return rect;
-}
-
-static void gizmo_retime_handle_add_draw(const bContext *C, wmGizmo *gz)
-{
-  RetimeButtonGizmo *gizmo = (RetimeButtonGizmo *)gz;
-
-  if (ED_screen_animation_playing(CTX_wm_manager(C))) {
-    return;
-  }
-
-  const Scene *scene = CTX_data_scene(C);
-  const Sequence *seq = active_seq_from_context(C);
-  const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
-  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
-
-  if (handle != nullptr && (SEQ_retiming_handle_is_transition_type(handle) ||
-                            SEQ_retiming_handle_is_freeze_frame(handle)))
-  {
-    return;
-  }
-
-  const ButtonDimensions button = button_dimensions_get(C, gizmo);
-  const rctf strip_box = strip_box_get(C, active_seq_from_context(C));
-  if (!BLI_rctf_isect_pt(&strip_box, button.x, button.y)) {
-    return;
-  }
-
-  wmOrtho2_region_pixelspace(CTX_wm_region(C));
-  GPU_blend(GPU_BLEND_ALPHA);
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  const float alpha = gizmo->is_mouse_over_gizmo ? 1.0f : 0.6f;
-
-  immUniformColor4f(0.2f, 0.2f, 0.2f, alpha);
-  imm_draw_circle_fill_2d(pos,
-                          button.x + button.width / 2,
-                          button.y + button.height / 2,
-                          button.width * RETIME_BUTTON_SIZE,
-                          32);
-  immUnbindProgram();
-
-  GPU_polygon_smooth(false);
-  UI_icon_draw_alpha(button.x, button.y, gizmo->icon_id, alpha);
-  GPU_polygon_smooth(true);
-
-  GPU_blend(GPU_BLEND_NONE);
-}
-
-static int gizmo_retime_handle_add_test_select(bContext *C, wmGizmo *gz, const int mval[2])
-{
-  RetimeButtonGizmo *gizmo = (RetimeButtonGizmo *)gz;
-  Sequence *seq = active_seq_from_context(C);
-
-  Sequence *mouse_over_seq = nullptr;
-  gizmo->is_mouse_over_gizmo = false;
-
-  /* Store strip under mouse cursor. */
-  const rctf strip_box = strip_box_get(C, seq);
-  if (mouse_is_inside_box(&strip_box, mval)) {
-    mouse_over_seq = seq;
-  }
-
-  if (gizmo->seq_under_mouse != mouse_over_seq) {
-    gizmo->seq_under_mouse = mouse_over_seq;
-    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
-  }
-
-  if (gizmo->seq_under_mouse == nullptr) {
-    return -1;
-  }
-
-  const rctf button_box = button_box_get(C, gizmo);
-  if (!mouse_is_inside_box(&button_box, mval)) {
-    return -1;
-  }
-
-  gizmo->is_mouse_over_gizmo = true;
-  const Scene *scene = CTX_data_scene(C);
-  wmGizmoOpElem *op_elem = WM_gizmo_operator_get(gz, 0);
-  RNA_int_set(&op_elem->ptr, "timeline_frame", BKE_scene_frame_get(scene));
-
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
-  return 0;
-}
-
-static void gizmo_retime_handle_add_setup(wmGizmo *gz)
-{
-  RetimeButtonGizmo *gizmo = (RetimeButtonGizmo *)gz;
-  gizmo->icon_id = ICON_ADD;
-}
-
-void GIZMO_GT_retime_handle_add(wmGizmoType *gzt)
-{
-  /* Identifiers. */
-  gzt->idname = "GIZMO_GT_retime_handle_add";
-
-  /* Api callbacks. */
-  gzt->setup = gizmo_retime_handle_add_setup;
-  gzt->draw = gizmo_retime_handle_add_draw;
-  gzt->test_select = gizmo_retime_handle_add_test_select;
-  gzt->struct_size = sizeof(RetimeButtonGizmo);
-
-  /* Currently only used for cursor display. */
-  RNA_def_boolean(gzt->srna, "show_drag", true, "Show Drag", "");
-}
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Retiming Move Handle Gizmo
@@ -365,7 +237,16 @@ static void retime_handle_draw(const bContext *C,
 
   float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-  if (seq == gizmo->mouse_over_seq && handle_x == gizmo->mouse_over_handle_x) {
+  bool is_selected = false;
+  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+    if (seq == elem->seq && handle == elem->handle) {
+      is_selected = true;
+      break;
+    }
+  }
+
+  if ((seq == gizmo->mouse_over_seq && handle_x == gizmo->mouse_over_handle_x) || is_selected) {
+
     bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
     bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
     bool handle_is_freeze_frame = SEQ_retiming_handle_is_freeze_frame(handle);
@@ -428,15 +309,16 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  Sequence *seq = active_seq_from_context(C);
-  SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
+  for (Sequence *seq : visible_strips_get(C)) {
+    SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
+    MutableSpan handles = SEQ_retiming_handles_get(seq);
 
-  for (const SeqRetimingHandle &handle : handles) {
-    if (&handle == handles.begin()) {
-      continue; /* Ignore first handle. */
+    for (const SeqRetimingHandle &handle : handles) {
+      if (&handle == handles.begin()) {
+        continue; /* Ignore first handle. */
+      }
+      retime_handle_draw(C, gizmo, pos, seq, &handle);
     }
-    retime_handle_draw(C, gizmo, pos, seq, &handle);
   }
 
   immUnbindProgram();
@@ -453,37 +335,37 @@ static int gizmo_retime_handle_test_select(bContext *C, wmGizmo *gz, const int m
 
   gizmo->mouse_over_seq = nullptr;
 
-  Sequence *seq = active_seq_from_context(C);
-  SEQ_retiming_data_ensure(scene, seq);
-  const SeqRetimingHandle *handle = mouse_over_handle_get(
-      scene, seq, UI_view2d_fromcontext(C), mval);
-  const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
+  for (Sequence *seq : visible_strips_get(C)) {
+    SEQ_retiming_data_ensure(scene, seq);
+    const SeqRetimingHandle *handle = mouse_over_handle_get(
+        scene, seq, UI_view2d_fromcontext(C), mval);
+    const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
 
-  if (handle == nullptr) {
-    return -1;
+    if (handle == nullptr) {
+      continue;
+    }
+
+    if (handle_x_get(scene, seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
+        handle_index == 0)
+    {
+      continue;
+    }
+
+    const View2D *v2d = UI_view2d_fromcontext(C);
+    rctf strip_box = strip_box_get(C, seq);
+    BLI_rctf_resize_x(&strip_box, BLI_rctf_size_x(&strip_box) + 2 * remove_gizmo_height_get(v2d));
+    if (!mouse_is_inside_box(&strip_box, mval)) {
+      continue;
+    }
+
+    gizmo->mouse_over_seq = seq;
+    gizmo->mouse_over_handle_x = handle_x_get(scene, seq, handle);
+
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+    return 0;
   }
 
-  if (handle_x_get(scene, seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
-      handle_index == 0)
-  {
-    return -1;
-  }
-
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  rctf strip_box = strip_box_get(C, seq);
-  BLI_rctf_resize_x(&strip_box, BLI_rctf_size_x(&strip_box) + 2 * remove_gizmo_height_get(v2d));
-  if (!mouse_is_inside_box(&strip_box, mval)) {
-    return -1;
-  }
-
-  gizmo->mouse_over_seq = seq;
-  gizmo->mouse_over_handle_x = handle_x_get(scene, seq, handle);
-
-  wmGizmoOpElem *op_elem = WM_gizmo_operator_get(gz, 0);
-  RNA_int_set(&op_elem->ptr, "handle_index", handle_index);
-
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-  return 0;
+  return -1;
 }
 
 static int gizmo_retime_handle_cursor_get(wmGizmo *gz)
@@ -526,43 +408,42 @@ static void gizmo_retime_remove_draw(const bContext * /* C */, wmGizmo * /* gz *
   /* Pass. */
 }
 
-static int gizmo_retime_remove_test_select(bContext *C, wmGizmo *gz, const int mval[2])
+static int gizmo_retime_remove_test_select(bContext *C, wmGizmo * /* gz */, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
-  Sequence *seq = active_seq_from_context(C);
 
-  SEQ_retiming_data_ensure(scene, seq);
-  const SeqRetimingHandle *handle = mouse_over_handle_get(
-      scene, seq, UI_view2d_fromcontext(C), mval);
-  const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
+  for (Sequence *seq : visible_strips_get(C)) {
+    SEQ_retiming_data_ensure(scene, seq);
+    const SeqRetimingHandle *handle = mouse_over_handle_get(
+        scene, seq, UI_view2d_fromcontext(C), mval);
+    const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
 
-  if (handle == nullptr) {
-    return -1;
+    if (handle == nullptr) {
+      continue;
+    }
+
+    if (handle_x_get(scene, seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
+        handle_index == 0)
+    {
+      continue; /* Ignore first handle. */
+    }
+
+    SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
+    if (handle == last_handle) {
+      continue; /* Last handle can not be removed. */
+    }
+
+    const View2D *v2d = UI_view2d_fromcontext(C);
+    rctf box = remove_box_get(C, seq);
+    BLI_rctf_resize_x(&box, BLI_rctf_size_x(&box) + 2 * remove_gizmo_height_get(v2d));
+    if (!mouse_is_inside_box(&box, mval)) {
+      continue;
+    }
+
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+    return 0;
   }
-
-  if (handle_x_get(scene, seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
-      handle_index == 0)
-  {
-    return -1; /* Ignore first handle. */
-  }
-
-  SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
-  if (handle == last_handle) {
-    return -1; /* Last handle can not be removed. */
-  }
-
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  rctf box = remove_box_get(C, seq);
-  BLI_rctf_resize_x(&box, BLI_rctf_size_x(&box) + 2 * remove_gizmo_height_get(v2d));
-  if (!mouse_is_inside_box(&box, mval)) {
-    return -1;
-  }
-
-  wmGizmoOpElem *op_elem = WM_gizmo_operator_get(gz, 0);
-  RNA_int_set(&op_elem->ptr, "handle_index", handle_index);
-
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-  return 0;
+  return -1;
 }
 
 static int gizmo_retime_remove_cursor_get(wmGizmo *gz)
@@ -689,12 +570,11 @@ static void gizmo_retime_speed_set_draw(const bContext *C, wmGizmo * /* gz */)
   GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  Sequence *seq = active_seq_from_context(C);
-  SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-
-  for (const SeqRetimingHandle &handle : handles) {
-    retime_speed_text_draw(C, seq, &handle);
+  for (Sequence *seq : visible_strips_get(C)) {
+    SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
+    for (const SeqRetimingHandle &handle : SEQ_retiming_handles_get(seq)) {
+      retime_speed_text_draw(C, seq, &handle);
+    }
   }
 
   immUnbindProgram();
@@ -710,38 +590,38 @@ static int gizmo_retime_speed_set_test_select(bContext *C, wmGizmo *gz, const in
   wmGizmoOpElem *op_elem = WM_gizmo_operator_get(gz, 0);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
-  Sequence *seq = active_seq_from_context(C);
-  SEQ_retiming_data_ensure(scene, seq);
+  for (Sequence *seq : visible_strips_get(C)) {
+    SEQ_retiming_data_ensure(scene, seq);
 
-  for (const SeqRetimingHandle &handle : SEQ_retiming_handles_get(seq)) {
-    if (SEQ_retiming_handle_is_transition_type(&handle)) {
-      continue;
+    for (const SeqRetimingHandle &handle : SEQ_retiming_handles_get(seq)) {
+      if (SEQ_retiming_handle_is_transition_type(&handle)) {
+        continue;
+      }
+
+      char label_str[40];
+      rctf label_rect;
+      size_t label_len = label_str_get(seq, &handle, sizeof(label_str), label_str);
+
+      if (!label_rect_get(C, seq, &handle, label_str, label_len, &label_rect)) {
+        continue;
+      }
+
+      label_rect_apply_mouseover_offset(v2d, &label_rect);
+
+      float mouse_view[2];
+      UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_view[0], &mouse_view[1]);
+
+      if (!BLI_rctf_isect_pt(&label_rect, mouse_view[0], mouse_view[1])) {
+        continue;
+      }
+
+      /* Store next handle in RNA property, since label rect uses first handle as reference. */
+      const int handle_index = SEQ_retiming_handle_index_get(seq, &handle) + 1;
+      RNA_int_set(&op_elem->ptr, "handle_index", handle_index);
+      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+      return 0;
     }
-
-    char label_str[40];
-    rctf label_rect;
-    size_t label_len = label_str_get(seq, &handle, sizeof(label_str), label_str);
-
-    if (!label_rect_get(C, seq, &handle, label_str, label_len, &label_rect)) {
-      continue;
-    }
-
-    label_rect_apply_mouseover_offset(v2d, &label_rect);
-
-    float mouse_view[2];
-    UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_view[0], &mouse_view[1]);
-
-    if (!BLI_rctf_isect_pt(&label_rect, mouse_view[0], mouse_view[1])) {
-      continue;
-    }
-
-    /* Store next handle in RNA property, since label rect uses first handle as reference. */
-    const int handle_index = SEQ_retiming_handle_index_get(seq, &handle) + 1;
-    RNA_int_set(&op_elem->ptr, "handle_index", handle_index);
-    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-    return 0;
   }
-
   return -1;
 }
 
