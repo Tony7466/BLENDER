@@ -18,7 +18,7 @@ set(DEFSRC
   rna_action.c
   rna_animation.c
   rna_animviz.c
-  rna_armature.c
+  rna_armature.cc
   rna_asset.c
   rna_attribute.c
   rna_boid.c
@@ -93,15 +93,15 @@ if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
   list(APPEND DEFSRC
+    rna_grease_pencil.cc
     rna_simulation.c
-    rna_grease_pencil.c
   )
 endif()
 
 set(APISRC
   rna_action_api.c
   rna_animation_api.c
-  rna_armature_api.c
+  rna_armature_api.cc
   rna_camera_api.c
   rna_curve_api.cc
   rna_fcurve_api.c
