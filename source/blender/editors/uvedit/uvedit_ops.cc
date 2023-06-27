@@ -35,6 +35,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_node.h"
+#include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -724,6 +725,7 @@ static int uv_remove_doubles_to_selected(bContext *C, wmOperator *op)
 
   blender::Vector<int> duplicates;
   blender::Vector<float *> mloopuv_arr;
+  blender::Set<std::pair<float, float>> uvs_set;
 
   int mloopuv_count = 0; /* Also used for *duplicates count. */
 
@@ -752,12 +754,19 @@ static int uv_remove_doubles_to_selected(bContext *C, wmOperator *op)
           duplicates.append(-1);
           mloopuv_arr.append(luv);
           mloopuv_count++;
+
+          std::pair<float, float> uv = {luv[0], luv[1]};
+          uvs_set.add(uv);
         }
       }
     }
 
     ob_mloopuv_max_idx[ob_index] = mloopuv_count - 1;
   }
+
+  /*Save initial unique uv count*/
+  int count_inital = uvs_set.size();
+  uvs_set.clear();
 
   BLI_kdtree_2d_balance(tree);
   int found_duplicates = BLI_kdtree_2d_calc_duplicates_fast(
@@ -809,13 +818,36 @@ static int uv_remove_doubles_to_selected(bContext *C, wmOperator *op)
     }
 
     for (ob_index = 0; ob_index < objects_len; ob_index++) {
+      BMIter iter, liter;
+      BMFace *efa;
+      BMLoop *l;
+      Object *obedit = objects[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
       if (changed[ob_index]) {
         Object *obedit = objects[ob_index];
         uvedit_live_unwrap_update(sima, scene, obedit);
         DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
         WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
       }
+
+      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
+        if (!uvedit_face_visible_test(scene, efa)) {
+          continue;
+        }
+
+        BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+          if (uvedit_uv_select_test(scene, l, offsets)) {
+            float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
+            std::pair<float, float> uv = {luv[0], luv[1]};
+            uvs_set.add(uv);
+          }
+        }
+      }
     }
+    int count = count_inital - uvs_set.size();
+    BKE_reportf(op->reports, RPT_INFO, "Merged %d UV(s)", count);
   }
 
   BLI_kdtree_2d_free(tree);
