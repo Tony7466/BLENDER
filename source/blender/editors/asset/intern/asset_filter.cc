@@ -89,7 +89,6 @@ AssetItemTree build_filtered_all_catalog_tree(
     return true;
   });
 
-  /* Build an own tree without any of the catalogs that don't have proper node group assets. */
   asset_system::AssetCatalogTree catalogs_with_node_assets;
   asset_system::AssetCatalogTree &catalog_tree = *library->catalog_service->get_catalog_tree();
   catalog_tree.foreach_item([&](asset_system::AssetCatalogTreeItem &item) {
