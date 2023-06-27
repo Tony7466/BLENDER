@@ -193,6 +193,11 @@ struct uiBut {
   uiButHandleFunc func = nullptr;
   void *func_arg1 = nullptr;
   void *func_arg2 = nullptr;
+  /**
+   * C++ version of #func above. Allows storing arbitrary data in a type safe way, no void
+   * pointer arguments.
+   */
+  std::function<void(bContext &)> apply_func;
 
   uiButHandleNFunc funcN = nullptr;
   void *func_argN = nullptr;
@@ -595,25 +600,25 @@ struct uiSafetyRct {
 
 void ui_fontscale(float *points, float aspect);
 
-void ui_block_to_region_fl(const ARegion *region, uiBlock *block, float *r_x, float *r_y);
-void ui_block_to_window_fl(const ARegion *region, uiBlock *block, float *x, float *y);
-void ui_block_to_window(const ARegion *region, uiBlock *block, int *x, int *y);
+void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y);
+void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
+void ui_block_to_window(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_block_to_region_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
 void ui_block_to_window_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
-float ui_block_to_window_scale(const ARegion *region, uiBlock *block);
+float ui_block_to_window_scale(const ARegion *region, const uiBlock *block);
 /**
  * For mouse cursor.
  */
-void ui_window_to_block_fl(const ARegion *region, uiBlock *block, float *x, float *y);
-void ui_window_to_block(const ARegion *region, uiBlock *block, int *x, int *y);
+void ui_window_to_block_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
+void ui_window_to_block(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_window_to_block_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
 void ui_window_to_region(const ARegion *region, int *x, int *y);
