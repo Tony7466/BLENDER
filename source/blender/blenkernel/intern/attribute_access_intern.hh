@@ -326,7 +326,7 @@ inline bool for_all(const void *owner,
 
 template<const ComponentAttributeProviders &providers>
 inline AttributeValidator lookup_validator(const void * /*owner*/,
-                                           const blender::bke::AttributeIDRef &attribute_id)
+                                           const AttributeIDRef &attribute_id)
 {
   if (attribute_id.is_anonymous()) {
     return {};
@@ -340,7 +340,7 @@ inline AttributeValidator lookup_validator(const void * /*owner*/,
 }
 
 template<const ComponentAttributeProviders &providers>
-inline bool contains(const void *owner, const blender::bke::AttributeIDRef &attribute_id)
+inline bool contains(const void *owner, const AttributeIDRef &attribute_id)
 {
   bool found = false;
   for_all<providers>(

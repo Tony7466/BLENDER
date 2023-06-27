@@ -43,6 +43,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_volume.h"
+#include "BKE_volume.hh"
 
 #include "BLT_translation.h"
 
@@ -497,6 +498,29 @@ struct VolumeGridVector : public std::list<VolumeGrid> {
   std::string error_msg;
   /* File Metadata. */
   openvdb::MetaMap::Ptr metadata;
+
+  /* --------------------------------------------------------------------
+   * Attributes.
+   */
+
+  blender::GVArray adapt_domain(const blender::GVArray &varray,
+                                eAttrDomain from,
+                                eAttrDomain to) const
+  {
+    if (from == to) {
+      return varray;
+    }
+    else {
+      return {};
+    }
+  }
+  template<typename T>
+  blender::VArray<T> adapt_domain(const blender::VArray<T> &varray,
+                                  eAttrDomain from,
+                                  eAttrDomain to) const
+  {
+    return this->adapt_domain(GVArray(varray), from, to).typed<T>();
+  }
 };
 #endif
 
@@ -581,7 +605,8 @@ static void volume_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   Volume *volume = reinterpret_cast<Volume *>(id);
 
   if (volume->packedfile != nullptr &&
-      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0) {
+      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0)
+  {
     return;
   }
 
@@ -1741,4 +1766,156 @@ openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
   return BKE_volume_grid_type_operation(grid_type, op);
 }
 
+blender::GVArray BKE_volume_adapt_domain(const Volume & /*volume*/,
+                                         const blender::GVArray &varray,
+                                         eAttrDomain from,
+                                         eAttrDomain to)
+{
+  if (from == to) {
+    return varray;
+  }
+  else {
+    return {};
+  }
+}
+
+namespace blender {
+
+struct CPPTypeForGridTypeOp {
+  const CPPType *result = nullptr;
+
+  template<typename GridType> void operator()(const GridType &grid)
+  {
+    result = &CPPType::get<GridType::ValueType>();
+  }
+};
+
+}  // namespace blender
+
+const blender::CPPType *BKE_volume_grid_cpp_type(const openvdb::GridBase &grid)
+{
+  blender::CPPTypeForGridTypeOp op;
+  if (grid.apply<SupportedVolumeVDBTypes>(op)) {
+    return op.result;
+  }
+  return nullptr;
+}
+
+const VolumeGrid *BKE_volume_grid_attribute_find_for_read(
+    const struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id)
+{
+  return BKE_volume_grid_find_for_read(volume, attribute_id.name().data());
+}
+
+VolumeGrid *BKE_volume_grid_attribute_find_for_write(
+    struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id)
+{
+  return BKE_volume_grid_find_for_write(volume, attribute_id.name().data());
+}
+
+VolumeGrid *BKE_volume_grid_attribute_add_vdb(Volume &volume,
+                                              const blender::bke::AttributeIDRef &attribute_id,
+                                              openvdb::GridBase::Ptr vdb_grid)
+{
+  return BKE_volume_grid_add_vdb(volume, attribute_id.name(), vdb_grid);
+}
+
 #endif
+
+namespace blender::bke {
+
+/* -------------------------------------------------------------------- */
+/** \name Constructors/Destructor
+ * \{ */
+
+// VolumeGeometry::VolumeGeometry() {}
+//
+///**
+// * \note Expects `dst` to be initialized, since the original attributes must be freed.
+// */
+// static void copy_volume_geometry(VolumeGeometry &dst, const VolumeGeometry &src)
+//{
+//  dst.tree
+//
+//      CustomData_free(&dst.point_data, dst.point_num);
+//  CustomData_free(&dst.curve_data, dst.curve_num);
+//  dst.point_num = src.point_num;
+//  dst.curve_num = src.curve_num;
+//  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
+//  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
+//
+//  implicit_sharing::copy_shared_pointer(src.curve_offsets,
+//                                        src.runtime->curve_offsets_sharing_info,
+//                                        &dst.curve_offsets,
+//                                        &dst.runtime->curve_offsets_sharing_info);
+//
+//  dst.tag_topology_changed();
+//
+//  /* Though type counts are a cache, they must be copied because they are calculated eagerly. */
+//  dst.runtime->type_counts = src.runtime->type_counts;
+//  dst.runtime->evaluated_offsets_cache = src.runtime->evaluated_offsets_cache;
+//  dst.runtime->nurbs_basis_cache = src.runtime->nurbs_basis_cache;
+//  dst.runtime->evaluated_position_cache = src.runtime->evaluated_position_cache;
+//  dst.runtime->bounds_cache = src.runtime->bounds_cache;
+//  dst.runtime->evaluated_length_cache = src.runtime->evaluated_length_cache;
+//  dst.runtime->evaluated_tangent_cache = src.runtime->evaluated_tangent_cache;
+//  dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
+//}
+//
+// VolumeGeometry::VolumeGeometry(const VolumeGeometry &other) : VolumeGeometry()
+//{
+//  copy_volume_geometry(*this, other);
+//}
+//
+// VolumeGeometry &VolumeGeometry::operator=(const VolumeGeometry &other)
+//{
+//  if (this != &other) {
+//    copy_volume_geometry(*this, other);
+//  }
+//  return *this;
+//}
+//
+///* The source should be empty, but in a valid state so that using it further will work. */
+// static void move_volume_geometry(VolumeGeometry &dst, VolumeGeometry &src)
+//{
+//   dst.point_num = src.point_num;
+//   std::swap(dst.point_data, src.point_data);
+//   CustomData_free(&src.point_data, src.point_num);
+//   src.point_num = 0;
+//
+//   dst.curve_num = src.curve_num;
+//   std::swap(dst.curve_data, src.curve_data);
+//   CustomData_free(&src.curve_data, src.curve_num);
+//   src.curve_num = 0;
+//
+//   std::swap(dst.curve_offsets, src.curve_offsets);
+//
+//   std::swap(dst.runtime, src.runtime);
+// }
+//
+// VolumeGeometry::VolumeGeometry(VolumeGeometry &&other) : VolumeGeometry()
+//{
+//   move_volume_geometry(*this, other);
+// }
+//
+// VolumeGeometry &VolumeGeometry::operator=(VolumeGeometry &&other)
+//{
+//   if (this != &other) {
+//     move_volume_geometry(*this, other);
+//   }
+//   return *this;
+// }
+//
+// VolumeGeometry::~VolumeGeometry()
+//{
+//   CustomData_free(&this->point_data, this->point_num);
+//   CustomData_free(&this->curve_data, this->curve_num);
+//   implicit_sharing::free_shared_data(&this->curve_offsets,
+//                                      &this->runtime->curve_offsets_sharing_info);
+//   MEM_delete(this->runtime);
+//   this->runtime = nullptr;
+// }
+
+/** \} */
+
+}  // namespace blender::bke

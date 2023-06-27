@@ -16,6 +16,7 @@ extern "C" {
 
 struct PackedFile;
 struct VolumeGridVector;
+// struct VolumeGrids;
 
 typedef struct Volume_Runtime {
   /** OpenVDB Grids. */
@@ -50,6 +51,10 @@ typedef struct VolumeRender {
   float step_size;
   float clipping;
 } VolumeRender;
+
+// typedef struct VolumeGeometry {
+//   struct VolumeGrids *grids;
+// } VolumeGeometry;
 
 typedef struct Volume {
   ID id;
@@ -93,6 +98,9 @@ typedef struct Volume {
 
   /* Factor for velocity vector for artistic control. */
   float velocity_scale;
+
+  /* Grid geometry */
+  // VolumeGeometry geometry;
 
   /* Draw Cache */
   void *batch_cache;

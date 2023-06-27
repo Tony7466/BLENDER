@@ -619,6 +619,9 @@ class VolumeComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
+
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
 
