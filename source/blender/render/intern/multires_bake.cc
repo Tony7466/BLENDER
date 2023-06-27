@@ -611,10 +611,6 @@ static void do_multires_bake(MultiresBakeRender *bkr,
     do_multires_bake_thread(&handles[0]);
   }
 
-  /* construct bake result */
-  result->height_min = handles[0].height_min;
-  result->height_max = handles[0].height_max;
-
   for (i = 1; i < tot_thread; i++) {
     result->height_min = min_ff(result->height_min, handles[i].height_min);
     result->height_max = max_ff(result->height_max, handles[i].height_max);
@@ -1474,6 +1470,10 @@ static void bake_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
 
   for (link = static_cast<LinkData *>(bkr->image.first); link; link = link->next) {
     Image *ima = (Image *)link->data;
+
+    /* construct bake result */
+    result->height_min = FLT_MAX;
+    result->height_max = -FLT_MAX;
 
     LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
       ImageUser iuser;
