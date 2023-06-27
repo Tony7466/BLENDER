@@ -782,6 +782,7 @@ class VariableState : NonCopyable, NonMovable {
         BLI_assert(value_typed->is_initialized);
         const bool condition = *static_cast<const bool *>(value_typed->data);
         Vector<int64_t> &indices = r_indices[condition];
+        indices.reserve(indices.size() + mask.size());
         mask.foreach_index([&](const int64_t i) { indices.append(i); });
         break;
       }
