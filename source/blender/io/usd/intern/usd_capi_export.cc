@@ -297,6 +297,7 @@ static void export_startjob(void *customdata,
     }
   }
 
+  register_export_hook_converters();
   call_export_hooks(usd_stage, data->depsgraph);
 
   usd_stage->GetRootLayer()->Save();

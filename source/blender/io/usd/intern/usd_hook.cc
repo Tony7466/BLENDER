@@ -6,6 +6,9 @@
 
 #include <boost/python/object.hpp>
 #include <boost/python/call_method.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/to_python_converter.hpp>
 
 #include "BLI_listbase.h"
 
@@ -57,6 +60,71 @@ USDHook *USD_find_hook_name(const char name[])
 
 namespace blender::io::usd {
 
+/* Convert PointerRNA to a PyObject*. */
+struct PointerRNAToPython {
+
+  static PyObject *convert(const PointerRNA &pRNA)
+  {
+    return pyrna_struct_CreatePyObject(const_cast<PointerRNA*>(&pRNA));
+  }
+
+};
+
+/* Encapsulate arguments for scene export. */
+struct USDSceneExportContext {
+
+  USDSceneExportContext() : depsgraph_ptr({})
+  {
+  }
+
+  USDSceneExportContext(pxr::UsdStageRefPtr in_stage, Depsgraph *depsgraph) : stage(in_stage)
+  {
+    RNA_pointer_create(NULL, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
+  }
+
+  pxr::UsdStageRefPtr GetStage()
+  {
+    return stage;
+  }
+
+  const PointerRNA &GetDepsgraph()
+  {
+    return depsgraph_ptr;
+  }
+
+  pxr::UsdStageRefPtr stage;
+  PointerRNA depsgraph_ptr;
+};
+
+void register_export_hook_converters()
+{
+  static bool registered = false;
+
+  /* No need to register if there are no hooks. */
+  if (g_usd_hooks.empty()) {
+    return;
+  }
+
+  if (registered) {
+    return;
+  }
+
+  registered = true;
+
+  PyGILState_STATE gilstate = PyGILState_Ensure();
+
+  python::to_python_converter<PointerRNA, PointerRNAToPython>();
+
+  python::class_<USDSceneExportContext>("USDSceneExportContext")
+      .def("GetStage", &USDSceneExportContext::GetStage)
+      .def("GetDepsgraph",
+           &USDSceneExportContext::GetDepsgraph,
+           python::return_value_policy<python::return_by_value>())
+    ;
+
+  PyGILState_Release(gilstate);
+}
+
 
 void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
 {
@@ -68,9 +136,6 @@ void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
 
   /* The chaser function name. */
   const char *func_name = "on_export";
-
-  PointerRNA depsgraph_ptr;
-  PyObject *depsgraph_obj = nullptr;
 
   /* Iterate over the hooks and invoke the hook function, if it's defined. */
   USDHookList::const_iterator hook_iter = g_usd_hooks.begin();
@@ -95,32 +160,17 @@ void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
         continue;
       }
 
-      if (!depsgraph_obj) {
-        RNA_pointer_create(NULL, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
-        depsgraph_obj = pyrna_struct_CreatePyObject(&depsgraph_ptr);
-      }
+      USDSceneExportContext hook_context(stage, depsgraph);
 
-      if (!depsgraph_obj) {
-        continue;
-      }
-
-      /* Invoke the chaser. Additional arguments could be
-       * provided, e.g., a dictionary mapping Blender objects
-       * to USD prims. */
       python::call_method<void>(hook_obj,
                                 func_name,
-                                python::object(python::handle<>(depsgraph_obj)),
-                                stage);
+                                hook_context);
     }
     catch (...) {
       if (PyErr_Occurred()) {
         PyErr_Print();
       }
     }
-  }
-
-  if (depsgraph_obj) {
-    Py_DECREF(depsgraph_obj);
   }
 
   PyGILState_Release(gilstate);
