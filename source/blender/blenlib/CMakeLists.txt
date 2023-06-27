@@ -320,6 +320,7 @@ set(SRC
   BLI_noise.hh
   BLI_offset_indices.hh
   BLI_offset_span.hh
+  BLI_ordered_edge.hh
   BLI_parameter_pack_utils.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
@@ -353,6 +354,7 @@ set(SRC
   BLI_string_ref.hh
   BLI_string_search.h
   BLI_string_utf8.h
+  BLI_string_utf8_symbols.h
   BLI_string_utils.h
   BLI_sub_frame.hh
   BLI_sys_types.h

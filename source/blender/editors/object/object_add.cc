@@ -56,8 +56,8 @@
 #include "BKE_displist.h"
 #include "BKE_duplilist.h"
 #include "BKE_effect.h"
-#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -379,9 +379,7 @@ float ED_object_new_primitive_matrix(bContext *C,
 /** \name Add Object Operator
  * \{ */
 
-static void view_align_update(struct Main * /*main*/,
-                              struct Scene * /*scene*/,
-                              struct PointerRNA *ptr)
+static void view_align_update(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   RNA_struct_idprops_unset(ptr, "rotation");
 }
@@ -1451,7 +1449,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
         md->source_type = LRT_SOURCE_SCENE;
       }
       /* Only created one layer and one material. */
-      strcpy(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
+      STRNCPY(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
       md->target_material = BKE_gpencil_material(ob, 1);
       if (md->target_material) {
         id_us_plus(&md->target_material->id);
@@ -1643,7 +1641,16 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
       greasepencil::create_stroke(*bmain, *object, mat, scene->r.cfra);
       break;
     }
-    case GP_MONKEY:
+    case GP_MONKEY: {
+      const float radius = RNA_float_get(op->ptr, "radius");
+      const float3 scale(radius);
+
+      float4x4 mat;
+      ED_object_new_primitive_matrix(C, object, loc, rot, scale, mat.ptr());
+
+      greasepencil::create_suzanne(*bmain, *object, mat, scene->r.cfra);
+      break;
+    }
     case GP_LRT_OBJECT:
     case GP_LRT_SCENE:
     case GP_LRT_COLLECTION: {
@@ -2636,7 +2643,8 @@ static void make_object_duplilist_real(bContext *C,
 
   Object *object_eval = DEG_get_evaluated_object(depsgraph, base->object);
 
-  if (!(base->object->transflag & OB_DUPLI) && !BKE_object_has_geometry_set_instances(object_eval))
+  if (!(base->object->transflag & OB_DUPLI) &&
+      !blender::bke::object_has_geometry_set_instances(*object_eval))
   {
     return;
   }
@@ -3237,7 +3245,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-      GeometrySet geometry;
+      bke::GeometrySet geometry;
       if (ob_eval->runtime.geometry_set_eval != nullptr) {
         geometry = *ob_eval->runtime.geometry_set_eval;
       }
@@ -3258,8 +3266,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           newob = ob;
         }
 
-        const CurveComponent &curve_component = *geometry.get_component_for_read<CurveComponent>();
-        const Curves *curves_eval = curve_component.get_for_read();
+        const Curves *curves_eval = geometry.get_curves_for_read();
         Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
 
         newob->data = new_curves;
@@ -3536,7 +3543,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-      GeometrySet geometry;
+      bke::GeometrySet geometry;
       if (ob_eval->runtime.geometry_set_eval != nullptr) {
         geometry = *ob_eval->runtime.geometry_set_eval;
       }

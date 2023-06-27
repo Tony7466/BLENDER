@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation.
+/* SPDX-FileCopyrightText: 2015 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -151,7 +151,7 @@ typedef struct tGP_BrushEditData {
 
   RNG *rng;
   /* Auto-masking strokes. */
-  struct GHash *automasking_strokes;
+  GHash *automasking_strokes;
   bool automasking_ready;
 
 } tGP_BrushEditData;

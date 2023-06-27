@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -228,6 +227,28 @@ class VolumePipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Capture Pipeline
+ *
+ * \{ */
+
+class CapturePipeline {
+ private:
+  Instance &inst_;
+
+  PassMain surface_ps_ = {"Capture.Surface"};
+
+ public:
+  CapturePipeline(Instance &inst) : inst_(inst){};
+
+  PassMain::Sub *surface_material_add(GPUMaterial *gpumat);
+
+  void sync();
+  void render(View &view);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility texture
  *
  * 64x64 2D array texture containing LUT tables and blue noises.
@@ -316,6 +337,7 @@ class PipelineModule {
   ForwardPipeline forward;
   ShadowPipeline shadow;
   VolumePipeline volume;
+  CapturePipeline capture;
 
   UtilityTexture utility_tx;
 
@@ -326,7 +348,8 @@ class PipelineModule {
         deferred(inst),
         forward(inst),
         shadow(inst),
-        volume(inst){};
+        volume(inst),
+        capture(inst){};
 
   void begin_sync()
   {
@@ -334,6 +357,7 @@ class PipelineModule {
     forward.sync();
     shadow.sync();
     volume.sync();
+    capture.sync();
   }
 
   void end_sync()
@@ -374,6 +398,8 @@ class PipelineModule {
         return volume.volume_material_add(gpumat);
       case MAT_PIPE_SHADOW:
         return shadow.surface_material_add(gpumat);
+      case MAT_PIPE_CAPTURE:
+        return capture.surface_material_add(gpumat);
     }
     return nullptr;
   }

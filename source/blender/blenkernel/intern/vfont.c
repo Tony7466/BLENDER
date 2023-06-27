@@ -121,7 +121,7 @@ static void vfont_foreach_path(ID *id, BPathForeachPathData *bpath_data)
     return;
   }
 
-  BKE_bpath_foreach_path_fixed_process(bpath_data, vfont->filepath);
+  BKE_bpath_foreach_path_fixed_process(bpath_data, vfont->filepath, sizeof(vfont->filepath));
 }
 
 static void vfont_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -186,7 +186,7 @@ IDTypeInfo IDType_ID_VF = {
 
 /***************************** VFont *******************************/
 
-void BKE_vfont_free_data(struct VFont *vfont)
+void BKE_vfont_free_data(VFont *vfont)
 {
   if (vfont->data) {
     if (vfont->data->characters) {
@@ -221,7 +221,7 @@ void BKE_vfont_free_data(struct VFont *vfont)
 static const void *builtin_font_data = NULL;
 static int builtin_font_size = 0;
 
-bool BKE_vfont_is_builtin(const struct VFont *vfont)
+bool BKE_vfont_is_builtin(const VFont *vfont)
 {
   return STREQ(vfont->filepath, FO_BUILTIN_NAME);
 }
@@ -295,7 +295,7 @@ static VFontData *vfont_get_data(VFont *vfont)
         /* DON'T DO THIS
          * missing file shouldn't modify path! - campbell */
 #if 0
-        strcpy(vfont->filepath, FO_BUILTIN_NAME);
+        STRNCPY(vfont->filepath, FO_BUILTIN_NAME);
 #endif
         pf = get_builtin_packedfile();
       }
@@ -364,7 +364,7 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
   return vfont;
 }
 
-VFont *BKE_vfont_load_exists_ex(struct Main *bmain, const char *filepath, bool *r_exists)
+VFont *BKE_vfont_load_exists_ex(Main *bmain, const char *filepath, bool *r_exists)
 {
   VFont *vfont;
   char filepath_abs[FILE_MAX], filepath_test[FILE_MAX];
@@ -392,7 +392,7 @@ VFont *BKE_vfont_load_exists_ex(struct Main *bmain, const char *filepath, bool *
   return BKE_vfont_load(bmain, filepath);
 }
 
-VFont *BKE_vfont_load_exists(struct Main *bmain, const char *filepath)
+VFont *BKE_vfont_load_exists(Main *bmain, const char *filepath)
 {
   return BKE_vfont_load_exists_ex(bmain, filepath, NULL);
 }
@@ -534,7 +534,7 @@ void BKE_vfont_build_char(Curve *cu,
       if (nu2 == NULL) {
         break;
       }
-      memcpy(nu2, nu1, sizeof(struct Nurb));
+      memcpy(nu2, nu1, sizeof(Nurb));
       nu2->resolu = cu->resolu;
       nu2->bp = NULL;
       nu2->knotsu = nu2->knotsv = NULL;
@@ -555,7 +555,7 @@ void BKE_vfont_build_char(Curve *cu,
         MEM_freeN(nu2);
         break;
       }
-      memcpy(bezt2, bezt1, u * sizeof(struct BezTriple));
+      memcpy(bezt2, bezt1, u * sizeof(BezTriple));
       nu2->bezt = bezt2;
 
       if (shear != 0.0f) {
@@ -792,9 +792,9 @@ static float vfont_descent(const VFontData *vfd)
 
 static bool vfont_to_curve(Object *ob,
                            Curve *cu,
-                           int mode,
+                           const eEditFontMode mode,
                            VFontToCurveIter *iter_data,
-                           struct VFontCursor_Params *cursor_params,
+                           VFontCursor_Params *cursor_params,
                            ListBase *r_nubase,
                            const char32_t **r_text,
                            int *r_text_len,
@@ -1501,6 +1501,12 @@ static bool vfont_to_curve(Object *ob,
         case FO_PAGEDOWN:
           lnr = ct->linenr + 10;
           break;
+          /* Ignored. */
+        case FO_EDIT:
+        case FO_CURS:
+        case FO_DUPLI:
+        case FO_SELCHANGE:
+          break;
       }
       cnr = ct->charnr;
       /* Seek for char with `lnr` & `cnr`. */
@@ -1826,7 +1832,7 @@ finally:
 
 bool BKE_vfont_to_curve_ex(Object *ob,
                            Curve *cu,
-                           int mode,
+                           const eEditFontMode mode,
                            ListBase *r_nubase,
                            const char32_t **r_text,
                            int *r_text_len,
@@ -1880,14 +1886,14 @@ int BKE_vfont_cursor_to_text_index(Object *ob, float cursor_location[2])
 #undef FONT_TO_CURVE_SCALE_ITERATIONS
 #undef FONT_TO_CURVE_SCALE_THRESHOLD
 
-bool BKE_vfont_to_curve_nubase(Object *ob, int mode, ListBase *r_nubase)
+bool BKE_vfont_to_curve_nubase(Object *ob, const eEditFontMode mode, ListBase *r_nubase)
 {
   BLI_assert(ob->type == OB_FONT);
 
   return BKE_vfont_to_curve_ex(ob, ob->data, mode, r_nubase, NULL, NULL, NULL, NULL);
 }
 
-bool BKE_vfont_to_curve(Object *ob, int mode)
+bool BKE_vfont_to_curve(Object *ob, const eEditFontMode mode)
 {
   Curve *cu = ob->data;
 

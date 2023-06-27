@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -17,7 +19,6 @@ class TreeElementIDMesh final : public TreeElementID {
   TreeElementIDMesh(TreeElement &legacy_te_, Mesh &mesh);
 
   void expand(SpaceOutliner &) const override;
-  bool isExpandValid() const override;
 
  private:
   void expandKey(SpaceOutliner &) const;

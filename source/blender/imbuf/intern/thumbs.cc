@@ -218,13 +218,29 @@ static bool uri_from_filename(const char *path, char *uri)
   char orig_uri[URI_MAX];
 
 #ifdef WIN32
-  if (strlen(path) < 2 && path[1] != ':') {
-    /* Not a correct absolute path. */
-    return 0;
+  bool path_is_unc = BLI_path_is_unc(path);
+  char path_unc_normalized[FILE_MAX];
+  if (path_is_unc) {
+    STRNCPY(path_unc_normalized, path);
+    BLI_path_normalize_unc(path_unc_normalized, sizeof(path_unc_normalized));
+    path = path_unc_normalized;
+    /* Assign again because a normalized UNC path may resolve to a drive letter. */
+    path_is_unc = BLI_path_is_unc(path);
   }
-  SNPRINTF(orig_uri, "file:///%s", path);
-  /* Always use an uppercase drive/volume letter in the URI. */
-  orig_uri[8] = char(toupper(orig_uri[8]));
+
+  if (path_is_unc) {
+    /* Skip over the `\\` prefix, it's not needed for a URI. */
+    SNPRINTF(orig_uri, "file://%s", BLI_path_slash_skip(path));
+  }
+  else if (BLI_path_is_win32_drive(path)) {
+    SNPRINTF(orig_uri, "file:///%s", path);
+    /* Always use an uppercase drive/volume letter in the URI. */
+    orig_uri[8] = char(toupper(orig_uri[8]));
+  }
+  else {
+    /* Not a correct absolute path with a drive letter or UNC prefix. */
+    return false;
+  }
   BLI_str_replace_char(orig_uri, '\\', '/');
 #else
   SNPRINTF(orig_uri, "file://%s", path);
@@ -369,7 +385,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
         }
       }
       else if (THB_SOURCE_MOVIE == source) {
-        struct anim *anim = nullptr;
+        anim *anim = nullptr;
         anim = IMB_open_anim(file_path, IB_rect | IB_metadata, 0, nullptr);
         if (anim != nullptr) {
           img = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);

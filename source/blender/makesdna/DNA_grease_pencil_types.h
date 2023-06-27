@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation.
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
+#  include "BLI_bounds_types.hh"
 #  include "BLI_function_ref.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_vector_types.hh"
@@ -22,6 +23,7 @@ class GreasePencilRuntime;
 class GreasePencilDrawingRuntime;
 namespace greasepencil {
 class DrawingRuntime;
+class Drawing;
 class TreeNode;
 class Layer;
 class LayerRuntime;
@@ -106,16 +108,8 @@ typedef struct GreasePencilDrawing {
    */
   GreasePencilDrawingRuntimeHandle *runtime;
 #ifdef __cplusplus
-  /**
-   * The triangles for all the fills in the geometry.
-   */
-  blender::Span<blender::uint3> triangles() const;
-  void tag_positions_changed();
-  /**
-   * A buffer for a single stroke while drawing.
-   */
-  blender::Span<blender::bke::greasepencil::StrokePoint> stroke_buffer() const;
-  bool has_stroke_buffer() const;
+  blender::bke::greasepencil::Drawing &wrap();
+  const blender::bke::greasepencil::Drawing &wrap() const;
 #endif
 } GreasePencilDrawing;
 
@@ -170,7 +164,7 @@ typedef struct GreasePencilLayerFramesMapStorage {
   /* Array of `frames` values (order matches the keys array). */
   GreasePencilFrame *values;
   /* Size of the map (number of key-value pairs). */
-  int size;
+  int num;
   /* Flag for the status of the storage. */
   int flag;
 } GreasePencilLayerFramesMapStorage;
@@ -394,7 +388,7 @@ typedef struct GreasePencil {
    * is done by the layers. See the `Layer` class in `BKE_grease_pencil.hh`.
    */
   GreasePencilDrawingBase **drawing_array;
-  int drawing_array_size;
+  int drawing_array_num;
   char _pad[4];
 
   /* Root group of the layer tree. */
@@ -410,7 +404,7 @@ typedef struct GreasePencil {
    * An array of materials.
    */
   struct Material **material_array;
-  short material_array_size;
+  short material_array_num;
   char _pad2[2];
   /**
    * Global flag on the data-block.
@@ -442,20 +436,44 @@ typedef struct GreasePencil {
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
 
+  blender::Span<const blender::bke::greasepencil::TreeNode *> nodes() const;
+
   bool has_active_layer() const;
+  const blender::bke::greasepencil::Layer *get_active_layer() const;
+  blender::bke::greasepencil::Layer *get_active_layer_for_write();
+  void set_active_layer(const blender::bke::greasepencil::Layer *layer);
+
   blender::bke::greasepencil::Layer &add_layer(blender::bke::greasepencil::LayerGroup &group,
                                                blender::StringRefNull name);
+  blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
+  blender::bke::greasepencil::Layer &add_layer_after(blender::bke::greasepencil::LayerGroup &group,
+                                                     blender::bke::greasepencil::Layer *layer,
+                                                     blender::StringRefNull name);
+
+  blender::bke::greasepencil::LayerGroup &add_layer_group(
+      blender::bke::greasepencil::LayerGroup &group, blender::StringRefNull name);
+  blender::bke::greasepencil::LayerGroup &add_layer_group(blender::StringRefNull name);
+  blender::bke::greasepencil::LayerGroup &add_layer_group_after(
+      blender::bke::greasepencil::LayerGroup &group,
+      blender::bke::greasepencil::TreeNode *node,
+      blender::StringRefNull name);
 
   const blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name) const;
   blender::bke::greasepencil::Layer *find_layer_by_name(blender::StringRefNull name);
 
-  void add_empty_drawings(int add_size);
+  void rename_layer(blender::bke::greasepencil::Layer &layer, blender::StringRefNull new_name);
+
+  void remove_layer(blender::bke::greasepencil::Layer &layer);
+
+  void add_empty_drawings(int add_num);
   void remove_drawing(int index);
 
-  void foreach_visible_drawing(int frame,
-                               blender::FunctionRef<void(GreasePencilDrawing &)> function);
+  void foreach_visible_drawing(
+      int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+  void foreach_editable_drawing(
+      int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
 
-  bool bounds_min_max(blender::float3 &min, blender::float3 &max) const;
+  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
   /* For debugging purposes. */
   void print_layer_tree();

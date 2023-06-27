@@ -264,7 +264,7 @@ void output_renderpass_color(int id, vec4 color)
     imageStore(rp_color_img, ivec3(texel, id), color);
   }
 #endif
-};
+}
 
 void output_renderpass_value(int id, float value)
 {
@@ -274,7 +274,7 @@ void output_renderpass_value(int id, float value)
     imageStore(rp_value_img, ivec3(texel, id), vec4(value));
   }
 #endif
-};
+}
 
 void clear_aovs()
 {

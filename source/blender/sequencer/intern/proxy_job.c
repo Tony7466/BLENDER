@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -92,7 +92,7 @@ ProxyJob *ED_seq_proxy_job_get(const bContext *C, wmJob *wm_job)
   return pj;
 }
 
-struct wmJob *ED_seq_proxy_wm_job_get(const bContext *C)
+wmJob *ED_seq_proxy_wm_job_get(const bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),

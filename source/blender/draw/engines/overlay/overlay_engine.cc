@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -181,6 +181,9 @@ static void OVERLAY_cache_init(void *vedata)
     case CTX_MODE_EDIT_LATTICE:
       OVERLAY_edit_lattice_cache_init(data);
       break;
+    case CTX_MODE_EDIT_GREASE_PENCIL:
+      OVERLAY_edit_grease_pencil_cache_init(data);
+      break;
     case CTX_MODE_PARTICLE:
       OVERLAY_edit_particle_cache_init(data);
       break;
@@ -193,12 +196,14 @@ static void OVERLAY_cache_init(void *vedata)
     case CTX_MODE_SCULPT:
       OVERLAY_sculpt_cache_init(data);
       break;
-    case CTX_MODE_EDIT_GPENCIL:
+    case CTX_MODE_EDIT_GPENCIL_LEGACY:
+      OVERLAY_edit_gpencil_legacy_cache_init(data);
+      break;
     case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_SCULPT_GPENCIL:
     case CTX_MODE_VERTEX_GPENCIL:
     case CTX_MODE_WEIGHT_GPENCIL:
-      OVERLAY_edit_gpencil_cache_init(data);
+      OVERLAY_edit_gpencil_legacy_cache_init(data);
       break;
     case CTX_MODE_EDIT_CURVES:
       OVERLAY_edit_curves_cache_init(data);
@@ -220,7 +225,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_mode_transfer_cache_init(data);
   OVERLAY_extra_cache_init(data);
   OVERLAY_facing_cache_init(data);
-  OVERLAY_gpencil_cache_init(data);
+  OVERLAY_gpencil_legacy_cache_init(data);
   OVERLAY_grid_cache_init(data);
   OVERLAY_image_cache_init(data);
   OVERLAY_metaball_cache_init(data);
@@ -279,6 +284,8 @@ static bool overlay_object_is_edit_mode(const OVERLAY_PrivateData *pd, const Obj
       case OB_VOLUME:
         /* No edit mode yet. */
         return false;
+      case OB_GREASE_PENCIL:
+        return pd->ctx_mode == CTX_MODE_EDIT_GREASE_PENCIL;
     }
   }
   return false;
@@ -430,6 +437,11 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       case OB_CURVES:
         OVERLAY_edit_curves_cache_populate(data, ob);
         break;
+      case OB_GREASE_PENCIL:
+        if (U.experimental.use_grease_pencil_version3) {
+          OVERLAY_edit_grease_pencil_cache_populate(data, ob);
+        }
+        break;
     }
   }
   else if (in_pose_mode && draw_bones) {
@@ -478,7 +490,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         }
         break;
       case OB_GPENCIL_LEGACY:
-        OVERLAY_gpencil_cache_populate(data, ob);
+        OVERLAY_gpencil_legacy_cache_populate(data, ob);
         break;
     }
   }
@@ -650,7 +662,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_armature_draw(data);
   OVERLAY_particle_draw(data);
   OVERLAY_metaball_draw(data);
-  OVERLAY_gpencil_draw(data);
+  OVERLAY_gpencil_legacy_draw(data);
   OVERLAY_extra_draw(data);
   if (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE) {
     OVERLAY_viewer_attribute_draw(data);
@@ -717,17 +729,22 @@ static void OVERLAY_draw_scene(void *vedata)
     case CTX_MODE_PARTICLE:
       OVERLAY_edit_particle_draw(data);
       break;
-    case CTX_MODE_EDIT_GPENCIL:
+    case CTX_MODE_EDIT_GPENCIL_LEGACY:
+      OVERLAY_edit_gpencil_legacy_draw(data);
+      break;
     case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_SCULPT_GPENCIL:
     case CTX_MODE_VERTEX_GPENCIL:
     case CTX_MODE_WEIGHT_GPENCIL:
-      OVERLAY_edit_gpencil_draw(data);
+      OVERLAY_edit_gpencil_legacy_draw(data);
       break;
     case CTX_MODE_SCULPT_CURVES:
       break;
     case CTX_MODE_EDIT_CURVES:
       OVERLAY_edit_curves_draw(data);
+      break;
+    case CTX_MODE_EDIT_GREASE_PENCIL:
+      OVERLAY_edit_grease_pencil_draw(data);
       break;
     default:
       break;

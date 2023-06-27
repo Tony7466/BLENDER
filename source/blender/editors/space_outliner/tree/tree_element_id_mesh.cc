@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -17,11 +19,6 @@ namespace blender::ed::outliner {
 TreeElementIDMesh::TreeElementIDMesh(TreeElement &legacy_te_, Mesh &mesh)
     : TreeElementID(legacy_te_, mesh.id), mesh_(mesh)
 {
-}
-
-bool TreeElementIDMesh::isExpandValid() const
-{
-  return true;
 }
 
 void TreeElementIDMesh::expand(SpaceOutliner &space_outliner) const

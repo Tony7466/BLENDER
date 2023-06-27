@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -72,6 +71,10 @@
 #define MOTION_BLUR_GROUP_SIZE 32
 #define MOTION_BLUR_DILATE_GROUP_SIZE 512
 
+/* Irradiance Cache. */
+/** Maximum number of entities inside the cache. */
+#define IRRADIANCE_GRID_MAX 64
+
 /* Depth Of Field. */
 #define DOF_TILES_SIZE 8
 #define DOF_TILES_FLATTEN_GROUP_SIZE DOF_TILES_SIZE
@@ -87,22 +90,32 @@
 #define DOF_GATHER_GROUP_SIZE DOF_TILES_SIZE
 #define DOF_RESOLVE_GROUP_SIZE (DOF_TILES_SIZE * 2)
 
+/* IrradianceBake. */
+#define SURFEL_GROUP_SIZE 256
+#define SURFEL_LIST_GROUP_SIZE 256
+#define IRRADIANCE_GRID_GROUP_SIZE 4 /* In each dimension, so 4x4x4 workgroup size. */
+#define IRRADIANCE_GRID_BRICK_SIZE 4 /* In each dimension, so 4x4x4 brick size. */
+#define IRRADIANCE_BOUNDS_GROUP_SIZE 64
+
 /* Volumes. */
 #define VOLUME_GROUP_SIZE 4
 #define VOLUME_INTEGRATION_GROUP_SIZE 8
 
 /* Resource bindings. */
 
-/* Texture. */
-/* Only used by forward pipeline. */
-#define VOLUME_SCATTERING_TEX_SLOT 10
-#define VOLUME_TRANSMITTANCE_TEX_SLOT 11
-#define SHADOW_TILEMAPS_TEX_SLOT 12
-/* Only during surface shading. */
-#define SHADOW_ATLAS_TEX_SLOT 13
+/* Textures. */
+/* Used anywhere. (Starts at index 2, since 0 and 1 are used by draw_gpencil) */
+#define RBUFS_UTILITY_TEX_SLOT 2
+#define HIZ_TEX_SLOT 3
+/* Only during surface shading (forward and deferred eval). */
+#define SHADOW_TILEMAPS_TEX_SLOT 4
+#define SHADOW_ATLAS_TEX_SLOT 5
+#define SSS_TRANSMITTANCE_TEX_SLOT 6
+#define IRRADIANCE_ATLAS_TEX_SLOT 7
+#define VOLUME_SCATTERING_TEX_SLOT 8
+#define VOLUME_TRANSMITTANCE_TEX_SLOT 9
 /* Only during shadow rendering. */
-#define SHADOW_RENDER_MAP_SLOT 13
-#define RBUFS_UTILITY_TEX_SLOT 14
+#define SHADOW_RENDER_MAP_SLOT 4
 
 /* Images. */
 #define RBUFS_COLOR_SLOT 0
@@ -117,6 +130,8 @@
 #define VOLUME_PROP_PHASE_TEX_SLOT 3
 
 /* Uniform Buffers. */
+#define IRRADIANCE_GRID_BUF_SLOT 3
+#define HIZ_BUF_SLOT 5
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
@@ -131,9 +146,14 @@
 #define LIGHT_BUF_SLOT 1
 #define LIGHT_ZBIN_BUF_SLOT 2
 #define LIGHT_TILE_BUF_SLOT 3
+#define IRRADIANCE_BRICK_BUF_SLOT 4
+/* Only during surface capture. */
+#define SURFEL_BUF_SLOT 4
+/* Only during surface capture. */
+#define CAPTURE_BUF_SLOT 5
 /* Only during shadow rendering. */
 #define SHADOW_PAGE_INFO_SLOT 4
-#define SAMPLING_BUF_SLOT 5
+#define SAMPLING_BUF_SLOT 6
 #define CRYPTOMATTE_BUF_SLOT 7
 
 /* Only during pre-pass. */

@@ -123,13 +123,6 @@ size_t BLI_strncpy_rlen(char *__restrict dst, const char *__restrict src, const 
   return srclen;
 }
 
-size_t BLI_strcpy_rlen(char *__restrict dst, const char *__restrict src)
-{
-  size_t srclen = strlen(src);
-  memcpy(dst, src, srclen + 1);
-  return srclen;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name String Append
  * \{ */
@@ -249,17 +242,6 @@ char *BLI_sprintfN(const char *__restrict format, ...)
   va_end(arg);
 
   return n;
-}
-
-int BLI_sprintf(char *__restrict str, const char *__restrict format, ...)
-{
-  va_list arg;
-
-  va_start(arg, format);
-  const int result = vsprintf(str, format, arg);
-  va_end(arg);
-
-  return result;
 }
 
 /** \} */
@@ -989,6 +971,21 @@ size_t BLI_strnlen(const char *s, const size_t maxlen)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name String Scanning
+ * \{ */
+
+const char *BLI_strchr_or_end(const char *str, const char ch)
+{
+  const char *p = str;
+  while (!ELEM(*p, ch, '\0')) {
+    p++;
+  }
+  return p;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name String Case Conversion
  * \{ */
 
@@ -1055,6 +1052,17 @@ int BLI_str_rstrip_float_zero(char *str, const char pad)
     }
   }
 
+  return totstrip;
+}
+
+int BLI_str_rstrip_digits(char *str)
+{
+  int totstrip = 0;
+  int str_len = strlen(str);
+  while (str_len > 0 && isdigit(str[--str_len])) {
+    str[str_len] = '\0';
+    totstrip++;
+  }
   return totstrip;
 }
 

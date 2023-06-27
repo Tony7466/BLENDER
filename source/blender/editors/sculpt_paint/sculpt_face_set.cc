@@ -63,7 +63,7 @@ using blender::Vector;
 
 /* Utils. */
 
-int ED_sculpt_face_sets_find_next_available_id(struct Mesh *mesh)
+int ED_sculpt_face_sets_find_next_available_id(Mesh *mesh)
 {
   const int *face_sets = static_cast<const int *>(
       CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, ".sculpt_face_set"));
@@ -80,7 +80,7 @@ int ED_sculpt_face_sets_find_next_available_id(struct Mesh *mesh)
   return next_face_set_id;
 }
 
-void ED_sculpt_face_sets_initialize_none_to_id(struct Mesh *mesh, const int new_id)
+void ED_sculpt_face_sets_initialize_none_to_id(Mesh *mesh, const int new_id)
 {
   int *face_sets = static_cast<int *>(CustomData_get_layer_named_for_write(
       &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly));
@@ -344,8 +344,8 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, mode == SCULPT_FACE_SET_MASKED, false);
 
@@ -464,7 +464,6 @@ enum eSculptFaceSetsInitMode {
   SCULPT_FACE_SETS_FROM_CREASES = 4,
   SCULPT_FACE_SETS_FROM_SHARP_EDGES = 5,
   SCULPT_FACE_SETS_FROM_BEVEL_WEIGHT = 6,
-  SCULPT_FACE_SETS_FROM_FACE_MAPS = 7,
   SCULPT_FACE_SETS_FROM_FACE_SET_BOUNDARIES = 8,
 };
 
@@ -518,13 +517,7 @@ static EnumPropertyItem prop_sculpt_face_sets_init_types[] = {
         "Face Sets from Sharp Edges",
         "Create Face Sets using Sharp Edges as boundaries",
     },
-    {
-        SCULPT_FACE_SETS_FROM_FACE_MAPS,
-        "FACE_MAPS",
-        0,
-        "Face Sets from Face Maps",
-        "Create a Face Set per Face Map",
-    },
+
     {
         SCULPT_FACE_SETS_FROM_FACE_SET_BOUNDARIES,
         "FACE_SET_BOUNDARIES",
@@ -610,13 +603,6 @@ static void sculpt_face_sets_init_loop(Object *ob, const int mode)
       ss->face_sets[i] = material_indices[i] + 1;
     }
   }
-  else if (mode == SCULPT_FACE_SETS_FROM_FACE_MAPS) {
-    const int *face_maps = static_cast<const int *>(
-        CustomData_get_layer(&mesh->pdata, CD_FACEMAP));
-    for (const int i : IndexRange(mesh->totpoly)) {
-      ss->face_sets[i] = face_maps ? face_maps[i] : 1;
-    }
-  }
 }
 
 static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
@@ -650,7 +636,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   const float threshold = RNA_float_get(op->ptr, "threshold");
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   const bke::AttributeAccessor attributes = mesh->attributes();
 
   switch (mode) {
@@ -686,7 +672,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     }
     case SCULPT_FACE_SETS_FROM_CREASES: {
       const float *creases = static_cast<const float *>(
-          CustomData_get_layer(&mesh->edata, CD_CREASE));
+          CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "crease_edge"));
       sculpt_face_sets_init_flood_fill(
           ob, [&](const int /*from_face*/, const int edge, const int /*to_face*/) -> bool {
             return creases ? creases[edge] < threshold : true;
@@ -717,10 +703,6 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
           ob, [&](const int from_face, const int /*edge*/, const int to_face) -> bool {
             return face_sets_copy[from_face] == face_sets_copy[to_face];
           });
-      break;
-    }
-    case SCULPT_FACE_SETS_FROM_FACE_MAPS: {
-      sculpt_face_sets_init_loop(ob, SCULPT_FACE_SETS_FROM_FACE_MAPS);
       break;
     }
   }
@@ -1405,7 +1387,7 @@ static bool sculpt_face_set_edit_init(bContext *C, wmOperator *op)
     return false;
   }
 
-  ss->face_sets = BKE_sculpt_face_sets_ensure(BKE_mesh_from_object(ob));
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, false);
 
   return true;
@@ -1464,7 +1446,7 @@ static int sculpt_face_set_edit_invoke(bContext *C, wmOperator *op, const wmEven
   return sculpt_face_set_edit_exec(C, op);
 }
 
-void SCULPT_OT_face_sets_edit(struct wmOperatorType *ot)
+void SCULPT_OT_face_sets_edit(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Edit Face Set";

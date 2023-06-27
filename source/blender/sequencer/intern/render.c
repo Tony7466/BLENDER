@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -91,7 +91,7 @@ void seq_imbuf_assign_spaces(Scene *scene, ImBuf *ibuf)
 #if 0
   /* Byte buffer is supposed to be in sequencer working space already. */
   if (ibuf->rect != NULL) {
-    IMB_colormanagement_assign_rect_colorspace(ibuf, scene->sequencer_colorspace_settings.name);
+    IMB_colormanagement_assign_byte_colorspace(ibuf, scene->sequencer_colorspace_settings.name);
   }
 #endif
   if (ibuf->float_buffer.data != NULL) {
@@ -192,7 +192,7 @@ void SEQ_render_imbuf_from_sequencer_space(Scene *scene, ImBuf *ibuf)
   }
 }
 
-void SEQ_render_pixel_from_sequencer_space_v4(struct Scene *scene, float pixel[4])
+void SEQ_render_pixel_from_sequencer_space_v4(Scene *scene, float pixel[4])
 {
   const char *from_colorspace = scene->sequencer_colorspace_settings.name;
   const char *to_colorspace = IMB_colormanagement_role_colorspace_name_get(
@@ -214,7 +214,7 @@ void SEQ_render_pixel_from_sequencer_space_v4(struct Scene *scene, float pixel[4
  * \{ */
 
 void SEQ_render_new_render_data(Main *bmain,
-                                struct Depsgraph *depsgraph,
+                                Depsgraph *depsgraph,
                                 Scene *scene,
                                 int rectx,
                                 int recty,

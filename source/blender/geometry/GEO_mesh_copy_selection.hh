@@ -1,14 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include <optional>
 
+#include "BLI_index_mask.hh"
+
 #include "BKE_attribute.h"
 
 struct Mesh;
 namespace blender {
-class IndexMask;
 namespace fn {
 template<typename T> class Field;
 }

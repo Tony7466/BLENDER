@@ -17,7 +17,7 @@ GPU_SHADER_CREATE_INFO(eevee_shared)
 GPU_SHADER_CREATE_INFO(eevee_sampling_data)
     .define("EEVEE_SAMPLING_DATA")
     .additional_info("eevee_shared")
-    .storage_buf(6, Qualifier::READ, "SamplingData", "sampling_buf");
+    .storage_buf(SAMPLING_BUF_SLOT, Qualifier::READ, "SamplingData", "sampling_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_utility_texture)
     .sampler(RBUFS_UTILITY_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "utility_tx");
@@ -107,7 +107,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
     .additional_info("eevee_camera",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
-                     "eevee_render_pass_out",
+                     /* Added at runtime because of test shaders not having `node_tree`. */
+                     //  "eevee_render_pass_out",
                      "eevee_cryptomatte_out");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)
@@ -130,6 +131,14 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      // "eevee_raytrace_data",
                      // "eevee_transmittance_data",
     );
+
+GPU_SHADER_CREATE_INFO(eevee_surf_capture)
+    .vertex_out(eevee_surf_iface)
+    .define("MAT_CAPTURE")
+    .storage_buf(SURFEL_BUF_SLOT, Qualifier::WRITE, "Surfel", "surfel_buf[]")
+    .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ_WRITE, "CaptureInfoData", "capture_info_buf")
+    .fragment_source("eevee_surf_capture_frag.glsl")
+    .additional_info("eevee_camera", "eevee_utility_texture");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_depth)
     .vertex_out(eevee_surf_iface)
@@ -280,6 +289,7 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub).define("EEVEE_MATERIAL_STUBS");
     EEVEE_MAT_GEOM_VARIATIONS(name##_depth, "eevee_surf_depth", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_deferred, "eevee_surf_deferred", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
+    EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_shadow, "eevee_surf_shadow", __VA_ARGS__)
 
 EEVEE_MAT_PIPE_VARIATIONS(eevee_surface, "eevee_material_stub")

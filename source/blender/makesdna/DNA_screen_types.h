@@ -201,7 +201,6 @@ typedef enum uiPanelDataExpansion {
   UI_SUBPANEL_DATA_EXPAND_13 = (1 << 13),
   UI_SUBPANEL_DATA_EXPAND_14 = (1 << 14),
   UI_SUBPANEL_DATA_EXPAND_15 = (1 << 15),
-  UI_SUBPANEL_DATA_EXPAND_16 = (1 << 16),
 } uiPanelDataExpansion;
 
 /**
@@ -238,7 +237,7 @@ typedef struct PanelCategoryStack {
 typedef void (*uiListFreeRuntimeDataFunc)(struct uiList *ui_list);
 
 /* uiList dynamic data... */
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct uiListDyn {

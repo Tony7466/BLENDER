@@ -69,9 +69,6 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
     r_cddata_masks->lmask |= CD_MASK_NORMAL;
     r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
-  if (smd->flags & eSubsurfModifierFlag_UseCrease) {
-    r_cddata_masks->vmask |= CD_MASK_CREASE;
-  }
 }
 
 static bool dependsOnNormals(ModifierData *md)
@@ -327,7 +324,7 @@ static void deformMatrices(ModifierData *md,
 static bool get_show_adaptive_options(const bContext *C, Panel *panel)
 {
   /* Don't show adaptive options if cycles isn't the active engine. */
-  const struct RenderEngineType *engine_type = CTX_data_engine_type(C);
+  const RenderEngineType *engine_type = CTX_data_engine_type(C);
   if (!STREQ(engine_type->idname, "CYCLES")) {
     return false;
   }

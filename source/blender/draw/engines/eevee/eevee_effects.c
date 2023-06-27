@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,8 +20,8 @@
 
 static struct {
   /* These are just references, not actually allocated */
-  struct GPUTexture *depth_src;
-  struct GPUTexture *color_src;
+  GPUTexture *depth_src;
+  GPUTexture *color_src;
 
   int depth_src_layer;
   /* Size can be vec3. But we only use 2 components in the shader. */

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BKE_attribute.h"
 #include "BLI_utildefines.h"
 #include "DNA_scene_types.h"
 
@@ -321,8 +322,8 @@ typedef struct V3DSnapCursorData {
 typedef struct V3DSnapCursorState {
   /* Setup. */
   eV3DSnapCursor flag;
-  uchar color_line[4];
-  uchar color_point[4];
+  uchar source_color[4];
+  uchar target_color[4];
   uchar color_box[4];
   float *prevpoint;
   float box_dimensions[3];
@@ -347,13 +348,13 @@ void ED_view3d_cursor_snap_data_update(V3DSnapCursorState *state,
                                        int y);
 V3DSnapCursorData *ED_view3d_cursor_snap_data_get(void);
 struct SnapObjectContext *ED_view3d_cursor_snap_context_ensure(struct Scene *scene);
-void ED_view3d_cursor_snap_draw_util(struct RegionView3D *rv3d,
-                                     const float loc_prev[3],
-                                     const float loc_curr[3],
-                                     const float normal[3],
-                                     const uchar color_line[4],
-                                     const uchar color_point[4],
-                                     eSnapMode snap_elem_type);
+void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
+                                     const float source_loc[3],
+                                     const float target_loc[3],
+                                     const float target_normal[3],
+                                     const uchar source_color[4],
+                                     const uchar target_color[4],
+                                     const eSnapMode target_type);
 
 /* view3d_iterators.cc */
 
@@ -1056,11 +1057,6 @@ void ED_view3d_check_mats_rv3d(struct RegionView3D *rv3d);
 struct RV3DMatrixStore *ED_view3d_mats_rv3d_backup(struct RegionView3D *rv3d);
 void ED_view3d_mats_rv3d_restore(struct RegionView3D *rv3d, struct RV3DMatrixStore *rv3dmat);
 
-void ED_draw_object_facemap(struct Depsgraph *depsgraph,
-                            struct Object *ob,
-                            const float col[4],
-                            int facemap);
-
 struct RenderEngineType *ED_view3d_engine_type(const struct Scene *scene, int drawtype);
 
 bool ED_view3d_context_activate(struct bContext *C);
@@ -1332,7 +1328,7 @@ void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrAr
 #define OVERLAY_RETOPOLOGY_ENABLED(overlay) \
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)
 #ifdef __APPLE__
-/* Apple silicon tile depth test requires a higher value to reduce drawing artifacts.*/
+/* Apple silicon tile depth test requires a higher value to reduce drawing artifacts. */
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED 0.0015f
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0015f
 #else
