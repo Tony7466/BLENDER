@@ -5,10 +5,13 @@
 #include "BLI_map.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_noise.hh"
+#include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_timeit.hh"
 #include "BLI_vector_set.hh"
+
+#include "PIL_time.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_modifier_types.h"
@@ -485,6 +488,10 @@ class NodeTreeMainUpdater {
 
     this->update_socket_link_and_use(ntree);
     this->update_link_validation(ntree);
+
+    if (this->update_node_state_ids(ntree)) {
+      result.interface_changed = true;
+    }
 
     if (ntree.type == NTREE_TEXTURE) {
       ntreeTexCheckCyclics(&ntree);
@@ -1084,6 +1091,110 @@ class NodeTreeMainUpdater {
       }
     }
     return false;
+  }
+
+  struct StateLocation {
+    int node_id;
+    int id_in_node;
+
+    uint64_t hash() const
+    {
+      return get_default_hash_2(this->node_id, this->id_in_node);
+    }
+
+    friend bool operator==(const StateLocation &a, const StateLocation &b)
+    {
+      return a.node_id == b.node_id && a.id_in_node == b.id_in_node;
+    }
+  };
+
+  bool update_node_state_ids(bNodeTree &ntree)
+  {
+    ntree.ensure_topology_cache();
+
+    Map<StateLocation, int> old_id_by_location;
+    Set<int> old_ids;
+    for (const bNodeStateID &state_id : Span(ntree.node_state_ids, ntree.node_state_ids_num)) {
+      old_id_by_location.add({state_id.node_id, state_id.id_in_node}, state_id.id);
+      old_ids.add(state_id.id);
+    }
+
+    Map<int, StateLocation> new_location_by_id;
+
+    RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+
+    const auto add_state = [&](const StateLocation &location) {
+      const int old_id = old_id_by_location.lookup_default(location, -1);
+      if (old_id != -1) {
+        new_location_by_id.add(old_id, location);
+        return;
+      }
+      int new_id;
+      while (true) {
+        new_id = rng.get_int32(INT32_MAX);
+        if (!old_ids.contains(new_id) && !new_location_by_id.contains(new_id)) {
+          break;
+        }
+      }
+      new_location_by_id.add(new_id, location);
+    };
+
+    /* Don't forget state ids just because the linked file is not available right now. */
+    for (const StateLocation &old_state : old_id_by_location.keys()) {
+      const bNode *node = ntree.node_by_id(old_state.node_id);
+      if (node && node->is_group() && node->id) {
+        if (node->id->tag & LIB_TAG_MISSING) {
+          add_state({old_state.node_id, old_state.id_in_node});
+        }
+      }
+    }
+
+    for (const bNode *node : ntree.group_nodes()) {
+      const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+      if (group == nullptr) {
+        continue;
+      }
+      for (const int i : IndexRange(group->node_state_ids_num)) {
+        const bNodeStateID &child_state = group->node_state_ids[i];
+        add_state({node->identifier, child_state.id});
+      }
+    }
+    for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
+      add_state({node->identifier, 0});
+    }
+
+    if (new_location_by_id.size() == old_id_by_location.size()) {
+      bool found_mismatch = false;
+      for (const bNodeStateID &old_state : Span(ntree.node_state_ids, ntree.node_state_ids_num)) {
+        if (!new_location_by_id.contains(old_state.id)) {
+          found_mismatch = true;
+          break;
+        }
+      }
+      if (!found_mismatch) {
+        return false;
+      }
+    }
+    MEM_SAFE_FREE(ntree.node_state_ids);
+    if (new_location_by_id.is_empty()) {
+      ntree.node_state_ids_num = 0;
+      return true;
+    }
+
+    bNodeStateID *new_states = static_cast<bNodeStateID *>(
+        MEM_malloc_arrayN(new_location_by_id.size(), sizeof(bNodeStateID), __func__));
+    int index = 0;
+    for (const auto item : new_location_by_id.items()) {
+      bNodeStateID &state_id = new_states[index];
+      state_id.id = item.key;
+      state_id.node_id = item.value.node_id;
+      state_id.id_in_node = item.value.id_in_node;
+      index++;
+    }
+
+    ntree.node_state_ids = new_states;
+    ntree.node_state_ids_num = new_location_by_id.size();
+    return true;
   }
 
   void reset_changed_flags(bNodeTree &ntree)
