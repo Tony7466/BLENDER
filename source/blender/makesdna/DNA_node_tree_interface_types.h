@@ -137,12 +137,11 @@ typedef struct bNodeTreeInterface {
   bool unlink_item(bNodeTreeInterfaceItem &item);
   void free_item(bNodeTreeInterfaceItem &item);
 
+  /**
+   * Topologial stable sorting method that keeps items grouped by parent.
+   * Direct children of a panel remain grouped together, so children can be access as a span.
+   */
   void update_order();
-
- private:
-  void update_panels_order();
-  void update_sockets_order();
-  void update_index();
 
 #endif
 } bNodeTreeInterface;
