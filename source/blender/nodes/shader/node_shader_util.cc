@@ -204,11 +204,11 @@ static void gpu_stack_from_data_list(GPUNodeStack *gs, ListBase *sockets, bNodeS
 
 static void data_from_gpu_stack_list(ListBase *sockets, bNodeStack **ns, GPUNodeStack *gs)
 {
-  int index = 0;
+  int i = 0;
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
-    if (socket->type != SOCK_ROTATION) {
-      node_data_from_gpu_stack(ns[index], &gs[index]);
-      index++;
+    if (ELEM(socket->type, SOCK_FLOAT, SOCK_INT, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER)) {
+      node_data_from_gpu_stack(ns[i], &gs[i]);
+      i++;
     }
   }
 }
