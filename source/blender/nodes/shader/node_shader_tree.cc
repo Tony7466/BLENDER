@@ -1060,34 +1060,66 @@ static void ntree_shader_disconnect_inactive_mix_branches(bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->typeinfo->type == SH_NODE_MIX_SHADER) {
       shader_node_disconnect_inactive_mix_branch(ntree, node, 0, 1, 2, true);
+      continue;
     }
-    else if (node->typeinfo->type == SH_NODE_MIX) {
-      const NodeShaderMix *storage = static_cast<NodeShaderMix *>(node->storage);
-      if (storage->data_type == SOCK_FLOAT) {
+    if (node->typeinfo->type != SH_NODE_MIX) {
+      continue;
+    }
+    BLI_assert_msg(BLI_listbase_count(&node->inputs) == 10,
+                   "Mix node inputs has been changed. Make sure "
+                   "ntree_shader_disconnect_inactive_mix_branches is updated!");
+    BLI_assert_msg(BLI_listbase_count(&node->outputs) == 4,
+                   "Mix node outputs has been changed. Make sure "
+                   "ntree_shader_disconnect_inactive_mix_branches is updated!");
+    const NodeShaderMix *storage = static_cast<NodeShaderMix *>(node->storage);
+    /*
+     * 0: factor,
+     * 1: fector-factor,
+     * 2: float a,
+     * 3: float b,
+     * 4: vector a,
+     * 5: vector b,
+     * 6: color a,
+     * 7: color b,
+     * 8: rotation a,
+     * 9: rotation b.
+     */
+    switch (eNodeSocketDatatype(storage->data_type)) {
+      case SOCK_FLOAT:
         shader_node_disconnect_inactive_mix_branch(ntree, node, 0, 2, 3, storage->clamp_factor);
         /* Disconnect links from data_type-specific sockets that are not currently in use */
-        for (int i : {1, 4, 5, 6, 7}) {
+        for (int i : {1, 4, 5, 6, 7, 8, 9}) {
           shader_node_disconnect_input(ntree, node, i);
         }
-      }
-      else if (storage->data_type == SOCK_VECTOR) {
-        int factor_socket = storage->factor_mode == NODE_MIX_MODE_UNIFORM ? 0 : 1;
+        break;
+      case SOCK_VECTOR: {
+        const int factor_socket = storage->factor_mode == NODE_MIX_MODE_UNIFORM ? 0 : 1;
         shader_node_disconnect_inactive_mix_branch(
             ntree, node, factor_socket, 4, 5, storage->clamp_factor);
         /* Disconnect links from data_type-specific sockets that are not currently in use */
         int unused_factor_socket = factor_socket == 0 ? 1 : 0;
-        for (int i : {unused_factor_socket, 2, 3, 6, 7}) {
+        for (int i : {unused_factor_socket, 2, 3, 6, 7, 8, 9}) {
           shader_node_disconnect_input(ntree, node, i);
         }
+        break;
       }
-      else if (storage->data_type == SOCK_RGBA) {
+      case SOCK_RGBA:
         /* Branch A can't be optimized-out, since its alpha is always used regardless of factor */
         shader_node_disconnect_inactive_mix_branch(ntree, node, 0, -1, 7, storage->clamp_factor);
         /* Disconnect links from data_type-specific sockets that are not currently in use */
-        for (int i : {1, 2, 3, 4, 5}) {
+        for (int i : {1, 2, 3, 4, 5, 8, 9}) {
           shader_node_disconnect_input(ntree, node, i);
         }
-      }
+        break;
+      case SOCK_ROTATION:
+        shader_node_disconnect_inactive_mix_branch(ntree, node, 0, 8, 9, storage->clamp_factor);
+        /* Disconnect links from data_type-specific sockets that are not currently in use */
+        for (int i : {1, 2, 3, 4, 5, 6, 7}) {
+          shader_node_disconnect_input(ntree, node, i);
+        }
+        break;
+      default:
+        BLI_assert_unreachable();
     }
   }
 }
