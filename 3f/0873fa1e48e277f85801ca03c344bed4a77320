@@ -1,2 +1,3 @@
 Referenced by pull request #109382, EEVEE: Remove unneeded GPU_finish
 Referenced by commit 4038cabc6d6958b1afd2ff2f809beb7a79440c8c, EEVEE: Remove unneeded GPU_finish
+Referenced by commit 1d847b2ee33f3d31551e17ce05c0c2b804230b9e, EEVEE: Restrict GPU_finish workaround to Nvidia OpenGL backend
