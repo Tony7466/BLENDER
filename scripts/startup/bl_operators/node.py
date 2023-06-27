@@ -364,7 +364,7 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
             return {'CANCELLED'}
 
         items.move(item, dst_index)
-        items.active_index = dst_index
+        items.active = item
 
         return {'FINISHED'}
 
@@ -389,11 +389,11 @@ class NODE_OT_interface_item_copy(NodeInterfaceOperator, Operator):
         snode = context.space_data
         tree = snode.edit_tree
         items = tree.interface.interface_items
+        item = items.active
 
-        if items.active:
-            dst_index = min(items.active_index + 1, len(items))
-            items.copy(items.active)
-            items.active_index = dst_index
+        if item:
+            items.copy(item)
+            items.active = item
 
         return {'FINISHED'}
 
@@ -408,10 +408,11 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
         snode = context.space_data
         tree = snode.edit_tree
         items = tree.interface.interface_items
+        item = items.active
 
-        if items.active:
-            items.remove(items.active)
-            items.active_index = min(items.active_index, len(items) - 1)
+        if item:
+            items.remove(item)
+            items.active = item
 
         return {'FINISHED'}
 
@@ -432,13 +433,14 @@ class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
         snode = context.space_data
         tree = snode.edit_tree
         items = tree.interface.interface_items
+        item = items.active
 
-        if self.direction == 'UP' and items.active_index > 0:
-            items.move(items.active, items.active_index - 1)
-            items.active_index -= 1
-        elif self.direction == 'DOWN' and items.active_index < len(items) - 1:
-            items.move(items.active, items.active_index + 1)
-            items.active_index += 1
+        if self.direction == 'UP':
+            items.move(item, item.index - 1)
+            items.active = item
+        elif self.direction == 'DOWN':
+            items.move(item, item.index + 1)
+            items.active = item
 
         return {'FINISHED'}
 
