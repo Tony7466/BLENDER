@@ -18,6 +18,7 @@
 #include "BKE_volume.hh"
 
 #include "attribute_access_intern.hh"
+#include "volume_openvdb.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/Grid.h>
@@ -115,11 +116,15 @@ void VolumeComponent::ensure_owns_direct_data()
  * \{ */
 
 template<typename _GridType>
-class VArrayImpl_For_VolumeGrid final : public VMutableArrayImpl<typename _GridType::ValueType> {
+class VArrayImpl_For_VolumeGrid final
+    : public VMutableArrayImpl<typename volume_openvdb::GridValueConverter<
+          typename _GridType::ValueType>::AttributeType> {
  protected:
   using GridType = typename std::remove_cv<_GridType>::type;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
+  using Converter = volume_openvdb::GridValueConverter<ValueType>;
+  using AttributeType = typename Converter::AttributeType;
   using Accessor = typename GridType::Accessor;
   using ConstAccessor = typename GridType::ConstAccessor;
   using LeafNodeType = typename TreeType::LeafNodeType;
@@ -130,11 +135,17 @@ class VArrayImpl_For_VolumeGrid final : public VMutableArrayImpl<typename _GridT
 
  public:
   VArrayImpl_For_VolumeGrid(GridType &grid)
-      : VMutableArrayImpl<ValueType>(grid->activeVoxelCount()), grid_(grid)
+      : VMutableArrayImpl<AttributeType>(grid.activeVoxelCount()), grid_(grid)
   {
   }
 
-  ValueType get(const int64_t index) const override
+  VArrayImpl_For_VolumeGrid(const GridType &grid)
+      : VMutableArrayImpl<AttributeType>(grid.activeVoxelCount()),
+        grid_(const_cast<GridType &>(grid))
+  {
+  }
+
+  AttributeType get(const int64_t index) const override
   {
     /* XXX It is recommended that each thread gets its own accessor.
      * https://www.openvdb.org/documentation/doxygen/overview.html#subsecValueAccessor
@@ -143,17 +154,17 @@ class VArrayImpl_For_VolumeGrid final : public VMutableArrayImpl<typename _GridT
      */
     ConstAccessor accessor = grid_.getConstAccessor();
     openvdb::Coord coord = LeafNodeType::offsetToLocalCoord(index);
-    return accessor.getValue(coord);
+    return Converter::to_attribute(accessor.getValue(coord));
   }
 
-  void set(const int64_t index, const ValueType value) override
+  void set(const int64_t index, const AttributeType value) override
   {
     Accessor accessor = grid_.getAccessor();
     openvdb::Coord coord = LeafNodeType::offsetToLocalCoord(index);
-    accessor.setValueOnly(coord, value);
+    accessor.setValueOnly(coord, Converter::to_grid(value));
   }
 
-  void set_all(Span<ValueType> src) override
+  void set_all(Span<AttributeType> src) override
   {
     // LeafManager leaf_mgr(*grid_->treePtr());
 
@@ -164,7 +175,7 @@ class VArrayImpl_For_VolumeGrid final : public VMutableArrayImpl<typename _GridT
     // });
   }
 
-  // void materialize(const IndexMask &mask, ValueType *dst) const override
+  // void materialize(const IndexMask &mask, AttributeType *dst) const override
   // {
   //   if (dverts_ == nullptr) {
   //     mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
@@ -179,86 +190,11 @@ class VArrayImpl_For_VolumeGrid final : public VMutableArrayImpl<typename _GridT
   //   });
   // }
 
-  // void materialize_to_uninitialized(const IndexMask &mask, ValueType *dst) const override
+  // void materialize_to_uninitialized(const IndexMask &mask, AttributeType *dst) const override
   // {
   //   this->materialize(mask, dst);
   // }
 };
-
-// template<typename GridType>
-// class VArrayImpl_For_VolumeGrid final : public VMutableArrayImpl<typename GridType::ValueType>
-// {
-//  private:
-//   using ValueType = typename GridType::ValueType;
-//   using GridPtr = typename GridType::Ptr;
-//   using Accessor = typename GridType::Accessor;
-//
-//   GridPtr grid_;
-//   Array<size_t> leaf_offsets_;
-//
-//  public:
-//   VArrayImpl_For_VolumeGrid(GridPtr grid)
-//       : VMutableArrayImpl<ValueType>(grid->activeVoxelCount()),
-//         grid_(grid),
-//         accessor_(grid->getAccessor())
-//   {
-//   }
-//
-//   ValueType get(const int64_t index) const override
-//   {
-//     accessor_.if (dverts_ == nullptr)
-//     {
-//       return 0.0f;
-//     }
-//     if (const MDeformWeight *weight = this->find_weight_at_index(index)) {
-//       return weight->weight;
-//     }
-//     return 0.0f;
-//   }
-//
-//   void set(const int64_t index, const ValueType value) override
-//   {
-//     MDeformVert &dvert = dverts_[index];
-//     if (value == 0.0f) {
-//       if (MDeformWeight *weight = this->find_weight_at_index(index)) {
-//         weight->weight = 0.0f;
-//       }
-//     }
-//     else {
-//       MDeformWeight *weight = BKE_defvert_ensure_index(&dvert, dvert_index_);
-//       weight->weight = value;
-//     }
-//   }
-//
-//   void set_all(Span<ValueType> src) override
-//   {
-//     threading::parallel_for(src.index_range(), 4096, [&](const IndexRange range) {
-//       for (const int64_t i : range) {
-//         this->set(i, src[i]);
-//       }
-//     });
-//   }
-//
-//   void materialize(const IndexMask &mask, ValueType *dst) const override
-//   {
-//     if (dverts_ == nullptr) {
-//       mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
-//     }
-//     mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
-//       if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
-//         dst[i] = weight->weight;
-//       }
-//       else {
-//         dst[i] = 0.0f;
-//       }
-//     });
-//   }
-//
-//   void materialize_to_uninitialized(const IndexMask &mask, ValueType *dst) const override
-//   {
-//     this->materialize(mask, dst);
-//   }
-//};
 
 /**
  * Utility to group together multiple functions that are used to access custom data on geometry
@@ -291,8 +227,9 @@ struct MakeGridVArrayOp {
   template<typename GridType> void operator()(const GridType &grid)
   {
     using ValueType = typename GridType::ValueType;
+    using AttributeType = typename volume_openvdb::GridValueConverter<ValueType>::AttributeType;
     using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result = VArray<ValueType>::For<VArrayImplType, const GridType>(std::move(grid));
+    result = VArray<AttributeType>::For<VArrayImplType, const GridType>(std::move(grid));
   }
 };
 
@@ -302,8 +239,9 @@ struct MakeGridVMutableArrayOp {
   template<typename GridType> void operator()(GridType &grid)
   {
     using ValueType = typename GridType::ValueType;
+    using AttributeType = typename volume_openvdb::GridValueConverter<ValueType>::AttributeType;
     using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result = VMutableArray<ValueType>::For<VArrayImplType, GridType>(std::move(grid));
+    result = VMutableArray<AttributeType>::For<VArrayImplType, GridType>(std::move(grid));
   }
 };
 

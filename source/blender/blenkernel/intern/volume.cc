@@ -75,6 +75,8 @@ using blender::StringRefNull;
 #  include <openvdb/points/PointDataGrid.h>
 #  include <openvdb/tools/GridTransformer.h>
 
+#  include "volume_openvdb.hh"
+
 /* Global Volume File Cache
  *
  * Global cache of grids read from VDB files. This is used for sharing grids
@@ -1786,7 +1788,9 @@ struct CPPTypeForGridTypeOp {
 
   template<typename GridType> void operator()(const GridType &grid)
   {
-    result = &CPPType::get<GridType::ValueType>();
+    using ValueType = typename GridType::ValueType;
+    using AttributeType = volume_openvdb::GridValueConverter<ValueType>::AttributeType;
+    result = &CPPType::get<AttributeType>();
   }
 };
 

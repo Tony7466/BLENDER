@@ -529,6 +529,7 @@ set(SRC
   intern/pbvh_uv_islands.hh
   intern/subdiv_converter.h
   intern/subdiv_inline.h
+  intern/volume_openvdb.hh
 )
 
 set(LIB
