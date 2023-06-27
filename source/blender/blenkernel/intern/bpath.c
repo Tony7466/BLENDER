@@ -263,8 +263,10 @@ static bool missing_files_find__recursive(const char *search_directory,
   char path[FILE_MAX];
   int64_t size;
   bool found = false;
+  char *translated_dirpath = BLI_translate_env_vars(search_directory);
+  char *translated_filesrc = BLI_translate_env_vars(filename_src);
 
-  dir = opendir(search_directory);
+  dir = opendir(translated_dirpath);
 
   if (dir == NULL) {
     return found;
@@ -287,7 +289,7 @@ static bool missing_files_find__recursive(const char *search_directory,
     }
 
     if (S_ISREG(status.st_mode)) {                                  /* It is a file. */
-      if (BLI_path_ncmp(filename_src, de->d_name, FILE_MAX) == 0) { /* Names match. */
+      if (BLI_path_ncmp(translated_filesrc, de->d_name, FILE_MAX) == 0) { /* Names match. */
         size = status.st_size;
         if ((size > 0) && (size > *r_filesize)) { /* Find the biggest matching file. */
           *r_filesize = size;
@@ -300,7 +302,7 @@ static bool missing_files_find__recursive(const char *search_directory,
       if (*r_recurse_depth <= MAX_DIR_RECURSE) {
         (*r_recurse_depth)++;
         found |= missing_files_find__recursive(
-            path, filename_src, r_filename_new, r_filesize, r_recurse_depth);
+            path, translated_filesrc, r_filename_new, r_filesize, r_recurse_depth);
         (*r_recurse_depth)--;
       }
     }

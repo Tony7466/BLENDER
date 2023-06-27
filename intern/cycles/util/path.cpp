@@ -543,7 +543,8 @@ static int path_stat(const string &path, path_stat_t *st)
 #else  /* _WIN32 */
 static int path_stat(const string &path, path_stat_t *st)
 {
-  return stat(path.c_str(), st);
+  char *translated_path = translate_env_vars(path);
+  return stat(translated_path, st);
 }
 #endif /* _WIN32 */
 
@@ -568,7 +569,8 @@ bool path_exists(const string &path)
   return st.st_mode != 0;
 #else  /* _WIN32 */
   struct stat st;
-  if (stat(path.c_str(), &st) != 0) {
+  char *translated_path = translate_env_vars(path.c_str());
+  if (stat(translated_path, &st) != 0) {
     return 0;
   }
   return st.st_mode != 0;
@@ -635,7 +637,8 @@ static bool create_directories_recursivey(const string &path)
   wstring path_wc = string_to_wstring(path);
   return _wmkdir(path_wc.c_str()) == 0;
 #else
-  return mkdir(path.c_str(), 0777) == 0;
+  char *translated_path = translate_env_vars(path.c_str());
+  return mkdir(translated_path, 0777) == 0;
 #endif
 }
 
@@ -894,8 +897,9 @@ FILE *path_fopen(const string &path, const string &mode)
   wstring mode_wc = string_to_wstring(mode);
   return _wfopen(path_wc.c_str(), mode_wc.c_str());
 #else
-  return fopen(path.c_str(), mode.c_str());
-#endif
+  char *translated_path = translate_env_vars(path.c_str());
+  return fopen(translated_path, mode.c_str());
+#endif 
 }
 
 void path_cache_clear_except(const string &name, const set<string> &except)
@@ -914,5 +918,68 @@ void path_cache_clear_except(const string &name, const set<string> &except)
     }
   }
 }
+/* Functions to translate environment variables in libraries path
+ * for example with MY_PROJECT=dummy and MODEL_RESOLUTION=lowres:
+ * /projects/$MY_PROJECT/character_${MODEL_RESOLUTION}_v001.blend -> /projects/dummy/character_lowres_v001.blend
+ */
+void translate_var_inline(const char **from, char **to)
+{
+	char var[FILE_MAX] = "";
+
+	char *cptr = var;
+	char *value;
+	short curly_opened = 0;
+
+	if (**from=='(') {
+		curly_opened = 1;
+		(*from)++;
+	}
+
+	while (isalnum(**from) || **from=='_') {
+		*cptr++ = *(*from)++;
+	}
+	*cptr = '\0';
+
+	if (curly_opened && **from==')') {
+		curly_opened = 0;
+		(*from)++;
+	}
+
+	value = getenv(var);
+
+	if (value && !curly_opened) {
+		while (*value) {
+			*(*to)++ = *value++;
+		}
+		**to = '\0';
+	}
+}
+
+int translate_all_vars(const char *from, char *to)
+{
+	const char *cptr = from;
+	int changed = 0;
+  
+	while (*cptr) {
+		if (*cptr!='$') {
+			*to++ = *cptr++;
+		} else {
+			cptr++;
+			translate_var_inline(&cptr, &to);
+			changed = 1;
+		}
+	}
+	*to = '\0';
+
+	return changed;
+}
+
+char *translate_env_vars(const string &dir)
+{
+	char *translated = (char*)malloc(FILE_MAX);
+  translate_all_vars(dir.c_str(), translated);
+	return translated;
+}
+
 
 CCL_NAMESPACE_END

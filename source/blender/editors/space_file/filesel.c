@@ -1146,6 +1146,7 @@ int autocomplete_directory(struct bContext *C, char *str, void *UNUSED(arg_v))
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
   int match = AUTOCOMPLETE_NO_MATCH;
+  char *translated_dirpath;
 
   /* search if str matches the beginning of name */
   if (str[0] && sfile->files) {
@@ -1156,7 +1157,8 @@ int autocomplete_directory(struct bContext *C, char *str, void *UNUSED(arg_v))
 
     BLI_split_dir_part(str, dirname, sizeof(dirname));
 
-    dir = opendir(dirname);
+    translated_dirpath = BLI_translate_env_vars(dirname);
+    dir = opendir(translated_dirpath);
 
     if (dir) {
       AutoComplete *autocpl = UI_autocomplete_begin(str, FILE_MAX);
@@ -1168,12 +1170,13 @@ int autocomplete_directory(struct bContext *C, char *str, void *UNUSED(arg_v))
         else {
           char path[FILE_MAX];
           BLI_stat_t status;
+          char *translated_temp_path;
 
-          BLI_join_dirfile(path, sizeof(path), dirname, de->d_name);
-
-          if (BLI_stat(path, &status) == 0) {
+          BLI_join_dirfile(path, sizeof(path), translated_dirpath, de->d_name);
+          translated_temp_path = BLI_translate_env_vars(path);
+          if (BLI_stat(translated_temp_path, &status) == 0) {
             if (S_ISDIR(status.st_mode)) { /* is subdir */
-              UI_autocomplete_update_name(autocpl, path);
+              UI_autocomplete_update_name(autocpl, translated_temp_path);
             }
           }
         }
@@ -1194,6 +1197,7 @@ int autocomplete_file(struct bContext *C, char *str, void *UNUSED(arg_v))
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
   int match = AUTOCOMPLETE_NO_MATCH;
+  char *translated_dirpath;
 
   /* search if str matches the beginning of name */
   if (str[0] && sfile->files) {

@@ -29,15 +29,14 @@ bool OIIOImageLoader::load_metadata(const ImageDeviceFeatures & /*features*/,
     VLOG_WARNING << "File '" << filepath.string() << "' is a directory, can't use as image.";
     return false;
   }
-
-  unique_ptr<ImageInput> in(ImageInput::create(filepath.string()));
+  char *translated_path = translate_env_vars(filepath.string());
+  unique_ptr<ImageInput> in(ImageInput::create(translated_path));
 
   if (!in) {
     return false;
   }
-
   ImageSpec spec;
-  if (!in->open(filepath.string(), spec)) {
+  if (!in->open(translated_path, spec)) {
     return false;
   }
 
@@ -175,7 +174,9 @@ bool OIIOImageLoader::load_pixels(const ImageMetaData &metadata,
   }
 
   /* load image from file through OIIO */
-  in = unique_ptr<ImageInput>(ImageInput::create(filepath.string()));
+  char *translated_path = translate_env_vars(filepath.string());
+  string translated_path_str = translated_path;
+  in = unique_ptr<ImageInput>(ImageInput::create(translated_path_str));
   if (!in) {
     return false;
   }
@@ -189,7 +190,7 @@ bool OIIOImageLoader::load_pixels(const ImageMetaData &metadata,
    * transform. */
   config.attribute("oiio:UnassociatedAlpha", 1);
 
-  if (!in->open(filepath.string(), spec, config)) {
+  if (!in->open(translated_path_str, spec, config)) {
     return false;
   }
 

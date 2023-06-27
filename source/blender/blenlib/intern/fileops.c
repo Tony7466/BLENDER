@@ -789,7 +789,10 @@ static int recursive_operation(const char *startfrom,
 
 static int delete_callback_post(const char *from, const char *UNUSED(to))
 {
-  if (rmdir(from)) {
+  const char *translated_from;
+  translated_from = BLI_translate_env_vars(from);
+
+  if (rmdir(translated_from)) {
     perror("rmdir");
 
     return RecursiveOp_Callback_Error;
@@ -800,7 +803,10 @@ static int delete_callback_post(const char *from, const char *UNUSED(to))
 
 static int delete_single_file(const char *from, const char *UNUSED(to))
 {
-  if (unlink(from)) {
+  const char *translated_from;
+  translated_from = BLI_translate_env_vars(from);
+
+  if (rmdir(translated_from)) {
     perror("unlink");
 
     return RecursiveOp_Callback_Error;
@@ -855,6 +861,7 @@ static int delete_soft(const char *file, const char **error_message)
   const char *args[5];
   const char *process_failed;
 
+  const char *translated_file = BLI_translate_env_vars(file);
   char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
   char *xdg_session_desktop = getenv("XDG_SESSION_DESKTOP");
 
@@ -862,7 +869,7 @@ static int delete_soft(const char *file, const char **error_message)
       (xdg_session_desktop != NULL && STREQ(xdg_session_desktop, "KDE"))) {
     args[0] = "kioclient5";
     args[1] = "move";
-    args[2] = file;
+    args[2] = translated_file;
     args[3] = "trash:/";
     args[4] = NULL;
     process_failed = "kioclient5 reported failure";
@@ -870,7 +877,7 @@ static int delete_soft(const char *file, const char **error_message)
   else {
     args[0] = "gio";
     args[1] = "trash";
-    args[2] = file;
+    args[2] = translated_file;
     args[3] = NULL;
     process_failed = "gio reported failure";
   }
@@ -905,43 +912,57 @@ static int delete_soft(const char *file, const char **error_message)
 
 FILE *BLI_fopen(const char *filepath, const char *mode)
 {
+  const char *translated_filepath;
   BLI_assert(!BLI_path_is_rel(filepath));
+  translated_filepath = BLI_translate_env_vars(filepath);
 
-  return fopen(filepath, mode);
+  return fopen(translated_filepath, mode);
 }
 
 void *BLI_gzopen(const char *filepath, const char *mode)
 {
-  BLI_assert(!BLI_path_is_rel(filepath));
+  const char *translated_filepath;
 
-  return gzopen(filepath, mode);
+  BLI_assert(!BLI_path_is_rel(filepath));
+  translated_filepath = BLI_translate_env_vars(filepath);
+
+  return gzopen(translated_filepath, mode);
 }
 
 int BLI_open(const char *filepath, int oflag, int pmode)
 {
-  BLI_assert(!BLI_path_is_rel(filepath));
+  const char *translated_filepath;
 
-  return open(filepath, oflag, pmode);
+  BLI_assert(!BLI_path_is_rel(filepath));
+  translated_filepath = BLI_translate_env_vars(filepath);
+
+  return open(translated_filepath, oflag, pmode);
 }
 
 int BLI_access(const char *filepath, int mode)
 {
-  BLI_assert(!BLI_path_is_rel(filepath));
+  const char *translated_filepath;
 
-  return access(filepath, mode);
+  BLI_assert(!BLI_path_is_rel(filepath));
+  translated_filepath = BLI_translate_env_vars(filepath);
+
+  return access(translated_filepath, mode);
 }
 
 int BLI_delete(const char *file, bool dir, bool recursive)
 {
-  BLI_assert(!BLI_path_is_rel(file));
+  const char *translated_filepath;
+
+  BLI_assert(!BLI_path_is_rel(file));  
+  translated_filepath = BLI_translate_env_vars(file);
 
   if (recursive) {
-    return recursive_operation(file, NULL, NULL, delete_single_file, delete_callback_post);
+    return recursive_operation(translated_filepath, NULL, NULL, delete_single_file, delete_callback_post);
   }
   if (dir) {
-    return rmdir(file);
+    return rmdir(translated_filepath);
   }
-  return remove(file);
+  return remove(translated_filepath);
 }
 
 int BLI_delete_soft(const char *file, const char **error_message)
@@ -956,13 +977,16 @@ int BLI_delete_soft(const char *file, const char **error_message)
  */
 static bool check_the_same(const char *path_a, const char *path_b)
 {
+  const char *translated_path_a;
+  const char *translated_path_b;
   struct stat st_a, st_b;
-
-  if (lstat(path_a, &st_a)) {
+  translated_path_a = BLI_translate_env_vars(path_a);
+  translated_path_b = BLI_translate_env_vars(path_b);
+  if (lstat(translated_path_a, &st_a)) {
     return false;
   }
 
-  if (lstat(path_b, &st_b)) {
+  if (lstat(translated_path_b, &st_b)) {
     return false;
   }
 
@@ -974,12 +998,15 @@ static bool check_the_same(const char *path_a, const char *path_b)
  */
 static int set_permissions(const char *file, const struct stat *st)
 {
-  if (chown(file, st->st_uid, st->st_gid)) {
+  const char *translated_file;
+  translated_file = BLI_translate_env_vars(file);
+
+  if (chown(translated_file, st->st_uid, st->st_gid)) {
     perror("chown");
     return -1;
   }
 
-  if (chmod(file, st->st_mode)) {
+  if (chmod(translated_file, st->st_mode)) {
     perror("chmod");
     return -1;
   }
@@ -992,25 +1019,29 @@ static int set_permissions(const char *file, const struct stat *st)
 static int copy_callback_pre(const char *from, const char *to)
 {
   struct stat st;
+  const char *translated_from;
+  const char *translated_to;
 
+  translated_from = BLI_translate_env_vars(from);
+  translated_to = BLI_translate_env_vars(to);
   if (check_the_same(from, to)) {
     fprintf(stderr, "%s: '%s' is the same as '%s'\n", __func__, from, to);
     return RecursiveOp_Callback_Error;
   }
 
-  if (lstat(from, &st)) {
+  if (lstat(translated_from, &st)) {
     perror("stat");
     return RecursiveOp_Callback_Error;
   }
 
   /* create a directory */
-  if (mkdir(to, st.st_mode)) {
+  if (mkdir(translated_to, st.st_mode)) {
     perror("mkdir");
     return RecursiveOp_Callback_Error;
   }
 
   /* set proper owner and group on new directory */
-  if (chown(to, st.st_uid, st.st_gid)) {
+  if (chown(translated_to, st.st_uid, st.st_gid)) {
     perror("chown");
     return RecursiveOp_Callback_Error;
   }
@@ -1021,16 +1052,21 @@ static int copy_callback_pre(const char *from, const char *to)
 static int copy_single_file(const char *from, const char *to)
 {
   FILE *from_stream, *to_stream;
+  const char *translated_from;
+  const char *translated_to;
   struct stat st;
   char buf[4096];
   size_t len;
+
+  translated_from = BLI_translate_env_vars(from);
+  translated_to = BLI_translate_env_vars(to);
 
   if (check_the_same(from, to)) {
     fprintf(stderr, "%s: '%s' is the same as '%s'\n", __func__, from, to);
     return RecursiveOp_Callback_Error;
   }
 
-  if (lstat(from, &st)) {
+  if (lstat(translated_from, &st)) {
     perror("lstat");
     return RecursiveOp_Callback_Error;
   }
@@ -1051,7 +1087,7 @@ static int copy_single_file(const char *from, const char *to)
       need_free = 1;
     }
 
-    link_len = readlink(from, link_buffer, st.st_size + 1);
+    link_len = readlink(translated_from, link_buffer, st.st_size + 1);
     if (link_len < 0) {
       perror("readlink");
 
@@ -1064,7 +1100,7 @@ static int copy_single_file(const char *from, const char *to)
 
     link_buffer[link_len] = '\0';
 
-    if (symlink(link_buffer, to)) {
+    if (symlink(link_buffer, translated_to)) {
       perror("symlink");
       if (need_free) {
         MEM_freeN(link_buffer);
@@ -1080,12 +1116,12 @@ static int copy_single_file(const char *from, const char *to)
   }
   if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode) || S_ISFIFO(st.st_mode) || S_ISSOCK(st.st_mode)) {
     /* copy special type of file */
-    if (mknod(to, st.st_mode, st.st_rdev)) {
+    if (mknod(translated_to, st.st_mode, st.st_rdev)) {
       perror("mknod");
       return RecursiveOp_Callback_Error;
     }
 
-    if (set_permissions(to, &st)) {
+    if (set_permissions(translated_to, &st)) {
       return RecursiveOp_Callback_Error;
     }
 
@@ -1096,13 +1132,13 @@ static int copy_single_file(const char *from, const char *to)
     return RecursiveOp_Callback_Error;
   }
 
-  from_stream = fopen(from, "rb");
+  from_stream = fopen(translated_from, "rb");
   if (!from_stream) {
     perror("fopen");
     return RecursiveOp_Callback_Error;
   }
 
-  to_stream = fopen(to, "wb");
+  to_stream = fopen(translated_to, "wb");
   if (!to_stream) {
     perror("fopen");
     fclose(from_stream);
@@ -1116,7 +1152,7 @@ static int copy_single_file(const char *from, const char *to)
   fclose(to_stream);
   fclose(from_stream);
 
-  if (set_permissions(to, &st)) {
+  if (set_permissions(translated_to, &st)) {
     return RecursiveOp_Callback_Error;
   }
 
@@ -1260,13 +1296,19 @@ bool BLI_dir_create_recursive(const char *dirname)
 #  endif
 
   if (ret) {
-    ret = (mkdir(dirname, 0777) == 0);
+    char *translated_dirpath = BLI_translate_env_vars(dirname);
+    ret = (mkdir(translated_dirpath, 0777) == 0);
   }
   return ret;
 }
 
 int BLI_rename(const char *from, const char *to)
 {
+  const char *translated_from;
+  const char *translated_to;
+
+  translated_from = BLI_translate_env_vars(from);
+  translated_to = BLI_translate_env_vars(to);
   if (!BLI_exists(from)) {
     return 1;
   }
@@ -1277,7 +1319,7 @@ int BLI_rename(const char *from, const char *to)
     }
   }
 
-  return rename(from, to);
+  return rename(translated_from, translated_to);
 }
 
 #endif

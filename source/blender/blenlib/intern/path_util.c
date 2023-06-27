@@ -346,7 +346,8 @@ bool BLI_path_make_safe(char *path)
 
 bool BLI_path_is_rel(const char *path)
 {
-  return path[0] == '/' && path[1] == '/';
+  const char *translated_path = BLI_translate_env_vars(path);
+  return translated_path[0] == '/' && translated_path[1] == '/';
 }
 
 bool BLI_path_is_unc(const char *name)
@@ -993,6 +994,67 @@ bool BLI_path_abs(char *path, const char *basepath)
   BLI_path_normalize(NULL, path);
 
   return wasrelative;
+}
+/* Functions to translate environment variables in libraries path
+ * for example with MY_PROJECT=dummy and MODEL_RESOLUTION=lowres:
+ * /projects/$MY_PROJECT/character_${MODEL_RESOLUTION}_v001.blend -> /projects/dummy/character_lowres_v001.blend
+ */
+static void translate_var_inline(char **from, char **to)
+{
+	char var[FILE_MAX] = "";
+	char *cptr = var;
+	char *value;
+	short curly_opened = 0;
+
+	if (**from=='(') {
+		curly_opened = 1;
+		(*from)++;
+	}
+
+	while (isalnum(**from) || **from=='_') {
+		*cptr++ = *(*from)++;
+	}
+	*cptr = '\0';
+
+	if (curly_opened && **from==')') {
+		curly_opened = 0;
+		(*from)++;
+	}
+
+	value = getenv(var);
+
+	if (value && !curly_opened) {
+		while (*value) {
+			*(*to)++ = *value++;
+		}
+		**to = '\0';
+	}
+}
+
+static int translate_all_vars(const char *from, char *to)
+{
+	char *cptr = from;
+	int changed = 0;
+
+	while (*cptr) {
+		if (*cptr!='$') {
+			*to++ = *cptr++;
+		} else {
+			cptr++;
+			translate_var_inline(&cptr, &to);
+			changed = 1;
+		}
+	}
+	*to = '\0';
+
+	return changed;
+}
+
+char *BLI_translate_env_vars(const char *dir)
+{
+	char *translated = malloc(FILE_MAX);
+  translate_all_vars(dir, translated);
+	return translated;
 }
 
 bool BLI_path_is_abs_from_cwd(const char *path)

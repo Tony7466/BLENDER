@@ -885,7 +885,8 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   }
 
   /* Open OpenVDB file. */
-  openvdb::io::File file(filepath);
+  char *translated_path = translate_env_vars(filepath);
+  openvdb::io::File file(translated_path);
   openvdb::GridPtrVec vdb_grids;
 
   try {

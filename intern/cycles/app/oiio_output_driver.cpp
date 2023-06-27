@@ -25,7 +25,9 @@ void OIIOOutputDriver::write_render_tile(const Tile &tile)
 
   log_(string_printf("Writing image %s", filepath_.c_str()));
 
-  unique_ptr<ImageOutput> image_output(ImageOutput::create(filepath_));
+  char *translated_path = translate_env_vars(filepath_.c_str());
+
+  unique_ptr<ImageOutput> image_output(ImageOutput::create(translated_path));
   if (image_output == nullptr) {
     log_("Failed to create image file");
     return;
@@ -35,7 +37,7 @@ void OIIOOutputDriver::write_render_tile(const Tile &tile)
   const int height = tile.size.y;
 
   ImageSpec spec(width, height, 4, TypeDesc::FLOAT);
-  if (!image_output->open(filepath_, spec)) {
+  if (!image_output->open(translated_path, spec)) {
     log_("Failed to create image file");
     return;
   }

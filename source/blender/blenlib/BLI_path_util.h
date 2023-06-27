@@ -80,6 +80,16 @@ const char *BLI_path_extension(const char *filepath) ATTR_NONNULL();
 void BLI_path_append(char *__restrict dst, size_t maxlen, const char *__restrict file)
     ATTR_NONNULL();
 /**
+* Translate environnement variable in paths.
+**/
+char *BLI_translate_env_vars(const char *dir);
+
+/**
+* Check environnement variable presence in path.
+**/
+bool BLI_path_has_var(char *path);
+
+/**
  * Simple appending of filename to dir, does not check for valid path!
  * Puts result into `dst`, which may be same area as `dir`.
  *

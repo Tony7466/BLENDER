@@ -58,6 +58,12 @@ string path_source_replace_includes(const string &source, const string &path);
 /* cache utility */
 void path_cache_clear_except(const string &name, const set<string> &except);
 
+/*env var linux utility*/
+#  define FILE_MAX 1024
+void translate_var_inline(const char **from, char **to);
+int translate_all_vars(const char *from, char *to);
+char *translate_env_vars(const string &dir);
+
 CCL_NAMESPACE_END
 
 #endif

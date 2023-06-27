@@ -344,9 +344,12 @@ int BLI_exists(const char *path)
     return 0;
   }
 #else
+  const char *translated_filepath;
   struct stat st;
   BLI_assert(!BLI_path_is_rel(path));
-  if (stat(path, &st)) {
+
+  translated_filepath = BLI_translate_env_vars(path);
+  if (stat(translated_filepath, &st)) {
     return 0;
   }
 #endif
@@ -390,7 +393,10 @@ int BLI_fstat(int fd, struct stat *buffer)
 
 int BLI_stat(const char *path, struct stat *buffer)
 {
-  return stat(path, buffer);
+  const char *translated_filepath;
+  translated_filepath = BLI_translate_env_vars(path);
+
+  return stat(translated_filepath, buffer);
 }
 #endif
 

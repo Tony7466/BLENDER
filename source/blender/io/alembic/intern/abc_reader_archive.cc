@@ -107,6 +107,7 @@ ArchiveReader::ArchiveReader(struct Main *bmain, const char *filename)
   char abs_filename[FILE_MAX];
   BLI_strncpy(abs_filename, filename, FILE_MAX);
   BLI_path_abs(abs_filename, BKE_main_blendfile_path(bmain));
+  char * translated_filepath = BLI_translate_env_vars(abs_filename);
 
 #ifdef WIN32
   UTF16_ENCODE(abs_filename);
@@ -114,12 +115,12 @@ ArchiveReader::ArchiveReader(struct Main *bmain, const char *filename)
   m_infile.open(wstr.c_str(), std::ios::in | std::ios::binary);
   UTF16_UN_ENCODE(abs_filename);
 #else
-  m_infile.open(abs_filename, std::ios::in | std::ios::binary);
+  m_infile.open(translated_filepath, std::ios::in | std::ios::binary);
 #endif
 
   m_streams.push_back(&m_infile);
 
-  m_archive = open_archive(abs_filename, m_streams);
+  m_archive = open_archive(translated_filepath, m_streams);
 }
 
 ArchiveReader::~ArchiveReader()

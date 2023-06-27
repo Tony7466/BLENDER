@@ -1581,6 +1581,8 @@ struct ImBuf *IMB_anim_absolute(struct anim *anim,
   if (anim == NULL) {
     return NULL;
   }
+  char *translated_dirpath = BLI_translate_env_vars(anim->name);
+  BLI_strncpy(anim->name, translated_dirpath, sizeof(char*) * strlen(translated_dirpath));
 
   filter_y = (anim->ib_flags & IB_animdeinterlace);
 
