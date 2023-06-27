@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "BLI_math.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
@@ -118,12 +119,36 @@ static const EnumPropertyItem node_quality_items[] = {
 };
 
 static const EnumPropertyItem node_chunksize_items[] = {
-    {NTREE_CHUNKSIZE_32, "32", 0, "32\u00D732", "Chunksize of 32\u00D732"},
-    {NTREE_CHUNKSIZE_64, "64", 0, "64\u00D764", "Chunksize of 64\u00D764"},
-    {NTREE_CHUNKSIZE_128, "128", 0, "128\u00D7128", "Chunksize of 128\u00D7128"},
-    {NTREE_CHUNKSIZE_256, "256", 0, "256\u00D7256", "Chunksize of 256\u00D7256"},
-    {NTREE_CHUNKSIZE_512, "512", 0, "512\u00D7512", "Chunksize of 512\u00D7512"},
-    {NTREE_CHUNKSIZE_1024, "1024", 0, "1024\u00D71024", "Chunksize of 1024\u00D71024"},
+    {NTREE_CHUNKSIZE_32,
+     "32",
+     0,
+     "32" BLI_STR_UTF8_MULTIPLICATION_SIGN "32",
+     "Chunksize of 32" BLI_STR_UTF8_MULTIPLICATION_SIGN "32"},
+    {NTREE_CHUNKSIZE_64,
+     "64",
+     0,
+     "64" BLI_STR_UTF8_MULTIPLICATION_SIGN "64",
+     "Chunksize of 64" BLI_STR_UTF8_MULTIPLICATION_SIGN "64"},
+    {NTREE_CHUNKSIZE_128,
+     "128",
+     0,
+     "128" BLI_STR_UTF8_MULTIPLICATION_SIGN "128",
+     "Chunksize of 128" BLI_STR_UTF8_MULTIPLICATION_SIGN "128"},
+    {NTREE_CHUNKSIZE_256,
+     "256",
+     0,
+     "256" BLI_STR_UTF8_MULTIPLICATION_SIGN "256",
+     "Chunksize of 256" BLI_STR_UTF8_MULTIPLICATION_SIGN "256"},
+    {NTREE_CHUNKSIZE_512,
+     "512",
+     0,
+     "512" BLI_STR_UTF8_MULTIPLICATION_SIGN "512",
+     "Chunksize of 512" BLI_STR_UTF8_MULTIPLICATION_SIGN "512"},
+    {NTREE_CHUNKSIZE_1024,
+     "1024",
+     0,
+     "1024" BLI_STR_UTF8_MULTIPLICATION_SIGN "1024",
+     "Chunksize of 1024" BLI_STR_UTF8_MULTIPLICATION_SIGN "1024"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 #endif
