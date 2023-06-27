@@ -8,6 +8,7 @@ void register_node_type_fn_align_euler_to_vector();
 void register_node_type_fn_boolean_math();
 void register_node_type_fn_combine_color();
 void register_node_type_fn_compare();
+void register_node_type_fn_easing();
 void register_node_type_fn_float_to_int();
 void register_node_type_fn_input_bool();
 void register_node_type_fn_input_color();

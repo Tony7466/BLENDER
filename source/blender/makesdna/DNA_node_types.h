@@ -1806,6 +1806,13 @@ typedef struct NodeFunctionCompare {
   char _pad[1];
 } NodeFunctionCompare;
 
+typedef struct NodeEasing {
+  /* NodeEasingOperation. */
+  int8_t operation;
+  /* NodeEasingDirection. */
+  int8_t direction;
+} NodeEasing;
+
 typedef struct NodeCombSepColor {
   /** #NodeCombSepColorMode */
   int8_t mode;
@@ -2191,6 +2198,41 @@ typedef enum NodeCompareOperation {
   NODE_COMPARE_COLOR_BRIGHTER = 6,
   NODE_COMPARE_COLOR_DARKER = 7,
 } NodeCompareOperation;
+
+/** Easing operations. */
+typedef enum NodeEasingOperation {
+  NODE_EASING_LINEAR = 0,
+  NODE_EASING_BACK = 1,
+  NODE_EASING_BOUNCE = 2,
+  NODE_EASING_CIRC = 3,
+  NODE_EASING_CUBIC = 4,
+  NODE_EASING_ELASTIC = 5,
+  NODE_EASING_EXPO = 6,
+  NODE_EASING_QUAD = 7,
+  NODE_EASING_QUART = 8,
+  NODE_EASING_QUINT = 9,
+  NODE_EASING_SINE = 10,
+  NODE_EASING_SLOPE = 11,
+  NODE_EASING_POWER = 12,
+  NODE_EASING_STEPS = 13,
+  NODE_EASING_SMOOTHSTEP = 14,
+  NODE_EASING_CUBIC_BEZIER = 15,
+  NODE_EASING_BIAS = 16,
+  NODE_EASING_GAIN = 17,
+  NODE_EASING_DYNAMIC_CIRC = 18,
+  NODE_EASING_SAWTOOTH = 19,
+  NODE_EASING_TRIANGLE = 20,
+  NODE_EASING_SQUARE = 21,
+  NODE_EASING_SINUS = 22,
+} NodeEasingOperation;
+
+/** Easing direction. */
+typedef enum NodeEasingDirection {
+  NODE_EASING_DIRECTION_IN = 0,
+  NODE_EASING_DIRECTION_OUT = 1,
+  NODE_EASING_DIRECTION_IN_OUT = 2,
+  NODE_EASING_DIRECTION_OUT_IN = 3,
+} NodeEasingDirection;
 
 typedef enum FloatToIntRoundingMode {
   FN_NODE_FLOAT_TO_INT_ROUND = 0,

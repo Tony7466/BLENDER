@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-2023 Blender Foundation
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
 import bpy
 from bpy.types import Menu
 from bl_ui import node_add_menu
@@ -565,6 +564,7 @@ class NODE_MT_category_GEO_UTILITIES_MATH(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeBooleanMath")
+        node_add_menu.add_node_type(layout, "FunctionNodeEasing")
         node_add_menu.add_node_type(layout, "ShaderNodeClamp")
         node_add_menu.add_node_type(layout, "FunctionNodeCompare")
         node_add_menu.add_node_type(layout, "ShaderNodeFloatCurve")
@@ -674,8 +674,7 @@ class NODE_MT_geometry_node_add_all(Menu):
         node_add_menu.draw_root_assets(layout)
 
 
-classes = (
-    NODE_MT_geometry_node_add_all,
+classes = (NODE_MT_geometry_node_add_all,
     NODE_MT_geometry_node_GEO_ATTRIBUTE,
     NODE_MT_geometry_node_GEO_INPUT,
     NODE_MT_geometry_node_GEO_INPUT_CONSTANT,
@@ -716,8 +715,7 @@ classes = (
     NODE_MT_category_GEO_UTILITIES_MATH,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
     NODE_MT_category_GEO_GROUP,
-    NODE_MT_category_GEO_LAYOUT,
-)
+    NODE_MT_category_GEO_LAYOUT,)
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
