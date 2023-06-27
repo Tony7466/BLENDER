@@ -9,6 +9,7 @@ set(OIDN_EXTRA_ARGS
   -DOIDN_FILTER_RTLIGHTMAP=OFF
   -DPYTHON_EXECUTABLE=${PYTHON_BINARY}
   -DOIDN_DEVICE_SYCL=ON
+  -DOIDN_DEVICE_SYCL_AOT=OFF
 )
 if(NOT APPLE)
   set(OIDN_EXTRA_ARGS
@@ -41,6 +42,7 @@ else()
     -Dtbbmalloc_LIBRARY_RELEASE=${LIBDIR}/tbb/lib/tbbmalloc_static.a
     -DCMAKE_CXX_COMPILER=${LIBDIR}/dpcpp/bin/clang++
     -DCMAKE_C_COMPILER=${LIBDIR}/dpcpp/bin/clang
+    -DCMAKE_FIND_ROOT_PATH=${LIBDIR}/ocloc
   )
   if(NOT APPLE)
     set(OIDN_EXTRA_ARGS
