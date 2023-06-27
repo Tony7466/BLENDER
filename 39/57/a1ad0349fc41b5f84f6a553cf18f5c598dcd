@@ -1,2 +1,2 @@
 Referenced by pull request #109382, EEVEE: Remove unneeded GPU_finish
-Referenced by issue #109406, Crash in GPU_material_from_nodetree
+Referenced by issue #109406, Regression: Crash in GPU_material_from_nodetree
