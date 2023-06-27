@@ -432,12 +432,12 @@ static void sequencer_gizmos(void)
   WM_gizmogrouptype_append(SEQUENCER_GGT_gizmo2d_rotate);
   // WM_gizmogrouptype_append(SEQUENCER_GGT_gizmo_retime);
 
-  wmGizmoMapType *gzmap_type_timeline = WM_gizmomaptype_ensure(
-      &(const struct wmGizmoMapType_Params){SPACE_SEQ, RGN_TYPE_WINDOW});
+  const wmGizmoMapType_Params params_timeline = {SPACE_SEQ, RGN_TYPE_WINDOW};
+  wmGizmoMapType *gzmap_type_timeline = WM_gizmomaptype_ensure(&params_timeline);
   WM_gizmogrouptype_append_and_link(gzmap_type_timeline, SEQUENCER_GGT_gizmo_retime);
 
-  wmGizmoMapType *gzmap_type_preview = WM_gizmomaptype_ensure(
-      &(const struct wmGizmoMapType_Params){SPACE_SEQ, RGN_TYPE_PREVIEW});
+  const wmGizmoMapType_Params params_preview = {SPACE_SEQ, RGN_TYPE_PREVIEW};
+  wmGizmoMapType *gzmap_type_preview = WM_gizmomaptype_ensure(&params_preview);
   WM_gizmogrouptype_append_and_link(gzmap_type_preview, SEQUENCER_GGT_navigate);
 }
 

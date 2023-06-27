@@ -8147,7 +8147,7 @@ def km_sequencer_editor_tool_retime(_params):
             ("sequencer.retiming_handle_add", {"type": 'A', "value": 'PRESS', "shift": True}, None),
             ("sequencer.retiming_handle_remove", {"type": 'DEL', "value": 'PRESS'},None),
             ("sequencer.retiming_handle_remove", {"type": 'X', "value": 'PRESS'},None),
-
+            ("sequencer.retiming_handle_move", {"type": 'G', "value": 'PRESS'},None),
         ]},
     )
 

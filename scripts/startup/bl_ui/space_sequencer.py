@@ -1161,7 +1161,10 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator("sequencer.retiming_handle_add")
+        layout.separator()
 
+        if context.scene.sequence_editor.selected_retiming_handles:
+            layout.operator("sequencer.retiming_handle_remove")
 
         layout.separator()
 

@@ -220,9 +220,6 @@ static void retime_handle_draw(const bContext *C,
   if (handle_x == SEQ_time_left_handle_frame_get(scene, seq)) {
     return;
   }
-  if (handle_x == SEQ_time_right_handle_frame_get(scene, seq)) {
-    return;
-  }
 
   const View2D *v2d = UI_view2d_fromcontext(C);
   const rctf strip_box = strip_box_get(C, seq);

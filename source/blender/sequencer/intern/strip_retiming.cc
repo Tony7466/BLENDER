@@ -299,9 +299,7 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
 {
   MutableSpan handles = SEQ_retiming_handles_get(seq);
 
-  for (SeqRetimingHandle *next_handle = handle; next_handle < handles.end(); next_handle++) {
-    next_handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
-  }
+  handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
 
   /* Handle affected transitions: remove and re-create transition. This way transition won't change
    * length.
@@ -379,20 +377,22 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   }
 
   SeqRetimingHandle *prev_handle = handle - 1;
-  SeqRetimingHandle *next_handle = handle + 1;
 
   /* Limit retiming handle movement. */
   int corrected_offset = offset;
-  int handle_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  const int retiming_handle_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  const int strip_handle_frame = SEQ_time_right_handle_frame_get(scene, seq);
+
   int offset_min = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_handle) + 1 -
-                   handle_frame;
+                   retiming_handle_frame;
   int offset_max;
   if (SEQ_retiming_handle_index_get(seq, handle) == seq->retiming_handle_num - 1) {
     offset_max = INT_MAX;
   }
   else {
+    SeqRetimingHandle *next_handle = handle + 1;
     offset_max = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle) - 1 -
-                 handle_frame;
+                 retiming_handle_frame;
   }
   corrected_offset = max_ii(corrected_offset, offset_min);
   corrected_offset = min_ii(corrected_offset, offset_max);
@@ -400,10 +400,15 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   if (SEQ_retiming_handle_is_transition_type(handle) ||
       SEQ_retiming_handle_is_transition_type(prev_handle))
   {
+    // TODO
     seq_retiming_offset_transition_handle(scene, seq, handle, corrected_offset);
   }
   else {
     seq_retiming_offset_linear_handle(scene, seq, handle, corrected_offset);
+  }
+
+  if (strip_handle_frame == retiming_handle_frame) {
+    SEQ_time_right_handle_frame_set(scene, seq, strip_handle_frame + offset);
   }
 }
 
@@ -500,8 +505,7 @@ SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
   }
 
   if (SEQ_retiming_handle_is_freeze_frame(handle) ||
-      SEQ_retiming_handle_is_freeze_frame(handle - 1))
-  {
+      SEQ_retiming_handle_is_freeze_frame(handle - 1)) {
     return nullptr;
   }
 

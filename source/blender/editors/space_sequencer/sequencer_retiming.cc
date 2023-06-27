@@ -141,6 +141,8 @@ static int sequencer_retiming_handle_move_invoke(bContext *C, wmOperator *op, co
   /* Pass pressed modifier key to exec function. */
   op->customdata = POINTER_FROM_UINT(event->modifier & (KM_SHIFT | KM_CTRL));
 
+  RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
+
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
@@ -164,30 +166,57 @@ static SeqRetimingHandle *make_speed_transition(const Scene *scene,
   return transition_handle + 1;
 }
 
+static void move_handle(bContext *C, Sequence *seq, SeqRetimingHandle *handle, const int offset)
+{
+  Scene *scene = CTX_data_scene(C);
+
+  // I guess this could be moved to module code
+
+  // const bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
+  // const bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
+
+  /* When working with transition, change handles when moving past pivot point. */
+  /* if (handle_is_transition || prev_handle_is_transition)
+  {
+    SeqRetimingHandle *transition_start, *transition_end;
+    if (handle_is_transition) {
+      transition_start = handle;
+      transition_end = handle + 1;
+    }
+    else {
+      transition_start = handle - 1;
+      transition_end = handle;
+    }
+    const int offset_l = mouse_x -
+                         SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
+    const int offset_r = mouse_x -
+                         SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
+
+    if (prev_handle_is_transition && offset_l < 0) {
+      RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_start));
+    }
+    if (handle_is_transition && offset_r > 0) {
+      RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_end));
+    }
+  }*/
+  SEQ_retiming_offset_handle(scene, seq, handle, offset);
+  SEQ_relations_invalidate_cache_raw(scene, seq);
+}
+
 static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Scene *scene = CTX_data_scene(C);
-  const ARegion *region = CTX_wm_region(C);
-  const View2D *v2d = &region->v2d;
-  const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
-
-  int handle_index = RNA_int_get(op->ptr, "handle_index");
-  SeqRetimingHandle *handle = &SEQ_retiming_handles_get(seq)[handle_index];
 
   switch (event->type) {
     case MOUSEMOVE: {
-      float mouse_x = UI_view2d_region_to_view_x(v2d, event->mval[0]);
-      int offset = 0;
 
-      offset = mouse_x - SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+      //
+      // TODO: modifier keys used op property to store quasi selection context - now we have to
+      // modify explicitly defined selection. Perhaps that would be more readable even
+      //
 
-      if (offset == 0) {
-        return OPERATOR_RUNNING_MODAL;
-      }
-
+      /*
       uint8_t invoke_modifier = POINTER_AS_UINT(op->customdata);
-      /* Add retiming gradient and move handle. */
       if (invoke_modifier != 0) {
         SeqRetimingHandle *new_handle = nullptr;
         if ((invoke_modifier & KM_SHIFT) != 0) {
@@ -203,45 +232,30 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
         }
         op->customdata = POINTER_FROM_UINT(0);
       }
+      */
+      const View2D *v2d = UI_view2d_fromcontext(C);
 
-      const bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
-      const bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
+      float invoke_x = UI_view2d_region_to_view_x(v2d, RNA_int_get(op->ptr, "mouse_x"));
+      int offset = UI_view2d_region_to_view_x(v2d, event->mval[0]) - invoke_x;
+      RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
 
-      /* When working with transition, change handles when moving past pivot point. */
-      if (handle_is_transition || prev_handle_is_transition) {
-        SeqRetimingHandle *transition_start, *transition_end;
-        if (handle_is_transition) {
-          transition_start = handle;
-          transition_end = handle + 1;
-        }
-        else {
-          transition_start = handle - 1;
-          transition_end = handle;
-        }
-        const int offset_l = mouse_x -
-                             SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
-        const int offset_r = mouse_x -
-                             SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
-
-        if (prev_handle_is_transition && offset_l < 0) {
-          RNA_int_set(
-              op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_start));
-        }
-        if (handle_is_transition && offset_r > 0) {
-          RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_end));
-        }
+      if (offset == 0) {
+        return OPERATOR_RUNNING_MODAL;
       }
 
-      SEQ_retiming_offset_handle(scene, seq, handle, offset);
+      for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+        move_handle(C, elem->seq, elem->handle, offset);
+      }
 
-      SEQ_relations_invalidate_cache_raw(scene, seq);
       WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
       return OPERATOR_RUNNING_MODAL;
     }
     case LEFTMOUSE:
     case EVT_RETKEY:
     case EVT_SPACEKEY: {
-      retiming_handle_overlap(scene, seq);
+      for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+        retiming_handle_overlap(scene, elem->seq);
+      }
       DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
       WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
       return OPERATOR_FINISHED;
@@ -271,15 +285,8 @@ void SEQUENCER_OT_retiming_handle_move(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  PropertyRNA *prop = RNA_def_int(ot->srna,
-                                  "handle_index",
-                                  0,
-                                  0,
-                                  INT_MAX,
-                                  "Handle Index",
-                                  "Index of handle to be moved",
-                                  0,
-                                  INT_MAX);
+  PropertyRNA *prop = RNA_def_int(
+      ot->srna, "mouse_x", 0, INT_MIN, INT_MAX, "Mouse X", "", INT_MIN, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -374,10 +381,10 @@ static int sequencer_retiming_handle_remove_exec(bContext *C, wmOperator * /* op
       SeqRetimingHandle *handle = seq->retiming_handles + i;
 
       if ((handle->flag & DELETE_HANDLE) == 0) {
-        i++;
         continue;
       }
 
+      i++;
       SEQ_retiming_remove_handle(scene, seq, handle);
     }
     SEQ_relations_invalidate_cache_raw(scene, seq);

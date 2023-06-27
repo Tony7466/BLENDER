@@ -365,6 +365,13 @@ static void rna_Sequence_retiming_handle_frame_set(PointerRNA *ptr, int value)
   SEQ_relations_invalidate_cache_raw(scene, seq);
 }
 
+static bool rna_SequenceEditor_selected_retiming_handles_get(PointerRNA *ptr)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+  Editing *ed = SEQ_editing_get(scene);
+  return !BLI_listbase_is_empty(&ed->retiming_selection);
+}
+
 static void rna_Sequence_views_format_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Sequence_invalidate_raw_update(bmain, scene, ptr);
@@ -2365,6 +2372,11 @@ static void rna_def_editor(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "act_seq");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Strip", "Sequencer's active strip");
+
+  prop = RNA_def_property(srna, "selected_retiming_handles", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Retiming Handle Selection Status", "");
+  RNA_def_property_boolean_funcs(prop, "rna_SequenceEditor_selected_retiming_handles_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "show_overlay_frame", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "overlay_frame_flag", SEQ_EDIT_OVERLAY_FRAME_SHOW);
