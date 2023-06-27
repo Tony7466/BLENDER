@@ -253,7 +253,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
         *node_tree,
         op->properties,
         compute_context,
-        geometry_orig,
+        std::move(geometry_orig),
         [&](nodes::GeoNodesLFUserData &user_data) {
           user_data.operator_data = &operator_eval_data;
           user_data.log_socket_values = false;
