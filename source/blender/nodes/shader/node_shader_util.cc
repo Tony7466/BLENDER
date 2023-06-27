@@ -204,9 +204,12 @@ static void gpu_stack_from_data_list(GPUNodeStack *gs, ListBase *sockets, bNodeS
 
 static void data_from_gpu_stack_list(ListBase *sockets, bNodeStack **ns, GPUNodeStack *gs)
 {
-  int i;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, sockets, i) {
-    node_data_from_gpu_stack(ns[i], &gs[i]);
+  int index = 0;
+  LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
+    if (socket->type != SOCK_ROTATION) {
+      node_data_from_gpu_stack(ns[index], &gs[index]);
+      index++;
+    }
   }
 }
 
@@ -327,9 +330,11 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node
         node_get_stack(node, stack, nsin, nsout);
         gpu_stack_from_data_list(gpuin, &node->inputs, nsin);
         gpu_stack_from_data_list(gpuout, &node->outputs, nsout);
+        printf("Name: %s;\n", node->name);
         if (node->typeinfo->gpu_fn(mat, node, &nodeexec->data, gpuin, gpuout)) {
           data_from_gpu_stack_list(&node->outputs, nsout, gpuout);
         }
+        printf("finish;\n");
       }
     }
   }
