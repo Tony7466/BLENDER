@@ -1,7 +1,6 @@
 /* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -136,8 +135,7 @@ void ShadingView::render()
   inst_.lights.debug_draw(render_view_new_, combined_fb_);
   inst_.hiz_buffer.debug_draw(render_view_new_, combined_fb_);
   inst_.shadows.debug_draw(render_view_new_, combined_fb_);
-
-  inst_.irradiance_cache.debug_draw(render_view_new_, combined_fb_);
+  inst_.irradiance_cache.viewport_draw(render_view_new_, combined_fb_);
 
   inst_.ambient_occlusion.render_pass(render_view_new_);
 

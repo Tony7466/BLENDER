@@ -133,6 +133,14 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      // "eevee_transmittance_data",
     );
 
+GPU_SHADER_CREATE_INFO(eevee_surf_capture)
+    .vertex_out(eevee_surf_iface)
+    .define("MAT_CAPTURE")
+    .storage_buf(SURFEL_BUF_SLOT, Qualifier::WRITE, "Surfel", "surfel_buf[]")
+    .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ_WRITE, "CaptureInfoData", "capture_info_buf")
+    .fragment_source("eevee_surf_capture_frag.glsl")
+    .additional_info("eevee_camera", "eevee_utility_texture");
+
 GPU_SHADER_CREATE_INFO(eevee_surf_depth)
     .define("MAT_DEPTH")
     .vertex_out(eevee_surf_iface)
@@ -219,6 +227,7 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub).define("EEVEE_MATERIAL_STUBS");
     EEVEE_MAT_GEOM_VARIATIONS(name##_depth, "eevee_surf_depth", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_deferred, "eevee_surf_deferred", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
+    EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_shadow, "eevee_surf_shadow", __VA_ARGS__)
 
 EEVEE_MAT_PIPE_VARIATIONS(eevee_surface, "eevee_material_stub")
