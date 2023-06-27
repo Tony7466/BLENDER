@@ -135,6 +135,52 @@ class Instance {
       BKE_pbvh_is_drawing_set(ob_ref.object->sculpt->pbvh, object_state.sculpt_pbvh);
     }
 
+    bool render_ob_data = DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF;
+    render_ob_data = render_ob_data && (ob->dt >= OB_SOLID || DRW_state_is_scene_render());
+
+    if (!(ob->base_flag & BASE_FROM_DUPLI)) {
+      ModifierData *md = BKE_modifiers_findby_type(ob, eModifierType_Fluid);
+      if (md && BKE_modifier_is_enabled(scene_state.scene, md, eModifierMode_Realtime)) {
+        FluidModifierData *fmd = (FluidModifierData *)md;
+        if (fmd->domain) {
+          volume_ps.object_sync_modifier(manager, resources, scene_state, ob_ref, md);
+
+          if (fmd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
+            /* Do not draw solid in this case. */
+            render_ob_data = false;
+          }
+        }
+      }
+    }
+
+    ResourceHandle emitter_handle(0);
+
+    if (render_ob_data) {
+      if (object_state.sculpt_pbvh) {
+        /* Disable frustum culling for sculpt meshes. */
+        ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
+        sculpt_sync(manager, ob_ref, handle, object_state);
+        emitter_handle = handle;
+      }
+      else if (ELEM(ob->type, OB_MESH, OB_POINTCLOUD)) {
+        ResourceHandle handle = manager.resource_handle(ob_ref);
+        mesh_sync(manager, ob_ref, handle, object_state);
+        emitter_handle = handle;
+      }
+      else if (ob->type == OB_CURVES) {
+        curves_sync(manager, ob_ref, object_state);
+      }
+      else if (ob->type == OB_VOLUME) {
+        if (scene_state.shading.type != OB_WIRE) {
+          volume_ps.object_sync_volume(manager,
+                                       resources,
+                                       scene_state,
+                                       ob_ref,
+                                       get_material(ob_ref, object_state.color_type).base_color);
+        }
+      }
+    }
+
     if (ob->type == OB_MESH && ob->modifiers.first != nullptr) {
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
         if (md->type != eModifierType_ParticleSystem) {
@@ -148,49 +194,8 @@ class Instance {
         const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
 
         if (draw_as == PART_DRAW_PATH) {
-          hair_sync(manager, ob_ref, object_state, psys, md);
+          hair_sync(manager, ob_ref, emitter_handle, object_state, psys, md);
         }
-      }
-    }
-
-    if (!(ob->base_flag & BASE_FROM_DUPLI)) {
-      ModifierData *md = BKE_modifiers_findby_type(ob, eModifierType_Fluid);
-      if (md && BKE_modifier_is_enabled(scene_state.scene, md, eModifierMode_Realtime)) {
-        FluidModifierData *fmd = (FluidModifierData *)md;
-        if (fmd->domain) {
-          volume_ps.object_sync_modifier(manager, resources, scene_state, ob_ref, md);
-
-          if (fmd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
-            return; /* Do not draw solid in this case. */
-          }
-        }
-      }
-    }
-
-    if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
-      return;
-    }
-
-    if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
-      return;
-    }
-
-    if (object_state.sculpt_pbvh) {
-      sculpt_sync(manager, ob_ref, object_state);
-    }
-    else if (ELEM(ob->type, OB_MESH, OB_POINTCLOUD)) {
-      mesh_sync(manager, ob_ref, object_state);
-    }
-    else if (ob->type == OB_CURVES) {
-      curves_sync(manager, ob_ref, object_state);
-    }
-    else if (ob->type == OB_VOLUME) {
-      if (scene_state.shading.type != OB_WIRE) {
-        volume_ps.object_sync_volume(manager,
-                                     resources,
-                                     scene_state,
-                                     ob_ref,
-                                     get_material(ob_ref, object_state.color_type).base_color);
       }
     }
   }
@@ -238,9 +243,11 @@ class Instance {
         .draw(ob_ref, batch, handle, material_index, image, sampler_state, iuser);
   }
 
-  void mesh_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
+  void mesh_sync(Manager &manager,
+                 ObjectRef &ob_ref,
+                 ResourceHandle handle,
+                 const ObjectState &object_state)
   {
-    ResourceHandle handle = manager.resource_handle(ob_ref);
     bool has_transparent_material = false;
 
     if (object_state.use_per_material_batches) {
@@ -312,11 +319,11 @@ class Instance {
     }
   }
 
-  void sculpt_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
+  void sculpt_sync(Manager &manager,
+                   ObjectRef &ob_ref,
+                   ResourceHandle handle,
+                   const ObjectState &object_state)
   {
-    /* Disable frustum culling for sculpt meshes. */
-    ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
-
     if (object_state.use_per_material_batches) {
       const int material_count = DRW_cache_object_material_count_get(ob_ref.object);
       for (SculptBatch &batch : sculpt_batches_per_material_get(
@@ -362,13 +369,12 @@ class Instance {
 
   void hair_sync(Manager &manager,
                  ObjectRef &ob_ref,
+                 ResourceHandle emitter_handle,
                  const ObjectState &object_state,
                  ParticleSystem *psys,
                  ModifierData *md)
   {
     /* Skip frustum culling. */
-    /* TODO(Miguel Pozo):
-     * Using different handle generates outlines at the object-hair boundaries.*/
     ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
 
     Material mat = get_material(ob_ref, object_state.color_type, psys->part->omat);
@@ -385,6 +391,8 @@ class Instance {
                               .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
                               .sub(ob_ref.object->id.name);
 
+    pass.push_constant("emitter_object_id",
+                       int(emitter_handle.raw == 0 ? handle.raw : emitter_handle.raw));
     GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
     pass.draw(batch, handle, material_index);
   }

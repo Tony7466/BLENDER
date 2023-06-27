@@ -90,5 +90,9 @@ void main()
 
   workbench_hair_random_material(hair_rand, color_interp, _roughness, metallic);
 
+#ifdef WORKBENCH_NEXT
+  object_id = int(uint(emitter_object_id) & 0xFFFFu) + 1;
+#else
   object_id = int(uint(resource_handle) & 0xFFFFu) + 1;
+#endif
 }
