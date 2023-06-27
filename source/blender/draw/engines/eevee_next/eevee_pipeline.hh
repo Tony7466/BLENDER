@@ -1,7 +1,6 @@
 /* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -184,6 +183,28 @@ class DeferredPipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Capture Pipeline
+ *
+ * \{ */
+
+class CapturePipeline {
+ private:
+  Instance &inst_;
+
+  PassMain surface_ps_ = {"Capture.Surface"};
+
+ public:
+  CapturePipeline(Instance &inst) : inst_(inst){};
+
+  PassMain::Sub *surface_material_add(GPUMaterial *gpumat);
+
+  void sync();
+  void render(View &view);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility texture
  *
  * 64x64 2D array texture containing LUT tables and blue noises.
@@ -270,17 +291,20 @@ class PipelineModule {
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
+  CapturePipeline capture;
 
   UtilityTexture utility_tx;
 
  public:
-  PipelineModule(Instance &inst) : world(inst), deferred(inst), forward(inst), shadow(inst){};
+  PipelineModule(Instance &inst)
+      : world(inst), deferred(inst), forward(inst), shadow(inst), capture(inst){};
 
   void begin_sync()
   {
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
+    capture.sync();
   }
 
   void end_sync()
@@ -323,6 +347,8 @@ class PipelineModule {
         return nullptr;
       case MAT_PIPE_SHADOW:
         return shadow.surface_material_add(gpumat);
+      case MAT_PIPE_CAPTURE:
+        return capture.surface_material_add(gpumat);
     }
     return nullptr;
   }

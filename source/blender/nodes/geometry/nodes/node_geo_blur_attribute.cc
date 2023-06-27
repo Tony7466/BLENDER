@@ -423,9 +423,9 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     VArraySpan<float> neighbor_weights = evaluator.get_evaluated<float>(1);
     GArray<> buffer_b(*type_, domain_size);
 
-    GSpan result_buffer;
+    GSpan result_buffer = buffer_a.as_span();
     switch (context.type()) {
-      case GEO_COMPONENT_TYPE_MESH:
+      case GeometryComponent::Type::Mesh:
         if (ELEM(context.domain(), ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
           if (const Mesh *mesh = context.mesh()) {
             result_buffer = blur_on_mesh(
@@ -433,7 +433,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
           }
         }
         break;
-      case GEO_COMPONENT_TYPE_CURVE:
+      case GeometryComponent::Type::Curve:
         if (context.domain() == ATTR_DOMAIN_POINT) {
           if (const bke::CurvesGeometry *curves = context.curves()) {
             result_buffer = blur_on_curves(

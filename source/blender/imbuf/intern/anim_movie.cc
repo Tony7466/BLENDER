@@ -95,32 +95,30 @@ static void free_anim_movie(anim * /*anim*/)
   /* pass */
 }
 
-#if defined(_WIN32)
-#  define PATHSEPARATOR '\\'
-#else
-#  define PATHSEPARATOR '/'
-#endif
-
-static int an_stringdec(const char *string, char *head, char *tail, ushort *numlen)
+static int an_stringdec(const char *filepath,
+                        char *head,
+                        size_t head_maxncpy,
+                        char *tail,
+                        size_t tail_maxncpy,
+                        ushort *r_numlen)
 {
-  ushort len, nume, nums = 0;
-  short i;
+  const ushort len = strlen(filepath);
   bool found = false;
 
-  len = strlen(string);
-  nume = len;
+  ushort num_beg = 0;
+  ushort num_end = len;
 
-  for (i = len - 1; i >= 0; i--) {
-    if (string[i] == PATHSEPARATOR) {
+  for (short i = (short)len - 1; i >= 0; i--) {
+    if (filepath[i] == SEP) {
       break;
     }
-    if (isdigit(string[i])) {
+    if (isdigit(filepath[i])) {
       if (found) {
-        nums = i;
+        num_beg = i;
       }
       else {
-        nume = i;
-        nums = i;
+        num_end = i;
+        num_beg = i;
         found = true;
       }
     }
@@ -131,26 +129,25 @@ static int an_stringdec(const char *string, char *head, char *tail, ushort *numl
     }
   }
   if (found) {
-    strcpy(tail, &string[nume + 1]);
-    strcpy(head, string);
-    head[nums] = '\0';
-    *numlen = nume - nums + 1;
-    return int(atoi(&(string)[nums]));
+    BLI_strncpy(tail, &filepath[num_end + 1], MIN2(num_beg + 1, tail_maxncpy));
+    BLI_strncpy(head, filepath, head_maxncpy);
+    *r_numlen = num_end - num_beg + 1;
+    return int(atoi(&(filepath)[num_beg]));
   }
   tail[0] = '\0';
-  strcpy(head, string);
-  *numlen = 0;
+  BLI_strncpy(head, filepath, head_maxncpy);
+  *r_numlen = 0;
   return true;
 }
 
-static void an_stringenc(char *string,
+static void an_stringenc(char *filepath,
                          const size_t string_maxncpy,
                          const char *head,
                          const char *tail,
                          ushort numlen,
                          int pic)
 {
-  BLI_path_sequence_encode(string, string_maxncpy, head, tail, numlen, pic);
+  BLI_path_sequence_encode(filepath, string_maxncpy, head, tail, numlen, pic);
 }
 
 #ifdef WITH_AVI
@@ -491,7 +488,7 @@ static ImBuf *avi_fetchibuf(anim *anim, int position)
     MEM_freeN(tmp);
   }
 
-  ibuf->rect_colorspace = colormanage_colorspace_get_named(anim->colorspace);
+  ibuf->byte_buffer.colorspace = colormanage_colorspace_get_named(anim->colorspace);
 
   return ibuf;
 }
@@ -1472,7 +1469,8 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
       MEM_mallocN_aligned(size_t(4) * anim->x * anim->y, 32, "ffmpeg ibuf"));
   IMB_assign_byte_buffer(anim->cur_frame_final, buffer_data, IB_TAKE_OWNERSHIP);
 
-  anim->cur_frame_final->rect_colorspace = colormanage_colorspace_get_named(anim->colorspace);
+  anim->cur_frame_final->byte_buffer.colorspace = colormanage_colorspace_get_named(
+      anim->colorspace);
 
   AVFrame *final_frame = ffmpeg_frame_by_pts_get(anim, pts_to_search);
   if (final_frame == nullptr) {
@@ -1599,9 +1597,6 @@ ImBuf *IMB_anim_absolute(anim *anim,
                          IMB_Proxy_Size preview_size)
 {
   ImBuf *ibuf = nullptr;
-  char head[256], tail[256];
-  ushort digits;
-  int pic;
   int filter_y;
   if (anim == nullptr) {
     return nullptr;
@@ -1634,15 +1629,20 @@ ImBuf *IMB_anim_absolute(anim *anim,
   }
 
   switch (anim->curtype) {
-    case ANIM_SEQUENCE:
-      pic = an_stringdec(anim->filepath_first, head, tail, &digits);
-      pic += position;
+    case ANIM_SEQUENCE: {
+      constexpr size_t filepath_size = BOUNDED_ARRAY_TYPE_SIZE<decltype(anim->filepath_first)>();
+      char head[filepath_size], tail[filepath_size];
+      ushort digits;
+      const int pic = an_stringdec(
+                          anim->filepath_first, head, sizeof(head), tail, sizeof(tail), &digits) +
+                      position;
       an_stringenc(anim->filepath, sizeof(anim->filepath), head, tail, digits, pic);
       ibuf = IMB_loadiffname(anim->filepath, IB_rect, anim->colorspace);
       if (ibuf) {
         anim->cur_position = position;
       }
       break;
+    }
     case ANIM_MOVIE:
       ibuf = movie_fetchibuf(anim, position);
       if (ibuf) {
