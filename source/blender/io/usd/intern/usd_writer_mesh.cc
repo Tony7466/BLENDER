@@ -4,14 +4,12 @@
 #include "usd_writer_mesh.h"
 #include "usd_hierarchy_iterator.h"
 
-#include <pxr/usd/usdGeom/bboxCache.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 
 #include "BLI_assert.h"
-#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_attribute.h"
@@ -20,14 +18,10 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
-#include "BKE_modifier.h"
 #include "BKE_object.h"
-
-#include "DEG_depsgraph.h"
 
 #include "DNA_layer_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_fluidsim_types.h"
 #include "DNA_particle_types.h"
@@ -383,41 +377,6 @@ struct USDMeshData {
   /* The per-vertex sharpnesses. The lengths of this array must match that of `corner_indices`. */
   pxr::VtFloatArray corner_sharpnesses;
 };
-
-void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh)
-{
-  pxr::UsdTimeCode timecode = get_export_time_code();
-
-  pxr::UsdGeomPrimvarsAPI primvarsAPI(usd_mesh.GetPrim());
-
-  const CustomData *ldata = &mesh->ldata;
-  for (int layer_idx = 0; layer_idx < ldata->totlayer; layer_idx++) {
-    const CustomDataLayer *layer = &ldata->layers[layer_idx];
-    if (layer->type != CD_PROP_FLOAT2) {
-      continue;
-    }
-
-    /* UV coordinates are stored in a Primvar on the Mesh, and can be referenced from materials.
-     * The primvar name is the same as the UV Map name. This is to allow the standard name "st"
-     * for texture coordinates by naming the UV Map as such, without having to guess which UV Map
-     * is the "standard" one. */
-    pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(layer->name));
-    pxr::UsdGeomPrimvar uv_coords_primvar = primvarsAPI.CreatePrimvar(
-        primvar_name, pxr::SdfValueTypeNames->TexCoord2fArray, pxr::UsdGeomTokens->faceVarying);
-
-    const float2 *mloopuv = static_cast<const float2 *>(layer->data);
-    pxr::VtArray<pxr::GfVec2f> uv_coords;
-    for (int loop_idx = 0; loop_idx < mesh->totloop; loop_idx++) {
-      uv_coords.push_back(pxr::GfVec2f(mloopuv[loop_idx].x, mloopuv[loop_idx].y));
-    }
-
-    if (!uv_coords_primvar.HasValue()) {
-      uv_coords_primvar.Set(uv_coords, pxr::UsdTimeCode::Default());
-    }
-    const pxr::UsdAttribute &uv_coords_attr = uv_coords_primvar.GetAttr();
-    usd_value_writer_.SetAttribute(uv_coords_attr, pxr::VtValue(uv_coords), timecode);
-  }
-}
 
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {

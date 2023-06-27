@@ -34,7 +34,6 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   void assign_materials(const HierarchyContext &context,
                         pxr::UsdGeomMesh usd_mesh,
                         const MaterialFaceGroups &usd_face_groups);
-  void write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
   void write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
   void write_surface_velocity(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
 
