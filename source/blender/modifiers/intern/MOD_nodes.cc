@@ -1204,7 +1204,10 @@ static const Object *get_object_with_edit_attribute(const bContext &C,
       for (const nodes::aal::EvalRelation &relation : relations.eval_relations) {
         if (relation.field_input == input_index) {
           const bNodeSocket &geometry_socket = next_node.input_socket(relation.geometry_input);
-          objects.add_multiple(objects_by_socket.lookup(&geometry_socket));
+          if (const Vector<const Object *> *objects = objects_by_socket.lookup_ptr(
+                  &geometry_socket)) {
+            return objects->first();
+          }
         }
       }
     }
