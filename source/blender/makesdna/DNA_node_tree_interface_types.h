@@ -36,6 +36,8 @@ typedef struct bNodeTreeInterfaceItem {
 
   /* Index in final item sequence. */
   int index;
+  int children_start;
+  int children_num;
 
   /* Panel in which to display the item. */
   struct bNodeTreeInterfacePanel *parent;
@@ -93,7 +95,9 @@ typedef struct bNodeTreeInterface {
   int items_num;
   int active_index;
   int next_socket_uid;
-  char _pad[4];
+
+  /* Root items range. */
+  int root_items_num;
 
 #ifdef __cplusplus
   void copy_data(const bNodeTreeInterface &src);
@@ -102,6 +106,15 @@ typedef struct bNodeTreeInterface {
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
   int item_index(bNodeTreeInterfaceItem &item) const;
+
+  blender::IndexRange root_items_range() const;
+  blender::Span<const bNodeTreeInterfaceItem *> root_items() const;
+  blender::MutableSpan<bNodeTreeInterfaceItem *> root_items();
+
+  blender::IndexRange item_children_range(const bNodeTreeInterfaceItem &item) const;
+  blender::Span<const bNodeTreeInterfaceItem *> item_children(
+      const bNodeTreeInterfaceItem &item) const;
+  blender::MutableSpan<bNodeTreeInterfaceItem *> item_children(const bNodeTreeInterfaceItem &item);
 
   bNodeTreeInterfaceItem *active_item();
   const bNodeTreeInterfaceItem *active_item() const;

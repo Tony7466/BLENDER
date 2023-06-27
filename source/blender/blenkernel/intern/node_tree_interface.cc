@@ -132,6 +132,39 @@ int bNodeTreeInterface::item_index(bNodeTreeInterfaceItem &item) const
   return items().first_index_try(&item);
 }
 
+blender::IndexRange bNodeTreeInterface::root_items_range() const
+{
+  return blender::IndexRange(root_items_num);
+}
+
+blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterface::root_items() const
+{
+  return items().take_front(root_items_num);
+}
+
+blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::root_items()
+{
+  return items().take_front(root_items_num);
+}
+
+blender::IndexRange bNodeTreeInterface::item_children_range(
+    const bNodeTreeInterfaceItem &item) const
+{
+  return blender::IndexRange(item.children_start, item.children_num);
+}
+
+blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterface::item_children(
+    const bNodeTreeInterfaceItem &item) const
+{
+  return items().slice(item.children_start, item.children_num);
+}
+
+blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::item_children(
+    const bNodeTreeInterfaceItem &item)
+{
+  return items().slice(item.children_start, item.children_num);
+}
+
 void bNodeTreeInterface::add_item(bNodeTreeInterfaceItem &item)
 {
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = items();
@@ -414,9 +447,13 @@ void bNodeTreeInterface::clear_items()
 
 void bNodeTreeInterface::update_order()
 {
-  /* Reset index, this is also used to indicate sorted hierarchy levels. */
+  /* Reset counters. */
+  root_items_num = 0;
   for (bNodeTreeInterfaceItem *item : items()) {
+    /* index >= 0 is also used to mark sorted hierarchy levels. */
     item->index = -1;
+    item->children_start = 0;
+    item->children_num = 0;
   }
 
   bNodeTreeInterfaceItem **sorted_items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num,
@@ -437,6 +474,19 @@ void bNodeTreeInterface::update_order()
       if (item_is_ready) {
         /* Insert item into the sorted output array. */
         sorted_items_array[sorted_i] = item;
+
+        /* Update child info of the parent. */
+        if (item->parent) {
+          /* First child sets the parent's start index. */
+          if (item->parent->item.children_num == 0) {
+            item->parent->item.children_start = sorted_i;
+          }
+          ++item->parent->item.children_num;
+        }
+        else {
+          ++root_items_num;
+        }
+
         ++sorted_i;
         ++input_offset;
       }

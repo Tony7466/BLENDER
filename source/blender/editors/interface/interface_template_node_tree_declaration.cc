@@ -271,10 +271,6 @@ class NodeTreeInterfaceView : public AbstractTreeView {
 
   void build_tree() override
   {
-    /* TODO there should be either a cached map for per-panel sockets
-     * or a simple hierarchical struct to begin with, to avoid looping
-     * over all sockets for every panel. */
-
     /* Draw root items */
     add_items_for_panel_recursive(nullptr, *this);
   }
@@ -283,11 +279,15 @@ class NodeTreeInterfaceView : public AbstractTreeView {
   void add_items_for_panel_recursive(const bNodeTreeInterfacePanel *panel,
                                      ui::TreeViewOrItem &parent_item)
   {
-    for (bNodeTreeInterfaceItem *item : interface_.items()) {
-      if (item->parent != panel) {
-        continue;
-      }
+    Span<bNodeTreeInterfaceItem *> items;
+    if (panel) {
+      items = interface_.item_children(panel->item);
+    }
+    else {
+      items = interface_.root_items();
+    }
 
+    for (bNodeTreeInterfaceItem *item : items) {
       switch (item->item_type) {
         case NODE_INTERFACE_SOCKET: {
           bNodeTreeInterfaceSocket *socket = item->get_as_ptr<bNodeTreeInterfaceSocket>();
