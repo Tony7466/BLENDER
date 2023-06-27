@@ -284,9 +284,10 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     VLOG_INFO << "<" << i << "> " << sizes[i] << " " << work_balance_infos[i].weight << std::endl;
   }
   
-  size_t offsets[num_works] = { 0 };
+  size_t offsets[num_works];
   int work_item = 0;
   int total_height = 0;
+  for (int i = 0; i < num_works; ++i) { offsets[i] = 0; }
   for (int j = 0; j < device_scale_factor; j++) {
   for (int i = 0; i < num_works; ++i) {
     const double weight = work_balance_infos[i].weight * device_scale;
@@ -355,9 +356,14 @@ void PathTrace::update_allocated_work_buffer_params()
   const int overscan = tile_manager_.get_tile_overscan();
   /* Calcualte the master buffer size*/
   const int num_works = path_trace_works_.size();
-  size_t sizes[num_works] = { 0 };
-  size_t strides[num_works] = { 0 };
-  size_t widths[num_works] = { 0 };
+  size_t sizes[num_works];
+  size_t strides[num_works];
+  size_t widths[num_works];
+    for(int i = 0;i < num_works;i++) {
+        sizes[i] = 0;
+        strides[i] = 0;
+        widths[i] = 0;
+    }
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
