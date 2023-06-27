@@ -14,13 +14,13 @@ class GeometryBuilder;
 
 class Geometry : public SocketDeclaration {
  private:
-  blender::Vector<bke::GeometryComponent::Type> supported_types_;
   bool only_realized_data_ = false;
   bool only_instances_ = false;
 
   friend GeometryBuilder;
 
  public:
+  blender::Vector<bke::GeometryComponent::Type> supported_types_;
   using Builder = GeometryBuilder;
 
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
