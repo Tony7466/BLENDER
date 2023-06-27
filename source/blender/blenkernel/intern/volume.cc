@@ -318,7 +318,8 @@ struct VolumeGrid {
     /* Load grid from file. */
     CLOG_INFO(&LOG, 1, "Volume %s: load grid '%s'", volume_name, name());
 
-    openvdb::io::File file(filepath);
+    char *translated_path = BLI_translate_env_vars(filepath);
+    openvdb::io::File file(translated_path);
 
     /* Isolate file loading since that's potentially multithreaded and we are
      * holding a mutex lock. */
@@ -885,7 +886,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   }
 
   /* Open OpenVDB file. */
-  char *translated_path = translate_env_vars(filepath);
+  char *translated_path = BLI_translate_env_vars(filepath);
   openvdb::io::File file(translated_path);
   openvdb::GridPtrVec vdb_grids;
 
@@ -906,7 +907,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   /* Add grids read from file to own vector, filtering out any NULL pointers. */
   for (const openvdb::GridBase::Ptr &vdb_grid : vdb_grids) {
     if (vdb_grid) {
-      VolumeFileCache::Entry template_entry(filepath, vdb_grid);
+      VolumeFileCache::Entry template_entry(translated_path, vdb_grid);
       grids.emplace_back(template_entry, volume->runtime.default_simplify_level);
     }
   }
@@ -963,7 +964,8 @@ bool BKE_volume_save(const Volume *volume,
   }
 
   try {
-    openvdb::io::File file(filepath);
+    char *translated_path = BLI_translate_env_vars(filepath);
+    openvdb::io::File file(translated_path);
     file.write(vdb_grids, *grids.metadata);
     file.close();
   }
