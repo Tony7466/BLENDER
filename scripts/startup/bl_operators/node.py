@@ -199,6 +199,7 @@ class NODE_OT_add_simulation_zone(NodeAddZoneOperator, Operator):
 
 
 class NODE_OT_add_serial_loop_zone(NodeAddZoneOperator, Operator):
+    """Add a serial loop zone that allows executing nodes a dynamic number of times"""
     bl_idname = "node.add_serial_loop_zone"
     bl_label = "Add Serial Loop Zone"
     bl_options = {'REGISTER', 'UNDO'}
