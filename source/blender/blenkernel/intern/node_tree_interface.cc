@@ -20,27 +20,6 @@
 
 #include <queue>
 
-bool bNodeTreeInterfaceItem::is_valid_parent(const bNodeTreeInterfacePanel *new_parent) const
-{
-  const bNodeTreeInterfacePanel *panel = new_parent;
-  while (panel) {
-    if (&panel->item == this) {
-      return false;
-    }
-    panel = panel->item.parent;
-  }
-  return true;
-}
-
-bool bNodeTreeInterfaceItem::parent_set(bNodeTreeInterfacePanel *new_parent)
-{
-  if (!is_valid_parent(new_parent)) {
-    return false;
-  }
-  parent = new_parent;
-  return true;
-}
-
 void bNodeTreeInterfaceItem::copy_data(const bNodeTreeInterfaceItem &src,
                                        std::optional<ParentMap> parent_map)
 {
@@ -163,6 +142,30 @@ blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::item_children
     const bNodeTreeInterfaceItem &item)
 {
   return items().slice(item.children_start, item.children_num);
+}
+
+bool bNodeTreeInterface::is_valid_parent(const bNodeTreeInterfaceItem &item,
+                                         const bNodeTreeInterfacePanel *new_parent) const
+{
+  const bNodeTreeInterfacePanel *panel = new_parent;
+  while (panel) {
+    if (&panel->item == &item) {
+      return false;
+    }
+    panel = panel->item.parent;
+  }
+  return true;
+}
+
+bool bNodeTreeInterface::parent_set(bNodeTreeInterfaceItem &item,
+                                    bNodeTreeInterfacePanel *new_parent)
+{
+  if (!is_valid_parent(item, new_parent)) {
+    return false;
+  }
+  item.parent = new_parent;
+  update_order();
+  return true;
 }
 
 void bNodeTreeInterface::add_item(bNodeTreeInterfaceItem &item)

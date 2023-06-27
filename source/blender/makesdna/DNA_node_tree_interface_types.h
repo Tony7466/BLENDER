@@ -53,9 +53,6 @@ typedef struct bNodeTreeInterfaceItem {
 
   void copy_data(const bNodeTreeInterfaceItem &src, std::optional<ParentMap> parent_map);
   void free_data();
-
-  bool is_valid_parent(const bNodeTreeInterfacePanel *new_parent) const;
-  bool parent_set(bNodeTreeInterfacePanel *new_parent);
 #endif
 } bNodeTreeInterfaceItem;
 
@@ -119,6 +116,10 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceItem *active_item();
   const bNodeTreeInterfaceItem *active_item() const;
   void active_item_set(bNodeTreeInterfaceItem *item);
+
+  bool is_valid_parent(const bNodeTreeInterfaceItem &item,
+                       const bNodeTreeInterfacePanel *new_parent) const;
+  bool parent_set(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *new_parent);
 
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,

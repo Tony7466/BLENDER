@@ -59,9 +59,11 @@ static void rna_NodeTreeInterfaceItem_parent_set(PointerRNA *ptr,
                                                  PointerRNA value,
                                                  struct ReportList *reports)
 {
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNodeTreeInterface *interface = &ntree->interface;
   bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(ptr->data);
   bNodeTreeInterfacePanel *new_parent = static_cast<bNodeTreeInterfacePanel *>(value.data);
-  if (!item->parent_set(new_parent)) {
+  if (!interface->parent_set(*item, new_parent)) {
     BKE_reportf(
         reports, RPT_ERROR_INVALID_INPUT, "Cannot set parent to panel '%s'", new_parent->name);
   }
@@ -69,12 +71,15 @@ static void rna_NodeTreeInterfaceItem_parent_set(PointerRNA *ptr,
 
 static bool rna_NodeTreeInterfaceItem_parent_poll(PointerRNA *ptr, PointerRNA value)
 {
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNodeTreeInterface *interface = &ntree->interface;
   bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(ptr->data);
   bNodeTreeInterfaceItem *new_parent = static_cast<bNodeTreeInterfaceItem *>(value.data);
   if (new_parent->item_type != NODE_INTERFACE_PANEL) {
     return false;
   }
-  return item->is_valid_parent(reinterpret_cast<bNodeTreeInterfacePanel *>(new_parent));
+  return interface->is_valid_parent(*item,
+                                    reinterpret_cast<bNodeTreeInterfacePanel *>(new_parent));
 }
 
 static void rna_NodeTreeInterfaceSocket_identifier_get(PointerRNA *ptr, char *value)
