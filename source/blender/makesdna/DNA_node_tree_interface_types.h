@@ -22,7 +22,7 @@
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
 
-/** Socket side (input/output). */
+/** Type of interface item. */
 typedef enum eNodeTreeInterfaceItemType {
   NODE_INTERFACE_SOCKET = 0,
   NODE_INTERFACE_PANEL = 1,
@@ -53,6 +53,8 @@ typedef struct bNodeTreeInterfaceItem {
 
   void copy_data(const bNodeTreeInterfaceItem &src, std::optional<ParentMap> parent_map);
   void free_data();
+
+  template<typename OpT> void apply_typed_operator(OpT op) const;
 #endif
 } bNodeTreeInterfaceItem;
 
@@ -81,10 +83,69 @@ typedef struct bNodeTreeInterfaceSocket {
 #endif
 } bNodeTreeInterfaceSocket;
 
+typedef struct bNodeTreeInterfaceSocketFloat {
+  bNodeTreeInterfaceSocket base;
+
+#ifdef __cplusplus
+  using ValueType = float;
+  using SocketValueType = struct bNodeSocketValueFloat;
+
+  static const char *socket_type_static;
+#endif
+} bNodeTreeInterfaceSocketFloat;
+
+typedef struct bNodeTreeInterfaceSocketInt {
+  bNodeTreeInterfaceSocket base;
+
+#ifdef __cplusplus
+  using ValueType = int;
+  using SocketValueType = struct bNodeSocketValueInt;
+
+  static const char *socket_type_static;
+#endif
+} bNodeTreeInterfaceSocketInt;
+
+typedef struct bNodeTreeInterfaceSocketBool {
+  bNodeTreeInterfaceSocket base;
+
+#ifdef __cplusplus
+  using ValueType = bool;
+  using SocketValueType = struct bNodeSocketValueBoolean;
+
+  static const char *socket_type_static;
+#endif
+} bNodeTreeInterfaceSocketBool;
+
+typedef struct bNodeTreeInterfaceSocketString {
+  bNodeTreeInterfaceSocket base;
+
+#ifdef __cplusplus
+  using ValueType = std::string;
+  using SocketValueType = struct bNodeSocketValueString;
+
+  static const char *socket_type_static;
+#endif
+} bNodeTreeInterfaceSocketString;
+
+typedef struct bNodeTreeInterfaceSocketObject {
+  bNodeTreeInterfaceSocket base;
+
+#ifdef __cplusplus
+  using ValueType = struct Object *;
+  using SocketValueType = struct bNodeSocketValueObject;
+
+  static const char *socket_type_static;
+#endif
+} bNodeTreeInterfaceSocketObject;
+
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;
 
   char *name;
+
+#ifdef __cplusplus
+  static bNodeTreeInterfaceSocket *create(blender::StringRef name);
+#endif
 } bNodeTreeInterfacePanel;
 
 typedef struct bNodeTreeInterface {

@@ -18,43 +18,84 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include <queue>
+const char *bNodeTreeInterfaceSocketFloat::socket_type_static = "NodeSocketFloat";
+const char *bNodeTreeInterfaceSocketInt::socket_type_static = "NodeSocketInt";
+const char *bNodeTreeInterfaceSocketBool::socket_type_static = "NodeSocketBool";
+const char *bNodeTreeInterfaceSocketString::socket_type_static = "NodeSocketString";
+const char *bNodeTreeInterfaceSocketObject::socket_type_static = "NodeSocketObject";
+
+namespace {
+
+void copy_socket_base_data(bNodeTreeInterfaceSocket &dst, const bNodeTreeInterfaceSocket &src)
+{
+  BLI_assert(src.name != nullptr);
+  BLI_assert(src.data_type != nullptr);
+  dst.name = BLI_strdup(src.name);
+  dst.description = src.description ? BLI_strdup(src.description) : nullptr;
+  dst.data_type = BLI_strdup(src.data_type);
+}
+
+void copy_item_data(bNodeTreeInterfacePanel &dst, const bNodeTreeInterfacePanel &src)
+{
+  BLI_assert(src.name != nullptr);
+  dst.name = BLI_strdup(src.name);
+}
+
+void copy_item_data(bNodeTreeInterfaceSocketFloat &dst, const bNodeTreeInterfaceSocketFloat &src)
+{
+  copy_socket_base_data(dst.base, src.base);
+}
+
+void copy_item_data(bNodeTreeInterfaceSocketInt &dst, const bNodeTreeInterfaceSocketInt &src)
+{
+  copy_socket_base_data(dst.base, src.base);
+}
+
+void copy_item_data(bNodeTreeInterfaceSocketBool &dst, const bNodeTreeInterfaceSocketBool &src)
+{
+  copy_socket_base_data(dst.base, src.base);
+}
+
+void copy_item_data(bNodeTreeInterfaceSocketString &dst, const bNodeTreeInterfaceSocketString &src)
+{
+  copy_socket_base_data(dst.base, src.base);
+}
+
+void copy_item_data(bNodeTreeInterfaceSocketObject &dst, const bNodeTreeInterfaceSocketObject &src)
+{
+  copy_socket_base_data(dst.base, src.base);
+}
+
+}  // namespace
+
+struct CopyItemOp {
+  using ParentMap = bNodeTreeInterfaceItem::ParentMap;
+
+  bNodeTreeInterfaceItem &dst;
+  const bNodeTreeInterfaceItem &src;
+  std::optional<ParentMap> parent_map;
+
+  template<typename ItemT> void operator()()
+  {
+    BLI_assert(src.item_type == dst.item_type);
+
+    if (parent_map) {
+      if (src.parent != nullptr) {
+        dst.parent = parent_map->lookup(src.parent);
+      }
+      else {
+        dst.parent = nullptr;
+      }
+    }
+
+    copy_item_data(dst.get_as<ItemT>(), src.get_as<ItemT>());
+  }
+};
 
 void bNodeTreeInterfaceItem::copy_data(const bNodeTreeInterfaceItem &src,
                                        std::optional<ParentMap> parent_map)
 {
-  BLI_assert(src.item_type == item_type);
-
-  if (parent_map) {
-    if (src.parent != nullptr) {
-      parent = parent_map->lookup(src.parent);
-    }
-    else {
-      parent = nullptr;
-    }
-  }
-
-  switch (item_type) {
-    case NODE_INTERFACE_SOCKET: {
-      bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(*this);
-      const bNodeTreeInterfaceSocket &socket_src =
-          reinterpret_cast<const bNodeTreeInterfaceSocket &>(src);
-      BLI_assert(socket_src.name != nullptr);
-      BLI_assert(socket_src.data_type != nullptr);
-      socket.name = BLI_strdup(socket_src.name);
-      socket.description = socket_src.description ? BLI_strdup(socket_src.description) : nullptr;
-      socket.data_type = BLI_strdup(socket_src.data_type);
-      break;
-    }
-    case NODE_INTERFACE_PANEL: {
-      bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(*this);
-      const bNodeTreeInterfacePanel &panel_src = reinterpret_cast<const bNodeTreeInterfacePanel &>(
-          src);
-      BLI_assert(panel.name != nullptr);
-      panel.name = BLI_strdup(panel_src.name);
-      break;
-    }
-  }
+  apply_typed_operator(CopyItemOp{*this, src, parent_map});
 }
 
 void bNodeTreeInterfaceItem::free_data() {}
@@ -203,7 +244,7 @@ bool bNodeTreeInterface::unlink_item(bNodeTreeInterfaceItem &item)
 
   const bNodeTreeInterfacePanel *panel = nullptr;
   if (item.item_type == NODE_INTERFACE_PANEL) {
-    panel = reinterpret_cast<bNodeTreeInterfacePanel *>(&item);
+    panel = item.get_as_ptr<bNodeTreeInterfacePanel>();
   }
 
   for (bNodeTreeInterfaceItem *titem : items()) {

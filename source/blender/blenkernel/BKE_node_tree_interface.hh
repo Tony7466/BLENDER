@@ -45,22 +45,21 @@ inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
   active_index = items().as_span().first_index_try(item);
 }
 
+template<typename ExpectedT> struct IsExpectedTypeOp {
+  bool result = false;
+
+  template<typename ItemT> void operator()()
+  {
+    result = std::is_same<ItemT, ExpectedT>::value;
+  }
+};
+
 template<typename T> T &bNodeTreeInterfaceItem::get_as()
 {
 #  ifndef NDEBUG
-  switch (item_type) {
-    case NODE_INTERFACE_PANEL: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
-      BLI_assert(is_valid_type);
-      break;
-    }
-    default:
-    case NODE_INTERFACE_SOCKET: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
-      BLI_assert(is_valid_type);
-      break;
-    }
-  }
+  IsExpectedTypeOp<T> op;
+  apply_typed_operator(op);
+  BLI_assert(op.result);
 #  endif
 
   return *reinterpret_cast<T *>(this);
@@ -69,19 +68,9 @@ template<typename T> T &bNodeTreeInterfaceItem::get_as()
 template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
 {
 #  ifndef NDEBUG
-  switch (item_type) {
-    case NODE_INTERFACE_PANEL: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
-      BLI_assert(is_valid_type);
-      break;
-    }
-    default:
-    case NODE_INTERFACE_SOCKET: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
-      BLI_assert(is_valid_type);
-      break;
-    }
-  }
+  IsExpectedTypeOp<T> op;
+  apply_typed_operator(op);
+  BLI_assert(op.result);
 #  endif
 
   return *reinterpret_cast<const T *>(this);
@@ -115,6 +104,45 @@ template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
       constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
       return is_valid_type ? reinterpret_cast<const T *>(this) : nullptr;
   }
+}
+
+template<typename OpT>
+void apply_typed_operator(const eNodeTreeInterfaceItemType item_type,
+                          blender::StringRef socket_data_type,
+                          OpT op)
+{
+  switch (item_type) {
+    case NODE_INTERFACE_PANEL:
+      op.template operator()<bNodeTreeInterfacePanel>();
+      break;
+    case NODE_INTERFACE_SOCKET: {
+      if (socket_data_type == bNodeTreeInterfaceSocketFloat::socket_type_static) {
+        op.template operator()<bNodeTreeInterfaceSocketFloat>();
+      }
+      else if (socket_data_type == bNodeTreeInterfaceSocketInt::socket_type_static) {
+        op.template operator()<bNodeTreeInterfaceSocketInt>();
+      }
+      else if (socket_data_type == bNodeTreeInterfaceSocketBool::socket_type_static) {
+        op.template operator()<bNodeTreeInterfaceSocketBool>();
+      }
+      else if (socket_data_type == bNodeTreeInterfaceSocketString::socket_type_static) {
+        op.template operator()<bNodeTreeInterfaceSocketString>();
+      }
+      else if (socket_data_type == bNodeTreeInterfaceSocketObject::socket_type_static) {
+        op.template operator()<bNodeTreeInterfaceSocketObject>();
+      }
+      break;
+    }
+  }
+}
+
+template<typename OpT> void bNodeTreeInterfaceItem::apply_typed_operator(OpT op) const
+{
+  const blender::StringRef data_type =
+      (item_type == NODE_INTERFACE_SOCKET ?
+           reinterpret_cast<const bNodeTreeInterfaceSocket *>(this)->data_type :
+           "");
+  return ::apply_typed_operator<OpT>(eNodeTreeInterfaceItemType(item_type), data_type, op);
 }
 
 #endif
