@@ -9,6 +9,7 @@ from bpy.app.translations import pgettext_data as data_
 
 from bpy.props import (
     EnumProperty,
+    StringProperty,
 )
 
 
@@ -345,6 +346,39 @@ class SimulationZoneItemMoveOperator(SimulationZoneOperator, Operator):
         return {'FINISHED'}
 
 
+class SetModeAndAttributeOperator(Operator):
+    """Edit the attribute"""
+    bl_idname = "geometry.set_mode_and_attribute"
+    bl_label = "Edit Attribute"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    attribute: StringProperty (
+        name="Active Attribute",
+    )
+    object_name: StringProperty (
+        name="Object Name",
+    )
+
+    def execute(self, context):
+        ob = bpy.data.objects[self.object_name]
+        if ob != bpy.context.object:
+            bpy.context.view_layer.objects.active = ob
+
+        vertex_group = ob.vertex_groups.get(self.attribute)
+        if vertex_group is not None:
+            ob.vertex_groups.active = vertex_group
+            bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+            return {'FINISHED'}
+
+        mesh = ob.data
+        color_attribute = mesh.color_attributes.get(self.attribute)
+        if color_attribute is not None:
+            bpy.ops.object.mode_set(mode='VERTEX_PAINT')
+            mesh.color_attributes.active_color_name = self.attribute
+            return {'FINISHED'}
+
+        return {'CANCELLED'}
+
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
@@ -352,4 +386,5 @@ classes = (
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,
     SimulationZoneItemMoveOperator,
+    SetModeAndAttributeOperator,
 )

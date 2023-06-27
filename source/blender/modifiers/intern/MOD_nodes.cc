@@ -41,6 +41,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_customdata.h"
+#include "BKE_deform.h"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
@@ -51,6 +52,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
@@ -68,6 +70,7 @@
 
 #include "BLT_translation.h"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "RNA_access.h"
@@ -1071,6 +1074,176 @@ static void add_attribute_search_button(const bContext &C,
   }
 }
 
+using ObjectsBySocket = Map<const bNodeSocket *, Vector<const Object *>>;
+
+static ObjectsBySocket propagate_object_references(
+    const Object &self_object,
+    const bNodeTree &node_group,
+    const Span<const nodes::aal::RelationsInNode *> attribute_relations,
+    const NodesModifierSettings &inputs)
+{
+  ObjectsBySocket objects_by_socket;
+  Stack<const bNodeSocket *> outputs_to_handle;
+
+  /* Add objects from self object nodes. */
+  for (const bNode *node : node_group.nodes_by_type("GeometryNodeSelfObject")) {
+    const bNodeSocket &socket = node->output_socket(0);
+    objects_by_socket.lookup_or_add_default(&socket).append_non_duplicates(&self_object);
+    outputs_to_handle.push(&socket);
+  }
+
+  /* Add objects from unlinked object info nodes. */
+  for (const bNode *node : node_group.nodes_by_type("GeometryNodeObjectInfo")) {
+    const bNodeSocket &input = node->input_socket(0);
+    if (input.is_logically_linked()) {
+      continue;
+    }
+    const Object *object = input.default_value_typed<bNodeSocketValueObject>()->value;
+    if (!object) {
+      continue;
+    }
+    const bNodeSocket &output = node->output_by_identifier("Geometry");
+    objects_by_socket.lookup_or_add_default(&output).append_non_duplicates(object);
+    outputs_to_handle.push(&output);
+  }
+
+  /* Add objects from group input nodes. */
+  for (const bNode *node : node_group.group_input_nodes()) {
+    const bNodeSocket &output = node->output_socket(0);
+    BLI_assert(output.type == SOCK_GEOMETRY);
+    objects_by_socket.lookup_or_add_default(&output).append_non_duplicates(&self_object);
+    outputs_to_handle.push(&output);
+    for (const bNodeSocket *output : node->output_sockets().drop_front(1)) {
+      if (output->type == SOCK_OBJECT) {
+        const IDProperty *object_prop = static_cast<const IDProperty *>(BLI_findstring(
+            &inputs.properties->data.group, output->identifier, offsetof(IDProperty, name)));
+        if (const Object *object = reinterpret_cast<const Object *>(IDP_Id(object_prop))) {
+          objects_by_socket.lookup_or_add_default(output).append_non_duplicates(object);
+          outputs_to_handle.push(output);
+        }
+      }
+    }
+  }
+
+  while (!outputs_to_handle.is_empty()) {
+    const bNodeSocket &output = *outputs_to_handle.pop();
+    BLI_assert(output.is_output());
+    const Vector<const Object *> objects = objects_by_socket.lookup(&output);
+
+    for (const bNodeSocket *input : output.logically_linked_sockets()) {
+      BLI_assert(input->is_input());
+      BLI_assert(!objects.is_empty());
+      BLI_assert(objects[0] != nullptr);
+      BLI_assert(input != &output);
+      objects_by_socket.lookup_or_add_default(input).extend_non_duplicates(objects);
+
+      const bNode &next_node = input->owner_node();
+      if (next_node.type == GEO_NODE_OBJECT_INFO) {
+        const bNodeSocket &next_output = next_node.output_by_identifier("Geometry");
+        BLI_assert(&next_output != &output);
+        BLI_assert(input != &next_output);
+        objects_by_socket.lookup_or_add_default(&next_output).extend_non_duplicates(objects);
+        outputs_to_handle.push(&next_output);
+      }
+      else {
+        const int input_index = input->index();
+        const nodes::aal::RelationsInNode &relations = *attribute_relations[next_node.index()];
+        for (const nodes::aal::PropagateRelation &relation : relations.propagate_relations) {
+          if (relation.from_geometry_input == input_index) {
+            const bNodeSocket &next_output = next_node.output_socket(relation.to_geometry_output);
+            BLI_assert(input != &output);
+            BLI_assert(input != &next_output);
+            objects_by_socket.lookup_or_add_default(&next_output).extend_non_duplicates(objects);
+            outputs_to_handle.push(&next_output);
+          }
+        }
+      }
+    }
+  }
+
+  return objects_by_socket;
+}
+
+static const Object *get_object_with_edit_attribute(const bContext &C,
+                                                    const NodesModifierData &nmd,
+                                                    const bNodeSocket &io_socket)
+{
+  const bNodeTree &node_group = *nmd.node_group;
+  node_group.ensure_topology_cache();
+
+  ResourceScope scope;
+  const Array<const nodes::aal::RelationsInNode *> attribute_relations =
+      bke::anonymous_attribute_inferencing::get_relations_by_node(node_group, scope);
+
+  const PointerRNA ob_ptr = CTX_data_pointer_get_type(&C, "object", &RNA_Object);
+  const Object *self_object = static_cast<const Object *>(ob_ptr.data);
+  const ObjectsBySocket objects_by_socket = propagate_object_references(
+      *self_object, node_group, attribute_relations, nmd.settings);
+
+  Stack<const bNodeSocket *> outputs_to_follow;
+  for (const bNode *node : node_group.group_input_nodes()) {
+    const bNodeSocket &socket = node->output_by_identifier(io_socket.identifier);
+    outputs_to_follow.push(&socket);
+  }
+
+  VectorSet<const Object *> objects;
+  while (!outputs_to_follow.is_empty()) {
+    const bNodeSocket &output = *outputs_to_follow.pop();
+
+    for (const bNodeSocket *input : output.logically_linked_sockets()) {
+      const bNode &next_node = input->owner_node();
+      const int input_index = input->index();
+
+      const nodes::aal::RelationsInNode &relations = *attribute_relations[next_node.index()];
+      for (const nodes::aal::ReferenceRelation &relation : relations.reference_relations) {
+        if (relation.from_field_input == input_index) {
+          outputs_to_follow.push(&next_node.output_socket(relation.to_field_output));
+        }
+      }
+
+      for (const nodes::aal::EvalRelation &relation : relations.eval_relations) {
+        if (relation.field_input == input_index) {
+          const bNodeSocket &geometry_socket = next_node.input_socket(relation.geometry_input);
+          objects.add_multiple(objects_by_socket.lookup(&geometry_socket));
+        }
+      }
+    }
+  }
+
+  return objects.is_empty() ? nullptr : objects[0];
+}
+
+static bool add_edit_attribute_button(const bContext &C,
+                                      uiLayout &layout,
+                                      const NodesModifierData &nmd,
+                                      const StringRefNull name,
+                                      const bNodeSocket &io_socket)
+{
+  if (name.is_empty()) {
+    return false;
+  }
+  const Object *object = get_object_with_edit_attribute(C, nmd, io_socket);
+  if (!object) {
+    return false;
+  }
+  if (object->type != OB_MESH) {
+    return false;
+  }
+  const Mesh &mesh = *static_cast<const Mesh *>(object->data);
+  if (!BKE_object_defgroup_find_name(object, name.c_str()) &&
+      !BKE_id_attributes_color_find(&mesh.id, name.c_str()))
+  {
+    return false;
+  }
+
+  PointerRNA op_ptr;
+  wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_set_mode_and_attribute", true);
+  uiItemFullO_ptr(&layout, ot, "", ICON_TOOL_SETTINGS, nullptr, WM_OP_INVOKE_DEFAULT, 0, &op_ptr);
+  RNA_string_set(&op_ptr, "object_name", object->id.name + 2);
+  RNA_string_set(&op_ptr, "attribute", name.c_str());
+  return true;
+}
+
 static void add_attribute_search_or_value_buttons(const bContext &C,
                                                   uiLayout *layout,
                                                   const NodesModifierData &nmd,
@@ -1108,7 +1281,12 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
 
   if (use_attribute) {
     add_attribute_search_button(C, prop_row, nmd, md_ptr, rna_path_attribute_name, socket, false);
-    uiItemL(layout, "", ICON_BLANK1);
+    char *attribute_name = RNA_string_get_alloc(
+        md_ptr, rna_path_attribute_name.c_str(), nullptr, 0, nullptr);
+    if (!add_edit_attribute_button(C, *layout, nmd, attribute_name, socket)) {
+      uiItemL(layout, "", ICON_BLANK1);
+    }
+    MEM_freeN(attribute_name);
   }
   else {
     const char *name = socket.type == SOCK_BOOLEAN ? socket.name : "";
