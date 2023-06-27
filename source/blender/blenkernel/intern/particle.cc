@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 by Janne Karhu. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 by Janne Karhu. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -365,10 +366,10 @@ static void particle_settings_blend_read_data(BlendDataReader *reader, ID *id)
 void BKE_particle_partdeflect_blend_read_lib(BlendLibReader *reader, ID *id, PartDeflect *pd)
 {
   if (pd && pd->tex) {
-    BLO_read_id_address(reader, id->lib, &pd->tex);
+    BLO_read_id_address(reader, id, &pd->tex);
   }
   if (pd && pd->f_source) {
-    BLO_read_id_address(reader, id->lib, &pd->f_source);
+    BLO_read_id_address(reader, id, &pd->f_source);
   }
 }
 
@@ -377,19 +378,19 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
   ParticleSettings *part = (ParticleSettings *)id;
 
   /* XXX: deprecated - old animation system. */
-  BLO_read_id_address(reader, part->id.lib, &part->ipo);
+  BLO_read_id_address(reader, id, &part->ipo);
 
-  BLO_read_id_address(reader, part->id.lib, &part->instance_object);
-  BLO_read_id_address(reader, part->id.lib, &part->instance_collection);
-  BLO_read_id_address(reader, part->id.lib, &part->force_group);
-  BLO_read_id_address(reader, part->id.lib, &part->bb_ob);
-  BLO_read_id_address(reader, part->id.lib, &part->collision_group);
+  BLO_read_id_address(reader, id, &part->instance_object);
+  BLO_read_id_address(reader, id, &part->instance_collection);
+  BLO_read_id_address(reader, id, &part->force_group);
+  BLO_read_id_address(reader, id, &part->bb_ob);
+  BLO_read_id_address(reader, id, &part->collision_group);
 
-  BKE_particle_partdeflect_blend_read_lib(reader, &part->id, part->pd);
-  BKE_particle_partdeflect_blend_read_lib(reader, &part->id, part->pd2);
+  BKE_particle_partdeflect_blend_read_lib(reader, id, part->pd);
+  BKE_particle_partdeflect_blend_read_lib(reader, id, part->pd2);
 
   if (part->effector_weights) {
-    BLO_read_id_address(reader, part->id.lib, &part->effector_weights->group);
+    BLO_read_id_address(reader, id, &part->effector_weights->group);
   }
   else {
     part->effector_weights = BKE_effector_add_weights(part->force_group);
@@ -397,7 +398,7 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
 
   if (part->instance_weights.first && part->instance_collection) {
     LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
-      BLO_read_id_address(reader, part->id.lib, &dw->ob);
+      BLO_read_id_address(reader, id, &dw->ob);
     }
   }
   else {
@@ -411,12 +412,12 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
           case eBoidRuleType_Goal:
           case eBoidRuleType_Avoid: {
             BoidRuleGoalAvoid *brga = (BoidRuleGoalAvoid *)rule;
-            BLO_read_id_address(reader, part->id.lib, &brga->ob);
+            BLO_read_id_address(reader, id, &brga->ob);
             break;
           }
           case eBoidRuleType_FollowLeader: {
             BoidRuleFollowLeader *brfl = (BoidRuleFollowLeader *)rule;
-            BLO_read_id_address(reader, part->id.lib, &brfl->ob);
+            BLO_read_id_address(reader, id, &brfl->ob);
             break;
           }
         }
@@ -427,8 +428,8 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
   for (int a = 0; a < MAX_MTEX; a++) {
     MTex *mtex = part->mtex[a];
     if (mtex) {
-      BLO_read_id_address(reader, part->id.lib, &mtex->tex);
-      BLO_read_id_address(reader, part->id.lib, &mtex->object);
+      BLO_read_id_address(reader, id, &mtex->tex);
+      BLO_read_id_address(reader, id, &mtex->object);
     }
   }
 }
@@ -768,7 +769,7 @@ ParticleSystem *psys_orig_get(ParticleSystem *psys)
   return psys->orig_psys;
 }
 
-struct ParticleSystem *psys_eval_get(Depsgraph *depsgraph, Object *object, ParticleSystem *psys)
+ParticleSystem *psys_eval_get(Depsgraph *depsgraph, Object *object, ParticleSystem *psys)
 {
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
   if (object_eval == object) {
@@ -1941,7 +1942,7 @@ int psys_particle_dm_face_lookup(Mesh *mesh_final,
                                  Mesh *mesh_original,
                                  int findex_orig,
                                  const float fw[4],
-                                 struct LinkNode **poly_nodes)
+                                 LinkNode **poly_nodes)
 {
   MFace *mtessface_final;
   const OrigSpaceFace *osface_final;
@@ -2165,7 +2166,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
   const blender::Span<blender::float3> vert_normals = mesh_final->vert_normals();
 
   if (from == PART_FROM_VERT) {
-    const float(*vert_positions)[3] = BKE_mesh_vert_positions(mesh_final);
+    const blender::Span<blender::float3> vert_positions = mesh_final->vert_positions();
     copy_v3_v3(vec, vert_positions[mapindex]);
 
     if (nor) {
@@ -2194,7 +2195,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
     MFace *mfaces = static_cast<MFace *>(
         CustomData_get_layer_for_write(&mesh_final->fdata, CD_MFACE, mesh_final->totface));
     mface = &mfaces[mapindex];
-    const float(*vert_positions)[3] = BKE_mesh_vert_positions(mesh_final);
+    const blender::Span<blender::float3> vert_positions = mesh_final->vert_positions();
     mtface = static_cast<MTFace *>(
         CustomData_get_layer_for_write(&mesh_final->fdata, CD_MTFACE, mesh_final->totface));
 
@@ -2204,7 +2205,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
 
     if (from == PART_FROM_VOLUME) {
       psys_interpolate_face(mesh_final,
-                            vert_positions,
+                            reinterpret_cast<const float(*)[3]>(vert_positions.data()),
                             reinterpret_cast<const float(*)[3]>(vert_normals.data()),
                             mface,
                             mtface,
@@ -2227,7 +2228,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
     }
     else {
       psys_interpolate_face(mesh_final,
-                            vert_positions,
+                            reinterpret_cast<const float(*)[3]>(vert_positions.data()),
                             reinterpret_cast<const float(*)[3]>(vert_normals.data()),
                             mface,
                             mtface,
@@ -2883,7 +2884,7 @@ static void psys_task_init_path(ParticleTask *task, ParticleSimulationData *sim)
 
 /* NOTE: this function must be thread safe, except for branching! */
 static void psys_thread_create_path(ParticleTask *task,
-                                    struct ChildParticle *cpa,
+                                    ChildParticle *cpa,
                                     ParticleCacheKey *child_keys,
                                     int i)
 {
@@ -3923,7 +3924,7 @@ static void psys_face_mat(Object *ob, Mesh *mesh, ParticleData *pa, float mat[4]
     }
   }
   else {
-    const float(*vert_positions)[3] = BKE_mesh_vert_positions(mesh);
+    const blender::Span<blender::float3> vert_positions = mesh->vert_positions();
     copy_v3_v3(v[0], vert_positions[mface->v1]);
     copy_v3_v3(v[1], vert_positions[mface->v2]);
     copy_v3_v3(v[2], vert_positions[mface->v3]);
@@ -5474,21 +5475,21 @@ void BKE_particle_system_blend_read_lib(BlendLibReader *reader,
 {
   LISTBASE_FOREACH_MUTABLE (ParticleSystem *, psys, particles) {
 
-    BLO_read_id_address(reader, id->lib, &psys->part);
+    BLO_read_id_address(reader, id, &psys->part);
     if (psys->part) {
       LISTBASE_FOREACH (ParticleTarget *, pt, &psys->targets) {
-        BLO_read_id_address(reader, id->lib, &pt->ob);
+        BLO_read_id_address(reader, id, &pt->ob);
       }
 
-      BLO_read_id_address(reader, id->lib, &psys->parent);
-      BLO_read_id_address(reader, id->lib, &psys->target_ob);
+      BLO_read_id_address(reader, id, &psys->parent);
+      BLO_read_id_address(reader, id, &psys->target_ob);
 
       if (psys->clmd) {
         /* XXX(@ideasman42): from reading existing code this seems correct but intended usage
          * of point-cache with cloth should be added in #ParticleSystem. */
         psys->clmd->point_cache = psys->pointcache;
         psys->clmd->ptcaches.first = psys->clmd->ptcaches.last = nullptr;
-        BLO_read_id_address(reader, id->lib, &psys->clmd->coll_parms->group);
+        BLO_read_id_address(reader, id, &psys->clmd->coll_parms->group);
         psys->clmd->modifier.error = nullptr;
       }
     }

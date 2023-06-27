@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 by Janne Karhu. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 by Janne Karhu. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -1617,7 +1618,7 @@ BoidRule *boid_new_rule(int type)
 
   rule->type = type;
   rule->flag |= BOIDRULE_IN_AIR | BOIDRULE_ON_LAND;
-  STRNCPY(rule->name, DATA_(rna_enum_boidrule_type_items[type - 1].name));
+  STRNCPY_UTF8(rule->name, DATA_(rna_enum_boidrule_type_items[type - 1].name));
 
   return rule;
 }
@@ -1656,7 +1657,7 @@ BoidState *boid_new_state(BoidSettings *boids)
     SNPRINTF(state->name, "State %i", state->id);
   }
   else {
-    strcpy(state->name, "State");
+    STRNCPY(state->name, "State");
   }
 
   state->rule_fuzziness = 0.5;

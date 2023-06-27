@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -1852,7 +1853,7 @@ static int gpencil_move_to_layer_exec(bContext *C, wmOperator *op)
       RNA_property_string_get(op->ptr, prop, name);
     }
     else {
-      strcpy(name, "GP_Layer");
+      STRNCPY(name, "GP_Layer");
     }
     target_layer = BKE_gpencil_layer_addnew(gpd, name, true, false);
   }
@@ -4344,6 +4345,8 @@ void GPENCIL_OT_stroke_outline(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "view_mode", view_mode, GP_PERIMETER_VIEW, "View", "");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_EDITOR_VIEW3D);
+
   RNA_def_enum(ot->srna,
                "material_mode",
                material_mode,
@@ -5751,7 +5754,7 @@ void GPENCIL_OT_stroke_cutter(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "flat_caps", 0, "Flat Caps", "");
 }
 
-bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
+bool ED_object_gpencil_exit(Main *bmain, Object *ob)
 {
   bool ok = false;
   if (ob) {

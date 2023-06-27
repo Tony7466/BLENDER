@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -33,7 +34,7 @@ extern "C" {
 #define BLI_STR_FORMAT_INT32_INTEGER_UNIT_SIZE 5
 
 /**
- * Duplicates the first \a len bytes of cstring \a str
+ * Duplicates the first \a len bytes of the C-string \a str
  * into a newly mallocN'd string and returns it. \a str
  * is assumed to be at least len bytes long.
  *
@@ -44,7 +45,7 @@ extern "C" {
 char *BLI_strdupn(const char *str, size_t len) ATTR_MALLOC ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 
 /**
- * Duplicates the cstring \a str into a newly mallocN'd
+ * Duplicates the C-string \a str into a newly mallocN'd
  * string and returns it.
  *
  * \param str: The string to be duplicated
@@ -107,11 +108,18 @@ size_t BLI_strncpy_rlen(char *__restrict dst,
                         const char *__restrict src,
                         size_t dst_maxncpy) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1, 2);
 
-size_t BLI_strcpy_rlen(char *__restrict dst, const char *__restrict src) ATTR_WARN_UNUSED_RESULT
-    ATTR_NONNULL(1, 2);
-
 char *BLI_strncat(char *__restrict dst, const char *__restrict src, size_t dst_maxncpy)
     ATTR_NONNULL(1, 2);
+
+/**
+ * A version of `strchr` that returns the end of the string (point to `\0`)
+ * if the character is not found.
+ *
+ * Useful for stepping over newlines up until the last line.
+ */
+const char *BLI_strchr_or_end(const char *str,
+                              char ch) ATTR_WARN_UNUSED_RESULT ATTR_RETURNS_NONNULL
+    ATTR_NONNULL(1);
 
 /**
  * Return the range of the quoted string (excluding quotes) `str` after `prefix`.
@@ -192,6 +200,15 @@ bool BLI_str_replace_table_exact(char *string,
                                  int replace_table_len);
 
 /**
+ * Write `dst` into the range between `src_beg` & `src_end`,
+ * resize within `string_maxncpy` limits, ensure null terminated.
+ *
+ * \return the length of `string`.
+ */
+size_t BLI_str_replace_range(
+    char *string, size_t string_maxncpy, int src_beg, int src_end, const char *dst);
+
+/**
  * Portable replacement for #snprintf
  */
 size_t BLI_snprintf(char *__restrict dst, size_t dst_maxncpy, const char *__restrict format, ...)
@@ -225,14 +242,6 @@ size_t BLI_vsnprintf_rlen(char *__restrict dst,
  */
 char *BLI_sprintfN(const char *__restrict format, ...) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1) ATTR_MALLOC ATTR_PRINTF_FORMAT(1, 2);
-
-/**
- * A wrapper around `::sprintf()` which does not generate security warnings.
- *
- * \note Use #BLI_snprintf for cases when the string size is known.
- */
-int BLI_sprintf(char *__restrict str, const char *__restrict format, ...) ATTR_NONNULL(1, 2)
-    ATTR_PRINTF_FORMAT(2, 3);
 
 /**
  * This roughly matches C and Python's string escaping with double quotes - `"`.
@@ -427,6 +436,15 @@ void BLI_str_rstrip(char *str) ATTR_NONNULL(1);
 int BLI_str_rstrip_float_zero(char *str, char pad) ATTR_NONNULL(1);
 
 /**
+ * Strip trailing digits.
+ *   ABC123 -> ABC
+ *
+ * \param str:
+ * \return The number of digits stripped.
+ */
+int BLI_str_rstrip_digits(char *str) ATTR_NONNULL();
+
+/**
  * Return index of a string in a string array.
  *
  * \param str: The string to find.
@@ -542,7 +560,10 @@ int BLI_string_find_split_words(const char *str,
  * \note `ARRAY_SIZE` allows pointers on some platforms.
  * \{ */
 
-#define STRNCPY(dst, src) BLI_strncpy(dst, src, ARRAY_SIZE(dst))
+#ifndef __cplusplus
+#  define STRNCPY(dst, src) BLI_strncpy(dst, src, ARRAY_SIZE(dst))
+#endif
+
 #define STRNCPY_RLEN(dst, src) BLI_strncpy_rlen(dst, src, ARRAY_SIZE(dst))
 #define SNPRINTF(dst, format, ...) BLI_snprintf(dst, ARRAY_SIZE(dst), format, __VA_ARGS__)
 #define SNPRINTF_RLEN(dst, format, ...) \
@@ -615,11 +636,28 @@ int BLI_string_find_split_words(const char *str,
  */
 void BLI_string_debug_size_after_nil(char *str, size_t str_maxncpy);
 #else
-#  define BLI_string_debug_size(str, str_maxncpy) (void)(0 ? ((str) + (str_maxncpy)) : 0)
+#  define BLI_string_debug_size(str, str_maxncpy) \
+    if (0) { \
+      (void)str, (void)str_maxncpy; \
+    } \
+    ((void)0)
 #  define BLI_string_debug_size_after_nil(str, str_maxncpy) BLI_string_debug_size(str, str_maxncpy)
 #endif /* !WITH_STRSIZE_DEBUG */
 
 /** \} */
 #ifdef __cplusplus
 }
+
+/**
+ * Copy source string str into the destination dst of a size known at a compile time.
+ * Ensures that the destination is not overflown, and that the destination is always
+ * null-terminated.
+ *
+ * Returns the dst.
+ */
+template<size_t N> inline char *STRNCPY(char (&dst)[N], const char *src)
+{
+  return BLI_strncpy(dst, src, N);
+}
+
 #endif

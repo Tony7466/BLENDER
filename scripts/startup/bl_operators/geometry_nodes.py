@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -44,10 +46,9 @@ def geometry_modifier_poll(context):
 
 
 def get_context_modifier(context):
-    area = context.area
-    if (area is not None) and (area.type == 'PROPERTIES'):
-        modifier = context.modifier
-    else:
+    # Context only has a "modifier" attribute in the modifier extra operators drop-down.
+    modifier = getattr(context, "modifier", ...)
+    if modifier is ...:
         ob = context.object
         if ob is None:
             return False
@@ -285,9 +286,16 @@ class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
         state_items = node.state_items
 
         # Remember index to move the item.
-        dst_index = min(node.active_index + 1, len(state_items))
-        # Empty name so it is based on the type only.
-        state_items.new(self.default_socket_type, "")
+        if node.active_item:
+            dst_index = node.active_index + 1
+            dst_type = node.active_item.socket_type
+            dst_name = node.active_item.name
+        else:
+            dst_index = len(state_items)
+            dst_type = self.default_socket_type
+            # Empty name so it is based on the type.
+            dst_name = ""
+        state_items.new(dst_type, dst_name)
         state_items.move(len(state_items) - 1, dst_index)
         node.active_index = dst_index
 

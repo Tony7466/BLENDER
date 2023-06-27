@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -11,6 +12,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -57,7 +59,7 @@ static void initData(GpencilModifierData *md)
 
   DashGpencilModifierSegment *ds = DNA_struct_default_alloc(DashGpencilModifierSegment);
   ds->dmd = dmd;
-  STRNCPY(ds->name, DATA_("Segment"));
+  STRNCPY_UTF8(ds->name, DATA_("Segment"));
 
   dmd->segments = ds;
 }
@@ -276,13 +278,13 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void segment_list_item(struct uiList *UNUSED(ui_list),
-                              const struct bContext *UNUSED(C),
-                              struct uiLayout *layout,
-                              struct PointerRNA *UNUSED(idataptr),
-                              struct PointerRNA *itemptr,
+static void segment_list_item(uiList *UNUSED(ui_list),
+                              const bContext *UNUSED(C),
+                              uiLayout *layout,
+                              PointerRNA *UNUSED(idataptr),
+                              PointerRNA *itemptr,
                               int UNUSED(icon),
-                              struct PointerRNA *UNUSED(active_dataptr),
+                              PointerRNA *UNUSED(active_dataptr),
                               const char *UNUSED(active_propname),
                               int UNUSED(index),
                               int UNUSED(flt_flag))
@@ -364,7 +366,7 @@ static void panelRegister(ARegionType *region_type)
       region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
 
   uiListType *list_type = MEM_callocN(sizeof(uiListType), "dash modifier segment uilist");
-  strcpy(list_type->idname, "MOD_UL_dash_segment");
+  STRNCPY(list_type->idname, "MOD_UL_dash_segment");
   list_type->draw_item = segment_list_item;
   WM_uilisttype_add(list_type);
 }

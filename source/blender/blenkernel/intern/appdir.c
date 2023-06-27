@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -225,26 +227,24 @@ bool BKE_appdir_folder_caches(char *path, const size_t path_maxncpy)
   return true;
 }
 
-bool BKE_appdir_font_folder_default(char *dir)
+bool BKE_appdir_font_folder_default(char *dir, size_t dir_maxncpy)
 {
   char test_dir[FILE_MAXDIR];
   test_dir[0] = '\0';
 
 #ifdef WIN32
-  wchar_t wpath[FILE_MAXDIR];
+  wchar_t wpath[MAX_PATH];
   if (SHGetSpecialFolderPathW(0, wpath, CSIDL_FONTS, 0)) {
-    wcscat(wpath, L"\\");
     BLI_strncpy_wchar_as_utf8(test_dir, wpath, sizeof(test_dir));
   }
 #elif defined(__APPLE__)
-  STRNCPY(test_dir, BLI_expand_tilde("~/Library/Fonts/"));
-  BLI_path_slash_ensure(test_dir, sizeof(test_dir));
+  STRNCPY(test_dir, BLI_expand_tilde("~/Library/Fonts"));
 #else
   STRNCPY(test_dir, "/usr/share/fonts");
 #endif
 
   if (test_dir[0] && BLI_exists(test_dir)) {
-    BLI_strncpy(dir, test_dir, FILE_MAXDIR);
+    BLI_strncpy(dir, test_dir, dir_maxncpy);
     return true;
   }
   return false;
@@ -386,7 +386,7 @@ static bool get_path_local_ex(char *targetpath,
   char osx_resourses[FILE_MAX + 4 + 9];
   BLI_path_join(osx_resourses, sizeof(osx_resourses), g_app.program_dirname, "..", "Resources");
   /* Remove the '/../' added above. */
-  BLI_path_normalize(osx_resourses);
+  BLI_path_normalize_native(osx_resourses);
   path_base = osx_resourses;
 #endif
   return test_path(targetpath,
@@ -410,8 +410,8 @@ static bool get_path_local(char *targetpath,
 bool BKE_appdir_app_is_portable_install(void)
 {
   /* Detect portable install by the existence of `config` folder. */
-  char path[FILE_MAX];
-  return get_path_local(path, sizeof(path), "config", NULL);
+  char dirpath[FILE_MAX];
+  return get_path_local(dirpath, sizeof(dirpath), "config", NULL);
 }
 
 /**
@@ -879,7 +879,7 @@ static void where_am_i(char *program_filepath,
       BLI_path_program_search(program_filepath, program_filepath_maxncpy, program_name);
     }
     /* Remove "/./" and "/../" so string comparisons can be used on the path. */
-    BLI_path_normalize(program_filepath);
+    BLI_path_normalize_native(program_filepath);
 
 #  if defined(DEBUG)
     if (!STREQ(program_name, program_filepath)) {
@@ -897,8 +897,7 @@ void BKE_appdir_program_path_init(const char *argv0)
    * Otherwise other methods of detecting the binary that override this argument
    * which must point to the Python module for data-files to be detected. */
   STRNCPY(g_app.program_filepath, argv0);
-  BLI_path_abs_from_cwd(g_app.program_filepath, sizeof(g_app.program_filepath));
-  BLI_path_normalize(g_app.program_filepath);
+  BLI_path_canonicalize_native(g_app.program_filepath, sizeof(g_app.program_filepath));
 
   if (g_app.program_dirname[0] == '\0') {
     /* First time initializing, the file binary path isn't valid from a Python module.

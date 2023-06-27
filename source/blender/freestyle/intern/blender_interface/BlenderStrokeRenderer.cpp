@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -36,7 +38,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
@@ -102,7 +104,7 @@ BlenderStrokeRenderer::BlenderStrokeRenderer(Render *re, int render_count)
   freestyle_scene->r.border.ymin = old_scene->r.border.ymin;
   freestyle_scene->r.border.xmax = old_scene->r.border.xmax;
   freestyle_scene->r.border.ymax = old_scene->r.border.ymax;
-  strcpy(freestyle_scene->r.pic, old_scene->r.pic);
+  STRNCPY(freestyle_scene->r.pic, old_scene->r.pic);
   freestyle_scene->r.dither_intensity = old_scene->r.dither_intensity;
   STRNCPY(freestyle_scene->r.engine, old_scene->r.engine);
   if (G.debug & G_DEBUG_FREESTYLE) {
@@ -214,7 +216,7 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
 
   if (iNodeTree) {
     // make a copy of linestyle->nodetree
-    ntree = ntreeCopyTree_ex(iNodeTree, bmain, do_id_user);
+    ntree = blender::bke::ntreeCopyTree_ex(iNodeTree, bmain, do_id_user);
 
     // find the active Output Line Style node
     for (bNode *node = (bNode *)ntree->nodes.first; node; node = node->next) {
@@ -226,7 +228,8 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
     ma->nodetree = ntree;
   }
   else {
-    ntree = ntreeAddTreeEmbedded(nullptr, &ma->id, "stroke_shader", "ShaderNodeTree");
+    ntree = blender::bke::ntreeAddTreeEmbedded(
+        nullptr, &ma->id, "stroke_shader", "ShaderNodeTree");
   }
   ma->use_nodes = true;
   ma->blend_method = MA_BM_HASHED;

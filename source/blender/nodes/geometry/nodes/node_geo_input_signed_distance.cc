@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
@@ -9,7 +11,7 @@ namespace blender::nodes::node_geo_input_signed_distance_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("Signed Distance")).field_source();
+  b.add_output<decl::Float>("Signed Distance").field_source();
 }
 
 static void search_node_add_ops(GatherAddNodeSearchParams &params)

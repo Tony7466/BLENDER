@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Intel Corporation */
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_ONEAPI
 
@@ -37,6 +38,7 @@ class OneapiDevice : public Device {
   std::string oneapi_error_string_;
   bool use_hardware_raytracing = false;
   unsigned int kernel_features = 0;
+  int scene_max_shaders_ = 0;
 
  public:
   virtual BVHLayoutMask get_bvh_layout_mask(uint kernel_features) const override;
@@ -60,6 +62,8 @@ class OneapiDevice : public Device {
   void generic_free(device_memory &mem);
 
   string oneapi_error_message();
+
+  int scene_max_shaders();
 
   void *kernel_globals_device_pointer();
 

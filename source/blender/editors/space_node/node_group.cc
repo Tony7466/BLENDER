@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -50,7 +51,7 @@
 
 #include "NOD_common.h"
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_shader.h"
 #include "NOD_socket.h"
 #include "NOD_texture.h"
@@ -250,7 +251,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
    * - `ngroup` (i.e. the source NodeTree) is left unscathed.
    * - Temp copy. do change ID user-count for the copies.
    */
-  bNodeTree *wgroup = ntreeCopyTree(bmain, ngroup);
+  bNodeTree *wgroup = bke::ntreeCopyTree(bmain, ngroup);
 
   /* Add the nodes into the `ntree`. */
   Vector<bNode *> new_nodes;
@@ -529,7 +530,7 @@ static bool node_group_separate_selected(
     }
   }
   if (!make_copy) {
-    nodeRebuildIDVector(&ngroup);
+    bke::nodeRebuildIDVector(&ngroup);
   }
 
   /* add internal links to the ntree */
@@ -562,7 +563,7 @@ static bool node_group_separate_selected(
   remap_pairing(ntree, nodes_to_move, node_identifier_map);
 
   for (bNode *node : node_map.values()) {
-    nodeDeclarationEnsure(&ntree, node);
+    bke::nodeDeclarationEnsure(&ntree, node);
   }
 
   /* and copy across the animation,
@@ -697,7 +698,7 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
   /* make a local pseudo node tree to pass to the node poll functions */
   bNodeTree *ngroup = ntreeAddTree(nullptr, "Pseudo Node Group", ntree_idname);
   BLI_SCOPED_DEFER([&]() {
-    ntreeFreeTree(ngroup);
+    bke::ntreeFreeTree(ngroup);
     MEM_freeN(ngroup);
   });
 
@@ -790,8 +791,8 @@ static void get_min_max_of_nodes(const Span<bNode *> nodes,
 
   INIT_MINMAX2(min, max);
   for (const bNode *node : nodes) {
-    float2 loc;
-    nodeToView(node, node->offsetx, node->offsety, &loc.x, &loc.y);
+    const float2 node_offset = {node->offsetx, node->offsety};
+    float2 loc = bke::nodeToView(node, node_offset);
     math::min_max(loc, min, max);
     if (use_size) {
       loc.x += node->width;
@@ -844,11 +845,11 @@ static bNodeSocket *add_interface_from_socket(const bNodeTree &original_tree,
   const bNodeSocket &socket_for_name = prefer_node_for_interface_name(socket.owner_node()) ?
                                            socket :
                                            socket_for_io;
-  return ntreeAddSocketInterfaceFromSocketWithName(&tree_for_interface,
-                                                   &node_for_io,
-                                                   &socket_for_io,
-                                                   socket_for_io.idname,
-                                                   socket_for_name.name);
+  return bke::ntreeAddSocketInterfaceFromSocketWithName(&tree_for_interface,
+                                                        &node_for_io,
+                                                        &socket_for_io,
+                                                        socket_for_io.idname,
+                                                        socket_for_name.name);
 }
 
 static void node_group_make_insert_selected(const bContext &C,
@@ -913,16 +914,19 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
           continue;
         }
+        if (link->fromnode == gnode) {
+          links_to_remove.add(link);
+          continue;
+        }
         if (nodes_to_move.contains(link->fromnode)) {
           internal_links_to_move.add(link);
+          continue;
         }
-        else {
-          InputSocketInfo &info = input_links.lookup_or_add_default(link->fromsock);
-          info.from_node = link->fromnode;
-          info.links.append(link);
-          if (!info.interface_socket) {
-            info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
-          }
+        InputSocketInfo &info = input_links.lookup_or_add_default(link->fromsock);
+        info.from_node = link->fromnode;
+        info.links.append(link);
+        if (!info.interface_socket) {
+          info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
         }
       }
     }
@@ -932,12 +936,15 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
           continue;
         }
+        if (link->tonode == gnode) {
+          links_to_remove.add(link);
+          continue;
+        }
         if (nodes_to_move.contains(link->tonode)) {
           internal_links_to_move.add(link);
+          continue;
         }
-        else {
-          output_links.append({link, add_interface_from_socket(ntree, group, *link->fromsock)});
-        }
+        output_links.append({link, add_interface_from_socket(ntree, group, *link->fromsock)});
       }
     }
   }
@@ -960,7 +967,8 @@ static void node_group_make_insert_selected(const bContext &C,
           if (socket->is_directly_linked()) {
             continue;
           }
-          const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(&group, node, socket);
+          const bNodeSocket *io_socket = bke::ntreeAddSocketInterfaceFromSocket(
+              &group, node, socket);
           new_internal_links.append({node, socket, io_socket});
         }
       };
@@ -1012,7 +1020,7 @@ static void node_group_make_insert_selected(const bContext &C,
     BKE_ntree_update_tag_node_removed(&ntree);
     BKE_ntree_update_tag_node_new(&group, node);
   }
-  nodeRebuildIDVector(&ntree);
+  bke::nodeRebuildIDVector(&ntree);
 
   /* Update input and output node first, since the group node declaration can depend on them. */
   nodes::update_node_declaration_and_sockets(group, *input_node);

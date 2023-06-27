@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -758,23 +759,25 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
 
     y_offset += cache_draw_height;
   }
-  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-    if (md->type != eModifierType_Nodes) {
-      continue;
+  if (saction->cache_display & TIME_CACHE_SIMULATION_NODES) {
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type != eModifierType_Nodes) {
+        continue;
+      }
+      const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      if (nmd->node_group == nullptr) {
+        continue;
+      }
+      if (nmd->simulation_cache == nullptr) {
+        continue;
+      }
+      if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {
+        continue;
+      }
+      timeline_cache_draw_simulation_nodes(
+          *scene, *nmd->simulation_cache->ptr, y_offset, cache_draw_height, pos_id);
+      y_offset += cache_draw_height;
     }
-    const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-    if (nmd->node_group == nullptr) {
-      continue;
-    }
-    if (nmd->simulation_cache == nullptr) {
-      continue;
-    }
-    if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {
-      continue;
-    }
-    timeline_cache_draw_simulation_nodes(
-        *scene, *nmd->simulation_cache, y_offset, cache_draw_height, pos_id);
-    y_offset += cache_draw_height;
   }
 
   GPU_blend(GPU_BLEND_NONE);

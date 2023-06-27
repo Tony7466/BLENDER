@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -368,8 +370,8 @@ virtual void AnimationImporter::change_eul_to_quat(Object *ob, bAction *act)
     char grp_name_esc[sizeof(grp->name) * 2];
     BLI_str_escape(grp_name_esc, grp->name, sizeof(grp_name_esc));
 
-    BLI_snprintf(joint_path, sizeof(joint_path), "pose.bones[\"%s\"]", grp_name_esc);
-    BLI_snprintf(rna_path, sizeof(rna_path), "%s.rotation_quaternion", joint_path);
+    SNPRINTF(joint_path, "pose.bones[\"%s\"]", grp_name_esc);
+    SNPRINTF(rna_path, "%s.rotation_quaternion", joint_path);
 
     FCurve *quatcu[4] = {
       create_fcurve(0, rna_path),

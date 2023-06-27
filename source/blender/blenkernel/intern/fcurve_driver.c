@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -16,6 +17,7 @@
 #include "BLI_expr_pylike_eval.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -955,7 +957,7 @@ DriverVar *driver_add_new_variable(ChannelDriver *driver)
   BLI_addtail(&driver->variables, dvar);
 
   /* Give the variable a 'unique' name. */
-  strcpy(dvar->name, CTX_DATA_(BLT_I18NCONTEXT_ID_ACTION, "var"));
+  STRNCPY_UTF8(dvar->name, CTX_DATA_(BLT_I18NCONTEXT_ID_ACTION, "var"));
   BLI_uniquename(&driver->variables,
                  dvar,
                  CTX_DATA_(BLT_I18NCONTEXT_ID_ACTION, "var"),

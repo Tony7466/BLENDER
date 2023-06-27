@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -122,13 +123,6 @@ size_t BLI_strncpy_rlen(char *__restrict dst, const char *__restrict src, const 
   return srclen;
 }
 
-size_t BLI_strcpy_rlen(char *__restrict dst, const char *__restrict src)
-{
-  size_t srclen = strlen(src);
-  memcpy(dst, src, srclen + 1);
-  return srclen;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name String Append
  * \{ */
@@ -248,17 +242,6 @@ char *BLI_sprintfN(const char *__restrict format, ...)
   va_end(arg);
 
   return n;
-}
-
-int BLI_sprintf(char *__restrict str, const char *__restrict format, ...)
-{
-  va_list arg;
-
-  va_start(arg, format);
-  const int result = vsprintf(str, format, arg);
-  va_end(arg);
-
-  return result;
 }
 
 /** \} */
@@ -550,6 +533,55 @@ bool BLI_str_replace_table_exact(char *string,
     }
   }
   return false;
+}
+
+size_t BLI_str_replace_range(
+    char *string, size_t string_maxncpy, int src_beg, int src_end, const char *dst)
+{
+  int string_len = strlen(string);
+  BLI_assert(src_beg <= src_end);
+  BLI_assert(src_end <= string_len);
+  const int src_len = src_end - src_beg;
+  int dst_len = strlen(dst);
+
+  if (src_len < dst_len) {
+    /* Grow, first handle special cases. */
+
+    /* Special case, the src_end is entirely clipped. */
+    if (UNLIKELY(string_maxncpy <= src_beg + dst_len)) {
+      /* There is only room for the destination. */
+      dst_len = ((int)string_maxncpy - src_beg) - 1;
+      string_len = src_end;
+      string[string_len] = '\0';
+    }
+
+    const int ofs = dst_len - src_len;
+    /* Clip the string when inserting the destination string exceeds `string_maxncpy`. */
+    if (string_len + ofs >= string_maxncpy) {
+      string_len = ((int)string_maxncpy - ofs) - 1;
+      string[string_len] = '\0';
+      BLI_assert(src_end <= string_len);
+    }
+
+    /* Grow. */
+    memmove(string + (src_end + ofs), string + src_end, (size_t)(string_len - src_end) + 1);
+    string_len += ofs;
+  }
+  else if (src_len > dst_len) {
+    /* Shrink. */
+    const int ofs = src_len - dst_len;
+    memmove(string + (src_end - ofs), string + src_end, (size_t)(string_len - src_end) + 1);
+    string_len -= ofs;
+  }
+  else { /* Simple case, no resizing. */
+    BLI_assert(src_len == dst_len);
+  }
+
+  if (dst_len > 0) {
+    memcpy(string + src_beg, dst, (size_t)dst_len);
+  }
+  BLI_assert(string[string_len] == '\0');
+  return (size_t)string_len;
 }
 
 /** \} */
@@ -939,6 +971,21 @@ size_t BLI_strnlen(const char *s, const size_t maxlen)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name String Scanning
+ * \{ */
+
+const char *BLI_strchr_or_end(const char *str, const char ch)
+{
+  const char *p = str;
+  while (!ELEM(*p, ch, '\0')) {
+    p++;
+  }
+  return p;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name String Case Conversion
  * \{ */
 
@@ -1005,6 +1052,17 @@ int BLI_str_rstrip_float_zero(char *str, const char pad)
     }
   }
 
+  return totstrip;
+}
+
+int BLI_str_rstrip_digits(char *str)
+{
+  int totstrip = 0;
+  int str_len = strlen(str);
+  while (str_len > 0 && isdigit(str[--str_len])) {
+    str[str_len] = '\0';
+    totstrip++;
+  }
   return totstrip;
 }
 

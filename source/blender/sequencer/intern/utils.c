@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2003-2009 Blender Foundation.
- *           2005-2006 Peter Schlaile <peter [at] schlaile [dot] de> */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -17,6 +18,8 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_blenlib.h"
+
+#include "BLT_translation.h"
 
 #include "BKE_animsys.h"
 #include "BKE_image.h"
@@ -71,9 +74,7 @@ static bool seqbase_unique_name_recursive_fn(Sequence *seq, void *arg_pt)
   return true;
 }
 
-void SEQ_sequence_base_unique_name_recursive(struct Scene *scene,
-                                             ListBase *seqbasep,
-                                             Sequence *seq)
+void SEQ_sequence_base_unique_name_recursive(Scene *scene, ListBase *seqbasep, Sequence *seq)
 {
   SeqUniqueInfo sui;
   char *dot;
@@ -107,55 +108,55 @@ static const char *give_seqname_by_type(int type)
 {
   switch (type) {
     case SEQ_TYPE_META:
-      return "Meta";
+      return DATA_("Meta");
     case SEQ_TYPE_IMAGE:
-      return "Image";
+      return DATA_("Image");
     case SEQ_TYPE_SCENE:
-      return "Scene";
+      return DATA_("Scene");
     case SEQ_TYPE_MOVIE:
-      return "Movie";
+      return DATA_("Movie");
     case SEQ_TYPE_MOVIECLIP:
-      return "Clip";
+      return DATA_("Clip");
     case SEQ_TYPE_MASK:
-      return "Mask";
+      return DATA_("Mask");
     case SEQ_TYPE_SOUND_RAM:
-      return "Audio";
+      return DATA_("Audio");
     case SEQ_TYPE_CROSS:
-      return "Cross";
+      return DATA_("Cross");
     case SEQ_TYPE_GAMCROSS:
-      return "Gamma Cross";
+      return DATA_("Gamma Cross");
     case SEQ_TYPE_ADD:
-      return "Add";
+      return DATA_("Add");
     case SEQ_TYPE_SUB:
-      return "Sub";
+      return DATA_("Sub");
     case SEQ_TYPE_MUL:
-      return "Mul";
+      return DATA_("Mul");
     case SEQ_TYPE_ALPHAOVER:
-      return "Alpha Over";
+      return DATA_("Alpha Over");
     case SEQ_TYPE_ALPHAUNDER:
-      return "Alpha Under";
+      return DATA_("Alpha Under");
     case SEQ_TYPE_OVERDROP:
-      return "Over Drop";
+      return DATA_("Over Drop");
     case SEQ_TYPE_COLORMIX:
-      return "Color Mix";
+      return DATA_("Color Mix");
     case SEQ_TYPE_WIPE:
-      return "Wipe";
+      return DATA_("Wipe");
     case SEQ_TYPE_GLOW:
-      return "Glow";
+      return DATA_("Glow");
     case SEQ_TYPE_TRANSFORM:
-      return "Transform";
+      return DATA_("Transform");
     case SEQ_TYPE_COLOR:
-      return "Color";
+      return DATA_("Color");
     case SEQ_TYPE_MULTICAM:
-      return "Multicam";
+      return DATA_("Multicam");
     case SEQ_TYPE_ADJUSTMENT:
-      return "Adjustment";
+      return DATA_("Adjustment");
     case SEQ_TYPE_SPEED:
-      return "Speed";
+      return DATA_("Speed");
     case SEQ_TYPE_GAUSSIAN_BLUR:
-      return "Gaussian Blur";
+      return DATA_("Gaussian Blur");
     case SEQ_TYPE_TEXT:
-      return "Text";
+      return DATA_("Text");
     default:
       return NULL;
   }
@@ -167,10 +168,10 @@ const char *SEQ_sequence_give_name(Sequence *seq)
 
   if (!name) {
     if (!(seq->type & SEQ_TYPE_EFFECT)) {
-      return seq->strip->dir;
+      return seq->strip->dirpath;
     }
 
-    return "Effect";
+    return DATA_("Effect");
   }
   return name;
 }
@@ -204,7 +205,7 @@ ListBase *SEQ_get_seqbase_from_sequence(Sequence *seq, ListBase **r_channels, in
 
 void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
 {
-  char dir[FILE_MAX];
+  char dirpath[FILE_MAX];
   char filepath[FILE_MAX];
   StripProxy *proxy;
   bool use_proxy;
@@ -220,8 +221,8 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
   /* reset all the previously created anims */
   SEQ_relations_sequence_free_anim(seq);
 
-  BLI_path_join(filepath, sizeof(filepath), seq->strip->dir, seq->strip->stripdata->name);
-  BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
+  BLI_path_join(filepath, sizeof(filepath), seq->strip->dirpath, seq->strip->stripdata->filename);
+  BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&scene->id));
 
   proxy = seq->strip->proxy;
 
@@ -231,16 +232,16 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
   if (use_proxy) {
     if (ed->proxy_storage == SEQ_EDIT_PROXY_DIR_STORAGE) {
       if (ed->proxy_dir[0] == 0) {
-        STRNCPY(dir, "//BL_proxy");
+        STRNCPY(dirpath, "//BL_proxy");
       }
       else {
-        STRNCPY(dir, ed->proxy_dir);
+        STRNCPY(dirpath, ed->proxy_dir);
       }
     }
     else {
-      STRNCPY(dir, seq->strip->proxy->dir);
+      STRNCPY(dirpath, seq->strip->proxy->dirpath);
     }
-    BLI_path_abs(dir, BKE_main_blendfile_path_from_global());
+    BLI_path_abs(dirpath, BKE_main_blendfile_path_from_global());
   }
 
   if (is_multiview && seq->views_format == R_IMF_VIEWS_INDIVIDUAL) {
@@ -254,21 +255,21 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
     if (prefix[0] != '\0') {
       for (i = 0; i < totfiles; i++) {
         const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
-        char str[FILE_MAX];
+        char filepath_view[FILE_MAX];
         StripAnim *sanim = MEM_mallocN(sizeof(StripAnim), "Strip Anim");
 
         BLI_addtail(&seq->anims, sanim);
 
-        SNPRINTF(str, "%s%s%s", prefix, suffix, ext);
+        SNPRINTF(filepath_view, "%s%s%s", prefix, suffix, ext);
 
         if (openfile) {
-          sanim->anim = openanim(str,
+          sanim->anim = openanim(filepath_view,
                                  IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
                                  seq->streamindex,
                                  seq->strip->colorspace_settings.name);
         }
         else {
-          sanim->anim = openanim_noload(str,
+          sanim->anim = openanim_noload(filepath_view,
                                         IB_rect |
                                             ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
                                         seq->streamindex,
@@ -299,7 +300,7 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
         }
 
         if (sanim->anim && use_proxy) {
-          seq_proxy_index_dir_set(sanim->anim, dir);
+          seq_proxy_index_dir_set(sanim->anim, dirpath);
         }
       }
       is_multiview_loaded = true;
@@ -326,7 +327,7 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
     }
 
     if (sanim->anim && use_proxy) {
-      seq_proxy_index_dir_set(sanim->anim, dir);
+      seq_proxy_index_dir_set(sanim->anim, dirpath);
     }
   }
 }
@@ -450,7 +451,7 @@ Mask *SEQ_active_mask_get(Scene *scene)
 void SEQ_alpha_mode_from_file_extension(Sequence *seq)
 {
   if (seq->strip && seq->strip->stripdata) {
-    const char *filename = seq->strip->stripdata->name;
+    const char *filename = seq->strip->stripdata->filename;
     seq->alpha_mode = BKE_image_alpha_mode_from_extension_ex(filename);
   }
 }

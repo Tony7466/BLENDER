@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -9,6 +11,8 @@
 
 #include "BKE_dynamicpaint.h"
 #include "BKE_modifier.h"
+
+#include "BLT_translation.h"
 
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_modifier_types.h"
@@ -825,6 +829,7 @@ static void rna_def_dynamic_paint_brush_settings(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_enum_items(prop, prop_dynamicpaint_brush_wave_type);
   RNA_def_property_ui_text(prop, "Wave Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SIMULATION);
 
   prop = RNA_def_property(srna, "wave_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, -2.0, 2.0);

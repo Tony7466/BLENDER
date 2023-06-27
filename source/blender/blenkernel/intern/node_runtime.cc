@@ -1,6 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
 #include "DNA_node_types.h"
@@ -39,7 +41,7 @@ static void update_node_vector(const bNodeTree &ntree)
     bNode &node = *nodes[i];
     node.runtime->index_in_tree = i;
     node.runtime->owner_tree = const_cast<bNodeTree *>(&ntree);
-    tree_runtime.has_undefined_nodes_or_sockets |= node.typeinfo == &NodeTypeUndefined;
+    tree_runtime.has_undefined_nodes_or_sockets |= node.typeinfo == &bke::NodeTypeUndefined;
     if (node.is_group()) {
       tree_runtime.group_nodes.append(&node);
     }
@@ -75,7 +77,8 @@ static void update_socket_vectors_and_owner_node(const bNodeTree &ntree)
       socket->runtime->index_in_inout_sockets = tree_runtime.input_sockets.append_and_get_index(
           socket);
       socket->runtime->owner_node = node;
-      tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo == &NodeSocketTypeUndefined;
+      tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo ==
+                                                     &bke::NodeSocketTypeUndefined;
     }
     LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
       socket->runtime->index_in_node = node_runtime.outputs.append_and_get_index(socket);
@@ -83,7 +86,8 @@ static void update_socket_vectors_and_owner_node(const bNodeTree &ntree)
       socket->runtime->index_in_inout_sockets = tree_runtime.output_sockets.append_and_get_index(
           socket);
       socket->runtime->owner_node = node;
-      tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo == &NodeSocketTypeUndefined;
+      tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo ==
+                                                     &bke::NodeSocketTypeUndefined;
     }
   }
 }
@@ -196,8 +200,9 @@ static void find_logical_origins_for_socket_recursive(
   sockets_in_current_chain.pop_last();
 }
 
-static void update_logical_origins(const bNodeTree &ntree)
+static void update_logically_linked_sockets(const bNodeTree &ntree)
 {
+  /* Compute logically linked sockets to inputs. */
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   Span<bNode *> nodes = tree_runtime.nodes_by_id;
   threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
@@ -216,6 +221,26 @@ static void update_logical_origins(const bNodeTree &ntree)
       }
     }
   });
+
+  /* Clear logically linked sockets to outputs. */
+  threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
+    for (const int i : range) {
+      bNode &node = *nodes[i];
+      for (bNodeSocket *socket : node.runtime->outputs) {
+        socket->runtime->logically_linked_sockets.clear();
+      }
+    }
+  });
+
+  /* Compute logically linked sockets to outputs using the previously computed logically linked
+   * sockets to inputs. */
+  for (const bNode *node : nodes) {
+    for (bNodeSocket *input_socket : node->runtime->inputs) {
+      for (bNodeSocket *output_socket : input_socket->runtime->logically_linked_sockets) {
+        output_socket->runtime->logically_linked_sockets.append(input_socket);
+      }
+    }
+  }
 }
 
 static void update_nodes_by_type(const bNodeTree &ntree)
@@ -495,18 +520,26 @@ static void ensure_topology_cache(const bNodeTree &ntree)
     update_nodes_by_type(ntree);
     threading::parallel_invoke(
         tree_runtime.nodes_by_id.size() > 32,
-        [&]() { update_logical_origins(ntree); },
+        [&]() { update_logically_linked_sockets(ntree); },
         [&]() { update_sockets_by_identifier(ntree); },
         [&]() {
           update_toposort(ntree,
                           ToposortDirection::LeftToRight,
                           tree_runtime.toposort_left_to_right,
                           tree_runtime.has_available_link_cycle);
+          for (const int i : tree_runtime.toposort_left_to_right.index_range()) {
+            const bNode &node = *tree_runtime.toposort_left_to_right[i];
+            node.runtime->toposort_left_to_right_index = i;
+          }
         },
         [&]() {
           bool dummy;
           update_toposort(
               ntree, ToposortDirection::RightToLeft, tree_runtime.toposort_right_to_left, dummy);
+          for (const int i : tree_runtime.toposort_right_to_left.index_range()) {
+            const bNode &node = *tree_runtime.toposort_right_to_left[i];
+            node.runtime->toposort_right_to_left_index = i;
+          }
         },
         [&]() { update_root_frames(ntree); },
         [&]() { update_direct_frames_childrens(ntree); });
