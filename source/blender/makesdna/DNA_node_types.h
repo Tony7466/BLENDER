@@ -568,6 +568,15 @@ typedef struct bNodePanel {
   char *name;
 } bNodePanel;
 
+typedef struct bNodeStateID {
+  /** Id of the node state. */
+  int id;
+  /** ID of the node that the state belongs to. */
+  int node_id;
+  /** ID of the node state in the node. */
+  int id_in_node;
+} bNodeStateID;
+
 /**
  * The basis for a Node tree, all links and nodes reside internal here.
  *
@@ -632,7 +641,12 @@ typedef struct bNodeTree {
    */
   bNodeInstanceKey active_viewer_key;
 
-  char _pad[4];
+  /**
+   * Node state identifiers allow a user of a node group to store data for nested nodes in a
+   * reliable way. For example, a modifier stores simulation data for each simulation zone.
+   */
+  int node_state_ids_num;
+  bNodeStateID *node_state_ids;
 
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
