@@ -1165,6 +1165,11 @@ class SEQUENCER_MT_context_menu(Menu):
 
         if context.scene.sequence_editor.selected_retiming_handles:
             layout.operator("sequencer.retiming_handle_remove")
+            layout.operator("sequencer.retiming_segment_speed_set", text="Speed 25%").speed = 25
+            layout.operator("sequencer.retiming_segment_speed_set", text="Speed 50%").speed = 50
+            layout.operator("sequencer.retiming_segment_speed_set", text="Speed 100%").speed = 100
+            layout.operator("sequencer.retiming_segment_speed_set", text="Speed 200%").speed = 200
+            layout.operator("sequencer.retiming_segment_speed_set", text="Speed 400%").speed = 400
 
         layout.separator()
 

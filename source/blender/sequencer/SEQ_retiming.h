@@ -63,13 +63,16 @@ const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const struct Seq
 bool SEQ_retiming_handle_is_transition_type(const struct SeqRetimingHandle *handle);
 bool SEQ_retiming_handle_is_freeze_frame(const struct SeqRetimingHandle *handle);
 
-void SEQ_retiming_selection_clear(struct Editing *ed);
+bool SEQ_retiming_selection_clear(struct Editing *ed);
 void SEQ_retiming_selection_append(struct Editing *ed,
                                    const struct Sequence *seq,
                                    const struct SeqRetimingHandle *handle);
 void SEQ_retiming_selection_remove(struct Editing *ed,
                                    const struct Sequence *seq,
                                    const struct SeqRetimingHandle *handle);
+bool SEQ_retiming_selection_contains(struct Editing *ed,
+                                     const struct Sequence *seq,
+                                     const struct SeqRetimingHandle *handle);
 
 #ifdef __cplusplus
 }

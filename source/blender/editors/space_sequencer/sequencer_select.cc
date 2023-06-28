@@ -22,6 +22,7 @@
 #include "BKE_report.h"
 
 #include "WM_api.h"
+#include "WM_toolsystem.h"
 #include "WM_types.h"
 
 #include "RNA_define.h"
@@ -46,6 +47,7 @@
 
 /* Own include. */
 #include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Selection Utilities
@@ -270,15 +272,13 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq))
-          {
+              SEQ_time_right_handle_frame_get(scene, seq)) {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq))
-          {
+              SEQ_time_left_handle_frame_get(scene, seq)) {
             return seq;
           }
           break;
@@ -993,6 +993,9 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
 
 static int sequencer_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  if (sequencer_retiming_tool_is_active(C)) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
   const int retval = WM_generic_select_invoke(C, op, event);
   ARegion *region = CTX_wm_region(C);
   if (region && (region->regiontype == RGN_TYPE_PREVIEW)) {

@@ -51,6 +51,7 @@ set(SRC
   space_sequencer.cc
 
   sequencer_intern.h
+  sequencer_intern.hh
 )
 
 set(LIB

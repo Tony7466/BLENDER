@@ -83,6 +83,7 @@
 
 /* Own include. */
 #include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 #define SEQ_LEFTHANDLE 1
 #define SEQ_RIGHTHANDLE 2
@@ -1405,14 +1406,19 @@ static void draw_seq_strip(const bContext *C,
   pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (!SEQ_transform_is_locked(channels, seq)) {
+  if (!SEQ_transform_is_locked(channels, seq) && !sequencer_retiming_tool_is_active(C)) {
     draw_seq_handle(
         scene, v2d, seq, handsize_clamped, SEQ_LEFTHANDLE, pos, seq_active, pixelx, y_threshold);
     draw_seq_handle(
         scene, v2d, seq, handsize_clamped, SEQ_RIGHTHANDLE, pos, seq_active, pixelx, y_threshold);
   }
 
-  draw_seq_outline(scene, seq, pos, x1, x2, y1, y2, pixelx, pixely, seq_active);
+  if (!sequencer_retiming_tool_is_active(C)) {
+    draw_seq_outline(scene, seq, pos, x1, x2, y1, y2, pixelx, pixely, seq_active);
+  }
+  else {
+    seq_active = false;
+  }
 
   immUnbindProgram();
 

@@ -95,6 +95,7 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
   }
 
   if (seq->retiming_handles != nullptr) {
+    SEQ_retiming_add_handle(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
     return;
   }
 
@@ -104,8 +105,6 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
   handle->strip_frame_index = seq->len;
   handle->retiming_factor = 1.0f;
   seq->retiming_handle_num = 2;
-
-  SEQ_retiming_add_handle(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
 }
 
 void SEQ_retiming_data_clear(Sequence *seq)
@@ -390,7 +389,7 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   int offset_min = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_handle) + 1 -
                    retiming_handle_frame;
   int offset_max;
-  if (SEQ_retiming_handle_index_get(seq, handle) == seq->retiming_handle_num - 1) {
+  if (seq_retiming_is_last_handle(seq, handle)) {
     offset_max = INT_MAX;
   }
   else {
@@ -418,8 +417,7 @@ void SEQ_retiming_offset_handle(const Scene *scene,
 
 static void seq_retiming_remove_handle_ex(Sequence *seq, SeqRetimingHandle *handle)
 {
-  SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
-  if (handle->strip_frame_index == 0 || handle == last_handle) {
+  if (handle->strip_frame_index == 0 || seq_retiming_is_last_handle(seq, handle)) {
     return; /* First and last handle can not be removed. */
   }
 
@@ -817,9 +815,11 @@ float SEQ_retiming_handle_timeline_frame_get(const Scene *scene,
          handle->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq);
 }
 
-void SEQ_retiming_selection_clear(Editing *ed)
+bool SEQ_retiming_selection_clear(Editing *ed)
 {
+  bool was_empty = BLI_listbase_is_empty(&ed->retiming_selection);
   BLI_listbase_clear(&ed->retiming_selection);
+  return !was_empty;
 }
 
 void SEQ_retiming_selection_append(Editing *ed,
@@ -885,4 +885,20 @@ blender::Vector<RetimingSelectionElem *> SEQ_retiming_selection_get(const Scene 
     selection.append(selection_elem);
   }
   return selection;
+}
+
+bool SEQ_retiming_selection_contains(Editing *ed,
+                                     const Sequence *seq,
+                                     const SeqRetimingHandle *handle)
+{
+  LISTBASE_FOREACH (SeqRetimingHandleSelection *, elem, &ed->retiming_selection) {
+    if (!STREQ(elem->strip_name, seq->name + 2)) {
+      continue;
+    }
+    if (elem->index != SEQ_retiming_handle_index_get(seq, handle)) {
+      continue;
+    }
+    return true;
+  }
+  return false;
 }

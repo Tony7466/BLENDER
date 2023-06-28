@@ -13,10 +13,13 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_workspace_types.h"
 
 #include "BKE_context.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+
+#include "ED_select_utils.h"
 
 #include "SEQ_iterator.h"
 #include "SEQ_relations.h"
@@ -38,8 +41,19 @@
 
 /* Own include. */
 #include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 using blender::MutableSpan;
+
+bool sequencer_retiming_tool_is_active(const bContext *C)
+{
+  ScrArea *area = CTX_wm_area(C);
+  // is this OK?
+  if (area->runtime.is_tool_set) {
+    return STREQ(area->runtime.tool->idname, "builtin.retime");
+  }
+  return false;
+}
 
 static bool retiming_poll(bContext *C)
 {
@@ -69,33 +83,6 @@ static void retiming_handle_overlap(Scene *scene, Sequence *seq)
   SEQ_transform_handle_overlap(scene, seqbase, strips, dependant, true);
   SEQ_collection_free(strips);
   SEQ_collection_free(dependant);
-}
-
-static SeqRetimingHandle *closest_retiming_handle_get(const bContext *C,
-                                                      const Sequence *seq,
-                                                      const float mouse_x)
-{
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Scene *scene = CTX_data_scene(C);
-  int best_distance = INT_MAX;
-  SeqRetimingHandle *closest_handle = nullptr;
-
-  // XXX this is not needed. Gizmo has own threshold which must be met in order to execute op
-  // anyway.
-  const float distance_threshold = 10 / UI_view2d_scale_get_x(v2d);
-  const float mouse_x_view = UI_view2d_region_to_view_x(v2d, mouse_x);
-
-  for (int i = 0; i < SEQ_retiming_handles_count(seq); i++) {
-    SeqRetimingHandle *handle = seq->retiming_handles + i;
-    const int distance = round_fl_to_int(
-        fabsf(SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) - mouse_x_view));
-
-    if (distance < distance_threshold && distance < best_distance) {
-      best_distance = distance;
-      closest_handle = handle;
-    }
-  }
-  return closest_handle;
 }
 
 /*-------------------------------------------------------------------- */
@@ -235,8 +222,8 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
       */
       const View2D *v2d = UI_view2d_fromcontext(C);
 
-      float invoke_x = UI_view2d_region_to_view_x(v2d, RNA_int_get(op->ptr, "mouse_x"));
-      int offset = UI_view2d_region_to_view_x(v2d, event->mval[0]) - invoke_x;
+      float invoke_x = RNA_int_get(op->ptr, "mouse_x");
+      int offset = (event->mval[0] - invoke_x) / UI_view2d_scale_get_x(v2d);
       RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
 
       if (offset == 0) {
@@ -379,12 +366,12 @@ static int sequencer_retiming_handle_remove_exec(bContext *C, wmOperator * /* op
   for (Sequence *seq : strips_to_handle) {
     for (int i = 0; i < seq->retiming_handle_num;) {
       SeqRetimingHandle *handle = seq->retiming_handles + i;
+      i++;
 
       if ((handle->flag & DELETE_HANDLE) == 0) {
         continue;
       }
 
-      i++;
       SEQ_retiming_remove_handle(scene, seq, handle);
     }
     SEQ_relations_invalidate_cache_raw(scene, seq);
@@ -433,12 +420,23 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-  SeqRetimingHandle *handle = &handles[RNA_int_get(op->ptr, "handle_index")];
 
-  SEQ_retiming_handle_speed_set(scene, seq, handle, RNA_float_get(op->ptr, "speed"));
-  SEQ_relations_invalidate_cache_raw(scene, seq);
+  if (RNA_struct_property_is_set(op->ptr, "handle_index")) {
+    Sequence *seq = ed->act_seq;
+    MutableSpan handles = SEQ_retiming_handles_get(seq);
+    SeqRetimingHandle *handle = &handles[RNA_int_get(op->ptr, "handle_index")];
+
+    SEQ_retiming_handle_speed_set(scene, seq, handle, RNA_float_get(op->ptr, "speed"));
+    SEQ_relations_invalidate_cache_raw(scene, seq);
+  }
+  else {
+    for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+      SEQ_retiming_handle_speed_set(
+          scene, elem->seq, elem->handle, RNA_float_get(op->ptr, "speed"));
+      SEQ_relations_invalidate_cache_raw(scene, elem->seq);
+    }
+  }
+
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
@@ -449,32 +447,22 @@ static int sequencer_retiming_segment_speed_set_invoke(bContext *C,
 {
   const Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
-  const Sequence *seq = ed->act_seq;
 
-  if (seq == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-  SeqRetimingHandle *handle = nullptr;
-
-  if (RNA_struct_property_is_set(op->ptr, "handle_index")) {
+  if (ed->act_seq && RNA_struct_property_is_set(op->ptr, "handle_index")) {
+    MutableSpan handles = SEQ_retiming_handles_get(ed->act_seq);
     const int handle_index = RNA_int_get(op->ptr, "handle_index");
     BLI_assert(handle_index < handles.size());
-    handle = &handles[handle_index];
-  }
-  else {
-    handle = closest_retiming_handle_get(C, seq, event->mval[0]);
-  }
-
-  if (handle == nullptr) {
-    BKE_report(op->reports, RPT_ERROR, "No handle available");
-    return OPERATOR_CANCELLED;
+    SeqRetimingHandle *handle = &handles[handle_index];
+    RNA_float_set(op->ptr, "speed", SEQ_retiming_handle_speed_get(ed->act_seq, handle) * 100.0f);
+    return WM_operator_props_popup(C, op, event);
   }
 
-  RNA_float_set(op->ptr, "speed", SEQ_retiming_handle_speed_get(seq, handle) * 100.0f);
-  RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
-  return WM_operator_props_popup(C, op, event);
+  if (!BLI_listbase_is_empty(&ed->retiming_selection)) {
+    return sequencer_retiming_segment_speed_set_exec(C, op);
+  }
+
+  BKE_report(op->reports, RPT_ERROR, "No handle available");
+  return OPERATOR_CANCELLED;
 }
 
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
@@ -525,37 +513,44 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  int handle_clicked;
   int mval[2] = {RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y")};
 
-  Sequence *seq = find_nearest_seq(scene, v2d, &handle_clicked, mval);
+  int hand;
+  Sequence *seq = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
+  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
 
-  if (seq == nullptr) {
-    BKE_report(op->reports, RPT_ERROR, "No handle available");
-    return OPERATOR_CANCELLED;
+  if (seq != nullptr && handle == nullptr) {
+    WM_toolsystem_ref_set_by_id(C, "builtin.select");  // prev tool
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
-  SeqRetimingHandle *handle = closest_retiming_handle_get(C, seq, mval[0]);
+  bool changed = false;
+  if (RNA_boolean_get(op->ptr, "deselect_all")) {
+    changed = SEQ_retiming_selection_clear(ed);
+  }
 
   if (handle == nullptr) {
-    BKE_report(op->reports, RPT_ERROR, "No handle available");
-    return OPERATOR_CANCELLED;
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+    return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   }
 
-  SEQ_retiming_selection_append(ed, seq, handle);
+  if (RNA_boolean_get(op->ptr, "toggle") && SEQ_retiming_selection_contains(ed, seq, handle)) {
+    SEQ_retiming_selection_remove(ed, seq, handle);
+  }
+  else {
+    SEQ_retiming_selection_append(ed, seq, handle);
+  }
 
+  WM_toolsystem_ref_set_by_id(C, "builtin.retime");
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-  return OPERATOR_FINISHED;
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 static int sequencer_retiming_handle_select_invoke(bContext *C,
                                                    wmOperator *op,
                                                    const wmEvent *event)
 {
-  RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
-  RNA_int_set(op->ptr, "mouse_y", event->mval[1]);
-  return sequencer_retiming_handle_select_exec(C, op);
+  return WM_generic_select_invoke(C, op, event);
 }
 
 void SEQUENCER_OT_retiming_handle_select(wmOperatorType *ot)
@@ -569,16 +564,133 @@ void SEQUENCER_OT_retiming_handle_select(wmOperatorType *ot)
   ot->exec = sequencer_retiming_handle_select_exec;
   ot->invoke = sequencer_retiming_handle_select_invoke;
   ot->poll = retiming_poll;
+  ot->modal = WM_generic_select_modal;
+  ot->get_name = ED_select_pick_get_name;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  PropertyRNA *prop = RNA_def_int(
-      ot->srna, "mouse_x", 0, INT_MIN, INT_MAX, "Mouse X", "", INT_MIN, INT_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
-  prop = RNA_def_int(ot->srna, "mouse_y", 0, INT_MIN, INT_MAX, "Mouse Y", "", INT_MIN, INT_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
+  WM_operator_properties_generic_select(ot);
+  WM_operator_properties_mouse_select(ot);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Retiming Handle Box Select
+ * \{ */
+
+static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
+{
+
+  Scene *scene = CTX_data_scene(C);
+  View2D *v2d = UI_view2d_fromcontext(C);
+  Editing *ed = SEQ_editing_get(scene);
+
+  if (ed == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
+  bool changed = false;
+
+  if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+    changed |= SEQ_retiming_selection_clear(ed);
+  }
+
+  rctf rectf;
+  WM_operator_properties_border_to_rctf(op, &rectf);
+  UI_view2d_region_to_view_rctf(v2d, &rectf, &rectf);
+
+  for (const Sequence *seq : sequencer_visible_strips_get(C)) {
+    for (const SeqRetimingHandle &handle : SEQ_retiming_handles_get(seq)) {
+      if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
+        continue;
+      }
+      const int handle_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, &handle);
+      const int strip_start = SEQ_time_left_handle_frame_get(scene, seq);
+      const int strip_end = SEQ_time_right_handle_frame_get(scene, seq);
+      if (handle_frame <= strip_start || handle_frame > strip_end) {
+        continue;
+      }
+      if (handle_frame > rectf.xmax || handle_frame < rectf.xmin) {
+        continue;
+      }
+
+      switch (sel_op) {
+        case SEL_OP_ADD:
+        case SEL_OP_SET: {
+          SEQ_retiming_selection_append(ed, seq, &handle);
+          break;
+        }
+        case SEL_OP_SUB: {
+          SEQ_retiming_selection_remove(ed, seq, &handle);
+          break;
+        }
+        case SEL_OP_XOR: { /* Toggle */
+          if (SEQ_retiming_selection_contains(ed, seq, &handle)) {
+            SEQ_retiming_selection_remove(ed, seq, &handle);
+          }
+          else {
+            SEQ_retiming_selection_append(ed, seq, &handle);
+          }
+          break;
+        }
+      }
+
+      changed = true;
+    }
+  }
+
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
+
+static int sequencer_retiming_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  /*
+  Scene *scene = CTX_data_scene(C);
+  View2D *v2d = UI_view2d_fromcontext(C);
+  ARegion *region = CTX_wm_region(C);
+
+  const bool tweak = RNA_boolean_get(op->ptr, "tweak");
+  if (tweak) {
+    int hand_dummy;
+    int mval[2];
+    WM_event_drag_start_mval(event, region, mval);
+    Sequence *seq = find_nearest_seq(scene, v2d, &hand_dummy, mval);
+    if (seq != nullptr) {
+      return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+    }
+  }
+  */
+
+  return WM_gesture_box_invoke(C, op, event);
+}
+
+void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Box Select";
+  ot->idname = "SEQUENCER_OT_retiming_select_box";
+  ot->description = "Select strips using box selection";
+
+  /* Api callbacks. */
+  ot->invoke = sequencer_retiming_box_select_invoke;
+  ot->exec = sequencer_retiming_box_select_exec;
+  ot->modal = WM_gesture_box_modal;
+  ot->cancel = WM_gesture_box_cancel;
+
+  ot->poll = retiming_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_UNDO;
+
+  /* Properties. */
+  WM_operator_properties_gesture_box(ot);
+  WM_operator_properties_select_operation_simple(ot);
 }
 
 /** \} */

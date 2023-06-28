@@ -34,18 +34,16 @@
 #include "sequencer_intern.h"
 
 typedef struct GizmoGroup_retime {
-  wmGizmo *add_handle_gizmo;
   wmGizmo *move_handle_gizmo;
-  wmGizmo *remove_handle_gizmo;
   wmGizmo *speed_set_gizmo;
 } GizmoGroup_retime;
 
 static bool gizmogroup_retime_poll(const bContext *C, wmGizmoGroupType *gzgt)
 {
   /* Needed to prevent drawing gizmos when retiming tool is not activated. */
-  if (!ED_gizmo_poll_or_unlink_delayed_from_tool(C, gzgt)) {
-    //    return false;
-  }
+  // if (!ED_gizmo_poll_or_unlink_delayed_from_tool(C, gzgt)) {
+  //     return false;
+  //}
 
   if ((U.gizmo_flag & USER_GIZMO_DRAW) == 0) {
     return false;
@@ -76,19 +74,17 @@ static void gizmogroup_retime_setup(const bContext * /* C */, wmGizmoGroup *gzgr
   GizmoGroup_retime *ggd = (GizmoGroup_retime *)MEM_callocN(sizeof(GizmoGroup_retime), __func__);
 
   /* Assign gizmos. */
-  const wmGizmoType *gzt_remove_handle = WM_gizmotype_find("GIZMO_GT_retime_handle_remove", true);
-  ggd->remove_handle_gizmo = WM_gizmo_new_ptr(gzt_remove_handle, gzgroup, nullptr);
-  const wmGizmoType *gzt_move_handle = WM_gizmotype_find("GIZMO_GT_retime_handle_move", true);
-  ggd->move_handle_gizmo = WM_gizmo_new_ptr(gzt_move_handle, gzgroup, nullptr);
   const wmGizmoType *gzt_speed_set = WM_gizmotype_find("GIZMO_GT_retime_speed_set", true);
   ggd->speed_set_gizmo = WM_gizmo_new_ptr(gzt_speed_set, gzgroup, nullptr);
+  const wmGizmoType *gzt_move_handle = WM_gizmotype_find("GIZMO_GT_retime_handle_move", true);
+  ggd->move_handle_gizmo = WM_gizmo_new_ptr(gzt_move_handle, gzgroup, nullptr);
   gzgroup->customdata = ggd;
 
   /* Assign operators. */
-  wmOperatorType *ot = WM_operatortype_find("SEQUENCER_OT_retiming_handle_select", true);
-  WM_gizmo_operator_set(ggd->move_handle_gizmo, 0, ot, nullptr);
-  ot = WM_operatortype_find("SEQUENCER_OT_retiming_segment_speed_set", true);
+  wmOperatorType *ot = WM_operatortype_find("SEQUENCER_OT_retiming_segment_speed_set", true);
   WM_gizmo_operator_set(ggd->speed_set_gizmo, 0, ot, nullptr);
+  ot = WM_operatortype_find("SEQUENCER_OT_retiming_handle_select", true);
+  WM_gizmo_operator_set(ggd->move_handle_gizmo, 0, ot, nullptr);
 }
 
 void SEQUENCER_GGT_gizmo_retime(wmGizmoGroupType *gzgt)

@@ -3940,6 +3940,7 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "SCREEN_OT_box_select");
 #endif
   WM_modalkeymap_assign(keymap, "SEQUENCER_OT_select_box");
+  WM_modalkeymap_assign(keymap, "SEQUENCER_OT_retiming_select_box");
   WM_modalkeymap_assign(keymap, "SEQUENCER_OT_view_ghost_border");
   WM_modalkeymap_assign(keymap, "UV_OT_select_box");
   WM_modalkeymap_assign(keymap, "CLIP_OT_select_box");

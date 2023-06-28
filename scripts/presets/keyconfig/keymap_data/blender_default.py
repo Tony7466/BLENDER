@@ -1224,6 +1224,7 @@ def km_outliner(params):
         # Copy/paste.
         ("outliner.id_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("outliner.id_paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
+
     ])
 
     return keymap
@@ -2957,6 +2958,8 @@ def km_sequencer(params):
         ("wm.context_toggle", {"type": 'Z', "value": 'PRESS', "alt": True, "shift": True},
          {"properties": [("data_path", "space_data.show_overlays")]}),
         *_template_items_context_menu("SEQUENCER_MT_context_menu", params.context_menu_event),
+        ("sequencer.retiming_handle_add", {"type": 'I', "value": 'PRESS'}, None),
+        
     ])
 
     return keymap
@@ -8139,15 +8142,40 @@ def km_sequencer_editor_tool_blade(_params):
     )
 
 
+def _template_sequencer_retime_select(*, type, value, legacy):
+    return [(
+        "sequencer.retiming_handle_select",
+        {"type": type, "value": value, **{m: True for m in mods}},
+        {"properties": [(c, True) for c in props]},
+    ) for props, mods in (
+        (("deselect_all",) if not legacy else (), ()),
+        (("toggle",), ("shift",)),
+    )]
+
+
 def km_sequencer_editor_tool_retime(_params):
     return (
         "Sequencer Tool: Retime",
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            ("sequencer.retiming_handle_add", {"type": 'A', "value": 'PRESS', "shift": True}, None),
+            *_template_sequencer_retime_select(
+            type=_params.select_mouse,
+            value=_params.select_mouse_value_fallback,
+            legacy=_params.legacy,
+            ),
+            ("sequencer.retiming_handle_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
             ("sequencer.retiming_handle_remove", {"type": 'DEL', "value": 'PRESS'},None),
             ("sequencer.retiming_handle_remove", {"type": 'X', "value": 'PRESS'},None),
             ("sequencer.retiming_handle_move", {"type": 'G', "value": 'PRESS'},None),
+            ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},
+             {"properties": [("tweak", True), ("mode", 'SET')]}),
+            ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "shift": True},
+             {"properties": [("tweak", True), ("mode", 'ADD')]}),
+            ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "ctrl": True},
+             {"properties": [("tweak", True), ("mode", 'SUB')]}),
+            ("sequencer.retiming_select_box", {"type": 'B', "value": 'PRESS'}, None),
+            ("sequencer.retiming_select_box", {"type": 'B', "value": 'PRESS', "ctrl": True},
+             {"properties": [("include_handles", True)]}),
         ]},
     )
 
