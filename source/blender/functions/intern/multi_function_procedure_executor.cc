@@ -783,7 +783,7 @@ class VariableState : NonCopyable, NonMovable {
         const bool condition = *static_cast<const bool *>(value_typed->data);
         Vector<int64_t> &indices = r_indices[condition];
         indices.reserve(indices.size() + mask.size());
-        mask.foreach_index([&](const int64_t i) { indices.append(i); });
+        mask.foreach_index_optimized<int64_t>([&](const int64_t i) { indices.append(i); });
         break;
       }
       case ValueType::GVVectorArray:
