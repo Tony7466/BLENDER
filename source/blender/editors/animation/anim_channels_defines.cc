@@ -3549,9 +3549,9 @@ static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings set
 }
 
 /* get pointer to the setting */
-static void *acf_gpl_setting_ptr(bAnimListElem *ale,
-                                 eAnimChannel_Settings /*setting*/,
-                                 short *r_type)
+static void *acf_gpl_setting_ptr_legacy(bAnimListElem *ale,
+                                        eAnimChannel_Settings /*setting*/,
+                                        short *r_type)
 {
   bGPDlayer *gpl = (bGPDlayer *)ale->data;
 
@@ -3575,7 +3575,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
     /*has_setting*/ acf_gpl_setting_valid,
     /*setting_flag*/ acf_gpl_setting_flag,
-    /*setting_ptr*/ acf_gpl_setting_ptr,
+    /*setting_ptr*/ acf_gpl_setting_ptr_legacy,
 };
 
 /* Grease Pencil Layer ------------------------------------------- */
@@ -3601,6 +3601,17 @@ static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA
   }
 
   return false;
+}
+
+/* get pointer to the setting */
+static void *acf_gpl_setting_ptr(bAnimListElem *ale,
+                                 eAnimChannel_Settings /*setting*/,
+                                 short *r_type)
+{
+  GreasePencilLayer *gpl = (GreasePencilLayer *)ale->data;
+
+  /* all flags are just in gpl->flag for now... */
+  return GET_ACF_FLAG_PTR(gpl->base.flag, r_type);
 }
 
 /** Grease-pencil layer type define. */
