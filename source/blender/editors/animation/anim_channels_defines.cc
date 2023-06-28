@@ -3492,7 +3492,7 @@ static void acf_gpl_name_legacy(bAnimListElem *ale, char *name)
 }
 
 /* name property for grease pencil layer entries */
-static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
+static bool acf_gpl_name_prop_legacy(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data) {
     RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data, r_ptr);
@@ -3570,7 +3570,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*get_offset*/ acf_generic_group_offset,
 
     /*name*/ acf_gpl_name_legacy,
-    /*name_prop*/ acf_gpl_name_prop,
+    /*name_prop*/ acf_gpl_name_prop_legacy,
     /*icon*/ nullptr,
 
     /*has_setting*/ acf_gpl_setting_valid,
@@ -3588,6 +3588,19 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
   if (gpl && name) {
     BLI_strncpy(name, gpl->base.name, ANIM_CHAN_NAME_SIZE);
   }
+}
+
+/* name property for grease pencil layer entries */
+static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
+{
+  if (ale->data) {
+    RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, r_ptr);
+    *r_prop = RNA_struct_name_property(r_ptr->type);
+
+    return (*r_prop != nullptr);
+  }
+
+  return false;
 }
 
 /** Grease-pencil layer type define. */
