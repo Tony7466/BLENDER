@@ -124,7 +124,7 @@ static void fileselect_ensure_updated_asset_params(SpaceFile *sfile)
   base_params->sort = FILE_SORT_ALPHA;
   /* Asset libraries include all sub-directories, so enable maximal recursion. */
   base_params->recursion_level = FILE_SELECT_MAX_RECURSIONS;
-  /* 'SMALL' size by default. More reasonable since this is typically used as regular editor,
+  /* 'NORMAL' size by default. More reasonable since this is typically used as regular editor,
    * space is more of an issue here. */
   base_params->thumbnail_size = 96;
 

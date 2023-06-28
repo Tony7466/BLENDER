@@ -6768,10 +6768,12 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem display_size_items[] = {
-      {64, "TINY", 0, "Tiny", ""},
-      {96, "SMALL", 0, "Small", ""},
-      {128, "NORMAL", 0, "Medium", ""},
+      {32, "TINY", 0, "Tiny", ""},
+      {64, "SMALL", 0, "Small", ""},
+      {96, "NORMAL", 0, "Medium", ""},
+      {128, "BIG", 0, "Big", ""},
       {192, "LARGE", 0, "Large", ""},
+      {256, "HUGE", 0, "Huge", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
