@@ -284,10 +284,6 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
       }
     }
   }
-  else if (ob->type == OB_CURVES) {
-    /* TODO(Miguel Pozo): Check for has_uv and has_color,
-     * or just fall back to material and object color? */
-  }
   else {
     if (color_type == V3D_SHADING_TEXTURE_COLOR) {
       color_type = V3D_SHADING_MATERIAL_COLOR;
