@@ -1212,7 +1212,8 @@ static bool vfont_to_curve(Object *ob,
       }
       for (i = 0; i <= slen; i++) {
         for (j = i; !ELEM(mem[j], '\0', '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* do nothing */
         }
 
@@ -1226,7 +1227,8 @@ static bool vfont_to_curve(Object *ob,
       float curofs = 0.0f;
       for (i = 0; i <= slen; i++) {
         for (j = i; (mem[j]) && (mem[j] != '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* pass */
         }
 
@@ -1741,67 +1743,72 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  // Erasing all text could give slen = 0
-  if (cursor_params && slen == 0) {
-    cursor_params->r_string_offset = -1;
-  }
-  else if (cursor_params && cu->textoncurve != NULL) {
+  if (cursor_params) {
+    // Erasing all text could give slen = 0
+    if (slen == 0) {
+      cursor_params->r_string_offset = -1;
+    }
+    else if (cu->textoncurve != NULL) {
 
-    int best_match = -1;
-    float closest_distance = FLT_MAX;
+      int best_match = -1;
+      float closest_distance = FLT_MAX;
 
-    for (i = 0; i <= slen; i++, ct++) {
-      const float char_location[2] = {chartransdata[i].xof, chartransdata[i].yof};
-      const float distance = len_squared_v2v2(cursor_params->cursor_location, char_location);
-      if (closest_distance > distance) {
-        best_match = i;
-        closest_distance = distance;
+      for (i = 0; i <= slen; i++, ct++) {
+        const float char_location[2] = {
+            chartransdata[i].xof * font_size,
+            chartransdata[i].yof * font_size,
+        };
+        const float distance = len_squared_v2v2(cursor_params->cursor_location, char_location);
+        if (closest_distance > distance) {
+          best_match = i;
+          closest_distance = distance;
+        }
       }
-    }
 
-    cursor_params->r_string_offset = best_match;
-  }
-  else if (cursor_params && cu->textoncurve == NULL) {
-    cursor_params->r_string_offset = -1;
-    const float half_space_between_lines = linedist >= 0.915f ?
-                                               ((linedist - 0.915f) / 2) * font_size :
-                                               0;
-    // Loop until find the line where the mouse is over
-    for (i = 0; i <= slen; i++, ct++) {
-      if (cursor_params->cursor_location[1] >=
-          ((chartransdata[i].yof * font_size) - half_space_between_lines))
-      {
-        break;
+      cursor_params->r_string_offset = best_match;
+    }
+    else {
+
+      const float interline_offset = ((linedist - 0.5f) / 2.0f) * font_size;
+      /* Loop until find the line where the mouse is over. */
+      for (i = 0; i <= slen; i++, ct++) {
+        if (cursor_params->cursor_location[1] >=
+            ((chartransdata[i].yof * font_size) - interline_offset))
+        {
+          break;
+        }
       }
-    }
 
-    i = slen < i ? slen : i;
-    float yof = chartransdata[i].yof;
+      i = slen < i ? slen : i;
+      float yof = chartransdata[i].yof;
 
-    // Loop back until find the first character of the line, this because the mouse can be
-    // positioned further below the text, so #i can be the last character of the last line.
-    for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
-    }
-
-    // Loop until find the first character to the right of the mouse (using the character midpoint
-    // on the x-axis as a reference)
-    for (i; i <= slen && yof == chartransdata[i].yof; i++) {
-      info = &custrinfo[i];
-      ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
-      che = find_vfont_char(vfd, ascii);
-      const float charwidth = char_width(cu, che, info);
-      const float charhalf = (charwidth / 2.0f);
-      if (cursor_params->cursor_location[0] <= ((chartransdata[i].xof + charhalf) * font_size)) {
-        break;
+      /* Loop back until find the first character of the line, this because the mouse can be
+       * positioned further below the text, so #i can be the last character of the last line.
+       */
+      for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
       }
+
+      /* Loop until find the first character to the right of the mouse (using the character
+       * midpoint on the x-axis as a reference)
+       * */
+      for (i; i <= slen && yof == chartransdata[i].yof; i++) {
+        info = &custrinfo[i];
+        ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
+        che = find_vfont_char(vfd, ascii);
+        const float charwidth = char_width(cu, che, info);
+        const float charhalf = (charwidth / 2.0f);
+        if (cursor_params->cursor_location[0] <= ((chartransdata[i].xof + charhalf) * font_size)) {
+          break;
+        }
+      }
+      i = i <= slen ? i : slen;
+
+      /* If there is no character to the right of the cursor we are on the next line, go back to
+       the last character of the previous line. */
+      i = i > 0 && chartransdata[i].yof != yof ? i - 1 : i;
+
+      cursor_params->r_string_offset = i;
     }
-    i = i <= slen ? i : slen;
-
-    // if there is no character to the right of the cursor we are on the next line, go back to the
-    // last character of the previous line
-    i = i > 0 && chartransdata[i].yof != yof ? i - 1 : i;
-
-    cursor_params->r_string_offset = i;
   }
 
   /* Scale to fit only works for single text box layouts. */
