@@ -75,6 +75,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -976,10 +977,9 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        using namespace blender::bke::greasepencil;
-        Layer *gpl = reinterpret_cast<Layer *>(data);
+        GreasePencilLayer *gpl = (GreasePencilLayer *)data;
 
-        // ale->flag = gpl->flag;
+        ale->flag = gpl->base.flag;
 
         ale->key_data = nullptr;
         ale->datatype = ALE_CELS;
@@ -1809,7 +1809,8 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
   for (blender::bke::greasepencil::Layer *layer : grease_pencil->layers_for_write()) {
 
     /* add layer channel */
-    ANIMCHANNEL_NEW_CHANNEL(layer, ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+    ANIMCHANNEL_NEW_CHANNEL(
+        static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
   }
 
   return items;
