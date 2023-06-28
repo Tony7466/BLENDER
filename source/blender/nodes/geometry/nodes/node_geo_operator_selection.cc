@@ -13,9 +13,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>("Selection");
 }
 
-class AttributeExistsFieldInput final : public bke::GeometryFieldInput {
+class OperatorSelectionFieldInput final : public bke::GeometryFieldInput {
  public:
-  AttributeExistsFieldInput() : bke::GeometryFieldInput(CPPType::get<bool>(), "Operator Selection")
+  OperatorSelectionFieldInput()
+      : bke::GeometryFieldInput(CPPType::get<bool>(), "Operator Selection")
   {
     category_ = Category::NamedAttribute;
   }
@@ -23,10 +24,26 @@ class AttributeExistsFieldInput final : public bke::GeometryFieldInput {
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask & /*mask*/) const final
   {
+    const eAttrDomain domain = context.domain();
+    const AttributeAccessor attributes = *context.attributes();
     switch (context.type()) {
       case GeometryComponent::Type::Curve:
-        return *context.attributes()->lookup_or_default<bool>(
-            ".selection", context.domain(), true);
+        return *attributes.lookup_or_default<bool>(".selection", domain, true);
+      case GeometryComponent::Type::Mesh:
+        switch (domain) {
+          case ATTR_DOMAIN_POINT:
+            return *attributes.lookup_or_default<bool>(".select_vert", domain, false);
+          case ATTR_DOMAIN_EDGE:
+            return *attributes.lookup_or_default<bool>(".select_edge", domain, false);
+          case ATTR_DOMAIN_FACE:
+          case ATTR_DOMAIN_CORNER:
+            return *attributes.lookup_or_default<bool>(".select_face", domain, false);
+          default:
+            BLI_assert_unreachable();
+            return {};
+        }
+      case GeometryComponent::Type::PointCloud:
+        return *attributes.lookup_or_default<bool>(".selection", domain, false);
       default:
         return {};
     }
@@ -39,7 +56,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.error_message_add(NodeWarningType::Error, "Node must be run as operator");
     params.set_default_remaining_outputs();
   }
-  params.set_output("Selection", Field<bool>(std::make_shared<AttributeExistsFieldInput>()));
+  params.set_output("Selection", Field<bool>(std::make_shared<OperatorSelectionFieldInput>()));
 }
 
 }  // namespace blender::nodes::node_geo_operator_selection_cc
