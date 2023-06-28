@@ -560,7 +560,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   /* If after the file is loaded the pointers were lost, we need to match the 
   new pointers of blender_layer and blender_frame. 
   TODO: If this process fails at any point, free the bind data. */
-  uint current_frame_idx = smd->layers->frames->frame_idx;
+  /*uint current_frame_idx = smd->layers->frames->frame_idx;
   rollback_frames(smd, smd->layers);
   if (smd->layers->blender_layer == NULL)
   {
@@ -584,7 +584,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
       }
     }
   }
-  smd->layers->frames = &smd->layers->frames[current_frame_idx];
+  smd->layers->frames = &smd->layers->frames[current_frame_idx]; */
   
   
   /*Check only one time. Once the evaluation is over, the flag data will be copied again from 
@@ -964,8 +964,16 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   char label[50];
   if (smd->layers) 
   {
-    BLI_sprintf(label, "Number of bound frames: %u", smd->layers->num_of_frames );
-    uiItemL(row, label, ICON_INFO);
+    for (int l = 0; l < smd->num_of_layers; l++)
+    {
+      row = uiLayoutRow(col, true);
+      BLI_sprintf(label,
+                  "Layer %s, Number of bound frames: %u",
+                  smd->layers[l].layer_info, smd->layers[l].num_of_frames);
+      uiItemL(row, label, ICON_INFO);
+    }
+    
+    
   }
   else uiItemL(row, "No bound frames", ICON_INFO);
   
