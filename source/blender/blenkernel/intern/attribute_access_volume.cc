@@ -102,6 +102,7 @@ template<> struct GridValueConverter<double> {
     return value;
   }
 };
+
 template<> struct GridValueConverter<openvdb::Vec3d> {
   using GridValueType = openvdb::Vec3d;
   using AttributeType = blender::float3;
@@ -141,6 +142,20 @@ template<> struct GridValueConverter<openvdb::Vec3f> {
   static GridValueType to_grid(const AttributeType &value)
   {
     return openvdb::Vec3f(value.x, value.y, value.z);
+  }
+};
+
+template<> struct GridValueConverter<openvdb::PointDataIndex32> {
+  using GridValueType = openvdb::PointDataIndex32;
+  using AttributeType = int32_t;
+
+  static AttributeType to_attribute(const GridValueType &value)
+  {
+    return int32_t(value);
+  }
+  static GridValueType to_grid(const AttributeType &value)
+  {
+    return GridValueType(value);
   }
 };
 
@@ -203,13 +218,27 @@ class VArrayImpl_For_VolumeGrid final
 
   void set_all(Span<AttributeType> src) override
   {
-    // LeafManager leaf_mgr(*grid_->treePtr());
+    LeafManager leaf_mgr(*grid_.treePtr());
 
-    // const LeafRange leaf_range = leaf_mgr.leafRange();
-    // tbb::parallel_for(leaf_range, [&](const LeafRange &range) {
-    //   for (const LeafNodeType &leaf : range) {
-    //   }
-    // });
+    /* Offset indices for leaf node buffers. */
+    Array<size_t> prefix_sum(leaf_mgr.activeLeafVoxelCount());
+    size_t *prefix_sum_data = prefix_sum.data();
+    size_t prefix_sum_size = prefix_sum.size();
+    leaf_mgr.getPrefixSum(prefix_sum_data, prefix_sum_size);
+
+    const LeafRange leaf_range = leaf_mgr.leafRange();
+    tbb::parallel_for(leaf_range, [&](const LeafRange &range) {
+      // for (const LeafNodeType &leaf : range) {
+      for (auto leaf_iter = range.begin(); leaf_iter; ++leaf_iter) {
+        const size_t leaf_index = leaf_iter.pos();
+        const IndexRange leaf_buffer_range(prefix_sum[leaf_index], leaf_iter->onVoxelCount());
+
+        auto iter = leaf_iter->beginValueOn();
+        for (const int src_i : leaf_buffer_range) {
+          iter.setValue(Converter::to_grid(src[src_i]));
+        }
+      }
+    });
   }
 
   // void materialize(const IndexMask &mask, AttributeType *dst) const override
@@ -251,7 +280,7 @@ namespace static_type_select {
 //                                                  openvdb::Vec3IGrid,
 //                                                  openvdb::Vec3SGrid>;
 
-//#  define SupportedVolumeCPPTypes float, int
+// #  define SupportedVolumeCPPTypes float, int
 
 // template<typename OpType> static bool grid_operation(const openvdb::GridBase &grid, OpType &&op)
 //{
@@ -364,12 +393,29 @@ struct MakeGridVArrayOp {
   const openvdb::GridBase &grid_;
   GVArray result_;
 
-  template<typename GridType> void operator()(const GridType &grid)
+  template<typename GridType> void operator()()
   {
     using ValueType = typename GridType::ValueType;
     using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
     using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result_ = VArray<AttributeType>::template For<VArrayImplType, const GridType>(std::move(grid));
+    const GridType &typed_grid = static_cast<const GridType &>(grid_);
+    result_ = VArray<AttributeType>::template For<VArrayImplType, const GridType>(
+        std::move(typed_grid));
+  }
+};
+
+struct MakeGridVMutableArrayOp {
+  openvdb::GridBase &grid_;
+  GVMutableArray result_;
+
+  template<typename GridType> void operator()()
+  {
+    using ValueType = typename GridType::ValueType;
+    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
+    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
+    GridType &typed_grid = static_cast<GridType &>(grid_);
+    result_ = VMutableArray<AttributeType>::template For<VArrayImplType, const GridType>(
+        std::move(typed_grid));
   }
 };
 
@@ -378,18 +424,15 @@ GAttributeReader BuiltinVolumeAttributeProvider::try_get_for_read(const void *ow
   const VolumeGeometryGrid &grid = grid_access_.get_const_grid(owner);
   MakeGridVArrayOp op{*grid.grid_};
   grid.grid_type_operation(op);
-  if (static_type_select::grid_operation(grid, op)) {
-    return op.result_;
-  }
-  return {};
-
-  return {make_grid_array_for_read(*grid.grid_), domain_, nullptr};
+  return {op.result_, domain_, nullptr};
 }
 
 GAttributeWriter BuiltinVolumeAttributeProvider::try_get_for_write(void *owner) const
 {
   VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
-  return {make_grid_array_for_write(*grid.grid_), domain_, nullptr};
+  MakeGridVMutableArrayOp op{*grid.grid_};
+  grid.grid_type_operation(op);
+  return {op.result_, domain_, nullptr};
 }
 
 bool BuiltinVolumeAttributeProvider::try_delete(void * /*owner*/) const
@@ -437,14 +480,18 @@ GAttributeReader VolumeAttributeProvider::try_get_for_read(
     const void *owner, const AttributeIDRef & /*attribute_id*/) const
 {
   const VolumeGeometryGrid &grid = grid_access_.get_const_grid(owner);
-  return {make_grid_array_for_read(*grid.grid_), domain_, nullptr};
+  MakeGridVArrayOp op{*grid.grid_};
+  grid.grid_type_operation(op);
+  return {op.result_, domain_, nullptr};
 }
 
 GAttributeWriter VolumeAttributeProvider::try_get_for_write(
     void *owner, const AttributeIDRef & /*attribute_id*/) const
 {
   VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
-  return {make_grid_array_for_write(*grid.grid_), domain_, nullptr};
+  MakeGridVMutableArrayOp op{*grid.grid_};
+  grid.grid_type_operation(op);
+  return {op.result_, domain_, nullptr};
 }
 
 bool VolumeAttributeProvider::try_delete(void * /*owner*/,

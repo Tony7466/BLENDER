@@ -49,7 +49,7 @@ static auto grid_type_operation(const VolumeGridType grid_type, OpType &&op)
 
 }  // namespace
 
-class VolumeGeometryGrid {
+struct VolumeGeometryGrid {
  public:
   VolumeGeometryGrid();
   ~VolumeGeometryGrid();
@@ -58,7 +58,7 @@ class VolumeGeometryGrid {
 
   int64_t active_voxel_num() const;
 
-  template<typename OpType> auto grid_type_operation(OpType &&op)
+  template<typename OpType> auto grid_type_operation(OpType &&op) const
   {
     return ::grid_type_operation(type(), op);
   }
