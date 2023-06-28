@@ -10,7 +10,6 @@
 
 struct Main;
 struct ModifierData;
-struct bNodeTree;
 
 namespace blender {
 class fstream;

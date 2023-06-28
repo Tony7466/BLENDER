@@ -151,10 +151,6 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   CacheMutex tree_zones_cache_mutex;
   std::unique_ptr<bNodeTreeZones> tree_zones;
 
-  CacheMutex node_ids_by_state_id_cache_mutex;
-  Map<int, Vector<int>> node_ids_by_state_id;
-  Map<Vector<int>, int> state_id_by_node_ids;
-
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> links;
   Vector<bNodeSocket *> sockets;

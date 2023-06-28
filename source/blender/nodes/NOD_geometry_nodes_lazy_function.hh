@@ -91,7 +91,9 @@ struct GeoNodesLFUserData : public lf::UserData {
    * Log socket values in the current compute context. Child contexts might use logging again.
    */
   bool log_socket_values = true;
-
+  /**
+   * Top-level node tree of the current evaluation.
+   */
   const bNodeTree *root_ntree = nullptr;
 
   destruct_ptr<lf::LocalUserData> get_local(LinearAllocator<> &allocator) override;
