@@ -424,21 +424,20 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
   /* delete the group instance and dereference group tree */
   nodeRemoveNode(bmain, ntree, gnode, true);
 
-  for (bNodeStateID &state_id : MutableSpan(ntree->node_state_ids, ntree->node_state_ids_num)) {
-    if (state_id.location.node_id != gnode->identifier) {
+  for (bNestedNodeRef &ref : ntree->nested_node_refs_span()) {
+    if (ref.path.node_id != gnode->identifier) {
       continue;
     }
-    const bNodeStateID *child_state_id = ngroup->find_state_id(state_id.location.id_in_node);
-    if (!child_state_id) {
+    const bNestedNodeRef *child_ref = ngroup->find_nested_node_ref(ref.path.id_in_node);
+    if (!child_ref) {
       continue;
     }
-    const int32_t new_node_id = node_identifier_map.lookup_default(
-        child_state_id->location.node_id, -1);
+    const int32_t new_node_id = node_identifier_map.lookup_default(child_ref->path.node_id, -1);
     if (new_node_id == -1) {
       continue;
     }
-    state_id.location.node_id = new_node_id;
-    state_id.location.id_in_node = child_state_id->location.id_in_node;
+    ref.path.node_id = new_node_id;
+    ref.path.id_in_node = child_ref->path.id_in_node;
   }
 
   return true;
@@ -1125,22 +1124,22 @@ static void node_group_make_insert_selected(const bContext &C,
 
   RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
-  Vector<bNodeStateID> new_group_state_ids;
-  for (const bNodeStateID &state_id : Span(group.node_state_ids, group.node_state_ids_num)) {
-    new_group_state_ids.append(state_id);
+  Vector<bNestedNodeRef> new_nested_node_refs;
+  for (const bNestedNodeRef &state_id : group.nested_node_refs_span()) {
+    new_nested_node_refs.append(state_id);
   }
-  Map<bNodeStateLocation, int> new_id_by_old_location;
-  for (bNodeStateID &state_id : MutableSpan(ntree.node_state_ids, ntree.node_state_ids_num)) {
-    const int32_t new_node_id = node_identifier_map.lookup_default(state_id.location.node_id, -1);
+  Map<bNestedNodePath, int> new_id_by_old_path;
+  for (bNestedNodeRef &state_id : ntree.nested_node_refs_span()) {
+    const int32_t new_node_id = node_identifier_map.lookup_default(state_id.path.node_id, -1);
     if (new_node_id == -1) {
       continue;
     }
-    bNodeStateID new_state_id = state_id;
-    new_state_id.location.node_id = new_node_id;
+    bNestedNodeRef new_state_id = state_id;
+    new_state_id.path.node_id = new_node_id;
     while (true) {
       const int new_id = rng.get_int32(INT32_MAX);
       bool id_exists = false;
-      for (const bNodeStateID &other : Span(group.node_state_ids, group.node_state_ids_num)) {
+      for (const bNestedNodeRef &other : group.nested_node_refs_span()) {
         if (other.id == new_id) {
           id_exists = true;
           break;
@@ -1151,17 +1150,17 @@ static void node_group_make_insert_selected(const bContext &C,
         break;
       }
     }
-    new_id_by_old_location.add_new(state_id.location, new_state_id.id);
-    new_group_state_ids.append(new_state_id);
-    state_id.location.node_id = gnode->identifier;
-    state_id.location.id_in_node = new_state_id.id;
+    new_id_by_old_path.add_new(state_id.path, new_state_id.id);
+    new_nested_node_refs.append(new_state_id);
+    state_id.path.node_id = gnode->identifier;
+    state_id.path.id_in_node = new_state_id.id;
   }
 
-  MEM_SAFE_FREE(group.node_state_ids);
-  group.node_state_ids = static_cast<bNodeStateID *>(
-      MEM_malloc_arrayN(new_group_state_ids.size(), sizeof(bNodeStateID), __func__));
+  MEM_SAFE_FREE(group.nested_node_refs);
+  group.nested_node_refs = static_cast<bNestedNodeRef *>(
+      MEM_malloc_arrayN(new_nested_node_refs.size(), sizeof(bNestedNodeRef), __func__));
   uninitialized_copy_n(
-      new_group_state_ids.data(), new_group_state_ids.size(), group.node_state_ids);
+      new_nested_node_refs.data(), new_nested_node_refs.size(), group.nested_node_refs);
 
   ED_node_tree_propagate_change(&C, bmain, nullptr);
 }

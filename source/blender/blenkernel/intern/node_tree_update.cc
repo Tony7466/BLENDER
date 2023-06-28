@@ -489,7 +489,7 @@ class NodeTreeMainUpdater {
     this->update_socket_link_and_use(ntree);
     this->update_link_validation(ntree);
 
-    if (this->update_node_state_ids(ntree)) {
+    if (this->update_nested_node_refs(ntree)) {
       result.interface_changed = true;
     }
 
@@ -1093,43 +1093,43 @@ class NodeTreeMainUpdater {
     return false;
   }
 
-  bool update_node_state_ids(bNodeTree &ntree)
+  bool update_nested_node_refs(bNodeTree &ntree)
   {
     ntree.ensure_topology_cache();
 
-    Map<bNodeStateLocation, int> old_id_by_location;
-    Set<int> old_ids;
-    for (const bNodeStateID &state_id : Span(ntree.node_state_ids, ntree.node_state_ids_num)) {
-      old_id_by_location.add(state_id.location, state_id.id);
-      old_ids.add(state_id.id);
+    Map<bNestedNodePath, int32_t> old_id_by_path;
+    Set<int32_t> old_ids;
+    for (const bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
+      old_id_by_path.add(ref.path, ref.id);
+      old_ids.add(ref.id);
     }
 
-    Map<int, bNodeStateLocation> new_location_by_id;
+    Map<int32_t, bNestedNodePath> new_path_by_id;
 
     RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
-    const auto add_state = [&](const bNodeStateLocation &location) {
-      const int old_id = old_id_by_location.lookup_default(location, -1);
+    const auto add_state = [&](const bNestedNodePath &path) {
+      const int32_t old_id = old_id_by_path.lookup_default(path, -1);
       if (old_id != -1) {
-        new_location_by_id.add(old_id, location);
+        new_path_by_id.add(old_id, path);
         return;
       }
-      int new_id;
+      int32_t new_id;
       while (true) {
         new_id = rng.get_int32(INT32_MAX);
-        if (!old_ids.contains(new_id) && !new_location_by_id.contains(new_id)) {
+        if (!old_ids.contains(new_id) && !new_path_by_id.contains(new_id)) {
           break;
         }
       }
-      new_location_by_id.add(new_id, location);
+      new_path_by_id.add(new_id, path);
     };
 
-    /* Don't forget state ids just because the linked file is not available right now. */
-    for (const bNodeStateLocation &old_state : old_id_by_location.keys()) {
-      const bNode *node = ntree.node_by_id(old_state.node_id);
+    /* Don't forget nested node refs just because the linked file is not available right now. */
+    for (const bNestedNodePath &path : old_id_by_path.keys()) {
+      const bNode *node = ntree.node_by_id(path.node_id);
       if (node && node->is_group() && node->id) {
         if (node->id->tag & LIB_TAG_MISSING) {
-          add_state(old_state);
+          add_state(path);
         }
       }
     }
@@ -1139,19 +1139,19 @@ class NodeTreeMainUpdater {
       if (group == nullptr) {
         continue;
       }
-      for (const int i : IndexRange(group->node_state_ids_num)) {
-        const bNodeStateID &child_state = group->node_state_ids[i];
-        add_state({node->identifier, child_state.id});
+      for (const int i : group->nested_node_refs_span().index_range()) {
+        const bNestedNodeRef &child_ref = group->nested_node_refs[i];
+        add_state({node->identifier, child_ref.id});
       }
     }
     for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
-      add_state({node->identifier, 0});
+      add_state({node->identifier, -1});
     }
 
-    if (new_location_by_id.size() == old_id_by_location.size()) {
+    if (new_path_by_id.size() == old_id_by_path.size()) {
       bool found_mismatch = false;
-      for (const bNodeStateID &old_state : Span(ntree.node_state_ids, ntree.node_state_ids_num)) {
-        if (!new_location_by_id.contains(old_state.id)) {
+      for (const bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
+        if (!new_path_by_id.contains(ref.id)) {
           found_mismatch = true;
           break;
         }
@@ -1160,24 +1160,24 @@ class NodeTreeMainUpdater {
         return false;
       }
     }
-    MEM_SAFE_FREE(ntree.node_state_ids);
-    if (new_location_by_id.is_empty()) {
-      ntree.node_state_ids_num = 0;
+    MEM_SAFE_FREE(ntree.nested_node_refs);
+    if (new_path_by_id.is_empty()) {
+      ntree.nested_node_refs_num = 0;
       return true;
     }
 
-    bNodeStateID *new_states = static_cast<bNodeStateID *>(
-        MEM_malloc_arrayN(new_location_by_id.size(), sizeof(bNodeStateID), __func__));
+    bNestedNodeRef *new_refs = static_cast<bNestedNodeRef *>(
+        MEM_malloc_arrayN(new_path_by_id.size(), sizeof(bNestedNodeRef), __func__));
     int index = 0;
-    for (const auto item : new_location_by_id.items()) {
-      bNodeStateID &state_id = new_states[index];
-      state_id.id = item.key;
-      state_id.location = item.value;
+    for (const auto item : new_path_by_id.items()) {
+      bNestedNodeRef &ref = new_refs[index];
+      ref.id = item.key;
+      ref.path = item.value;
       index++;
     }
 
-    ntree.node_state_ids = new_states;
-    ntree.node_state_ids_num = new_location_by_id.size();
+    ntree.nested_node_refs = new_refs;
+    ntree.nested_node_refs_num = new_path_by_id.size();
 
     return true;
   }
@@ -1323,12 +1323,12 @@ void BKE_ntree_update_tag_image_user_changed(bNodeTree *ntree, ImageUser * /*ius
   add_tree_tag(ntree, NTREE_CHANGED_ANY);
 }
 
-uint64_t bNodeStateLocation::hash() const
+uint64_t bNestedNodePath::hash() const
 {
   return blender::get_default_hash_2(this->node_id, this->id_in_node);
 }
 
-bool operator==(const bNodeStateLocation &a, const bNodeStateLocation &b)
+bool operator==(const bNestedNodePath &a, const bNestedNodePath &b)
 {
   return a.node_id == b.node_id && a.id_in_node == b.id_in_node;
 }

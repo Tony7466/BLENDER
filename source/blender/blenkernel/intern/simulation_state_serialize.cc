@@ -1013,7 +1013,11 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
         }
         node_ids.append(io_node_id->value());
       }
-      zone_id.id = ntree.state_id_by_node_ids(node_ids);
+      const bNestedNodeRef *nested_node_ref = ntree.nested_node_ref_by_node_id_path(node_ids);
+      if (!nested_node_ref) {
+        continue;
+      }
+      zone_id.id = nested_node_ref->id;
     }
 
     const io::serialize::ArrayValue *io_state_items = io_zone->lookup_array("state_items");

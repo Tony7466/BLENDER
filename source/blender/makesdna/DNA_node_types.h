@@ -570,24 +570,25 @@ typedef struct bNodePanel {
   char *name;
 } bNodePanel;
 
-typedef struct bNodeStateLocation {
-  /** ID of the node that the state belongs to. */
-  int node_id;
-  /** ID of the node state in the node. */
-  int id_in_node;
+typedef struct bNestedNodePath {
+  /** ID of the node that is or contains the nested node. */
+  int32_t node_id;
+  /** Unused if the node is the final nested node, otherwise an id inside of the (group) node. */
+  int32_t id_in_node;
 
 #ifdef __cplusplus
   uint64_t hash() const;
-  friend bool operator==(const bNodeStateLocation &a, const bNodeStateLocation &b);
+  friend bool operator==(const bNestedNodePath &a, const bNestedNodePath &b);
 #endif
-} bNodeStateLocation;
+} bNestedNodePath;
 
-typedef struct bNodeStateID {
-  /** Id of the node state. */
-  int id;
+typedef struct bNestedNodeRef {
+  /** ID of the node state. */
+  int32_t id;
   char _pad[4];
-  bNodeStateLocation location;
-} bNodeStateID;
+  /** Where to find the nested node in the node tree. */
+  bNestedNodePath path;
+} bNestedNodeRef;
 
 /**
  * The basis for a Node tree, all links and nodes reside internal here.
@@ -657,8 +658,8 @@ typedef struct bNodeTree {
    * Node state identifiers allow a user of a node group to store data for nested nodes in a
    * reliable way. For example, a modifier stores simulation data for each simulation zone.
    */
-  int node_state_ids_num;
-  bNodeStateID *node_state_ids;
+  int nested_node_refs_num;
+  bNestedNodeRef *nested_node_refs;
 
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
@@ -680,10 +681,14 @@ typedef struct bNodeTree {
   struct bNode *node_by_id(int32_t identifier);
   const struct bNode *node_by_id(int32_t identifier) const;
 
-  const bNodeStateID *find_state_id(int id) const;
+  blender::MutableSpan<bNestedNodeRef> nested_node_refs_span();
+  blender::Span<bNestedNodeRef> nested_node_refs_span() const;
 
-  int state_id_by_node_ids(blender::Span<int> node_ids) const;
-  [[nodiscard]] bool node_ids_by_state_id(const int id, blender::Vector<int> &r_node_ids) const;
+  const bNestedNodeRef *find_nested_node_ref(int32_t nested_node_id) const;
+
+  const bNestedNodeRef *nested_node_ref_by_node_id_path(blender::Span<int> node_ids) const;
+  [[nodiscard]] bool node_id_path_by_nested_node_ref(const int32_t nested_node_id,
+                                                     blender::Vector<int32_t> &r_node_ids) const;
 
   /**
    * Update a run-time cache for the node tree based on it's current state. This makes many methods
