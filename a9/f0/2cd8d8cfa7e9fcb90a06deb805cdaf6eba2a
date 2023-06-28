@@ -1,2 +1,3 @@
 Referenced by issue #107273, Regression: Group input is not listed in the node search
 Referenced by issue #107381, Regression: Geometry Nodes: Fill Volume input disappeared from the Mesh to Volume node
+Referenced by issue #109461, The selection is not displayed in the edit mode with the mirror modifier.
