@@ -47,7 +47,7 @@ GPU_SHADER_CREATE_INFO(workbench_next_mesh)
 GPU_SHADER_CREATE_INFO(workbench_next_curves)
     .sampler(WB_CURVES_COLOR_SLOT, ImageType::FLOAT_BUFFER, "ac", Frequency::BATCH)
     .sampler(WB_CURVES_UV_SLOT, ImageType::FLOAT_BUFFER, "au", Frequency::BATCH)
-    .push_constant(Type::UINT, "emitter_object_id")
+    .push_constant(Type::INT, "emitter_object_id")
     .vertex_source("workbench_prepass_hair_vert.glsl")
     .additional_info("draw_modelmat_new_with_custom_id",
                      "draw_resource_handle_new",

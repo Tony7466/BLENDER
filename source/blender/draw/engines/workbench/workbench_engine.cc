@@ -391,8 +391,7 @@ class Instance {
                               .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
                               .sub(ob_ref.object->id.name);
 
-    pass.push_constant("emitter_object_id",
-                       int(emitter_handle.raw == 0 ? handle.raw : emitter_handle.raw));
+    pass.push_constant("emitter_object_id", int(emitter_handle.raw));
     GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
     pass.draw(batch, handle, material_index);
   }
