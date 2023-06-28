@@ -1797,7 +1797,7 @@ static size_t animdata_filter_gpencil_layers_data(ListBase *anim_data,
 }
 
 static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
-                                                 bDopeSheet *ads,
+                                                 bDopeSheet * /*ads*/,
                                                  GreasePencil *grease_pencil,
                                                  int filter_mode)
 {

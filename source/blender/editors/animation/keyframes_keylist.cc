@@ -531,7 +531,7 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
 }
 
 /* Node updater callback used for building ActKeyColumns from GPencil frames */
-static void nupdate_ak_cel(ActKeyColumn *ak, void *data)
+static void nupdate_ak_cel(ActKeyColumn *ak, void * /*data*/)
 {
   // TODO : Cel *cel = static_cast<Cel *> data;
 
@@ -1159,7 +1159,10 @@ void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, con
   }
 }
 
-void cels_to_keylist(AnimData *adt, GreasePencilLayer *gpl, AnimKeylist *keylist, int saction_flag)
+void cels_to_keylist(AnimData * /*adt*/,
+                     GreasePencilLayer *gpl,
+                     AnimKeylist *keylist,
+                     int /*saction_flag*/)
 {
   using namespace blender::bke::greasepencil;
   const Layer &layer = gpl->wrap();
