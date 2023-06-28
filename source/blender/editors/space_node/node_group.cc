@@ -17,9 +17,12 @@
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
+
+#include "PIL_time.h"
 
 #include "BLT_translation.h"
 
@@ -1102,6 +1105,46 @@ static void node_group_make_insert_selected(const bContext &C,
     info.link->fromnode = gnode;
     info.link->fromsock = node_group_find_output_socket(gnode, info.interface_socket->identifier);
   }
+
+  RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+
+  Vector<bNodeStateID> new_group_state_ids;
+  for (const bNodeStateID &state_id : Span(group.node_state_ids, group.node_state_ids_num)) {
+    new_group_state_ids.append(state_id);
+  }
+  Map<bNodeStateLocation, int> new_id_by_old_location;
+  for (bNodeStateID &state_id : MutableSpan(ntree.node_state_ids, ntree.node_state_ids_num)) {
+    const int32_t new_node_id = node_identifier_map.lookup_default(state_id.location.node_id, -1);
+    if (new_node_id == -1) {
+      continue;
+    }
+    bNodeStateID new_state_id = state_id;
+    new_state_id.location.node_id = new_node_id;
+    while (true) {
+      const int new_id = rng.get_int32(INT32_MAX);
+      bool id_exists = false;
+      for (const bNodeStateID &other : Span(group.node_state_ids, group.node_state_ids_num)) {
+        if (other.id == new_id) {
+          id_exists = true;
+          break;
+        }
+      }
+      if (!id_exists) {
+        new_state_id.id = new_id;
+        break;
+      }
+    }
+    new_id_by_old_location.add_new(state_id.location, new_state_id.id);
+    new_group_state_ids.append(new_state_id);
+    state_id.location.node_id = gnode->identifier;
+    state_id.location.id_in_node = new_state_id.id;
+  }
+
+  MEM_SAFE_FREE(group.node_state_ids);
+  group.node_state_ids = static_cast<bNodeStateID *>(
+      MEM_malloc_arrayN(new_group_state_ids.size(), sizeof(bNodeStateID), __func__));
+  uninitialized_copy_n(
+      new_group_state_ids.data(), new_group_state_ids.size(), group.node_state_ids);
 
   ED_node_tree_propagate_change(&C, bmain, nullptr);
 }
