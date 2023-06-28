@@ -123,7 +123,7 @@ static int txtfmt_py_find_builtinfunc(const char *string)
   const int i = text_format_string_literal_find(text_format_py_literals_builtinfunc, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
+  if (i <= 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
@@ -134,7 +134,7 @@ static int txtfmt_py_find_specialvar(const char *string)
   const int i = text_format_string_literal_find(text_format_py_literals_specialvar, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
+  if (i <= 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
@@ -165,7 +165,7 @@ static int txtfmt_py_find_bool(const char *string)
   const int i = text_format_string_literal_find(text_format_py_literals_bool, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  if (i == 0 || text_check_identifier(string[i])) {
+  if (i <= 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
