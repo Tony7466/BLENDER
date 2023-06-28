@@ -19,7 +19,6 @@
 #include "BLT_translation.h"
 
 #include "RNA_access.h"
-#include "RNA_prototypes.h"
 
 #include "ED_asset.h"
 #include "ED_screen.h"
@@ -33,55 +32,10 @@ static bool node_add_menu_poll(const bContext *C, MenuType * /*mt*/)
   return CTX_wm_space_node(C);
 }
 
-static void node_add_menu_assets_listen_fn(const wmRegionListenerParams *params)
-{
-  const wmNotifier *wmn = params->notifier;
-  ARegion *region = params->region;
-
-  switch (wmn->category) {
-    case NC_ASSET:
-      if (wmn->data == ND_ASSET_LIST_READING) {
-        ED_region_tag_refresh_ui(region);
-      }
-      break;
-  }
-}
-
 static bool all_loading_finished()
 {
   AssetLibraryReference all_library_ref = asset_system::all_library_reference();
   return ED_assetlist_is_loaded(&all_library_ref);
-}
-
-/**
- * The menus want to pass catalog paths to context and for this they need persistent pointers to
- * the paths. Rather than keeping some local path storage, get a pointer into the asset system
- * directly, which is persistent until the library is reloaded and can safely be held by context.
- */
-static PointerRNA persistent_catalog_path_rna_pointer(
-    bScreen &owner_screen,
-    const asset_system::AssetLibrary &library,
-    const asset_system::AssetCatalogTreeItem &item)
-{
-  const asset_system::AssetCatalog *catalog = library.catalog_service->find_catalog_by_path(
-      item.catalog_path());
-  if (!catalog) {
-    return PointerRNA_NULL;
-  }
-
-  const asset_system::AssetCatalogPath &path = catalog->path;
-  return {&owner_screen.id,
-          &RNA_AssetCatalogPath,
-          const_cast<asset_system::AssetCatalogPath *>(&path)};
-}
-
-static PointerRNA create_asset_rna_ptr(const asset_system::AssetRepresentation *asset)
-{
-  PointerRNA ptr{};
-  ptr.owner_id = nullptr;
-  ptr.type = &RNA_AssetRepresentation;
-  ptr.data = const_cast<asset_system::AssetRepresentation *>(asset);
-  return ptr;
 }
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C, const bNodeTree &node_tree)
@@ -133,7 +87,7 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
 
   for (const asset_system::AssetRepresentation *asset : assets) {
     uiLayout *col = uiLayoutColumn(layout, false);
-    PointerRNA asset_ptr = create_asset_rna_ptr(asset);
+    PointerRNA asset_ptr = asset::create_asset_rna_ptr(asset);
     uiLayoutSetContextPointer(col, "asset", &asset_ptr);
     uiItemO(col, IFACE_(asset->get_name().c_str()), ICON_NONE, "NODE_OT_add_group_asset");
   }
@@ -145,7 +99,8 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
   }
 
   catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &child_item) {
-    PointerRNA path_ptr = persistent_catalog_path_rna_pointer(screen, *all_library, child_item);
+    PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(
+        screen, *all_library, child_item);
     if (path_ptr.data == nullptr) {
       return;
     }
@@ -227,7 +182,7 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
     if (all_builtin_menus.contains(item.get_name())) {
       return;
     }
-    PointerRNA path_ptr = persistent_catalog_path_rna_pointer(screen, *all_library, item);
+    PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(screen, *all_library, item);
     if (path_ptr.data == nullptr) {
       return;
     }
@@ -243,7 +198,7 @@ MenuType add_catalog_assets_menu_type()
   STRNCPY(type.idname, "NODE_MT_node_add_catalog_assets");
   type.poll = node_add_menu_poll;
   type.draw = node_add_catalog_assets_draw;
-  type.listener = node_add_menu_assets_listen_fn;
+  type.listener = asset::asset_reading_region_listen_fn;
   return type;
 }
 
@@ -253,7 +208,7 @@ MenuType add_root_catalogs_menu_type()
   STRNCPY(type.idname, "NODE_MT_node_add_root_catalogs");
   type.poll = node_add_menu_poll;
   type.draw = add_root_catalogs_draw;
-  type.listener = node_add_menu_assets_listen_fn;
+  type.listener = asset::asset_reading_region_listen_fn;
   return type;
 }
 
@@ -279,7 +234,7 @@ void uiTemplateNodeAssetMenuItems(uiLayout *layout, bContext *C, const char *cat
   if (!all_library) {
     return;
   }
-  PointerRNA path_ptr = persistent_catalog_path_rna_pointer(screen, *all_library, *item);
+  PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(screen, *all_library, *item);
   if (path_ptr.data == nullptr) {
     return;
   }

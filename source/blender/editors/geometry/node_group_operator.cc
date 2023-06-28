@@ -37,9 +37,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
 #include "RNA_enum_types.h"
-#include "RNA_prototypes.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -322,21 +320,6 @@ static bool asset_menu_poll(const bContext *C, MenuType * /*mt*/)
   return CTX_wm_view3d(C);
 }
 
-// TODO: SHOULD BE SHARED
-static void assets_listen_fn(const wmRegionListenerParams *params)
-{
-  const wmNotifier *wmn = params->notifier;
-  ARegion *region = params->region;
-
-  switch (wmn->category) {
-    case NC_ASSET:
-      if (wmn->data == ND_ASSET_LIST_READING) {
-        ED_region_tag_refresh_ui(region);
-      }
-      break;
-  }
-}
-
 static asset::AssetItemTree &get_static_item_tree()
 {
   static asset::AssetItemTree tree;
@@ -347,39 +330,6 @@ static bool all_loading_finished()
 {
   AssetLibraryReference all_library_ref = asset_system::all_library_reference();
   return ED_assetlist_is_loaded(&all_library_ref);
-}
-
-/**
- * The menus want to pass catalog paths to context and for this they need persistent pointers to
- * the paths. Rather than keeping some local path storage, get a pointer into the asset system
- * directly, which is persistent until the library is reloaded and can safely be held by context.
- */
-// TODO: SHOULD BE SHARED
-static PointerRNA persistent_catalog_path_rna_pointer(
-    bScreen &owner_screen,
-    const asset_system::AssetLibrary &library,
-    const asset_system::AssetCatalogTreeItem &item)
-{
-  const asset_system::AssetCatalog *catalog = library.catalog_service->find_catalog_by_path(
-      item.catalog_path());
-  if (!catalog) {
-    return PointerRNA_NULL;
-  }
-
-  const asset_system::AssetCatalogPath &path = catalog->path;
-  return {&owner_screen.id,
-          &RNA_AssetCatalogPath,
-          const_cast<asset_system::AssetCatalogPath *>(&path)};
-}
-
-// TODO: SHOULD BE SHARED
-static PointerRNA create_asset_rna_ptr(const asset_system::AssetRepresentation *asset)
-{
-  PointerRNA ptr{};
-  ptr.owner_id = nullptr;
-  ptr.type = &RNA_AssetRepresentation;
-  ptr.data = const_cast<asset_system::AssetRepresentation *>(asset);
-  return ptr;
 }
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
@@ -471,7 +421,7 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
 
   for (const asset_system::AssetRepresentation *asset : assets) {
     uiLayout *col = uiLayoutColumn(layout, false);
-    PointerRNA asset_ptr = create_asset_rna_ptr(asset);
+    PointerRNA asset_ptr = asset::create_asset_rna_ptr(asset);
     uiLayoutSetContextPointer(col, "asset", &asset_ptr);
     uiItemO(col, IFACE_(asset->get_name().c_str()), ICON_NONE, "GEOMETRY_OT_execute_node_group");
   }
@@ -483,7 +433,8 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
   }
 
   catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &child_item) {
-    PointerRNA path_ptr = persistent_catalog_path_rna_pointer(screen, *all_library, child_item);
+    PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(
+        screen, *all_library, child_item);
     if (path_ptr.data == nullptr) {
       return;
     }
@@ -502,7 +453,7 @@ MenuType node_group_operator_assets_menu()
   STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets");
   type.poll = asset_menu_poll;
   type.draw = node_add_catalog_assets_draw;
-  type.listener = assets_listen_fn;
+  type.listener = asset::asset_reading_region_listen_fn;
   return type;
 }
 
@@ -521,7 +472,7 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
   if (!all_library) {
     return;
   }
-  PointerRNA path_ptr = persistent_catalog_path_rna_pointer(screen, *all_library, *item);
+  PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(screen, *all_library, *item);
   if (path_ptr.data == nullptr) {
     return;
   }
@@ -562,7 +513,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
     if (builtin_menus.contains(item.get_name())) {
       return;
     }
-    PointerRNA path_ptr = persistent_catalog_path_rna_pointer(screen, *all_library, item);
+    PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(screen, *all_library, item);
     if (path_ptr.data == nullptr) {
       return;
     }
