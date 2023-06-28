@@ -120,7 +120,7 @@ GPU_SHADER_CREATE_INFO(draw_hair)
 GPU_SHADER_CREATE_INFO(draw_hair_new)
     .define("HAIR_SHADER")
     .define("DRW_HAIR_INFO")
-    .sampler(15, ImageType::FLOAT_BUFFER, "hairPointBuffer")
+    .sampler(0, ImageType::FLOAT_BUFFER, "hairPointBuffer")
     /* TODO(@fclem): Pack these into one UBO. */
     .push_constant(Type::INT, "hairStrandsRes")
     .push_constant(Type::INT, "hairThicknessRes")
