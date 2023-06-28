@@ -155,8 +155,6 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
   return ComponentAttributeProviders({&position}, {&voxel_custom_data});
 }
 
-/** \} */
-
 static AttributeAccessorFunctions get_volume_accessor_functions()
 {
   static const ComponentAttributeProviders providers = create_attribute_providers_for_volume();
@@ -168,12 +166,7 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
       return 0;
     }
     const VolumeGeometry &geometry = *static_cast<const VolumeGeometry *>(owner);
-    switch (domain) {
-      case ATTR_DOMAIN_POINT:
-        return geometry.active_voxel_num();
-      default:
-        return 0;
-    }
+    return geometry.domain_size(domain);
   };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
     return ELEM(domain, ATTR_DOMAIN_POINT);
@@ -223,7 +216,5 @@ std::optional<MutableAttributeAccessor> VolumeComponent::attributes_for_write()
 }
 
 #endif  // WITH_OPENVDB
-
-/** \} */
 
 }  // namespace blender::bke

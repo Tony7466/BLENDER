@@ -68,14 +68,14 @@ VolumeGeometry::~VolumeGeometry()
   }
 }
 
-int VolumeGeometry::active_voxel_num() const
+int VolumeGeometry::domain_size(eAttrDomain domain) const
 {
-  return grid ? grid->active_voxel_num() : 0;
-}
-
-IndexRange VolumeGeometry::active_voxel_range() const
-{
-  return IndexRange(active_voxel_num());
+  switch (domain) {
+    case ATTR_DOMAIN_POINT:
+      return grid ? int(grid->active_voxel_num()) : 0;
+    default:
+      return 0;
+  }
 }
 
 GVArray VolumeGeometry::adapt_domain(const GVArray &varray, eAttrDomain from, eAttrDomain to) const

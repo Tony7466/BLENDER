@@ -9,11 +9,11 @@
 #include "BLI_bounds_types.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_volume.h"
 
 /** \file
  * \ingroup bke
@@ -40,11 +40,7 @@ class VolumeGeometry : public ::VolumeGeometry {
    * Accessors.
    */
 
-  /**
-   * The total number of control points in all curves.
-   */
-  int active_voxel_num() const;
-  IndexRange active_voxel_range() const;
+  int domain_size(eAttrDomain domain) const;
 
   /**
    * The largest and smallest position values of evaluated points.
@@ -79,9 +75,6 @@ class VolumeGeometry : public ::VolumeGeometry {
 
   void blend_read_data(BlendDataReader &reader);
   void blend_write(BlendWriter &writer, ID &id);
-
- protected:
-  void free_grid(Volume);
 };
 
 }  // namespace blender::bke

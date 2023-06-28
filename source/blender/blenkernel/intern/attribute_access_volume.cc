@@ -15,6 +15,45 @@
 VolumeGeometryGrid::VolumeGeometryGrid() : grid_(nullptr) {}
 VolumeGeometryGrid::~VolumeGeometryGrid() {}
 
+VolumeGridType VolumeGeometryGrid::type() const
+{
+  if (grid_ == nullptr) {
+    return VOLUME_GRID_UNKNOWN;
+  }
+
+  if (grid_->isType<openvdb::FloatGrid>()) {
+    return VOLUME_GRID_FLOAT;
+  }
+  if (grid_->isType<openvdb::Vec3fGrid>()) {
+    return VOLUME_GRID_VECTOR_FLOAT;
+  }
+  if (grid_->isType<openvdb::BoolGrid>()) {
+    return VOLUME_GRID_BOOLEAN;
+  }
+  if (grid_->isType<openvdb::DoubleGrid>()) {
+    return VOLUME_GRID_DOUBLE;
+  }
+  if (grid_->isType<openvdb::Int32Grid>()) {
+    return VOLUME_GRID_INT;
+  }
+  if (grid_->isType<openvdb::Int64Grid>()) {
+    return VOLUME_GRID_INT64;
+  }
+  if (grid_->isType<openvdb::Vec3IGrid>()) {
+    return VOLUME_GRID_VECTOR_INT;
+  }
+  if (grid_->isType<openvdb::Vec3dGrid>()) {
+    return VOLUME_GRID_VECTOR_DOUBLE;
+  }
+  if (grid_->isType<openvdb::MaskGrid>()) {
+    return VOLUME_GRID_MASK;
+  }
+  if (grid_->isType<openvdb::points::PointDataGrid>()) {
+    return VOLUME_GRID_POINTS;
+  }
+  return VOLUME_GRID_UNKNOWN;
+}
+
 int64_t VolumeGeometryGrid::active_voxel_num() const
 {
 #ifdef WITH_OPENVDB
@@ -202,69 +241,71 @@ class VArrayImpl_For_VolumeGrid final
 
 namespace static_type_select {
 
-using SupportedVolumeVDBTypes = openvdb::TypeList<openvdb::BoolGrid,
-                                                  openvdb::DoubleGrid,
-                                                  openvdb::FloatGrid,
-                                                  openvdb::Int32Grid,
-                                                  openvdb::Int64Grid,
-                                                  openvdb::MaskGrid,
-                                                  openvdb::Vec3DGrid,
-                                                  openvdb::Vec3IGrid,
-                                                  openvdb::Vec3SGrid>;
+// using SupportedVolumeVDBTypes = openvdb::TypeList<openvdb::BoolGrid,
+//                                                  openvdb::DoubleGrid,
+//                                                  openvdb::FloatGrid,
+//                                                  openvdb::Int32Grid,
+//                                                  openvdb::Int64Grid,
+//                                                  openvdb::MaskGrid,
+//                                                  openvdb::Vec3DGrid,
+//                                                  openvdb::Vec3IGrid,
+//                                                  openvdb::Vec3SGrid>;
 
-#  define SupportedVolumeCPPTypes float, int
+//#  define SupportedVolumeCPPTypes float, int
 
-template<typename OpType> static bool grid_operation(const openvdb::GridBase &grid, OpType &&op)
-{
-  return grid.apply<SupportedVolumeVDBTypes>(op);
-}
+// template<typename OpType> static bool grid_operation(const openvdb::GridBase &grid, OpType &&op)
+//{
+//  return grid.apply<SupportedVolumeVDBTypes>(op);
+//}
 
-template<typename OpType> static bool cpp_type_operation(const CPPType &type, OpType &&op)
-{
-  type.to_static_type<SupportedVolumeCPPTypes>(op);
+// template<typename OpType> static bool cpp_type_operation(const CPPType &type, OpType &&op)
+//{
+//  type.to_static_type<SupportedVolumeCPPTypes>(op);
 
-  return type.is_any<SupportedVolumeCPPTypes>();
-}
+//  return type.is_any<SupportedVolumeCPPTypes>();
+//}
 
-struct MakeGridVArrayOp {
-  GVArray result;
+// struct MakeGridVArrayOp {
+//  GVArray result;
 
-  template<typename GridType> void operator()(const GridType &grid)
-  {
-    using ValueType = typename GridType::ValueType;
-    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
-    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result = VArray<AttributeType>::template For<VArrayImplType, const GridType>(std::move(grid));
-  }
-};
+//  template<typename GridType> void operator()(const GridType &grid)
+//  {
+//    using ValueType = typename GridType::ValueType;
+//    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
+//    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
+//    result = VArray<AttributeType>::template For<VArrayImplType, const
+//    GridType>(std::move(grid));
+//  }
+//};
 
-struct MakeGridVMutableArrayOp {
-  GVMutableArray result;
+// struct MakeGridVMutableArrayOp {
+//  GVMutableArray result;
 
-  template<typename GridType> void operator()(GridType &grid)
-  {
-    using ValueType = typename GridType::ValueType;
-    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
-    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result = VMutableArray<AttributeType>::template For<VArrayImplType, GridType>(std::move(grid));
-  }
-};
+//  template<typename GridType> void operator()(GridType &grid)
+//  {
+//    using ValueType = typename GridType::ValueType;
+//    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
+//    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
+//    result = VMutableArray<AttributeType>::template For<VArrayImplType,
+//    GridType>(std::move(grid));
+//  }
+//};
 
-struct CreateGridTypeOp {
-  const AttributeInit &initializer;
+// struct CreateGridTypeOp {
+//  const AttributeInit &initializer;
 
-  openvdb::GridBase::Ptr &result;
+//  openvdb::GridBase::Ptr &result;
 
-  template<typename CPPType> void operator()() const
-  {
-    using TreeType = typename openvdb::tree::Tree4<CPPType, 5, 4, 3>::Type;
-    using GridType = typename openvdb::Grid<TreeType>;
+//  template<typename CPPType> void operator()() const
+//  {
+//    using TreeType = typename openvdb::tree::Tree4<CPPType, 5, 4, 3>::Type;
+//    using GridType = typename openvdb::Grid<TreeType>;
 
-    result = GridType::create();
-  }
+//    result = GridType::create();
+//  }
 
-  void operator()() const {}
-};
+//  void operator()() const {}
+//};
 
 }  // namespace static_type_select
 
@@ -274,23 +315,39 @@ struct CreateGridTypeOp {
 /** \name Attribute Provider Declaration
  * \{ */
 
-static GVArray make_grid_array_for_read(const openvdb::GridBase &grid)
-{
-  static_type_select::MakeGridVArrayOp op;
-  if (static_type_select::grid_operation(grid, op)) {
-    return op.result;
-  }
-  return {};
-}
+// struct MakeGridVArrayOp {
+//  const openvdb::GridBase &grid_;
+//  GVArray result_;
 
-static GVMutableArray make_grid_array_for_write(openvdb::GridBase &grid)
-{
-  static_type_select::MakeGridVMutableArrayOp op;
-  if (static_type_select::grid_operation(grid, op)) {
-    return op.result;
-  }
-  return {};
-}
+//  template<typename GridType> void operator()(const GridType &grid)
+//  {
+//    using ValueType = typename GridType::ValueType;
+//    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
+//    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
+//    result_ = VArray<AttributeType>::template For<VArrayImplType, const
+//    GridType>(std::move(grid));
+//  }
+//};
+
+// static GVArray make_grid_array_for_read(const openvdb::GridBase &grid)
+//{
+//  MakeGridVArrayOp op{grid};
+//  if ()
+//  if (static_type_select::grid_operation(grid, op))
+//  {
+//    return op.result_;
+//  }
+//  return {};
+//}
+
+// static GVMutableArray make_grid_array_for_write(openvdb::GridBase &grid)
+//{
+//  static_type_select::MakeGridVMutableArrayOp op;
+//  if (static_type_select::grid_operation(grid, op)) {
+//    return op.result;
+//  }
+//  return {};
+//}
 
 // static openvdb::GridBase::Ptr create_grid_type(const CPPType &type,
 //                                               const AttributeInit &initializer)
@@ -303,9 +360,29 @@ static GVMutableArray make_grid_array_for_write(openvdb::GridBase &grid)
 //  return nullptr;
 //}
 
+struct MakeGridVArrayOp {
+  const openvdb::GridBase &grid_;
+  GVArray result_;
+
+  template<typename GridType> void operator()(const GridType &grid)
+  {
+    using ValueType = typename GridType::ValueType;
+    using AttributeType = typename converter::GridValueConverter<ValueType>::AttributeType;
+    using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
+    result_ = VArray<AttributeType>::template For<VArrayImplType, const GridType>(std::move(grid));
+  }
+};
+
 GAttributeReader BuiltinVolumeAttributeProvider::try_get_for_read(const void *owner) const
 {
   const VolumeGeometryGrid &grid = grid_access_.get_const_grid(owner);
+  MakeGridVArrayOp op{*grid.grid_};
+  grid.grid_type_operation(op);
+  if (static_type_select::grid_operation(grid, op)) {
+    return op.result_;
+  }
+  return {};
+
   return {make_grid_array_for_read(*grid.grid_), domain_, nullptr};
 }
 
