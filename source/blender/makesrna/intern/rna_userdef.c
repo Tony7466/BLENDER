@@ -18,6 +18,7 @@
 
 #include "BLI_math_base.h"
 #include "BLI_math_rotation.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
 #ifdef WIN32
 #  include "BLI_winstuff.h"
@@ -4346,6 +4347,7 @@ static void rna_def_userdef_pathcompare(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "path", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_ui_text(prop, "Path", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "use_glob", PROP_BOOLEAN, PROP_NONE);
@@ -5453,10 +5455,10 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 
   static const EnumPropertyItem anisotropic_items[] = {
       {1, "FILTER_0", 0, "Off", ""},
-      {2, "FILTER_2", 0, "2x", ""},
-      {4, "FILTER_4", 0, "4x", ""},
-      {8, "FILTER_8", 0, "8x", ""},
-      {16, "FILTER_16", 0, "16x", ""},
+      {2, "FILTER_2", 0, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ""},
+      {4, "FILTER_4", 0, "4" BLI_STR_UTF8_MULTIPLICATION_SIGN, ""},
+      {8, "FILTER_8", 0, "8" BLI_STR_UTF8_MULTIPLICATION_SIGN, ""},
+      {16, "FILTER_16", 0, "16" BLI_STR_UTF8_MULTIPLICATION_SIGN, ""},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -6275,6 +6277,7 @@ static void rna_def_userdef_filepaths_asset_library(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "dirpath");
   RNA_def_property_ui_text(
       prop, "Path", "Path to a directory with .blend files to use as an asset library");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_userdef_asset_library_path_set");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 

@@ -22,7 +22,7 @@ void light_eval_ex(ClosureDiffuse diffuse,
                    vec3 P,
                    vec3 Ng,
                    vec3 V,
-                   float vP_z,
+                   float vP_z, /* TODO(fclem): Remove, is unused. */
                    float thickness,
                    vec4 ltc_mat,
                    uint l_idx,
@@ -41,8 +41,14 @@ void light_eval_ex(ClosureDiffuse diffuse,
     vec3 lL = light_world_to_local(light, -L) * dist;
     vec3 lNg = light_world_to_local(light, Ng);
 
+#ifdef EEVEE_SAMPLING_DATA
     ShadowSample samp = shadow_map_trace(
-        16, is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+        128, is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+#else
+    /* TODO(fclem): Support soft shadows in surfel light eval. */
+    ShadowSample samp = shadow_sample(
+        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+#endif
 
 #ifdef SSS_TRANSMITTANCE
     /* Transmittance evaluation first to use initial visibility without shadow. */
@@ -115,7 +121,11 @@ void light_eval(ClosureDiffuse diffuse,
   }
   LIGHT_FOREACH_END
 
+#ifdef GPU_FRAGMENT_SHADER
   vec2 px = gl_FragCoord.xy;
+#else
+  vec2 px = vec2(0.0);
+#endif
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, px, vP_z, l_idx) {
     light_eval_ex(diffuse,
                   reflection,

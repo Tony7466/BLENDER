@@ -27,6 +27,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_string_utf8_symbols.h"
 
 #include "BLT_translation.h"
 
@@ -153,23 +154,23 @@ const EnumPropertyItem rna_enum_mesh_select_mode_uv_items[] = {
 
 /* clang-format off */
 #define RNA_SNAP_ELEMENTS_BASE \
-  {SCE_SNAP_MODE_INCREMENT, "INCREMENT", ICON_SNAP_INCREMENT, "Increment", "Snap to increments"}, \
-  {SCE_SNAP_MODE_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
-  {SCE_SNAP_MODE_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
-  {SCE_SNAP_MODE_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
-  {SCE_SNAP_MODE_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}, \
-  {SCE_SNAP_MODE_EDGE_MIDPOINT, "EDGE_MIDPOINT", ICON_SNAP_MIDPOINT, "Edge Center", "Snap to the middle of edges"}, \
-  {SCE_SNAP_MODE_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}
+  {SCE_SNAP_TO_INCREMENT, "INCREMENT", ICON_SNAP_INCREMENT, "Increment", "Snap to increments"}, \
+  {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
+  {SCE_SNAP_TO_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
+  {SCE_SNAP_TO_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
+  {SCE_SNAP_TO_VOLUME, "VOLUME", ICON_SNAP_VOLUME, "Volume", "Snap to volume"}, \
+  {SCE_SNAP_TO_EDGE_MIDPOINT, "EDGE_MIDPOINT", ICON_SNAP_MIDPOINT, "Edge Center", "Snap to the middle of edges"}, \
+  {SCE_SNAP_TO_EDGE_PERPENDICULAR, "EDGE_PERPENDICULAR", ICON_SNAP_PERPENDICULAR, "Edge Perpendicular", "Snap to the nearest point on an edge"}
 /* clang-format on */
 
 const EnumPropertyItem rna_enum_snap_element_items[] = {
     RNA_SNAP_ELEMENTS_BASE,
-    {SCE_SNAP_MODE_FACE_RAYCAST,
+    {SCE_SNAP_INDIVIDUAL_PROJECT,
      "FACE_PROJECT",
      ICON_SNAP_FACE,
      "Face Project",
      "Snap by projecting onto faces"},
-    {SCE_SNAP_MODE_FACE_NEAREST,
+    {SCE_SNAP_INDIVIDUAL_NEAREST,
      "FACE_NEAREST",
      ICON_SNAP_FACE_NEAREST,
      "Face Nearest",
@@ -189,10 +190,10 @@ static const EnumPropertyItem *rna_enum_snap_element_individual_items =
 #endif
 
 const EnumPropertyItem rna_enum_snap_node_element_items[] = {
-    {SCE_SNAP_MODE_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"},
-    {SCE_SNAP_MODE_NODE_X, "NODE_X", ICON_NODE_SIDE, "Node X", "Snap to left/right node border"},
-    {SCE_SNAP_MODE_NODE_Y, "NODE_Y", ICON_NODE_TOP, "Node Y", "Snap to top/bottom node border"},
-    {SCE_SNAP_MODE_NODE_X | SCE_SNAP_MODE_NODE_Y,
+    {SCE_SNAP_TO_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"},
+    {SCE_SNAP_TO_NODE_X, "NODE_X", ICON_NODE_SIDE, "Node X", "Snap to left/right node border"},
+    {SCE_SNAP_TO_NODE_Y, "NODE_Y", ICON_NODE_TOP, "Node Y", "Snap to top/bottom node border"},
+    {SCE_SNAP_TO_NODE_X | SCE_SNAP_TO_NODE_Y,
      "NODE_XY",
      ICON_NODE_CORNER,
      "Node X / Y",
@@ -202,12 +203,12 @@ const EnumPropertyItem rna_enum_snap_node_element_items[] = {
 
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem snap_uv_element_items[] = {
-    {SCE_SNAP_MODE_INCREMENT,
+    {SCE_SNAP_TO_INCREMENT,
      "INCREMENT",
      ICON_SNAP_INCREMENT,
      "Increment",
      "Snap to increments of grid"},
-    {SCE_SNAP_MODE_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"},
+    {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -679,8 +680,8 @@ static const EnumPropertyItem plane_orientation_items[] = {
 };
 
 static const EnumPropertyItem snap_to_items[] = {
-    {SCE_SNAP_MODE_GEOM, "GEOMETRY", 0, "Geometry", "Snap to all geometry"},
-    {SCE_SNAP_MODE_NONE, "DEFAULT", 0, "Default", "Use the current snap settings"},
+    {SCE_SNAP_TO_GEOM, "GEOMETRY", 0, "Geometry", "Snap to all geometry"},
+    {SCE_SNAP_TO_NONE, "DEFAULT", 0, "Default", "Use the current snap settings"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -3569,7 +3570,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "snap_elements_tool", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "snap_mode_tools");
   RNA_def_property_enum_items(prop, snap_to_items);
-  RNA_def_property_enum_default(prop, SCE_SNAP_MODE_GEOM);
+  RNA_def_property_enum_default(prop, SCE_SNAP_TO_GEOM);
   RNA_def_property_ui_text(prop, "Snap to", "The target to use while snapping");
 
   /* Grease Pencil */
@@ -6320,10 +6321,10 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   static const EnumPropertyItem pixel_size_items[] = {
       {0, "AUTO", 0, "Automatic", "Automatic pixel size, depends on the user interface scale"},
-      {1, "1", 0, "1x", "Render at full resolution"},
-      {2, "2", 0, "2x", "Render at 50% resolution"},
-      {4, "4", 0, "4x", "Render at 25% resolution"},
-      {8, "8", 0, "8x", "Render at 12.5% resolution"},
+      {1, "1", 0, "1" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at full resolution"},
+      {2, "2", 0, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at 50% resolution"},
+      {4, "4", 0, "4" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at 25% resolution"},
+      {8, "8", 0, "8" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at 12.5% resolution"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -6520,7 +6521,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_freestyle", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", R_EDGE_FRS);
-  RNA_def_property_ui_text(prop, "Edge", "Draw stylized strokes using Freestyle");
+  RNA_def_property_ui_text(prop, "Use Freestyle", "Draw stylized strokes using Freestyle");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_use_freestyle_update");
 
   /* threads */
@@ -7502,7 +7503,8 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "gi_irradiance_display_size", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, NULL, "gi_irradiance_draw_size");
-  RNA_def_property_range(prop, 0.05f, 10.0f);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.01f, 1.0f, 1, 3);
   RNA_def_property_ui_text(prop,
                            "Irradiance Display Size",
                            "Size of the irradiance sample spheres to debug captured light");

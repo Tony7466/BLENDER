@@ -38,6 +38,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
                      "eevee_utility_texture",
                      "eevee_light_data",
                      "eevee_sampling_data",
+                     "eevee_lightprobe_data",
                      "eevee_shadow_data",
                      "eevee_deferred_base",
                      "eevee_transmittance_data",
