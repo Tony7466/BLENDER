@@ -70,13 +70,17 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       params.set_output(0, fn::ValueOrField<float>(delta_time));
     }
 
-    const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,
-                                                                      output_node_id_);
+    const std::optional<bke::sim::SimulationZoneID> zone_id = get_simulation_zone_id(
+        *user_data.compute_context, output_node_id_);
+    if (!zone_id) {
+      params.set_default_remaining_outputs();
+      return;
+    }
 
     const bke::sim::SimulationZoneState *prev_zone_state =
         modifier_data.prev_simulation_state == nullptr ?
             nullptr :
-            modifier_data.prev_simulation_state->get_zone_state(zone_id);
+            modifier_data.prev_simulation_state->get_zone_state(*zone_id);
 
     std::optional<bke::sim::SimulationZoneState> initial_prev_zone_state;
     if (prev_zone_state == nullptr) {
