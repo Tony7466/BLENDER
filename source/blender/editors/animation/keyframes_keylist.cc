@@ -517,9 +517,9 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
   Cel &cel = *static_cast<Cel *>(data);
 
   /* store settings based on state of BezTriple */
-  ak->cfra = cel.frame_number;               // cel->framenum;
-  ak->sel = (cel.frame.flag & SELECT) != 0;  // cel->selected ?
-  ak->key_type = cel.frame.type;             // cel->key_type ?
+  ak->cfra = cel.frame_number;
+  ak->sel = (cel.frame.flag & SELECT) != 0;
+  ak->key_type = cel.frame.type;
 
   /* count keyframes in this column */
   ak->totkey = 1;
