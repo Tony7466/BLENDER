@@ -1716,24 +1716,24 @@ static bool surfacedeformBind(Object *ob,
       /* If a frame is already bound, skip it.*/
       rollback_lframes_a(smd_orig, smd_orig->layers);
       int f = 0;
+      bGPDframe *curr_frame = BKE_gpencil_frame_retime_get(
+                              depsgraph, scene, ob, curr_gpl);
       while (f != smd_orig->layers->num_of_frames &&
-              smd_orig->layers->frames[f].frame_number !=
-                  smd_orig->layers->frames->frame_number)
+             smd_orig->layers->frames[f].frame_number != curr_frame->framenum
+                  )
         ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
               // fricking smart I can't
       if (f == smd_orig->layers->num_of_frames) {
         add_frame(
             smd_orig,
             smd_eval,
-            smd_orig->layers,
-            BKE_gpencil_frame_retime_get(depsgraph, scene, ob, smd_orig->layers->blender_layer));
+            smd_orig->layers, curr_frame);
         uint s = 0;
-        if (BLI_listbase_count(&smd_orig->layers->frames->blender_frame->strokes) == 0) {
+        if (BLI_listbase_count(&curr_frame->strokes) == 0) {
           smd_orig->layers->frames->strokes_num = 0;
           smd_orig->layers->frames->strokes = NULL;
         }
-        LISTBASE_FOREACH (
-            bGPDstroke *, curr_gps, &smd_orig->layers->frames->blender_frame->strokes) {
+        LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_frame->strokes) {
           if (!surfacedeformBind_stroke(s,
                                         smd_orig,
                                         smd_eval,
