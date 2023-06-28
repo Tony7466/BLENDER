@@ -159,12 +159,12 @@ class Instance {
       if (object_state.sculpt_pbvh) {
         /* Disable frustum culling for sculpt meshes. */
         ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
-        sculpt_sync(manager, ob_ref, handle, object_state);
+        sculpt_sync(ob_ref, handle, object_state);
         emitter_handle = handle;
       }
       else if (ELEM(ob->type, OB_MESH, OB_POINTCLOUD)) {
         ResourceHandle handle = manager.resource_handle(ob_ref);
-        mesh_sync(manager, ob_ref, handle, object_state);
+        mesh_sync(ob_ref, handle, object_state);
         emitter_handle = handle;
       }
       else if (ob->type == OB_CURVES) {
@@ -243,10 +243,7 @@ class Instance {
         .draw(ob_ref, batch, handle, material_index, image, sampler_state, iuser);
   }
 
-  void mesh_sync(Manager &manager,
-                 ObjectRef &ob_ref,
-                 ResourceHandle handle,
-                 const ObjectState &object_state)
+  void mesh_sync(ObjectRef &ob_ref, ResourceHandle handle, const ObjectState &object_state)
   {
     bool has_transparent_material = false;
 
@@ -319,10 +316,7 @@ class Instance {
     }
   }
 
-  void sculpt_sync(Manager &manager,
-                   ObjectRef &ob_ref,
-                   ResourceHandle handle,
-                   const ObjectState &object_state)
+  void sculpt_sync(ObjectRef &ob_ref, ResourceHandle handle, const ObjectState &object_state)
   {
     if (object_state.use_per_material_batches) {
       const int material_count = DRW_cache_object_material_count_get(ob_ref.object);
