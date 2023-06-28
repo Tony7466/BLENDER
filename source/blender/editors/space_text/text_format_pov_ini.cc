@@ -316,7 +316,7 @@ static int txtfmt_ini_find_keyword(const char *string)
   const int i = text_format_string_literal_find(text_format_pov_ini_literals_keyword, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  return (i <= 0 || text_check_identifier(string[i])) ? -1 : i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 
 static int txtfmt_ini_find_reserved(const char *string)
@@ -324,7 +324,7 @@ static int txtfmt_ini_find_reserved(const char *string)
   const int i = text_format_string_literal_find(text_format_pov_ini_literals_reserved, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  return (i <= 0 || text_check_identifier(string[i])) ? -1 : i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 
 static int txtfmt_ini_find_bool(const char *string)
@@ -332,7 +332,7 @@ static int txtfmt_ini_find_bool(const char *string)
   const int i = text_format_string_literal_find(text_format_pov_ini_literals_bool, string);
 
   /* If next source char is an identifier (eg. 'i' in "Nonetheless") no match */
-  return (i <= 0 || text_check_identifier(string[i])) ? -1 : i;
+  return (i == 0 || text_check_identifier(string[i])) ? -1 : i;
 }
 
 static char txtfmt_pov_ini_format_identifier(const char *str)

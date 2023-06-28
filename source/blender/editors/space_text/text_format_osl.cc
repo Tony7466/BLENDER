@@ -133,7 +133,7 @@ static int txtfmt_osl_find_builtinfunc(const char *string)
   const int i = text_format_string_literal_find(text_format_osl_literals_builtinfunc, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i <= 0 || text_check_identifier(string[i])) {
+  if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
@@ -144,7 +144,7 @@ static int txtfmt_osl_find_reserved(const char *string)
   const int i = text_format_string_literal_find(text_format_osl_literals_reserved, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i <= 0 || text_check_identifier(string[i])) {
+  if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
@@ -155,7 +155,7 @@ static int txtfmt_osl_find_specialvar(const char *string)
   const int i = text_format_string_literal_find(text_format_osl_literals_specialvar, string);
 
   /* If next source char is an identifier (eg. 'i' in "definite") no match */
-  if (i <= 0 || text_check_identifier(string[i])) {
+  if (i == 0 || text_check_identifier(string[i])) {
     return -1;
   }
   return i;
