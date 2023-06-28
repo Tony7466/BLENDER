@@ -36,6 +36,8 @@
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_DerivedMesh.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
@@ -1804,6 +1806,14 @@ static int modifier_apply_exec(bContext *C, wmOperator *op)
   return modifier_apply_exec_ex(C, op, MODIFIER_APPLY_DATA, false);
 }
 
+static void modifier_apply_warning(bContext * /*C*/,
+                                   wmOperator * /*op*/,
+                                   wmWarningDetails *warning)
+{
+  STRNCPY(warning->message, IFACE_("Make object data single-user and apply modifier"));
+  STRNCPY(warning->confirm_button, IFACE_("Apply"));
+}
+
 static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   int retval;
@@ -1817,8 +1827,7 @@ static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *eve
         RNA_property_boolean_set(op->ptr, prop, true);
       }
       if (RNA_property_boolean_get(op->ptr, prop)) {
-        return WM_operator_confirm_message(
-            C, op, "Make object data single-user and apply modifier");
+        return WM_operator_confirm(C, op, nullptr);
       }
     }
     return modifier_apply_exec(C, op);
@@ -1835,6 +1844,7 @@ void OBJECT_OT_modifier_apply(wmOperatorType *ot)
   ot->invoke = modifier_apply_invoke;
   ot->exec = modifier_apply_exec;
   ot->poll = modifier_apply_poll;
+  ot->warning = modifier_apply_warning;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;

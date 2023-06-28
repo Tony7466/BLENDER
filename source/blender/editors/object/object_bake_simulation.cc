@@ -511,6 +511,13 @@ static PathUsersMap bake_simulation_get_path_users(bContext *C, const Span<Objec
   return path_users;
 }
 
+static void bake_simulation_warning(bContext * /*C*/,
+                                    wmOperator * /*op*/,
+                                    wmWarningDetails *warning)
+{
+  STRNCPY(warning->message, "Overwrite existing bake data");
+}
+
 static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Vector<Object *> objects;
@@ -554,7 +561,7 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
     return OPERATOR_CANCELLED;
   }
   if (has_existing_bake_data) {
-    return WM_operator_confirm_message(C, op, "Overwrite existing bake data");
+    return WM_operator_confirm(C, op, nullptr);
   }
   return bake_simulation_exec(C, op);
 }
@@ -651,6 +658,7 @@ void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
   ot->invoke = bake_simulation_invoke;
   ot->modal = bake_simulation_modal;
   ot->poll = bake_simulation_poll;
+  ot->warning = bake_simulation_warning;
 
   RNA_def_boolean(ot->srna, "selected", false, "Selected", "Bake cache on all selected objects");
 }

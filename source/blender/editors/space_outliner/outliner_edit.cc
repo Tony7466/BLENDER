@@ -2131,6 +2131,43 @@ static bool ed_operator_outliner_id_orphans_active(bContext *C)
   return true;
 }
 
+static void orphans_purge_warning(bContext *C, wmOperator *op, wmWarningDetails *warning)
+{
+  Main *bmain = CTX_data_main(C);
+  int num_tagged[INDEX_ID_MAX] = {0};
+
+  const bool do_local_ids = RNA_boolean_get(op->ptr, "do_local_ids");
+  const bool do_linked_ids = RNA_boolean_get(op->ptr, "do_linked_ids");
+  const bool do_recursive_cleanup = RNA_boolean_get(op->ptr, "do_recursive");
+
+  /* Tag all IDs to delete. */
+  BKE_lib_query_unused_ids_tag(
+      bmain, LIB_TAG_DOIT, do_local_ids, do_linked_ids, do_recursive_cleanup, num_tagged);
+
+  DynStr *dyn_str = BLI_dynstr_new();
+  bool is_first = true;
+  for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
+    if (num_tagged[i] != 0) {
+      if (!is_first) {
+        BLI_dynstr_append(dyn_str, ", ");
+      }
+      else {
+        is_first = false;
+      }
+      BLI_dynstr_appendf(dyn_str,
+                         "%d %s",
+                         num_tagged[i],
+                         TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))));
+    }
+  }
+
+  STRNCPY(warning->title, IFACE_("Remove Unused Data"));
+  STRNCPY(warning->message, BLI_dynstr_get_cstring(dyn_str));
+  STRNCPY(warning->confirm_button, IFACE_("Purge"));
+
+  BLI_dynstr_free(dyn_str);
+}
+
 static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Main *bmain = CTX_data_main(C);
@@ -2151,31 +2188,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
     return OPERATOR_CANCELLED;
   }
 
-  DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
-  bool is_first = true;
-  for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
-    if (num_tagged[i] != 0) {
-      if (!is_first) {
-        BLI_dynstr_append(dyn_str, ", ");
-      }
-      else {
-        is_first = false;
-      }
-      BLI_dynstr_appendf(dyn_str,
-                         "%d %s",
-                         num_tagged[i],
-                         TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))));
-    }
-  }
-  BLI_dynstr_append(dyn_str, TIP_("). Click here to proceed..."));
-
-  char *message = BLI_dynstr_get_cstring(dyn_str);
-  int ret = WM_operator_confirm_message(C, op, message);
-
-  MEM_freeN(message);
-  BLI_dynstr_free(dyn_str);
-  return ret;
+  return WM_operator_confirm(C, op, nullptr);
 }
 
 static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
@@ -2232,6 +2245,7 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
   ot->invoke = outliner_orphans_purge_invoke;
   ot->exec = outliner_orphans_purge_exec;
   ot->poll = ed_operator_outliner_id_orphans_active;
+  ot->warning = orphans_purge_warning;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

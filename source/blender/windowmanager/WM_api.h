@@ -716,17 +716,6 @@ int WM_operator_props_dialog_popup(struct bContext *C, struct wmOperator *op, in
 int WM_operator_redo_popup(struct bContext *C, struct wmOperator *op);
 int WM_operator_ui_popup(struct bContext *C, struct wmOperator *op, int width);
 
-/**
- * Can't be used as an invoke directly, needs message arg (can be NULL).
- */
-int WM_operator_confirm_message_ex(struct bContext *C,
-                                   struct wmOperator *op,
-                                   const char *title,
-                                   int icon,
-                                   const char *message,
-                                   wmOperatorCallContext opcontext);
-int WM_operator_confirm_message(struct bContext *C, struct wmOperator *op, const char *message);
-
 /* Operator API. */
 
 void WM_operator_free(struct wmOperator *op);

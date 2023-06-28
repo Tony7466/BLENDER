@@ -907,6 +907,30 @@ typedef struct wmTimer {
   bool sleep;
 } wmTimer;
 
+typedef enum wmWarningSize {
+  WM_WARNING_SIZE_SMALL = 0,
+  WM_WARNING_SIZE_LARGE,
+} wmWarningSize;
+
+typedef enum wmWarningPosition {
+  WM_WARNING_POSITION_MOUSE = 0,
+  WM_WARNING_POSITION_CENTER,
+} wmWarningPosition;
+
+typedef struct wmWarningDetails {
+  char title[1024];
+  char message[1024];
+  char confirm_button[256];
+  char cancel_button[256];
+  int icon;
+  wmWarningSize size;
+  wmWarningPosition position;
+  bool confirm_default;
+  bool cancel_default;
+  bool mouse_move_quit;
+  bool red_alert;
+} wmWarningDetails;
+
 typedef struct wmOperatorType {
   /** Text for UI, undo (should not exceed #OP_MAX_TYPENAME). */
   const char *name;
@@ -989,6 +1013,11 @@ typedef struct wmOperatorType {
    * The returned string must be freed by the caller, unless NULL.
    */
   char *(*get_description)(struct bContext *C, struct wmOperatorType *, struct PointerRNA *);
+
+  /**
+   * If using WM_operator_confirm the following can override all parts of the dialog.
+   */
+  void (*warning)(struct bContext *C, struct wmOperator *, wmWarningDetails *warning);
 
   /** rna for properties */
   struct StructRNA *srna;
