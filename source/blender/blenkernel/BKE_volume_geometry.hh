@@ -84,8 +84,20 @@ class VolumeGeometry : public ::VolumeGeometry {
    * File Read/Write.
    */
 
-  void blend_read(BlendDataReader &reader);
+  void blend_read_data(BlendDataReader &reader);
   void blend_write(BlendWriter &writer, ID &id);
+
+ protected:
+  void free_grid(Volume);
 };
 
 }  // namespace blender::bke
+
+inline blender::bke::VolumeGeometry &VolumeGeometry::wrap()
+{
+  return *reinterpret_cast<blender::bke::VolumeGeometry *>(this);
+}
+inline const blender::bke::VolumeGeometry &VolumeGeometry::wrap() const
+{
+  return *reinterpret_cast<const blender::bke::VolumeGeometry *>(this);
+}

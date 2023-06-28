@@ -16,11 +16,11 @@ extern "C" {
 
 struct PackedFile;
 struct VolumeGridVector;
-// struct VolumeGrids;
-#ifdef _cplusplus
-using GridHandle = openvdb::GridBase::Ptr;
-#else
-struct GridHandle;
+struct VolumeGrid;
+#ifdef __cplusplus
+namespace blender::bke {
+class VolumeGeometry;
+}  // namespace blender::bke
 #endif
 
 typedef struct Volume_Runtime {
@@ -58,7 +58,12 @@ typedef struct VolumeRender {
 } VolumeRender;
 
 typedef struct VolumeGeometry {
-  GridHandle grid;
+  struct VolumeGrid *grid;
+
+#ifdef __cplusplus
+  blender::bke::VolumeGeometry &wrap();
+  const blender::bke::VolumeGeometry &wrap() const;
+#endif
 } VolumeGeometry;
 
 typedef struct Volume {

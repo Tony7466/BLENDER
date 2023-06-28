@@ -278,4 +278,6 @@ VolumeGrid *BKE_volume_grid_attribute_add_vdb(Volume &volume,
                                               openvdb::GridBase::Ptr vdb_grid);
 #  endif  // WITH_OPENVDB
 
+void BKE_volume_grid_free(VolumeGrid *grid);
+
 #endif

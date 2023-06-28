@@ -15,7 +15,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
 #include "BKE_volume.h"
-#include "BKE_volume.hh"
+#include "BKE_volume_geometry.hh"
 
 #include "attribute_access_intern.hh"
 #include "volume_openvdb.hh"
@@ -229,7 +229,7 @@ struct MakeGridVArrayOp {
     using ValueType = typename GridType::ValueType;
     using AttributeType = typename volume_openvdb::GridValueConverter<ValueType>::AttributeType;
     using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result = VArray<AttributeType>::For<VArrayImplType, const GridType>(std::move(grid));
+    result = VArray<AttributeType>::template For<VArrayImplType, const GridType>(std::move(grid));
   }
 };
 
@@ -241,7 +241,7 @@ struct MakeGridVMutableArrayOp {
     using ValueType = typename GridType::ValueType;
     using AttributeType = typename volume_openvdb::GridValueConverter<ValueType>::AttributeType;
     using VArrayImplType = VArrayImpl_For_VolumeGrid<GridType>;
-    result = VMutableArray<AttributeType>::For<VArrayImplType, GridType>(std::move(grid));
+    result = VMutableArray<AttributeType>::template For<VArrayImplType, GridType>(std::move(grid));
   }
 };
 
@@ -252,8 +252,8 @@ struct CreateGridTypeOp {
 
   template<typename CPPType> void operator()() const
   {
-    using TreeType = openvdb::tree::Tree4<CPPType, 5, 4, 3>::Type;
-    using GridType = openvdb::Grid<TreeType>;
+    using TreeType = typename openvdb::tree::Tree4<CPPType, 5, 4, 3>::Type;
+    using GridType = typename openvdb::Grid<TreeType>;
 
     result = GridType::create();
   }
