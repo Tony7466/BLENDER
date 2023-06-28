@@ -1005,22 +1005,20 @@ static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_n
   }
 }
 
-static void shader_node_disconnect_input(bNodeTree *ntree, bNode *node, int index)
+static void shader_node_disconnect_input(bNodeTree *ntree, bNodeSocket *input_to_disconnect)
 {
-  bNodeLink *link = ntree_shader_node_input_get(node, index)->link;
-  if (link) {
+  bNodeLink *link = input_to_disconnect->link;
+  if (link != nullptr) {
     nodeRemLink(ntree, link);
   }
 }
 
 static void shader_node_disconnect_inactive_mix_branch(bNodeTree *ntree,
-                                                       bNode *node,
-                                                       int factor_socket_index,
-                                                       int a_socket_index,
-                                                       int b_socket_index,
+                                                       bNodeSocket *factor_socket,
+                                                       bNodeSocket *a_socket,
+                                                       bNodeSocket *b_socket,
                                                        bool clamp_factor)
 {
-  bNodeSocket *factor_socket = ntree_shader_node_input_get(node, factor_socket_index);
   if (factor_socket->link == nullptr) {
     float factor = 0.5;
 
@@ -1046,11 +1044,11 @@ static void shader_node_disconnect_inactive_mix_branch(bNodeTree *ntree,
       }
     }
 
-    if (factor == 1.0f && a_socket_index >= 0) {
-      shader_node_disconnect_input(ntree, node, a_socket_index);
+    if (factor == 1.0f && a_socket != nullptr) {
+      shader_node_disconnect_input(ntree, a_socket);
     }
-    else if (factor == 0.0f && b_socket_index >= 0) {
-      shader_node_disconnect_input(ntree, node, b_socket_index);
+    else if (factor == 0.0f && b_socket != nullptr) {
+      shader_node_disconnect_input(ntree, b_socket);
     }
   }
 }
@@ -1059,34 +1057,53 @@ static void ntree_shader_disconnect_inactive_mix_branches(bNodeTree *ntree)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->typeinfo->type == SH_NODE_MIX_SHADER) {
-      shader_node_disconnect_inactive_mix_branch(ntree, node, 0, 1, 2, true);
+      bNodeSocket *factor = nodeFindSocket(node, SOCK_IN, "Fac");
+      bNodeSocket *shader_a = nodeFindSocket(node, SOCK_IN, "Shader");
+      bNodeSocket *shader_b = nodeFindSocket(node, SOCK_IN, "Shader_001");
+      shader_node_disconnect_inactive_mix_branch(ntree, factor, shader_a, shader_b, true);
     }
     else if (node->typeinfo->type == SH_NODE_MIX) {
       const NodeShaderMix *storage = static_cast<NodeShaderMix *>(node->storage);
+
+      bNodeSocket *float_factor = nodeFindSocket(node, SOCK_IN, "Factor_Float");
+      bNodeSocket *vector_factor = nodeFindSocket(node, SOCK_IN, "Factor_Float");
+      bNodeSocket *float_a = nodeFindSocket(node, SOCK_IN, "A_Float");
+      bNodeSocket *float_b = nodeFindSocket(node, SOCK_IN, "B_Float");
+      bNodeSocket *vector_a = nodeFindSocket(node, SOCK_IN, "A_Vector");
+      bNodeSocket *vector_b = nodeFindSocket(node, SOCK_IN, "B_Vector");
+      bNodeSocket *color_a = nodeFindSocket(node, SOCK_IN, "A_Color");
+      bNodeSocket *color_b = nodeFindSocket(node, SOCK_IN, "B_Color");
+
+      Vector<bNodeSocket *, 8> all_sockets{
+          float_factor, vector_factor, float_a, float_b, vector_a, vector_b, color_a, color_b};
+
       if (storage->data_type == SOCK_FLOAT) {
-        shader_node_disconnect_inactive_mix_branch(ntree, node, 0, 2, 3, storage->clamp_factor);
-        /* Disconnect links from data_type-specific sockets that are not currently in use */
-        for (int i : {1, 4, 5, 6, 7}) {
-          shader_node_disconnect_input(ntree, node, i);
-        }
+        shader_node_disconnect_inactive_mix_branch(
+            ntree, float_factor, float_a, float_b, storage->clamp_factor);
+        all_sockets.remove_first_occurrence_and_reorder(float_factor);
+        all_sockets.remove_first_occurrence_and_reorder(float_a);
+        all_sockets.remove_first_occurrence_and_reorder(float_b);
       }
       else if (storage->data_type == SOCK_VECTOR) {
-        int factor_socket = storage->factor_mode == NODE_MIX_MODE_UNIFORM ? 0 : 1;
+        const bool float_factor_mode = (storage->factor_mode == NODE_MIX_MODE_UNIFORM);
+        bNodeSocket *factor_input = float_factor_mode ? float_factor : vector_factor;
         shader_node_disconnect_inactive_mix_branch(
-            ntree, node, factor_socket, 4, 5, storage->clamp_factor);
-        /* Disconnect links from data_type-specific sockets that are not currently in use */
-        int unused_factor_socket = factor_socket == 0 ? 1 : 0;
-        for (int i : {unused_factor_socket, 2, 3, 6, 7}) {
-          shader_node_disconnect_input(ntree, node, i);
-        }
+            ntree, factor_input, vector_a, vector_b, storage->clamp_factor);
+        all_sockets.remove_first_occurrence_and_reorder(factor_input);
+        all_sockets.remove_first_occurrence_and_reorder(float_a);
+        all_sockets.remove_first_occurrence_and_reorder(float_b);
       }
       else if (storage->data_type == SOCK_RGBA) {
         /* Branch A can't be optimized-out, since its alpha is always used regardless of factor */
-        shader_node_disconnect_inactive_mix_branch(ntree, node, 0, -1, 7, storage->clamp_factor);
-        /* Disconnect links from data_type-specific sockets that are not currently in use */
-        for (int i : {1, 2, 3, 4, 5}) {
-          shader_node_disconnect_input(ntree, node, i);
-        }
+        shader_node_disconnect_inactive_mix_branch(
+            ntree, float_factor, nullptr, color_b, storage->clamp_factor);
+        all_sockets.remove_first_occurrence_and_reorder(float_factor);
+        all_sockets.remove_first_occurrence_and_reorder(color_a);
+        all_sockets.remove_first_occurrence_and_reorder(color_b);
+      }
+      /* Disconnect links from data_type-specific sockets that are not currently in use */
+      for (bNodeSocket *socket : all_sockets) {
+        shader_node_disconnect_input(ntree, socket);
       }
     }
   }
