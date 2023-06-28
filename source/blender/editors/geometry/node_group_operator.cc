@@ -296,12 +296,29 @@ static char *run_node_group_get_description(bContext *C,
   return BLI_strdup(description);
 }
 
+static bool run_node_group_poll(bContext *C)
+{
+  const asset_system::AssetRepresentation *asset = get_context_asset(*C);
+  if (!asset) {
+    return false;
+  }
+  const Object *object = CTX_data_active_object(C);
+  if (object->type != OB_CURVES) {
+    return false;
+  }
+  if (object->mode != OB_MODE_SCULPT_CURVES) {
+    return false;
+  }
+  return true;
+}
+
 void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
 {
   ot->name = "Run Node Group";
   ot->idname = __func__;
   ot->description = "Execute a node group on geometry";
 
+  ot->poll = run_node_group_poll;
   ot->invoke = run_node_group_invoke;
   ot->exec = run_node_group_exec;
   ot->get_description = run_node_group_get_description;
