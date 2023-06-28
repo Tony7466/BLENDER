@@ -357,6 +357,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_TANGENT, 0, "INPUT_TANGENT", InputTangent, 
 DefNode(GeometryNode, GEO_NODE_INSTANCE_ON_POINTS, 0, "INSTANCE_ON_POINTS", InstanceOnPoints, "Instance on Points", "Generate a reference to geometry at each of the input points, without duplicating its underlying data")
 DefNode(GeometryNode, GEO_NODE_INSTANCES_TO_POINTS, 0, "INSTANCES_TO_POINTS",InstancesToPoints, "Instances to Points","Generate points at the origins of instances.\nNote: Nested instances are not affected by this node")
 DefNode(GeometryNode, GEO_NODE_IS_VIEWPORT, 0, "IS_VIEWPORT", IsViewport, "Is Viewport", "Retrieve whether the nodes are being evaluated for the viewport rather than the final render")
+DefNode(GeometryNode, GEO_NODE_IS_SIMPLIFY, 0, "IS_SIMPLIFY", IsSimplify, "Is Simplify", "Retrieve whether Simplify is enabled in scene settings")
 DefNode(GeometryNode, GEO_NODE_JOIN_GEOMETRY, 0, "JOIN_GEOMETRY", JoinGeometry, "Join Geometry", "Merge separately generated geometries into a single one")
 DefNode(GeometryNode, GEO_NODE_MATERIAL_SELECTION, 0, "MATERIAL_SELECTION", MaterialSelection, "Material Selection", "Provide a selection of faces that use the specified material")
 DefNode(GeometryNode, GEO_NODE_MEAN_FILTER_SDF_VOLUME, 0, "MEAN_FILTER_SDF_VOLUME", MeanFilterSDFVolume, "Mean Filter SDF Volume", "Smooth the surface of an SDF volume by applying a mean filter")

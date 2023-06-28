@@ -95,6 +95,7 @@ void register_geometry_nodes()
   register_node_type_geo_instances_to_points();
   register_node_type_geo_interpolate_curves();
   register_node_type_geo_is_viewport();
+  register_node_type_geo_is_simplify();
   register_node_type_geo_join_geometry();
   register_node_type_geo_material_replace();
   register_node_type_geo_material_selection();
