@@ -385,9 +385,16 @@ class SerialLoopZoneItemAddOperator(SerialLoopZoneOperator, Operator):
         loop_items = node.loop_items
 
         # Remember index to move the item.
-        dst_index = min(node.active_index + 1, len(loop_items))
-        # Empty name so it is based on the type only.
-        loop_items.new(self.default_socket_type, "")
+        if node.active_item:
+            dst_index = node.active_index + 1
+            dst_type = node.active_item.socket_type
+            dst_name = node.active_item.name
+        else:
+            dst_index = len(loop_items)
+            dst_type = self.default_socket_type
+            # Empty name so it is based on the type.
+            dst_name = ""
+        loop_items.new(dst_type, dst_name)
         loop_items.move(len(loop_items) - 1, dst_index)
         node.active_index = dst_index
 
