@@ -75,8 +75,6 @@ using blender::StringRefNull;
 #  include <openvdb/points/PointDataGrid.h>
 #  include <openvdb/tools/GridTransformer.h>
 
-#  include "volume_openvdb.hh"
-
 /* Global Volume File Cache
  *
  * Global cache of grids read from VDB files. This is used for sharing grids
@@ -1750,62 +1748,6 @@ openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
 {
   CreateGridWithChangedResolutionOp op{old_grid, resolution_factor};
   return BKE_volume_grid_type_operation(grid_type, op);
-}
-
-blender::GVArray BKE_volume_adapt_domain(const Volume & /*volume*/,
-                                         const blender::GVArray &varray,
-                                         eAttrDomain from,
-                                         eAttrDomain to)
-{
-  if (from == to) {
-    return varray;
-  }
-  else {
-    return {};
-  }
-}
-
-namespace blender {
-
-struct CPPTypeForGridTypeOp {
-  const CPPType *result = nullptr;
-
-  template<typename GridType> void operator()(const GridType &grid)
-  {
-    using ValueType = typename GridType::ValueType;
-    using AttributeType = typename volume_openvdb::GridValueConverter<ValueType>::AttributeType;
-    result = &CPPType::get<AttributeType>();
-  }
-};
-
-}  // namespace blender
-
-const blender::CPPType *BKE_volume_grid_cpp_type(const openvdb::GridBase &grid)
-{
-  blender::CPPTypeForGridTypeOp op;
-  if (grid.apply<SupportedVolumeVDBTypes>(op)) {
-    return op.result;
-  }
-  return nullptr;
-}
-
-const VolumeGrid *BKE_volume_grid_attribute_find_for_read(
-    const struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id)
-{
-  return BKE_volume_grid_find_for_read(volume, attribute_id.name().data());
-}
-
-VolumeGrid *BKE_volume_grid_attribute_find_for_write(
-    struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id)
-{
-  return BKE_volume_grid_find_for_write(volume, attribute_id.name().data());
-}
-
-VolumeGrid *BKE_volume_grid_attribute_add_vdb(Volume &volume,
-                                              const blender::bke::AttributeIDRef &attribute_id,
-                                              openvdb::GridBase::Ptr vdb_grid)
-{
-  return BKE_volume_grid_add_vdb(volume, attribute_id.name(), vdb_grid);
 }
 
 #endif

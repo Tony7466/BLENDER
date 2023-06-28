@@ -8,19 +8,12 @@
 
 #include "BLI_bounds_types.hh"
 #include "BLI_generic_virtual_array.hh"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
-#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_offset_indices.hh"
-#include "BLI_shared_cache.hh"
-#include "BLI_span.hh"
-#include "BLI_vector.hh"
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_attribute_math.hh"
 
 /** \file
  * \ingroup bke
@@ -50,8 +43,8 @@ class VolumeGeometry : public ::VolumeGeometry {
   /**
    * The total number of control points in all curves.
    */
-  int cells_num() const;
-  IndexRange cells_range() const;
+  int active_voxel_num() const;
+  IndexRange active_voxel_range() const;
 
   /**
    * The largest and smallest position values of evaluated points.
@@ -101,3 +94,60 @@ inline const blender::bke::VolumeGeometry &VolumeGeometry::wrap() const
 {
   return *reinterpret_cast<const blender::bke::VolumeGeometry *>(this);
 }
+
+// XXX OLD API for reference
+
+//  const blender::CPPType *BKE_volume_grid_cpp_type(const openvdb::GridBase &grid);
+//  size_t BKE_volume_grid_active_voxels(const VolumeGrid *grid);
+//  /* Tries to find a grid for the given attribute. */
+//  const VolumeGrid *BKE_volume_grid_attribute_find_for_read(
+//      const struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id);
+//  VolumeGrid *BKE_volume_grid_attribute_find_for_write(
+//      struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id);
+//  VolumeGrid *BKE_volume_grid_attribute_add_vdb(Volume &volume,
+//                                                const blender::bke::AttributeIDRef
+//                                                &attribute_id, openvdb::GridBase::Ptr
+//                                                vdb_grid);
+
+// namespace blender {
+
+// struct CPPTypeForGridTypeOp {
+//  const CPPType *result = nullptr;
+
+//  template<typename GridType> void operator()(const GridType &grid)
+//  {
+//    using ValueType = typename GridType::ValueType;
+//    using AttributeType = typename volume_openvdb::GridValueConverter<ValueType>::AttributeType;
+//    result = &CPPType::get<AttributeType>();
+//  }
+//};
+
+//}  // namespace blender
+
+// const blender::CPPType *BKE_volume_grid_cpp_type(const openvdb::GridBase &grid)
+//{
+//  blender::CPPTypeForGridTypeOp op;
+//  if (grid.apply<SupportedVolumeVDBTypes>(op)) {
+//    return op.result;
+//  }
+//  return nullptr;
+//}
+
+// const VolumeGrid *BKE_volume_grid_attribute_find_for_read(
+//    const struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id)
+//{
+//  return BKE_volume_grid_find_for_read(volume, attribute_id.name().data());
+//}
+
+// VolumeGrid *BKE_volume_grid_attribute_find_for_write(
+//    struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id)
+//{
+//  return BKE_volume_grid_find_for_write(volume, attribute_id.name().data());
+//}
+
+// VolumeGrid *BKE_volume_grid_attribute_add_vdb(Volume &volume,
+//                                              const blender::bke::AttributeIDRef &attribute_id,
+//                                              openvdb::GridBase::Ptr vdb_grid)
+//{
+//  return BKE_volume_grid_add_vdb(volume, attribute_id.name(), vdb_grid);
+//}

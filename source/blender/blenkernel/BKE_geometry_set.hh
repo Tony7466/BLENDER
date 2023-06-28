@@ -623,6 +623,9 @@ class VolumeComponent : public GeometryComponent {
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
+
+ private:
+  void clear_volume();
 };
 
 /**

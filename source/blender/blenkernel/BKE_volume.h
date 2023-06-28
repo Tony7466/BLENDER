@@ -164,38 +164,15 @@ bool BKE_volume_save(const struct Volume *volume,
  * file or copy shared grids to make them writeable. */
 
 #ifdef __cplusplus
-#  include "BKE_attribute.hh"
-#  include "BLI_generic_virtual_array.hh"
 #  include "BLI_math_matrix_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
-
-namespace blender {
-class CPPType;
-}  // namespace blender
 
 bool BKE_volume_min_max(const Volume *volume, blender::float3 &r_min, blender::float3 &r_max);
 
 #  ifdef WITH_OPENVDB
 #    include <openvdb/openvdb.h>
 #    include <openvdb/points/PointDataGrid.h>
-
-using SupportedVolumeVDBTypes = openvdb::TypeList<openvdb::BoolGrid,
-                                                  openvdb::DoubleGrid,
-                                                  openvdb::FloatGrid,
-                                                  openvdb::Int32Grid,
-                                                  openvdb::Int64Grid,
-                                                  openvdb::MaskGrid,
-                                                  openvdb::Vec3DGrid,
-                                                  openvdb::Vec3IGrid,
-                                                  openvdb::Vec3SGrid>;
-
-// template<typename... Types> struct CPPTypeList {
-//   using Types = Types;
-// };
-
-// using SupportedVolumeCPPTypes = CPPTypeList<float, int>;
-#    define SupportedVolumeCPPTypes float, int
 
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     blender::StringRef name,
@@ -261,23 +238,6 @@ auto BKE_volume_grid_type_operation(const VolumeGridType grid_type, OpType &&op)
 openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
     const VolumeGridType grid_type, const openvdb::GridBase &old_grid, float resolution_factor);
 
-blender::GVArray BKE_volume_adapt_domain(const Volume &volume,
-                                         const blender::GVArray &varray,
-                                         eAttrDomain from,
-                                         eAttrDomain to);
-
-const blender::CPPType *BKE_volume_grid_cpp_type(const openvdb::GridBase &grid);
-size_t BKE_volume_grid_active_voxels(const VolumeGrid *grid);
-/* Tries to find a grid for the given attribute. */
-const VolumeGrid *BKE_volume_grid_attribute_find_for_read(
-    const struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id);
-VolumeGrid *BKE_volume_grid_attribute_find_for_write(
-    struct Volume *volume, const blender::bke::AttributeIDRef &attribute_id);
-VolumeGrid *BKE_volume_grid_attribute_add_vdb(Volume &volume,
-                                              const blender::bke::AttributeIDRef &attribute_id,
-                                              openvdb::GridBase::Ptr vdb_grid);
-#  endif  // WITH_OPENVDB
-
-void BKE_volume_grid_free(VolumeGrid *grid);
+#  endif
 
 #endif

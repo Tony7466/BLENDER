@@ -8,13 +8,14 @@
 
 #include "DNA_volume_types.h"
 
-#include "BKE_volume.h"
 #include "BKE_volume_geometry.hh"
+
+#include "attribute_access_volume.hh"
 
 namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
-/** \name Constructors/Destructor
+/** \name VolumeGeometry
  * \{ */
 
 VolumeGeometry::VolumeGeometry() {}
@@ -24,7 +25,7 @@ VolumeGeometry::VolumeGeometry() {}
  */
 static void copy_volume_geometry(VolumeGeometry &dst, const VolumeGeometry &src)
 {
-  dst.grid = src.grid;
+  dst.grid = static_cast<VolumeGeometryGrid *>(MEM_dupallocN(src.grid));
 }
 
 VolumeGeometry::VolumeGeometry(const VolumeGeometry &other) : VolumeGeometry()
@@ -43,7 +44,7 @@ VolumeGeometry &VolumeGeometry::operator=(const VolumeGeometry &other)
 /* The source should be empty, but in a valid state so that using it further will work. */
 static void move_volume_geometry(VolumeGeometry &dst, VolumeGeometry &src)
 {
-  dst.grid = src.grid;
+  std::swap(dst.grid, src.grid);
   src.grid = nullptr;
 }
 
@@ -62,8 +63,35 @@ VolumeGeometry &VolumeGeometry::operator=(VolumeGeometry &&other)
 
 VolumeGeometry::~VolumeGeometry()
 {
-  BKE_volume_grid_free(grid);
+  if (grid) {
+    MEM_delete(grid);
+  }
 }
+
+int VolumeGeometry::active_voxel_num() const
+{
+  return grid ? grid->active_voxel_num() : 0;
+}
+
+IndexRange VolumeGeometry::active_voxel_range() const
+{
+  return IndexRange(active_voxel_num());
+}
+
+GVArray VolumeGeometry::adapt_domain(const GVArray &varray, eAttrDomain from, eAttrDomain to) const
+{
+  if (from == to) {
+    return varray;
+  }
+  return {};
+}
+
+void VolumeGeometry::blend_read_data(BlendDataReader & /*reader*/)
+{
+  grid = nullptr;
+}
+
+void VolumeGeometry::blend_write(BlendWriter & /*writer*/, ID & /*id*/) {}
 
 /** \} */
 

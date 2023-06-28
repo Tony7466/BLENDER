@@ -17,6 +17,7 @@ extern "C" {
 struct PackedFile;
 struct VolumeGridVector;
 struct VolumeGrid;
+struct VolumeGeometryGrid;
 #ifdef __cplusplus
 namespace blender::bke {
 class VolumeGeometry;
@@ -58,7 +59,7 @@ typedef struct VolumeRender {
 } VolumeRender;
 
 typedef struct VolumeGeometry {
-  struct VolumeGrid *grid;
+  struct VolumeGeometryGrid *grid;
 
 #ifdef __cplusplus
   blender::bke::VolumeGeometry &wrap();

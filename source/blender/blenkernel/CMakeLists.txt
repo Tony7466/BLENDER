@@ -77,6 +77,7 @@ set(SRC
   intern/asset_weak_reference.cc
   intern/attribute.cc
   intern/attribute_access.cc
+  intern/attribute_access_volume.cc
   intern/attribute_math.cc
   intern/autoexec.c
   intern/blender.c
@@ -519,6 +520,7 @@ set(SRC
   intern/CCGSubSurf_inline.h
   intern/CCGSubSurf_intern.h
   intern/attribute_access_intern.hh
+  intern/attribute_access_volume.hh
   intern/data_transfer_intern.h
   intern/lib_intern.h
   intern/multires_inline.h
@@ -530,7 +532,6 @@ set(SRC
   intern/pbvh_uv_islands.hh
   intern/subdiv_converter.h
   intern/subdiv_inline.h
-  intern/volume_openvdb.hh
 )
 
 set(LIB
