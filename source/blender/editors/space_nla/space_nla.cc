@@ -150,6 +150,21 @@ static SpaceLink *nla_duplicate(SpaceLink *sl)
   return reinterpret_cast<SpaceLink *>(snlan);
 }
 
+static void nla_clamp_scroll(ARegion *region)
+{
+  View2D *v2d = &region->v2d;
+  const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
+
+  if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
+    v2d->cur.ymin = -cur_height_y;
+    v2d->cur.ymax = 0;
+  }
+  else if (v2d->cur.ymin < v2d->tot.ymin) {
+    v2d->cur.ymin = v2d->tot.ymin;
+    v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
+  }
+}
+
 /* add handlers, stuff you only do once or on area/region changes */
 static void nla_channel_region_init(wmWindowManager *wm, ARegion *region)
 {
@@ -436,6 +451,14 @@ static void nla_main_region_message_subscribe(const wmRegionMessageSubscribePara
   }
 }
 
+static void nla_main_region_view2d_changed(const bContext * /*C*/, ARegion *region)
+{
+
+  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
+   * because it also clamps the x-axis to 0. */
+  nla_clamp_scroll(region);
+}
+
 static void nla_channel_region_listener(const wmRegionListenerParams *params)
 {
   ARegion *region = params->region;
@@ -619,6 +642,7 @@ void ED_spacetype_nla(void)
   art->draw_overlay = nla_main_region_draw_overlay;
   art->listener = nla_main_region_listener;
   art->message_subscribe = nla_main_region_message_subscribe;
+  art->on_view2d_changed = nla_main_region_view2d_changed;
   art->keymapflag = ED_KEYMAP_VIEW2D | ED_KEYMAP_ANIMATION | ED_KEYMAP_FRAMES;
 
   BLI_addhead(&st->regiontypes, art);
