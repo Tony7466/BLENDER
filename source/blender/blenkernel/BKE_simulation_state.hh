@@ -91,17 +91,17 @@ class SimulationZoneState {
 
 /** Identifies a simulation zone (input and output node pair) used by a modifier. */
 struct SimulationZoneID {
-  /** Every node identifier in the hierarchy of compute contexts. */
-  int id;
+  /** ID of the #bNestedNodeRef that references the output node of the zone. */
+  int32_t nested_node_id;
 
   uint64_t hash() const
   {
-    return this->id;
+    return this->nested_node_id;
   }
 
   friend bool operator==(const SimulationZoneID &a, const SimulationZoneID &b)
   {
-    return a.id == b.id;
+    return a.nested_node_id == b.nested_node_id;
   }
 };
 

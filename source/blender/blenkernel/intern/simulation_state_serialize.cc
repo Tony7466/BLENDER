@@ -807,7 +807,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
 
     auto io_zone = io_zones->append_dict();
 
-    io_zone->append_int("state_id", zone_id.id);
+    io_zone->append_int("state_id", zone_id.nested_node_id);
 
     auto io_state_items = io_zone->append_array("state_items");
     for (const MapItem<int, std::unique_ptr<SimulationStateItem>> &state_item_with_id :
@@ -1004,7 +1004,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
     }
     bke::sim::SimulationZoneID zone_id;
     if (const std::optional<int> state_id = io_zone->lookup_int("state_id")) {
-      zone_id.id = *state_id;
+      zone_id.nested_node_id = *state_id;
     }
     else if (const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id")) {
       Vector<int> node_ids;
@@ -1019,7 +1019,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
       if (!nested_node_ref) {
         continue;
       }
-      zone_id.id = nested_node_ref->id;
+      zone_id.nested_node_id = nested_node_ref->id;
     }
 
     const io::serialize::ArrayValue *io_state_items = io_zone->lookup_array("state_items");

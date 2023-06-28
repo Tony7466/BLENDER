@@ -838,7 +838,7 @@ bke::sim::SimulationZoneID get_simulation_zone_id(const GeoNodesLFUserData &user
   const bNestedNodeRef *nested_node_ref = user_data.root_ntree->nested_node_ref_by_node_id_path(
       node_ids);
   bke::sim::SimulationZoneID zone_id;
-  zone_id.id = nested_node_ref->id;
+  zone_id.nested_node_id = nested_node_ref->id;
   return zone_id;
 }
 
