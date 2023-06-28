@@ -151,6 +151,10 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   CacheMutex tree_zones_cache_mutex;
   std::unique_ptr<bNodeTreeZones> tree_zones;
 
+  CacheMutex node_ids_by_state_id_cache_mutex;
+  Map<int, Vector<int>> node_ids_by_state_id;
+  Map<Vector<int>, int> state_id_by_node_ids;
+
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> links;
   Vector<bNodeSocket *> sockets;
@@ -538,6 +542,56 @@ inline blender::Span<const bNodePanel *> bNodeTree::panels() const
 inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
 {
   return blender::MutableSpan(panels_array, panels_num);
+}
+
+inline const bNodeStateID *bNodeTree::find_state_id(const int id) const
+{
+  for (const bNodeStateID &state_id :
+       blender::Span(this->node_state_ids, this->node_state_ids_num)) {
+    if (state_id.id == id) {
+      return &state_id;
+    }
+  }
+  return nullptr;
+}
+
+inline int bNodeTree::state_id_by_node_ids(const blender::Span<int> node_ids) const
+{
+  if (node_ids.is_empty()) {
+    return -1;
+  }
+  for (const bNodeStateID &state_id :
+       blender::Span(this->node_state_ids, this->node_state_ids_num)) {
+    blender::Vector<int> current_node_ids;
+    if (this->node_ids_by_state_id(state_id.id, current_node_ids)) {
+      if (current_node_ids.as_span() == node_ids) {
+        return state_id.id;
+      }
+    }
+  }
+  return -1;
+}
+
+inline bool bNodeTree::node_ids_by_state_id(const int id, blender::Vector<int> &r_node_ids) const
+{
+  const bNodeStateID *state_id = this->find_state_id(id);
+  if (state_id == nullptr) {
+    return false;
+  }
+  const int32_t node_id = state_id->location.node_id;
+  const bNode *node = this->node_by_id(node_id);
+  if (node == nullptr) {
+    return false;
+  }
+  r_node_ids.append(node_id);
+  if (!node->is_group()) {
+    return true;
+  }
+  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+  if (group == nullptr) {
+    return false;
+  }
+  return group->node_ids_by_state_id(state_id->location.id_in_node, r_node_ids);
 }
 
 /** \} */

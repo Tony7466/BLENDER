@@ -15,6 +15,8 @@
 
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
+#  include <BLI_vector.hh>
+
 namespace blender {
 template<typename T> class Span;
 template<typename T> class MutableSpan;
@@ -677,6 +679,11 @@ typedef struct bNodeTree {
   /** Retrieve a node based on its persistent integer identifier. */
   struct bNode *node_by_id(int32_t identifier);
   const struct bNode *node_by_id(int32_t identifier) const;
+
+  const bNodeStateID *find_state_id(int id) const;
+
+  int state_id_by_node_ids(blender::Span<int> node_ids) const;
+  [[nodiscard]] bool node_ids_by_state_id(const int id, blender::Vector<int> &r_node_ids) const;
 
   /**
    * Update a run-time cache for the node tree based on it's current state. This makes many methods

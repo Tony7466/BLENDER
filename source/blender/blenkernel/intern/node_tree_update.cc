@@ -492,7 +492,6 @@ class NodeTreeMainUpdater {
     if (this->update_node_state_ids(ntree)) {
       result.interface_changed = true;
     }
-    std::cout << ntree.id.name << ": " << ntree.node_state_ids_num << "\n";
 
     if (ntree.type == NTREE_TEXTURE) {
       ntreeTexCheckCyclics(&ntree);

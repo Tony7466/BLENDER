@@ -92,6 +92,8 @@ struct GeoNodesLFUserData : public lf::UserData {
    */
   bool log_socket_values = true;
 
+  const bNodeTree *root_ntree = nullptr;
+
   destruct_ptr<lf::LocalUserData> get_local(LinearAllocator<> &allocator) override;
 };
 
@@ -241,7 +243,7 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 
-bke::sim::SimulationZoneID get_simulation_zone_id(const ComputeContext &context,
+bke::sim::SimulationZoneID get_simulation_zone_id(const GeoNodesLFUserData &user_data,
                                                   const int output_node_id);
 
 /**

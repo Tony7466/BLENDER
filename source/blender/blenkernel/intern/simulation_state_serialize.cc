@@ -7,6 +7,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
+#include "BKE_node_runtime.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_simulation_state_serialize.hh"
 
@@ -804,11 +805,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
 
     auto io_zone = io_zones->append_dict();
 
-    auto io_zone_id = io_zone->append_array("zone_id");
-
-    for (const int node_id : zone_id.node_ids) {
-      io_zone_id->append_int(node_id);
-    }
+    io_zone->append_int("state_id", zone_id.id);
 
     auto io_state_items = io_zone->append_array("state_items");
     for (const MapItem<int, std::unique_ptr<SimulationStateItem>> &state_item_with_id :
@@ -980,7 +977,8 @@ template<typename T>
   return false;
 }
 
-void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
+void deserialize_modifier_simulation_state(const bNodeTree &ntree,
+                                           const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            const BDataSharing &bdata_sharing,
                                            ModifierSimulationState &r_state)
@@ -1002,14 +1000,20 @@ void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
     if (!io_zone) {
       continue;
     }
-    const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id");
     bke::sim::SimulationZoneID zone_id;
-    for (const auto &io_zone_id_element : io_zone_id->elements()) {
-      const io::serialize::IntValue *io_node_id = io_zone_id_element->as_int_value();
-      if (!io_node_id) {
-        continue;
+    if (const std::optional<int> state_id = io_zone->lookup_int("state_id")) {
+      zone_id.id = *state_id;
+    }
+    else if (const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id")) {
+      Vector<int> node_ids;
+      for (const auto &io_zone_id_element : io_zone_id->elements()) {
+        const io::serialize::IntValue *io_node_id = io_zone_id_element->as_int_value();
+        if (!io_node_id) {
+          continue;
+        }
+        node_ids.append(io_node_id->value());
       }
-      zone_id.node_ids.append(io_node_id->value());
+      zone_id.id = ntree.state_id_by_node_ids(node_ids);
     }
 
     const io::serialize::ArrayValue *io_state_items = io_zone->lookup_array("state_items");
