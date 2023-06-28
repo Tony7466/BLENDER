@@ -9,6 +9,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <string>
 
 #include "MEM_guardedalloc.h"
 
@@ -27,11 +28,16 @@
 #include "BKE_blendfile.h"
 #include "BKE_context.h"
 
+#include "BLO_readfile.h"
+
 #include "BLT_translation.h"
 
 #include "BLF_api.h"
 
+#include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
+#include "IMB_metadata.h"
+#include "IMB_thumbs.h"
 
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -107,11 +113,138 @@ void ED_file_path_button(bScreen *screen,
   UI_block_func_set(block, nullptr, nullptr, nullptr);
 }
 
-/* Dummy helper - we need dynamic tooltips here. */
+typedef struct file_tooltip_data {
+  const SpaceFile *sfile;
+  const FileDirEntry *file;
+  ImBuf *preview;
+} file_tooltip_data;
+
+static file_tooltip_data *file_tooltip_data_create(const SpaceFile *sfile,
+                                                   const FileDirEntry *file,
+                                                   ImBuf *preview)
+{
+  file_tooltip_data *data = (file_tooltip_data *)MEM_mallocN(sizeof(file_tooltip_data),
+                                                             "tooltip_data");
+  data->sfile = sfile;
+  data->file = file;
+  data->preview = preview;
+  return data;
+}
+
 static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
 {
-  char *dyn_tooltip = static_cast<char *>(argN);
-  return BLI_strdup(dyn_tooltip);
+  file_tooltip_data *data = static_cast<file_tooltip_data *>(argN);
+  const SpaceFile *sfile = data->sfile;
+  const FileList *files = sfile->files;
+  const FileSelectParams *params = ED_fileselect_get_active_params(sfile);
+  const FileDirEntry *file = data->file;
+
+  if (file->asset) {
+    return nullptr;
+  }
+  std::string complete_string(file->name);
+
+  if (!(file->typeflag & FILE_TYPE_BLENDERLIB)) {
+
+    char full_path[FILE_MAX_LIBEXTRA];
+    filelist_file_get_full_path(files, file, full_path);
+
+    if (params->recursion_level > 0) {
+      char root[FILE_MAX];
+      BLI_path_split_dir_part(full_path, root, FILE_MAX);
+      complete_string += std::string("\n") + root;
+    }
+
+    if (file->redirection_path) {
+      complete_string += '\n' + std::string("\n") + N_("Link target:") + file->redirection_path;
+    }
+    if (file->attributes & FILE_ATTR_OFFLINE) {
+      complete_string += std::string("\n") + N_("This file is offline.");
+    }
+    if (file->attributes & FILE_ATTR_READONLY) {
+      complete_string += std::string("\n") + N_("This file is Read-Only.");
+    }
+    if (file->attributes & (FILE_ATTR_SYSTEM | FILE_ATTR_RESTRICTED)) {
+      complete_string += std::string("\n") + N_("This is a restricted system file.");
+    }
+
+    if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP) &&
+        !(file->attributes & FILE_ATTR_OFFLINE))
+    {
+      /* Load Blender version directly from the file. */
+      short version = BLO_version_from_file(full_path);
+      if (version != 0) {
+        complete_string += std::string("\n") + "Blender: " + std::to_string(version / 100) + "." +
+                           std::to_string(version % 100);
+      }
+    }
+
+    if (file->typeflag & FILE_TYPE_IMAGE) {
+      ImBuf *thumb = (file->attributes & FILE_ATTR_OFFLINE) ?
+                         IMB_thumb_read(full_path, THB_LARGE) :
+                         IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_IMAGE);
+      char value1[128];
+      char value2[128];
+      if (IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Width", value1, sizeof(value1)) &&
+          IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Height", value2, sizeof(value2)))
+      {
+        complete_string += std::string("\n") + N_("Dimensions") + ": ";
+        complete_string += std::string(value1) + " \u00D7 " + std::string(value2);
+      }
+      IMB_freeImBuf(thumb);
+    }
+
+    if (file->typeflag & FILE_TYPE_MOVIE) {
+      ImBuf *thumb = (file->attributes & FILE_ATTR_OFFLINE) ?
+                         IMB_thumb_read(full_path, THB_LARGE) :
+                         IMB_thumb_manage(full_path, THB_LARGE, THB_SOURCE_MOVIE);
+      char value1[128];
+      char value2[128];
+      char value3[128];
+      if (IMB_metadata_get_field(thumb->metadata, "Codec", value1, sizeof(value1)))
+      {
+        complete_string += std::string("\n") + N_("Codec") + ": ";
+        complete_string += std::string(value1);
+      }
+      if (IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Width", value1, sizeof(value1)) &&
+          IMB_metadata_get_field(thumb->metadata, "Thumb::Image::Height", value2, sizeof(value2)))
+      {
+        complete_string += std::string("\n") + N_("Dimensions") + ": ";
+        complete_string += std::string(value1) + " \u00D7 " + std::string(value2);
+      }
+      if (IMB_metadata_get_field(thumb->metadata, "Frames", value1, sizeof(value1)) &&
+          IMB_metadata_get_field(thumb->metadata, "FPS", value2, sizeof(value2)) &&
+          IMB_metadata_get_field(thumb->metadata, "Duration", value3, sizeof(value3)))
+      {
+        complete_string += std::string("\n") + N_("Frames") + ": ";
+        complete_string += value1 + std::string(" @ ") + value2 + " " + N_("FPS");
+        complete_string += std::string(" (") + value3 + " " + N_("Seconds") ") ";
+      }
+      IMB_freeImBuf(thumb);
+    }
+
+    char date_st[FILELIST_DIRENTRY_DATE_LEN], time_st[FILELIST_DIRENTRY_TIME_LEN];
+    bool is_today, is_yesterday;
+    BLI_filelist_entry_datetime_to_string(
+        NULL, file->time, false, time_st, date_st, &is_today, &is_yesterday);
+    complete_string += std::string("\n") + N_("Modified") + std::string(": ");
+    if (is_today || is_yesterday) {
+      complete_string += (is_today ? N_("Today") : N_("Yesterday")) + std::string(" ");
+    }
+    complete_string += date_st + std::string(" ") + time_st;
+
+    if (!(file->typeflag & FILE_TYPE_DIR) && file->size > 0) {
+      char size[16];
+      char size_full[16];
+      BLI_filelist_entry_size_to_string(NULL, file->size, false, size);
+      BLI_str_format_uint64_grouped(size_full, file->size);
+      complete_string += std::string("\n") + N_("Size") + std::string(": ") + std::string(size) +
+                         std::string(" (") + std::string(size_full) + std::string(" ") +
+                         N_("Bytes") + std::string(")");
+    }
+  }
+
+  return BLI_strdupn(complete_string.c_str(), complete_string.size());
 }
 
 static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
@@ -171,7 +304,7 @@ static void file_but_enable_drag(uiBut *but,
 
 static uiBut *file_add_icon_but(const SpaceFile *sfile,
                                 uiBlock *block,
-                                const char *path,
+                                const char * /*path*/,
                                 const FileDirEntry *file,
                                 const rcti *tile_draw_rect,
                                 int icon,
@@ -194,7 +327,8 @@ static uiBut *file_add_icon_but(const SpaceFile *sfile,
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
   }
   else {
-    UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path), MEM_freeN);
+    UI_but_func_tooltip_set(
+        but, file_draw_tooltip_func, file_tooltip_data_create(sfile, file, NULL), MEM_freeN);
   }
 
   return but;
@@ -334,7 +468,10 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
   }
   else {
-    UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path), MEM_freeN);
+    UI_but_func_tooltip_set(but,
+                            file_draw_tooltip_func,
+                            file_tooltip_data_create(sfile, file, preview_image),
+                            MEM_freeN);
   }
 }
 
