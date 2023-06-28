@@ -944,7 +944,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
               WM_OP_INVOKE_DEFAULT, 0, &op_ptr_all);
   RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_bind",
-              IFACE_("Bind This Frame"), ICON_NONE, NULL,
+              IFACE_("Bind Current Frame"), ICON_NONE, NULL,
               WM_OP_INVOKE_DEFAULT,  0, &op_ptr_curr);
   RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
@@ -956,7 +956,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
               WM_OP_INVOKE_DEFAULT, 0, &op_ptr_all);
   RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
   uiItemFullO(row,  "GPENCIL_OT_gpencilsurdeform_unbind",
-              IFACE_("Unbind This Frame"), ICON_NONE, NULL,
+              IFACE_("Unbind current Frame"), ICON_NONE, NULL,
               WM_OP_INVOKE_DEFAULT, 0,  &op_ptr_curr);
   RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
