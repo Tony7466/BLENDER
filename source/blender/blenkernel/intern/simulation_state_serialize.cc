@@ -791,12 +791,14 @@ static std::shared_ptr<io::serialize::Value> serialize_primitive_value(
   return {};
 }
 
+static constexpr int serialize_format_version = 2;
+
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
                                          BDataSharing &bdata_sharing,
                                          DictionaryValue &r_io_root)
 {
-  r_io_root.append_int("version", 1);
+  r_io_root.append_int("version", serialize_format_version);
   auto io_zones = r_io_root.append_array("zones");
 
   for (const auto item : state.zone_states_.items()) {
@@ -988,7 +990,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
   if (!version) {
     return;
   }
-  if (*version != 1) {
+  if (*version > serialize_format_version) {
     return;
   }
   const io::serialize::ArrayValue *io_zones = io_root.lookup_array("zones");
