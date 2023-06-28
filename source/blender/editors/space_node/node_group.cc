@@ -424,6 +424,23 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
   /* delete the group instance and dereference group tree */
   nodeRemoveNode(bmain, ntree, gnode, true);
 
+  for (bNodeStateID &state_id : MutableSpan(ntree->node_state_ids, ntree->node_state_ids_num)) {
+    if (state_id.location.node_id != gnode->identifier) {
+      continue;
+    }
+    const bNodeStateID *child_state_id = ngroup->find_state_id(state_id.location.id_in_node);
+    if (!child_state_id) {
+      continue;
+    }
+    const int32_t new_node_id = node_identifier_map.lookup_default(
+        child_state_id->location.node_id, -1);
+    if (new_node_id == -1) {
+      continue;
+    }
+    state_id.location.node_id = new_node_id;
+    state_id.location.id_in_node = child_state_id->location.id_in_node;
+  }
+
   return true;
 }
 
