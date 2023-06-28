@@ -406,7 +406,7 @@ struct AnimKeylistDrawListElem {
   bAction *act;
   bActionGroup *agrp;
   bGPDlayer *gpl;
-  blender::bke::greasepencil::Layer *gplay;
+  GreasePencilLayer *grease_pencil_layer;
   MaskLayer *masklay;
 };
 
@@ -438,7 +438,7 @@ static void ED_keylist_draw_list_elem_build_keylist(AnimKeylistDrawListElem *ele
       break;
     }
     case ANIM_KEYLIST_CELS: {
-      cels_to_keylist(elem->adt, elem->gplay, elem->keylist, elem->saction_flag);
+      cels_to_keylist(elem->adt, elem->grease_pencil_layer, elem->keylist, elem->saction_flag);
       break;
     }
     case ANIM_KEYLIST_GP_LAYER: {
@@ -706,15 +706,15 @@ void draw_action_channel(AnimKeylistDrawList *draw_list,
 }
 
 void draw_cels_channel(AnimKeylistDrawList *draw_list,
-                       bDopeSheet *ads,
-                       const blender::bke::greasepencil::Layer *gpl,
+                       bDopeSheet */*ads*/,
+                       GreasePencilLayer *gpl,
                        float ypos,
                        float yscale_fac,
                        int saction_flag)
 {
   AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
-      draw_list, ANIM_KEYLIST_CELS, ypos, yscale_fac, saction_flag);
-  draw_elem->gplay = gpl;
+      draw_list, ANIM_KEYLIST_CELS, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->grease_pencil_layer = gpl;
 }
 
 void draw_gpl_channel(AnimKeylistDrawList *draw_list,

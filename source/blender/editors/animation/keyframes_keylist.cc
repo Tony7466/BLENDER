@@ -1159,16 +1159,14 @@ void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, con
   }
 }
 
-void cels_to_keylist(AnimData *adt,
-                     const blender::bke::greasepencil::Layer *gpl,
-                     AnimKeylist *keylist,
-                     int saction_flag)
+void cels_to_keylist(AnimData *adt, GreasePencilLayer *gpl, AnimKeylist *keylist, int saction_flag)
 {
   using namespace blender::bke::greasepencil;
-  for (auto [frame_nb, gpf] : gpl.frames()) {
-    Cel cel(frame_nb, gpf);
+  const Layer &layer = gpl->wrap();
+  for (auto item : layer.frames().items()) {
+    Cel cel{item.key, item.value};
 
-    float cfra = float(frame_nb);
+    float cfra = float(item.key);
     ED_keylist_add_or_update_column(
         keylist, cfra, nalloc_ak_cel, nupdate_ak_cel, static_cast<void *>(&cel));
   }

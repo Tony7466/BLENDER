@@ -23,6 +23,7 @@ struct Scene;
 struct bAnimContext;
 struct bDopeSheet;
 struct bGPDlayer;
+struct GreasePencilLayer;
 
 /* ****************************** Base Structs ****************************** */
 
@@ -181,7 +182,7 @@ void gpencil_to_keylist(struct bDopeSheet *ads,
 
 /* Cels */
 void cels_to_keylist(struct AnimData *adt,
-                     const blender::bke::greasepencil::Layer *gpl,
+                     struct GreasePencilLayer *gpl,
                      struct AnimKeylist *keylist,
                      int saction_flag);
 
