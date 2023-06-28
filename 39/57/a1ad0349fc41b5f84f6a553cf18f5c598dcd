@@ -2,3 +2,4 @@ Referenced by pull request #109382, EEVEE: Remove unneeded GPU_finish
 Referenced by issue #109406, Regression: Crash in GPU_material_from_nodetree
 Referenced by pull request #109410, Fix #109406: Ignore unsupported socket in shader
 Referenced by commit fde8e6ce65069bb44c0239df1324d1b9b3c82451, Fix #109406: Ignore unsupported socket in shader
+Referenced by pull request #109411, Cleanup: Update ntree_shader_disconnect_inactive_mix_branches for Rotation socket
