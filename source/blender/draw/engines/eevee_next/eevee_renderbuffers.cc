@@ -33,8 +33,8 @@ void RenderBuffers::sync()
 
   auto pass_index_get = [&](eViewLayerEEVEEPassType pass_type, int dependent_passes = 0) {
     if (enabled_passes & (pass_type | dependent_passes)) {
-      return inst_.film.pass_storage_type(pass_type) == PASS_STORAGE_COLOR ? data.color_len++ :
-                                                                             data.value_len++;
+      return pass_storage_type(pass_type) == PASS_STORAGE_COLOR ? data.color_len++ :
+                                                                  data.value_len++;
     }
     return -1;
   };
