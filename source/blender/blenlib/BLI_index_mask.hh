@@ -49,9 +49,9 @@ static constexpr int64_t max_segment_size_mask_high = ~max_segment_size_mask_low
  */
 struct RawMaskIterator {
   /** Index of the segment in the index mask. */
-  int64_t segment_i;
+  int64_t segment_i = 0;
   /** Element within the segment. */
-  int16_t index_in_segment;
+  int16_t index_in_segment = 0;
 };
 
 /**
@@ -268,6 +268,29 @@ class IndexMask : private IndexMaskData {
    * \return Indices stored in the n-th segment.
    */
   IndexMaskSegment segment(int64_t segment_i) const;
+
+  template<typename IndexT, typename PosT> class Iterator {
+   private:
+    const IndexMask &mask_;
+    RawMaskIterator data_;
+    IndexMaskSegment segment_;
+    std::optional<IndexRange> as_range_;
+    int64_t pos_ = 0;
+
+   public:
+    Iterator(const IndexMask &mask, const RawMaskIterator &raw);
+    Iterator begin() const;
+    Iterator end() const;
+    bool operator!=(const Iterator &other) const;
+    void operator++();
+    std::pair<IndexT, PosT> operator*() const;
+  };
+
+  template<typename IndexT = int64_t, typename PosT = int64_t>
+  Iterator<IndexT, PosT> foreach () const
+  {
+    return Iterator<IndexT, PosT>(*this, {});
+  }
 
   /**
    * Calls the function once for every index.
@@ -891,6 +914,67 @@ inline Vector<std::variant<IndexRange, IndexMaskSegment>, N> IndexMask::to_spans
   Vector<std::variant<IndexRange, IndexMaskSegment>, N> segments;
   this->foreach_segment_optimized([&](const auto segment) { segments.append(segment); });
   return segments;
+}
+
+template<typename IndexT, typename PosT>
+inline IndexMask::Iterator<IndexT, PosT>::Iterator(const IndexMask &mask,
+                                                   const RawMaskIterator &data)
+    : mask_(mask), data_(data), segment_(mask_.segment(0))
+{
+}
+
+template<typename IndexT, typename PosT>
+inline IndexMask::Iterator<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::begin() const
+{
+  return IndexMask::Iterator<IndexT, PosT>(mask_, {});
+}
+
+template<typename IndexT, typename PosT>
+inline IndexMask::Iterator<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::end() const
+{
+  return IndexMask::Iterator<IndexT, PosT>(mask_, RawMaskIterator{mask_.segments_num(), 0});
+}
+
+template<typename IndexT, typename PosT>
+inline bool IndexMask::Iterator<IndexT, PosT>::operator!=(
+    const IndexMask::Iterator<IndexT, PosT> &other) const
+{
+  BLI_assert(&this->mask_ == &other.mask_);
+  return this->data_ != other.data_;
+}
+
+template<typename IndexT, typename PosT>
+inline void IndexMask::Iterator<IndexT, PosT>::operator++()
+{
+  this->pos_++;
+  this->data_.index_in_segment++;
+  const bool continue_this_segment = this->segment_.size() > this->data_.index_in_segment;
+  if (continue_this_segment) {
+    return;
+  }
+  this->data_.segment_i++;
+  if (!this->data_.segment_i < this->mask_.segments_num()) {
+    return;
+  }
+  this->segment_ = this->mask_.segment(this->data_.segment_i);
+  this->data_.index_in_segment = 0;
+
+  if (unique_sorted_indices::non_empty_is_range(this->segment_.base_span())) {
+    this->as_range_.emplace(this->segment_[0], this->segment_.size());
+  }
+  else {
+    this->as_range_.reset();
+  }
+  return;
+}
+
+template<typename IndexT, typename PosT>
+inline std::pair<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::operator*() const
+{
+  if (this->as_range_.has_value()) {
+    return {this->as_range_.value()[this->data_.index_in_segment], this->pos_};
+  }
+  return {this->segment_[this->data_.index_in_segment], this->pos_};
 }
 
 }  // namespace blender::index_mask

@@ -496,14 +496,51 @@ static void duplicate_faces(GeometrySet &geometry_set,
 
   int total_polys = 0;
   int total_loops = 0;
+
+  Array<int> offset_data_(selection.size() + 1);
+  {
+    SCOPED_TIMER_AVERAGED("foreach_index_optimized");
+    selection.foreach_index_optimized<int>([&](const int index, const int i_selection) {
+      const int count = counts[index];
+      offset_data_[i_selection] = total_polys;
+      total_polys += count;
+      total_loops += count * polys[index].size();
+    });
+    offset_data_[selection.size()] = total_polys;
+  }
+
+  total_polys = 0;
+  total_loops = 0;
+  Array<int> offset_data__(selection.size() + 1);
+  {
+    SCOPED_TIMER_AVERAGED("foreach_index");
+    selection.foreach_index([&](const int index, const int i_selection) {
+      const int count = counts[index];
+      offset_data__[i_selection] = total_polys;
+      total_polys += count;
+      total_loops += count * polys[index].size();
+    });
+    offset_data__[selection.size()] = total_polys;
+  }
+
+  total_polys = 0;
+  total_loops = 0;
   Array<int> offset_data(selection.size() + 1);
-  selection.foreach_index_optimized<int>([&](const int index, const int i_selection) {
-    const int count = counts[index];
-    offset_data[i_selection] = total_polys;
-    total_polys += count;
-    total_loops += count * polys[index].size();
-  });
-  offset_data[selection.size()] = total_polys;
+  {
+    SCOPED_TIMER_AVERAGED("foreach");
+    for (const auto [index, i_selection] : selection.foreach<int, int>()) {
+      const int count = counts[index];
+      offset_data[i_selection] = total_polys;
+      total_polys += count;
+      total_loops += count * polys[index].size();
+    }
+    offset_data[selection.size()] = total_polys;
+  }
+
+  printf("- foreach_index_optimized and foreach_index is %s;\n",
+         (offset_data_.as_span() == offset_data__.as_span() ? "equal" : "NOOO!"));
+  printf("- foreach_index_optimized and foreach is %s;\n",
+         (offset_data_.as_span() == offset_data.as_span() ? "equal" : "NOOO!"));
 
   const OffsetIndices<int> duplicates(offset_data);
 
