@@ -116,6 +116,9 @@ struct ShadowSample {
   float occluder_dist;
   /* Tile used loaded for page indirection. */
   ShadowTileData tile;
+  /* Occluder and receiver Z distances in shadow projection space. */
+  float receiver_z;
+  float occluder_z;
 };
 
 float shadow_tile_depth_get(usampler2D atlas_tx, ShadowTileData tile, vec2 atlas_uv)
@@ -173,6 +176,9 @@ ShadowSample shadow_punctual_sample_get(
   samp.occluder_dist = occluder_z.x * radius_divisor;
   samp.bias = (occluder_z.y - occluder_z.x) * radius_divisor;
   samp.occluder_delta = samp.occluder_dist - receiver_dist;
+  /* Used by Shadow Map RayTracing. */
+  samp.receiver_z = -lP.z;
+  samp.occluder_z = occluder_z.x;
   return samp;
 }
 
@@ -201,6 +207,9 @@ ShadowSample shadow_directional_sample_get(
   float receiver_dist = -lP.z;
   samp.bias *= near - far;
   samp.occluder_delta = samp.occluder_dist - receiver_dist;
+  /* Used by Shadow Map RayTracing. */
+  samp.receiver_z = receiver_dist;
+  samp.occluder_z = samp.occluder_dist;
   return samp;
 }
 
@@ -234,10 +243,10 @@ struct ShadowRay {
   vec3 direction;
 };
 
-ShadowRay shadow_ray_create(const bool is_directional, LightData light, vec3 lP, vec3 P, vec3 lNg)
+ShadowRay shadow_ray_create(
+    const bool is_directional, vec2 noise_2d, LightData light, vec3 lP, vec3 P, vec3 lNg)
 {
-  vec2 random_2d = sampling_rng_2D_get(SAMPLING_SHADOW_X);
-  /* TODO(fclem) Random noise. */
+  vec2 random_2d = fract(noise_2d + sampling_rng_2D_get(SAMPLING_SHADOW_X));
 
   ShadowRay ray;
   if (is_directional) {
@@ -246,10 +255,10 @@ ShadowRay shadow_ray_create(const bool is_directional, LightData light, vec3 lP,
     ray.origin = P;
     ray.direction = light._back + light._right * random_2d.x + light._up * random_2d.y;
     /* TODO(fclem): Correct Penumbra search radius:
-     * - Scale by distance to nearplane.
      * - Scale by distance to camera. (because texel density diminishes).
      * - Limit by scene / light maximum parameter. */
-    ray.direction *= 10.0;
+    // float near = shadow_orderedIntBitsToFloat(light.clip_near);
+    // ray.direction *= 1.0;
   }
   else {
     if (light.type != LIGHT_RECT) {
@@ -282,10 +291,22 @@ ShadowSample shadow_map_trace(const int sample_count,
                               vec3 lNg,
                               vec3 P)
 {
-  ShadowRay ray = shadow_ray_create(is_directional, light, lP, P, lNg);
+  vec3 noise_3d = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).rgb;
+
+  ShadowRay ray = shadow_ray_create(is_directional, noise_3d.xy, light, lP, P, lNg);
 
   ShadowSample samp;
 
+  /* Receiver Z value at previous valid depth sample. */
+  float receiver_z_history = -1.0;
+  /* Occluder Z value at previous valid depth sample. */
+  float occluder_z_history = -999.0;
+  /* Ray time at previous valid depth sample. */
+  float ray_time_history = -1.0;
+  /* Z slope (delta/time) between previous valid sample (N-1) and the one before that (N-2). */
+  float occluder_z_slope = 0.0;
+
+  int tilemap_index_prev = -1;
   /**
    * We trace from a point on the light towards the shading point.
    * for each sample along the ray:
@@ -297,24 +318,88 @@ ShadowSample shadow_map_trace(const int sample_count,
    * This reverse tracing allows to approximate the geometry behind occluders while minimizing
    * light-leaks.
    */
-  float time_offset = sampling_rng_1D_get(SAMPLING_SHADOW_U);
+  float time_offset = fract(noise_3d.z + sampling_rng_1D_get(SAMPLING_SHADOW_U));
   /* We trace the ray in reverse. From 1.0 (light) to 0.0 (shading point). */
   const float ray_time_mul = -1.0 / float(sample_count);
   const float ray_time_bias = 1.0 + time_offset * ray_time_mul;
   for (int i = 0; i <= sample_count; i++) {
     /* Saturate to always cover the shading point position when i == sample_count. */
-    float ray_time = saturate(float(i) * ray_time_mul + ray_time_bias);
+    float ray_time = sqr(saturate(float(i) * ray_time_mul + ray_time_bias));
     /* Note: P is either local or world position depending on the type of light. */
     vec3 ray_P = ray.origin + ray.direction * ray_time;
 
     samp = shadow_sample(is_directional, atlas_tx, tilemaps_tx, light, ray_P, lNg, ray_P);
 
-    if (samp.occluder_delta < 0.0) {
+#  if 1 /* For testing */
+    /* Regular depth compare since we do not have previous ray z value. */
+    if (samp.occluder_z < samp.receiver_z) {
+      return samp;
+    }
+    continue;
+#  endif
+
+#  if 0 /* TODO */
+    /* Reset extrapolation if we change cubeface (because z gradient changes). */
+    if (tilemap_index_prev != samp.tilemap_index)) {
+      occluder_z_slope = -1;
+    }
+#  endif
+
+    /* Skip empty tiles since they do not contain actual z information.
+     * Not doing so would change the z gradient history.  */
+    if (!samp.tile.is_allocated) {
+      continue;
+    }
+
+    if (occluder_z_history == -999.0) {
+      /* First valid sample. */
+      occluder_z_history = samp.occluder_z;
+      ray_time_history = ray_time;
+      /* Regular depth compare since we do not have previous ray z value. */
+      if (samp.occluder_z < samp.receiver_z) {
+        return samp;
+      }
+      continue;
+    }
+
+    /* Delta between previous valid sample. */
+    float ray_z_delta = samp.receiver_z - receiver_z_history;
+    /* Delta between previous valid sample not occluding the ray. */
+    float time_delta = ray_time - ray_time_history;
+    /* Arbitrary increase the threshold to avoid missing occluders because of precision issues.
+     * Increasing the threshold inflates the occluders. */
+    float compare_threshold = abs(ray_z_delta) * 1.05;
+
+    /* Find out if the ray step is behind an occluder.
+     * To be consider behind (and ignore the occluder), the occluder must not be near ray.
+     * Use the full delta ray Z as threshold to make sure to not miss any occluder. */
+    bool is_behind = samp.occluder_z < samp.receiver_z + compare_threshold;
+
+    if (is_behind) {
+      /* Use last known valid occluder Z value and extrapolate to the sample position. */
+      samp.occluder_z = occluder_z_history + occluder_z_slope * time_delta;
+      // samp.occluder_z = occluder_z_history;
+    }
+    else {
+      /* Compute current occluder slope and record history for when the ray
+       * goes behind a surface. */
+      occluder_z_slope = (samp.occluder_z - occluder_z_history) / ray_time_history;
+      occluder_z_slope = clamp(occluder_z_slope, -10.0, 10.0);
+      occluder_z_history = samp.occluder_z;
+      ray_time_history = ray_time;
+    }
+
+    /* Compare with threshold around the occluder to avoid too much inflating. */
+    samp.occluder_delta = samp.occluder_z - samp.receiver_z;
+    float half_compare_threshold = 0.5 * compare_threshold;
+    if (abs(samp.occluder_delta + half_compare_threshold) < half_compare_threshold) {
       /* Intersection. */
+      samp.occluder_delta = -length(ray.direction) * max(1.0e-3, ray_time);
       return samp;
     }
   }
   /* No hit. */
+  samp.occluder_delta = 1e10;
   return samp;
 }
 
