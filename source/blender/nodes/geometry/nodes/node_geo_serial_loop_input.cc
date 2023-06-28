@@ -47,8 +47,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   if (!output_node) {
     return true;
   }
-  NodeGeometrySerialLoopOutput &storage = *static_cast<NodeGeometrySerialLoopOutput *>(
-      output_node->storage);
+  auto &storage = *static_cast<NodeGeometrySerialLoopOutput *>(output_node->storage);
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
       if (const NodeSerialLoopItem *item = storage.add_item(
