@@ -128,6 +128,7 @@ void register_geometry_nodes()
   register_node_type_geo_offset_point_in_curve();
   register_node_type_geo_offset_sdf_volume();
   register_node_type_geo_operator_selection();
+  register_node_type_geo_operator_selection_set();
   register_node_type_geo_points_to_vertices();
   register_node_type_geo_points_to_sdf_volume();
   register_node_type_geo_points_to_volume();

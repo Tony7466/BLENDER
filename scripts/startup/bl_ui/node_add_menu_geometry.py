@@ -581,6 +581,7 @@ class NODE_MT_category_operator(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeOperatorSelection")
+        node_add_menu.add_node_type(layout, "GeometryNodeOperatorSelectionSet")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

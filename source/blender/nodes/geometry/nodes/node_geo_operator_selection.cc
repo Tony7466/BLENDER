@@ -10,7 +10,7 @@ namespace blender::nodes::node_geo_operator_selection_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Bool>("Selection");
+  b.add_output<decl::Bool>("Selection").field_source();
 }
 
 class OperatorSelectionFieldInput final : public bke::GeometryFieldInput {
@@ -55,6 +55,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (!params.user_data()->operator_data) {
     params.error_message_add(NodeWarningType::Error, "Node must be run as operator");
     params.set_default_remaining_outputs();
+    return;
   }
   params.set_output("Selection", Field<bool>(std::make_shared<OperatorSelectionFieldInput>()));
 }
