@@ -791,6 +791,9 @@ static std::shared_ptr<io::serialize::Value> serialize_primitive_value(
   return {};
 }
 
+/**
+ * Version written to the baked data.
+ */
 static constexpr int serialize_format_version = 2;
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
@@ -1007,6 +1010,9 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
       zone_id.nested_node_id = *state_id;
     }
     else if (const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id")) {
+      /* In the initial release of simulation nodes, the entire node id path was written to the
+       * baked data. For backward compatibility the node ids are read here and then the nested node
+       * id is looked up. */
       Vector<int> node_ids;
       for (const auto &io_zone_id_element : io_zone_id->elements()) {
         const io::serialize::IntValue *io_node_id = io_zone_id_element->as_int_value();

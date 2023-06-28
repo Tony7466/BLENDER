@@ -583,10 +583,11 @@ typedef struct bNestedNodePath {
 } bNestedNodePath;
 
 typedef struct bNestedNodeRef {
-  /** ID of the node state. */
+  /** Identifies a potentially nested node. This ID remains stable even if the node is moved into
+   * and out of node groups. */
   int32_t id;
   char _pad[4];
-  /** Where to find the nested node in the node tree. */
+  /** Where to find the nested node in the current node tree. */
   bNestedNodePath path;
 } bNestedNodeRef;
 
@@ -655,8 +656,8 @@ typedef struct bNodeTree {
   bNodeInstanceKey active_viewer_key;
 
   /**
-   * Node state identifiers allow a user of a node group to store data for nested nodes in a
-   * reliable way. For example, a modifier stores simulation data for each simulation zone.
+   * Used to maintain stable IDs for a subset of nested nodes. Specifically, every simulation zone
+   * that is in the node tree has a unique entry here.
    */
   int nested_node_refs_num;
   bNestedNodeRef *nested_node_refs;
@@ -685,7 +686,7 @@ typedef struct bNodeTree {
   blender::Span<bNestedNodeRef> nested_node_refs_span() const;
 
   const bNestedNodeRef *find_nested_node_ref(int32_t nested_node_id) const;
-
+  /** Conversions between node id paths and their corresponding nested node ref. */
   const bNestedNodeRef *nested_node_ref_by_node_id_path(blender::Span<int> node_ids) const;
   [[nodiscard]] bool node_id_path_by_nested_node_ref(const int32_t nested_node_id,
                                                      blender::Vector<int32_t> &r_node_ids) const;
