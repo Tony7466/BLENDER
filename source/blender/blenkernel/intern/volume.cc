@@ -1832,93 +1832,93 @@ namespace blender::bke {
 /** \name Constructors/Destructor
  * \{ */
 
-// VolumeGeometry::VolumeGeometry() {}
-//
-///**
-// * \note Expects `dst` to be initialized, since the original attributes must be freed.
-// */
-// static void copy_volume_geometry(VolumeGeometry &dst, const VolumeGeometry &src)
-//{
-//  dst.tree
-//
-//      CustomData_free(&dst.point_data, dst.point_num);
-//  CustomData_free(&dst.curve_data, dst.curve_num);
-//  dst.point_num = src.point_num;
-//  dst.curve_num = src.curve_num;
-//  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
-//  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
-//
-//  implicit_sharing::copy_shared_pointer(src.curve_offsets,
-//                                        src.runtime->curve_offsets_sharing_info,
-//                                        &dst.curve_offsets,
-//                                        &dst.runtime->curve_offsets_sharing_info);
-//
-//  dst.tag_topology_changed();
-//
-//  /* Though type counts are a cache, they must be copied because they are calculated eagerly. */
-//  dst.runtime->type_counts = src.runtime->type_counts;
-//  dst.runtime->evaluated_offsets_cache = src.runtime->evaluated_offsets_cache;
-//  dst.runtime->nurbs_basis_cache = src.runtime->nurbs_basis_cache;
-//  dst.runtime->evaluated_position_cache = src.runtime->evaluated_position_cache;
-//  dst.runtime->bounds_cache = src.runtime->bounds_cache;
-//  dst.runtime->evaluated_length_cache = src.runtime->evaluated_length_cache;
-//  dst.runtime->evaluated_tangent_cache = src.runtime->evaluated_tangent_cache;
-//  dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
-//}
-//
-// VolumeGeometry::VolumeGeometry(const VolumeGeometry &other) : VolumeGeometry()
-//{
-//  copy_volume_geometry(*this, other);
-//}
-//
-// VolumeGeometry &VolumeGeometry::operator=(const VolumeGeometry &other)
-//{
-//  if (this != &other) {
-//    copy_volume_geometry(*this, other);
-//  }
-//  return *this;
-//}
-//
-///* The source should be empty, but in a valid state so that using it further will work. */
-// static void move_volume_geometry(VolumeGeometry &dst, VolumeGeometry &src)
-//{
-//   dst.point_num = src.point_num;
-//   std::swap(dst.point_data, src.point_data);
-//   CustomData_free(&src.point_data, src.point_num);
-//   src.point_num = 0;
-//
-//   dst.curve_num = src.curve_num;
-//   std::swap(dst.curve_data, src.curve_data);
-//   CustomData_free(&src.curve_data, src.curve_num);
-//   src.curve_num = 0;
-//
-//   std::swap(dst.curve_offsets, src.curve_offsets);
-//
-//   std::swap(dst.runtime, src.runtime);
-// }
-//
-// VolumeGeometry::VolumeGeometry(VolumeGeometry &&other) : VolumeGeometry()
-//{
-//   move_volume_geometry(*this, other);
-// }
-//
-// VolumeGeometry &VolumeGeometry::operator=(VolumeGeometry &&other)
-//{
-//   if (this != &other) {
-//     move_volume_geometry(*this, other);
-//   }
-//   return *this;
-// }
-//
-// VolumeGeometry::~VolumeGeometry()
-//{
-//   CustomData_free(&this->point_data, this->point_num);
-//   CustomData_free(&this->curve_data, this->curve_num);
-//   implicit_sharing::free_shared_data(&this->curve_offsets,
-//                                      &this->runtime->curve_offsets_sharing_info);
-//   MEM_delete(this->runtime);
-//   this->runtime = nullptr;
-// }
+VolumeGeometry::VolumeGeometry() {}
+
+/**
+ * \note Expects `dst` to be initialized, since the original attributes must be freed.
+ */
+static void copy_volume_geometry(VolumeGeometry &dst, const VolumeGeometry &src)
+{
+  dst.tree
+
+      CustomData_free(&dst.point_data, dst.point_num);
+  CustomData_free(&dst.curve_data, dst.curve_num);
+  dst.point_num = src.point_num;
+  dst.curve_num = src.curve_num;
+  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
+  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
+
+  implicit_sharing::copy_shared_pointer(src.curve_offsets,
+                                        src.runtime->curve_offsets_sharing_info,
+                                        &dst.curve_offsets,
+                                        &dst.runtime->curve_offsets_sharing_info);
+
+  dst.tag_topology_changed();
+
+  /* Though type counts are a cache, they must be copied because they are calculated eagerly. */
+  dst.runtime->type_counts = src.runtime->type_counts;
+  dst.runtime->evaluated_offsets_cache = src.runtime->evaluated_offsets_cache;
+  dst.runtime->nurbs_basis_cache = src.runtime->nurbs_basis_cache;
+  dst.runtime->evaluated_position_cache = src.runtime->evaluated_position_cache;
+  dst.runtime->bounds_cache = src.runtime->bounds_cache;
+  dst.runtime->evaluated_length_cache = src.runtime->evaluated_length_cache;
+  dst.runtime->evaluated_tangent_cache = src.runtime->evaluated_tangent_cache;
+  dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
+}
+
+VolumeGeometry::VolumeGeometry(const VolumeGeometry &other) : VolumeGeometry()
+{
+  copy_volume_geometry(*this, other);
+}
+
+VolumeGeometry &VolumeGeometry::operator=(const VolumeGeometry &other)
+{
+  if (this != &other) {
+    copy_volume_geometry(*this, other);
+  }
+  return *this;
+}
+
+/* The source should be empty, but in a valid state so that using it further will work. */
+static void move_volume_geometry(VolumeGeometry &dst, VolumeGeometry &src)
+{
+  dst.point_num = src.point_num;
+  std::swap(dst.point_data, src.point_data);
+  CustomData_free(&src.point_data, src.point_num);
+  src.point_num = 0;
+
+  dst.curve_num = src.curve_num;
+  std::swap(dst.curve_data, src.curve_data);
+  CustomData_free(&src.curve_data, src.curve_num);
+  src.curve_num = 0;
+
+  std::swap(dst.curve_offsets, src.curve_offsets);
+
+  std::swap(dst.runtime, src.runtime);
+}
+
+VolumeGeometry::VolumeGeometry(VolumeGeometry &&other) : VolumeGeometry()
+{
+  move_volume_geometry(*this, other);
+}
+
+VolumeGeometry &VolumeGeometry::operator=(VolumeGeometry &&other)
+{
+  if (this != &other) {
+    move_volume_geometry(*this, other);
+  }
+  return *this;
+}
+
+VolumeGeometry::~VolumeGeometry()
+{
+  CustomData_free(&this->point_data, this->point_num);
+  CustomData_free(&this->curve_data, this->curve_num);
+  implicit_sharing::free_shared_data(&this->curve_offsets,
+                                     &this->runtime->curve_offsets_sharing_info);
+  MEM_delete(this->runtime);
+  this->runtime = nullptr;
+}
 
 /** \} */
 

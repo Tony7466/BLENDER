@@ -17,6 +17,11 @@ extern "C" {
 struct PackedFile;
 struct VolumeGridVector;
 // struct VolumeGrids;
+#ifdef _cplusplus
+using GridHandle = openvdb::GridBase::Ptr;
+#else
+struct GridHandle;
+#endif
 
 typedef struct Volume_Runtime {
   /** OpenVDB Grids. */
@@ -52,9 +57,9 @@ typedef struct VolumeRender {
   float clipping;
 } VolumeRender;
 
-// typedef struct VolumeGeometry {
-//   struct VolumeGrids *grids;
-// } VolumeGeometry;
+typedef struct VolumeGeometry {
+  GridHandle grid;
+} VolumeGeometry;
 
 typedef struct Volume {
   ID id;
@@ -100,7 +105,7 @@ typedef struct Volume {
   float velocity_scale;
 
   /* Grid geometry */
-  // VolumeGeometry geometry;
+  VolumeGeometry geometry;
 
   /* Draw Cache */
   void *batch_cache;
