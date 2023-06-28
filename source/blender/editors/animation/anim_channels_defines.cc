@@ -3615,7 +3615,7 @@ static void *acf_gpl_setting_ptr(bAnimListElem *ale,
 }
 
 /** Grease-pencil layer type define. */
-static bAnimChannelType ACF_GPLAYER = {
+static bAnimChannelType ACF_GPL = {
     /*channel_type_name*/ "Grease Pencil Layer",
     /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
 
@@ -4195,8 +4195,8 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD;        /* Grease Pencil Datablock (Legacy) */
     animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
-    animchannelTypeInfo[type++] = &ACF_GPD;     /* Grease Pencil Datablock */
-    animchannelTypeInfo[type++] = &ACF_GPLAYER; /* Grease Pencil Layer */
+    animchannelTypeInfo[type++] = &ACF_GPD; /* Grease Pencil Datablock */
+    animchannelTypeInfo[type++] = &ACF_GPL; /* Grease Pencil Layer */
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
