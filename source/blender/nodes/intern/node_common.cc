@@ -72,24 +72,6 @@ bNodeSocket *node_group_find_output_socket(bNode *groupnode, const char *identif
   return find_matching_socket(groupnode->outputs, identifier);
 }
 
-static Vector<blender::bke::GeometryComponent::Type> geometry_socket_supported(
-    const bNodeTree *group, const int socket_index)
-{
-  const blender::Span<const bNode *> input_instanes = group->nodes_by_type("NodeGroupInput");
-  Vector<blender::bke::GeometryComponent::Type> supported_types;
-  for (const bNode *input_instane : input_instanes) {
-    const bNodeSocket *instance_socket = input_instane->output_sockets()[socket_index];
-    for (const bNodeSocket *logically_inpuging : instance_socket->logically_linked_sockets()) {
-      const bNode &owner_node = logically_inpuging->owner_node();
-      const blender::nodes::decl::Geometry *logically_inpuging_geometry =
-          dynamic_cast<const blender::nodes::decl::Geometry *>(
-              &*owner_node.runtime->declaration->inputs[logically_inpuging->index()]);
-      supported_types.extend_non_duplicates(logically_inpuging_geometry->supported_types_);
-    }
-  }
-  return supported_types;
-}
-
 void node_group_label(const bNodeTree * /*ntree*/,
                       const bNode *node,
                       char *label,
@@ -148,6 +130,32 @@ bool nodeGroupPoll(const bNodeTree *nodetree,
 }
 
 namespace blender::nodes {
+
+static void supported_for_tree_input(
+    const bNodeTree &tree,
+    const StringRef socket_name,
+    Vector<blender::bke::GeometryComponent::Type> &r_supported_types)
+{
+  for (const bNode *input_node : tree.nodes_by_type("NodeGroupInput")) {
+    const bNodeSocket &output = input_node->output_by_identifier(socket_name);
+    for (const bNodeSocket *input : output.logically_linked_sockets()) {
+      const bNode &owner_node = input->owner_node();
+      bke::nodeDeclarationEnsureOnOutdatedNode(const_cast<bNodeTree *>(&tree),
+                                               const_cast<bNode *>(&owner_node));
+      /* Reroute node stil haven't declaration. */
+      if (owner_node.runtime->declaration == nullptr) {
+        continue;
+      }
+      const int input_index = input->index();
+      const SocketDeclaration &input_declaration_ptr =
+          *owner_node.runtime->declaration->inputs[input_index];
+      const auto *input_declaration = dynamic_cast<const decl::Geometry *>(&input_declaration_ptr);
+      if (input_declaration != nullptr) {
+        r_supported_types.extend_non_duplicates(input_declaration->supported_types_);
+      }
+    }
+  }
+}
 
 static std::function<ID *(const bNode &node)> get_default_id_getter(const bNodeTree &ntree,
                                                                     const bNodeSocket &io_socket)
@@ -310,23 +318,19 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
     r_declaration.skip_updating_sockets = true;
     return;
   }
-  group->ensure_topology_cache();
   r_declaration.skip_updating_sockets = false;
 
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (const bNodeSocket *, input, &group->inputs, index) {
+  group->ensure_topology_cache();
+  for (const bNodeSocket *input : group->interface_inputs()) {
     SocketDeclarationPtr ptr = declaration_for_interface_socket(*group, *input);
-
-    decl::Geometry *logically_inpuging_geometry = dynamic_cast<decl::Geometry *>(&*ptr);
-
-    if (logically_inpuging_geometry != nullptr) {
-      logically_inpuging_geometry->supported_types_ = geometry_socket_supported(group, index);
+    SocketDeclaration &declaration = *ptr;
+    if (auto *geometry_declaration = dynamic_cast<decl::Geometry *>(&declaration)) {
+      supported_for_tree_input(*group, input->identifier, geometry_declaration->supported_types_);
     }
-
     r_declaration.inputs.append(std::move(ptr));
   }
 
-  LISTBASE_FOREACH (const bNodeSocket *, output, &group->outputs) {
+  for (const bNodeSocket *output : group->interface_outputs()) {
     r_declaration.outputs.append(declaration_for_interface_socket(*group, *output));
   }
 }
