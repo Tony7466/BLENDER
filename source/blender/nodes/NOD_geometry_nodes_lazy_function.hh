@@ -90,7 +90,7 @@ struct GeoNodesLFUserData : public lf::UserData {
    */
   GeoNodesModifierData *modifier_data = nullptr;
   /**
-   *
+   * Data from execution as operator in 3D viewport.
    */
   GeoNodesOperatorData *operator_data = nullptr;
   /**

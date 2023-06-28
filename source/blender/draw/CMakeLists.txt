@@ -29,7 +29,6 @@ set(INC
   ../compositor/realtime_compositor/cached_resources
   ../windowmanager
 
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/guardedalloc
   ../../../intern/opensubdiv
@@ -100,6 +99,7 @@ set(SRC
   intern/draw_pbvh.cc
   intern/draw_pointcloud.cc
   intern/draw_resource.cc
+  intern/draw_sculpt.cc
   intern/draw_select_buffer.c
   intern/draw_shader.cc
   intern/draw_texture_pool.cc
@@ -149,8 +149,8 @@ set(SRC
   engines/eevee_next/eevee_instance.cc
   engines/eevee_next/eevee_irradiance_cache.cc
   engines/eevee_next/eevee_light.cc
-  engines/eevee_next/eevee_lightprobe.cc
   engines/eevee_next/eevee_lightcache.cc
+  engines/eevee_next/eevee_lightprobe.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
@@ -158,8 +158,8 @@ set(SRC
   engines/eevee_next/eevee_sampling.cc
   engines/eevee_next/eevee_shader.cc
   engines/eevee_next/eevee_shadow.cc
-  engines/eevee_next/eevee_sync.cc
   engines/eevee_next/eevee_subsurface.cc
+  engines/eevee_next/eevee_sync.cc
   engines/eevee_next/eevee_velocity.cc
   engines/eevee_next/eevee_view.cc
   engines/eevee_next/eevee_world.cc
@@ -263,6 +263,7 @@ set(SRC
   intern/draw_pass.hh
   intern/draw_pbvh.h
   intern/draw_resource.hh
+  intern/draw_sculpt.hh
   intern/draw_shader.h
   intern/draw_shader_shared.h
   intern/draw_state.h
@@ -291,6 +292,7 @@ set(SRC
   engines/eevee_next/eevee_irradiance_cache.hh
   engines/eevee_next/eevee_light.hh
   engines/eevee_next/eevee_lightcache.hh
+  engines/eevee_next/eevee_lightprobe.hh
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
@@ -298,8 +300,8 @@ set(SRC
   engines/eevee_next/eevee_sampling.hh
   engines/eevee_next/eevee_shader.hh
   engines/eevee_next/eevee_shadow.hh
-  engines/eevee_next/eevee_sync.hh
   engines/eevee_next/eevee_subsurface.hh
+  engines/eevee_next/eevee_sync.hh
   engines/eevee_next/eevee_velocity.hh
   engines/eevee_next/eevee_view.hh
   engines/eevee_next/eevee_world.hh
@@ -352,6 +354,7 @@ set(LIB
   bf_blenlib
   bf_realtime_compositor
   bf_windowmanager
+  PRIVATE bf_intern_atomic
 )
 
 set(GLSL_SRC

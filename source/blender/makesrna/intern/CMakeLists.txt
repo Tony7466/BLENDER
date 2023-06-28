@@ -93,8 +93,8 @@ if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
   list(APPEND DEFSRC
-    rna_simulation.c
     rna_grease_pencil.cc
+    rna_simulation.c
   )
 endif()
 
@@ -237,7 +237,6 @@ set(INC
   ../../render
   ../../../../intern/clog
   ../../../../intern/cycles/blender
-  ../../../../intern/atomic
   ../../../../intern/guardedalloc
   ../../../../intern/memutil
   ../../../../intern/mantaflow/extern
@@ -421,12 +420,13 @@ setup_platform_linker_flags(makesrna)
 blender_target_include_dirs(makesrna ${INC})
 blender_target_include_dirs_sys(makesrna ${INC_SYS})
 
-target_link_libraries(makesrna bf_dna)
-target_link_libraries(makesrna bf_dna_blenlib)
+target_link_libraries(makesrna PRIVATE bf_dna)
+target_link_libraries(makesrna PRIVATE bf_intern_atomic)
+target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
 
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)
-    target_link_libraries(makesrna ${PTHREADS_LIBRARIES})
+    target_link_libraries(makesrna PRIVATE ${PTHREADS_LIBRARIES})
   endif()
 endif()
 
