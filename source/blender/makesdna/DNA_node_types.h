@@ -568,13 +568,23 @@ typedef struct bNodePanel {
   char *name;
 } bNodePanel;
 
-typedef struct bNodeStateID {
-  /** Id of the node state. */
-  int id;
+typedef struct bNodeStateLocation {
   /** ID of the node that the state belongs to. */
   int node_id;
   /** ID of the node state in the node. */
   int id_in_node;
+
+#ifdef __cplusplus
+  uint64_t hash() const;
+  friend bool operator==(const bNodeStateLocation &a, const bNodeStateLocation &b);
+#endif
+} bNodeStateLocation;
+
+typedef struct bNodeStateID {
+  /** Id of the node state. */
+  int id;
+  char _pad[4];
+  bNodeStateLocation location;
 } bNodeStateID;
 
 /**

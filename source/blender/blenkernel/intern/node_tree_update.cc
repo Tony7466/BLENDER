@@ -492,6 +492,7 @@ class NodeTreeMainUpdater {
     if (this->update_node_state_ids(ntree)) {
       result.interface_changed = true;
     }
+    std::cout << ntree.id.name << ": " << ntree.node_state_ids_num << "\n";
 
     if (ntree.type == NTREE_TEXTURE) {
       ntreeTexCheckCyclics(&ntree);
@@ -1093,37 +1094,22 @@ class NodeTreeMainUpdater {
     return false;
   }
 
-  struct StateLocation {
-    int node_id;
-    int id_in_node;
-
-    uint64_t hash() const
-    {
-      return get_default_hash_2(this->node_id, this->id_in_node);
-    }
-
-    friend bool operator==(const StateLocation &a, const StateLocation &b)
-    {
-      return a.node_id == b.node_id && a.id_in_node == b.id_in_node;
-    }
-  };
-
   bool update_node_state_ids(bNodeTree &ntree)
   {
     ntree.ensure_topology_cache();
 
-    Map<StateLocation, int> old_id_by_location;
+    Map<bNodeStateLocation, int> old_id_by_location;
     Set<int> old_ids;
     for (const bNodeStateID &state_id : Span(ntree.node_state_ids, ntree.node_state_ids_num)) {
-      old_id_by_location.add({state_id.node_id, state_id.id_in_node}, state_id.id);
+      old_id_by_location.add(state_id.location, state_id.id);
       old_ids.add(state_id.id);
     }
 
-    Map<int, StateLocation> new_location_by_id;
+    Map<int, bNodeStateLocation> new_location_by_id;
 
     RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
-    const auto add_state = [&](const StateLocation &location) {
+    const auto add_state = [&](const bNodeStateLocation &location) {
       const int old_id = old_id_by_location.lookup_default(location, -1);
       if (old_id != -1) {
         new_location_by_id.add(old_id, location);
@@ -1140,11 +1126,11 @@ class NodeTreeMainUpdater {
     };
 
     /* Don't forget state ids just because the linked file is not available right now. */
-    for (const StateLocation &old_state : old_id_by_location.keys()) {
+    for (const bNodeStateLocation &old_state : old_id_by_location.keys()) {
       const bNode *node = ntree.node_by_id(old_state.node_id);
       if (node && node->is_group() && node->id) {
         if (node->id->tag & LIB_TAG_MISSING) {
-          add_state({old_state.node_id, old_state.id_in_node});
+          add_state(old_state);
         }
       }
     }
@@ -1187,13 +1173,13 @@ class NodeTreeMainUpdater {
     for (const auto item : new_location_by_id.items()) {
       bNodeStateID &state_id = new_states[index];
       state_id.id = item.key;
-      state_id.node_id = item.value.node_id;
-      state_id.id_in_node = item.value.id_in_node;
+      state_id.location = item.value;
       index++;
     }
 
     ntree.node_state_ids = new_states;
     ntree.node_state_ids_num = new_location_by_id.size();
+
     return true;
   }
 
@@ -1336,6 +1322,16 @@ void BKE_ntree_update_tag_image_user_changed(bNodeTree *ntree, ImageUser * /*ius
 {
   /* Would have to search for the node that uses the image user for a more detailed tag. */
   add_tree_tag(ntree, NTREE_CHANGED_ANY);
+}
+
+uint64_t bNodeStateLocation::hash() const
+{
+  return blender::get_default_hash_2(this->node_id, this->id_in_node);
+}
+
+bool operator==(const bNodeStateLocation &a, const bNodeStateLocation &b)
+{
+  return a.node_id == b.node_id && a.id_in_node == b.id_in_node;
 }
 
 /**
