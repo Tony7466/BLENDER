@@ -1435,6 +1435,11 @@ struct SerialLoopBodyIndices {
   IndexRange main_output_usages;
   IndexRange border_link_usages;
 
+  /**
+   * Some anonymous attribute sets are input into the loop body from the outside. These two maps
+   * indicate which loop body input corresponds to attribute set. Attribute sets are identified by
+   * either a "field source index" or "caller propagation index".
+   */
   Map<int, int> attribute_set_input_by_field_source_index;
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
@@ -1582,6 +1587,8 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       Array<lf::ValueUsage> output_usages(body_outputs_num, lf::ValueUsage::Used);
       Array<bool> set_outputs(body_outputs_num, false);
 
+      /* Prepare pointers to the main input and output values of the loop,
+       * as well as their usages. */
       Array<bool> tmp_main_input_usages(loop_items_num);
       for (const int i : IndexRange(loop_items_num)) {
         const CPPType &type = *loop_item_types[i];
@@ -1593,8 +1600,10 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       }
       static bool static_true = true;
       for (const int input_index : body_indices_.main_output_usages) {
+        /* All main outputs are used currently. */
         inputs[input_index] = &static_true;
       }
+      /* Prepare border link values for the loop body. */
       Array<bool> tmp_border_link_usages(border_links_num);
       for (const int i : IndexRange(border_links_num)) {
         const int input_index = body_indices_.border_link_inputs[i];
@@ -1608,6 +1617,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         outputs[usage_index] = &tmp_border_link_usages[i];
       }
 
+      /* Prepare attribute sets that are passed into the loop body. */
       for (const auto item : body_indices_.attribute_set_input_by_field_source_index.items()) {
         bke::AnonymousAttributeSet &attribute_set =
             *allocator
@@ -1626,6 +1636,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         inputs[item.value] = &attribute_set;
       }
 
+      /* Prepare evaluation context for the loop body. */
       bke::SerialLoopZoneComputeContext body_compute_context{
           user_data.compute_context, loop_output_bnode_, iteration};
       GeoNodesLFUserData body_user_data = user_data;
