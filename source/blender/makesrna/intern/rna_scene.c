@@ -27,6 +27,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_string_utf8_symbols.h"
 
 #include "BLT_translation.h"
 
@@ -6320,10 +6321,10 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   static const EnumPropertyItem pixel_size_items[] = {
       {0, "AUTO", 0, "Automatic", "Automatic pixel size, depends on the user interface scale"},
-      {1, "1", 0, "1x", "Render at full resolution"},
-      {2, "2", 0, "2x", "Render at 50% resolution"},
-      {4, "4", 0, "4x", "Render at 25% resolution"},
-      {8, "8", 0, "8x", "Render at 12.5% resolution"},
+      {1, "1", 0, "1" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at full resolution"},
+      {2, "2", 0, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at 50% resolution"},
+      {4, "4", 0, "4" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at 25% resolution"},
+      {8, "8", 0, "8" BLI_STR_UTF8_MULTIPLICATION_SIGN, "Render at 12.5% resolution"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -6520,7 +6521,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_freestyle", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", R_EDGE_FRS);
-  RNA_def_property_ui_text(prop, "Edge", "Draw stylized strokes using Freestyle");
+  RNA_def_property_ui_text(prop, "Use Freestyle", "Draw stylized strokes using Freestyle");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_use_freestyle_update");
 
   /* threads */
