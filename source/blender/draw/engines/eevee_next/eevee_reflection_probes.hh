@@ -18,7 +18,6 @@ struct Material;
 namespace blender::eevee {
 
 class Instance;
-class WorldPipeline;
 class CaptureView;
 
 /* -------------------------------------------------------------------- */
