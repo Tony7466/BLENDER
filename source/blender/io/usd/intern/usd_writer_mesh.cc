@@ -32,6 +32,8 @@
 
 namespace blender::io::usd {
 
+const pxr::TfToken empty_token;
+
 USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
@@ -86,11 +88,12 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
           return true;
         }
 
+        /* Splitting out the if clauses here so that we're only switching
+         * based on domain and data types, then checking for export flags. */
+
         /* UV Data. */
         if (meta_data.domain == ATTR_DOMAIN_CORNER
             && meta_data.data_type == CD_PROP_FLOAT2) {
-          /* Splitting out the if clause here so that uvmaps are
-             properly skipped below. */
           if (usd_export_context_.export_params.export_uvmaps) {
             write_uv_data(mesh, usd_mesh, attribute_id, meta_data, active_set_name);
           }
@@ -100,7 +103,9 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
         else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
             ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
         {
-          write_color_data(mesh, usd_mesh, attribute_id, meta_data);
+          if (usd_export_context_.export_params.export_mesh_colors) {
+            write_color_data(mesh, usd_mesh, attribute_id, meta_data);
+          }
         }
 
         else {
@@ -142,8 +147,8 @@ static const pxr::TfToken convert_blender_domain_to_usd(const eAttrDomain blende
       return pxr::UsdGeomTokens->vertex;
     case ATTR_DOMAIN_FACE:
       return pxr::UsdGeomTokens->face;
-    case ATTR_DOMAIN_EDGE:
-      return pxr::UsdGeomTokens->edgeOnly;
+
+    /* Notice: Edge types are not supported in USD! */
     default:
       WM_reportf(RPT_WARNING, "Unsupported domain for mesh data.");
       return pxr::TfToken();
@@ -232,6 +237,11 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
   const pxr::TfToken prim_varying = convert_blender_domain_to_usd(meta_data.domain);
   const pxr::SdfValueTypeName prim_attr_type = convert_blender_type_to_usd(meta_data.data_type);
 
+  if (prim_varying == empty_token || prim_attr_type == pxr::SdfValueTypeNames->Opaque) {
+    WM_reportf(RPT_WARNING, "Mesh %s, Attribute %s cannot be converted to USD.", &mesh->id.name[2], attribute_id.name());
+    return;
+  }
+
   pxr::UsdGeomPrimvar attribute_pv = pvApi.CreatePrimvar(
       primvar_name, prim_attr_type, prim_varying);
 
@@ -301,8 +311,6 @@ void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
   const std::string name = active_set_name && (active_ref == attribute_id.name()) ? "st" : attribute_id.name();
 
   pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(name));
-
-  std::cerr << "Writing UV Set " << attribute_id.name() << " as " << primvar_name << std::endl;
 
   pxr::UsdGeomPrimvar uv_pv = pvApi.CreatePrimvar(
       primvar_name, pxr::SdfValueTypeNames->TexCoord2dArray, pxr::UsdGeomTokens->faceVarying);

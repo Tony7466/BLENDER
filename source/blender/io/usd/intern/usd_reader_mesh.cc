@@ -188,6 +188,11 @@ static const int convert_usd_type_to_blender(const std::string usd_type) {
     {pxr::SdfValueTypeNames->IntArray.GetAsToken().GetString(), CD_PROP_INT32},
     {pxr::SdfValueTypeNames->Float2Array.GetAsToken().GetString(), CD_PROP_FLOAT2},
     {pxr::SdfValueTypeNames->TexCoord2dArray.GetAsToken().GetString(), CD_PROP_FLOAT2},
+    {pxr::SdfValueTypeNames->TexCoord2fArray.GetAsToken().GetString(), CD_PROP_FLOAT2},
+    {pxr::SdfValueTypeNames->TexCoord2hArray.GetAsToken().GetString(), CD_PROP_FLOAT2},
+    {pxr::SdfValueTypeNames->TexCoord3dArray.GetAsToken().GetString(), CD_PROP_FLOAT2},
+    {pxr::SdfValueTypeNames->TexCoord3fArray.GetAsToken().GetString(), CD_PROP_FLOAT2},
+    {pxr::SdfValueTypeNames->TexCoord3hArray.GetAsToken().GetString(), CD_PROP_FLOAT2},
     {pxr::SdfValueTypeNames->Float3Array.GetAsToken().GetString(), CD_PROP_FLOAT3},
     {pxr::SdfValueTypeNames->Color3fArray.GetAsToken().GetString(), CD_PROP_COLOR},
     {pxr::SdfValueTypeNames->Color3hArray.GetAsToken().GetString(), CD_PROP_COLOR},
@@ -211,13 +216,12 @@ static const int convert_usd_varying_to_blender(const std::string usd_domain) {
       {pxr::UsdGeomTokens->faceVarying.GetString(), ATTR_DOMAIN_CORNER},
       {pxr::UsdGeomTokens->vertex.GetString(), ATTR_DOMAIN_POINT},
       {pxr::UsdGeomTokens->face.GetString(), ATTR_DOMAIN_FACE},
-      {pxr::UsdGeomTokens->edgeOnly.GetString(), ATTR_DOMAIN_EDGE},
-      {pxr::UsdGeomTokens->edgeAndCorner.GetString(), ATTR_DOMAIN_EDGE},
+      /* Notice: Edge types are not supported! */
   };
 
   auto value = domain_map.find(usd_domain);
   if (value == domain_map.end()) {
-    WM_reportf(RPT_WARNING, "Unsupported domain for mesh data.");
+    WM_reportf(RPT_WARNING, "Unsupported domain for mesh data type %s.", usd_domain.c_str());
     return 0;
   }
 
@@ -821,7 +825,9 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
   }
 
   /* Custom Data layers. */
-  read_custom_data(settings, mesh, motionSampleTime);
+  if ((settings->read_flag & MOD_MESHSEQ_READ_VERT) | (settings->read_flag & MOD_MESHSEQ_READ_COLOR)) {
+    read_custom_data(settings, mesh, motionSampleTime);
+  }
 }
 
 void USDMeshReader::read_custom_data(const ImportSettings *settings,
@@ -863,28 +869,37 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
              pxr::SdfValueTypeNames->Color3fArray,
              pxr::SdfValueTypeNames->Color3dArray))
     {
-      /* Set the active color name to 'displayColor', if a color primvar
-     * with this name exists.  Otherwise, use the name of the first
-     * color primvar we find for the active color. */
-      if (active_color_name.IsEmpty() || name == usdtokens::displayColor) {
-        active_color_name = name;
-      }
+      if (((settings->read_flag & MOD_MESHSEQ_READ_VERT) != 0) ||
+          ((settings->read_flag & MOD_MESHSEQ_READ_COLOR) != 0))
+      {
+        /* Set the active color name to 'displayColor', if a color primvar
+       * with this name exists.  Otherwise, use the name of the first
+       * color primvar we find for the active color. */
+        if (active_color_name.IsEmpty() || name == usdtokens::displayColor) {
+          active_color_name = name;
+        }
 
-      read_color_data_primvar(mesh, pv, motionSampleTime);
+        read_color_data_primvar(mesh, pv, motionSampleTime);
+      }
     }
 
     /* Read UV primvars. */
     else if ((varying_type == pxr::UsdGeomTokens->faceVarying) &&
              ELEM(type,
                   pxr::SdfValueTypeNames->TexCoord2dArray,
+                  pxr::SdfValueTypeNames->TexCoord2fArray,
+                  pxr::SdfValueTypeNames->TexCoord2hArray,
+                  pxr::SdfValueTypeNames->TexCoord3dArray,
+                  pxr::SdfValueTypeNames->TexCoord3fArray,
+                  pxr::SdfValueTypeNames->TexCoord3hArray,
                   pxr::SdfValueTypeNames->Float2Array))
     {
       if ((settings->read_flag & MOD_MESHSEQ_READ_UV) != 0) {
         /* Set the active uv set name to 'st', if a uv set primvar
-         * with this name exists.  Otherwise, use the name of the first
-         * uv set primvar we find for the active uv set. */
-        if (active_color_name.IsEmpty() || name == usdtokens::st) {
-          active_color_name = name;
+       * with this name exists.  Otherwise, use the name of the first
+       * uv set primvar we find for the active uv set. */
+        if (active_uv_set_name.IsEmpty() || name == usdtokens::st) {
+          active_uv_set_name = name;
         }
         read_uv_data_primvar(mesh, pv, motionSampleTime);
       }

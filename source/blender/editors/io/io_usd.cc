@@ -145,6 +145,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
   const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
   const bool export_uvmaps = RNA_boolean_get(op->ptr, "export_uvmaps");
+  const bool export_mesh_colors = RNA_boolean_get(op->ptr, "export_mesh_colors");
   const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
@@ -164,6 +165,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_hair,
       export_uvmaps,
       export_normals,
+      export_mesh_colors,
       export_materials,
       selected_objects_only,
       visible_objects_only,
@@ -201,6 +203,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "export_hair", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_uvmaps", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_mesh_colors", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "root_prim_path", 0, nullptr, ICON_NONE);
 
@@ -309,6 +312,9 @@ void WM_OT_usd_export(wmOperatorType *ot)
       ot->srna, "export_hair", false, "Hair", "Export hair particle systems as USD curves");
   RNA_def_boolean(
       ot->srna, "export_uvmaps", true, "UV Maps", "Include all mesh UV maps in the export");
+  RNA_def_boolean(
+      ot->srna, "export_mesh_colors", true, "Color Attributes",
+      "Include Mesh Color Attributes in the export");
   RNA_def_boolean(ot->srna,
                   "export_normals",
                   true,
@@ -402,6 +408,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   const bool read_mesh_uvs = RNA_boolean_get(op->ptr, "read_mesh_uvs");
   const bool read_mesh_colors = RNA_boolean_get(op->ptr, "read_mesh_colors");
+  const bool read_mesh_attributes = RNA_boolean_get(op->ptr, "read_mesh_attributes");
 
   char mesh_read_flag = MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY;
   if (read_mesh_uvs) {
@@ -534,6 +541,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Mesh Data"));
   uiItemR(col, ptr, "read_mesh_uvs", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "read_mesh_colors", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "read_mesh_attributes", 0, nullptr, ICON_NONE);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Include"));
   uiItemR(col, ptr, "import_subdiv", 0, IFACE_("Subdivision"), ICON_NONE);
   uiItemR(col, ptr, "import_instance_proxies", 0, nullptr, ICON_NONE);
@@ -652,6 +660,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
 
   RNA_def_boolean(
       ot->srna, "read_mesh_colors", true, "Color Attributes", "Read mesh color attributes");
+
+  RNA_def_boolean(
+      ot->srna, "read_mesh_attributes", true, "Mesh Attributes", "Read USD Primvars as Mesh Attributes");
 
   RNA_def_string(ot->srna,
                  "prim_path_mask",
