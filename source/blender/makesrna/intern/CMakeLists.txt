@@ -48,7 +48,7 @@ set(DEFSRC
   rna_linestyle.c
   rna_main.c
   rna_mask.cc
-  rna_material.c
+  rna_material.cc
   rna_mesh.cc
   rna_meta.cc
   rna_modifier.c
@@ -108,7 +108,7 @@ set(APISRC
   rna_image_api.cc
   rna_lattice_api.cc
   rna_main_api.c
-  rna_material_api.c
+  rna_material_api.cc
   rna_mesh_api.cc
   rna_meta_api.c
   rna_object_api.cc
