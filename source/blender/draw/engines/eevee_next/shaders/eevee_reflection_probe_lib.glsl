@@ -52,8 +52,8 @@ void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 o
     const float firefly_factor = 1e16;
     l_col *= 1.0 - max(0.0, luma - firefly_factor) / luma;
 
-    /* TODO: for artistic freedom want to read this from the reflection probe. That can be added as
-     * part of the reflection probe patch. */
+    /* TODO: for artistic freedom want to read this from the reflection probe. That will be part of
+     * the reflection probe patch. */
     const float intensity_factor = 1.0;
     out_specular += vec3(intensity_factor * l_col);
   }
