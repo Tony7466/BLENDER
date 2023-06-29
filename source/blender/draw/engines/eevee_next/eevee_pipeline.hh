@@ -23,19 +23,19 @@ namespace blender::eevee {
 class Instance;
 
 /* -------------------------------------------------------------------- */
-/** \name World Pipeline
+/** \name World Background Pipeline
  *
- * Render world values.
+ * Render world background values.
  * \{ */
 
-class WorldPipeline {
+class BackgroundPipeline {
  private:
   Instance &inst_;
 
   PassSimple world_ps_ = {"World.Background"};
 
  public:
-  WorldPipeline(Instance &inst) : inst_(inst){};
+  BackgroundPipeline(Instance &inst) : inst_(inst){};
 
   void sync(GPUMaterial *gpumat);
   void render(View &view);
@@ -44,7 +44,35 @@ class WorldPipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Volume World Pipeline
+/** \name World Probe Pipeline
+ *
+ * Renders a single side for the world reflection probe.
+ * \{ */
+
+class WorldPipeline {
+ private:
+  Instance &inst_;
+
+  /* Dummy textures: required to reuse background shader and avoid another shader variation. */
+  Texture dummy_renderpass_tx_;
+  Texture dummy_cryptomatte_tx_;
+  Texture dummy_aov_color_tx_;
+  Texture dummy_aov_value_tx_;
+
+  PassSimple cubemap_face_ps_ = {"World.Probe"};
+
+ public:
+  WorldPipeline(Instance &inst) : inst_(inst){};
+
+  void sync(GPUMaterial *gpumat);
+  void render(View &view);
+
+};  // namespace blender::eevee
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name World Volume Pipeline
  *
  * \{ */
 
@@ -331,6 +359,7 @@ class UtilityTexture : public Texture {
 
 class PipelineModule {
  public:
+  BackgroundPipeline background;
   WorldPipeline world;
   WorldVolumePipeline world_volume;
   DeferredPipeline deferred;
@@ -343,12 +372,12 @@ class PipelineModule {
 
  public:
   PipelineModule(Instance &inst)
-      : world(inst),
+      : background(inst),
+        world(inst),
         world_volume(inst),
         deferred(inst),
         forward(inst),
         shadow(inst),
-        volume(inst),
         capture(inst){};
 
   void begin_sync()
