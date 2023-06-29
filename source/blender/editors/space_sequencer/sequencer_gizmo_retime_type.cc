@@ -294,7 +294,7 @@ static void retime_handle_draw(const bContext *C,
     mul_v3_fl(col, 0.65f);
   }*/
 
-  const int size = 10;  // ui scaling
+  const int size = 10 * U.pixelsize;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
   const float prev_handle_position = UI_view2d_view_to_region_x(
       v2d, handle_x_get(scene, seq, handle - 1));
