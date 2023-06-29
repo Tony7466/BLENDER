@@ -1192,14 +1192,14 @@ class NodeTreeMainUpdater {
                                 const Map<int32_t, bNestedNodePath> &new_path_by_id)
   {
     if (ntree.nested_node_refs_num != new_path_by_id.size()) {
-      return false;
+      return true;
     }
     for (const bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
       if (!new_path_by_id.contains(ref.id)) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   void reset_changed_flags(bNodeTree &ntree)
