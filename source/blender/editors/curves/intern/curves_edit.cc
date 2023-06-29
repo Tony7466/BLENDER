@@ -12,6 +12,16 @@
 
 namespace blender::ed::curves {
 
+template<typename T>
+Span<T> gaussian_blur(const bke::CurvesGeometry &curves,
+                      const int iterations,
+                      const bool keep_shape,
+                      const MutableSpan<T> buffer_a,
+                      const MutableSpan<T> buffer_b,
+                      const IndexMask &mask)
+{
+}
+
 bool remove_selection(bke::CurvesGeometry &curves, const eAttrDomain selection_domain)
 {
   const bke::AttributeAccessor attributes = curves.attributes();
