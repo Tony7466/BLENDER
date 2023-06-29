@@ -433,8 +433,10 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
     if (!child_ref) {
       continue;
     }
-    const int32_t new_node_id = node_identifier_map.lookup_default(child_ref->path.node_id, -1);
-    if (new_node_id == -1) {
+    constexpr int32_t missing_id = -1;
+    const int32_t new_node_id = node_identifier_map.lookup_default(child_ref->path.node_id,
+                                                                   missing_id);
+    if (new_node_id == missing_id) {
       continue;
     }
     ref.path.node_id = new_node_id;
