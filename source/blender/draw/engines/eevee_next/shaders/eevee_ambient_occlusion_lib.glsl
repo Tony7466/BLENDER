@@ -377,8 +377,9 @@ float ambient_occlusion_specular(
   /* Visibility to cone angle (eq. 18). */
   float vis_angle = fast_acos(sqrt(1 - visibility));
   /* Roughness to cone angle (eq. 26). */
-  float spec_angle = max(0.00990998744964599609375,
-                         fast_acos(ambient_occlusion_cone_cosine(roughness)));
+  /* A 0.001 min_angle can generate NaNs on Intel GPUs. See D12508. */
+  const float min_angle = 0.00990998744964599609375;
+  float spec_angle = max(min_angle, fast_acos(ambient_occlusion_cone_cosine(roughness)));
   /* Angle between cone axes. */
   float cone_cone_dist = fast_acos(saturate(dot(visibility_dir, specular_dir)));
   float cone_nor_dist = fast_acos(saturate(dot(N, specular_dir)));
