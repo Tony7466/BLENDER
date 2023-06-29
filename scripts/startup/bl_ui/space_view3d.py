@@ -1009,7 +1009,7 @@ class VIEW3D_MT_editor_menus(Menu):
             elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
                 layout.menu("VIEW3D_MT_edit_curve_segments")
-            elif mode_string == 'EDIT_POINT_CLOUD':
+            elif mode_string in {'EDIT_CURVES', 'EDIT_POINT_CLOUD'}:
                 layout.template_node_operator_asset_root_items()
 
         elif obj:
@@ -2147,6 +2147,8 @@ class VIEW3D_MT_select_edit_curves(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_edit_curves_select_more_less")
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_select_sculpt_curves(Menu):
