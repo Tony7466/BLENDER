@@ -6,8 +6,12 @@
  * \ingroup cmpnodes
  */
 
+#include <string>
+
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
+
+#include "BLI_string.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -20,10 +24,10 @@
 
 namespace blender::nodes::node_composite_switchview_cc {
 
-static bNodeSocketTemplate cmp_node_switch_view_out[] = {
-    {SOCK_RGBA, N_("Image"), 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {-1, ""},
-};
+static void node_declare(NodeDeclarationBuilder &b)
+{
+  b.add_output<decl::Color>(N_("Image")).default_value({0.0f, 0.0f, 0.0f, 1.0f});
+}
 
 static bNodeSocket *ntreeCompositSwitchViewAddSocket(bNodeTree *ntree,
                                                      bNode *node,
@@ -103,6 +107,23 @@ static void cmp_node_switch_view_update(bNodeTree *ntree, bNode *node)
   cmp_node_switch_view_sanitycheck(ntree, node);
 }
 
+static void node_declare_dynamic(const bNodeTree &ntree,
+                                 const bNode &node,
+                                 NodeDeclaration &r_declaration)
+{
+  Scene *scene = (Scene *)node.id;
+  if (scene == nullptr) {
+    return;
+  }
+
+  NodeDeclarationBuilder builder(r_declaration);
+  builder.add_output<decl::Color>(N_("Image"));
+  /* add the new views */
+  LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
+    builder.add_input<decl::Color>(N_(srv->name)).default_value({0.0f, 0.0f, 0.0f, 1.0f});
+  }
+}
+
 static void init_switch_view(const bContext *C, PointerRNA *ptr)
 {
   Scene *scene = CTX_data_scene(C);
@@ -113,20 +134,20 @@ static void init_switch_view(const bContext *C, PointerRNA *ptr)
   node->id = (ID *)scene;
   id_us_plus(node->id);
 
-  if (scene) {
-    RenderData *rd = &scene->r;
+  // if (scene) {
+  //   RenderData *rd = &scene->r;
 
-    LISTBASE_FOREACH (SceneRenderView *, srv, &rd->views) {
-      bNodeSocket *sock = ntreeCompositSwitchViewAddSocket(ntree, node, srv->name);
+  //   LISTBASE_FOREACH (SceneRenderView *, srv, &rd->views) {
+  //     bNodeSocket *sock = ntreeCompositSwitchViewAddSocket(ntree, node, srv->name);
 
-      if (srv->viewflag & SCE_VIEW_DISABLE) {
-        sock->flag |= SOCK_HIDDEN;
-      }
-    }
-  }
+  //     if (srv->viewflag & SCE_VIEW_DISABLE) {
+  //       sock->flag |= SOCK_HIDDEN;
+  //     }
+  //   }
+  // }
 
-  /* make sure there is always one socket */
-  cmp_node_switch_view_sanitycheck(ntree, node);
+  // /* make sure there is always one socket */
+  // cmp_node_switch_view_sanitycheck(ntree, node);
 }
 
 static void node_composit_buts_switch_view_ex(uiLayout *layout,
@@ -171,10 +192,11 @@ void register_node_type_cmp_switch_view()
   static bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_SWITCH_VIEW, "Switch View", NODE_CLASS_CONVERTER);
-  blender::bke::node_type_socket_templates(&ntype, nullptr, file_ns::cmp_node_switch_view_out);
+  // ntype.declare = file_ns::node_declare;
+  ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.draw_buttons_ex = file_ns::node_composit_buts_switch_view_ex;
   ntype.initfunc_api = file_ns::init_switch_view;
-  ntype.updatefunc = file_ns::cmp_node_switch_view_update;
+  // ntype.updatefunc = file_ns::cmp_node_switch_view_update;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   nodeRegisterType(&ntype);

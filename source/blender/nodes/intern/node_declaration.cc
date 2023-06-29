@@ -175,6 +175,7 @@ bNodeSocket &SocketDeclaration::update_or_build(bNodeTree &ntree,
 
 void SocketDeclaration::set_common_flags(bNodeSocket &socket) const
 {
+  SET_FLAG_FROM_TEST(socket.flag, is_hidden, SOCK_HIDDEN);
   SET_FLAG_FROM_TEST(socket.flag, compact, SOCK_COMPACT);
   SET_FLAG_FROM_TEST(socket.flag, hide_value, SOCK_HIDE_VALUE);
   SET_FLAG_FROM_TEST(socket.flag, hide_label, SOCK_HIDE_LABEL);
