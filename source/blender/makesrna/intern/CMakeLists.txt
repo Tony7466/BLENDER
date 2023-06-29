@@ -65,7 +65,7 @@ set(DEFSRC
   rna_render.cc
   rna_rigidbody.c
   rna_rna.c
-  rna_scene.c
+  rna_scene.cc
   rna_screen.c
   rna_sculpt_paint.c
   rna_sequencer.c
@@ -113,7 +113,7 @@ set(APISRC
   rna_meta_api.c
   rna_object_api.cc
   rna_pose_api.c
-  rna_scene_api.c
+  rna_scene_api.cc
   rna_sequencer_api.c
   rna_sound_api.c
   rna_space_api.cc
@@ -382,6 +382,15 @@ if(WITH_OPENSUBDIV)
     ../../../../intern/opensubdiv
   )
   add_definitions(-DWITH_OPENSUBDIV)
+endif()
+if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
+  list(APPEND INC_SYS
+    ${OPENVDB_INCLUDE_DIRS}
+  )
+  add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
 endif()
 
 if(WITH_OPENVDB)
