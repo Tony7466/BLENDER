@@ -555,7 +555,7 @@ void bNodeTree::ensure_topology_cache() const
   blender::bke::node_tree_runtime::ensure_topology_cache(*this);
 }
 
-const bNestedNodeRef *bNodeTree::find_nested_node_ref(const int nested_node_id) const
+const bNestedNodeRef *bNodeTree::find_nested_node_ref(const int32_t nested_node_id) const
 {
   for (const bNestedNodeRef &ref : this->nested_node_refs_span()) {
     if (ref.id == nested_node_id) {
