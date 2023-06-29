@@ -565,7 +565,7 @@ const bNestedNodeRef *bNodeTree::find_nested_node_ref(const int32_t nested_node_
   return nullptr;
 }
 
-const bNestedNodeRef *bNodeTree::nested_node_ref_by_node_id_path(
+const bNestedNodeRef *bNodeTree::nested_node_ref_from_node_id_path(
     const blender::Span<int32_t> node_ids) const
 {
   if (node_ids.is_empty()) {
@@ -573,7 +573,7 @@ const bNestedNodeRef *bNodeTree::nested_node_ref_by_node_id_path(
   }
   for (const bNestedNodeRef &ref : this->nested_node_refs_span()) {
     blender::Vector<int> current_node_ids;
-    if (this->node_id_path_by_nested_node_ref(ref.id, current_node_ids)) {
+    if (this->node_id_path_from_nested_node_ref(ref.id, current_node_ids)) {
       if (current_node_ids.as_span() == node_ids) {
         return &ref;
       }
@@ -582,8 +582,8 @@ const bNestedNodeRef *bNodeTree::nested_node_ref_by_node_id_path(
   return nullptr;
 }
 
-bool bNodeTree::node_id_path_by_nested_node_ref(const int32_t nested_node_id,
-                                                blender::Vector<int> &r_node_ids) const
+bool bNodeTree::node_id_path_from_nested_node_ref(const int32_t nested_node_id,
+                                                  blender::Vector<int> &r_node_ids) const
 {
   const bNestedNodeRef *ref = this->find_nested_node_ref(nested_node_id);
   if (ref == nullptr) {
@@ -602,5 +602,5 @@ bool bNodeTree::node_id_path_by_nested_node_ref(const int32_t nested_node_id,
   if (group == nullptr) {
     return false;
   }
-  return group->node_id_path_by_nested_node_ref(ref->path.id_in_node, r_node_ids);
+  return group->node_id_path_from_nested_node_ref(ref->path.id_in_node, r_node_ids);
 }

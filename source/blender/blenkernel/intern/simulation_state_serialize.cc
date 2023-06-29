@@ -1021,7 +1021,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
         }
         node_ids.append(io_node_id->value());
       }
-      const bNestedNodeRef *nested_node_ref = ntree.nested_node_ref_by_node_id_path(node_ids);
+      const bNestedNodeRef *nested_node_ref = ntree.nested_node_ref_from_node_id_path(node_ids);
       if (!nested_node_ref) {
         continue;
       }
