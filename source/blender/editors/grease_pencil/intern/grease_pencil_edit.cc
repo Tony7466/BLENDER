@@ -77,8 +77,34 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Paint Mode", 0, 0);
   keymap->poll = grease_pencil_painting_poll;
 }
+static int grease_pencil_stroke_smooth_exec(bContext * /*C*/, wmOperator * /*op*/)
+{
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Smooth Stroke";
+  ot->idname = "GREASE_PENCIL_OT_stroke_smooth";
+  ot->description = "Smooth selected strokes";
+
+  /* callbacks */
+  ot->exec = grease_pencil_stroke_smooth_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* TODO : add operator properties */
+}
 
 }  // namespace blender::ed::greasepencil
+
+void ED_operatortypes_grease_pencil_edit(void)
+{
+  using namespace blender::ed::greasepencil;
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_smooth);
+}
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
 {
