@@ -302,11 +302,13 @@ static bool run_node_group_poll(bContext *C)
   if (!asset) {
     return false;
   }
-  const Object *object = CTX_data_active_object(C);
-  if (object->type != OB_CURVES) {
-    return false;
-  }
-  if (object->mode != OB_MODE_SCULPT_CURVES) {
+  const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(C));
+  if (!ELEM(ctx_mode,
+            CTX_MODE_EDIT_MESH,
+            CTX_MODE_EDIT_CURVES,
+            CTX_MODE_EDIT_POINT_CLOUD,
+            CTX_MODE_SCULPT_CURVES))
+  {
     return false;
   }
   return true;
@@ -337,10 +339,67 @@ static bool asset_menu_poll(const bContext *C, MenuType * /*mt*/)
   return CTX_wm_view3d(C);
 }
 
-static asset::AssetItemTree &get_static_item_tree()
+static std::unique_ptr<AssetTag> create_asset_tag(const StringRefNull name)
 {
-  static asset::AssetItemTree tree;
-  return tree;
+  std::unique_ptr<AssetTag> tag = std::make_unique<AssetTag>();
+  STRNCPY(tag->name, name.c_str());
+  return tag;
+}
+
+static AssetFilterSettings asset_filter_for_context(const eContextObjectMode ctx_mode,
+                                                    Vector<std::unique_ptr<AssetTag>> &tags)
+{
+  AssetFilterSettings filter{};
+  filter.id_types = FILTER_ID_NT;
+  tags.append(create_asset_tag("Operator"));
+  switch (ctx_mode) {
+    case CTX_MODE_EDIT_MESH:
+      tags.append(create_asset_tag("Edit"));
+      tags.append(create_asset_tag("Mesh"));
+      break;
+    case CTX_MODE_EDIT_CURVES:
+      tags.append(create_asset_tag("Edit"));
+      tags.append(create_asset_tag("Curve"));
+      break;
+    case CTX_MODE_EDIT_POINT_CLOUD:
+      tags.append(create_asset_tag("Edit"));
+      tags.append(create_asset_tag("Point Cloud"));
+      break;
+    case CTX_MODE_SCULPT_CURVES:
+      tags.append(create_asset_tag("Sculpt"));
+      tags.append(create_asset_tag("Curve"));
+      break;
+    default:
+      break;
+  }
+  for (const std::unique_ptr<AssetTag> &tag : tags) {
+    BLI_addtail(&filter.tags, tag.get());
+  }
+  return filter;
+}
+
+static asset::AssetItemTree *get_static_item_tree(const bContext &C)
+{
+  switch (eContextObjectMode(CTX_data_mode_enum(&C))) {
+    case CTX_MODE_EDIT_MESH: {
+      static asset::AssetItemTree tree;
+      return &tree;
+    }
+    case CTX_MODE_EDIT_CURVES: {
+      static asset::AssetItemTree tree;
+      return &tree;
+    }
+    case CTX_MODE_EDIT_POINT_CLOUD: {
+      static asset::AssetItemTree tree;
+      return &tree;
+    }
+    case CTX_MODE_SCULPT_CURVES: {
+      static asset::AssetItemTree tree;
+      return &tree;
+    }
+    default:
+      return nullptr;
+  }
 }
 
 static bool all_loading_finished()
@@ -351,11 +410,10 @@ static bool all_loading_finished()
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
-  AssetFilterSettings type_filter{};
-  type_filter.id_types = FILTER_ID_NT;
-  AssetTag operator_tag;
-  STRNCPY(operator_tag.name, "Operator");
-  BLI_addtail(&type_filter.tags, &operator_tag);
+  const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
+
+  Vector<std::unique_ptr<AssetTag>> tags;
+  const AssetFilterSettings filter = asset_filter_for_context(ctx_mode, tags);
   auto meta_data_filter = [&](const AssetMetaData &meta_data) {
     const IDProperty *tree_type = BKE_asset_metadata_idprop_find(&meta_data, "type");
     if (tree_type == nullptr || IDP_Int(tree_type) != NTREE_GEOMETRY) {
@@ -364,7 +422,7 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C)
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
-  return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
+  return asset::build_filtered_all_catalog_tree(library, C, filter, meta_data_filter);
 }
 
 /**
@@ -377,6 +435,7 @@ static Set<std::string> get_builtin_menus(const ObjectType object_type, const eO
   Set<std::string> menus;
   switch (object_type) {
     case OB_CURVES:
+    case OB_POINTCLOUD:
       menus.add_new("View");
       menus.add_new("Select");
       menus.add_new("Curves");
@@ -419,14 +478,17 @@ static Set<std::string> get_builtin_menus(const ObjectType object_type, const eO
 static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
 {
   bScreen &screen = *CTX_wm_screen(C);
-  asset::AssetItemTree &tree = get_static_item_tree();
+  asset::AssetItemTree *tree = get_static_item_tree(*C);
+  if (!tree) {
+    return;
+  }
   const PointerRNA menu_path_ptr = CTX_data_pointer_get(C, "asset_catalog_path");
   if (RNA_pointer_is_null(&menu_path_ptr)) {
     return;
   }
   const auto &menu_path = *static_cast<const asset_system::AssetCatalogPath *>(menu_path_ptr.data);
-  const Span<asset_system::AssetRepresentation *> assets = tree.assets_per_path.lookup(menu_path);
-  asset_system::AssetCatalogTreeItem *catalog_item = tree.catalogs.find_item(menu_path);
+  const Span<asset_system::AssetRepresentation *> assets = tree->assets_per_path.lookup(menu_path);
+  asset_system::AssetCatalogTreeItem *catalog_item = tree->catalogs.find_item(menu_path);
   BLI_assert(catalog_item != nullptr);
 
   if (assets.is_empty() && !catalog_item->has_children()) {
@@ -479,8 +541,11 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
                                                 const StringRef catalog_path)
 {
   bScreen &screen = *CTX_wm_screen(&C);
-  asset::AssetItemTree &tree = get_static_item_tree();
-  const asset_system::AssetCatalogTreeItem *item = tree.catalogs.find_root_item(catalog_path);
+  asset::AssetItemTree *tree = get_static_item_tree(C);
+  if (!tree) {
+    return;
+  }
+  const asset_system::AssetCatalogTreeItem *item = tree->catalogs.find_root_item(catalog_path);
   if (!item) {
     return;
   }
@@ -506,11 +571,14 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   if (!active_object) {
     return;
   }
-  asset::AssetItemTree &tree = get_static_item_tree();
-  tree = build_catalog_tree(C);
+  asset::AssetItemTree *tree = get_static_item_tree(C);
+  if (!tree) {
+    return;
+  }
+  *tree = build_catalog_tree(C);
 
   const bool loading_finished = all_loading_finished();
-  if (tree.catalogs.is_empty() && loading_finished) {
+  if (tree->catalogs.is_empty() && loading_finished) {
     return;
   }
   if (!loading_finished) {
@@ -526,7 +594,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   const Set<std::string> builtin_menus = get_builtin_menus(ObjectType(active_object->type),
                                                            eObjectMode(active_object->mode));
 
-  tree.catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
+  tree->catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
     if (builtin_menus.contains(item.get_name())) {
       return;
     }

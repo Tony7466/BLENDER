@@ -1005,9 +1005,12 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_mesh_edges")
                 layout.menu("VIEW3D_MT_edit_mesh_faces")
                 layout.menu("VIEW3D_MT_uv_map", text="UV")
+                layout.template_node_operator_asset_root_items()
             elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
                 layout.menu("VIEW3D_MT_edit_curve_segments")
+            elif mode_string == 'EDIT_POINT_CLOUD':
+                layout.template_node_operator_asset_root_items()
 
         elif obj:
             if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES'}:
@@ -1233,6 +1236,8 @@ class VIEW3D_MT_uv_map(Menu):
         layout.separator()
 
         layout.operator("uv.reset")
+
+        layout.template_node_operator_asset_menu_items(catalog_path="UV")
 
 
 # ********** View menus **********
@@ -1743,6 +1748,8 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.operator("mesh.select_axis", text="Side of Active")
         layout.operator("mesh.select_mirror")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_select_edit_curve(Menu):
     bl_label = "Select"
@@ -2106,8 +2113,9 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
 class VIEW3D_MT_select_edit_point_cloud(Menu):
     bl_label = "Select"
 
-    def draw(_self, _context):
-        pass
+    def draw(self, _context):
+        layout = self.layout
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_curves_select_more_less(Menu):
@@ -2179,6 +2187,8 @@ class VIEW3D_MT_mesh_add(Menu):
 
         layout.operator("mesh.primitive_grid_add", text="Grid", icon='MESH_GRID')
         layout.operator("mesh.primitive_monkey_add", text="Monkey", icon='MESH_MONKEY')
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Add")
 
 
 class VIEW3D_MT_curve_add(Menu):
@@ -4054,6 +4064,8 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.menu("VIEW3D_MT_edit_mesh_delete")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_edit_mesh_context_menu(Menu):
     bl_label = ""
@@ -4358,6 +4370,8 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
 
         layout.operator("object.vertex_parent_set")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_edit_mesh_edges(Menu):
     bl_label = "Edge"
@@ -4417,6 +4431,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
 
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_mesh_faces_data(Menu):
@@ -4495,6 +4511,8 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_edit_mesh_faces_data")
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_mesh_normals_select_strength(Menu):
@@ -5481,13 +5499,15 @@ class VIEW3D_MT_edit_curves(Menu):
         layout.menu("VIEW3D_MT_transform")
         layout.separator()
         layout.operator("curves.delete")
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_pointcloud(Menu):
     bl_label = "Point Cloud"
 
-    def draw(_self, _context):
-        pass
+    def draw(self, context):
+        layout = self.layout
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_object_mode_pie(Menu):
