@@ -187,13 +187,6 @@ class MeshPass : public PassMain {
                              ::Image *image = nullptr,
                              GPUSamplerState sampler_state = GPUSamplerState::default_sampler(),
                              ImageUser *iuser = nullptr);
-  void draw(ObjectRef &ref,
-            GPUBatch *batch,
-            ResourceHandle handle,
-            uint material_index,
-            ::Image *image = nullptr,
-            GPUSamplerState sampler_state = GPUSamplerState::default_sampler(),
-            ImageUser *iuser = nullptr);
 };
 
 class OpaquePass {

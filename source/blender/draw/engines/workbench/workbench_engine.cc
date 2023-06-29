@@ -135,8 +135,9 @@ class Instance {
       BKE_pbvh_is_drawing_set(ob_ref.object->sculpt->pbvh, object_state.sculpt_pbvh);
     }
 
-    bool render_ob_data = DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF;
-    render_ob_data = render_ob_data && (ob->dt >= OB_SOLID || DRW_state_is_scene_render());
+    bool is_object_data_visible = (DRW_object_visibility_in_active_context(ob) &
+                                   OB_VISIBLE_SELF) &&
+                                  (ob->dt >= OB_SOLID || DRW_state_is_scene_render());
 
     if (!(ob->base_flag & BASE_FROM_DUPLI)) {
       ModifierData *md = BKE_modifiers_findby_type(ob, eModifierType_Fluid);
@@ -147,7 +148,7 @@ class Instance {
 
           if (fmd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
             /* Do not draw solid in this case. */
-            render_ob_data = false;
+            is_object_data_visible = false;
           }
         }
       }
@@ -155,7 +156,7 @@ class Instance {
 
     ResourceHandle emitter_handle(0);
 
-    if (render_ob_data) {
+    if (is_object_data_visible) {
       if (object_state.sculpt_pbvh) {
         /* Disable frustum culling for sculpt meshes. */
         ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
@@ -240,7 +241,8 @@ class Instance {
     int material_index = resources.material_buf.size() - 1;
 
     get_mesh_pass(ob_ref, material.is_transparent())
-        .draw(ob_ref, batch, handle, material_index, image, sampler_state, iuser);
+        .get_subpass(eGeometryType::MESH, image, sampler_state, iuser)
+        .draw(batch, handle, material_index);
   }
 
   void mesh_sync(ObjectRef &ob_ref, ResourceHandle handle, const ObjectState &object_state)

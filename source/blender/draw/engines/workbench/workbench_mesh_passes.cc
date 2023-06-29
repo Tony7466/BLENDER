@@ -103,18 +103,6 @@ PassMain::Sub &MeshPass::get_subpass(
   return *passes_[int(geometry_type)][int(eShaderType::MATERIAL)];
 }
 
-void MeshPass::draw(ObjectRef &ref,
-                    GPUBatch *batch,
-                    ResourceHandle handle,
-                    uint material_index,
-                    ::Image *image /* = nullptr */,
-                    GPUSamplerState sampler_state /* = GPUSamplerState::default_sampler() */,
-                    ImageUser *iuser /* = nullptr */)
-{
-  get_subpass(geometry_type_from_object(ref.object), image, sampler_state, iuser)
-      .draw(batch, handle, material_index);
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
