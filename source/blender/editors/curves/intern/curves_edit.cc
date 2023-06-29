@@ -44,8 +44,8 @@ Span<T> gaussian_blur(const bool is_cyclic,
 
     mask.foreach_index(256, [&](const int64_t point_index) {
       /* Compute the neighboring points */
-      int before = point_index - step;
-      int after = point_index + step;
+      int64_t before = point_index - step;
+      int64_t after = point_index + step;
       if (is_cyclic) {
         before = (nb_pts + ((before - curve_points.first()) % nb_pts)) % nb_pts;
         after = after % nb_pts;
