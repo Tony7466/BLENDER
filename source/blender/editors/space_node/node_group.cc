@@ -874,6 +874,54 @@ static bNodeSocket *add_interface_from_socket(const bNodeTree &original_tree,
                                                         socket_for_name.name);
 }
 
+static void update_nested_node_refs_after_moving_nodes_into_group(
+    bNodeTree &ntree,
+    bNodeTree &group,
+    bNode &gnode,
+    const Map<int32_t, int32_t> &node_identifier_map)
+{
+  /* Update nested node references in the parent and child node tree. */
+  RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+  Vector<bNestedNodeRef> new_nested_node_refs;
+  /* Keep all nested node references that were in the group before. */
+  for (const bNestedNodeRef &state_id : group.nested_node_refs_span()) {
+    new_nested_node_refs.append(state_id);
+  }
+  Set<int32_t> used_nested_node_ref_ids;
+  for (const bNestedNodeRef &ref : group.nested_node_refs_span()) {
+    used_nested_node_ref_ids.add(ref.id);
+  }
+  Map<bNestedNodePath, int32_t> new_id_by_old_path;
+  for (bNestedNodeRef &state_id : ntree.nested_node_refs_span()) {
+    const int32_t new_node_id = node_identifier_map.lookup_default(state_id.path.node_id, -1);
+    if (new_node_id == -1) {
+      /* The node was not moved between node groups. */
+      continue;
+    }
+    bNestedNodeRef new_state_id = state_id;
+    new_state_id.path.node_id = new_node_id;
+    /* Find new unique identifier for the nested node ref. */
+    while (true) {
+      const int32_t new_id = rng.get_int32(INT32_MAX);
+      if (used_nested_node_ref_ids.add(new_id)) {
+        new_state_id.id = new_id;
+        break;
+      }
+    }
+    new_id_by_old_path.add_new(state_id.path, new_state_id.id);
+    new_nested_node_refs.append(new_state_id);
+    /* Updated the nested node ref in the parent so that it points to the same node that is now
+     * inside of a nested group. */
+    state_id.path.node_id = gnode.identifier;
+    state_id.path.id_in_node = new_state_id.id;
+  }
+  MEM_SAFE_FREE(group.nested_node_refs);
+  group.nested_node_refs = static_cast<bNestedNodeRef *>(
+      MEM_malloc_arrayN(new_nested_node_refs.size(), sizeof(bNestedNodeRef), __func__));
+  uninitialized_copy_n(
+      new_nested_node_refs.data(), new_nested_node_refs.size(), group.nested_node_refs);
+}
+
 static void node_group_make_insert_selected(const bContext &C,
                                             bNodeTree &ntree,
                                             bNode *gnode,
@@ -1125,49 +1173,7 @@ static void node_group_make_insert_selected(const bContext &C,
     info.link->fromsock = node_group_find_output_socket(gnode, info.interface_socket->identifier);
   }
 
-  /* Update nested node references in the parent and child node tree. */
-  RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
-  Vector<bNestedNodeRef> new_nested_node_refs;
-  /* Keep all nested node references that were in the group before. */
-  for (const bNestedNodeRef &state_id : group.nested_node_refs_span()) {
-    new_nested_node_refs.append(state_id);
-  }
-  Map<bNestedNodePath, int> new_id_by_old_path;
-  for (bNestedNodeRef &state_id : ntree.nested_node_refs_span()) {
-    const int32_t new_node_id = node_identifier_map.lookup_default(state_id.path.node_id, -1);
-    if (new_node_id == -1) {
-      /* The node was not moved between node groups. */
-      continue;
-    }
-    bNestedNodeRef new_state_id = state_id;
-    new_state_id.path.node_id = new_node_id;
-    /* Find new unique identifier for the nested node ref. */
-    while (true) {
-      const int new_id = rng.get_int32(INT32_MAX);
-      bool id_exists = false;
-      for (const bNestedNodeRef &other : group.nested_node_refs_span()) {
-        if (other.id == new_id) {
-          id_exists = true;
-          break;
-        }
-      }
-      if (!id_exists) {
-        new_state_id.id = new_id;
-        break;
-      }
-    }
-    new_id_by_old_path.add_new(state_id.path, new_state_id.id);
-    new_nested_node_refs.append(new_state_id);
-    /* Updated the nested node ref in the parent so that it points to the same node that is now
-     * inside of a nested group. */
-    state_id.path.node_id = gnode->identifier;
-    state_id.path.id_in_node = new_state_id.id;
-  }
-  MEM_SAFE_FREE(group.nested_node_refs);
-  group.nested_node_refs = static_cast<bNestedNodeRef *>(
-      MEM_malloc_arrayN(new_nested_node_refs.size(), sizeof(bNestedNodeRef), __func__));
-  uninitialized_copy_n(
-      new_nested_node_refs.data(), new_nested_node_refs.size(), group.nested_node_refs);
+  update_nested_node_refs_after_moving_nodes_into_group(ntree, group, *gnode, node_identifier_map);
 
   ED_node_tree_propagate_change(&C, bmain, nullptr);
 }
