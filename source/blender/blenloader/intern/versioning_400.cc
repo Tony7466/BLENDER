@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_curve_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
@@ -21,6 +22,7 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
+#include "BKE_curve.h"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
@@ -253,6 +255,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 7)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_crease_generic(*bmain);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
+    LISTBASE_FOREACH (Curve *, curve, &bmain->curves) {
+      const int curvetype = BKE_curve_type_get(curve);
+      if (curvetype == OB_FONT) {
+        CharInfo *info = curve->strinfo;
+        for (int i = curve->len_char32 - 1; i >= 0; i--, info++) {
+          if (info->mat_nr == 0) {
+            /** CharInfo mat_nr starts at 1, unlike mesh & nurbs. */
+            info->mat_nr = 1;
+          }
+        }
+      }
     }
   }
 

@@ -400,6 +400,11 @@ void BKE_curve_init(Curve *cu, const short curve_type)
     BLI_strncpy(cu->str, "Text", 12);
     cu->len = cu->len_char32 = cu->pos = 4;
     cu->strinfo = (CharInfo *)MEM_calloc_arrayN(12, sizeof(CharInfo), "strinfo new");
+    /* Initialize CharInfo mat_nr to 1, since index starts at 1, unlike mesh or nurbs. */
+    CharInfo *info = cu->strinfo;
+    for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
+      info->mat_nr = 1;
+    }
     cu->totbox = cu->actbox = 1;
     cu->tb = (TextBox *)MEM_calloc_arrayN(MAXTEXTBOX, sizeof(TextBox), "textbox");
     cu->tb[0].w = cu->tb[0].h = 0.0;
@@ -5319,7 +5324,8 @@ void BKE_curve_material_index_remove(Curve *cu, int index)
   if (curvetype == OB_FONT) {
     CharInfo *info = cu->strinfo;
     for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
-      if (info->mat_nr && info->mat_nr >= index) {
+      /* CharInfo mat_nr starts at 1, unlike mesh & nurbs. */
+      if (info->mat_nr && info->mat_nr > index) {
         info->mat_nr--;
       }
     }
@@ -5339,8 +5345,9 @@ bool BKE_curve_material_index_used(const Curve *cu, int index)
 
   if (curvetype == OB_FONT) {
     const CharInfo *info = cu->strinfo;
+    /* CharInfo mat_nr starts at 1, unlike mesh & nurbs. */
     for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
-      if (info->mat_nr == index) {
+      if (info->mat_nr == index + 1) {
         return true;
       }
     }
@@ -5363,7 +5370,8 @@ void BKE_curve_material_index_clear(Curve *cu)
   if (curvetype == OB_FONT) {
     CharInfo *info = cu->strinfo;
     for (int i = cu->len_char32 - 1; i >= 0; i--, info++) {
-      info->mat_nr = 0;
+      /* CharInfo mat_nr starts at 1, unlike mesh & nurbs. */
+      info->mat_nr = 1;
     }
   }
   else {
@@ -5384,7 +5392,8 @@ bool BKE_curve_material_index_validate(Curve *cu)
     int i;
     for (i = cu->len_char32 - 1; i >= 0; i--, info++) {
       if (info->mat_nr > max_idx) {
-        info->mat_nr = 0;
+        /* CharInfo mat_nr starts at 1, unlike mesh & nurbs. */
+        info->mat_nr = 1;
         is_valid = false;
       }
     }

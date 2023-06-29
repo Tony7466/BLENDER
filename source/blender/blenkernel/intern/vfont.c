@@ -1610,8 +1610,9 @@ static bool vfont_to_curve(Object *ob,
        * time that code is called without an object. */
       if (ob != NULL && (info->mat_nr > (ob->totcol))) {
         // CLOG_ERROR(
-        //     &LOG, "Illegal material index (%d) in text object, setting to 0", info->mat_nr);
-        info->mat_nr = 0;
+        //     &LOG, "Illegal material index (%d) in text object, setting to 1", info->mat_nr);
+        /* CharInfo mat_nr starts at 1, unlike mesh & nurbs. */
+        info->mat_nr = 1;
       }
       /* We don't want to see any character for '\n'. */
       if (cha != '\n') {
