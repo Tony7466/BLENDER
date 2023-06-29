@@ -128,6 +128,7 @@ static void rna_def_usd_hook(BlenderRNA *brna)
   PropertyRNA *parm;
 
   srna = RNA_def_struct(brna, "USDHook", NULL);
+  RNA_def_struct_ui_text(srna, "USD Hook", "Defines callback functions to extend USD IO");
   RNA_def_struct_sdna(srna, "USDHook");
   RNA_def_struct_refine_func(srna, "rna_USDHook_refine");
   RNA_def_struct_register_funcs(srna, "rna_USDHook_register", "rna_USDHook_unregister", NULL);
@@ -151,7 +152,7 @@ static void rna_def_usd_hook(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "description");
   RNA_def_property_string_maxlength(prop, RNA_DYN_DESCR_MAX); /* else it uses the pointer size! */
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  RNA_def_property_ui_text(prop, "Description", "A short description of the keying set");
+  RNA_def_property_ui_text(prop, "Description", "A short description of the USD hook");
 }
 
 /* --- */
