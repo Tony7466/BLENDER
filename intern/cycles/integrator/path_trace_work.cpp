@@ -104,7 +104,7 @@ void PathTraceWork::set_effective_full_buffer_params(const BufferParams &effecti
   effective_big_tile_params_ = effective_big_tile_params;
 }
 
-void PathTraceWork::set_current_work_set(int i) 
+void PathTraceWork::    set_current_work_set(int i) 
 {
   
   buffers_ = work_set_.render_buffers_set_[i];
@@ -163,12 +163,13 @@ void PathTraceWork::render_samples(RenderStatistics &statistics,
 void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
 {
   SCOPED_MARKER(device_, "copy_to_display");
-  for (int i = 0; i < work_set_.size(); i++) {
-    SCOPED_MARKER(device_, "copy_to_display_work_set");
-  set_current_work_set(i);
+  set_slices_effective_params();
+  //for (int i = 0; i < work_set_.size(); i++) {
+  //  SCOPED_MARKER(device_, "copy_to_display_work_set");
+  //set_current_work_set(i);
   if(effective_buffer_params_.height > 0)
     copy_to_display_impl(display, pass_mode, num_samples);
-  }
+  //}
 }
 
 bool PathTraceWork::copy_render_buffers_from_device()

@@ -359,25 +359,41 @@ void PathTrace::update_allocated_work_buffer_params()
   size_t sizes[num_works];
   size_t strides[num_works];
   size_t widths[num_works];
+  size_t heights[num_works];
+  size_t slice_stride = 0;
     for(int i = 0;i < num_works;i++) {
         sizes[i] = 0;
         strides[i] = 0;
         widths[i] = 0;
+        heights[i] = 0;
     }
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
                                overscan, device_scale_factor,
-                               [&sizes, &strides, &widths](PathTraceWork *path_trace_work, const BufferParams &params, int work, int slice, size_t offset) {
+                               [&sizes, &strides, &widths, &heights, &slice_stride](PathTraceWork *path_trace_work, const BufferParams &params, int work, int slice, size_t offset) {
                                  sizes[work] += params.height;
 				 strides[work] = params.pass_stride;
 				 widths[work] = params.width;
+      slice_stride = params.slice_stride;
+      if(slice == 0) {
+          heights[work] = params.height;
+      }
 				 VLOG_INFO << "Update work:" << work << " slice:" << slice << " s:" << sizes[work] << " w:" << widths[work]*strides[work];
                                });
   /* Allocate the master buffer which the slices reference */
+    size_t current_y = 0;
   for(int i = 0;i < num_works;i++) {
     VLOG_INFO << " reset master buffer work:" << i << " w:" << widths[i]*strides[i] << " s:" << sizes[i];
-    path_trace_works_[i]->reset_master_buffer(widths[i]*strides[i], sizes[i]);
+      BufferParams params = big_tile_params_;
+      params.slice_height = heights[i];
+      params.slice_stride = slice_stride;
+      params.slice_start_y = current_y;
+      params.window_height = sizes[i];
+      params.height = sizes[i];
+      params.update_offset_stride();
+      path_trace_works_[i]->reset_master_buffer(params);//widths[i]*strides[i], sizes[i]);
+      current_y += sizes[i];
   }
   
   /* Assign each slice */
@@ -386,6 +402,9 @@ void PathTrace::update_allocated_work_buffer_params()
                                big_tile_params_,
                                overscan, device_scale_factor,
                                [](PathTraceWork *path_trace_work, const BufferParams &params, int work, int slice, size_t offset) {
+                                if(slice == 0) {
+                                    //path_trace_work->master_buffers_->params = params;
+                                }
                                  path_trace_work->set_render_buffers_in_work_set(params, slice, offset);
                                });
 }
@@ -667,10 +686,10 @@ void PathTrace::denoise(const RenderWork &render_work)
     big_tile_denoise_work_->set_effective_full_buffer_params(render_state_.effective_big_tile_params,
                                                              render_state_.effective_big_tile_params);
     // Allocate the master buffer
-    size_t width = render_state_.effective_big_tile_params.width;
-    size_t stride =render_state_.effective_big_tile_params.pass_stride;
-    size_t height = render_state_.effective_big_tile_params.height;
-    big_tile_denoise_work_->reset_master_buffer(width*stride, height);
+    //size_t width = render_state_.effective_big_tile_params.width;
+    //size_t stride =render_state_.effective_big_tile_params.pass_stride;
+    //size_t height = render_state_.effective_big_tile_params.height;
+      big_tile_denoise_work_->reset_master_buffer(render_state_.effective_big_tile_params);//width*stride, height);
     for (int i = 0; i < denoise_device_scale_factor; i++) {
       big_tile_denoise_work_->set_effective_buffer_params_in_work_set(render_state_.effective_big_tile_params, i, 0);      
       big_tile_denoise_work_->set_render_buffers_in_work_set(render_state_.effective_big_tile_params, i, 0);
