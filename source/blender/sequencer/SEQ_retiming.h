@@ -58,6 +58,10 @@ void SEQ_retiming_sound_animation_data_set(const struct Scene *scene, const stru
 float SEQ_retiming_handle_timeline_frame_get(const struct Scene *scene,
                                              const struct Sequence *seq,
                                              const struct SeqRetimingHandle *handle);
+void SEQ_retiming_handle_timeline_frame_set(const struct Scene *scene,
+                                            const struct Sequence *seq,
+                                            struct SeqRetimingHandle *handle,
+                                            const int timeline_frame);
 const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const struct Sequence *seq,
                                                                 const int frame_index);
 bool SEQ_retiming_handle_is_transition_type(const struct SeqRetimingHandle *handle);

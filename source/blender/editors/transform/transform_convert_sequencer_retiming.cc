@@ -52,10 +52,9 @@ static TransData *SeqToTransData(const Scene *scene,
   td2d->loc2d = NULL;
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
-
-  td->center[0] = td2d->loc[0];
-  td->center[1] = td2d->loc[1];
-
+  copy_v3_v3(td->center, td->loc);
+  memset(td->axismtx, 0, sizeof(td->axismtx));
+  td->axismtx[2][2] = 1.0f;
   unit_m3(td->mtx);
   unit_m3(td->smtx);
 
@@ -124,7 +123,7 @@ static void recalcData_sequencer_retiming(TransInfo *t)
     /* Apply translation. */
     blender::MutableSpan handles = SEQ_retiming_handles_get(seq);
     SeqRetimingHandle *handle = &handles[tdseq->handle_index];
-    handle->strip_frame_index = tdseq->orig_timeline_frame + translation;
+    SEQ_retiming_handle_timeline_frame_set(t->scene, seq, handle, td2d->loc[0]);
 
     SEQ_relations_invalidate_cache_preprocessed(t->scene, seq);
   }

@@ -815,6 +815,15 @@ float SEQ_retiming_handle_timeline_frame_get(const Scene *scene,
          handle->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq);
 }
 
+void SEQ_retiming_handle_timeline_frame_set(const Scene *scene,
+                                            const Sequence *seq,
+                                            SeqRetimingHandle *handle,
+                                            const int timeline_frame)
+{
+  handle->strip_frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
+                              seq_time_media_playback_rate_factor_get(scene, seq);
+}
+
 bool SEQ_retiming_selection_clear(Editing *ed)
 {
   bool was_empty = BLI_listbase_is_empty(&ed->retiming_selection);
