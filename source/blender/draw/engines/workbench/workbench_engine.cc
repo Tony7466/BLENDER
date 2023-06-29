@@ -385,7 +385,7 @@ class Instance {
 
     PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
                               .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
-                              .sub(ob_ref.object->id.name);
+                              .sub("Hair SubPass");
 
     pass.push_constant("emitter_object_id", int(emitter_handle.raw));
     GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
@@ -403,7 +403,7 @@ class Instance {
 
     PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
                               .get_subpass(eGeometryType::CURVES)
-                              .sub(ob_ref.object->id.name);
+                              .sub("Curves SubPass");
 
     GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object);
     pass.draw(batch, handle, material_index);
