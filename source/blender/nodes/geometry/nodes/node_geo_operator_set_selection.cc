@@ -9,7 +9,7 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_operator_selection_set_cc {
+namespace blender::nodes::node_geo_operator_set_selection_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -77,14 +77,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry));
 }
 
-}  // namespace blender::nodes::node_geo_operator_selection_set_cc
+}  // namespace blender::nodes::node_geo_operator_set_selection_cc
 
-void register_node_type_geo_operator_selection_set()
+void register_node_type_geo_operator_set_selection()
 {
-  namespace file_ns = blender::nodes::node_geo_operator_selection_set_cc;
+  namespace file_ns = blender::nodes::node_geo_operator_set_selection_cc;
   static bNodeType ntype;
   geo_node_type_base(
-      &ntype, GEO_NODE_OPERATOR_SELECTION_SET, "Set Selection", NODE_CLASS_GEOMETRY);
+      &ntype, GEO_NODE_OPERATOR_SET_SELECTION, "Set Selection", NODE_CLASS_GEOMETRY);
   ntype.declare = file_ns::node_declare;
   ntype.initfunc = file_ns::node_init;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
