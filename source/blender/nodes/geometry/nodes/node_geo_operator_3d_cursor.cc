@@ -16,6 +16,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Rotation>("Rotation");
 }
 
+static void node_update(bNodeTree *tree, bNode *node)
+{
+  bNodeSocket *rotation_socket = static_cast<bNodeSocket *>(node->outputs.last);
+  bke::nodeSetSocketAvailability(tree, rotation_socket, U.experimental.use_rotation_socket);
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   if (!check_operator_context_and_error(params)) {
@@ -38,6 +44,7 @@ void register_node_type_geo_operator_3d_cursor()
   geo_node_type_base(&ntype, GEO_NODE_OPERATOR_3D_CURSOR, "3D Cursor", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.updatefunc = file_ns::node_update;
   ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_operator_node;
   ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_operator_node;
   nodeRegisterType(&ntype);
