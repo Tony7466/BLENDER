@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 
 #include "UI_interface.h"
