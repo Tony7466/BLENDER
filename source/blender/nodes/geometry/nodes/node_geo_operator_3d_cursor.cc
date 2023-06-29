@@ -4,6 +4,8 @@
 
 #include "DNA_view3d_types.h"
 
+#include "BLI_math_matrix.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_operator_3d_cursor_cc {
@@ -21,8 +23,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
+  const float4x4 world_to_object(params.user_data()->operator_data->self_object->world_to_object);
   const View3DCursor &cursor = params.user_data()->operator_data->scene->cursor;
-  params.set_output("Location", float3(cursor.location));
+  params.set_output("Location", math::transform_point(world_to_object, float3(cursor.location)));
   params.set_output("Rotation", math::Quaternion(float4(cursor.rotation_quaternion)));
 }
 
