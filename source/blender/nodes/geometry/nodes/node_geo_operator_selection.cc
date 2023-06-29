@@ -28,6 +28,7 @@ class OperatorSelectionFieldInput final : public bke::GeometryFieldInput {
     const AttributeAccessor attributes = *context.attributes();
     switch (context.type()) {
       case GeometryComponent::Type::Curve:
+      case GeometryComponent::Type::PointCloud:
         return *attributes.lookup_or_default<bool>(".selection", domain, true);
       case GeometryComponent::Type::Mesh:
         switch (domain) {
@@ -42,8 +43,6 @@ class OperatorSelectionFieldInput final : public bke::GeometryFieldInput {
             BLI_assert_unreachable();
             return {};
         }
-      case GeometryComponent::Type::PointCloud:
-        return *attributes.lookup_or_default<bool>(".selection", domain, false);
       default:
         return {};
     }
