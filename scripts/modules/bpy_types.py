@@ -534,7 +534,7 @@ def ord_ind(i1, i2):
 class Mesh(bpy_types.ID):
     __slots__ = ()
 
-    def from_pydata(self, vertices, edges, faces):
+    def from_pydata(self, vertices, edges, faces, shade_flat=True):
         """
         Make a mesh from a list of vertices/edges/faces
         Until we have a nicer way to make geometry, use this.
@@ -591,6 +591,9 @@ class Mesh(bpy_types.ID):
         self.polygons.foreach_set("loop_start", loop_starts)
         self.polygons.foreach_set("vertices", vertex_indices)
 
+        if shade_flat:
+            self.shade_flat()
+
         if edges_len or faces_len:
             self.update(
                 # Needed to either:
@@ -604,6 +607,35 @@ class Mesh(bpy_types.ID):
     @property
     def edge_keys(self):
         return [ed.key for ed in self.edges]
+
+    def shade_flat(self):
+        """
+        Render and display faces uniform, using face normals,
+        setting the "sharp_face" attribute true for every face
+        """
+        attr = self.attributes.get("sharp_face")
+        if attr is None:
+            pass
+        elif attr.data_type == 'BOOLEAN' and attr.domain == 'FACE':
+            pass
+        else:
+            self.attributes.remove(attr)
+            attr = None
+
+        if attr is None:
+            attr = self.attributes.new("sharp_face", 'BOOLEAN', 'FACE')
+
+        for value in attr.data:
+            value.value = True
+
+    def shade_smooth(self):
+        """
+        Render and display faces smooth, using interpolated vertex normals,
+        removing the "sharp_face" attribute
+        """
+        attr = self.attributes.get("sharp_face")
+        if attr is not None:
+            self.attributes.remove(attr)
 
 
 class MeshEdge(StructRNA):
