@@ -519,6 +519,22 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
   Sequence *seq = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
 
+  const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
+  const bool toggle = RNA_boolean_get(op->ptr, "toggle");
+
+  /* Clicking on already selected element falls on modal operation.
+   * All strips are deselected on mouse button release unless extend mode is used. */
+  if (handle && SEQ_retiming_selection_contains(ed, seq, handle) && wait_to_deselect_others &&
+      !toggle)
+  {
+    return OPERATOR_RUNNING_MODAL;
+  }
+  /* If click happened on strip, with no handle, prevent immediately switching to previous tool.
+   * That should happen on mouse release. */
+  if (seq != nullptr && handle == nullptr && wait_to_deselect_others && !toggle) {
+    return OPERATOR_RUNNING_MODAL;
+  }
+
   if (seq != nullptr && handle == nullptr) {
     WM_toolsystem_ref_set_by_id(C, "builtin.select");  // prev tool
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
@@ -534,7 +550,7 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
     return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   }
 
-  if (RNA_boolean_get(op->ptr, "toggle") && SEQ_retiming_selection_contains(ed, seq, handle)) {
+  if (toggle && SEQ_retiming_selection_contains(ed, seq, handle)) {
     SEQ_retiming_selection_remove(ed, seq, handle);
   }
   else {
@@ -648,30 +664,16 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 
 static int sequencer_retiming_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  /*
-  Scene *scene = CTX_data_scene(C);
-  View2D *v2d = UI_view2d_fromcontext(C);
-  ARegion *region = CTX_wm_region(C);
-
-  const bool tweak = RNA_boolean_get(op->ptr, "tweak");
-  if (tweak) {
-    int hand_dummy;
-    int mval[2];
-    WM_event_drag_start_mval(event, region, mval);
-    Sequence *seq = find_nearest_seq(scene, v2d, &hand_dummy, mval);
-    if (seq != nullptr) {
-      return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-    }
+  if (RNA_boolean_get(op->ptr, "tweak") && mousover_handle_get(C, event->mval, nullptr) != nullptr)
+  {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
-  */
 
   return WM_gesture_box_invoke(C, op, event);
 }
 
 void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* Identifiers. */
   ot->name = "Box Select";
   ot->idname = "SEQUENCER_OT_retiming_select_box";
@@ -691,6 +693,8 @@ void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
   /* Properties. */
   WM_operator_properties_gesture_box(ot);
   WM_operator_properties_select_operation_simple(ot);
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
 }
 
 /** \} */

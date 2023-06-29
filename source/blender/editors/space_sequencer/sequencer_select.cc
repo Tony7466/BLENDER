@@ -996,6 +996,7 @@ static int sequencer_select_invoke(bContext *C, wmOperator *op, const wmEvent *e
   if (sequencer_retiming_tool_is_active(C)) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
+
   const int retval = WM_generic_select_invoke(C, op, event);
   ARegion *region = CTX_wm_region(C);
   if (region && (region->regiontype == RGN_TYPE_PREVIEW)) {

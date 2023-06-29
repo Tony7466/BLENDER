@@ -8158,17 +8158,9 @@ def km_sequencer_editor_tool_retime(_params):
         "Sequencer Tool: Retime",
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            *_template_sequencer_retime_select(
-            type=_params.select_mouse,
-            value=_params.select_mouse_value_fallback,
-            legacy=_params.legacy,
-            ),
             ("sequencer.retiming_handle_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
             ("sequencer.retiming_handle_remove", {"type": 'DEL', "value": 'PRESS'},None),
             ("sequencer.retiming_handle_remove", {"type": 'X', "value": 'PRESS'},None),
-            ("transform.translate", {"type": 'G', "value": 'PRESS'},
-             {"properties": [("view2d_edge_pan", True)]}),
-            #("sequencer.retiming_handle_move", {"type": 'G', "value": 'PRESS'},None),
             ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},
              {"properties": [("tweak", True), ("mode", 'SET')]}),
             ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "shift": True},
@@ -8176,8 +8168,15 @@ def km_sequencer_editor_tool_retime(_params):
             ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "ctrl": True},
              {"properties": [("tweak", True), ("mode", 'SUB')]}),
             ("sequencer.retiming_select_box", {"type": 'B', "value": 'PRESS'}, None),
-            ("sequencer.retiming_select_box", {"type": 'B', "value": 'PRESS', "ctrl": True},
-             {"properties": [("include_handles", True)]}),
+            *_template_sequencer_retime_select(
+            type=_params.select_mouse,
+            value="PRESS",
+            legacy=_params.legacy,
+            ),
+            ("transform.translate", {"type": 'G', "value": 'PRESS'},
+             {"properties": [("view2d_edge_pan", True)]}),
+            ("transform.translate", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},
+             {"properties": [("view2d_edge_pan", True)]}),
         ]},
     )
 
