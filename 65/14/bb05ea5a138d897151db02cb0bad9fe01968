@@ -11,3 +11,4 @@ Referenced by commit f9f29eefc774a06459be27f2b4eb6195e6116bba, Fix #105150: Mesh
 Referenced by issue #105152, Regression: Python: removing a color attribute may leave a mesh without an active color attribute
 Referenced by commit b8359ede7dfe038d0c246bc080cf57e2f7de4f26, Fix #105168: Entering vertexpaint creates a non-default color attribute
 Referenced by issue #107067, Active Color Attribute switches after save and reverting file
+Referenced by issue #109443, Cannot set the Color attribute to display an object through Geometry Nodes
