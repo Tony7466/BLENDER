@@ -124,6 +124,7 @@ class Credits:
     # Expected to cover the following formats (the e-mail address is not captured if present):
     #    `Co-authored-by: Blender Foundation`
     #    `Co-authored-by: Blender Foundation <foundation@blender.org>`
+    #    `Co-authored-by: Blender Foundation <Suzanne>`
     GIT_COMMIT_COAUTHORS_RE = re.compile(r"^Co-authored-by:[ \t]*(?P<author>[ \w\t]*\w)(?:$|[ \t]*<)", re.MULTILINE)
 
     def __init__(self):
@@ -131,7 +132,6 @@ class Credits:
 
     @classmethod
     def commit_authors_get(cls, c):
-        print(c.sha1)
         authors = commit_authors_overwrite.get(c.sha1, None)
         if authors is not None:
             # Ignore git commit info for these having an entry in commit_authors_overwrite.
