@@ -323,7 +323,7 @@ PassType *volume_object_grids_init(PassType &ps,
     return nullptr;
   }
 
-  PassType *sub = &ps.sub(ob->id.name);
+  PassType *sub = &ps.sub("Volume Object SubPass");
 
   /* Bind volume grid textures. */
   int grid_id = 0;
@@ -388,7 +388,7 @@ PassType *drw_volume_object_mesh_init(PassType &ps,
       DRW_smoke_ensure(fmd, fds->flags & FLUID_DOMAIN_USE_NOISE);
     }
 
-    sub = &ps.sub(ob->id.name);
+    sub = &ps.sub("Volume Modifier SubPass");
 
     int grid_id = 0;
     for (const GPUMaterialAttribute *attr : attrs) {
@@ -419,7 +419,7 @@ PassType *drw_volume_object_mesh_init(PassType &ps,
     volume_infos.temperature_bias = fds->flame_ignition;
   }
   else {
-    sub = &ps.sub(ob->id.name);
+    sub = &ps.sub("Volume Mesh SubPass");
     int grid_id = 0;
     for (const GPUMaterialAttribute *attr : attrs) {
       sub->bind_texture(attr->input_name, grid_default_texture(attr->default_value));
