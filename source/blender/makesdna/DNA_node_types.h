@@ -656,7 +656,7 @@ typedef struct bNodeTree {
   bNodeInstanceKey active_viewer_key;
 
   /**
-   * Used to maintain stable IDs for a subset of nested nodes. Specifically, every simulation zone
+   * Used to maintain stable IDs for a subset of nested nodes. For example, every simulation zone
    * that is in the node tree has a unique entry here.
    */
   int nested_node_refs_num;
