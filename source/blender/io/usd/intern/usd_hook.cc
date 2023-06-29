@@ -4,25 +4,25 @@
 
 #include "usd_hook.h"
 
-#include <boost/python/import.hpp>
-#include <boost/python/object.hpp>
 #include <boost/python/call_method.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/import.hpp>
+#include <boost/python/object.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/to_python_converter.hpp>
 
 #include "BLI_listbase.h"
 
-#include "bpy_rna.h"
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
+#include "bpy_rna.h"
 
 #include <list>
 
 using namespace boost;
 
-using USDHookList = std::list<USDHook*>;
+using USDHookList = std::list<USDHook *>;
 
 /* USD hook type declarations */
 static USDHookList g_usd_hooks;
@@ -37,7 +37,6 @@ void USD_register_hook(struct USDHook *hook)
   /* Add hook type to the list. */
   g_usd_hooks.push_back(hook);
 }
-
 
 void USD_unregister_hook(struct USDHook *hook)
 {
@@ -70,15 +69,12 @@ struct PointerRNAToPython {
   {
     return pyrna_struct_CreatePyObject(&ptr);
   }
-
 };
 
 /* Encapsulate arguments for scene export. */
 struct USDSceneExportContext {
 
-  USDSceneExportContext() : depsgraph_ptr({})
-  {
-  }
+  USDSceneExportContext() : depsgraph_ptr({}) {}
 
   USDSceneExportContext(pxr::UsdStageRefPtr in_stage, Depsgraph *depsgraph) : stage(in_stage)
   {
@@ -161,8 +157,7 @@ void register_export_hook_converters()
       .def("get_stage", &USDSceneExportContext::get_stage)
       .def("get_depsgraph",
            &USDSceneExportContext::get_depsgraph,
-           python::return_value_policy<python::return_by_value>())
-    ;
+           python::return_value_policy<python::return_by_value>());
 
   python::class_<USDMaterialExportContext>("USDMaterialExportContext")
       .def("get_stage", &USDMaterialExportContext::get_stage)
@@ -172,15 +167,14 @@ void register_export_hook_converters()
       .def("get_usd_material",
            &USDMaterialExportContext::get_usd_material,
            python::return_value_policy<python::return_by_value>());
-    ;
+  ;
 
   PyGILState_Release(gilstate);
 }
 
 /* Invoke the member function with the given name of all registered hook instances.
  * The given context will be provided as the function argument. */
-template<class T>
-void call_hooks(const char *func_name, T &hook_context)
+template<class T> void call_hooks(const char *func_name, T &hook_context)
 {
   if (g_usd_hooks.empty()) {
     return;
@@ -222,7 +216,6 @@ void call_hooks(const char *func_name, T &hook_context)
 
   PyGILState_Release(gilstate);
 }
-
 
 void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
 {

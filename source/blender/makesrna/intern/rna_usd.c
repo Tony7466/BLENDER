@@ -27,27 +27,26 @@ static StructRNA *rna_USDHook_refine(PointerRNA *ptr)
   return (hook->rna_ext.srna) ? hook->rna_ext.srna : &RNA_USDHook;
 }
 
-
 static bool rna_USDHook_unregister(Main *bmain, StructRNA *type)
 {
-   USDHook *hook = RNA_struct_blender_type_get(type);
+  USDHook *hook = RNA_struct_blender_type_get(type);
 
-   if (hook == NULL) {
+  if (hook == NULL) {
     return false;
   }
 
   /* free RNA data referencing this */
-   RNA_struct_free_extension(type, &hook->rna_ext);
-   RNA_struct_free(&BLENDER_RNA, type);
+  RNA_struct_free_extension(type, &hook->rna_ext);
+  RNA_struct_free(&BLENDER_RNA, type);
 
-   WM_main_add_notifier(NC_WINDOW, NULL);
+  WM_main_add_notifier(NC_WINDOW, NULL);
 
   /* unlink Blender-side data */
-   USD_unregister_hook(hook);
+  USD_unregister_hook(hook);
 
-   MEM_freeN(hook);
+  MEM_freeN(hook);
 
-   return true;
+  return true;
 }
 
 static StructRNA *rna_USDHook_register(Main *bmain,
@@ -116,7 +115,6 @@ static StructRNA *rna_USDHook_register(Main *bmain,
   /* return the struct-rna added */
   return hook->rna_ext.srna;
 }
-
 
 #else
 
