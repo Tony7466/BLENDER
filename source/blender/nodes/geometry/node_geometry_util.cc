@@ -51,7 +51,9 @@ bool check_operator_context_and_error(GeoNodeExecParams &params)
   if (!params.user_data()->operator_data) {
     params.error_message_add(NodeWarningType::Error, "Node must be run as operator");
     params.set_default_remaining_outputs();
+    return false;
   }
+  return true;
 }
 
 void search_link_ops_for_for_operator_node(GatherAddNodeSearchParams &params)
