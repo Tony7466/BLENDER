@@ -823,11 +823,8 @@ static Sequence *seq_select_seq_from_preview(
 
 static bool element_already_selected(const Sequence *seq, const int handle_clicked)
 {
-  const bool handle_already_selected = ((handle_clicked == SEQ_SIDE_LEFT) &&
-                                        (seq->flag & SEQ_LEFTSEL)) ||
-                                       ((handle_clicked == SEQ_SIDE_RIGHT) &&
-                                        (seq->flag & SEQ_RIGHTSEL));
-  return ((seq->flag & SELECT) && handle_clicked == SEQ_SIDE_NONE) || handle_already_selected;
+  const int handle_already_selected = seq->flag & (SEQ_LEFTSEL | SEQ_RIGHTSEL);
+  return ((seq->flag & SELECT) != 0) && handle_clicked == handle_already_selected;
 }
 
 static void sequencer_select_strip_impl(const Editing *ed,
