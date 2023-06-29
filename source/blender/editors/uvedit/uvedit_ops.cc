@@ -883,6 +883,7 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
   KDTree_2d *tree = BLI_kdtree_2d_new(uv_maxlen);
 
   blender::Vector<float *> mloopuv_arr;
+  blender::Set<std::pair<float, float>> uvs_set;
 
   int mloopuv_count = 0;
 
@@ -906,17 +907,23 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
       }
 
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+        float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
         if (!uvedit_uv_select_test(scene, l, offsets)) {
-          float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
           BLI_kdtree_2d_insert(tree, mloopuv_count, luv);
           mloopuv_arr.append(luv);
           mloopuv_count++;
         }
+        std::pair<float, float> uv = {luv[0], luv[1]};
+        uvs_set.add(uv);
       }
     }
   }
 
   BLI_kdtree_2d_balance(tree);
+
+  /*Save initial unique uv count*/
+  int count_inital = uvs_set.size();
+  uvs_set.clear();
 
   /* For each selected uv, find duplicate non selected uv. */
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
@@ -939,16 +946,18 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
       }
 
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+        float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
         if (uvedit_uv_select_test(scene, l, offsets)) {
-          float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
           KDTreeNearest_2d nearest;
           const int i = BLI_kdtree_2d_find_nearest(tree, luv, &nearest);
-
           if (i != -1 && nearest.dist < threshold) {
             copy_v2_v2(luv, mloopuv_arr[i]);
             changed = true;
           }
         }
+
+        std::pair<float, float> uv = {luv[0], luv[1]};
+        uvs_set.add(uv);
       }
     }
 
@@ -958,6 +967,9 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
+
+  int count = count_inital - uvs_set.size();
+  BKE_reportf(op->reports, RPT_INFO, "Merged %d UV(s)", count);
 
   BLI_kdtree_2d_free(tree);
   MEM_freeN(objects);
