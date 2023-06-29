@@ -1161,17 +1161,8 @@ class NodeTreeMainUpdater {
     }
 
     /* Check if the old and new references are identical. */
-    if (new_path_by_id.size() == old_id_by_path.size()) {
-      bool found_mismatch = false;
-      for (const bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
-        if (!new_path_by_id.contains(ref.id)) {
-          found_mismatch = true;
-          break;
-        }
-      }
-      if (!found_mismatch) {
-        return false;
-      }
+    if (!this->nested_node_refs_changed(ntree, new_path_by_id)) {
+      return false;
     }
 
     MEM_SAFE_FREE(ntree.nested_node_refs);
@@ -1194,6 +1185,20 @@ class NodeTreeMainUpdater {
     ntree.nested_node_refs = new_refs;
     ntree.nested_node_refs_num = new_path_by_id.size();
 
+    return true;
+  }
+
+  bool nested_node_refs_changed(const bNodeTree &ntree,
+                                const Map<int32_t, bNestedNodePath> &new_path_by_id)
+  {
+    if (ntree.nested_node_refs_num != new_path_by_id.size()) {
+      return false;
+    }
+    for (const bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
+      if (!new_path_by_id.contains(ref.id)) {
+        return false;
+      }
+    }
     return true;
   }
 
