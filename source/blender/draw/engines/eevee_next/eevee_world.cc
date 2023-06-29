@@ -90,7 +90,6 @@ void World::sync()
   WorldHandle &wo_handle = inst_.sync.sync_world(bl_world);
 
   if (wo_handle.recalc != 0) {
-    inst_.reflection_probes.set_world_dirty();
     inst_.capture_view.world_capture_enable(true);
   }
   wo_handle.reset_recalc_flag();
@@ -110,21 +109,7 @@ void World::sync()
   inst_.manager->register_layer_attributes(gpumat);
 
   inst_.pipelines.background.sync(gpumat);
-}
-
-GPUMaterial *World::get_world_material()
-{
-  ::World *bl_world = inst_.scene->world;
-  if (bl_world == nullptr) {
-    bl_world = default_world_get();
-  }
-
-  bNodeTree *ntree = (bl_world->nodetree && bl_world->use_nodes) ?
-                         bl_world->nodetree :
-                         default_tree.nodetree_get(bl_world);
-
-  GPUMaterial *gpumat = inst_.shaders.world_shader_get(bl_world, ntree);
-  return gpumat;
+  inst_.pipelines.world.sync(gpumat);
 }
 
 /** \} */

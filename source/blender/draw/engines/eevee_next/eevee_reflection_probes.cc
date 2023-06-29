@@ -27,44 +27,4 @@ void ReflectionProbeModule::init()
   }
 }
 
-void ReflectionProbeModule::sync()
-{
-  for (int index : IndexRange(max_probes)) {
-    ReflectionProbe &cubemap = cubemaps_[index];
-    if (!cubemap.needs_update()) {
-      continue;
-    }
-    sync(cubemap);
-    cubemap.is_dirty = false;
-  }
-}
-
-void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
-{
-  if (cubemap.type == ReflectionProbe::Type::WORLD) {
-    GPUMaterial *world_material = instance_.world.get_world_material();
-    instance_.pipelines.world.sync(world_material);
-  }
-  else {
-    BLI_assert_unreachable();
-  }
-}
-
-void ReflectionProbeModule::set_world_dirty()
-{
-  cubemaps_[world_slot].is_dirty = true;
-}
-
-/* -------------------------------------------------------------------- */
-/** \name World
- *
- * \{ */
-
-bool ReflectionProbe::needs_update() const
-{
-  return type != Type::UNUSED && is_dirty;
-}
-
-/** \} */
-
 }  // namespace blender::eevee

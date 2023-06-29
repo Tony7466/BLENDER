@@ -73,9 +73,6 @@ class ReflectionProbeModule {
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
 
   void init();
-  void set_world_dirty();
-
-  void sync();
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
@@ -83,9 +80,6 @@ class ReflectionProbeModule {
   }
 
  private:
-  void sync(const ReflectionProbe &cubemap);
-
-  friend class WorldPipeline;
   /* Capture View requires access to the cubemaps texture for framebuffer configuration. */
   friend class CaptureView;
 };

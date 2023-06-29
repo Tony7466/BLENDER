@@ -62,13 +62,6 @@ class World {
   ~World();
 
   void sync();
-
-  /**
-   * Get the world material.
-   *
-   * NOTE: this function should only be called after World::sync has been executed.
-   */
-  GPUMaterial *get_world_material();
 };
 
 /** \} */

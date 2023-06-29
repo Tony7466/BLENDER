@@ -147,7 +147,6 @@ void Instance::begin_sync()
   hiz_buffer.sync();
   main_view.sync();
   world.sync();
-  reflection_probes.sync();
   film.sync();
   render_buffers.sync();
   irradiance_cache.sync();
