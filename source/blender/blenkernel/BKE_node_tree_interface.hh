@@ -9,6 +9,7 @@
 #include "BLI_span.hh"
 
 #ifdef __cplusplus
+#  include <queue>
 #  include <type_traits>
 #endif
 
@@ -143,6 +144,59 @@ template<typename OpT> void bNodeTreeInterfaceItem::apply_typed_operator(OpT op)
            reinterpret_cast<const bNodeTreeInterfaceSocket *>(this)->data_type :
            "");
   return ::apply_typed_operator<OpT>(eNodeTreeInterfaceItemType(item_type), data_type, op);
+}
+
+template<typename OpT> void bNodeTreeInterface::foreach_item(OpT op)
+{
+  std::queue<bNodeTreeInterfacePanel *> queue;
+
+  if (op(root_panel) == false) {
+    return;
+  }
+  queue.push(&root_panel);
+
+  while (!queue.empty()) {
+    bNodeTreeInterfacePanel *parent = queue.front();
+    queue.pop();
+
+    for (bNodeTreeInterfaceItem *item : parent->items()) {
+      if (op(*item) == false) {
+        return;
+      }
+
+      if (item->item_type == NODE_INTERFACE_PANEL) {
+        bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+        queue.push(panel);
+      }
+    }
+  }
+}
+
+template<typename OpT> void bNodeTreeInterface::foreach_item(OpT op) const
+{
+  std::queue<const bNodeTreeInterfacePanel *> queue;
+
+  if (op(root_panel) == false) {
+    return;
+  }
+  queue.push(&root_panel);
+
+  while (!queue.empty()) {
+    const bNodeTreeInterfacePanel *parent = queue.front();
+    queue.pop();
+
+    for (const bNodeTreeInterfaceItem *item : parent->items()) {
+      if (op(*item) == false) {
+        return;
+      }
+
+      if (item->item_type == NODE_INTERFACE_PANEL) {
+        const bNodeTreeInterfacePanel *panel = reinterpret_cast<const bNodeTreeInterfacePanel *>(
+            item);
+        queue.push(panel);
+      }
+    }
+  }
 }
 
 #endif
