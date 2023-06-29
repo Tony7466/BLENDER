@@ -501,7 +501,6 @@ static void duplicate_faces(GeometrySet &geometry_set,
   {
     SCOPED_TIMER_AVERAGED("foreach_index_optimized");
     selection.foreach_index_optimized<int>([&](const int index, const int i_selection) {
-      // printf(" - %d : %d;\n", index, i_selection);
       const int count = counts[index];
       offset_data_[i_selection] = total_polys;
       total_polys += count;
@@ -516,7 +515,6 @@ static void duplicate_faces(GeometrySet &geometry_set,
   {
     SCOPED_TIMER_AVERAGED("foreach_index");
     selection.foreach_index([&](const int index, const int i_selection) {
-      // printf(" - %d : %d;\n", index, i_selection);
       const int count = counts[index];
       offset_data__[i_selection] = total_polys;
       total_polys += count;
@@ -531,7 +529,6 @@ static void duplicate_faces(GeometrySet &geometry_set,
   {
     SCOPED_TIMER_AVERAGED("foreach");
     for (const auto [index, i_selection] : selection.foreach<int, int>()) {
-      // printf(" - %d : %d;\n", index, i_selection);
       const int count = counts[index];
       offset_data[i_selection] = total_polys;
       total_polys += count;

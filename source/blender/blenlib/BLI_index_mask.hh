@@ -272,13 +272,13 @@ class IndexMask : private IndexMaskData {
   template<typename IndexT, typename PosT> class Iterator {
    private:
     const IndexMask &mask_;
-    RawMaskIterator data_;
     IndexMaskSegment segment_;
-    // std::optional<IndexRange> as_range_;
-    int64_t pos_ = 0;
+    int64_t pos_;
+    int16_t segment_size_;
+    RawMaskIterator data_ = {0, 0};
 
    public:
-    Iterator(const IndexMask &mask, const RawMaskIterator &raw);
+    Iterator(const IndexMask &mask, const int64_t pos);
     Iterator begin() const;
     Iterator end() const;
     bool operator!=(const Iterator &other) const;
@@ -289,7 +289,7 @@ class IndexMask : private IndexMaskData {
   template<typename IndexT = int64_t, typename PosT = int64_t>
   Iterator<IndexT, PosT> foreach () const
   {
-    return Iterator<IndexT, PosT>(*this, {});
+    return Iterator<IndexT, PosT>(*this, 0);
   }
 
   /**
@@ -917,29 +917,21 @@ inline Vector<std::variant<IndexRange, IndexMaskSegment>, N> IndexMask::to_spans
 }
 
 template<typename IndexT, typename PosT>
-inline IndexMask::Iterator<IndexT, PosT>::Iterator(const IndexMask &mask,
-                                                   const RawMaskIterator &data)
-    : mask_(mask), data_(data), segment_(mask_.segment(0))
+inline IndexMask::Iterator<IndexT, PosT>::Iterator(const IndexMask &mask, const int64_t pos)
+    : mask_(mask), segment_(mask_.segment(0)), pos_(pos), segment_size_(mask_.segment(0).size())
 {
 }
 
 template<typename IndexT, typename PosT>
 inline IndexMask::Iterator<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::begin() const
 {
-  IndexMask::Iterator new_one = IndexMask::Iterator<IndexT, PosT>(mask_, {});
-  new_one.pos_ = 0;
-  return new_one;
+  return IndexMask::Iterator<IndexT, PosT>(mask_, 0);
 }
 
 template<typename IndexT, typename PosT>
 inline IndexMask::Iterator<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::end() const
 {
-  // const int64_t last_segment_i = mask_.segments_num() - 1;
-  // const int16_t last_index = this->mask_.segment(last_segment_i).size() - 1;
-  IndexMask::Iterator new_one = IndexMask::Iterator<IndexT, PosT>(
-      mask_, RawMaskIterator{mask_.segments_num(), 0});
-  new_one.pos_ = mask_.size();
-  return new_one;
+  return IndexMask::Iterator<IndexT, PosT>(mask_, mask_.size());
 }
 
 template<typename IndexT, typename PosT>
@@ -954,34 +946,23 @@ template<typename IndexT, typename PosT>
 inline void IndexMask::Iterator<IndexT, PosT>::operator++()
 {
   this->pos_++;
+
   this->data_.index_in_segment++;
-  const bool continue_this_segment = this->segment_.size() > this->data_.index_in_segment;
+  const bool continue_this_segment = this->segment_size_ > this->data_.index_in_segment;
   if (LIKELY(continue_this_segment)) {
     return;
   }
 
   this->data_.segment_i++;
   this->data_.index_in_segment = 0;
-  // const bool continue_this = this->data_.segment_i < this->mask_.segments_num();
-  // if ((!continue_this)) {
-  //  return;
-  //}
 
   this->segment_ = this->mask_.segment(this->data_.segment_i);
-  // if (unique_sorted_indices::non_empty_is_range(this->segment_.base_span())) {
-  //   this->as_range_.emplace(this->segment_[0], this->segment_.size());
-  // }
-  // else {
-  //   this->as_range_.reset();
-  // }
+  this->segment_size_ = this->segment_.size();
 }
 
 template<typename IndexT, typename PosT>
 inline std::pair<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::operator*() const
 {
-  // if (this->as_range_.has_value()) {
-  //  return {this->as_range_.value()[this->data_.index_in_segment], this->pos_};
-  //}
   return {this->segment_[this->data_.index_in_segment], this->pos_};
 }
 
