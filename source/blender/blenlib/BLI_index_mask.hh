@@ -274,7 +274,7 @@ class IndexMask : private IndexMaskData {
     const IndexMask &mask_;
     RawMaskIterator data_;
     IndexMaskSegment segment_;
-    std::optional<IndexRange> as_range_;
+    // std::optional<IndexRange> as_range_;
     int64_t pos_ = 0;
 
    public:
@@ -926,13 +926,20 @@ inline IndexMask::Iterator<IndexT, PosT>::Iterator(const IndexMask &mask,
 template<typename IndexT, typename PosT>
 inline IndexMask::Iterator<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::begin() const
 {
-  return IndexMask::Iterator<IndexT, PosT>(mask_, {});
+  IndexMask::Iterator new_one = IndexMask::Iterator<IndexT, PosT>(mask_, {});
+  new_one.pos_ = 0;
+  return new_one;
 }
 
 template<typename IndexT, typename PosT>
 inline IndexMask::Iterator<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::end() const
 {
-  return IndexMask::Iterator<IndexT, PosT>(mask_, RawMaskIterator{mask_.segments_num(), 0});
+  // const int64_t last_segment_i = mask_.segments_num() - 1;
+  // const int16_t last_index = this->mask_.segment(last_segment_i).size() - 1;
+  IndexMask::Iterator new_one = IndexMask::Iterator<IndexT, PosT>(
+      mask_, RawMaskIterator{mask_.segments_num(), 0});
+  new_one.pos_ = mask_.size();
+  return new_one;
 }
 
 template<typename IndexT, typename PosT>
@@ -940,7 +947,7 @@ inline bool IndexMask::Iterator<IndexT, PosT>::operator!=(
     const IndexMask::Iterator<IndexT, PosT> &other) const
 {
   BLI_assert(&this->mask_ == &other.mask_);
-  return this->data_ != other.data_;
+  return this->pos_ != other.pos_;
 }
 
 template<typename IndexT, typename PosT>
@@ -949,31 +956,32 @@ inline void IndexMask::Iterator<IndexT, PosT>::operator++()
   this->pos_++;
   this->data_.index_in_segment++;
   const bool continue_this_segment = this->segment_.size() > this->data_.index_in_segment;
-  if (continue_this_segment) {
+  if (LIKELY(continue_this_segment)) {
     return;
   }
-  this->data_.segment_i++;
-  if (!this->data_.segment_i < this->mask_.segments_num()) {
-    return;
-  }
-  this->segment_ = this->mask_.segment(this->data_.segment_i);
-  this->data_.index_in_segment = 0;
 
-  if (unique_sorted_indices::non_empty_is_range(this->segment_.base_span())) {
-    this->as_range_.emplace(this->segment_[0], this->segment_.size());
-  }
-  else {
-    this->as_range_.reset();
-  }
-  return;
+  this->data_.segment_i++;
+  this->data_.index_in_segment = 0;
+  // const bool continue_this = this->data_.segment_i < this->mask_.segments_num();
+  // if ((!continue_this)) {
+  //  return;
+  //}
+
+  this->segment_ = this->mask_.segment(this->data_.segment_i);
+  // if (unique_sorted_indices::non_empty_is_range(this->segment_.base_span())) {
+  //   this->as_range_.emplace(this->segment_[0], this->segment_.size());
+  // }
+  // else {
+  //   this->as_range_.reset();
+  // }
 }
 
 template<typename IndexT, typename PosT>
 inline std::pair<IndexT, PosT> IndexMask::Iterator<IndexT, PosT>::operator*() const
 {
-  if (this->as_range_.has_value()) {
-    return {this->as_range_.value()[this->data_.index_in_segment], this->pos_};
-  }
+  // if (this->as_range_.has_value()) {
+  //  return {this->as_range_.value()[this->data_.index_in_segment], this->pos_};
+  //}
   return {this->segment_[this->data_.index_in_segment], this->pos_};
 }
 
