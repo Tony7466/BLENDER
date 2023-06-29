@@ -240,6 +240,30 @@ static void animation_basepath_change_free(AnimationBasePathChange *basepath_cha
   MEM_freeN(basepath_change);
 }
 
+static void update_nested_node_refs_after_ungroup(bNodeTree &ntree,
+                                                  const bNodeTree &ngroup,
+                                                  const bNode &gnode,
+                                                  const Map<int32_t, int32_t> &node_identifier_map)
+{
+  for (bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
+    if (ref.path.node_id != gnode.identifier) {
+      continue;
+    }
+    const bNestedNodeRef *child_ref = ngroup.find_nested_node_ref(ref.path.id_in_node);
+    if (!child_ref) {
+      continue;
+    }
+    constexpr int32_t missing_id = -1;
+    const int32_t new_node_id = node_identifier_map.lookup_default(child_ref->path.node_id,
+                                                                   missing_id);
+    if (new_node_id == missing_id) {
+      continue;
+    }
+    ref.path.node_id = new_node_id;
+    ref.path.id_in_node = child_ref->path.id_in_node;
+  }
+}
+
 /**
  * \return True if successful.
  */
@@ -424,24 +448,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
   /* delete the group instance and dereference group tree */
   nodeRemoveNode(bmain, ntree, gnode, true);
 
-  /* Updated nested node refs in the parent node tree. */
-  for (bNestedNodeRef &ref : ntree->nested_node_refs_span()) {
-    if (ref.path.node_id != gnode->identifier) {
-      continue;
-    }
-    const bNestedNodeRef *child_ref = ngroup->find_nested_node_ref(ref.path.id_in_node);
-    if (!child_ref) {
-      continue;
-    }
-    constexpr int32_t missing_id = -1;
-    const int32_t new_node_id = node_identifier_map.lookup_default(child_ref->path.node_id,
-                                                                   missing_id);
-    if (new_node_id == missing_id) {
-      continue;
-    }
-    ref.path.node_id = new_node_id;
-    ref.path.id_in_node = child_ref->path.id_in_node;
-  }
+  update_nested_node_refs_after_ungroup(*ntree, *ngroup, *gnode, node_identifier_map);
 
   return true;
 }
