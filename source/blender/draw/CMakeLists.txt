@@ -29,7 +29,6 @@ set(INC
   ../compositor/realtime_compositor/cached_resources
   ../windowmanager
 
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/guardedalloc
   ../../../intern/opensubdiv
@@ -100,6 +99,7 @@ set(SRC
   intern/draw_pbvh.cc
   intern/draw_pointcloud.cc
   intern/draw_resource.cc
+  intern/draw_sculpt.cc
   intern/draw_select_buffer.c
   intern/draw_shader.cc
   intern/draw_texture_pool.cc
@@ -263,6 +263,7 @@ set(SRC
   intern/draw_pass.hh
   intern/draw_pbvh.h
   intern/draw_resource.hh
+  intern/draw_sculpt.hh
   intern/draw_shader.h
   intern/draw_shader_shared.h
   intern/draw_state.h
@@ -353,6 +354,7 @@ set(LIB
   bf_blenlib
   bf_realtime_compositor
   bf_windowmanager
+  PRIVATE bf_intern_atomic
 )
 
 set(GLSL_SRC
