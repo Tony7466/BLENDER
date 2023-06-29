@@ -1142,7 +1142,7 @@ static void rna_Scene_active_keying_set_index_set(PointerRNA *ptr, int value)
 
 /* XXX: evil... builtin_keyingsets is defined in keyingsets.c! */
 /* TODO: make API function to retrieve this... */
-extern ListBase builtin_keyingsets;
+extern "C" ListBase builtin_keyingsets;
 
 static void rna_Scene_all_keyingsets_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
