@@ -51,7 +51,6 @@ class AmbientOcclusion {
   {
     inst_.sampling.bind_resources(pass);
     inst_.hiz_buffer.bind_resources(pass);
-    inst_.raytracing.bind_resources(pass);
     pass->bind_texture(RBUFS_UTILITY_TEX_SLOT, &inst_.pipelines.utility_tx);
     pass->bind_ubo(AO_BUF_SLOT, &data_);
   }

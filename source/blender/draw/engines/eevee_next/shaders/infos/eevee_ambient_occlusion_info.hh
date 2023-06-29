@@ -3,12 +3,12 @@
 #include "eevee_defines.hh"
 #include "gpu_shader_create_info.hh"
 
-GPU_SHADER_CREATE_INFO(eevee_raytrace_data)
-    .additional_info("draw_view", "eevee_shared", "eevee_hiz_data")
-    .uniform_buf(RAYTRACE_BUF_SLOT, "RayTracingData", "rt_buf");
-
 GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_data)
-    .additional_info("eevee_raytrace_data", "eevee_sampling_data", "eevee_utility_texture")
+    .additional_info("draw_view",
+                     "eevee_shared",
+                     "eevee_hiz_data",
+                     "eevee_sampling_data",
+                     "eevee_utility_texture")
     .uniform_buf(AO_BUF_SLOT, "AOData", "ao_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_pass)

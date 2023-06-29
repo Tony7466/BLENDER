@@ -979,26 +979,6 @@ enum eClosureBits : uint32_t {
   CLOSURE_AMBIENT_OCCLUSION = (1u << 12u),
 };
 
-struct RayTracingData {
-  float2 pixel_size;
-  float border_fade;
-
-  /* TODO(Miguel Pozo): Does this belong here? */
-  float ssr_quality;
-  float ssr_thickness;
-  float ssr_max_roughness;
-  float ssr_firefly_factor;
-  float ssr_brdf_bias;
-  bool1 ssr_enabled;
-
-  int _pad0;
-  int _pad1;
-  int _pad2;
-};
-BLI_STATIC_ASSERT_ALIGN(RayTracingData, 16)
-
-/** \} */
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1008,9 +988,11 @@ BLI_STATIC_ASSERT_ALIGN(RayTracingData, 16)
 struct AOData {
   float distance;
   float quality;
-  int _pad0;
+  float2 pixel_size;
 };
 BLI_STATIC_ASSERT_ALIGN(AOData, 16)
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Subsurface
@@ -1114,7 +1096,6 @@ using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 using AODataBuf = draw::UniformBuffer<AOData>;
-using RayTracingDataBuf = draw::UniformBuffer<RayTracingData>;
 
 }  // namespace blender::eevee
 #endif

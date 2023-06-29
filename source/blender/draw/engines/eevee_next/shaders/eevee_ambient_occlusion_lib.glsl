@@ -2,7 +2,7 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_raytrace_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 
 /* TODO(Miguel Pozo): Move this function somewhere else. */
 /* Return a fitted cone angle given the input roughness */
@@ -159,13 +159,13 @@ OcclusionData ambient_occlusion_search(vec3 vP,
 
     ScreenSpaceRay ssray;
 
-    ssray = raytrace_screenspace_ray_create(ray);
+    ssray = raytrace_screenspace_ray_create(ray, ao_buf.pixel_size);
     data.horizons[0 + i * 2] = ambient_ambient_occlusion_search_horizon(
         vI, vP, noise.y, ssray, depth_tx, inverted, radius, dir_sample_count);
 
     ray.direction = -ray.direction;
 
-    ssray = raytrace_screenspace_ray_create(ray);
+    ssray = raytrace_screenspace_ray_create(ray, ao_buf.pixel_size);
     data.horizons[1 + i * 2] = -ambient_ambient_occlusion_search_horizon(
         vI, vP, noise.y, ssray, depth_tx, inverted, radius, dir_sample_count);
 

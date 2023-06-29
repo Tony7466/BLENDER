@@ -133,8 +133,7 @@
 #define CAMERA_BUF_SLOT 6
 #define RBUFS_BUF_SLOT 7
 /* Skip 8 to avoid overlap with draw_modelmat in hair and gpencil */
-#define RAYTRACE_BUF_SLOT 9
-#define AO_BUF_SLOT 10
+#define AO_BUF_SLOT 9
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0

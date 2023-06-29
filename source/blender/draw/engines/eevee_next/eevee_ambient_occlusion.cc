@@ -38,8 +38,10 @@ void AmbientOcclusion::init()
 {
   render_pass_enabled_ = inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO;
 
-  data_.distance = scene->eevee.gtao_distance;
-  data_.quality = scene->eevee.gtao_quality;
+  data_.distance = inst_.scene->eevee.gtao_distance;
+  data_.quality = inst_.scene->eevee.gtao_quality;
+  /* Size is multiplied by 2 because it is applied in NDC [-1..1] range. */
+  data_.pixel_size = float2(2.0f) / float2(inst_.film.render_extent_get());
 
   data_.push_update();
 }
