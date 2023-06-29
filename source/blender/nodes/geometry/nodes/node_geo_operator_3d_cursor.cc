@@ -25,8 +25,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   const float4x4 world_to_object(params.user_data()->operator_data->self_object->world_to_object);
   const View3DCursor &cursor = params.user_data()->operator_data->scene->cursor;
-  params.set_output("Location", math::transform_point(world_to_object, float3(cursor.location)));
-  params.set_output("Rotation", math::Quaternion(float4(cursor.rotation_quaternion)));
+  const float3 location_global(cursor.location);
+  const math::Quaternion rotation_global(float4(cursor.rotation_quaternion));
+  params.set_output("Location", math::transform_point(world_to_object, location_global));
+  params.set_output("Rotation", math::to_quaternion(world_to_object) * rotation_global);
 }
 
 }  // namespace blender::nodes::node_geo_operator_3d_cursor_cc
