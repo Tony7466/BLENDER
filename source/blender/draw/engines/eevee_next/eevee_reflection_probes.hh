@@ -35,7 +35,7 @@ class WorldPipeline;
  * \{ */
 class ReflectionProbe {
  public:
-  enum Type { Unused, World };
+  enum Type { UNUSED, WORLD };
 
   Type type;
   bool is_dirty = false;
@@ -46,22 +46,22 @@ class ReflectionProbe {
 class ReflectionProbeModule {
  private:
   /** The max number of probes to track. */
-  static constexpr int MAX_PROBES = 1;
+  static constexpr int max_probes = 1;
 
   /**
    * The maximum resolution of a cubemap side.
    *
    * Must be a power of two; intension to be used as a cubemap atlas.
    */
-  static constexpr int MAX_RESOLUTION = 2048;
-  static constexpr int MIPMAP_LEVELS = 12;
+  static constexpr int max_resolution = 2048;
+  static constexpr int max_mipmap_levels = log(max_resolution) + 1;
 
   /**
    * Index of the probe that is used for world background.
    *
    * NOTE: First probe always contains the world probe.
    */
-  static constexpr int WORLD_SLOT = 0;
+  static constexpr int world_slot = 0;
 
   Instance &instance_;
 

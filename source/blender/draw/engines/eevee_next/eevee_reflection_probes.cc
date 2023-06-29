@@ -9,27 +9,27 @@ namespace blender::eevee {
 void ReflectionProbeModule::init()
 {
   if (cubemaps_.is_empty()) {
-    cubemaps_.reserve(MAX_PROBES);
+    cubemaps_.reserve(max_probes);
 
     /* Initialize the world cubemap. */
     ReflectionProbe world_cubemap;
-    world_cubemap.type = ReflectionProbe::Type::World;
+    world_cubemap.type = ReflectionProbe::Type::WORLD;
     world_cubemap.is_dirty = true;
     cubemaps_.append(world_cubemap);
 
     cubemaps_tx_.ensure_cube_array(GPU_RGBA16F,
-                                   MAX_RESOLUTION,
-                                   MAX_PROBES,
+                                   max_resolution,
+                                   max_probes,
                                    GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT,
                                    NULL,
-                                   MIPMAP_LEVELS);
+                                   max_mipmap_levels);
     GPU_texture_mipmap_mode(cubemaps_tx_, true, true);
   }
 }
 
 void ReflectionProbeModule::sync()
 {
-  for (int index : IndexRange(MAX_PROBES)) {
+  for (int index : IndexRange(max_probes)) {
     ReflectionProbe &cubemap = cubemaps_[index];
     if (!cubemap.needs_update()) {
       continue;
@@ -41,7 +41,7 @@ void ReflectionProbeModule::sync()
 
 void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
 {
-  if (cubemap.type == ReflectionProbe::Type::World) {
+  if (cubemap.type == ReflectionProbe::Type::WORLD) {
     GPUMaterial *world_material = instance_.world.get_world_material();
     instance_.pipelines.world.sync(world_material);
   }
@@ -52,7 +52,7 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
 
 void ReflectionProbeModule::set_world_dirty()
 {
-  cubemaps_[WORLD_SLOT].is_dirty = true;
+  cubemaps_[world_slot].is_dirty = true;
 }
 
 /* -------------------------------------------------------------------- */
@@ -62,7 +62,7 @@ void ReflectionProbeModule::set_world_dirty()
 
 bool ReflectionProbe::needs_update() const
 {
-  return type != Type::Unused && is_dirty;
+  return type != Type::UNUSED && is_dirty;
 }
 
 /** \} */
