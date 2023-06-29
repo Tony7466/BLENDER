@@ -321,7 +321,7 @@ Sequence *find_nearest_seq(Scene *scene, View2D *v2d, int *hand, const int mval[
         if (SEQ_transform_sequence_can_be_translated(seq)) {
 
           /* Clamp handles to defined size in pixel space. */
-          handsize = 2.0f * sequence_handle_size_get_clamped(scene, seq, pixelx);
+          handsize = 4.0f * sequence_handle_size_get_clamped(scene, seq, pixelx);
           displen = float(abs(SEQ_time_left_handle_frame_get(scene, seq) -
                               SEQ_time_right_handle_frame_get(scene, seq)));
 
@@ -1662,7 +1662,7 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
       if (handles) {
         /* Get the handles draw size. */
         float pixelx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-        float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx);
+        float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 4;
 
         /* Right handle. */
         if (rectf.xmax > (SEQ_time_right_handle_frame_get(scene, seq) - handsize)) {
