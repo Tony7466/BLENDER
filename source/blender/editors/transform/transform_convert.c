@@ -935,6 +935,9 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     if (t->options & CTX_SEQUENCER_IMAGE) {
       return &TransConvertType_SequencerImage;
     }
+    if (STREQ(t->area->runtime.tool->idname, "builtin.retime")) {
+      return &TransConvertType_SequencerRetiming;
+    }
     return &TransConvertType_Sequencer;
   }
   if (t->spacetype == SPACE_GRAPH) {

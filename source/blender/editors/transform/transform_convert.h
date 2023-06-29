@@ -273,6 +273,10 @@ extern TransConvertTypeInfo TransConvertType_Sequencer;
 
 extern TransConvertTypeInfo TransConvertType_SequencerImage;
 
+/* transform_convert_sequencer_retiming.c */
+
+extern TransConvertTypeInfo TransConvertType_SequencerRetiming;
+
 /* transform_convert_tracking.c */
 
 extern TransConvertTypeInfo TransConvertType_Tracking;
