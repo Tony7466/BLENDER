@@ -55,6 +55,10 @@ typedef struct bNodeTreeInterfaceItem {
   void free_data();
 
   template<typename OpT> void apply_typed_operator(OpT op) const;
+
+  bool is_valid_parent(const bNodeTreeInterfaceItem &item,
+                       const bNodeTreeInterfacePanel *new_parent) const;
+  bool parent_set(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *new_parent);
 #endif
 } bNodeTreeInterfaceItem;
 
@@ -143,44 +147,16 @@ typedef struct bNodeTreeInterfacePanel {
 
   char *name;
 
-#ifdef __cplusplus
-  static bNodeTreeInterfaceSocket *create(blender::StringRef name);
-#endif
-} bNodeTreeInterfacePanel;
-
-typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceItem **items_array;
   int items_num;
-  int active_index;
-  int next_socket_uid;
-
-  /* Root items range. */
-  int root_items_num;
+  char _pad[4];
 
 #ifdef __cplusplus
-  void copy_data(const bNodeTreeInterface &src);
-  void free_data();
+  static bNodeTreeInterfaceSocket *create(blender::StringRef name);
 
+  blender::IndexRange items_range() const;
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
-  int item_index(bNodeTreeInterfaceItem &item) const;
-
-  blender::IndexRange root_items_range() const;
-  blender::Span<const bNodeTreeInterfaceItem *> root_items() const;
-  blender::MutableSpan<bNodeTreeInterfaceItem *> root_items();
-
-  blender::IndexRange item_children_range(const bNodeTreeInterfaceItem &item) const;
-  blender::Span<const bNodeTreeInterfaceItem *> item_children(
-      const bNodeTreeInterfaceItem &item) const;
-  blender::MutableSpan<bNodeTreeInterfaceItem *> item_children(const bNodeTreeInterfaceItem &item);
-
-  bNodeTreeInterfaceItem *active_item();
-  const bNodeTreeInterfaceItem *active_item() const;
-  void active_item_set(bNodeTreeInterfaceItem *item);
-
-  bool is_valid_parent(const bNodeTreeInterfaceItem &item,
-                       const bNodeTreeInterfacePanel *new_parent) const;
-  bool parent_set(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *new_parent);
 
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
@@ -211,7 +187,24 @@ typedef struct bNodeTreeInterface {
   void insert_item(bNodeTreeInterfaceItem &item, int index);
   bool unlink_item(bNodeTreeInterfaceItem &item);
   void free_item(bNodeTreeInterfaceItem &item);
+#endif
+} bNodeTreeInterfacePanel;
 
+typedef struct bNodeTreeInterface {
+  bNodeTreeInterfacePanel root_panel;
+
+  int active_index;
+  int next_socket_uid;
+
+#ifdef __cplusplus
+  void copy_data(const bNodeTreeInterface &src);
+  void free_data();
+
+  bNodeTreeInterfaceItem *active_item();
+  const bNodeTreeInterfaceItem *active_item() const;
+  void active_item_set(bNodeTreeInterfaceItem *item);
+
+ protected:
   /**
    * Topologial stable sorting method that keeps items grouped by parent.
    * Direct children of a panel remain grouped together, so children can be access as a span.

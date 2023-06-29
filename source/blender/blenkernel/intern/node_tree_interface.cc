@@ -144,49 +144,11 @@ void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src)
 
 void bNodeTreeInterface::free_data()
 {
-  clear_items();
+  root_panel.clear_items();
 }
 
-int bNodeTreeInterface::item_index(bNodeTreeInterfaceItem &item) const
-{
-  return items().first_index_try(&item);
-}
-
-blender::IndexRange bNodeTreeInterface::root_items_range() const
-{
-  return blender::IndexRange(root_items_num);
-}
-
-blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterface::root_items() const
-{
-  return items().take_front(root_items_num);
-}
-
-blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::root_items()
-{
-  return items().take_front(root_items_num);
-}
-
-blender::IndexRange bNodeTreeInterface::item_children_range(
-    const bNodeTreeInterfaceItem &item) const
-{
-  return blender::IndexRange(item.children_start, item.children_num);
-}
-
-blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterface::item_children(
-    const bNodeTreeInterfaceItem &item) const
-{
-  return items().slice(item.children_start, item.children_num);
-}
-
-blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::item_children(
-    const bNodeTreeInterfaceItem &item)
-{
-  return items().slice(item.children_start, item.children_num);
-}
-
-bool bNodeTreeInterface::is_valid_parent(const bNodeTreeInterfaceItem &item,
-                                         const bNodeTreeInterfacePanel *new_parent) const
+bool bNodeTreeInterfaceItem::is_valid_parent(const bNodeTreeInterfaceItem &item,
+                                             const bNodeTreeInterfacePanel *new_parent) const
 {
   const bNodeTreeInterfacePanel *panel = new_parent;
   while (panel) {
@@ -198,8 +160,8 @@ bool bNodeTreeInterface::is_valid_parent(const bNodeTreeInterfaceItem &item,
   return true;
 }
 
-bool bNodeTreeInterface::parent_set(bNodeTreeInterfaceItem &item,
-                                    bNodeTreeInterfacePanel *new_parent)
+bool bNodeTreeInterfaceItem::parent_set(bNodeTreeInterfaceItem &item,
+                                        bNodeTreeInterfacePanel *new_parent)
 {
   if (!is_valid_parent(item, new_parent)) {
     return false;
@@ -207,6 +169,21 @@ bool bNodeTreeInterface::parent_set(bNodeTreeInterfaceItem &item,
   item.parent = new_parent;
   update_order();
   return true;
+}
+
+blender::IndexRange bNodeTreeInterfacePanel::items_range() const
+{
+  return blender::IndexRange(items_num);
+}
+
+blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterfacePanel::items() const
+{
+  return items().take_front(items_num);
+}
+
+blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterfacePanel::items()
+{
+  return items().take_front(items_num);
 }
 
 void bNodeTreeInterface::add_item(bNodeTreeInterfaceItem &item)
