@@ -29,7 +29,6 @@ set(INC
   ../compositor/realtime_compositor/cached_resources
   ../windowmanager
 
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/guardedalloc
   ../../../intern/opensubdiv
@@ -357,6 +356,7 @@ set(LIB
   bf_blenlib
   bf_realtime_compositor
   bf_windowmanager
+  PRIVATE bf_intern_atomic
 )
 
 set(GLSL_SRC
