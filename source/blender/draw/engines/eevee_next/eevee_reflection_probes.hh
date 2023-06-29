@@ -34,39 +34,22 @@ class CaptureView;
 /* -------------------------------------------------------------------- */
 /** \name Reflection Probes
  * \{ */
-class ReflectionProbe {
- public:
-  enum Type { UNUSED, WORLD };
-
-  Type type;
-  bool is_dirty = false;
-
-  bool needs_update() const;
-};
 
 class ReflectionProbeModule {
  private:
   /** The max number of probes to track. */
-  static constexpr int max_probes = 1;
+  static constexpr int max_probes_ = 1;
 
   /**
    * The maximum resolution of a cubemap side.
    *
    * Must be a power of two; intension to be used as a cubemap atlas.
    */
-  static constexpr int max_resolution = 2048;
-  static constexpr int max_mipmap_levels = log(max_resolution) + 1;
-
-  /**
-   * Index of the probe that is used for world background.
-   *
-   * NOTE: First probe always contains the world probe.
-   */
-  static constexpr int world_slot = 0;
+  static constexpr int max_resolution_ = 2048;
+  static constexpr int max_mipmap_levels_ = log(max_resolution_) + 1;
 
   Instance &instance_;
 
-  Vector<ReflectionProbe> cubemaps_;
   Texture cubemaps_tx_ = {"Probes"};
 
  public:
