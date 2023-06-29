@@ -312,9 +312,11 @@ void WM_OT_usd_export(wmOperatorType *ot)
       ot->srna, "export_hair", false, "Hair", "Export hair particle systems as USD curves");
   RNA_def_boolean(
       ot->srna, "export_uvmaps", true, "UV Maps", "Include all mesh UV maps in the export");
-  RNA_def_boolean(
-      ot->srna, "export_mesh_colors", true, "Color Attributes",
-      "Include Mesh Color Attributes in the export");
+  RNA_def_boolean(ot->srna,
+                  "export_mesh_colors",
+                  true,
+                  "Color Attributes",
+                  "Include Mesh Color Attributes in the export");
   RNA_def_boolean(ot->srna,
                   "export_normals",
                   true,
@@ -661,8 +663,11 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna, "read_mesh_colors", true, "Color Attributes", "Read mesh color attributes");
 
-  RNA_def_boolean(
-      ot->srna, "read_mesh_attributes", true, "Mesh Attributes", "Read USD Primvars as Mesh Attributes");
+  RNA_def_boolean(ot->srna,
+                  "read_mesh_attributes",
+                  true,
+                  "Mesh Attributes",
+                  "Read USD Primvars as Mesh Attributes");
 
   RNA_def_string(ot->srna,
                  "prim_path_mask",

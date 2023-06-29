@@ -80,11 +80,11 @@ class USDMeshReader : public USDGeomReader {
                                const pxr::UsdGeomPrimvar &primvar,
                                const double motionSampleTime);
   void read_uv_data_primvar(Mesh *mesh,
-                               const pxr::UsdGeomPrimvar &primvar,
-                               const double motionSampleTime);
+                            const pxr::UsdGeomPrimvar &primvar,
+                            const double motionSampleTime);
   void read_generic_data_primvar(Mesh *mesh,
-                               const pxr::UsdGeomPrimvar &primvar,
-                               const double motionSampleTime);
+                                 const pxr::UsdGeomPrimvar &primvar,
+                                 const double motionSampleTime);
 };
 
 }  // namespace blender::io::usd
