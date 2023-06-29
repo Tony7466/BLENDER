@@ -362,6 +362,11 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
             settings->userData, settings->ob, (ID **)&id_prop->data.pointer, IDWALK_CB_USER);
       },
       &settings);
+
+  for (const int i : IndexRange(nmd->id_mappings_num)) {
+    NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    walk(userData, ob, &mapping.id, IDWALK_CB_USER);
+  }
 }
 
 static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void *userData)
@@ -1413,6 +1418,13 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
      * and don't necessarily need to be written, but we can't just free them. */
     IDP_BlendWrite(writer, nmd->settings.properties);
 
+    BLO_write_struct_array(writer, NodesModifierIDMapping, nmd->id_mappings_num, nmd->id_mappings);
+    for (const int i : IndexRange(nmd->id_mappings_num)) {
+      NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+      BLO_write_string(writer, mapping.id_name);
+      BLO_write_string(writer, mapping.lib_name);
+    }
+
     if (!BLO_write_is_undo(writer)) {
       LISTBASE_FOREACH (IDProperty *, prop, &nmd->settings.properties->data.group) {
         if (prop->type == IDP_INT) {
@@ -1439,6 +1451,14 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     BLO_read_data_address(reader, &nmd->settings.properties);
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
+
+  BLO_read_data_address(reader, &nmd->id_mappings);
+  for (const int i : IndexRange(nmd->id_mappings_num)) {
+    NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    BLO_read_data_address(reader, &mapping.id_name);
+    BLO_read_data_address(reader, &mapping.lib_name);
+  }
+
   nmd->runtime_eval_log = nullptr;
   nmd->simulation_cache = new_simulation_cache();
 }
@@ -1449,6 +1469,19 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   NodesModifierData *tnmd = reinterpret_cast<NodesModifierData *>(target);
 
   BKE_modifier_copydata_generic(md, target, flag);
+
+  if (nmd->id_mappings) {
+    tnmd->id_mappings = static_cast<NodesModifierIDMapping *>(MEM_dupallocN(nmd->id_mappings));
+    for (const int i : IndexRange(nmd->id_mappings_num)) {
+      NodesModifierIDMapping &mapping = tnmd->id_mappings[i];
+      if (mapping.id_name) {
+        mapping.id_name = BLI_strdup(mapping.id_name);
+      }
+      if (mapping.lib_name) {
+        mapping.lib_name = BLI_strdup(mapping.lib_name);
+      }
+    }
+  }
 
   tnmd->runtime_eval_log = nullptr;
   if (flag & LIB_ID_COPY_SET_COPIED_ON_WRITE) {
@@ -1478,6 +1511,13 @@ static void freeData(ModifierData *md)
     IDP_FreeProperty_ex(nmd->settings.properties, false);
     nmd->settings.properties = nullptr;
   }
+
+  for (const int i : IndexRange(nmd->id_mappings_num)) {
+    NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    MEM_SAFE_FREE(mapping.id_name);
+    MEM_SAFE_FREE(mapping.lib_name);
+  }
+  MEM_SAFE_FREE(nmd->id_mappings);
 
   MEM_delete(nmd->simulation_cache);
   MEM_SAFE_FREE(nmd->simulation_bake_directory);
