@@ -54,6 +54,10 @@ void AmbientOcclusion::sync()
 
   render_pass_ps_.init();
   render_pass_ps_.shader_set(inst_.shaders.static_shader_get(AMBIENT_OCCLUSION_PASS));
+
+  render_pass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, &inst_.pipelines.utility_tx);
+  inst_.sampling.bind_resources(&render_pass_ps_);
+  inst_.hiz_buffer.bind_resources(&render_pass_ps_);
   bind_resources(&render_pass_ps_);
 
   render_pass_ps_.bind_image("in_normal_img", &rp_normal_tx_);

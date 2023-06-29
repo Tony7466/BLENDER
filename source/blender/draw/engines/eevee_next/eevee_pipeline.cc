@@ -150,8 +150,9 @@ void ForwardPipeline::sync()
       inst_.lights.bind_resources(&opaque_ps_);
       inst_.shadows.bind_resources(&opaque_ps_);
       inst_.sampling.bind_resources(&opaque_ps_);
-      inst_.cryptomatte.bind_resources(&opaque_ps_);
+      inst_.hiz_buffer.bind_resources(&opaque_ps_);
       inst_.ambient_occlusion.bind_resources(&opaque_ps_);
+      inst_.cryptomatte.bind_resources(&opaque_ps_);
     }
 
     opaque_single_sided_ps_ = &opaque_ps_.sub("SingleSided");
@@ -178,6 +179,7 @@ void ForwardPipeline::sync()
     inst_.lights.bind_resources(&sub);
     inst_.shadows.bind_resources(&sub);
     inst_.sampling.bind_resources(&sub);
+    inst_.hiz_buffer.bind_resources(&sub);
     inst_.ambient_occlusion.bind_resources(&sub);
   }
 }
@@ -332,8 +334,9 @@ void DeferredLayer::begin_sync()
       gbuffer_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
 
       inst_.sampling.bind_resources(&gbuffer_ps_);
-      inst_.cryptomatte.bind_resources(&gbuffer_ps_);
+      inst_.hiz_buffer.bind_resources(&gbuffer_ps_);
       inst_.ambient_occlusion.bind_resources(&gbuffer_ps_);
+      inst_.cryptomatte.bind_resources(&gbuffer_ps_);
     }
 
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM | DRW_STATE_DEPTH_EQUAL |
