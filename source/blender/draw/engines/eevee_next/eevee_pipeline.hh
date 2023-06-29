@@ -53,6 +53,7 @@ class WorldProbePipeline {
  private:
   Instance &inst_;
 
+  /* Dummy textures: required to reuse background shader and avoid another shader variation. */
   Texture dummy_renderpass_tx_;
   Texture dummy_cryptomatte_tx_;
   Texture dummy_aov_color_tx_;
