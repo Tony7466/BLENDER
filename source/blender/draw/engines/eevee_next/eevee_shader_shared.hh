@@ -1006,7 +1006,6 @@ BLI_STATIC_ASSERT_ALIGN(RayTracingData, 16)
  * \{ */
 
 struct AOData {
-  bool1 enabled;
   float distance;
   float quality;
   int _pad0;

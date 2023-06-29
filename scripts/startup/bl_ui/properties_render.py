@@ -154,18 +154,12 @@ class RENDER_PT_eevee_next_ambient_occlusion(RenderButtonsPanel, Panel):
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
 
-    def draw_header(self, context):
-        scene = context.scene
-        props = scene.eevee
-        self.layout.prop(props, "use_gtao", text="")
-
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         scene = context.scene
         props = scene.eevee
-
-        layout.active = props.use_gtao
+        
         col = layout.column()
         col.prop(props, "gtao_distance")
         col.prop(props, "gtao_quality")

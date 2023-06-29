@@ -142,10 +142,6 @@ OcclusionData ambient_occlusion_search(vec3 vP,
                                        const float inverted,
                                        const float dir_sample_count)
 {
-  if (!ao_buf.enabled) {
-    return ambient_occlusion_disabled_data();
-  }
-
   vec2 noise = ambient_occlusion_get_noise(texel);
   vec2 dir = ambient_occlusion_get_dir(noise.x);
   vec2 uv = get_uvs_from_view(vP);
@@ -210,12 +206,6 @@ void ambient_occlusion_eval(OcclusionData data,
 {
   /* No error by default. */
   visibility_error = 1.0;
-
-  if (!ao_buf.enabled) {
-    visibility = data.custom_occlusion;
-    bent_normal = N;
-    return;
-  }
 
   bool early_out = (inverted != 0.0) ? (max_v4(abs(data.horizons)) == 0.0) :
                                        (min_v4(abs(data.horizons)) == M_PI);

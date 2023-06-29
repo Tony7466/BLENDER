@@ -36,10 +36,7 @@ namespace blender::eevee {
 
 void AmbientOcclusion::init()
 {
-  const Scene *scene = inst_.scene;
-  data_.enabled = (scene->eevee.flag & SCE_EEVEE_GTAO_ENABLED) ||
-                  (inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO);
-  render_pass_enabled_ = data_.enabled && inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO;
+  render_pass_enabled_ = inst_.film.enabled_passes_get() & EEVEE_RENDER_PASS_AO;
 
   data_.distance = scene->eevee.gtao_distance;
   data_.quality = scene->eevee.gtao_quality;
