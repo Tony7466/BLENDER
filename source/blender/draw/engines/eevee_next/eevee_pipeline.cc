@@ -22,7 +22,7 @@ namespace blender::eevee {
  * Used to draw background.
  * \{ */
 
-void WorldPipeline::sync(GPUMaterial *gpumat)
+void BackgroundPipeline::sync(GPUMaterial *gpumat)
 {
   Manager &manager = *inst_.manager;
   RenderBuffers &rbufs = inst_.render_buffers;
@@ -49,7 +49,7 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
-void WorldPipeline::render(View &view)
+void BackgroundPipeline::render(View &view)
 {
   inst_.manager->submit(world_ps_, view);
 }
@@ -60,7 +60,7 @@ void WorldPipeline::render(View &view)
 /** \name World Probe Pipeline
  * \{ */
 
-void WorldProbePipeline::sync()
+void WorldPipeline::sync()
 {
   for (int face : IndexRange(6)) {
     CubemapSide &side = sides_[face];
@@ -83,7 +83,7 @@ void WorldProbePipeline::sync()
   has_draw_commands_ = false;
 }
 
-void WorldProbePipeline::sync(GPUMaterial *gpumat)
+void WorldPipeline::sync(GPUMaterial *gpumat)
 {
   for (int face : IndexRange(6)) {
     sync(gpumat, face);
@@ -91,7 +91,7 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat)
   has_draw_commands_ = true;
 }
 
-void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
+void WorldPipeline::sync(GPUMaterial *gpumat, int face)
 {
   Manager &manager = *inst_.manager;
 
@@ -131,7 +131,7 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
   pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
-void WorldProbePipeline::render()
+void WorldPipeline::render()
 {
   if (!has_draw_commands_) {
     return;
@@ -150,7 +150,7 @@ void WorldProbePipeline::render()
   }
 }
 
-void WorldProbePipeline::CubemapSide::render(Instance &instance)
+void WorldPipeline::CubemapSide::render(Instance &instance)
 {
   instance.manager->submit(cubemap_face_ps, view);
 }

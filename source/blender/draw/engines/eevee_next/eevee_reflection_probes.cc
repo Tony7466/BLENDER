@@ -43,7 +43,7 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
 {
   if (cubemap.type == ReflectionProbe::Type::World) {
     GPUMaterial *world_material = instance_.world.get_world_material();
-    instance_.pipelines.world_probe.sync(world_material);
+    instance_.pipelines.world.sync(world_material);
   }
   else {
     BLI_assert_unreachable();

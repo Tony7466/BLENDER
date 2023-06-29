@@ -23,19 +23,19 @@ namespace blender::eevee {
 class Instance;
 
 /* -------------------------------------------------------------------- */
-/** \name World Pipeline
+/** \name World Background Pipeline
  *
- * Render world values.
+ * Render world background values.
  * \{ */
 
-class WorldPipeline {
+class BackgroundPipeline {
  private:
   Instance &inst_;
 
   PassSimple world_ps_ = {"World.Background"};
 
  public:
-  WorldPipeline(Instance &inst) : inst_(inst){};
+  BackgroundPipeline(Instance &inst) : inst_(inst){};
 
   void sync(GPUMaterial *gpumat);
   void render(View &view);
@@ -46,10 +46,10 @@ class WorldPipeline {
 /* -------------------------------------------------------------------- */
 /** \name World Probe Pipeline
  *
- * Render reflection probe of the world background.
+ * Renders a single side for the world reflection probe.
  * \{ */
 
-class WorldProbePipeline {
+class WorldPipeline {
  private:
   Instance &inst_;
 
@@ -82,7 +82,7 @@ class WorldProbePipeline {
   };
 
  public:
-  WorldProbePipeline(Instance &inst) : inst_(inst){};
+  WorldPipeline(Instance &inst) : inst_(inst){};
 
   void sync();
   void sync(GPUMaterial *gpumat);
@@ -338,8 +338,8 @@ class UtilityTexture : public Texture {
 
 class PipelineModule {
  public:
+  BackgroundPipeline background;
   WorldPipeline world;
-  WorldProbePipeline world_probe;
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
@@ -349,8 +349,8 @@ class PipelineModule {
 
  public:
   PipelineModule(Instance &inst)
-      : world(inst),
-        world_probe(inst),
+      : background(inst),
+        world(inst),
         deferred(inst),
         forward(inst),
         shadow(inst),
@@ -361,7 +361,7 @@ class PipelineModule {
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
-    world_probe.sync();
+    world.sync();
     capture.sync();
   }
 

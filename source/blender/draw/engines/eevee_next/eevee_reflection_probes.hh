@@ -28,7 +28,7 @@ struct Material;
 namespace blender::eevee {
 
 class Instance;
-class WorldProbePipeline;
+class WorldPipeline;
 
 /* -------------------------------------------------------------------- */
 /** \name Reflection Probes
@@ -84,7 +84,7 @@ class ReflectionProbeModule {
  private:
   void sync(const ReflectionProbe &cubemap);
 
-  friend class WorldProbePipeline;
+  friend class WorldPipeline;
 };
 
 }  // namespace blender::eevee
