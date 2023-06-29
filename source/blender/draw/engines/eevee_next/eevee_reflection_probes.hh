@@ -3,16 +3,6 @@
 
 /** \file
  * \ingroup eevee
- *
- * Cubemaps
- *
- * Cubemaps record light from different locations in the scene. These cubemaps are used to add
- * environment and indirect lighting from light probes.
- *
- * - Although we have Global illumination light probes can still be used for situations that
- *   GI doesn't work. For example semi-transparent surfaces.
- * - The first cubemap is always reserved for the world shading.
- *
  */
 
 #pragma once
