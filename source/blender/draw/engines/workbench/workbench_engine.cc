@@ -376,7 +376,7 @@ class Instance {
 
     PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
                               .get_subpass(eGeometryType::POINTCLOUD)
-                              .sub(ob_ref.object->id.name);
+                              .sub("Point Cloud SubPass");
 
     GPUBatch *batch = point_cloud_sub_pass_setup(pass, ob_ref.object);
     pass.draw(batch, handle, material_index);
