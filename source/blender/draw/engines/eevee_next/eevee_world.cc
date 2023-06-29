@@ -91,6 +91,7 @@ void World::sync()
 
   if (wo_handle.recalc != 0) {
     inst_.reflection_probes.set_world_dirty();
+    inst_.capture_view.world_capture_enable(true);
   }
   wo_handle.reset_recalc_flag();
 

@@ -195,8 +195,11 @@ void ShadingView::update_view()
 
 void CaptureView::render()
 {
-  // TODO: only do this when world needs to be captured.
+  if (!world_capture_enable_) {
+    return;
+  }
 
+  GPU_debug_group_begin("World.Capture");
   View view = {"World.Capture.View"};
 
   for (int face : IndexRange(6)) {
@@ -212,6 +215,8 @@ void CaptureView::render()
     inst_.pipelines.world.render(view);
   }
   GPU_texture_update_mipmap_chain(inst_.reflection_probes.cubemaps_tx_);
+  GPU_debug_group_end();
+  world_capture_enable_ = false;
 }
 
 /** \} */
