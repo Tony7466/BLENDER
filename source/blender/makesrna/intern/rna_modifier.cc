@@ -699,7 +699,7 @@ static void rna_UVProject_projectors_begin(CollectionPropertyIterator *iter, Poi
 static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
 {
   ModifierData *md = (ModifierData *)ptr->data;
-  const ModifierTypeInfo *modifier_type = BKE_modifier_get_info(md->type);
+  const ModifierTypeInfo *modifier_type = BKE_modifier_get_info(ModifierType(md->type));
   if (modifier_type != nullptr) {
     return modifier_type->srna;
   }
@@ -708,7 +708,7 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
 
 static void rna_Modifier_name_set(PointerRNA *ptr, const char *value)
 {
-  ModifierData *md = ptr->data;
+  ModifierData *md = static_cast<ModifierData *>(ptr->data);
   char oldname[sizeof(md->name)];
 
   /* make a copy of the old name first */
@@ -734,7 +734,7 @@ static void rna_Modifier_name_update(Main *bmain, Scene * /*scene*/, PointerRNA 
 
 static char *rna_Modifier_path(const PointerRNA *ptr)
 {
-  const ModifierData *md = ptr->data;
+  const ModifierData *md = static_cast<const ModifierData *>(ptr->data);
   char name_esc[sizeof(md->name) * 2];
 
   BLI_str_escape(name_esc, md->name, sizeof(name_esc));
@@ -755,7 +755,7 @@ static void rna_Modifier_dependency_update(Main *bmain, Scene *scene, PointerRNA
 
 static void rna_Modifier_is_active_set(PointerRNA *ptr, bool value)
 {
-  ModifierData *md = ptr->data;
+  ModifierData *md = static_cast<ModifierData *>(ptr->data);
 
   if (value) {
     /* Disable the active flag of all other modifiers. */
@@ -859,7 +859,7 @@ RNA_MOD_UVLAYER_NAME_SET(WeightVGProximity, mask_tex_uvlayer_name);
 
 static void modifier_object_set(Object *self, Object **ob_p, int type, PointerRNA value)
 {
-  Object *ob = value.data;
+  Object *ob = static_cast<Object *>(value.data);
 
   if (!self || ob != self) {
     if (!ob || type == OB_EMPTY || ob->type == type) {
@@ -898,7 +898,7 @@ static void rna_HookModifier_object_set(PointerRNA *ptr,
                                         struct ReportList * /*reports*/)
 {
   Object *owner = (Object *)ptr->owner_id;
-  HookModifierData *hmd = ptr->data;
+  HookModifierData *hmd = static_cast<HookModifierData *>(ptr->data);
   Object *ob = (Object *)value.data;
 
   hmd->object = ob;
@@ -928,10 +928,10 @@ static bool rna_HookModifier_object_override_apply(Main *bmain,
 
   /* We need a special handling here because setting hook target resets invert parent matrix,
    * which is evil in our case. */
-  HookModifierData *hmd = ptr_dst->data;
+  HookModifierData *hmd = static_cast<HookModifierData *>(ptr_dst->data);
   Object *owner = (Object *)ptr_dst->owner_id;
-  Object *target_dst = RNA_property_pointer_get(ptr_dst, prop_dst).data;
-  Object *target_src = RNA_property_pointer_get(ptr_src, prop_src).data;
+  Object *target_dst = static_cast<Object *>(RNA_property_pointer_get(ptr_dst, prop_dst).data);
+  Object *target_src = static_cast<Object *>(RNA_property_pointer_get(ptr_src, prop_src).data);
 
   BLI_assert(target_dst == hmd->object);
 
@@ -951,7 +951,7 @@ static bool rna_HookModifier_object_override_apply(Main *bmain,
 static void rna_HookModifier_subtarget_set(PointerRNA *ptr, const char *value)
 {
   Object *owner = (Object *)ptr->owner_id;
-  HookModifierData *hmd = ptr->data;
+  HookModifierData *hmd = static_cast<HookModifierData *>(ptr->data);
 
   STRNCPY(hmd->subtarget, value);
   BKE_object_modifier_hook_reset(owner, hmd);
@@ -960,14 +960,14 @@ static void rna_HookModifier_subtarget_set(PointerRNA *ptr, const char *value)
 static int rna_HookModifier_vertex_indices_get_length(const PointerRNA *ptr,
                                                       int length[RNA_MAX_ARRAY_DIMENSION])
 {
-  const HookModifierData *hmd = ptr->data;
+  const HookModifierData *hmd = static_cast<const HookModifierData *>(ptr->data);
   int indexar_num = hmd->indexar ? hmd->indexar_num : 0;
   return (length[0] = indexar_num);
 }
 
 static void rna_HookModifier_vertex_indices_get(PointerRNA *ptr, int *values)
 {
-  HookModifierData *hmd = ptr->data;
+  HookModifierData *hmd = static_cast<HookModifierData *>(ptr->data);
   if (hmd->indexar != nullptr) {
     memcpy(values, hmd->indexar, sizeof(int) * hmd->indexar_num);
   }
@@ -993,7 +993,7 @@ static void rna_HookModifier_vertex_indices_set(HookModifierData *hmd,
 
     /* Copy and sort the index array. */
     size_t size = sizeof(int) * indices_len;
-    int *buffer = MEM_mallocN(size, "hook indexar");
+    int *buffer = static_cast<int *>(MEM_mallocN(size, "hook indexar"));
     memcpy(buffer, indices, size);
 
     qsort(buffer, indices_len, sizeof(int), BLI_sortutil_cmp_int);
@@ -1076,7 +1076,7 @@ static void rna_MultiresModifier_level_range(
 static bool rna_MultiresModifier_external_get(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  Mesh *me = ob->data;
+  Mesh *me = static_cast<Mesh *>(ob->data);
 
   return CustomData_external_test(&me->ldata, CD_MDISPS);
 }
@@ -1206,7 +1206,7 @@ static void rna_CurveModifier_dependency_update(Main *bmain, Scene *scene, Point
   rna_Modifier_update(bmain, scene, ptr);
   DEG_relations_tag_update(bmain);
   if (cmd->object != nullptr) {
-    Curve *curve = cmd->object->data;
+    Curve *curve = static_cast<Curve *>(cmd->object->data);
     if ((curve->flag & CU_PATH) == 0) {
       DEG_id_tag_update(&curve->id, ID_RECALC_GEOMETRY);
     }
@@ -1219,7 +1219,7 @@ static void rna_ArrayModifier_dependency_update(Main *bmain, Scene *scene, Point
   rna_Modifier_update(bmain, scene, ptr);
   DEG_relations_tag_update(bmain);
   if (amd->curve_ob != nullptr) {
-    Curve *curve = amd->curve_ob->data;
+    Curve *curve = static_cast<Curve *>(amd->curve_ob->data);
     if ((curve->flag & CU_PATH) == 0) {
       DEG_id_tag_update(&curve->id, ID_RECALC_GEOMETRY);
     }
@@ -1335,7 +1335,7 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
       RNA_enum_item_add_separator(&item, &totitem);
 
       const ListBase *defbase = BKE_object_defgroup_list(ob_src);
-      for (i = 0, dg = defbase->first; dg; i++, dg = dg->next) {
+      for (i = 0, dg = static_cast<const bDeformGroup *>(defbase->first); dg; i++, dg = dg->next) {
         tmp_item.value = i;
         tmp_item.identifier = tmp_item.name = dg->name;
         RNA_enum_item_add(&item, &totitem, &tmp_item);
@@ -1463,7 +1463,8 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_dst_itemf(
         RNA_enum_item_add_separator(&item, &totitem);
 
         const ListBase *defbase = BKE_object_defgroup_list(ob_dst);
-        for (i = 0, dg = defbase->first; dg; i++, dg = dg->next) {
+        for (i = 0, dg = static_cast<const bDeformGroup *>(defbase->first); dg; i++, dg = dg->next)
+        {
           tmp_item.value = i;
           tmp_item.identifier = tmp_item.name = dg->name;
           RNA_enum_item_add(&item, &totitem, &tmp_item);
@@ -1484,7 +1485,7 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_dst_itemf(
         CustomData *ldata;
         int num_data, i;
 
-        me_dst = ob_dst->data;
+        me_dst = static_cast<Mesh *>(ob_dst->data);
         ldata = &me_dst->ldata;
         num_data = CustomData_number_of_layers(ldata, CD_PROP_FLOAT2);
 
@@ -1513,7 +1514,7 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_dst_itemf(
       if (ob_dst && ob_dst->data) {
         eCustomDataType types[2] = {CD_PROP_COLOR, CD_PROP_BYTE_COLOR};
 
-        Mesh *me_dst = ob_dst->data;
+        Mesh *me_dst = static_cast<Mesh *>(ob_dst->data);
         CustomData *cdata = STREQ(RNA_property_identifier(prop), "layers_vcol_vert_select_dst") ?
                                 &me_dst->vdata :
                                 &me_dst->ldata;
@@ -1618,8 +1619,8 @@ static bool rna_SurfaceDeformModifier_is_bound_get(PointerRNA *ptr)
 static bool rna_ParticleInstanceModifier_particle_system_poll(PointerRNA *ptr,
                                                               const PointerRNA value)
 {
-  ParticleInstanceModifierData *psmd = ptr->data;
-  ParticleSystem *psys = value.data;
+  ParticleInstanceModifierData *psmd = static_cast<ParticleInstanceModifierData *>(ptr->data);
+  ParticleSystem *psys = static_cast<ParticleSystem *>(value.data);
 
   if (!psmd->ob) {
     return false;
@@ -1631,7 +1632,7 @@ static bool rna_ParticleInstanceModifier_particle_system_poll(PointerRNA *ptr,
 
 static PointerRNA rna_ParticleInstanceModifier_particle_system_get(PointerRNA *ptr)
 {
-  ParticleInstanceModifierData *psmd = ptr->data;
+  ParticleInstanceModifierData *psmd = static_cast<ParticleInstanceModifierData *>(ptr->data);
   ParticleSystem *psys;
   PointerRNA rptr;
 
@@ -1639,7 +1640,7 @@ static PointerRNA rna_ParticleInstanceModifier_particle_system_get(PointerRNA *p
     return PointerRNA_NULL;
   }
 
-  psys = BLI_findlink(&psmd->ob->particlesystem, psmd->psys - 1);
+  psys = static_cast<ParticleSystem *>(BLI_findlink(&psmd->ob->particlesystem, psmd->psys - 1));
   RNA_pointer_create((ID *)psmd->ob, &RNA_ParticleSystem, psys, &rptr);
   return rptr;
 }
@@ -1648,7 +1649,7 @@ static void rna_ParticleInstanceModifier_particle_system_set(PointerRNA *ptr,
                                                              const PointerRNA value,
                                                              struct ReportList * /*reports*/)
 {
-  ParticleInstanceModifierData *psmd = ptr->data;
+  ParticleInstanceModifierData *psmd = static_cast<ParticleInstanceModifierData *>(ptr->data);
 
   if (!psmd->ob) {
     return;
@@ -1664,7 +1665,7 @@ static void rna_ParticleInstanceModifier_particle_system_set(PointerRNA *ptr,
  */
 static void rna_Modifier_show_expanded_set(PointerRNA *ptr, bool value)
 {
-  ModifierData *md = ptr->data;
+  ModifierData *md = static_cast<ModifierData *>(ptr->data);
   SET_FLAG_FROM_TEST(md->ui_expand_flag, value, UI_PANEL_DATA_EXPAND_ROOT);
 }
 
@@ -1675,27 +1676,27 @@ static void rna_Modifier_show_expanded_set(PointerRNA *ptr, bool value)
  */
 static bool rna_Modifier_show_expanded_get(PointerRNA *ptr)
 {
-  ModifierData *md = ptr->data;
+  ModifierData *md = static_cast<ModifierData *>(ptr->data);
   return md->ui_expand_flag & UI_PANEL_DATA_EXPAND_ROOT;
 }
 
 static bool rna_NodesModifier_node_group_poll(PointerRNA * /*ptr*/, PointerRNA value)
 {
-  bNodeTree *ntree = value.data;
+  bNodeTree *ntree = static_cast<bNodeTree *>(value.data);
   return ntree->type == NTREE_GEOMETRY;
 }
 
 static void rna_NodesModifier_node_group_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *object = (Object *)ptr->owner_id;
-  NodesModifierData *nmd = ptr->data;
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
   rna_Modifier_dependency_update(bmain, scene, ptr);
   MOD_nodes_update_interface(object, nmd);
 }
 
 static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
 {
-  NodesModifierData *nmd = ptr->data;
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
   NodesModifierSettings *settings = &nmd->settings;
   return &settings->properties;
 }
