@@ -8,7 +8,7 @@ export functionalty.
 One may optionally define one or both of the following callback functions
 in the ``USDHook`` subclass.
 
-``USDHook.on_export`` is called before the USD export finalizes,
+Hook function ``on_export()`` is called before the USD export finalizes,
 allowing modifications to the USD stage immediately before it is
 saved.  This function takes as an argument an instance of an
 internally defined class ``USDSceneExportContext`` which provides the
@@ -17,7 +17,7 @@ following accessors to the scene data:
 - ``get_stage()`` returns the USD stage to be saved.
 - ``get_depsgraph()`` returns the Blender scene dependency graph.
 
-``USDHook.on_material_export`` is called for each material that is exported,
+Hook function ``on_material_export()`` is called for each material that is exported,
 allowing modifications to the USD material, such as shader generation.
 It is called with a single argument of internally defined type ``USDMaterialExportContext``
 which implements the following accessors:
