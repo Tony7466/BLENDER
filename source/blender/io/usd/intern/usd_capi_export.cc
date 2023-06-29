@@ -257,6 +257,9 @@ static void export_startjob(void *customdata,
 
   ensure_root_prim(usd_stage, data->params);
 
+  /* Ensure Python types for invoking export hooks are registered. */
+  register_export_hook_converters();
+
   USDHierarchyIterator iter(data->bmain, data->depsgraph, usd_stage, data->params);
 
   if (data->params.export_animation) {
@@ -297,7 +300,6 @@ static void export_startjob(void *customdata,
     }
   }
 
-  register_export_hook_converters();
   call_export_hooks(usd_stage, data->depsgraph);
 
   usd_stage->GetRootLayer()->Save();

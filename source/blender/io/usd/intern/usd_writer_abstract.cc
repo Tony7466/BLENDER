@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_abstract.h"
 #include "usd_hierarchy_iterator.h"
+#include "usd_hook.h"
 #include "usd_writer_material.h"
 
 #include <pxr/base/tf/stringUtils.h>
@@ -123,6 +124,8 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   else {
     create_usd_viewport_material(this->usd_export_context_, material, usd_material);
   }
+
+  call_material_export_hooks(stage, material, usd_material);
 
   return usd_material;
 }

@@ -4,6 +4,7 @@
 
 #include "usd_hook.h"
 
+#include <boost/python/import.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/call_method.hpp>
 #include <boost/python/class.hpp>
@@ -63,9 +64,11 @@ namespace blender::io::usd {
 /* Convert PointerRNA to a PyObject*. */
 struct PointerRNAToPython {
 
-  static PyObject *convert(const PointerRNA &pRNA)
+  /* We pass the argument by value because we need
+   * to obtain a non-const pointer to it. */
+  static PyObject *convert(PointerRNA ptr)
   {
-    return pyrna_struct_CreatePyObject(const_cast<PointerRNA*>(&pRNA));
+    return pyrna_struct_CreatePyObject(&ptr);
   }
 
 };
@@ -82,18 +85,51 @@ struct USDSceneExportContext {
     RNA_pointer_create(NULL, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
   }
 
-  pxr::UsdStageRefPtr GetStage()
+  pxr::UsdStageRefPtr get_stage()
   {
     return stage;
   }
 
-  const PointerRNA &GetDepsgraph()
+  const PointerRNA &get_depsgraph() const
   {
     return depsgraph_ptr;
   }
 
   pxr::UsdStageRefPtr stage;
   PointerRNA depsgraph_ptr;
+};
+
+/* Encapsulate arguments for material export. */
+struct USDMaterialExportContext {
+
+  USDMaterialExportContext() : material_ptr({}) {}
+
+  USDMaterialExportContext(pxr::UsdStageRefPtr in_stage,
+                           Material *material,
+                           pxr::UsdShadeMaterial &in_usd_material)
+      : stage(in_stage), usd_material(in_usd_material)
+  {
+    RNA_pointer_create(NULL, &RNA_Material, material, &material_ptr);
+  }
+
+  pxr::UsdStageRefPtr get_stage()
+  {
+    return stage;
+  }
+
+  const PointerRNA &get_blender_material() const
+  {
+    return material_ptr;
+  }
+
+  pxr::UsdShadeMaterial &get_usd_material()
+  {
+    return usd_material;
+  }
+
+  pxr::UsdStageRefPtr stage;
+  pxr::UsdShadeMaterial usd_material;
+  PointerRNA material_ptr;
 };
 
 void register_export_hook_converters()
@@ -113,29 +149,44 @@ void register_export_hook_converters()
 
   PyGILState_STATE gilstate = PyGILState_Ensure();
 
+  /* We must import these modules for the USD type converters to work. */
+  python::import("pxr.Usd");
+  python::import("pxr.UsdShade");
+
+  /* Register converter from PoinerRNA to a PyObject*. */
   python::to_python_converter<PointerRNA, PointerRNAToPython>();
 
+  /* Register context class converters. */
   python::class_<USDSceneExportContext>("USDSceneExportContext")
-      .def("GetStage", &USDSceneExportContext::GetStage)
-      .def("GetDepsgraph",
-           &USDSceneExportContext::GetDepsgraph,
+      .def("get_stage", &USDSceneExportContext::get_stage)
+      .def("get_depsgraph",
+           &USDSceneExportContext::get_depsgraph,
            python::return_value_policy<python::return_by_value>())
+    ;
+
+  python::class_<USDMaterialExportContext>("USDMaterialExportContext")
+      .def("get_stage", &USDMaterialExportContext::get_stage)
+      .def("get_blender_material",
+           &USDMaterialExportContext::get_blender_material,
+           python::return_value_policy<python::return_by_value>())
+      .def("get_usd_material",
+           &USDMaterialExportContext::get_usd_material,
+           python::return_value_policy<python::return_by_value>());
     ;
 
   PyGILState_Release(gilstate);
 }
 
-
-void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
+/* Invoke the member function with the given name of all registered hook instances.
+ * The given context will be provided as the function argument. */
+template<class T>
+void call_hooks(const char *func_name, T &hook_context)
 {
   if (g_usd_hooks.empty()) {
     return;
   }
 
   PyGILState_STATE gilstate = PyGILState_Ensure();
-
-  /* The chaser function name. */
-  const char *func_name = "on_export";
 
   /* Iterate over the hooks and invoke the hook function, if it's defined. */
   USDHookList::const_iterator hook_iter = g_usd_hooks.begin();
@@ -160,11 +211,7 @@ void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
         continue;
       }
 
-      USDSceneExportContext hook_context(stage, depsgraph);
-
-      python::call_method<void>(hook_obj,
-                                func_name,
-                                hook_context);
+      python::call_method<void>(hook_obj, func_name, hook_context);
     }
     catch (...) {
       if (PyErr_Occurred()) {
@@ -174,6 +221,29 @@ void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
   }
 
   PyGILState_Release(gilstate);
+}
+
+
+void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
+{
+  if (g_usd_hooks.empty()) {
+    return;
+  }
+
+  USDSceneExportContext export_context(stage, depsgraph);
+  call_hooks("on_export", export_context);
+}
+
+void call_material_export_hooks(pxr::UsdStageRefPtr stage,
+                                Material *material,
+                                pxr::UsdShadeMaterial &usd_material)
+{
+  if (g_usd_hooks.empty()) {
+    return;
+  }
+
+  USDMaterialExportContext export_context(stage, material, usd_material);
+  call_hooks("on_material_export", export_context);
 }
 
 }  // namespace blender::io::usd
