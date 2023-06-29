@@ -29,6 +29,7 @@ namespace blender::eevee {
 
 class Instance;
 class WorldPipeline;
+class CaptureView;
 
 /* -------------------------------------------------------------------- */
 /** \name Reflection Probes
@@ -85,6 +86,8 @@ class ReflectionProbeModule {
   void sync(const ReflectionProbe &cubemap);
 
   friend class WorldPipeline;
+  /* Capture View requires access to the cubemaps texture for framebuffer configuration. */
+  friend class CaptureView;
 };
 
 }  // namespace blender::eevee

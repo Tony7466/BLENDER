@@ -118,7 +118,6 @@ void ShadingView::render()
   GPU_framebuffer_bind(combined_fb_);
   GPU_framebuffer_clear_color_depth(combined_fb_, clear_color, 1.0f);
 
-  inst_.pipelines.world.render();
   inst_.pipelines.background.render(render_view_new_);
 
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
@@ -186,6 +185,33 @@ void ShadingView::update_view()
   DRW_view_update_sub(render_view_, viewmat.ptr(), winmat.ptr());
 
   render_view_new_.sync(viewmat, winmat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Capture View
+ * \{ */
+
+void CaptureView::render()
+{
+  // TODO: only do this when world needs to be captured.
+
+  View view = {"World.Capture.View"};
+
+  for (int face : IndexRange(6)) {
+    capture_fb_.ensure(
+        GPU_ATTACHMENT_NONE,
+        GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemaps_tx_, face));
+    GPU_framebuffer_bind(capture_fb_);
+
+    float4x4 view_m4 = cubeface_mat(face);
+    float4x4 win_m4;
+    cubeface_winmat_get(win_m4, 1.0f, 10.0f);
+    view.sync(view_m4, win_m4);
+    inst_.pipelines.world.render(view);
+  }
+  GPU_texture_update_mipmap_chain(inst_.reflection_probes.cubemaps_tx_);
 }
 
 /** \} */

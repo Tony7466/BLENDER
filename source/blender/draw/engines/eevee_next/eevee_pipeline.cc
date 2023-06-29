@@ -60,19 +60,8 @@ void BackgroundPipeline::render(View &view)
 /** \name World Probe Pipeline
  * \{ */
 
-void WorldPipeline::sync()
+void WorldPipeline::sync(GPUMaterial *gpumat)
 {
-  for (int face : IndexRange(6)) {
-    CubemapSide &side = sides_[face];
-    /* View */
-    float4x4 view_m4 = cubeface_mat(face);
-    float4x4 win_m4;
-    cubeface_winmat_get(win_m4, 1.0f, 10.0f);
-    side.view.sync(view_m4, win_m4);
-
-    side.cubemap_face_ps.init();
-    side.cubemap_face_ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
-  }
   const int2 extent(1);
   constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE;
   dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent, usage);
@@ -80,31 +69,12 @@ void WorldPipeline::sync()
   dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent, 1, usage);
   dummy_aov_value_tx_.ensure_2d_array(GPU_R16F, extent, 1, usage);
 
-  has_draw_commands_ = false;
-}
+  PassSimple &pass = cubemap_face_ps_;
+  pass.init();
+  pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
 
-void WorldPipeline::sync(GPUMaterial *gpumat)
-{
-  for (int face : IndexRange(6)) {
-    sync(gpumat, face);
-  }
-  has_draw_commands_ = true;
-}
-
-void WorldPipeline::sync(GPUMaterial *gpumat, int face)
-{
   Manager &manager = *inst_.manager;
-
-  CubemapSide &side = sides_[face];
-
-  /* Framebuffer. */
-  Texture &cubemap = inst_.reflection_probes.cubemaps_tx_;
-  side.cubemap_face_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap, face));
-
   ResourceHandle handle = manager.resource_handle(float4x4::identity());
-  PassSimple &pass = side.cubemap_face_ps;
-
-  pass.framebuffer_set(&side.cubemap_face_fb);
   pass.material_set(manager, gpumat);
   pass.push_constant("world_opacity_fade", 1.0f);
 
@@ -127,32 +97,11 @@ void WorldPipeline::sync(GPUMaterial *gpumat, int face)
   pass.bind_ssbo("aov_buf", &inst_.film.aovs_info);
 
   pass.draw(DRW_cache_fullscreen_quad_get(), handle);
-
-  pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
-void WorldPipeline::render()
+void WorldPipeline::render(View &view)
 {
-  if (!has_draw_commands_) {
-    return;
-  }
-  GPUFrameBuffer *previous_framebuffer = GPU_framebuffer_active_get();
-
-  GPU_debug_group_begin("World.Probe");
-  for (int face : IndexRange(6)) {
-    sides_[face].render(inst_);
-  }
-  GPU_debug_group_end();
-
-  GPU_texture_update_mipmap_chain(inst_.reflection_probes.cubemaps_tx_);
-  if (previous_framebuffer) {
-    GPU_framebuffer_bind(previous_framebuffer);
-  }
-}
-
-void WorldPipeline::CubemapSide::render(Instance &instance)
-{
-  instance.manager->submit(cubemap_face_ps, view);
+  inst_.manager->submit(cubemap_face_ps_, view);
 }
 
 /** \} */

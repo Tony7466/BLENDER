@@ -67,6 +67,7 @@ class Instance {
   Film film;
   RenderBuffers render_buffers;
   MainView main_view;
+  CaptureView capture_view;
   World world;
   LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
@@ -118,6 +119,7 @@ class Instance {
         film(*this),
         render_buffers(*this),
         main_view(*this),
+        capture_view(*this),
         world(*this),
         light_probes(*this),
         irradiance_cache(*this){};

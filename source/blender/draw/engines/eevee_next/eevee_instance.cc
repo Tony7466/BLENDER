@@ -291,7 +291,8 @@ void Instance::render_sample()
   }
 
   sampling.step();
-
+  
+  capture_view.render();
   main_view.render();
 
   motion_blur.step();

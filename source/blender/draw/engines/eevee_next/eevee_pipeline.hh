@@ -59,37 +59,14 @@ class WorldPipeline {
   Texture dummy_aov_color_tx_;
   Texture dummy_aov_value_tx_;
 
-  struct CubemapSide {
-    PassSimple cubemap_face_ps;
-    View view;
-    Framebuffer cubemap_face_fb;
-    void render(Instance &instance);
-  };
-
-  /**
-   * Keep track if the world probe needs to be updated. This should only be the case when the
-   * world is updated. This flag is used to skip updating mipmaps when the world isn't changed.
-   */
-  bool has_draw_commands_ = false;
-
-  CubemapSide sides_[6] = {
-      {{"PosX"}, {"PosX"}},
-      {{"NegX"}, {"NegX"}},
-      {{"PosY"}, {"PosY"}},
-      {{"NegY"}, {"NegY"}},
-      {{"PosZ"}, {"PosZ"}},
-      {{"NegZ"}, {"NegZ"}},
-  };
+  PassSimple cubemap_face_ps_ = {"World.Probe"};
 
  public:
   WorldPipeline(Instance &inst) : inst_(inst){};
 
-  void sync();
   void sync(GPUMaterial *gpumat);
-  void render();
+  void render(View &view);
 
- private:
-  void sync(GPUMaterial *gpumat, int face);
 };  // namespace blender::eevee
 
 /** \} */
@@ -361,7 +338,6 @@ class PipelineModule {
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
-    world.sync();
     capture.sync();
   }
 
