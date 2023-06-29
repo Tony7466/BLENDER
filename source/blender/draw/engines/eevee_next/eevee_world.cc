@@ -90,7 +90,7 @@ void World::sync()
   WorldHandle &wo_handle = inst_.sync.sync_world(bl_world);
 
   if (wo_handle.recalc != 0) {
-    inst_.capture_view.world_capture_enable(true);
+    inst_.reflection_probes.do_world_update_set(true);
   }
   wo_handle.reset_recalc_flag();
 

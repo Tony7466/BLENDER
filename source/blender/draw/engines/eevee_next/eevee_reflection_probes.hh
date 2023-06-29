@@ -41,6 +41,10 @@ class ReflectionProbeModule {
 
   Texture cubemaps_tx_ = {"Probes"};
 
+  bool initialized_ = false;
+
+  bool do_world_update_ = false;
+
  public:
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
 
@@ -51,7 +55,17 @@ class ReflectionProbeModule {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, cubemaps_tx_);
   }
 
+  void do_world_update_set(bool value)
+  {
+    do_world_update_ = value;
+  }
+
  private:
+  bool do_world_update_get() const
+  {
+    return do_world_update_;
+  }
+
   /* Capture View requires access to the cubemaps texture for framebuffer configuration. */
   friend class CaptureView;
 };

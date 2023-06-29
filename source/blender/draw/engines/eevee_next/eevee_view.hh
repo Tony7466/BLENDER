@@ -153,16 +153,9 @@ class CaptureView {
   Instance &inst_;
   Framebuffer capture_fb_ = {"World.Capture"};
 
-  bool world_capture_enable_ = false;
-
  public:
   CaptureView(Instance &inst) : inst_(inst) {}
   void render();
-
-  void world_capture_enable(bool enable)
-  {
-    world_capture_enable_ = enable;
-  }
 };
 
 /** \} */
