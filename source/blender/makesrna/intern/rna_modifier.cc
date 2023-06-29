@@ -1700,6 +1700,18 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
   NodesModifierSettings *settings = &nmd->settings;
   return &settings->properties;
 }
+
+static void rna_NodesModifier_id_mappings_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+  rna_iterator_array_begin(iter,
+                           (void *)nmd->id_mappings,
+                           sizeof(NodesModifierIDMapping),
+                           nmd->id_mappings_num,
+                           0,
+                           nullptr);
+}
+
 #else
 
 static void rna_def_property_subdivision_common(StructRNA *srna)
@@ -7056,10 +7068,34 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodesModifierIDMapping", nullptr);
+  RNA_def_struct_ui_text(srna, "Nodes Modifier ID Mapping", "");
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "ID Name", "Name of the ID that is to be mapped");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "lib_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Library Name", "Name of the library that contains the ID that is to be mapped");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
 static void rna_def_modifier_nodes(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+
+  rna_def_modifier_nodes_id_mapping(brna);
 
   srna = RNA_def_struct(brna, "NodesModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Nodes Modifier", "");
@@ -7068,6 +7104,18 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_GEOMETRY_NODES);
 
   RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "id_mappings", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "NodesModifierIDMapping");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_NodesModifier_id_mappings_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
 
   prop = RNA_def_property(srna, "node_group", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Node Group", "Node group that controls what this modifier does");
