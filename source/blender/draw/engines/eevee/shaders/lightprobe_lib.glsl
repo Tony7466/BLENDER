@@ -4,9 +4,9 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 #pragma BLENDER_REQUIRE(common_uniforms_lib.glsl)
-#pragma BLENDER_REQUIRE(cubemap_lib.glsl)
 #pragma BLENDER_REQUIRE(ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(irradiance_lib.glsl)
+#pragma BLENDER_REQUIRE(cubemap_lib.glsl)
 
 /* ----------- Uniforms --------- */
 
