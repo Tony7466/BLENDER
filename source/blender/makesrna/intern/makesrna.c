@@ -4561,7 +4561,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_camera.c", "rna_camera_api.c", RNA_def_camera},
     {"rna_cloth.c", NULL, RNA_def_cloth},
     {"rna_collection.c", NULL, RNA_def_collections},
-    {"rna_color.c", NULL, RNA_def_color},
+    {"rna_color.cc", NULL, RNA_def_color},
     {"rna_constraint.c", NULL, RNA_def_constraint},
     {"rna_context.c", NULL, RNA_def_context},
     {"rna_curve.cc", "rna_curve_api.cc", RNA_def_curve},
