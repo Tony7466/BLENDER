@@ -102,7 +102,7 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
   if (ELEM(node.type, GEO_NODE_SERIAL_LOOP_INPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
     aal::RelationsInNode &relations = scope.construct<aal::RelationsInNode>();
     /* TODO: Add a smaller set of relations. This requires changing the inferencing algorithm to
-     * make it aware of loops. For now, adding all possible relations is correct as well. */
+     * make it aware of loops. */
     for (const bNodeSocket *socket : node.output_sockets()) {
       if (socket->type == SOCK_GEOMETRY) {
         for (const bNodeSocket *other_output : node.output_sockets()) {
@@ -117,9 +117,15 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
         }
       }
       else if (socket_is_field(*socket)) {
-        for (const bNodeSocket *input_socket : node.input_sockets()) {
-          if (socket_is_field(*input_socket)) {
-            relations.reference_relations.append({input_socket->index(), socket->index()});
+        /* Reference relations are not added for the output node, because then nodes after the loop
+         * would have to know about the individual field sources within the loop. This is not
+         * necessary, because the field outputs of a loop already serve as field sources and
+         * anonymous attributes are extracted from them. */
+        if (node.type == GEO_NODE_SERIAL_LOOP_INPUT) {
+          for (const bNodeSocket *input_socket : node.input_sockets()) {
+            if (socket_is_field(*input_socket)) {
+              relations.reference_relations.append({input_socket->index(), socket->index()});
+            }
           }
         }
       }
