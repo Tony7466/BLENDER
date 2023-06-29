@@ -16,8 +16,8 @@ void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 o
 #else
   vec2 frag_coord = gl_FragCoord.xy;
 #endif
-  float noise = utility_tx_fetch(utility_tx, frag_coord, UTIL_BLUE_NOISE_LAYER).g;
-  vec2 rand = fract(vec2(noise) + sampling_rng_2D_get(SAMPLING_RAYTRACE_U));
+  vec2 noise = utility_tx_fetch(utility_tx, frag_coord, UTIL_BLUE_NOISE_LAYER).gb;
+  vec2 rand = fract(noise + sampling_rng_2D_get(SAMPLING_RAYTRACE_U));
 
   vec3 Xi = sample_cylinder(rand);
 
@@ -39,7 +39,8 @@ void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 o
     /* TODO: lod_factor should be precalculated and stored inside the reflection probe data. */
     const float bias = 0;
     const float lod_factor = bias + 0.5 * log(float(square_i(texture_size.x))) / log(2);
-    float lod = clamp(lod_factor - 0.5 * log2(pdf * dist), 0.0, lod_cube_max);
+    /* -2: Don't use LOD levels that are smaller than 4x4 pixels. */
+    float lod = clamp(lod_factor - 0.5 * log2(pdf * dist), 0.0, lod_cube_max - 2.0);
 
     vec3 l_col = textureLod_cubemapArray(reflectionProbes, vec4(L, 0.0), lod).rgb;
 
