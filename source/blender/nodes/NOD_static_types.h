@@ -388,6 +388,7 @@ DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_VERTEX_OF_CORNER, 0, "VERTEX_OF_COR
 DefNode(GeometryNode, GEO_NODE_OBJECT_INFO, def_geo_object_info, "OBJECT_INFO", ObjectInfo, "Object Info", "Retrieve information from an object")
 DefNode(GeometryNode, GEO_NODE_OFFSET_POINT_IN_CURVE, 0, "OFFSET_POINT_IN_CURVE", OffsetPointInCurve, "Offset Point in Curve", "Offset a control point index within its curve")
 DefNode(GeometryNode, GEO_NODE_OFFSET_SDF_VOLUME, 0, "OFFSET_SDF_VOLUME", OffsetSDFVolume, "Offset SDF Volume", "Move the surface of an SDF volume inwards or outwards")
+DefNode(GeometryNode, GEO_NODE_OPERATOR_3D_CURSOR, 0, "OPERATOR_3D_CURSOR", Operator3DCursor, "3D Cursor", "The scene's 3D cursor location and rotation")
 DefNode(GeometryNode, GEO_NODE_OPERATOR_SELECTION, 0, "OPERATOR_SELECTION", OperatorSelection, "Operator Selection", "User selection of the edited geometry, for operator execution")
 DefNode(GeometryNode, GEO_NODE_OPERATOR_SELECTION_SET, def_geo_operator_selection_set, "OPERATOR_SELECTION_SET", OperatorSelectionSet, "Set Selection", "Set selection of the edited geometry, for operator execution")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_SDF_VOLUME, def_geo_points_to_sdf_volume, "POINTS_TO_SDF_VOLUME", PointsToSDFVolume, "Points to SDF Volume", "Generate an SDF volume sphere around every point")

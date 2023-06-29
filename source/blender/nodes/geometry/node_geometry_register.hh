@@ -124,6 +124,7 @@ void register_node_type_geo_mesh_topology_vertex_of_corner();
 void register_node_type_geo_object_info();
 void register_node_type_geo_offset_point_in_curve();
 void register_node_type_geo_offset_sdf_volume();
+void register_node_type_geo_operator_3d_cursor();
 void register_node_type_geo_operator_selection();
 void register_node_type_geo_operator_selection_set();
 void register_node_type_geo_points_to_vertices();
