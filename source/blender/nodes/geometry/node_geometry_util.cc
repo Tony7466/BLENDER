@@ -7,7 +7,9 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_space_types.h"
 
+#include "BKE_context.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_pointcloud.h"
@@ -42,6 +44,20 @@ std::optional<eCustomDataType> node_data_type_to_custom_data_type(const eNodeSoc
 std::optional<eCustomDataType> node_socket_to_custom_data_type(const bNodeSocket &socket)
 {
   return node_data_type_to_custom_data_type(eNodeSocketDatatype(socket.type));
+}
+
+void search_link_ops_for_for_operator_node(GatherAddNodeSearchParams &params)
+{
+  const SpaceNode &snode = *CTX_wm_space_node(&params.context());
+  if (snode.geometry_nodes_type == SNODE_GEOMETRY_OPERATOR) {
+    search_node_add_ops_for_basic_node(params);
+  }
+}
+void search_link_ops_for_operator_node(GatherLinkSearchOpParams &params)
+{
+  if (params.space_node().geometry_nodes_type == SNODE_GEOMETRY_OPERATOR) {
+    search_link_ops_for_basic_node(params);
+  }
 }
 
 }  // namespace blender::nodes

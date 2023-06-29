@@ -660,7 +660,8 @@ class NODE_MT_geometry_node_add_all(Menu):
     bl_idname = "NODE_MT_geometry_node_add_all"
     bl_label = ""
 
-    def draw(self, _context):
+    def draw(self, context):
+        snode = context.space_data
         layout = self.layout
         layout.menu("NODE_MT_geometry_node_GEO_ATTRIBUTE")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT")
@@ -680,8 +681,9 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_TEXTURE")
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
-        layout.menu("NODE_MT_category_operator")
-        layout.separator()
+        if snode.geometry_nodes_type == 'OPERATOR':
+            layout.menu("NODE_MT_category_operator")
+            layout.separator()
         layout.menu("NODE_MT_category_GEO_GROUP")
         layout.menu("NODE_MT_category_GEO_LAYOUT")
         node_add_menu.draw_root_assets(layout)

@@ -40,5 +40,7 @@ void register_node_type_geo_operator_3d_cursor()
   geo_node_type_base(&ntype, GEO_NODE_OPERATOR_3D_CURSOR, "3D Cursor", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_operator_node;
+  ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_operator_node;
   nodeRegisterType(&ntype);
 }

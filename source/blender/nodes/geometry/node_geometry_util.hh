@@ -32,6 +32,10 @@
 #endif
 
 struct BVHTreeFromMesh;
+namespace blender::nodes {
+class GatherAddNodeSearchParams;
+class GatherLinkSearchOpParams;
+}  // namespace blender::nodes
 
 void geo_node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass);
 bool geo_node_poll_default(const struct bNodeType *ntype,
@@ -39,6 +43,9 @@ bool geo_node_poll_default(const struct bNodeType *ntype,
                            const char **r_disabled_hint);
 
 namespace blender::nodes {
+
+void search_link_ops_for_for_operator_node(GatherAddNodeSearchParams &params);
+void search_link_ops_for_operator_node(GatherLinkSearchOpParams &params);
 
 void transform_mesh(Mesh &mesh,
                     const float3 translation,

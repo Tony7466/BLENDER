@@ -89,5 +89,7 @@ void register_node_type_geo_operator_selection_set()
   ntype.initfunc = file_ns::node_init;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_operator_node;
+  ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_operator_node;
   nodeRegisterType(&ntype);
 }
