@@ -3,3 +3,4 @@ Referenced by commit 1f4dc51d09a, Fix T100974: Remesh operators reset mesh prope
 Referenced by issue #101883, Regression: Visual Geometry to Mesh create bonkers mesh if the applied mesh has shapekeys.
 Referenced by issue #101583, Regression: apply data transfer crash
 Referenced by issue #101583, Regression: apply data transfer crash
+Referenced by issue #109523, Regression: Vertex Weight Mix crash on apply/undo when mesh has shape keys
