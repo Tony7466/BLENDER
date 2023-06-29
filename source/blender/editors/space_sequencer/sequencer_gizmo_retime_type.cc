@@ -389,9 +389,10 @@ static int gizmo_retime_handle_test_select(bContext *C, wmGizmo *gz, const int m
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
 }*/
 
-  if (!sequencer_retiming_tool_is_active(C) && handle != nullptr) {
+  /* if (!sequencer_retiming_tool_is_active(C) && handle != nullptr)
+  {
     return 0;
-  }
+  }*/
 
   return -1;
 }

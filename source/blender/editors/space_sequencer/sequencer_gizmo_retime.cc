@@ -83,8 +83,8 @@ static void gizmogroup_retime_setup(const bContext * /* C */, wmGizmoGroup *gzgr
   /* Assign operators. */
   wmOperatorType *ot = WM_operatortype_find("SEQUENCER_OT_retiming_segment_speed_set", true);
   WM_gizmo_operator_set(ggd->speed_set_gizmo, 0, ot, nullptr);
-  ot = WM_operatortype_find("SEQUENCER_OT_retiming_handle_select", true);
-  WM_gizmo_operator_set(ggd->move_handle_gizmo, 0, ot, nullptr);
+  /* ot = WM_operatortype_find("SEQUENCER_OT_retiming_handle_select", true);
+  WM_gizmo_operator_set(ggd->move_handle_gizmo, 0, ot, nullptr);*/
 }
 
 void SEQUENCER_GGT_gizmo_retime(wmGizmoGroupType *gzgt)

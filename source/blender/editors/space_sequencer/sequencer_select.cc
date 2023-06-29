@@ -968,6 +968,13 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_RUNNING_MODAL;
   }
 
+  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
+  if (seq && handle && !wait_to_deselect_others) {
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+    WM_toolsystem_ref_set_by_id(C, "builtin.retime");
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
   bool changed = false;
 
   /* Deselect everything */
