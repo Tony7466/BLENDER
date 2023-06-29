@@ -1094,8 +1094,8 @@ class NodeTreeMainUpdater {
   }
 
   /**
-   * Make that the #bNodeTree::nested_node_refs is up to date. It's supposed to contain a reference
-   * to all (nested) simulation zones.
+   * Make sure that the #bNodeTree::nested_node_refs is up to date. It's supposed to contain a
+   * reference to all (nested) simulation zones.
    */
   bool update_nested_node_refs(bNodeTree &ntree)
   {
@@ -1109,17 +1109,45 @@ class NodeTreeMainUpdater {
       old_ids.add(ref.id);
     }
 
+    Vector<bNestedNodePath> nested_node_paths;
+
+    /* Don't forget nested node refs just because the linked file is not available right now. */
+    for (const bNestedNodePath &path : old_id_by_path.keys()) {
+      const bNode *node = ntree.node_by_id(path.node_id);
+      if (node && node->is_group() && node->id) {
+        if (node->id->tag & LIB_TAG_MISSING) {
+          nested_node_paths.append(path);
+        }
+      }
+    }
+    if (ntree.type == NTREE_GEOMETRY) {
+      /* Create references for simulations in geometry nodes. */
+      for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
+        nested_node_paths.append({node->identifier, -1});
+      }
+    }
+    /* Propagate references to nested nodes in group nodes. */
+    for (const bNode *node : ntree.group_nodes()) {
+      const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+      if (group == nullptr) {
+        continue;
+      }
+      for (const int i : group->nested_node_refs_span().index_range()) {
+        const bNestedNodeRef &child_ref = group->nested_node_refs[i];
+        nested_node_paths.append({node->identifier, child_ref.id});
+      }
+    }
+
     /* Used to generate new unique IDs if necessary. */
     RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
 
     Map<int32_t, bNestedNodePath> new_path_by_id;
-
-    const auto add_state = [&](const bNestedNodePath &path) {
+    for (const bNestedNodePath &path : nested_node_paths) {
       const int32_t old_id = old_id_by_path.lookup_default(path, -1);
       if (old_id != -1) {
         /* The same path existed before, it should keep the same ID as before. */
         new_path_by_id.add(old_id, path);
-        return;
+        continue;
       }
       int32_t new_id;
       while (true) {
@@ -1130,32 +1158,6 @@ class NodeTreeMainUpdater {
       }
       /* The path is new, it should get a new ID that does not collide with any existing IDs. */
       new_path_by_id.add(new_id, path);
-    };
-
-    /* Don't forget nested node refs just because the linked file is not available right now. */
-    for (const bNestedNodePath &path : old_id_by_path.keys()) {
-      const bNode *node = ntree.node_by_id(path.node_id);
-      if (node && node->is_group() && node->id) {
-        if (node->id->tag & LIB_TAG_MISSING) {
-          add_state(path);
-        }
-      }
-    }
-
-    /* Create references for simulations. */
-    for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
-      add_state({node->identifier, -1});
-    }
-    /* Propagate references to nested nodes in group nodes. */
-    for (const bNode *node : ntree.group_nodes()) {
-      const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
-      if (group == nullptr) {
-        continue;
-      }
-      for (const int i : group->nested_node_refs_span().index_range()) {
-        const bNestedNodeRef &child_ref = group->nested_node_refs[i];
-        add_state({node->identifier, child_ref.id});
-      }
     }
 
     /* Check if the old and new references are identical. */
