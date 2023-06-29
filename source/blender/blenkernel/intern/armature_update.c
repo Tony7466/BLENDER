@@ -58,10 +58,10 @@ static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
                                           bPoseChannel *pchan_tip)
 {
   bPoseChannel *pchan, *pchan_root = NULL;
-  bPoseChannel *pchan_chain[255];
+  bPoseChannel *pchan_chain[4096];
   bConstraint *con = NULL;
   bSplineIKConstraint *ik_data = NULL;
-  float bone_lengths[255];
+  float bone_lengths[4096];
   float totlength = 0.0f;
   int segcount = 0;
 

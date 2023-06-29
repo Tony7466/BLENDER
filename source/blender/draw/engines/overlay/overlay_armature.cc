@@ -2010,8 +2010,8 @@ static void pchan_draw_ik_lines(ArmatureDrawContext *ctx,
         while (parchan->parent) {
           segcount++;
           /* FIXME: revise the breaking conditions */
-          if (segcount == data->chainlen || segcount > 255) {
-            break; /* 255 is weak */
+          if (segcount == data->chainlen || segcount > 4096) {
+            break; /* 4096 is weak */
           }
           parchan = parchan->parent;
         }
