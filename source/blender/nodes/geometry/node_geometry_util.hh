@@ -44,6 +44,7 @@ bool geo_node_poll_default(const struct bNodeType *ntype,
 
 namespace blender::nodes {
 
+bool check_operator_context_and_error(GeoNodeExecParams &params);
 void search_link_ops_for_for_operator_node(GatherAddNodeSearchParams &params);
 void search_link_ops_for_operator_node(GatherLinkSearchOpParams &params);
 

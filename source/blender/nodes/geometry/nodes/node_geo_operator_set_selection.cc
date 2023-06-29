@@ -30,9 +30,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  if (!params.user_data()->operator_data) {
-    params.error_message_add(NodeWarningType::Error, "Node must be run as operator");
-    params.set_default_remaining_outputs();
+  if (!check_operator_context_and_error(params)) {
     return;
   }
   const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
