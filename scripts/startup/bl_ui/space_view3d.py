@@ -641,7 +641,7 @@ class VIEW3D_HT_header(Header):
                     icon = snap_items[elem].icon
                     break
             else:
-                text = "Multi"
+                text = "Mix"
                 icon = 'NONE'
             del snap_items, snap_elements
 
@@ -1018,6 +1018,7 @@ class VIEW3D_MT_editor_menus(Menu):
             if mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
+                layout.template_node_operator_asset_root_items()
 
         else:
             layout.menu("VIEW3D_MT_object")
@@ -2102,6 +2103,13 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
         layout.operator("paint.vert_select_linked", text="Select Linked")
 
 
+class VIEW3D_MT_select_edit_point_cloud(Menu):
+    bl_label = "Select"
+
+    def draw(_self, _context):
+        pass
+
+
 class VIEW3D_MT_edit_curves_select_more_less(Menu):
     bl_label = "Select More/Less"
 
@@ -2145,6 +2153,8 @@ class VIEW3D_MT_select_sculpt_curves(Menu):
         layout.operator("sculpt_curves.select_random", text="Random")
         layout.operator("curves.select_ends", text="Endpoints")
         layout.operator("sculpt_curves.select_grow", text="Grow")
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Select")
 
 
 class VIEW3D_MT_mesh_add(Menu):
@@ -3401,6 +3411,8 @@ class VIEW3D_MT_sculpt_curves(Menu):
         layout.separator()
         layout.operator("curves.convert_to_particle_system", text="Convert to Particle System")
 
+        layout.template_node_operator_asset_menu_items(catalog_path="Curves")
+
 
 class VIEW3D_MT_mask(Menu):
     bl_label = "Mask"
@@ -4211,10 +4223,8 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
             col.separator()
 
-            col.operator("view3d.edit_mesh_extrude_move_normal",
-                         text="Extrude Faces").release_confirm = False
-            col.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                         text="Extrude Faces Along Normals").release_confirm = False
+            col.operator("view3d.edit_mesh_extrude_move_normal", text="Extrude Faces")
+            col.operator("view3d.edit_mesh_extrude_move_shrink_fatten", text="Extrude Faces Along Normals")
             col.operator("mesh.extrude_faces_move",
                          text="Extrude Individual Faces").TRANSFORM_OT_shrink_fatten.release_confirm = False
 
@@ -4276,15 +4286,12 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
         mesh = context.object.data
 
         if mesh.total_face_sel:
-            layout.operator("view3d.edit_mesh_extrude_move_normal",
-                            text="Extrude Faces").release_confirm = False
-            layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                            text="Extrude Faces Along Normals").release_confirm = False
+            layout.operator("view3d.edit_mesh_extrude_move_normal", text="Extrude Faces")
+            layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten", text="Extrude Faces Along Normals")
             layout.operator(
                 "mesh.extrude_faces_move",
                 text="Extrude Individual Faces").TRANSFORM_OT_shrink_fatten.release_confirm = False
-            layout.operator("view3d.edit_mesh_extrude_manifold_normal",
-                            text="Extrude Manifold").release_confirm = False
+            layout.operator("view3d.edit_mesh_extrude_manifold_normal", text="Extrude Manifold")
 
         if mesh.total_edge_sel and (select_mode[0] or select_mode[1]):
             layout.operator("mesh.extrude_edges_move",
@@ -4449,10 +4456,8 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("view3d.edit_mesh_extrude_move_normal",
-                        text="Extrude Faces").release_confirm = False
-        layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten",
-                        text="Extrude Faces Along Normals").release_confirm = False
+        layout.operator("view3d.edit_mesh_extrude_move_normal", text="Extrude Faces")
+        layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten", text="Extrude Faces Along Normals")
         layout.operator(
             "mesh.extrude_faces_move",
             text="Extrude Individual Faces").TRANSFORM_OT_shrink_fatten.release_confirm = False
@@ -5476,6 +5481,13 @@ class VIEW3D_MT_edit_curves(Menu):
         layout.menu("VIEW3D_MT_transform")
         layout.separator()
         layout.operator("curves.delete")
+
+
+class VIEW3D_MT_edit_pointcloud(Menu):
+    bl_label = "Point Cloud"
+
+    def draw(_self, _context):
+        pass
 
 
 class VIEW3D_MT_object_mode_pie(Menu):
@@ -8220,6 +8232,7 @@ classes = (
     VIEW3D_MT_select_edit_gpencil,
     VIEW3D_MT_select_paint_mask,
     VIEW3D_MT_select_paint_mask_vertex,
+    VIEW3D_MT_select_edit_point_cloud,
     VIEW3D_MT_edit_curves_select_more_less,
     VIEW3D_MT_select_edit_curves,
     VIEW3D_MT_select_sculpt_curves,
@@ -8347,6 +8360,7 @@ classes = (
     VIEW3D_MT_edit_armature_delete,
     VIEW3D_MT_edit_gpencil_transform,
     VIEW3D_MT_edit_curves,
+    VIEW3D_MT_edit_pointcloud,
     VIEW3D_MT_object_mode_pie,
     VIEW3D_MT_view_pie,
     VIEW3D_MT_transform_gizmo_pie,

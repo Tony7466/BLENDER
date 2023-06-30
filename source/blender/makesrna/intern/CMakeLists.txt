@@ -27,7 +27,7 @@ set(DEFSRC
   rna_camera.c
   rna_cloth.c
   rna_collection.c
-  rna_color.c
+  rna_color.cc
   rna_constraint.c
   rna_context.c
   rna_curve.cc
@@ -39,7 +39,7 @@ set(DEFSRC
   rna_fluid.c
   rna_gpencil_legacy.c
   rna_gpencil_legacy_modifier.c
-  rna_image.c
+  rna_image.cc
   rna_key.c
   rna_lattice.cc
   rna_layer.c
@@ -48,10 +48,10 @@ set(DEFSRC
   rna_linestyle.c
   rna_main.c
   rna_mask.cc
-  rna_material.c
+  rna_material.cc
   rna_mesh.cc
   rna_meta.cc
-  rna_modifier.c
+  rna_modifier.cc
   rna_movieclip.c
   rna_nla.c
   rna_nodetree.cc
@@ -62,10 +62,10 @@ set(DEFSRC
   rna_particle.c
   rna_pointcloud.c
   rna_pose.cc
-  rna_render.c
+  rna_render.cc
   rna_rigidbody.c
   rna_rna.c
-  rna_scene.c
+  rna_scene.cc
   rna_screen.c
   rna_sculpt_paint.c
   rna_sequencer.c
@@ -105,15 +105,15 @@ set(APISRC
   rna_camera_api.c
   rna_curve_api.cc
   rna_fcurve_api.c
-  rna_image_api.c
+  rna_image_api.cc
   rna_lattice_api.cc
   rna_main_api.c
-  rna_material_api.c
+  rna_material_api.cc
   rna_mesh_api.cc
   rna_meta_api.c
   rna_object_api.cc
   rna_pose_api.c
-  rna_scene_api.c
+  rna_scene_api.cc
   rna_sequencer_api.c
   rna_sound_api.c
   rna_space_api.cc
@@ -237,7 +237,6 @@ set(INC
   ../../render
   ../../../../intern/clog
   ../../../../intern/cycles/blender
-  ../../../../intern/atomic
   ../../../../intern/guardedalloc
   ../../../../intern/memutil
   ../../../../intern/mantaflow/extern
@@ -384,6 +383,15 @@ if(WITH_OPENSUBDIV)
   )
   add_definitions(-DWITH_OPENSUBDIV)
 endif()
+if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
+  list(APPEND INC_SYS
+    ${OPENVDB_INCLUDE_DIRS}
+  )
+  add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+endif()
 
 if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB)
@@ -421,12 +429,13 @@ setup_platform_linker_flags(makesrna)
 blender_target_include_dirs(makesrna ${INC})
 blender_target_include_dirs_sys(makesrna ${INC_SYS})
 
-target_link_libraries(makesrna bf_dna)
-target_link_libraries(makesrna bf_dna_blenlib)
+target_link_libraries(makesrna PRIVATE bf_dna)
+target_link_libraries(makesrna PRIVATE bf_intern_atomic)
+target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
 
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)
-    target_link_libraries(makesrna ${PTHREADS_LIBRARIES})
+    target_link_libraries(makesrna PRIVATE ${PTHREADS_LIBRARIES})
   endif()
 endif()
 

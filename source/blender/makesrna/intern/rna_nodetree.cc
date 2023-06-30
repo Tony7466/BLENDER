@@ -7244,13 +7244,13 @@ static void def_node_image_user(StructRNA *srna)
   RNA_def_property_int_sdna(prop, nullptr, "frames");
   RNA_def_property_range(prop, 0, MAXFRAMEF);
   RNA_def_property_ui_text(
-      prop, "Frames", "Number of images of a movie to use"); /* copied from the rna_image.c */
+      prop, "Frames", "Number of images of a movie to use"); /* copied from the rna_image.cc */
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "frame_start", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "sfra");
   RNA_def_property_range(prop, MINAFRAMEF, MAXFRAMEF);
-  /* copied from the rna_image.c */
+  /* copied from the rna_image.cc */
   RNA_def_property_ui_text(
       prop,
       "Start Frame",
@@ -7260,7 +7260,7 @@ static void def_node_image_user(StructRNA *srna)
   prop = RNA_def_property(srna, "frame_offset", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "offset");
   RNA_def_property_range(prop, MINAFRAMEF, MAXFRAMEF);
-  /* copied from the rna_image.c */
+  /* copied from the rna_image.cc */
   RNA_def_property_ui_text(
       prop, "Offset", "Offset the number of the frame to use in the animation");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
@@ -7268,12 +7268,12 @@ static void def_node_image_user(StructRNA *srna)
   prop = RNA_def_property(srna, "use_cyclic", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "cycl", 1);
   RNA_def_property_ui_text(
-      prop, "Cyclic", "Cycle the images in the movie"); /* copied from the rna_image.c */
+      prop, "Cyclic", "Cycle the images in the movie"); /* copied from the rna_image.cc */
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "use_auto_refresh", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", IMA_ANIM_ALWAYS);
-  /* copied from the rna_image.c */
+  /* copied from the rna_image.cc */
   RNA_def_property_ui_text(prop, "Auto-Refresh", "Always refresh image on frame changes");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
@@ -13176,7 +13176,7 @@ static void rna_def_node(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
 
   prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NODE_MUTED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_MUTED);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Mute", "");
   RNA_def_property_update(prop, 0, "rna_Node_update");
