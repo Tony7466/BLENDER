@@ -132,7 +132,8 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
           edit_data->vertexCos = nullptr;
           me->runtime->is_original_bmesh = false;
         }
-        me->runtime->edit_data = nullptr;
+        BKE_mesh_runtime_reset_edit_data(me);
+        MEM_SAFE_FREE(me->runtime->edit_data);
         break;
       }
     }
