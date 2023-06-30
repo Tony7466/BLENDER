@@ -43,6 +43,8 @@ float (*BKE_mesh_wrapper_vert_coords_ensure_for_write(struct Mesh *mesh))[3];
  */
 const float (*BKE_mesh_wrapper_poly_normals(struct Mesh *mesh))[3];
 
+void BKE_mesh_wrapper_tag_positions_changed(struct Mesh *mesh);
+
 void BKE_mesh_wrapper_vert_coords_copy(const struct Mesh *me,
                                        float (*vert_coords)[3],
                                        int vert_coords_len);

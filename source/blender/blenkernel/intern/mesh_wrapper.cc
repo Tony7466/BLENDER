@@ -212,6 +212,23 @@ const float (*BKE_mesh_wrapper_poly_normals(Mesh *mesh))[3]
   return nullptr;
 }
 
+void BKE_mesh_wrapper_tag_positions_changed(Mesh *mesh)
+{
+  switch (mesh->runtime->wrapper_type) {
+    case ME_WRAPPER_TYPE_BMESH:
+      if (mesh->runtime->edit_data) {
+        MEM_SAFE_FREE(mesh->runtime->edit_data->vertexNos);
+        MEM_SAFE_FREE(mesh->runtime->edit_data->polyCos);
+        MEM_SAFE_FREE(mesh->runtime->edit_data->polyNos);
+      }
+      break;
+    case ME_WRAPPER_TYPE_MDATA:
+    case ME_WRAPPER_TYPE_SUBD:
+      BKE_mesh_tag_positions_changed(mesh);
+      break;
+  }
+}
+
 void BKE_mesh_wrapper_vert_coords_copy(const Mesh *me,
                                        float (*vert_coords)[3],
                                        int vert_coords_len)
