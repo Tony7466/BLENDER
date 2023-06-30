@@ -16,7 +16,6 @@
 #include "BKE_editmesh_cache.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.h"
-#include "BKE_mesh_wrapper.h"
 
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
