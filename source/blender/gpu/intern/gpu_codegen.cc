@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -86,7 +87,7 @@ struct GPUCodegenCreateInfo : ShaderCreateInfo {
 };
 
 struct GPUPass {
-  struct GPUPass *next;
+  GPUPass *next;
 
   GPUShader *shader;
   GPUCodegenCreateInfo *create_info = nullptr;
@@ -363,25 +364,27 @@ void GPUCodegen::generate_attribs()
     eGPUType input_type, iface_type;
 
     load_ss << "var_attrs." << var_name;
-    switch (attr->type) {
-      case CD_ORCO:
-        /* Need vec4 to detect usage of default attribute. */
-        input_type = GPU_VEC4;
-        iface_type = GPU_VEC3;
-        load_ss << " = attr_load_orco(" << attr_name << ");\n";
-        break;
-      case CD_HAIRLENGTH:
-        iface_type = input_type = GPU_FLOAT;
-        load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
-        break;
-      case CD_TANGENT:
-        iface_type = input_type = GPU_VEC4;
-        load_ss << " = attr_load_tangent(" << attr_name << ");\n";
-        break;
-      default:
-        iface_type = input_type = GPU_VEC4;
-        load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
-        break;
+    if (attr->is_hair_length) {
+      iface_type = input_type = GPU_FLOAT;
+      load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
+    }
+    else {
+      switch (attr->type) {
+        case CD_ORCO:
+          /* Need vec4 to detect usage of default attribute. */
+          input_type = GPU_VEC4;
+          iface_type = GPU_VEC3;
+          load_ss << " = attr_load_orco(" << attr_name << ");\n";
+          break;
+        case CD_TANGENT:
+          iface_type = input_type = GPU_VEC4;
+          load_ss << " = attr_load_tangent(" << attr_name << ");\n";
+          break;
+        default:
+          iface_type = input_type = GPU_VEC4;
+          load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
+          break;
+      }
     }
 
     info.vertex_in(slot--, to_type(input_type), attr_name);
@@ -456,7 +459,7 @@ void GPUCodegen::generate_resources()
     }
     ss << "};\n\n";
 
-    info.uniform_buf(1, "NodeTree", GPU_UBO_BLOCK_NAME, Frequency::BATCH);
+    info.uniform_buf(GPU_NODE_TREE_UBO_SLOT, "NodeTree", GPU_UBO_BLOCK_NAME, Frequency::BATCH);
   }
 
   if (!BLI_listbase_is_empty(&graph.uniform_attrs.list)) {
@@ -483,16 +486,26 @@ void GPUCodegen::generate_library()
   GPUCodegenCreateInfo &info = *create_info;
 
   void *value;
-  /* Iterate over libraries. We need to keep this struct intact in case
-   * it is required for the optimization pass. */
+  blender::Vector<std::string> source_files;
+
+  /* Iterate over libraries. We need to keep this struct intact in case it is required for the
+   * optimization pass. The first pass just collects the keys from the GSET, given items in a GSET
+   * are unordered this can cause order differences between invocations, so we collect the keys
+   * first, and sort them before doing actual work, to guarantee stable behavior while still
+   * having cheap insertions into the GSET */
   GHashIterator *ihash = BLI_ghashIterator_new((GHash *)graph.used_libraries);
   while (!BLI_ghashIterator_done(ihash)) {
     value = BLI_ghashIterator_getKey(ihash);
-    auto deps = gpu_shader_dependency_get_resolved_source((const char *)value);
-    info.dependencies_generated.extend_non_duplicates(deps);
+    source_files.append((const char *)value);
     BLI_ghashIterator_step(ihash);
   }
   BLI_ghashIterator_free(ihash);
+
+  std::sort(source_files.begin(), source_files.end());
+  for (auto &key : source_files) {
+    auto deps = gpu_shader_dependency_get_resolved_source(key.c_str());
+    info.dependencies_generated.extend_non_duplicates(deps);
+  }
 }
 
 void GPUCodegen::node_serialize(std::stringstream &eval_ss, const GPUNode *node)

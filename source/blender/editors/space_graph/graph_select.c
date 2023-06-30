@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spgraph
@@ -564,7 +565,7 @@ static void initialize_box_select_key_editing_data(const bool incl_handles,
     r_ked->iterflags |= KEYFRAME_ITER_HANDLES_DEFAULT_INVISIBLE;
   }
 
-  /* Enable handles selection. (used in keyframes_edit.c > KEYFRAME_OK_CHECKS macro) */
+  /* Enable handles selection. (used in keyframes_edit.cc > KEYFRAME_OK_CHECKS macro) */
   if (incl_handles) {
     r_ked->iterflags |= KEYFRAME_ITER_INCL_HANDLES;
     *r_mapping_flag = 0;

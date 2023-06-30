@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -88,7 +89,7 @@ static bool calc_curve_deform(
       }
     }
     else {
-      CurveCache *cc = ob_curve->runtime.curve_cache;
+      const CurveCache *cc = ob_curve->runtime.curve_cache;
       float totdist = BKE_anim_path_get_length(cc);
       if (LIKELY(totdist > FLT_EPSILON)) {
         fac = -(co[index] - cd->dmax[index]) / totdist;
@@ -110,7 +111,7 @@ static bool calc_curve_deform(
       }
     }
     else {
-      CurveCache *cc = ob_curve->runtime.curve_cache;
+      const CurveCache *cc = ob_curve->runtime.curve_cache;
       float totdist = BKE_anim_path_get_length(cc);
       if (LIKELY(totdist > FLT_EPSILON)) {
         fac = +(co[index] - cd->dmin[index]) / totdist;

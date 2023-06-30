@@ -78,6 +78,10 @@ void RaytracingModule::sync()
   }
 }
 
+void RaytracingModule::debug_pass_sync() {}
+
+void RaytracingModule::debug_draw(View &view, GPUFrameBuffer *view_fb) {}
+
 void RaytracingModule::trace(int2 extent, eClosureBits closure_bits, View &view)
 {
   tile_dispatch_size_ = int3(math::divide_ceil(extent, int2(RAYTRACE_GROUP_SIZE)), 1);

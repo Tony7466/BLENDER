@@ -39,8 +39,8 @@ class RaytracingModule {
   DispatchIndirectBuf dispatch_reflect_buf_ = {"dispatch_reflect_buf"};
   RaytraceTileBuf tiles_reflect_buf_ = {"tiles_reflect_buf"};
 
-  /** Trace results. Results are in scheduled tile order. */
-  StorageArrayBuffer<float4, 512, true> tiles_reflect_buf_ = {"tiles_reflect_buf"};
+  /** Trace results. Results are in scheduled tile order (tile order inside RaytraceTileBuf). */
+  StorageArrayBuffer<float4, 512, true> trace_result_buf_ = {"trace_result_buf_"};
 
   int3 tile_dispatch_size_ = int3(1);
 
@@ -54,6 +54,9 @@ class RaytracingModule {
   void sync();
 
   void trace(int2 extent, eClosureBits closure_bits, View &view);
+
+  void debug_pass_sync();
+  void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
   bool enabled() const
   {

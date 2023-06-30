@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ImageNode.h"
 #include "COM_ConvertOperation.h"
@@ -61,7 +62,7 @@ void ImageNode::convert_to_operations(NodeConverter &converter,
   int framenumber = context.get_framenumber();
   bool output_straight_alpha = (editor_node->custom1 & CMP_NODE_IMAGE_USE_STRAIGHT_OUTPUT) != 0;
   BKE_image_user_frame_calc(image, imageuser, context.get_framenumber());
-  /* force a load, we assume iuser index will be set OK anyway */
+  /* Force a load, we assume #ImageUser index will be set OK anyway. */
   if (image && image->type == IMA_TYPE_MULTILAYER) {
     bool is_multilayer_ok = false;
     ImBuf *ibuf = BKE_image_acquire_ibuf(image, imageuser, nullptr);

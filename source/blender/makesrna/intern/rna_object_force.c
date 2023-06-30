@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
  */
 
 #include <stdlib.h>
+
+#include "BLT_translation.h"
 
 #include "DNA_cloth_types.h"
 #include "DNA_dynamicpaint_types.h"
@@ -1800,6 +1804,7 @@ static void rna_def_field(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "kink");
   RNA_def_property_enum_items(prop, guide_kink_items);
   RNA_def_property_ui_text(prop, "Kink", "Type of periodic offset on the curve");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_PARTICLESETTINGS);
   RNA_def_property_update(prop, 0, "rna_FieldSettings_update");
 
   prop = RNA_def_property(srna, "guide_kink_axis", PROP_ENUM, PROP_NONE);

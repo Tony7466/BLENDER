@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -15,7 +17,6 @@ set(INC
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/atomic
   ../../../../intern/guardedalloc
   ../../../../extern/fmtlib/include
 
@@ -49,6 +50,8 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  extern_fmtlib
+  PRIVATE bf_intern_atomic
 )
 
 if(WIN32)

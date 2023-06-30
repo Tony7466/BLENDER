@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 # message(STATUS "Configuring makesdna")
 
@@ -7,7 +8,6 @@ set(INC
   ..
   ../../blenlib
   ../../imbuf
-  ../../../../intern/atomic
   ../../../../intern/guardedalloc
   ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -79,10 +79,11 @@ add_executable(makesdna ${SRC} ${SRC_DNA_INC})
 setup_platform_linker_flags(makesdna)
 blender_target_include_dirs(makesdna ${INC})
 blender_target_include_dirs_sys(makesdna ${INC_SYS})
+target_link_libraries(makesdna PRIVATE bf_intern_atomic)
 
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)
-    target_link_libraries(makesdna ${PTHREADS_LIBRARIES})
+    target_link_libraries(makesdna PRIVATE ${PTHREADS_LIBRARIES})
   endif()
 endif()
 
@@ -132,7 +133,6 @@ blender_add_lib(bf_dna "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 set(INC
   ..
   ../../blenlib
-  ../../../../intern/atomic
   ../../../../intern/guardedalloc
 )
 
@@ -155,6 +155,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_intern_atomic
 )
 
 if(WITH_COMPILER_ASAN)

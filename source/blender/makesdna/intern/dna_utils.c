@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
  *
- * Utilities for stand-alone makesdna.c and Blender to share.
+ * Utilities for stand-alone `makesdna.c` and Blender to share.
  */
 
 #include <string.h>
@@ -125,7 +126,7 @@ bool DNA_elem_id_match(const char *elem_search,
   return false;
 }
 
-char *DNA_elem_id_rename(struct MemArena *mem_arena,
+char *DNA_elem_id_rename(MemArena *mem_arena,
                          const char *elem_src,
                          const int elem_src_len,
                          const char *elem_dst,

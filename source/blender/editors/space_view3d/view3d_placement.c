@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -78,13 +80,13 @@ struct InteractivePlaceData {
   struct {
     /**
      * When centered, drag out the shape from the center.
-     * Toggling the setting flips the value from it's initial state.
+     * Toggling the setting flips the value from its initial state.
      */
     bool is_centered, is_centered_init;
     /**
      * When fixed, constrain the X/Y aspect for the initial #STEP_BASE drag.
      * For #STEP_DEPTH match the maximum X/Y dimension.
-     * Toggling the setting flips the value from it's initial state.
+     * Toggling the setting flips the value from its initial state.
      */
     bool is_fixed_aspect, is_fixed_aspect_init;
     float plane[4];
@@ -122,7 +124,7 @@ struct InteractivePlaceData {
 
   } step[2];
 
-  /** When we can't project onto the real plane, use this in it's place. */
+  /** When we can't project onto the real plane, use this in its place. */
   float view_plane[4];
 
   float matrix_orient[3][3];
@@ -524,7 +526,7 @@ static void draw_circle_in_quad(const float v1[3],
 /** \name Drawing Callbacks
  * \{ */
 
-static void draw_primitive_view_impl(const struct bContext *C,
+static void draw_primitive_view_impl(const bContext *C,
                                      struct InteractivePlaceData *ipd,
                                      const float color[4],
                                      int flatten_axis)
@@ -626,7 +628,7 @@ static void draw_primitive_view_impl(const struct bContext *C,
   }
 }
 
-static void draw_primitive_view(const struct bContext *C, ARegion *UNUSED(region), void *arg)
+static void draw_primitive_view(const bContext *C, ARegion *UNUSED(region), void *arg)
 {
   struct InteractivePlaceData *ipd = arg;
   float color[4];
@@ -688,7 +690,7 @@ static bool view3d_interactive_add_calc_snap(bContext *UNUSED(C),
   if (r_is_snap_invert) {
     *r_is_snap_invert = snap_data->is_snap_invert;
   }
-  return snap_data->snap_elem != SCE_SNAP_MODE_NONE;
+  return snap_data->snap_elem != SCE_SNAP_TO_NONE;
 }
 
 /** \} */
@@ -760,7 +762,7 @@ static void view3d_interactive_add_begin(bContext *C, wmOperator *op, const wmEv
   ipd->step_index = STEP_BASE;
 
   ipd->snap_to = tool_settings->snap_mode_tools;
-  if (ipd->snap_to == SCE_SNAP_MODE_NONE) {
+  if (ipd->snap_to == SCE_SNAP_TO_NONE) {
     ipd->snap_to = tool_settings->snap_mode;
   }
 
@@ -1202,7 +1204,7 @@ static int view3d_interactive_add_modal(bContext *C, wmOperator *op, const wmEve
           /* pass */
         }
 
-        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_MODE_INCREMENT)) {
+        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_TO_INCREMENT)) {
           if (idp_snap_calc_incremental(
                   ipd->scene, ipd->v3d, ipd->region, ipd->co_src, ipd->step[STEP_BASE].co_dst))
           {
@@ -1226,7 +1228,7 @@ static int view3d_interactive_add_modal(bContext *C, wmOperator *op, const wmEve
           /* pass */
         }
 
-        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_MODE_INCREMENT)) {
+        if (ipd->use_snap && (ipd->snap_to & SCE_SNAP_TO_INCREMENT)) {
           if (idp_snap_calc_incremental(
                   ipd->scene, ipd->v3d, ipd->region, ipd->co_src, ipd->step[STEP_DEPTH].co_dst))
           {
@@ -1257,7 +1259,7 @@ static bool view3d_interactive_add_poll(bContext *C)
   return ELEM(mode, CTX_MODE_OBJECT, CTX_MODE_EDIT_MESH);
 }
 
-void VIEW3D_OT_interactive_add(struct wmOperatorType *ot)
+void VIEW3D_OT_interactive_add(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Add Primitive Object";

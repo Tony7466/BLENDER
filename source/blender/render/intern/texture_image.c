@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -46,7 +47,7 @@ static void boxsample(ImBuf *ibuf,
 /* *********** IMAGEWRAPPING ****************** */
 
 /* x and y have to be checked for image size */
-static void ibuf_get_color(float col[4], struct ImBuf *ibuf, int x, int y)
+static void ibuf_get_color(float col[4], ImBuf *ibuf, int x, int y)
 {
   int ofs = y * ibuf->x + x;
 
@@ -406,7 +407,7 @@ static void clipy_rctf_swap(rctf *stack, short *count, float y1, float y2)
   }
 }
 
-static float square_rctf(rctf *rf)
+static float square_rctf(const rctf *rf)
 {
   float x, y;
 
@@ -460,7 +461,7 @@ static float clipy_rctf(rctf *rf, float y1, float y2)
   return 1.0;
 }
 
-static void boxsampleclip(struct ImBuf *ibuf, rctf *rf, TexResult *texres)
+static void boxsampleclip(ImBuf *ibuf, const rctf *rf, TexResult *texres)
 {
   /* Sample box, is clipped already, and minx etc. have been set at ibuf size.
    * Enlarge with anti-aliased edges of the pixels. */
@@ -845,7 +846,7 @@ static void feline_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata
   const float D = (EWA_MAXIDX + 1) * 0.25f * (du * du + dv * dv) / (AFD->majrad * AFD->majrad);
   float d; /* TXF alpha: cw = 0.0f; */
   int n;   /* TXF alpha: clip = 0; */
-  /* have to use same scaling for du/dv here as for Ux/Vx/Uy/Vy (*after* D calc.) */
+  /* Have to use same scaling for du/dv here as for Ux/Vx/Uy/Vy (*after* D is calculated.) */
   du *= AFD->dusc;
   dv *= AFD->dvsc;
   d = texr->trgba[0] = texr->trgba[2] = texr->trgba[1] = texr->trgba[3] = 0.0f;
@@ -880,8 +881,13 @@ static void feline_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata
 }
 #undef EWA_MAXIDX
 
-static void alpha_clip_aniso(
-    ImBuf *ibuf, float minx, float miny, float maxx, float maxy, int extflag, TexResult *texres)
+static void alpha_clip_aniso(const ImBuf *ibuf,
+                             float minx,
+                             float miny,
+                             float maxx,
+                             float maxy,
+                             int extflag,
+                             TexResult *texres)
 {
   float alphaclip;
   rctf rf;
