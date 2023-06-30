@@ -36,6 +36,42 @@ struct bNode *ntreeShaderOutputNode(struct bNodeTree *ntree, int target);
  */
 void ntreeGPUMaterialNodes(struct bNodeTree *localtree, struct GPUMaterial *mat);
 
+struct NodeMathFormulaItem *NOD_math_formula_add_item(struct NodeMathFormula *formula,
+                                                      short socket_type,
+                                                      const char *name);
+
+bool NOD_math_formula_contains_item(struct NodeMathFormula *formula,
+                                    const struct NodeMathFormulaItem *item);
+struct NodeMathFormulaItem *NOD_math_formula_get_active_item(struct NodeMathFormula *formula);
+void NOD_math_formula_set_active_item(struct NodeMathFormula *formula,
+                                      struct NodeMathFormulaItem *item);
+struct NodeMathFormulaItem *NOD_math_formula_find_item(struct NodeMathFormula *formula,
+                                                       const char *name);
+struct NodeMathFormulaItem *NOD_math_formula_add_item(struct NodeMathFormula *formula,
+                                                      short socket_type,
+                                                      const char *name);
+struct NodeMathFormulaItem *NOD_math_formula_insert_item(struct NodeMathFormula *formula,
+                                                         short socket_type,
+                                                         const char *name,
+                                                         int index);
+struct NodeMathFormulaItem *NOD_math_formula_add_item_from_socket(
+    struct NodeMathFormula *formula,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock);
+struct NodeMathFormulaItem *NOD_math_formula_insert_item_from_socket(
+    struct NodeMathFormula *formula,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock,
+    int index);
+void NOD_math_formula_remove_item(struct NodeMathFormula *formula,
+                                  struct NodeMathFormulaItem *item);
+void NOD_math_formula_clear_items(struct NodeMathFormula *formula);
+void NOD_math_formula_move_item(struct NodeMathFormula *formula, int from_index, int to_index);
+struct bNode *NOD_math_formula_find_node_by_item(struct bNodeTree *ntree,
+                                                 const struct NodeMathFormulaItem *item);
+void NOD_math_formula_rename_item(const struct bNode *node,
+                                  struct NodeMathFormulaItem *dest_item,
+                                  const char *new_name);
 #ifdef __cplusplus
 }
 #endif

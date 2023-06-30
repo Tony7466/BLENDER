@@ -665,6 +665,13 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         BLO_write_string(writer, item.name);
       }
     }
+    if (node->type == SH_NODE_MATH_FORMULA && node->storage) {
+      const NodeMathFormula &storage = *static_cast<const NodeMathFormula *>(node->storage);
+      BLO_write_struct_array(writer, NodeMathFormulaItem, storage.items_num, storage.items);
+      for (const NodeMathFormulaItem &item : storage.items_span()) {
+        BLO_write_string(writer, item.name);
+      }
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -855,6 +862,16 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           BLO_read_data_address(reader, &storage.items);
           for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
             BLO_read_data_address(reader, &item.name);
+          }
+          break;
+        }
+        case SH_NODE_MATH_FORMULA: {
+          if (node->storage) {
+            NodeMathFormula &storage = *static_cast<NodeMathFormula *>(node->storage);
+            BLO_read_data_address(reader, &storage.items);
+            for (const NodeMathFormulaItem &item : storage.items_span()) {
+              BLO_read_data_address(reader, &item.name);
+            }
           }
           break;
         }

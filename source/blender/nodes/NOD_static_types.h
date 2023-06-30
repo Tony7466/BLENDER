@@ -76,6 +76,7 @@ DefNode(ShaderNode,     SH_NODE_SUBSURFACE_SCATTERING, def_sh_subsurface,   "SUB
 DefNode(ShaderNode,     SH_NODE_VOLUME_ABSORPTION,  0,                      "VOLUME_ABSORPTION",  VolumeAbsorption, "Volume Absorption", "Absorb light as it passes through the volume")
 DefNode(ShaderNode,     SH_NODE_VOLUME_SCATTER,     0,                      "VOLUME_SCATTER",     VolumeScatter,    "Volume Scatter",    "Scatter light as it passes through the volume, often used to add fog to a scene")
 DefNode(ShaderNode,     SH_NODE_VOLUME_PRINCIPLED,  0,                      "PRINCIPLED_VOLUME",  VolumePrincipled, "Principled Volume", "Combine all volume shading components into a single easy to use node")
+DefNode(ShaderNode,     SH_NODE_MATH_FORMULA,       def_cmp_math_formula,                      "MATH_FORMULA",       MathFormula,      "Math Formula",      "Math Formula")
 DefNode(ShaderNode,     SH_NODE_EMISSION,           0,                      "EMISSION",           Emission,         "Emission",          "Lambertian emission shader")
 DefNode(ShaderNode,     SH_NODE_NEW_GEOMETRY,       0,                      "NEW_GEOMETRY",       NewGeometry,      "Geometry",          "Retrieve geometric information about the current shading point")
 DefNode(ShaderNode,     SH_NODE_LIGHT_PATH,         0,                      "LIGHT_PATH",         LightPath,        "Light Path",        "Retrieve the type of incoming ray for which the shader is being executed.\nTypically used for non-physically-based tricks")

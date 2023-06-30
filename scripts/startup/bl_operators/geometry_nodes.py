@@ -345,6 +345,93 @@ class SimulationZoneItemMoveOperator(SimulationZoneOperator, Operator):
         return {'FINISHED'}
 
 
+class MathFormulaNodeOperator:
+    node_type = 'ShaderNodeMathFormula'
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        # Needs active node editor and a tree.
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname != cls.node_type:
+            return False
+        return True
+
+
+class MathFormulaItemAddOperator(MathFormulaNodeOperator, Operator):
+    """Add a input item to the formula node"""
+    bl_idname = "node.math_formula_item_add"
+    bl_label = "Add Input Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    default_socket_type = 'GEOMETRY'
+
+    def execute(self, context):
+        node = context.active_node
+        input_items = node.input_items
+
+        # Remember index to move the item.
+        if node.active_item:
+            dst_index = node.active_index + 1
+            dst_type = node.active_item.socket_type
+            dst_name = node.active_item.name
+        else:
+            dst_index = len(input_items)
+            dst_type = self.default_socket_type
+            # Empty name so it is based on the type.
+            dst_name = ""
+        input_items.new(dst_type, dst_name)
+        input_items.move(len(input_items) - 1, dst_index)
+        node.active_index = dst_index
+
+        return {'FINISHED'}
+
+
+class MathFormulaItemRemoveOperator(MathFormulaNodeOperator, Operator):
+    """Remove a input item from the formula node"""
+    bl_idname = "node.math_formula_item_remove"
+    bl_label = "Remove Input Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        input_items = node.input_items
+
+        if node.active_item:
+            input_items.remove(node.active_item)
+            node.active_index = min(node.active_index, len(input_items) - 1)
+
+        return {'FINISHED'}
+
+
+class MathFormulaItemMoveOperator(MathFormulaNodeOperator, Operator):
+    """Move a input state item up or down in the list"""
+    bl_idname = "node.math_formula_item_move"
+    bl_label = "Move Input Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default='UP',
+    )
+
+    def execute(self, context):
+        node = context.active_node
+        input_items = node.input_items
+
+        if self.direction == 'UP' and node.active_index > 0:
+            input_items.move(node.active_index, node.active_index - 1)
+            node.active_index = node.active_index - 1
+        elif self.direction == 'DOWN' and node.active_index < len(input_items) - 1:
+            input_items.move(node.active_index, node.active_index + 1)
+            node.active_index = node.active_index + 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
@@ -352,4 +439,7 @@ classes = (
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,
     SimulationZoneItemMoveOperator,
+    MathFormulaItemAddOperator,
+    MathFormulaItemRemoveOperator,
+    MathFormulaItemMoveOperator,
 )

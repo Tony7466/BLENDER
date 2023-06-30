@@ -1009,6 +1009,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_DISPLACEMENT 198
 #define SH_NODE_VECTOR_DISPLACEMENT 199
 #define SH_NODE_VOLUME_PRINCIPLED 200
+#define SH_NODE_MATH_FORMULA 2115
 /* 201..700 occupied by other node types, continue from 701 */
 #define SH_NODE_BSDF_HAIR_PRINCIPLED 701
 #define SH_NODE_MAP_RANGE 702

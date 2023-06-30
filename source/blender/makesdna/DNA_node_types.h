@@ -913,6 +913,37 @@ typedef struct NodeBoxMask {
   char _pad[4];
 } NodeBoxMask;
 
+typedef struct NodeMathFormulaItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  /** #eAttrDomain. */
+  short attribute_domain;
+  /**
+   * Generates unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeMathFormulaItem;
+
+typedef struct NodeMathFormula {
+  char formula[1024];
+  NodeMathFormulaItem *items;
+  int items_num;
+  int active_index;
+  /** Number to give unique IDs to state items. */
+  int next_identifier;
+  uint8_t data_type;
+  char _pad[3];
+
+#ifdef __cplusplus
+  blender::Span<NodeMathFormulaItem> items_span() const;
+  blender::MutableSpan<NodeMathFormulaItem> items_span();
+  blender::IndexRange items_range() const;
+#endif
+
+} NodeMathFormula;
+
 typedef struct NodeEllipseMask {
   float x;
   float y;

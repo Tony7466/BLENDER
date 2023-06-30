@@ -1103,6 +1103,72 @@ class NODE_PT_simulation_zone_items(Panel):
                 layout.prop(active_item, "attribute_domain")
 
 
+class NODE_UL_math_formula_input_items(bpy.types.UIList):
+    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            row = layout.row(align=True)
+
+            row.template_node_socket(color=item.color)
+            row.prop(item, "name", text="", emboss=False, icon_value=icon)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.template_node_socket(color=item.color)
+
+
+class NODE_PT_math_formula_items(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "Math formula input input items"
+
+    input_node_type = 'ShaderNodeMathFormula'
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname not in [cls.input_node_type]:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        node = context.active_node
+        split = layout.row()
+
+        split.template_list(
+            "NODE_UL_math_formula_input_items",
+            "",
+            node,
+            "input_items",
+            node,
+            "active_index")
+
+        ops_col = split.column()
+
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.math_formula_item_add", icon='ADD', text="")
+        add_remove_col.operator("node.math_formula_item_remove", icon='REMOVE', text="")
+
+        ops_col.separator()
+
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.math_formula_item_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.math_formula_item_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
+
+        active_item = node.active_item
+        if active_item is not None:
+            layout.use_property_split = True
+            layout.use_property_decorate = False
+            layout.prop(active_item, "socket_type")
+            # if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA'}:
+            #    layout.prop(active_item, "attribute_domain")
+
+
 # Grease Pencil properties
 class NODE_PT_annotation(AnnotationDataPanel, Panel):
     bl_space_type = 'NODE_EDITOR'
@@ -1170,6 +1236,8 @@ classes = (
     NODE_PT_panels,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
+    NODE_UL_math_formula_input_items,
+    NODE_PT_math_formula_items,
     NODE_PT_active_node_properties,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
