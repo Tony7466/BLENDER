@@ -1,2 +1,3 @@
 Referenced by issue #108746, Defaults / Save startup file don't save the window size in Blender 4.0 alpha
 Referenced by commit 7ef8389dad6b65264a5aee7de6a579256d0a01e2, Fix #108746: Defaults / Save startup file don't save the window size.
+Referenced by commit f3c131adfe6970985638698187f251b8d73fca05, Fix #109422: Assertion triggered when opening a new file and "Load UI" is disabled in settings.
