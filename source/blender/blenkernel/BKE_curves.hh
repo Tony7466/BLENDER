@@ -290,8 +290,6 @@ class CurvesGeometry : public ::CurvesGeometry {
   Span<float3> evaluated_tangents() const;
   Span<float3> evaluated_normals() const;
 
-  Span<float3> evaluated_positions_for_curve(int curve_index) const;
-
   /**
    * Return a cache of accumulated lengths along the curve. Each item is the length of the
    * subsequent segment (the first value is the length of the first segment rather than 0).
@@ -895,13 +893,6 @@ inline Span<float> CurvesGeometry::evaluated_lengths_for_curve(const int curve_i
 {
   const IndexRange range = this->lengths_range_for_curve(curve_index, cyclic);
   return this->runtime->evaluated_length_cache.data().as_span().slice(range);
-}
-
-inline Span<float3> CurvesGeometry::evaluated_positions_for_curve(const int curve_index) const
-{
-  const OffsetIndices evaluated_points_by_curve = this->evaluated_points_by_curve();
-  const IndexRange points = evaluated_points_by_curve[curve_index];
-  return this->evaluated_positions().slice(points);
 }
 
 inline float CurvesGeometry::evaluated_length_total_for_curve(const int curve_index,
