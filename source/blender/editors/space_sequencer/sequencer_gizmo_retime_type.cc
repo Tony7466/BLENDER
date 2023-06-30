@@ -243,14 +243,17 @@ typedef struct RetimeHandleMoveGizmo {
   eHandleMoveOperation operation;
 } RetimeHandleMoveGizmo;
 
+#define KEY_SIZE (10 * U.pixelsize)
+#define KEY_CENTER (UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + KEY_SIZE / 2)
+
 static void draw_half_keyframe(
     const bContext *C, const Sequence *seq, const SeqRetimingHandle *handle, float size, bool sel)
 {
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
   Editing *ed = SEQ_editing_get(scene);
-  const float x = UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, handle));
-  const float y = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + size / 2;
+  const float x = UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, handle)) - 1;
+  const float y = KEY_CENTER;
 
   GPU_blend(GPU_BLEND_ALPHA);
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -338,11 +341,11 @@ static void retime_handle_draw(const bContext *C,
     mul_v3_fl(col, 0.65f);
   }*/
 
-  const int size = 10 * U.pixelsize;
+  const int size = KEY_SIZE;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
   const float prev_handle_position = UI_view2d_view_to_region_x(
       v2d, handle_x_get(scene, seq, handle - 1));
-  const float bottom = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + size / 2;
+  const float bottom = KEY_CENTER;
 
   GPUVertFormat *format = immVertexFormat();
   KeyframeShaderBindings sh_bindings;
@@ -385,33 +388,6 @@ static void retime_handle_draw(const bContext *C,
   }
 }
 
-static void draw_backdrop(const bContext *C, const Sequence *seq)
-{
-  if (!sequencer_retiming_tool_is_active(C)) {
-    return;
-  }
-
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Scene *scene = CTX_data_scene(C);
-
-  const float start = UI_view2d_view_to_region_x(v2d, SEQ_time_left_handle_frame_get(scene, seq));
-  const float end = UI_view2d_view_to_region_x(v2d, SEQ_time_right_handle_frame_get(scene, seq));
-
-  const int size = 10 * U.pixelsize;
-  const float y_center = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 +
-                         size / 2;
-  const float bottom = y_center - size;
-  const float top = y_center + size;
-
-  GPU_blend(GPU_BLEND_ALPHA);
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniform4f("color", 0.5f, 0.2f, 0.2f, 0.2f);
-  immRectf(pos, start, bottom, end, top);
-  immUnbindProgram();
-  GPU_blend(GPU_BLEND_NONE);
-}
-
 const void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingHandle *handle)
 {
   if (!sequencer_retiming_tool_is_active(C)) {
@@ -425,9 +401,9 @@ const void draw_continuity(const bContext *C, const Sequence *seq, const SeqReti
   const float prev_handle_position = UI_view2d_view_to_region_x(
       v2d, handle_x_get(scene, seq, handle - 1));
 
-  const int size = 10 * U.pixelsize;
-  const float y_center = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 +
-                         size / 2;
+  const int size = KEY_SIZE;
+  const float y_center = KEY_CENTER;
+
   const float width_fac = 0.5f;
   const float bottom = y_center - size * width_fac;
   const float top = y_center + size * width_fac;
@@ -446,6 +422,41 @@ const void draw_continuity(const bContext *C, const Sequence *seq, const SeqReti
   }
   immRectf(pos, prev_handle_position, bottom, handle_position, top);
   immUnbindProgram();
+  GPU_blend(GPU_BLEND_NONE);
+}
+
+static void draw_backdrop(const bContext *C, const Sequence *seq)
+{
+  if (!sequencer_retiming_tool_is_active(C)) {
+    return;
+  }
+  return;
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+
+  const float start = UI_view2d_view_to_region_x(v2d, SEQ_time_left_handle_frame_get(scene, seq));
+  const float end = UI_view2d_view_to_region_x(v2d, SEQ_time_right_handle_frame_get(scene, seq));
+
+  const int size = KEY_SIZE;
+  const float y_center = KEY_CENTER;
+  const float bottom = y_center - size / 2;
+  const float top = y_center + size / 2;
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.3f);
+  immRectf(pos, start, bottom, end, top);
+  immUnbindProgram();
+
+  /* immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immBegin(GPU_PRIM_LINES, 2);
+  immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.3f);
+  immVertex2f(pos, start, y_center);
+  immVertex2f(pos, end, y_center);
+  immEnd();
+  immUnbindProgram();*/
   GPU_blend(GPU_BLEND_NONE);
 }
 

@@ -546,9 +546,20 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
     changed = SEQ_retiming_selection_clear(ed);
   }
 
-  if (handle == nullptr) {
-    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-    return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+  if (handle == nullptr && seq_click_exact != nullptr) {
+    if (changed) {
+      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+      return OPERATOR_FINISHED;
+    }
+    else {
+      WM_toolsystem_ref_set_by_id(C, "builtin.select");
+      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+      return OPERATOR_CANCELLED;
+    }
+  }
+
+  if (seq_handle_owner == nullptr) {
+    return OPERATOR_CANCELLED;
   }
 
   if (toggle && SEQ_retiming_selection_contains(ed, seq_handle_owner, handle)) {
