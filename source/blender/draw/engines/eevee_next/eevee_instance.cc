@@ -64,6 +64,7 @@ void Instance::init(const int2 &output_res,
   sampling.init(scene);
   camera.init();
   film.init(output_res, output_rect);
+  ambient_occlusion.init();
   velocity.init();
   depth_of_field.init();
   shadows.init();
@@ -101,6 +102,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   shadows.init();
   main_view.init();
   irradiance_cache.init();
+  reflection_probes.init();
 }
 
 void Instance::set_time(float time)
@@ -151,6 +153,7 @@ void Instance::begin_sync()
   world.sync();
   film.sync();
   render_buffers.sync();
+  ambient_occlusion.sync();
   irradiance_cache.sync();
 }
 
@@ -451,9 +454,8 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
   CHECK_PASS_EEVEE(VOLUME_LIGHT, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(EMIT, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(ENVIRONMENT, SOCK_RGBA, 3, "RGB");
-  /* TODO: CHECK_PASS_LEGACY(SHADOW, SOCK_RGBA, 3, "RGB");
-   * CHECK_PASS_LEGACY(AO, SOCK_RGBA, 3, "RGB");
-   * When available they should be converted from Value textures to RGB. */
+  CHECK_PASS_LEGACY(SHADOW, SOCK_RGBA, 3, "RGB");
+  CHECK_PASS_LEGACY(AO, SOCK_RGBA, 3, "RGB");
 
   LISTBASE_FOREACH (ViewLayerAOV *, aov, &view_layer->aovs) {
     if ((aov->flag & AOV_CONFLICT) != 0) {
@@ -519,6 +521,8 @@ void Instance::light_bake_irradiance(
     manager->begin_sync();
     render_sync();
     manager->end_sync();
+
+    capture_view.render();
 
     irradiance_cache.bake.surfels_create(probe);
     irradiance_cache.bake.surfels_lights_eval();

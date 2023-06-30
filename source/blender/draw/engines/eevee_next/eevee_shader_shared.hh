@@ -99,9 +99,11 @@ enum eSamplingDimension : uint32_t {
   SAMPLING_RAYTRACE_V = 16u,
   SAMPLING_RAYTRACE_W = 17u,
   SAMPLING_RAYTRACE_X = 18u,
-  SAMPLING_VOLUME_U = 19u,
-  SAMPLING_VOLUME_V = 20u,
-  SAMPLING_VOLUME_W = 21u,
+  SAMPLING_AO_U = 19u,
+  SAMPLING_AO_V = 20u,
+  SAMPLING_VOLUME_U = 21u,
+  SAMPLING_VOLUME_V = 22u,
+  SAMPLING_VOLUME_W = 23u
 };
 
 /**
@@ -1032,6 +1034,19 @@ enum eClosureBits : uint32_t {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Ambient Occlussion
+ * \{ */
+
+struct AOData {
+  float distance;
+  float quality;
+  float2 pixel_size;
+};
+BLI_STATIC_ASSERT_ALIGN(AOData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Subsurface
  * \{ */
 
@@ -1133,6 +1148,7 @@ using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using VolumesInfoDataBuf = draw::UniformBuffer<VolumesInfoData>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
+using AODataBuf = draw::UniformBuffer<AOData>;
 
 }  // namespace blender::eevee
 #endif

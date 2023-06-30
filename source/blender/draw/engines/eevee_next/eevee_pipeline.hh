@@ -378,6 +378,7 @@ class PipelineModule {
         deferred(inst),
         forward(inst),
         shadow(inst),
+        volume(inst),
         capture(inst){};
 
   void begin_sync()
