@@ -1,4 +1,5 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 
 void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 out_specular)
@@ -26,7 +27,7 @@ void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 o
   vec3 T, B;
   make_orthonormal_basis(reflection.N, T, B);
   float pdf;
-  vec3 H = sample_ggx(Xi, roughness, V, reflection.N, T, B, pdf);
+  vec3 H = sample_ggx_reflect(Xi, roughness, V, reflection.N, T, B, pdf);
 
   vec3 L = -reflect(V, H);
   float NL = dot(reflection.N, L);

@@ -1,23 +1,30 @@
 
+/**
+ * BxDF evaluation functions.
+ **/
+
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+
 /* -------------------------------------------------------------------- */
 /** \name GGX
  *
  * \{ */
 
-float D_ggx_opti(float NH, float a2)
+float bxdf_ggx_D_opti(float NH, float a2)
 {
   float tmp = (NH * a2 - NH) * NH + 1.0;
-  return M_PI * tmp * tmp; /* Doing RCP and mul a2 at the end. */
+  /* Doing RCP and mul a2 at the end. */
+  return M_PI * tmp * tmp;
 }
 
-float G1_Smith_GGX_opti(float NX, float a2)
+float bxdf_ggx_smith_G1_opti(float NX, float a2)
 {
   /* Using Brian Karis approach and refactoring by NX/NX
    * this way the (2*NL)*(2*NV) in G = G1(V) * G1(L) gets canceled by the brdf denominator 4*NL*NV
    * Rcp is done on the whole G later.
    * Note that this is not convenient for the transmission formula. */
-  return NX + sqrt(NX * (NX - NX * a2) + a2);
   /* return 2 / (1 + sqrt(1 + a2 * (1 - NX*NX) / (NX*NX) ) ); /* Reference function. */
+  return NX + sqrt(NX * (NX - NX * a2) + a2);
 }
 
 float bsdf_ggx(vec3 N, vec3 L, vec3 V, float roughness)
@@ -29,12 +36,14 @@ float bsdf_ggx(vec3 N, vec3 L, vec3 V, float roughness)
   float NL = max(dot(N, L), 1e-8);
   float NV = max(dot(N, V), 1e-8);
 
-  float G = G1_Smith_GGX_opti(NV, a2) * G1_Smith_GGX_opti(NL, a2); /* Doing RCP at the end */
-  float D = D_ggx_opti(NH, a2);
+  /* Doing RCP at the end */
+  float G = bxdf_ggx_smith_G1_opti(NV, a2) * bxdf_ggx_smith_G1_opti(NL, a2);
+  float D = bxdf_ggx_D_opti(NH, a2);
 
   /* Denominator is canceled by G1_Smith */
   /* bsdf = D * G / (4.0 * NL * NV); /* Reference function. */
-  return NL * a2 / (D * G); /* NL to Fit cycles Equation : line. 345 in bsdf_microfacet.h */
+  /* NL term to fit Cycles. NOTE(fclem): Not sure what it  */
+  return NL * a2 / (D * G);
 }
 
 float btdf_ggx(vec3 N, vec3 L, vec3 V, float roughness, float eta)
@@ -49,10 +58,11 @@ float btdf_ggx(vec3 N, vec3 L, vec3 V, float roughness, float eta)
   float LH = max(dot(L, H), 1e-8);
   float Ht2 = sqr(eta * LH + VH);
 
-  float G = G1_Smith_GGX_opti(NV, a2) * G1_Smith_GGX_opti(NL, a2); /* Doing RCP at the end */
-  float D = D_ggx_opti(NH, a2);
+  /* Doing RCP at the end */
+  float G = bxdf_ggx_smith_G1_opti(NV, a2) * bxdf_ggx_smith_G1_opti(NL, a2);
+  float D = bxdf_ggx_D_opti(NH, a2);
 
-  /* btdf = abs(VH*LH) * (ior*ior) * D * G(V) * G(L) / (Ht2 * NV) */
+  /* btdf = abs(VH*LH) * ior^2 * D * G(V) * G(L) / (Ht2 * NV) */
   return abs(VH * LH) * sqr(eta) * 4.0 * a2 / (D * G * (Ht2 * NV));
 }
 
