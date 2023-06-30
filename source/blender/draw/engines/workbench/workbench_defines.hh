@@ -15,6 +15,6 @@
 #define WB_CURVES_UV_SLOT 5
 #define WB_CURVES_COLOR_SLOT 6
 
-/* Storage Buffers. */
-#define WB_MATERIAL_SLOT 1
-#define WB_WORLD_SLOT 2
+/* UBOs (Storage buffers in Workbench Next). */
+#define WB_MATERIAL_SLOT 0
+#define WB_WORLD_SLOT 1
