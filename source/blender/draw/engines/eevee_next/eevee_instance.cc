@@ -531,10 +531,9 @@ void Instance::light_bake_irradiance(
       /* TODO(fclem): Could make the number of iteration depend on the computation time. */
       for (int i = 0; i < 16 && !sampling.finished(); i++) {
         sampling.step();
-        const bool do_world_capture = i == 0;
 
         irradiance_cache.bake.raylists_build();
-        irradiance_cache.bake.propagate_light(do_world_capture);
+        irradiance_cache.bake.propagate_light();
         irradiance_cache.bake.irradiance_capture();
       }
 

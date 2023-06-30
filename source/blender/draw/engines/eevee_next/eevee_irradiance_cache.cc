@@ -455,20 +455,15 @@ void IrradianceBake::sync()
       sub.dispatch(&dispatch_per_list_);
     }
   }
-  for (int pass_index : IndexRange(2)) {
-    PassSimple &pass = surfel_light_propagate_ps_[pass_index];
+  {
+    PassSimple &pass = surfel_light_propagate_ps_;
     pass.init();
     {
       PassSimple::Sub &sub = pass.sub("RayEval");
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
       sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
-      if (pass_index == 0) {
-        inst_.reflection_probes.bind_resources(&sub);
-      }
-      else {
-        inst_.reflection_probes.bind_dummy_resources(&sub);
-      }
+      inst_.reflection_probes.bind_resources(&sub);
       sub.push_constant("radiance_src", &radiance_src_);
       sub.push_constant("radiance_dst", &radiance_dst_);
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
@@ -743,14 +738,14 @@ void IrradianceBake::raylists_build()
   inst_.manager->submit(surfel_ray_build_ps_, ray_view_);
 }
 
-void IrradianceBake::propagate_light(const bool do_world_capture)
+void IrradianceBake::propagate_light()
 {
   /* NOTE: Subtract 1 because after `sampling.step()`. */
   capture_info_buf_.sample_index = inst_.sampling.sample_index() - 1;
   capture_info_buf_.sample_count = inst_.sampling.sample_count();
   capture_info_buf_.push_update();
 
-  inst_.manager->submit(surfel_light_propagate_ps_[do_world_capture ? 0 : 1], ray_view_);
+  inst_.manager->submit(surfel_light_propagate_ps_, ray_view_);
 
   std::swap(radiance_src_, radiance_dst_);
 }

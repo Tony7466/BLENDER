@@ -39,7 +39,6 @@ class ReflectionProbeModule {
   Instance &instance_;
 
   Texture cubemaps_tx_ = {"Probes"};
-  Texture dummy_tx_ = {"Probes.Dummy"};
 
   bool initialized_ = false;
 
@@ -53,11 +52,6 @@ class ReflectionProbeModule {
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, cubemaps_tx_);
-  }
-
-  template<typename T> void bind_dummy_resources(draw::detail::PassBase<T> *pass)
-  {
-    pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, dummy_tx_);
   }
 
   void do_world_update_set(bool value)
