@@ -353,6 +353,9 @@ void InstancerData::write_instances()
       scene_delegate_->depsgraph, scene_delegate_->scene, (Object *)id);
   LISTBASE_FOREACH (DupliObject *, dupli, lb) {
     Object *ob = dupli->ob;
+    if (!scene_delegate_->shading_settings.use_scene_lights && ob->type == OB_LAMP) {
+      continue;
+    }
     if (!is_supported(ob) || !is_instance_visible(ob)) {
       continue;
     }

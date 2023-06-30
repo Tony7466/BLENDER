@@ -20,7 +20,7 @@ namespace blender::render::hydra {
 
 class WorldData : public IdData {
  public:
-  WorldData(BlenderSceneDelegate *scene_delegate, World *world, pxr::SdfPath const &prim_id);
+  WorldData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;

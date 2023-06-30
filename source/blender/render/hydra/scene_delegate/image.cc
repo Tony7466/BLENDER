@@ -76,8 +76,9 @@ std::string cache_or_get_image_file(Image *image, bContext *context, ImageUser *
   }
   else {
     Main *main = CTX_data_main(context);
-    file_path.reserve(FILE_MAX);
-    BKE_image_user_file_path_ex(main, iuser, image, file_path.data(), false, true);
+    char str[FILE_MAX];
+    BKE_image_user_file_path_ex(main, iuser, image, str, false, true);
+    file_path = str;
 
     if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(file_path)) {
       file_path = cache_image_file(image, context, iuser, true);

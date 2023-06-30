@@ -14,6 +14,19 @@ namespace blender::render::hydra {
 
 CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA_SCENE, "render.hydra.scene");
 
+bool BlenderSceneDelegate::ShadingSettings::operator==(const ShadingSettings &other)
+{
+  bool ret = use_scene_lights == other.use_scene_lights &&
+             use_scene_world == other.use_scene_world;
+  if (ret && !use_scene_world) {
+    /* compare studiolight settings when studiolight is using */
+    ret = studiolight_name == other.studiolight_name &&
+          studiolight_rotation == other.studiolight_rotation &&
+          studiolight_intensity == other.studiolight_intensity;
+  }
+  return ret;
+}
+
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
                                            Engine *engine)
@@ -205,6 +218,8 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
     check_updates();
   }
   else {
+    set_light_shading_settings();
+    set_world_shading_settings();
     add_new_objects();
     update_world();
   }
@@ -338,7 +353,9 @@ void BlenderSceneDelegate::update_objects(Object *object)
   if (!ObjectData::is_supported(object)) {
     return;
   }
-
+  if (!shading_settings.use_scene_lights && object->type == OB_LAMP) {
+    return;
+  }
   pxr::SdfPath id = object_prim_id(object);
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
@@ -397,17 +414,16 @@ void BlenderSceneDelegate::update_instancers(Object *object)
 
 void BlenderSceneDelegate::update_world()
 {
-  World *world = scene->world;
   if (!world_data_) {
-    if (world) {
-      world_data_ = std::make_unique<WorldData>(this, world, world_prim_id());
+    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
+      world_data_ = std::make_unique<WorldData>(this, world_prim_id());
       world_data_->init();
       world_data_->insert();
     }
   }
   else {
-    if (world) {
-      world_data_->update(world);
+    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
+      world_data_->update();
     }
     else {
       world_data_->remove();
@@ -421,6 +437,19 @@ void BlenderSceneDelegate::check_updates()
   bool do_update_collection = false;
   bool do_update_visibility = false;
   bool do_update_world = false;
+
+  if (set_world_shading_settings()) {
+    do_update_world = true;
+  }
+
+  if (set_light_shading_settings()) {
+    if (shading_settings.use_scene_lights) {
+      add_new_objects();
+    }
+    else {
+      do_update_collection = true;
+    }
+  }
 
   DEGIDIterData data = {0};
   data.graph = depsgraph;
@@ -455,7 +484,7 @@ void BlenderSceneDelegate::check_updates()
       } break;
 
       case ID_WO: {
-        if (id->recalc & ID_RECALC_SHADING) {
+        if (shading_settings.use_scene_world && id->recalc & ID_RECALC_SHADING) {
           do_update_world = true;
         }
       } break;
@@ -518,6 +547,9 @@ void BlenderSceneDelegate::add_new_objects()
               "Visibility: %s [%s]",
               object->id.name,
               std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
+    if (object_data(object_prim_id(object))) {
+      continue;
+    }
     update_objects(object);
     update_instancers(object);
   }
@@ -544,10 +576,13 @@ void BlenderSceneDelegate::remove_unused_objects()
               Object *,
               object)
   {
+    available_objects.add(instancer_prim_id(object).GetName());
     if (ObjectData::is_supported(object)) {
+      if (!shading_settings.use_scene_lights && object->type == OB_LAMP) {
+        continue;
+      }
       available_objects.add(object_prim_id(object).GetName());
     }
-    available_objects.add(instancer_prim_id(object).GetName());
   }
   ITER_END;
 
@@ -637,6 +672,29 @@ void BlenderSceneDelegate::update_visibility()
     }
   }
   ITER_END;
+}
+
+bool BlenderSceneDelegate::set_light_shading_settings()
+{
+  if (!view3d) {
+    return false;
+  }
+  ShadingSettings prev_settings(shading_settings);
+  shading_settings.use_scene_lights = V3D_USES_SCENE_LIGHTS(view3d);
+  return !(shading_settings == prev_settings);
+}
+
+bool BlenderSceneDelegate::set_world_shading_settings()
+{
+  if (!view3d) {
+    return false;
+  }
+  ShadingSettings prev_settings(shading_settings);
+  shading_settings.use_scene_world = V3D_USES_SCENE_WORLD(view3d);
+  shading_settings.studiolight_name = view3d->shading.lookdev_light;
+  shading_settings.studiolight_rotation = view3d->shading.studiolight_rot_z;
+  shading_settings.studiolight_intensity = view3d->shading.studiolight_intensity;
+  return !(shading_settings == prev_settings);
 }
 
 }  // namespace blender::render::hydra

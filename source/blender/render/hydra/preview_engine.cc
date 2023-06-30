@@ -39,7 +39,9 @@ void PreviewEngine::update_render_result(std::vector<float> &pixels)
 
   RenderLayer *layer = (RenderLayer *)result->layers.first;
   RenderPass *pass = (RenderPass *)layer->passes.first;
-  memcpy(pass->buffer.data, pixels.data(), sizeof(float) * pass->rectx * pass->recty * pass->channels);
+  memcpy(pass->buffer.data,
+         pixels.data(),
+         sizeof(float) * pass->rectx * pass->recty * pass->channels);
 
   RE_engine_end_result(bl_engine_, result, false, false, false);
 }

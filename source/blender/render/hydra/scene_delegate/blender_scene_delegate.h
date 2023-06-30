@@ -7,11 +7,11 @@
 #include <pxr/imaging/hd/sceneDelegate.h>
 
 #include "BKE_context.h"
+#include "BLI_map.hh"
 #include "DEG_depsgraph.h"
 
 #include "CLG_log.h"
 
-#include "BLI_map.hh"
 #include "curves.h"
 #include "instancer.h"
 #include "light.h"
@@ -35,6 +35,16 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   struct Settings {
     pxr::TfToken mx_filename_key;
     Map<pxr::TfToken, pxr::VtValue> render_tokens;
+  };
+
+  struct ShadingSettings {
+    bool use_scene_lights = true;
+    bool use_scene_world = true;
+    std::string studiolight_name;
+    float studiolight_rotation;
+    float studiolight_intensity;
+
+    bool operator==(const ShadingSettings &other);
   };
 
   BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
@@ -71,6 +81,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   Scene *scene = nullptr;
   Engine *engine;
   Settings settings;
+  ShadingSettings shading_settings;
 
  private:
   pxr::SdfPath prim_id(ID *id, const char *prefix) const;
@@ -93,6 +104,8 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   void add_new_objects();
   void remove_unused_objects();
   void update_visibility();
+  bool set_light_shading_settings();
+  bool set_world_shading_settings();
 
   ObjectDataMap objects_;
   MaterialDataMap materials_;
