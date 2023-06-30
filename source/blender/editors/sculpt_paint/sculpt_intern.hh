@@ -17,6 +17,7 @@
 
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
+#include "BKE_pbvh_iter.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_attrs.h"
@@ -1018,7 +1019,8 @@ void SCULPT_vertex_neighbors_get(SculptSession *ss,
 #define SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN(ss, v_index, neighbor_iterator) \
   SCULPT_vertex_neighbors_get(ss, v_index, false, &neighbor_iterator); \
   for (neighbor_iterator.i = 0; neighbor_iterator.i < neighbor_iterator.size; \
-       neighbor_iterator.i++) { \
+       neighbor_iterator.i++) \
+  { \
     neighbor_iterator.vertex = neighbor_iterator.neighbors[neighbor_iterator.i]; \
     neighbor_iterator.index = neighbor_iterator.neighbor_indices[neighbor_iterator.i];
 
@@ -1399,6 +1401,35 @@ void SCULPT_automasking_node_begin(Object *ob,
 void SCULPT_automasking_node_update(SculptSession *ss,
                                     AutomaskingNodeData *automask_data,
                                     PBVHVertexIter *vd);
+
+template<typename NodeData,
+         typename VertexIteratorType =
+             typename blender::bke::pbvh::VertexRange<NodeData, PBVH_FACES>::iterator>
+void SCULPT_automasking_node_update(SculptSession *ss,
+                                    AutomaskingNodeData *automask_data,
+                                    VertexIteratorType &vd)
+{
+  if (automask_data->have_orig_data) {
+    /* TODO: refactor SCULPT_orig_vert_data_update to use
+     * blender::bke::pbvh::VertexRange<NodeData>::iterator.
+     */
+    PBVHVertexIter old_vd = {};
+    float no[3];
+
+    copy_v3_v3(no, vd.no);
+
+    old_vd.co = vd.co;
+    old_vd.no = old_vd.fno = no;
+    old_vd.is_mesh = vd.is_mesh;
+    old_vd.i = vd.vertex_node_index;
+
+    if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+      old_vd.bm_vert = reinterpret_cast<BMVert *>(vd.vertex.i);
+    }
+
+    SCULPT_orig_vert_data_update(&automask_data->orig_data, &old_vd);
+  }
+}
 
 float SCULPT_automasking_factor_get(AutomaskingCache *automasking,
                                     SculptSession *ss,

@@ -51,6 +51,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
+#include "BKE_pbvh_iter.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
@@ -4630,7 +4631,8 @@ static bool sculpt_needs_delta_from_anchored_origin(Brush *brush)
     return true;
   }
   if (brush->sculpt_tool == SCULPT_TOOL_CLOTH &&
-      brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB) {
+      brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB)
+  {
     return true;
   }
   return false;
@@ -6192,7 +6194,8 @@ void SCULPT_fake_neighbors_ensure(Sculpt *sd, Object *ob, const float max_dist)
    * recalculated.
    */
   if (ss->fake_neighbors.fake_neighbor_index &&
-      ss->fake_neighbors.current_max_distance == max_dist) {
+      ss->fake_neighbors.current_max_distance == max_dist)
+  {
     return;
   }
 

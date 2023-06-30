@@ -17,6 +17,7 @@
 #include "BKE_context.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
+#include "BKE_pbvh_iter.hh"
 
 #include "sculpt_intern.hh"
 
@@ -24,6 +25,8 @@
 
 #include <cmath>
 #include <cstdlib>
+
+#include "atomic_ops.h"
 
 void SCULPT_neighbor_coords_average_interior(SculptSession *ss,
                                              float result[3],
@@ -324,9 +327,107 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
+void SCULPT_smooth_new(
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
+{
+  SCOPED_TIMER(__func__);
+
+  SculptSession *ss = ob->sculpt;
+  Brush *brush = BKE_paint_brush(&sd->paint);
+
+  const int max_iterations = 4;
+  const float fract = 1.0f / max_iterations;
+  int iteration, count;
+  float last;
+
+  CLAMP(bstrength, 0.0f, 1.0f);
+
+  count = int(bstrength * max_iterations);
+  last = max_iterations * (bstrength - count * fract);
+
+  SCULPT_vertex_random_access_ensure(ss);
+  SCULPT_boundary_info_ensure(ob);
+
+  using blender::bke::pbvh::VertexRange;
+
+  struct NodeData {
+    AutomaskingNodeData automask_data;
+  };
+
+  SculptBrushTest test;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, &test, brush->falloff_shape);
+
+  for (iteration = 0; iteration <= count; iteration++) {
+    blender::bke::pbvh::foreach_brush_verts<NodeData>(
+        ss->pbvh,
+        nodes,
+        true,
+        [&](PBVHVertRef vertex, const float *co, const float *no, float mask, float *r_dist) {
+          SculptBrushTest test2 = test;
+          bool ret = sculpt_brush_test_sq_fn(&test2, co);
+
+          if (ret) {
+            *r_dist = test2.dist;
+          }
+
+          return ret;
+        },
+        [&](PBVHNode *node) {
+          NodeData data = {};
+
+          SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &data.automask_data, node);
+
+          return data;
+        },
+        [&](auto range) {
+          const int thread_id = BLI_task_parallel_thread_id(nullptr);
+          for (auto &vd : range) {
+            SCULPT_automasking_node_update<NodeData>(ss, &vd.node_data->automask_data, vd);
+
+            const float fade = bstrength * SCULPT_brush_strength_factor(
+                                               ss,
+                                               brush,
+                                               vd.co,
+                                               sqrtf(vd.dist_squared),
+                                               vd.no,
+                                               vd.no,
+                                               smooth_mask ? 0.0f : (vd.mask ? *vd.mask : 0.0f),
+                                               vd.vertex,
+                                               thread_id,
+                                               &vd.node_data->automask_data);
+
+            if (smooth_mask) {
+              float val = SCULPT_neighbor_mask_average(ss, vd.vertex) - *vd.mask;
+              val *= fade * bstrength;
+              *vd.mask += val;
+              CLAMP(*vd.mask, 0.0f, 1.0f);
+            }
+            else {
+              float avg[3], val[3];
+              SCULPT_neighbor_coords_average_interior(ss, avg, vd.vertex);
+              sub_v3_v3v3(val, avg, vd.co);
+              madd_v3_v3v3fl(val, vd.co, val, fade);
+              SCULPT_clip(sd, ss, vd.co, val);
+              if (vd.is_mesh) {
+                BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
+              }
+            }
+          }
+        },
+        [&](PBVHNode *node, NodeData *node_data) {});
+  }
+}
+
 void SCULPT_smooth(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
 {
+  printf("\n");
+
+  SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
+  
+  SCOPED_TIMER(__func__);
+
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
