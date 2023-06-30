@@ -671,7 +671,6 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
 
 static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
-  SpaceSeq *sseq = (SpaceSeq *)area->spacedata.first;
   View2D *v2d = &region->v2d;
   Scene *scene = win->scene;
   Editing *ed = SEQ_editing_get(scene);
@@ -689,26 +688,19 @@ static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
                            win->eventstate->xy[1] - region->winrct.ymin,
                            &view_x,
                            &view_y);
-  float pixelx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-  rctf rectf;
+  Sequence *seq1, *seq2;
+  int side;
 
-  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+  sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
 
-    if (SEQ_transform_is_locked(ed->displayed_channels, seq)) {
-      break;
-    }
-
-    seq_rectf(scene, seq, &rectf);
-    if (BLI_rctf_isect_pt(&rectf, view_x, view_y)) {
-      float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 4;
-      if (view_x < rectf.xmin + handsize) {
-        wmcursor = WM_CURSOR_LEFT_HANDLE;
-      }
-      if (view_x > rectf.xmax - handsize) {
-        wmcursor = WM_CURSOR_RIGHT_HANDLE;
-      }
-      break;
-    }
+  if (seq1 != nullptr && seq2 != nullptr) {
+    wmcursor = WM_CURSOR_BOTH_HANDLES;
+  }
+  else if (side == SEQ_SIDE_LEFT) {
+    wmcursor = WM_CURSOR_LEFT_HANDLE;
+  }
+  else if (side == SEQ_SIDE_RIGHT) {
+    wmcursor = WM_CURSOR_RIGHT_HANDLE;
   }
 
   WM_cursor_set(win, wmcursor);

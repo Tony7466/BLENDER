@@ -63,6 +63,7 @@ typedef enum WMCursorType {
 
   WM_CURSOR_LEFT_HANDLE,
   WM_CURSOR_RIGHT_HANDLE,
+  WM_CURSOR_BOTH_HANDLES,
 
   /* --- ALWAYS LAST ----- */
   WM_CURSOR_NUM,
