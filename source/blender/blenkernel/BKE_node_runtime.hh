@@ -18,6 +18,7 @@
 #include "DNA_node_types.h"
 
 #include "BKE_node.hh"
+#include "BKE_node_tree_interface.hh"
 
 struct bNode;
 struct bNodeSocket;
@@ -166,6 +167,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   Vector<bNode *> root_frames;
   Vector<bNodeSocket *> interface_inputs;
   Vector<bNodeSocket *> interface_outputs;
+  bNodeTreeInterfaceCache interface_cache;
 };
 
 /**

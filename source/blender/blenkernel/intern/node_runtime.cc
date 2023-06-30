@@ -29,6 +29,9 @@ static void update_interface_sockets(const bNodeTree &ntree)
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   tree_runtime.interface_inputs = ntree.inputs;
   tree_runtime.interface_outputs = ntree.outputs;
+  /* XXX const_cast because ntree pointer given here is const,
+   * but is expected to store mutable references in the cache ... */
+  tree_runtime.interface_cache.rebuild(const_cast<bNodeTree &>(ntree).interface);
 }
 
 static void update_node_vector(const bNodeTree &ntree)

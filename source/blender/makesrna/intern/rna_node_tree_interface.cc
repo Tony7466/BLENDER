@@ -26,13 +26,13 @@ const EnumPropertyItem rna_enum_node_tree_interface_socket_kind_items[] = {
     {NODE_INTERFACE_OUTPUT, "OUTPUT", 0, "Output", ""},
     {0, nullptr, 0, nullptr, nullptr}};
 
-#ifdef RNA_RUNTIME
+//#ifdef RNA_RUNTIME
 
-#  include "BKE_node.h"
-#  include "BKE_node_tree_interface.hh"
-#  include "BKE_node_tree_update.h"
-#  include "ED_node.h"
-#  include "WM_api.h"
+#include "BKE_node.h"
+#include "BKE_node_tree_interface.hh"
+#include "BKE_node_tree_update.h"
+#include "ED_node.h"
+#include "WM_api.h"
 
 static void rna_NodeTreeInterfaceItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -53,33 +53,6 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
     default:
       return &RNA_NodeTreeInterfaceItem;
   }
-}
-
-static void rna_NodeTreeInterfaceItem_parent_set(PointerRNA *ptr,
-                                                 PointerRNA value,
-                                                 struct ReportList *reports)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNodeTreeInterface *interface = &ntree->interface;
-  bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(ptr->data);
-  bNodeTreeInterfacePanel *new_parent = static_cast<bNodeTreeInterfacePanel *>(value.data);
-  if (!interface->parent_set(*item, new_parent)) {
-    BKE_reportf(
-        reports, RPT_ERROR_INVALID_INPUT, "Cannot set parent to panel '%s'", new_parent->name);
-  }
-}
-
-static bool rna_NodeTreeInterfaceItem_parent_poll(PointerRNA *ptr, PointerRNA value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNodeTreeInterface *interface = &ntree->interface;
-  bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(ptr->data);
-  bNodeTreeInterfaceItem *new_parent = static_cast<bNodeTreeInterfaceItem *>(value.data);
-  if (new_parent->item_type != NODE_INTERFACE_PANEL) {
-    return false;
-  }
-  return interface->is_valid_parent(*item,
-                                    reinterpret_cast<bNodeTreeInterfacePanel *>(new_parent));
 }
 
 static void rna_NodeTreeInterfaceSocket_identifier_get(PointerRNA *ptr, char *value)
@@ -162,22 +135,22 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_data_type_itemf(bCont
       ntree->typeinfo, rna_NodeTreeInterfaceSocket_data_type_poll, r_free);
 }
 
-static PointerRNA rna_NodeTreeInterfaceItems_active_get(PointerRNA *ptr)
-{
-  bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
-  PointerRNA r_ptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, interface->active_item(), &r_ptr);
-  return r_ptr;
-}
+// static PointerRNA rna_NodeTreeInterfaceItems_active_get(PointerRNA *ptr)
+//{
+//  bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
+//  PointerRNA r_ptr;
+//  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, interface->active_item(),
+//  &r_ptr); return r_ptr;
+//}
 
-static void rna_NodeTreeInterfaceItems_active_set(PointerRNA *ptr,
-                                                  PointerRNA value,
-                                                  ReportList * /*reports*/)
-{
-  bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
-  bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(value.data);
-  interface->active_item_set(item);
-}
+// static void rna_NodeTreeInterfaceItems_active_set(PointerRNA *ptr,
+//                                                  PointerRNA value,
+//                                                  ReportList * /*reports*/)
+//{
+//  bNodeTreeInterface *interface = static_cast<bNodeTreeInterface *>(ptr->data);
+//  bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(value.data);
+//  interface->active_item_set(item);
+//}
 
 static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     ID *id,
@@ -320,23 +293,6 @@ static void rna_def_node_interface_item(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_node_tree_interface_item_type_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Item Type", "Type of interface item");
-
-  prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "parent");
-  RNA_def_property_pointer_funcs(prop,
-                                 nullptr,
-                                 "rna_NodeTreeInterfaceItem_parent_set",
-                                 nullptr,
-                                 "rna_NodeTreeInterfaceItem_parent_poll");
-  RNA_def_property_struct_type(prop, "NodeTreeInterfacePanel");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Parent", "Parent panel that contains the item");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
-
-  prop = RNA_def_property(srna, "index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "index");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Index", "Index of the item in the interface items list");
 }
 
 static void rna_def_node_interface_socket(BlenderRNA *brna)
@@ -409,6 +365,12 @@ static void rna_def_node_interface_panel(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "Panel name");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
+  prop = RNA_def_property(srna, "interface_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
+  RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Items", "Items in the node panel");
 }
 
 static void rna_def_node_tree_interface_items_api(BlenderRNA *brna, PropertyRNA *cprop)
@@ -430,16 +392,16 @@ static void rna_def_node_tree_interface_items_api(BlenderRNA *brna, PropertyRNA 
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE, nullptr);
 
-  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeTreeInterfaceItems_active_get",
-                                 "rna_NodeTreeInterfaceItems_active_set",
-                                 nullptr,
-                                 nullptr);
-  RNA_def_property_ui_text(prop, "Active", "Active item");
-  RNA_def_property_update(prop, NC_NODE, nullptr);
+  //  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
+  //  RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
+  //  RNA_def_property_flag(prop, PROP_EDITABLE);
+  //  RNA_def_property_pointer_funcs(prop,
+  //                                 "rna_NodeTreeInterfaceItems_active_get",
+  //                                 "rna_NodeTreeInterfaceItems_active_set",
+  //                                 nullptr,
+  //                                 nullptr);
+  //  RNA_def_property_ui_text(prop, "Active", "Active item");
+  //  RNA_def_property_update(prop, NC_NODE, nullptr);
 
   func = RNA_def_function(srna, "new_socket", "rna_NodeTreeInterfaceItems_new_socket");
   RNA_def_function_ui_description(func, "Add a new socket to the interface");
@@ -511,11 +473,6 @@ static void rna_def_node_tree_interface(BlenderRNA *brna)
       srna, "Node Tree Interface", "Declaration of sockets and ui panels of a node group");
   RNA_def_struct_sdna(srna, "bNodeTreeInterface");
 
-  prop = RNA_def_property(srna, "interface_items", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
-  RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Items", "Items in the node tree interface");
   rna_def_node_tree_interface_items_api(brna, prop);
 }
 

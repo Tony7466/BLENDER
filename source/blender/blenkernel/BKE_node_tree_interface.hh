@@ -7,6 +7,7 @@
 #include "DNA_node_tree_interface_types.h"
 
 #include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 #ifdef __cplusplus
 #  include <queue>
@@ -15,36 +16,37 @@
 
 #ifdef __cplusplus
 
-inline blender::Span<const bNodeTreeInterfaceItem *> bNodeTreeInterface::items() const
-{
-  return blender::Span(items_array, items_num);
-}
+namespace blender::bke {
 
-inline blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterface::items()
-{
-  return blender::MutableSpan(items_array, items_num);
-}
+/* Runtime topology cache for linear access to items. */
+typedef struct bNodeTreeInterfaceCache {
+  blender::Vector<bNodeTreeInterfaceItem *> items;
 
-inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
-{
-  if (items().index_range().contains(active_index)) {
-    return items()[active_index];
-  }
-  return nullptr;
-}
+  void rebuild(bNodeTreeInterface &interface);
+} bNodeTreeInterfaceCache;
 
-inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
-{
-  if (items().index_range().contains(active_index)) {
-    return items()[active_index];
-  }
-  return nullptr;
-}
+}  // namespace blender::bke
 
-inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
-{
-  active_index = items().as_span().first_index_try(item);
-}
+// inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
+//{
+//  if (items().index_range().contains(active_index)) {
+//    return items()[active_index];
+//  }
+//  return nullptr;
+//}
+
+// inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
+//{
+//  if (items().index_range().contains(active_index)) {
+//    return items()[active_index];
+//  }
+//  return nullptr;
+//}
+
+// inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
+//{
+//  active_index = items().as_span().first_index_try(item);
+//}
 
 template<typename ExpectedT> struct IsExpectedTypeOp {
   bool result = false;

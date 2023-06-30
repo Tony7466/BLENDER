@@ -12,7 +12,6 @@
 
 #ifdef __cplusplus
 #  include "BLI_color.hh"
-#  include "BLI_map.hh"
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"
 
@@ -46,9 +45,7 @@ typedef struct bNodeTreeInterfaceItem {
   template<typename T> T *get_as_ptr();
   template<typename T> const T *get_as_ptr() const;
 
-  using ParentMap = blender::Map<const bNodeTreeInterfacePanel *, bNodeTreeInterfacePanel *>;
-
-  void copy_data(const bNodeTreeInterfaceItem &src, std::optional<ParentMap> parent_map);
+  void copy_data(const bNodeTreeInterfaceItem &src);
   void free_data();
 
   template<typename OpT> void apply_typed_operator(OpT op) const;
@@ -147,6 +144,15 @@ typedef struct bNodeTreeInterfacePanel {
 #ifdef __cplusplus
   static bNodeTreeInterfaceSocket *create(blender::StringRef name);
 
+  //  inline operator bNodeTreeInterfaceItem &()
+  //  {
+  //    return *reinterpret_cast<bNodeTreeInterfaceItem *>(this);
+  //  }
+  //  inline operator const bNodeTreeInterfaceItem &() const
+  //  {
+  //    return *reinterpret_cast<const bNodeTreeInterfaceItem *>(this);
+  //  }
+
   blender::IndexRange items_range() const;
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
@@ -157,7 +163,9 @@ typedef struct bNodeTreeInterfacePanel {
 
   void add_item(bNodeTreeInterfaceItem &item);
   void insert_item(bNodeTreeInterfaceItem &item, int index);
-  bool remove_item(bNodeTreeInterfaceItem &item);
+  bool remove_item(bNodeTreeInterfaceItem &item, bool free);
+  void clear_items();
+  bool move_item(bNodeTreeInterfaceItem &item, int new_index);
 
   friend struct bNodeTreeInterface;
 #endif
@@ -173,9 +181,9 @@ typedef struct bNodeTreeInterface {
   void copy_data(const bNodeTreeInterface &src);
   void free_data();
 
-  bNodeTreeInterfaceItem *active_item();
-  const bNodeTreeInterfaceItem *active_item() const;
-  void active_item_set(bNodeTreeInterfaceItem *item);
+  //  bNodeTreeInterfaceItem *active_item();
+  //  const bNodeTreeInterfaceItem *active_item() const;
+  //  void active_item_set(bNodeTreeInterfaceItem *item);
 
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
@@ -200,14 +208,13 @@ typedef struct bNodeTreeInterface {
                                            bNodeTreeInterfacePanel *parent,
                                            int index);
 
-  bool remove_item(bNodeTreeInterfaceItem &item);
-  bool remove_item(bNodeTreeInterfacePanel &parent, bNodeTreeInterfaceItem &item);
-  void clear_items();
-  void clear_items(bNodeTreeInterfacePanel &parent);
+  bool remove_item(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *parent);
+  void clear_items(bNodeTreeInterfacePanel *parent);
 
-  bool move_item(bNodeTreeInterfaceItem &item, int new_index);
+  bool move_item(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *parent, int new_index);
   bool move_item_to_parent(bNodeTreeInterfaceItem &item,
                            bNodeTreeInterfacePanel *parent,
+                           bNodeTreeInterfacePanel *new_parent,
                            int new_index);
 
   /* Apply an operator to every item in the interface.
@@ -233,8 +240,6 @@ typedef struct bNodeTreeInterface {
  protected:
   /* Warning: slow! */
   bool contains_item(const bNodeTreeInterfaceItem &item) const;
-
-  static void free_item(bNodeTreeInterfaceItem &item);
 
   /**
    * Topologial stable sorting method that keeps items grouped by parent.
