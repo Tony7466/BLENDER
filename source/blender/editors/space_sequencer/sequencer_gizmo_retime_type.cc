@@ -175,7 +175,8 @@ static const SeqRetimingHandle *mouse_over_handle_get_from_strip(bContext *C,
   Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
-  const rctf box = strip_box_get(C, seq);
+  rctf box = strip_box_get(C, seq);
+  box.xmax += RETIME_HANDLE_MOUSEOVER_THRESHOLD; /* Fix selecting last handle. */
   if (!mouse_is_inside_box(&box, mval)) {
     return nullptr;
   }
@@ -242,6 +243,49 @@ typedef struct RetimeHandleMoveGizmo {
   eHandleMoveOperation operation;
 } RetimeHandleMoveGizmo;
 
+static void draw_half_keyframe(
+    const bContext *C, const Sequence *seq, const SeqRetimingHandle *handle, float size, bool sel)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  Editing *ed = SEQ_editing_get(scene);
+  const float x = UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, handle));
+  const float y = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + size / 2;
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+  if (SEQ_retiming_selection_contains(ed, seq, handle) ||
+      SEQ_retiming_selection_contains(ed, seq, handle - 1))
+  {
+    immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
+  }
+  else {
+    immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.1f);
+  }
+
+  size *= 0.5f;
+
+  unsigned char col[4];
+  UI_GetThemeColor4ubv(sel ? TH_KEYTYPE_KEYFRAME_SELECT : TH_KEYTYPE_KEYFRAME, col);
+  immUniformColor4ubv(col);
+  immBegin(GPU_PRIM_TRI_FAN, 3);
+  immVertex2f(pos, x, y + size);
+  immVertex2f(pos, x, y - size);
+  immVertex2f(pos, x - size, y);
+  immEnd();
+  UI_GetThemeColor4ubv(sel ? TH_KEYBORDER_SELECT : TH_KEYBORDER, col);
+  immUniformColor4ubv(col);
+  immBegin(GPU_PRIM_LINE_LOOP, 3);
+  immVertex2f(pos, x, y + size);
+  immVertex2f(pos, x, y - size);
+  immVertex2f(pos, x - size, y);
+  immEnd();
+  immUnbindProgram();
+  GPU_blend(GPU_BLEND_NONE);
+}
+
 static void retime_handle_draw(const bContext *C,
                                const RetimeHandleMoveGizmo *gizmo,
                                const Sequence *seq,
@@ -300,15 +344,6 @@ static void retime_handle_draw(const bContext *C,
       v2d, handle_x_get(scene, seq, handle - 1));
   const float bottom = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + size / 2;
 
-  GPU_blend(GPU_BLEND_ALPHA);
-
-  /* uint pos = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniform4f("color", 0.5f, 0.5f, 0.0f, 0.4f);
-  immRectf(pos, prev_handle_position, bottom - size / 2, handle_position, bottom + size / 2);
-  immUnbindProgram();*/
-
   GPUVertFormat *format = immVertexFormat();
   KeyframeShaderBindings sh_bindings;
 
@@ -320,25 +355,96 @@ static void retime_handle_draw(const bContext *C,
       format, "outlineColor", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   sh_bindings.flags_id = GPU_vertformat_attr_add(format, "flags", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
-  GPU_program_point_size(true);
-  immBindBuiltinProgram(GPU_SHADER_KEYFRAME_SHAPE);
-  immUniform1f("outline_scale", 1.0f);
-  immUniform2f("ViewportSize", BLI_rcti_size_x(&v2d->mask) + 1, BLI_rcti_size_y(&v2d->mask) + 1);
-  immBegin(GPU_PRIM_POINTS, 1);
+  if (SEQ_retiming_last_handle_get(seq) != handle &&
+      SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) !=
+          SEQ_time_right_handle_frame_get(scene, seq))
+  {
+    GPU_blend(GPU_BLEND_ALPHA);
+    GPU_program_point_size(true);
+    immBindBuiltinProgram(GPU_SHADER_KEYFRAME_SHAPE);
+    immUniform1f("outline_scale", 1.0f);
+    immUniform2f("ViewportSize", BLI_rcti_size_x(&v2d->mask) + 1, BLI_rcti_size_y(&v2d->mask) + 1);
+    immBegin(GPU_PRIM_POINTS, 1);
+    draw_keyframe_shape(handle_position,
+                        bottom,
+                        size,
+                        is_selected && sequencer_retiming_tool_is_active(C),
+                        0,
+                        KEYFRAME_SHAPE_BOTH,
+                        1,
+                        &sh_bindings,
+                        0,
+                        0);
+    immEnd();
+    GPU_program_point_size(false);
+    immUnbindProgram();
+    GPU_blend(GPU_BLEND_NONE);
+  }
+  else {
+    draw_half_keyframe(C, seq, handle, size, is_selected);
+  }
+}
 
-  draw_keyframe_shape(handle_position,
-                      bottom,
-                      size,
-                      is_selected && sequencer_retiming_tool_is_active(C),
-                      0,
-                      KEYFRAME_SHAPE_BOTH,
-                      1,
-                      &sh_bindings,
-                      0,
-                      0);
+static void draw_backdrop(const bContext *C, const Sequence *seq)
+{
+  if (!sequencer_retiming_tool_is_active(C)) {
+    return;
+  }
 
-  immEnd();
-  GPU_program_point_size(false);
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+
+  const float start = UI_view2d_view_to_region_x(v2d, SEQ_time_left_handle_frame_get(scene, seq));
+  const float end = UI_view2d_view_to_region_x(v2d, SEQ_time_right_handle_frame_get(scene, seq));
+
+  const int size = 10 * U.pixelsize;
+  const float y_center = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 +
+                         size / 2;
+  const float bottom = y_center - size;
+  const float top = y_center + size;
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniform4f("color", 0.5f, 0.2f, 0.2f, 0.2f);
+  immRectf(pos, start, bottom, end, top);
+  immUnbindProgram();
+  GPU_blend(GPU_BLEND_NONE);
+}
+
+const void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingHandle *handle)
+{
+  if (!sequencer_retiming_tool_is_active(C)) {
+    return;
+  }
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+
+  const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, handle));
+  const float prev_handle_position = UI_view2d_view_to_region_x(
+      v2d, handle_x_get(scene, seq, handle - 1));
+
+  const int size = 10 * U.pixelsize;
+  const float y_center = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 +
+                         size / 2;
+  const float width_fac = 0.5f;
+  const float bottom = y_center - size * width_fac;
+  const float top = y_center + size * width_fac;
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+  if (SEQ_retiming_selection_contains(ed, seq, handle) ||
+      SEQ_retiming_selection_contains(ed, seq, handle - 1))
+  {
+    immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
+  }
+  else {
+    immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.1f);
+  }
+  immRectf(pos, prev_handle_position, bottom, handle_position, top);
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
 }
@@ -367,8 +473,16 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
 
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
     SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
-    MutableSpan handles = SEQ_retiming_handles_get(seq);
 
+    draw_backdrop(C, seq);
+
+    MutableSpan handles = SEQ_retiming_handles_get(seq);
+    for (const SeqRetimingHandle &handle : handles) {
+      if (&handle == handles.begin()) {
+        continue; /* Ignore first handle. */
+      }
+      draw_continuity(C, seq, &handle);
+    }
     for (const SeqRetimingHandle &handle : handles) {
       if (&handle == handles.begin()) {
         continue; /* Ignore first handle. */
@@ -381,7 +495,7 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
 static int gizmo_retime_handle_test_select(bContext *C, wmGizmo *gz, const int mval[2])
 {
   RetimeHandleMoveGizmo *gizmo = (RetimeHandleMoveGizmo *)gz;
-  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
+  // const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
 
   /* gizmo->mouse_over_handle = handle;
    if (gizmo->mouse_over_handle != handle)
@@ -535,6 +649,8 @@ static void gizmo_retime_speed_set_draw(const bContext *C, wmGizmo * /* gz */)
 
 static int gizmo_retime_speed_set_test_select(bContext *C, wmGizmo *gz, const int mval[2])
 {
+  return -1;  //
+
   if (!sequencer_retiming_tool_is_active(C)) {
     return -1;
   }

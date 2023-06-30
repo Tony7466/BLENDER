@@ -516,26 +516,27 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
   int mval[2] = {RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y")};
 
   int hand;
-  Sequence *seq = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
-  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
+  Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
+  Sequence *seq_handle_owner = nullptr;
+  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, &seq_handle_owner);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (handle && SEQ_retiming_selection_contains(ed, seq, handle) && wait_to_deselect_others &&
-      !toggle)
+  if (handle && SEQ_retiming_selection_contains(ed, seq_handle_owner, handle) &&
+      wait_to_deselect_others && !toggle)
   {
     return OPERATOR_RUNNING_MODAL;
   }
   /* If click happened on strip, with no handle, prevent immediately switching to previous tool.
    * That should happen on mouse release. */
-  if (seq != nullptr && handle == nullptr && wait_to_deselect_others && !toggle) {
+  if (seq_handle_owner != nullptr && handle == nullptr && wait_to_deselect_others && !toggle) {
     return OPERATOR_RUNNING_MODAL;
   }
 
-  if (seq != nullptr && handle == nullptr) {
+  if (seq_handle_owner != nullptr && handle == nullptr) {
     WM_toolsystem_ref_set_by_id(C, "builtin.select");  // prev tool
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
@@ -550,11 +551,11 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
     return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   }
 
-  if (toggle && SEQ_retiming_selection_contains(ed, seq, handle)) {
-    SEQ_retiming_selection_remove(ed, seq, handle);
+  if (toggle && SEQ_retiming_selection_contains(ed, seq_handle_owner, handle)) {
+    SEQ_retiming_selection_remove(ed, seq_handle_owner, handle);
   }
   else {
-    SEQ_retiming_selection_append(ed, seq, handle);
+    SEQ_retiming_selection_append(ed, seq_handle_owner, handle);
   }
 
   WM_toolsystem_ref_set_by_id(C, "builtin.retime");
