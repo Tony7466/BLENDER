@@ -42,7 +42,11 @@ class RaytracingModule {
   /** Trace results. Results are in scheduled tile order (tile order inside RaytraceTileBuf). */
   StorageArrayBuffer<float4, 512, true> trace_result_buf_ = {"trace_result_buf_"};
 
+  /** Dispatch with enough tiles for the whole screen. */
   int3 tile_dispatch_size_ = int3(1);
+
+  /** Pointer to inst_.render_buffers.depth_tx.stencil_view() updated before submission. */
+  GPUTexture *renderbuf_stencil_view_ = nullptr;
 
   bool enabled_ = false;
 

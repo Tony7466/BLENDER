@@ -65,6 +65,7 @@ void Instance::init(const int2 &output_res,
   camera.init();
   film.init(output_res, output_rect);
   velocity.init();
+  raytracing.init();
   depth_of_field.init();
   shadows.init();
   motion_blur.init();
@@ -144,6 +145,7 @@ void Instance::begin_sync()
   scene_sync();
 
   depth_of_field.sync();
+  raytracing.sync();
   motion_blur.sync();
   hiz_buffer.sync();
   main_view.sync();

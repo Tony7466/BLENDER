@@ -480,7 +480,9 @@ void DeferredLayer::render(View &view,
 
   inst_.manager->submit(eval_light_ps_, view);
 
-  inst_.raytracing.trace(extent, closure_bits_, view);
+  if (closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_REFRACTION)) {
+    inst_.raytracing.trace(extent, closure_bits_, view);
+  }
   if (closure_bits_ & CLOSURE_SSS) {
     inst_.subsurface.render(view, combined_fb, diffuse_light_tx_);
   }
