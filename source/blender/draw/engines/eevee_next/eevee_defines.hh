@@ -26,6 +26,9 @@
 #define CULLING_ZBIN_GROUP_SIZE 1024
 #define CULLING_TILE_GROUP_SIZE 256
 
+/* Reflection probes */
+#define REFLECTION_PROBES_MAX 256
+
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
  * Be sure to update them accordingly.
@@ -145,6 +148,8 @@
 #define SHADOW_PAGE_INFO_SLOT 4
 #define SAMPLING_BUF_SLOT 6
 #define CRYPTOMATTE_BUF_SLOT 7
+/* Only during reflection probe evaluation. */
+#define REFLECTION_PROBE_BUF_SLOT 7
 
 /* Only during pre-pass. */
 #define VELOCITY_OBJ_PREV_BUF_SLOT 0

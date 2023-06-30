@@ -18,16 +18,48 @@ struct Material;
 namespace blender::eevee {
 
 class Instance;
+struct ObjectHandle;
 class CaptureView;
 
 /* -------------------------------------------------------------------- */
 /** \name Reflection Probes
  * \{ */
 
+struct ReflectionProbe {
+  enum Type { Unused, World, Probe };
+
+  Type type = Type::Unused;
+
+  bool is_dirty = false;
+  /* Should the area in the cubemap result be updated? */
+  bool is_cubemap_dirty = false;
+
+  /**
+   * When reflection probe is a probe its ObjectKey.hash_value is copied here to keep track
+   * between draws.
+   */
+  uint64_t object_hash_value = 0;
+
+  /**
+   * Probes that aren't used during a draw can be cleared.
+   */
+  bool is_used = false;
+
+  /**
+   * Index into ReflectionProbeDataBuf.
+   * -1 = not added yet
+   */
+  int index = -1;
+
+  bool needs_update() const;
+};
+
 class ReflectionProbeModule {
  private:
   /** The max number of probes to track. */
   static constexpr int max_probes_ = 1;
+  /** Index into probes_ allocated for the world probe. */
+  static constexpr int world_slot_ = 0;
 
   /**
    * The maximum resolution of a cubemap side.
@@ -36,11 +68,17 @@ class ReflectionProbeModule {
    */
   static constexpr int max_resolution_ = 2048;
 
+  /**
+   * Which subdivision level to use for storing the world/reflection probes in the texture.
+   */
+  static constexpr int world_subdivision_level_ = 0;
+  static constexpr int reflection_probe_subdivision_level_ = 0;
+
   Instance &instance_;
+  ReflectionProbeDataBuf data_buf_;
+  Vector<ReflectionProbe> probes_;
 
   Texture cubemaps_tx_ = {"Probes"};
-
-  bool initialized_ = false;
 
   bool do_world_update_ = false;
 
@@ -48,10 +86,17 @@ class ReflectionProbeModule {
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
 
   void init();
+  void begin_sync();
+  void sync_object(Object *ob,
+                   ObjectHandle &ob_handle,
+                   ResourceHandle /*res_handle*/,
+                   bool is_dirty);
+  void end_sync();
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, cubemaps_tx_);
+    pass->bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
   }
 
   void do_world_update_set(bool value)
@@ -59,7 +104,36 @@ class ReflectionProbeModule {
     do_world_update_ = value;
   }
 
+  void debug_print() const;
+  void validate() const;
+
  private:
+  void sync(const ReflectionProbe &cubemap);
+  ReflectionProbe &find_or_insert(ObjectHandle &ob_handle, int subdivision_level);
+
+  /** Get the number of layers that is needed to store probes. */
+  int needed_layers_get() const;
+
+  void remove_unused_probes();
+
+  /* TODO: also add _len() which is a max + 1. */
+  /* Get the number of reflection probe data elements. */
+  int reflection_probe_data_index_max() const;
+
+  /**
+   * Remove reflection probe data from the module.
+   * Ensures that data_buf is sequential and cubemaps are relinked to its corresponding data.
+   */
+  void remove_reflection_probe_data(int reflection_probe_data_index);
+
+  /**
+   * Create a reflection probe data element that points to an empty spot in the cubemap that can
+   * hold a texture with the given subdivision_level.
+   */
+  ReflectionProbeData find_empty_reflection_probe_data(int subdivision_level) const;
+
+  void upload_dummy_cubemap(const ReflectionProbe &probe);
+
   bool do_world_update_get() const
   {
     return do_world_update_;

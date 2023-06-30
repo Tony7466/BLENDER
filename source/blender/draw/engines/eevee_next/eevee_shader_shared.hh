@@ -1008,6 +1008,54 @@ BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Reflection Probes
+ * \{ */
+
+/** Mapping data to locate a reflection probe in texture. */
+struct ReflectionProbeData {
+  /**
+   * Dummy color of the reflection probe. Is used during development to generate a dummy reflection
+   * probe result, until baking has been implemented.
+   *
+   * This ensures that we are able to develop the reflection probe evaluation separately from
+   * baking.
+   *
+   * TODO: remove this attribute when baking has been implemented.
+   * NOTE: alpha channel is not used, but here for alignment reasons.
+   */
+  float4 color;
+  packed_float3 pos;
+
+  /** On which layer of the cubemaps array is this reflection probe stored. */
+  int layer;
+
+  /**
+   * Subdivision of the layer. 0 = no subdivision and resolution would be
+   * ReflectionProbeModule::MAX_RESOLUTION.
+   *
+   * Design: technically we could fill different subdivisions in a single layer to improve packing.
+   */
+  int layer_subdivision;
+
+  /**
+   * Which area of the subdivided layer is the reflection probe located.
+   *
+   * A layer has (2^layer_subdivision)^2 areas.
+   */
+  int area_index;
+
+  /**
+   * Artistic control to change the intensity during evaluation phase.
+   */
+  float intensity;
+
+  int _pad1;
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility Texture
  * \{ */
 
@@ -1063,6 +1111,8 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
+using ReflectionProbeDataBuf =
+    draw::StorageArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;
