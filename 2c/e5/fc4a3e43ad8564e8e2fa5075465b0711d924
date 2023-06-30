@@ -1,3 +1,4 @@
 Referenced by issue #108578, Regression: Geometry Nodes: Crash: Node input removal by mouse drag causes crash
 Referenced by pull request #108623, Fix #108578: Crash when unlinking input sockets
 Referenced by commit e6a8c45fd984c320d46810e5052cbd98569113c6, Fix #108578: Crash when unlinking input sockets
+Referenced by issue #109565, Regression: Array modifier change a Root Vertex of Skin modifier
