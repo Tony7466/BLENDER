@@ -48,7 +48,7 @@ class IrradianceBake {
   /** Propagate light from surfel to surfel. */
   PassSimple surfel_light_propagate_ps_ = {"LightPropagate"};
   /** Capture surfel lighting to irradiance samples. */
-  PassSimple irradiance_capture_ps_ = {"IrradianceCapture"};
+  PassSimple irradiance_capture_ps_[2] = {{"IrradianceCaptureWithWorld"}, {"IrradianceCapture"}};
   /** Compute scene bounding box. */
   PassSimple irradiance_bounds_ps_ = {"IrradianceBounds"};
   /** Index of source and destination radiance in radiance double-buffer. */
@@ -113,7 +113,7 @@ class IrradianceBake {
   /** Propagate light from surfel to surfel in a random direction over the sphere. */
   void propagate_light();
   /** Store surfel irradiance inside the irradiance grid samples. */
-  void irradiance_capture();
+  void irradiance_capture(bool do_world_capture);
 
   /** Read grid unpacked irradiance back to CPU and returns as a #LightProbeGridCacheFrame. */
   LightProbeGridCacheFrame *read_result_unpacked();

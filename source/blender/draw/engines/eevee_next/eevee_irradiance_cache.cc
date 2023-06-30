@@ -463,18 +463,25 @@ void IrradianceBake::sync()
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
       sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+      inst_.reflection_probes.bind_resources(&sub);
       sub.push_constant("radiance_src", &radiance_src_);
       sub.push_constant("radiance_dst", &radiance_dst_);
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       sub.dispatch(&dispatch_per_surfel_);
     }
   }
-  {
-    PassSimple &pass = irradiance_capture_ps_;
+  for (int pass_index : IndexRange(2)) {
+    PassSimple &pass = irradiance_capture_ps_[pass_index];
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_RAY));
     pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
     pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+    if (pass_index == 0) {
+      inst_.reflection_probes.bind_resources(&pass);
+    }
+    else {
+      inst_.reflection_probes.bind_dummy_resources(&pass);
+    }
     pass.bind_ssbo("list_start_buf", &list_start_buf_);
     pass.bind_ssbo("list_info_buf", &list_info_buf_);
     pass.push_constant("radiance_src", &radiance_src_);
@@ -748,9 +755,9 @@ void IrradianceBake::propagate_light()
   std::swap(radiance_src_, radiance_dst_);
 }
 
-void IrradianceBake::irradiance_capture()
+void IrradianceBake::irradiance_capture(const bool do_world_capture)
 {
-  inst_.manager->submit(irradiance_capture_ps_, ray_view_);
+  inst_.manager->submit(irradiance_capture_ps_[do_world_capture ? 0 : 1], ray_view_);
 }
 
 void IrradianceBake::read_surfels(LightProbeGridCacheFrame *cache_frame)

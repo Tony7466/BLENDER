@@ -12,8 +12,8 @@
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surfel_list_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
-#pragma BLENDER_REQUIRE(cubemap_lib.glsl)
 
 void irradiance_capture(vec3 L, vec3 irradiance, inout SphericalHarmonicL1 sh)
 {
@@ -43,8 +43,7 @@ void irradiance_capture(Surfel surfel, vec3 P, inout SphericalHarmonicL1 sh)
 
 vec3 irradiance_sky_sample(vec3 R)
 {
-  // TODO: should be calling something in reflection_probe_lib
-  return textureLod_cubemapArray(reflectionProbes, vec4(R, 0.0), 0.0).rgb;
+  return light_world_sample(R, 0.0);
 }
 
 void main()
