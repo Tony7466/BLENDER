@@ -1748,11 +1748,11 @@ static bool vfont_to_curve(Object *ob,
   }
 
   if (cursor_params) {
-    // Erasing all text could give slen = 0
+    /* Erasing all text could give slen = 0 */
     if (slen == 0) {
       cursor_params->r_string_offset = -1;
     }
-    else if (cu->textoncurve != NULL) {
+    else if (cu->textoncurve != NULL || cu->totbox > 1) {
 
       int best_match = -1;
       float closest_distance = FLT_MAX;
@@ -1772,7 +1772,6 @@ static bool vfont_to_curve(Object *ob,
       cursor_params->r_string_offset = best_match;
     }
     else {
-
       const float interline_offset = ((linedist - 0.5f) / 2.0f) * font_size;
       /* Loop until find the line where the mouse is over. */
       for (i = 0; i <= slen; i++, ct++) {
@@ -1786,14 +1785,12 @@ static bool vfont_to_curve(Object *ob,
       float yof = chartransdata[i].yof;
 
       /* Loop back until find the first character of the line, this because the mouse can be
-       * positioned further below the text, so #i can be the last character of the last line.
-       */
+       * positioned further below the text, so #i can be the last character of the last line. */
       for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
       }
 
       /* Loop until find the first character to the right of the mouse (using the character
-       * midpoint on the x-axis as a reference)
-       * */
+       * midpoint on the x-axis as a reference). */
       for (i; i <= slen && yof == chartransdata[i].yof; i++) {
         info = &custrinfo[i];
         ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
@@ -1807,7 +1804,7 @@ static bool vfont_to_curve(Object *ob,
       i = i <= slen ? i : slen;
 
       /* If there is no character to the right of the cursor we are on the next line, go back to
-       the last character of the previous line. */
+       * the last character of the previous line. */
       i = i > 0 && chartransdata[i].yof != yof ? i - 1 : i;
 
       cursor_params->r_string_offset = i;
