@@ -1757,7 +1757,7 @@ static bool vfont_to_curve(Object *ob,
       int best_match = -1;
       float closest_distance = FLT_MAX;
 
-      for (i = 0; i <= slen; i++, ct++) {
+      for (i = 0; i <= slen; i++) {
         const float char_location[2] = {
             chartransdata[i].xof * font_size,
             chartransdata[i].yof * font_size,
@@ -1774,7 +1774,7 @@ static bool vfont_to_curve(Object *ob,
     else {
       const float interline_offset = ((linedist - 0.5f) / 2.0f) * font_size;
       /* Loop until find the line where the mouse is over. */
-      for (i = 0; i <= slen; i++, ct++) {
+      for (i = 0; i <= slen; i++) {
         if (cursor_params->cursor_location[1] >=
             ((chartransdata[i].yof * font_size) - interline_offset)) {
           break;
