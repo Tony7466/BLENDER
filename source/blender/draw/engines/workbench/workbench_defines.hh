@@ -16,5 +16,5 @@
 #define WB_CURVES_COLOR_SLOT 6
 
 /* Storage Buffers. */
-#define WB_MATERIAL_SLOT 0
-#define WB_WORLD_SLOT 4
+#define WB_MATERIAL_SLOT 1
+#define WB_WORLD_SLOT 2

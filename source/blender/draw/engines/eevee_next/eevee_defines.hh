@@ -108,6 +108,7 @@
 #define SHADOW_ATLAS_TEX_SLOT 5
 #define SSS_TRANSMITTANCE_TEX_SLOT 6
 #define IRRADIANCE_ATLAS_TEX_SLOT 7
+#define REFLECTION_PROBE_TEX_SLOT 8
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 4
 
@@ -119,15 +120,16 @@
 #define GBUF_COLOR_SLOT 4
 
 /* Uniform Buffers. */
-#define IRRADIANCE_GRID_BUF_SLOT 3
-#define HIZ_BUF_SLOT 5
+/* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */
+#define CAMERA_BUF_SLOT 1
+#define RBUFS_BUF_SLOT 2
+/* Only during surface shading (forward and deferred eval). */
+#define HIZ_BUF_SLOT 3
+#define IRRADIANCE_GRID_BUF_SLOT 4
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
 #define VELOCITY_CAMERA_NEXT_BUF 5
-
-#define CAMERA_BUF_SLOT 6
-#define RBUFS_BUF_SLOT 7
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0
