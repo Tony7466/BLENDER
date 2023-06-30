@@ -1803,10 +1803,15 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
 {
   size_t items = 0;
 
+  using namespace blender;
+
   /* add data block container */
   ANIMCHANNEL_NEW_CHANNEL(grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
 
-  for (blender::bke::greasepencil::Layer *layer : grease_pencil->layers_for_write()) {
+  Span<bke::greasepencil::Layer *> layers = grease_pencil->layers_for_write();
+
+  for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
+    bke::greasepencil::Layer *layer = layers[layer_index];
 
     /* add layer channel */
     ANIMCHANNEL_NEW_CHANNEL(
