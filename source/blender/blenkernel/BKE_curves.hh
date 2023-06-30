@@ -497,6 +497,23 @@ void calculate_normals_minimum(Span<float3> tangents, bool cyclic, MutableSpan<f
  */
 void calculate_normals_z_up(Span<float3> tangents, MutableSpan<float3> normals);
 
+// template<typename T>
+// Span<T> gaussian_blur(bool is_cyclic,
+//                       IndexRange curve_points,
+//                       int iterations,
+//                       bool keep_shape,
+//                       MutableSpan<T> dst,
+//                       Span<T> src,
+//                       const IndexMask &mask);
+
+Span<float3> gaussian_blur(bool is_cyclic,
+                           IndexRange curve_points,
+                           int iterations,
+                           bool keep_shape,
+                           MutableSpan<float3> dst,
+                           Span<float3> src,
+                           const IndexMask &mask);
+
 }  // namespace poly
 
 /** \} */
