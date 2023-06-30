@@ -29,6 +29,8 @@ class RaytracingModule {
   draw::PassSimple raytrace_ps_ = {"Raytrace"};
 
   TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
+  /** Texture containing the ray state. */
+  Texture ray_data_tx_ = {"ray_data_tx"};
 
   /**
    * Each ray type has a indirect dispatch and a tile buffer that contains references to tiles.
@@ -39,6 +41,10 @@ class RaytracingModule {
   DispatchIndirectBuf dispatch_reflect_buf_ = {"dispatch_reflect_buf"};
   RaytraceTileBuf tiles_reflect_buf_ = {"tiles_reflect_buf"};
 
+  /** Resources for refraction rays. */
+  DispatchIndirectBuf dispatch_refract_buf_ = {"dispatch_refract_buf"};
+  RaytraceTileBuf tiles_refract_buf_ = {"tiles_refract_buf"};
+
   /** Trace results. Results are in scheduled tile order (tile order inside RaytraceTileBuf). */
   StorageArrayBuffer<float4, 512, true> trace_result_buf_ = {"trace_result_buf_"};
 
@@ -47,6 +53,8 @@ class RaytracingModule {
 
   /** Pointer to inst_.render_buffers.depth_tx.stencil_view() updated before submission. */
   GPUTexture *renderbuf_stencil_view_ = nullptr;
+  /** Pointer to inst_.render_buffers.depth_tx updated before submission. */
+  GPUTexture *renderbuf_depth_view_ = nullptr;
 
   bool enabled_ = false;
 
