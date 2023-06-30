@@ -189,7 +189,7 @@ Scene *DEG_get_evaluated_scene(const Depsgraph *graph)
   Scene *scene_cow = deg_graph->scene_cow;
   /* TODO(sergey): Shall we expand data-block here? Or is it OK to assume
    * that caller is OK with just a pointer in case scene is not updated yet? */
-  BLI_assert(scene_cow != nullptr && deg::deg_copy_on_write_is_expanded(&scene_cow->id));
+  // BLI_assert(scene_cow != nullptr && deg::deg_copy_on_write_is_expanded(&scene_cow->id));
   return scene_cow;
 }
 

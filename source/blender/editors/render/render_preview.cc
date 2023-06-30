@@ -827,7 +827,7 @@ static Scene *object_preview_scene_create(const ObjectPreviewData *preview_data,
   preview_base->flag |= BASE_SELECTED;
 
   DEG_graph_build_from_view_layer(depsgraph);
-  DEG_evaluate_on_refresh(depsgraph);
+  DEG_evaluate_on_refresh(depsgraph, true);
 
   ED_view3d_camera_to_view_selected_with_set_clipping(
       preview_data->pr_main, depsgraph, scene, camera_object);
@@ -958,7 +958,7 @@ static PoseBackup *action_preview_render_prepare(IconPreview *preview)
 
   /* Force evaluation of the new pose, before the preview is rendered. */
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
-  DEG_evaluate_on_refresh(preview->depsgraph);
+  DEG_evaluate_on_refresh(preview->depsgraph, true);
 
   return pose_backup;
 }

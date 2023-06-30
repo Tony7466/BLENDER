@@ -358,6 +358,12 @@ void BKE_scene_cursor_from_mat4(struct View3DCursor *cursor,
                                 const float mat[4][4],
                                 bool use_compat);
 
+void BKE_scene_ensure_depsgraphs_ghosting_system(struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, struct Object *object);
+void BKE_scene_delete_ghosting_system(struct Scene *scene);
+void BKE_scene_clear_ghosting_system(struct Scene *scene);
+void BKE_scene_evaluate_ghosting_system(struct Scene *scene);
+void BKE_scene_evaluate_ghosting_system_for_framechange(struct Scene *scene);
+
 #ifdef __cplusplus
 }
 #endif

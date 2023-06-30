@@ -382,7 +382,8 @@ void workbench_cache_populate(void *ved, Object *ob)
   WORKBENCH_StorageList *stl = vedata->stl;
   WORKBENCH_PrivateData *wpd = stl->wpd;
 
-  if (!DRW_object_is_renderable(ob)) {
+  /* Ghost frames are currently rendered using the workbench engine. */
+  if ((ob->base_flag & BASE_IS_GHOST_FRAME) == 0 && !DRW_object_is_renderable(ob)) {
     return;
   }
 
@@ -426,6 +427,13 @@ void workbench_cache_populate(void *ved, Object *ob)
   }
 
   if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
+    return;
+  }
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  if ((draw_ctx->v3d->overlay.flag & V3D_OVERLAY_HIDE_GHOST_FRAMES) &&
+      (ob->base_flag & BASE_IS_GHOST_FRAME))
+  {
     return;
   }
 

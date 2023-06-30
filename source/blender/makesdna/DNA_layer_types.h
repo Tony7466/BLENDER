@@ -247,6 +247,8 @@ enum {
   BASE_HOLDOUT = (1 << 10),
   /* Object only contributes indirectly to render */
   BASE_INDIRECT_ONLY = (1 << 11),
+  /* Object is used for rendering ghost frames. */
+  BASE_IS_GHOST_FRAME = (1 << 12),
 };
 
 /* LayerCollection->flag */

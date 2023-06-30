@@ -186,7 +186,7 @@ void DEG_evaluate_on_framechange(Depsgraph *graph, float frame);
  * Data changed recalculation entry point.
  * Evaluate all nodes tagged for updating.
  */
-void DEG_evaluate_on_refresh(Depsgraph *graph);
+void DEG_evaluate_on_refresh(Depsgraph *graph, bool update_time);
 
 /** \} */
 

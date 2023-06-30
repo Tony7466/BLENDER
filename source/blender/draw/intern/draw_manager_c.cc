@@ -195,6 +195,10 @@ bool DRW_object_is_renderable(const Object *ob)
     }
   }
 
+  if ((ob->base_flag & BASE_IS_GHOST_FRAME) != 0) {
+    return false;
+  }
+
   return true;
 }
 
@@ -1655,6 +1659,8 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
+  Scene *scene_orig = (Scene *)DEG_get_original_id(&scene->id);
+
   BKE_view_layer_synced_ensure(scene, view_layer);
   DST.draw_ctx = {};
   DST.draw_ctx.region = region;
@@ -1732,6 +1738,33 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
         drw_engines_cache_populate(ob);
       }
       DEG_OBJECT_ITER_END;
+
+      if (scene_orig->ghosting_system.is_built && !draw_type_render && overlays_on) {
+        for (int i = 0; i < 8; i++) {
+          GhostFrame *ghost_frame = &scene_orig->ghosting_system.frames[i];
+          if (!ghost_frame->depsgraph) {
+            continue;
+          }
+          DEGObjectIterSettings deg_ghost_iter_settings = {0};
+          deg_ghost_iter_settings.depsgraph = ghost_frame->depsgraph;
+          deg_ghost_iter_settings.flags = DEG_ITER_OBJECT_FLAG_VISIBLE |
+                                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY;
+
+          DEG_OBJECT_ITER_BEGIN (&deg_ghost_iter_settings, ob) {
+            if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
+              continue;
+            }
+            if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+              continue;
+            }
+            ob->base_flag |= BASE_IS_GHOST_FRAME;
+            ob->base_flag &= ~BASE_SELECTED;
+            // ob->dt = OB_WIRE;
+            drw_engines_cache_populate(ob);
+          }
+          DEG_OBJECT_ITER_END;
+        }
+      }
     }
 
     drw_duplidata_free();

@@ -45,25 +45,27 @@ static void deg_flush_updates_and_refresh(deg::Depsgraph *deg_graph)
   deg::deg_evaluate_on_refresh(deg_graph);
 }
 
-void DEG_evaluate_on_refresh(Depsgraph *graph)
+void DEG_evaluate_on_refresh(Depsgraph *graph, const bool update_time)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(graph);
-  const Scene *scene = DEG_get_input_scene(graph);
-  const float frame = BKE_scene_frame_get(scene);
-  const float ctime = BKE_scene_ctime_get(scene);
+  if (update_time) {
+    const Scene *scene = DEG_get_input_scene(graph);
+    const float frame = BKE_scene_frame_get(scene);
+    const float ctime = BKE_scene_ctime_get(scene);
 
-  if (deg_graph->frame != frame || ctime != deg_graph->ctime) {
-    deg_graph->tag_time_source();
-    deg_graph->frame = frame;
-    deg_graph->ctime = ctime;
-  }
-  else if (scene->id.recalc & ID_RECALC_FRAME_CHANGE) {
-    /* Comparing depsgraph & scene frame fails in the case of undo,
-     * since the undo state is stored before updates from the frame change have been applied.
-     * In this case reading back the undo state will behave as if no updates on frame change
-     * is needed as the #Depsgraph.ctime & frame will match the values in the input scene.
-     * Use #ID_RECALC_FRAME_CHANGE to detect that recalculation is necessary. see: #66913. */
-    deg_graph->tag_time_source();
+    if (deg_graph->frame != frame || ctime != deg_graph->ctime) {
+      deg_graph->tag_time_source();
+      deg_graph->frame = frame;
+      deg_graph->ctime = ctime;
+    }
+    else if (scene->id.recalc & ID_RECALC_FRAME_CHANGE) {
+      /* Comparing depsgraph & scene frame fails in the case of undo,
+       * since the undo state is stored before updates from the frame change have been applied.
+       * In this case reading back the undo state will behave as if no updates on frame change
+       * is needed as the #Depsgraph.ctime & frame will match the values in the input scene.
+       * Use #ID_RECALC_FRAME_CHANGE to detect that recalculation is necessary. see: #66913. */
+      deg_graph->tag_time_source();
+    }
   }
 
   deg_flush_updates_and_refresh(deg_graph);

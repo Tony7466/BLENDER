@@ -47,6 +47,7 @@ struct Scene;
 struct World;
 struct bGPdata;
 struct bNodeTree;
+struct Depsgraph;
 
 /* -------------------------------------------------------------------- */
 /** \name FFMPEG
@@ -1936,6 +1937,25 @@ enum {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Ghosting System
+ * \{ */
+
+typedef struct GhostFrame {
+  struct Depsgraph *depsgraph;
+  struct Object *object;
+  int frame;
+  char _pad[4];
+} GhostFrame;
+
+typedef struct GhostingSystem {
+  struct GhostFrame frames[8];
+  char is_built;
+  char _pad[7];
+} GhostingSystem;
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Scene ID-Block
  * \{ */
 
@@ -2057,6 +2077,7 @@ typedef struct Scene {
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
   struct SceneHydra hydra;
+  struct GhostingSystem ghosting_system;
 } Scene;
 
 /** \} */

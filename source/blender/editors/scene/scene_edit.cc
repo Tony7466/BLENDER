@@ -422,6 +422,44 @@ static void SCENE_OT_delete(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+static bool scene_enable_ghosting_poll(bContext *C)
+{
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  return scene != NULL && object != NULL;
+}
+
+static int scene_enable_ghosting_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Object *active_object = CTX_data_active_object(C);
+
+  /* Delete before, so we can reassign a new object. */
+  BKE_scene_delete_ghosting_system(scene);
+  BKE_scene_ensure_depsgraphs_ghosting_system(bmain, scene, view_layer, active_object);
+  BKE_scene_evaluate_ghosting_system_for_framechange(scene);
+
+  return OPERATOR_FINISHED;
+}
+
+static void SCENE_OT_enable_ghosting(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Create Ghost Frames for Active Object";
+  ot->description =
+      "Clears and re-creates the ghost frames for the active object and all of its dependencies";
+  ot->idname = "SCENE_OT_enable_ghosting";
+
+  /* api callbacks */
+  ot->exec = scene_enable_ghosting_exec;
+  ot->poll = scene_enable_ghosting_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -433,6 +471,8 @@ void ED_operatortypes_scene()
   WM_operatortype_append(SCENE_OT_new);
   WM_operatortype_append(SCENE_OT_delete);
   WM_operatortype_append(SCENE_OT_new_sequencer);
+
+  WM_operatortype_append(SCENE_OT_enable_ghosting);
 }
 
 /** \} */

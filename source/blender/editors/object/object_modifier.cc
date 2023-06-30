@@ -1186,7 +1186,7 @@ bool ED_object_modifier_apply(Main *bmain,
     ID *ids[] = {&ob->id};
 
     DEG_graph_build_from_ids(local_depsgraph, ids, 1);
-    DEG_evaluate_on_refresh(local_depsgraph);
+    DEG_evaluate_on_refresh(local_depsgraph, true);
 
     apply_depsgraph = local_depsgraph;
 
