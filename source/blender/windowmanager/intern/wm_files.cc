@@ -109,6 +109,7 @@
 #include "GPU_context.h"
 
 #include "UI_interface.h"
+#include "UI_interface.hh"
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
@@ -292,10 +293,14 @@ static void wm_file_read_setup_wm_substitute_old_window(wmWindowManager *oldwm,
  */
 static void wm_file_read_setup_wm_keep_old(const bContext *C,
                                            Main *bmain,
-                                           BlendFileReadWMSetupData * /*wm_setup_data*/,
+                                           BlendFileReadWMSetupData *wm_setup_data,
                                            wmWindowManager *wm,
                                            const bool load_ui)
 {
+  /* This data is not needed here, besides detecting that old WM has been kept (in caller code).
+   * Since `old_wm` is kept, do not free it, just clear the pointer as clean-up. */
+  wm_setup_data->old_wm = nullptr;
+
   if (!load_ui) {
     /* When loading without UI (i.e. keeping existing UI), no matching needed.
      *
@@ -3483,13 +3488,11 @@ static void wm_block_autorun_warning_ignore(bContext *C, void *arg_block, void *
   wm_test_autorun_revert_action_set(nullptr, nullptr);
 }
 
-static void wm_block_autorun_warning_reload_with_scripts(bContext *C,
-                                                         void *arg_block,
-                                                         void * /*arg*/)
+static void wm_block_autorun_warning_reload_with_scripts(bContext *C, uiBlock *block)
 {
   wmWindow *win = CTX_wm_window(C);
 
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
+  UI_popup_block_close(C, win, block);
 
   /* Save user preferences for permanent execution. */
   if ((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0) {
@@ -3501,12 +3504,12 @@ static void wm_block_autorun_warning_reload_with_scripts(bContext *C,
   wm_test_autorun_revert_action_exec(C);
 }
 
-static void wm_block_autorun_warning_enable_scripts(bContext *C, void *arg_block, void * /*arg*/)
+static void wm_block_autorun_warning_enable_scripts(bContext *C, uiBlock *block)
 {
   wmWindow *win = CTX_wm_window(C);
   Main *bmain = CTX_data_main(C);
 
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
+  UI_popup_block_close(C, win, block);
 
   /* Save user preferences for permanent execution. */
   if ((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0) {
@@ -3586,7 +3589,8 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                            0,
                            0,
                            TIP_("Reload file with execution of Python scripts enabled"));
-    UI_but_func_set(but, wm_block_autorun_warning_reload_with_scripts, block, nullptr);
+    UI_but_func_set(
+        but, [block](bContext &C) { wm_block_autorun_warning_reload_with_scripts(&C, block); });
   }
   else {
     but = uiDefIconTextBut(block,
@@ -3604,7 +3608,8 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                            0,
                            0,
                            TIP_("Enable scripts"));
-    UI_but_func_set(but, wm_block_autorun_warning_enable_scripts, block, nullptr);
+    UI_but_func_set(but,
+                    [block](bContext &C) { wm_block_autorun_warning_enable_scripts(&C, block); });
   }
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 

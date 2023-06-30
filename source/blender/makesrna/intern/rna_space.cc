@@ -7037,6 +7037,7 @@ static void rna_def_filemenu_entry(BlenderRNA *brna)
                                 "rna_FileBrowser_FSMenuEntry_path_length",
                                 "rna_FileBrowser_FSMenuEntry_path_set");
   RNA_def_property_ui_text(prop, "Path", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
 
   /* Use #PROP_FILENAME sub-type so the UI can manipulate non-UTF8 names. */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_FILENAME);
@@ -7332,6 +7333,7 @@ static void rna_def_space_node_path_api(BlenderRNA *brna, PropertyRNA *cprop)
       prop, "rna_SpaceNodeEditor_path_get", "rna_SpaceNodeEditor_path_length", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_struct_ui_text(srna, "Path", "Get the node tree path as a string");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
 
   func = RNA_def_function(srna, "clear", "rna_SpaceNodeEditor_path_clear");
   RNA_def_function_ui_description(func, "Reset the node tree path");
@@ -7433,6 +7435,20 @@ static void rna_def_space_node(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem geometry_nodes_type_items[] = {
+      {SNODE_GEOMETRY_MODIFIER,
+       "MODIFIER",
+       0,
+       "Modifier",
+       "Edit node group from active object's active modifier"},
+      {SNODE_GEOMETRY_OPERATOR,
+       "OPERATOR",
+       0,
+       "Operator",
+       "Edit any geometry node group for use as an operator"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem backdrop_channels_items[] = {
       {SNODE_USE_ALPHA,
        "COLOR_ALPHA",
@@ -7486,6 +7502,13 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Shader Type", "Type of data to take shader from");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "geometry_nodes_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "geometry_nodes_type");
+  RNA_def_property_enum_items(prop, geometry_nodes_type_items);
+  RNA_def_property_ui_text(prop, "Geometry Nodes Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, NULL);
 
   prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
