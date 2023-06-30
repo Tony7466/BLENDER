@@ -185,6 +185,18 @@ const ImFileType IMB_FILE_TYPES[] = {
         /*filetype*/ IMB_FTYPE_PSD,
         /*default_save_role*/ COLOR_ROLE_DEFAULT_FLOAT,
     },
+    {
+        /*init*/ nullptr,
+        /*exit*/ nullptr,
+        /*is_a*/ imb_is_a_svg,
+        /*load*/ imb_load_svg,
+        /*load_filepath*/ nullptr,
+        /*load_filepath_thumbnail*/ imb_load_filepath_thumbnail_svg,
+        /*save*/ nullptr,
+        /*flag*/ 0,
+        /*filetype*/ IMB_FTYPE_SVG,
+        /*default_save_role*/ COLOR_ROLE_DEFAULT_BYTE,
+    },
 #ifdef WITH_WEBP
     {
         /*init*/ nullptr,

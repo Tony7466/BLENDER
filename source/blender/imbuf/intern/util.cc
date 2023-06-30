@@ -45,7 +45,18 @@ extern "C" {
 #define UTIL_DEBUG 0
 
 const char *imb_ext_image[] = {
-    ".png",  ".tga", ".bmp", ".jpg", ".jpeg", ".sgi", ".rgb", ".rgba", ".tif", ".tiff", ".tx",
+    ".png",
+    ".tga",
+    ".bmp",
+    ".jpg",
+    ".jpeg",
+    ".sgi",
+    ".rgb",
+    ".rgba",
+    ".tif",
+    ".tiff",
+    ".tx",
+    ".svg",
 #ifdef WITH_OPENJPEG
     ".jp2",  ".j2c",
 #endif
@@ -253,6 +264,7 @@ static int isffmpeg(const char *filepath)
                                  ".exr",
                                  ".cin",
                                  ".wav",
+                                 ".svg",
                                  nullptr))
   {
     return 0;

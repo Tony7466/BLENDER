@@ -79,6 +79,7 @@ enum eImbFileType {
 #ifdef WITH_WEBP
   IMB_FTYPE_WEBP = 14,
 #endif
+  IMB_FTYPE_SVG = 15,
 };
 
 /* Only for readability. */
