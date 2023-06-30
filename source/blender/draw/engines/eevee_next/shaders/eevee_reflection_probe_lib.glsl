@@ -1,3 +1,4 @@
+#pragma BLENDER_REQUIRE(eevee_cubemap_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 out_specular)
