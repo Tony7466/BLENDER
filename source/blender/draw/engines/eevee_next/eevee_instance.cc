@@ -534,8 +534,8 @@ void Instance::light_bake_irradiance(
         const bool do_world_capture = i == 0;
 
         irradiance_cache.bake.raylists_build();
-        irradiance_cache.bake.propagate_light();
-        irradiance_cache.bake.irradiance_capture(do_world_capture);
+        irradiance_cache.bake.propagate_light(do_world_capture);
+        irradiance_cache.bake.irradiance_capture();
       }
 
       if (sampling.finished()) {
