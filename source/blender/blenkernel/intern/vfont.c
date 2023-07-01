@@ -795,7 +795,7 @@ static float vfont_descent(const VFontData *vfd)
 struct TextboxBounds {
   /* Stores the maximun #xofs assigned to a character in the textbox. This value is scaled by
    * 1 / #font_size. */
-  float xmax, ymin;
+  float xmax;
   /* Stores the minimun #yofs assigned to a character in the textbox. This value is scaled by
    * 1 / #font_size. */
   float ymin;
