@@ -67,7 +67,7 @@ static void rna_gizmo_draw_cb(const struct bContext *C, struct wmGizmo *gz)
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "draw")` directly. */
   func = &rna_Gizmo_draw_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
@@ -85,7 +85,7 @@ static void rna_gizmo_draw_select_cb(const struct bContext *C, struct wmGizmo *g
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "draw_select")` directly. */
   func = &rna_Gizmo_draw_select_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
@@ -104,7 +104,7 @@ static int rna_gizmo_test_select_cb(struct bContext *C, struct wmGizmo *gz, cons
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "test_select")` directly. */
   func = &rna_Gizmo_test_select_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
@@ -131,7 +131,7 @@ static int rna_gizmo_modal_cb(struct bContext *C,
   ParameterList list;
   FunctionRNA *func;
   const int tweak_flag_int = tweak_flag;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "modal")` directly. */
   func = &rna_Gizmo_modal_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
@@ -155,11 +155,11 @@ static void rna_gizmo_setup_cb(struct wmGizmo *gz)
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "setup")` directly. */
   func = &rna_Gizmo_setup_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
-  gzgroup->type->rna_ext.call((bContext *)NULL, &gz_ptr, func, &list);
+  gzgroup->type->rna_ext.call((bContext *)nullptr, &gz_ptr, func, &list);
   RNA_parameter_list_free(&list);
 }
 
@@ -170,7 +170,7 @@ static int rna_gizmo_invoke_cb(struct bContext *C, struct wmGizmo *gz, const str
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "invoke")` directly. */
   func = &rna_Gizmo_invoke_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
@@ -193,7 +193,7 @@ static void rna_gizmo_exit_cb(struct bContext *C, struct wmGizmo *gz, bool cance
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "exit")` directly. */
   func = &rna_Gizmo_exit_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
@@ -213,11 +213,11 @@ static void rna_gizmo_select_refresh_cb(struct wmGizmo *gz)
   PointerRNA gz_ptr;
   ParameterList list;
   FunctionRNA *func;
-  RNA_pointer_create(NULL, gz->type->rna_ext.srna, gz, &gz_ptr);
+  RNA_pointer_create(nullptr, gz->type->rna_ext.srna, gz, &gz_ptr);
   /* Reference `RNA_struct_find_function(&gz_ptr, "select_refresh")` directly. */
   func = &rna_Gizmo_select_refresh_func;
   RNA_parameter_list_create(&list, &gz_ptr, func);
-  gzgroup->type->rna_ext.call((bContext *)NULL, &gz_ptr, func, &list);
+  gzgroup->type->rna_ext.call((bContext *)nullptr, &gz_ptr, func, &list);
   RNA_parameter_list_free(&list);
 }
 
@@ -226,7 +226,7 @@ static void rna_gizmo_select_refresh_cb(struct wmGizmo *gz)
 /* just to work around 'const char *' warning and to ensure this is a python op */
 static void rna_Gizmo_bl_idname_set(PointerRNA *ptr, const char *value)
 {
-  wmGizmo *data = ptr->data;
+  wmGizmo *data = static_cast<wmGizmo *>(ptr->data);
   char *str = (char *)data->type->idname;
   if (!str[0]) {
     BLI_strncpy(str, value, MAX_NAME); /* utf8 already ensured */
@@ -236,9 +236,9 @@ static void rna_Gizmo_bl_idname_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_Gizmo_update_redraw(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Gizmo_update_redraw(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
-  wmGizmo *gizmo = ptr->data;
+  wmGizmo *gizmo = static_cast<wmGizmo *>(ptr->data);
   gizmo->do_draw = true;
 }
 
@@ -249,8 +249,10 @@ static wmGizmo *rna_GizmoProperties_find_operator(PointerRNA *ptr)
 #  endif
 
   /* We could try workaround this lookup, but not trivial. */
-  for (bScreen *screen = G_MAIN->screens.first; screen; screen = screen->id.next) {
-    IDProperty *properties = ptr->data;
+  for (bScreen *screen = static_cast<bScreen *>(G_MAIN->screens.first); screen;
+       screen = static_cast<bScreen *>(screen->id.next))
+  {
+    IDProperty *properties = static_cast<IDProperty *>(ptr->data);
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
         if (region->gizmo_map) {
@@ -266,7 +268,7 @@ static wmGizmo *rna_GizmoProperties_find_operator(PointerRNA *ptr)
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static StructRNA *rna_GizmoProperties_refine(PointerRNA *ptr)
@@ -288,7 +290,7 @@ static IDProperty **rna_GizmoProperties_idprops(PointerRNA *ptr)
 
 static PointerRNA rna_Gizmo_properties_get(PointerRNA *ptr)
 {
-  wmGizmo *gz = ptr->data;
+  wmGizmo *gz = static_cast<wmGizmo *>(ptr->data);
   return rna_pointer_inherit_refine(ptr, gz->type->srna, gz->properties);
 }
 
@@ -296,35 +298,35 @@ static PointerRNA rna_Gizmo_properties_get(PointerRNA *ptr)
 #  define RNA_GIZMO_GENERIC_FLOAT_RW_DEF(func_id, member_id) \
     static float rna_Gizmo_##func_id##_get(PointerRNA *ptr) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       return gz->member_id; \
     } \
     static void rna_Gizmo_##func_id##_set(PointerRNA *ptr, float value) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       gz->member_id = value; \
     }
 #  define RNA_GIZMO_GENERIC_FLOAT_ARRAY_INDEX_RW_DEF(func_id, member_id, index) \
     static float rna_Gizmo_##func_id##_get(PointerRNA *ptr) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       return gz->member_id[index]; \
     } \
     static void rna_Gizmo_##func_id##_set(PointerRNA *ptr, float value) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       gz->member_id[index] = value; \
     }
 /* wmGizmo.float[len] */
 #  define RNA_GIZMO_GENERIC_FLOAT_ARRAY_RW_DEF(func_id, member_id, len) \
     static void rna_Gizmo_##func_id##_get(PointerRNA *ptr, float value[len]) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       memcpy(value, gz->member_id, sizeof(float[len])); \
     } \
     static void rna_Gizmo_##func_id##_set(PointerRNA *ptr, const float value[len]) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       memcpy(gz->member_id, value, sizeof(float[len])); \
     }
 
@@ -332,12 +334,12 @@ static PointerRNA rna_Gizmo_properties_get(PointerRNA *ptr)
 #  define RNA_GIZMO_GENERIC_FLAG_RW_DEF(func_id, member_id, flag_value) \
     static bool rna_Gizmo_##func_id##_get(PointerRNA *ptr) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       return (gz->member_id & flag_value) != 0; \
     } \
     static void rna_Gizmo_##func_id##_set(PointerRNA *ptr, bool value) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       SET_FLAG_FROM_TEST(gz->member_id, value, flag_value); \
     }
 
@@ -345,19 +347,19 @@ static PointerRNA rna_Gizmo_properties_get(PointerRNA *ptr)
 #  define RNA_GIZMO_GENERIC_FLAG_NEG_RW_DEF(func_id, member_id, flag_value) \
     static bool rna_Gizmo_##func_id##_get(PointerRNA *ptr) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       return (gz->member_id & flag_value) == 0; \
     } \
     static void rna_Gizmo_##func_id##_set(PointerRNA *ptr, bool value) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       SET_FLAG_FROM_TEST(gz->member_id, !value, flag_value); \
     }
 
 #  define RNA_GIZMO_FLAG_RO_DEF(func_id, member_id, flag_value) \
     static bool rna_Gizmo_##func_id##_get(PointerRNA *ptr) \
     { \
-      wmGizmo *gz = ptr->data; \
+      wmGizmo *gz = static_cast<wmGizmo *>(ptr->data); \
       return (gz->member_id & flag_value) != 0; \
     }
 
@@ -373,7 +375,7 @@ RNA_GIZMO_GENERIC_FLOAT_ARRAY_RW_DEF(matrix_offset, matrix_offset, 16);
 
 static void rna_Gizmo_matrix_world_get(PointerRNA *ptr, float value[16])
 {
-  wmGizmo *gz = ptr->data;
+  wmGizmo *gz = static_cast<wmGizmo *>(ptr->data);
   WM_gizmo_calc_matrix_final(gz, (float(*)[4])value);
 }
 
@@ -404,21 +406,21 @@ RNA_GIZMO_FLAG_RO_DEF(state_select, state, WM_GIZMO_STATE_SELECT);
 
 static void rna_Gizmo_state_select_set(struct PointerRNA *ptr, bool value)
 {
-  wmGizmo *gz = ptr->data;
+  wmGizmo *gz = static_cast<wmGizmo *>(ptr->data);
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
   WM_gizmo_select_set(gzgroup->parent_gzmap, gz, value);
 }
 
 static PointerRNA rna_Gizmo_group_get(PointerRNA *ptr)
 {
-  wmGizmo *gz = ptr->data;
+  wmGizmo *gz = static_cast<wmGizmo *>(ptr->data);
   return rna_pointer_inherit_refine(ptr, &RNA_GizmoGroup, gz->parent_gzgroup);
 }
 
 #  ifdef WITH_PYTHON
 
 static bool rna_Gizmo_unregister(struct Main *bmain, StructRNA *type);
-void BPY_RNA_gizmo_wrapper(wmGizmoType *gzgt, void *userdata);
+extern "C" void BPY_RNA_gizmo_wrapper(wmGizmoType *gzgt, void *userdata);
 
 static StructRNA *rna_Gizmo_register(Main *bmain,
                                      ReportList *reports,
@@ -433,8 +435,8 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
     char idname[MAX_NAME];
   } temp_buffers;
 
-  wmGizmoType dummy_gt = {NULL};
-  wmGizmo dummy_gizmo = {NULL};
+  wmGizmoType dummy_gt = {nullptr};
+  wmGizmo dummy_gizmo = {nullptr};
   PointerRNA dummy_gizmo_ptr;
 
   /* Two sets of functions. */
@@ -443,14 +445,14 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
   /* setup dummy gizmo & gizmo type to store static properties in */
   dummy_gizmo.type = &dummy_gt;
   dummy_gt.idname = temp_buffers.idname;
-  RNA_pointer_create(NULL, &RNA_Gizmo, &dummy_gizmo, &dummy_gizmo_ptr);
+  RNA_pointer_create(nullptr, &RNA_Gizmo, &dummy_gizmo, &dummy_gizmo_ptr);
 
   /* Clear so we can detect if it's left unset. */
   temp_buffers.idname[0] = '\0';
 
   /* validate the python class */
   if (validate(&dummy_gizmo_ptr, data, have_function) != 0) {
-    return NULL;
+    return nullptr;
   }
 
   if (strlen(identifier) >= sizeof(temp_buffers.idname)) {
@@ -460,7 +462,7 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
                 error_prefix,
                 identifier,
                 (int)sizeof(temp_buffers.idname));
-    return NULL;
+    return nullptr;
   }
 
   /* check if we have registered this gizmo type before, and remove it */
@@ -476,12 +478,12 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
                     identifier,
                     dummy_gt.idname,
                     srna ? "is built-in" : "could not be unregistered");
-        return NULL;
+        return nullptr;
       }
     }
   }
   if (!RNA_struct_available_or_report(reports, dummy_gt.idname)) {
-    return NULL;
+    return nullptr;
   }
 
   { /* allocate the idname */
@@ -499,16 +501,16 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
 
   {
     int i = 0;
-    dummy_gt.draw = (have_function[i++]) ? rna_gizmo_draw_cb : NULL;
-    dummy_gt.draw_select = (have_function[i++]) ? rna_gizmo_draw_select_cb : NULL;
-    dummy_gt.test_select = (have_function[i++]) ? rna_gizmo_test_select_cb : NULL;
-    dummy_gt.modal = (have_function[i++]) ? rna_gizmo_modal_cb : NULL;
-    // dummy_gt.property_update = (have_function[i++]) ? rna_gizmo_property_update : NULL;
-    // dummy_gt.position_get = (have_function[i++]) ? rna_gizmo_position_get : NULL;
-    dummy_gt.setup = (have_function[i++]) ? rna_gizmo_setup_cb : NULL;
-    dummy_gt.invoke = (have_function[i++]) ? rna_gizmo_invoke_cb : NULL;
-    dummy_gt.exit = (have_function[i++]) ? rna_gizmo_exit_cb : NULL;
-    dummy_gt.select_refresh = (have_function[i++]) ? rna_gizmo_select_refresh_cb : NULL;
+    dummy_gt.draw = (have_function[i++]) ? rna_gizmo_draw_cb : nullptr;
+    dummy_gt.draw_select = (have_function[i++]) ? rna_gizmo_draw_select_cb : nullptr;
+    dummy_gt.test_select = (have_function[i++]) ? rna_gizmo_test_select_cb : nullptr;
+    dummy_gt.modal = (have_function[i++]) ? rna_gizmo_modal_cb : nullptr;
+    // dummy_gt.property_update = (have_function[i++]) ? rna_gizmo_property_update : nullptr;
+    // dummy_gt.position_get = (have_function[i++]) ? rna_gizmo_position_get : nullptr;
+    dummy_gt.setup = (have_function[i++]) ? rna_gizmo_setup_cb : nullptr;
+    dummy_gt.invoke = (have_function[i++]) ? rna_gizmo_invoke_cb : nullptr;
+    dummy_gt.exit = (have_function[i++]) ? rna_gizmo_exit_cb : nullptr;
+    dummy_gt.select_refresh = (have_function[i++]) ? rna_gizmo_select_refresh_cb : nullptr;
 
     BLI_assert(i == ARRAY_SIZE(have_function));
   }
@@ -516,20 +518,20 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
   WM_gizmotype_append_ptr(BPY_RNA_gizmo_wrapper, (void *)&dummy_gt);
 
   /* update while blender is running */
-  WM_main_add_notifier(NC_SCREEN | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr);
 
   return dummy_gt.rna_ext.srna;
 }
 
 static bool rna_Gizmo_unregister(struct Main *bmain, StructRNA *type)
 {
-  wmGizmoType *gzt = RNA_struct_blender_type_get(type);
+  wmGizmoType *gzt = static_cast<wmGizmoType *>(RNA_struct_blender_type_get(type));
 
   if (!gzt) {
     return false;
   }
 
-  WM_gizmotype_remove_ptr(NULL, bmain, gzt);
+  WM_gizmotype_remove_ptr(nullptr, bmain, gzt);
 
   /* Free extension after removing instances so `__del__` doesn't crash, see: #85567. */
   RNA_struct_free_extension(type, &gzt->rna_ext);
@@ -538,13 +540,13 @@ static bool rna_Gizmo_unregister(struct Main *bmain, StructRNA *type)
   /* Free gizmo group after the extension as it owns the identifier memory. */
   WM_gizmotype_free_ptr(gzt);
 
-  WM_main_add_notifier(NC_SCREEN | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr);
   return true;
 }
 
 static void **rna_Gizmo_instance(PointerRNA *ptr)
 {
-  wmGizmo *gz = ptr->data;
+  wmGizmo *gz = static_cast<wmGizmo *>(ptr->data);
   return &gz->py_instance;
 }
 
@@ -552,7 +554,7 @@ static void **rna_Gizmo_instance(PointerRNA *ptr)
 
 static StructRNA *rna_Gizmo_refine(PointerRNA *gz_ptr)
 {
-  wmGizmo *gz = gz_ptr->data;
+  wmGizmo *gz = static_cast<wmGizmo *>(gz_ptr->data);
   return (gz->type && gz->type->rna_ext.srna) ? gz->type->rna_ext.srna : &RNA_Gizmo;
 }
 
@@ -591,23 +593,23 @@ static wmGizmo *rna_GizmoGroup_gizmo_new(wmGizmoGroup *gzgroup,
                                          const char *idname)
 {
   const wmGizmoType *gzt = WM_gizmotype_find(idname, true);
-  if (gzt == NULL) {
+  if (gzt == nullptr) {
     BKE_reportf(reports, RPT_ERROR, "GizmoType '%s' not known", idname);
-    return NULL;
+    return nullptr;
   }
   if ((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) == 0) {
     /* Allow for neither callbacks to be set, while this doesn't seem like a valid use case,
      * there may be rare situations where a developer wants a gizmo to be draw-only. */
-    if ((gzt->test_select == NULL) && (gzt->draw_select != NULL)) {
+    if ((gzt->test_select == nullptr) && (gzt->draw_select != nullptr)) {
       BKE_reportf(reports,
                   RPT_ERROR,
                   "GizmoType '%s' is for a 3D gizmo-group. "
                   "The 'draw_select' callback is set where only 'test_select' will be used",
                   idname);
-      return NULL;
+      return nullptr;
     }
   }
-  wmGizmo *gz = WM_gizmo_new_ptr(gzt, gzgroup, NULL);
+  wmGizmo *gz = WM_gizmo_new_ptr(gzt, gzgroup, nullptr);
   return gz;
 }
 
@@ -619,26 +621,27 @@ static void rna_GizmoGroup_gizmo_remove(wmGizmoGroup *gzgroup, bContext *C, wmGi
 static void rna_GizmoGroup_gizmo_clear(wmGizmoGroup *gzgroup, bContext *C)
 {
   while (gzgroup->gizmos.first) {
-    WM_gizmo_unlink(&gzgroup->gizmos, gzgroup->parent_gzmap, gzgroup->gizmos.first, C);
+    WM_gizmo_unlink(
+        &gzgroup->gizmos, gzgroup->parent_gzmap, static_cast<wmGizmo *>(gzgroup->gizmos.first), C);
   }
 }
 
 static void rna_GizmoGroup_name_get(PointerRNA *ptr, char *value)
 {
-  wmGizmoGroup *gzgroup = ptr->data;
+  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
   strcpy(value, gzgroup->type->name);
 }
 
 static int rna_GizmoGroup_name_length(PointerRNA *ptr)
 {
-  wmGizmoGroup *gzgroup = ptr->data;
+  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
   return strlen(gzgroup->type->name);
 }
 
 /* just to work around 'const char *' warning and to ensure this is a python op */
 static void rna_GizmoGroup_bl_idname_set(PointerRNA *ptr, const char *value)
 {
-  wmGizmoGroup *data = ptr->data;
+  wmGizmoGroup *data = static_cast<wmGizmoGroup *>(ptr->data);
   char *str = (char *)data->type->idname;
   if (!str[0]) {
     BLI_strncpy(str, value, MAX_NAME); /* utf8 already ensured */
@@ -650,7 +653,7 @@ static void rna_GizmoGroup_bl_idname_set(PointerRNA *ptr, const char *value)
 
 static void rna_GizmoGroup_bl_label_set(PointerRNA *ptr, const char *value)
 {
-  wmGizmoGroup *data = ptr->data;
+  wmGizmoGroup *data = static_cast<wmGizmoGroup *>(ptr->data);
   char *str = (char *)data->type->name;
   if (!str[0]) {
     BLI_strncpy(str, value, MAX_NAME); /* utf8 already ensured */
@@ -662,7 +665,7 @@ static void rna_GizmoGroup_bl_label_set(PointerRNA *ptr, const char *value)
 
 static bool rna_GizmoGroup_has_reports_get(PointerRNA *ptr)
 {
-  wmGizmoGroup *gzgroup = ptr->data;
+  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
   return (gzgroup->reports && gzgroup->reports->list.first);
 }
 
@@ -679,7 +682,7 @@ static bool rna_gizmogroup_poll_cb(const bContext *C, wmGizmoGroupType *gzgt)
   void *ret;
   bool visible;
 
-  RNA_pointer_create(NULL, gzgt->rna_ext.srna, NULL, &ptr); /* dummy */
+  RNA_pointer_create(nullptr, gzgt->rna_ext.srna, nullptr, &ptr); /* dummy */
   func = &rna_GizmoGroup_poll_func; /* RNA_struct_find_function(&ptr, "poll"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
@@ -702,7 +705,7 @@ static void rna_gizmogroup_setup_cb(const bContext *C, wmGizmoGroup *gzgroup)
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(NULL, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
+  RNA_pointer_create(nullptr, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
   func = &rna_GizmoGroup_setup_func; /* RNA_struct_find_function(&wgroupr, "setup"); */
 
   RNA_parameter_list_create(&list, &gzgroup_ptr, func);
@@ -721,13 +724,13 @@ static wmKeyMap *rna_gizmogroup_setup_keymap_cb(const wmGizmoGroupType *gzgt, wm
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(NULL, gzgt->rna_ext.srna, NULL, &ptr); /* dummy */
+  RNA_pointer_create(nullptr, gzgt->rna_ext.srna, nullptr, &ptr); /* dummy */
   func =
       &rna_GizmoGroup_setup_keymap_func; /* RNA_struct_find_function(&wgroupr, "setup_keymap"); */
 
   RNA_parameter_list_create(&list, &ptr, func);
   RNA_parameter_set_lookup(&list, "keyconfig", &config);
-  gzgt->rna_ext.call(NULL, &ptr, func, &list);
+  gzgt->rna_ext.call(nullptr, &ptr, func, &list);
 
   RNA_parameter_get_lookup(&list, "keymap", &ret);
   wmKeyMap *keymap = *(wmKeyMap **)ret;
@@ -745,7 +748,7 @@ static void rna_gizmogroup_refresh_cb(const bContext *C, wmGizmoGroup *gzgroup)
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(NULL, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
+  RNA_pointer_create(nullptr, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
   func = &rna_GizmoGroup_refresh_func; /* RNA_struct_find_function(&wgroupr, "refresh"); */
 
   RNA_parameter_list_create(&list, &gzgroup_ptr, func);
@@ -763,7 +766,7 @@ static void rna_gizmogroup_draw_prepare_cb(const bContext *C, wmGizmoGroup *gzgr
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(NULL, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
+  RNA_pointer_create(nullptr, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
   func =
       &rna_GizmoGroup_draw_prepare_func; /* RNA_struct_find_function(&wgroupr, "draw_prepare"); */
 
@@ -785,7 +788,7 @@ static void rna_gizmogroup_invoke_prepare_cb(const bContext *C,
   ParameterList list;
   FunctionRNA *func;
 
-  RNA_pointer_create(NULL, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
+  RNA_pointer_create(nullptr, gzgroup->type->rna_ext.srna, gzgroup, &gzgroup_ptr);
   /* Reference `RNA_struct_find_function(&wgroupr, "invoke_prepare")` directly. */
   func = &rna_GizmoGroup_invoke_prepare_func;
 
@@ -798,7 +801,7 @@ static void rna_gizmogroup_invoke_prepare_cb(const bContext *C,
   RNA_parameter_list_free(&list);
 }
 
-void BPY_RNA_gizmogroup_wrapper(wmGizmoGroupType *gzgt, void *userdata);
+extern "C" void BPY_RNA_gizmogroup_wrapper(wmGizmoGroupType *gzgt, void *userdata);
 static bool rna_GizmoGroup_unregister(struct Main *bmain, StructRNA *type);
 
 static StructRNA *rna_GizmoGroup_register(Main *bmain,
@@ -815,8 +818,8 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
     char idname[MAX_NAME];
   } temp_buffers;
 
-  wmGizmoGroupType dummy_wgt = {NULL};
-  wmGizmoGroup dummy_gizmo_group = {NULL};
+  wmGizmoGroupType dummy_wgt = {nullptr};
+  wmGizmoGroup dummy_gizmo_group = {nullptr};
   PointerRNA wgptr;
 
   /* Two sets of functions. */
@@ -827,14 +830,14 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
   dummy_wgt.name = temp_buffers.name;
   dummy_wgt.idname = temp_buffers.idname;
 
-  RNA_pointer_create(NULL, &RNA_GizmoGroup, &dummy_gizmo_group, &wgptr);
+  RNA_pointer_create(nullptr, &RNA_GizmoGroup, &dummy_gizmo_group, &wgptr);
 
   /* Clear so we can detect if it's left unset. */
   temp_buffers.idname[0] = temp_buffers.name[0] = '\0';
 
   /* validate the python class */
   if (validate(&wgptr, data, have_function) != 0) {
-    return NULL;
+    return nullptr;
   }
 
   if (strlen(identifier) >= sizeof(temp_buffers.idname)) {
@@ -844,7 +847,7 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
                 error_prefix,
                 identifier,
                 (int)sizeof(temp_buffers.idname));
-    return NULL;
+    return nullptr;
   }
 
   /* check if the area supports widgets */
@@ -854,9 +857,9 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
   };
 
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&wmap_params);
-  if (gzmap_type == NULL) {
+  if (gzmap_type == nullptr) {
     BKE_reportf(reports, RPT_ERROR, "%s area type does not support gizmos", error_prefix);
-    return NULL;
+    return nullptr;
   }
 
   /* check if we have registered this gizmogroup type before, and remove it */
@@ -872,12 +875,12 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
                     identifier,
                     dummy_wgt.idname,
                     srna ? "is built-in" : "could not be unregistered");
-        return NULL;
+        return nullptr;
       }
     }
   }
   if (!RNA_struct_available_or_report(reports, dummy_wgt.idname)) {
-    return NULL;
+    return nullptr;
   }
 
   { /* allocate the idname */
@@ -906,12 +909,12 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
 
   /* We used to register widget group types like this, now we do it similar to
    * operator types. Thus we should be able to do the same as operator types now. */
-  dummy_wgt.poll = (have_function[0]) ? rna_gizmogroup_poll_cb : NULL;
-  dummy_wgt.setup_keymap = (have_function[1]) ? rna_gizmogroup_setup_keymap_cb : NULL;
-  dummy_wgt.setup = (have_function[2]) ? rna_gizmogroup_setup_cb : NULL;
-  dummy_wgt.refresh = (have_function[3]) ? rna_gizmogroup_refresh_cb : NULL;
-  dummy_wgt.draw_prepare = (have_function[4]) ? rna_gizmogroup_draw_prepare_cb : NULL;
-  dummy_wgt.invoke_prepare = (have_function[5]) ? rna_gizmogroup_invoke_prepare_cb : NULL;
+  dummy_wgt.poll = (have_function[0]) ? rna_gizmogroup_poll_cb : nullptr;
+  dummy_wgt.setup_keymap = (have_function[1]) ? rna_gizmogroup_setup_keymap_cb : nullptr;
+  dummy_wgt.setup = (have_function[2]) ? rna_gizmogroup_setup_cb : nullptr;
+  dummy_wgt.refresh = (have_function[3]) ? rna_gizmogroup_refresh_cb : nullptr;
+  dummy_wgt.draw_prepare = (have_function[4]) ? rna_gizmogroup_draw_prepare_cb : nullptr;
+  dummy_wgt.invoke_prepare = (have_function[5]) ? rna_gizmogroup_invoke_prepare_cb : nullptr;
 
   wmGizmoGroupType *gzgt = WM_gizmogrouptype_append_ptr(BPY_RNA_gizmogroup_wrapper,
                                                         (void *)&dummy_wgt);
@@ -927,7 +930,7 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
     WM_gizmo_group_type_add_ptr_ex(gzgt, gzmap_type);
 
     /* update while blender is running */
-    WM_main_add_notifier(NC_SCREEN | NA_EDITED, NULL);
+    WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr);
   }
 
   return dummy_wgt.rna_ext.srna;
@@ -935,7 +938,7 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
 
 static bool rna_GizmoGroup_unregister(struct Main *bmain, StructRNA *type)
 {
-  wmGizmoGroupType *gzgt = RNA_struct_blender_type_get(type);
+  wmGizmoGroupType *gzgt = static_cast<wmGizmoGroupType *>(RNA_struct_blender_type_get(type));
 
   if (!gzgt) {
     return false;
@@ -950,13 +953,13 @@ static bool rna_GizmoGroup_unregister(struct Main *bmain, StructRNA *type)
   /* Free gizmo group after the extension as it owns the identifier memory. */
   WM_gizmo_group_type_free_ptr(gzgt);
 
-  WM_main_add_notifier(NC_SCREEN | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr);
   return true;
 }
 
 static void **rna_GizmoGroup_instance(PointerRNA *ptr)
 {
-  wmGizmoGroup *gzgroup = ptr->data;
+  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
   return &gzgroup->py_instance;
 }
 
@@ -964,15 +967,15 @@ static void **rna_GizmoGroup_instance(PointerRNA *ptr)
 
 static StructRNA *rna_GizmoGroup_refine(PointerRNA *gzgroup_ptr)
 {
-  wmGizmoGroup *gzgroup = gzgroup_ptr->data;
+  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(gzgroup_ptr->data);
   return (gzgroup->type && gzgroup->type->rna_ext.srna) ? gzgroup->type->rna_ext.srna :
                                                           &RNA_GizmoGroup;
 }
 
 static void rna_GizmoGroup_gizmos_begin(CollectionPropertyIterator *iter, PointerRNA *gzgroup_ptr)
 {
-  wmGizmoGroup *gzgroup = gzgroup_ptr->data;
-  rna_iterator_listbase_begin(iter, &gzgroup->gizmos, NULL);
+  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(gzgroup_ptr->data);
+  rna_iterator_listbase_begin(iter, &gzgroup->gizmos, nullptr);
 }
 
 /** \} */
@@ -988,7 +991,7 @@ static void rna_def_gizmos(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "Gizmos");
-  srna = RNA_def_struct(brna, "Gizmos", NULL);
+  srna = RNA_def_struct(brna, "Gizmos", nullptr);
   RNA_def_struct_sdna(srna, "wmGizmoGroup");
   RNA_def_struct_ui_text(srna, "Gizmos", "Collection of gizmos");
 
@@ -996,7 +999,7 @@ static void rna_def_gizmos(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Add gizmo");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "type", "Type", 0, "", "Gizmo identifier"); /* optional */
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "gizmo", "Gizmo", "", "New gizmo");
   RNA_def_function_return(func, parm);
 
@@ -1005,7 +1008,7 @@ static void rna_def_gizmos(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Delete gizmo");
   parm = RNA_def_pointer(func, "gizmo", "Gizmo", "", "New gizmo");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
   func = RNA_def_function(srna, "clear", "rna_GizmoGroup_gizmo_clear");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
@@ -1021,7 +1024,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "Gizmo");
-  srna = RNA_def_struct(brna, "Gizmo", NULL);
+  srna = RNA_def_struct(brna, "Gizmo", nullptr);
   RNA_def_struct_sdna(srna, "wmGizmo");
   RNA_def_struct_ui_text(srna, "Gizmo", "Collection of gizmos");
   RNA_def_struct_refine_func(srna, "rna_Gizmo_refine");
@@ -1036,7 +1039,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_struct_type(prop, "GizmoProperties");
   RNA_def_property_ui_text(prop, "Properties", "");
-  RNA_def_property_pointer_funcs(prop, "rna_Gizmo_properties_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Gizmo_properties_get", nullptr, nullptr, nullptr);
 
   /* -------------------------------------------------------------------- */
   /* Registerable Variables */
@@ -1044,23 +1047,23 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_define_verify_sdna(0); /* not in sdna */
 
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "type->idname");
+  RNA_def_property_string_sdna(prop, nullptr, "type->idname");
   RNA_def_property_string_maxlength(prop, MAX_NAME);
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Gizmo_bl_idname_set");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_Gizmo_bl_idname_set");
   // RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_flag(prop, PROP_REGISTER);
 
   RNA_define_verify_sdna(1); /* not in sdna */
 
   /* wmGizmo.draw */
-  func = RNA_def_function(srna, "draw", NULL);
+  func = RNA_def_function(srna, "draw", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   /* wmGizmo.draw_select */
-  func = RNA_def_function(srna, "draw_select", NULL);
+  func = RNA_def_function(srna, "draw_select", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -1068,7 +1071,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_int(func, "select_id", 0, 0, INT_MAX, "", "", 0, INT_MAX);
 
   /* wmGizmo.test_select */
-  func = RNA_def_function(srna, "test_select", NULL);
+  func = RNA_def_function(srna, "test_select", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -1076,7 +1079,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_int_array(func,
                            "location",
                            2,
-                           NULL,
+                           nullptr,
                            INT_MIN,
                            INT_MAX,
                            "Location",
@@ -1092,9 +1095,9 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   static EnumPropertyItem tweak_actions[] = {
       {WM_GIZMO_TWEAK_PRECISE, "PRECISE", 0, "Precise", ""},
       {WM_GIZMO_TWEAK_SNAP, "SNAP", 0, "Snap", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
-  func = RNA_def_function(srna, "modal", NULL);
+  func = RNA_def_function(srna, "modal", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -1103,7 +1106,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   /* TODO: should be a enum-flag. */
   parm = RNA_def_enum_flag(func, "tweak", tweak_actions, 0, "Tweak", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_enum_flag(
       func, "result", rna_enum_operator_return_items, OPERATOR_FINISHED, "result", "");
   RNA_def_function_return(func, parm);
@@ -1111,12 +1114,12 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   /* TODO */
 
   /* wmGizmo.setup */
-  func = RNA_def_function(srna, "setup", NULL);
+  func = RNA_def_function(srna, "setup", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
 
   /* wmGizmo.invoke */
-  func = RNA_def_function(srna, "invoke", NULL);
+  func = RNA_def_function(srna, "invoke", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -1128,19 +1131,19 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_return(func, parm);
 
   /* wmGizmo.exit */
-  func = RNA_def_function(srna, "exit", NULL);
+  func = RNA_def_function(srna, "exit", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_boolean(func, "cancel", 0, "Cancel, otherwise confirm", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   /* wmGizmo.cursor_get */
   /* TODO */
 
   /* wmGizmo.select_refresh */
-  func = RNA_def_function(srna, "select_refresh", NULL);
+  func = RNA_def_function(srna, "select_refresh", nullptr);
   RNA_def_function_ui_description(func, "");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
 
@@ -1150,28 +1153,28 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   prop = RNA_def_property(srna, "group", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "GizmoGroup");
-  RNA_def_property_pointer_funcs(prop, "rna_Gizmo_group_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Gizmo_group_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop, "", "Gizmo group this gizmo is a member of");
 
   /* Color & Alpha */
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_Gizmo_color_get", "rna_Gizmo_color_set", NULL);
+  RNA_def_property_float_funcs(prop, "rna_Gizmo_color_get", "rna_Gizmo_color_set", nullptr);
 
   prop = RNA_def_property(srna, "alpha", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Alpha", "");
-  RNA_def_property_float_funcs(prop, "rna_Gizmo_alpha_get", "rna_Gizmo_alpha_set", NULL);
+  RNA_def_property_float_funcs(prop, "rna_Gizmo_alpha_get", "rna_Gizmo_alpha_set", nullptr);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
   /* Color & Alpha (highlight) */
   prop = RNA_def_property(srna, "color_highlight", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_Gizmo_color_hi_get", "rna_Gizmo_color_hi_set", NULL);
+  RNA_def_property_float_funcs(prop, "rna_Gizmo_color_hi_get", "rna_Gizmo_color_hi_set", nullptr);
 
   prop = RNA_def_property(srna, "alpha_highlight", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Alpha", "");
-  RNA_def_property_float_funcs(prop, "rna_Gizmo_alpha_hi_get", "rna_Gizmo_alpha_hi_set", NULL);
+  RNA_def_property_float_funcs(prop, "rna_Gizmo_alpha_hi_get", "rna_Gizmo_alpha_hi_set", nullptr);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
@@ -1179,46 +1182,47 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(prop, "Space Matrix", "");
   RNA_def_property_float_funcs(
-      prop, "rna_Gizmo_matrix_space_get", "rna_Gizmo_matrix_space_set", NULL);
+      prop, "rna_Gizmo_matrix_space_get", "rna_Gizmo_matrix_space_set", nullptr);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
   prop = RNA_def_property(srna, "matrix_basis", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(prop, "Basis Matrix", "");
   RNA_def_property_float_funcs(
-      prop, "rna_Gizmo_matrix_basis_get", "rna_Gizmo_matrix_basis_set", NULL);
+      prop, "rna_Gizmo_matrix_basis_get", "rna_Gizmo_matrix_basis_set", nullptr);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
   prop = RNA_def_property(srna, "matrix_offset", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(prop, "Offset Matrix", "");
   RNA_def_property_float_funcs(
-      prop, "rna_Gizmo_matrix_offset_get", "rna_Gizmo_matrix_offset_set", NULL);
+      prop, "rna_Gizmo_matrix_offset_get", "rna_Gizmo_matrix_offset_set", nullptr);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
   prop = RNA_def_property(srna, "matrix_world", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(prop, "Final World Matrix", "");
-  RNA_def_property_float_funcs(prop, "rna_Gizmo_matrix_world_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_Gizmo_matrix_world_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "scale_basis", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Scale Basis", "");
   RNA_def_property_float_funcs(
-      prop, "rna_Gizmo_scale_basis_get", "rna_Gizmo_scale_basis_set", NULL);
+      prop, "rna_Gizmo_scale_basis_get", "rna_Gizmo_scale_basis_set", nullptr);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
   prop = RNA_def_property(srna, "line_width", PROP_FLOAT, PROP_PIXEL);
   RNA_def_property_ui_text(prop, "Line Width", "");
-  RNA_def_property_float_funcs(prop, "rna_Gizmo_line_width_get", "rna_Gizmo_line_width_set", NULL);
+  RNA_def_property_float_funcs(
+      prop, "rna_Gizmo_line_width_get", "rna_Gizmo_line_width_set", nullptr);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_update(prop, 0, "rna_Gizmo_update_redraw");
 
   prop = RNA_def_property(srna, "select_bias", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Select Bias", "Depth bias used for selection");
   RNA_def_property_float_funcs(
-      prop, "rna_Gizmo_select_bias_get", "rna_Gizmo_select_bias_set", NULL);
+      prop, "rna_Gizmo_select_bias_get", "rna_Gizmo_select_bias_set", nullptr);
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
 
   /* wmGizmo.flag */
@@ -1318,12 +1322,12 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   /* wmGizmo.state (readonly) */
   /* WM_GIZMO_STATE_HIGHLIGHT */
   prop = RNA_def_property(srna, "is_highlight", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(prop, "rna_Gizmo_state_is_highlight_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_Gizmo_state_is_highlight_get", nullptr);
   RNA_def_property_ui_text(prop, "Highlight", "");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   /* WM_GIZMO_STATE_MODAL */
   prop = RNA_def_property(srna, "is_modal", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(prop, "rna_Gizmo_state_is_modal_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_Gizmo_state_is_modal_get", nullptr);
   RNA_def_property_ui_text(prop, "Highlight", "");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   /* WM_GIZMO_STATE_SELECT */
@@ -1334,7 +1338,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
 
   RNA_api_gizmo(srna);
 
-  srna = RNA_def_struct(brna, "GizmoProperties", NULL);
+  srna = RNA_def_struct(brna, "GizmoProperties", nullptr);
   RNA_def_struct_ui_text(srna, "Gizmo Properties", "Input properties of a Gizmo");
   RNA_def_struct_refine_func(srna, "rna_GizmoProperties_refine");
   RNA_def_struct_idprops_func(srna, "rna_GizmoProperties_idprops");
@@ -1349,7 +1353,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  srna = RNA_def_struct(brna, "GizmoGroup", NULL);
+  srna = RNA_def_struct(brna, "GizmoGroup", nullptr);
   RNA_def_struct_ui_text(
       srna, "GizmoGroup", "Storage of an operator being executed, or registered after execution");
   RNA_def_struct_sdna(srna, "wmGizmoGroup");
@@ -1366,34 +1370,34 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_define_verify_sdna(0); /* not in sdna */
 
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "type->idname");
+  RNA_def_property_string_sdna(prop, nullptr, "type->idname");
   RNA_def_property_string_maxlength(prop, MAX_NAME);
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_GizmoGroup_bl_idname_set");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_GizmoGroup_bl_idname_set");
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "bl_label", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "type->name");
+  RNA_def_property_string_sdna(prop, nullptr, "type->name");
   RNA_def_property_string_maxlength(prop, MAX_NAME); /* else it uses the pointer size! */
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_GizmoGroup_bl_label_set");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_GizmoGroup_bl_label_set");
   // RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_flag(prop, PROP_REGISTER);
 
   prop = RNA_def_property(srna, "bl_space_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "type->gzmap_params.spaceid");
+  RNA_def_property_enum_sdna(prop, nullptr, "type->gzmap_params.spaceid");
   RNA_def_property_enum_items(prop, rna_enum_space_type_items);
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_def_property_ui_text(prop, "Space Type", "The space where the panel is going to be used in");
 
   prop = RNA_def_property(srna, "bl_region_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "type->gzmap_params.regionid");
+  RNA_def_property_enum_sdna(prop, nullptr, "type->gzmap_params.regionid");
   RNA_def_property_enum_items(prop, rna_enum_region_type_items);
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_def_property_ui_text(
       prop, "Region Type", "The region where the panel is going to be used in");
 
   prop = RNA_def_property(srna, "bl_owner_id", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "type->owner_id");
+  RNA_def_property_string_sdna(prop, nullptr, "type->owner_id");
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
 
   /* bl_options */
@@ -1437,10 +1441,10 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
        "VR Redraws",
        "The gizmos are made for use with virtual reality sessions and require special redraw "
        "management"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   prop = RNA_def_property(srna, "bl_options", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "type->flag");
+  RNA_def_property_enum_sdna(prop, nullptr, "type->flag");
   RNA_def_property_enum_items(prop, gizmogroup_flag_items);
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL | PROP_ENUM_FLAG);
   RNA_def_property_ui_text(prop, "Options", "Options for this operator type");
@@ -1450,7 +1454,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   /* Functions */
 
   /* poll */
-  func = RNA_def_function(srna, "poll", NULL);
+  func = RNA_def_function(srna, "poll", nullptr);
   RNA_def_function_ui_description(func, "Test if the gizmo group can be called or not");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
   RNA_def_function_return(func, RNA_def_boolean(func, "visible", 1, "", ""));
@@ -1458,7 +1462,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   /* setup_keymap */
-  func = RNA_def_function(srna, "setup_keymap", NULL);
+  func = RNA_def_function(srna, "setup_keymap", nullptr);
   RNA_def_function_ui_description(
       func, "Initialize keymaps for this gizmo group, use fallback keymap when not present");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
@@ -1470,27 +1474,27 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_def_function_return(func, parm);
 
   /* setup */
-  func = RNA_def_function(srna, "setup", NULL);
+  func = RNA_def_function(srna, "setup", nullptr);
   RNA_def_function_ui_description(func, "Create gizmos function for the gizmo group");
   RNA_def_function_flag(func, FUNC_REGISTER);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   /* refresh */
-  func = RNA_def_function(srna, "refresh", NULL);
+  func = RNA_def_function(srna, "refresh", nullptr);
   RNA_def_function_ui_description(
       func, "Refresh data (called on common state changes such as selection)");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "draw_prepare", NULL);
+  func = RNA_def_function(srna, "draw_prepare", nullptr);
   RNA_def_function_ui_description(func, "Run before each redraw");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "invoke_prepare", NULL);
+  func = RNA_def_function(srna, "invoke_prepare", nullptr);
   RNA_def_function_ui_description(func, "Run before invoke");
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -1504,12 +1508,12 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_string_funcs(
-      prop, "rna_GizmoGroup_name_get", "rna_GizmoGroup_name_length", NULL);
+      prop, "rna_GizmoGroup_name_get", "rna_GizmoGroup_name_length", nullptr);
   RNA_def_property_ui_text(prop, "Name", "");
 
   prop = RNA_def_property(srna, "has_reports", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE); /* this is 'virtual' property */
-  RNA_def_property_boolean_funcs(prop, "rna_GizmoGroup_has_reports_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_GizmoGroup_has_reports_get", nullptr);
   RNA_def_property_ui_text(
       prop,
       "Has Reports",
@@ -1518,17 +1522,17 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_define_verify_sdna(0); /* not in sdna */
 
   prop = RNA_def_property(srna, "gizmos", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "gizmos", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "gizmos", nullptr);
   RNA_def_property_struct_type(prop, "Gizmo");
   RNA_def_property_collection_funcs(prop,
                                     "rna_GizmoGroup_gizmos_begin",
                                     "rna_iterator_listbase_next",
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
 
   RNA_def_property_ui_text(prop, "Gizmos", "List of gizmos in the Gizmo Map");
   rna_def_gizmo(brna, prop);
@@ -1538,7 +1542,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
 
   RNA_api_gizmogroup(srna);
 
-  srna = RNA_def_struct(brna, "GizmoGroupProperties", NULL);
+  srna = RNA_def_struct(brna, "GizmoGroupProperties", nullptr);
   RNA_def_struct_ui_text(srna, "Gizmo Group Properties", "Input properties of a Gizmo Group");
   RNA_def_struct_refine_func(srna, "rna_GizmoGroupProperties_refine");
   RNA_def_struct_idprops_func(srna, "rna_GizmoGroupProperties_idprops");

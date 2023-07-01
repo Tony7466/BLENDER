@@ -57,7 +57,7 @@ static void rna_gizmo_target_set_prop(wmGizmo *gz,
 {
   const wmGizmoPropertyType *gz_prop_type = WM_gizmotype_target_property_find(gz->type,
                                                                               target_propname);
-  if (gz_prop_type == NULL) {
+  if (gz_prop_type == nullptr) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Gizmo target property '%s.%s' not found",
@@ -67,7 +67,7 @@ static void rna_gizmo_target_set_prop(wmGizmo *gz,
   }
 
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
-  if (prop == NULL) {
+  if (prop == nullptr) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Property '%s.%s' not found",
@@ -171,7 +171,7 @@ static bool rna_gizmo_target_is_valid(wmGizmo *gz,
                                       const char *target_propname)
 {
   wmGizmoProperty *gz_prop = WM_gizmo_target_property_find(gz, target_propname);
-  if (gz_prop == NULL) {
+  if (gz_prop == nullptr) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Gizmo target property '%s.%s' not found",
@@ -204,7 +204,7 @@ void RNA_api_gizmo(StructRNA *srna)
   func = RNA_def_function(srna, "draw_preset_box", "rna_gizmo_draw_preset_box");
   RNA_def_function_ui_description(func, "Draw a box");
   parm = RNA_def_property(func, "matrix", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_property_multi_array(parm, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(parm, "", "The matrix to transform");
   RNA_def_int(func,
@@ -221,7 +221,7 @@ void RNA_api_gizmo(StructRNA *srna)
   func = RNA_def_function(srna, "draw_preset_arrow", "rna_gizmo_draw_preset_arrow");
   RNA_def_function_ui_description(func, "Draw a box");
   parm = RNA_def_property(func, "matrix", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_property_multi_array(parm, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(parm, "", "The matrix to transform");
   RNA_def_enum(func, "axis", rna_enum_object_axis_items, 2, "", "Arrow Orientation");
@@ -238,7 +238,7 @@ void RNA_api_gizmo(StructRNA *srna)
   func = RNA_def_function(srna, "draw_preset_circle", "rna_gizmo_draw_preset_circle");
   RNA_def_function_ui_description(func, "Draw a box");
   parm = RNA_def_property(func, "matrix", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_property_multi_array(parm, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(parm, "", "The matrix to transform");
   RNA_def_enum(func, "axis", rna_enum_object_axis_items, 2, "", "Arrow Orientation");
@@ -263,13 +263,13 @@ void RNA_api_gizmo(StructRNA *srna)
   func = RNA_def_function(srna, "target_set_prop", "rna_gizmo_target_set_prop");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "");
-  parm = RNA_def_string(func, "target", NULL, 0, "", "Target property");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "target", nullptr, 0, "", "Target property");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* similar to UILayout.prop */
   parm = RNA_def_pointer(func, "data", "AnyType", "", "Data from which to take property");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  parm = RNA_def_string(func, "property", NULL, 0, "", "Identifier of property in data");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "property", nullptr, 0, "", "Identifier of property in data");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_int(func, "index", -1, -1, INT_MAX, "", "", -1, INT_MAX); /* RNA_NO_INDEX == -1 */
 
   func = RNA_def_function(srna, "target_set_operator", "rna_gizmo_target_set_operator");
@@ -277,28 +277,28 @@ void RNA_api_gizmo(StructRNA *srna)
   RNA_def_function_ui_description(func,
                                   "Operator to run when activating the gizmo "
                                   "(overrides property targets)");
-  parm = RNA_def_string(func, "operator", NULL, 0, "", "Target operator");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "operator", nullptr, 0, "", "Target operator");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_int(func, "index", 0, 0, 255, "Part index", "", 0, 255);
 
   /* similar to UILayout.operator */
   parm = RNA_def_pointer(
       func, "properties", "OperatorProperties", "", "Operator properties to fill in");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_function_return(func, parm);
 
   /* Access Properties */
   /* NOTE: 'target_get', 'target_set' is defined in `bpy_rna_gizmo.c`. */
   func = RNA_def_function(srna, "target_is_valid", "rna_gizmo_target_is_valid");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  parm = RNA_def_string(func, "property", NULL, 0, "", "Property identifier");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "property", nullptr, 0, "", "Property identifier");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_function_ui_description(func, "");
   parm = RNA_def_boolean(func, "result", 0, "", "");
   RNA_def_function_return(func, parm);
 }
 
-void RNA_api_gizmogroup(StructRNA *UNUSED(srna))
+void RNA_api_gizmogroup(StructRNA * /*srna*/)
 {
   /* nothing yet */
 }
