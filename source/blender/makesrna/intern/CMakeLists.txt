@@ -68,7 +68,7 @@ set(DEFSRC
   rna_scene.cc
   rna_screen.cc
   rna_sculpt_paint.cc
-  rna_sequencer.c
+  rna_sequencer.cc
   rna_shader_fx.c
   rna_sound.c
   rna_space.cc
@@ -114,7 +114,7 @@ set(APISRC
   rna_object_api.cc
   rna_pose_api.cc
   rna_scene_api.cc
-  rna_sequencer_api.c
+  rna_sequencer_api.cc
   rna_sound_api.c
   rna_space_api.cc
   rna_text_api.c

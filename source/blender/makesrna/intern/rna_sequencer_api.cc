@@ -97,10 +97,10 @@ static Sequence *rna_Sequence_split(
   Scene *scene = (Scene *)id;
   ListBase *seqbase = SEQ_get_seqbase_by_seq(scene, seq);
 
-  const char *error_msg = NULL;
+  const char *error_msg = nullptr;
   Sequence *r_seq = SEQ_edit_strip_split(
-      bmain, scene, seqbase, seq, frame, split_method, &error_msg);
-  if (error_msg != NULL) {
+      bmain, scene, seqbase, seq, frame, eSeqSplitMethod(split_method), &error_msg);
+  if (error_msg != nullptr) {
     BKE_report(reports, RPT_ERROR, error_msg);
   }
 
@@ -118,7 +118,7 @@ static Sequence *rna_Sequence_parent_meta(ID *id, Sequence *seq_self)
   Scene *scene = (Scene *)id;
   Editing *ed = SEQ_editing_get(scene);
 
-  return SEQ_find_metastrip_by_sequence(&ed->seqbase, NULL, seq_self);
+  return SEQ_find_metastrip_by_sequence(&ed->seqbase, nullptr, seq_self);
 }
 
 static Sequence *rna_Sequences_new_clip(ID *id,
@@ -131,7 +131,7 @@ static Sequence *rna_Sequences_new_clip(ID *id,
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
-  SEQ_add_load_data_init(&load_data, name, NULL, frame_start, channel);
+  SEQ_add_load_data_init(&load_data, name, nullptr, frame_start, channel);
   load_data.clip = clip;
   Sequence *seq = SEQ_add_movieclip_strip(scene, seqbase, &load_data);
 
@@ -174,7 +174,7 @@ static Sequence *rna_Sequences_new_mask(ID *id,
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
-  SEQ_add_load_data_init(&load_data, name, NULL, frame_start, channel);
+  SEQ_add_load_data_init(&load_data, name, nullptr, frame_start, channel);
   load_data.mask = mask;
   Sequence *seq = SEQ_add_mask_strip(scene, seqbase, &load_data);
 
@@ -206,7 +206,7 @@ static Sequence *rna_Sequences_new_scene(ID *id,
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
-  SEQ_add_load_data_init(&load_data, name, NULL, frame_start, channel);
+  SEQ_add_load_data_init(&load_data, name, nullptr, frame_start, channel);
   load_data.scene = sce_seq;
   Sequence *seq = SEQ_add_scene_strip(scene, seqbase, &load_data);
 
@@ -242,7 +242,7 @@ static Sequence *rna_Sequences_meta_new_scene(ID *id,
 static Sequence *rna_Sequences_new_image(ID *id,
                                          ListBase *seqbase,
                                          Main *bmain,
-                                         ReportList *UNUSED(reports),
+                                         ReportList * /*reports*/,
                                          const char *name,
                                          const char *file,
                                          int channel,
@@ -254,7 +254,7 @@ static Sequence *rna_Sequences_new_image(ID *id,
   SeqLoadData load_data;
   SEQ_add_load_data_init(&load_data, name, file, frame_start, channel);
   load_data.image.len = 1;
-  load_data.fit_method = fit_method;
+  load_data.fit_method = eSeqImageFitMethod(fit_method);
   Sequence *seq = SEQ_add_image_strip(bmain, scene, seqbase, &load_data);
 
   char dirpath[FILE_MAX], filename[FILE_MAXFILE];
@@ -310,7 +310,7 @@ static Sequence *rna_Sequences_new_movie(ID *id,
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
   SEQ_add_load_data_init(&load_data, name, file, frame_start, channel);
-  load_data.fit_method = fit_method;
+  load_data.fit_method = eSeqImageFitMethod(fit_method);
   load_data.allow_invalid_file = true;
   Sequence *seq = SEQ_add_movie_strip(bmain, scene, seqbase, &load_data);
 
@@ -363,9 +363,9 @@ static Sequence *rna_Sequences_new_sound(ID *id,
   load_data.allow_invalid_file = true;
   Sequence *seq = SEQ_add_sound_strip(bmain, scene, seqbase, &load_data);
 
-  if (seq == NULL) {
+  if (seq == nullptr) {
     BKE_report(reports, RPT_ERROR, "Sequences.new_sound: unable to open sound file");
-    return NULL;
+    return nullptr;
   }
 
   DEG_relations_tag_update(bmain);
@@ -375,17 +375,17 @@ static Sequence *rna_Sequences_new_sound(ID *id,
   return seq;
 }
 #  else  /* WITH_AUDASPACE */
-static Sequence *rna_Sequences_new_sound(ID *UNUSED(id),
-                                         ListBase *UNUSED(seqbase),
-                                         Main *UNUSED(bmain),
+static Sequence *rna_Sequences_new_sound(ID * /*id*/,
+                                         ListBase * /*seqbase*/,
+                                         Main * /*bmain*/,
                                          ReportList *reports,
-                                         const char *UNUSED(name),
-                                         const char *UNUSED(file),
-                                         int UNUSED(channel),
-                                         int UNUSED(frame_start))
+                                         const char * /*name*/,
+                                         const char * /*file*/,
+                                         int /*channel*/,
+                                         int /*frame_start*/)
 {
   BKE_report(reports, RPT_ERROR, "Blender compiled without Audaspace support");
-  return NULL;
+  return nullptr;
 }
 #  endif /* WITH_AUDASPACE */
 
@@ -423,7 +423,7 @@ static Sequence *rna_Sequences_new_meta(
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
-  SEQ_add_load_data_init(&load_data, name, NULL, frame_start, channel);
+  SEQ_add_load_data_init(&load_data, name, nullptr, frame_start, channel);
   Sequence *seqm = SEQ_add_meta_strip(scene, seqbase, &load_data);
 
   return seqm;
@@ -461,25 +461,25 @@ static Sequence *rna_Sequences_new_effect(ID *id,
     case 0:
       if (frame_end <= frame_start) {
         BKE_report(reports, RPT_ERROR, "Sequences.new_effect: end frame not set");
-        return NULL;
+        return nullptr;
       }
       break;
     case 1:
-      if (seq1 == NULL) {
+      if (seq1 == nullptr) {
         BKE_report(reports, RPT_ERROR, "Sequences.new_effect: effect takes 1 input sequence");
-        return NULL;
+        return nullptr;
       }
       break;
     case 2:
-      if (seq1 == NULL || seq2 == NULL) {
+      if (seq1 == nullptr || seq2 == nullptr) {
         BKE_report(reports, RPT_ERROR, "Sequences.new_effect: effect takes 2 input sequences");
-        return NULL;
+        return nullptr;
       }
       break;
     case 3:
-      if (seq1 == NULL || seq2 == NULL || seq3 == NULL) {
+      if (seq1 == nullptr || seq2 == nullptr || seq3 == nullptr) {
         BKE_report(reports, RPT_ERROR, "Sequences.new_effect: effect takes 3 input sequences");
-        return NULL;
+        return nullptr;
       }
       break;
     default:
@@ -488,11 +488,11 @@ static Sequence *rna_Sequences_new_effect(ID *id,
           RPT_ERROR,
           "Sequences.new_effect: effect expects more than 3 inputs (%d, should never happen!)",
           num_inputs);
-      return NULL;
+      return nullptr;
   }
 
   SeqLoadData load_data;
-  SEQ_add_load_data_init(&load_data, name, NULL, frame_start, channel);
+  SEQ_add_load_data_init(&load_data, name, nullptr, frame_start, channel);
   load_data.effect.end_frame = frame_end;
   load_data.effect.type = type;
   load_data.effect.seq1 = seq1;
@@ -541,7 +541,7 @@ static Sequence *rna_Sequences_meta_new_effect(ID *id,
 static void rna_Sequences_remove(
     ID *id, ListBase *seqbase, Main *bmain, ReportList *reports, PointerRNA *seq_ptr)
 {
-  Sequence *seq = seq_ptr->data;
+  Sequence *seq = static_cast<Sequence *>(seq_ptr->data);
   Scene *scene = (Scene *)id;
 
   if (BLI_findindex(seqbase, seq) == -1) {
@@ -576,8 +576,8 @@ static StripElem *rna_SequenceElements_append(ID *id, Sequence *seq, const char 
   Scene *scene = (Scene *)id;
   StripElem *se;
 
-  seq->strip->stripdata = se = MEM_reallocN(seq->strip->stripdata,
-                                            sizeof(StripElem) * (seq->len + 1));
+  seq->strip->stripdata = se = static_cast<StripElem *>(
+      MEM_reallocN(seq->strip->stripdata, sizeof(StripElem) * (seq->len + 1)));
   se += seq->len;
   STRNCPY(se->filename, filename);
   seq->len++;
@@ -609,7 +609,8 @@ static void rna_SequenceElements_pop(ID *id, Sequence *seq, ReportList *reports,
     return;
   }
 
-  new_seq = MEM_callocN(sizeof(StripElem) * (seq->len - 1), "SequenceElements_pop");
+  new_seq = static_cast<StripElem *>(
+      MEM_callocN(sizeof(StripElem) * (seq->len - 1), "SequenceElements_pop"));
   seq->len--;
 
   if (seq->len == 1) {
@@ -655,7 +656,7 @@ static SeqRetimingHandle *rna_Sequence_retiming_handles_add(ID *id,
   SeqRetimingHandle *handle = SEQ_retiming_add_handle(scene, seq, timeline_frame);
 
   SEQ_relations_invalidate_cache_raw(scene, seq);
-  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
   return handle;
 }
 
@@ -666,7 +667,7 @@ static void rna_Sequence_retiming_handles_reset(ID *id, Sequence *seq)
   SEQ_retiming_data_clear(seq);
 
   SEQ_relations_invalidate_cache_raw(scene, seq);
-  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
 }
 
 #else
@@ -680,13 +681,13 @@ void RNA_api_sequence_strip(StructRNA *srna)
       {SEQ_CACHE_STORE_RAW, "RAW", 0, "Raw", ""},
       {SEQ_CACHE_STORE_PREPROCESSED, "PREPROCESSED", 0, "Preprocessed", ""},
       {SEQ_CACHE_STORE_COMPOSITE, "COMPOSITE", 0, "Composite", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem seq_split_method_items[] = {
       {SEQ_SPLIT_SOFT, "SOFT", 0, "Soft", ""},
       {SEQ_SPLIT_HARD, "HARD", 0, "Hard", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   func = RNA_def_function(srna, "strip_elem_from_frame", "rna_Sequence_strip_elem_from_frame");
@@ -701,7 +702,7 @@ void RNA_api_sequence_strip(StructRNA *srna)
                      "The frame to get the strip element from",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_function_return(
       func,
       RNA_def_pointer(func, "elem", "SequenceElement", "", "strip element of the current frame"));
@@ -740,7 +741,7 @@ void RNA_api_sequence_strip(StructRNA *srna)
   RNA_def_function_ui_description(func, "Split Sequence");
   parm = RNA_def_int(
       func, "frame", 0, INT_MIN, INT_MAX, "", "Frame where to split the strip", INT_MIN, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_enum(func, "split_method", seq_split_method_items, 0, "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   /* Return type. */
@@ -755,7 +756,7 @@ void RNA_api_sequence_elements(BlenderRNA *brna, PropertyRNA *cprop)
   FunctionRNA *func;
 
   RNA_def_property_srna(cprop, "SequenceElements");
-  srna = RNA_def_struct(brna, "SequenceElements", NULL);
+  srna = RNA_def_struct(brna, "SequenceElements", nullptr);
   RNA_def_struct_sdna(srna, "Sequence");
   RNA_def_struct_ui_text(srna, "SequenceElements", "Collection of SequenceElement");
 
@@ -763,7 +764,7 @@ void RNA_api_sequence_elements(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID);
   RNA_def_function_ui_description(func, "Push an image from ImageSequence.directory");
   parm = RNA_def_string(func, "filename", "File", 0, "", "Filepath to image");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(func, "elem", "SequenceElement", "", "New SequenceElement");
   RNA_def_function_return(func, parm);
@@ -773,7 +774,7 @@ void RNA_api_sequence_elements(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Pop an image off the collection");
   parm = RNA_def_int(
       func, "index", -1, INT_MIN, INT_MAX, "", "Index of image to remove", INT_MIN, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
 void RNA_api_sequence_retiming_handles(BlenderRNA *brna, PropertyRNA *cprop)
@@ -781,7 +782,7 @@ void RNA_api_sequence_retiming_handles(BlenderRNA *brna, PropertyRNA *cprop)
   StructRNA *srna;
 
   RNA_def_property_srna(cprop, "RetimingHandles");
-  srna = RNA_def_struct(brna, "RetimingHandles", NULL);
+  srna = RNA_def_struct(brna, "RetimingHandles", nullptr);
   RNA_def_struct_sdna(srna, "Sequence");
   RNA_def_struct_ui_text(srna, "RetimingHandles", "Collection of RetimingHandle");
 
@@ -825,7 +826,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
       {SEQ_TYPE_GAUSSIAN_BLUR, "GAUSSIAN_BLUR", 0, "Gaussian Blur", ""},
       {SEQ_TYPE_TEXT, "TEXT", 0, "Text", ""},
       {SEQ_TYPE_COLORMIX, "COLORMIX", 0, "Color Mix", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem scale_fit_methods[] = {
@@ -837,7 +838,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
        "Scale image so it fills preview completely"},
       {SEQ_STRETCH_TO_FILL, "STRETCH", 0, "Stretch to Fill", "Stretch image so it fills preview"},
       {SEQ_USE_ORIGINAL_SIZE, "ORIGINAL", 0, "Use Original Size", "Don't scale the image"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   const char *new_clip_func_name = "rna_Sequences_editing_new_clip";
@@ -852,7 +853,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
 
   if (metastrip) {
     RNA_def_property_srna(cprop, "SequencesMeta");
-    srna = RNA_def_struct(brna, "SequencesMeta", NULL);
+    srna = RNA_def_struct(brna, "SequencesMeta", nullptr);
     RNA_def_struct_sdna(srna, "Sequence");
 
     new_clip_func_name = "rna_Sequences_meta_new_clip";
@@ -867,7 +868,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   }
   else {
     RNA_def_property_srna(cprop, "SequencesTopLevel");
-    srna = RNA_def_struct(brna, "SequencesTopLevel", NULL);
+    srna = RNA_def_struct(brna, "SequencesTopLevel", nullptr);
     RNA_def_struct_sdna(srna, "Editing");
   }
 
@@ -877,12 +878,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Add a new movie clip sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "clip", "MovieClip", "", "Movie clip to add");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -892,7 +893,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -901,12 +902,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Add a new mask sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "mask", "Mask", "", "Mask to add");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -916,7 +917,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -925,12 +926,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Add a new scene sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "scene", "Scene", "", "Scene to add");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -940,7 +941,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -949,12 +950,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Add a new image sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_string(func, "filepath", "File", 0, "", "Filepath to image");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -964,10 +965,10 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_enum(
-      func, "fit_method", scale_fit_methods, SEQ_USE_ORIGINAL_SIZE, "Image Fit Method", NULL);
-  RNA_def_parameter_flags(parm, 0, PARM_PYFUNC_OPTIONAL);
+      func, "fit_method", scale_fit_methods, SEQ_USE_ORIGINAL_SIZE, "Image Fit Method", nullptr);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_PYFUNC_OPTIONAL);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -976,12 +977,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Add a new movie sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_string(func, "filepath", "File", 0, "", "Filepath to movie");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -991,10 +992,10 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_enum(
-      func, "fit_method", scale_fit_methods, SEQ_USE_ORIGINAL_SIZE, "Image Fit Method", NULL);
-  RNA_def_parameter_flags(parm, 0, PARM_PYFUNC_OPTIONAL);
+      func, "fit_method", scale_fit_methods, SEQ_USE_ORIGINAL_SIZE, "Image Fit Method", nullptr);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_PYFUNC_OPTIONAL);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -1003,12 +1004,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Add a new sound sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_string(func, "filepath", "File", 0, "", "Filepath to movie");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -1018,7 +1019,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -1027,10 +1028,10 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_SELF_ID);
   RNA_def_function_ui_description(func, "Add a new meta sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -1040,7 +1041,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      -MAXFRAME,
                      MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -1049,13 +1050,13 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
   RNA_def_function_ui_description(func, "Add a new effect sequence");
   parm = RNA_def_string(func, "name", "Name", 0, "", "Name for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_enum(func, "type", seq_effect_items, 0, "Type", "type for the new sequence");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "channel", 0, 1, MAXSEQ, "Channel", "The channel for the new sequence", 1, MAXSEQ);
   /* don't use MAXFRAME since it makes importer scripts fail */
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "frame_start",
                      0,
@@ -1065,7 +1066,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      "The start frame for the new sequence",
                      INT_MIN,
                      INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_int(func,
               "frame_end",
               0,
@@ -1087,7 +1088,7 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   RNA_def_function_ui_description(func, "Remove a Sequence");
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "Sequence to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
 #endif
