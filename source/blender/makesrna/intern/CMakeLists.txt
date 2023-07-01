@@ -43,7 +43,7 @@ set(DEFSRC
   rna_key.cc
   rna_lattice.cc
   rna_layer.cc
-  rna_light.c
+  rna_light.cc
   rna_lightprobe.c
   rna_linestyle.c
   rna_main.c

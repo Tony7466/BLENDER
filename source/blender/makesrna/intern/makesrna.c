@@ -4572,7 +4572,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_curves.cc", NULL, RNA_def_curves},
     {"rna_image.cc", "rna_image_api.cc", RNA_def_image},
     {"rna_key.cc", NULL, RNA_def_key},
-    {"rna_light.c", NULL, RNA_def_light},
+    {"rna_light.cc", NULL, RNA_def_light},
     {"rna_lattice.cc", "rna_lattice_api.cc", RNA_def_lattice},
     {"rna_layer.cc", NULL, RNA_def_view_layer},
     {"rna_linestyle.c", NULL, RNA_def_linestyle},

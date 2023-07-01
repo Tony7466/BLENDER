@@ -130,7 +130,7 @@ using blender::Vector;
 /** \name Local Enum Declarations
  * \{ */
 
-/* This is an exact copy of the define in `rna_light.c`
+/* This is an exact copy of the define in `rna_light.cc`
  * kept here because of linking order.
  * Icons are only defined here. */
 
