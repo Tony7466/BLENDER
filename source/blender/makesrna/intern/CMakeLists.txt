@@ -24,7 +24,7 @@ set(DEFSRC
   rna_boid.cc
   rna_brush.cc
   rna_cachefile.cc
-  rna_camera.c
+  rna_camera.cc
   rna_cloth.c
   rna_collection.c
   rna_color.cc
