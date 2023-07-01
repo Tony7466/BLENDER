@@ -15,7 +15,7 @@ endif()
 # files rna_access.cc rna_define.c makesrna.c intentionally excluded.
 set(DEFSRC
   rna_ID.c
-  rna_action.c
+  rna_action.cc
   rna_animation.c
   rna_animviz.c
   rna_armature.cc
