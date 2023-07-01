@@ -40,7 +40,7 @@ set(DEFSRC
   rna_gpencil_legacy.cc
   rna_gpencil_legacy_modifier.cc
   rna_image.cc
-  rna_key.c
+  rna_key.cc
   rna_lattice.cc
   rna_layer.c
   rna_light.c
