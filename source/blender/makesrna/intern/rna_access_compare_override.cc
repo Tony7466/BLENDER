@@ -245,11 +245,10 @@ bool RNA_property_copy(
     return false;
   }
 
-  IDOverrideLibraryPropertyOperation opop = {
-      .operation = LIBOVERRIDE_OP_REPLACE,
-      .subitem_reference_index = index,
-      .subitem_local_index = index,
-  };
+  IDOverrideLibraryPropertyOperation opop{};
+  opop.operation = LIBOVERRIDE_OP_REPLACE;
+  opop.subitem_reference_index = index;
+  opop.subitem_local_index = index;
   return rna_property_override_operation_apply(
       bmain, ptr, fromptr, nullptr, prop_dst, prop_src, nullptr, nullptr, nullptr, nullptr, &opop);
 }
@@ -836,11 +835,10 @@ bool RNA_struct_override_matches(Main *bmain,
              * here, since this code may be called from non-main thread (modifying data through RNA
              * is not thread safe). */
             if (do_restore) {
-              IDOverrideLibraryPropertyOperation opop_tmp = {
-                  .operation = LIBOVERRIDE_OP_REPLACE,
-                  .subitem_reference_index = -1,
-                  .subitem_local_index = -1,
-              };
+              IDOverrideLibraryPropertyOperation opop_tmp{};
+              opop_tmp.operation = LIBOVERRIDE_OP_REPLACE;
+              opop_tmp.subitem_reference_index = -1;
+              opop_tmp.subitem_local_index = -1;
               rna_property_override_operation_apply(bmain,
                                                     ptr_local,
                                                     ptr_reference,

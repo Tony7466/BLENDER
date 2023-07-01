@@ -851,10 +851,9 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
   }
 
   /* check if the area supports widgets */
-  const struct wmGizmoMapType_Params wmap_params = {
-      .spaceid = dummy_wgt.gzmap_params.spaceid,
-      .regionid = dummy_wgt.gzmap_params.regionid,
-  };
+  wmGizmoMapType_Params wmap_params{};
+  wmap_params.spaceid = dummy_wgt.gzmap_params.spaceid;
+  wmap_params.regionid = dummy_wgt.gzmap_params.regionid;
 
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&wmap_params);
   if (gzmap_type == nullptr) {
