@@ -4563,7 +4563,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_collection.cc", NULL, RNA_def_collections},
     {"rna_color.cc", NULL, RNA_def_color},
     {"rna_constraint.cc", NULL, RNA_def_constraint},
-    {"rna_context.c", NULL, RNA_def_context},
+    {"rna_context.cc", NULL, RNA_def_context},
     {"rna_curve.cc", "rna_curve_api.cc", RNA_def_curve},
     {"rna_dynamicpaint.c", NULL, RNA_def_dynamic_paint},
     {"rna_fcurve.c", "rna_fcurve_api.c", RNA_def_fcurve},

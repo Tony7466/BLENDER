@@ -45,7 +45,7 @@ const EnumPropertyItem rna_enum_context_mode_items[] = {
     {CTX_MODE_WEIGHT_GPENCIL, "WEIGHT_GPENCIL", 0, "Grease Pencil Weight Paint", ""},
     {CTX_MODE_VERTEX_GPENCIL, "VERTEX_GPENCIL", 0, "Grease Pencil Vertex Paint", ""},
     {CTX_MODE_SCULPT_CURVES, "SCULPT_CURVES", 0, "Curves Sculpt", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 #ifdef RNA_RUNTIME
@@ -124,7 +124,7 @@ static PointerRNA rna_Context_gizmo_group_get(PointerRNA *ptr)
 {
   bContext *C = (bContext *)ptr->data;
   PointerRNA newptr;
-  RNA_pointer_create(NULL, &RNA_GizmoGroup, CTX_wm_gizmo_group(C), &newptr);
+  RNA_pointer_create(nullptr, &RNA_GizmoGroup, CTX_wm_gizmo_group(C), &newptr);
   return newptr;
 }
 
@@ -140,7 +140,7 @@ static PointerRNA rna_Context_asset_file_handle_get(PointerRNA *ptr)
   PointerRNA newptr;
   /* Have to cast away const, but the file entry API doesn't allow modifications anyway. */
   RNA_pointer_create(
-      NULL, &RNA_FileSelectEntry, (struct FileDirEntry *)asset_handle.file_data, &newptr);
+      nullptr, &RNA_FileSelectEntry, (struct FileDirEntry *)asset_handle.file_data, &newptr);
   return newptr;
 }
 
@@ -200,10 +200,10 @@ static PointerRNA rna_Context_tool_settings_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ToolSettings, CTX_data_tool_settings(C));
 }
 
-static PointerRNA rna_Context_preferences_get(PointerRNA *UNUSED(ptr))
+static PointerRNA rna_Context_preferences_get(PointerRNA * /*ptr*/)
 {
   PointerRNA newptr;
-  RNA_pointer_create(NULL, &RNA_Preferences, &U, &newptr);
+  RNA_pointer_create(nullptr, &RNA_Preferences, &U, &newptr);
   return newptr;
 }
 
@@ -241,7 +241,7 @@ void RNA_def_context(BlenderRNA *brna)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  srna = RNA_def_struct(brna, "Context", NULL);
+  srna = RNA_def_struct(brna, "Context", nullptr);
   RNA_def_struct_ui_text(srna, "Context", "Current windowmanager and data context");
   RNA_def_struct_sdna(srna, "bContext");
 
@@ -249,54 +249,54 @@ void RNA_def_context(BlenderRNA *brna)
   prop = RNA_def_property(srna, "window_manager", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "WindowManager");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_manager_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_manager_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "window", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Window");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_window_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_window_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "workspace", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "WorkSpace");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_workspace_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_workspace_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "screen", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Screen");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_screen_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_screen_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "area", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Area");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_area_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_area_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "space_data", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Space");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_space_data_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_space_data_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "region", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Region");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_region_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_region_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "region_data", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "RegionView3D");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_region_data_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_region_data_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "gizmo_group", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "GizmoGroup");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_gizmo_group_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_gizmo_group_get", nullptr, nullptr, nullptr);
 
   /* TODO can't expose AssetHandle, since there is no permanent storage to it (so we can't
    * return a pointer). Instead provide the FileDirEntry pointer it wraps. */
   prop = RNA_def_property(srna, "asset_file_handle", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "FileSelectEntry");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_asset_file_handle_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_asset_file_handle_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "",
                            "The file of an active asset. Avoid using this, it will be replaced by "
@@ -306,46 +306,46 @@ void RNA_def_context(BlenderRNA *brna)
   prop = RNA_def_property(srna, "blend_data", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "BlendData");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_main_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_main_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "scene", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Scene");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_scene_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_scene_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "view_layer", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "ViewLayer");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_view_layer_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_view_layer_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "engine", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_string_funcs(prop, "rna_Context_engine_get", "rna_Context_engine_length", NULL);
+  RNA_def_property_string_funcs(prop, "rna_Context_engine_get", "rna_Context_engine_length", nullptr);
 
   prop = RNA_def_property(srna, "collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Collection");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_collection_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_collection_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "layer_collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "LayerCollection");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_layer_collection_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_layer_collection_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "tool_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "ToolSettings");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_tool_settings_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_tool_settings_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "preferences", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Preferences");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_preferences_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Context_preferences_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_context_mode_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_enum_funcs(prop, "rna_Context_mode_get", NULL, NULL);
+  RNA_def_property_enum_funcs(prop, "rna_Context_mode_get", nullptr, nullptr);
 
   func = RNA_def_function(srna, "evaluated_depsgraph_get", "rna_Context_evaluated_depsgraph_get");
   RNA_def_function_ui_description(
