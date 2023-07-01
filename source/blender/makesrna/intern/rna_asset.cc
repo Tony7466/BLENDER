@@ -33,7 +33,7 @@
 
 #  include "RNA_access.h"
 
-static char *rna_AssetMetaData_path(const PointerRNA *UNUSED(ptr))
+static char *rna_AssetMetaData_path(const PointerRNA * /*ptr*/)
 {
   return BLI_strdup("asset_data");
 }
@@ -56,7 +56,7 @@ static bool rna_AssetMetaData_editable_from_owner_id(const ID *owner_id,
 
 int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   return rna_AssetMetaData_editable_from_owner_id(ptr->owner_id, asset_data, r_info) ?
              PROP_EDITABLE :
@@ -65,7 +65,7 @@ int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info)
 
 static char *rna_AssetTag_path(const PointerRNA *ptr)
 {
-  const AssetTag *asset_tag = ptr->data;
+  const AssetTag *asset_tag = static_cast<const AssetTag*>(ptr->data);
   char asset_tag_name_esc[sizeof(asset_tag->name) * 2];
   BLI_str_escape(asset_tag_name_esc, asset_tag->name, sizeof(asset_tag_name_esc));
   return BLI_sprintfN("asset_data.tags[\"%s\"]", asset_tag_name_esc);
@@ -73,7 +73,7 @@ static char *rna_AssetTag_path(const PointerRNA *ptr)
 
 static int rna_AssetTag_editable(PointerRNA *ptr, const char **r_info)
 {
-  AssetTag *asset_tag = ptr->data;
+  AssetTag *asset_tag = static_cast<AssetTag*>(ptr->data);
   ID *owner_id = ptr->owner_id;
   if (owner_id && owner_id->asset_data) {
     BLI_assert_msg(BLI_findindex(&owner_id->asset_data->tags, asset_tag) != -1,
@@ -89,13 +89,13 @@ static int rna_AssetTag_editable(PointerRNA *ptr, const char **r_info)
 static AssetTag *rna_AssetMetaData_tag_new(
     ID *id, AssetMetaData *asset_data, ReportList *reports, const char *name, bool skip_if_exists)
 {
-  const char *disabled_info = NULL;
+  const char *disabled_info = nullptr;
   if (!rna_AssetMetaData_editable_from_owner_id(id, asset_data, &disabled_info)) {
     BKE_report(reports, RPT_WARNING, disabled_info);
-    return NULL;
+    return nullptr;
   }
 
-  AssetTag *tag = NULL;
+  AssetTag *tag = nullptr;
 
   if (skip_if_exists) {
     struct AssetTagEnsureResult result = BKE_asset_metadata_tag_ensure(asset_data, name);
@@ -119,13 +119,13 @@ static void rna_AssetMetaData_tag_remove(ID *id,
                                          ReportList *reports,
                                          PointerRNA *tag_ptr)
 {
-  const char *disabled_info = NULL;
+  const char *disabled_info = nullptr;
   if (!rna_AssetMetaData_editable_from_owner_id(id, asset_data, &disabled_info)) {
     BKE_report(reports, RPT_WARNING, disabled_info);
     return;
   }
 
-  AssetTag *tag = tag_ptr->data;
+  AssetTag *tag = static_cast<AssetTag*>(tag_ptr->data);
   if (BLI_findindex(&asset_data->tags, tag) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Tag '%s' not found in given asset", tag->name);
     return;
@@ -137,13 +137,13 @@ static void rna_AssetMetaData_tag_remove(ID *id,
 
 static IDProperty **rna_AssetMetaData_idprops(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   return &asset_data->properties;
 }
 
 static void rna_AssetMetaData_author_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->author) {
     strcpy(value, asset_data->author);
@@ -155,13 +155,13 @@ static void rna_AssetMetaData_author_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_author_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   return asset_data->author ? strlen(asset_data->author) : 0;
 }
 
 static void rna_AssetMetaData_author_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->author) {
     MEM_freeN(asset_data->author);
@@ -171,13 +171,13 @@ static void rna_AssetMetaData_author_set(PointerRNA *ptr, const char *value)
     asset_data->author = BLI_strdup(value);
   }
   else {
-    asset_data->author = NULL;
+    asset_data->author = nullptr;
   }
 }
 
 static void rna_AssetMetaData_description_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->description) {
     strcpy(value, asset_data->description);
@@ -189,13 +189,13 @@ static void rna_AssetMetaData_description_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_description_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   return asset_data->description ? strlen(asset_data->description) : 0;
 }
 
 static void rna_AssetMetaData_description_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->description) {
     MEM_freeN(asset_data->description);
@@ -205,13 +205,13 @@ static void rna_AssetMetaData_description_set(PointerRNA *ptr, const char *value
     asset_data->description = BLI_strdup(value);
   }
   else {
-    asset_data->description = NULL;
+    asset_data->description = nullptr;
   }
 }
 
 static void rna_AssetMetaData_copyright_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->copyright) {
     strcpy(value, asset_data->copyright);
@@ -223,13 +223,13 @@ static void rna_AssetMetaData_copyright_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_copyright_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   return asset_data->copyright ? strlen(asset_data->copyright) : 0;
 }
 
 static void rna_AssetMetaData_copyright_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->copyright) {
     MEM_freeN(asset_data->copyright);
@@ -239,13 +239,13 @@ static void rna_AssetMetaData_copyright_set(PointerRNA *ptr, const char *value)
     asset_data->copyright = BLI_strdup(value);
   }
   else {
-    asset_data->copyright = NULL;
+    asset_data->copyright = nullptr;
   }
 }
 
 static void rna_AssetMetaData_license_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->license) {
     strcpy(value, asset_data->license);
@@ -257,13 +257,13 @@ static void rna_AssetMetaData_license_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_license_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   return asset_data->license ? strlen(asset_data->license) : 0;
 }
 
 static void rna_AssetMetaData_license_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
 
   if (asset_data->license) {
     MEM_freeN(asset_data->license);
@@ -273,32 +273,32 @@ static void rna_AssetMetaData_license_set(PointerRNA *ptr, const char *value)
     asset_data->license = BLI_strdup(value);
   }
   else {
-    asset_data->license = NULL;
+    asset_data->license = nullptr;
   }
 }
 
 static void rna_AssetMetaData_active_tag_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
-  const AssetMetaData *asset_data = ptr->data;
+  const AssetMetaData *asset_data = static_cast<const AssetMetaData*>(ptr->data);
   *min = *softmin = 0;
   *max = *softmax = MAX2(asset_data->tot_tags - 1, 0);
 }
 
 static void rna_AssetMetaData_catalog_id_get(PointerRNA *ptr, char *value)
 {
-  const AssetMetaData *asset_data = ptr->data;
+  const AssetMetaData *asset_data = static_cast<const AssetMetaData*>(ptr->data);
   BLI_uuid_format(value, asset_data->catalog_id);
 }
 
-static int rna_AssetMetaData_catalog_id_length(PointerRNA *UNUSED(ptr))
+static int rna_AssetMetaData_catalog_id_length(PointerRNA * /*ptr*/)
 {
   return UUID_STRING_SIZE - 1;
 }
 
 static void rna_AssetMetaData_catalog_id_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   bUUID new_uuid;
 
   if (value[0] == '\0') {
@@ -322,25 +322,25 @@ static void rna_AssetMetaData_catalog_id_set(PointerRNA *ptr, const char *value)
 void rna_AssetMetaData_catalog_id_update(struct bContext *C, struct PointerRNA *ptr)
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
-  if (sfile == NULL) {
+  if (sfile == nullptr) {
     /* Until there is a proper Asset Service available, it's only possible to get the asset library
      * from within the asset browser context. */
     return;
   }
 
   AssetLibrary *asset_library = ED_fileselect_active_asset_library_get(sfile);
-  if (asset_library == NULL) {
+  if (asset_library == nullptr) {
     /* The SpaceFile may not be an asset browser but a regular file browser. */
     return;
   }
 
-  AssetMetaData *asset_data = ptr->data;
+  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
   AS_asset_library_refresh_catalog_simplename(asset_library, asset_data);
 }
 
 static PointerRNA rna_AssetHandle_file_data_get(PointerRNA *ptr)
 {
-  AssetHandle *asset_handle = ptr->data;
+  AssetHandle *asset_handle = static_cast<AssetHandle*>(ptr->data);
   /* Have to cast away const, but the file entry API doesn't allow modifications anyway. */
   return rna_pointer_inherit_refine(
       ptr, &RNA_FileSelectEntry, (FileDirEntry *)asset_handle->file_data);
@@ -348,10 +348,10 @@ static PointerRNA rna_AssetHandle_file_data_get(PointerRNA *ptr)
 
 static void rna_AssetHandle_file_data_set(PointerRNA *ptr,
                                           PointerRNA value,
-                                          struct ReportList *UNUSED(reports))
+                                          struct ReportList * /*reports*/)
 {
-  AssetHandle *asset_handle = ptr->data;
-  asset_handle->file_data = value.data;
+  AssetHandle *asset_handle = static_cast<AssetHandle*>(ptr->data);
+  asset_handle->file_data = static_cast<const FileDirEntry*>(value.data);
 }
 
 static void rna_AssetHandle_get_full_library_path(
@@ -365,14 +365,14 @@ static void rna_AssetHandle_get_full_library_path(
 
 static PointerRNA rna_AssetHandle_local_id_get(PointerRNA *ptr)
 {
-  const AssetHandle *asset = ptr->data;
+  const AssetHandle *asset = static_cast<const AssetHandle*>(ptr->data);
   ID *id = ED_asset_handle_get_local_id(asset);
   return rna_pointer_inherit_refine(ptr, &RNA_ID, id);
 }
 
-const EnumPropertyItem *rna_asset_library_reference_itemf(bContext *UNUSED(C),
-                                                          PointerRNA *UNUSED(ptr),
-                                                          PropertyRNA *UNUSED(prop),
+const EnumPropertyItem *rna_asset_library_reference_itemf(bContext * /*C*/,
+                                                          PointerRNA * /*ptr*/,
+                                                          PropertyRNA * /*prop*/,
                                                           bool *r_free)
 {
   const EnumPropertyItem *items = ED_asset_library_reference_to_rna_enum_itemf(true);
@@ -391,7 +391,7 @@ static void rna_def_asset_tag(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "AssetTag", NULL);
+  srna = RNA_def_struct(brna, "AssetTag", nullptr);
   RNA_def_struct_path_func(srna, "rna_AssetTag_path");
   RNA_def_struct_ui_text(srna, "Asset Tag", "User defined tag (name token)");
 
@@ -410,7 +410,7 @@ static void rna_def_asset_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "AssetTags");
-  srna = RNA_def_struct(brna, "AssetTags", NULL);
+  srna = RNA_def_struct(brna, "AssetTags", nullptr);
   RNA_def_struct_sdna(srna, "AssetMetaData");
   RNA_def_struct_ui_text(srna, "Asset Tags", "Collection of custom asset tags");
 
@@ -418,8 +418,8 @@ static void rna_def_asset_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "new", "rna_AssetMetaData_tag_new");
   RNA_def_function_ui_description(func, "Add a new tag to this asset");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func,
                          "skip_if_exists",
                          false,
@@ -435,7 +435,7 @@ static void rna_def_asset_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
   /* tag to remove */
   parm = RNA_def_pointer(func, "tag", "AssetTag", "", "Removed tag");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
 static void rna_def_asset_data(BlenderRNA *brna)
@@ -443,7 +443,7 @@ static void rna_def_asset_data(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "AssetMetaData", NULL);
+  srna = RNA_def_struct(brna, "AssetMetaData", nullptr);
   RNA_def_struct_path_func(srna, "rna_AssetMetaData_path");
   RNA_def_struct_ui_text(srna, "Asset Data", "Additional data stored for an asset data-block");
   //  RNA_def_struct_ui_icon(srna, ICON_ASSET); /* TODO: Icon doesn't exist! */
@@ -502,7 +502,7 @@ static void rna_def_asset_data(BlenderRNA *brna)
   rna_def_asset_tags_api(brna, prop);
 
   prop = RNA_def_property(srna, "active_tag", PROP_INT, PROP_NONE);
-  RNA_def_property_int_funcs(prop, NULL, NULL, "rna_AssetMetaData_active_tag_range");
+  RNA_def_property_int_funcs(prop, nullptr, nullptr, "rna_AssetMetaData_active_tag_range");
   RNA_def_property_ui_text(prop, "Active Tag", "Index of the tag set for editing");
 
   prop = RNA_def_property(srna, "catalog_id", PROP_STRING, PROP_NONE);
@@ -535,9 +535,9 @@ static void rna_def_asset_handle_api(StructRNA *srna)
    * properly. `asset_file_handle` should go away too then. */
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "asset_file_handle", "FileSelectEntry", "", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  parm = RNA_def_string(func, "result", NULL, FILE_MAX_LIBEXTRA, "result", "");
-  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_string(func, "result", nullptr, FILE_MAX_LIBEXTRA, "result", "");
+  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
   RNA_def_function_output(func, parm);
 }
 
@@ -556,13 +556,13 @@ static void rna_def_asset_handle(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "FileSelectEntry");
   RNA_def_property_pointer_funcs(
-      prop, "rna_AssetHandle_file_data_get", "rna_AssetHandle_file_data_set", NULL, NULL);
+      prop, "rna_AssetHandle_file_data_get", "rna_AssetHandle_file_data_set", nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "File Entry", "TEMPORARY, DO NOT USE - File data used to refer to the asset");
 
   prop = RNA_def_property(srna, "local_id", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ID");
-  RNA_def_property_pointer_funcs(prop, "rna_AssetHandle_local_id_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_AssetHandle_local_id_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "",
                            "The local data-block this asset represents; only valid if that is a "
@@ -576,7 +576,7 @@ static void rna_def_asset_representation(BlenderRNA *brna)
 {
   StructRNA *srna;
 
-  srna = RNA_def_struct(brna, "AssetRepresentation", NULL);
+  srna = RNA_def_struct(brna, "AssetRepresentation", nullptr);
   RNA_def_struct_ui_text(srna,
                          "Asset Representation",
                          "Information about an entity that makes it possible for the asset system "
@@ -585,13 +585,13 @@ static void rna_def_asset_representation(BlenderRNA *brna)
 
 static void rna_def_asset_catalog_path(BlenderRNA *brna)
 {
-  StructRNA *srna = RNA_def_struct(brna, "AssetCatalogPath", NULL);
+  StructRNA *srna = RNA_def_struct(brna, "AssetCatalogPath", nullptr);
   RNA_def_struct_ui_text(srna, "Catalog Path", "");
 }
 
 static void rna_def_asset_library_reference(BlenderRNA *brna)
 {
-  StructRNA *srna = RNA_def_struct(brna, "AssetLibraryReference", NULL);
+  StructRNA *srna = RNA_def_struct(brna, "AssetLibraryReference", nullptr);
   RNA_def_struct_ui_text(
       srna, "Asset Library Reference", "Identifier to refer to the asset library");
 }

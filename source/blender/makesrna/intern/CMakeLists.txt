@@ -19,7 +19,7 @@ set(DEFSRC
   rna_animation.cc
   rna_animviz.cc
   rna_armature.cc
-  rna_asset.c
+  rna_asset.cc
   rna_attribute.c
   rna_boid.c
   rna_brush.c
