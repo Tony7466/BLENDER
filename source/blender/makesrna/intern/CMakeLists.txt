@@ -33,7 +33,7 @@ set(DEFSRC
   rna_curve.cc
   rna_curveprofile.cc
   rna_curves.cc
-  rna_depsgraph.c
+  rna_depsgraph.cc
   rna_dynamicpaint.c
   rna_fcurve.c
   rna_fluid.c

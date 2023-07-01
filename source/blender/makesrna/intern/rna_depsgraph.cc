@@ -58,38 +58,38 @@ typedef struct RNA_DepsgraphIterator {
 #  ifdef WITH_PYTHON
 void **rna_DepsgraphIterator_instance(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   return &di->py_instance;
 }
 #  endif
 
 /* Temporary hack for Cycles until it is changed to work with the C API directly. */
-DupliObject *rna_hack_DepsgraphObjectInstance_dupli_object_get(PointerRNA *ptr)
+extern "C" DupliObject *rna_hack_DepsgraphObjectInstance_dupli_object_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
   return deg_iter->dupli_object_current;
 }
 
 static PointerRNA rna_DepsgraphObjectInstance_object_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   return rna_pointer_inherit_refine(ptr, &RNA_Object, di->iter.current);
 }
 
 static bool rna_DepsgraphObjectInstance_is_instance_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  return (deg_iter->dupli_object_current != NULL);
+  return (deg_iter->dupli_object_current != nullptr);
 }
 
 static PointerRNA rna_DepsgraphObjectInstance_instance_object_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  Object *instance_object = NULL;
-  if (deg_iter->dupli_object_current != NULL) {
+  Object *instance_object = nullptr;
+  if (deg_iter->dupli_object_current != nullptr) {
     instance_object = deg_iter->dupli_object_current->ob;
   }
   return rna_pointer_inherit_refine(ptr, &RNA_Object, instance_object);
@@ -97,26 +97,28 @@ static PointerRNA rna_DepsgraphObjectInstance_instance_object_get(PointerRNA *pt
 
 static bool rna_DepsgraphObjectInstance_show_self_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  int ob_visibility = BKE_object_visibility(di->iter.current, deg_iter->eval_mode);
+  int ob_visibility = BKE_object_visibility(static_cast<const Object *>(di->iter.current),
+                                            deg_iter->eval_mode);
   return (ob_visibility & OB_VISIBLE_SELF) != 0;
 }
 
 static bool rna_DepsgraphObjectInstance_show_particles_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  int ob_visibility = BKE_object_visibility(di->iter.current, deg_iter->eval_mode);
+  int ob_visibility = BKE_object_visibility(static_cast<const Object *>(di->iter.current),
+                                            deg_iter->eval_mode);
   return (ob_visibility & OB_VISIBLE_PARTICLES) != 0;
 }
 
 static PointerRNA rna_DepsgraphObjectInstance_parent_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  Object *dupli_parent = NULL;
-  if (deg_iter->dupli_object_current != NULL) {
+  Object *dupli_parent = nullptr;
+  if (deg_iter->dupli_object_current != nullptr) {
     dupli_parent = deg_iter->dupli_parent;
   }
   return rna_pointer_inherit_refine(ptr, &RNA_Object, dupli_parent);
@@ -124,10 +126,10 @@ static PointerRNA rna_DepsgraphObjectInstance_parent_get(PointerRNA *ptr)
 
 static PointerRNA rna_DepsgraphObjectInstance_particle_system_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  struct ParticleSystem *particle_system = NULL;
-  if (deg_iter->dupli_object_current != NULL) {
+  struct ParticleSystem *particle_system = nullptr;
+  if (deg_iter->dupli_object_current != nullptr) {
     particle_system = deg_iter->dupli_object_current->particle_system;
   }
   return rna_pointer_inherit_refine(ptr, &RNA_ParticleSystem, particle_system);
@@ -135,9 +137,9 @@ static PointerRNA rna_DepsgraphObjectInstance_particle_system_get(PointerRNA *pt
 
 static void rna_DepsgraphObjectInstance_persistent_id_get(PointerRNA *ptr, int *persistent_id)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  if (deg_iter->dupli_object_current != NULL) {
+  if (deg_iter->dupli_object_current != nullptr) {
     memcpy(persistent_id,
            deg_iter->dupli_object_current->persistent_id,
            sizeof(deg_iter->dupli_object_current->persistent_id));
@@ -149,9 +151,9 @@ static void rna_DepsgraphObjectInstance_persistent_id_get(PointerRNA *ptr, int *
 
 static int rna_DepsgraphObjectInstance_random_id_get(PointerRNA *ptr)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  if (deg_iter->dupli_object_current != NULL) {
+  if (deg_iter->dupli_object_current != nullptr) {
     return (int)deg_iter->dupli_object_current->random_id;
   }
   else {
@@ -161,9 +163,9 @@ static int rna_DepsgraphObjectInstance_random_id_get(PointerRNA *ptr)
 
 static void rna_DepsgraphObjectInstance_matrix_world_get(PointerRNA *ptr, float *mat)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  if (deg_iter->dupli_object_current != NULL) {
+  if (deg_iter->dupli_object_current != nullptr) {
     copy_m4_m4((float(*)[4])mat, deg_iter->dupli_object_current->mat);
   }
   else {
@@ -176,9 +178,9 @@ static void rna_DepsgraphObjectInstance_matrix_world_get(PointerRNA *ptr, float 
 
 static void rna_DepsgraphObjectInstance_orco_get(PointerRNA *ptr, float *orco)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  if (deg_iter->dupli_object_current != NULL) {
+  if (deg_iter->dupli_object_current != nullptr) {
     copy_v3_v3(orco, deg_iter->dupli_object_current->orco);
   }
   else {
@@ -188,9 +190,9 @@ static void rna_DepsgraphObjectInstance_orco_get(PointerRNA *ptr, float *orco)
 
 static void rna_DepsgraphObjectInstance_uv_get(PointerRNA *ptr, float *uv)
 {
-  RNA_DepsgraphIterator *di = ptr->data;
+  RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  if (deg_iter->dupli_object_current != NULL) {
+  if (deg_iter->dupli_object_current != nullptr) {
     copy_v2_v2(uv, deg_iter->dupli_object_current->uv);
   }
   else {
@@ -202,7 +204,7 @@ static void rna_DepsgraphObjectInstance_uv_get(PointerRNA *ptr, float *uv)
 
 static int rna_Depsgraph_mode_get(PointerRNA *ptr)
 {
-  Depsgraph *depsgraph = ptr->data;
+  Depsgraph *depsgraph = static_cast<Depsgraph *>(ptr->data);
   return DEG_get_mode(depsgraph);
 }
 
@@ -215,7 +217,7 @@ static PointerRNA rna_DepsgraphUpdate_id_get(PointerRNA *ptr)
 
 static bool rna_DepsgraphUpdate_is_updated_transform_get(PointerRNA *ptr)
 {
-  ID *id = ptr->data;
+  ID *id = static_cast<ID *>(ptr->data);
   return ((id->recalc & ID_RECALC_TRANSFORM) != 0);
 }
 
@@ -223,13 +225,13 @@ static bool rna_DepsgraphUpdate_is_updated_shading_get(PointerRNA *ptr)
 {
   /* Assume any animated parameters can affect shading, we don't have fine
    * grained enough updates to distinguish this. */
-  ID *id = ptr->data;
+  ID *id = static_cast<ID *>(ptr->data);
   return ((id->recalc & (ID_RECALC_SHADING | ID_RECALC_ANIMATION)) != 0);
 }
 
 static bool rna_DepsgraphUpdate_is_updated_geometry_get(PointerRNA *ptr)
 {
-  ID *id = ptr->data;
+  ID *id = static_cast<ID *>(ptr->data);
   if (id->recalc & ID_RECALC_GEOMETRY) {
     return true;
   }
@@ -237,8 +239,8 @@ static bool rna_DepsgraphUpdate_is_updated_geometry_get(PointerRNA *ptr)
     return false;
   }
   Object *object = (Object *)id;
-  ID *data = object->data;
-  if (data == NULL) {
+  ID *data = static_cast<ID *>(object->data);
+  if (data == nullptr) {
     return false;
   }
   return ((data->recalc & ID_RECALC_ALL) != 0);
@@ -249,7 +251,7 @@ static bool rna_DepsgraphUpdate_is_updated_geometry_get(PointerRNA *ptr)
 static void rna_Depsgraph_debug_relations_graphviz(Depsgraph *depsgraph, const char *filepath)
 {
   FILE *f = fopen(filepath, "w");
-  if (f == NULL) {
+  if (f == nullptr) {
     return;
   }
   DEG_debug_relations_graphviz(depsgraph, f, "Depsgraph");
@@ -261,7 +263,7 @@ static void rna_Depsgraph_debug_stats_gnuplot(Depsgraph *depsgraph,
                                               const char *output_filepath)
 {
   FILE *f = fopen(filepath, "w");
-  if (f == NULL) {
+  if (f == nullptr) {
     return;
   }
   DEG_debug_stats_gnuplot(depsgraph, f, "Timing Statistics", output_filepath);
@@ -309,8 +311,10 @@ static void rna_Depsgraph_update(Depsgraph *depsgraph, Main *bmain, ReportList *
 static void rna_Depsgraph_objects_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   iter->internal.custom = MEM_callocN(sizeof(BLI_Iterator), __func__);
-  DEGObjectIterData *data = MEM_callocN(sizeof(DEGObjectIterData), __func__);
-  DEGObjectIterSettings *deg_iter_settings = MEM_callocN(sizeof(DEGObjectIterSettings), __func__);
+  DEGObjectIterData *data = static_cast<DEGObjectIterData *>(
+      MEM_callocN(sizeof(DEGObjectIterData), __func__));
+  DEGObjectIterSettings *deg_iter_settings = static_cast<DEGObjectIterSettings *>(
+      MEM_callocN(sizeof(DEGObjectIterSettings), __func__));
   deg_iter_settings->depsgraph = (Depsgraph *)ptr->data;
   deg_iter_settings->flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
@@ -320,20 +324,20 @@ static void rna_Depsgraph_objects_begin(CollectionPropertyIterator *iter, Pointe
   data->flag = deg_iter_settings->flags;
 
   ((BLI_Iterator *)iter->internal.custom)->valid = true;
-  DEG_iterator_objects_begin(iter->internal.custom, data);
+  DEG_iterator_objects_begin(static_cast<BLI_Iterator *>(iter->internal.custom), data);
   iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
 }
 
 static void rna_Depsgraph_objects_next(CollectionPropertyIterator *iter)
 {
-  DEG_iterator_objects_next(iter->internal.custom);
+  DEG_iterator_objects_next(static_cast<BLI_Iterator *>(iter->internal.custom));
   iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
 }
 
 static void rna_Depsgraph_objects_end(CollectionPropertyIterator *iter)
 {
   DEGObjectIterData *data = (DEGObjectIterData *)((BLI_Iterator *)iter->internal.custom)->data;
-  DEG_iterator_objects_end(iter->internal.custom);
+  DEG_iterator_objects_end(static_cast<BLI_Iterator *>(iter->internal.custom));
   MEM_freeN(data->settings);
   MEM_freeN(((BLI_Iterator *)iter->internal.custom)->data);
   MEM_freeN(iter->internal.custom);
@@ -341,7 +345,7 @@ static void rna_Depsgraph_objects_end(CollectionPropertyIterator *iter)
 
 static PointerRNA rna_Depsgraph_objects_get(CollectionPropertyIterator *iter)
 {
-  Object *ob = ((BLI_Iterator *)iter->internal.custom)->current;
+  Object *ob = static_cast<Object *>(((BLI_Iterator *)iter->internal.custom)->current);
   return rna_pointer_inherit_refine(&iter->parent, &RNA_Object, ob);
 }
 
@@ -363,9 +367,11 @@ typedef struct RNA_Depsgraph_Instances_Iterator {
 
 static void rna_Depsgraph_object_instances_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
-  RNA_Depsgraph_Instances_Iterator *di_it = iter->internal.custom = MEM_callocN(sizeof(*di_it),
-                                                                                __func__);
-  DEGObjectIterSettings *deg_iter_settings = MEM_callocN(sizeof(DEGObjectIterSettings), __func__);
+  RNA_Depsgraph_Instances_Iterator *di_it = static_cast<RNA_Depsgraph_Instances_Iterator *>(
+      MEM_callocN(sizeof(*di_it), __func__));
+  iter->internal.custom = di_it;
+  DEGObjectIterSettings *deg_iter_settings = static_cast<DEGObjectIterSettings *>(
+      MEM_callocN(sizeof(DEGObjectIterSettings), __func__));
   deg_iter_settings->depsgraph = (Depsgraph *)ptr->data;
   deg_iter_settings->flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
                              DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
@@ -388,7 +394,9 @@ static void rna_Depsgraph_object_instances_next(CollectionPropertyIterator *iter
 
   /* We need to copy current iterator status to next one being worked on. */
   di_it->iterators[(di_it->counter + 1) % 2].iter = di_it->iterators[di_it->counter % 2].iter;
-  di_it->deg_data[(di_it->counter + 1) % 2] = di_it->deg_data[di_it->counter % 2];
+  memcpy(static_cast<void *>(&di_it->deg_data[(di_it->counter + 1) % 2]),
+         static_cast<void *>(&di_it->deg_data[di_it->counter % 2]),
+         sizeof(DEGObjectIterData));
   di_it->counter++;
 
   di_it->iterators[di_it->counter % 2].iter.data = &di_it->deg_data[di_it->counter % 2];
@@ -398,7 +406,7 @@ static void rna_Depsgraph_object_instances_next(CollectionPropertyIterator *iter
    * so we have same issue as with the iterator itself:
    * we need to keep a local copy, which memory remains valid a bit longer,
    * for Python accesses to work. */
-  if (di_it->deg_data[di_it->counter % 2].dupli_object_current != NULL) {
+  if (di_it->deg_data[di_it->counter % 2].dupli_object_current != nullptr) {
     di_it->dupli_object_current[di_it->counter % 2] =
         *di_it->deg_data[di_it->counter % 2].dupli_object_current;
     di_it->deg_data[di_it->counter % 2].dupli_object_current =
@@ -443,50 +451,50 @@ static PointerRNA rna_Depsgraph_object_instances_get(CollectionPropertyIterator 
 static void rna_Depsgraph_ids_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   iter->internal.custom = MEM_callocN(sizeof(BLI_Iterator), __func__);
-  DEGIDIterData *data = MEM_callocN(sizeof(DEGIDIterData), __func__);
+  DEGIDIterData *data = static_cast<DEGIDIterData *>(MEM_callocN(sizeof(DEGIDIterData), __func__));
 
   data->graph = (Depsgraph *)ptr->data;
 
   ((BLI_Iterator *)iter->internal.custom)->valid = true;
-  DEG_iterator_ids_begin(iter->internal.custom, data);
+  DEG_iterator_ids_begin(static_cast<BLI_Iterator *>(iter->internal.custom), data);
   iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
 }
 
 static void rna_Depsgraph_ids_next(CollectionPropertyIterator *iter)
 {
-  DEG_iterator_ids_next(iter->internal.custom);
+  DEG_iterator_ids_next(static_cast<BLI_Iterator *>(iter->internal.custom));
   iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
 }
 
 static void rna_Depsgraph_ids_end(CollectionPropertyIterator *iter)
 {
-  DEG_iterator_ids_end(iter->internal.custom);
+  DEG_iterator_ids_end(static_cast<BLI_Iterator *>(iter->internal.custom));
   MEM_freeN(((BLI_Iterator *)iter->internal.custom)->data);
   MEM_freeN(iter->internal.custom);
 }
 
 static PointerRNA rna_Depsgraph_ids_get(CollectionPropertyIterator *iter)
 {
-  ID *id = ((BLI_Iterator *)iter->internal.custom)->current;
+  ID *id = static_cast<ID *>(((BLI_Iterator *)iter->internal.custom)->current);
   return rna_pointer_inherit_refine(&iter->parent, &RNA_ID, id);
 }
 
 static void rna_Depsgraph_updates_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   iter->internal.custom = MEM_callocN(sizeof(BLI_Iterator), __func__);
-  DEGIDIterData *data = MEM_callocN(sizeof(DEGIDIterData), __func__);
+  DEGIDIterData *data = static_cast<DEGIDIterData *>(MEM_callocN(sizeof(DEGIDIterData), __func__));
 
   data->graph = (Depsgraph *)ptr->data;
   data->only_updated = true;
 
   ((BLI_Iterator *)iter->internal.custom)->valid = true;
-  DEG_iterator_ids_begin(iter->internal.custom, data);
+  DEG_iterator_ids_begin(static_cast<BLI_Iterator *>(iter->internal.custom), data);
   iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
 }
 
 static PointerRNA rna_Depsgraph_updates_get(CollectionPropertyIterator *iter)
 {
-  ID *id = ((BLI_Iterator *)iter->internal.custom)->current;
+  ID *id = static_cast<ID *>(((BLI_Iterator *)iter->internal.custom)->current);
   return rna_pointer_inherit_refine(&iter->parent, &RNA_DepsgraphUpdate, id);
 }
 
@@ -545,39 +553,40 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "DepsgraphObjectInstance", NULL);
+  srna = RNA_def_struct(brna, "DepsgraphObjectInstance", nullptr);
   RNA_def_struct_ui_text(srna,
                          "Dependency Graph Object Instance",
                          "Extended information about dependency graph object iterator "
                          "(Warning: All data here is 'evaluated' one, not original .blend IDs)");
 
 #  ifdef WITH_PYTHON
-  RNA_def_struct_register_funcs(srna, NULL, NULL, "rna_DepsgraphIterator_instance");
+  RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_DepsgraphIterator_instance");
 #  endif
 
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");
   RNA_def_property_ui_text(prop, "Object", "Evaluated object the iterator points to");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, "rna_DepsgraphObjectInstance_object_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_DepsgraphObjectInstance_object_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "show_self", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Show Self", "The object geometry itself should be visible in the render");
-  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_show_self_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_show_self_get", nullptr);
 
   prop = RNA_def_property(srna, "show_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Show Particles", "Particles part of the object should be visible in the render");
-  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_show_particles_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_show_particles_get", nullptr);
 
   prop = RNA_def_property(srna, "is_instance", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Is Instance", "Denotes if the object is generated by another object");
-  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_is_instance_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_is_instance_get", nullptr);
 
   prop = RNA_def_property(srna, "instance_object", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");
@@ -585,14 +594,15 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
       prop, "Instance Object", "Evaluated object which is being instanced by this iterator");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_pointer_funcs(
-      prop, "rna_DepsgraphObjectInstance_instance_object_get", NULL, NULL, NULL);
+      prop, "rna_DepsgraphObjectInstance_instance_object_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");
   RNA_def_property_ui_text(
       prop, "Parent", "If the object is an instance, the parent object that generated it");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, "rna_DepsgraphObjectInstance_parent_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_DepsgraphObjectInstance_parent_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "particle_system", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ParticleSystem");
@@ -600,7 +610,7 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Particle System", "Evaluated particle system that this object was instanced from");
   RNA_def_property_pointer_funcs(
-      prop, "rna_DepsgraphObjectInstance_particle_system_get", NULL, NULL, NULL);
+      prop, "rna_DepsgraphObjectInstance_particle_system_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "persistent_id", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(
@@ -609,32 +619,34 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
       "Persistent identifier for inter-frame matching of objects with motion blur");
   RNA_def_property_array(prop, MAX_DUPLI_RECUR);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_def_property_int_funcs(prop, "rna_DepsgraphObjectInstance_persistent_id_get", NULL, NULL);
+  RNA_def_property_int_funcs(
+      prop, "rna_DepsgraphObjectInstance_persistent_id_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "random_id", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Instance Random ID", "Random id for this instance, typically for randomized shading");
-  RNA_def_property_int_funcs(prop, "rna_DepsgraphObjectInstance_random_id_get", NULL, NULL);
+  RNA_def_property_int_funcs(prop, "rna_DepsgraphObjectInstance_random_id_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "matrix_world", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_ui_text(prop, "Generated Matrix", "Generated transform matrix in world space");
-  RNA_def_property_float_funcs(prop, "rna_DepsgraphObjectInstance_matrix_world_get", NULL, NULL);
+  RNA_def_property_float_funcs(
+      prop, "rna_DepsgraphObjectInstance_matrix_world_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "orco", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(
       prop, "Generated Coordinates", "Generated coordinates in parent object space");
-  RNA_def_property_float_funcs(prop, "rna_DepsgraphObjectInstance_orco_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_DepsgraphObjectInstance_orco_get", nullptr, nullptr);
 
   prop = RNA_def_property(srna, "uv", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "UV Coordinates", "UV coordinates in parent object space");
   RNA_def_property_array(prop, 2);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_DepsgraphObjectInstance_uv_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_DepsgraphObjectInstance_uv_get", nullptr, nullptr);
 }
 
 static void rna_def_depsgraph_update(BlenderRNA *brna)
@@ -642,14 +654,14 @@ static void rna_def_depsgraph_update(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "DepsgraphUpdate", NULL);
+  srna = RNA_def_struct(brna, "DepsgraphUpdate", nullptr);
   RNA_def_struct_ui_text(srna, "Dependency Graph Update", "Information about ID that was updated");
 
   prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ID");
   RNA_def_property_ui_text(prop, "ID", "Updated data-block");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, "rna_DepsgraphUpdate_id_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_DepsgraphUpdate_id_get", nullptr, nullptr, nullptr);
 
   /* Use term 'is_updated' instead of 'is_dirty' here because this is a signal
    * that users of the depsgraph may want to update their data (render engines for eg). */
@@ -657,17 +669,17 @@ static void rna_def_depsgraph_update(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_updated_transform", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Transform", "Object transformation is updated");
-  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_transform_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_transform_get", nullptr);
 
   prop = RNA_def_property(srna, "is_updated_geometry", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Geometry", "Object geometry is updated");
-  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_geometry_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_geometry_get", nullptr);
 
   prop = RNA_def_property(srna, "is_updated_shading", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Shading", "Object shading is updated");
-  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_shading_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_shading_get", nullptr);
 }
 
 static void rna_def_depsgraph(BlenderRNA *brna)
@@ -680,43 +692,44 @@ static void rna_def_depsgraph(BlenderRNA *brna)
   static const EnumPropertyItem enum_depsgraph_mode_items[] = {
       {DAG_EVAL_VIEWPORT, "VIEWPORT", 0, "Viewport", "Viewport non-rendered mode"},
       {DAG_EVAL_RENDER, "RENDER", 0, "Render", "Render"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
-  srna = RNA_def_struct(brna, "Depsgraph", NULL);
+  srna = RNA_def_struct(brna, "Depsgraph", nullptr);
   RNA_def_struct_ui_text(srna, "Dependency Graph", "");
 
   prop = RNA_def_enum(srna, "mode", enum_depsgraph_mode_items, 0, "Mode", "Evaluation mode");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_enum_funcs(prop, "rna_Depsgraph_mode_get", NULL, NULL);
+  RNA_def_property_enum_funcs(prop, "rna_Depsgraph_mode_get", nullptr, nullptr);
 
   /* Debug helpers. */
 
   func = RNA_def_function(
       srna, "debug_relations_graphviz", "rna_Depsgraph_debug_relations_graphviz");
   parm = RNA_def_string_file_path(
-      func, "filepath", NULL, FILE_MAX, "File Name", "Output path for the graphviz debug file");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+      func, "filepath", nullptr, FILE_MAX, "File Name", "Output path for the graphviz debug file");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "debug_stats_gnuplot", "rna_Depsgraph_debug_stats_gnuplot");
   parm = RNA_def_string_file_path(
-      func, "filepath", NULL, FILE_MAX, "File Name", "Output path for the gnuplot debug file");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+      func, "filepath", nullptr, FILE_MAX, "File Name", "Output path for the gnuplot debug file");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_string_file_path(func,
                                   "output_filepath",
-                                  NULL,
+                                  nullptr,
                                   FILE_MAX,
                                   "Output File Name",
                                   "File name where gnuplot script will save the result");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "debug_tag_update", "rna_Depsgraph_debug_tag_update");
 
   func = RNA_def_function(srna, "debug_stats", "rna_Depsgraph_debug_stats");
   RNA_def_function_ui_description(func, "Report the number of elements in the Dependency Graph");
   /* weak!, no way to return dynamic string type */
-  parm = RNA_def_string(func, "result", NULL, STATS_MAX_SIZE, "result", "");
-  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0); /* needed for string return value */
+  parm = RNA_def_string(func, "result", nullptr, STATS_MAX_SIZE, "result", "");
+  RNA_def_parameter_flags(
+      parm, PROP_THICK_WRAP, ParameterFlag(0)); /* needed for string return value */
   RNA_def_function_output(func, parm);
 
   /* Updates. */
@@ -732,13 +745,13 @@ static void rna_def_depsgraph(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "scene", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Scene");
-  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_scene_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_scene_get", nullptr, nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Scene", "Original scene dependency graph is built for");
 
   prop = RNA_def_property(srna, "view_layer", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ViewLayer");
-  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_view_layer_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_view_layer_get", nullptr, nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "View Layer", "Original view layer dependency graph is built for");
@@ -748,13 +761,13 @@ static void rna_def_depsgraph(BlenderRNA *brna)
   func = RNA_def_function(srna, "id_eval_get", "rna_Depsgraph_id_eval_get");
   parm = RNA_def_pointer(
       func, "id", "ID", "", "Original ID to get evaluated complementary part for");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "id_eval", "ID", "", "Evaluated ID for the given original one");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "id_type_updated", "rna_Depsgraph_id_type_updated");
   parm = RNA_def_enum(func, "id_type", rna_enum_id_type_items, 0, "ID Type", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func,
                          "updated",
                          false,
@@ -764,13 +777,14 @@ static void rna_def_depsgraph(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "scene_eval", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Scene");
-  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_scene_eval_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_scene_eval_get", nullptr, nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Scene", "Scene at its evaluated state");
 
   prop = RNA_def_property(srna, "view_layer_eval", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ViewLayer");
-  RNA_def_property_pointer_funcs(prop, "rna_Depsgraph_view_layer_eval_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_Depsgraph_view_layer_eval_get", nullptr, nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "View Layer", "View layer at its evaluated state");
 
@@ -783,10 +797,10 @@ static void rna_def_depsgraph(BlenderRNA *brna)
                                     "rna_Depsgraph_ids_next",
                                     "rna_Depsgraph_ids_end",
                                     "rna_Depsgraph_ids_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "IDs", "All evaluated data-blocks");
 
   prop = RNA_def_property(srna, "objects", PROP_COLLECTION, PROP_NONE);
@@ -796,10 +810,10 @@ static void rna_def_depsgraph(BlenderRNA *brna)
                                     "rna_Depsgraph_objects_next",
                                     "rna_Depsgraph_objects_end",
                                     "rna_Depsgraph_objects_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Objects", "Evaluated objects in the dependency graph");
 
   prop = RNA_def_property(srna, "object_instances", PROP_COLLECTION, PROP_NONE);
@@ -809,10 +823,10 @@ static void rna_def_depsgraph(BlenderRNA *brna)
                                     "rna_Depsgraph_object_instances_next",
                                     "rna_Depsgraph_object_instances_end",
                                     "rna_Depsgraph_object_instances_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop,
                            "Object Instances",
                            "All object instances to display or render "
@@ -826,10 +840,10 @@ static void rna_def_depsgraph(BlenderRNA *brna)
                                     "rna_Depsgraph_ids_next",
                                     "rna_Depsgraph_ids_end",
                                     "rna_Depsgraph_updates_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Updates", "Updates to data-blocks");
 }
 
