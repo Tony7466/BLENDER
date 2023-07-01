@@ -4580,7 +4580,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_fluid.cc", NULL, RNA_def_fluid},
     {"rna_material.cc", "rna_material_api.cc", RNA_def_material},
     {"rna_mesh.cc", "rna_mesh_api.cc", RNA_def_mesh},
-    {"rna_meta.cc", "rna_meta_api.c", RNA_def_meta},
+    {"rna_meta.cc", "rna_meta_api.cc", RNA_def_meta},
     {"rna_modifier.cc", NULL, RNA_def_modifier},
     {"rna_gpencil_legacy_modifier.cc", NULL, RNA_def_greasepencil_modifier},
     {"rna_shader_fx.c", NULL, RNA_def_shader_fx},

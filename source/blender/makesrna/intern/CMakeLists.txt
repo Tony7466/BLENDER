@@ -110,7 +110,7 @@ set(APISRC
   rna_main_api.cc
   rna_material_api.cc
   rna_mesh_api.cc
-  rna_meta_api.c
+  rna_meta_api.cc
   rna_object_api.cc
   rna_pose_api.c
   rna_scene_api.cc
