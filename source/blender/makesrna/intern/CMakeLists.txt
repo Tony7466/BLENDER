@@ -59,7 +59,7 @@ set(DEFSRC
   rna_object_force.cc
   rna_packedfile.cc
   rna_palette.cc
-  rna_particle.c
+  rna_particle.cc
   rna_pointcloud.c
   rna_pose.cc
   rna_render.cc
