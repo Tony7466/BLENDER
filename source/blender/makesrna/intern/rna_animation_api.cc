@@ -29,7 +29,7 @@
 static void rna_KeyingSet_context_refresh(KeyingSet *ks, bContext *C, ReportList *reports)
 {
   /* TODO: enable access to providing a list of overrides (dsources)? */
-  const eModifyKey_Returns error = ANIM_validate_keyingset(C, NULL, ks);
+  const eModifyKey_Returns error = ANIM_validate_keyingset(C, nullptr, ks);
 
   if (error != 0) {
     switch (error) {
@@ -80,7 +80,7 @@ void RNA_api_animdata(StructRNA *srna)
                                   "Returns the input time unchanged if not tweaking.");
   parm = RNA_def_float(
       func, "frame", 0.0, MINAFRAME, MAXFRAME, "", "Input time", MINAFRAME, MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_boolean(func, "invert", false, "Invert", "Convert scene time to action time");
   parm = RNA_def_float(
       func, "result", 0.0, MINAFRAME, MAXFRAME, "", "Converted time", MINAFRAME, MAXFRAME);

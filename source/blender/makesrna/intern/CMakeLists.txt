@@ -100,7 +100,7 @@ endif()
 
 set(APISRC
   rna_action_api.cc
-  rna_animation_api.c
+  rna_animation_api.cc
   rna_armature_api.cc
   rna_camera_api.c
   rna_curve_api.cc
