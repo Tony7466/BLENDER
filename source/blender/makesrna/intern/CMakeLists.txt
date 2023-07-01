@@ -16,7 +16,7 @@ endif()
 set(DEFSRC
   rna_ID.c
   rna_action.cc
-  rna_animation.c
+  rna_animation.cc
   rna_animviz.c
   rna_armature.cc
   rna_asset.c
