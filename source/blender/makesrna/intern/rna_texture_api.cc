@@ -32,7 +32,7 @@ static void texture_evaluate(struct Tex *tex, float value[3], float r_color[4])
   TexResult texres = {0.0f};
 
   /* TODO(sergey): always use color management now. */
-  multitex_ext(tex, value, NULL, NULL, 1, &texres, 0, NULL, true, false);
+  multitex_ext(tex, value, nullptr, nullptr, 1, &texres, 0, nullptr, true, false);
 
   copy_v3_v3(r_color, texres.trgba);
   r_color[3] = texres.tin;
@@ -53,7 +53,7 @@ void RNA_api_texture(StructRNA *srna)
       func,
       "value",
       3,
-      NULL,
+      nullptr,
       -FLT_MAX,
       FLT_MAX,
       "The coordinates (x,y,z) of the texture, in case of a 3D texture, the z value is the slice "
@@ -61,22 +61,22 @@ void RNA_api_texture(StructRNA *srna)
       "",
       -1e4,
       1e4);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   /* return location and normal */
   parm = RNA_def_float_vector(
       func,
       "result",
       4,
-      NULL,
+      nullptr,
       -FLT_MAX,
       FLT_MAX,
       "The result of the texture where (x,y,z,w) are (red, green, blue, intensity). "
       "For grayscale textures, often intensity only will be used",
-      NULL,
+      nullptr,
       -1e4,
       1e4);
-  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
   RNA_def_function_output(func, parm);
 }
 
