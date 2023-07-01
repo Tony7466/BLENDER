@@ -36,7 +36,7 @@ set(DEFSRC
   rna_depsgraph.cc
   rna_dynamicpaint.cc
   rna_fcurve.cc
-  rna_fluid.c
+  rna_fluid.cc
   rna_gpencil_legacy.c
   rna_gpencil_legacy_modifier.c
   rna_image.cc

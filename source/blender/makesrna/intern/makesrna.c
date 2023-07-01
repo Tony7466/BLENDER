@@ -4577,7 +4577,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_layer.c", NULL, RNA_def_view_layer},
     {"rna_linestyle.c", NULL, RNA_def_linestyle},
     {"rna_main.c", "rna_main_api.c", RNA_def_main},
-    {"rna_fluid.c", NULL, RNA_def_fluid},
+    {"rna_fluid.cc", NULL, RNA_def_fluid},
     {"rna_material.cc", "rna_material_api.cc", RNA_def_material},
     {"rna_mesh.cc", "rna_mesh_api.cc", RNA_def_mesh},
     {"rna_meta.cc", "rna_meta_api.c", RNA_def_meta},
