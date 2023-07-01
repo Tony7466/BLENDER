@@ -64,7 +64,7 @@ static bActionGroup *rna_Action_groups_new(bAction *act, const char name[])
 
 static void rna_Action_groups_remove(bAction *act, ReportList *reports, PointerRNA *agrp_ptr)
 {
-  bActionGroup *agrp = static_cast<bActionGroup*>(agrp_ptr->data);
+  bActionGroup *agrp = static_cast<bActionGroup *>(agrp_ptr->data);
   FCurve *fcu, *fcn;
 
   /* try to remove the F-Curve from the action */
@@ -78,7 +78,7 @@ static void rna_Action_groups_remove(bAction *act, ReportList *reports, PointerR
   }
 
   /* Move every one of the group's F-Curves out into the Action again. */
-  for (fcu = static_cast<FCurve*>(agrp->channels.first); (fcu) && (fcu->grp == agrp); fcu = fcn) {
+  for (fcu = static_cast<FCurve *>(agrp->channels.first); (fcu) && (fcu->grp == agrp); fcu = fcn) {
     fcn = fcu->next;
 
     /* remove from group */
@@ -140,7 +140,7 @@ static FCurve *rna_Action_fcurve_find(bAction *act,
 
 static void rna_Action_fcurve_remove(bAction *act, ReportList *reports, PointerRNA *fcu_ptr)
 {
-  FCurve *fcu = static_cast<FCurve*>(fcu_ptr->data);
+  FCurve *fcu = static_cast<FCurve *>(fcu_ptr->data);
   if (fcu->grp) {
     if (BLI_findindex(&act->groups, fcu->grp) == -1) {
       BKE_reportf(reports,
@@ -178,7 +178,7 @@ static void rna_Action_fcurve_clear(bAction *act)
 
 static TimeMarker *rna_Action_pose_markers_new(bAction *act, const char name[])
 {
-  TimeMarker *marker = static_cast<TimeMarker*>(MEM_callocN(sizeof(TimeMarker), "TimeMarker"));
+  TimeMarker *marker = static_cast<TimeMarker *>(MEM_callocN(sizeof(TimeMarker), "TimeMarker"));
   marker->flag = SELECT;
   marker->frame = 1;
   STRNCPY_UTF8(marker->name, name);
@@ -190,7 +190,7 @@ static void rna_Action_pose_markers_remove(bAction *act,
                                            ReportList *reports,
                                            PointerRNA *marker_ptr)
 {
-  TimeMarker *marker = static_cast<TimeMarker*>(marker_ptr->data);
+  TimeMarker *marker = static_cast<TimeMarker *>(marker_ptr->data);
   if (!BLI_remlink_safe(&act->markers, marker)) {
     BKE_reportf(reports,
                 RPT_ERROR,
@@ -213,7 +213,7 @@ static PointerRNA rna_Action_active_pose_marker_get(PointerRNA *ptr)
 
 static void rna_Action_active_pose_marker_set(PointerRNA *ptr,
                                               PointerRNA value,
-                                              struct ReportList * /*reports*/)
+                                              ReportList * /*reports*/)
 {
   bAction *act = (bAction *)ptr->data;
   act->active_marker = BLI_findindex(&act->markers, value.data) + 1;

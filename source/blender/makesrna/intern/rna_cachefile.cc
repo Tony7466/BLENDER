@@ -75,9 +75,7 @@ static PointerRNA rna_CacheFile_active_layer_get(PointerRNA *ptr)
       ptr, &RNA_CacheFileLayer, BKE_cachefile_get_active_layer(cache_file));
 }
 
-static void rna_CacheFile_active_layer_set(PointerRNA *ptr,
-                                           PointerRNA value,
-                                           struct ReportList *reports)
+static void rna_CacheFile_active_layer_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
 {
   CacheFile *cache_file = (CacheFile *)ptr->owner_id;
   int index = BLI_findindex(&cache_file->layers, value.data);

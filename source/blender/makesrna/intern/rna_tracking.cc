@@ -151,9 +151,7 @@ static PointerRNA rna_tracking_active_track_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_MovieTrackingTrack, tracking_object->active_track);
 }
 
-static void rna_tracking_active_track_set(PointerRNA *ptr,
-                                          PointerRNA value,
-                                          struct ReportList *reports)
+static void rna_tracking_active_track_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
 {
   MovieClip *clip = (MovieClip *)ptr->owner_id;
   MovieTrackingTrack *track = (MovieTrackingTrack *)value.data;
@@ -183,7 +181,7 @@ static PointerRNA rna_tracking_active_plane_track_get(PointerRNA *ptr)
 
 static void rna_tracking_active_plane_track_set(PointerRNA *ptr,
                                                 PointerRNA value,
-                                                struct ReportList *reports)
+                                                ReportList *reports)
 {
   MovieClip *clip = (MovieClip *)ptr->owner_id;
   MovieTrackingPlaneTrack *plane_track = (MovieTrackingPlaneTrack *)value.data;
@@ -212,7 +210,7 @@ static PointerRNA rna_tracking_object_active_track_get(PointerRNA *ptr)
 
 static void rna_tracking_object_active_track_set(PointerRNA *ptr,
                                                  PointerRNA value,
-                                                 struct ReportList *reports)
+                                                 ReportList *reports)
 {
   MovieTrackingTrack *track = (MovieTrackingTrack *)value.data;
   MovieTrackingObject *tracking_object = (MovieTrackingObject *)ptr->data;
@@ -240,7 +238,7 @@ static PointerRNA rna_tracking_object_active_plane_track_get(PointerRNA *ptr)
 
 static void rna_tracking_object_active_plane_track_set(PointerRNA *ptr,
                                                        PointerRNA value,
-                                                       struct ReportList *reports)
+                                                       ReportList *reports)
 {
   MovieTrackingPlaneTrack *plane_track = (MovieTrackingPlaneTrack *)value.data;
   MovieTrackingObject *tracking_object = (MovieTrackingObject *)ptr->data;
@@ -553,7 +551,7 @@ static PointerRNA rna_tracking_active_object_get(PointerRNA *ptr)
 
 static void rna_tracking_active_object_set(PointerRNA *ptr,
                                            PointerRNA value,
-                                           struct ReportList * /*reports*/)
+                                           ReportList * /*reports*/)
 {
   MovieClip *clip = (MovieClip *)ptr->owner_id;
   MovieTrackingObject *tracking_object = (MovieTrackingObject *)value.data;

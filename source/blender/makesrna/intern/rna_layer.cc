@@ -61,7 +61,7 @@ static PointerRNA rna_ViewLayer_active_layer_collection_get(PointerRNA *ptr)
 
 static void rna_ViewLayer_active_layer_collection_set(PointerRNA *ptr,
                                                       PointerRNA value,
-                                                      struct ReportList * /*reports*/)
+                                                      ReportList * /*reports*/)
 {
   const Scene *scene = (const Scene *)ptr->owner_id;
   ViewLayer *view_layer = (ViewLayer *)ptr->data;
@@ -84,7 +84,7 @@ static PointerRNA rna_LayerObjects_active_object_get(PointerRNA *ptr)
 
 static void rna_LayerObjects_active_object_set(PointerRNA *ptr,
                                                PointerRNA value,
-                                               struct ReportList *reports)
+                                               ReportList *reports)
 {
   const Scene *scene = (Scene *)ptr->owner_id;
   ViewLayer *view_layer = (ViewLayer *)ptr->data;
@@ -202,9 +202,7 @@ static PointerRNA rna_ViewLayer_depsgraph_get(PointerRNA *ptr)
   return PointerRNA_NULL;
 }
 
-static void rna_ViewLayer_remove_aov(struct ViewLayer *view_layer,
-                                     ReportList *reports,
-                                     struct ViewLayerAOV *aov)
+static void rna_ViewLayer_remove_aov(ViewLayer *view_layer, ReportList *reports, ViewLayerAOV *aov)
 {
   if (BLI_findindex(&view_layer->aovs, aov) == -1) {
     BKE_reportf(reports, RPT_ERROR, "AOV not found in view-layer '%s'", view_layer->name);
@@ -268,7 +266,7 @@ static void rna_ObjectBase_hide_viewport_update(bContext *C, PointerRNA * /*ptr*
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
 }
 
-static void rna_LayerCollection_name_get(struct PointerRNA *ptr, char *value)
+static void rna_LayerCollection_name_get(PointerRNA *ptr, char *value)
 {
   ID *id = (ID *)((LayerCollection *)ptr->data)->collection;
   strcpy(value, id->name + 2);
@@ -389,9 +387,7 @@ void rna_LayerCollection_children_begin(CollectionPropertyIterator *iter, Pointe
   rna_iterator_listbase_begin(iter, &lc->layer_collections, nullptr);
 }
 
-static bool rna_LayerCollection_children_lookupint(struct PointerRNA *ptr,
-                                                   int key,
-                                                   struct PointerRNA *r_ptr)
+static bool rna_LayerCollection_children_lookupint(PointerRNA *ptr, int key, PointerRNA *r_ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   LayerCollection *lc = (LayerCollection *)ptr->data;
@@ -407,9 +403,9 @@ static bool rna_LayerCollection_children_lookupint(struct PointerRNA *ptr,
   return true;
 }
 
-static bool rna_LayerCollection_children_lookupstring(struct PointerRNA *ptr,
+static bool rna_LayerCollection_children_lookupstring(PointerRNA *ptr,
                                                       const char *key,
-                                                      struct PointerRNA *r_ptr)
+                                                      PointerRNA *r_ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   LayerCollection *lc = (LayerCollection *)ptr->data;

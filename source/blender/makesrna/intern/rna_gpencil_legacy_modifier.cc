@@ -285,7 +285,7 @@ static const EnumPropertyItem modifier_noise_random_mode_items[] = {
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
+static StructRNA *rna_GpencilModifier_refine(PointerRNA *ptr)
 {
   GpencilModifierData *md = (GpencilModifierData *)ptr->data;
 
@@ -442,7 +442,7 @@ static void greasepencil_modifier_object_set(Object *self,
 
 #  define RNA_GP_MOD_OBJECT_SET(_type, _prop, _obtype) \
     static void rna_##_type##GpencilModifier_##_prop##_set( \
-        PointerRNA *ptr, PointerRNA value, struct ReportList * /*reports*/) \
+        PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/) \
     { \
       _type##GpencilModifierData *tmd = (_type##GpencilModifierData *)ptr->data; \
       greasepencil_modifier_object_set((Object *)ptr->owner_id, &tmd->_prop, _obtype, value); \
@@ -460,7 +460,7 @@ RNA_GP_MOD_OBJECT_SET(Build, object, OB_EMPTY);
 
 static void rna_HookGpencilModifier_object_set(PointerRNA *ptr,
                                                PointerRNA value,
-                                               struct ReportList * /*reports*/)
+                                               ReportList * /*reports*/)
 {
   HookGpencilModifierData *hmd = static_cast<HookGpencilModifierData *>(ptr->data);
   Object *ob = (Object *)value.data;
@@ -472,7 +472,7 @@ static void rna_HookGpencilModifier_object_set(PointerRNA *ptr,
 
 static void rna_TintGpencilModifier_object_set(PointerRNA *ptr,
                                                PointerRNA value,
-                                               struct ReportList * /*reports*/)
+                                               ReportList * /*reports*/)
 {
   TintGpencilModifierData *hmd = static_cast<TintGpencilModifierData *>(ptr->data);
   Object *ob = (Object *)value.data;
@@ -550,7 +550,7 @@ bool rna_GpencilModifier_material_poll(PointerRNA *ptr, PointerRNA value)
 static void rna_GpencilModifier_material_set(PointerRNA *ptr,
                                              PointerRNA value,
                                              Material **ma_target,
-                                             struct ReportList *reports)
+                                             ReportList *reports)
 {
   Object *ob = (Object *)ptr->owner_id;
   Material *ma = (Material *)value.owner_id;
@@ -570,7 +570,7 @@ static void rna_GpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_LineartGpencilModifier_material_set(PointerRNA *ptr,
                                                     PointerRNA value,
-                                                    struct ReportList *reports)
+                                                    ReportList *reports)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)ptr->data;
   Material **ma_target = &lmd->target_material;
@@ -580,7 +580,7 @@ static void rna_LineartGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_NoiseGpencilModifier_material_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList *reports)
+                                                  ReportList *reports)
 {
   NoiseGpencilModifierData *nmd = (NoiseGpencilModifierData *)ptr->data;
   Material **ma_target = &nmd->material;
@@ -590,7 +590,7 @@ static void rna_NoiseGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_SmoothGpencilModifier_material_set(PointerRNA *ptr,
                                                    PointerRNA value,
-                                                   struct ReportList *reports)
+                                                   ReportList *reports)
 {
   SmoothGpencilModifierData *smd = (SmoothGpencilModifierData *)ptr->data;
   Material **ma_target = &smd->material;
@@ -600,7 +600,7 @@ static void rna_SmoothGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_SubdivGpencilModifier_material_set(PointerRNA *ptr,
                                                    PointerRNA value,
-                                                   struct ReportList *reports)
+                                                   ReportList *reports)
 {
   SubdivGpencilModifierData *smd = (SubdivGpencilModifierData *)ptr->data;
   Material **ma_target = &smd->material;
@@ -610,7 +610,7 @@ static void rna_SubdivGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_SimplifyGpencilModifier_material_set(PointerRNA *ptr,
                                                      PointerRNA value,
-                                                     struct ReportList *reports)
+                                                     ReportList *reports)
 {
   SimplifyGpencilModifierData *smd = (SimplifyGpencilModifierData *)ptr->data;
   Material **ma_target = &smd->material;
@@ -620,7 +620,7 @@ static void rna_SimplifyGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_ThickGpencilModifier_material_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList *reports)
+                                                  ReportList *reports)
 {
   ThickGpencilModifierData *tmd = (ThickGpencilModifierData *)ptr->data;
   Material **ma_target = &tmd->material;
@@ -630,7 +630,7 @@ static void rna_ThickGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_WeightProxGpencilModifier_material_set(PointerRNA *ptr,
                                                        PointerRNA value,
-                                                       struct ReportList *reports)
+                                                       ReportList *reports)
 {
   WeightProxGpencilModifierData *tmd = (WeightProxGpencilModifierData *)ptr->data;
   Material **ma_target = &tmd->material;
@@ -640,7 +640,7 @@ static void rna_WeightProxGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_WeightAngleGpencilModifier_material_set(PointerRNA *ptr,
                                                         PointerRNA value,
-                                                        struct ReportList *reports)
+                                                        ReportList *reports)
 {
   WeightAngleGpencilModifierData *tmd = (WeightAngleGpencilModifierData *)ptr->data;
   Material **ma_target = &tmd->material;
@@ -650,7 +650,7 @@ static void rna_WeightAngleGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_OffsetGpencilModifier_material_set(PointerRNA *ptr,
                                                    PointerRNA value,
-                                                   struct ReportList *reports)
+                                                   ReportList *reports)
 {
   OffsetGpencilModifierData *omd = (OffsetGpencilModifierData *)ptr->data;
   Material **ma_target = &omd->material;
@@ -660,7 +660,7 @@ static void rna_OffsetGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_TintGpencilModifier_material_set(PointerRNA *ptr,
                                                  PointerRNA value,
-                                                 struct ReportList *reports)
+                                                 ReportList *reports)
 {
   TintGpencilModifierData *tmd = (TintGpencilModifierData *)ptr->data;
   Material **ma_target = &tmd->material;
@@ -670,7 +670,7 @@ static void rna_TintGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_ColorGpencilModifier_material_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList *reports)
+                                                  ReportList *reports)
 {
   ColorGpencilModifierData *cmd = (ColorGpencilModifierData *)ptr->data;
   Material **ma_target = &cmd->material;
@@ -680,7 +680,7 @@ static void rna_ColorGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_ArrayGpencilModifier_material_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList *reports)
+                                                  ReportList *reports)
 {
   ArrayGpencilModifierData *amd = (ArrayGpencilModifierData *)ptr->data;
   Material **ma_target = &amd->material;
@@ -690,7 +690,7 @@ static void rna_ArrayGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_OpacityGpencilModifier_material_set(PointerRNA *ptr,
                                                     PointerRNA value,
-                                                    struct ReportList *reports)
+                                                    ReportList *reports)
 {
   OpacityGpencilModifierData *omd = (OpacityGpencilModifierData *)ptr->data;
   Material **ma_target = &omd->material;
@@ -700,7 +700,7 @@ static void rna_OpacityGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_OutlineGpencilModifier_object_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList * /*reports*/)
+                                                  ReportList * /*reports*/)
 {
   OutlineGpencilModifierData *omd = static_cast<OutlineGpencilModifierData *>(ptr->data);
   Object *ob = (Object *)value.data;
@@ -711,7 +711,7 @@ static void rna_OutlineGpencilModifier_object_set(PointerRNA *ptr,
 
 static void rna_OutlineGpencilModifier_material_set(PointerRNA *ptr,
                                                     PointerRNA value,
-                                                    struct ReportList *reports)
+                                                    ReportList *reports)
 {
   OutlineGpencilModifierData *omd = (OutlineGpencilModifierData *)ptr->data;
   Material **ma_target = &omd->material;
@@ -721,7 +721,7 @@ static void rna_OutlineGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_OutlineStrokeGpencilModifier_material_set(PointerRNA *ptr,
                                                           PointerRNA value,
-                                                          struct ReportList *reports)
+                                                          ReportList *reports)
 {
   OutlineGpencilModifierData *omd = (OutlineGpencilModifierData *)ptr->data;
   Material **ma_target = &omd->outline_material;
@@ -731,7 +731,7 @@ static void rna_OutlineStrokeGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_LatticeGpencilModifier_material_set(PointerRNA *ptr,
                                                     PointerRNA value,
-                                                    struct ReportList *reports)
+                                                    ReportList *reports)
 {
   LatticeGpencilModifierData *lmd = (LatticeGpencilModifierData *)ptr->data;
   Material **ma_target = &lmd->material;
@@ -741,7 +741,7 @@ static void rna_LatticeGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_MirrorGpencilModifier_material_set(PointerRNA *ptr,
                                                    PointerRNA value,
-                                                   struct ReportList *reports)
+                                                   ReportList *reports)
 {
   MirrorGpencilModifierData *mmd = (MirrorGpencilModifierData *)ptr->data;
   Material **ma_target = &mmd->material;
@@ -751,7 +751,7 @@ static void rna_MirrorGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_HookGpencilModifier_material_set(PointerRNA *ptr,
                                                  PointerRNA value,
-                                                 struct ReportList *reports)
+                                                 ReportList *reports)
 {
   HookGpencilModifierData *hmd = (HookGpencilModifierData *)ptr->data;
   Material **ma_target = &hmd->material;
@@ -761,7 +761,7 @@ static void rna_HookGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_MultiplyGpencilModifier_material_set(PointerRNA *ptr,
                                                      PointerRNA value,
-                                                     struct ReportList *reports)
+                                                     ReportList *reports)
 {
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)ptr->data;
   Material **ma_target = &mmd->material;
@@ -771,7 +771,7 @@ static void rna_MultiplyGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_TextureGpencilModifier_material_set(PointerRNA *ptr,
                                                     PointerRNA value,
-                                                    struct ReportList *reports)
+                                                    ReportList *reports)
 {
   TextureGpencilModifierData *tmd = (TextureGpencilModifierData *)ptr->data;
   Material **ma_target = &tmd->material;
@@ -781,7 +781,7 @@ static void rna_TextureGpencilModifier_material_set(PointerRNA *ptr,
 
 static void rna_ShrinkwrapGpencilModifier_material_set(PointerRNA *ptr,
                                                        PointerRNA value,
-                                                       struct ReportList *reports)
+                                                       ReportList *reports)
 {
   ShrinkwrapGpencilModifierData *tmd = (ShrinkwrapGpencilModifierData *)ptr->data;
   Material **ma_target = &tmd->material;
@@ -934,7 +934,7 @@ static int rna_ShrinkwrapGpencilModifier_face_cull_get(PointerRNA *ptr)
   return swm->shrink_opts & MOD_SHRINKWRAP_CULL_TARGET_MASK;
 }
 
-static void rna_ShrinkwrapGpencilModifier_face_cull_set(struct PointerRNA *ptr, int value)
+static void rna_ShrinkwrapGpencilModifier_face_cull_set(PointerRNA *ptr, int value)
 {
   ShrinkwrapGpencilModifierData *swm = (ShrinkwrapGpencilModifierData *)ptr->data;
   swm->shrink_opts = (swm->shrink_opts & ~MOD_SHRINKWRAP_CULL_TARGET_MASK) | value;
@@ -942,7 +942,7 @@ static void rna_ShrinkwrapGpencilModifier_face_cull_set(struct PointerRNA *ptr, 
 
 static void rna_EnvelopeGpencilModifier_material_set(PointerRNA *ptr,
                                                      PointerRNA value,
-                                                     struct ReportList *reports)
+                                                     ReportList *reports)
 {
   EnvelopeGpencilModifierData *emd = (EnvelopeGpencilModifierData *)ptr->data;
   Material **ma_target = &emd->material;

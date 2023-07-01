@@ -370,7 +370,7 @@ static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *
 /* set parent object and inverse matrix */
 static void rna_GPencilLayer_parent_set(PointerRNA *ptr,
                                         PointerRNA value,
-                                        struct ReportList * /*reports*/)
+                                        ReportList * /*reports*/)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
   Object *par = (Object *)value.data;
@@ -502,7 +502,7 @@ static PointerRNA rna_GPencil_active_layer_get(PointerRNA *ptr)
 
 static void rna_GPencil_active_layer_set(PointerRNA *ptr,
                                          PointerRNA value,
-                                         struct ReportList * /*reports*/)
+                                         ReportList * /*reports*/)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
 

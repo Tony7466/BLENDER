@@ -388,14 +388,14 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 }
 
-static int rna_Collection_color_tag_get(struct PointerRNA *ptr)
+static int rna_Collection_color_tag_get(PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->data;
 
   return collection->color_tag;
 }
 
-static void rna_Collection_color_tag_set(struct PointerRNA *ptr, int value)
+static void rna_Collection_color_tag_set(PointerRNA *ptr, int value)
 {
   Collection *collection = (Collection *)ptr->data;
 

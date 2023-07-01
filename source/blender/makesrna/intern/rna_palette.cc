@@ -39,7 +39,7 @@ static void rna_Palette_color_remove(Palette *palette, ReportList *reports, Poin
     return;
   }
 
-  PaletteColor *color = static_cast<PaletteColor*>(color_ptr->data);
+  PaletteColor *color = static_cast<PaletteColor *>(color_ptr->data);
 
   if (BLI_findindex(&palette->colors, color) == -1) {
     BKE_reportf(
@@ -63,10 +63,10 @@ static void rna_Palette_color_clear(Palette *palette)
 
 static PointerRNA rna_Palette_active_color_get(PointerRNA *ptr)
 {
-  Palette *palette = static_cast<Palette*>(ptr->data);
+  Palette *palette = static_cast<Palette *>(ptr->data);
   PaletteColor *color;
 
-  color = static_cast<PaletteColor*>(BLI_findlink(&palette->colors, palette->active_color));
+  color = static_cast<PaletteColor *>(BLI_findlink(&palette->colors, palette->active_color));
 
   if (color) {
     return rna_pointer_inherit_refine(ptr, &RNA_PaletteColor, color);
@@ -77,10 +77,10 @@ static PointerRNA rna_Palette_active_color_get(PointerRNA *ptr)
 
 static void rna_Palette_active_color_set(PointerRNA *ptr,
                                          PointerRNA value,
-                                         struct ReportList * /*reports*/)
+                                         ReportList * /*reports*/)
 {
-  Palette *palette = static_cast<Palette*>(ptr->data);
-  PaletteColor *color = static_cast<PaletteColor*>(value.data);
+  Palette *palette = static_cast<Palette *>(ptr->data);
+  PaletteColor *color = static_cast<PaletteColor *>(value.data);
 
   /* -1 is ok for an unset index */
   if (color == nullptr) {

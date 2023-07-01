@@ -331,7 +331,7 @@ static const EnumPropertyItem target_space_object_items[] = {
 #    include "ABC_alembic.h"
 #  endif
 
-static StructRNA *rna_ConstraintType_refine(struct PointerRNA *ptr)
+static StructRNA *rna_ConstraintType_refine(PointerRNA *ptr)
 {
   bConstraint *con = (bConstraint *)ptr->data;
 
@@ -401,10 +401,10 @@ static StructRNA *rna_ConstraintType_refine(struct PointerRNA *ptr)
 
 static void rna_ConstraintTargetBone_target_set(PointerRNA *ptr,
                                                 PointerRNA value,
-                                                struct ReportList * /*reports*/)
+                                                ReportList * /*reports*/)
 {
   bConstraintTarget *tgt = (bConstraintTarget *)ptr->data;
-  Object *ob = static_cast<Object*>(value.data);
+  Object *ob = static_cast<Object *>(value.data);
 
   if (!ob || ob->type == OB_ARMATURE) {
     id_lib_extern((ID *)ob);
@@ -414,7 +414,7 @@ static void rna_ConstraintTargetBone_target_set(PointerRNA *ptr,
 
 static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
 {
-  bConstraint *con = static_cast<bConstraint*>(ptr->data);
+  bConstraint *con = static_cast<bConstraint *>(ptr->data);
   char oldname[sizeof(con->name)];
 
   /* make a copy of the old name first */
@@ -467,7 +467,7 @@ static char *rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
 static char *rna_Constraint_path(const PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  bConstraint *con = static_cast<bConstraint*>(ptr->data);
+  bConstraint *con = static_cast<bConstraint *>(ptr->data);
 
   return rna_Constraint_do_compute_path(ob, con);
 }
@@ -475,7 +475,7 @@ static char *rna_Constraint_path(const PointerRNA *ptr)
 static bConstraint *rna_constraint_from_target(const PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  bConstraintTarget *tgt = static_cast<bConstraintTarget*>(ptr->data);
+  bConstraintTarget *tgt = static_cast<bConstraintTarget *>(ptr->data);
 
   return BKE_constraint_find_from_target(ob, tgt, nullptr);
 }
@@ -483,17 +483,17 @@ static bConstraint *rna_constraint_from_target(const PointerRNA *ptr)
 static char *rna_ConstraintTarget_path(const PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  bConstraintTarget *tgt = static_cast<bConstraintTarget*>(ptr->data);
+  bConstraintTarget *tgt = static_cast<bConstraintTarget *>(ptr->data);
   bConstraint *con = rna_constraint_from_target(ptr);
   int index = -1;
 
   if (con != nullptr) {
     if (con->type == CONSTRAINT_TYPE_ARMATURE) {
-      bArmatureConstraint *acon = static_cast<bArmatureConstraint*>(con->data);
+      bArmatureConstraint *acon = static_cast<bArmatureConstraint *>(con->data);
       index = BLI_findindex(&acon->targets, tgt);
     }
     else if (con->type == CONSTRAINT_TYPE_PYTHON) {
-      bPythonConstraint *pcon = static_cast<bPythonConstraint*>(con->data);
+      bPythonConstraint *pcon = static_cast<bPythonConstraint *>(con->data);
       index = BLI_findindex(&pcon->targets, tgt);
     }
   }
@@ -517,12 +517,14 @@ static char *rna_ConstraintTarget_path(const PointerRNA *ptr)
 
 static void rna_Constraint_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(bmain, (Object *)ptr->owner_id, static_cast<bConstraint*>(ptr->data));
+  ED_object_constraint_tag_update(
+      bmain, (Object *)ptr->owner_id, static_cast<bConstraint *>(ptr->data));
 }
 
 static void rna_Constraint_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)ptr->owner_id, static_cast<bConstraint*>(ptr->data));
+  ED_object_constraint_dependency_tag_update(
+      bmain, (Object *)ptr->owner_id, static_cast<bConstraint *>(ptr->data));
 }
 
 static void rna_ConstraintTarget_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
@@ -530,9 +532,7 @@ static void rna_ConstraintTarget_update(Main *bmain, Scene * /*scene*/, PointerR
   ED_object_constraint_tag_update(bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
-static void rna_ConstraintTarget_dependency_update(Main *bmain,
-                                                   Scene * /*scene*/,
-                                                   PointerRNA *ptr)
+static void rna_ConstraintTarget_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   ED_object_constraint_dependency_tag_update(
       bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
@@ -554,16 +554,16 @@ static void rna_Constraint_childof_inverse_matrix_update(Main *bmain,
                                                          Scene *scene,
                                                          PointerRNA *ptr)
 {
-  bConstraint *con = static_cast<bConstraint*>(ptr->data);
-  bChildOfConstraint *data = static_cast<bChildOfConstraint*>(con->data);
+  bConstraint *con = static_cast<bConstraint *>(ptr->data);
+  bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
   data->flag &= ~CHILDOF_SET_INVERSE;
   rna_Constraint_update(bmain, scene, ptr);
 }
 
-static void rna_Constraint_ik_type_set(struct PointerRNA *ptr, int value)
+static void rna_Constraint_ik_type_set(PointerRNA *ptr, int value)
 {
-  bConstraint *con = static_cast<bConstraint*>(ptr->data);
-  bKinematicConstraint *ikdata = static_cast<bKinematicConstraint*>(con->data);
+  bConstraint *con = static_cast<bConstraint *>(ptr->data);
+  bKinematicConstraint *ikdata = static_cast<bKinematicConstraint *>(con->data);
 
   if (ikdata->type != value) {
     /* the type of IK constraint has changed, set suitable default values */
@@ -579,17 +579,17 @@ static void rna_Constraint_ik_type_set(struct PointerRNA *ptr, int value)
 }
 
 /* DEPRECATED: use_offset replaced with mix_mode */
-static bool rna_Constraint_RotLike_use_offset_get(struct PointerRNA *ptr)
+static bool rna_Constraint_RotLike_use_offset_get(PointerRNA *ptr)
 {
-  bConstraint *con = static_cast<bConstraint*>(ptr->data);
-  bRotateLikeConstraint *rotlike = static_cast<bRotateLikeConstraint*>(con->data);
+  bConstraint *con = static_cast<bConstraint *>(ptr->data);
+  bRotateLikeConstraint *rotlike = static_cast<bRotateLikeConstraint *>(con->data);
   return rotlike->mix_mode != ROTLIKE_MIX_REPLACE;
 }
 
-static void rna_Constraint_RotLike_use_offset_set(struct PointerRNA *ptr, bool value)
+static void rna_Constraint_RotLike_use_offset_set(PointerRNA *ptr, bool value)
 {
-  bConstraint *con = static_cast<bConstraint*>(ptr->data);
-  bRotateLikeConstraint *rotlike = static_cast<bRotateLikeConstraint*>(con->data);
+  bConstraint *con = static_cast<bConstraint *>(ptr->data);
+  bRotateLikeConstraint *rotlike = static_cast<bRotateLikeConstraint *>(con->data);
   bool curval = (rotlike->mix_mode != ROTLIKE_MIX_REPLACE);
   if (curval != value) {
     rotlike->mix_mode = (value ? ROTLIKE_MIX_OFFSET : ROTLIKE_MIX_REPLACE);
@@ -623,7 +623,7 @@ static const EnumPropertyItem *rna_Constraint_target_space_itemf(bContext * /*C*
   bConstraintTarget *ct;
 
   if (BKE_constraint_targets_get(con, &targets)) {
-    for (ct = static_cast<bConstraintTarget*>(targets.first); ct; ct = ct->next) {
+    for (ct = static_cast<bConstraintTarget *>(targets.first); ct; ct = ct->next) {
       if (ct->tar && ct->tar->type == OB_ARMATURE && !(ct->flag & CONSTRAINT_TAR_CUSTOM_SPACE)) {
         break;
       }
@@ -641,8 +641,9 @@ static const EnumPropertyItem *rna_Constraint_target_space_itemf(bContext * /*C*
 
 static bConstraintTarget *rna_ArmatureConstraint_target_new(ID *id, bConstraint *con, Main *bmain)
 {
-  bArmatureConstraint *acon = static_cast<bArmatureConstraint*>(con->data);
-  bConstraintTarget *tgt = static_cast<bConstraintTarget*>(MEM_callocN(sizeof(bConstraintTarget), "Constraint Target"));
+  bArmatureConstraint *acon = static_cast<bArmatureConstraint *>(con->data);
+  bConstraintTarget *tgt = static_cast<bConstraintTarget *>(
+      MEM_callocN(sizeof(bConstraintTarget), "Constraint Target"));
 
   tgt->weight = 1.0f;
   BLI_addtail(&acon->targets, tgt);
@@ -654,8 +655,8 @@ static bConstraintTarget *rna_ArmatureConstraint_target_new(ID *id, bConstraint 
 static void rna_ArmatureConstraint_target_remove(
     ID *id, bConstraint *con, Main *bmain, ReportList *reports, PointerRNA *target_ptr)
 {
-  bArmatureConstraint *acon = static_cast<bArmatureConstraint*>(con->data);
-  bConstraintTarget *tgt = static_cast<bConstraintTarget*>(target_ptr->data);
+  bArmatureConstraint *acon = static_cast<bArmatureConstraint *>(con->data);
+  bConstraintTarget *tgt = static_cast<bConstraintTarget *>(target_ptr->data);
 
   if (BLI_findindex(&acon->targets, tgt) < 0) {
     BKE_report(reports, RPT_ERROR, "Target is not in the constraint target list");
@@ -669,7 +670,7 @@ static void rna_ArmatureConstraint_target_remove(
 
 static void rna_ArmatureConstraint_target_clear(ID *id, bConstraint *con, Main *bmain)
 {
-  bArmatureConstraint *acon = static_cast<bArmatureConstraint*>(con->data);
+  bArmatureConstraint *acon = static_cast<bArmatureConstraint *>(con->data);
 
   BLI_freelistN(&acon->targets);
 
@@ -749,7 +750,7 @@ static int rna_ShrinkwrapConstraint_face_cull_get(PointerRNA *ptr)
   return swc->flag & CON_SHRINKWRAP_PROJECT_CULL_MASK;
 }
 
-static void rna_ShrinkwrapConstraint_face_cull_set(struct PointerRNA *ptr, int value)
+static void rna_ShrinkwrapConstraint_face_cull_set(PointerRNA *ptr, int value)
 {
   bConstraint *con = (bConstraint *)ptr->data;
   bShrinkwrapConstraint *swc = (bShrinkwrapConstraint *)con->data;
@@ -771,7 +772,7 @@ static bool rna_Constraint_cameraObject_poll(PointerRNA *ptr, PointerRNA value)
 
 static void rna_Constraint_followTrack_camera_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList * /*reports*/)
+                                                  ReportList * /*reports*/)
 {
   bConstraint *con = (bConstraint *)ptr->data;
   bFollowTrackConstraint *data = (bFollowTrackConstraint *)con->data;
@@ -790,7 +791,7 @@ static void rna_Constraint_followTrack_camera_set(PointerRNA *ptr,
 
 static void rna_Constraint_followTrack_depthObject_set(PointerRNA *ptr,
                                                        PointerRNA value,
-                                                       struct ReportList * /*reports*/)
+                                                       ReportList * /*reports*/)
 {
   bConstraint *con = (bConstraint *)ptr->data;
   bFollowTrackConstraint *data = (bFollowTrackConstraint *)con->data;
@@ -822,7 +823,7 @@ static bool rna_Constraint_followTrack_depthObject_poll(PointerRNA *ptr, Pointer
 
 static void rna_Constraint_objectSolver_camera_set(PointerRNA *ptr,
                                                    PointerRNA value,
-                                                   struct ReportList * /*reports*/)
+                                                   ReportList * /*reports*/)
 {
   bConstraint *con = (bConstraint *)ptr->data;
   bObjectSolverConstraint *data = (bObjectSolverConstraint *)con->data;

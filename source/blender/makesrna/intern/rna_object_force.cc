@@ -390,7 +390,7 @@ static int rna_Cache_active_point_cache_index_get(PointerRNA *ptr)
   return num;
 }
 
-static void rna_Cache_active_point_cache_index_set(struct PointerRNA *ptr, int value)
+static void rna_Cache_active_point_cache_index_set(PointerRNA *ptr, int value)
 {
   Object *ob = nullptr;
   Scene *scene = nullptr;

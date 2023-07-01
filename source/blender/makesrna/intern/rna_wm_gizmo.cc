@@ -60,7 +60,7 @@
  * \{ */
 
 #  ifdef WITH_PYTHON
-static void rna_gizmo_draw_cb(const struct bContext *C, struct wmGizmo *gz)
+static void rna_gizmo_draw_cb(const bContext *C, wmGizmo *gz)
 {
   extern FunctionRNA rna_Gizmo_draw_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -78,7 +78,7 @@ static void rna_gizmo_draw_cb(const struct bContext *C, struct wmGizmo *gz)
   GPU_bgl_end();
 }
 
-static void rna_gizmo_draw_select_cb(const struct bContext *C, struct wmGizmo *gz, int select_id)
+static void rna_gizmo_draw_select_cb(const bContext *C, wmGizmo *gz, int select_id)
 {
   extern FunctionRNA rna_Gizmo_draw_select_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -97,7 +97,7 @@ static void rna_gizmo_draw_select_cb(const struct bContext *C, struct wmGizmo *g
   GPU_bgl_end();
 }
 
-static int rna_gizmo_test_select_cb(struct bContext *C, struct wmGizmo *gz, const int location[2])
+static int rna_gizmo_test_select_cb(bContext *C, wmGizmo *gz, const int location[2])
 {
   extern FunctionRNA rna_Gizmo_test_select_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -120,9 +120,9 @@ static int rna_gizmo_test_select_cb(struct bContext *C, struct wmGizmo *gz, cons
   return intersect_id;
 }
 
-static int rna_gizmo_modal_cb(struct bContext *C,
-                              struct wmGizmo *gz,
-                              const struct wmEvent *event,
+static int rna_gizmo_modal_cb(bContext *C,
+                              wmGizmo *gz,
+                              const wmEvent *event,
                               eWM_GizmoFlagTweak tweak_flag)
 {
   extern FunctionRNA rna_Gizmo_modal_func;
@@ -148,7 +148,7 @@ static int rna_gizmo_modal_cb(struct bContext *C,
   return ret_enum;
 }
 
-static void rna_gizmo_setup_cb(struct wmGizmo *gz)
+static void rna_gizmo_setup_cb(wmGizmo *gz)
 {
   extern FunctionRNA rna_Gizmo_setup_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -163,7 +163,7 @@ static void rna_gizmo_setup_cb(struct wmGizmo *gz)
   RNA_parameter_list_free(&list);
 }
 
-static int rna_gizmo_invoke_cb(struct bContext *C, struct wmGizmo *gz, const struct wmEvent *event)
+static int rna_gizmo_invoke_cb(bContext *C, wmGizmo *gz, const wmEvent *event)
 {
   extern FunctionRNA rna_Gizmo_invoke_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -186,7 +186,7 @@ static int rna_gizmo_invoke_cb(struct bContext *C, struct wmGizmo *gz, const str
   return ret_enum;
 }
 
-static void rna_gizmo_exit_cb(struct bContext *C, struct wmGizmo *gz, bool cancel)
+static void rna_gizmo_exit_cb(bContext *C, wmGizmo *gz, bool cancel)
 {
   extern FunctionRNA rna_Gizmo_exit_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -206,7 +206,7 @@ static void rna_gizmo_exit_cb(struct bContext *C, struct wmGizmo *gz, bool cance
   RNA_parameter_list_free(&list);
 }
 
-static void rna_gizmo_select_refresh_cb(struct wmGizmo *gz)
+static void rna_gizmo_select_refresh_cb(wmGizmo *gz)
 {
   extern FunctionRNA rna_Gizmo_select_refresh_func;
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -404,7 +404,7 @@ RNA_GIZMO_FLAG_RO_DEF(state_is_highlight, state, WM_GIZMO_STATE_HIGHLIGHT);
 RNA_GIZMO_FLAG_RO_DEF(state_is_modal, state, WM_GIZMO_STATE_MODAL);
 RNA_GIZMO_FLAG_RO_DEF(state_select, state, WM_GIZMO_STATE_SELECT);
 
-static void rna_Gizmo_state_select_set(struct PointerRNA *ptr, bool value)
+static void rna_Gizmo_state_select_set(PointerRNA *ptr, bool value)
 {
   wmGizmo *gz = static_cast<wmGizmo *>(ptr->data);
   wmGizmoGroup *gzgroup = gz->parent_gzgroup;
@@ -419,7 +419,7 @@ static PointerRNA rna_Gizmo_group_get(PointerRNA *ptr)
 
 #  ifdef WITH_PYTHON
 
-static bool rna_Gizmo_unregister(struct Main *bmain, StructRNA *type);
+static bool rna_Gizmo_unregister(Main *bmain, StructRNA *type);
 extern "C" void BPY_RNA_gizmo_wrapper(wmGizmoType *gzgt, void *userdata);
 
 static StructRNA *rna_Gizmo_register(Main *bmain,
@@ -523,7 +523,7 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
   return dummy_gt.rna_ext.srna;
 }
 
-static bool rna_Gizmo_unregister(struct Main *bmain, StructRNA *type)
+static bool rna_Gizmo_unregister(Main *bmain, StructRNA *type)
 {
   wmGizmoType *gzt = static_cast<wmGizmoType *>(RNA_struct_blender_type_get(type));
 
@@ -802,7 +802,7 @@ static void rna_gizmogroup_invoke_prepare_cb(const bContext *C,
 }
 
 extern "C" void BPY_RNA_gizmogroup_wrapper(wmGizmoGroupType *gzgt, void *userdata);
-static bool rna_GizmoGroup_unregister(struct Main *bmain, StructRNA *type);
+static bool rna_GizmoGroup_unregister(Main *bmain, StructRNA *type);
 
 static StructRNA *rna_GizmoGroup_register(Main *bmain,
                                           ReportList *reports,
@@ -935,7 +935,7 @@ static StructRNA *rna_GizmoGroup_register(Main *bmain,
   return dummy_wgt.rna_ext.srna;
 }
 
-static bool rna_GizmoGroup_unregister(struct Main *bmain, StructRNA *type)
+static bool rna_GizmoGroup_unregister(Main *bmain, StructRNA *type)
 {
   wmGizmoGroupType *gzgt = static_cast<wmGizmoGroupType *>(RNA_struct_blender_type_get(type));
 

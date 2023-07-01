@@ -126,9 +126,7 @@ static char *rna_Point_path(const PointerRNA *ptr)
   return BLI_sprintfN("points[%d]", rna_Point_index_get_const(ptr));
 }
 
-static void rna_PointCloud_update_data(struct Main * /*bmain*/,
-                                       struct Scene * /*scene*/,
-                                       PointerRNA *ptr)
+static void rna_PointCloud_update_data(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
 

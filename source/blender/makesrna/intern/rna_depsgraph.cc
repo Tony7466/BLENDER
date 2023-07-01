@@ -128,7 +128,7 @@ static PointerRNA rna_DepsgraphObjectInstance_particle_system_get(PointerRNA *pt
 {
   RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   DEGObjectIterData *deg_iter = (DEGObjectIterData *)di->iter.data;
-  struct ParticleSystem *particle_system = nullptr;
+  ParticleSystem *particle_system = nullptr;
   if (deg_iter->dupli_object_current != nullptr) {
     particle_system = deg_iter->dupli_object_current->particle_system;
   }

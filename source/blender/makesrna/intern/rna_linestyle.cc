@@ -123,7 +123,7 @@ const EnumPropertyItem rna_enum_linestyle_geometry_modifier_type_items[] = {
 
 #  include "RNA_access.h"
 
-static StructRNA *rna_LineStyle_color_modifier_refine(struct PointerRNA *ptr)
+static StructRNA *rna_LineStyle_color_modifier_refine(PointerRNA *ptr)
 {
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
@@ -149,7 +149,7 @@ static StructRNA *rna_LineStyle_color_modifier_refine(struct PointerRNA *ptr)
   }
 }
 
-static StructRNA *rna_LineStyle_alpha_modifier_refine(struct PointerRNA *ptr)
+static StructRNA *rna_LineStyle_alpha_modifier_refine(PointerRNA *ptr)
 {
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
@@ -175,7 +175,7 @@ static StructRNA *rna_LineStyle_alpha_modifier_refine(struct PointerRNA *ptr)
   }
 }
 
-static StructRNA *rna_LineStyle_thickness_modifier_refine(struct PointerRNA *ptr)
+static StructRNA *rna_LineStyle_thickness_modifier_refine(PointerRNA *ptr)
 {
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
@@ -203,7 +203,7 @@ static StructRNA *rna_LineStyle_thickness_modifier_refine(struct PointerRNA *ptr
   }
 }
 
-static StructRNA *rna_LineStyle_geometry_modifier_refine(struct PointerRNA *ptr)
+static StructRNA *rna_LineStyle_geometry_modifier_refine(PointerRNA *ptr)
 {
   LineStyleModifier *m = (LineStyleModifier *)ptr->data;
 
@@ -346,11 +346,11 @@ static PointerRNA rna_LineStyle_active_texture_get(PointerRNA *ptr)
 
 static void rna_LineStyle_active_texture_set(PointerRNA *ptr,
                                              PointerRNA value,
-                                             struct ReportList * /*reports*/)
+                                             ReportList * /*reports*/)
 {
   FreestyleLineStyle *linestyle = (FreestyleLineStyle *)ptr->owner_id;
 
-  set_current_linestyle_texture(linestyle, static_cast<Tex*>(value.data));
+  set_current_linestyle_texture(linestyle, static_cast<Tex *>(value.data));
 }
 
 static void rna_LineStyle_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -394,7 +394,7 @@ static void rna_LineStyle_color_modifier_remove(FreestyleLineStyle *linestyle,
                                                 ReportList *reports,
                                                 PointerRNA *modifier_ptr)
 {
-  LineStyleModifier *modifier = static_cast<LineStyleModifier*>(modifier_ptr->data);
+  LineStyleModifier *modifier = static_cast<LineStyleModifier *>(modifier_ptr->data);
 
   if (BKE_linestyle_color_modifier_remove(linestyle, modifier) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Color modifier '%s' could not be removed", modifier->name);
@@ -429,7 +429,7 @@ static void rna_LineStyle_alpha_modifier_remove(FreestyleLineStyle *linestyle,
                                                 ReportList *reports,
                                                 PointerRNA *modifier_ptr)
 {
-  LineStyleModifier *modifier = static_cast<LineStyleModifier*>(modifier_ptr->data);
+  LineStyleModifier *modifier = static_cast<LineStyleModifier *>(modifier_ptr->data);
 
   if (BKE_linestyle_alpha_modifier_remove(linestyle, modifier) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Alpha modifier '%s' could not be removed", modifier->name);
@@ -464,7 +464,7 @@ static void rna_LineStyle_thickness_modifier_remove(FreestyleLineStyle *linestyl
                                                     ReportList *reports,
                                                     PointerRNA *modifier_ptr)
 {
-  LineStyleModifier *modifier = static_cast<LineStyleModifier*>(modifier_ptr->data);
+  LineStyleModifier *modifier = static_cast<LineStyleModifier *>(modifier_ptr->data);
 
   if (BKE_linestyle_thickness_modifier_remove(linestyle, modifier) == -1) {
     BKE_reportf(
@@ -500,7 +500,7 @@ static void rna_LineStyle_geometry_modifier_remove(FreestyleLineStyle *linestyle
                                                    ReportList *reports,
                                                    PointerRNA *modifier_ptr)
 {
-  LineStyleModifier *modifier = static_cast<LineStyleModifier*>(modifier_ptr->data);
+  LineStyleModifier *modifier = static_cast<LineStyleModifier *>(modifier_ptr->data);
 
   if (BKE_linestyle_geometry_modifier_remove(linestyle, modifier) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Geometry modifier '%s' could not be removed", modifier->name);

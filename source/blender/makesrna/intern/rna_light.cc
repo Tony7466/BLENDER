@@ -45,7 +45,7 @@ static void rna_Light_buffer_size_set(PointerRNA *ptr, int value)
   la->bufsize &= (~15); /* round to multiple of 16 */
 }
 
-static StructRNA *rna_Light_refine(struct PointerRNA *ptr)
+static StructRNA *rna_Light_refine(PointerRNA *ptr)
 {
   Light *la = (Light *)ptr->data;
 

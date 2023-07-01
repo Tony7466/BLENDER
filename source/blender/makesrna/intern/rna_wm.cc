@@ -726,7 +726,7 @@ static PointerRNA rna_Event_xr_get(PointerRNA *ptr)
 
 static PointerRNA rna_PopupMenu_layout_get(PointerRNA *ptr)
 {
-  struct uiPopupMenu *pup = static_cast<uiPopupMenu *>(ptr->data);
+  uiPopupMenu *pup = static_cast<uiPopupMenu *>(ptr->data);
   uiLayout *layout = UI_popup_menu_layout(pup);
 
   PointerRNA rptr;
@@ -737,7 +737,7 @@ static PointerRNA rna_PopupMenu_layout_get(PointerRNA *ptr)
 
 static PointerRNA rna_PopoverMenu_layout_get(PointerRNA *ptr)
 {
-  struct uiPopover *pup = static_cast<uiPopover *>(ptr->data);
+  uiPopover *pup = static_cast<uiPopover *>(ptr->data);
   uiLayout *layout = UI_popover_layout(pup);
 
   PointerRNA rptr;
@@ -748,7 +748,7 @@ static PointerRNA rna_PopoverMenu_layout_get(PointerRNA *ptr)
 
 static PointerRNA rna_PieMenu_layout_get(PointerRNA *ptr)
 {
-  struct uiPieMenu *pie = static_cast<uiPieMenu *>(ptr->data);
+  uiPieMenu *pie = static_cast<uiPieMenu *>(ptr->data);
   uiLayout *layout = UI_pie_menu_layout(pie);
 
   PointerRNA rptr;
@@ -757,9 +757,7 @@ static PointerRNA rna_PieMenu_layout_get(PointerRNA *ptr)
   return rptr;
 }
 
-static void rna_Window_scene_set(PointerRNA *ptr,
-                                 PointerRNA value,
-                                 struct ReportList * /*reports*/)
+static void rna_Window_scene_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   wmWindow *win = static_cast<wmWindow *>(ptr->data);
 
@@ -805,9 +803,7 @@ static PointerRNA rna_Window_workspace_get(PointerRNA *ptr)
       ptr, &RNA_WorkSpace, BKE_workspace_active_get(win->workspace_hook));
 }
 
-static void rna_Window_workspace_set(PointerRNA *ptr,
-                                     PointerRNA value,
-                                     struct ReportList * /*reports*/)
+static void rna_Window_workspace_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   wmWindow *win = (wmWindow *)ptr->data;
 
@@ -844,9 +840,7 @@ PointerRNA rna_Window_screen_get(PointerRNA *ptr)
       ptr, &RNA_Screen, BKE_workspace_active_screen_get(win->workspace_hook));
 }
 
-static void rna_Window_screen_set(PointerRNA *ptr,
-                                  PointerRNA value,
-                                  struct ReportList * /*reports*/)
+static void rna_Window_screen_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   wmWindow *win = static_cast<wmWindow *>(ptr->data);
   WorkSpace *workspace = BKE_workspace_active_get(win->workspace_hook);
@@ -898,9 +892,7 @@ static PointerRNA rna_Window_view_layer_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(&scene_ptr, &RNA_ViewLayer, view_layer);
 }
 
-static void rna_Window_view_layer_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_Window_view_layer_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   wmWindow *win = static_cast<wmWindow *>(ptr->data);
   ViewLayer *view_layer = static_cast<ViewLayer *>(value.data);
@@ -1111,7 +1103,7 @@ static PointerRNA rna_WindowManager_active_keyconfig_get(PointerRNA *ptr)
 
 static void rna_WindowManager_active_keyconfig_set(PointerRNA *ptr,
                                                    PointerRNA value,
-                                                   struct ReportList * /*reports*/)
+                                                   ReportList * /*reports*/)
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(ptr->data);
   wmKeyConfig *kc = static_cast<wmKeyConfig *>(value.data);
@@ -1294,7 +1286,7 @@ static bool rna_KeyMapItem_userdefined_get(PointerRNA *ptr)
 static PointerRNA rna_WindowManager_xr_session_state_get(PointerRNA *ptr)
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(ptr->data);
-  struct wmXrSessionState *state =
+  wmXrSessionState *state =
 #  ifdef WITH_XR_OPENXR
       WM_xr_session_state_handle_get(&wm->xr);
 #  else
@@ -1506,7 +1498,7 @@ static char *rna_operator_description_cb(bContext *C, wmOperatorType *ot, Pointe
   return result;
 }
 
-static bool rna_Operator_unregister(struct Main *bmain, StructRNA *type);
+static bool rna_Operator_unregister(Main *bmain, StructRNA *type);
 
 /* bpy_operator_wrap.c */
 
@@ -1642,7 +1634,7 @@ static StructRNA *rna_Operator_register(Main *bmain,
   return dummy_ot.rna_ext.srna;
 }
 
-static bool rna_Operator_unregister(struct Main *bmain, StructRNA *type)
+static bool rna_Operator_unregister(Main *bmain, StructRNA *type)
 {
   const char *idname;
   wmOperatorType *ot = static_cast<wmOperatorType *>(RNA_struct_blender_type_get(type));

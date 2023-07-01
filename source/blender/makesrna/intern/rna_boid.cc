@@ -141,7 +141,7 @@ static void rna_Boids_reset_deps(Main *bmain, Scene * /*scene*/, PointerRNA *ptr
   WM_main_add_notifier(NC_OBJECT | ND_PARTICLE | NA_EDITED, nullptr);
 }
 
-static StructRNA *rna_BoidRule_refine(struct PointerRNA *ptr)
+static StructRNA *rna_BoidRule_refine(PointerRNA *ptr)
 {
   BoidRule *rule = (BoidRule *)ptr->data;
 
@@ -207,7 +207,7 @@ static int rna_BoidState_active_boid_rule_index_get(PointerRNA *ptr)
   return 0;
 }
 
-static void rna_BoidState_active_boid_rule_index_set(struct PointerRNA *ptr, int value)
+static void rna_BoidState_active_boid_rule_index_set(PointerRNA *ptr, int value)
 {
   BoidState *state = (BoidState *)ptr->data;
   BoidRule *rule = (BoidRule *)state->rules.first;
@@ -278,7 +278,7 @@ static int rna_BoidSettings_active_boid_state_index_get(PointerRNA *ptr)
   return 0;
 }
 
-static void rna_BoidSettings_active_boid_state_index_set(struct PointerRNA *ptr, int value)
+static void rna_BoidSettings_active_boid_state_index_set(PointerRNA *ptr, int value)
 {
   BoidSettings *boids = (BoidSettings *)ptr->data;
   BoidState *state = (BoidState *)boids->states.first;
@@ -514,7 +514,8 @@ static void rna_def_boidstate(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "active_boid_rule", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "BoidRule");
-  RNA_def_property_pointer_funcs(prop, "rna_BoidState_active_boid_rule_get", nullptr, nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_BoidState_active_boid_rule_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Active Boid Rule", "");
 
   prop = RNA_def_property(srna, "active_boid_rule_index", PROP_INT, PROP_UNSIGNED);
@@ -579,7 +580,8 @@ static void rna_def_boid_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "active_boid_state", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "BoidRule");
-  RNA_def_property_pointer_funcs(prop, "rna_BoidSettings_active_boid_state_get", nullptr, nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_BoidSettings_active_boid_state_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Active Boid Rule", "");
 
   prop = RNA_def_property(srna, "active_boid_state_index", PROP_INT, PROP_UNSIGNED);

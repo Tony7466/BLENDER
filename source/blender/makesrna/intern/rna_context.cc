@@ -140,7 +140,7 @@ static PointerRNA rna_Context_asset_file_handle_get(PointerRNA *ptr)
   PointerRNA newptr;
   /* Have to cast away const, but the file entry API doesn't allow modifications anyway. */
   RNA_pointer_create(
-      nullptr, &RNA_FileSelectEntry, (struct FileDirEntry *)asset_handle.file_data, &newptr);
+      nullptr, &RNA_FileSelectEntry, (FileDirEntry *)asset_handle.file_data, &newptr);
   return newptr;
 }
 
@@ -213,9 +213,9 @@ static int rna_Context_mode_get(PointerRNA *ptr)
   return CTX_data_mode_enum(C);
 }
 
-static struct Depsgraph *rna_Context_evaluated_depsgraph_get(bContext *C)
+static Depsgraph *rna_Context_evaluated_depsgraph_get(bContext *C)
 {
-  struct Depsgraph *depsgraph;
+  Depsgraph *depsgraph;
 
 #  ifdef WITH_PYTHON
   /* Allow drivers to be evaluated */
@@ -296,7 +296,8 @@ void RNA_def_context(BlenderRNA *brna)
   prop = RNA_def_property(srna, "asset_file_handle", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "FileSelectEntry");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_asset_file_handle_get", nullptr, nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_Context_asset_file_handle_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "",
                            "The file of an active asset. Avoid using this, it will be replaced by "
@@ -320,7 +321,8 @@ void RNA_def_context(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "engine", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_string_funcs(prop, "rna_Context_engine_get", "rna_Context_engine_length", nullptr);
+  RNA_def_property_string_funcs(
+      prop, "rna_Context_engine_get", "rna_Context_engine_length", nullptr);
 
   prop = RNA_def_property(srna, "collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -330,7 +332,8 @@ void RNA_def_context(BlenderRNA *brna)
   prop = RNA_def_property(srna, "layer_collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "LayerCollection");
-  RNA_def_property_pointer_funcs(prop, "rna_Context_layer_collection_get", nullptr, nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_Context_layer_collection_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "tool_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

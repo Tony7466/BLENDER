@@ -80,9 +80,7 @@ static char *rna_DynamicPaintSurface_path(const PointerRNA *ptr)
  * Surfaces
  */
 
-static void rna_DynamicPaint_redoModifier(Main * /*bmain*/,
-                                          Scene * /*scene*/,
-                                          PointerRNA *ptr)
+static void rna_DynamicPaint_redoModifier(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 }
@@ -133,9 +131,7 @@ static void rna_DynamicPaintSurfaces_changeFormat(Main *bmain, Scene *scene, Poi
   rna_DynamicPaintSurface_reset(bmain, scene, ptr);
 }
 
-static void rna_DynamicPaint_reset_dependency(Main *bmain,
-                                              Scene * /*scene*/,
-                                              PointerRNA * /*ptr*/)
+static void rna_DynamicPaint_reset_dependency(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   DEG_relations_tag_update(bmain);
 }
@@ -149,7 +145,7 @@ static void rna_DynamicPaintSurface_reset_dependency(Main *bmain, Scene *scene, 
 static PointerRNA rna_PaintSurface_active_get(PointerRNA *ptr)
 {
   DynamicPaintCanvasSettings *canvas = (DynamicPaintCanvasSettings *)ptr->data;
-  DynamicPaintSurface *surface = static_cast<DynamicPaintSurface*>(canvas->surfaces.first);
+  DynamicPaintSurface *surface = static_cast<DynamicPaintSurface *>(canvas->surfaces.first);
   int id = 0;
 
   for (; surface; surface = surface->next) {
@@ -177,7 +173,7 @@ static int rna_Surface_active_point_index_get(PointerRNA *ptr)
   return canvas->active_sur;
 }
 
-static void rna_Surface_active_point_index_set(struct PointerRNA *ptr, int value)
+static void rna_Surface_active_point_index_set(PointerRNA *ptr, int value)
 {
   DynamicPaintCanvasSettings *canvas = (DynamicPaintCanvasSettings *)ptr->data;
   canvas->active_sur = value;
@@ -197,7 +193,7 @@ static void rna_Surface_active_point_range(
 static void rna_DynamicPaint_uvlayer_set(PointerRNA *ptr, const char *value)
 {
   DynamicPaintCanvasSettings *canvas = ((DynamicPaintSurface *)ptr->data)->canvas;
-  DynamicPaintSurface *surface = static_cast<DynamicPaintSurface*>(canvas->surfaces.first);
+  DynamicPaintSurface *surface = static_cast<DynamicPaintSurface *>(canvas->surfaces.first);
   int id = 0;
 
   for (; surface; surface = surface->next) {

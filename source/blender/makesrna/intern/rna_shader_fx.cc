@@ -90,7 +90,7 @@ static const EnumPropertyItem rna_enum_glow_blend_modes_items[] = {
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-static StructRNA *rna_ShaderFx_refine(struct PointerRNA *ptr)
+static StructRNA *rna_ShaderFx_refine(PointerRNA *ptr)
 {
   ShaderFxData *md = (ShaderFxData *)ptr->data;
 
@@ -181,7 +181,7 @@ static void shaderfx_object_set(Object *self, Object **ob_p, int type, PointerRN
 
 #  define RNA_FX_OBJECT_SET(_type, _prop, _obtype) \
     static void rna_##_type##ShaderFx_##_prop##_set( \
-        PointerRNA *ptr, PointerRNA value, struct ReportList * /*reports*/) \
+        PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/) \
     { \
       _type##ShaderFxData *tmd = (_type##ShaderFxData *)ptr->data; \
       shaderfx_object_set((Object *)ptr->owner_id, &tmd->_prop, _obtype, value); \

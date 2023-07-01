@@ -270,7 +270,7 @@ static int rna_SequenceEditor_elements_length(PointerRNA *ptr)
   Sequence *seq = (Sequence *)ptr->data;
 
   /* Hack? copied from sequencer.c::reload_sequence_new_file() */
-  size_t olen = MEM_allocN_len(seq->strip->stripdata) / sizeof(struct StripElem);
+  size_t olen = MEM_allocN_len(seq->strip->stripdata) / sizeof(StripElem);
 
   /* The problem with seq->strip->len and seq->len is that it's discounted from the offset
    * (hard cut trim). */
@@ -658,7 +658,7 @@ static void rna_SequenceCrop_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
 
 static void rna_Sequence_text_font_set(PointerRNA *ptr,
                                        PointerRNA ptr_value,
-                                       struct ReportList * /*reports*/)
+                                       ReportList * /*reports*/)
 {
   Sequence *seq = static_cast<Sequence *>(ptr->data);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
@@ -721,7 +721,7 @@ static void rna_Sequence_name_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static StructRNA *rna_Sequence_refine(struct PointerRNA *ptr)
+static StructRNA *rna_Sequence_refine(PointerRNA *ptr)
 {
   Sequence *seq = (Sequence *)ptr->data;
 
@@ -944,7 +944,7 @@ static int rna_Sequence_input_count_get(PointerRNA *ptr)
 
 static void rna_Sequence_input_set(PointerRNA *ptr,
                                    PointerRNA ptr_value,
-                                   struct ReportList *reports,
+                                   ReportList *reports,
                                    int input_num)
 {
 
@@ -966,16 +966,12 @@ static void rna_Sequence_input_set(PointerRNA *ptr,
   }
 }
 
-static void rna_Sequence_input_1_set(PointerRNA *ptr,
-                                     PointerRNA ptr_value,
-                                     struct ReportList *reports)
+static void rna_Sequence_input_1_set(PointerRNA *ptr, PointerRNA ptr_value, ReportList *reports)
 {
   rna_Sequence_input_set(ptr, ptr_value, reports, 1);
 }
 
-static void rna_Sequence_input_2_set(PointerRNA *ptr,
-                                     PointerRNA ptr_value,
-                                     struct ReportList *reports)
+static void rna_Sequence_input_2_set(PointerRNA *ptr, PointerRNA ptr_value, ReportList *reports)
 {
   rna_Sequence_input_set(ptr, ptr_value, reports, 2);
 }
@@ -1272,7 +1268,7 @@ static Sequence *sequence_get_by_modifier(Editing *ed, SequenceModifierData *smd
   return data.seq;
 }
 
-static StructRNA *rna_SequenceModifier_refine(struct PointerRNA *ptr)
+static StructRNA *rna_SequenceModifier_refine(PointerRNA *ptr)
 {
   SequenceModifierData *smd = (SequenceModifierData *)ptr->data;
 
@@ -1425,7 +1421,7 @@ static void rna_Sequence_modifier_clear(Sequence *seq, bContext *C)
 
 static void rna_SequenceModifier_strip_set(PointerRNA *ptr,
                                            PointerRNA value,
-                                           struct ReportList *reports)
+                                            ReportList *reports)
 {
   SequenceModifierData *smd = static_cast<SequenceModifierData *>(ptr->data);
   Scene *scene = (Scene *)ptr->owner_id;

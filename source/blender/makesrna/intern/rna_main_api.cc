@@ -285,7 +285,7 @@ static const EnumPropertyItem *rna_Main_nodetree_type_itemf(bContext * /*C*/,
 {
   return rna_node_tree_type_itemf(nullptr, nullptr, r_free);
 }
-static struct bNodeTree *rna_Main_nodetree_new(Main *bmain, const char *name, int type)
+static bNodeTree *rna_Main_nodetree_new(Main *bmain, const char *name, int type)
 {
   char safe_name[MAX_ID_NAME - 2];
   rna_idname_validate(name, safe_name);

@@ -181,7 +181,7 @@ static const EnumPropertyItem rna_enum_driver_target_context_property_items[] = 
 
 #  include "WM_api.h"
 
-static StructRNA *rna_FModifierType_refine(struct PointerRNA *ptr)
+static StructRNA *rna_FModifierType_refine(PointerRNA *ptr)
 {
   FModifier *fcm = (FModifier *)ptr->data;
 
@@ -350,9 +350,7 @@ static void rna_DriverVariable_update_data(Main *bmain, Scene *scene, PointerRNA
 /* ----------- */
 
 /* NOTE: this function exists only to avoid id reference-counting. */
-static void rna_DriverTarget_id_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_DriverTarget_id_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   DriverTarget *dtar = (DriverTarget *)ptr->data;
   dtar->id = static_cast<ID *>(value.data);
@@ -595,9 +593,7 @@ static void rna_FCurve_RnaPath_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_FCurve_group_set(PointerRNA *ptr,
-                                 PointerRNA value,
-                                 struct ReportList * /*reports*/)
+static void rna_FCurve_group_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   ID *pid = ptr->owner_id;
   ID *vid = value.owner_id;
@@ -729,7 +725,7 @@ static PointerRNA rna_FCurve_active_modifier_get(PointerRNA *ptr)
 
 static void rna_FCurve_active_modifier_set(PointerRNA *ptr,
                                            PointerRNA value,
-                                           struct ReportList * /*reports*/)
+                                           ReportList * /*reports*/)
 {
   FCurve *fcu = (FCurve *)ptr->data;
   set_active_fmodifier(&fcu->modifiers, (FModifier *)value.data);

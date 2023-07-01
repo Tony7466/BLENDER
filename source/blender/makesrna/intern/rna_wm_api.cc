@@ -68,7 +68,7 @@ const EnumPropertyItem rna_enum_window_cursor_items[] = {
 #  include "WM_types.h"
 
 /* Needed since RNA doesn't use `const` in function signatures. */
-static bool rna_KeyMapItem_compare(struct wmKeyMapItem *k1, struct wmKeyMapItem *k2)
+static bool rna_KeyMapItem_compare(wmKeyMapItem *k1, wmKeyMapItem *k2)
 {
   return WM_keymap_item_compare(k1, k2);
 }
@@ -110,7 +110,7 @@ static void rna_Operator_enum_search_invoke(bContext *C, wmOperator *op)
   WM_enum_search_invoke(C, op, nullptr);
 }
 
-static bool rna_event_modal_handler_add(struct bContext *C, ReportList *reports, wmOperator *op)
+static bool rna_event_modal_handler_add(bContext *C, ReportList *reports, wmOperator *op)
 {
   wmWindow *win = CTX_wm_window(C);
   if (win == nullptr) {
@@ -123,12 +123,12 @@ static bool rna_event_modal_handler_add(struct bContext *C, ReportList *reports,
 }
 
 /* XXX, need a way for python to know event types, 0x0110 is hard coded */
-static wmTimer *rna_event_timer_add(struct wmWindowManager *wm, float time_step, wmWindow *win)
+static wmTimer *rna_event_timer_add(wmWindowManager *wm, float time_step, wmWindow *win)
 {
   return WM_event_add_timer(wm, win, 0x0110, time_step);
 }
 
-static void rna_event_timer_remove(struct wmWindowManager *wm, wmTimer *timer)
+static void rna_event_timer_remove(wmWindowManager *wm, wmTimer *timer)
 {
   WM_event_remove_timer(wm, timer->win, timer);
 }
@@ -171,7 +171,7 @@ static struct wmStaticProgress {
   bool is_valid;
 } wm_progress_state = {0, 0, false};
 
-static void rna_progress_begin(struct wmWindowManager * /*wm*/, float min, float max)
+static void rna_progress_begin(wmWindowManager * /*wm*/, float min, float max)
 {
   float range = max - min;
   if (range != 0) {
@@ -184,7 +184,7 @@ static void rna_progress_begin(struct wmWindowManager * /*wm*/, float min, float
   }
 }
 
-static void rna_progress_update(struct wmWindowManager *wm, float value)
+static void rna_progress_update(wmWindowManager *wm, float value)
 {
   if (wm_progress_state.is_valid) {
     /* Map to cursor_time range [0,9999] */
@@ -197,7 +197,7 @@ static void rna_progress_update(struct wmWindowManager *wm, float value)
   }
 }
 
-static void rna_progress_end(struct wmWindowManager *wm)
+static void rna_progress_end(wmWindowManager *wm)
 {
   if (wm_progress_state.is_valid) {
     wmWindow *win = wm->winactive;

@@ -22,8 +22,8 @@
 #  include "BKE_context.h"
 #  include "BKE_object.h"
 
-static void rna_camera_view_frame(struct Camera *camera,
-                                  struct Scene *scene,
+static void rna_camera_view_frame(Camera *camera,
+                                  Scene *scene,
                                   float r_vec1[3],
                                   float r_vec2[3],
                                   float r_vec3[3],

@@ -60,7 +60,7 @@ static void rna_cloth_pinning_changed(Main * /*bmain*/, Scene * /*scene*/, Point
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ob);
 }
 
-static void rna_ClothSettings_bending_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_bending_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -72,7 +72,7 @@ static void rna_ClothSettings_bending_set(struct PointerRNA *ptr, float value)
   }
 }
 
-static void rna_ClothSettings_max_bend_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_bend_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -84,7 +84,7 @@ static void rna_ClothSettings_max_bend_set(struct PointerRNA *ptr, float value)
   settings->max_bend = value;
 }
 
-static void rna_ClothSettings_tension_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_tension_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -96,7 +96,7 @@ static void rna_ClothSettings_tension_set(struct PointerRNA *ptr, float value)
   }
 }
 
-static void rna_ClothSettings_max_tension_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_tension_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -108,7 +108,7 @@ static void rna_ClothSettings_max_tension_set(struct PointerRNA *ptr, float valu
   settings->max_tension = value;
 }
 
-static void rna_ClothSettings_compression_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_compression_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -120,7 +120,7 @@ static void rna_ClothSettings_compression_set(struct PointerRNA *ptr, float valu
   }
 }
 
-static void rna_ClothSettings_max_compression_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_compression_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -132,7 +132,7 @@ static void rna_ClothSettings_max_compression_set(struct PointerRNA *ptr, float 
   settings->max_compression = value;
 }
 
-static void rna_ClothSettings_shear_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_shear_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -144,7 +144,7 @@ static void rna_ClothSettings_shear_set(struct PointerRNA *ptr, float value)
   }
 }
 
-static void rna_ClothSettings_max_shear_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_shear_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -156,7 +156,7 @@ static void rna_ClothSettings_max_shear_set(struct PointerRNA *ptr, float value)
   settings->max_shear = value;
 }
 
-static void rna_ClothSettings_max_sewing_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_sewing_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -168,7 +168,7 @@ static void rna_ClothSettings_max_sewing_set(struct PointerRNA *ptr, float value
   settings->max_sewing = value;
 }
 
-static void rna_ClothSettings_shrink_min_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_shrink_min_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -180,7 +180,7 @@ static void rna_ClothSettings_shrink_min_set(struct PointerRNA *ptr, float value
   }
 }
 
-static void rna_ClothSettings_shrink_max_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_shrink_max_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -192,7 +192,7 @@ static void rna_ClothSettings_shrink_max_set(struct PointerRNA *ptr, float value
   settings->shrink_max = value;
 }
 
-static void rna_ClothSettings_internal_tension_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_internal_tension_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -204,7 +204,7 @@ static void rna_ClothSettings_internal_tension_set(struct PointerRNA *ptr, float
   }
 }
 
-static void rna_ClothSettings_max_internal_tension_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_internal_tension_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -216,7 +216,7 @@ static void rna_ClothSettings_max_internal_tension_set(struct PointerRNA *ptr, f
   settings->max_internal_tension = value;
 }
 
-static void rna_ClothSettings_internal_compression_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_internal_compression_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -228,7 +228,7 @@ static void rna_ClothSettings_internal_compression_set(struct PointerRNA *ptr, f
   }
 }
 
-static void rna_ClothSettings_max_internal_compression_set(struct PointerRNA *ptr, float value)
+static void rna_ClothSettings_max_internal_compression_set(PointerRNA *ptr, float value)
 {
   ClothSimSettings *settings = (ClothSimSettings *)ptr->data;
 
@@ -407,17 +407,18 @@ static PointerRNA rna_ClothSettings_rest_shape_key_get(PointerRNA *ptr)
   Object *ob = (Object *)ptr->owner_id;
   ClothSimSettings *sim = (ClothSimSettings *)ptr->data;
 
-  return rna_object_shapekey_index_get(static_cast<ID*>(ob->data), sim->shapekey_rest);
+  return rna_object_shapekey_index_get(static_cast<ID *>(ob->data), sim->shapekey_rest);
 }
 
 static void rna_ClothSettings_rest_shape_key_set(PointerRNA *ptr,
                                                  PointerRNA value,
-                                                 struct ReportList * /*reports*/)
+                                                 ReportList * /*reports*/)
 {
   Object *ob = (Object *)ptr->owner_id;
   ClothSimSettings *sim = (ClothSimSettings *)ptr->data;
 
-  sim->shapekey_rest = rna_object_shapekey_index_set(static_cast<ID*>(ob->data), value, sim->shapekey_rest);
+  sim->shapekey_rest = rna_object_shapekey_index_set(
+      static_cast<ID *>(ob->data), value, sim->shapekey_rest);
 }
 
 static void rna_ClothSettings_gravity_get(PointerRNA *ptr, float *values)
@@ -468,7 +469,7 @@ static char *rna_ClothCollisionSettings_path(const PointerRNA *ptr)
   }
 }
 
-static int rna_ClothSettings_internal_editable(struct PointerRNA *ptr, const char **r_info)
+static int rna_ClothSettings_internal_editable(PointerRNA *ptr, const char **r_info)
 {
   ClothSimSettings *sim = (ClothSimSettings *)ptr->data;
 
@@ -944,7 +945,8 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "internal_tension_stiffness_max", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "max_internal_tension");
   RNA_def_property_range(prop, 0.0f, 10000.0f);
-  RNA_def_property_float_funcs(prop, nullptr, "rna_ClothSettings_max_internal_tension_set", nullptr);
+  RNA_def_property_float_funcs(
+      prop, nullptr, "rna_ClothSettings_max_internal_tension_set", nullptr);
   RNA_def_property_ui_text(prop, "Tension Stiffness Maximum", "Maximum tension stiffness value");
   RNA_def_property_editable_func(prop, "rna_ClothSettings_internal_editable");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
@@ -952,7 +954,8 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "internal_compression_stiffness", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "internal_compression");
   RNA_def_property_range(prop, 0.0f, 10000.0f);
-  RNA_def_property_float_funcs(prop, nullptr, "rna_ClothSettings_internal_compression_set", nullptr);
+  RNA_def_property_float_funcs(
+      prop, nullptr, "rna_ClothSettings_internal_compression_set", nullptr);
   RNA_def_property_ui_text(
       prop, "Compression Stiffness", "How much the material resists compression");
   RNA_def_property_editable_func(prop, "rna_ClothSettings_internal_editable");
@@ -961,7 +964,8 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "internal_compression_stiffness_max", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "max_internal_compression");
   RNA_def_property_range(prop, 0.0f, 10000.0f);
-  RNA_def_property_float_funcs(prop, nullptr, "rna_ClothSettings_max_internal_compression_set", nullptr);
+  RNA_def_property_float_funcs(
+      prop, nullptr, "rna_ClothSettings_max_internal_compression_set", nullptr);
   RNA_def_property_ui_text(
       prop, "Compression Stiffness Maximum", "Maximum compression stiffness value");
   RNA_def_property_editable_func(prop, "rna_ClothSettings_internal_editable");

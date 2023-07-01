@@ -56,7 +56,7 @@ static bool rna_AssetMetaData_editable_from_owner_id(const ID *owner_id,
 
 int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   return rna_AssetMetaData_editable_from_owner_id(ptr->owner_id, asset_data, r_info) ?
              PROP_EDITABLE :
@@ -65,7 +65,7 @@ int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info)
 
 static char *rna_AssetTag_path(const PointerRNA *ptr)
 {
-  const AssetTag *asset_tag = static_cast<const AssetTag*>(ptr->data);
+  const AssetTag *asset_tag = static_cast<const AssetTag *>(ptr->data);
   char asset_tag_name_esc[sizeof(asset_tag->name) * 2];
   BLI_str_escape(asset_tag_name_esc, asset_tag->name, sizeof(asset_tag_name_esc));
   return BLI_sprintfN("asset_data.tags[\"%s\"]", asset_tag_name_esc);
@@ -73,7 +73,7 @@ static char *rna_AssetTag_path(const PointerRNA *ptr)
 
 static int rna_AssetTag_editable(PointerRNA *ptr, const char **r_info)
 {
-  AssetTag *asset_tag = static_cast<AssetTag*>(ptr->data);
+  AssetTag *asset_tag = static_cast<AssetTag *>(ptr->data);
   ID *owner_id = ptr->owner_id;
   if (owner_id && owner_id->asset_data) {
     BLI_assert_msg(BLI_findindex(&owner_id->asset_data->tags, asset_tag) != -1,
@@ -98,7 +98,7 @@ static AssetTag *rna_AssetMetaData_tag_new(
   AssetTag *tag = nullptr;
 
   if (skip_if_exists) {
-    struct AssetTagEnsureResult result = BKE_asset_metadata_tag_ensure(asset_data, name);
+    AssetTagEnsureResult result = BKE_asset_metadata_tag_ensure(asset_data, name);
 
     if (!result.is_new) {
       BKE_reportf(
@@ -125,7 +125,7 @@ static void rna_AssetMetaData_tag_remove(ID *id,
     return;
   }
 
-  AssetTag *tag = static_cast<AssetTag*>(tag_ptr->data);
+  AssetTag *tag = static_cast<AssetTag *>(tag_ptr->data);
   if (BLI_findindex(&asset_data->tags, tag) == -1) {
     BKE_reportf(reports, RPT_ERROR, "Tag '%s' not found in given asset", tag->name);
     return;
@@ -137,13 +137,13 @@ static void rna_AssetMetaData_tag_remove(ID *id,
 
 static IDProperty **rna_AssetMetaData_idprops(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   return &asset_data->properties;
 }
 
 static void rna_AssetMetaData_author_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->author) {
     strcpy(value, asset_data->author);
@@ -155,13 +155,13 @@ static void rna_AssetMetaData_author_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_author_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   return asset_data->author ? strlen(asset_data->author) : 0;
 }
 
 static void rna_AssetMetaData_author_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->author) {
     MEM_freeN(asset_data->author);
@@ -177,7 +177,7 @@ static void rna_AssetMetaData_author_set(PointerRNA *ptr, const char *value)
 
 static void rna_AssetMetaData_description_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->description) {
     strcpy(value, asset_data->description);
@@ -189,13 +189,13 @@ static void rna_AssetMetaData_description_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_description_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   return asset_data->description ? strlen(asset_data->description) : 0;
 }
 
 static void rna_AssetMetaData_description_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->description) {
     MEM_freeN(asset_data->description);
@@ -211,7 +211,7 @@ static void rna_AssetMetaData_description_set(PointerRNA *ptr, const char *value
 
 static void rna_AssetMetaData_copyright_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->copyright) {
     strcpy(value, asset_data->copyright);
@@ -223,13 +223,13 @@ static void rna_AssetMetaData_copyright_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_copyright_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   return asset_data->copyright ? strlen(asset_data->copyright) : 0;
 }
 
 static void rna_AssetMetaData_copyright_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->copyright) {
     MEM_freeN(asset_data->copyright);
@@ -245,7 +245,7 @@ static void rna_AssetMetaData_copyright_set(PointerRNA *ptr, const char *value)
 
 static void rna_AssetMetaData_license_get(PointerRNA *ptr, char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->license) {
     strcpy(value, asset_data->license);
@@ -257,13 +257,13 @@ static void rna_AssetMetaData_license_get(PointerRNA *ptr, char *value)
 
 static int rna_AssetMetaData_license_length(PointerRNA *ptr)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   return asset_data->license ? strlen(asset_data->license) : 0;
 }
 
 static void rna_AssetMetaData_license_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
 
   if (asset_data->license) {
     MEM_freeN(asset_data->license);
@@ -280,14 +280,14 @@ static void rna_AssetMetaData_license_set(PointerRNA *ptr, const char *value)
 static void rna_AssetMetaData_active_tag_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
-  const AssetMetaData *asset_data = static_cast<const AssetMetaData*>(ptr->data);
+  const AssetMetaData *asset_data = static_cast<const AssetMetaData *>(ptr->data);
   *min = *softmin = 0;
   *max = *softmax = MAX2(asset_data->tot_tags - 1, 0);
 }
 
 static void rna_AssetMetaData_catalog_id_get(PointerRNA *ptr, char *value)
 {
-  const AssetMetaData *asset_data = static_cast<const AssetMetaData*>(ptr->data);
+  const AssetMetaData *asset_data = static_cast<const AssetMetaData *>(ptr->data);
   BLI_uuid_format(value, asset_data->catalog_id);
 }
 
@@ -298,7 +298,7 @@ static int rna_AssetMetaData_catalog_id_length(PointerRNA * /*ptr*/)
 
 static void rna_AssetMetaData_catalog_id_set(PointerRNA *ptr, const char *value)
 {
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   bUUID new_uuid;
 
   if (value[0] == '\0') {
@@ -319,7 +319,7 @@ static void rna_AssetMetaData_catalog_id_set(PointerRNA *ptr, const char *value)
   BKE_asset_metadata_catalog_id_set(asset_data, new_uuid, "");
 }
 
-void rna_AssetMetaData_catalog_id_update(struct bContext *C, struct PointerRNA *ptr)
+void rna_AssetMetaData_catalog_id_update(bContext *C, PointerRNA *ptr)
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
   if (sfile == nullptr) {
@@ -334,13 +334,13 @@ void rna_AssetMetaData_catalog_id_update(struct bContext *C, struct PointerRNA *
     return;
   }
 
-  AssetMetaData *asset_data = static_cast<AssetMetaData*>(ptr->data);
+  AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
   AS_asset_library_refresh_catalog_simplename(asset_library, asset_data);
 }
 
 static PointerRNA rna_AssetHandle_file_data_get(PointerRNA *ptr)
 {
-  AssetHandle *asset_handle = static_cast<AssetHandle*>(ptr->data);
+  AssetHandle *asset_handle = static_cast<AssetHandle *>(ptr->data);
   /* Have to cast away const, but the file entry API doesn't allow modifications anyway. */
   return rna_pointer_inherit_refine(
       ptr, &RNA_FileSelectEntry, (FileDirEntry *)asset_handle->file_data);
@@ -348,10 +348,10 @@ static PointerRNA rna_AssetHandle_file_data_get(PointerRNA *ptr)
 
 static void rna_AssetHandle_file_data_set(PointerRNA *ptr,
                                           PointerRNA value,
-                                          struct ReportList * /*reports*/)
+                                          ReportList * /*reports*/)
 {
-  AssetHandle *asset_handle = static_cast<AssetHandle*>(ptr->data);
-  asset_handle->file_data = static_cast<const FileDirEntry*>(value.data);
+  AssetHandle *asset_handle = static_cast<AssetHandle *>(ptr->data);
+  asset_handle->file_data = static_cast<const FileDirEntry *>(value.data);
 }
 
 static void rna_AssetHandle_get_full_library_path(
@@ -365,7 +365,7 @@ static void rna_AssetHandle_get_full_library_path(
 
 static PointerRNA rna_AssetHandle_local_id_get(PointerRNA *ptr)
 {
-  const AssetHandle *asset = static_cast<const AssetHandle*>(ptr->data);
+  const AssetHandle *asset = static_cast<const AssetHandle *>(ptr->data);
   ID *id = ED_asset_handle_get_local_id(asset);
   return rna_pointer_inherit_refine(ptr, &RNA_ID, id);
 }

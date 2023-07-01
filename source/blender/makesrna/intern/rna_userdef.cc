@@ -213,18 +213,14 @@ void rna_userdef_is_dirty_update_impl(void)
   }
 }
 
-void rna_userdef_is_dirty_update(Main * /*bmain*/,
-                                 Scene * /*scene*/,
-                                 PointerRNA * /*ptr*/)
+void rna_userdef_is_dirty_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   /* WARNING: never use 'ptr' unless its type is checked. */
   rna_userdef_is_dirty_update_impl();
 }
 
 /** Take care not to use this if we expect 'is_dirty' to be tagged. */
-static void rna_userdef_ui_update(Main * /*bmain*/,
-                                  Scene * /*scene*/,
-                                  PointerRNA * /*ptr*/)
+static void rna_userdef_ui_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   WM_main_add_notifier(NC_WINDOW, nullptr);
 }
@@ -267,9 +263,7 @@ static void rna_userdef_theme_update_icons(Main *bmain, Scene *scene, PointerRNA
 }
 
 /* also used by buffer swap switching */
-static void rna_userdef_gpu_update(Main * /*bmain*/,
-                                   Scene * /*scene*/,
-                                   PointerRNA * /*ptr*/)
+static void rna_userdef_gpu_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   /* font's are stored at each DPI level, without this we can easy load 100's of fonts */
   BLF_cache_clear();
@@ -279,9 +273,7 @@ static void rna_userdef_gpu_update(Main * /*bmain*/,
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_screen_update(Main * /*bmain*/,
-                                      Scene * /*scene*/,
-                                      PointerRNA * /*ptr*/)
+static void rna_userdef_screen_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   WM_main_add_notifier(NC_WINDOW, nullptr);
   WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr); /* refresh region sizes */
@@ -291,7 +283,9 @@ static void rna_userdef_screen_update(Main * /*bmain*/,
 static void rna_userdef_screen_update_header_default(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   if (U.uiflag & USER_HEADER_FROM_PREF) {
-    for (bScreen *screen = static_cast<bScreen*>(bmain->screens.first); screen; screen = static_cast<bScreen*>(screen->id.next)) {
+    for (bScreen *screen = static_cast<bScreen *>(bmain->screens.first); screen;
+         screen = static_cast<bScreen *>(screen->id.next))
+    {
       BKE_screen_header_alignment_reset(screen);
     }
     rna_userdef_screen_update(bmain, scene, ptr);
@@ -299,17 +293,13 @@ static void rna_userdef_screen_update_header_default(Main *bmain, Scene *scene, 
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_font_update(Main * /*bmain*/,
-                                    Scene * /*scene*/,
-                                    PointerRNA * /*ptr*/)
+static void rna_userdef_font_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BLF_cache_clear();
   UI_reinit_font();
 }
 
-static void rna_userdef_language_update(Main * /*bmain*/,
-                                        Scene * /*scene*/,
-                                        PointerRNA * /*ptr*/)
+static void rna_userdef_language_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BLT_lang_set(nullptr);
 
@@ -353,7 +343,7 @@ static void rna_userdef_script_autoexec_update(Main * /*bmain*/,
 
 static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *value)
 {
-  bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory*>(ptr->data);
+  bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory *>(ptr->data);
   bool value_invalid = false;
 
   if (!value[0]) {
@@ -378,7 +368,8 @@ static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *v
 
 static bUserScriptDirectory *rna_userdef_script_directory_new(void)
 {
-  bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory*>(MEM_callocN(sizeof(*script_dir), __func__));
+  bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory *>(
+      MEM_callocN(sizeof(*script_dir), __func__));
   BLI_addtail(&U.script_directories, script_dir);
   USERDEF_TAG_DIRTY;
   return script_dir;
@@ -386,7 +377,7 @@ static bUserScriptDirectory *rna_userdef_script_directory_new(void)
 
 static void rna_userdef_script_directory_remove(ReportList *reports, PointerRNA *ptr)
 {
-  bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory*>(ptr->data);
+  bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory *>(ptr->data);
   if (BLI_findindex(&U.script_directories, script_dir) == -1) {
     BKE_report(reports, RPT_ERROR, "Script directory not found");
     return;
@@ -456,29 +447,23 @@ static void rna_userdef_autokeymode_set(PointerRNA *ptr, int value)
   }
 }
 
-static void rna_userdef_anim_update(Main * /*bmain*/,
-                                    Scene * /*scene*/,
-                                    PointerRNA * /*ptr*/)
+static void rna_userdef_anim_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   WM_main_add_notifier(NC_SPACE | ND_SPACE_GRAPH, nullptr);
   WM_main_add_notifier(NC_SPACE | ND_SPACE_DOPESHEET, nullptr);
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_input_devices(Main * /*bmain*/,
-                                      Scene * /*scene*/,
-                                      PointerRNA * /*ptr*/)
+static void rna_userdef_input_devices(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   WM_init_input_devices();
   USERDEF_TAG_DIRTY;
 }
 
 #  ifdef WITH_INPUT_NDOF
-static void rna_userdef_ndof_deadzone_update(Main * /*bmain*/,
-                                             Scene * /*scene*/,
-                                             PointerRNA *ptr)
+static void rna_userdef_ndof_deadzone_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
-  UserDef *userdef = static_cast<UserDef*>(ptr->data);
+  UserDef *userdef = static_cast<UserDef *>(ptr->data);
   WM_ndof_deadzone_set(userdef->ndof_deadzone);
   USERDEF_TAG_DIRTY;
 }
@@ -530,7 +515,7 @@ static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
 static int rna_UserDef_mouse_emulate_3_button_modifier_get(PointerRNA *ptr)
 {
 #  if !defined(WIN32)
-  UserDef *userdef = static_cast<UserDef*>(ptr->data);
+  UserDef *userdef = static_cast<UserDef *>(ptr->data);
   return userdef->mouse_emulate_3_button_modifier;
 #  else
   UNUSED_VARS(ptr);
@@ -543,7 +528,7 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext * /*C*/,
                                                                PropertyRNA * /*prop*/,
                                                                bool *r_free)
 {
-  UserDef *userdef = static_cast<UserDef*>(ptr->data);
+  UserDef *userdef = static_cast<UserDef *>(ptr->data);
 
   if ((userdef->flag & USER_DEVELOPER_UI) != 0) {
     *r_free = false;
@@ -554,7 +539,8 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext * /*C*/,
   int totitem = 0;
 
   for (const EnumPropertyItem *it = rna_enum_preference_section_items; it->identifier != nullptr;
-       it++) {
+       it++)
+  {
     if (it->value == USER_SECTION_EXPERIMENTAL) {
       continue;
     }
@@ -607,7 +593,8 @@ static void rna_UserDef_subdivision_update(Main *bmain, Scene *scene, PointerRNA
 {
   Object *ob;
 
-  for (ob = static_cast<Object*>(bmain->objects.first); ob; ob = static_cast<Object*>(ob->id.next)) {
+  for (ob = static_cast<Object *>(bmain->objects.first); ob;
+       ob = static_cast<Object *>(ob->id.next)) {
     if (BKE_object_get_last_subsurf_modifier(ob) != nullptr) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
@@ -622,9 +609,7 @@ static void rna_UserDef_audio_update(Main *bmain, Scene * /*scene*/, PointerRNA 
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_Userdef_memcache_update(Main * /*bmain*/,
-                                        Scene * /*scene*/,
-                                        PointerRNA * /*ptr*/)
+static void rna_Userdef_memcache_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
   USERDEF_TAG_DIRTY;
@@ -647,7 +632,8 @@ static void rna_UserDef_weight_color_update(Main *bmain, Scene *scene, PointerRN
 {
   Object *ob;
 
-  for (ob = static_cast<Object*>(bmain->objects.first); ob; ob = static_cast<Object*>(ob->id.next)) {
+  for (ob = static_cast<Object *>(bmain->objects.first); ob;
+       ob = static_cast<Object *>(ob->id.next)) {
     if (ob->mode & OB_MODE_WEIGHT_PAINT) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
@@ -663,7 +649,7 @@ static void rna_UserDef_viewport_lights_update(Main *bmain, Scene *scene, Pointe
   if (U.light_param[0].flag == 0 && U.light_param[1].flag == 0 && U.light_param[2].flag == 0 &&
       U.light_param[3].flag == 0)
   {
-    SolidLight *light = static_cast<SolidLight*>(ptr->data);
+    SolidLight *light = static_cast<SolidLight *>(ptr->data);
     light->flag |= 1;
   }
 
@@ -681,7 +667,7 @@ static bool rna_userdef_is_microsoft_store_install_get(PointerRNA * /*ptr*/)
 
 static void rna_userdef_autosave_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  wmWindowManager *wm = static_cast<wmWindowManager*>(bmain->wm.first);
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
 
   if (wm) {
     WM_file_autosave_init(wm);
@@ -708,7 +694,7 @@ static bAddon *rna_userdef_addon_new(void)
 static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
 {
   ListBase *addons_list = &U.addons;
-  bAddon *addon = static_cast<bAddon*>(addon_ptr->data);
+  bAddon *addon = static_cast<bAddon *>(addon_ptr->data);
   if (BLI_findindex(addons_list, addon) == -1) {
     BKE_report(reports, RPT_ERROR, "Add-on is no longer valid");
     return;
@@ -721,7 +707,8 @@ static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
 
 static bPathCompare *rna_userdef_pathcompare_new(void)
 {
-  bPathCompare *path_cmp = static_cast<bPathCompare*>(MEM_callocN(sizeof(bPathCompare), "bPathCompare"));
+  bPathCompare *path_cmp = static_cast<bPathCompare *>(
+      MEM_callocN(sizeof(bPathCompare), "bPathCompare"));
   BLI_addtail(&U.autoexec_paths, path_cmp);
   USERDEF_TAG_DIRTY;
   return path_cmp;
@@ -729,7 +716,7 @@ static bPathCompare *rna_userdef_pathcompare_new(void)
 
 static void rna_userdef_pathcompare_remove(ReportList *reports, PointerRNA *path_cmp_ptr)
 {
-  bPathCompare *path_cmp = static_cast<bPathCompare*>(path_cmp_ptr->data);
+  bPathCompare *path_cmp = static_cast<bPathCompare *>(path_cmp_ptr->data);
   if (BLI_findindex(&U.autoexec_paths, path_cmp) == -1) {
     BKE_report(reports, RPT_ERROR, "Excluded path is no longer valid");
     return;
@@ -740,17 +727,13 @@ static void rna_userdef_pathcompare_remove(ReportList *reports, PointerRNA *path
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_temp_update(Main * /*bmain*/,
-                                    Scene * /*scene*/,
-                                    PointerRNA * /*ptr*/)
+static void rna_userdef_temp_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BKE_tempdir_init(U.tempdir);
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_text_update(Main * /*bmain*/,
-                                    Scene * /*scene*/,
-                                    PointerRNA * /*ptr*/)
+static void rna_userdef_text_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BLF_cache_clear();
   UI_reinit_font();
@@ -856,7 +839,7 @@ static PointerRNA rna_Addon_preferences_get(PointerRNA *ptr)
 
 static bool rna_AddonPref_unregister(Main * /*bmain*/, StructRNA *type)
 {
-  bAddonPrefType *apt = static_cast<bAddonPrefType*>(RNA_struct_blender_type_get(type));
+  bAddonPrefType *apt = static_cast<bAddonPrefType *>(RNA_struct_blender_type_get(type));
 
   if (!apt) {
     return false;
@@ -923,7 +906,7 @@ static StructRNA *rna_AddonPref_register(Main *bmain,
   }
 
   /* Create a new add-on preference type. */
-  apt = static_cast<bAddonPrefType*>(MEM_mallocN(sizeof(bAddonPrefType), "addonpreftype"));
+  apt = static_cast<bAddonPrefType *>(MEM_mallocN(sizeof(bAddonPrefType), "addonpreftype"));
   memcpy(apt, &dummy_apt, sizeof(dummy_apt));
   BKE_addon_pref_type_add(apt);
 
@@ -961,8 +944,7 @@ static void rna_ThemeUI_roundness_set(PointerRNA *ptr, float value)
 }
 
 /* Studio Light */
-static void rna_UserDef_studiolight_begin(CollectionPropertyIterator *iter,
-                                          PointerRNA * /*ptr*/)
+static void rna_UserDef_studiolight_begin(CollectionPropertyIterator *iter, PointerRNA * /*ptr*/)
 {
   rna_iterator_listbase_begin(iter, BKE_studiolight_listbase(), nullptr);
 }
@@ -1118,12 +1100,12 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
   copy_v3_v3(values, sl->light_ambient);
 }
 
-int rna_show_statusbar_vram_editable(struct PointerRNA * /*ptr*/, const char ** /*r_info*/)
+int rna_show_statusbar_vram_editable(PointerRNA * /*ptr*/, const char ** /*r_info*/)
 {
   return GPU_mem_stats_supported() ? PROP_EDITABLE : 0;
 }
 
-static const EnumPropertyItem *rna_preference_gpu_backend_itemf(struct bContext * /*C*/,
+static const EnumPropertyItem *rna_preference_gpu_backend_itemf(bContext * /*C*/,
                                                                 PointerRNA * /*ptr*/,
                                                                 PropertyRNA * /*prop*/,
                                                                 bool *r_free)
@@ -1955,7 +1937,8 @@ static void rna_def_userdef_theme_spaces_list_main(StructRNA *srna)
   prop = RNA_def_property(srna, "space_list", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_struct_type(prop, "ThemeSpaceListGeneric");
-  RNA_def_property_pointer_funcs(prop, "rna_Theme_space_list_generic_get", nullptr, nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_Theme_space_list_generic_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Theme Space List", "Settings for space list");
 }
 
@@ -4302,7 +4285,8 @@ static void rna_def_userdef_studiolight(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "light_ambient", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_UserDef_studiolight_light_ambient_get", nullptr, nullptr);
+  RNA_def_property_float_funcs(
+      prop, "rna_UserDef_studiolight_light_ambient_get", nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Ambient Color", "Color of the ambient light that uniformly lit the scene");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -4365,7 +4349,8 @@ static void rna_def_userdef_addon_pref(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "bAddon"); /* WARNING: only a bAddon during registration */
 
   RNA_def_struct_refine_func(srna, "rna_AddonPref_refine");
-  RNA_def_struct_register_funcs(srna, "rna_AddonPref_register", "rna_AddonPref_unregister", nullptr);
+  RNA_def_struct_register_funcs(
+      srna, "rna_AddonPref_register", "rna_AddonPref_unregister", nullptr);
   RNA_def_struct_idprops_func(srna, "rna_AddonPref_idprops");
   RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES); /* Mandatory! */
 
@@ -4997,7 +4982,8 @@ static void rna_def_userdef_view(BlenderRNA *brna)
 #  ifdef WITH_INTERNATIONAL
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_lang_enum_properties_itemf");
 #  else
-  RNA_def_property_enum_funcs(prop, "rna_lang_enum_properties_get_no_international", nullptr, nullptr);
+  RNA_def_property_enum_funcs(
+      prop, "rna_lang_enum_properties_get_no_international", nullptr, nullptr);
 #  endif
   RNA_def_property_ui_text(prop, "Language", "Language used for translation");
   RNA_def_property_update(prop, NC_WINDOW, "rna_userdef_language_update");
@@ -5210,7 +5196,8 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       "and also Color is based on the transform axis");
 
   prop = RNA_def_property(srna, "use_anim_channel_group_colors", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "animation_flag", USER_ANIM_SHOW_CHANNEL_GROUP_COLORS);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "animation_flag", USER_ANIM_SHOW_CHANNEL_GROUP_COLORS);
   RNA_def_property_ui_text(
       prop,
       "Channel Group Colors",
@@ -6218,7 +6205,8 @@ static void rna_def_userdef_input(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "mouse_emulate_3_button_modifier", PROP_ENUM, PROP_NONE);
   /* Only needed because of WIN32 inability to support the option. */
-  RNA_def_property_enum_funcs(prop, "rna_UserDef_mouse_emulate_3_button_modifier_get", nullptr, nullptr);
+  RNA_def_property_enum_funcs(
+      prop, "rna_UserDef_mouse_emulate_3_button_modifier_get", nullptr, nullptr);
   RNA_def_property_enum_items(prop, mouse_emulate_3_button_modifier);
   RNA_def_property_ui_text(
       prop, "Emulate 3 Button Modifier", "Hold this modifier to emulate the middle mouse button");

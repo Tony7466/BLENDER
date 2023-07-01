@@ -144,7 +144,7 @@ static const EnumPropertyItem blend_type_items[] = {
 #  include "ED_node.h"
 #  include "ED_render.h"
 
-static StructRNA *rna_Texture_refine(struct PointerRNA *ptr)
+static StructRNA *rna_Texture_refine(PointerRNA *ptr)
 {
   Tex *tex = (Tex *)ptr->data;
 
@@ -197,7 +197,7 @@ static void rna_Texture_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 static void rna_Texture_mapping_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
-  TexMapping *texmap = static_cast<TexMapping*>(ptr->data);
+  TexMapping *texmap = static_cast<TexMapping *>(ptr->data);
   BKE_texture_mapping_init(texmap);
 
   if (GS(id->name) == ID_NT) {
@@ -216,9 +216,7 @@ static void rna_Texture_mapping_update(Main *bmain, Scene *scene, PointerRNA *pt
   rna_Texture_update(bmain, scene, ptr);
 }
 
-static void rna_Color_mapping_update(Main * /*bmain*/,
-                                     Scene * /*scene*/,
-                                     PointerRNA * /*ptr*/)
+static void rna_Color_mapping_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   /* nothing to do */
 }
@@ -266,7 +264,7 @@ void rna_TextureSlot_update(bContext *C, PointerRNA *ptr)
       break;
     case ID_BR: {
       Scene *scene = CTX_data_scene(C);
-      MTex *mtex = static_cast<MTex*>(ptr->data);
+      MTex *mtex = static_cast<MTex *>(ptr->data);
       ViewLayer *view_layer = CTX_data_view_layer(C);
       BKE_paint_invalidate_overlay_tex(scene, view_layer, mtex->tex);
       WM_main_add_notifier(NC_BRUSH, id);
@@ -276,7 +274,7 @@ void rna_TextureSlot_update(bContext *C, PointerRNA *ptr)
       WM_main_add_notifier(NC_LINESTYLE, id);
       break;
     case ID_PA: {
-      MTex *mtex = static_cast<MTex*>(ptr->data);
+      MTex *mtex = static_cast<MTex *>(ptr->data);
       int recalc = ID_RECALC_GEOMETRY;
 
       if (mtex->mapto & PAMAP_INIT) {
@@ -297,7 +295,7 @@ void rna_TextureSlot_update(bContext *C, PointerRNA *ptr)
 
 char *rna_TextureSlot_path(const PointerRNA *ptr)
 {
-  MTex *mtex = static_cast<MTex*>(ptr->data);
+  MTex *mtex = static_cast<MTex *>(ptr->data);
 
   /* if there is ID-data, resolve the path using the index instead of by name,
    * since the name used is the name of the texture assigned, but the texture
@@ -340,7 +338,7 @@ char *rna_TextureSlot_path(const PointerRNA *ptr)
 
 static int rna_TextureSlot_name_length(PointerRNA *ptr)
 {
-  MTex *mtex = static_cast<MTex*>(ptr->data);
+  MTex *mtex = static_cast<MTex *>(ptr->data);
 
   if (mtex->tex) {
     return strlen(mtex->tex->id.name + 2);
@@ -351,7 +349,7 @@ static int rna_TextureSlot_name_length(PointerRNA *ptr)
 
 static void rna_TextureSlot_name_get(PointerRNA *ptr, char *value)
 {
-  MTex *mtex = static_cast<MTex*>(ptr->data);
+  MTex *mtex = static_cast<MTex *>(ptr->data);
 
   if (mtex->tex) {
     strcpy(value, mtex->tex->id.name + 2);
@@ -363,7 +361,7 @@ static void rna_TextureSlot_name_get(PointerRNA *ptr, char *value)
 
 static int rna_TextureSlot_output_node_get(PointerRNA *ptr)
 {
-  MTex *mtex = static_cast<MTex*>(ptr->data);
+  MTex *mtex = static_cast<MTex *>(ptr->data);
   Tex *tex = mtex->tex;
   int cur = mtex->which_output;
 
@@ -371,7 +369,7 @@ static int rna_TextureSlot_output_node_get(PointerRNA *ptr)
     bNodeTree *ntree = tex->nodetree;
     bNode *node;
     if (ntree) {
-      for (node = static_cast<bNode*>(ntree->nodes.first); node; node = node->next) {
+      for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
         if (node->type == TEX_NODE_OUTPUT) {
           if (cur == node->custom1) {
             return cur;
@@ -390,7 +388,7 @@ static const EnumPropertyItem *rna_TextureSlot_output_node_itemf(bContext * /*C*
                                                                  PropertyRNA * /*prop*/,
                                                                  bool *r_free)
 {
-  MTex *mtex = static_cast<MTex*>(ptr->data);
+  MTex *mtex = static_cast<MTex *>(ptr->data);
   Tex *tex = mtex->tex;
   EnumPropertyItem *item = nullptr;
   int totitem = 0;
@@ -406,7 +404,7 @@ static const EnumPropertyItem *rna_TextureSlot_output_node_itemf(bContext * /*C*
       tmp.identifier = "NOT_SPECIFIED";
       RNA_enum_item_add(&item, &totitem, &tmp);
 
-      for (node = static_cast<bNode*>(ntree->nodes.first); node; node = node->next) {
+      for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
         if (node->type == TEX_NODE_OUTPUT) {
           tmp.value = node->custom1;
           tmp.name = ((TexNodeOutput *)node->storage)->name;

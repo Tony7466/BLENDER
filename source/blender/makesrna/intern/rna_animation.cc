@@ -135,24 +135,20 @@ static int rna_AnimData_action_editable(PointerRNA *ptr, const char ** /*r_info*
   return BKE_animdata_action_editable(adt) ? PROP_EDITABLE : 0;
 }
 
-static void rna_AnimData_action_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_AnimData_action_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   ID *ownerId = ptr->owner_id;
 
   /* set action */
-  BKE_animdata_set_action(nullptr, ownerId, static_cast<bAction*>(value.data));
+  BKE_animdata_set_action(nullptr, ownerId, static_cast<bAction *>(value.data));
 }
 
-static void rna_AnimData_tmpact_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_AnimData_tmpact_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   ID *ownerId = ptr->owner_id;
 
   /* set action */
-  BKE_animdata_set_tmpact(nullptr, ownerId, static_cast<bAction*>(value.data));
+  BKE_animdata_set_tmpact(nullptr, ownerId, static_cast<bAction *>(value.data));
 }
 
 static void rna_AnimData_tweakmode_set(PointerRNA *ptr, const bool value)
@@ -298,7 +294,7 @@ static StructRNA *rna_KeyingSetInfo_refine(PointerRNA *ptr)
 
 static bool rna_KeyingSetInfo_unregister(Main *bmain, StructRNA *type)
 {
-  KeyingSetInfo *ksi = static_cast<KeyingSetInfo*>(RNA_struct_blender_type_get(type));
+  KeyingSetInfo *ksi = static_cast<KeyingSetInfo *>(RNA_struct_blender_type_get(type));
 
   if (ksi == nullptr) {
     return false;
@@ -366,7 +362,7 @@ static StructRNA *rna_KeyingSetInfo_register(Main *bmain,
   }
 
   /* create a new KeyingSetInfo type */
-  ksi = static_cast<KeyingSetInfo*>(MEM_mallocN(sizeof(KeyingSetInfo), "python keying set info"));
+  ksi = static_cast<KeyingSetInfo *>(MEM_mallocN(sizeof(KeyingSetInfo), "python keying set info"));
   memcpy(ksi, &dummy_ksi, sizeof(KeyingSetInfo));
 
   /* set RNA-extensions info */
@@ -466,7 +462,7 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
   if (!STREQ(ks->name, value)) {
     KS_Path *ksp;
 
-    for (ksp = static_cast<KS_Path*>(ks->paths.first); ksp; ksp = ksp->next) {
+    for (ksp = static_cast<KS_Path *>(ks->paths.first); ksp; ksp = ksp->next) {
       if ((ksp->groupmode == KSP_GROUP_KSNAME) && (ksp->id)) {
         AnimData *adt = BKE_animdata_from_id(ksp->id);
 
@@ -478,7 +474,8 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
            * but this way should be faster and work well for most cases, as long as there are no
            * conflicts
            */
-          for (agrp = static_cast<bActionGroup*>(adt->action->groups.first); agrp; agrp = agrp->next) {
+          for (agrp = static_cast<bActionGroup *>(adt->action->groups.first); agrp;
+               agrp = agrp->next) {
             if (STREQ(ks->name, agrp->name)) {
               /* there should only be one of these in the action, so can stop... */
               STRNCPY(agrp->name, value);
@@ -511,7 +508,7 @@ static PointerRNA rna_KeyingSet_active_ksPath_get(PointerRNA *ptr)
 
 static void rna_KeyingSet_active_ksPath_set(PointerRNA *ptr,
                                             PointerRNA value,
-                                            struct ReportList * /*reports*/)
+                                            ReportList * /*reports*/)
 {
   KeyingSet *ks = (KeyingSet *)ptr->data;
   KS_Path *ksp = (KS_Path *)value.data;
@@ -586,7 +583,7 @@ static void rna_KeyingSet_paths_remove(KeyingSet *keyingset,
                                        ReportList *reports,
                                        PointerRNA *ksp_ptr)
 {
-  KS_Path *ksp = static_cast<KS_Path*>(ksp_ptr->data);
+  KS_Path *ksp = static_cast<KS_Path *>(ksp_ptr->data);
 
   /* if data is valid, call the API function for this */
   if ((keyingset && ksp) == false) {
@@ -611,7 +608,7 @@ static void rna_KeyingSet_paths_clear(KeyingSet *keyingset, ReportList *reports)
     KS_Path *ksp, *kspn;
 
     /* free each path as we go to avoid looping twice */
-    for (ksp = static_cast<KS_Path*>(keyingset->paths.first); ksp; ksp = kspn) {
+    for (ksp = static_cast<KS_Path *>(keyingset->paths.first); ksp; ksp = kspn) {
       kspn = ksp->next;
       BKE_keyingset_free_path(keyingset, ksp);
     }
@@ -649,7 +646,7 @@ static NlaTrack *rna_NlaTrack_new(ID *id, AnimData *adt, Main *bmain, bContext *
 static void rna_NlaTrack_remove(
     ID *id, AnimData *adt, Main *bmain, bContext *C, ReportList *reports, PointerRNA *track_ptr)
 {
-  NlaTrack *track = static_cast<NlaTrack*>(track_ptr->data);
+  NlaTrack *track = static_cast<NlaTrack *>(track_ptr->data);
 
   if (BLI_findindex(&adt->nla_tracks, track) == -1) {
     BKE_reportf(reports, RPT_ERROR, "NlaTrack '%s' cannot be removed", track->name);
@@ -672,9 +669,7 @@ static PointerRNA rna_NlaTrack_active_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_NlaTrack, track);
 }
 
-static void rna_NlaTrack_active_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_NlaTrack_active_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   AnimData *adt = (AnimData *)ptr->data;
   NlaTrack *track = (NlaTrack *)value.data;
@@ -764,8 +759,8 @@ bool rna_AnimaData_override_apply(Main *bmain,
   UNUSED_VARS_NDEBUG(ptr_storage, len_dst, len_src, len_storage, opop);
 
   /* AnimData is a special case, since you cannot edit/replace it, it's either existent or not. */
-  AnimData *adt_dst = static_cast<AnimData*>(RNA_property_pointer_get(ptr_dst, prop_dst).data);
-  AnimData *adt_src = static_cast<AnimData*>(RNA_property_pointer_get(ptr_src, prop_src).data);
+  AnimData *adt_dst = static_cast<AnimData *>(RNA_property_pointer_get(ptr_dst, prop_dst).data);
+  AnimData *adt_src = static_cast<AnimData *>(RNA_property_pointer_get(ptr_src, prop_src).data);
 
   if (adt_dst == nullptr && adt_src != nullptr) {
     /* Copy anim data from reference into final local ID. */
@@ -820,12 +815,13 @@ bool rna_NLA_tracks_override_apply(Main *bmain,
   }
   /* Otherwise we just insert in first position. */
 #  else
-  nla_track_anchor = static_cast<NlaTrack*>(anim_data_dst->nla_tracks.last);
+  nla_track_anchor = static_cast<NlaTrack *>(anim_data_dst->nla_tracks.last);
 #  endif
 
   NlaTrack *nla_track_src = nullptr;
   if (opop->subitem_local_index >= 0) {
-    nla_track_src = static_cast<NlaTrack*>(BLI_findlink(&anim_data_src->nla_tracks, opop->subitem_local_index));
+    nla_track_src = static_cast<NlaTrack *>(
+        BLI_findlink(&anim_data_src->nla_tracks, opop->subitem_local_index));
   }
 
   if (nla_track_src == nullptr) {

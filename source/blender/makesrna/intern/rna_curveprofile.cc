@@ -32,7 +32,7 @@
  */
 static void rna_CurveProfilePoint_handle_type_set(PointerRNA *ptr, int value)
 {
-  CurveProfilePoint *point = static_cast<CurveProfilePoint*>(ptr->data);
+  CurveProfilePoint *point = static_cast<CurveProfilePoint *>(ptr->data);
   CurveProfile *profile = point->profile;
 
   if (profile) {
@@ -88,7 +88,7 @@ static void rna_CurveProfile_remove_point(CurveProfile *profile,
                                           ReportList *reports,
                                           PointerRNA *point_ptr)
 {
-  CurveProfilePoint *point = static_cast<CurveProfilePoint*>(point_ptr->data);
+  CurveProfilePoint *point = static_cast<CurveProfilePoint *>(point_ptr->data);
   if (BKE_curveprofile_remove_point(profile, point) == false) {
     BKE_report(reports, RPT_ERROR, "Unable to remove path point");
     return;
@@ -97,7 +97,7 @@ static void rna_CurveProfile_remove_point(CurveProfile *profile,
   RNA_POINTER_INVALIDATE(point_ptr);
 }
 
-static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
+static void rna_CurveProfile_evaluate(CurveProfile *profile,
                                       ReportList *reports,
                                       float length_portion,
                                       float location[2])
@@ -108,12 +108,12 @@ static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
   BKE_curveprofile_evaluate_length_portion(profile, length_portion, &location[0], &location[1]);
 }
 
-static void rna_CurveProfile_initialize(struct CurveProfile *profile, int segments_len)
+static void rna_CurveProfile_initialize(CurveProfile *profile, int segments_len)
 {
   BKE_curveprofile_init(profile, (short)segments_len);
 }
 
-static void rna_CurveProfile_update(struct CurveProfile *profile)
+static void rna_CurveProfile_update(CurveProfile *profile)
 {
   BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
 }

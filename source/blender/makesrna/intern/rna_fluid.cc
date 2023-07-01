@@ -492,43 +492,43 @@ static void rna_Fluid_combined_export_update(Main *bmain, Scene *scene, PointerR
   }
 }
 
-static void rna_Fluid_cache_startframe_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cache_startframe_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   BKE_fluid_cache_startframe_set(settings, value);
 }
 
-static void rna_Fluid_cache_endframe_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cache_endframe_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   BKE_fluid_cache_endframe_set(settings, value);
 }
 
-static void rna_Fluid_cachetype_mesh_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cachetype_mesh_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   BKE_fluid_cachetype_mesh_set(settings, value);
 }
 
-static void rna_Fluid_cachetype_data_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cachetype_data_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   BKE_fluid_cachetype_data_set(settings, value);
 }
 
-static void rna_Fluid_cachetype_particle_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cachetype_particle_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   BKE_fluid_cachetype_particle_set(settings, value);
 }
 
-static void rna_Fluid_cachetype_noise_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cachetype_noise_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   BKE_fluid_cachetype_noise_set(settings, value);
 }
 
-static void rna_Fluid_cachetype_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_cachetype_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
@@ -538,9 +538,7 @@ static void rna_Fluid_cachetype_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Fluid_guide_parent_set(struct PointerRNA *ptr,
-                                       struct PointerRNA value,
-                                       struct ReportList * /*reports*/)
+static void rna_Fluid_guide_parent_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   FluidDomainSettings *fds = (FluidDomainSettings *)ptr->data;
   Object *par = (Object *)value.data;
@@ -648,7 +646,7 @@ static const EnumPropertyItem *rna_Fluid_cachetype_particle_itemf(bContext * /*C
   return item;
 }
 
-static void rna_Fluid_cache_directory_set(struct PointerRNA *ptr, const char *value)
+static void rna_Fluid_cache_directory_set(PointerRNA *ptr, const char *value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
@@ -856,7 +854,7 @@ static const EnumPropertyItem *rna_Fluid_data_depth_itemf(bContext * /*C*/,
   return item;
 }
 
-static void rna_Fluid_domaintype_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_domaintype_set(PointerRNA *ptr, int value)
 {
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   Object *ob = (Object *)ptr->owner_id;
@@ -1147,19 +1145,19 @@ static int rna_FluidFlow_density_vgroup_length(PointerRNA *ptr)
   return rna_object_vgroup_name_index_length(ptr, flow->vgroup_density);
 }
 
-static void rna_FluidFlow_density_vgroup_set(struct PointerRNA *ptr, const char *value)
+static void rna_FluidFlow_density_vgroup_set(PointerRNA *ptr, const char *value)
 {
   FluidFlowSettings *flow = (FluidFlowSettings *)ptr->data;
   rna_object_vgroup_name_index_set(ptr, value, &flow->vgroup_density);
 }
 
-static void rna_FluidFlow_uvlayer_set(struct PointerRNA *ptr, const char *value)
+static void rna_FluidFlow_uvlayer_set(PointerRNA *ptr, const char *value)
 {
   FluidFlowSettings *flow = (FluidFlowSettings *)ptr->data;
   rna_object_uvlayer_name_set(ptr, value, flow->uvlayer_name, sizeof(flow->uvlayer_name));
 }
 
-static void rna_Fluid_use_color_ramp_set(struct PointerRNA *ptr, bool value)
+static void rna_Fluid_use_color_ramp_set(PointerRNA *ptr, bool value)
 {
   FluidDomainSettings *fds = (FluidDomainSettings *)ptr->data;
 
@@ -1170,7 +1168,7 @@ static void rna_Fluid_use_color_ramp_set(struct PointerRNA *ptr, bool value)
   }
 }
 
-static void rna_Fluid_flowsource_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_flowsource_set(PointerRNA *ptr, int value)
 {
   FluidFlowSettings *settings = (FluidFlowSettings *)ptr->data;
 
@@ -1212,7 +1210,7 @@ static const EnumPropertyItem *rna_Fluid_flowsource_itemf(bContext * /*C*/,
   return item;
 }
 
-static void rna_Fluid_flowtype_set(struct PointerRNA *ptr, int value)
+static void rna_Fluid_flowtype_set(PointerRNA *ptr, int value)
 {
   FluidFlowSettings *settings = (FluidFlowSettings *)ptr->data;
 

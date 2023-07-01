@@ -921,9 +921,7 @@ static PointerRNA rna_particle_settings_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ParticleSettings, part);
 }
 
-static void rna_particle_settings_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_particle_settings_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Object *ob = (Object *)ptr->owner_id;
   ParticleSystem *psys = (ParticleSystem *)ptr->data;
@@ -958,7 +956,7 @@ static void rna_Particle_abspathtime_update(Main *bmain, Scene *scene, PointerRN
   }
   rna_Particle_redo(bmain, scene, ptr);
 }
-static void rna_PartSettings_start_set(struct PointerRNA *ptr, float value)
+static void rna_PartSettings_start_set(PointerRNA *ptr, float value)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
 
@@ -979,7 +977,7 @@ static void rna_PartSettings_start_set(struct PointerRNA *ptr, float value)
   settings->sta = value;
 }
 
-static void rna_PartSettings_end_set(struct PointerRNA *ptr, float value)
+static void rna_PartSettings_end_set(PointerRNA *ptr, float value)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
 
@@ -991,39 +989,39 @@ static void rna_PartSettings_end_set(struct PointerRNA *ptr, float value)
   settings->end = value;
 }
 
-static void rna_PartSetings_timestep_set(struct PointerRNA *ptr, float value)
+static void rna_PartSetings_timestep_set(PointerRNA *ptr, float value)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
 
   settings->timetweak = value / 0.04f;
 }
 
-static float rna_PartSettings_timestep_get(struct PointerRNA *ptr)
+static float rna_PartSettings_timestep_get(PointerRNA *ptr)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
 
   return settings->timetweak * 0.04f;
 }
 
-static void rna_PartSetting_hairlength_set(struct PointerRNA *ptr, float value)
+static void rna_PartSetting_hairlength_set(PointerRNA *ptr, float value)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
   settings->normfac = value / 4.0f;
 }
 
-static float rna_PartSetting_hairlength_get(struct PointerRNA *ptr)
+static float rna_PartSetting_hairlength_get(PointerRNA *ptr)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
   return settings->normfac * 4.0f;
 }
 
-static void rna_PartSetting_linelentail_set(struct PointerRNA *ptr, float value)
+static void rna_PartSetting_linelentail_set(PointerRNA *ptr, float value)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
   settings->draw_line[0] = value;
 }
 
-static float rna_PartSetting_linelentail_get(struct PointerRNA *ptr)
+static float rna_PartSetting_linelentail_get(PointerRNA *ptr)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
   return settings->draw_line[0];
@@ -1042,13 +1040,13 @@ static void rna_PartSetting_pathstartend_range(
     *max = (settings->draw & PART_ABS_PATH_TIME) ? MAXFRAMEF : 1.0f;
   }
 }
-static void rna_PartSetting_linelenhead_set(struct PointerRNA *ptr, float value)
+static void rna_PartSetting_linelenhead_set(PointerRNA *ptr, float value)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
   settings->draw_line[1] = value;
 }
 
-static float rna_PartSetting_linelenhead_get(struct PointerRNA *ptr)
+static float rna_PartSetting_linelenhead_get(PointerRNA *ptr)
 {
   ParticleSettings *settings = (ParticleSettings *)ptr->data;
   return settings->draw_line[1];
@@ -1162,7 +1160,7 @@ static int rna_ParticleSystem_active_particle_target_index_get(PointerRNA *ptr)
   return 0;
 }
 
-static void rna_ParticleSystem_active_particle_target_index_set(struct PointerRNA *ptr, int value)
+static void rna_ParticleSystem_active_particle_target_index_set(PointerRNA *ptr, int value)
 {
   ParticleSystem *psys = (ParticleSystem *)ptr->data;
   ParticleTarget *pt = static_cast<ParticleTarget *>(psys->targets.first);
@@ -1303,7 +1301,7 @@ static int rna_ParticleDupliWeight_active_index_get(PointerRNA *ptr)
   return 0;
 }
 
-static void rna_ParticleDupliWeight_active_index_set(struct PointerRNA *ptr, int value)
+static void rna_ParticleDupliWeight_active_index_set(PointerRNA *ptr, int value)
 {
   ParticleSettings *part = (ParticleSettings *)ptr->owner_id;
   ParticleDupliWeight *dw = static_cast<ParticleDupliWeight *>(part->instance_weights.first);
@@ -1513,7 +1511,7 @@ static PointerRNA rna_ParticleSettings_active_texture_get(PointerRNA *ptr)
 
 static void rna_ParticleSettings_active_texture_set(PointerRNA *ptr,
                                                     PointerRNA value,
-                                                    struct ReportList * /*reports*/)
+                                                    ReportList * /*reports*/)
 {
   ParticleSettings *part = (ParticleSettings *)ptr->data;
 
