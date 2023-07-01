@@ -4619,7 +4619,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_wm_gizmo.c", "rna_wm_gizmo_api.c", RNA_def_wm_gizmo},
     {"rna_workspace.c", "rna_workspace_api.c", RNA_def_workspace},
     {"rna_world.c", NULL, RNA_def_world},
-    {"rna_movieclip.c", NULL, RNA_def_movieclip},
+    {"rna_movieclip.cc", NULL, RNA_def_movieclip},
     {"rna_tracking.c", NULL, RNA_def_tracking},
     {"rna_mask.cc", NULL, RNA_def_mask},
     {"rna_xr.c", NULL, RNA_def_xr},
