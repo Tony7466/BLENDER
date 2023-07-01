@@ -4400,7 +4400,7 @@ static void rna_def_view_layer_aovs(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_pointer(func, "aov", "AOV", "", "Newly created AOV");
   RNA_def_function_return(func, parm);
 
-  /* Defined in `rna_layer.c`. */
+  /* Defined in `rna_layer.cc`. */
   func = RNA_def_function(srna, "remove", "rna_ViewLayer_remove_aov");
   parm = RNA_def_pointer(func, "aov", "AOV", "", "AOV to remove");
   RNA_def_function_ui_description(func, "Remove an AOV");
