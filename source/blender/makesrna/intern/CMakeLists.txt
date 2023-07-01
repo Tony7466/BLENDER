@@ -21,7 +21,7 @@ set(DEFSRC
   rna_armature.cc
   rna_asset.cc
   rna_attribute.cc
-  rna_boid.c
+  rna_boid.cc
   rna_brush.c
   rna_cachefile.c
   rna_camera.c
