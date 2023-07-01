@@ -1219,8 +1219,7 @@ static bool vfont_to_curve(Object *ob,
       }
       for (i = 0; i <= slen; i++) {
         for (j = i; !ELEM(mem[j], '\0', '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++)
-        {
+             j++) {
           /* do nothing */
         }
 
@@ -1234,8 +1233,7 @@ static bool vfont_to_curve(Object *ob,
       float curofs = 0.0f;
       for (i = 0; i <= slen; i++) {
         for (j = i; (mem[j]) && (mem[j] != '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++)
-        {
+             j++) {
           /* pass */
         }
 
@@ -1800,10 +1798,10 @@ static bool vfont_to_curve(Object *ob,
         }
         /*
          * points[0] *------* points[2]
-         *           |      | 
-         *           |      | 
+         *           |      |
+         *           |      |
          * points[1] *------* points[3]
-        */
+         */
 
         float points[4][2] = {{box_rect.xmin, box_rect.ymax},
                               {box_rect.xmin, box_rect.ymin},
@@ -1831,8 +1829,7 @@ static bool vfont_to_curve(Object *ob,
       /* Loop until find the line where the mouse is over. */
       for (i = start; i <= end; i++) {
         if (cursor_params->cursor_location[1] >=
-            ((chartransdata[i].yof * font_size) - interline_offset))
-        {
+            ((chartransdata[i].yof * font_size) - interline_offset)) {
           break;
         }
       }
