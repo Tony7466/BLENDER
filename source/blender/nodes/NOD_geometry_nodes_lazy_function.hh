@@ -102,6 +102,10 @@ struct GeoNodesLFUserData : public lf::UserData {
    * Log socket values in the current compute context. Child contexts might use logging again.
    */
   bool log_socket_values = true;
+  /**
+   * Top-level node tree of the current evaluation.
+   */
+  const bNodeTree *root_ntree = nullptr;
 
   destruct_ptr<lf::LocalUserData> get_local(LinearAllocator<> &allocator) override;
 };
@@ -252,8 +256,8 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 
-std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(const ComputeContext &context,
-                                                                 const int output_node_id);
+std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(
+    const GeoNodesLFUserData &user_data, const int output_node_id);
 
 /**
  * An anonymous attribute created by a node.

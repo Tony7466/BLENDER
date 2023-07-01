@@ -71,7 +71,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
 
     const std::optional<bke::sim::SimulationZoneID> zone_id = get_simulation_zone_id(
-        *user_data.compute_context, output_node_id_);
+        user_data, output_node_id_);
     if (!zone_id) {
       params.set_default_remaining_outputs();
       return;

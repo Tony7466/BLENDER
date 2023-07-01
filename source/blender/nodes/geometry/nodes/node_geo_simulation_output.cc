@@ -694,7 +694,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     BLI_SCOPED_DEFER([&]() { eval_data.is_first_evaluation = false; });
 
     const std::optional<bke::sim::SimulationZoneID> zone_id = get_simulation_zone_id(
-        *user_data.compute_context, node_.identifier);
+        user_data, node_.identifier);
     if (!zone_id) {
       params.set_default_remaining_outputs();
       return;
@@ -828,22 +828,26 @@ std::unique_ptr<LazyFunction> get_simulation_output_lazy_function(
 }
 
 std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(
-    const ComputeContext &compute_context, const int output_node_id)
+    const GeoNodesLFUserData &user_data, const int output_node_id)
 {
-  bke::sim::SimulationZoneID zone_id;
-  for (const ComputeContext *context = &compute_context; context != nullptr;
+  Vector<int> node_ids;
+  for (const ComputeContext *context = user_data.compute_context; context != nullptr;
        context = context->parent())
   {
     if (const auto *node_context = dynamic_cast<const bke::NodeGroupComputeContext *>(context)) {
-      zone_id.node_ids.append(node_context->node_id());
+      node_ids.append(node_context->node_id());
     }
     else if (dynamic_cast<const bke::SerialLoopZoneComputeContext *>(context) != nullptr) {
       /* Simulation can't be used in a loop. */
       return std::nullopt;
     }
   }
-  std::reverse(zone_id.node_ids.begin(), zone_id.node_ids.end());
-  zone_id.node_ids.append(output_node_id);
+  std::reverse(node_ids.begin(), node_ids.end());
+  node_ids.append(output_node_id);
+  const bNestedNodeRef *nested_node_ref = user_data.root_ntree->nested_node_ref_from_node_id_path(
+      node_ids);
+  bke::sim::SimulationZoneID zone_id;
+  zone_id.nested_node_id = nested_node_ref->id;
   return zone_id;
 }
 
