@@ -85,7 +85,7 @@ set(DEFSRC
   rna_wm.cc
   rna_wm_gizmo.cc
   rna_workspace.cc
-  rna_world.c
+  rna_world.cc
   rna_xr.c
 )
 
