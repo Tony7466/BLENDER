@@ -20,7 +20,7 @@ set(DEFSRC
   rna_animviz.cc
   rna_armature.cc
   rna_asset.cc
-  rna_attribute.c
+  rna_attribute.cc
   rna_boid.c
   rna_brush.c
   rna_cachefile.c
