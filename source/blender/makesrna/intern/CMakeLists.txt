@@ -80,7 +80,7 @@ set(DEFSRC
   rna_tracking.cc
   rna_ui.cc
   rna_userdef.cc
-  rna_vfont.c
+  rna_vfont.cc
   rna_volume.c
   rna_wm.c
   rna_wm_gizmo.c
@@ -120,7 +120,7 @@ set(APISRC
   rna_text_api.cc
   rna_texture_api.cc
   rna_ui_api.cc
-  rna_vfont_api.c
+  rna_vfont_api.cc
   rna_wm_api.c
   rna_wm_gizmo_api.c
   rna_workspace_api.c

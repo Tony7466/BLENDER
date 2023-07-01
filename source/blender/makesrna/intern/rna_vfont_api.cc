@@ -30,7 +30,7 @@ static void rna_VectorFont_unpack(VFont *vfont, Main *bmain, ReportList *reports
   }
   else {
     /* reports its own error on failure */
-    BKE_packedfile_unpack_vfont(bmain, reports, vfont, method);
+    BKE_packedfile_unpack_vfont(bmain, reports, vfont, ePF_FileStatus(method));
   }
 }
 
