@@ -1446,6 +1446,7 @@ struct SerialLoopBodyIndices {
 
 class LazyFunctionForSerialLoopZone : public LazyFunction {
  private:
+  const bNodeTreeZone &zone_;
   const bNode &loop_output_bnode_;
   const ZoneBuildInfo &zone_info_;
   const LazyFunction &body_fn_;
@@ -1456,7 +1457,8 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
                                 ZoneBuildInfo &zone_info,
                                 const LazyFunction &body_fn,
                                 const SerialLoopBodyIndices &body_indices)
-      : loop_output_bnode_(*zone.output_node),
+      : zone_(zone),
+        loop_output_bnode_(*zone.output_node),
         zone_info_(zone_info),
         body_fn_(body_fn),
         body_indices_(body_indices)
@@ -1464,20 +1466,19 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
     debug_name_ = "Serial Loop Zone";
 
     for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
-      inputs_.append_as(socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type);
+      inputs_.append_as(socket->name, *socket->typeinfo->geometry_nodes_cpp_type);
     }
     zone_info.main_input_indices = inputs_.index_range();
 
     for (const bNodeLink *link : zone.border_links) {
-      inputs_.append_as(link->fromsock->identifier,
-                        *link->tosock->typeinfo->geometry_nodes_cpp_type);
+      inputs_.append_as(link->fromsock->name, *link->tosock->typeinfo->geometry_nodes_cpp_type);
     }
     zone_info.border_link_input_indices = inputs_.index_range().take_back(
         zone.border_links.size());
 
     for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
       inputs_.append_as("Usage", CPPType::get<bool>());
-      outputs_.append_as(socket->identifier, *socket->typeinfo->geometry_nodes_cpp_type);
+      outputs_.append_as(socket->name, *socket->typeinfo->geometry_nodes_cpp_type);
     }
     zone_info.main_output_usage_indices = inputs_.index_range().take_back(
         zone.output_node->output_sockets().drop_back(1).size());
@@ -1691,6 +1692,26 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         type.destruct(item_values[item_i]);
       }
     }
+  }
+
+  std::string input_name(const int i) const override
+  {
+    if (zone_info_.main_output_usage_indices.contains(i)) {
+      const bNodeSocket &bsocket = zone_.output_node->output_socket(
+          i - zone_info_.main_output_usage_indices.first());
+      return "Usage: " + StringRef(bsocket.name);
+    }
+    return inputs_[i].debug_name;
+  }
+
+  std::string output_name(const int i) const override
+  {
+    if (zone_info_.main_input_usage_indices.contains(i)) {
+      const bNodeSocket &bsocket = zone_.input_node->input_socket(
+          i - zone_info_.main_input_usage_indices.first());
+      return "Usage: " + StringRef(bsocket.name);
+    }
+    return outputs_[i].debug_name;
   }
 };
 
