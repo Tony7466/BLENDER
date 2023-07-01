@@ -4552,7 +4552,7 @@ static void rna_NodeGeometrySimulationOutput_items_move(
 }
 
 static void rna_NodeGeometrySerialLoopOutput_items_move(
-    ID * /*id*/, bNode *node, Main * /*bmain*/, int from_index, int to_index)
+    ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
   NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
       node->storage);
@@ -4576,6 +4576,11 @@ static void rna_NodeGeometrySerialLoopOutput_items_move(
     }
     storage->items[to_index] = tmp;
   }
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
