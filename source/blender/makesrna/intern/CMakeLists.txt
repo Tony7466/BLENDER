@@ -38,7 +38,7 @@ set(DEFSRC
   rna_fcurve.cc
   rna_fluid.cc
   rna_gpencil_legacy.c
-  rna_gpencil_legacy_modifier.c
+  rna_gpencil_legacy_modifier.cc
   rna_image.cc
   rna_key.c
   rna_lattice.cc
