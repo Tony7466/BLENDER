@@ -86,7 +86,7 @@ set(DEFSRC
   rna_wm_gizmo.cc
   rna_workspace.cc
   rna_world.cc
-  rna_xr.c
+  rna_xr.cc
 )
 
 if(WITH_EXPERIMENTAL_FEATURES)

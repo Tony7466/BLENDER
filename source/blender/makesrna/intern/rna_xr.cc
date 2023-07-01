@@ -53,20 +53,21 @@ static wmXrData *rna_XrSession_wm_xr_data_get(PointerRNA *ptr)
 static XrComponentPath *rna_XrComponentPath_new(XrActionMapBinding *amb, const char *path_str)
 {
 #  ifdef WITH_XR_OPENXR
-  XrComponentPath *component_path = MEM_callocN(sizeof(XrComponentPath), __func__);
+  XrComponentPath *component_path = static_cast<XrComponentPath *>(
+      MEM_callocN(sizeof(XrComponentPath), __func__));
   STRNCPY(component_path->path, path_str);
   BLI_addtail(&amb->component_paths, component_path);
   return component_path;
 #  else
   UNUSED_VARS(amb, path_str);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
 static void rna_XrComponentPath_remove(XrActionMapBinding *amb, PointerRNA *component_path_ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrComponentPath *component_path = component_path_ptr->data;
+  XrComponentPath *component_path = static_cast<XrComponentPath *>(component_path_ptr->data);
   int idx = BLI_findindex(&amb->component_paths, component_path);
   if (idx != -1) {
     BLI_freelinkN(&amb->component_paths, component_path);
@@ -80,10 +81,11 @@ static void rna_XrComponentPath_remove(XrActionMapBinding *amb, PointerRNA *comp
 static XrComponentPath *rna_XrComponentPath_find(XrActionMapBinding *amb, const char *path_str)
 {
 #  ifdef WITH_XR_OPENXR
-  return BLI_findstring(&amb->component_paths, path_str, offsetof(XrComponentPath, path));
+  return static_cast<XrComponentPath *>(
+      BLI_findstring(&amb->component_paths, path_str, offsetof(XrComponentPath, path)));
 #  else
   UNUSED_VARS(amb, path_str);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -95,7 +97,7 @@ static XrActionMapBinding *rna_XrActionMapBinding_new(XrActionMapItem *ami,
   return WM_xr_actionmap_binding_new(ami, name, replace_existing);
 #  else
   UNUSED_VARS(ami, name, replace_existing);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -106,7 +108,7 @@ static XrActionMapBinding *rna_XrActionMapBinding_new_from_binding(XrActionMapIt
   return WM_xr_actionmap_binding_add_copy(ami, amb_src);
 #  else
   UNUSED_VARS(ami, amb_src);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -115,7 +117,7 @@ static void rna_XrActionMapBinding_remove(XrActionMapItem *ami,
                                           PointerRNA *amb_ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapBinding *amb = amb_ptr->data;
+  XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(amb_ptr->data);
   if (WM_xr_actionmap_binding_remove(ami, amb) == false) {
     BKE_reportf(reports,
                 RPT_ERROR,
@@ -136,7 +138,7 @@ static XrActionMapBinding *rna_XrActionMapBinding_find(XrActionMapItem *ami, con
   return WM_xr_actionmap_binding_find(ami, name);
 #  else
   UNUSED_VARS(ami, name);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -145,7 +147,7 @@ static void rna_XrActionMapBinding_component_paths_begin(CollectionPropertyItera
 {
 #  ifdef WITH_XR_OPENXR
   XrActionMapBinding *amb = (XrActionMapBinding *)ptr->data;
-  rna_iterator_listbase_begin(iter, &amb->component_paths, NULL);
+  rna_iterator_listbase_begin(iter, &amb->component_paths, nullptr);
 #  else
   UNUSED_VARS(iter, ptr);
 #  endif
@@ -165,7 +167,7 @@ static int rna_XrActionMapBinding_component_paths_length(PointerRNA *ptr)
 static int rna_XrActionMapBinding_axis0_region_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapBinding *amb = ptr->data;
+  XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(ptr->data);
   if ((amb->axis_flag & XR_AXIS0_POS) != 0) {
     return XR_AXIS0_POS;
   }
@@ -181,7 +183,7 @@ static int rna_XrActionMapBinding_axis0_region_get(PointerRNA *ptr)
 static void rna_XrActionMapBinding_axis0_region_set(PointerRNA *ptr, int value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapBinding *amb = ptr->data;
+  XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(ptr->data);
   amb->axis_flag &= ~(XR_AXIS0_POS | XR_AXIS0_NEG);
   amb->axis_flag |= value;
 #  else
@@ -192,7 +194,7 @@ static void rna_XrActionMapBinding_axis0_region_set(PointerRNA *ptr, int value)
 static int rna_XrActionMapBinding_axis1_region_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapBinding *amb = ptr->data;
+  XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(ptr->data);
   if ((amb->axis_flag & XR_AXIS1_POS) != 0) {
     return XR_AXIS1_POS;
   }
@@ -208,7 +210,7 @@ static int rna_XrActionMapBinding_axis1_region_get(PointerRNA *ptr)
 static void rna_XrActionMapBinding_axis1_region_set(PointerRNA *ptr, int value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapBinding *amb = ptr->data;
+  XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(ptr->data);
   amb->axis_flag &= ~(XR_AXIS1_POS | XR_AXIS1_NEG);
   amb->axis_flag |= value;
 #  else
@@ -216,18 +218,19 @@ static void rna_XrActionMapBinding_axis1_region_set(PointerRNA *ptr, int value)
 #  endif
 }
 
-static void rna_XrActionMapBinding_name_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_XrActionMapBinding_name_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  wmWindowManager *wm = bmain->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   if (wm && wm->xr.runtime) {
     ListBase *actionmaps = WM_xr_actionmaps_get(wm->xr.runtime);
     short idx = WM_xr_actionmap_selected_index_get(wm->xr.runtime);
-    XrActionMap *actionmap = BLI_findlink(actionmaps, idx);
+    XrActionMap *actionmap = static_cast<XrActionMap *>(BLI_findlink(actionmaps, idx));
     if (actionmap) {
-      XrActionMapItem *ami = BLI_findlink(&actionmap->items, actionmap->selitem);
+      XrActionMapItem *ami = static_cast<XrActionMapItem *>(
+          BLI_findlink(&actionmap->items, actionmap->selitem));
       if (ami) {
-        XrActionMapBinding *amb = ptr->data;
+        XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(ptr->data);
         WM_xr_actionmap_binding_ensure_unique(ami, amb);
       }
     }
@@ -240,20 +243,20 @@ static void rna_XrActionMapBinding_name_update(Main *bmain, Scene *UNUSED(scene)
 static XrUserPath *rna_XrUserPath_new(XrActionMapItem *ami, const char *path_str)
 {
 #  ifdef WITH_XR_OPENXR
-  XrUserPath *user_path = MEM_callocN(sizeof(XrUserPath), __func__);
+  XrUserPath *user_path = static_cast<XrUserPath *>(MEM_callocN(sizeof(XrUserPath), __func__));
   STRNCPY(user_path->path, path_str);
   BLI_addtail(&ami->user_paths, user_path);
   return user_path;
 #  else
   UNUSED_VARS(ami, path_str);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
 static void rna_XrUserPath_remove(XrActionMapItem *ami, PointerRNA *user_path_ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrUserPath *user_path = user_path_ptr->data;
+  XrUserPath *user_path = static_cast<XrUserPath *>(user_path_ptr->data);
   int idx = BLI_findindex(&ami->user_paths, user_path);
   if (idx != -1) {
     BLI_freelinkN(&ami->user_paths, user_path);
@@ -267,10 +270,11 @@ static void rna_XrUserPath_remove(XrActionMapItem *ami, PointerRNA *user_path_pt
 static XrUserPath *rna_XrUserPath_find(XrActionMapItem *ami, const char *path_str)
 {
 #  ifdef WITH_XR_OPENXR
-  return BLI_findstring(&ami->user_paths, path_str, offsetof(XrUserPath, path));
+  return static_cast<XrUserPath *>(
+      BLI_findstring(&ami->user_paths, path_str, offsetof(XrUserPath, path)));
 #  else
   UNUSED_VARS(ami, path_str);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -282,7 +286,7 @@ static XrActionMapItem *rna_XrActionMapItem_new(XrActionMap *am,
   return WM_xr_actionmap_item_new(am, name, replace_existing);
 #  else
   UNUSED_VARS(am, name, replace_existing);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -293,14 +297,14 @@ static XrActionMapItem *rna_XrActionMapItem_new_from_item(XrActionMap *am,
   return WM_xr_actionmap_item_add_copy(am, ami_src);
 #  else
   UNUSED_VARS(am, ami_src);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
 static void rna_XrActionMapItem_remove(XrActionMap *am, ReportList *reports, PointerRNA *ami_ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ami_ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ami_ptr->data);
   if (WM_xr_actionmap_item_remove(am, ami) == false) {
     BKE_reportf(
         reports, RPT_ERROR, "ActionMapItem '%s' cannot be removed from '%s'", ami->name, am->name);
@@ -318,7 +322,7 @@ static XrActionMapItem *rna_XrActionMapItem_find(XrActionMap *am, const char *na
   return WM_xr_actionmap_item_find(am, name);
 #  else
   UNUSED_VARS(am, name);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -326,7 +330,7 @@ static void rna_XrActionMapItem_user_paths_begin(CollectionPropertyIterator *ite
 {
 #  ifdef WITH_XR_OPENXR
   XrActionMapItem *ami = (XrActionMapItem *)ptr->data;
-  rna_iterator_listbase_begin(iter, &ami->user_paths, NULL);
+  rna_iterator_listbase_begin(iter, &ami->user_paths, nullptr);
 #  else
   UNUSED_VARS(iter, ptr);
 #  endif
@@ -346,7 +350,7 @@ static int rna_XrActionMapItem_user_paths_length(PointerRNA *ptr)
 static void rna_XrActionMapItem_op_name_get(PointerRNA *ptr, char *value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if (ami->op[0]) {
     if (ami->op_properties_ptr) {
       wmOperatorType *ot = WM_operatortype_find(ami->op, 1);
@@ -367,7 +371,7 @@ static void rna_XrActionMapItem_op_name_get(PointerRNA *ptr, char *value)
 static int rna_XrActionMapItem_op_name_length(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if (ami->op[0]) {
     if (ami->op_properties_ptr) {
       wmOperatorType *ot = WM_operatortype_find(ami->op, 1);
@@ -386,7 +390,7 @@ static int rna_XrActionMapItem_op_name_length(PointerRNA *ptr)
 static PointerRNA rna_XrActionMapItem_op_properties_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if (ami->op_properties_ptr) {
     return *(ami->op_properties_ptr);
   }
@@ -399,7 +403,7 @@ static PointerRNA rna_XrActionMapItem_op_properties_get(PointerRNA *ptr)
 static bool rna_XrActionMapItem_bimanual_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if ((ami->action_flag & XR_ACTION_BIMANUAL) != 0) {
     return true;
   }
@@ -412,7 +416,7 @@ static bool rna_XrActionMapItem_bimanual_get(PointerRNA *ptr)
 static void rna_XrActionMapItem_bimanual_set(PointerRNA *ptr, bool value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   SET_FLAG_FROM_TEST(ami->action_flag, value, XR_ACTION_BIMANUAL);
 #  else
   UNUSED_VARS(ptr, value);
@@ -422,7 +426,7 @@ static void rna_XrActionMapItem_bimanual_set(PointerRNA *ptr, bool value)
 static bool rna_XrActionMapItem_haptic_match_user_paths_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if ((ami->haptic_flag & XR_HAPTIC_MATCHUSERPATHS) != 0) {
     return true;
   }
@@ -435,7 +439,7 @@ static bool rna_XrActionMapItem_haptic_match_user_paths_get(PointerRNA *ptr)
 static void rna_XrActionMapItem_haptic_match_user_paths_set(PointerRNA *ptr, bool value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   SET_FLAG_FROM_TEST(ami->haptic_flag, value, XR_HAPTIC_MATCHUSERPATHS);
 #  else
   UNUSED_VARS(ptr, value);
@@ -445,7 +449,7 @@ static void rna_XrActionMapItem_haptic_match_user_paths_set(PointerRNA *ptr, boo
 static int rna_XrActionMapItem_haptic_mode_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if ((ami->haptic_flag & XR_HAPTIC_RELEASE) != 0) {
     return ((ami->haptic_flag & XR_HAPTIC_PRESS) != 0) ? (XR_HAPTIC_PRESS | XR_HAPTIC_RELEASE) :
                                                          XR_HAPTIC_RELEASE;
@@ -462,7 +466,7 @@ static int rna_XrActionMapItem_haptic_mode_get(PointerRNA *ptr)
 static void rna_XrActionMapItem_haptic_mode_set(PointerRNA *ptr, int value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   ami->haptic_flag &= ~(XR_HAPTIC_PRESS | XR_HAPTIC_RELEASE | XR_HAPTIC_REPEAT);
   ami->haptic_flag |= value;
 #  else
@@ -473,7 +477,7 @@ static void rna_XrActionMapItem_haptic_mode_set(PointerRNA *ptr, int value)
 static bool rna_XrActionMapItem_pose_is_controller_grip_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if ((ami->pose_flag & XR_POSE_GRIP) != 0) {
     return true;
   }
@@ -486,7 +490,7 @@ static bool rna_XrActionMapItem_pose_is_controller_grip_get(PointerRNA *ptr)
 static void rna_XrActionMapItem_pose_is_controller_grip_set(PointerRNA *ptr, bool value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   SET_FLAG_FROM_TEST(ami->pose_flag, value, XR_POSE_GRIP);
 #  else
   UNUSED_VARS(ptr, value);
@@ -496,7 +500,7 @@ static void rna_XrActionMapItem_pose_is_controller_grip_set(PointerRNA *ptr, boo
 static bool rna_XrActionMapItem_pose_is_controller_aim_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   if ((ami->pose_flag & XR_POSE_AIM) != 0) {
     return true;
   }
@@ -509,7 +513,7 @@ static bool rna_XrActionMapItem_pose_is_controller_aim_get(PointerRNA *ptr)
 static void rna_XrActionMapItem_pose_is_controller_aim_set(PointerRNA *ptr, bool value)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   SET_FLAG_FROM_TEST(ami->pose_flag, value, XR_POSE_AIM);
 #  else
   UNUSED_VARS(ptr, value);
@@ -520,7 +524,7 @@ static void rna_XrActionMapItem_bindings_begin(CollectionPropertyIterator *iter,
 {
 #  ifdef WITH_XR_OPENXR
   XrActionMapItem *ami = (XrActionMapItem *)ptr->data;
-  rna_iterator_listbase_begin(iter, &ami->bindings, NULL);
+  rna_iterator_listbase_begin(iter, &ami->bindings, nullptr);
 #  else
   UNUSED_VARS(iter, ptr);
 #  endif
@@ -537,16 +541,16 @@ static int rna_XrActionMapItem_bindings_length(PointerRNA *ptr)
 #  endif
 }
 
-static void rna_XrActionMapItem_name_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_XrActionMapItem_name_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  wmWindowManager *wm = bmain->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   if (wm && wm->xr.runtime) {
     ListBase *actionmaps = WM_xr_actionmaps_get(wm->xr.runtime);
     short idx = WM_xr_actionmap_selected_index_get(wm->xr.runtime);
-    XrActionMap *actionmap = BLI_findlink(actionmaps, idx);
+    XrActionMap *actionmap = static_cast<XrActionMap *>(BLI_findlink(actionmaps, idx));
     if (actionmap) {
-      XrActionMapItem *ami = ptr->data;
+      XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
       WM_xr_actionmap_item_ensure_unique(actionmap, ami);
     }
   }
@@ -555,10 +559,10 @@ static void rna_XrActionMapItem_name_update(Main *bmain, Scene *UNUSED(scene), P
 #  endif
 }
 
-static void rna_XrActionMapItem_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_XrActionMapItem_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  XrActionMapItem *ami = ptr->data;
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(ptr->data);
   WM_xr_actionmap_item_properties_update_ot(ami);
 #  else
   UNUSED_VARS(ptr);
@@ -572,7 +576,7 @@ static XrActionMap *rna_XrActionMap_new(PointerRNA *ptr, const char *name, bool 
   return WM_xr_actionmap_new(xr->runtime, name, replace_existing);
 #  else
   UNUSED_VARS(ptr, name, replace_existing);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -583,7 +587,7 @@ static XrActionMap *rna_XrActionMap_new_from_actionmap(PointerRNA *ptr, XrAction
   return WM_xr_actionmap_add_copy(xr->runtime, am_src);
 #  else
   UNUSED_VARS(ptr, am_src);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -591,7 +595,7 @@ static void rna_XrActionMap_remove(ReportList *reports, PointerRNA *ptr, Pointer
 {
 #  ifdef WITH_XR_OPENXR
   wmXrData *xr = rna_XrSession_wm_xr_data_get(ptr);
-  XrActionMap *actionmap = actionmap_ptr->data;
+  XrActionMap *actionmap = static_cast<XrActionMap *>(actionmap_ptr->data);
   if (WM_xr_actionmap_remove(xr->runtime, actionmap) == false) {
     BKE_reportf(reports, RPT_ERROR, "ActionMap '%s' cannot be removed", actionmap->name);
     return;
@@ -609,7 +613,7 @@ static XrActionMap *rna_XrActionMap_find(PointerRNA *ptr, const char *name)
   return WM_xr_actionmap_find(xr->runtime, name);
 #  else
   UNUSED_VARS(ptr, name);
-  return NULL;
+  return nullptr;
 #  endif
 }
 
@@ -617,7 +621,7 @@ static void rna_XrActionMap_items_begin(CollectionPropertyIterator *iter, Pointe
 {
 #  ifdef WITH_XR_OPENXR
   XrActionMap *actionmap = (XrActionMap *)ptr->data;
-  rna_iterator_listbase_begin(iter, &actionmap->items, NULL);
+  rna_iterator_listbase_begin(iter, &actionmap->items, nullptr);
 #  else
   UNUSED_VARS(iter, ptr);
 #  endif
@@ -634,12 +638,12 @@ static int rna_XrActionMap_items_length(PointerRNA *ptr)
 #  endif
 }
 
-static void rna_XrActionMap_name_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_XrActionMap_name_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  wmWindowManager *wm = bmain->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   if (wm && wm->xr.runtime) {
-    XrActionMap *actionmap = ptr->data;
+    XrActionMap *actionmap = static_cast<XrActionMap *>(ptr->data);
     WM_xr_actionmap_ensure_unique(wm->xr.runtime, actionmap);
   }
 #  else
@@ -705,7 +709,7 @@ static int rna_XrSessionSettings_icon_from_show_object_viewport_get(PointerRNA *
     /* For the future when selection in VR is reliably supported. */
     &xr->session_settings.object_type_exclude_select
 #    else
-      NULL
+      nullptr
 #    endif
   );
 #  else
@@ -764,8 +768,8 @@ static bool rna_XrSessionState_action_create(bContext *C,
 
   const bool is_float_action = ELEM(ami->type, XR_FLOAT_INPUT, XR_VECTOR2F_INPUT);
   const bool is_button_action = (is_float_action || ami->type == XR_BOOLEAN_INPUT);
-  wmOperatorType *ot = NULL;
-  IDProperty *op_properties = NULL;
+  wmOperatorType *ot = nullptr;
+  IDProperty *op_properties = nullptr;
   int64_t haptic_duration_msec;
 
   if (is_button_action) {
@@ -784,17 +788,17 @@ static bool rna_XrSessionState_action_create(bContext *C,
   return WM_xr_action_create(&wm->xr,
                              actionmap->name,
                              ami->name,
-                             ami->type,
+                             eXrActionType(ami->type),
                              &ami->user_paths,
                              ot,
                              op_properties,
-                             is_button_action ? ami->haptic_name : NULL,
-                             is_button_action ? &haptic_duration_msec : NULL,
-                             is_button_action ? &ami->haptic_frequency : NULL,
-                             is_button_action ? &ami->haptic_amplitude : NULL,
-                             ami->op_flag,
-                             ami->action_flag,
-                             ami->haptic_flag);
+                             is_button_action ? ami->haptic_name : nullptr,
+                             is_button_action ? &haptic_duration_msec : nullptr,
+                             is_button_action ? &ami->haptic_frequency : nullptr,
+                             is_button_action ? &ami->haptic_amplitude : nullptr,
+                             eXrOpFlag(ami->op_flag),
+                             eXrActionFlag(ami->action_flag),
+                             eXrHapticFlag(ami->haptic_flag));
 #  else
   UNUSED_VARS(C, actionmap, ami);
   return false;
@@ -825,7 +829,7 @@ static bool rna_XrSessionState_action_binding_create(bContext *C,
     float_thresholds[0] = float_thresholds[1] = amb->float_threshold;
   }
   if (is_button_action) {
-    axis_flags[0] = axis_flags[1] = amb->axis_flag;
+    axis_flags[0] = axis_flags[1] = eXrAxisFlag(amb->axis_flag);
   }
   if (is_pose_action) {
     copy_v3_v3(poses[0].position, amb->pose_location);
@@ -840,9 +844,9 @@ static bool rna_XrSessionState_action_binding_create(bContext *C,
                                      amb->profile,
                                      &ami->user_paths,
                                      &amb->component_paths,
-                                     is_float_action ? float_thresholds : NULL,
-                                     is_button_action ? axis_flags : NULL,
-                                     is_pose_action ? poses : NULL);
+                                     is_float_action ? float_thresholds : nullptr,
+                                     is_button_action ? axis_flags : nullptr,
+                                     is_pose_action ? poses : nullptr);
 #  else
   UNUSED_VARS(C, actionmap, ami, amb);
   return false;
@@ -923,7 +927,7 @@ bool rna_XrSessionState_haptic_action_apply(bContext *C,
   return WM_xr_haptic_action_apply(&wm->xr,
                                    action_set_name,
                                    action_name,
-                                   user_path[0] ? user_path : NULL,
+                                   user_path[0] ? user_path : nullptr,
                                    &duration_msec,
                                    &frequency,
                                    &amplitude);
@@ -940,7 +944,8 @@ void rna_XrSessionState_haptic_action_stop(bContext *C,
 {
 #  ifdef WITH_XR_OPENXR
   wmWindowManager *wm = CTX_wm_manager(C);
-  WM_xr_haptic_action_stop(&wm->xr, action_set_name, action_name, user_path[0] ? user_path : NULL);
+  WM_xr_haptic_action_stop(
+      &wm->xr, action_set_name, action_name, user_path[0] ? user_path : nullptr);
 #  else
   UNUSED_VARS(C, action_set_name, action_name, user_path);
 #  endif
@@ -1090,7 +1095,7 @@ static void rna_XrSessionState_actionmaps_begin(CollectionPropertyIterator *iter
 #  ifdef WITH_XR_OPENXR
   wmXrData *xr = rna_XrSession_wm_xr_data_get(ptr);
   ListBase *lb = WM_xr_actionmaps_get(xr->runtime);
-  rna_iterator_listbase_begin(iter, lb, NULL);
+  rna_iterator_listbase_begin(iter, lb, nullptr);
 #  else
   UNUSED_VARS(iter, ptr);
 #  endif
@@ -1159,7 +1164,7 @@ static void rna_XrSessionState_selected_actionmap_set(PointerRNA *ptr, int value
 static void rna_XrEventData_action_set_get(PointerRNA *ptr, char *r_value)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   strcpy(r_value, data->action_set);
 #  else
   UNUSED_VARS(ptr);
@@ -1170,7 +1175,7 @@ static void rna_XrEventData_action_set_get(PointerRNA *ptr, char *r_value)
 static int rna_XrEventData_action_set_length(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return strlen(data->action_set);
 #  else
   UNUSED_VARS(ptr);
@@ -1181,7 +1186,7 @@ static int rna_XrEventData_action_set_length(PointerRNA *ptr)
 static void rna_XrEventData_action_get(PointerRNA *ptr, char *r_value)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   strcpy(r_value, data->action);
 #  else
   UNUSED_VARS(ptr);
@@ -1192,7 +1197,7 @@ static void rna_XrEventData_action_get(PointerRNA *ptr, char *r_value)
 static int rna_XrEventData_action_length(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return strlen(data->action);
 #  else
   UNUSED_VARS(ptr);
@@ -1203,7 +1208,7 @@ static int rna_XrEventData_action_length(PointerRNA *ptr)
 static void rna_XrEventData_user_path_get(PointerRNA *ptr, char *r_value)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   strcpy(r_value, data->user_path);
 #  else
   UNUSED_VARS(ptr);
@@ -1214,7 +1219,7 @@ static void rna_XrEventData_user_path_get(PointerRNA *ptr, char *r_value)
 static int rna_XrEventData_user_path_length(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return strlen(data->user_path);
 #  else
   UNUSED_VARS(ptr);
@@ -1225,7 +1230,7 @@ static int rna_XrEventData_user_path_length(PointerRNA *ptr)
 static void rna_XrEventData_user_path_other_get(PointerRNA *ptr, char *r_value)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   strcpy(r_value, data->user_path_other);
 #  else
   UNUSED_VARS(ptr);
@@ -1236,7 +1241,7 @@ static void rna_XrEventData_user_path_other_get(PointerRNA *ptr, char *r_value)
 static int rna_XrEventData_user_path_other_length(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return strlen(data->user_path_other);
 #  else
   UNUSED_VARS(ptr);
@@ -1247,7 +1252,7 @@ static int rna_XrEventData_user_path_other_length(PointerRNA *ptr)
 static int rna_XrEventData_type_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return data->type;
 #  else
   UNUSED_VARS(ptr);
@@ -1258,7 +1263,7 @@ static int rna_XrEventData_type_get(PointerRNA *ptr)
 static void rna_XrEventData_state_get(PointerRNA *ptr, float r_values[2])
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   copy_v2_v2(r_values, data->state);
 #  else
   UNUSED_VARS(ptr);
@@ -1269,7 +1274,7 @@ static void rna_XrEventData_state_get(PointerRNA *ptr, float r_values[2])
 static void rna_XrEventData_state_other_get(PointerRNA *ptr, float r_values[2])
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   copy_v2_v2(r_values, data->state_other);
 #  else
   UNUSED_VARS(ptr);
@@ -1280,7 +1285,7 @@ static void rna_XrEventData_state_other_get(PointerRNA *ptr, float r_values[2])
 static float rna_XrEventData_float_threshold_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return data->float_threshold;
 #  else
   UNUSED_VARS(ptr);
@@ -1291,7 +1296,7 @@ static float rna_XrEventData_float_threshold_get(PointerRNA *ptr)
 static void rna_XrEventData_controller_location_get(PointerRNA *ptr, float r_values[3])
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   copy_v3_v3(r_values, data->controller_loc);
 #  else
   UNUSED_VARS(ptr);
@@ -1302,7 +1307,7 @@ static void rna_XrEventData_controller_location_get(PointerRNA *ptr, float r_val
 static void rna_XrEventData_controller_rotation_get(PointerRNA *ptr, float r_values[4])
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   copy_qt_qt(r_values, data->controller_rot);
 #  else
   UNUSED_VARS(ptr);
@@ -1313,7 +1318,7 @@ static void rna_XrEventData_controller_rotation_get(PointerRNA *ptr, float r_val
 static void rna_XrEventData_controller_location_other_get(PointerRNA *ptr, float r_values[3])
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   copy_v3_v3(r_values, data->controller_loc_other);
 #  else
   UNUSED_VARS(ptr);
@@ -1324,7 +1329,7 @@ static void rna_XrEventData_controller_location_other_get(PointerRNA *ptr, float
 static void rna_XrEventData_controller_rotation_other_get(PointerRNA *ptr, float r_values[4])
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   copy_qt_qt(r_values, data->controller_rot_other);
 #  else
   UNUSED_VARS(ptr);
@@ -1335,7 +1340,7 @@ static void rna_XrEventData_controller_rotation_other_get(PointerRNA *ptr, float
 static bool rna_XrEventData_bimanual_get(PointerRNA *ptr)
 {
 #  ifdef WITH_XR_OPENXR
-  const wmXrActionData *data = ptr->data;
+  const wmXrActionData *data = static_cast<const wmXrActionData *>(ptr->data);
   return data->bimanual;
 #  else
   UNUSED_VARS(ptr);
@@ -1370,7 +1375,7 @@ static const EnumPropertyItem rna_enum_xr_action_types[] = {
      0,
      "Vibration",
      "Haptic vibration output action, to be applied with a duration, frequency, and amplitude"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem rna_enum_xr_op_flags[] = {
@@ -1385,7 +1390,7 @@ static const EnumPropertyItem rna_enum_xr_op_flags[] = {
      "Release",
      "Execute operator on button release (non-modal operators only)"},
     {XR_OP_MODAL, "MODAL", 0, "Modal", "Use modal execution (modal operators only)"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem rna_enum_xr_haptic_flags[] = {
@@ -1401,7 +1406,7 @@ static const EnumPropertyItem rna_enum_xr_haptic_flags[] = {
      0,
      "Repeat",
      "Apply haptics repeatedly for the duration of the button press"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem rna_enum_xr_axis0_flags[] = {
@@ -1416,7 +1421,7 @@ static const EnumPropertyItem rna_enum_xr_axis0_flags[] = {
      0,
      "Negative",
      "Use negative axis region only for operator execution"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem rna_enum_xr_axis1_flags[] = {
@@ -1431,7 +1436,7 @@ static const EnumPropertyItem rna_enum_xr_axis1_flags[] = {
      0,
      "Negative",
      "Use negative axis region only for operator execution"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* -------------------------------------------------------------------- */
@@ -1445,14 +1450,14 @@ static void rna_def_xr_component_paths(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "XrComponentPaths");
-  srna = RNA_def_struct(brna, "XrComponentPaths", NULL);
+  srna = RNA_def_struct(brna, "XrComponentPaths", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMapBinding");
   RNA_def_struct_ui_text(srna, "XR Component Paths", "Collection of OpenXR component paths");
 
   func = RNA_def_function(srna, "new", "rna_XrComponentPath_new");
   parm = RNA_def_string(
-      func, "path", NULL, XR_MAX_COMPONENT_PATH_LENGTH, "Path", "OpenXR component path");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+      func, "path", nullptr, XR_MAX_COMPONENT_PATH_LENGTH, "Path", "OpenXR component path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "component_path", "XrComponentPath", "Component Path", "Added component path");
   RNA_def_function_return(func, parm);
@@ -1460,12 +1465,12 @@ static void rna_def_xr_component_paths(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "remove", "rna_XrComponentPath_remove");
   parm = RNA_def_pointer(func, "component_path", "XrComponentPath", "Component Path", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
   func = RNA_def_function(srna, "find", "rna_XrComponentPath_find");
   parm = RNA_def_string(
-      func, "path", NULL, XR_MAX_COMPONENT_PATH_LENGTH, "Path", "OpenXR component path");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+      func, "path", nullptr, XR_MAX_COMPONENT_PATH_LENGTH, "Path", "OpenXR component path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func,
                          "component_path",
                          "XrComponentPath",
@@ -1481,19 +1486,19 @@ static void rna_def_xr_actionmap_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "XrActionMapBindings");
-  srna = RNA_def_struct(brna, "XrActionMapBindings", NULL);
+  srna = RNA_def_struct(brna, "XrActionMapBindings", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMapItem");
   RNA_def_struct_ui_text(srna, "XR Action Map Bindings", "Collection of XR action map bindings");
 
   func = RNA_def_function(srna, "new", "rna_XrActionMapBinding_new");
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name of the action map binding", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name of the action map binding", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func,
                          "replace_existing",
                          true,
                          "Replace Existing",
                          "Replace any existing binding with the same name");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "binding", "XrActionMapBinding", "Binding", "Added action map binding");
   RNA_def_function_return(func, parm);
@@ -1510,11 +1515,11 @@ static void rna_def_xr_actionmap_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "binding", "XrActionMapBinding", "Binding", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
   func = RNA_def_function(srna, "find", "rna_XrActionMapBinding_find");
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func,
                          "binding",
                          "XrActionMapBinding",
@@ -1530,24 +1535,26 @@ static void rna_def_xr_user_paths(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "XrUserPaths");
-  srna = RNA_def_struct(brna, "XrUserPaths", NULL);
+  srna = RNA_def_struct(brna, "XrUserPaths", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMapItem");
   RNA_def_struct_ui_text(srna, "XR User Paths", "Collection of OpenXR user paths");
 
   func = RNA_def_function(srna, "new", "rna_XrUserPath_new");
-  parm = RNA_def_string(func, "path", NULL, XR_MAX_USER_PATH_LENGTH, "Path", "OpenXR user path");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(
+      func, "path", nullptr, XR_MAX_USER_PATH_LENGTH, "Path", "OpenXR user path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "user_path", "XrUserPath", "User Path", "Added user path");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "remove", "rna_XrUserPath_remove");
   parm = RNA_def_pointer(func, "user_path", "XrUserPath", "User Path", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
   func = RNA_def_function(srna, "find", "rna_XrUserPath_find");
-  parm = RNA_def_string(func, "path", NULL, XR_MAX_USER_PATH_LENGTH, "Path", "OpenXR user path");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(
+      func, "path", nullptr, XR_MAX_USER_PATH_LENGTH, "Path", "OpenXR user path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "user_path", "XrUserPath", "User Path", "The user path with the given path");
   RNA_def_function_return(func, parm);
@@ -1560,19 +1567,19 @@ static void rna_def_xr_actionmap_items(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "XrActionMapItems");
-  srna = RNA_def_struct(brna, "XrActionMapItems", NULL);
+  srna = RNA_def_struct(brna, "XrActionMapItems", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMap");
   RNA_def_struct_ui_text(srna, "XR Action Map Items", "Collection of XR action map items");
 
   func = RNA_def_function(srna, "new", "rna_XrActionMapItem_new");
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name of the action map item", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name of the action map item", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func,
                          "replace_existing",
                          true,
                          "Replace Existing",
                          "Replace any existing item with the same name");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "item", "XrActionMapItem", "Item", "Added action map item");
   RNA_def_function_return(func, parm);
 
@@ -1586,11 +1593,11 @@ static void rna_def_xr_actionmap_items(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "XrActionMapItem", "Item", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
   func = RNA_def_function(srna, "find", "rna_XrActionMapItem_find");
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "item", "XrActionMapItem", "Item", "The action map item with the given name");
   RNA_def_function_return(func, parm);
@@ -1603,21 +1610,21 @@ static void rna_def_xr_actionmaps(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "XrActionMaps");
-  srna = RNA_def_struct(brna, "XrActionMaps", NULL);
+  srna = RNA_def_struct(brna, "XrActionMaps", nullptr);
   RNA_def_struct_ui_text(srna, "XR Action Maps", "Collection of XR action maps");
 
   func = RNA_def_function(srna, "new", "rna_XrActionMap_new");
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "xr_session_state", "XrSessionState", "XR Session State", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func,
                          "replace_existing",
                          true,
                          "Replace Existing",
                          "Replace any existing actionmap with the same name");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "actionmap", "XrActionMap", "Action Map", "Added action map");
   RNA_def_function_return(func, parm);
 
@@ -1637,14 +1644,14 @@ static void rna_def_xr_actionmaps(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   parm = RNA_def_pointer(func, "actionmap", "XrActionMap", "Action Map", "Removed action map");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
   func = RNA_def_function(srna, "find", "rna_XrActionMap_find");
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "xr_session_state", "XrSessionState", "XR Session State", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "actionmap", "XrActionMap", "Action Map", "The action map with the given name");
   RNA_def_function_return(func, parm);
@@ -1656,7 +1663,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   PropertyRNA *prop;
 
   /* XrActionMap */
-  srna = RNA_def_struct(brna, "XrActionMap", NULL);
+  srna = RNA_def_struct(brna, "XrActionMap", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMap");
   RNA_def_struct_ui_text(srna, "XR Action Map", "");
 
@@ -1666,7 +1673,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "actionmap_items", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "items", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "items", nullptr);
   RNA_def_property_struct_type(prop, "XrActionMapItem");
   RNA_def_property_collection_funcs(prop,
                                     "rna_XrActionMap_items_begin",
@@ -1674,9 +1681,9 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
                                     "rna_XrActionMap_items_length",
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(
       prop,
       "Items",
@@ -1684,11 +1691,11 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   rna_def_xr_actionmap_items(brna, prop);
 
   prop = RNA_def_property(srna, "selected_item", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, NULL, "selitem");
+  RNA_def_property_int_sdna(prop, nullptr, "selitem");
   RNA_def_property_ui_text(prop, "Selected Item", "");
 
   /* XrUserPath */
-  srna = RNA_def_struct(brna, "XrUserPath", NULL);
+  srna = RNA_def_struct(brna, "XrUserPath", nullptr);
   RNA_def_struct_sdna(srna, "XrUserPath");
   RNA_def_struct_ui_text(srna, "XR User Path", "");
 
@@ -1697,7 +1704,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Path", "OpenXR user path");
 
   /* XrActionMapItem */
-  srna = RNA_def_struct(brna, "XrActionMapItem", NULL);
+  srna = RNA_def_struct(brna, "XrActionMapItem", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMapItem");
   RNA_def_struct_ui_text(srna, "XR Action Map Item", "");
 
@@ -1719,9 +1726,9 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
                                     "rna_XrActionMapItem_user_paths_length",
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "User Paths", "OpenXR user paths");
   rna_def_xr_user_paths(brna, prop);
 
@@ -1735,17 +1742,18 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Operator Name", "Name of operator (translated) to call on action event");
   RNA_def_property_string_funcs(
-      prop, "rna_XrActionMapItem_op_name_get", "rna_XrActionMapItem_op_name_length", NULL);
+      prop, "rna_XrActionMapItem_op_name_get", "rna_XrActionMapItem_op_name_length", nullptr);
 
   prop = RNA_def_property(srna, "op_properties", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "OperatorProperties");
-  RNA_def_property_pointer_funcs(prop, "rna_XrActionMapItem_op_properties_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_XrActionMapItem_op_properties_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Operator Properties", "Properties to set when the operator is called");
   RNA_def_property_update(prop, 0, "rna_XrActionMapItem_update");
 
   prop = RNA_def_property(srna, "op_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "op_flag");
+  RNA_def_property_enum_sdna(prop, nullptr, "op_flag");
   RNA_def_property_enum_items(prop, rna_enum_xr_op_flags);
   RNA_def_property_ui_text(prop, "Operator Mode", "Operator execution mode");
 
@@ -1803,7 +1811,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   prop = RNA_def_property(srna, "haptic_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_xr_haptic_flags);
   RNA_def_property_enum_funcs(
-      prop, "rna_XrActionMapItem_haptic_mode_get", "rna_XrActionMapItem_haptic_mode_set", NULL);
+      prop, "rna_XrActionMapItem_haptic_mode_get", "rna_XrActionMapItem_haptic_mode_set", nullptr);
   RNA_def_property_ui_text(prop, "Haptic mode", "Haptic application mode");
 
   prop = RNA_def_property(srna, "bindings", PROP_COLLECTION, PROP_NONE);
@@ -1814,19 +1822,19 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
                                     "rna_XrActionMapItem_bindings_length",
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(
       prop, "Bindings", "Bindings for the action map item, mapping the action to an XR input");
   rna_def_xr_actionmap_bindings(brna, prop);
 
   prop = RNA_def_property(srna, "selected_binding", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, NULL, "selbinding");
+  RNA_def_property_int_sdna(prop, nullptr, "selbinding");
   RNA_def_property_ui_text(prop, "Selected Binding", "Currently selected binding");
 
   /* XrComponentPath */
-  srna = RNA_def_struct(brna, "XrComponentPath", NULL);
+  srna = RNA_def_struct(brna, "XrComponentPath", nullptr);
   RNA_def_struct_sdna(srna, "XrComponentPath");
   RNA_def_struct_ui_text(srna, "XR Component Path", "");
 
@@ -1835,7 +1843,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Path", "OpenXR component path");
 
   /* XrActionMapBinding */
-  srna = RNA_def_struct(brna, "XrActionMapBinding", NULL);
+  srna = RNA_def_struct(brna, "XrActionMapBinding", nullptr);
   RNA_def_struct_sdna(srna, "XrActionMapBinding");
   RNA_def_struct_ui_text(srna, "XR Action Map Binding", "Binding in an XR action map item");
 
@@ -1856,14 +1864,14 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
                                     "rna_XrActionMapBinding_component_paths_length",
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Component Paths", "OpenXR component paths");
   rna_def_xr_component_paths(brna, prop);
 
   prop = RNA_def_property(srna, "threshold", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "float_threshold");
+  RNA_def_property_float_sdna(prop, nullptr, "float_threshold");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Threshold", "Input threshold for button/axis actions");
 
@@ -1872,7 +1880,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   RNA_def_property_enum_funcs(prop,
                               "rna_XrActionMapBinding_axis0_region_get",
                               "rna_XrActionMapBinding_axis0_region_set",
-                              NULL);
+                              nullptr);
   RNA_def_property_ui_text(
       prop, "Axis 0 Region", "Action execution region for the first input axis");
 
@@ -1881,7 +1889,7 @@ static void rna_def_xr_actionmap(BlenderRNA *brna)
   RNA_def_property_enum_funcs(prop,
                               "rna_XrActionMapBinding_axis1_region_get",
                               "rna_XrActionMapBinding_axis1_region_set",
-                              NULL);
+                              nullptr);
   RNA_def_property_ui_text(
       prop, "Axis 1 Region", "Action execution region for the second input axis");
 
@@ -1919,7 +1927,7 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
        0,
        "Custom",
        "Follow a custom transformation to define the VR view's base pose"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem controller_draw_styles[] = {
@@ -1935,10 +1943,10 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
        0,
        "Light + Ray",
        "Draw light controller with aiming axis ray"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
-  srna = RNA_def_struct(brna, "XrSessionSettings", NULL);
+  srna = RNA_def_struct(brna, "XrSessionSettings", nullptr);
   RNA_def_struct_ui_text(srna, "XR Session Settings", "");
 
   prop = RNA_def_property(srna, "shading", PROP_POINTER, PROP_NONE);
@@ -1954,7 +1962,7 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
       "Base Pose Type",
       "Define where the location and rotation for the VR view come from, to which "
       "translation and rotation deltas from the VR headset will be applied to");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "base_pose_object", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -1962,60 +1970,60 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
                            "Base Pose Object",
                            "Object to take the location and rotation to which translation and "
                            "rotation deltas from the VR headset will be applied to");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "base_pose_location", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_ui_text(prop,
                            "Base Pose Location",
                            "Coordinates to apply translation deltas from the VR headset to");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "base_pose_angle", PROP_FLOAT, PROP_AXISANGLE);
   RNA_def_property_ui_text(
       prop,
       "Base Pose Angle",
       "Rotation angle around the Z-Axis to apply the rotation deltas from the VR headset to");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "base_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Base Scale", "Uniform scale to apply to VR view");
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
   RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "show_floor", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_SHOW_GRIDFLOOR);
+  RNA_def_property_boolean_sdna(prop, nullptr, "draw_flags", V3D_OFSDRAW_SHOW_GRIDFLOOR);
   RNA_def_property_ui_text(prop, "Display Grid Floor", "Show the ground plane grid");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "show_annotation", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_SHOW_ANNOTATION);
+  RNA_def_property_boolean_sdna(prop, nullptr, "draw_flags", V3D_OFSDRAW_SHOW_ANNOTATION);
   RNA_def_property_ui_text(prop, "Show Annotation", "Show annotations for this view");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "show_selection", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_SHOW_SELECTION);
+  RNA_def_property_boolean_sdna(prop, nullptr, "draw_flags", V3D_OFSDRAW_SHOW_SELECTION);
   RNA_def_property_ui_text(prop, "Show Selection", "Show selection outlines");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "show_controllers", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_XR_SHOW_CONTROLLERS);
+  RNA_def_property_boolean_sdna(prop, nullptr, "draw_flags", V3D_OFSDRAW_XR_SHOW_CONTROLLERS);
   RNA_def_property_ui_text(
       prop, "Show Controllers", "Show VR controllers (requires VR actions for controller poses)");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "show_custom_overlays", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_XR_SHOW_CUSTOM_OVERLAYS);
+  RNA_def_property_boolean_sdna(prop, nullptr, "draw_flags", V3D_OFSDRAW_XR_SHOW_CUSTOM_OVERLAYS);
   RNA_def_property_ui_text(prop, "Show Custom Overlays", "Show custom VR overlays");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "show_object_extras", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_SHOW_OBJECT_EXTRAS);
+  RNA_def_property_boolean_sdna(prop, nullptr, "draw_flags", V3D_OFSDRAW_SHOW_OBJECT_EXTRAS);
   RNA_def_property_ui_text(
       prop, "Show Object Extras", "Show object extras, including empties, lights, and cameras");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "controller_draw_style", PROP_ENUM, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -2023,19 +2031,19 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Controller Draw Style", "Style to use when drawing VR controllers");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "clip_start", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
   RNA_def_property_ui_text(prop, "Clip Start", "VR viewport near clipping distance");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "clip_end", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
   RNA_def_property_ui_text(prop, "Clip End", "VR viewport far clipping distance");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "use_positional_tracking", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop,
@@ -2045,7 +2053,7 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
       prop,
       "Positional Tracking",
       "Allow VR headsets to affect the location in virtual space, in addition to the rotation");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   prop = RNA_def_property(srna, "use_absolute_tracking", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop,
@@ -2055,14 +2063,14 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
       prop,
       "Absolute Tracking",
       "Allow the VR tracking origin to be defined independently of the headset location");
-  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
-  rna_def_object_type_visibility_flags_common(srna, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  rna_def_object_type_visibility_flags_common(srna, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   /* Helper for drawing the icon. */
   prop = RNA_def_property(srna, "icon_from_show_object_viewport", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(
-      prop, "rna_XrSessionSettings_icon_from_show_object_viewport_get", NULL, NULL);
+      prop, "rna_XrSessionSettings_icon_from_show_object_viewport_get", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Visibility Icon", "");
 }
@@ -2079,7 +2087,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   FunctionRNA *func;
   PropertyRNA *parm, *prop;
 
-  srna = RNA_def_struct(brna, "XrSessionState", NULL);
+  srna = RNA_def_struct(brna, "XrSessionState", nullptr);
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Session State", "Runtime state information about the VR session");
 
@@ -2140,7 +2148,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_set", NULL, MAX_NAME, "Action Set", "Action set name");
+  parm = RNA_def_string(func, "action_set", nullptr, MAX_NAME, "Action Set", "Action set name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_boolean(func, "result", 0, "Result", "");
   RNA_def_function_return(func, parm);
@@ -2151,18 +2159,18 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_set", NULL, MAX_NAME, "Action Set", "Action set name");
+  parm = RNA_def_string(func, "action_set", nullptr, MAX_NAME, "Action Set", "Action set name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_string(func,
                         "grip_action",
-                        NULL,
+                        nullptr,
                         MAX_NAME,
                         "Grip Action",
                         "Name of the action representing the controller grips");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_string(func,
                         "aim_action",
-                        NULL,
+                        nullptr,
                         MAX_NAME,
                         "Aim Action",
                         "Name of the action representing the controller aims");
@@ -2175,18 +2183,19 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_set_name", NULL, MAX_NAME, "Action Set", "Action set name");
+  parm = RNA_def_string(
+      func, "action_set_name", nullptr, MAX_NAME, "Action Set", "Action set name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_name", NULL, MAX_NAME, "Action", "Action name");
+  parm = RNA_def_string(func, "action_name", nullptr, MAX_NAME, "Action", "Action name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_string(
-      func, "user_path", NULL, XR_MAX_USER_PATH_LENGTH, "User Path", "OpenXR user path");
+      func, "user_path", nullptr, XR_MAX_USER_PATH_LENGTH, "User Path", "OpenXR user path");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_float_array(
       func,
       "state",
       2,
-      NULL,
+      nullptr,
       -FLT_MAX,
       FLT_MAX,
       "Action State",
@@ -2200,14 +2209,15 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_set_name", NULL, MAX_NAME, "Action Set", "Action set name");
+  parm = RNA_def_string(
+      func, "action_set_name", nullptr, MAX_NAME, "Action Set", "Action set name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_name", NULL, MAX_NAME, "Action", "Action name");
+  parm = RNA_def_string(func, "action_name", nullptr, MAX_NAME, "Action", "Action name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_string(
       func,
       "user_path",
-      NULL,
+      nullptr,
       XR_MAX_USER_PATH_LENGTH,
       "User Path",
       "Optional OpenXR user path. If not set, the action will be applied to all paths");
@@ -2221,7 +2231,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
                        "Haptic duration in seconds. 0.0 is the minimum supported duration",
                        0.0f,
                        FLT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float(func,
                        "frequency",
                        0.0f,
@@ -2232,7 +2242,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
                        "runtime's default frequency",
                        0.0f,
                        FLT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float(func,
                        "amplitude",
                        1.0f,
@@ -2242,7 +2252,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
                        "Haptic amplitude, ranging from 0.0 to 1.0",
                        0.0f,
                        1.0f);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func, "result", 0, "Result", "");
   RNA_def_function_return(func, parm);
 
@@ -2251,14 +2261,15 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_function_flag(func, FUNC_NO_SELF);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_set_name", NULL, MAX_NAME, "Action Set", "Action set name");
+  parm = RNA_def_string(
+      func, "action_set_name", nullptr, MAX_NAME, "Action Set", "Action set name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_string(func, "action_name", NULL, MAX_NAME, "Action", "Action name");
+  parm = RNA_def_string(func, "action_name", nullptr, MAX_NAME, "Action", "Action name");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_string(
       func,
       "user_path",
-      NULL,
+      nullptr,
       XR_MAX_USER_PATH_LENGTH,
       "User Path",
       "Optional OpenXR user path. If not set, the action will be stopped for all paths");
@@ -2272,11 +2283,11 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(func, "index", 0, 0, 255, "Index", "Controller index", 0, 255);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float_translation(func,
                                    "location",
                                    3,
-                                   NULL,
+                                   nullptr,
                                    -FLT_MAX,
                                    FLT_MAX,
                                    "Location",
@@ -2293,11 +2304,11 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(func, "index", 0, 0, 255, "Index", "Controller index", 0, 255);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float_vector(func,
                               "rotation",
                               4,
-                              NULL,
+                              nullptr,
                               -FLT_MAX,
                               FLT_MAX,
                               "Rotation",
@@ -2316,11 +2327,11 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(func, "index", 0, 0, 255, "Index", "Controller index", 0, 255);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float_translation(func,
                                    "location",
                                    3,
-                                   NULL,
+                                   nullptr,
                                    -FLT_MAX,
                                    FLT_MAX,
                                    "Location",
@@ -2337,11 +2348,11 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_int(func, "index", 0, 0, 255, "Index", "Controller index", 0, 255);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float_vector(func,
                               "rotation",
                               4,
-                              NULL,
+                              nullptr,
                               -FLT_MAX,
                               FLT_MAX,
                               "Rotation",
@@ -2354,7 +2365,8 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "viewer_pose_location", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_pose_location_get", NULL, NULL);
+  RNA_def_property_float_funcs(
+      prop, "rna_XrSessionState_viewer_pose_location_get", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop,
@@ -2363,7 +2375,8 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "viewer_pose_rotation", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_pose_rotation_get", NULL, NULL);
+  RNA_def_property_float_funcs(
+      prop, "rna_XrSessionState_viewer_pose_rotation_get", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop,
@@ -2373,7 +2386,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   prop = RNA_def_property(srna, "navigation_location", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
   RNA_def_property_float_funcs(
-      prop, "rna_XrSessionState_nav_location_get", "rna_XrSessionState_nav_location_set", NULL);
+      prop, "rna_XrSessionState_nav_location_get", "rna_XrSessionState_nav_location_set", nullptr);
   RNA_def_property_ui_text(
       prop,
       "Navigation Location",
@@ -2382,7 +2395,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   prop = RNA_def_property(srna, "navigation_rotation", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_array(prop, 4);
   RNA_def_property_float_funcs(
-      prop, "rna_XrSessionState_nav_rotation_get", "rna_XrSessionState_nav_rotation_set", NULL);
+      prop, "rna_XrSessionState_nav_rotation_get", "rna_XrSessionState_nav_rotation_set", nullptr);
   RNA_def_property_ui_text(
       prop,
       "Navigation Rotation",
@@ -2390,7 +2403,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "navigation_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_funcs(
-      prop, "rna_XrSessionState_nav_scale_get", "rna_XrSessionState_nav_scale_set", NULL);
+      prop, "rna_XrSessionState_nav_scale_get", "rna_XrSessionState_nav_scale_set", nullptr);
   RNA_def_property_ui_text(
       prop,
       "Navigation Scale",
@@ -2404,9 +2417,9 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
                                     "rna_XrSessionState_actionmaps_length",
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "XR Action Maps", "");
   rna_def_xr_actionmaps(brna, prop);
 
@@ -2414,14 +2427,14 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_property_int_funcs(prop,
                              "rna_XrSessionState_active_actionmap_get",
                              "rna_XrSessionState_active_actionmap_set",
-                             NULL);
+                             nullptr);
   RNA_def_property_ui_text(prop, "Active Action Map", "");
 
   prop = RNA_def_property(srna, "selected_actionmap", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(prop,
                              "rna_XrSessionState_selected_actionmap_get",
                              "rna_XrSessionState_selected_actionmap_set",
-                             NULL);
+                             nullptr);
   RNA_def_property_ui_text(prop, "Selected Action Map", "");
 }
 
@@ -2436,62 +2449,64 @@ static void rna_def_xr_eventdata(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "XrEventData", NULL);
+  srna = RNA_def_struct(brna, "XrEventData", nullptr);
   RNA_def_struct_ui_text(srna, "XrEventData", "XR Data for Window Manager Event");
 
   prop = RNA_def_property(srna, "action_set", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_string_funcs(
-      prop, "rna_XrEventData_action_set_get", "rna_XrEventData_action_set_length", NULL);
+      prop, "rna_XrEventData_action_set_get", "rna_XrEventData_action_set_length", nullptr);
   RNA_def_property_ui_text(prop, "Action Set", "XR action set name");
 
   prop = RNA_def_property(srna, "action", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_string_funcs(
-      prop, "rna_XrEventData_action_get", "rna_XrEventData_action_length", NULL);
+      prop, "rna_XrEventData_action_get", "rna_XrEventData_action_length", nullptr);
   RNA_def_property_ui_text(prop, "Action", "XR action name");
 
   prop = RNA_def_property(srna, "user_path", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_string_funcs(
-      prop, "rna_XrEventData_user_path_get", "rna_XrEventData_user_path_length", NULL);
+      prop, "rna_XrEventData_user_path_get", "rna_XrEventData_user_path_length", nullptr);
   RNA_def_property_ui_text(prop, "User Path", "User path of the action. E.g. \"/user/hand/left\"");
 
   prop = RNA_def_property(srna, "user_path_other", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_string_funcs(
-      prop, "rna_XrEventData_user_path_other_get", "rna_XrEventData_user_path_other_length", NULL);
+  RNA_def_property_string_funcs(prop,
+                                "rna_XrEventData_user_path_other_get",
+                                "rna_XrEventData_user_path_other_length",
+                                nullptr);
   RNA_def_property_ui_text(
       prop, "User Path Other", "Other user path, for bimanual actions. E.g. \"/user/hand/right\"");
 
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_enum_items(prop, rna_enum_xr_action_types);
-  RNA_def_property_enum_funcs(prop, "rna_XrEventData_type_get", NULL, NULL);
+  RNA_def_property_enum_funcs(prop, "rna_XrEventData_type_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Type", "XR action type");
 
   prop = RNA_def_property(srna, "state", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 2);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_state_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrEventData_state_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "State", "XR action values corresponding to type");
 
   prop = RNA_def_property(srna, "state_other", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 2);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_state_other_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrEventData_state_other_get", nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "State Other", "State of the other user path for bimanual actions");
 
   prop = RNA_def_property(srna, "float_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_float_threshold_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrEventData_float_threshold_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Float Threshold", "Input threshold for float/2D vector actions");
 
   prop = RNA_def_property(srna, "controller_location", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_controller_location_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrEventData_controller_location_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "Controller Location",
                            "Location of the action's corresponding controller aim in world space");
@@ -2499,7 +2514,7 @@ static void rna_def_xr_eventdata(BlenderRNA *brna)
   prop = RNA_def_property(srna, "controller_rotation", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_array(prop, 4);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_controller_rotation_get", NULL, NULL);
+  RNA_def_property_float_funcs(prop, "rna_XrEventData_controller_rotation_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "Controller Rotation",
                            "Rotation of the action's corresponding controller aim in world space");
@@ -2507,7 +2522,8 @@ static void rna_def_xr_eventdata(BlenderRNA *brna)
   prop = RNA_def_property(srna, "controller_location_other", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_controller_location_other_get", NULL, NULL);
+  RNA_def_property_float_funcs(
+      prop, "rna_XrEventData_controller_location_other_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "Controller Location Other",
                            "Controller aim location of the other user path for bimanual actions");
@@ -2515,14 +2531,15 @@ static void rna_def_xr_eventdata(BlenderRNA *brna)
   prop = RNA_def_property(srna, "controller_rotation_other", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_array(prop, 4);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_funcs(prop, "rna_XrEventData_controller_rotation_other_get", NULL, NULL);
+  RNA_def_property_float_funcs(
+      prop, "rna_XrEventData_controller_rotation_other_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop,
                            "Controller Rotation Other",
                            "Controller aim rotation of the other user path for bimanual actions");
 
   prop = RNA_def_property(srna, "bimanual", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_funcs(prop, "rna_XrEventData_bimanual_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_XrEventData_bimanual_get", nullptr);
   RNA_def_property_ui_text(prop, "Bimanual", "Whether bimanual interaction is occurring");
 }
 
