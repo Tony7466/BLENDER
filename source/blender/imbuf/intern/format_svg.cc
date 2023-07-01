@@ -17,13 +17,19 @@ extern "C" {
 
 bool imb_is_a_svg(const uchar *mem, size_t size)
 {
-  char *str = (char *)mem;
-  str[size - 1] = '\0';
-  return strstr(str, "<svg") != nullptr;
+  char sample[1024];
+  const int sample_size = MIN2(size, sizeof(sample));
+  memcpy(&sample[0], mem, sample_size);
+  sample[sample_size - 1] = '\0';
+  return strstr(sample, "<svg") != nullptr;
 }
 
 ImBuf *imb_load_svg(const uchar *mem, size_t size, int /* flags */, char colorspace[IM_MAX_SPACE])
 {
+  if (!imb_is_a_svg(mem, size)) {
+    return nullptr;
+  }
+
   NSVGimage *image = nullptr;
   char *data = (char *)malloc(size + 1);
 
@@ -38,8 +44,21 @@ ImBuf *imb_load_svg(const uchar *mem, size_t size, int /* flags */, char colorsp
     return nullptr;
   }
 
-	const int w = int(image->width);
-  const int h = int(image->height);
+  if (image->width == 0 || image->height == 0) {
+    nsvgDelete(image);
+    return nullptr;
+  }
+
+	int w = int(image->width);
+  int h = int(image->height);
+
+  int scale = 1;
+  /* Increase to a nice size if small since these are vectors. */
+  while (MAX2(w, h) < 1024) {
+    scale *= 2;
+    w *= scale;
+    h *= scale;
+  }
 
   NSVGrasterizer *rast = nsvgCreateRasterizer();
   if (rast == nullptr) {
@@ -51,7 +70,7 @@ ImBuf *imb_load_svg(const uchar *mem, size_t size, int /* flags */, char colorsp
 
   ImBuf *ibuf = IMB_allocImBuf(w, h, 32, IB_rect);
   if (ibuf != nullptr) {
-    nsvgRasterize(rast, image, 0, 0, 1.0f, ibuf->byte_buffer.data, w, h, w * 4);
+    nsvgRasterize(rast, image, 0, 0, float(scale), ibuf->byte_buffer.data, w, h, w * 4);
     nsvgDeleteRasterizer(rast);
     nsvgDelete(image);
     IMB_flipy(ibuf);
@@ -67,7 +86,13 @@ ImBuf *imb_load_filepath_thumbnail_svg(const char *filepath,
                                        size_t *r_height)
 {
   NSVGimage *image = nsvgParseFromFile(filepath, "px", 96.0f);
+
   if (image == nullptr) {
+    return nullptr;
+  }
+
+  if (image->width == 0 || image->height == 0) {
+    nsvgDelete(image);
     return nullptr;
   }
 
