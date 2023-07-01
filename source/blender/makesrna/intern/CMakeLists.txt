@@ -82,7 +82,7 @@ set(DEFSRC
   rna_userdef.cc
   rna_vfont.cc
   rna_volume.cc
-  rna_wm.c
+  rna_wm.cc
   rna_wm_gizmo.c
   rna_workspace.c
   rna_world.c
@@ -121,7 +121,7 @@ set(APISRC
   rna_texture_api.cc
   rna_ui_api.cc
   rna_vfont_api.cc
-  rna_wm_api.c
+  rna_wm_api.cc
   rna_wm_gizmo_api.c
   rna_workspace_api.c
 )
