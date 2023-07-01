@@ -26,7 +26,7 @@ set(DEFSRC
   rna_cachefile.cc
   rna_camera.cc
   rna_cloth.cc
-  rna_collection.c
+  rna_collection.cc
   rna_color.cc
   rna_constraint.c
   rna_context.c

@@ -31,9 +31,9 @@ const EnumPropertyItem rna_enum_collection_color_items[] = {
     {COLLECTION_COLOR_06, "COLOR_06", ICON_COLLECTION_COLOR_06, "Color 06", ""},
     {COLLECTION_COLOR_07, "COLOR_07", ICON_COLLECTION_COLOR_07, "Color 07", ""},
     {COLLECTION_COLOR_08, "COLOR_08", ICON_COLLECTION_COLOR_08, "Color 08", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
-/* Minus 1 for NONE & 1 for the NULL sentinel. */
+/* Minus 1 for NONE & 1 for the nullptr sentinel. */
 BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_COLOR_TOT,
                   "Collection color total is an invalid size");
 
@@ -58,7 +58,7 @@ static void rna_Collection_all_objects_begin(CollectionPropertyIterator *iter, P
 {
   Collection *collection = (Collection *)ptr->data;
   ListBase collection_objects = BKE_collection_object_cache_get(collection);
-  rna_iterator_listbase_begin(iter, &collection_objects, NULL);
+  rna_iterator_listbase_begin(iter, &collection_objects, nullptr);
 }
 
 static PointerRNA rna_Collection_all_objects_get(CollectionPropertyIterator *iter)
@@ -73,7 +73,7 @@ static PointerRNA rna_Collection_all_objects_get(CollectionPropertyIterator *ite
 static void rna_Collection_objects_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->data;
-  rna_iterator_listbase_begin(iter, &collection->gobject, NULL);
+  rna_iterator_listbase_begin(iter, &collection->gobject, nullptr);
 }
 
 static PointerRNA rna_Collection_objects_get(CollectionPropertyIterator *iter)
@@ -164,17 +164,17 @@ static void rna_Collection_objects_unlink(Collection *collection,
 
 static bool rna_Collection_objects_override_apply(Main *bmain,
                                                   PointerRNA *ptr_dst,
-                                                  PointerRNA *UNUSED(ptr_src),
-                                                  PointerRNA *UNUSED(ptr_storage),
+                                                  PointerRNA * /*ptr_src*/,
+                                                  PointerRNA * /*ptr_storage*/,
                                                   PropertyRNA *prop_dst,
-                                                  PropertyRNA *UNUSED(prop_src),
-                                                  PropertyRNA *UNUSED(prop_storage),
-                                                  const int UNUSED(len_dst),
-                                                  const int UNUSED(len_src),
-                                                  const int UNUSED(len_storage),
+                                                  PropertyRNA * /*prop_src*/,
+                                                  PropertyRNA * /*prop_storage*/,
+                                                  const int /*len_dst*/,
+                                                  const int /*len_src*/,
+                                                  const int /*len_storage*/,
                                                   PointerRNA *ptr_item_dst,
                                                   PointerRNA *ptr_item_src,
-                                                  PointerRNA *UNUSED(ptr_item_storage),
+                                                  PointerRNA * /*ptr_item_storage*/,
                                                   IDOverrideLibraryPropertyOperation *opop)
 {
   BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
@@ -183,13 +183,13 @@ static bool rna_Collection_objects_override_apply(Main *bmain,
 
   Collection *coll_dst = (Collection *)ptr_dst->owner_id;
 
-  if (ptr_item_dst->type == NULL || ptr_item_src->type == NULL) {
+  if (ptr_item_dst->type == nullptr || ptr_item_src->type == nullptr) {
     // BLI_assert_msg(0, "invalid source or destination object.");
     return false;
   }
 
-  Object *ob_dst = ptr_item_dst->data;
-  Object *ob_src = ptr_item_src->data;
+  Object *ob_dst = static_cast<Object *>(ptr_item_dst->data);
+  Object *ob_src = static_cast<Object *>(ptr_item_src->data);
 
   if (ob_src == ob_dst) {
     return true;
@@ -200,14 +200,14 @@ static bool rna_Collection_objects_override_apply(Main *bmain,
     return false;
   }
 
-  RNA_property_update_main(bmain, NULL, ptr_dst, prop_dst);
+  RNA_property_update_main(bmain, nullptr, ptr_dst, prop_dst);
   return true;
 }
 
 static void rna_Collection_children_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->data;
-  rna_iterator_listbase_begin(iter, &collection->children, NULL);
+  rna_iterator_listbase_begin(iter, &collection->children, nullptr);
 }
 
 static PointerRNA rna_Collection_children_get(CollectionPropertyIterator *iter)
@@ -298,17 +298,17 @@ static void rna_Collection_children_unlink(Collection *collection,
 
 static bool rna_Collection_children_override_apply(Main *bmain,
                                                    PointerRNA *ptr_dst,
-                                                   PointerRNA *UNUSED(ptr_src),
-                                                   PointerRNA *UNUSED(ptr_storage),
+                                                   PointerRNA * /*ptr_src*/,
+                                                   PointerRNA * /*ptr_storage*/,
                                                    PropertyRNA *prop_dst,
-                                                   PropertyRNA *UNUSED(prop_src),
-                                                   PropertyRNA *UNUSED(prop_storage),
-                                                   const int UNUSED(len_dst),
-                                                   const int UNUSED(len_src),
-                                                   const int UNUSED(len_storage),
+                                                   PropertyRNA * /*prop_src*/,
+                                                   PropertyRNA * /*prop_storage*/,
+                                                   const int /*len_dst*/,
+                                                   const int /*len_src*/,
+                                                   const int /*len_storage*/,
                                                    PointerRNA *ptr_item_dst,
                                                    PointerRNA *ptr_item_src,
-                                                   PointerRNA *UNUSED(ptr_item_storage),
+                                                   PointerRNA * /*ptr_item_storage*/,
                                                    IDOverrideLibraryPropertyOperation *opop)
 {
   BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
@@ -317,18 +317,18 @@ static bool rna_Collection_children_override_apply(Main *bmain,
 
   Collection *coll_dst = (Collection *)ptr_dst->owner_id;
 
-  if (ptr_item_dst->type == NULL || ptr_item_src->type == NULL) {
+  if (ptr_item_dst->type == nullptr || ptr_item_src->type == nullptr) {
     /* This can happen when reference and overrides differ, just ignore then. */
     return false;
   }
 
-  Collection *subcoll_dst = ptr_item_dst->data;
-  Collection *subcoll_src = ptr_item_src->data;
+  Collection *subcoll_dst = static_cast<Collection *>(ptr_item_dst->data);
+  Collection *subcoll_src = static_cast<Collection *>(ptr_item_src->data);
 
-  CollectionChild *collchild_dst = BLI_findptr(
-      &coll_dst->children, subcoll_dst, offsetof(CollectionChild, collection));
+  CollectionChild *collchild_dst = static_cast<CollectionChild *>(
+      BLI_findptr(&coll_dst->children, subcoll_dst, offsetof(CollectionChild, collection)));
 
-  if (collchild_dst == NULL) {
+  if (collchild_dst == nullptr) {
     BLI_assert_msg(0, "Could not find destination sub-collection in destination collection!");
     return false;
   }
@@ -342,7 +342,7 @@ static bool rna_Collection_children_override_apply(Main *bmain,
   BKE_collection_object_cache_free(coll_dst);
   BKE_main_collection_sync(bmain);
 
-  RNA_property_update_main(bmain, NULL, ptr_dst, prop_dst);
+  RNA_property_update_main(bmain, nullptr, ptr_dst, prop_dst);
   return true;
 }
 
@@ -406,15 +406,13 @@ static void rna_Collection_color_tag_set(struct PointerRNA *ptr, int value)
   collection->color_tag = value;
 }
 
-static void rna_Collection_color_tag_update(Main *UNUSED(bmain),
-                                            Scene *scene,
-                                            PointerRNA *UNUSED(ptr))
+static void rna_Collection_color_tag_update(Main * /*bmain*/, Scene *scene, PointerRNA * /*ptr*/)
 {
   WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, scene);
 }
 
-static void rna_Collection_instance_offset_update(Main *UNUSED(bmain),
-                                                  Scene *UNUSED(scene),
+static void rna_Collection_instance_offset_update(Main * /*bmain*/,
+                                                  Scene * /*scene*/,
                                                   PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->data;
@@ -447,7 +445,7 @@ static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
   return BLI_strdup("..");
 }
 
-static void rna_CollectionLightLinking_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   /* The light linking collection comes from the collection. It does not have shading component,
    * but is collected to objects via hierarchy component. Tagging its hierarchy for update will
@@ -468,7 +466,7 @@ static void rna_def_collection_objects(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "CollectionObjects");
-  srna = RNA_def_struct(brna, "CollectionObjects", NULL);
+  srna = RNA_def_struct(brna, "CollectionObjects", nullptr);
   RNA_def_struct_sdna(srna, "Collection");
   RNA_def_struct_ui_text(srna, "Collection Objects", "Collection of collection objects");
 
@@ -484,7 +482,7 @@ static void rna_def_collection_objects(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove this object from a collection");
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "object", "Object", "", "Object to remove");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
 /* collection.children */
@@ -495,7 +493,7 @@ static void rna_def_collection_children(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "CollectionChildren");
-  srna = RNA_def_struct(brna, "CollectionChildren", NULL);
+  srna = RNA_def_struct(brna, "CollectionChildren", nullptr);
   RNA_def_struct_sdna(srna, "Collection");
   RNA_def_struct_ui_text(srna, "Collection Children", "Collection of child collections");
 
@@ -511,7 +509,7 @@ static void rna_def_collection_children(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove this child collection from a collection");
   RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "child", "Collection", "", "Collection to remove");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
 static void rna_def_collection_light_linking(BlenderRNA *brna)
@@ -523,10 +521,10 @@ static void rna_def_collection_light_linking(BlenderRNA *brna)
   static const EnumPropertyItem light_linking_state_items[] = {
       {COLLECTION_LIGHT_LINKING_STATE_INCLUDE, "INCLUDE", ICON_OUTLINER_OB_LIGHT, "Include", ""},
       {COLLECTION_LIGHT_LINKING_STATE_EXCLUDE, "EXCLUDE", ICON_LIGHT, "Exclude", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
-  srna = RNA_def_struct(brna, "CollectionLightLinking", NULL);
+  srna = RNA_def_struct(brna, "CollectionLightLinking", nullptr);
   RNA_def_struct_sdna(srna, "CollectionLightLinking");
   RNA_def_struct_ui_text(
       srna,
@@ -548,7 +546,7 @@ static void rna_def_collection_object(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "CollectionObject", NULL);
+  srna = RNA_def_struct(brna, "CollectionObject", nullptr);
   RNA_def_struct_sdna(srna, "CollectionObject");
   RNA_def_struct_ui_text(
       srna, "Collection Object", "Object of a collection with its collection related settings");
@@ -565,7 +563,7 @@ static void rna_def_collection_child(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "CollectionChild", NULL);
+  srna = RNA_def_struct(brna, "CollectionChild", nullptr);
   RNA_def_struct_sdna(srna, "CollectionChild");
   RNA_def_struct_ui_text(
       srna, "Collection Child", "Child collection with its collection related settings");
@@ -600,17 +598,17 @@ void RNA_def_collections(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "objects", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");
-  RNA_def_property_override_funcs(prop, NULL, NULL, "rna_Collection_objects_override_apply");
+  RNA_def_property_override_funcs(prop, nullptr, nullptr, "rna_Collection_objects_override_apply");
   RNA_def_property_ui_text(prop, "Objects", "Objects that are directly in this collection");
   RNA_def_property_collection_funcs(prop,
                                     "rna_Collection_objects_begin",
                                     "rna_iterator_listbase_next",
                                     "rna_iterator_listbase_end",
                                     "rna_Collection_objects_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   rna_def_collection_objects(brna, prop);
 
   prop = RNA_def_property(srna, "all_objects", PROP_COLLECTION, PROP_NONE);
@@ -624,14 +622,15 @@ void RNA_def_collections(BlenderRNA *brna)
                                     "rna_iterator_listbase_next",
                                     "rna_iterator_listbase_end",
                                     "rna_Collection_all_objects_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
 
   prop = RNA_def_property(srna, "children", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "Collection");
-  RNA_def_property_override_funcs(prop, NULL, NULL, "rna_Collection_children_override_apply");
+  RNA_def_property_override_funcs(
+      prop, nullptr, nullptr, "rna_Collection_children_override_apply");
   RNA_def_property_ui_text(
       prop, "Children", "Collections that are immediate children of this collection");
   RNA_def_property_collection_funcs(prop,
@@ -639,16 +638,16 @@ void RNA_def_collections(BlenderRNA *brna)
                                     "rna_iterator_listbase_next",
                                     "rna_iterator_listbase_end",
                                     "rna_Collection_children_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   rna_def_collection_children(brna, prop);
 
   /* Collection objects. */
   prop = RNA_def_property(srna, "collection_objects", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionObject");
-  RNA_def_property_collection_sdna(prop, NULL, "gobject", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "gobject", nullptr);
   RNA_def_property_ui_text(
       prop,
       "Collection Objects",
@@ -658,7 +657,7 @@ void RNA_def_collections(BlenderRNA *brna)
   /* Children collections. */
   prop = RNA_def_property(srna, "collection_children", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionChild");
-  RNA_def_property_collection_sdna(prop, NULL, "children", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "children", nullptr);
   RNA_def_property_ui_text(prop,
                            "Collection Children",
                            "Children collections their parent-collection-specific settings");
@@ -666,24 +665,24 @@ void RNA_def_collections(BlenderRNA *brna)
 
   /* Flags */
   prop = RNA_def_property(srna, "hide_select", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", COLLECTION_HIDE_SELECT);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_Collection_hide_select_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLLECTION_HIDE_SELECT);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_Collection_hide_select_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, -1);
   RNA_def_property_ui_text(prop, "Disable Selection", "Disable selection in viewport");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", COLLECTION_HIDE_VIEWPORT);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_Collection_hide_viewport_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLLECTION_HIDE_VIEWPORT);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_Collection_hide_viewport_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
   RNA_def_property_ui_text(prop, "Disable in Viewports", "Globally disable in viewports");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
   prop = RNA_def_property(srna, "hide_render", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", COLLECTION_HIDE_RENDER);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_Collection_hide_render_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLLECTION_HIDE_RENDER);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_Collection_hide_render_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
@@ -716,25 +715,25 @@ void RNA_def_collections(BlenderRNA *brna)
        0,
        "Force Intersection",
        "Generate intersection lines even with objects that disabled intersection"},
-      {0, NULL, 0, NULL, NULL}};
+      {0, nullptr, 0, nullptr, nullptr}};
 
   prop = RNA_def_property(srna, "lineart_usage", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_collection_lineart_usage);
   RNA_def_property_ui_text(prop, "Usage", "How to use this collection in line art");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "lineart_use_intersection_mask", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "lineart_flags", 1);
+  RNA_def_property_boolean_sdna(prop, nullptr, "lineart_flags", 1);
   RNA_def_property_ui_text(
       prop, "Use Intersection Masks", "Use custom intersection mask for faces in this collection");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "lineart_intersection_mask", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "lineart_intersection_mask", 1);
+  RNA_def_property_boolean_sdna(prop, nullptr, "lineart_intersection_mask", 1);
   RNA_def_property_array(prop, 8);
   RNA_def_property_ui_text(
       prop, "Masks", "Intersection generated by this collection will have this mask value");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "lineart_intersection_priority", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
@@ -742,20 +741,20 @@ void RNA_def_collections(BlenderRNA *brna)
                            "Intersection Priority",
                            "The intersection line will be included into the object with the "
                            "higher intersection priority value");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "use_lineart_intersection_priority", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_boolean_sdna(
-      prop, NULL, "lineart_flags", COLLECTION_LRT_USE_INTERSECTION_PRIORITY);
+      prop, nullptr, "lineart_flags", COLLECTION_LRT_USE_INTERSECTION_PRIORITY);
   RNA_def_property_ui_text(
       prop, "Use Intersection Priority", "Assign intersection priority value for this collection");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "color_tag", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "color_tag");
+  RNA_def_property_enum_sdna(prop, nullptr, "color_tag");
   RNA_def_property_enum_funcs(
-      prop, "rna_Collection_color_tag_get", "rna_Collection_color_tag_set", NULL);
+      prop, "rna_Collection_color_tag_get", "rna_Collection_color_tag_set", nullptr);
   RNA_def_property_enum_items(prop, rna_enum_collection_color_items);
   RNA_def_property_ui_text(prop, "Collection Color", "Color tag for a collection");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_color_tag_update");
