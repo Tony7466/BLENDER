@@ -28,7 +28,7 @@ set(DEFSRC
   rna_cloth.cc
   rna_collection.cc
   rna_color.cc
-  rna_constraint.c
+  rna_constraint.cc
   rna_context.c
   rna_curve.cc
   rna_curveprofile.c
