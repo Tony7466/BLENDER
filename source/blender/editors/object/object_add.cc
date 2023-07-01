@@ -142,7 +142,7 @@ const EnumPropertyItem rna_enum_light_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-/* copy from rna_object_force.c */
+/* copy from rna_object_force.cc */
 static const EnumPropertyItem field_type_items[] = {
     {PFIELD_FORCE, "FORCE", ICON_FORCE_FORCE, "Force", ""},
     {PFIELD_WIND, "WIND", ICON_FORCE_WIND, "Wind", ""},
