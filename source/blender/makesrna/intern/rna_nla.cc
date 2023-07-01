@@ -55,7 +55,7 @@ const EnumPropertyItem rna_enum_nla_mode_blend_items[] = {
      0,
      "Multiply",
      "Weighted result of strip is multiplied with the accumulated results"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
@@ -66,7 +66,7 @@ const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
      "Hold",
      "Hold the first frame if no previous strips in track, and always hold last frame"},
     {NLASTRIP_EXTEND_HOLD_FORWARD, "HOLD_FORWARD", 0, "Hold Forward", "Only hold last frame"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 #ifdef RNA_RUNTIME
@@ -110,8 +110,8 @@ static char *rna_NlaStrip_path(const PointerRNA *ptr)
     NlaTrack *nlt;
     NlaStrip *nls;
 
-    for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
-      for (nls = nlt->strips.first; nls; nls = nls->next) {
+    for (nlt = static_cast<NlaTrack*>(adt->nla_tracks.first); nlt; nlt = nlt->next) {
+      for (nls = static_cast<NlaStrip*>(nlt->strips.first); nls; nls = nls->next) {
         if (nls == strip) {
           /* XXX but if we animate like this, the control will never work... */
           char name_esc_nlt[sizeof(nlt->name) * 2];
@@ -130,7 +130,7 @@ static char *rna_NlaStrip_path(const PointerRNA *ptr)
   return BLI_strdup("");
 }
 
-static void rna_NlaStrip_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_NlaStrip_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
 
@@ -431,7 +431,7 @@ static void rna_NlaStrip_use_auto_blend_set(PointerRNA *ptr, bool value)
   }
 }
 
-static int rna_NlaStrip_action_editable(PointerRNA *ptr, const char **UNUSED(r_info))
+static int rna_NlaStrip_action_editable(PointerRNA *ptr, const char ** /*r_info*/)
 {
   NlaStrip *strip = (NlaStrip *)ptr->data;
 
@@ -516,10 +516,10 @@ static FCurve *rna_NlaStrip_fcurve_find(NlaStrip *strip,
 {
   if (data_path[0] == '\0') {
     BKE_report(reports, RPT_ERROR, "F-Curve data path empty, invalid argument");
-    return NULL;
+    return nullptr;
   }
 
-  /* Returns NULL if not found. */
+  /* Returns nullptr if not found. */
   return BKE_fcurve_find(&strip->fcurves, data_path, index);
 }
 
@@ -528,15 +528,15 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
                                   Main *bmain,
                                   bContext *C,
                                   ReportList *reports,
-                                  const char *UNUSED(name),
+                                  const char * /*name*/,
                                   int start,
                                   bAction *action)
 {
   NlaStrip *strip = BKE_nlastrip_new(action);
 
-  if (strip == NULL) {
+  if (strip == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create new strip");
-    return NULL;
+    return nullptr;
   }
 
   strip->end += (start - strip->start);
@@ -548,7 +548,7 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
         RPT_ERROR,
         "Unable to add strip (the track does not have any space to accommodate this new strip)");
     BKE_nlastrip_free(strip, true);
-    return NULL;
+    return nullptr;
   }
 
   /* create dummy AnimData block so that BKE_nlastrip_validate_name()
@@ -556,14 +556,14 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
    * - only the nla_tracks list is needed there, which we aim to reverse engineer here...
    */
   {
-    AnimData adt = {NULL};
+    AnimData adt = {nullptr};
     NlaTrack *nlt, *nlt_p;
 
     /* 'first' NLA track is found by going back up chain of given
      * track's parents until we fall off. */
     nlt_p = track;
     nlt = track;
-    while ((nlt = nlt->prev) != NULL) {
+    while ((nlt = nlt->prev) != nullptr) {
       nlt_p = nlt;
     }
     adt.nla_tracks.first = nlt_p;
@@ -571,7 +571,7 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
     /* do the same thing to find the last track */
     nlt_p = track;
     nlt = track;
-    while ((nlt = nlt->next) != NULL) {
+    while ((nlt = nlt->next) != nullptr) {
       nlt_p = nlt;
     }
     adt.nla_tracks.last = nlt_p;
@@ -580,7 +580,7 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
     BKE_nlastrip_validate_name(&adt, strip);
   }
 
-  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, nullptr);
 
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
@@ -591,7 +591,7 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
 static void rna_NlaStrip_remove(
     ID *id, NlaTrack *track, Main *bmain, bContext *C, ReportList *reports, PointerRNA *strip_ptr)
 {
-  NlaStrip *strip = strip_ptr->data;
+  NlaStrip *strip = static_cast<NlaStrip*>(strip_ptr->data);
   if (BLI_findindex(&track->strips, strip) == -1) {
     BKE_reportf(
         reports, RPT_ERROR, "NLA strip '%s' not found in track '%s'", strip->name, track->name);
@@ -601,7 +601,7 @@ static void rna_NlaStrip_remove(
   BKE_nlastrip_remove_and_free(&track->strips, strip, true);
   RNA_POINTER_INVALIDATE(strip_ptr);
 
-  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_REMOVED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_REMOVED, nullptr);
 
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
@@ -616,7 +616,7 @@ static void rna_NlaTrack_solo_set(PointerRNA *ptr, bool value)
   AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
   NlaTrack *nt;
 
-  if (data == NULL) {
+  if (data == nullptr) {
     return;
   }
 
@@ -654,7 +654,7 @@ static void rna_def_strip_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
   PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "NlaStripFCurves");
-  srna = RNA_def_struct(brna, "NlaStripFCurves", NULL);
+  srna = RNA_def_struct(brna, "NlaStripFCurves", nullptr);
   RNA_def_struct_sdna(srna, "NlaStrip");
   RNA_def_struct_ui_text(srna, "NLA-Strip F-Curves", "Collection of NLA strip F-Curves");
 
@@ -665,8 +665,8 @@ static void rna_def_strip_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
       "Find an F-Curve. Note that this function performs a linear scan "
       "of all F-Curves in the NLA strip.");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  parm = RNA_def_string(func, "data_path", NULL, 0, "Data Path", "F-Curve data path");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "data_path", nullptr, 0, "Data Path", "F-Curve data path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_int(func, "index", 0, 0, INT_MAX, "Index", "Array index", 0, INT_MAX);
 
   parm = RNA_def_pointer(
@@ -693,11 +693,11 @@ static void rna_def_nlastrip(BlenderRNA *brna)
        0,
        "Sound Clip",
        "NLA Strip representing a sound event for speakers"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* struct definition */
-  srna = RNA_def_struct(brna, "NlaStrip", NULL);
+  srna = RNA_def_struct(brna, "NlaStrip", nullptr);
   RNA_def_struct_ui_text(srna, "NLA Strip", "A container referencing an existing Action");
   RNA_def_struct_path_func(srna, "rna_NlaStrip_path");
   RNA_def_struct_ui_icon(srna, ICON_NLA); /* XXX */
@@ -707,13 +707,13 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   /* name property */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "");
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_NlaStrip_name_set");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_NlaStrip_name_set");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   /* Enums */
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "type");
+  RNA_def_property_enum_sdna(prop, nullptr, "type");
   RNA_def_property_clear_flag(
       prop, PROP_EDITABLE); /* XXX for now, not editable, since this is dangerous */
   RNA_def_property_enum_items(prop, prop_type_items);
@@ -721,14 +721,14 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "extrapolation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "extendmode");
+  RNA_def_property_enum_sdna(prop, nullptr, "extendmode");
   RNA_def_property_enum_items(prop, rna_enum_nla_mode_extend_items);
   RNA_def_property_ui_text(
       prop, "Extrapolation", "Action to take for gaps past the strip extents");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "blend_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "blendmode");
+  RNA_def_property_enum_sdna(prop, nullptr, "blendmode");
   RNA_def_property_enum_items(prop, rna_enum_nla_mode_blend_items);
   RNA_def_property_ui_text(
       prop, "Blending", "Method used for combining strip's result with accumulated result");
@@ -736,8 +736,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Strip extents */
   prop = RNA_def_property(srna, "frame_start", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "start");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_start_frame_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "start");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_start_frame_set", nullptr);
   RNA_def_property_ui_text(prop, "Start Frame", "");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
@@ -747,8 +747,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
 
   prop = RNA_def_property(srna, "frame_end", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "end");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_end_frame_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "end");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_end_frame_set", nullptr);
   RNA_def_property_ui_text(prop, "End Frame", "");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
@@ -759,7 +759,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Strip extents without enforcing a valid state. */
   prop = RNA_def_property(srna, "frame_start_raw", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "start");
+  RNA_def_property_float_sdna(prop, nullptr, "start");
   RNA_def_property_ui_text(prop,
                            "Start Frame (raw value)",
                            "Same as frame_start, except that any value can be set, including ones "
@@ -768,7 +768,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
 
   prop = RNA_def_property(srna, "frame_end_raw", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "end");
+  RNA_def_property_float_sdna(prop, nullptr, "end");
   RNA_def_property_ui_text(prop,
                            "End Frame (raw value)",
                            "Same as frame_end, except that any value can be set, including ones "
@@ -778,8 +778,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Strip extents, when called from UI elements : */
   prop = RNA_def_property(srna, "frame_start_ui", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "start");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_frame_start_ui_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "start");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_frame_start_ui_set", nullptr);
   RNA_def_property_ui_text(
       prop,
       "Start Frame (manipulated from UI)",
@@ -793,8 +793,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
 
   prop = RNA_def_property(srna, "frame_end_ui", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "end");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_frame_end_ui_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "end");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_frame_end_ui_set", nullptr);
   RNA_def_property_ui_text(
       prop,
       "End Frame (manipulated from UI)",
@@ -809,21 +809,21 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Blending */
   prop = RNA_def_property(srna, "blend_in", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "blendin");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_blend_in_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "blendin");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_blend_in_set", nullptr);
   RNA_def_property_ui_text(
       prop, "Blend In", "Number of frames at start of strip to fade in influence");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "blend_out", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "blendout");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_blend_out_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "blendout");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_blend_out_set", nullptr);
   RNA_def_property_ui_text(prop, "Blend Out", "");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "use_auto_blend", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_AUTO_BLENDS);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_NlaStrip_use_auto_blend_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_AUTO_BLENDS);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_NlaStrip_use_auto_blend_set");
   RNA_def_property_ui_text(prop,
                            "Auto Blend In/Out",
                            "Number of frames for Blending In/Out is automatically determined from "
@@ -832,8 +832,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Action */
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "act");
-  RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_Action_id_poll");
+  RNA_def_property_pointer_sdna(prop, nullptr, "act");
+  RNA_def_property_pointer_funcs(prop, nullptr, nullptr, nullptr, "rna_Action_id_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_editable_func(prop, "rna_NlaStrip_action_editable");
   RNA_def_property_ui_text(prop, "Action", "Action referenced by this strip");
@@ -842,23 +842,23 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Action extents */
   prop = RNA_def_property(srna, "action_frame_start", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "actstart");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_action_start_frame_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "actstart");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_action_start_frame_set", nullptr);
   RNA_def_property_ui_text(prop, "Action Start Frame", "First frame from action to use");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
 
   prop = RNA_def_property(srna, "action_frame_end", PROP_FLOAT, PROP_TIME);
-  RNA_def_property_float_sdna(prop, NULL, "actend");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_action_end_frame_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "actend");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_action_end_frame_set", nullptr);
   RNA_def_property_ui_text(prop, "Action End Frame", "Last frame from action to use");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
 
   /* Action Reuse */
   prop = RNA_def_property(srna, "repeat", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "repeat");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_repeat_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "repeat");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_repeat_set", nullptr);
   /* these limits have currently be chosen arbitrarily, but could be extended
    * (minimum should still be > 0 though) if needed... */
   RNA_def_property_float_default(prop, 1.0f);
@@ -868,8 +868,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
 
   prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "scale");
-  RNA_def_property_float_funcs(prop, NULL, "rna_NlaStrip_scale_set", NULL);
+  RNA_def_property_float_sdna(prop, nullptr, "scale");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NlaStrip_scale_set", nullptr);
   /* these limits can be extended, but beyond this, we can get some crazy+annoying bugs
    * due to numeric errors */
   RNA_def_property_float_default(prop, 1.0f);
@@ -880,7 +880,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
 
   /* Strip's F-Curves */
   prop = RNA_def_property(srna, "fcurves", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "fcurves", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "fcurves", nullptr);
   RNA_def_property_struct_type(prop, "FCurve");
   RNA_def_property_ui_text(
       prop, "F-Curves", "F-Curves for controlling the strip's influence and timing");
@@ -908,19 +908,19 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   /* XXX: Update temporarily disabled so that the property can be edited at all!
    * Even auto-key only applies after the curves have been re-evaluated,
    * causing the unkeyed values to be lost. */
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, /*"rna_NlaStrip_update"*/ NULL);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, /*"rna_NlaStrip_update"*/ nullptr);
 
   prop = RNA_def_property(srna, "strip_time", PROP_FLOAT, PROP_TIME);
   RNA_def_property_ui_text(prop, "Strip Time", "Frame of referenced Action to evaluate");
   /* XXX: Update temporarily disabled so that the property can be edited at all!
    * Even auto-key only applies after the curves have been re-evaluated,
    * causing the unkeyed values to be lost. */
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, /*"rna_NlaStrip_update"*/ NULL);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, /*"rna_NlaStrip_update"*/ nullptr);
 
   /* TODO: should the animated_influence/time settings be animatable themselves? */
   prop = RNA_def_property(srna, "use_animated_influence", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_USR_INFLUENCE);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_NlaStrip_animated_influence_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_USR_INFLUENCE);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_NlaStrip_animated_influence_set");
   RNA_def_property_ui_text(
       prop,
       "Animated Influence",
@@ -928,8 +928,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "use_animated_time", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_USR_TIME);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_NlaStrip_animated_time_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_USR_TIME);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_NlaStrip_animated_time_set");
   RNA_def_property_ui_text(
       prop,
       "Animated Strip Time",
@@ -937,7 +937,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "use_animated_time_cyclic", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_USR_TIME_CYCLIC);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_USR_TIME_CYCLIC);
   RNA_def_property_ui_text(
       prop, "Cyclic Strip Time", "Cycle the animated time within the action start and end");
   RNA_def_property_update(
@@ -947,23 +947,23 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
   /* can be made editable by hooking it up to the necessary NLA API methods */
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_ACTIVE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_ACTIVE);
   RNA_def_property_ui_text(prop, "Active", "NLA Strip is active");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_SELECT);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_SELECT);
   RNA_def_property_ui_text(prop, "Select", "NLA Strip is selected");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_MUTED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_MUTED);
   RNA_def_property_ui_icon(prop, ICON_CHECKBOX_HLT, -1);
   RNA_def_property_ui_text(prop, "Mute", "Disable NLA Strip evaluation");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "use_reverse", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_REVERSE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_REVERSE);
   RNA_def_property_ui_text(prop,
                            "Reversed",
                            "NLA Strip is played back in reverse order (only when timing is "
@@ -971,7 +971,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "use_sync_length", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_SYNC_LENGTH);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLASTRIP_FLAG_SYNC_LENGTH);
   RNA_def_property_ui_text(prop,
                            "Sync Action Length",
                            "Update range of frames referenced from action "
@@ -988,7 +988,7 @@ static void rna_api_nlatrack_strips(BlenderRNA *brna, PropertyRNA *cprop)
   FunctionRNA *func;
 
   RNA_def_property_srna(cprop, "NlaStrips");
-  srna = RNA_def_struct(brna, "NlaStrips", NULL);
+  srna = RNA_def_struct(brna, "NlaStrips", nullptr);
   RNA_def_struct_sdna(srna, "NlaTrack");
   RNA_def_struct_ui_text(srna, "NLA Strips", "Collection of NLA Strips");
 
@@ -997,7 +997,7 @@ static void rna_api_nlatrack_strips(BlenderRNA *brna, PropertyRNA *cprop)
                         FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Add a new Action-Clip strip to the track");
   parm = RNA_def_string(func, "name", "NlaStrip", 0, "", "Name for the NLA Strips");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func,
                      "start",
                      0,
@@ -1007,7 +1007,7 @@ static void rna_api_nlatrack_strips(BlenderRNA *brna, PropertyRNA *cprop)
                      "Start frame for this strip",
                      INT_MIN,
                      INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func, "action", "Action", "", "Action to assign to this strip");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   /* return type */
@@ -1020,7 +1020,7 @@ static void rna_api_nlatrack_strips(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove a NLA Strip");
   parm = RNA_def_pointer(func, "strip", "NlaStrip", "", "NLA Strip to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
 static void rna_def_nlatrack(BlenderRNA *brna)
@@ -1028,7 +1028,7 @@ static void rna_def_nlatrack(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "NlaTrack", NULL);
+  srna = RNA_def_struct(brna, "NlaTrack", nullptr);
   RNA_def_struct_ui_text(
       srna, "NLA Track", "An animation layer containing Actions referenced as NLA strips");
   RNA_def_struct_ui_icon(srna, ICON_NLA);
@@ -1049,7 +1049,7 @@ static void rna_def_nlatrack(BlenderRNA *brna)
                          "In a local override data, whether this NLA track comes from the linked "
                          "reference data, or is local to the override");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", NLATRACK_OVERRIDELIBRARY_LOCAL);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", NLATRACK_OVERRIDELIBRARY_LOCAL);
 
   RNA_define_lib_overridable(true);
 
@@ -1057,41 +1057,41 @@ static void rna_def_nlatrack(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   /* settings */
   prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
   /* can be made editable by hooking it up to the necessary NLA API methods */
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_ACTIVE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLATRACK_ACTIVE);
   RNA_def_property_ui_text(prop, "Active", "NLA Track is active");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   prop = RNA_def_property(srna, "is_solo", PROP_BOOLEAN, PROP_NONE);
   /* can be made editable by hooking it up to the necessary NLA API methods */
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_SOLO);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLATRACK_SOLO);
   RNA_def_property_ui_text(
       prop,
       "Solo",
       "NLA Track is evaluated itself (i.e. active Action and all other NLA Tracks in the "
       "same AnimData block are disabled)");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_NlaTrack_solo_set");
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_NlaTrack_solo_set");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_SELECTED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLATRACK_SELECTED);
   RNA_def_property_ui_text(prop, "Select", "NLA Track is selected");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_MUTED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLATRACK_MUTED);
   RNA_def_property_ui_text(prop, "Muted", "Disable NLA Track evaluation");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
 
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_PROTECTED);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NLATRACK_PROTECTED);
   RNA_def_property_ui_text(prop, "Locked", "NLA Track is locked");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, nullptr); /* this will do? */
 
   RNA_define_lib_overridable(false);
 }
