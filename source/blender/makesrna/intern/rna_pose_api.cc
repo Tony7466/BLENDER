@@ -174,7 +174,7 @@ void RNA_api_pose(StructRNA *srna)
       "Apply the given action to this pose by evaluating it at a specific time. Only updates the "
       "pose of selected bones, or all bones if none are selected.");
   parm = RNA_def_pointer(func, "action", "Action", "Action", "The Action containing the pose");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float(func,
                        "evaluation_time",
                        0.0f,
@@ -192,7 +192,7 @@ void RNA_api_pose(StructRNA *srna)
                                   "specific time. Only updates the "
                                   "pose of selected bones, or all bones if none are selected.");
   parm = RNA_def_pointer(func, "action", "Action", "Action", "The Action containing the pose");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_float(func,
                        "blend_factor",
                        1.0f,
@@ -225,7 +225,7 @@ void RNA_api_pose(StructRNA *srna)
                          "Action",
                          "An Action with animation data for the bones. "
                          "Only the animated bones will be included in the backup");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "backup_restore", "rna_Pose_backup_restore");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_NO_SELF | FUNC_USE_CONTEXT);
@@ -258,14 +258,14 @@ void RNA_api_pose_channel(StructRNA *srna)
   parm = RNA_def_float_vector_xyz(func,
                                   "point",
                                   3,
-                                  NULL,
+                                  nullptr,
                                   -FLT_MAX,
                                   FLT_MAX,
                                   "Point",
                                   "Position in 3d space to evaluate",
                                   -FLT_MAX,
                                   FLT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */
   parm = RNA_def_float(
       func, "factor", 0, -FLT_MAX, FLT_MAX, "Factor", "Envelope factor", -FLT_MAX, FLT_MAX);
@@ -281,7 +281,7 @@ void RNA_api_pose_channel(StructRNA *srna)
   RNA_def_property_ui_text(parm, "", "The resulting matrix in bone local space");
   RNA_def_function_output(func, parm);
   parm = RNA_def_int(func, "index", 0, 0, INT_MAX, "", "Index of the segment endpoint", 0, 10000);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_boolean(func, "rest", false, "", "Return the rest pose matrix");
 
   /* B-Bone custom handle positions */
