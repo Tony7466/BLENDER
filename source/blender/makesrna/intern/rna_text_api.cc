@@ -73,12 +73,12 @@ void RNA_api_text(StructRNA *srna)
   RNA_def_function_ui_description(
       func, "write text at the cursor location and advance to the end of the text block");
   parm = RNA_def_string(func, "text", "Text", 0, "", "New text for this data-block");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "from_string", "rna_Text_from_string");
   RNA_def_function_ui_description(func, "Replace text with this string.");
   parm = RNA_def_string(func, "text", "Text", 0, "", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "as_string", "rna_Text_as_string");
   RNA_def_function_ui_description(func, "Return the text as a string");
@@ -96,19 +96,19 @@ void RNA_api_text(StructRNA *srna)
   func = RNA_def_function(srna, "select_set", "rna_Text_select_set");
   RNA_def_function_ui_description(func, "Set selection range by line and character index");
   parm = RNA_def_int(func, "line_start", 0, INT_MIN, INT_MAX, "Start Line", "", INT_MIN, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "char_start", 0, INT_MIN, INT_MAX, "Start Character", "", INT_MIN, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func, "line_end", 0, INT_MIN, INT_MAX, "End Line", "", INT_MIN, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func, "char_end", 0, INT_MIN, INT_MAX, "End Character", "", INT_MIN, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "cursor_set", "rna_Text_cursor_set");
   RNA_def_function_ui_description(func, "Set cursor by line and (optionally) character index");
   parm = RNA_def_int(func, "line", 0, 0, INT_MAX, "Line", "", 0, INT_MAX);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func, "character", 0, 0, INT_MAX, "Character", "", 0, INT_MAX);
   RNA_def_boolean(func, "select", false, "", "Select when moving the cursor");
 }

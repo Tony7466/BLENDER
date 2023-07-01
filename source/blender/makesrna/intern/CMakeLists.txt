@@ -74,7 +74,7 @@ set(DEFSRC
   rna_space.cc
   rna_speaker.cc
   rna_test.c
-  rna_text.c
+  rna_text.cc
   rna_texture.c
   rna_timeline.c
   rna_tracking.c
@@ -117,7 +117,7 @@ set(APISRC
   rna_sequencer_api.cc
   rna_sound_api.cc
   rna_space_api.cc
-  rna_text_api.c
+  rna_text_api.cc
   rna_texture_api.c
   rna_ui_api.cc
   rna_vfont_api.c
