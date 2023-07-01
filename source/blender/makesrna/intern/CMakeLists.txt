@@ -70,7 +70,7 @@ set(DEFSRC
   rna_sculpt_paint.cc
   rna_sequencer.cc
   rna_shader_fx.cc
-  rna_sound.c
+  rna_sound.cc
   rna_space.cc
   rna_speaker.c
   rna_test.c
@@ -115,7 +115,7 @@ set(APISRC
   rna_pose_api.cc
   rna_scene_api.cc
   rna_sequencer_api.cc
-  rna_sound_api.c
+  rna_sound_api.cc
   rna_space_api.cc
   rna_text_api.c
   rna_texture_api.c

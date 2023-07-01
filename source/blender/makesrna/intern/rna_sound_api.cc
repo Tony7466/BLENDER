@@ -30,7 +30,7 @@ static void rna_Sound_unpack(bSound *sound, Main *bmain, ReportList *reports, in
   }
   else {
     /* reports its own error on failure */
-    BKE_packedfile_unpack_sound(bmain, reports, sound, method);
+    BKE_packedfile_unpack_sound(bmain, reports, sound, ePF_FileStatus(method));
   }
 }
 
