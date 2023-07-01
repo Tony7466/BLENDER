@@ -69,7 +69,7 @@ set(DEFSRC
   rna_screen.cc
   rna_sculpt_paint.cc
   rna_sequencer.cc
-  rna_shader_fx.c
+  rna_shader_fx.cc
   rna_sound.c
   rna_space.cc
   rna_speaker.c
