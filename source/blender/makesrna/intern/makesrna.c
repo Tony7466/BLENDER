@@ -4599,7 +4599,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_render.cc", NULL, RNA_def_render},
     {"rna_rigidbody.c", NULL, RNA_def_rigidbody},
     {"rna_scene.cc", "rna_scene_api.cc", RNA_def_scene},
-    {"rna_screen.c", NULL, RNA_def_screen},
+    {"rna_screen.cc", NULL, RNA_def_screen},
     {"rna_sculpt_paint.c", NULL, RNA_def_sculpt_paint},
     {"rna_sequencer.c", "rna_sequencer_api.c", RNA_def_sequencer},
 #ifdef WITH_SIMULATION_DATABLOCK
