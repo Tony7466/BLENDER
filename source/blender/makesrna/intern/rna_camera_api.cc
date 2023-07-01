@@ -58,22 +58,22 @@ void RNA_api_camera(StructRNA *srna)
 
   /* return location and normal */
   parm = RNA_def_float_vector(
-      func, "result_1", 3, NULL, -FLT_MAX, FLT_MAX, "Result", NULL, -1e4, 1e4);
+      func, "result_1", 3, nullptr, -FLT_MAX, FLT_MAX, "Result", nullptr, -1e4, 1e4);
   RNA_def_property_flag(parm, PROP_THICK_WRAP);
   RNA_def_function_output(func, parm);
 
   parm = RNA_def_float_vector(
-      func, "result_2", 3, NULL, -FLT_MAX, FLT_MAX, "Result", NULL, -1e4, 1e4);
+      func, "result_2", 3, nullptr, -FLT_MAX, FLT_MAX, "Result", nullptr, -1e4, 1e4);
   RNA_def_property_flag(parm, PROP_THICK_WRAP);
   RNA_def_function_output(func, parm);
 
   parm = RNA_def_float_vector(
-      func, "result_3", 3, NULL, -FLT_MAX, FLT_MAX, "Result", NULL, -1e4, 1e4);
+      func, "result_3", 3, nullptr, -FLT_MAX, FLT_MAX, "Result", nullptr, -1e4, 1e4);
   RNA_def_property_flag(parm, PROP_THICK_WRAP);
   RNA_def_function_output(func, parm);
 
   parm = RNA_def_float_vector(
-      func, "result_4", 3, NULL, -FLT_MAX, FLT_MAX, "Result", NULL, -1e4, 1e4);
+      func, "result_4", 3, nullptr, -FLT_MAX, FLT_MAX, "Result", nullptr, -1e4, 1e4);
   RNA_def_property_flag(parm, PROP_THICK_WRAP);
   RNA_def_function_output(func, parm);
 }

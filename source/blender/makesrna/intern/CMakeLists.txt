@@ -102,7 +102,7 @@ set(APISRC
   rna_action_api.cc
   rna_animation_api.cc
   rna_armature_api.cc
-  rna_camera_api.c
+  rna_camera_api.cc
   rna_curve_api.cc
   rna_fcurve_api.c
   rna_image_api.cc
