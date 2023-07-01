@@ -16,10 +16,12 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_math_base_safe.h"
+#include "BLI_math_geom.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -1057,6 +1059,8 @@ static bool vfont_to_curve(Object *ob,
       }
     }
 
+    cu->tb[curbox].xmax = max_ff(cu->tb[curbox].xmax, xof);
+
     if (ascii == '\n' || ascii == 0 || ct->dobreak) {
       ct->xof = xof;
       ct->yof = yof;
@@ -1071,6 +1075,9 @@ static bool vfont_to_curve(Object *ob,
       lineinfo[lnr].wspace_nr = wsnr;
 
       CLAMP_MIN(maxlen, lineinfo[lnr].x_min);
+
+      cu->tb[curbox].ymin = yof;
+      cu->tb[curbox].last_char_index = i;
 
       if ((tb_scale.h != 0.0f) && (-(yof - tb_scale.y) > (tb_scale.h - linedist) - yof_scale)) {
         if (cu->totbox > (curbox + 1)) {
@@ -1212,7 +1219,8 @@ static bool vfont_to_curve(Object *ob,
       }
       for (i = 0; i <= slen; i++) {
         for (j = i; !ELEM(mem[j], '\0', '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* do nothing */
         }
 
@@ -1226,7 +1234,8 @@ static bool vfont_to_curve(Object *ob,
       float curofs = 0.0f;
       for (i = 0; i <= slen; i++) {
         for (j = i; (mem[j]) && (mem[j] != '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* pass */
         }
 
@@ -1752,7 +1761,7 @@ static bool vfont_to_curve(Object *ob,
     if (slen == 0) {
       cursor_params->r_string_offset = -1;
     }
-    else if (cu->textoncurve != NULL || cu->totbox > 1) {
+    else if (cu->textoncurve != NULL) {
 
       int best_match = -1;
       float closest_distance = FLT_MAX;
@@ -1772,26 +1781,72 @@ static bool vfont_to_curve(Object *ob,
       cursor_params->r_string_offset = best_match;
     }
     else {
+      /* Find the first box closest to the mouse. */
+      int start = 0;
+      int end = 0;
+      int closest_box = 0;
+      float best_distance = FLT_MAX;
+      for (curbox = 0; curbox < cu->totbox; curbox++) {
+        rctf box_rect = {
+            cu->tb[curbox].x * font_size,
+            max_ff(cu->tb[curbox].xmax, cu->tb[curbox].w) * font_size,
+            cu->tb[curbox].ymin * font_size,
+            cu->tb[curbox].y * font_size,
+        };
+        /* If the mouse is inside this box, we will take it as the closest. */
+        if (BLI_rctf_isect_pt_v(&box_rect, cursor_params->cursor_location)) {
+          closest_box = curbox;
+          break;
+        }
+        /*
+         * points[0] *------* points[2]
+         *           |      | 
+         *           |      | 
+         * points[1] *------* points[3]
+        */
+
+        float points[4][2] = {{box_rect.xmin, box_rect.ymax},
+                              {box_rect.xmin, box_rect.ymin},
+                              {box_rect.xmax, box_rect.ymax},
+                              {box_rect.xmax, box_rect.ymin}};
+        /* Find the closest distance between the mouse and the box borders. */
+        float distance = min_ffff(
+            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[0], points[1]),
+            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[0], points[2]),
+            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[3], points[2]),
+            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[3], points[1]));
+
+        if (distance < best_distance) {
+          best_distance = distance;
+          closest_box = curbox;
+        }
+      }
+
+      if (closest_box != 0) {
+        start = cu->tb[closest_box - 1].last_char_index + 1;
+      }
+      end = cu->tb[closest_box].last_char_index;
+
       const float interline_offset = ((linedist - 0.5f) / 2.0f) * font_size;
       /* Loop until find the line where the mouse is over. */
-      for (i = 0; i <= slen; i++) {
+      for (i = start; i <= end; i++) {
         if (cursor_params->cursor_location[1] >=
-            ((chartransdata[i].yof * font_size) - interline_offset)) {
+            ((chartransdata[i].yof * font_size) - interline_offset))
+        {
           break;
         }
       }
 
-      i = slen < i ? slen : i;
+      i = end < i ? end : i;
       float yof = chartransdata[i].yof;
 
       /* Loop back until find the first character of the line, this because the mouse can be
        * positioned further below the text, so #i can be the last character of the last line. */
-      for (i; i >= 1 && chartransdata[i - 1].yof == yof; i--) {
+      for (i; i >= start + 1 && chartransdata[i - 1].yof == yof; i--) {
       }
-
       /* Loop until find the first character to the right of the mouse (using the character
        * midpoint on the x-axis as a reference). */
-      for (i; i <= slen && yof == chartransdata[i].yof; i++) {
+      for (i; i <= end && yof == chartransdata[i].yof; i++) {
         info = &custrinfo[i];
         ascii = info->flag & CU_CHINFO_SMALLCAPS_CHECK ? towupper(mem[i]) : mem[i];
         che = find_vfont_char(vfd, ascii);
@@ -1801,11 +1856,11 @@ static bool vfont_to_curve(Object *ob,
           break;
         }
       }
-      i = i <= slen ? i : slen;
+      i = i <= end ? i : end;
 
       /* If there is no character to the right of the cursor we are on the next line, go back to
        * the last character of the previous line. */
-      i = i > 0 && chartransdata[i].yof != yof ? i - 1 : i;
+      i = i > start && chartransdata[i].yof != yof ? i - 1 : i;
 
       cursor_params->r_string_offset = i;
     }
