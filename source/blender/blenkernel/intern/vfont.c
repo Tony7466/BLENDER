@@ -793,7 +793,11 @@ static float vfont_descent(const VFontData *vfd)
 }
 
 struct TextboxBounds {
-  float xmax;
+  /* Stores the maximun #xofs assigned to a character in the textbox. This value is scaled by
+   * 1 / #font_size. */
+  float xmax, ymin;
+  /* Stores the minimun #yofs assigned to a character in the textbox. This value is scaled by
+   * 1 / #font_size. */
   float ymin;
   int last_char_index;
 } TextboxBounds;
@@ -1802,10 +1806,10 @@ static bool vfont_to_curve(Object *ob,
       float best_distance = FLT_MAX;
       for (curbox = 0; curbox < cu->totbox; curbox++) {
         rctf box_rect = {
-            cu->tb[curbox].x * font_size,
-            max_ff(tb_bounds[curbox].xmax, cu->tb[curbox].w) * font_size,
+            cu->tb[curbox].x,
+            max_ff(tb_bounds[curbox].xmax * font_size, cu->tb[curbox].x + cu->tb[curbox].w),
             tb_bounds[curbox].ymin * font_size,
-            cu->tb[curbox].y * font_size,
+            cu->tb[curbox].y + (linedist * font_size),
         };
         /* If the mouse is inside this box, we will take it as the closest. */
         if (BLI_rctf_isect_pt_v(&box_rect, cursor_params->cursor_location)) {
