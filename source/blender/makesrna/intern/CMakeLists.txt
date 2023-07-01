@@ -76,7 +76,7 @@ set(DEFSRC
   rna_test.c
   rna_text.cc
   rna_texture.cc
-  rna_timeline.c
+  rna_timeline.cc
   rna_tracking.c
   rna_ui.cc
   rna_userdef.c

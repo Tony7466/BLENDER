@@ -23,16 +23,16 @@
 
 static IDProperty **rna_TimelineMarker_idprops(PointerRNA *ptr)
 {
-  TimeMarker *marker = ptr->data;
+  TimeMarker *marker = static_cast<TimeMarker*>(ptr->data);
   return &marker->prop;
 }
 
-static void rna_TimelineMarker_update(Main *UNUSED(bmain),
-                                      Scene *UNUSED(scene),
-                                      PointerRNA *UNUSED(ptr))
+static void rna_TimelineMarker_update(Main * /*bmain*/,
+                                      Scene * /*scene*/,
+                                      PointerRNA * /*ptr*/)
 {
-  WM_main_add_notifier(NC_SCENE | ND_MARKERS, NULL);
-  WM_main_add_notifier(NC_ANIMATION | ND_MARKERS, NULL);
+  WM_main_add_notifier(NC_SCENE | ND_MARKERS, nullptr);
+  WM_main_add_notifier(NC_ANIMATION | ND_MARKERS, nullptr);
 }
 
 #else
@@ -42,7 +42,7 @@ static void rna_def_timeline_marker(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "TimelineMarker", NULL);
+  srna = RNA_def_struct(brna, "TimelineMarker", nullptr);
   RNA_def_struct_sdna(srna, "TimeMarker");
   RNA_def_struct_ui_text(srna, "Marker", "Marker for noting points in the timeline");
   RNA_def_struct_idprops_func(srna, "rna_TimelineMarker_idprops");
@@ -58,7 +58,7 @@ static void rna_def_timeline_marker(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_TimelineMarker_update");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", 1 /*SELECT*/);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", 1 /*SELECT*/);
   RNA_def_property_ui_text(prop, "Select", "Marker selection state");
   RNA_def_property_update(prop, 0, "rna_TimelineMarker_update");
 

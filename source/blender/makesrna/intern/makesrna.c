@@ -4609,7 +4609,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_speaker.cc", NULL, RNA_def_speaker},
     {"rna_test.c", NULL, RNA_def_test},
     {"rna_text.cc", "rna_text_api.cc", RNA_def_text},
-    {"rna_timeline.c", NULL, RNA_def_timeline_marker},
+    {"rna_timeline.cc", NULL, RNA_def_timeline_marker},
     {"rna_sound.cc", "rna_sound_api.cc", RNA_def_sound},
     {"rna_ui.cc", "rna_ui_api.cc", RNA_def_ui},
     {"rna_userdef.c", NULL, RNA_def_userdef},
