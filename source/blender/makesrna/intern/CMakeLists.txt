@@ -45,7 +45,7 @@ set(DEFSRC
   rna_layer.cc
   rna_light.cc
   rna_lightprobe.cc
-  rna_linestyle.c
+  rna_linestyle.cc
   rna_main.c
   rna_mask.cc
   rna_material.cc
