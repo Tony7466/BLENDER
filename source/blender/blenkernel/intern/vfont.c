@@ -792,6 +792,12 @@ static float vfont_descent(const VFontData *vfd)
   return vfd->em_height - vfont_ascent(vfd);
 }
 
+struct TextboxBounds {
+  float xmax;
+  float ymin;
+  int last_char_index;
+} TextboxBounds;
+
 static bool vfont_to_curve(Object *ob,
                            Curve *cu,
                            const eEditFontMode mode,
@@ -936,6 +942,16 @@ static bool vfont_to_curve(Object *ob,
   }
 
   i = 0;
+  struct TextboxBounds *tb_bounds = MEM_malloc_arrayN(
+      cu->totbox, sizeof(struct TextboxBounds), "TextboxBounds");
+
+  for (curbox = 0; curbox < cu->totbox; curbox++) {
+    tb_bounds[curbox].xmax = 0;
+    tb_bounds[curbox].ymin = 0;
+    tb_bounds[curbox].last_char_index = 0;
+  }
+
+  curbox = 0;
   while (i <= slen) {
     /* Characters in the list */
     info = &custrinfo[i];
@@ -1059,7 +1075,7 @@ static bool vfont_to_curve(Object *ob,
       }
     }
 
-    cu->tb[curbox].xmax = max_ff(cu->tb[curbox].xmax, xof);
+    tb_bounds[curbox].xmax = max_ff(tb_bounds[curbox].xmax, xof);
 
     if (ascii == '\n' || ascii == 0 || ct->dobreak) {
       ct->xof = xof;
@@ -1076,8 +1092,8 @@ static bool vfont_to_curve(Object *ob,
 
       CLAMP_MIN(maxlen, lineinfo[lnr].x_min);
 
-      cu->tb[curbox].ymin = yof;
-      cu->tb[curbox].last_char_index = i;
+      tb_bounds[curbox].ymin = yof;
+      tb_bounds[curbox].last_char_index = i;
 
       if ((tb_scale.h != 0.0f) && (-(yof - tb_scale.y) > (tb_scale.h - linedist) - yof_scale)) {
         if (cu->totbox > (curbox + 1)) {
@@ -1787,8 +1803,8 @@ static bool vfont_to_curve(Object *ob,
       for (curbox = 0; curbox < cu->totbox; curbox++) {
         rctf box_rect = {
             cu->tb[curbox].x * font_size,
-            max_ff(cu->tb[curbox].xmax, cu->tb[curbox].w) * font_size,
-            cu->tb[curbox].ymin * font_size,
+            max_ff(tb_bounds[curbox].xmax, cu->tb[curbox].w) * font_size,
+            tb_bounds[curbox].ymin * font_size,
             cu->tb[curbox].y * font_size,
         };
         /* If the mouse is inside this box, we will take it as the closest. */
@@ -1821,9 +1837,9 @@ static bool vfont_to_curve(Object *ob,
       }
 
       if (closest_box != 0) {
-        start = cu->tb[closest_box - 1].last_char_index + 1;
+        start = tb_bounds[closest_box - 1].last_char_index + 1;
       }
-      end = cu->tb[closest_box].last_char_index;
+      end = tb_bounds[closest_box].last_char_index;
 
       const float interline_offset = ((linedist - 0.5f) / 2.0f) * font_size;
       /* Loop until find the line where the mouse is over. */
@@ -1862,7 +1878,7 @@ static bool vfont_to_curve(Object *ob,
       cursor_params->r_string_offset = i;
     }
   }
-
+  MEM_freeN(tb_bounds);
   /* Scale to fit only works for single text box layouts. */
   if (ELEM(iter_data->status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT)) {
     /* Always cleanup before going to the scale-to-fit repetition. */

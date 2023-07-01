@@ -168,9 +168,6 @@ typedef struct CharInfo {
 
 typedef struct TextBox {
   float x, y, w, h;
-  float xmax;
-  float ymin;
-  int last_char_index;
 } TextBox;
 
 /* These two Lines with # tell `makesdna` this struct can be excluded. */
