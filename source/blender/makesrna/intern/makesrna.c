@@ -4606,7 +4606,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_simulation.cc", NULL, RNA_def_simulation},
 #endif
     {"rna_space.cc", "rna_space_api.cc", RNA_def_space},
-    {"rna_speaker.c", NULL, RNA_def_speaker},
+    {"rna_speaker.cc", NULL, RNA_def_speaker},
     {"rna_test.c", NULL, RNA_def_test},
     {"rna_text.c", "rna_text_api.c", RNA_def_text},
     {"rna_timeline.c", NULL, RNA_def_timeline_marker},

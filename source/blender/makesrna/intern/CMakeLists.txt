@@ -72,7 +72,7 @@ set(DEFSRC
   rna_shader_fx.cc
   rna_sound.cc
   rna_space.cc
-  rna_speaker.c
+  rna_speaker.cc
   rna_test.c
   rna_text.c
   rna_texture.c
