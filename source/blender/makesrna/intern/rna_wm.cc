@@ -1286,7 +1286,7 @@ static bool rna_KeyMapItem_userdefined_get(PointerRNA *ptr)
 static PointerRNA rna_WindowManager_xr_session_state_get(PointerRNA *ptr)
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(ptr->data);
-  wmXrSessionState *state =
+  struct wmXrSessionState *state =
 #  ifdef WITH_XR_OPENXR
       WM_xr_session_state_handle_get(&wm->xr);
 #  else
