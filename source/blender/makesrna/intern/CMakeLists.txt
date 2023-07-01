@@ -77,7 +77,7 @@ set(DEFSRC
   rna_text.cc
   rna_texture.cc
   rna_timeline.cc
-  rna_tracking.c
+  rna_tracking.cc
   rna_ui.cc
   rna_userdef.c
   rna_vfont.c
