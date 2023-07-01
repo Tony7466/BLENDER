@@ -25,7 +25,7 @@
 
 /* all the list begin functions are added manually here, Main is not in SDNA */
 
-static bool rna_Main_use_autopack_get(PointerRNA *UNUSED(ptr))
+static bool rna_Main_use_autopack_get(PointerRNA * /*ptr*/)
 {
   if (G.fileflags & G_FILE_AUTOPACK) {
     return 1;
@@ -34,7 +34,7 @@ static bool rna_Main_use_autopack_get(PointerRNA *UNUSED(ptr))
   return 0;
 }
 
-static void rna_Main_use_autopack_set(PointerRNA *UNUSED(ptr), bool value)
+static void rna_Main_use_autopack_set(PointerRNA * /*ptr*/, bool value)
 {
   if (value) {
     G.fileflags |= G_FILE_AUTOPACK;
@@ -55,7 +55,7 @@ static bool rna_Main_is_dirty_get(PointerRNA *ptr)
   /* XXX, not totally nice to do it this way, should store in main ? */
   Main *bmain = (Main *)ptr->data;
   wmWindowManager *wm;
-  if ((wm = bmain->wm.first)) {
+  if ((wm = static_cast<wmWindowManager*>(bmain->wm.first))) {
     return !wm->file_saved;
   }
 
@@ -86,7 +86,7 @@ static void rna_Main_filepath_set(PointerRNA *ptr, const char *value)
     static void rna_Main_##_listbase_name##_begin(CollectionPropertyIterator *iter, \
                                                   PointerRNA *ptr) \
     { \
-      rna_iterator_listbase_begin(iter, &((Main *)ptr->data)->_listbase_name, NULL); \
+      rna_iterator_listbase_begin(iter, &((Main *)ptr->data)->_listbase_name, nullptr); \
     }
 
 RNA_MAIN_LISTBASE_FUNCS_DEF(actions)
@@ -294,7 +294,7 @@ void RNA_def_main(BlenderRNA *brna)
        "rna_Main_shapekeys_begin",
        "Shape Keys",
        "Shape Key data-blocks",
-       NULL},
+       nullptr},
       {"texts", "Text", "rna_Main_texts_begin", "Texts", "Text data-blocks", RNA_def_main_texts},
       {"speakers",
        "Speaker",
@@ -416,12 +416,12 @@ void RNA_def_main(BlenderRNA *brna)
        "Simulation data-blocks",
        RNA_def_main_simulations},
 #  endif
-      {NULL, NULL, NULL, NULL, NULL, NULL},
+      {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
   };
 
   int i;
 
-  srna = RNA_def_struct(brna, "BlendData", NULL);
+  srna = RNA_def_struct(brna, "BlendData", nullptr);
   RNA_def_struct_ui_text(srna,
                          "Blend-File Data",
                          "Main data structure representing a .blend file and all its data-blocks");
@@ -436,13 +436,13 @@ void RNA_def_main(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "is_dirty", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_funcs(prop, "rna_Main_is_dirty_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_Main_is_dirty_get", nullptr);
   RNA_def_property_ui_text(
       prop, "File Has Unsaved Changes", "Have recent edits been saved to disk");
 
   prop = RNA_def_property(srna, "is_saved", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_funcs(prop, "rna_Main_is_saved_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_Main_is_saved_get", nullptr);
   RNA_def_property_ui_text(
       prop, "File is Saved", "Has the current session been saved to disk as a .blend file");
 
@@ -454,14 +454,14 @@ void RNA_def_main(BlenderRNA *brna)
   prop = RNA_def_int_vector(srna,
                             "version",
                             3,
-                            NULL,
+                            nullptr,
                             0,
                             INT_MAX,
                             "Version",
                             "File format version the .blend file was saved with",
                             0,
                             INT_MAX);
-  RNA_def_property_int_funcs(prop, "rna_Main_version_get", NULL, NULL);
+  RNA_def_property_int_funcs(prop, "rna_Main_version_get", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_flag(prop, PROP_THICK_WRAP);
 
@@ -473,10 +473,10 @@ void RNA_def_main(BlenderRNA *brna)
                                       "rna_iterator_listbase_next",
                                       "rna_iterator_listbase_end",
                                       "rna_iterator_listbase_get",
-                                      NULL,
-                                      NULL,
-                                      NULL,
-                                      NULL);
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr);
     RNA_def_property_ui_text(prop, lists[i].name, lists[i].description);
 
     /* collection functions */
@@ -494,7 +494,7 @@ void RNA_def_main(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "test", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Test");
-  RNA_def_property_pointer_funcs(prop, "rna_Test_test_get", NULL, NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, "rna_Test_test_get", nullptr, nullptr, nullptr);
 
   RNA_define_verify_sdna(1);
 

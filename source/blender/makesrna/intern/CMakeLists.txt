@@ -46,7 +46,7 @@ set(DEFSRC
   rna_light.cc
   rna_lightprobe.cc
   rna_linestyle.cc
-  rna_main.c
+  rna_main.cc
   rna_mask.cc
   rna_material.cc
   rna_mesh.cc
@@ -107,7 +107,7 @@ set(APISRC
   rna_fcurve_api.cc
   rna_image_api.cc
   rna_lattice_api.cc
-  rna_main_api.c
+  rna_main_api.cc
   rna_material_api.cc
   rna_mesh_api.cc
   rna_meta_api.c
