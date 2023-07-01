@@ -81,7 +81,7 @@ set(DEFSRC
   rna_ui.cc
   rna_userdef.cc
   rna_vfont.cc
-  rna_volume.c
+  rna_volume.cc
   rna_wm.c
   rna_wm_gizmo.c
   rna_workspace.c
