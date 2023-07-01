@@ -25,7 +25,7 @@ const EnumPropertyItem rna_enum_unpack_method_items[] = {
     {PF_WRITE_LOCAL, "WRITE_LOCAL", 0, "Write Local File (overwrite existing)", ""},
     {PF_USE_ORIGINAL, "USE_ORIGINAL", 0, "Use Original File", ""},
     {PF_WRITE_ORIGINAL, "WRITE_ORIGINAL", 0, "Write Original File (overwrite existing)", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 #ifdef RNA_RUNTIME
@@ -40,7 +40,7 @@ static void rna_PackedImage_data_get(PointerRNA *ptr, char *value)
 static int rna_PackedImage_data_len(PointerRNA *ptr)
 {
   PackedFile *pf = (PackedFile *)ptr->data;
-  return pf->size; /* No need to include trailing NULL char here! */
+  return pf->size; /* No need to include trailing nullptr char here! */
 }
 
 #else
@@ -50,7 +50,7 @@ void RNA_def_packedfile(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "PackedFile", NULL);
+  srna = RNA_def_struct(brna, "PackedFile", nullptr);
   RNA_def_struct_ui_text(srna, "Packed File", "External file packed into the .blend file");
 
   prop = RNA_def_property(srna, "size", PROP_INT, PROP_NONE);
@@ -59,7 +59,7 @@ void RNA_def_packedfile(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_STRING, PROP_BYTESTRING);
   RNA_def_property_string_funcs(
-      prop, "rna_PackedImage_data_get", "rna_PackedImage_data_len", NULL);
+      prop, "rna_PackedImage_data_get", "rna_PackedImage_data_len", nullptr);
   RNA_def_property_ui_text(prop, "Data", "Raw data (bytes, exact content of the embedded file)");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
