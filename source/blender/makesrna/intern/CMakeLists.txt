@@ -84,7 +84,7 @@ set(DEFSRC
   rna_volume.cc
   rna_wm.cc
   rna_wm_gizmo.cc
-  rna_workspace.c
+  rna_workspace.cc
   rna_world.c
   rna_xr.c
 )
@@ -123,7 +123,7 @@ set(APISRC
   rna_vfont_api.cc
   rna_wm_api.cc
   rna_wm_gizmo_api.cc
-  rna_workspace_api.c
+  rna_workspace_api.cc
 )
 
 string(REGEX REPLACE "rna_([a-zA-Z0-9_-]*).c" "${CMAKE_CURRENT_BINARY_DIR}/rna_\\1_gen.c" GENSRC "${DEFSRC}")

@@ -73,7 +73,7 @@ static PointerRNA rna_WorkSpaceTool_operator_properties(bToolRef *tref,
 {
   wmOperatorType *ot = WM_operatortype_find(idname, true);
 
-  if (ot != NULL) {
+  if (ot != nullptr) {
     PointerRNA ptr;
     WM_toolsystem_ref_properties_ensure_from_operator(tref, ot, &ptr);
     return ptr;
@@ -89,7 +89,7 @@ static PointerRNA rna_WorkSpaceTool_gizmo_group_properties(bToolRef *tref,
                                                            const char *idname)
 {
   wmGizmoGroupType *gzgt = WM_gizmogrouptype_find(idname, false);
-  if (gzgt != NULL) {
+  if (gzgt != nullptr) {
     PointerRNA ptr;
     WM_toolsystem_ref_properties_ensure_from_gizmo_group(tref, gzgt, &ptr);
     return ptr;
@@ -112,8 +112,8 @@ void RNA_api_workspace(StructRNA *srna)
   RNA_def_function_ui_description(
       func, "Set the status bar text, typically key shortcuts for modal operators");
   parm = RNA_def_string(
-      func, "text", NULL, 0, "Text", "New string for the status bar, None clears the text");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+      func, "text", nullptr, 0, "Text", "New string for the status bar, None clears the text");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_property_clear_flag(parm, PROP_NEVER_NULL);
 }
 
@@ -124,34 +124,34 @@ void RNA_api_workspace_tool(StructRNA *srna)
 
   static EnumPropertyItem options_items[] = {
       {TOOLREF_FLAG_FALLBACK_KEYMAP, "KEYMAP_FALLBACK", 0, "Fallback", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   func = RNA_def_function(srna, "setup", "rna_WorkSpaceTool_setup");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT);
   RNA_def_function_ui_description(func, "Set the tool settings");
 
-  parm = RNA_def_string(func, "idname", NULL, MAX_NAME, "Identifier", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "idname", nullptr, MAX_NAME, "Identifier", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   /* 'bToolRef_Runtime' */
   parm = RNA_def_property(func, "cursor", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(parm, rna_enum_window_cursor_items);
-  RNA_def_string(func, "keymap", NULL, KMAP_MAX_NAME, "Key Map", "");
-  RNA_def_string(func, "gizmo_group", NULL, MAX_NAME, "Gizmo Group", "");
-  RNA_def_string(func, "data_block", NULL, MAX_NAME, "Data Block", "");
-  RNA_def_string(func, "operator", NULL, MAX_NAME, "Operator", "");
+  RNA_def_string(func, "keymap", nullptr, KMAP_MAX_NAME, "Key Map", "");
+  RNA_def_string(func, "gizmo_group", nullptr, MAX_NAME, "Gizmo Group", "");
+  RNA_def_string(func, "data_block", nullptr, MAX_NAME, "Data Block", "");
+  RNA_def_string(func, "operator", nullptr, MAX_NAME, "Operator", "");
   RNA_def_int(func, "index", 0, INT_MIN, INT_MAX, "Index", "", INT_MIN, INT_MAX);
   RNA_def_enum_flag(func, "options", options_items, 0, "Tool Options", "");
 
-  RNA_def_string(func, "idname_fallback", NULL, MAX_NAME, "Fallback Identifier", "");
-  RNA_def_string(func, "keymap_fallback", NULL, KMAP_MAX_NAME, "Fallback Key Map", "");
+  RNA_def_string(func, "idname_fallback", nullptr, MAX_NAME, "Fallback Identifier", "");
+  RNA_def_string(func, "keymap_fallback", nullptr, KMAP_MAX_NAME, "Fallback Key Map", "");
 
   /* Access tool operator options (optionally create). */
   func = RNA_def_function(srna, "operator_properties", "rna_WorkSpaceTool_operator_properties");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  parm = RNA_def_string(func, "operator", NULL, 0, "", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "operator", nullptr, 0, "", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return */
   parm = RNA_def_pointer(func, "result", "OperatorProperties", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_RNAPTR);
@@ -161,8 +161,8 @@ void RNA_api_workspace_tool(StructRNA *srna)
   func = RNA_def_function(
       srna, "gizmo_group_properties", "rna_WorkSpaceTool_gizmo_group_properties");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  parm = RNA_def_string(func, "group", NULL, 0, "", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "group", nullptr, 0, "", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return */
   parm = RNA_def_pointer(func, "result", "GizmoGroupProperties", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_RNAPTR);
