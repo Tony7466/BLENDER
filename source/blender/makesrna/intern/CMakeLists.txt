@@ -79,7 +79,7 @@ set(DEFSRC
   rna_timeline.cc
   rna_tracking.cc
   rna_ui.cc
-  rna_userdef.c
+  rna_userdef.cc
   rna_vfont.c
   rna_volume.c
   rna_wm.c
