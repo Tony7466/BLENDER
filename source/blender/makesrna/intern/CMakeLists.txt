@@ -99,7 +99,7 @@ if(WITH_EXPERIMENTAL_FEATURES)
 endif()
 
 set(APISRC
-  rna_action_api.c
+  rna_action_api.cc
   rna_animation_api.c
   rna_armature_api.cc
   rna_camera_api.c

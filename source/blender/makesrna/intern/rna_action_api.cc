@@ -35,7 +35,7 @@ static void rna_Action_flip_with_pose(bAction *act, ReportList *reports, Object 
   BKE_action_flip_with_pose(act, ob);
 
   /* Only for redraw. */
-  WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 #else
