@@ -50,7 +50,7 @@ static const float (*get_pointcloud_positions_const(const PointCloud *pointcloud
 static int rna_Point_index_get_const(const PointerRNA *ptr)
 {
   const PointCloud *pointcloud = rna_pointcloud(ptr);
-  const float(*co)[3] = ptr->data;
+  const float(*co)[3] = static_cast<const float(*)[3]>(ptr->data);
   const float(*positions)[3] = get_pointcloud_positions_const(pointcloud);
   return (int)(co - positions);
 }
@@ -74,7 +74,7 @@ static void rna_PointCloud_points_begin(CollectionPropertyIterator *iter, Pointe
                            sizeof(float[3]),
                            pointcloud->totpoint,
                            false,
-                           NULL);
+                           nullptr);
 }
 
 int rna_PointCloud_points_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
@@ -104,7 +104,7 @@ static float rna_Point_radius_get(PointerRNA *ptr)
   const PointCloud *pointcloud = rna_pointcloud(ptr);
   const float *radii = (const float *)CustomData_get_layer_named(
       &pointcloud->pdata, CD_PROP_FLOAT, "radius");
-  if (radii == NULL) {
+  if (radii == nullptr) {
     return 0.0f;
   }
   return radii[rna_Point_index_get_const(ptr)];
@@ -115,7 +115,7 @@ static void rna_Point_radius_set(PointerRNA *ptr, float value)
   PointCloud *pointcloud = rna_pointcloud(ptr);
   float *radii = (float *)CustomData_get_layer_named_for_write(
       &pointcloud->pdata, CD_PROP_FLOAT, "radius", pointcloud->totpoint);
-  if (radii == NULL) {
+  if (radii == nullptr) {
     return;
   }
   radii[rna_Point_index_get_const(ptr)] = value;
@@ -126,8 +126,8 @@ static char *rna_Point_path(const PointerRNA *ptr)
   return BLI_sprintfN("points[%d]", rna_Point_index_get_const(ptr));
 }
 
-static void rna_PointCloud_update_data(struct Main *UNUSED(bmain),
-                                       struct Scene *UNUSED(scene),
+static void rna_PointCloud_update_data(struct Main * /*bmain*/,
+                                       struct Scene * /*scene*/,
                                        PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
@@ -146,24 +146,24 @@ static void rna_def_point(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "Point", NULL);
+  srna = RNA_def_struct(brna, "Point", nullptr);
   RNA_def_struct_ui_text(srna, "Point", "Point in a point cloud");
   RNA_def_struct_path_func(srna, "rna_Point_path");
 
   prop = RNA_def_property(srna, "co", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_funcs(prop, "rna_Point_location_get", "rna_Point_location_set", NULL);
+  RNA_def_property_float_funcs(prop, "rna_Point_location_get", "rna_Point_location_set", nullptr);
   RNA_def_property_ui_text(prop, "Location", "");
   RNA_def_property_update(prop, 0, "rna_PointCloud_update_data");
 
   prop = RNA_def_property(srna, "radius", PROP_FLOAT, PROP_DISTANCE);
-  RNA_def_property_float_funcs(prop, "rna_Point_radius_get", "rna_Point_radius_set", NULL);
+  RNA_def_property_float_funcs(prop, "rna_Point_radius_get", "rna_Point_radius_set", nullptr);
   RNA_def_property_ui_text(prop, "Radius", "");
   RNA_def_property_update(prop, 0, "rna_PointCloud_update_data");
 
   prop = RNA_def_property(srna, "index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_int_funcs(prop, "rna_Point_index_get", NULL, NULL);
+  RNA_def_property_int_funcs(prop, "rna_Point_index_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Index", "Index of this point");
 }
 
@@ -187,18 +187,25 @@ static void rna_def_pointcloud(BlenderRNA *brna)
                                     "rna_iterator_array_get",
                                     "rna_PointCloud_points_length",
                                     "rna_PointCloud_points_lookup_int",
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_ui_text(prop, "Points", "");
 
   /* materials */
   prop = RNA_def_property(srna, "materials", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "mat", "totcol");
+  RNA_def_property_collection_sdna(prop, nullptr, "mat", "totcol");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_ui_text(prop, "Materials", "");
   RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
-  RNA_def_property_collection_funcs(
-      prop, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "rna_IDMaterials_assign_int");
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "rna_IDMaterials_assign_int");
 
   rna_def_attributes_common(srna);
 
