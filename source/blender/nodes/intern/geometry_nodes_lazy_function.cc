@@ -3769,6 +3769,12 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
   if (tree_zones == nullptr) {
     return nullptr;
   }
+  for (const std::unique_ptr<bNodeTreeZone> &zone : tree_zones->zones) {
+    if (zone->input_node == nullptr || zone->output_node == nullptr) {
+      /* Simulations and serial loops need input and output nodes. */
+      return nullptr;
+    }
+  }
   if (const ID *id_orig = DEG_get_original_id(const_cast<ID *>(&btree.id))) {
     if (id_orig->tag & LIB_TAG_MISSING) {
       return nullptr;
