@@ -17,7 +17,7 @@ set(DEFSRC
   rna_ID.c
   rna_action.cc
   rna_animation.cc
-  rna_animviz.c
+  rna_animviz.cc
   rna_armature.cc
   rna_asset.c
   rna_attribute.c
