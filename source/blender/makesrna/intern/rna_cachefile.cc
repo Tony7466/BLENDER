@@ -20,7 +20,7 @@
 const EnumPropertyItem rna_enum_velocity_unit_items[] = {
     {CACHEFILE_VELOCITY_UNIT_SECOND, "SECOND", 0, "Second", ""},
     {CACHEFILE_VELOCITY_UNIT_FRAME, "FRAME", 0, "Frame", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 #ifdef RNA_RUNTIME
@@ -40,20 +40,20 @@ const EnumPropertyItem rna_enum_velocity_unit_items[] = {
 #    include "ABC_alembic.h"
 #  endif
 
-static void rna_CacheFile_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_CacheFile_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   CacheFile *cache_file = (CacheFile *)ptr->data;
 
   DEG_id_tag_update(&cache_file->id, ID_RECALC_COPY_ON_WRITE);
-  WM_main_add_notifier(NC_OBJECT | ND_DRAW, NULL);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, nullptr);
 }
 
-static void rna_CacheFileLayer_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_CacheFileLayer_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   CacheFile *cache_file = (CacheFile *)ptr->owner_id;
 
   DEG_id_tag_update(&cache_file->id, ID_RECALC_COPY_ON_WRITE);
-  WM_main_add_notifier(NC_OBJECT | ND_DRAW, NULL);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, nullptr);
 }
 
 static void rna_CacheFile_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -65,7 +65,7 @@ static void rna_CacheFile_dependency_update(Main *bmain, Scene *scene, PointerRN
 static void rna_CacheFile_object_paths_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   CacheFile *cache_file = (CacheFile *)ptr->data;
-  rna_iterator_listbase_begin(iter, &cache_file->object_paths, NULL);
+  rna_iterator_listbase_begin(iter, &cache_file->object_paths, nullptr);
 }
 
 static PointerRNA rna_CacheFile_active_layer_get(PointerRNA *ptr)
@@ -106,7 +106,7 @@ static void rna_CacheFile_active_layer_index_set(PointerRNA *ptr, int value)
 }
 
 static void rna_CacheFile_active_layer_index_range(
-    PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+    PointerRNA *ptr, int *min, int *max, int * /*softmin*/, int * /*softmax*/)
 {
   CacheFile *cache_file = (CacheFile *)ptr->owner_id;
 
@@ -132,25 +132,25 @@ static CacheFileLayer *rna_CacheFile_layer_new(CacheFile *cache_file,
                                                const char *filepath)
 {
   CacheFileLayer *layer = BKE_cachefile_add_layer(cache_file, filepath);
-  if (layer == NULL) {
+  if (layer == nullptr) {
     BKE_reportf(
         reports, RPT_ERROR, "Cannot add a layer to CacheFile '%s'", cache_file->id.name + 2);
-    return NULL;
+    return nullptr;
   }
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_cachefile_reload(depsgraph, cache_file);
-  WM_main_add_notifier(NC_OBJECT | ND_DRAW, NULL);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, nullptr);
   return layer;
 }
 
 static void rna_CacheFile_layer_remove(CacheFile *cache_file, bContext *C, PointerRNA *layer_ptr)
 {
-  CacheFileLayer *layer = layer_ptr->data;
+  CacheFileLayer *layer = static_cast<CacheFileLayer *>(layer_ptr->data);
   BKE_cachefile_remove_layer(cache_file, layer);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_cachefile_reload(depsgraph, cache_file);
-  WM_main_add_notifier(NC_OBJECT | ND_DRAW, NULL);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, nullptr);
 }
 
 #else
@@ -158,7 +158,7 @@ static void rna_CacheFile_layer_remove(CacheFile *cache_file, bContext *C, Point
 /* cachefile.object_paths */
 static void rna_def_alembic_object_path(BlenderRNA *brna)
 {
-  StructRNA *srna = RNA_def_struct(brna, "CacheObjectPath", NULL);
+  StructRNA *srna = RNA_def_struct(brna, "CacheObjectPath", nullptr);
   RNA_def_struct_sdna(srna, "CacheObjectPath");
   RNA_def_struct_ui_text(srna, "Object Path", "Path of an object inside of an Alembic archive");
   RNA_def_struct_ui_icon(srna, ICON_NONE);
@@ -177,14 +177,14 @@ static void rna_def_alembic_object_path(BlenderRNA *brna)
 static void rna_def_cachefile_object_paths(BlenderRNA *brna, PropertyRNA *cprop)
 {
   RNA_def_property_srna(cprop, "CacheObjectPaths");
-  StructRNA *srna = RNA_def_struct(brna, "CacheObjectPaths", NULL);
+  StructRNA *srna = RNA_def_struct(brna, "CacheObjectPaths", nullptr);
   RNA_def_struct_sdna(srna, "CacheFile");
   RNA_def_struct_ui_text(srna, "Object Paths", "Collection of object paths");
 }
 
 static void rna_def_cachefile_layer(BlenderRNA *brna)
 {
-  StructRNA *srna = RNA_def_struct(brna, "CacheFileLayer", NULL);
+  StructRNA *srna = RNA_def_struct(brna, "CacheFileLayer", nullptr);
   RNA_def_struct_sdna(srna, "CacheFileLayer");
   RNA_def_struct_ui_text(
       srna,
@@ -196,8 +196,8 @@ static void rna_def_cachefile_layer(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_CacheFileLayer_update");
 
   prop = RNA_def_property(srna, "hide_layer", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", CACHEFILE_LAYER_HIDDEN);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_CacheFileLayer_hidden_flag_set");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", CACHEFILE_LAYER_HIDDEN);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_CacheFileLayer_hidden_flag_set");
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide Layer", "Do not load data from this layer");
   RNA_def_property_update(prop, 0, "rna_CacheFileLayer_update");
@@ -206,14 +206,14 @@ static void rna_def_cachefile_layer(BlenderRNA *brna)
 static void rna_def_cachefile_layers(BlenderRNA *brna, PropertyRNA *cprop)
 {
   RNA_def_property_srna(cprop, "CacheFileLayers");
-  StructRNA *srna = RNA_def_struct(brna, "CacheFileLayers", NULL);
+  StructRNA *srna = RNA_def_struct(brna, "CacheFileLayers", nullptr);
   RNA_def_struct_sdna(srna, "CacheFile");
   RNA_def_struct_ui_text(srna, "Cache Layers", "Collection of cache layers");
 
   PropertyRNA *prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CacheFileLayer");
   RNA_def_property_pointer_funcs(
-      prop, "rna_CacheFile_active_layer_get", "rna_CacheFile_active_layer_set", NULL, NULL);
+      prop, "rna_CacheFile_active_layer_get", "rna_CacheFile_active_layer_set", nullptr, nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Layer", "Active layer of the CacheFile");
 
@@ -223,7 +223,7 @@ static void rna_def_cachefile_layers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Add a new layer");
   PropertyRNA *parm = RNA_def_string(
       func, "filepath", "File Path", 0, "", "File path to the archive used as a layer");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* Return type. */
   parm = RNA_def_pointer(func, "layer", "CacheFileLayer", "", "Newly created layer");
   RNA_def_function_return(func, parm);
@@ -234,7 +234,7 @@ static void rna_def_cachefile_layers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove an existing layer from the cache file");
   parm = RNA_def_pointer(func, "layer", "CacheFileLayer", "", "Layer to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
 static void rna_def_cachefile(BlenderRNA *brna)
@@ -275,7 +275,7 @@ static void rna_def_cachefile(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_CacheFile_update");
 
   prop = RNA_def_property(srna, "frame", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "frame");
+  RNA_def_property_float_sdna(prop, nullptr, "frame");
   RNA_def_property_range(prop, -MAXFRAME, MAXFRAME);
   RNA_def_property_ui_text(prop,
                            "Frame",
@@ -284,7 +284,7 @@ static void rna_def_cachefile(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_CacheFile_update");
 
   prop = RNA_def_property(srna, "frame_offset", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "frame_offset");
+  RNA_def_property_float_sdna(prop, nullptr, "frame_offset");
   RNA_def_property_range(prop, -MAXFRAME, MAXFRAME);
   RNA_def_property_ui_text(prop,
                            "Frame Offset",
@@ -313,19 +313,19 @@ static void rna_def_cachefile(BlenderRNA *brna)
   /* ----------------- Axis Conversion ----------------- */
 
   prop = RNA_def_property(srna, "forward_axis", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "forward_axis");
+  RNA_def_property_enum_sdna(prop, nullptr, "forward_axis");
   RNA_def_property_enum_items(prop, rna_enum_object_axis_items);
   RNA_def_property_ui_text(prop, "Forward", "");
   RNA_def_property_update(prop, 0, "rna_CacheFile_update");
 
   prop = RNA_def_property(srna, "up_axis", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "up_axis");
+  RNA_def_property_enum_sdna(prop, nullptr, "up_axis");
   RNA_def_property_enum_items(prop, rna_enum_object_axis_items);
   RNA_def_property_ui_text(prop, "Up", "");
   RNA_def_property_update(prop, 0, "rna_CacheFile_update");
 
   prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "scale");
+  RNA_def_property_float_sdna(prop, nullptr, "scale");
   RNA_def_property_range(prop, 0.0001f, 1000.0f);
   RNA_def_property_ui_text(
       prop,
@@ -336,16 +336,16 @@ static void rna_def_cachefile(BlenderRNA *brna)
 
   /* object paths */
   prop = RNA_def_property(srna, "object_paths", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "object_paths", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "object_paths", nullptr);
   RNA_def_property_collection_funcs(prop,
                                     "rna_CacheFile_object_paths_begin",
                                     "rna_iterator_listbase_next",
                                     "rna_iterator_listbase_end",
                                     "rna_iterator_listbase_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
   RNA_def_property_struct_type(prop, "CacheObjectPath");
   RNA_def_property_srna(prop, "CacheObjectPaths");
   RNA_def_property_ui_text(
@@ -361,7 +361,7 @@ static void rna_def_cachefile(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "velocity_unit", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "velocity_unit");
+  RNA_def_property_enum_sdna(prop, nullptr, "velocity_unit");
   RNA_def_property_enum_items(prop, rna_enum_velocity_unit_items);
   RNA_def_property_ui_text(
       prop,
@@ -375,7 +375,7 @@ static void rna_def_cachefile(BlenderRNA *brna)
   /* ----------------- Alembic Layers ----------------- */
 
   prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "layers", NULL);
+  RNA_def_property_collection_sdna(prop, nullptr, "layers", nullptr);
   RNA_def_property_struct_type(prop, "CacheFileLayer");
   RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Cache Layers", "Layers of the cache");
@@ -383,7 +383,7 @@ static void rna_def_cachefile(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_int_sdna(prop, NULL, "active_layer");
+  RNA_def_property_int_sdna(prop, nullptr, "active_layer");
   RNA_def_property_int_funcs(prop,
                              "rna_CacheFile_active_layer_index_get",
                              "rna_CacheFile_active_layer_index_set",
