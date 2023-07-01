@@ -55,7 +55,7 @@ static bool rna_Main_is_dirty_get(PointerRNA *ptr)
   /* XXX, not totally nice to do it this way, should store in main ? */
   Main *bmain = (Main *)ptr->data;
   wmWindowManager *wm;
-  if ((wm = static_cast<wmWindowManager*>(bmain->wm.first))) {
+  if ((wm = static_cast<wmWindowManager *>(bmain->wm.first))) {
     return !wm->file_saved;
   }
 
@@ -159,14 +159,14 @@ static PointerRNA rna_Test_test_get(PointerRNA *ptr)
 /* local convenience types */
 typedef void(CollectionDefFunc)(BlenderRNA *brna, PropertyRNA *cprop);
 
-typedef struct MainCollectionDef {
+struct MainCollectionDef {
   const char *identifier;
   const char *type;
   const char *iter_begin;
   const char *name;
   const char *description;
   CollectionDefFunc *func;
-} MainCollectionDef;
+};
 
 void RNA_def_main(BlenderRNA *brna)
 {

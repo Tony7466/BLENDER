@@ -56,13 +56,13 @@
 
 #include "WM_types.h"
 
-typedef struct EffectInfo {
+struct EffectInfo {
   const char *struct_name;
   const char *ui_name;
   const char *ui_desc;
   void (*func)(StructRNA *);
   int inputs;
-} EffectInfo;
+};
 
 const EnumPropertyItem rna_enum_sequence_modifier_type_items[] = {
     {seqModifierType_BrightContrast, "BRIGHT_CONTRAST", ICON_NONE, "Brightness/Contrast", ""},
@@ -105,11 +105,11 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 
 #  include "SEQ_edit.h"
 
-typedef struct SequenceSearchData {
+struct SequenceSearchData {
   Sequence *seq;
   void *data;
   SequenceModifierData *smd;
-} SequenceSearchData;
+};
 
 static void rna_SequenceElement_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -1419,9 +1419,7 @@ static void rna_Sequence_modifier_clear(Sequence *seq, bContext *C)
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
 }
 
-static void rna_SequenceModifier_strip_set(PointerRNA *ptr,
-                                           PointerRNA value,
-                                            ReportList *reports)
+static void rna_SequenceModifier_strip_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
 {
   SequenceModifierData *smd = static_cast<SequenceModifierData *>(ptr->data);
   Scene *scene = (Scene *)ptr->owner_id;

@@ -453,7 +453,7 @@ static void rna_ShapeKeyBezierPoint_radius_set(PointerRNA *ptr, float value)
 }
 
 /* Indexing and iteration of Curve points through sub-curves. */
-typedef struct NurbInfo {
+struct NurbInfo {
   Nurb *nu;
   int nurb_size, nurb_elem_step;
 
@@ -462,7 +462,7 @@ typedef struct NurbInfo {
 
   /* Total index as item and element. */
   int item_index, elem_index;
-} NurbInfo;
+};
 
 StructRNA *rna_ShapeKey_curve_point_type(Nurb *nu)
 {
@@ -529,10 +529,10 @@ static int rna_ShapeKey_curve_find_index(Key *key, int elem_index)
   return info.item_index;
 }
 
-typedef struct ShapeKeyCurvePoint {
+struct ShapeKeyCurvePoint {
   StructRNA *type;
   void *data;
-} ShapeKeyCurvePoint;
+};
 
 /* Build a mapping array for Curve objects with mixed sub-curve types. */
 static void rna_ShapeKey_data_begin_mixed(CollectionPropertyIterator *iter,

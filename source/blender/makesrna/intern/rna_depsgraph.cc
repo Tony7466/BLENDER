@@ -45,7 +45,7 @@
 
 /* **************** Object Instance **************** */
 
-typedef struct RNA_DepsgraphIterator {
+struct RNA_DepsgraphIterator {
   BLI_Iterator iter;
 #  ifdef WITH_PYTHON
   /**
@@ -53,7 +53,7 @@ typedef struct RNA_DepsgraphIterator {
    * Otherwise accessing from Python (console auto-complete for e.g.) crashes, see: #100286. */
   void *py_instance;
 #  endif
-} RNA_DepsgraphIterator;
+};
 
 #  ifdef WITH_PYTHON
 void **rna_DepsgraphIterator_instance(PointerRNA *ptr)
@@ -358,12 +358,12 @@ static PointerRNA rna_Depsgraph_objects_get(CollectionPropertyIterator *iter)
  * This forces us to use that nasty ping-pong game between two sets of iterator data,
  * so that previous one remains valid memory for python to access to. Yuck.
  */
-typedef struct RNA_Depsgraph_Instances_Iterator {
+struct RNA_Depsgraph_Instances_Iterator {
   RNA_DepsgraphIterator iterators[2];
   DEGObjectIterData deg_data[2];
   DupliObject dupli_object_current[2];
   int counter;
-} RNA_Depsgraph_Instances_Iterator;
+};
 
 static void rna_Depsgraph_object_instances_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {

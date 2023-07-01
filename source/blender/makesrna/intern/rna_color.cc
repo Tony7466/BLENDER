@@ -590,10 +590,10 @@ static const EnumPropertyItem *rna_ColorManagedColorspaceSettings_colorspace_ite
   return items;
 }
 
-typedef struct Seq_colorspace_cb_data {
+struct Seq_colorspace_cb_data {
   ColorManagedColorspaceSettings *colorspace_settings;
   Sequence *r_seq;
-} Seq_colorspace_cb_data;
+};
 
 static bool seq_find_colorspace_settings_cb(Sequence *seq, void *user_data)
 {
