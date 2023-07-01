@@ -44,8 +44,8 @@ static void rna_FCurve_convert_to_samples(FCurve *fcu, ReportList *reports, int 
     BKE_report(reports, RPT_WARNING, "F-Curve has no keyframes");
   }
   else {
-    fcurve_store_samples(fcu, NULL, start, end, fcurve_samplingcb_evalcurve);
-    WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
+    fcurve_store_samples(fcu, nullptr, start, end, fcurve_samplingcb_evalcurve);
+    WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
   }
 }
 
@@ -62,7 +62,7 @@ static void rna_FCurve_convert_to_keyframes(FCurve *fcu, ReportList *reports, in
   }
   else {
     fcurve_samples_to_keyframes(fcu, start, end);
-    WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
+    WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
   }
 }
 
@@ -79,9 +79,9 @@ void RNA_api_fcurves(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_int(
       func, "start", 0, MINAFRAME, MAXFRAME, "Start Frame", "", MINAFRAME, MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func, "end", 0, MINAFRAME, MAXFRAME, "End Frame", "", MINAFRAME, MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "convert_to_keyframes", "rna_FCurve_convert_to_keyframes");
   RNA_def_function_ui_description(
@@ -91,12 +91,12 @@ void RNA_api_fcurves(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_int(
       func, "start", 0, MINAFRAME, MAXFRAME, "Start Frame", "", MINAFRAME, MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(func, "end", 0, MINAFRAME, MAXFRAME, "End Frame", "", MINAFRAME, MAXFRAME);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
-void RNA_api_drivers(StructRNA *UNUSED(srna))
+void RNA_api_drivers(StructRNA * /*srna*/)
 {
   /*  FunctionRNA *func; */
   /*  PropertyRNA *parm; */

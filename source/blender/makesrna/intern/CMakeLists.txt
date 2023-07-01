@@ -35,7 +35,7 @@ set(DEFSRC
   rna_curves.cc
   rna_depsgraph.cc
   rna_dynamicpaint.cc
-  rna_fcurve.c
+  rna_fcurve.cc
   rna_fluid.c
   rna_gpencil_legacy.c
   rna_gpencil_legacy_modifier.c
@@ -104,7 +104,7 @@ set(APISRC
   rna_armature_api.cc
   rna_camera_api.cc
   rna_curve_api.cc
-  rna_fcurve_api.c
+  rna_fcurve_api.cc
   rna_image_api.cc
   rna_lattice_api.cc
   rna_main_api.c
