@@ -1676,8 +1676,9 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       const CPPType &type = *loop_item_types[i];
       type.move_construct(computed_value, r_value);
       params.output_set(output_index);
-
-      params.set_output(zone_info_.main_input_usage_indices[i], true);
+    }
+    for (const int i : zone_info_.main_input_usage_indices) {
+      params.set_output(i, true);
     }
     for (const int i : IndexRange(border_links_num)) {
       params.set_output(zone_info_.border_link_input_usage_indices[i], true);
