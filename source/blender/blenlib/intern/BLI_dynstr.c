@@ -17,22 +17,6 @@
 #include "BLI_utildefines.h"
 #include "MEM_guardedalloc.h"
 
-#ifdef _WIN32
-#  ifndef vsnprintf
-#    define vsnprintf _vsnprintf
-#  endif
-#endif
-
-#ifndef va_copy
-#  ifdef __va_copy
-#    define va_copy(a, b) __va_copy(a, b)
-#  else /* !__va_copy */
-#    define va_copy(a, b) ((a) = (b))
-#  endif /* __va_copy */
-#endif   /* va_copy */
-
-/***/
-
 typedef struct DynStrElem DynStrElem;
 struct DynStrElem {
   DynStrElem *next;
@@ -114,122 +98,71 @@ void BLI_dynstr_nappend(DynStr *__restrict ds, const char *cstr, int len)
 
 void BLI_dynstr_vappendf(DynStr *__restrict ds, const char *__restrict format, va_list args)
 {
-  char *message, fixedmessage[256];
-  int len = sizeof(fixedmessage);
-  const int maxlen = 65536;
+  va_list args_cpy;
+  char fixedmessage[4];
+  char *message = fixedmessage;
+  int size = sizeof(fixedmessage);
   int retval;
 
-  while (1) {
-    va_list args_cpy;
-    if (len == sizeof(fixedmessage)) {
-      message = fixedmessage;
-    }
-    else {
-      message = MEM_callocN(sizeof(char) * len, "BLI_dynstr_appendf");
-    }
+  /* can't reuse the same args, so work on a copy */
+  va_copy(args_cpy, args);
+  retval = vsnprintf(message, size, format, args_cpy);
+  va_end(args_cpy);
 
-    /* can't reuse the same args, so work on a copy */
-    va_copy(args_cpy, args);
-    retval = vsnprintf(message, len, format, args_cpy);
-    va_end(args_cpy);
-
-    if (retval == -1) {
-      /* -1 means not enough space, but on windows it may also mean
-       * there is a formatting error, so we impose a maximum length */
-      if (message != fixedmessage) {
-        MEM_freeN(message);
-      }
-      message = NULL;
-
-      len *= 2;
-      if (len > maxlen) {
-        fprintf(stderr, "BLI_dynstr_append text too long or format error.\n");
-        break;
-      }
-    }
-    else if (retval >= len) {
-      /* in C99 the actual length required is returned */
-      if (message != fixedmessage) {
-        MEM_freeN(message);
-      }
-      message = NULL;
-
-      /* retval doesn't include \0 terminator */
-      len = retval + 1;
-    }
-    else {
-      break;
-    }
+  if (UNLIKELY(retval < 0)) {
+    /* Encoding error, nothing can be done. */
+    return;
   }
 
-  if (message) {
-    BLI_dynstr_append(ds, message);
+  if (retval >= size) {
+    /* `retval` doesn't include null terminator. */
+    size = retval + 1;
+    message = MEM_mallocN(sizeof(char) * size, __func__);
+    va_copy(args_cpy, args);
+    retval = vsnprintf(message, size, format, args_cpy);
+    va_end(args_cpy);
+    BLI_assert(retval + 1 == size);
+  }
 
-    if (message != fixedmessage) {
-      MEM_freeN(message);
-    }
+  BLI_dynstr_append(ds, message);
+
+  if (message != fixedmessage) {
+    MEM_freeN(message);
   }
 }
 
 void BLI_dynstr_appendf(DynStr *__restrict ds, const char *__restrict format, ...)
 {
   va_list args;
-  char *message, fixedmessage[256];
-  int len = sizeof(fixedmessage);
-  const int maxlen = 65536;
+  char fixedmessage[4];
+  char *message = fixedmessage;
+  int size = sizeof(fixedmessage);
   int retval;
 
-  /* note that it's tempting to just call BLI_dynstr_vappendf here
-   * and avoid code duplication, that crashes on some system because
-   * va_start/va_end have to be called for each vsnprintf call */
+  va_start(args, format);
+  retval = vsnprintf(message, size, format, args);
+  va_end(args);
 
-  while (1) {
-    if (len == sizeof(fixedmessage)) {
-      message = fixedmessage;
-    }
-    else {
-      message = MEM_callocN(sizeof(char) * (len), "BLI_dynstr_appendf");
-    }
-
-    va_start(args, format);
-    retval = vsnprintf(message, len, format, args);
-    va_end(args);
-
-    if (retval == -1) {
-      /* -1 means not enough space, but on windows it may also mean
-       * there is a formatting error, so we impose a maximum length */
-      if (message != fixedmessage) {
-        MEM_freeN(message);
-      }
-      message = NULL;
-
-      len *= 2;
-      if (len > maxlen) {
-        fprintf(stderr, "BLI_dynstr_append text too long or format error.\n");
-        break;
-      }
-    }
-    else if (retval >= len) {
-      /* in C99 the actual length required is returned */
-      if (message != fixedmessage) {
-        MEM_freeN(message);
-      }
-      message = NULL;
-
-      /* retval doesn't include \0 terminator */
-      len = retval + 1;
-    }
-    else {
-      break;
-    }
+  if (UNLIKELY(retval < 0)) {
+    /* Encoding error, nothing can be done. */
+    return;
   }
 
-  if (message) {
-    BLI_dynstr_append(ds, message);
+  if (retval >= size) {
+    /* `retval` doesn't include null terminator. */
+    size = retval + 1;
+    message = MEM_mallocN(sizeof(char) * size, __func__);
+    va_start(args, format);
+    retval = vsnprintf(message, size, format, args);
+    va_end(args);
 
-    if (message != fixedmessage) {
-      MEM_freeN(message);
-    }
+    BLI_assert(retval + 1 == size);
+  }
+
+  BLI_dynstr_append(ds, message);
+
+  if (message != fixedmessage) {
+    MEM_freeN(message);
   }
 }
 
