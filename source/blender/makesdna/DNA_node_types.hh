@@ -10,6 +10,9 @@
 
 #include "BLI_sys_types.h"
 
+namespace blender::dna {
+}
+
 struct NodeGeometryUVUnwrap {
   /** #GeometryNodeUVUnwrapMethod. */
   uint8_t method;
