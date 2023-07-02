@@ -148,8 +148,7 @@ static void remap_pairing(bNodeTree &dst_tree,
 {
   for (bNode *dst_node : nodes) {
     if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
+      auto *data = static_cast<dna::NodeGeometrySimulationInput *>(dst_node->storage);
       if (data->output_node_id == 0) {
         continue;
       }
@@ -777,8 +776,8 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
    * Simulation input or output nodes can only be grouped together with the paired node.
    */
   for (bNode *input_node : ntree.nodes_by_type("GeometryNodeSimulationInput")) {
-    const NodeGeometrySimulationInput &input_data =
-        *static_cast<const NodeGeometrySimulationInput *>(input_node->storage);
+    const auto &input_data = *static_cast<const dna::NodeGeometrySimulationInput *>(
+        input_node->storage);
 
     if (bNode *output_node = ntree.node_by_id(input_data.output_node_id)) {
       const bool input_selected = nodes_to_group.contains(input_node);

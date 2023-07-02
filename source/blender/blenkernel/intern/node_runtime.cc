@@ -287,7 +287,7 @@ static Vector<const bNode *> get_implicit_origin_nodes(const bNodeTree &ntree, b
     for (const bNode *sim_input_node :
          ntree.runtime->nodes_by_type.lookup(nodeTypeFind("GeometryNodeSimulationInput")))
     {
-      const auto &storage = *static_cast<const NodeGeometrySimulationInput *>(
+      const auto &storage = *static_cast<const dna::NodeGeometrySimulationInput *>(
           sim_input_node->storage);
       if (storage.output_node_id == node.identifier) {
         origin_nodes.append(sim_input_node);
@@ -301,7 +301,7 @@ static Vector<const bNode *> get_implicit_target_nodes(const bNodeTree &ntree, b
 {
   Vector<const bNode *> target_nodes;
   if (node.type == GEO_NODE_SIMULATION_INPUT) {
-    const auto &storage = *static_cast<const NodeGeometrySimulationInput *>(node.storage);
+    const auto &storage = *static_cast<const dna::NodeGeometrySimulationInput *>(node.storage);
     if (const bNode *sim_output_node = ntree.node_by_id(storage.output_node_id)) {
       target_nodes.append(sim_output_node);
     }

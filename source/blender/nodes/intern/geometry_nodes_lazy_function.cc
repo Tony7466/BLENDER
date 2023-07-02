@@ -2660,8 +2660,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                                  const bNode &bnode,
                                                  BuildGraphParams &graph_params)
   {
-    const NodeGeometrySimulationInput *storage = static_cast<const NodeGeometrySimulationInput *>(
-        bnode.storage);
+    const auto *storage = static_cast<const dna::NodeGeometrySimulationInput *>(bnode.storage);
     if (node_tree.node_by_id(storage->output_node_id) == nullptr) {
       return nullptr;
     }

@@ -18,6 +18,7 @@
 
 /* for FOREACH_NODETREE_BEGIN */
 #include "DNA_node_types.h"
+#include "DNA_node_types.hh"
 
 #include "RNA_types.h"
 

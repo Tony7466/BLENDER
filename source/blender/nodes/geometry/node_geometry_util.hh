@@ -133,16 +133,16 @@ class EvaluateAtIndexInput final : public bke::GeometryFieldInput {
   }
 };
 
-std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item);
+std::string socket_identifier_for_simulation_item(const dna::NodeSimulationItem &item);
 
-void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
+void socket_declarations_for_simulation_items(Span<dna::NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
-const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
-void values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
+const CPPType &get_simulation_item_cpp_type(const dna::NodeSimulationItem &item);
+void values_to_simulation_state(const Span<dna::NodeSimulationItem> node_simulation_items,
                                 const Span<void *> input_values,
                                 bke::sim::SimulationZoneState &r_zone_state);
-void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
+void simulation_state_to_values(const Span<dna::NodeSimulationItem> node_simulation_items,
                                 const bke::sim::SimulationZoneState &zone_state,
                                 const Object &self_object,
                                 const ComputeContext &compute_context,

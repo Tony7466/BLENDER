@@ -4255,7 +4255,7 @@ static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, Pointer
 static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
+  auto *item = static_cast<blender::dna::NodeSimulationItem *>(ptr->data);
   bNode *node = NOD_geometry_simulation_output_find_node_by_item(ntree, item);
 
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -4281,9 +4281,9 @@ static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContex
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
+  auto *item = static_cast<blender::dna::NodeSimulationItem *>(ptr->data);
   bNode *node = NOD_geometry_simulation_output_find_node_by_item(ntree, item);
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
 
   const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
   NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
@@ -4291,7 +4291,7 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 {
-  NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
+  auto *item = static_cast<blender::dna::NodeSimulationItem *>(ptr->data);
 
   const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
   ED_node_type_draw_color(socket_type_idname, values);
@@ -4328,11 +4328,11 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
   return true;
 }
 
-static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
+static blender::dna::NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NodeSimulationItem *item = NOD_geometry_simulation_output_add_item(
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
+  blender::dna::NodeSimulationItem *item = NOD_geometry_simulation_output_add_item(
       sim, (short)socket_type, name);
 
   if (item == nullptr) {
@@ -4349,9 +4349,9 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
 }
 
 static void rna_NodeGeometrySimulationOutput_items_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
+    ID *id, bNode *node, Main *bmain, ReportList *reports, blender::dna::NodeSimulationItem *item)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
   if (!NOD_geometry_simulation_output_contains_item(sim, item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
   }
@@ -4367,7 +4367,7 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
   NOD_geometry_simulation_output_clear_items(sim);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
@@ -4379,7 +4379,7 @@ static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Ma
 static void rna_NodeGeometrySimulationOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
 
   if (from_index < 0 || from_index >= sim->items_num || to_index < 0 || to_index >= sim->items_num)
   {
@@ -4397,8 +4397,8 @@ static void rna_NodeGeometrySimulationOutput_items_move(
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NodeSimulationItem *item = NOD_geometry_simulation_output_get_active_item(sim);
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
+  blender::dna::NodeSimulationItem *item = NOD_geometry_simulation_output_get_active_item(sim);
   PointerRNA r_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_SimulationStateItem, item, &r_ptr);
   return r_ptr;
@@ -4409,9 +4409,9 @@ static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
                                                              ReportList * /*reports*/)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-  NOD_geometry_simulation_output_set_active_item(sim,
-                                                 static_cast<NodeSimulationItem *>(value.data));
+  auto *sim = static_cast<blender::dna::NodeGeometrySimulationOutput *>(node->storage);
+  NOD_geometry_simulation_output_set_active_item(
+      sim, static_cast<blender::dna::NodeSimulationItem *>(value.data));
 }
 
 /* ******** Node Socket Types ******** */

@@ -17,7 +17,10 @@
 
 namespace blender::nodes::node_geo_simulation_input_cc {
 
-NODE_STORAGE_FUNCS(NodeGeometrySimulationInput);
+NODE_STORAGE_FUNCS(dna::NodeGeometrySimulationInput);
+using dna::NodeGeometrySimulationInput;
+using dna::NodeGeometrySimulationOutput;
+using dna::NodeSimulationItem;
 
 class LazyFunctionForSimulationInputNode final : public LazyFunction {
   const bNode &node_;
@@ -33,8 +36,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     debug_name_ = "Simulation Input";
     output_node_id_ = node_storage(node).output_node_id;
     const bNode &output_node = *node_tree.node_by_id(output_node_id_);
-    const NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-        output_node.storage);
+    const auto &storage = *static_cast<NodeGeometrySimulationOutput *>(output_node.storage);
     simulation_items_ = {storage.items, storage.items_num};
 
     MutableSpan<int> lf_index_by_bsocket = own_lf_graph_info.mapping.lf_index_by_bsocket;
@@ -143,14 +145,13 @@ static void node_declare_dynamic(const bNodeTree &node_tree,
   delta_time->in_out = SOCK_OUT;
   r_declaration.outputs.append(std::move(delta_time));
 
-  const NodeGeometrySimulationOutput &storage = *static_cast<const NodeGeometrySimulationOutput *>(
-      output_node->storage);
+  const auto &storage = *static_cast<const NodeGeometrySimulationOutput *>(output_node->storage);
   socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometrySimulationInput *data = MEM_cnew<NodeGeometrySimulationInput>(__func__);
+  auto *data = MEM_cnew<NodeGeometrySimulationInput>(__func__);
   /* Needs to be initialized for the node to work. */
   data->output_node_id = 0;
   node->storage = data;
@@ -163,8 +164,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
     return true;
   }
 
-  NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-      output_node->storage);
+  auto &storage = *static_cast<NodeGeometrySimulationOutput *>(output_node->storage);
 
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
@@ -223,7 +223,8 @@ bNode *NOD_geometry_simulation_input_get_paired_output(bNodeTree *node_tree,
 {
   namespace file_ns = blender::nodes::node_geo_simulation_input_cc;
 
-  const NodeGeometrySimulationInput &data = file_ns::node_storage(*simulation_input_node);
+  const blender::dna::NodeGeometrySimulationInput &data = file_ns::node_storage(
+      *simulation_input_node);
   return node_tree->node_by_id(data.output_node_id);
 }
 
@@ -241,14 +242,15 @@ bool NOD_geometry_simulation_input_pair_with_output(const bNodeTree *node_tree,
   /* Allow only one input paired to an output. */
   for (const bNode *other_input_node : node_tree->nodes_by_type("GeometryNodeSimulationInput")) {
     if (other_input_node != sim_input_node) {
-      const NodeGeometrySimulationInput &other_storage = file_ns::node_storage(*other_input_node);
+      const blender::dna::NodeGeometrySimulationInput &other_storage = file_ns::node_storage(
+          *other_input_node);
       if (other_storage.output_node_id == sim_output_node->identifier) {
         return false;
       }
     }
   }
 
-  NodeGeometrySimulationInput &storage = file_ns::node_storage(*sim_input_node);
+  blender::dna::NodeGeometrySimulationInput &storage = file_ns::node_storage(*sim_input_node);
   storage.output_node_id = sim_output_node->identifier;
   return true;
 }

@@ -669,10 +669,10 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       }
     }
     if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-      const NodeGeometrySimulationOutput &storage =
-          *static_cast<const NodeGeometrySimulationOutput *>(node->storage);
+      const auto &storage = *static_cast<const blender::dna::NodeGeometrySimulationOutput *>(
+          node->storage);
       BLO_write_struct_array(writer, NodeSimulationItem, storage.items_num, storage.items);
-      for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+      for (const blender::dna::NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
         BLO_write_string(writer, item.name);
       }
     }
@@ -864,10 +864,11 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           break;
         }
         case GEO_NODE_SIMULATION_OUTPUT: {
-          NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
+          auto &storage = *static_cast<blender::dna::NodeGeometrySimulationOutput *>(
               node->storage);
           BLO_read_data_address(reader, &storage.items);
-          for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+          for (const blender::dna::NodeSimulationItem &item :
+               Span(storage.items, storage.items_num)) {
             BLO_read_data_address(reader, &item.name);
           }
           break;

@@ -1280,8 +1280,7 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
 
   for (bNode *dst_node : node_map.values()) {
     if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
+      auto *data = static_cast<dna::NodeGeometrySimulationInput *>(dst_node->storage);
       if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
                                                                         nullptr)) {
         data->output_node_id = output_node->identifier;
