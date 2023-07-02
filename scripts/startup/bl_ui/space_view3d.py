@@ -1018,6 +1018,7 @@ class VIEW3D_MT_editor_menus(Menu):
             if mode_string == 'SCULPT':
                 layout.menu("VIEW3D_MT_mask")
                 layout.menu("VIEW3D_MT_face_sets")
+                layout.template_node_operator_asset_root_items()
             if mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
@@ -3508,6 +3509,7 @@ class VIEW3D_MT_mask(Menu):
 
         layout.menu("VIEW3D_MT_random_mask", text="Random Mask")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 class VIEW3D_MT_face_sets(Menu):
     bl_label = "Face Sets"
@@ -3565,6 +3567,8 @@ class VIEW3D_MT_face_sets(Menu):
         layout.separator()
 
         props = layout.operator("sculpt.face_sets_randomize_colors", text="Randomize Colors")
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_sculpt_set_pivot(Menu):

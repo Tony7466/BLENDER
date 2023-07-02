@@ -305,6 +305,7 @@ static bool run_node_group_poll(bContext *C)
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(C));
   if (!ELEM(ctx_mode,
             CTX_MODE_EDIT_MESH,
+            CTX_MODE_SCULPT,
             CTX_MODE_EDIT_CURVES,
             CTX_MODE_EDIT_POINT_CLOUD,
             CTX_MODE_SCULPT_CURVES))
@@ -365,6 +366,10 @@ static AssetFilterSettings asset_filter_for_context(const eContextObjectMode ctx
       tags.append(create_asset_tag("Edit"));
       tags.append(create_asset_tag("Point Cloud"));
       break;
+    case CTX_MODE_SCULPT:
+      tags.append(create_asset_tag("Sculpt"));
+      tags.append(create_asset_tag("Mesh"));
+      break;
     case CTX_MODE_SCULPT_CURVES:
       tags.append(create_asset_tag("Sculpt"));
       tags.append(create_asset_tag("Curve"));
@@ -390,6 +395,10 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
       return &tree;
     }
     case CTX_MODE_EDIT_POINT_CLOUD: {
+      static asset::AssetItemTree tree;
+      return &tree;
+    }
+    case CTX_MODE_SCULPT: {
       static asset::AssetItemTree tree;
       return &tree;
     }
