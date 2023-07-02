@@ -798,6 +798,7 @@ static int convert_include(const char *filepath)
 
               /* we've got a type! */
               if (STREQ(md1, "long") || STREQ(md1, "ulong")) {
+                /* Forbid using long/ulong because those can be either 32 or 64 bit. */
                 fprintf(stderr,
                         "File '%s' contains use of \"%s\" in DNA struct which is not allowed\n",
                         filepath,
