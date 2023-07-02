@@ -1,11 +1,8 @@
 
-/**
- * As input to the tracing function, direction is premultiplied by its maximum length.
- * As output, direction is scaled to hit point or to latest step.
- */
 struct Ray {
   vec3 origin;
   vec3 direction;
+  float time;
 };
 
 /**

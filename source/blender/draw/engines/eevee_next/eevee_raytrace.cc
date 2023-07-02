@@ -71,11 +71,14 @@ void RaytracingModule::sync()
     sub.dispatch(dispatch_reflect_buf_);
     sub.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_TEXTURE_FETCH);
   }
-#if 0 /* TODO */
   {
-    auto &sub = raytrace_ps_.sub("RayScreenTrace");
+    auto &sub = raytrace_ps_.sub("RayTraceScreen");
+    sub.shader_set(inst_.shaders.static_shader_get(RAY_TRACE_SCREEN));
+    sub.bind_ssbo("tiles_coord_buf", &tiles_reflect_buf_);
+    sub.bind_image("ray_data_img", &ray_data_tx_);
+    sub.dispatch(dispatch_reflect_buf_);
+    sub.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
-#endif
 }
 
 void RaytracingModule::debug_pass_sync() {}
