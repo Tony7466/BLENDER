@@ -6,6 +6,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_node_types.hh"
 
 #include "BKE_mesh.hh"
 

@@ -1707,11 +1707,6 @@ typedef struct NodeGeometryViewer {
   int8_t domain;
 } NodeGeometryViewer;
 
-typedef struct NodeGeometryUVUnwrap {
-  /** #GeometryNodeUVUnwrapMethod. */
-  uint8_t method;
-} NodeGeometryUVUnwrap;
-
 typedef struct NodeSimulationItem {
   char *name;
   /** #eNodeSocketDatatype. */
