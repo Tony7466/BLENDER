@@ -90,7 +90,7 @@ void WorldData::init()
 
       if (!color_input.directly_linked_links().is_empty()) {
         bNode *color_input_node = color_input.directly_linked_links()[0]->fromnode;
-        if (color_input_node->type == SH_NODE_TEX_IMAGE) {
+        if (ELEM(color_input_node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
           NodeTexImage *tex = static_cast<NodeTexImage *>(color_input_node->storage);
           Image *image = (Image *)color_input_node->id;
           if (image) {
@@ -176,13 +176,11 @@ void WorldData::write_transform()
 {
   transform = pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90), pxr::GfVec3d());
 
-  /* TODO : do this check via RenderSettings*/
-  if (scene_delegate_->engine->render_delegate_name == "HdRprPlugin") {
-    transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180),
-                                 pxr::GfVec3d());
-    transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0),
-                                 pxr::GfVec3d());
-  }
+  transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180),
+                                pxr::GfVec3d());
+  transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0),
+                                pxr::GfVec3d());
+
 }
 
 }  // namespace blender::render::hydra

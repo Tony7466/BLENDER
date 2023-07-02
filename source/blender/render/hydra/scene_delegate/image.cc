@@ -40,8 +40,12 @@ static std::string cache_image_file(Image *image,
   ImageSaveOptions opts;
   if (BKE_image_save_options_init(&opts, main, scene, image, iuser, false, false)) {
     char file_name[32];
-    const char *r_ext;
-    BKE_image_path_ext_from_imformat(&scene->r.im_format, &r_ext);
+    const char *r_ext = BLI_path_extension_or_end(image->id.name);
+    if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(image->id.name)) {
+      BKE_image_path_ext_from_imformat(&scene->r.im_format, &r_ext);
+      opts.im_format = scene->r.im_format;
+    }
+    
     snprintf(file_name, sizeof(file_name), "img_%016llx%s", (uintptr_t)image, r_ext);
 
     file_path = get_cache_file(file_name);
