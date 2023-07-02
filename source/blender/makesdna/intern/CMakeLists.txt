@@ -43,7 +43,7 @@ file(GENERATE OUTPUT ${dna_header_string_file} CONTENT "${DNA_FILE_LIST}")
 # -----------------------------------------------------------------------------
 # Build makesdna executable
 set(SRC
-  dna_utils.c
+  dna_utils.cc
   makesdna.cc
   ../../blenlib/intern/BLI_assert.c
   ../../blenlib/intern/BLI_ghash.c
@@ -108,7 +108,7 @@ add_custom_command(
 set(SRC
   dna_defaults.c
   dna_genfile.c
-  dna_utils.c
+  dna_utils.cc
   ${CMAKE_CURRENT_BINARY_DIR}/dna.c
   ${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
   ${SRC_DNA_INC}
