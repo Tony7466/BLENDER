@@ -19,7 +19,10 @@ struct SnapCache_EditMesh;
 struct SnapObjectContext {
   struct Scene *scene;
 
-  blender::Map<const BMEditMesh *, std::unique_ptr<SnapCache_EditMesh>> editmesh_caches;
+  struct SnapCache {
+    virtual ~SnapCache(){};
+  };
+  blender::Map<const BMEditMesh *, std::unique_ptr<SnapCache>> editmesh_caches;
 
   /* Filter data, returns true to check this value */
   struct {
@@ -119,12 +122,15 @@ class SnapData {
   bool snap_point(const blender::float3 &co, int index = -1);
   bool snap_edge(const blender::float3 &va, const blender::float3 &vb, int edge_index = -1);
   eSnapMode snap_edge_points_impl(SnapObjectContext *sctx, int edge_index, float dist_px_sq_orig);
+  static void register_result(SnapObjectContext *sctx,
+                              Object *ob_eval,
+                              const ID *id_eval,
+                              const blender::float4x4 &obmat,
+                              BVHTreeNearest *r_nearest);
   void register_result(SnapObjectContext *sctx, Object *ob_eval, const ID *id_eval);
 
   virtual void get_vert_co(const int /*index*/, const float ** /*r_co*/){};
   virtual void get_edge_verts_index(const int /*index*/, int /*r_v_index*/[2]){};
-  virtual void get_tri_verts_index(const int /*index*/, int /*r_v_index*/[3]){};
-  virtual void get_tri_edges_index(const int /*index*/, int /*r_e_index*/[3]){};
   virtual void copy_vert_no(const int /*index*/, float /*r_no*/[3]){};
 };
 
@@ -152,8 +158,10 @@ void cb_snap_edge(void *userdata,
 bool nearest_world_tree(SnapObjectContext *sctx,
                         BVHTree *tree,
                         BVHTree_NearestPointCallback nearest_cb,
+                        const blender::float3 &init_co,
+                        const blender::float3 &curr_co,
                         void *treedata,
-                        const float (*obmat)[4]);
+                        BVHTreeNearest *r_nearest);
 
 eSnapMode snap_object_center(SnapObjectContext *sctx,
                              Object *ob_eval,
@@ -179,29 +187,6 @@ eSnapMode snapCamera(SnapObjectContext *sctx,
 eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const float obmat[4][4]);
 
 /* transform_snap_object_editmesh.cc */
-
-struct SnapCache_EditMesh {
-  /* Loose Verts, Edges. */
-  BVHTree *bvhtree[2];
-  bool cached[2];
-
-  /* BVH tree from #BMEditMesh.looptris. */
-  BVHTreeFromEditMesh treedata_editmesh;
-
-  blender::bke::MeshRuntime *mesh_runtime;
-  float min[3], max[3];
-
-  void clear();
-
-  ~SnapCache_EditMesh()
-  {
-    this->clear();
-  }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("SnapData_EditMesh")
-#endif
-};
 
 eSnapMode snap_object_editmesh(SnapObjectContext *sctx,
                                Object *ob_eval,
