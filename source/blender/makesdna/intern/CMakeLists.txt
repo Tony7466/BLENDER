@@ -44,7 +44,7 @@ file(GENERATE OUTPUT ${dna_header_string_file} CONTENT "${DNA_FILE_LIST}")
 # Build makesdna executable
 set(SRC
   dna_utils.c
-  makesdna.c
+  makesdna.cc
   ../../blenlib/intern/BLI_assert.c
   ../../blenlib/intern/BLI_ghash.c
   ../../blenlib/intern/BLI_ghash_utils.c
