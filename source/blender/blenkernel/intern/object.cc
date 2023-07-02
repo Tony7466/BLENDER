@@ -489,7 +489,7 @@ static void object_foreach_path_pointcache(ListBase *ptcache_list,
   for (PointCache *cache = (PointCache *)ptcache_list->first; cache != nullptr;
        cache = cache->next) {
     if (cache->flag & PTCACHE_DISK_CACHE) {
-      BKE_bpath_foreach_path_fixed_process(bpath_data, cache->path);
+      BKE_bpath_foreach_path_fixed_process(bpath_data, cache->path, sizeof(cache->path));
     }
   }
 }
@@ -504,14 +504,16 @@ static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
       case eModifierType_Fluidsim: {
         FluidsimModifierData *fluidmd = reinterpret_cast<FluidsimModifierData *>(md);
         if (fluidmd->fss) {
-          BKE_bpath_foreach_path_fixed_process(bpath_data, fluidmd->fss->surfdataPath);
+          BKE_bpath_foreach_path_fixed_process(
+              bpath_data, fluidmd->fss->surfdataPath, sizeof(fluidmd->fss->surfdataPath));
         }
         break;
       }
       case eModifierType_Fluid: {
         FluidModifierData *fmd = reinterpret_cast<FluidModifierData *>(md);
         if (fmd->type & MOD_FLUID_TYPE_DOMAIN && fmd->domain) {
-          BKE_bpath_foreach_path_fixed_process(bpath_data, fmd->domain->cache_directory);
+          BKE_bpath_foreach_path_fixed_process(
+              bpath_data, fmd->domain->cache_directory, sizeof(fmd->domain->cache_directory));
         }
         break;
       }
@@ -522,12 +524,12 @@ static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
       }
       case eModifierType_Ocean: {
         OceanModifierData *omd = reinterpret_cast<OceanModifierData *>(md);
-        BKE_bpath_foreach_path_fixed_process(bpath_data, omd->cachepath);
+        BKE_bpath_foreach_path_fixed_process(bpath_data, omd->cachepath, sizeof(omd->cachepath));
         break;
       }
       case eModifierType_MeshCache: {
         MeshCacheModifierData *mcmd = reinterpret_cast<MeshCacheModifierData *>(md);
-        BKE_bpath_foreach_path_fixed_process(bpath_data, mcmd->filepath);
+        BKE_bpath_foreach_path_fixed_process(bpath_data, mcmd->filepath, sizeof(mcmd->filepath));
         break;
       }
       default:
@@ -1961,8 +1963,7 @@ bool BKE_object_is_in_editmode(const Object *ob)
       /* Grease Pencil object has no edit mode data. */
       return GPENCIL_EDIT_MODE((bGPdata *)ob->data);
     case OB_CURVES:
-      /* Curves object has no edit mode data. */
-      return ob->mode == OB_MODE_EDIT;
+    case OB_POINTCLOUD:
     case OB_GREASE_PENCIL:
       return ob->mode == OB_MODE_EDIT;
     default:
@@ -1992,6 +1993,7 @@ bool BKE_object_data_is_in_editmode(const Object *ob, const ID *id)
     case ID_AR:
       return ((const bArmature *)id)->edbo != nullptr;
     case ID_CV:
+    case ID_PT:
     case ID_GP:
       if (ob) {
         return BKE_object_is_in_editmode(ob);
@@ -2044,14 +2046,10 @@ char *BKE_object_data_editmode_flush_ptr_get(ID *id)
       bArmature *arm = (bArmature *)id;
       return &arm->needs_flush_to_id;
     }
-    case ID_CV: {
-      /* Curves have no edit mode data. */
+    case ID_GP:
+    case ID_PT:
+    case ID_CV:
       return nullptr;
-    }
-    case ID_GP: {
-      /* Grease Pencil has no edit mode data. */
-      return nullptr;
-    }
     default:
       BLI_assert_unreachable();
       return nullptr;

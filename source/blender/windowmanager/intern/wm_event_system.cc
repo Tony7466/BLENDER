@@ -718,7 +718,7 @@ void wm_event_do_notifiers(bContext *C)
 
   wm_event_do_refresh_wm_and_depsgraph(C);
 
-  RE_FreeGPUTextureCaches(true);
+  RE_FreeUnusedGPUResources();
 
   /* Status bar. */
   if (wm->winactive) {
@@ -883,7 +883,7 @@ static void wm_event_handler_ui_cancel(bContext *C)
  * Access to #wmWindowManager.reports
  * \{ */
 
-void WM_report_banner_show(void)
+void WM_report_banner_show()
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   ReportList *wm_reports = &wm->reports;

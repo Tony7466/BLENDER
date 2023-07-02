@@ -29,12 +29,12 @@
 
 static SpinLock refcounter_spin;
 
-void imb_refcounter_lock_init(void)
+void imb_refcounter_lock_init()
 {
   BLI_spin_init(&refcounter_spin);
 }
 
-void imb_refcounter_lock_exit(void)
+void imb_refcounter_lock_exit()
 {
   BLI_spin_end(&refcounter_spin);
 }
@@ -42,22 +42,22 @@ void imb_refcounter_lock_exit(void)
 #ifndef WIN32
 static SpinLock mmap_spin;
 
-void imb_mmap_lock_init(void)
+void imb_mmap_lock_init()
 {
   BLI_spin_init(&mmap_spin);
 }
 
-void imb_mmap_lock_exit(void)
+void imb_mmap_lock_exit()
 {
   BLI_spin_end(&mmap_spin);
 }
 
-void imb_mmap_lock(void)
+void imb_mmap_lock()
 {
   BLI_spin_lock(&mmap_spin);
 }
 
-void imb_mmap_unlock(void)
+void imb_mmap_unlock()
 {
   BLI_spin_unlock(&mmap_spin);
 }
@@ -789,6 +789,9 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
 
     memcpy(ibuf2->encoded_buffer.data, ibuf1->encoded_buffer.data, ibuf1->encoded_size);
   }
+
+  ibuf2->byte_buffer.colorspace = ibuf1->byte_buffer.colorspace;
+  ibuf2->float_buffer.colorspace = ibuf1->float_buffer.colorspace;
 
   /* silly trick to copy the entire contents of ibuf1 struct over to ibuf */
   tbuf = *ibuf1;

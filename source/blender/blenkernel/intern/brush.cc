@@ -208,7 +208,8 @@ static void brush_foreach_path(ID *id, BPathForeachPathData *bpath_data)
 {
   Brush *brush = (Brush *)id;
   if (brush->icon_filepath[0] != '\0') {
-    BKE_bpath_foreach_path_fixed_process(bpath_data, brush->icon_filepath);
+    BKE_bpath_foreach_path_fixed_process(
+        bpath_data, brush->icon_filepath, sizeof(brush->icon_filepath));
   }
 }
 
@@ -463,13 +464,13 @@ IDTypeInfo IDType_ID_BR = {
 
 static RNG *brush_rng;
 
-void BKE_brush_system_init(void)
+void BKE_brush_system_init()
 {
   brush_rng = BLI_rng_new(0);
   BLI_rng_srandom(brush_rng, 31415682);
 }
 
-void BKE_brush_system_exit(void)
+void BKE_brush_system_exit()
 {
   if (brush_rng == nullptr) {
     return;
