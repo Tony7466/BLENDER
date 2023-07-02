@@ -12,3 +12,4 @@ Referenced by issue #108108, Regression: Crash when try to add remesh modifier
 Referenced by commit 34791dc37b522eee56eeb2e6e0e99dce7934ba79, Fix #108108: Remesh modifier crash with empty result
 Referenced by issue #108219, STL import crashes Blender
 Referenced by issue #108226, glTF 2.0 Import crashes
+Referenced by commit 087fd3bdc51519094d82387034a83e92eb8934c0, Fix compilation error with USE_WELD_DEBUG
