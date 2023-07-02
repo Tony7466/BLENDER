@@ -464,6 +464,25 @@ set(SRC
 
 set(LIB
   bf_dna
+  bf_editor_space_api
+
+  bf_editor_animation
+  bf_editor_armature
+  bf_editor_asset
+  bf_editor_curve
+  bf_editor_curves
+  bf_editor_gizmo_library
+  bf_editor_gpencil_legacy
+  bf_editor_io
+  bf_editor_mesh
+  bf_editor_object
+  bf_editor_physics
+  bf_editor_render
+  bf_editor_scene
+  bf_editor_sculpt_paint
+  bf_editor_sound
+  bf_editor_transform
+  bf_editor_undo
 )
 
 blender_add_lib(bf_rna "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
