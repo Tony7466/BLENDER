@@ -306,6 +306,11 @@ static int add_type(const char *str, int size)
      * `struct SomeStruct* some_var;` <-- correct but we can't handle right now. */
     return -1;
   }
+  if (STREQ(str, "long") || STREQ(str, "ulong")) {
+    /* These types are not supported in DNA because they can be either 32 or 64 bit.
+     * Use int32_t or int64_t instead. */
+    return -1;
+  }
 
   str = version_struct_static_from_alias(str);
 
