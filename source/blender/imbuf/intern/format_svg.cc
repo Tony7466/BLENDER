@@ -26,10 +26,6 @@ bool imb_is_a_svg(const uchar *mem, size_t size)
 
 ImBuf *imb_load_svg(const uchar *mem, size_t size, int /* flags */, char colorspace[IM_MAX_SPACE])
 {
-  if (!imb_is_a_svg(mem, size)) {
-    return nullptr;
-  }
-
   NSVGimage *image = nullptr;
   char *data = (char *)malloc(size + 1);
 
