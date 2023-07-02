@@ -1549,7 +1549,7 @@ int main(int argc, char **argv)
         base_directory = BASE_HEADER;
       }
 
-      /* NOTE: #init_structDNA() in dna_genfile.c expects `sdna->data` is 4-bytes aligned.
+      /* NOTE: #init_structDNA() in dna_genfile.cc expects `sdna->data` is 4-bytes aligned.
        * `DNAstr[]` buffer written by `makesdna` is used for this data, so make `DNAstr` forcefully
        * 4-bytes aligned. */
 #ifdef __GNUC__
