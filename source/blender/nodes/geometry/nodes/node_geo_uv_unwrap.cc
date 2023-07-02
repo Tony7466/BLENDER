@@ -17,6 +17,8 @@
 
 namespace blender::nodes::node_geo_uv_unwrap_cc {
 
+using dna::NodeGeometryUVUnwrap;
+
 NODE_STORAGE_FUNCS(NodeGeometryUVUnwrap)
 
 static void node_declare(NodeDeclarationBuilder &b)

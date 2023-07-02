@@ -4675,6 +4675,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#ifdef __cplusplus\n");
   fprintf(f, "#  define RNA_EXTERN_C extern \"C\"\n");
   fprintf(f, "#  define RNA_EXTERN_C_OR_EXTERN extern \"C\"\n");
+  fprintf(f, "using namespace blender::dna;\n");
   fprintf(f, "#else\n");
   fprintf(f, "#  define RNA_EXTERN_C\n");
   fprintf(f, "#  define RNA_EXTERN_C_OR_EXTERN extern\n");

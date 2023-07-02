@@ -945,6 +945,8 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
   fprintf(file_verify, "#undef assert_line_\n");
   fprintf(file_verify, "\n");
 
+  fprintf(file_verify, "using namespace blender::dna;\n\n");
+
   /* Multiple iterations to handle nested structs. */
   int unknown = structs_len;
   while (unknown) {
@@ -986,7 +988,7 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
             const char *name_alias = static_cast<const char *>(
                 BLI_ghash_lookup(g_version_data.elem_map_alias_from_static, str_pair));
             fprintf(file_verify,
-                    "BLI_STATIC_ASSERT(offsetof(struct %s, %s) == %d, \"DNA member offset "
+                    "static_assert(offsetof(%s, %s) == %d, \"DNA member offset "
                     "verify\");\n",
                     structname,
                     name_alias ? name_alias : name_static,
@@ -1154,7 +1156,7 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
 
           /* Write size verification to file. */
           fprintf(file_verify,
-                  "BLI_STATIC_ASSERT(sizeof(struct %s) == %d, \"DNA struct size verify\");\n\n",
+                  "BLI_STATIC_ASSERT(sizeof(%s) == %d, \"DNA struct size verify\");\n\n",
                   structname,
                   size_native);
         }
