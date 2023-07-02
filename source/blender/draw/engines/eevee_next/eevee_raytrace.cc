@@ -68,6 +68,7 @@ void RaytracingModule::sync()
     sub.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
     sub.bind_image("out_ray_data_img", &ray_data_tx_);
     sub.push_constant("active_closure_type", int(CLOSURE_REFLECTION));
+    inst_.reflection_probes.bind_resources(&sub);
     sub.dispatch(dispatch_reflect_buf_);
     sub.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_TEXTURE_FETCH);
   }
@@ -76,6 +77,7 @@ void RaytracingModule::sync()
     sub.shader_set(inst_.shaders.static_shader_get(RAY_TRACE_SCREEN));
     sub.bind_ssbo("tiles_coord_buf", &tiles_reflect_buf_);
     sub.bind_image("ray_data_img", &ray_data_tx_);
+    sub.bind_image("ray_radiance_img", &ray_radiance_tx_);
     sub.dispatch(dispatch_reflect_buf_);
     sub.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
@@ -83,7 +85,7 @@ void RaytracingModule::sync()
 
 void RaytracingModule::debug_pass_sync() {}
 
-void RaytracingModule::debug_draw(View &view, GPUFrameBuffer *view_fb) {}
+void RaytracingModule::debug_draw(View & /* view */, GPUFrameBuffer * /* view_fb */) {}
 
 void RaytracingModule::trace(int2 extent, eClosureBits closure_bits, View &view)
 {
@@ -97,14 +99,15 @@ void RaytracingModule::trace(int2 extent, eClosureBits closure_bits, View &view)
   tiles_reflect_buf_.resize(ceil_to_multiple_u(tile_count, 512));
 
   int2 tracing_res = extent;
-  ray_data_tx_.ensure_2d(GPU_RGBA16F, tracing_res);
-  // ray_data_tx_.acquire(tracing_res, GPU_RGBA16F);
+  ray_data_tx_.acquire(tracing_res, GPU_RGBA16F);
+  ray_radiance_tx_.acquire(tracing_res, GPU_RGBA16F);
 
   GPU_storagebuf_clear_to_zero(dispatch_reflect_buf_);
 
   inst_.manager->submit(raytrace_ps_, view);
 
-  // ray_data_tx_.release();
+  ray_data_tx_.release();
+  ray_radiance_tx_.release();
   tile_mask_tx_.release();
 }
 

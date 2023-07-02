@@ -153,7 +153,7 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
     case RAY_GENERATE:
       return "eevee_ray_generate";
     case RAY_TRACE_SCREEN:
-      return "eevee_ray_screen_trace";
+      return "eevee_ray_trace_screen";
     case RAY_TILE_CLASSIFY:
       return "eevee_ray_tile_classify";
     case RAY_TILE_COMPACTION:

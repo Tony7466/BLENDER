@@ -8,10 +8,7 @@
  * Many modifications were made for our own usage.
  */
 
-#pragma BLENDER_REQUIRE(common_debug_print_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_raytrace_common_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 
 /* Inputs expected to be in viewspace. */
 void raytrace_clip_ray_to_near_plane(inout Ray ray)
@@ -20,63 +17,6 @@ void raytrace_clip_ray_to_near_plane(inout Ray ray)
   if ((ray.origin.z + ray.direction.z) > near_dist) {
     ray.direction *= abs((near_dist - ray.origin.z) / ray.direction.z);
   }
-}
-
-void raytrace_screenspace_ray_finalize(inout ScreenSpaceRay ray)
-{
-  /* Constant bias (due to depth buffer precision). Helps with self intersection. */
-  /* Magic numbers for 24bits of precision.
-   * From http://terathon.com/gdc07_lengyel.pdf (slide 26) */
-  const float bias = -2.4e-7 * 2.0;
-  ray.origin.zw += bias;
-  ray.direction.zw += bias;
-
-  ray.direction -= ray.origin;
-  /* If the line is degenerate, make it cover at least one pixel
-   * to not have to handle zero-pixel extent as a special case later. */
-  if (len_squared(ray.direction.xy) < 0.00001) {
-    ray.direction.xy = vec2(0.0, 0.00001);
-  }
-  float ray_len_sqr = len_squared(ray.direction.xyz);
-  /* Make ray.direction cover one pixel. */
-  bool is_more_vertical = abs(ray.direction.x) < abs(ray.direction.y);
-  ray.direction /= (is_more_vertical) ? abs(ray.direction.y) : abs(ray.direction.x);
-  ray.direction *= 2.0 * ((is_more_vertical) ? drw_view.viewport_size_inverse.y :
-                                               drw_view.viewport_size_inverse.x);
-  /* Clip to segment's end. */
-  ray.max_time = sqrt(ray_len_sqr * safe_rcp(len_squared(ray.direction.xyz)));
-  /* Clipping to frustum sides. */
-  float clip_dist = line_unit_box_intersect_dist_safe(ray.origin.xyz, ray.direction.xyz);
-  ray.max_time = min(ray.max_time, clip_dist);
-  /* Convert to texture coords [0..1] range. */
-  ray.origin = ray.origin * 0.5 + 0.5;
-  ray.direction *= 0.5;
-}
-
-ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray)
-{
-  ScreenSpaceRay ssray;
-  ssray.origin.xyz = project_point(ViewProjectionMatrix, ray.origin);
-  ssray.direction.xyz = project_point(ViewProjectionMatrix, ray.origin + ray.direction);
-
-  raytrace_screenspace_ray_finalize(ssray);
-  return ssray;
-}
-
-ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray, float thickness)
-{
-  ScreenSpaceRay ssray;
-  ssray.origin.xyz = project_point(ViewProjectionMatrix, ray.origin);
-  ssray.direction.xyz = project_point(ViewProjectionMatrix, ray.origin + ray.direction);
-  /* Interpolate thickness in screen space.
-   * Calculate thickness further away to avoid near plane clipping issues. */
-  ssray.origin.w = get_depth_from_view_z(ray.origin.z - thickness);
-  ssray.direction.w = get_depth_from_view_z(ray.origin.z + ray.direction.z - thickness);
-  ssray.origin.w = ssray.origin.w * 2.0 - 1.0;
-  ssray.direction.w = ssray.direction.w * 2.0 - 1.0;
-
-  raytrace_screenspace_ray_finalize(ssray);
-  return ssray;
 }
 
 /**
@@ -93,6 +33,9 @@ ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray, float thickness)
  *
  * \return True if there is a valid intersection.
  */
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+__attribute__((noinline))
+#endif
 bool raytrace_screen(RaytraceData rt_data,
                      HiZData hiz_data,
                      sampler2D hiz_tx,
@@ -107,7 +50,8 @@ bool raytrace_screen(RaytraceData rt_data,
     raytrace_clip_ray_to_near_plane(ray);
   }
 
-  ScreenSpaceRay ssray = raytrace_screenspace_ray_create(ray, rt_data.thickness);
+  ScreenSpaceRay ssray = raytrace_screenspace_ray_create(
+      ray, rt_data.pixel_size, rt_data.thickness);
 
   /* Avoid no iteration. */
   if (!allow_self_intersection && ssray.max_time < 1.1) {
@@ -129,9 +73,12 @@ bool raytrace_screen(RaytraceData rt_data,
   /* Cross at least one pixel. */
   float t = 1.001, time = 1.001;
   bool hit = false;
-  const float max_steps = 255.0;
-  for (float iter = 1.0; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
-    float stride = 1.0 + iter * rt_data.quality;
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+  bool hit_failsafe = true;
+#endif
+  const int max_steps = 255;
+  for (int iter = 1.0; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
+    float stride = 1.0 + float(iter) * rt_data.quality;
     float lod = log2(stride) * lod_fac;
 
     prev_time = time;

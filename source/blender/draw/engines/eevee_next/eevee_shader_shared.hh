@@ -1104,6 +1104,7 @@ using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RaytraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
+using RaytraceDataBuf = draw::UniformBuffer<RaytraceData>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;

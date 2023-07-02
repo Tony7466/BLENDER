@@ -29,8 +29,10 @@ class RaytracingModule {
   draw::PassSimple raytrace_ps_ = {"Raytrace"};
 
   TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
-  /** Texture containing the ray state. */
-  Texture ray_data_tx_ = {"ray_data_tx"};
+  /** Texture containing the ray direction and pdf. */
+  TextureFromPool ray_data_tx_ = {"ray_data_tx"};
+  /** Texture containing the ray hit radiance. */
+  TextureFromPool ray_radiance_tx_ = {"ray_radiance_tx"};
 
   /**
    * Each ray type has a indirect dispatch and a tile buffer that contains references to tiles.
