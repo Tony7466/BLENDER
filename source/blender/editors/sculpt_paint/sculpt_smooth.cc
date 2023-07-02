@@ -10,6 +10,7 @@
 
 #include "BLI_math.h"
 #include "BLI_task.h"
+#include "BLI_timeit.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_meshdata_types.h"
@@ -17,7 +18,6 @@
 #include "BKE_context.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
-#include "BKE_pbvh_iter.hh"
 
 #include "sculpt_intern.hh"
 
@@ -327,6 +327,9 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
+#if 0
+#include "sculpt_brush_iter.hh"
+
 void SCULPT_smooth_new(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
 {
@@ -418,13 +421,14 @@ void SCULPT_smooth_new(
         [&](PBVHNode *node, NodeData *node_data) {});
   }
 }
+#endif
 
 void SCULPT_smooth(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
 {
   printf("\n");
 
-  SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
+  //SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
   
   SCOPED_TIMER(__func__);
 

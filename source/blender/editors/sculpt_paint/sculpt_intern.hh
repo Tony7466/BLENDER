@@ -17,7 +17,6 @@
 
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
-#include "BKE_pbvh_iter.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_attrs.h"
@@ -1402,9 +1401,7 @@ void SCULPT_automasking_node_update(SculptSession *ss,
                                     AutomaskingNodeData *automask_data,
                                     PBVHVertexIter *vd);
 
-template<typename NodeData,
-         typename VertexIteratorType =
-             typename blender::bke::pbvh::VertexRange<NodeData, PBVH_FACES>::iterator>
+template<typename NodeData, typename VertexIteratorType>
 void SCULPT_automasking_node_update(SculptSession *ss,
                                     AutomaskingNodeData *automask_data,
                                     VertexIteratorType &vd)

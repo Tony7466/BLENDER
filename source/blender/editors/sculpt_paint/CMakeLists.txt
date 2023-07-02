@@ -92,6 +92,7 @@ set(SRC
   grease_pencil_intern.hh
   paint_intern.hh
   sculpt_intern.hh
+  sculpt_brush_iter.hh
 )
 
 set(LIB

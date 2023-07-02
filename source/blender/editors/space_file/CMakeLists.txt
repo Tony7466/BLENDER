@@ -89,4 +89,4 @@ endif()
 blender_add_lib(bf_editor_space_file "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 # RNA_prototypes.h dna_type_offsets.h
-add_dependencies(bf_editor_space_file bf_rna)
+#add_dependencies(bf_editor_space_file bf_rna)

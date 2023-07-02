@@ -51,7 +51,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
-#include "BKE_pbvh_iter.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
