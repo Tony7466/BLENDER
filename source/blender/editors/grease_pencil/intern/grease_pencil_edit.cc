@@ -14,6 +14,9 @@
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 
+#include "RNA_access.h"
+#include "RNA_define.h"
+
 #include "DEG_depsgraph.h"
 
 #include "ED_curves.h"
@@ -202,18 +205,17 @@ Span<float> gaussian_blur_1D_float(const bool is_cyclic,
       is_cyclic, curve_points, iterations, influence, smooth_ends, keep_shape, dst, src, mask);
 }
 
-static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
+static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  /* TODO : these variables should be operator's properties */
-  const int iterations = 1;
-  const float influence = 0.8;
-  const bool keep_shape = false;
-  const bool smooth_ends = false;
+  const int iterations = RNA_int_get(op->ptr, "iterations");
+  const float influence = RNA_float_get(op->ptr, "factor");
+  const bool keep_shape = RNA_boolean_get(op->ptr, "keep_shape");
+  const bool smooth_ends = RNA_boolean_get(op->ptr, "smooth_ends");
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
@@ -268,6 +270,8 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
 
 static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   /* identifiers */
   ot->name = "Smooth Stroke";
   ot->idname = "GREASE_PENCIL_OT_stroke_smooth";
@@ -279,7 +283,12 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* TODO : add operator properties */
+  /* Smooth parameters */
+  prop = RNA_def_int(ot->srna, "iterations", 1, 1, 100, "Iterations", "", 1, 10);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 2.0f, "Factor", "", 0.0f, 2.0f);
+  RNA_def_boolean(ot->srna, "smooth_ends", true, "Smooth Endpoints", "");
+  RNA_def_boolean(ot->srna, "keep_shape", true, "Keep Shape", "");
 }
 
 }  // namespace blender::ed::greasepencil
