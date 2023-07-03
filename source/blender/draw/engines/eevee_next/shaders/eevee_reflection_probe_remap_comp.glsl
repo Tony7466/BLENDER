@@ -12,7 +12,7 @@ void main()
     return;
   }
   vec2 octahedral_uv = vec2(octahedral_coord) / vec2(octahedral_size);
-  vec3 R = octahedral_to_direction(octahedral_uv);
+  vec3 R = octahedral_uv_to_direction(octahedral_uv);
 
   vec4 col = textureLod(cubemap_tx, R, 0.0);
   imageStore(octahedral_img, octahedral_coord, col);

@@ -3,25 +3,22 @@
  */
 vec2 octahedral_uv_from_direction(vec3 co)
 {
-  /* projection onto octahedron */
+  /* Projection onto octahedron. */
   co /= dot(vec3(1.0), abs(co));
 
-  /* out-folding of the downward faces */
+  /* Out-folding of the downward faces. */
   if (co.z < 0.0) {
     vec2 sign = step(0.0, co.xy) * 2.0 - 1.0;
     co.xy = (1.0 - abs(co.yx)) * sign;
   }
 
-  /* mapping to [0;1]^2 texture space */
+  /* Mapping to [0;1]^2 texture space. */
   vec2 uvs = co.xy * (0.5) + 0.5;
-
-  /* edge filtering fix */
-  // uvs = (1.0 - 2.0 * texel_size) * uvs + texel_size;
 
   return uvs;
 }
 
-vec3 octahedral_to_direction(vec2 co)
+vec3 octahedral_uv_to_direction(vec2 co)
 {
   co = co * 2.0 - 1.0;
 

@@ -125,9 +125,6 @@
 #define GBUF_CLOSURE_SLOT 3
 #define GBUF_COLOR_SLOT 4
 
-/* Reflection Probe slot when updating the octahedral texture.*/
-#define REFLECTION_PROBE_OCTAHEDRAL_SLOT 0
-
 /* Uniform Buffers. */
 /* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */
 #define CAMERA_BUF_SLOT 1
