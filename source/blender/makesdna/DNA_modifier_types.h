@@ -2327,6 +2327,8 @@ typedef struct NodesModifierIDMapping {
   char *id_name;
   char *lib_name;
   struct ID *id;
+  int id_type;
+  char _pad[4];
 } NodesModifierIDMapping;
 
 typedef struct NodesModifierData {

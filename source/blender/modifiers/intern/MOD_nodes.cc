@@ -1303,10 +1303,27 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
 
-  uiLayout *col = uiLayoutColumn(layout, false);
-  uiLayoutSetPropSep(col, true);
-  uiLayoutSetPropDecorate(col, false);
-  uiItemR(col, ptr, "simulation_bake_directory", 0, "Bake", ICON_NONE);
+  {
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiLayoutSetPropSep(col, true);
+    uiLayoutSetPropDecorate(col, false);
+    uiItemR(col, ptr, "simulation_bake_directory", 0, "Bake", ICON_NONE);
+  }
+  {
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiItemL(col, "ID Mapping", ICON_NONE);
+    for (const int i : IndexRange(nmd->id_mappings_num)) {
+      NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+
+      PointerRNA mapping_rna;
+      RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMapping, &mapping, &mapping_rna);
+
+      uiLayout *mapping_layout = uiLayoutColumn(col, true);
+      uiItemR(mapping_layout, &mapping_rna, "id_name", 0, "ID Name", ICON_NONE);
+      uiItemR(mapping_layout, &mapping_rna, "lib_name", 0, "Lib Name", ICON_NONE);
+      uiTemplateAnyID(mapping_layout, &mapping_rna, "id", "id_type", "ID");
+    }
+  }
 
   geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
   if (tree_log == nullptr) {
