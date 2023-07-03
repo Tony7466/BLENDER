@@ -707,14 +707,14 @@ void draw_action_channel(AnimKeylistDrawList *draw_list,
 
 void draw_cels_channel(AnimKeylistDrawList *draw_list,
                        bDopeSheet */*ads*/,
-                       GreasePencilLayer *gpl,
+                       GreasePencilLayer *layer,
                        float ypos,
                        float yscale_fac,
                        int saction_flag)
 {
   AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
       draw_list, ANIM_KEYLIST_CELS, ypos, yscale_fac, eSAction_Flag(saction_flag));
-  draw_elem->grease_pencil_layer = gpl;
+  draw_elem->grease_pencil_layer = layer;
 }
 
 void draw_gpl_channel(AnimKeylistDrawList *draw_list,

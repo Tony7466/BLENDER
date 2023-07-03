@@ -968,9 +968,9 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_GPLAYER: {
-        bGPDlayer *gpl = (bGPDlayer *)data;
+        bGPDlayer *layer = (bGPDlayer *)data;
 
-        ale->flag = gpl->flag;
+        ale->flag = layer->flag;
 
         ale->key_data = nullptr;
         ale->datatype = ALE_GPFRAME;

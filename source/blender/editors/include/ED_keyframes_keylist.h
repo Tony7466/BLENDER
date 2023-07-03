@@ -182,7 +182,7 @@ void gpencil_to_keylist(struct bDopeSheet *ads,
 
 /* Cels */
 void cels_to_keylist(struct AnimData *adt,
-                     struct GreasePencilLayer *gpl,
+                     struct GreasePencilLayer *layer,
                      struct AnimKeylist *keylist,
                      int saction_flag);
 

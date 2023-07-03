@@ -96,7 +96,7 @@ void draw_summary_channel(struct AnimKeylistDrawList *draw_list,
 /* Cel-framed channels */
 void draw_cels_channel(struct AnimKeylistDrawList *draw_list,
                        struct bDopeSheet *ads,
-                       struct GreasePencilLayer *gpl,
+                       struct GreasePencilLayer *layer,
                        float ypos,
                        float yscale_fac,
                        int saction_flag);

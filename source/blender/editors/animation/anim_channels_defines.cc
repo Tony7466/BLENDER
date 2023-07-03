@@ -3456,10 +3456,10 @@ static void *acf_gpd_setting_ptr_legacy(bAnimListElem *ale,
                                         eAnimChannel_Settings /*setting*/,
                                         short *r_type)
 {
-  bGPdata *gpd = (bGPdata *)ale->data;
+  bGPdata *grease_pencil = (bGPdata *)ale->data;
 
   /* all flags are just in gpd->flag for now... */
-  return GET_ACF_FLAG_PTR(gpd->flag, r_type);
+  return GET_ACF_FLAG_PTR(grease_pencil->flag, r_type);
 }
 
 /** Grease-pencil data-block type define. (Legacy) */
@@ -3636,10 +3636,10 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 /* name for grease pencil layer entries */
 static void acf_gpl_name(bAnimListElem *ale, char *name)
 {
-  GreasePencilLayer *gpl = (GreasePencilLayer *)ale->data;
+  GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
 
-  if (gpl && name) {
-    BLI_strncpy(name, gpl->base.name, ANIM_CHAN_NAME_SIZE);
+  if (layer && name) {
+    BLI_strncpy(name, layer->base.name, ANIM_CHAN_NAME_SIZE);
   }
 }
 
@@ -3661,10 +3661,10 @@ static void *acf_gpl_setting_ptr(bAnimListElem *ale,
                                  eAnimChannel_Settings /*setting*/,
                                  short *r_type)
 {
-  GreasePencilLayer *gpl = (GreasePencilLayer *)ale->data;
+  GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
 
   /* all flags are just in gpl->flag for now... */
-  return GET_ACF_FLAG_PTR(gpl->base.flag, r_type);
+  return GET_ACF_FLAG_PTR(layer->base.flag, r_type);
 }
 
 /** Grease-pencil layer type define. */
