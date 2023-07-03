@@ -17,6 +17,8 @@
 #include "BLI_utildefines.h"
 #include "MEM_guardedalloc.h"
 
+/***/
+
 typedef struct DynStrElem DynStrElem;
 struct DynStrElem {
   DynStrElem *next;
@@ -98,71 +100,28 @@ void BLI_dynstr_nappend(DynStr *__restrict ds, const char *cstr, int len)
 
 void BLI_dynstr_vappendf(DynStr *__restrict ds, const char *__restrict format, va_list args)
 {
-  va_list args_cpy;
-  char fixedmessage[4];
-  char *message = fixedmessage;
-  int size = sizeof(fixedmessage);
-  int retval;
-
-  /* can't reuse the same args, so work on a copy */
-  va_copy(args_cpy, args);
-  retval = vsnprintf(message, size, format, args_cpy);
-  va_end(args_cpy);
-
-  if (UNLIKELY(retval < 0)) {
-    /* Encoding error, nothing can be done. */
-    return;
-  }
-
-  if (retval >= size) {
-    /* `retval` doesn't include null terminator. */
-    size = retval + 1;
-    message = MEM_mallocN(sizeof(char) * size, __func__);
-    va_copy(args_cpy, args);
-    retval = vsnprintf(message, size, format, args_cpy);
-    va_end(args_cpy);
-    BLI_assert(retval + 1 == size);
-  }
-
-  BLI_dynstr_append(ds, message);
-
-  if (message != fixedmessage) {
-    MEM_freeN(message);
+  char *str, static_str[256];
+  size_t str_len;
+  str = BLI_vsprintfN_with_buffer(static_str, sizeof(static_str), &str_len, format, args);
+  BLI_dynstr_append(ds, str);
+  if (str != static_str) {
+    MEM_freeN(str);
   }
 }
 
 void BLI_dynstr_appendf(DynStr *__restrict ds, const char *__restrict format, ...)
 {
   va_list args;
-  char fixedmessage[4];
-  char *message = fixedmessage;
-  int size = sizeof(fixedmessage);
-  int retval;
-
+  char *str, static_str[256];
+  size_t str_len;
   va_start(args, format);
-  retval = vsnprintf(message, size, format, args);
+  str = BLI_vsprintfN_with_buffer(static_str, sizeof(static_str), &str_len, format, args);
   va_end(args);
-
-  if (UNLIKELY(retval < 0)) {
-    /* Encoding error, nothing can be done. */
-    return;
-  }
-
-  if (retval >= size) {
-    /* `retval` doesn't include null terminator. */
-    size = retval + 1;
-    message = MEM_mallocN(sizeof(char) * size, __func__);
-    va_start(args, format);
-    retval = vsnprintf(message, size, format, args);
-    va_end(args);
-
-    BLI_assert(retval + 1 == size);
-  }
-
-  BLI_dynstr_append(ds, message);
-
-  if (message != fixedmessage) {
-    MEM_freeN(message);
+  if (LIKELY(str)) {
+    BLI_dynstr_append(ds, str);
+    if (str != static_str) {
+      MEM_freeN(str);
+    }
   }
 }
 
