@@ -4620,9 +4620,8 @@ void ANIM_channel_draw(
     {
       /* solo... */
       if ((ac->spacetype == SPACE_NLA) && acf->has_setting(ac, ale, ACHANNEL_SETTING_SOLO)) {
-        offset += ICON_WIDTH;
         /* A touch of padding because the star icon is so wide. */
-        offset += (short)(0.2f * ICON_WIDTH);
+        offset += (short)(1.2f * ICON_WIDTH);
       }
 
       /* protect... */
