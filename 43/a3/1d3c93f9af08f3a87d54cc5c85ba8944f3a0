@@ -1,1 +1,2 @@
 Referenced by issue #109513, Regression: library override does not work with modifiers
+Referenced by commit fb8c9a2a42fde070305462c682d0cc86d8225050, Fix toggling of liboverrides between editable and non-edtiable with "Make" tool in the Outliner.
