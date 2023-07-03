@@ -9,6 +9,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
+#include "BKE_idprop.hh"
 #include "BKE_instances.hh"
 #include "BKE_scene.h"
 
@@ -22,6 +23,7 @@
 #include "FN_field_cpp_type.hh"
 
 #include "DNA_curves_types.h"
+#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 
@@ -156,6 +158,22 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
   main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       mesh->attributes_for_write().remove_anonymous();
+      IDProperty *array_prop = IDP_NewIDPArray(".materials");
+      for (const int i : IndexRange(mesh->totcol)) {
+        const Material *material = mesh->mat[i];
+        IDPropertyTemplate idprop = {0};
+        IDProperty *mat_prop = IDP_New(IDP_GROUP, &idprop, std::to_string(i).c_str());
+        if (material != nullptr) {
+          IDP_AddToGroup(mat_prop, IDP_NewString(material->id.name + 2, "id_name"));
+          if (material->id.lib != nullptr) {
+            IDP_AddToGroup(mat_prop, IDP_NewString(material->id.lib->id.name + 2, "lib_name"));
+          }
+        }
+        IDP_AppendArray(array_prop, mat_prop);
+      }
+      IDProperty *mesh_props = IDP_GetProperties(&mesh->id, true);
+      const bool success = IDP_AddToGroup(mesh_props, array_prop);
+      BLI_assert(success);
       remove_materials(&mesh->mat, &mesh->totcol);
     }
     if (Curves *curves = geometry.get_curves_for_write()) {
@@ -208,6 +226,22 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                 dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(&state_item))
         {
           GeometrySet *geometry = new (r_output_value) GeometrySet(geo_state_item->geometry);
+          geometry->modify_geometry_sets([&](GeometrySet &geometry) {
+            if (Mesh *mesh = geometry.get_mesh_for_write()) {
+              if (IDProperty *mesh_props = mesh->id.properties) {
+                IDProperty *array_prop = IDP_GetPropertyFromGroup(mesh_props, ".materials");
+                for (const int i : IndexRange(array_prop->len)) {
+                  IDProperty *mat_prop = IDP_GetIndexArray(array_prop, i);
+                  if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(mat_prop, "id_name")) {
+                    std::cout << "ID Name: " << IDP_String(id_name_prop) << "\n";
+                  }
+                  if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(mat_prop, "lib_name")) {
+                    std::cout << "Lib Name: " << IDP_String(lib_name_prop) << "\n";
+                  }
+                }
+              }
+            }
+          });
           geometries.append(geometry);
         }
         else {
