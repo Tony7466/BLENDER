@@ -93,60 +93,65 @@ static Curves *curves_from_all_points(const Span<const GeometryComponent *> comp
   }
 
   VectorSet<int> curve_by_id(all_group_ids.as_span()); /* Have to be sotred to stable. */
+  const int total_curves = curve_by_id.size();
 
-  Curves *curves_id = bke::curves_new_nomain(domain_size, curve_by_id.size());
+  Curves *curves_id = bke::curves_new_nomain(domain_size, total_curves);
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
   curves.fill_curve_types(CURVE_TYPE_POLY);
   curves.cyclic_for_write().fill(false);
-  MutableSpan<int> curves_offsets = curves.offsets_for_write();
-  curves_offsets.fill(0);
+  MutableSpan<int> accumulated_curves = curves.offsets_for_write();
 
-  Array<int> indices_in_curve(domain_size);
+  accumulated_curves.fill(0);
+  /* Indices from global src to dst in each curve. Not to global dst yet. */
+  Array<int> src_to_dst_indices(domain_size);
   for (const int index : IndexRange(domain_size)) {
     const int curve_id = all_group_ids[index];
     const int curve_index = curve_by_id.index_of(curve_id);
-    indices_in_curve[index] = curves_offsets[curve_index];
-    curves_offsets[curve_index]++;
+    src_to_dst_indices[index] = accumulated_curves[curve_index];
+    accumulated_curves[curve_index]++;
   }
-  offset_indices::accumulate_counts_to_offsets(curves_offsets);
-  const OffsetIndices<int> offsets(curves_offsets);
+  offset_indices::accumulate_counts_to_offsets(accumulated_curves);
+  const OffsetIndices<int> curves_offsets(accumulated_curves);
 
-  Array<int> curves_points_mapping(domain_size);
+  /* Global to global. */
+  Array<int> dst_to_src_indices(domain_size);
   for (const int index : IndexRange(domain_size)) {
     const int curve_id = all_group_ids[index];
     const int curve_index = curve_by_id.index_of(curve_id);
-    const IndexRange curve_points = offsets[curve_index];
-    const int index_in_curve = indices_in_curve[index];
+    const IndexRange curve_points = curves_offsets[curve_index];
+    const int index_in_curve = src_to_dst_indices[index];
+    /* Now dst index can be global. But not required to be rewrited. */
     const int dst_index = curve_points[index_in_curve];
-    curves_points_mapping[dst_index] = index;
+    dst_to_src_indices[dst_index] = index;
   }
 
-  for (const int index : IndexRange(domain_size)) {
-    const int curve_id = all_group_ids[index];
-    const int curve_index = curve_by_id.index_of(curve_id);
-    const IndexRange curve_points = offsets[curve_index];
-    MutableSpan<int> curve_mapping = curves_points_mapping.as_mutable_span().slice(curve_points);
-    parallel_sort(
-        curve_mapping.begin(), curve_mapping.end(), [&](const int index_a, const int index_b) {
-          const float length_a = all_lengths[index_a];
-          const float length_b = all_lengths[index_b];
-          if (UNLIKELY(length_a == length_b)) {
-            /* Approach to make it stable. */
-            return index_a > index_b;
-          }
-          return length_a > length_b;
-        });
+  for (const int curve_index : IndexRange(total_curves)) {
+    const IndexRange curve_points = curves_offsets[curve_index];
+    MutableSpan<int> src_indices_of_curve = dst_to_src_indices.as_mutable_span().slice(
+        curve_points);
+    parallel_sort(src_indices_of_curve.begin(),
+                  src_indices_of_curve.end(),
+                  [&](const int index_a, const int index_b) {
+                    const float length_a = all_lengths[index_a];
+                    const float length_b = all_lengths[index_b];
+                    if (UNLIKELY(length_a == length_b)) {
+                      /* Approach to make it stable. */
+                      return index_a > index_b;
+                    }
+                    return length_a > length_b;
+                  });
   }
 
+  /* Now indices is from global src to global dst. */
   for (const int index : IndexRange(domain_size)) {
-    const int src_index = curves_points_mapping[index];
-    indices_in_curve[src_index] = index;
+    const int src_index = dst_to_src_indices[index];
+    src_to_dst_indices[src_index] = index;
   }
 
   for (const int component_index : components.index_range()) {
     const GeometryComponent *component = components[component_index];
     const IndexRange component_range = components_offsets[component_index];
-    const Span<int> indices = indices_in_curve.as_span().slice(component_range);
+    const Span<int> indices = src_to_dst_indices.as_span().slice(component_range);
 
     const AttributeAccessor src_attributes = *component->attributes();
     MutableAttributeAccessor dst_attributes = curves.attributes_for_write();
