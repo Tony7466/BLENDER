@@ -109,6 +109,8 @@ inline void gather(const Span<T> src,
                           });
 }
 
+#if 0
+
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
  */
@@ -118,6 +120,7 @@ inline void gather(const Span<T> src,
                    MutableSpan<T> dst,
                    const int64_t grain_size = 4096)
 {
+  SCOPED_TIMER_AVERAGED("old");
   BLI_assert(indices.size() == dst.size());
   threading::parallel_for(indices.index_range(), grain_size, [&](const IndexRange range) {
     for (const int64_t i : range) {
@@ -125,6 +128,25 @@ inline void gather(const Span<T> src,
     }
   });
 }
+
+#else
+
+template<typename T, typename IndexT>
+inline void gather(const Span<T> src,
+                   const Span<IndexT> indices,
+                   MutableSpan<T> dst,
+                   const int64_t grain_size = 4096)
+{
+  SCOPED_TIMER_AVERAGED("new");
+  BLI_assert(indices.size() == dst.size());
+  threading::parallel_for(indices.index_range(), grain_size, [dst, src, indices](const IndexRange range) {
+    for (const int64_t i : range) {
+      dst[i] = src[indices[i]];
+    }
+  });
+}
+
+#endif
 
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
