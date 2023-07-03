@@ -63,5 +63,21 @@ void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
 void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int frame_number);
 
+Span<float3> gaussian_blur_1D_float3(const bool is_cyclic,
+                                     const IndexRange curve_points,
+                                     const int iterations,
+                                     const bool keep_shape,
+                                     MutableSpan<float3> dst,
+                                     const Span<float3> src,
+                                     const IndexMask &mask);
+
+Span<float> gaussian_blur_1D_float(const bool is_cyclic,
+                                   const IndexRange curve_points,
+                                   const int iterations,
+                                   const bool keep_shape,
+                                   MutableSpan<float> dst,
+                                   const Span<float> src,
+                                   const IndexMask &mask);
+
 }  // namespace blender::ed::greasepencil
 #endif
