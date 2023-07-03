@@ -175,6 +175,10 @@ class DeferredLayer {
   TextureFromPool diffuse_light_tx_ = {"diffuse_light_accum_tx"};
   TextureFromPool specular_light_tx_ = {"specular_light_accum_tx"};
 
+  /* Reference to ray-tracing result. */
+  GPUTexture *ray_refraction_tx_ = nullptr;
+  GPUTexture *ray_reflection_tx_ = nullptr;
+
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
 

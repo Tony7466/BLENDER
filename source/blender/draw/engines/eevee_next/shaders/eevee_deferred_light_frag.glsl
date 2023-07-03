@@ -52,11 +52,8 @@ void main()
   }
 
   vec3 diffuse_light = vec3(0.0);
-  vec3 reflection_light = vec3(0.0);
+  vec3 reflection_light = imageLoad(out_specular_light_img, texel).rgb;
   float shadow = 1.0;
-
-  light_world_eval(reflection_data, P, V, reflection_light);
-  lightprobe_eval(diffuse_data, reflection_data, P, Ng, V, diffuse_light, reflection_light);
 
   light_eval(diffuse_data,
              reflection_data,

@@ -459,6 +459,39 @@ class RENDER_PT_eevee_screen_space_reflections(RenderButtonsPanel, Panel):
         col.prop(props, "ssr_firefly_fac")
 
 
+class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
+    bl_label = "Raytracing"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+        props = scene.eevee
+        prefs = context.preferences
+
+        if prefs.experimental.use_eevee_debug:
+            # Debug option shows separate stages.
+            layout.prop(props, "raytrace_denoise", text="Denoise Spatial")
+
+            col = layout.column()
+            col.active = props.raytrace_denoise
+            col.prop(props, "raytrace_denoise_temporal")
+
+            col = layout.column()
+            col.active = props.raytrace_denoise and props.raytrace_denoise_temporal
+            col.prop(props, "raytrace_denoise_bilateral")
+        else:
+            # User option is global.
+            layout.prop(props, "raytrace_denoise", text="Denoise")
+
+
 class RENDER_PT_eevee_shadows(RenderButtonsPanel, Panel):
     bl_label = "Shadows"
     bl_options = {'DEFAULT_CLOSED'}
@@ -961,6 +994,7 @@ classes = (
     RENDER_PT_eevee_next_depth_of_field,
     RENDER_PT_eevee_subsurface_scattering,
     RENDER_PT_eevee_screen_space_reflections,
+    RENDER_PT_eevee_next_raytracing,
     RENDER_PT_eevee_motion_blur,
     RENDER_PT_eevee_next_motion_blur,
     RENDER_PT_motion_blur_curve,

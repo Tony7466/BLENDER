@@ -1,6 +1,6 @@
 
 /**
- * Use Hierarchical-Z buffer to find intersection with the scene.
+ * Use screen space tracing against depth buffer to find intersection with the scene.
  */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
@@ -16,23 +16,22 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  /* TODO */
-  // ivec2 texel_fullres = texel * raytrace_buf.resolution_scale + raytrace_buf.resolution_bias;
-  ivec2 texel_fullres = texel;
+  ivec2 texel_fullres = texel * raytrace_buf.resolution_scale + raytrace_buf.resolution_bias;
 
-  bool valid_texel = in_texture_range(texel_fullres, depth_tx);
-  float depth = (!valid_texel) ? 0.0 : texelFetch(depth_tx, texel_fullres, 0).r;
-  vec2 uv = vec2(texel_fullres) / vec2(textureSize(depth_tx, 0).xy);
+  float depth = texelFetch(hiz_tx, texel_fullres, 0).r;
+  vec2 uv = (vec2(texel_fullres) + 0.5) * raytrace_buf.full_resolution_inv;
 
   vec4 ray_data = imageLoad(ray_data_img, texel);
   float pdf = ray_data.w;
 
   if (pdf == 0.0) {
+    imageStore(ray_time_img, texel, vec4(0.0));
     imageStore(ray_radiance_img, texel, vec4(0.0));
+    return;
   }
 
   Ray ray;
-  ray.origin = get_view_space_from_depth(uv, depth);
+  ray.origin = get_world_space_from_depth(uv, depth);
   ray.direction = ray_data.xyz;
   /* Extend the ray to cover the whole view. */
 
@@ -40,16 +39,19 @@ void main()
   vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_W);
   float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset.x);
 
-/* TODO */
-#define DO_REFLECTION true
-#define DO_REFRACTION false
+#if defined(RAYTRACE_REFLECT)
+  const bool discard_backface = true;
+  const bool allow_self_intersection = false;
+#elif defined(RAYTRACE_REFRACT)
+  const bool discard_backface = false;
+  const bool allow_self_intersection = true;
+#endif
 
-  const bool discard_backface = DO_REFLECTION;
-  const bool allow_self_intersection = DO_REFRACTION;
   /* TODO(fclem): Take IOR into account in the roughness LOD bias. */
   /* TODO(fclem): pdf to roughness mapping is a crude approximation. Find something better. */
   float roughness = saturate(sample_pdf_uniform_hemisphere() / pdf);
   bool hit = false;
+  float hit_time = 0.0;
 
   //   ray.direction *= 1e6;
   //   hit = raytrace_screen(raytrace_buf,
@@ -76,12 +78,9 @@ void main()
     /* Fallback to nearest lightprobe. */
     // radiance = lightprobe_cubemap_eval(ray.origin, ray.direction, roughness, rand_probe);
     radiance = light_world_sample(ray.direction, 0.0);
+    hit_time = 1.0;
   }
 
-  /* Limit to the smallest non-0 value that the format can encode.
-   * Strangely it does not correspond to the IEEE spec. */
-  float inv_pdf = (pdf == 0.0) ? 0.0 : max(6e-8, 1.0 / pdf);
-  /* Store inverse pdf to speedup denoising. */
-  imageStore(ray_data_img, texel, vec4(ray.direction, inv_pdf));
+  imageStore(ray_time_img, texel, vec4(hit_time));
   imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
 }

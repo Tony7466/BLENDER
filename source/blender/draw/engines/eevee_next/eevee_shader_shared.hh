@@ -987,6 +987,10 @@ struct RaytraceData {
   /** Scale and bias to go from raytrace resolution to input resolution. */
   int resolution_scale;
   int2 resolution_bias;
+  /** Input resolution. */
+  int2 full_resolution;
+  /** Inverse of input resolution to get screen UVs. */
+  float2 full_resolution_inv;
   /** View space thickness the objects. */
   float thickness;
   /** Determine how fast the sample steps are getting bigger. */
@@ -997,7 +1001,8 @@ struct RaytraceData {
   float max_roughness;
   /** Resolve sample pool offset, based on scene current sample. */
   int pool_offset;
-  int _pad0;
+  /** If set to true will bypass spatial denoising. */
+  bool1 skip_denoise;
   int _pad1;
   int _pad2;
 };

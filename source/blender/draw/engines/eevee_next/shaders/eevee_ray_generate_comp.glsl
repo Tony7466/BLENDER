@@ -1,6 +1,6 @@
 /**
  * Generate Ray direction along with other data that are then used
- * by the next pass to trace the scene.
+ * by the next pass to trace the rays.
  */
 
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
@@ -8,8 +8,6 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
-
-shared uint closures_bits;
 
 void main()
 {
@@ -22,61 +20,60 @@ void main()
   ivec2 texel_fullres = texel;
 
   bool valid_texel = in_texture_range(texel_fullres, stencil_tx);
-  uint local_closure_bits = (!valid_texel) ? 0u : texelFetch(stencil_tx, texel_fullres, 0).r;
+  uint closure_bits = (!valid_texel) ? 0u : texelFetch(stencil_tx, texel_fullres, 0).r;
 
-  /* TODO(fclem): We could use wave ops instead of a shared variables. */
-  if (all(equal(gl_LocalInvocationID.xy, uvec2(0)))) {
-    closures_bits = 0u;
-  }
-  barrier();
-  atomicOr(closures_bits, local_closure_bits);
-  barrier();
+#if defined(RAYTRACE_REFLECT)
+  ClosureReflection closure;
+  eClosureBits closure_active = CLOSURE_REFLECTION;
+  const int gbuf_layer = 0;
+#elif defined(RAYTRACE_REFRACT)
+  ClosureRefraction closure;
+  eClosureBits closure_active = CLOSURE_REFRACTION;
+  const int gbuf_layer = 1;
+#endif
 
-  if (!flag_test(closures_bits, CLOSURE_DIFFUSE | CLOSURE_REFRACTION | CLOSURE_REFLECTION)) {
-    return;
-  }
-
-  /* Generate ray. */
-  vec2 uv = vec2(texel_fullres) / vec2(textureSize(depth_tx, 0).xy);
-  float depth = 0.0;
-  if (valid_texel) {
-    depth = texelFetch(depth_tx, texel_fullres, 0).r;
-  }
-  vec3 P = get_world_space_from_depth(uv, depth);
-  vec3 V = cameraVec(P);
-  vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).rg;
-
-  if ((local_closure_bits & eClosureBits(active_closure_type)) == 0) {
+  if (!flag_test(closure_bits, closure_active)) {
     imageStore(out_ray_data_img, texel, vec4(0.0));
     return;
   }
 
-  if (active_closure_type == CLOSURE_REFLECTION) {
-    vec4 gbuffer_0_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, 0), 0);
+  vec2 uv = vec2(texel_fullres + 0.5) / vec2(textureSize(stencil_tx, 0).xy);
+  vec3 V = transform_direction(ViewMatrixInverse, get_view_vector_from_screen_uv(uv));
+  vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).rg;
 
-    ClosureReflection closure;
-    closure.N = gbuffer_normal_unpack(gbuffer_0_packed.xy);
-    closure.roughness = gbuffer_0_packed.z;
+  /* Load GBuffer data. */
+  vec4 gbuffer_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, gbuf_layer), 0);
 
-    vec4 ray;
-    ray.xyz = raytrace_reflection_direction(sampling_buf, noise.xy, closure, V, ray.w);
-    imageStore(out_ray_data_img, texel, ray);
+  closure.N = gbuffer_normal_unpack(gbuffer_packed.xy);
+
+#if defined(RAYTRACE_REFLECT)
+  closure.roughness = gbuffer_packed.z;
+
+#elif defined(RAYTRACE_REFRACT)
+  if (gbuffer_is_refraction(gbuffer_packed)) {
+    closure.roughness = gbuffer_packed.z;
+    closure.ior = gbuffer_ior_unpack(gbuffer_packed.w);
   }
   else {
-    /* CLOSURE_REFRACTION */
-    vec4 gbuffer_1_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, 1), 0);
-    if (gbuffer_is_refraction(gbuffer_1_packed)) {
-      ClosureRefraction closure;
-      closure.N = gbuffer_normal_unpack(gbuffer_1_packed.xy);
-      closure.ior = gbuffer_1_packed.z;
-      closure.roughness = gbuffer_ior_pack(gbuffer_1_packed.w);
-
-      vec4 ray;
-      ray.xyz = raytrace_refraction_direction(sampling_buf, noise.xy, closure, V, ray.w);
-      imageStore(out_ray_data_img, texel, ray);
-    }
-    else {
-      imageStore(out_ray_data_img, texel, vec4(0.0));
-    }
+    /* Avoid producing incorrect ray directions. */
+    closure.ior = 1.1;
+    closure.roughness = 0.0;
   }
+#endif
+
+  float pdf;
+  vec3 ray_direction = ray_generate_direction(sampling_buf, noise.xy, closure, V, pdf);
+
+#if defined(RAYTRACE_REFRACT)
+  if (gbuffer_is_refraction(gbuffer_packed) && closure_active != CLOSURE_REFRACTION) {
+    /* Discard incorect rays. */
+    pdf = 0.0;
+  }
+#endif
+
+  /* Store inverse pdf to speedup denoising.
+   * Limit to the smallest non-0 value that the format can encode.
+   * Strangely it does not correspond to the IEEE spec. */
+  float inv_pdf = (pdf == 0.0) ? 0.0 : max(6e-8, 1.0 / pdf);
+  imageStore(out_ray_data_img, texel, vec4(ray_direction, inv_pdf));
 }

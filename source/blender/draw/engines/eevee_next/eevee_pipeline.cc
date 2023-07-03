@@ -480,22 +480,29 @@ void DeferredLayer::render(View &view,
   inst_.manager->submit(gbuffer_ps_, view);
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
-  diffuse_light_tx_.clear(float4(0.0f));
   specular_light_tx_.clear(float4(0.0f));
+
+  if (closure_bits_ & CLOSURE_REFRACTION) {
+    inst_.raytracing.trace(CLOSURE_REFRACTION, specular_light_tx_, view);
+  }
+
+  if (closure_bits_ & CLOSURE_REFLECTION) {
+    inst_.raytracing.trace(CLOSURE_REFLECTION, specular_light_tx_, view);
+  }
+
+  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
+  diffuse_light_tx_.clear(float4(0.0f));
 
   inst_.manager->submit(eval_light_ps_, view);
 
-  if (closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_REFRACTION)) {
-    inst_.raytracing.trace(extent, closure_bits_, view);
-  }
+  specular_light_tx_.release();
+
   if (closure_bits_ & CLOSURE_SSS) {
     inst_.subsurface.render(view, combined_fb, diffuse_light_tx_);
   }
 
   diffuse_light_tx_.release();
-  specular_light_tx_.release();
 
   inst_.gbuffer.release();
 }

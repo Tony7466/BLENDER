@@ -9,7 +9,6 @@
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 
 shared uint tile_contains_glossy_rays;
-shared uint tile_contains_refract_rays;
 
 /* Returns a blend factor between different irradiance fetching method for reflections. */
 float ray_glossy_factor(float roughness)
@@ -25,11 +24,10 @@ void main()
      * Note that these writes are subject to race condition, but we write the same
      * value from all workgroups. */
     /* TODO(fclem): Move this to tile compaction. */
-    dispatch_reflect_buf.num_groups_y = dispatch_reflect_buf.num_groups_z = 1u;
+    ray_dispatch_buf.num_groups_y = ray_dispatch_buf.num_groups_z = 1u;
 
     /* Init shared variables. */
     tile_contains_glossy_rays = 0;
-    tile_contains_refract_rays = 0;
   }
 
   barrier();
@@ -38,27 +36,15 @@ void main()
 
   eClosureBits closure_bits = eClosureBits(texelFetch(stencil_tx, texel, 0).r);
 
-  if (flag_test(closure_bits, CLOSURE_REFLECTION)) {
-    vec4 gbuffer_0_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, 0), 0);
+  if (flag_test(closure_bits, closure_active)) {
+    int gbuffer_layer = closure_active == CLOSURE_REFRACTION ? 1 : 0;
 
-    ClosureReflection reflection_data;
-    reflection_data.roughness = gbuffer_0_packed.z;
+    vec4 gbuffer_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, gbuffer_layer), 0);
+    float roughness = gbuffer_packed.z;
 
-    if (ray_glossy_factor(reflection_data.roughness) > 0.0) {
+    if (ray_glossy_factor(roughness) > 0.0) {
       /* We don't care about race condition here. */
       tile_contains_glossy_rays = 1;
-    }
-  }
-
-  if (flag_test(closure_bits, CLOSURE_REFLECTION)) {
-    vec4 gbuffer_1_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, 1), 0);
-
-    ClosureRefraction refraction_data;
-    refraction_data.roughness = gbuffer_1_packed.z;
-
-    if (ray_glossy_factor(refraction_data.roughness) > 0.0) {
-      /* We don't care about race condition here. */
-      tile_contains_refract_rays = 1;
     }
   }
 
@@ -69,19 +55,11 @@ void main()
 
     uint tile_mask = 0u;
     if (tile_contains_glossy_rays > 0) {
-      tile_mask |= CLOSURE_REFLECTION;
+      tile_mask = 1u;
 
       /* TODO(fclem): Move this to tile compaction. */
-      uint tile_index = atomicAdd(dispatch_reflect_buf.num_groups_x, 1u);
-      tiles_reflect_buf[tile_index] = packUvec2x16(gl_WorkGroupID.xy);
-    }
-
-    if (tile_contains_refract_rays > 0) {
-      tile_mask |= CLOSURE_REFRACTION;
-
-      /* TODO(fclem): Move this to tile compaction. */
-      uint tile_index = atomicAdd(dispatch_refract_buf.num_groups_x, 1u);
-      tiles_refract_buf[tile_index] = packUvec2x16(gl_WorkGroupID.xy);
+      uint tile_index = atomicAdd(ray_dispatch_buf.num_groups_x, 1u);
+      ray_tiles_buf[tile_index] = packUvec2x16(gl_WorkGroupID.xy);
     }
 
     imageStore(tile_mask_img, tile_co, uvec4(tile_mask));
