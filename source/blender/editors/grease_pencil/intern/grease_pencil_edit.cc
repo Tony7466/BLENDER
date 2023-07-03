@@ -100,23 +100,26 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        /* Smooth all selected curves in the current drawing */
+
+        /* Curves geometry and attributes*/
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        Array<float3> curves_positions_copy(curves.positions());
+        bke::AttributeAccessor curves_attributes = curves.attributes();
+
         const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
         const VArray<bool> cyclic = curves.cyclic();
-        bke::AttributeAccessor attributes = curves.attributes();
-        bke::AttributeReader<bool> selection_attribute = attributes.lookup_or_default<bool>(
-            ".selection", ATTR_DOMAIN_POINT, true);
 
-        // const Span<float3> positions_buffer = curves.positions().copy();
-        Array<float3> positions_array(curves.positions());
-        // Vector<float3> result_buffer(curves.points_num(), float3(0)) = positions_buffer.copy();
-
-        /* TODO : this mask should be selection-based */
+        /* Selection-based mask */
         IndexMaskMemory memory;
+        bke::AttributeReader<bool> selection_attribute = curves_attributes.lookup_or_default<bool>(
+            ".selection", ATTR_DOMAIN_POINT, true);
         const IndexMask mask = IndexMask::from_bools(selection_attribute.varray, memory);
 
         threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
           for (const int curve_i : range) {
+            /* Smooth a single curve*/
+
             const IndexRange points = points_by_curve[curve_i];
             const bool is_cyclic = cyclic[curve_i];
 
@@ -125,7 +128,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
                                              iterations,
                                              keep_shape,
                                              curves.positions_for_write(),
-                                             positions_array,
+                                             curves_positions_copy,
                                              mask);
           }
         });
