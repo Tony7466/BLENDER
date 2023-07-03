@@ -2836,12 +2836,16 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         const int size_no_snap = rmd->origval + delta;
         rmd->region->sizex = size_no_snap;
+        /* Clamp before snapping, so the snapping doesn't use a size that's invalid anyway. It will
+         * check for and respect the max-width too. */
         CLAMP(rmd->region->sizex, 0, rmd->maxsize);
 
         if (rmd->region->type->snap_size) {
           short sizex_test = rmd->region->type->snap_size(rmd->region, rmd->region->sizex, 0);
           if ((abs(rmd->region->sizex - sizex_test) < snap_size_threshold) &&
-              sizex_test <= rmd->maxsize) {
+              /* Don't snap to a new size if that would exceed the maximum width. */
+              sizex_test <= rmd->maxsize)
+          {
             rmd->region->sizex = sizex_test;
           }
         }
@@ -2871,12 +2875,16 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         const int size_no_snap = rmd->origval + delta;
         rmd->region->sizey = size_no_snap;
+        /* Clamp before snapping, so the snapping doesn't use a size that's invalid anyway. It will
+         * check for and respect the max-height too. */
         CLAMP(rmd->region->sizey, 0, rmd->maxsize);
 
         if (rmd->region->type->snap_size) {
           short sizey_test = rmd->region->type->snap_size(rmd->region, rmd->region->sizey, 1);
           if ((abs(rmd->region->sizey - sizey_test) < snap_size_threshold) &&
-              (sizey_test <= rmd->maxsize)) {
+              /* Don't snap to a new size if that would exceed the maximum height. */
+              (sizey_test <= rmd->maxsize))
+          {
             rmd->region->sizey = sizey_test;
           }
         }
