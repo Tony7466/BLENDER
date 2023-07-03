@@ -1010,7 +1010,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_curve_segments")
 
         elif obj:
-            if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL'}:
+            if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES'}:
                 layout.menu("VIEW3D_MT_%s" % mode_string.lower())
             if mode_string == 'SCULPT':
                 layout.menu("VIEW3D_MT_mask")
@@ -1019,8 +1019,6 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
                 layout.template_node_operator_asset_root_items()
-            if mode_string == 'PAINT_GREASE_PENCIL':
-                pass
 
         else:
             layout.menu("VIEW3D_MT_object")
@@ -2002,6 +2000,12 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
 
         layout.operator("grease_pencil.select_more")
         layout.operator("grease_pencil.select_less")
+
+class VIEW3D_MT_paint_grease_pencil(Menu):
+    bl_label = "Paint"
+
+    def draw(self, _context):
+        pass
 
 
 class VIEW3D_MT_paint_gpencil(Menu):
@@ -8324,6 +8328,7 @@ classes = (
     VIEW3D_MT_edit_mesh_merge,
     VIEW3D_MT_edit_mesh_split,
     VIEW3D_MT_edit_mesh_showhide,
+    VIEW3D_MT_paint_grease_pencil,
     VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_draw_gpencil,
     VIEW3D_MT_assign_material,
