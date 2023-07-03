@@ -18,6 +18,8 @@
 #include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
 
+#include "draw_common.hh"
+
 #include "eevee_instance.hh"
 
 namespace blender::eevee {
@@ -293,52 +295,52 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 /** \name Hair
  * \{ */
 
-static void shgroup_curves_call(MaterialPass &matpass,
-                                Object *ob,
-                                ParticleSystem *part_sys = nullptr,
-                                ModifierData *modifier_data = nullptr)
-{
-  UNUSED_VARS(ob, modifier_data);
-  if (matpass.sub_pass == nullptr) {
-    return;
-  }
-  if (part_sys != nullptr) {
-    // DRW_shgroup_hair_create_sub(ob, part_sys, modifier_data, matpass.sub_pass, matpass.gpumat);
-  }
-  else {
-    // DRW_shgroup_curves_create_sub(ob, matpass.sub_pass, matpass.gpumat);
-  }
-}
-
 void SyncModule::sync_curves(Object *ob,
                              ObjectHandle &ob_handle,
                              ResourceHandle res_handle,
                              ModifierData *modifier_data)
 {
-  UNUSED_VARS(res_handle);
   int mat_nr = CURVES_MATERIAL_NR;
 
   ParticleSystem *part_sys = nullptr;
   if (modifier_data != nullptr) {
     part_sys = reinterpret_cast<ParticleSystemModifierData *>(modifier_data)->psys;
-    if (!DRW_object_is_visible_psys_in_active_context(ob, part_sys)) {
-      return;
-    }
     ParticleSettings *part_settings = part_sys->part;
     const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
                                                                      part_settings->draw_as;
-    if (draw_as != PART_DRAW_PATH) {
+    if (draw_as != PART_DRAW_PATH || !DRW_object_is_visible_psys_in_active_context(ob, part_sys)) {
       return;
     }
+
+    /* TODO(Miguel Pozo):
+     * This should use its own resource handle, with a correct bounding box
+     * or with frustum culling disabled. */
     mat_nr = part_settings->omat;
   }
 
-  bool has_motion = inst_.velocity.step_object_sync(ob, ob_handle.object_key, ob_handle.recalc);
+  // bool has_motion = inst_.velocity.step_object_sync(ob, ob_handle.object_key, ob_handle.recalc);
+  bool has_motion = false;
   Material &material = inst_.materials.material_get(ob, has_motion, mat_nr - 1, MAT_GEOM_CURVES);
 
-  shgroup_curves_call(material.shading, ob, part_sys, modifier_data);
-  shgroup_curves_call(material.prepass, ob, part_sys, modifier_data);
-  shgroup_curves_call(material.shadow, ob, part_sys, modifier_data);
+  auto drawcall_add = [&](MaterialPass &matpass) {
+    if (matpass.sub_pass == nullptr) {
+      return;
+    }
+    if (part_sys != nullptr) {
+      GPUBatch *geometry = hair_sub_pass_setup(
+          *matpass.sub_pass, inst_.scene, ob, part_sys, modifier_data, matpass.gpumat);
+      matpass.sub_pass->draw(geometry, res_handle);
+    }
+    else {
+      GPUBatch *geometry = curves_sub_pass_setup(
+          *matpass.sub_pass, inst_.scene, ob, matpass.gpumat);
+      matpass.sub_pass->draw(geometry, res_handle);
+    }
+  };
+
+  drawcall_add(material.shading);
+  drawcall_add(material.prepass);
+  drawcall_add(material.shadow);
 
   inst_.cryptomatte.sync_object(ob, res_handle);
   GPUMaterial *gpu_material =

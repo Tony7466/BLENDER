@@ -16,8 +16,6 @@ void main()
 
   init_interface();
 
-  vec3 T;
-
   bool is_persp = (ProjectionMatrix[3][3] == 0.0);
   hair_get_pos_tan_binor_time(is_persp,
                               ModelMatrixInverse,
@@ -30,7 +28,7 @@ void main()
                               interp.curves_thickness,
                               interp.curves_time_width);
 
-  interp.N = cross(T, interp.curves_binormal);
+  interp.N = cross(interp.curves_tangent, interp.curves_binormal);
   interp.curves_strand_id = hair_get_strand_id();
   interp.barycentric_coords = hair_get_barycentric();
 #ifdef MAT_VELOCITY
