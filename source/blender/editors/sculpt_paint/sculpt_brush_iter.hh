@@ -22,13 +22,25 @@ class BrushTester {
   struct Result {
     float dist_squared;
     bool in_range;
-    float calc_falloff() {}
+    float calc_falloff() const
+    {
+      return 1.0f;
+    }
   };
 
-  Result operator()(PBVHVertRef vertex, const float3 &co, const float3 &no) {}
+  Result operator()(PBVHVertRef /*vertex*/, const float3 & /*co*/, const float3 & /*no*/)
+  {
+    return Result();
+  }
 };
 
 class SphereTester {
+  SculptBrushTest test_;
+  SculptSession *ss_;
+  const Brush *brush_;
+  bool apply_mask_;
+
+ public:
   struct Result {
     float dist_squared;
     bool in_range;
@@ -37,39 +49,37 @@ class SphereTester {
 
     Result(SphereTester &owner_) : owner(owner_) {}
 
-    float calc_falloff(int thread_id, AutomaskingNodeData *automask_data)
+    float calc_falloff(int thread_id, AutomaskingNodeData *automask_data) const
     {
-      float mask = SCULPT_vertex_mask_get(owner.ss, vertex);
+      float mask = owner.apply_mask_ ? SCULPT_vertex_mask_get(owner.ss_, vertex) : 0.0f;
 
-      SCULPT_brush_strength_factor(owner.ss,
-                                   owner.brush,
-                                   co,
-                                   sqrtf(dist_squared),
-                                   no,
-                                   no,
-                                   mask,
-                                   vertex,
-                                   thread_id,
-                                   &automask_data);
+      return SCULPT_brush_strength_factor(owner.ss_,
+                                          owner.brush_,
+                                          co,
+                                          sqrtf(dist_squared),
+                                          no,
+                                          no,
+                                          mask,
+                                          vertex,
+                                          thread_id,
+                                          automask_data);
     }
 
    private:
     SphereTester &owner;
   };
 
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn;
-  SculptSession *ss;
-  Brush *brush;
-
-  SphereTester(SculptSession *ss_, Brush *brush_) : ss(ss_), brush(brush_) {}
+  SphereTester(SculptSession *ss, const Brush *brush, bool apply_mask)
+      : ss_(ss), brush_(brush), apply_mask_(apply_mask)
+  {
+  }
 
   Result operator()(PBVHVertRef vertex, const float3 &co, const float3 &no)
   {
     Result res(*this);
 
-    res.dist_squared = len_squared_v3v3(test.location, co);
-    res.in_range = res.dist_squared < ss->cache->radius_squared;
+    res.dist_squared = len_squared_v3v3(test_.location, co);
+    res.in_range = res.dist_squared < ss_->cache->radius_squared;
     res.co = co;
     res.no = no;
     res.vertex = vertex;
@@ -78,121 +88,148 @@ class SphereTester {
   }
 };
 
-template<typename Tester = BrushTester, typename NodeData, typename ExecFunc>
-void exec_brush_intern(SculptSession *ss,
+template<typename NodeData, typename VertexRange> struct ForwardVertexIter {
+  using base_iterator =
+      typename VertexRange::iterator;  // std::invoke_result_t<decltype(&VertexRange::begin)()>;
+
+  struct iterator {
+    PBVHVertRef vertex;
+    int index;
+
+    float falloff;
+
+    float *co;
+    const float *no;
+    float *mask;
+
+    AutomaskingNodeData *automask_data;
+    SculptOrigVertData *orig_data;
+
+    int vertex_node_index;
+    int thread_id;
+
+    bool is_mesh;
+
+    iterator(SculptSession *ss, base_iterator vd, base_iterator end_vd)
+        : vd_(vd), end_(end_vd), ss_(ss)
+    {
+      const int thread_id = BLI_task_parallel_thread_id(nullptr);
+
+      if (vd_ != end_) {
+        load_data();
+        find_valid_iter();
+      }
+    }
+
+    iterator(const iterator &b)
+    {
+      vd_ = b.vd_;
+      end_ = b.end_;
+      thread_id = b.thread_id;
+
+      load_data();
+    }
+
+    iterator &operator*()
+    {
+      return *this;
+    }
+
+    iterator &operator++()
+    {
+      ++vd_;
+
+      if (vd_ != end_) {
+        load_data();
+        find_valid_iter();
+      }
+
+      return *this;
+    }
+
+    bool operator==(const iterator &b)
+    {
+      return b.vd_ == vd_;
+    }
+
+    bool operator!=(const iterator &b)
+    {
+      return b.vd_ != vd_;
+    }
+
+   private:
+    void load_data()
+    {
+      //
+      if (vd_ == end_) {
+        return;
+      }
+
+      vertex = vd_.vertex;
+      vertex_node_index = vd_.vertex_node_index;
+      index = vd_.index;
+
+      automask_data = &vd_.node_data->automask_data;
+      orig_data = &vd_.node_data->orig_data;
+
+      is_mesh = vd_.is_mesh;
+
+      SCULPT_automasking_node_update<NodeData>(ss_, automask_data, vd_);
+
+      co = vd_.co;
+      no = vd_.no;
+      mask = vd_.mask;
+
+      falloff = vd_.result->calc_falloff(thread_id, &vd_.node_data->automask_data);
+    }
+
+    void find_valid_iter()
+    {
+      while (vd_ != end_ && falloff == 0.0f) {
+        ++vd_;
+
+        if (vd_ != end_) {
+          load_data();
+        }
+      }
+    }
+
+    base_iterator vd_, end_;
+    SculptSession *ss_;
+  };
+
+  ForwardVertexIter(SculptSession *ss, VertexRange &range) : range_(range), ss_(ss) {}
+
+  iterator begin()
+  {
+    return iterator(ss_, range_.begin(), range_.end());
+  }
+
+  iterator end()
+  {
+    return iterator(ss_, range_.end(), range_.end());
+  }
+
+ private:
+  VertexRange &range_;
+  SculptSession *ss_;
+};
+
+template<typename NodeData, typename ExecFunc, typename Tester = BrushTester>
+void exec_brush_intern(Object *ob,
                        Span<PBVHNode *> nodes,
                        bool threaded,         //
                        Tester &brush_tester,  //
                        std::function<NodeData(PBVHNode *node)> node_visit_pre,
                        ExecFunc &exec, /* [&](auto &vertex_range) {} */
                        std::function<void(PBVHNode *node, NodeData *node_data)> node_visit_post,
+                       bool apply_mask = true,
                        bool needs_original = false,
                        SculptUndoType original_type = SCULPT_UNDO_COORDS
 
 )
 {
-  template<typename VertexRange> struct ForwardVertexIter {
-    using base_iterator = std::invoke_result_t<VertexRange::begin>::type;
-
-    struct iterator {
-      PBVHVertRef vertex;
-      int index;
-
-      float falloff;
-
-      float *co;
-      const float *no;
-      float *mask;
-
-      int vertex_node_index;
-      int thread_id;
-
-      iterator(base_iterator vd, base_iterator end_vd) : vd_(vd), end_(end_vd)
-      {
-        const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-        if (vd_ != end_) {
-          load_data();
-          find_valid_item();
-        }
-      }
-
-      iterator(const iterator &b)
-      {
-        vd_ = b.vd_;
-        end_ = b.end_;
-        thread_id = b.thread_id;
-      }
-
-      iterator &operator++()
-      {
-        ++vd_;
-
-        if (vd_ != end_) {
-          load_data();
-          find_valid_item();
-        }
-
-        return *this;
-      }
-
-      bool operator==(const iterator &b)
-      {
-        return b.vd_ == vd_;
-      }
-
-      bool operator!=(const iterator &b)
-      {
-        return b.vd_ != vd_;
-      }
-
-     private:
-      void load_data()
-      {
-        //
-        vertex = vd_.vertex;
-        vertex_node_index = vd_.vertex_node_index;
-        index = vd_.index;
-
-        co = vd_.co;
-        no = vd_.no;
-        mask = vd_.mask;
-
-        falloff = vd_.result.calc_falloff(thread_id, &vd_.node_data.automask_data);
-      }
-
-      void find_valid_iter()
-      {
-        while (vd_ != end_ && falloff == 0.0f) {
-          ++vd_;
-
-          if (vd_ != end_) {
-            load_data();
-          }
-        }
-      }
-
-      base_iterator vd_, end_;
-    }
-
-    ForwardVertexIter(VertexRange &range)
-        : range_(range)
-    {
-    }
-
-    iterator begin()
-    {
-      return iterator(range_.begin(), range_.end());
-    }
-
-    iterator end()
-    {
-      return iterator(range_.end(), range_.end());
-    }
-
-   private:
-    VertexRange &range_;
-  }
+  SculptSession *ss = ob->sculpt;
 
   struct BaseNodeData {
     AutomaskingNodeData automask_data;
@@ -215,7 +252,7 @@ void exec_brush_intern(SculptSession *ss,
             data.orig_data = data.automask_data.orig_data;
           }
           else {
-            SCULPT_orig_vert_data_init(&automask_data->orig_data, ob, node, original_type);
+            SCULPT_orig_vert_data_init(&data.orig_data, ob, node, original_type);
           }
         }
 
@@ -225,30 +262,41 @@ void exec_brush_intern(SculptSession *ss,
 
         return data;
       },
-      [&](auto &range) { exec(ForwardVertexIter(range)); },
-      [&](PBVHNode *node) {
+      [&](auto range) { exec(ForwardVertexIter<BaseNodeData, decltype(range)>(ss, range)); },
+      [&](PBVHNode *node, BaseNodeData *node_data) {
         if (node_visit_post) {
-          node_visit_post(node);
+          node_visit_post(node, &node_data->user_data);
         }
       });
 }
 
 template<typename NodeData, typename ExecFunc>
-void exec_brush(SculptSession *ss,
+void exec_brush(Object *ob,
                 Span<PBVHNode *> nodes,
                 bool threaded,  //
                 std::function<NodeData(PBVHNode *node)> node_visit_pre,
-                ExecFunc &exec, /* [&](auto &vertex_range) {} */
+                ExecFunc exec, /* [&](auto &vertex_range) {} */
                 std::function<void(PBVHNode *node, NodeData *node_data)> node_visit_post,
+                bool apply_mask = true,
                 bool needs_original = false,
                 SculptUndoType original_type = SCULPT_UNDO_COORDS
 
 )
 {
-  SphereTester brush_tester(ss, ss->cache->brush);
+  SculptSession *ss = ob->sculpt;
 
-  exec_brush_intern<NodeData>(
-      ss, nodes, threaded, node_visit_pre, exec, node_visit_post, needs_original, original_type);
+  SphereTester brush_tester(ss, ss->cache->brush, apply_mask);
+
+  exec_brush_intern<NodeData>(ob,
+                              nodes,
+                              threaded,
+                              brush_tester,
+                              node_visit_pre,
+                              exec,
+                              node_visit_post,
+                              apply_mask,
+                              needs_original,
+                              original_type);
 }
 
 }  // namespace blender::editors::sculpt

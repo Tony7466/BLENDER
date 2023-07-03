@@ -327,8 +327,8 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-#if 0
-#include "sculpt_brush_iter.hh"
+#if 1
+#  include "sculpt_brush_iter.hh"
 
 void SCULPT_smooth_new(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
@@ -341,64 +341,28 @@ void SCULPT_smooth_new(
   const int max_iterations = 4;
   const float fract = 1.0f / max_iterations;
   int iteration, count;
-  float last;
 
   CLAMP(bstrength, 0.0f, 1.0f);
 
   count = int(bstrength * max_iterations);
-  last = max_iterations * (bstrength - count * fract);
 
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
 
   using blender::bke::pbvh::VertexRange;
 
-  struct NodeData {
-    AutomaskingNodeData automask_data;
-  };
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush->falloff_shape);
+  struct NodeData {};
 
   for (iteration = 0; iteration <= count; iteration++) {
-    blender::bke::pbvh::foreach_brush_verts<NodeData>(
-        ss->pbvh,
+    blender::editors::sculpt::exec_brush<NodeData>(
+        ob,
         nodes,
         true,
-        [&](PBVHVertRef vertex, const float *co, const float *no, float mask, float *r_dist) {
-          SculptBrushTest test2 = test;
-          bool ret = sculpt_brush_test_sq_fn(&test2, co);
-
-          if (ret) {
-            *r_dist = test2.dist;
-          }
-
-          return ret;
-        },
-        [&](PBVHNode *node) {
-          NodeData data = {};
-
-          SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &data.automask_data, node);
-
-          return data;
-        },
+        nullptr,
         [&](auto range) {
           const int thread_id = BLI_task_parallel_thread_id(nullptr);
           for (auto &vd : range) {
-            SCULPT_automasking_node_update<NodeData>(ss, &vd.node_data->automask_data, vd);
-
-            const float fade = bstrength * SCULPT_brush_strength_factor(
-                                               ss,
-                                               brush,
-                                               vd.co,
-                                               sqrtf(vd.dist_squared),
-                                               vd.no,
-                                               vd.no,
-                                               smooth_mask ? 0.0f : (vd.mask ? *vd.mask : 0.0f),
-                                               vd.vertex,
-                                               thread_id,
-                                               &vd.node_data->automask_data);
+            const float fade = bstrength * vd.falloff;
 
             if (smooth_mask) {
               float val = SCULPT_neighbor_mask_average(ss, vd.vertex) - *vd.mask;
@@ -418,7 +382,8 @@ void SCULPT_smooth_new(
             }
           }
         },
-        [&](PBVHNode *node, NodeData *node_data) {});
+        nullptr,
+        !smooth_mask);
   }
 }
 #endif
@@ -428,8 +393,8 @@ void SCULPT_smooth(
 {
   printf("\n");
 
-  //SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
-  
+  SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
+
   SCOPED_TIMER(__func__);
 
   SculptSession *ss = ob->sculpt;

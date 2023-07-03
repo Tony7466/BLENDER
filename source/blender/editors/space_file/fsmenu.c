@@ -14,7 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_ghash.h"
+#include "BLI_ghash.h"  
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -639,6 +639,7 @@ static void fsmenu_add_windows_folder(struct FSMenu *fsmenu,
 void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
 {
   char line[FILE_MAXDIR];
+
 #ifdef WIN32
   /* Add the drive names to the listing */
   {
