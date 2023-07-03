@@ -95,6 +95,7 @@ template<typename T>
 static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
                                    const IndexRange curve_points,
                                    const int iterations,
+                                   const float influence,
                                    const bool smooth_ends,
                                    const bool keep_shape,
                                    MutableSpan<T> dst,
@@ -167,7 +168,7 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
 
   /* Normalize the weights */
   mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
-    dst[point_index] = src[point_index] + dst[point_index] / total_w;
+    dst[point_index] = src[point_index] + influence * dst[point_index] / total_w;
   });
 
   return dst.as_span();
@@ -176,6 +177,7 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
 Span<float3> gaussian_blur_1D_float3(const bool is_cyclic,
                                      const IndexRange curve_points,
                                      const int iterations,
+                                     const float influence,
                                      const bool smooth_ends,
                                      const bool keep_shape,
                                      MutableSpan<float3> dst,
@@ -183,12 +185,13 @@ Span<float3> gaussian_blur_1D_float3(const bool is_cyclic,
                                      const IndexMask &mask)
 {
   return gaussian_blur_1D_ex<float3>(
-      is_cyclic, curve_points, iterations, smooth_ends, keep_shape, dst, src, mask);
+      is_cyclic, curve_points, iterations, influence, smooth_ends, keep_shape, dst, src, mask);
 }
 
 Span<float> gaussian_blur_1D_float(const bool is_cyclic,
                                    const IndexRange curve_points,
                                    const int iterations,
+                                   const float influence,
                                    const bool smooth_ends,
                                    const bool keep_shape,
                                    MutableSpan<float> dst,
@@ -196,7 +199,7 @@ Span<float> gaussian_blur_1D_float(const bool is_cyclic,
                                    const IndexMask &mask)
 {
   return gaussian_blur_1D_ex<float>(
-      is_cyclic, curve_points, iterations, smooth_ends, keep_shape, dst, src, mask);
+      is_cyclic, curve_points, iterations, influence, smooth_ends, keep_shape, dst, src, mask);
 }
 
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
@@ -208,6 +211,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
 
   /* TODO : these variables should be operator's properties */
   const int iterations = 1;
+  const float influence = 0.8;
   const bool keep_shape = false;
   const bool smooth_ends = false;
 
@@ -246,6 +250,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
             gaussian_blur_1D_float3(is_cyclic,
                                     points,
                                     iterations,
+                                    influence,
                                     smooth_ends,
                                     keep_shape,
                                     curves.positions_for_write(),
