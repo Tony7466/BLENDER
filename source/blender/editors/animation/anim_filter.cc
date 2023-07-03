@@ -1805,7 +1805,7 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
 
   size_t items = 0;
 
-  /* add data block container */
+  /* Add data block container */
   ANIMCHANNEL_NEW_CHANNEL(grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
 
   Span<bke::greasepencil::Layer *> layers = grease_pencil->layers_for_write();
@@ -1814,7 +1814,7 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
     for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
       bke::greasepencil::Layer *layer = layers[layer_index];
 
-      /* add layer channel */
+      /* Add layer channel */
       ANIMCHANNEL_NEW_CHANNEL(
           static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
     }
@@ -1893,15 +1893,15 @@ static size_t animdata_filter_grease_pencil(bAnimContext *ac, ListBase *anim_dat
         continue;
       }
 
-      /* outliner restrict-flag */
+      /* Outliner restrict-flag */
       if (ob->visibility_flag & OB_HIDE_VIEWPORT) {
         continue;
       }
     }
 
-    /* check selection and object type filters */
+    /* Check selection and object type filters */
     if ((ads->filterflag & ADS_FILTER_ONLYSEL) && !(base->flag & BASE_SELECTED)) {
-      /* only selected should be shown */
+      /* Only selected should be shown */
       continue;
     }
 
@@ -1915,7 +1915,7 @@ static size_t animdata_filter_grease_pencil(bAnimContext *ac, ListBase *anim_dat
         anim_data, ads, static_cast<GreasePencil *>(ob->data), filter_mode);
   }
 
-  /* return the number of items added to the list */
+  /* Return the number of items added to the list */
   return items;
 }
 

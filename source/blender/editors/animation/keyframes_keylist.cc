@@ -516,12 +516,12 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
       MEM_callocN(sizeof(ActKeyColumn), "ActKeyColumnCel"));
   Cel &cel = *static_cast<Cel *>(data);
 
-  /* store settings based on state of BezTriple */
+  /* Store settings based on state of BezTriple */
   ak->cfra = cel.frame_number;
   ak->sel = (cel.frame.flag & SELECT) != 0;
   ak->key_type = cel.frame.type;
 
-  /* count keyframes in this column */
+  /* Count keyframes in this column */
   ak->totkey = 1;
   /* Set as visible block. */
   ak->totblock = 1;
@@ -535,15 +535,15 @@ static void nupdate_ak_cel(ActKeyColumn *ak, void * /*data*/)
 {
   // TODO : Cel *cel = static_cast<Cel *> data;
 
-  /* set selection status and 'touched' status */
+  /* Set selection status and 'touched' status */
   // if (cel->select) {
   //   ak->sel = SELECT;
   // }
 
-  /* count keyframes in this column */
+  /* Count keyframes in this column */
   ak->totkey++;
 
-  /* for keyframe type, 'proper' keyframes have priority over breakdowns
+  /* For keyframe type, 'proper' keyframes have priority over breakdowns
    * (and other types for now). */
   // if (gpf->key_type == BEZT_KEYTYPE_KEYFRAME) {
   //   ak->key_type = BEZT_KEYTYPE_KEYFRAME;

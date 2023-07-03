@@ -3484,14 +3484,14 @@ static bAnimChannelType ACF_GPD_LEGACY = {
 
 /* Grease Pencil Datablock ------------------------------------------- */
 
-/* get pointer to the setting */
+/* Get pointer to the setting */
 static void *acf_gpd_setting_ptr(bAnimListElem *ale,
                                  eAnimChannel_Settings /*setting*/,
                                  short *r_type)
 {
   GreasePencil *gpd = (GreasePencil *)ale->data;
 
-  /* all flags are just in gpd->flag for now... */
+  /* All flags are just in gpd->flag for now... */
   return GET_ACF_FLAG_PTR(gpd->flag, r_type);
 }
 
@@ -3502,14 +3502,14 @@ static int acf_gpd_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings set
   *r_neg = false;
 
   switch (setting) {
-    case ACHANNEL_SETTING_SELECT: /* selected */
+    case ACHANNEL_SETTING_SELECT: /* Selected */
       return AGRP_SELECTED;
 
-    case ACHANNEL_SETTING_EXPAND: /* expanded */
+    case ACHANNEL_SETTING_EXPAND: /* Expanded */
       return GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
 
     default:
-      /* these shouldn't happen */
+      /* This shouldn't happen */
       return 0;
   }
 }
@@ -3634,7 +3634,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
 /* Grease Pencil Layer ------------------------------------------- */
 
-/* name for grease pencil layer entries */
+/* Name for grease pencil layer entries */
 static void acf_gpl_name(bAnimListElem *ale, char *name)
 {
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
@@ -3644,7 +3644,7 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
   }
 }
 
-/* name property for grease pencil layer entries */
+/* Name property for grease pencil layer entries */
 static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data) {
@@ -3657,14 +3657,14 @@ static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA
   return false;
 }
 
-/* get pointer to the setting */
+/* Get pointer to the setting */
 static void *acf_gpl_setting_ptr(bAnimListElem *ale,
                                  eAnimChannel_Settings /*setting*/,
                                  short *r_type)
 {
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
 
-  /* all flags are just in gpl->flag for now... */
+  /* All flags are just in gpl->flag for now... */
   return GET_ACF_FLAG_PTR(layer->base.flag, r_type);
 }
 
