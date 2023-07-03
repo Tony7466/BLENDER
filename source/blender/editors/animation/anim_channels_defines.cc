@@ -53,6 +53,7 @@
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -3639,7 +3640,7 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
 
   if (layer && name) {
-    BLI_strncpy(name, layer->base.name, ANIM_CHAN_NAME_SIZE);
+    BLI_strncpy(name, layer->wrap().name().c_str(), ANIM_CHAN_NAME_SIZE);
   }
 }
 
