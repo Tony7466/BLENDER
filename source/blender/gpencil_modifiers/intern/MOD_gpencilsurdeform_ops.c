@@ -258,9 +258,9 @@ static int buildAdjacencyMap(const MPoly *poly,
 {
   const MLoop *loop;
   /* Find polygons adjacent to edges. */
+
   for (int i = 0; i < polys_num; i++, poly++) {
     loop = &mloop[poly->loopstart];
-
     for (int j = 0; j < poly->totloop; j++, loop++) {
 
       if (edge_polys[loop->e].num == 0) {
@@ -1559,14 +1559,8 @@ static bool surfacedeformBind(Object *ob,
   }
 
   /*Bind mode*/
-  const float(*positions)[3] = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
-  const MPoly *mpoly = BKE_mesh_polys(target);
-  const MEdge *medge = BKE_mesh_edges(target);
-  const MLoop *mloop = BKE_mesh_loops(target);
-  /*const MVert *mvert = target->mvert;   //FOR 3.3-
-  const MPoly *mpoly = target->mpoly;
-  const MEdge *medge = target->medge;
-  const MLoop *mloop = target->mloop; */
+
+
 
   uint tedges_num = target->totedge;
   // uint current_stroke_idx = smd_orig->current_stroke_index;
@@ -1651,6 +1645,11 @@ static bool surfacedeformBind(Object *ob,
         BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
         BKE_scene_graph_update_for_newframe(depsgraph);
         mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
+        const float(*positions)[3] = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
+        const MPoly *mpoly = BKE_mesh_polys(mesh_target);
+        const MEdge *medge = BKE_mesh_edges(mesh_target);
+        const MLoop *mloop = BKE_mesh_loops(mesh_target);
+        tedges_num = mesh_target->totedge;
         if (!makeTreeData(&treeData,
                           mesh_target,
                           smd_eval,
@@ -1699,6 +1698,10 @@ static bool surfacedeformBind(Object *ob,
 
     }
     else {
+      const float(*positions)[3] = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
+      const MPoly *mpoly = BKE_mesh_polys(mesh_target);
+      const MEdge *medge = BKE_mesh_edges(mesh_target);
+      const MLoop *mloop = BKE_mesh_loops(mesh_target);
       if (!makeTreeData(&treeData,
                         target,
                         smd_eval,
