@@ -6,7 +6,7 @@
 
 #include "DNA_node_tree_interface_types.h"
 
-#include "BLI_span.hh"
+#include "BLI_map.hh"
 #include "BLI_vector.hh"
 
 #ifdef __cplusplus
@@ -27,42 +27,70 @@ typedef struct bNodeTreeInterfaceCache {
 
 }  // namespace blender::bke
 
-// inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
-//{
-//  if (items().index_range().contains(active_index)) {
-//    return items()[active_index];
-//  }
-//  return nullptr;
-//}
+inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
+{
+  bNodeTreeInterfaceItem *active = nullptr;
+  int count = active_index;
+  foreach_item([&active, &count](bNodeTreeInterfaceItem &item) {
+    --count;
+    if (count == 0) {
+      active = &item;
+      return false;
+    }
+    return true;
+  });
+  return active;
+}
 
-// inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
-//{
-//  if (items().index_range().contains(active_index)) {
-//    return items()[active_index];
-//  }
-//  return nullptr;
-//}
+inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
+{
+  const bNodeTreeInterfaceItem *active = nullptr;
+  int count = active_index;
+  foreach_item([&active, &count](const bNodeTreeInterfaceItem &item) {
+    --count;
+    if (count == 0) {
+      active = &item;
+      return false;
+    }
+    return true;
+  });
+  return active;
+}
 
-// inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
-//{
-//  active_index = items().as_span().first_index_try(item);
-//}
+inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
+{
+  active_index = 0;
+  int count = 0;
+  foreach_item([item, &count, this](bNodeTreeInterfaceItem &titem) {
+    if (&titem == item) {
+      active_index = count;
+      return false;
+    }
+    ++count;
+    return true;
+  });
+}
 
-template<typename ExpectedT> struct IsExpectedTypeOp {
-  bool result = false;
+template<typename ExpectedT> struct IsExpectedTypeOperator {
+  bool &result;
 
   template<typename ItemT> void operator()()
   {
     result = std::is_same<ItemT, ExpectedT>::value;
+  }
+
+  void operator()()
+  {
+    result = std::is_same<bNodeTreeInterfaceSocket, ExpectedT>::value;
   }
 };
 
 template<typename T> T &bNodeTreeInterfaceItem::get_as()
 {
 #  ifndef NDEBUG
-  IsExpectedTypeOp<T> op;
-  apply_typed_operator(op);
-  BLI_assert(op.result);
+  bool is_valid = false;
+  to_static_type(IsExpectedTypeOperator<T>{is_valid});
+  BLI_assert(is_valid);
 #  endif
 
   return *reinterpret_cast<T *>(this);
@@ -71,91 +99,111 @@ template<typename T> T &bNodeTreeInterfaceItem::get_as()
 template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
 {
 #  ifndef NDEBUG
-  IsExpectedTypeOp<T> op;
-  apply_typed_operator(op);
-  BLI_assert(op.result);
+  bool is_valid = false;
+  to_static_type(IsExpectedTypeOperator<T>{is_valid});
+  BLI_assert(is_valid);
 #  endif
 
   return *reinterpret_cast<const T *>(this);
 }
 
+template<typename ExpectedT> struct CastToTypeOperator {
+  bNodeTreeInterfaceItem *item;
+  ExpectedT *&result;
+
+  template<typename ItemT> void operator()()
+  {
+    if (std::is_same<ItemT, ExpectedT>::value) {
+      result = reinterpret_cast<ExpectedT *>(item);
+    }
+    else {
+      result = nullptr;
+    }
+  }
+
+  void operator()()
+  {
+    if (std::is_same<bNodeTreeInterfaceItem, ExpectedT>::value) {
+      result = reinterpret_cast<ExpectedT *>(item);
+    }
+    else {
+      result = nullptr;
+    }
+  }
+};
+
 template<typename T> T *bNodeTreeInterfaceItem::get_as_ptr()
 {
-  switch (item_type) {
-    case NODE_INTERFACE_PANEL: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
-      return is_valid_type ? reinterpret_cast<T *>(this) : nullptr;
-    }
-    case NODE_INTERFACE_SOCKET: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
-      return is_valid_type ? reinterpret_cast<T *>(this) : nullptr;
-    }
-    default:
-      return nullptr;
-  }
+  T *result = nullptr;
+  to_static_type(CastToTypeOperator<T>{this, result});
+  return result;
 }
 
 template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
 {
+  const T *result = nullptr;
+  to_static_type(CastToTypeOperator<T>{this, result});
+  return result;
+}
+
+template<typename... Types, typename Func>
+void bNodeTreeInterfaceItem::to_static_type(Func func,
+                                            eNodeTreeInterfaceItemType item_type,
+                                            blender::StringRef data_type)
+{
+  using Callback = void (*)(const Func &func);
+
+  /* Build a lookup table to avoid having to compare the socket data type with every type name
+   * one after another. */
+  static const blender::Map<std::string, Callback> callback_map = []() {
+    blender::Map<std::string, Callback> callback_map;
+    /* This adds an entry in the map for every type in #Types. */
+    (callback_map.add_new(Types::socket_type_static,
+                          [](const Func &func) {
+                            /* Call the templated `operator()` of the given function
+                             * object. */
+                            func.template operator()<Types>();
+                          }),
+     ...);
+    return callback_map;
+  }();
+
   switch (item_type) {
     case NODE_INTERFACE_PANEL: {
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfacePanel>::value;
-      return is_valid_type ? reinterpret_cast<const T *>(this) : nullptr;
-    }
-    default:
-    case NODE_INTERFACE_SOCKET:
-      constexpr bool is_valid_type = std::is_same<T, bNodeTreeInterfaceSocket>::value;
-      return is_valid_type ? reinterpret_cast<const T *>(this) : nullptr;
-  }
-}
-
-template<typename OpT>
-void apply_typed_operator(const eNodeTreeInterfaceItemType item_type,
-                          blender::StringRef socket_data_type,
-                          OpT op)
-{
-  switch (item_type) {
-    case NODE_INTERFACE_PANEL:
-      op.template operator()<bNodeTreeInterfacePanel>();
+      func.template operator()<bNodeTreeInterfacePanel>();
       break;
+    }
     case NODE_INTERFACE_SOCKET: {
-      if (socket_data_type == bNodeTreeInterfaceSocketFloat::socket_type_static) {
-        op.template operator()<bNodeTreeInterfaceSocketFloat>();
+      const Callback callback = callback_map.lookup_default(data_type, nullptr);
+      if (callback != nullptr) {
+        callback(func);
       }
-      else if (socket_data_type == bNodeTreeInterfaceSocketInt::socket_type_static) {
-        op.template operator()<bNodeTreeInterfaceSocketInt>();
-      }
-      else if (socket_data_type == bNodeTreeInterfaceSocketBool::socket_type_static) {
-        op.template operator()<bNodeTreeInterfaceSocketBool>();
-      }
-      else if (socket_data_type == bNodeTreeInterfaceSocketString::socket_type_static) {
-        op.template operator()<bNodeTreeInterfaceSocketString>();
-      }
-      else if (socket_data_type == bNodeTreeInterfaceSocketObject::socket_type_static) {
-        op.template operator()<bNodeTreeInterfaceSocketObject>();
+      else {
+        /* Call the non-templated `operator()` of the given function object. */
+        func();
       }
       break;
     }
   }
 }
 
-template<typename OpT> void bNodeTreeInterfaceItem::apply_typed_operator(OpT op) const
+template<typename... Types, typename Func> void bNodeTreeInterfaceItem::to_static_type(Func func)
 {
-  const blender::StringRef data_type =
-      (item_type == NODE_INTERFACE_SOCKET ?
-           reinterpret_cast<const bNodeTreeInterfaceSocket *>(this)->data_type :
-           "");
-  return ::apply_typed_operator<OpT>(eNodeTreeInterfaceItemType(item_type), data_type, op);
+  const char *data_type = nullptr;
+  if (item_type == NODE_INTERFACE_SOCKET) {
+    data_type = reinterpret_cast<bNodeTreeInterfaceSocket *>(this)->data_type;
+  }
+  to_static_type(func, eNodeTreeInterfaceItemType(item_type), data_type);
 }
 
-template<typename OpT> void bNodeTreeInterface::foreach_item(OpT op)
+template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
 {
   std::queue<bNodeTreeInterfacePanel *> queue;
 
-  if (op(root_panel) == false) {
+  if (op(this->item) == false) {
     return;
   }
-  queue.push(&root_panel);
+  queue.push(this);
 
   while (!queue.empty()) {
     bNodeTreeInterfacePanel *parent = queue.front();
@@ -174,14 +222,14 @@ template<typename OpT> void bNodeTreeInterface::foreach_item(OpT op)
   }
 }
 
-template<typename OpT> void bNodeTreeInterface::foreach_item(OpT op) const
+template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op) const
 {
   std::queue<const bNodeTreeInterfacePanel *> queue;
 
-  if (op(root_panel) == false) {
+  if (op(this->item) == false) {
     return;
   }
-  queue.push(&root_panel);
+  queue.push(this);
 
   while (!queue.empty()) {
     const bNodeTreeInterfacePanel *parent = queue.front();

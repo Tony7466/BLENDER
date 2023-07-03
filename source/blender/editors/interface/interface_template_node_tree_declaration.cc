@@ -37,19 +37,6 @@ namespace {
 
 class NodeTreeInterfaceView;
 
-/* Utility function to test if an item is ancestor of another. */
-bool is_ancestor(const bNodeTreeInterfaceItem &ancestor, const bNodeTreeInterfaceItem &item)
-{
-  const bNodeTreeInterfaceItem *current = &item;
-  while (current) {
-    if (current == &ancestor) {
-      return true;
-    }
-    current = current->parent ? &current->parent->item : nullptr;
-  }
-  return false;
-}
-
 class NodeTreeInterfaceDragController : public AbstractViewItemDragController {
  public:
   explicit NodeTreeInterfaceDragController(NodeTreeInterfaceView &view,
@@ -272,22 +259,14 @@ class NodeTreeInterfaceView : public AbstractTreeView {
   void build_tree() override
   {
     /* Draw root items */
-    add_items_for_panel_recursive(nullptr, *this);
+    add_items_for_panel_recursive(interface_.root_panel, *this);
   }
 
  protected:
-  void add_items_for_panel_recursive(const bNodeTreeInterfacePanel *panel,
+  void add_items_for_panel_recursive(bNodeTreeInterfacePanel &parent,
                                      ui::TreeViewOrItem &parent_item)
   {
-    Span<bNodeTreeInterfaceItem *> items;
-    if (panel) {
-      items = interface_.item_children(panel->item);
-    }
-    else {
-      items = interface_.root_items();
-    }
-
-    for (bNodeTreeInterfaceItem *item : items) {
+    for (bNodeTreeInterfaceItem *item : parent.items()) {
       switch (item->item_type) {
         case NODE_INTERFACE_SOCKET: {
           bNodeTreeInterfaceSocket *socket = item->get_as_ptr<bNodeTreeInterfaceSocket>();
@@ -301,7 +280,7 @@ class NodeTreeInterfaceView : public AbstractTreeView {
           NodePanelViewItem &panel_item = parent_item.add_tree_item<NodePanelViewItem>(
               nodetree_, interface_, *panel);
           panel_item.set_collapsed(false);
-          add_items_for_panel_recursive(panel, panel_item);
+          add_items_for_panel_recursive(*panel, panel_item);
           break;
         }
       }
@@ -369,10 +348,12 @@ bool NodeSocketDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disabl
   wmDragNodeTreeInterface *drag_data = get_drag_node_tree_declaration(drag);
 
   /* Can't drop an item onto its children. */
-  if (is_ancestor(*drag_data->item, socket_.item)) {
-    return false;
+  if (const bNodeTreeInterfacePanel *panel =
+          drag_data->item->get_as_ptr<bNodeTreeInterfacePanel>()) {
+    if (panel->contains_item(socket_.item)) {
+      return false;
+    }
   }
-
   return true;
 }
 
@@ -392,10 +373,13 @@ bool NodeSocketDropTarget::on_drop(bContext *C, const wmDrag &drag) const
   bNodeTreeInterface &interface = get_view<NodeTreeInterfaceView>().interface();
 
   /* Put into same panel as the target. */
-  drag_item->parent = socket_.item.parent;
+  bNodeTreeInterfacePanel *parent;
+  if (!interface.find_item_parent(socket_.item, parent)) {
+    return false;
+  }
 
-  /* Move before the target */
-  interface.move_item(*drag_item, interface.item_index(socket_.item));
+  const int index = parent->items().as_span().first_index_try(&socket_.item);
+  interface.move_item_to_parent(*drag_item, parent, index);
 
   /* General update */
   BKE_ntree_update_tag_interface(&nodetree);
@@ -424,8 +408,11 @@ bool NodePanelDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disable
   wmDragNodeTreeInterface *drag_data = get_drag_node_tree_declaration(drag);
 
   /* Can't drop an item onto its children. */
-  if (is_ancestor(*drag_data->item, panel_.item)) {
-    return false;
+  if (const bNodeTreeInterfacePanel *panel =
+          drag_data->item->get_as_ptr<bNodeTreeInterfacePanel>()) {
+    if (panel->contains_item(panel_.item)) {
+      return false;
+    }
   }
 
   return true;
@@ -447,10 +434,13 @@ bool NodePanelDropTarget::on_drop(bContext *C, const wmDrag &drag) const
   bNodeTreeInterface &interface = get_view<NodeTreeInterfaceView>().interface();
 
   /* Put into same panel as the target. */
-  drag_item->parent = panel_.item.parent;
+  bNodeTreeInterfacePanel *parent;
+  if (!interface.find_item_parent(panel_.item, parent)) {
+    return false;
+  }
 
-  /* Move before the target */
-  interface.move_item(*drag_item, interface.item_index(panel_.item));
+  const int index = parent->items().as_span().first_index_try(&panel_.item);
+  interface.move_item_to_parent(*drag_item, parent, index);
 
   /* General update */
   BKE_ntree_update_tag_interface(&nodetree);

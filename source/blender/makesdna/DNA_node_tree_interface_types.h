@@ -23,20 +23,15 @@ struct bNodeTreeInterfaceSocket;
 
 /** Type of interface item. */
 typedef enum eNodeTreeInterfaceItemType {
-  NODE_INTERFACE_SOCKET = 0,
-  NODE_INTERFACE_PANEL = 1,
+  NODE_INTERFACE_PANEL = 0,
+  NODE_INTERFACE_SOCKET = 1,
 } eNodeTreeInterfaceItemType;
 
 /** Describes a socket and all necessary details for a node declaration. */
 typedef struct bNodeTreeInterfaceItem {
   /* eNodeTreeInterfaceItemType */
   char item_type;
-  char _pad[3];
-
-  /* Index in final item sequence. */
-  int index;
-  int children_start;
-  int children_num;
+  char _pad[7];
 
 #ifdef __cplusplus
   template<typename T> T &get_as();
@@ -45,10 +40,18 @@ typedef struct bNodeTreeInterfaceItem {
   template<typename T> T *get_as_ptr();
   template<typename T> const T *get_as_ptr() const;
 
-  void copy_data(const bNodeTreeInterfaceItem &src);
-  void free_data();
+  /* Call function with the static item type. */
+  template<typename... Types, typename Func>
+  static void to_static_type(Func func,
+                             eNodeTreeInterfaceItemType item_type,
+                             blender::StringRef data_type);
+  /* Call function with the static type of the item instance. */
+  template<typename... Types, typename Func> void to_static_type(Func func);
 
-  template<typename OpT> void apply_typed_operator(OpT op) const;
+  /* Overloaded by subclasses */
+  void copy_impl(const bNodeTreeInterfaceItem &src);
+  /* Overloaded by subclasses */
+  void free_impl();
 #endif
 } bNodeTreeInterfaceItem;
 
@@ -74,6 +77,9 @@ typedef struct bNodeTreeInterfaceSocket {
 #ifdef __cplusplus
   std::string socket_identifier() const;
   blender::ColorGeometry4f socket_color() const;
+
+  void copy_impl(const bNodeTreeInterfaceSocket &src);
+  void free_impl();
 #endif
 } bNodeTreeInterfaceSocket;
 
@@ -85,6 +91,9 @@ typedef struct bNodeTreeInterfaceSocketFloat {
   using SocketValueType = struct bNodeSocketValueFloat;
 
   static const char *socket_type_static;
+
+  void copy_impl(const bNodeTreeInterfaceSocketFloat &src);
+  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketFloat;
 
@@ -96,6 +105,9 @@ typedef struct bNodeTreeInterfaceSocketInt {
   using SocketValueType = struct bNodeSocketValueInt;
 
   static const char *socket_type_static;
+
+  void copy_impl(const bNodeTreeInterfaceSocketInt &src);
+  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketInt;
 
@@ -107,6 +119,9 @@ typedef struct bNodeTreeInterfaceSocketBool {
   using SocketValueType = struct bNodeSocketValueBoolean;
 
   static const char *socket_type_static;
+
+  void copy_impl(const bNodeTreeInterfaceSocketBool &src);
+  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketBool;
 
@@ -118,6 +133,9 @@ typedef struct bNodeTreeInterfaceSocketString {
   using SocketValueType = struct bNodeSocketValueString;
 
   static const char *socket_type_static;
+
+  void copy_impl(const bNodeTreeInterfaceSocketString &src);
+  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketString;
 
@@ -129,6 +147,9 @@ typedef struct bNodeTreeInterfaceSocketObject {
   using SocketValueType = struct bNodeSocketValueObject;
 
   static const char *socket_type_static;
+
+  void copy_impl(const bNodeTreeInterfaceSocketObject &src);
+  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketObject;
 
@@ -144,21 +165,51 @@ typedef struct bNodeTreeInterfacePanel {
 #ifdef __cplusplus
   static bNodeTreeInterfaceSocket *create(blender::StringRef name);
 
-  //  inline operator bNodeTreeInterfaceItem &()
-  //  {
-  //    return *reinterpret_cast<bNodeTreeInterfaceItem *>(this);
-  //  }
-  //  inline operator const bNodeTreeInterfaceItem &() const
-  //  {
-  //    return *reinterpret_cast<const bNodeTreeInterfaceItem *>(this);
-  //  }
-
   blender::IndexRange items_range() const;
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
 
- protected:
   int item_index(const bNodeTreeInterfaceItem &item) const;
+  bool contains_item(const bNodeTreeInterfaceItem &item) const;
+
+  /**
+   * Search for an item in the interface.
+   * \return True if the item was found.
+   */
+  bool find_item(const bNodeTreeInterfaceItem &item) const;
+  /**
+   * Search for an item and its parent in the interface.
+   * \param r_parent: Parent containing the item.
+   * \return True if the item was found in any panel.
+   */
+  bool find_item_parent(const bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *&r_parent);
+
+  /**
+   * Apply an operator to every item in the panel.
+   * The items are visited in drawing order from top to bottom.
+   * The operator should have the following signature:
+   *
+   *   bool MyOperator(bNodeTreeInterfaceItem &item);
+   *
+   * If the operator returns false for any item the iteration stops.
+   */
+  template<typename Func> void foreach_item(Func op);
+
+  /**
+   * Apply an operator to every item in the panel.
+   * The items are visited in drawing order from top to bottom.
+   * The operator should have the following signature:
+   *
+   *   bool MyOperator(const bNodeTreeInterfaceItem &item);
+   *
+   * If the operator returns false for any item the iteration stops.
+   */
+  template<typename Func> void foreach_item(Func op) const;
+
+  void copy_impl(const bNodeTreeInterfacePanel &src);
+  void free_impl();
+
+ protected:
   void copy_items(blender::Span<const bNodeTreeInterfaceItem *> items_src);
 
   void add_item(bNodeTreeInterfaceItem &item);
@@ -181,15 +232,44 @@ typedef struct bNodeTreeInterface {
   void copy_data(const bNodeTreeInterface &src);
   void free_data();
 
-  //  bNodeTreeInterfaceItem *active_item();
-  //  const bNodeTreeInterfaceItem *active_item() const;
-  //  void active_item_set(bNodeTreeInterfaceItem *item);
+  bNodeTreeInterfaceItem *active_item();
+  const bNodeTreeInterfaceItem *active_item() const;
+  void active_item_set(bNodeTreeInterfaceItem *item);
 
+  /**
+   * Search for an item in the interface.
+   * \return True if the item was found.
+   */
+  bool find_item(const bNodeTreeInterfaceItem &item) const
+  {
+    return root_panel.find_item(item);
+  }
+  /**
+   * Search for an item and its parent in the interface.
+   * \param r_parent: Parent containing the item.
+   * \return True if the item was found in any panel.
+   */
+  bool find_item_parent(const bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *&r_parent)
+  {
+    return root_panel.find_item_parent(item, r_parent);
+  }
+
+  /**
+   * Add a new socket at the end of the items list.
+   * \param parent: Panel in which to add the socket. If parent is null the socket is added in the
+   * root panel.
+   */
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
                                        blender::StringRef data_type,
                                        eNodeTreeInterfaceSocketKind in_out,
                                        bNodeTreeInterfacePanel *parent);
+  /**
+   * Insert a new socket.
+   * \param parent: Panel in which to add the socket. If parent is null the socket is added in the
+   * root panel.
+   * \param index: Position of the socket within the parent panel.
+   */
   bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
                                           blender::StringRef description,
                                           blender::StringRef data_type,
@@ -197,27 +277,59 @@ typedef struct bNodeTreeInterface {
                                           bNodeTreeInterfacePanel *parent,
                                           int index);
 
+  /**
+   * Add a new panel at the end of the items list.
+   * \param parent: Panel in which the new panel is aded as a child. If parent is null the new
+   * panel is made a child of the root panel.
+   */
   bNodeTreeInterfacePanel *add_panel(blender::StringRef name, bNodeTreeInterfacePanel *parent);
+  /**
+   * Insert a new panel.
+   * \param parent: Panel in which the new panel is aded as a child. If parent is null the new
+   * panel is made a child of the root panel.
+   * \param index: Position of the child panel within the parent panel.
+   */
   bNodeTreeInterfacePanel *insert_panel(blender::StringRef name,
                                         bNodeTreeInterfacePanel *parent,
                                         int index);
 
+  /**
+   * Add a copy of an item at the end of the items list.
+   * \param parent: Add the item inside the parent panel. If parent is null the item is made a
+   * child of the root panel.
+   */
   bNodeTreeInterfaceItem *add_item_copy(const bNodeTreeInterfaceItem &item,
                                         bNodeTreeInterfacePanel *parent);
+  /**
+   * Insert a copy of an item.
+   * \param parent: Add the item inside the parent panel. If parent is null the item is made a
+   * child of the root panel.
+   * \param index: Position of the item within the parent panel.
+   */
   bNodeTreeInterfaceItem *insert_item_copy(const bNodeTreeInterfaceItem &item,
                                            bNodeTreeInterfacePanel *parent,
                                            int index);
 
-  bool remove_item(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *parent);
-  void clear_items(bNodeTreeInterfacePanel *parent);
+  bool remove_item(bNodeTreeInterfaceItem &item);
+  void clear_items();
 
-  bool move_item(bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *parent, int new_index);
+  /**
+   * Move an item to a new position.
+   * \param new_index: New index of the item in the parent panel.
+   */
+  bool move_item(bNodeTreeInterfaceItem &item, int new_index);
+  /**
+   * Move an item to a new panel and/or position.
+   * \param new_parent: Panel that the item is moved to. If null the item is added to the root
+   * panel.
+   * \param new_index: New index of the item in the parent panel.
+   */
   bool move_item_to_parent(bNodeTreeInterfaceItem &item,
-                           bNodeTreeInterfacePanel *parent,
                            bNodeTreeInterfacePanel *new_parent,
                            int new_index);
 
-  /* Apply an operator to every item in the interface.
+  /**
+   * Apply an operator to every item in the interface.
    * The items are visited in drawing order from top to bottom.
    * The operator should have the following signature:
    *
@@ -225,9 +337,13 @@ typedef struct bNodeTreeInterface {
    *
    * If the operator returns false for any item the iteration stops.
    */
-  template<typename OpT> void foreach_item(OpT op);
+  template<typename Func> void foreach_item(Func op)
+  {
+    root_panel.foreach_item(op);
+  }
 
-  /* Apply an operator to every item in the interface.
+  /**
+   * Apply an operator to every item in the interface.
    * The items are visited in drawing order from top to bottom.
    * The operator should have the following signature:
    *
@@ -235,17 +351,10 @@ typedef struct bNodeTreeInterface {
    *
    * If the operator returns false for any item the iteration stops.
    */
-  template<typename OpT> void foreach_item(OpT op) const;
-
- protected:
-  /* Warning: slow! */
-  bool contains_item(const bNodeTreeInterfaceItem &item) const;
-
-  /**
-   * Topologial stable sorting method that keeps items grouped by parent.
-   * Direct children of a panel remain grouped together, so children can be access as a span.
-   */
-  void update_order();
+  template<typename Func> void foreach_item(Func op) const
+  {
+    root_panel.foreach_item(op);
+  }
 
 #endif
 } bNodeTreeInterface;
