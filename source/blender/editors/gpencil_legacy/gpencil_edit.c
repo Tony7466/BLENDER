@@ -491,7 +491,7 @@ static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   gpd->flag ^= GP_DATA_STROKE_SCULPTMODE;
   /* set mode */
   if (gpd->flag & GP_DATA_STROKE_SCULPTMODE) {
-    mode = OB_MODE_SCULPT_GPENCIL;
+    mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
   }
   else {
     mode = OB_MODE_OBJECT;
@@ -506,7 +506,7 @@ static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
     ob->mode = mode;
   }
 
-  if (mode == OB_MODE_SCULPT_GPENCIL) {
+  if (mode == OB_MODE_SCULPT_GPENCIL_LEGACY) {
     /* Be sure we have brushes. */
     BKE_paint_ensure(ts, (Paint **)&ts->gp_sculptpaint);
 
@@ -591,7 +591,7 @@ static int gpencil_weightmode_toggle_exec(bContext *C, wmOperator *op)
     gpd = ob->data;
     is_object = true;
   }
-  const int mode_flag = OB_MODE_WEIGHT_GPENCIL;
+  const int mode_flag = OB_MODE_WEIGHT_GPENCIL_LEGACY;
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
   if (gpd == NULL) {
@@ -602,7 +602,7 @@ static int gpencil_weightmode_toggle_exec(bContext *C, wmOperator *op)
   gpd->flag ^= GP_DATA_STROKE_WEIGHTMODE;
   /* set mode */
   if (gpd->flag & GP_DATA_STROKE_WEIGHTMODE) {
-    mode = OB_MODE_WEIGHT_GPENCIL;
+    mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
   }
   else {
     mode = OB_MODE_OBJECT;
@@ -620,7 +620,7 @@ static int gpencil_weightmode_toggle_exec(bContext *C, wmOperator *op)
     ED_object_posemode_set_for_weight_paint(C, bmain, ob, is_mode_set);
   }
 
-  if (mode == OB_MODE_WEIGHT_GPENCIL) {
+  if (mode == OB_MODE_WEIGHT_GPENCIL_LEGACY) {
     /* Be sure we have brushes. */
     BKE_paint_ensure(ts, (Paint **)&ts->gp_weightpaint);
 
@@ -711,7 +711,7 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
   gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
   /* set mode */
   if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
-    mode = OB_MODE_VERTEX_GPENCIL;
+    mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
   }
   else {
     mode = OB_MODE_OBJECT;
@@ -726,7 +726,7 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
     ob->mode = mode;
   }
 
-  if (mode == OB_MODE_VERTEX_GPENCIL) {
+  if (mode == OB_MODE_VERTEX_GPENCIL_LEGACY) {
     /* Be sure we have brushes.
      * Need Draw as well (used for Palettes). */
     BKE_paint_ensure(ts, (Paint **)&ts->gp_paint);
@@ -5766,7 +5766,8 @@ bool ED_object_gpencil_exit(Main *bmain, Object *ob)
 
     ob->restore_mode = ob->mode;
     ob->mode &= ~(OB_MODE_PAINT_GPENCIL_LEGACY | OB_MODE_EDIT_GPENCIL_LEGACY |
-                  OB_MODE_SCULPT_GPENCIL | OB_MODE_WEIGHT_GPENCIL | OB_MODE_VERTEX_GPENCIL);
+                  OB_MODE_SCULPT_GPENCIL_LEGACY | OB_MODE_WEIGHT_GPENCIL_LEGACY |
+                  OB_MODE_VERTEX_GPENCIL_LEGACY);
 
     /* Inform all CoW versions that we changed the mode. */
     DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_COPY_ON_WRITE);

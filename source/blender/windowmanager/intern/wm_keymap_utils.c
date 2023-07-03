@@ -139,13 +139,13 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
       case CTX_MODE_EDIT_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Edit Mode";
         break;
-      case CTX_MODE_SCULPT_GPENCIL:
+      case CTX_MODE_SCULPT_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Sculpt Mode";
         break;
-      case CTX_MODE_WEIGHT_GPENCIL:
+      case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Weight Mode";
         break;
-      case CTX_MODE_VERTEX_GPENCIL:
+      case CTX_MODE_VERTEX_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Vertex Mode";
         break;
       case CTX_MODE_SCULPT_CURVES:

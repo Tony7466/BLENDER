@@ -200,9 +200,9 @@ static void OVERLAY_cache_init(void *vedata)
       OVERLAY_edit_gpencil_legacy_cache_init(data);
       break;
     case CTX_MODE_PAINT_GPENCIL_LEGACY:
-    case CTX_MODE_SCULPT_GPENCIL:
-    case CTX_MODE_VERTEX_GPENCIL:
-    case CTX_MODE_WEIGHT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY:
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
       OVERLAY_edit_gpencil_legacy_cache_init(data);
       break;
     case CTX_MODE_EDIT_CURVES:
@@ -734,9 +734,9 @@ static void OVERLAY_draw_scene(void *vedata)
       OVERLAY_edit_gpencil_legacy_draw(data);
       break;
     case CTX_MODE_PAINT_GPENCIL_LEGACY:
-    case CTX_MODE_SCULPT_GPENCIL:
-    case CTX_MODE_VERTEX_GPENCIL:
-    case CTX_MODE_WEIGHT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY:
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
       OVERLAY_edit_gpencil_legacy_draw(data);
       break;
     case CTX_MODE_SCULPT_CURVES:
