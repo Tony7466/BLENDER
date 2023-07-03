@@ -121,6 +121,7 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
   double total_w = 0.0;
 
   const int64_t first_pt = curve_points.first();
+  const int64_t last_pt = curve_points.last();
   const int64_t nb_pts = curve_points.size();
 
   for (int step = iterations; step > 0; step--) {
@@ -142,7 +143,7 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
       }
       else {
         before = std::max(before, first_pt);
-        after = std::min(after, curve_points.last());
+        after = std::min(after, last_pt);
       }
 
       /* Add the neighboring values */
