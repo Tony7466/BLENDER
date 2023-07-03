@@ -579,7 +579,7 @@ Brush *BKE_brush_add_gpencil(Main *bmain, ToolSettings *ts, const char *name, eO
   Paint *paint = nullptr;
   Brush *brush;
   switch (mode) {
-    case OB_MODE_PAINT_GPENCIL: {
+    case OB_MODE_PAINT_GPENCIL_LEGACY: {
       paint = &ts->gp_paint->paint;
       break;
     }
@@ -1398,86 +1398,86 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts, const bool r
   Brush *brush_prev = paint->brush;
   Brush *brush, *deft_draw;
   /* Airbrush brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Airbrush", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Airbrush", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_AIRBRUSH);
   }
 
   /* Ink Pen brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_INK_PEN);
   }
 
   /* Ink Pen Rough brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen Rough", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen Rough", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_INK_PEN_ROUGH);
   }
 
   /* Marker Bold brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Marker Bold", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Marker Bold", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_MARKER_BOLD);
   }
 
   /* Marker Chisel brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Marker Chisel", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Marker Chisel", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_MARKER_CHISEL);
   }
 
   /* Pen brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Pen", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Pen", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_PEN);
   }
 
   /* Pencil Soft brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Pencil Soft", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Pencil Soft", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_PENCIL_SOFT);
   }
 
   /* Pencil brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Pencil", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Pencil", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_PENCIL);
   }
   deft_draw = brush; /* save default brush. */
 
   /* Fill brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Fill Area", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Fill Area", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_FILL_AREA);
   }
 
   /* Soft Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Soft", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Soft", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_ERASER_SOFT);
   }
 
   /* Hard Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Hard", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Hard", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_ERASER_HARD);
   }
 
   /* Point Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Point", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Point", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_ERASER_POINT);
   }
 
   /* Stroke Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Stroke", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Stroke", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_ERASER_STROKE);
   }
 
   /* Tint brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Tint", OB_MODE_PAINT_GPENCIL, &r_new);
+  brush = gpencil_brush_ensure(bmain, ts, "Tint", OB_MODE_PAINT_GPENCIL_LEGACY, &r_new);
   if ((reset) || (r_new)) {
     BKE_gpencil_brush_preset_set(bmain, brush, GP_BRUSH_PRESET_TINT);
   }

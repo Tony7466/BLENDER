@@ -133,7 +133,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
       case CTX_MODE_OBJECT:
         km_id = "Object Mode";
         break;
-      case CTX_MODE_PAINT_GPENCIL:
+      case CTX_MODE_PAINT_GPENCIL_LEGACY:
         km_id = "Grease Pencil Stroke Paint Mode";
         break;
       case CTX_MODE_EDIT_GPENCIL_LEGACY:

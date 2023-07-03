@@ -90,7 +90,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
                                                            enum eContextObjectMode mode)
 {
   switch (mode) {
-    case CTX_MODE_PAINT_GPENCIL: {
+    case CTX_MODE_PAINT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_PENCIL;
       }
@@ -208,10 +208,10 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 
     /* Get Brush mode base on context mode. */
     const enum eContextObjectMode mode = CTX_data_mode_enum(C);
-    eObjectMode obmode = OB_MODE_PAINT_GPENCIL;
+    eObjectMode obmode = OB_MODE_PAINT_GPENCIL_LEGACY;
     switch (mode) {
-      case CTX_MODE_PAINT_GPENCIL:
-        obmode = OB_MODE_PAINT_GPENCIL;
+      case CTX_MODE_PAINT_GPENCIL_LEGACY:
+        obmode = OB_MODE_PAINT_GPENCIL_LEGACY;
         break;
       case CTX_MODE_SCULPT_GPENCIL:
         obmode = OB_MODE_SCULPT_GPENCIL;

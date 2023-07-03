@@ -1726,7 +1726,7 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
     case CTX_MODE_OBJECT:
       ARRAY_SET_ITEMS(contexts, ".objectmode");
       break;
-    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_paint");
       break;
     case CTX_MODE_SCULPT_GPENCIL:
@@ -1746,7 +1746,7 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
   }
 
   switch (mode) {
-    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_paint");
       break;
     case CTX_MODE_SCULPT_GPENCIL:

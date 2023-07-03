@@ -345,7 +345,7 @@ static bool rna_Brush_mode_with_tool_poll(PointerRNA *ptr, PointerRNA value)
     if (slot_index != brush->gpencil_tool) {
       return false;
     }
-    mode = OB_MODE_PAINT_GPENCIL;
+    mode = OB_MODE_PAINT_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->gp_vertexpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_vertex_tool) {

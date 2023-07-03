@@ -498,7 +498,7 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
           return &ts->wpaint->paint;
         case OB_MODE_TEXTURE_PAINT:
           return &ts->imapaint.paint;
-        case OB_MODE_PAINT_GPENCIL:
+        case OB_MODE_PAINT_GPENCIL_LEGACY:
           return &ts->gp_paint->paint;
         case OB_MODE_VERTEX_GPENCIL:
           return &ts->gp_vertexpaint->paint;
@@ -614,7 +614,7 @@ ePaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
         return PAINT_MODE_VERTEX;
       case CTX_MODE_PAINT_WEIGHT:
         return PAINT_MODE_WEIGHT;
-      case CTX_MODE_PAINT_GPENCIL:
+      case CTX_MODE_PAINT_GPENCIL_LEGACY:
         return PAINT_MODE_GPENCIL;
       case CTX_MODE_PAINT_TEXTURE:
         return PAINT_MODE_TEXTURE_3D;
@@ -685,7 +685,7 @@ void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
   }
   else if (ts->gp_paint && paint == &ts->gp_paint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_tool);
-    paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL;
+    paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
   }
   else if (ts->gp_vertexpaint && paint == &ts->gp_vertexpaint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_vertex_tool);

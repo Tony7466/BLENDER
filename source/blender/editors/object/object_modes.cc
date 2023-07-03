@@ -81,15 +81,15 @@ static const char *object_mode_op_string(eObjectMode mode)
   if (mode == OB_MODE_POSE) {
     return "OBJECT_OT_posemode_toggle";
   }
-  if (mode == OB_MODE_EDIT_GPENCIL) {
+  if (mode == OB_MODE_EDIT_GPENCIL_LEGACY) {
     return "GPENCIL_OT_editmode_toggle";
   }
   if (U.experimental.use_grease_pencil_version3) {
-    if (mode == OB_MODE_PAINT_GPENCIL) {
+    if (mode == OB_MODE_PAINT_GPENCIL_LEGACY) {
       return "GREASE_PENCIL_OT_draw_mode_toggle";
     }
   }
-  if (mode == OB_MODE_PAINT_GPENCIL) {
+  if (mode == OB_MODE_PAINT_GPENCIL_LEGACY) {
     return "GPENCIL_OT_paintmode_toggle";
   }
   if (mode == OB_MODE_SCULPT_GPENCIL) {
@@ -146,7 +146,7 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
       }
       break;
     case OB_GPENCIL_LEGACY:
-      if (mode & (OB_MODE_EDIT_GPENCIL | OB_MODE_ALL_PAINT_GPENCIL)) {
+      if (mode & (OB_MODE_EDIT_GPENCIL_LEGACY | OB_MODE_ALL_PAINT_GPENCIL)) {
         return true;
       }
       break;
@@ -156,7 +156,7 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
       }
       break;
     case OB_GREASE_PENCIL:
-      if (mode & (OB_MODE_EDIT | OB_MODE_PAINT_GPENCIL)) {
+      if (mode & (OB_MODE_EDIT | OB_MODE_PAINT_GPENCIL_LEGACY)) {
         return true;
       }
       break;
@@ -208,7 +208,7 @@ bool ED_object_mode_set_ex(bContext *C, eObjectMode mode, bool use_undo, ReportL
   }
 
   if ((ob->type == OB_GPENCIL_LEGACY) && (mode == OB_MODE_EDIT)) {
-    mode = OB_MODE_EDIT_GPENCIL;
+    mode = OB_MODE_EDIT_GPENCIL_LEGACY;
   }
 
   if (ob->mode == mode) {
