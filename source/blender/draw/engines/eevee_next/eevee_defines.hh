@@ -27,7 +27,7 @@
 #define CULLING_TILE_GROUP_SIZE 256
 
 /* Reflection Probes. */
-#define REFLECTION_PROBE_GROUP_SIZE 32
+#define REFLECTION_PROBE_GROUP_SIZE 16
 
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
