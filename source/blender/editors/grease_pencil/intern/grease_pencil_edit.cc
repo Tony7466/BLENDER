@@ -103,6 +103,14 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
   /* TODO ? Unlike for the legacy algorithm,
      we don't have a smooth cap parameter */
 
+  /* Avoid computation if the mask is empty */
+  if (mask.is_empty()) {
+    return dst;
+  }
+
+  /* Initialize at zero */
+  mask.foreach_index(GrainSize(256), [&](const int64_t point_index) { dst[point_index] = T(0); });
+
   /* Weight Initialization */
   const int n_half = keep_shape ? (iterations * iterations) / 8 + iterations :
                                   (iterations * iterations) / 4 + 2 * iterations + 12;
@@ -112,22 +120,28 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
                   0.0;
   double total_w = 0.0;
 
-  const int nb_pts = curve_points.size();
+  const int64_t first_pt = curve_points.first();
+  const int64_t nb_pts = curve_points.size();
 
-  for (const int step : IndexRange(iterations)) {
+  for (int step = iterations; step > 0; step--) {
     float w_before = float(w - w2);
     float w_after = float(w - w2);
 
     mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
+      /* Only compute points inside the curve range */
+      if (!curve_points.contains(point_index)) {
+        return;
+      }
+
       /* Compute the neighboring points */
       int64_t before = point_index - step;
       int64_t after = point_index + step;
       if (is_cyclic) {
-        before = (nb_pts + ((before - curve_points.first()) % nb_pts)) % nb_pts;
-        after = after % nb_pts;
+        before = ((before - first_pt) % nb_pts + nb_pts) % nb_pts + first_pt;
+        after = (after - first_pt) % nb_pts + first_pt;
       }
       else {
-        before = std::max(before, curve_points.first());
+        before = std::max(before, first_pt);
         after = std::min(after, curve_points.last());
       }
 
@@ -136,7 +150,8 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
       const T aval = src[after];
       const T cval = src[point_index];
 
-      dst[point_index] += (bval - cval) * w_before + (aval - cval) * w_after;
+      dst[point_index] += (bval - cval) * w_before;
+      dst[point_index] += (aval - cval) * w_after;
     });
 
     /* Update the weight values */
@@ -189,7 +204,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
 
   /* TODO : these variables should be operator's properties */
   const int iterations = 1;
-  const bool keep_shape = true;
+  const bool keep_shape = false;
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
