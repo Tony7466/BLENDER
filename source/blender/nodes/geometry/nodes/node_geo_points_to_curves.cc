@@ -4,7 +4,6 @@
 
 #include "node_geometry_util.hh"
 
-//#include "BLI_array_utils.hh"
 #include "BLI_sort.hh"
 
 #include "BKE_geometry_set.hh"
@@ -13,9 +12,19 @@ namespace blender::nodes::node_geo_points_to_curves_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Points");
-  b.add_input<decl::Int>("Curve Group ID").field_on_all().hide_value();
-  b.add_input<decl::Float>("Length in Curve").field_on_all().hide_value();
+  b.add_input<decl::Geometry>("Points")
+      .supported_type({GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::PointCloud})
+      .description("Points to build curves");
+  b.add_input<decl::Int>("Curve Group ID")
+      .field_on_all()
+      .hide_value()
+      .description(
+          "Index of curve for each point. ID groups will be converted to curves indices without "
+          "gaps");
+  b.add_input<decl::Float>("Weight").field_on_all().hide_value().description(
+      "Weight to sort points of curve");
 
   b.add_output<decl::Geometry>("Curves").propagate_all();
 }
@@ -26,15 +35,12 @@ void inverse_gather(const GVArray &src, const Span<int> &indices, GMutableSpan d
     using T = decltype(dummy);
     const VArray<T> src_typed = src.typed<T>();
     MutableSpan<T> dst_typed = dst.typed<T>();
-    devirtualize_varray(src_typed, [indices, dst_typed](const auto src_typed) {
-      threading::parallel_for(
-          indices.index_range(),
-          4096,
-          [indices, dst_typed, src_typed = std::move(src_typed)](const IndexRange range) {
-            for (const int64_t index : range) {
-              dst_typed[indices[index]] = src_typed[index];
-            }
-          });
+    devirtualize_varray(src_typed, [&](const auto src_typed) {
+      threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
+        for (const int64_t index : range) {
+          dst_typed[indices[index]] = src_typed[index];
+        }
+      });
     });
   });
 }
@@ -44,12 +50,11 @@ void inverse_fill(const Span<int> &indices, GMutableSpan dst)
   bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
     using T = decltype(dummy);
     MutableSpan<T> dst_typed = dst.typed<T>();
-    threading::parallel_for(
-        indices.index_range(), 4096, [indices, dst_typed](const IndexRange range) {
-          for (const int64_t index : range) {
-            dst_typed[indices[index]] = T();
-          }
-        });
+    threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        dst_typed[indices[index]] = T();
+      }
+    });
   });
 }
 
@@ -181,12 +186,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   Field<int> curves_group_id_field = params.extract_input<Field<int>>("Curve Group ID");
-  Field<float> length_in_curve_field = params.extract_input<Field<float>>("Length in Curve");
+  Field<float> length_in_curve_field = params.extract_input<Field<float>>("Weight");
 
   static const Array<GeometryComponent::Type, 3> supported_types = {
+      GeometryComponent::Type::Curve,
       GeometryComponent::Type::Mesh,
-      GeometryComponent::Type::PointCloud,
-      GeometryComponent::Type::Curve};
+      GeometryComponent::Type::PointCloud};
 
   Map<AttributeIDRef, AttributeKind> attributes;
   geometry_set.gather_attributes_for_propagation(supported_types,
