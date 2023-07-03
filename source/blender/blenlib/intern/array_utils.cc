@@ -49,8 +49,17 @@ void gather(const GSpan src, const IndexMask &indices, GMutableSpan dst, const i
 
 void count_indices(const Span<int> indices, MutableSpan<int> counts)
 {
-  for (const int i : indices) {
-    counts[i]++;
+  if (indices.size() < 8192) {
+    for (const int i : indices) {
+      counts[i]++;
+    }
+  }
+  else {
+    threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
+      for (const int i : indices.slice(range)) {
+        atomic_add_and_fetch_int32(&counts[i], 1);
+      }
+    });
   }
 }
 
