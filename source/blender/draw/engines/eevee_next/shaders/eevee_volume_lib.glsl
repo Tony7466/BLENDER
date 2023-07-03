@@ -49,12 +49,12 @@ vec3 ndc_to_volume(vec3 coord)
   return coord;
 }
 
-float phase_function_isotropic()
+float volume_phase_function_isotropic()
 {
   return 1.0 / (4.0 * M_PI);
 }
 
-float phase_function(vec3 v, vec3 l, float g)
+float volume_phase_function(vec3 v, vec3 l, float g)
 {
   /* Henyey-Greenstein. */
   float cos_theta = dot(v, l);
@@ -63,7 +63,7 @@ float phase_function(vec3 v, vec3 l, float g)
   return (1 - sqr_g) / max(1e-8, 4.0 * M_PI * pow(1 + sqr_g - 2 * g * cos_theta, 3.0 / 2.0));
 }
 
-vec3 light_volume(LightData ld, vec3 L, float l_dist)
+vec3 volume_light(LightData ld, vec3 L, float l_dist)
 {
   float power = 1.0;
   if (ld.type != LIGHT_SUN) {
@@ -105,7 +105,7 @@ vec3 light_volume(LightData ld, vec3 L, float l_dist)
 
 #define VOLUMETRIC_SHADOW_MAX_STEP 128.0
 
-vec3 participating_media_extinction(vec3 wpos, sampler3D volume_extinction)
+vec3 volume_participating_media_extinction(vec3 wpos, sampler3D volume_extinction)
 {
   /* Waiting for proper volume shadowmaps and out of frustum shadow map. */
   vec3 ndc = project_point(ProjectionMatrix, transform_point(ViewMatrix, wpos));
@@ -115,7 +115,7 @@ vec3 participating_media_extinction(vec3 wpos, sampler3D volume_extinction)
   return texture(volume_extinction, volume_co).rgb;
 }
 
-vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist)
+vec3 volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist)
 {
   /* TODO (Miguel Pozo) */
 #if 0 && defined(VOLUME_SHADOW)
@@ -158,7 +158,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist)
   vec3 shadow = vec3(1.0);
   for (float s = 1.0; s < VOLUMETRIC_SHADOW_MAX_STEP && s <= volumes_info_buf.shadow_steps; s += 1.0) {
     vec3 pos = ray_wpos + L * s;
-    vec3 s_extinction = participating_media_extinction(pos, volume_extinction);
+    vec3 s_extinction = volume_participating_media_extinction(pos, volume_extinction);
     shadow *= exp(-s_extinction * dd);
   }
   return shadow;
@@ -168,7 +168,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist)
 #endif /* VOLUME_SHADOW */
 }
 
-vec3 irradiance_volumetric(vec3 wpos)
+vec3 volume_irradiance(vec3 wpos)
 {
 #ifdef IRRADIANCE_HL2
   IrradianceData ir_data = load_irradiance_cell(0, vec3(1.0));
@@ -187,9 +187,7 @@ struct VolumeResolveSample {
   vec3 scattering;
 };
 
-VolumeResolveSample volumetric_resolve(vec3 ndc_P,
-                                       sampler3D transmittance_tx,
-                                       sampler3D scattering_tx)
+VolumeResolveSample volume_resolve(vec3 ndc_P, sampler3D transmittance_tx, sampler3D scattering_tx)
 {
   vec3 coord = ndc_to_volume(ndc_P);
 

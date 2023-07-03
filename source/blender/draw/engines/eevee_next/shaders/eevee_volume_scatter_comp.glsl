@@ -32,8 +32,8 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
     return vec3(0);
   }
 
-  vec3 Li = light_volume(ld, L, l_dist) * light_volume_shadow(ld, P, L, l_dist);
-  return Li * vis * phase_function(-V, L, s_anisotropy);
+  vec3 Li = volume_light(ld, L, l_dist) * volume_shadow(ld, P, L, l_dist);
+  return Li * vis * volume_phase_function(-V, L, s_anisotropy);
 }
 
 #endif
@@ -61,7 +61,7 @@ void main()
   /* Divide by phase total weight, to compute the mean anisotropy. */
   float s_anisotropy = phase.x / max(1.0, phase.y);
 
-  scattering += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
+  scattering += volume_irradiance(P) * s_scattering * volume_phase_function_isotropic();
 
 #ifdef VOLUME_LIGHTING
 
