@@ -48,7 +48,6 @@ class VolumeModule {
   VolumesInfoDataBuf data_;
 
   /* Material Parameters */
-  Framebuffer volumetric_fb_;
   Texture prop_scattering_tx_;
   Texture prop_extinction_tx_;
   Texture prop_emission_tx_;
@@ -56,13 +55,11 @@ class VolumeModule {
 
   /* Light Scattering. */
   PassSimple scatter_ps_ = {"Volumes.Scatter"};
-  Framebuffer scatter_fb_;
   Texture scatter_tx_;
   Texture extinction_tx_;
 
   /* Volume Integration */
   PassSimple integration_ps_ = {"Volumes.Integration"};
-  Framebuffer integration_fb_;
   Texture integrated_scatter_tx_;
   Texture integrated_transmit_tx_;
 
