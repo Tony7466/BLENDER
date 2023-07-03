@@ -1759,7 +1759,13 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
             }
             ob->base_flag |= BASE_IS_GHOST_FRAME;
             ob->base_flag &= ~BASE_SELECTED;
-            // ob->dt = OB_WIRE;
+            if (i < 4) {
+              copy_v3_fl3(ob->color, 1.0f, 0.0f, 0.0f);
+            }
+            else {
+              copy_v3_fl3(ob->color, 0.0f, 0.0f, 1.0f);
+            }
+            ob->color[3] = (i < 4) ? 0.1f + 0.2f * i : 0.7f - (i - 4) * 0.2f;
             drw_engines_cache_populate(ob);
           }
           DEG_OBJECT_ITER_END;

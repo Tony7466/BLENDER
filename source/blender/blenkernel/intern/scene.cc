@@ -3847,6 +3847,7 @@ void BKE_scene_ensure_depsgraphs_ghosting_system(Main *bmain,
     ID *id = &ghost_frame->object->id;
     /* Use the ID of the active object. This will also add any object related to it. */
     DEG_graph_build_from_ids(ghost_frame->depsgraph, &id, 1);
+    DEG_graph_tag_relations_update(ghost_frame->depsgraph);
   }
 
   scene->ghosting_system.is_built = true;
@@ -3882,6 +3883,7 @@ void BKE_scene_evaluate_ghosting_system(Scene *scene)
   for (int i = 0; i < 8; i++) {
     GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
     DEG_evaluate_on_refresh(ghost_frame->depsgraph, false);
+    DEG_graph_tag_relations_update(ghost_frame->depsgraph);
   }
 }
 
@@ -3896,7 +3898,7 @@ void BKE_scene_evaluate_ghosting_system_for_framechange(Scene *scene)
     GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
     /* TODO: This should be done in another function. Right now this means that the ghosts are
      * always showing relative to the active frame. */
-    ghost_frame->frame = (i < 4) ? scene->r.cfra - ((i + 1) * 5) :
+    ghost_frame->frame = (i < 4) ? scene->r.cfra - ((4 - i) * 5) :
                                    scene->r.cfra + ((i - 4 + 1) * 5);
     /* Evaluate the graph on the right frame. */
     DEG_evaluate_on_framechange(ghost_frame->depsgraph, (float)ghost_frame->frame);
