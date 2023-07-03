@@ -83,6 +83,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "RE_pipeline.h"
+
 /**
  * When a gizmo is highlighted and uses click/drag events,
  * this prevents mouse button press events from being passed through to other key-maps
@@ -716,6 +718,8 @@ void wm_event_do_notifiers(bContext *C)
 
   wm_event_do_refresh_wm_and_depsgraph(C);
 
+  RE_FreeUnusedGPUResources();
+
   /* Status bar. */
   if (wm->winactive) {
     wmWindow *win = wm->winactive;
@@ -879,7 +883,7 @@ static void wm_event_handler_ui_cancel(bContext *C)
  * Access to #wmWindowManager.reports
  * \{ */
 
-void WM_report_banner_show(void)
+void WM_report_banner_show()
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   ReportList *wm_reports = &wm->reports;

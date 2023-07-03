@@ -391,8 +391,7 @@ static int palette_color_add_exec(bContext *C, wmOperator * /*op*/)
              PAINT_MODE_TEXTURE_3D,
              PAINT_MODE_TEXTURE_2D,
              PAINT_MODE_VERTEX,
-             PAINT_MODE_SCULPT))
-    {
+             PAINT_MODE_SCULPT)) {
       copy_v3_v3(color->rgb, BKE_brush_color_get(scene, brush));
       color->value = 0.0;
     }
@@ -1443,7 +1442,7 @@ static void BRUSH_OT_stencil_reset_transform(wmOperatorType *ot)
 
 /**************************** registration **********************************/
 
-void ED_operatormacros_paint(void)
+void ED_operatormacros_paint()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -1459,7 +1458,7 @@ void ED_operatormacros_paint(void)
   RNA_boolean_set(otmacro->ptr, "select", false);
 }
 
-void ED_operatortypes_paint(void)
+void ED_operatortypes_paint()
 {
   /* palette */
   WM_operatortype_append(PALETTE_OT_new);

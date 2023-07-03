@@ -34,7 +34,7 @@ extern "C" {
 #define BLI_STR_FORMAT_INT32_INTEGER_UNIT_SIZE 5
 
 /**
- * Duplicates the first \a len bytes of cstring \a str
+ * Duplicates the first \a len bytes of the C-string \a str
  * into a newly mallocN'd string and returns it. \a str
  * is assumed to be at least len bytes long.
  *
@@ -45,7 +45,7 @@ extern "C" {
 char *BLI_strdupn(const char *str, size_t len) ATTR_MALLOC ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 
 /**
- * Duplicates the cstring \a str into a newly mallocN'd
+ * Duplicates the C-string \a str into a newly mallocN'd
  * string and returns it.
  *
  * \param str: The string to be duplicated
@@ -107,9 +107,6 @@ char *BLI_strncpy_ensure_pad(char *__restrict dst,
 size_t BLI_strncpy_rlen(char *__restrict dst,
                         const char *__restrict src,
                         size_t dst_maxncpy) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1, 2);
-
-size_t BLI_strcpy_rlen(char *__restrict dst, const char *__restrict src) ATTR_WARN_UNUSED_RESULT
-    ATTR_NONNULL(1, 2);
 
 char *BLI_strncat(char *__restrict dst, const char *__restrict src, size_t dst_maxncpy)
     ATTR_NONNULL(1, 2);
@@ -245,14 +242,6 @@ size_t BLI_vsnprintf_rlen(char *__restrict dst,
  */
 char *BLI_sprintfN(const char *__restrict format, ...) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1) ATTR_MALLOC ATTR_PRINTF_FORMAT(1, 2);
-
-/**
- * A wrapper around `::sprintf()` which does not generate security warnings.
- *
- * \note Use #BLI_snprintf for cases when the string size is known.
- */
-int BLI_sprintf(char *__restrict str, const char *__restrict format, ...) ATTR_NONNULL(1, 2)
-    ATTR_PRINTF_FORMAT(2, 3);
 
 /**
  * This roughly matches C and Python's string escaping with double quotes - `"`.

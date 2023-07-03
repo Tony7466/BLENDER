@@ -23,6 +23,7 @@
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
+#include "DNA_windowmanager_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -331,6 +332,7 @@ void RE_ClearResult(Render *re)
   if (re) {
     render_result_free(re->result);
     re->result = nullptr;
+    re->result_has_gpu_texture_caches = false;
   }
 }
 
@@ -505,17 +507,6 @@ void RE_ResultGet32(Render *re, uint *rect)
   RE_ReleaseResultImageViews(re, &rres);
 }
 
-void RE_AcquiredResultGet32(Render *re, RenderResult *result, uint *rect, const int view_id)
-{
-  render_result_rect_get_pixels(result,
-                                rect,
-                                re->rectx,
-                                re->recty,
-                                &re->scene->view_settings,
-                                &re->scene->display_settings,
-                                view_id);
-}
-
 RenderStats *RE_GetStats(Render *re)
 {
   return &re->i;
@@ -536,6 +527,7 @@ Render *RE_NewRender(const char *name)
     BLI_rw_mutex_init(&re->resultmutex);
     BLI_mutex_init(&re->engine_draw_mutex);
     BLI_mutex_init(&re->highlighted_tiles_mutex);
+    BLI_mutex_init(&re->gpu_compositor_mutex);
   }
 
   RE_InitRenderCB(re);
@@ -595,9 +587,15 @@ void RE_FreeRender(Render *re)
     RE_engine_free(re->engine);
   }
 
+  RE_compositor_free(*re);
+
+  RE_blender_gpu_context_free(re);
+  RE_system_gpu_context_free(re);
+
   BLI_rw_mutex_end(&re->resultmutex);
   BLI_mutex_end(&re->engine_draw_mutex);
   BLI_mutex_end(&re->highlighted_tiles_mutex);
+  BLI_mutex_end(&re->gpu_compositor_mutex);
 
   BKE_curvemapping_free_data(&re->r.mblur_shutter_curve);
 
@@ -616,7 +614,7 @@ void RE_FreeRender(Render *re)
   MEM_freeN(re);
 }
 
-void RE_FreeAllRender(void)
+void RE_FreeAllRender()
 {
   while (RenderGlobal.renderlist.first) {
     RE_FreeRender(static_cast<Render *>(RenderGlobal.renderlist.first));
@@ -628,7 +626,7 @@ void RE_FreeAllRender(void)
 #endif
 }
 
-void RE_FreeAllRenderResults(void)
+void RE_FreeAllRenderResults()
 {
   LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
     render_result_free(re->result);
@@ -636,10 +634,11 @@ void RE_FreeAllRenderResults(void)
 
     re->result = nullptr;
     re->pushedresult = nullptr;
+    re->result_has_gpu_texture_caches = false;
   }
 }
 
-void RE_FreeAllPersistentData(void)
+void RE_FreeAllPersistentData()
 {
   LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
     if (re->engine != nullptr) {
@@ -650,9 +649,94 @@ void RE_FreeAllPersistentData(void)
   }
 }
 
+static void re_gpu_texture_caches_free(Render *re)
+{
+  /* Free persistent compositor that may be using these textures. */
+  if (re->gpu_compositor) {
+    RE_compositor_free(*re);
+  }
+
+  /* Free textures. */
+  if (re->result_has_gpu_texture_caches) {
+    RenderResult *result = RE_AcquireResultWrite(re);
+    if (result != nullptr) {
+      render_result_free_gpu_texture_caches(result);
+    }
+    re->result_has_gpu_texture_caches = false;
+    RE_ReleaseResult(re);
+  }
+}
+
+void RE_FreeGPUTextureCaches()
+{
+  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+    re_gpu_texture_caches_free(re);
+  }
+}
+
+void RE_FreeUnusedGPUResources()
+{
+  BLI_assert(BLI_thread_is_main());
+
+  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+
+  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+    bool do_free = true;
+
+    LISTBASE_FOREACH (const wmWindow *, win, &wm->windows) {
+      const Scene *scene = WM_window_get_active_scene(win);
+      if (re != RE_GetSceneRender(scene)) {
+        continue;
+      }
+
+      /* Don't free if this scene is being rendered or composited. Note there is no
+       * race condition here because we are on the main thread and new jobs can only
+       * be started from the main thread. */
+      if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER) ||
+          WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE)) {
+        do_free = false;
+        break;
+      }
+
+      /* Detect if scene is using realtime compositing, and if either a node editor is
+       * showing the nodes, or an image editor is showing the render result or viewer. */
+      if (!(scene->use_nodes && scene->nodetree &&
+            scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME))
+      {
+        continue;
+      }
+
+      const bScreen *screen = WM_window_get_active_screen(win);
+      LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+        const SpaceLink &space = *static_cast<const SpaceLink *>(area->spacedata.first);
+
+        if (space.spacetype == SPACE_NODE) {
+          const SpaceNode &snode = reinterpret_cast<const SpaceNode &>(space);
+          if (snode.nodetree == scene->nodetree) {
+            do_free = false;
+          }
+        }
+        else if (space.spacetype == SPACE_IMAGE) {
+          const SpaceImage &sima = reinterpret_cast<const SpaceImage &>(space);
+          if (sima.image && sima.image->source == IMA_SRC_VIEWER) {
+            do_free = false;
+          }
+        }
+      }
+    }
+
+    if (do_free) {
+      re_gpu_texture_caches_free(re);
+      RE_blender_gpu_context_free(re);
+      RE_system_gpu_context_free(re);
+    }
+  }
+}
+
 static void re_free_persistent_data(Render *re)
 {
-  /* If engine is currently rendering, just wait for it to be freed when it finishes rendering. */
+  /* If engine is currently rendering, just wait for it to be freed when it finishes rendering.
+   */
   if (re->engine && !(re->engine->flag & RE_ENGINE_RENDERING)) {
     RE_engine_free(re->engine);
     re->engine = nullptr;
@@ -877,44 +961,62 @@ void RE_test_break_cb(Render *re, void *handle, bool (*f)(void *handle))
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name OpenGL Context
+/** \name GPU Context
  * \{ */
 
-void RE_gl_context_create(Render *re)
+void RE_system_gpu_context_ensure(Render *re)
 {
-  /* Needs to be created in the main OpenGL thread. */
-  re->gl_context = WM_opengl_context_create();
-  /* So we activate the window's one afterwards. */
-  wm_window_reset_drawable();
+  BLI_assert(BLI_thread_is_main());
+
+  if (re->system_gpu_context == nullptr) {
+    /* Needs to be created in the main thread. */
+    re->system_gpu_context = WM_system_gpu_context_create();
+    /* So we activate the window's one afterwards. */
+    wm_window_reset_drawable();
+  }
 }
 
-void RE_gl_context_destroy(Render *re)
+void RE_system_gpu_context_free(Render *re)
 {
-  /* Needs to be called from the thread which used the OpenGL context for rendering. */
-  if (re->gl_context) {
-    if (re->gpu_context) {
-      WM_opengl_context_activate(re->gl_context);
-      GPU_context_active_set(static_cast<GPUContext *>(re->gpu_context));
-      GPU_context_discard(static_cast<GPUContext *>(re->gpu_context));
-      re->gpu_context = nullptr;
+  if (re->system_gpu_context) {
+    if (re->blender_gpu_context) {
+      WM_system_gpu_context_activate(re->system_gpu_context);
+      GPU_context_active_set(static_cast<GPUContext *>(re->blender_gpu_context));
+      GPU_context_discard(static_cast<GPUContext *>(re->blender_gpu_context));
+      re->blender_gpu_context = nullptr;
     }
 
-    WM_opengl_context_dispose(re->gl_context);
-    re->gl_context = nullptr;
+    WM_system_gpu_context_dispose(re->system_gpu_context);
+    re->system_gpu_context = nullptr;
+
+    /* If in main thread, reset window context. */
+    if (BLI_thread_is_main()) {
+      wm_window_reset_drawable();
+    }
   }
 }
 
-void *RE_gl_context_get(Render *re)
+void *RE_system_gpu_context_get(Render *re)
 {
-  return re->gl_context;
+  return re->system_gpu_context;
 }
 
-void *RE_gpu_context_get(Render *re)
+void *RE_blender_gpu_context_ensure(Render *re)
 {
-  if (re->gpu_context == nullptr) {
-    re->gpu_context = GPU_context_create(nullptr, re->gl_context);
+  if (re->blender_gpu_context == nullptr) {
+    re->blender_gpu_context = GPU_context_create(nullptr, re->system_gpu_context);
   }
-  return re->gpu_context;
+  return re->blender_gpu_context;
+}
+
+void RE_blender_gpu_context_free(Render *re)
+{
+  if (re->blender_gpu_context) {
+    WM_system_gpu_context_activate(re->system_gpu_context);
+    GPU_context_active_set(static_cast<GPUContext *>(re->blender_gpu_context));
+    GPU_context_discard(static_cast<GPUContext *>(re->blender_gpu_context));
+    re->blender_gpu_context = nullptr;
+  }
 }
 
 /** \} */
@@ -1746,16 +1848,23 @@ static void render_pipeline_free(Render *re)
     RE_engine_free(re->engine);
     re->engine = nullptr;
   }
+
+  /* Destroy compositor that was using pipeline depsgraph. */
+  RE_compositor_free(*re);
+
+  /* Destroy pipeline depsgraph. */
   if (re->pipeline_depsgraph != nullptr) {
     DEG_graph_free(re->pipeline_depsgraph);
     re->pipeline_depsgraph = nullptr;
     re->pipeline_scene_eval = nullptr;
   }
-  /* Destroy the opengl context in the correct thread. */
-  RE_gl_context_destroy(re);
 
-  /* In the case the engine did not mark tiles as finished (un-highlight, which could happen in the
-   * case of cancelled render) ensure the storage is empty. */
+  /* Destroy the opengl context in the correct thread. */
+  RE_blender_gpu_context_free(re);
+  RE_system_gpu_context_free(re);
+
+  /* In the case the engine did not mark tiles as finished (un-highlight, which could happen in
+   * the case of cancelled render) ensure the storage is empty. */
   if (re->highlighted_tiles != nullptr) {
     BLI_mutex_lock(&re->highlighted_tiles_mutex);
 
@@ -1796,6 +1905,9 @@ void RE_RenderFrame(Render *re,
     MEM_reset_peak_memory();
 
     render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_PRE);
+
+    /* Reduce GPU memory usage so renderer has more space. */
+    RE_FreeGPUTextureCaches();
 
     render_init_depsgraph(re);
 
@@ -2193,10 +2305,14 @@ void RE_RenderAnim(Render *re,
   G.is_rendering = true;
 
   re->flag |= R_ANIMATION;
+  DEG_graph_id_tag_update(re->main, re->pipeline_depsgraph, &re->scene->id, ID_RECALC_AUDIO_MUTE);
 
   scene->r.subframe = 0.0f;
   for (nfra = sfra, scene->r.cfra = sfra; scene->r.cfra <= efra; scene->r.cfra++) {
     char filepath[FILE_MAX];
+
+    /* Reduce GPU memory usage so renderer has more space. */
+    RE_FreeGPUTextureCaches();
 
     /* A feedback loop exists here -- render initialization requires updated
      * render layers settings which could be animated, but scene evaluation for
@@ -2465,11 +2581,16 @@ bool RE_ReadRenderResult(Scene *scene, Scene *scenode)
 void RE_layer_load_from_file(
     RenderLayer *layer, ReportList *reports, const char *filepath, int x, int y)
 {
+  /* First try loading multi-layer EXR. */
+  if (render_result_exr_file_read_path(nullptr, layer, reports, filepath)) {
+    return;
+  }
+
   /* OCIO_TODO: assume layer was saved in default color space */
   ImBuf *ibuf = IMB_loadiffname(filepath, IB_rect, nullptr);
   RenderPass *rpass = nullptr;
 
-  /* multiview: since the API takes no 'view', we use the first combined pass found */
+  /* multi-view: since the API takes no 'view', we use the first combined pass found */
   for (rpass = static_cast<RenderPass *>(layer->passes.first); rpass; rpass = rpass->next) {
     if (STREQ(rpass->name, RE_PASSNAME_COMBINED)) {
       break;
@@ -2534,7 +2655,7 @@ void RE_layer_load_from_file(
 
 void RE_result_load_from_file(RenderResult *result, ReportList *reports, const char *filepath)
 {
-  if (!render_result_exr_file_read_path(result, nullptr, filepath)) {
+  if (!render_result_exr_file_read_path(result, nullptr, reports, filepath)) {
     BKE_reportf(reports, RPT_ERROR, "%s: failed to load '%s'", __func__, filepath);
     return;
   }

@@ -547,16 +547,24 @@ if(WIN32)
   endif()
 endif()
 
-# Helpful tip when using make.
+# Show helpful tip.
+set(_install_cmd "")
 if("${CMAKE_GENERATOR}" MATCHES ".*Makefiles.*")
+  set(_install_cmd "make install")
+elseif("${CMAKE_GENERATOR}" MATCHES "Ninja")
+  set(_install_cmd "ninja install")
+endif()
+if(NOT ("${_install_cmd}" STREQUAL ""))
   # Message to display after building.
+  get_filename_component(_install_dst ${TARGETDIR_VER} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
   add_custom_command(
     TARGET blender POST_BUILD MAIN_DEPENDENCY blender
-    COMMAND
-      ${CMAKE_COMMAND} -E
-      echo 'now run: \"make install\" to copy runtime files and scripts to ${TARGETDIR_VER}'
+    COMMAND ${CMAKE_COMMAND} -E echo
+    "Run: \\\"${_install_cmd}\\\" to copy runtime files and scripts to: ${_install_dst}"
   )
+  unset(_install_dst)
 endif()
+unset(_install_cmd)
 
 # macro to help install files without dragging in unnecessary data.
 macro(install_dir from to)
@@ -645,6 +653,7 @@ if(UNIX AND NOT APPLE)
 
       install(
         PROGRAMS
+        ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
         ${CMAKE_SOURCE_DIR}/release/bin/blender-softwaregl
         DESTINATION "."
       )
@@ -888,13 +897,24 @@ elseif(WIN32)
     )
   endif()
 
+  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3.dll)
+    set(FFTW_DLL ${LIBDIR}/fftw3/lib/fftw3.dll)
+  else()
+    set(FFTW_DLL ${LIBDIR}/fftw3/lib/libfftw3-3.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/fftw3/lib/libfftw3-3.dll
+    FILES ${FFTW_DLL}
     ALL
   )
-  if(EXISTS ${LIBDIR}/fftw3/lib/libfftw3f-3.dll)
+  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3f-3.dll)
     windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/libfftw3f-3.dll
+      FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
+      ALL
+    )
+  elseif(EXISTS ${LIBDIR}/fftw3/lib/fftw3f.dll)
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/fftw3/lib/fftw3f.dll
       ALL
     )
   endif()
@@ -957,10 +977,19 @@ elseif(WIN32)
       DEBUG
     )
   endif()
+
+  if(EXISTS ${LIBDIR}/gmp/lib/gmp-10.dll)
+    set(GMP_DLL ${LIBDIR}/gmp/lib/gmp-10.dll)
+  else()
+    set(GMP_DLL ${LIBDIR}/gmp/lib/libgmp-10.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/gmp/lib/libgmp-10.dll
+    FILES ${GMP_DLL}
     ALL
   )
+  unset(GMP_DLL)
+
   windows_install_shared_manifest(
     FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
     RELEASE
@@ -1268,10 +1297,17 @@ elseif(WIN32)
     list(APPEND LIB ${TBB_MALLOC_LIBRARIES})
   endif()
 
+  if(EXISTS ${LIBDIR}/sndfile/lib/sndfile.dll)
+    set(SNDFILE_DLL ${LIBDIR}/sndfile/lib/sndfile.dll)
+  else()
+    set(SNDFILE_DLL ${LIBDIR}/sndfile/lib/libsndfile-1.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/sndfile/lib/libsndfile-1.dll
+    FILES ${SNDFILE_DLL}
     ALL
   )
+  unset(SNDFILE_DLL)
 
   windows_install_shared_manifest(
     FILES ${LIBDIR}/shaderc/bin/shaderc_shared.dll
@@ -1539,7 +1575,7 @@ endif()
 # Setup link libraries
 
 add_dependencies(blender makesdna)
-target_link_libraries(blender ${LIB})
+target_link_libraries(blender PRIVATE ${LIB})
 unset(LIB)
 
 setup_platform_linker_flags(blender)

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright by Gernot Ziegler <gz@lysator.liu.se>. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 `Gernot Ziegler <gz@lysator.liu.se>`. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup openexr
@@ -749,7 +750,7 @@ static bool imb_exr_multilayer_parse_channels_from_file(ExrHandle *data);
 
 /* ********************** */
 
-void *IMB_exr_get_handle(void)
+void *IMB_exr_get_handle()
 {
   ExrHandle *data = MEM_cnew<ExrHandle>("exr handle");
   data->multiView = new StringVector();
@@ -1094,11 +1095,10 @@ bool IMB_exr_begin_read(
   return true;
 }
 
-void IMB_exr_set_channel(
+bool IMB_exr_set_channel(
     void *handle, const char *layname, const char *passname, int xstride, int ystride, float *rect)
 {
   ExrHandle *data = (ExrHandle *)handle;
-  ExrChannel *echan;
   char name[EXR_TOT_MAXNAME + 1];
 
   if (layname && layname[0] != '\0') {
@@ -1112,16 +1112,17 @@ void IMB_exr_set_channel(
     BLI_strncpy(name, passname, EXR_TOT_MAXNAME - 1);
   }
 
-  echan = (ExrChannel *)BLI_findstring(&data->channels, name, offsetof(ExrChannel, name));
+  ExrChannel *echan = (ExrChannel *)BLI_findstring(
+      &data->channels, name, offsetof(ExrChannel, name));
 
-  if (echan) {
-    echan->xstride = xstride;
-    echan->ystride = ystride;
-    echan->rect = rect;
+  if (echan == nullptr) {
+    return false;
   }
-  else {
-    printf("IMB_exr_set_channel error %s\n", name);
-  }
+
+  echan->xstride = xstride;
+  echan->ystride = ystride;
+  echan->rect = rect;
+  return true;
 }
 
 float *IMB_exr_channel_rect(void *handle,
@@ -1353,9 +1354,6 @@ void IMB_exr_read_channels(void *handle)
         frameBuffer.insert(echan->m->internal_name,
                            Slice(Imf::FLOAT, (char *)rect, xstride, ystride));
       }
-      else {
-        printf("warning, channel with no rect set %s\n", echan->m->internal_name.c_str());
-      }
     }
 
     /* Read pixels. */
@@ -1482,6 +1480,8 @@ static int imb_exr_split_token(const char *str, const char *end, const char **to
 
 static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *passname)
 {
+  const int layname_maxncpy = EXR_TOT_MAXNAME;
+  const int passname_maxncpy = EXR_TOT_MAXNAME;
   const char *name = echan->m->name.c_str();
   const char *end = name + strlen(name);
   const char *token;
@@ -1492,13 +1492,13 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
     layname[0] = '\0';
 
     if (ELEM(name[0], 'R', 'G', 'B', 'A')) {
-      strcpy(passname, "Combined");
+      BLI_strncpy(passname, "Combined", passname_maxncpy);
     }
     else if (name[0] == 'Z') {
-      strcpy(passname, "Depth");
+      BLI_strncpy(passname, "Depth", passname_maxncpy);
     }
     else {
-      strcpy(passname, name);
+      BLI_strncpy(passname, name, passname_maxncpy);
     }
 
     return 1;
@@ -1518,8 +1518,6 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
     echan->chan_id = BLI_toupper_ascii(channelname[0]);
   }
   else if (len > 1) {
-    bool ok = false;
-
     if (len == 2) {
       /* Some multi-layers are using two-letter channels name,
        * like, MX or NZ, which is basically has structure of
@@ -1532,33 +1530,28 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
       const char chan_id = BLI_toupper_ascii(channelname[1]);
       if (ELEM(chan_id, 'X', 'Y', 'Z', 'R', 'G', 'B', 'U', 'V', 'A')) {
         echan->chan_id = chan_id;
-        ok = true;
+      }
+      else {
+        echan->chan_id = 'X'; /* Default to X if unknown. */
       }
     }
     else if (BLI_strcaseeq(channelname, "red")) {
       echan->chan_id = 'R';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "green")) {
       echan->chan_id = 'G';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "blue")) {
       echan->chan_id = 'B';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "alpha")) {
       echan->chan_id = 'A';
-      ok = true;
     }
     else if (BLI_strcaseeq(channelname, "depth")) {
       echan->chan_id = 'Z';
-      ok = true;
     }
-
-    if (ok == false) {
-      printf("multilayer read: unknown channel token: %s\n", channelname);
-      return 0;
+    else {
+      echan->chan_id = 'X'; /* Default to X if unknown. */
     }
   }
   end -= len + 1; /* +1 to skip '.' separator */
@@ -1574,7 +1567,7 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
 
   /* all preceding tokens combined as layer name */
   if (end > name) {
-    BLI_strncpy(layname, name, int(end - name) + 1);
+    BLI_strncpy(layname, name, std::min(layname_maxncpy, int(end - name) + 1));
   }
   else {
     layname[0] = '\0';
@@ -1765,12 +1758,10 @@ static ExrHandle *imb_exr_begin_read_mem(IStream &file_stream,
 static void exr_printf(const char *fmt, ...)
 {
 #if 0
-  char output[1024];
   va_list args;
   va_start(args, fmt);
-  std::vsprintf(output, fmt, args);
+  vprintf(fmt, args);
   va_end(args);
-  printf("%s", output);
 #else
   (void)fmt;
 #endif
@@ -2309,7 +2300,7 @@ ImBuf *imb_load_filepath_thumbnail_openexr(const char *filepath,
   return nullptr;
 }
 
-void imb_initopenexr(void)
+void imb_initopenexr()
 {
   /* In a multithreaded program, staticInitialize() must be called once during startup, before the
    * program accesses any other functions or classes in the IlmImf library. */
@@ -2317,7 +2308,7 @@ void imb_initopenexr(void)
   Imf::setGlobalThreadCount(BLI_system_thread_count());
 }
 
-void imb_exitopenexr(void)
+void imb_exitopenexr()
 {
   /* Tells OpenEXR to free thread pool, also ensures there is no running tasks. */
   Imf::setGlobalThreadCount(0);

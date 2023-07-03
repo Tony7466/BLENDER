@@ -98,6 +98,11 @@ set(SRC
   transform_snap.cc
   transform_snap_animation.c
   transform_snap_object.cc
+  transform_snap_object_armature.cc
+  transform_snap_object_camera.cc
+  transform_snap_object_curve.cc
+  transform_snap_object_editmesh.cc
+  transform_snap_object_mesh.cc
   transform_snap_sequencer.c
 
   transform.h
@@ -109,6 +114,7 @@ set(SRC
   transform_mode.h
   transform_orientations.h
   transform_snap.h
+  transform_snap_object.hh
 )
 
 set(LIB

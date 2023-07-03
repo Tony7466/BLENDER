@@ -29,7 +29,6 @@ set(INC
   ../../../intern/ghost
   ../../../intern/guardedalloc
   ../../../intern/iksolver/extern
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/libmv
   ../../../intern/mantaflow/extern
@@ -151,8 +150,8 @@ set(SRC
   intern/gpencil_legacy.c
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
-  intern/grease_pencil_convert_legacy.cc
   intern/grease_pencil.cc
+  intern/grease_pencil_convert_legacy.cc
   intern/icons.cc
   intern/icons_rasterize.c
   intern/idprop.c
@@ -235,13 +234,13 @@ set(SRC
   intern/node.cc
   intern/node_runtime.cc
   intern/node_tree_anonymous_attributes.cc
+  intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
   intern/object.cc
   intern/object_deform.c
   intern/object_dupli.cc
-  intern/object_facemap.c
   intern/object_update.cc
   intern/ocean.c
   intern/ocean_spectrum.c
@@ -388,7 +387,6 @@ set(SRC
   BKE_fluid.h
   BKE_freestyle.h
   BKE_geometry_fields.hh
-  BKE_geometry_set.h
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.h
@@ -453,11 +451,12 @@ set(SRC
   BKE_node.h
   BKE_node.hh
   BKE_node_runtime.hh
+  BKE_node_tree_anonymous_attributes.hh
+  BKE_node_tree_dot_export.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh
   BKE_object.h
   BKE_object_deform.h
-  BKE_object_facemap.h
   BKE_ocean.h
   BKE_outliner_treehash.hh
   BKE_packedFile.h
@@ -503,6 +502,7 @@ set(SRC
   BKE_vfontdata.h
   BKE_viewer_path.h
   BKE_volume.h
+  BKE_volume_openvdb.hh
   BKE_volume_render.h
   BKE_volume_to_mesh.hh
   BKE_workspace.h
@@ -556,7 +556,7 @@ set(LIB
   bf_shader_fx
   bf_simulation
   extern_fmtlib
-
+  PRIVATE bf_intern_atomic
   # For `vfontdata_freetype.c`.
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )
@@ -833,6 +833,7 @@ if(WITH_GTESTS)
     intern/cryptomatte_test.cc
     intern/curves_geometry_test.cc
     intern/fcurve_test.cc
+    intern/grease_pencil_test.cc
     intern/idprop_serialize_test.cc
     intern/image_partial_update_test.cc
     intern/image_test.cc
@@ -843,7 +844,6 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
-    intern/grease_pencil_test.cc
   )
   set(TEST_INC
     ../editors/include

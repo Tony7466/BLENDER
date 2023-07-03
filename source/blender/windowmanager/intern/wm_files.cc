@@ -10,10 +10,10 @@
  */
 
 /* Placed up here because of crappy WINSOCK stuff. */
-#include <errno.h>
-#include <fcntl.h> /* for open flags (O_BINARY, O_RDONLY). */
-#include <stddef.h>
-#include <string.h>
+#include <cerrno>
+#include <cstddef>
+#include <cstring>
+#include <fcntl.h> /* For open flags (#O_BINARY, #O_RDONLY). */
 
 #ifdef WIN32
 /* Need to include windows.h so _WIN32_IE is defined. */
@@ -109,6 +109,7 @@
 #include "GPU_context.h"
 
 #include "UI_interface.h"
+#include "UI_interface.hh"
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
@@ -136,9 +137,9 @@
 
 static RecentFile *wm_file_history_find(const char *filepath);
 static void wm_history_file_free(RecentFile *recent);
-static void wm_history_files_free(void);
-static void wm_history_file_update(void);
-static void wm_history_file_write(void);
+static void wm_history_files_free();
+static void wm_history_file_update();
+static void wm_history_file_write();
 
 static void wm_test_autorun_revert_action_exec(bContext *C);
 
@@ -148,7 +149,7 @@ static CLG_LogRef LOG = {"wm.files"};
 /** \name Misc Utility Functions
  * \{ */
 
-void WM_file_tag_modified(void)
+void WM_file_tag_modified()
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   if (wm->file_saved) {
@@ -182,11 +183,16 @@ bool wm_file_or_session_data_has_unsaved_changes(const Main *bmain, const wmWind
  * Clear several WM/UI runtime data that would make later complex WM handling impossible.
  *
  * Return data should be cleared by #wm_file_read_setup_wm_finalize. */
-static BlendFileReadWMSetupData *wm_file_read_setup_wm_init(bContext *C, Main *bmain)
+static BlendFileReadWMSetupData *wm_file_read_setup_wm_init(bContext *C,
+                                                            Main *bmain,
+                                                            const bool is_read_homefile)
 {
   BLI_assert(BLI_listbase_count_at_most(&bmain->wm, 2) <= 1);
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   BlendFileReadWMSetupData *wm_setup_data = MEM_cnew<BlendFileReadWMSetupData>(__func__);
+  wm_setup_data->is_read_homefile = is_read_homefile;
+  /* This info is not always known yet when this function is called. */
+  wm_setup_data->is_factory_startup = false;
 
   if (wm == nullptr) {
     return wm_setup_data;
@@ -287,10 +293,14 @@ static void wm_file_read_setup_wm_substitute_old_window(wmWindowManager *oldwm,
  */
 static void wm_file_read_setup_wm_keep_old(const bContext *C,
                                            Main *bmain,
-                                           BlendFileReadWMSetupData * /*wm_setup_data*/,
+                                           BlendFileReadWMSetupData *wm_setup_data,
                                            wmWindowManager *wm,
                                            const bool load_ui)
 {
+  /* This data is not needed here, besides detecting that old WM has been kept (in caller code).
+   * Since `old_wm` is kept, do not free it, just clear the pointer as clean-up. */
+  wm_setup_data->old_wm = nullptr;
+
   if (!load_ui) {
     /* When loading without UI (i.e. keeping existing UI), no matching needed.
      *
@@ -401,6 +411,16 @@ static void wm_file_read_setup_wm_finalize(bContext *C,
   BLI_assert(wm_setup_data != nullptr);
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
 
+  /* If reading factory startup file, and there was no previous WM, clear the size of the windows
+   * in newly read WM so that they get resized to occupy the whole available space on current
+   * monitor.
+   */
+  if (wm_setup_data->is_read_homefile && wm_setup_data->is_factory_startup &&
+      wm_setup_data->old_wm == nullptr)
+  {
+    wm_clear_default_size(C);
+  }
+
   if (wm == nullptr) {
     /* Add a default WM in case none exists in newly read main (should only happen when opening
      * an old pre-2.5 .blend file at startup). */
@@ -434,7 +454,7 @@ static void wm_file_read_setup_wm_finalize(bContext *C,
 /** \name Preferences Initialization & Versioning
  * \{ */
 
-static void wm_gpu_backend_override_from_userdef(void)
+static void wm_gpu_backend_override_from_userdef()
 {
   /* Check if GPU backend is already set from the command line arguments. The command line
    * arguments have higher priority than user preferences. */
@@ -994,7 +1014,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
       /* Put WM into a stable state for post-readfile processes (kill jobs, removes event handlers,
        * message bus, and so on). */
-      BlendFileReadWMSetupData *wm_setup_data = wm_file_read_setup_wm_init(C, bmain);
+      BlendFileReadWMSetupData *wm_setup_data = wm_file_read_setup_wm_init(C, bmain, false);
 
       /* This flag is initialized by the operator but overwritten on read.
        * need to re-enable it here else drivers and registered scripts won't work. */
@@ -1097,7 +1117,7 @@ void WM_init_state_app_template_set(const char *app_template)
   }
 }
 
-const char *WM_init_state_app_template_get(void)
+const char *WM_init_state_app_template_get()
 {
   return wm_init_state_app_template.override ? wm_init_state_app_template.app_template : nullptr;
 }
@@ -1117,7 +1137,6 @@ void wm_homefile_read_ex(bContext *C,
   /* Context does not always have valid main pointer here. */
   Main *bmain = G_MAIN;
 #endif
-  ListBase wmbase;
   bool success = false;
 
   /* May be enabled, when the user configuration doesn't exist. */
@@ -1223,7 +1242,7 @@ void wm_homefile_read_ex(bContext *C,
   if (use_data) {
     /* Put WM into a stable state for post-readfile processes (kill jobs, removes event handlers,
      * message bus, and so on). */
-    wm_setup_data = wm_file_read_setup_wm_init(C, bmain);
+    wm_setup_data = wm_file_read_setup_wm_init(C, bmain, true);
   }
 
   filepath_startup[0] = '\0';
@@ -1343,6 +1362,7 @@ void wm_homefile_read_ex(bContext *C,
     BKE_reportf(reports, RPT_ERROR, "Could not read \"%s\"", filepath_startup_override);
   }
 
+  bool loaded_factory_settings = false;
   if (success == false) {
     BlendFileReadParams read_file_params{};
     read_file_params.is_startup = true;
@@ -1355,11 +1375,8 @@ void wm_homefile_read_ex(bContext *C,
       BKE_blendfile_read_setup_readfile(
           C, bfd, &read_file_params, wm_setup_data, &read_report, true, nullptr);
       success = true;
+      loaded_factory_settings = true;
       bmain = CTX_data_main(C);
-    }
-
-    if (use_data && BLI_listbase_is_empty(&wmbase)) {
-      wm_clear_default_size(C);
     }
   }
 
@@ -1413,6 +1430,7 @@ void wm_homefile_read_ex(bContext *C,
   if (use_data) {
     /* Finalize handling of WM, using the read WM and/or the current WM depending on things like
      * whether the UI is loaded from the .blend file or not, etc. */
+    wm_setup_data->is_factory_startup = loaded_factory_settings;
     wm_file_read_setup_wm_finalize(C, bmain, wm_setup_data);
   }
 
@@ -1484,7 +1502,7 @@ void wm_homefile_read_post(bContext *C, const wmFileReadPost_Params *params_file
 /** \name Blend-File History API
  * \{ */
 
-void wm_history_file_read(void)
+void wm_history_file_read()
 {
   const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
   if (!cfgdir) {
@@ -1530,7 +1548,7 @@ static void wm_history_file_free(RecentFile *recent)
   BLI_freelinkN(&G.recent_files, recent);
 }
 
-static void wm_history_files_free(void)
+static void wm_history_files_free()
 {
   LISTBASE_FOREACH_MUTABLE (RecentFile *, recent, &G.recent_files) {
     wm_history_file_free(recent);
@@ -1547,7 +1565,7 @@ static RecentFile *wm_file_history_find(const char *filepath)
  * Write #BLENDER_HISTORY_FILE as-is, without checking the environment
  * (that's handled by #wm_history_file_update).
  */
-static void wm_history_file_write(void)
+static void wm_history_file_write()
 {
   const char *user_config_dir;
   char filepath[FILE_MAX];
@@ -1573,7 +1591,7 @@ static void wm_history_file_write(void)
 /**
  * Run after saving a file to refresh the #BLENDER_HISTORY_FILE list.
  */
-static void wm_history_file_update(void)
+static void wm_history_file_update()
 {
   RecentFile *recent;
   const char *blendfile_path = BKE_main_blendfile_path_from_global();
@@ -1807,7 +1825,7 @@ static ImBuf *blend_file_thumb_from_camera(const bContext *C,
 /** \name Write Main Blend-File (internal)
  * \{ */
 
-bool write_crash_blend(void)
+bool write_crash_blend()
 {
   char filepath[FILE_MAX];
 
@@ -2118,7 +2136,7 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
   wm_autosave_timer_begin(wm);
 }
 
-void wm_autosave_delete(void)
+void wm_autosave_delete()
 {
   char filepath[FILE_MAX];
 
@@ -2696,10 +2714,10 @@ static void set_next_operator_state(wmOperator *op, int state)
   RNA_int_set(op->ptr, "state", state);
 }
 
-typedef struct OperatorDispatchTarget {
+struct OperatorDispatchTarget {
   int state;
   int (*run)(bContext *C, wmOperator *op);
-} OperatorDispatchTarget;
+};
 
 static int operator_state_dispatch(bContext *C, wmOperator *op, OperatorDispatchTarget *targets)
 {
@@ -3470,13 +3488,11 @@ static void wm_block_autorun_warning_ignore(bContext *C, void *arg_block, void *
   wm_test_autorun_revert_action_set(nullptr, nullptr);
 }
 
-static void wm_block_autorun_warning_reload_with_scripts(bContext *C,
-                                                         void *arg_block,
-                                                         void * /*arg*/)
+static void wm_block_autorun_warning_reload_with_scripts(bContext *C, uiBlock *block)
 {
   wmWindow *win = CTX_wm_window(C);
 
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
+  UI_popup_block_close(C, win, block);
 
   /* Save user preferences for permanent execution. */
   if ((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0) {
@@ -3488,12 +3504,12 @@ static void wm_block_autorun_warning_reload_with_scripts(bContext *C,
   wm_test_autorun_revert_action_exec(C);
 }
 
-static void wm_block_autorun_warning_enable_scripts(bContext *C, void *arg_block, void * /*arg*/)
+static void wm_block_autorun_warning_enable_scripts(bContext *C, uiBlock *block)
 {
   wmWindow *win = CTX_wm_window(C);
   Main *bmain = CTX_data_main(C);
 
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
+  UI_popup_block_close(C, win, block);
 
   /* Save user preferences for permanent execution. */
   if ((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0) {
@@ -3573,7 +3589,8 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                            0,
                            0,
                            TIP_("Reload file with execution of Python scripts enabled"));
-    UI_but_func_set(but, wm_block_autorun_warning_reload_with_scripts, block, nullptr);
+    UI_but_func_set(
+        but, [block](bContext &C) { wm_block_autorun_warning_reload_with_scripts(&C, block); });
   }
   else {
     but = uiDefIconTextBut(block,
@@ -3591,7 +3608,8 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                            0,
                            0,
                            TIP_("Enable scripts"));
-    UI_but_func_set(but, wm_block_autorun_warning_enable_scripts, block, nullptr);
+    UI_but_func_set(but,
+                    [block](bContext &C) { wm_block_autorun_warning_enable_scripts(&C, block); });
   }
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 
@@ -3762,15 +3780,28 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
 static void wm_block_file_close_cancel_button(uiBlock *block, wmGenericCallback *post_action)
 {
   uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
   UI_but_func_set(but, wm_block_file_close_cancel, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
 
 static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback *post_action)
 {
-  uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Don't Save"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  uiBut *but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                0,
+                                IFACE_("Don't Save"),
+                                0,
+                                0,
+                                0,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0,
+                                0,
+                                0,
+                                0,
+                                "");
   UI_but_func_set(but, wm_block_file_close_discard, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
@@ -3778,7 +3809,7 @@ static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback
 static void wm_block_file_close_save_button(uiBlock *block, wmGenericCallback *post_action)
 {
   uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Save"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Save"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
   UI_but_func_set(but, wm_block_file_close_save, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);

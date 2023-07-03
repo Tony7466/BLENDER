@@ -52,6 +52,7 @@
 #include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_bounds.hh"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
@@ -85,8 +86,8 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
-#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -114,7 +115,6 @@
 #include "BKE_multires.h"
 #include "BKE_node.hh"
 #include "BKE_object.h"
-#include "BKE_object_facemap.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pbvh.h"
@@ -233,7 +233,6 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
     }
   }
 
-  BKE_object_facemap_copy_list(&ob_dst->fmaps, &ob_src->fmaps);
   BKE_constraints_copy_ex(&ob_dst->constraints, &ob_src->constraints, flag_subdata, true);
 
   ob_dst->mode = ob_dst->type != OB_GPENCIL_LEGACY ? OB_MODE_OBJECT : ob_dst->mode;
@@ -302,7 +301,6 @@ static void object_free_data(ID *id)
   MEM_SAFE_FREE(ob->iuser);
   MEM_SAFE_FREE(ob->runtime.bb);
 
-  BLI_freelistN(&ob->fmaps);
   if (ob->pose) {
     BKE_pose_free_ex(ob->pose, false);
     ob->pose = nullptr;
@@ -491,7 +489,7 @@ static void object_foreach_path_pointcache(ListBase *ptcache_list,
   for (PointCache *cache = (PointCache *)ptcache_list->first; cache != nullptr;
        cache = cache->next) {
     if (cache->flag & PTCACHE_DISK_CACHE) {
-      BKE_bpath_foreach_path_fixed_process(bpath_data, cache->path);
+      BKE_bpath_foreach_path_fixed_process(bpath_data, cache->path, sizeof(cache->path));
     }
   }
 }
@@ -506,14 +504,16 @@ static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
       case eModifierType_Fluidsim: {
         FluidsimModifierData *fluidmd = reinterpret_cast<FluidsimModifierData *>(md);
         if (fluidmd->fss) {
-          BKE_bpath_foreach_path_fixed_process(bpath_data, fluidmd->fss->surfdataPath);
+          BKE_bpath_foreach_path_fixed_process(
+              bpath_data, fluidmd->fss->surfdataPath, sizeof(fluidmd->fss->surfdataPath));
         }
         break;
       }
       case eModifierType_Fluid: {
         FluidModifierData *fmd = reinterpret_cast<FluidModifierData *>(md);
         if (fmd->type & MOD_FLUID_TYPE_DOMAIN && fmd->domain) {
-          BKE_bpath_foreach_path_fixed_process(bpath_data, fmd->domain->cache_directory);
+          BKE_bpath_foreach_path_fixed_process(
+              bpath_data, fmd->domain->cache_directory, sizeof(fmd->domain->cache_directory));
         }
         break;
       }
@@ -524,12 +524,12 @@ static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
       }
       case eModifierType_Ocean: {
         OceanModifierData *omd = reinterpret_cast<OceanModifierData *>(md);
-        BKE_bpath_foreach_path_fixed_process(bpath_data, omd->cachepath);
+        BKE_bpath_foreach_path_fixed_process(bpath_data, omd->cachepath, sizeof(omd->cachepath));
         break;
       }
       case eModifierType_MeshCache: {
         MeshCacheModifierData *mcmd = reinterpret_cast<MeshCacheModifierData *>(md);
-        BKE_bpath_foreach_path_fixed_process(bpath_data, mcmd->filepath);
+        BKE_bpath_foreach_path_fixed_process(bpath_data, mcmd->filepath, sizeof(mcmd->filepath));
         break;
       }
       default:
@@ -543,13 +543,6 @@ static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
 
   LISTBASE_FOREACH (ParticleSystem *, psys, &ob->particlesystem) {
     object_foreach_path_pointcache(&psys->ptcaches, bpath_data);
-  }
-}
-
-static void write_fmaps(BlendWriter *writer, ListBase *fbase)
-{
-  LISTBASE_FOREACH (bFaceMap *, fmap, fbase) {
-    BLO_write_struct(writer, bFaceMap, fmap);
   }
 }
 
@@ -586,7 +579,6 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   }
 
   BKE_pose_blend_write(writer, ob->pose, arm);
-  write_fmaps(writer, &ob->fmaps);
   BKE_constraint_blend_write(writer, &ob->constraints);
   animviz_motionpath_blend_write(writer, ob->mpath);
 
@@ -626,7 +618,7 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     BLO_write_struct(writer, LightgroupMembership, ob->lightgroup);
   }
   if (ob->light_linking) {
-    BLO_write_struct(writer, LightgroupMembership, ob->light_linking);
+    BLO_write_struct(writer, LightLinking, ob->light_linking);
   }
 
   if (ob->lightprobe_cache) {
@@ -682,7 +674,6 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   /* Only for versioning, vertex group names are now stored on object data. */
   BLO_read_list(reader, &ob->defbase);
 
-  BLO_read_list(reader, &ob->fmaps);
   /* XXX deprecated - old animation system <<< */
   direct_link_nlastrips(reader, &ob->nlastrips);
   BLO_read_list(reader, &ob->constraintChannels);
@@ -1894,7 +1885,7 @@ void BKE_object_free_derived_caches(Object *ob)
   }
 
   if (ob->runtime.geometry_set_eval != nullptr) {
-    BKE_geometry_set_free(ob->runtime.geometry_set_eval);
+    delete ob->runtime.geometry_set_eval;
     ob->runtime.geometry_set_eval = nullptr;
   }
 
@@ -1972,8 +1963,7 @@ bool BKE_object_is_in_editmode(const Object *ob)
       /* Grease Pencil object has no edit mode data. */
       return GPENCIL_EDIT_MODE((bGPdata *)ob->data);
     case OB_CURVES:
-      /* Curves object has no edit mode data. */
-      return ob->mode == OB_MODE_EDIT;
+    case OB_POINTCLOUD:
     case OB_GREASE_PENCIL:
       return ob->mode == OB_MODE_EDIT;
     default:
@@ -2003,6 +1993,7 @@ bool BKE_object_data_is_in_editmode(const Object *ob, const ID *id)
     case ID_AR:
       return ((const bArmature *)id)->edbo != nullptr;
     case ID_CV:
+    case ID_PT:
     case ID_GP:
       if (ob) {
         return BKE_object_is_in_editmode(ob);
@@ -2055,14 +2046,10 @@ char *BKE_object_data_editmode_flush_ptr_get(ID *id)
       bArmature *arm = (bArmature *)id;
       return &arm->needs_flush_to_id;
     }
-    case ID_CV: {
-      /* Curves have no edit mode data. */
+    case ID_GP:
+    case ID_PT:
+    case ID_CV:
       return nullptr;
-    }
-    case ID_GP: {
-      /* Grease Pencil has no edit mode data. */
-      return nullptr;
-    }
     default:
       BLI_assert_unreachable();
       return nullptr;
@@ -2131,7 +2118,7 @@ int BKE_object_visibility(const Object *ob, const int dag_eval_mode)
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
-  if (BKE_object_has_geometry_set_instances(ob)) {
+  if (blender::bke::object_has_geometry_set_instances(*ob)) {
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
@@ -3859,23 +3846,18 @@ void BKE_object_boundbox_calc_from_mesh(Object *ob, const Mesh *me_eval)
 
 bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
 {
-  float3 min(FLT_MAX);
-  float3 max(-FLT_MAX);
+  using namespace blender;
 
+  std::optional<Bounds<float3>> bounds;
   if (ob->runtime.geometry_set_eval) {
-    if (!ob->runtime.geometry_set_eval->compute_boundbox_without_instances(&min, &max)) {
-      min = float3(0);
-      max = float3(0);
-    }
+    bounds = ob->runtime.geometry_set_eval->compute_boundbox_without_instances();
   }
   else if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob)) {
-    if (!BKE_mesh_wrapper_minmax(mesh_eval, min, max)) {
-      min = float3(0);
-      max = float3(0);
+    Bounds<float3> mesh_bounds{float3(std::numeric_limits<float>::max()),
+                               float3(std::numeric_limits<float>::min())};
+    if (BKE_mesh_wrapper_minmax(mesh_eval, mesh_bounds.min, mesh_bounds.max)) {
+      bounds = bounds::merge(bounds, {mesh_bounds});
     }
-  }
-  else if (ob->runtime.curve_cache) {
-    BKE_displist_minmax(&ob->runtime.curve_cache->disp, min, max);
   }
   else {
     return false;
@@ -3884,8 +3866,12 @@ bool BKE_object_boundbox_calc_from_evaluated_geometry(Object *ob)
   if (ob->runtime.bb == nullptr) {
     ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
   }
-
-  BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
+  if (bounds) {
+    BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
+  }
+  else {
+    BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(0), float3(0));
+  }
 
   ob->runtime.bb->flag &= ~BOUNDBOX_DIRTY;
 
@@ -4500,7 +4486,7 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 {
   /* First attempt to retrieve the evaluated mesh from the evaluated geometry set. Most
    * object types either store it there or add a reference to it if it's owned elsewhere. */
-  GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval;
+  blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval;
   if (geometry_set_eval) {
     /* Some areas expect to be able to modify the evaluated mesh in limited ways. Theoretically
      * this should be avoided, or at least protected with a lock, so a const mesh could be returned

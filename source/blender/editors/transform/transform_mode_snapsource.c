@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -38,6 +39,7 @@ struct SnapSouceCustomData {
   void *customdata_mode_prev;
 
   eSnapTargetOP target_operation_prev;
+  eSnapMode snap_mode_confirm;
 
   struct {
     void (*apply)(TransInfo *t, MouseInput *mi, const double mval[2], float output[3]);
@@ -61,12 +63,9 @@ static void snapsource_end(TransInfo *t)
   t->mouse.post = customdata->mouse_prev.post;
   t->mouse.use_virtual_mval = customdata->mouse_prev.use_virtual_mval;
 
-  transform_gizmo_3d_model_from_constraint_and_mode_set(t);
-
   MEM_freeN(customdata);
 
-  t->tsnap.snap_source_fn = NULL;
-
+  transform_gizmo_3d_model_from_constraint_and_mode_set(t);
   tranform_snap_source_restore_context(t);
 }
 
@@ -74,6 +73,11 @@ static void snapsource_confirm(TransInfo *t)
 {
   BLI_assert(t->modifiers & MOD_EDIT_SNAP_SOURCE);
   getSnapPoint(t, t->tsnap.snap_source);
+  t->tsnap.snap_source_fn = NULL;
+  t->tsnap.status |= SNAP_SOURCE_FOUND;
+
+  struct SnapSouceCustomData *customdata = t->custom.mode.data;
+  t->tsnap.mode = customdata->snap_mode_confirm;
 
   int mval[2];
 #ifndef RESET_TRANSFORMATION
@@ -105,7 +109,7 @@ static void snapsource_confirm(TransInfo *t)
   transform_input_reset(t, mval);
 
   /* Remote individual snap projection since this mode does not use the new `snap_source`. */
-  t->tsnap.mode &= ~(SCE_SNAP_MODE_FACE_RAYCAST | SCE_SNAP_MODE_FACE_NEAREST);
+  t->tsnap.mode &= ~(SCE_SNAP_INDIVIDUAL_PROJECT | SCE_SNAP_INDIVIDUAL_NEAREST);
 }
 
 static eRedrawFlag snapsource_handle_event_fn(TransInfo *t, const wmEvent *event)
@@ -147,6 +151,9 @@ static void snapsource_transform_fn(TransInfo *t, const int UNUSED(mval[2]))
   BLI_assert(t->modifiers & MOD_EDIT_SNAP_SOURCE);
 
   t->tsnap.snap_target_fn(t, NULL);
+  if (t->tsnap.status & SNAP_MULTI_POINTS) {
+    getSnapPoint(t, t->tsnap.snap_source);
+  }
   t->redraw |= TREDRAW_SOFT;
 }
 
@@ -179,24 +186,22 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
   }
 
   t->mode_info = &TransMode_snapsource;
+  t->flag |= T_DRAW_SNAP_SOURCE;
   t->tsnap.target_operation = SCE_SNAP_TARGET_ALL;
+  t->tsnap.status &= ~SNAP_SOURCE_FOUND;
 
-  if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
-    if (t->tsnap.snap_source_fn) {
-      /* Calculate the current snap source for perpendicular snap. */
-      t->tsnap.snap_source_fn(t);
-    }
-    if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
-      /* Fallback. */
-      copy_v3_v3(t->tsnap.snap_source, t->center_global);
-      t->tsnap.status |= SNAP_SOURCE_FOUND;
-    }
-  }
+  customdata->snap_mode_confirm = t->tsnap.mode;
+  t->tsnap.mode &= ~(SCE_SNAP_TO_EDGE_PERPENDICULAR | SCE_SNAP_INDIVIDUAL_PROJECT |
+                     SCE_SNAP_INDIVIDUAL_NEAREST);
 
-  if ((t->tsnap.mode & ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)) == 0) {
+  if ((t->tsnap.mode & ~(SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID)) == 0) {
     /* Initialize snap modes for geometry. */
-    t->tsnap.mode &= ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID);
-    t->tsnap.mode |= SCE_SNAP_MODE_GEOM & ~SCE_SNAP_MODE_FACE_NEAREST;
+    t->tsnap.mode &= ~(SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID);
+    t->tsnap.mode |= SCE_SNAP_TO_GEOM & ~SCE_SNAP_TO_EDGE_PERPENDICULAR;
+
+    if (!(customdata->snap_mode_confirm & SCE_SNAP_TO_EDGE_PERPENDICULAR)) {
+      customdata->snap_mode_confirm = t->tsnap.mode;
+    }
   }
 
   if (t->data_type == &TransConvertType_Mesh) {
