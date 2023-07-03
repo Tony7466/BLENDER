@@ -1801,9 +1801,9 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
                                                  GreasePencil *grease_pencil,
                                                  int filter_mode)
 {
-  size_t items = 0;
-
   using namespace blender;
+
+  size_t items = 0;
 
   /* add data block container */
   ANIMCHANNEL_NEW_CHANNEL(grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
