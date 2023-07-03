@@ -1910,6 +1910,38 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
       {reinterpret_cast<float3 *>(r_corner_normals), mesh->totloop});
 }
 
+namespace blender::bke {
+
+void calc_split_normals_for_mesh(const Mesh *mesh,
+                                 const bool use_split_normals,
+                                 MutableSpan<float3> r_corner_normals)
+{
+  const float split_angle = (mesh->flag & ME_AUTOSMOOTH) != 0 ? mesh->smoothresh : float(M_PI);
+
+  const bool *sharp_edges = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge"));
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+
+  blender::bke::mesh::normals_calc_loop(mesh->vert_positions(),
+                                        mesh->edges(),
+                                        mesh->polys(),
+                                        mesh->corner_verts(),
+                                        mesh->corner_edges(),
+                                        {},
+                                        mesh->vert_normals(),
+                                        mesh->poly_normals(),
+                                        sharp_edges,
+                                        sharp_faces,
+                                        use_split_normals,
+                                        split_angle,
+                                        nullptr,
+                                        nullptr,
+                                        r_corner_normals);
+}
+
+}  // namespace blender::bke
+
 void BKE_mesh_calc_normals_split(Mesh *mesh)
 {
   BKE_mesh_calc_normals_split_ex(mesh, nullptr, ensure_corner_normal_layer(*mesh));
