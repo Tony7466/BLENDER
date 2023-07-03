@@ -9,7 +9,7 @@
 #include "UI_resources.h"
 
 #include "NOD_geometry.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 
 #include "node_geometry_util.hh"
 
