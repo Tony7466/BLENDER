@@ -1734,7 +1734,7 @@ class _defs_weight_paint:
 class _defs_paint_grease_pencil:
 
     @ToolDef.from_fn
-    def paint():
+    def draw():
         return dict(
             idname="builtin_brush.Draw",
             label="Draw",
@@ -3104,7 +3104,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'PAINT_GREASE_PENCIL': [
             _defs_view3d_generic.cursor,
             None,
-            _defs_paint_grease_pencil.paint,
+            _defs_paint_grease_pencil.draw,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
