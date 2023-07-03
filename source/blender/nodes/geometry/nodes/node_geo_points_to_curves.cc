@@ -4,20 +4,10 @@
 
 #include "node_geometry_util.hh"
 
-//#include "BLI_array.hh"
-//#include "BLI_vector_set.hh"
-//#include "BLI_vector.hh"
-//#include "BLI_index_range.hh"
-//#include "BLI_offsets_indices.hh"
-#include "BLI_array_utils.hh"
+//#include "BLI_array_utils.hh"
 #include "BLI_sort.hh"
 
-//#include "BKE_attribute_math.hh"
-//#include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
-//#include "BKE_geometry_fields.hh"
-
-#include "DNA_pointcloud_types.h"
 
 namespace blender::nodes::node_geo_points_to_curves_cc {
 
@@ -36,10 +26,15 @@ void inverse_gather(const GVArray &src, const Span<int> &indices, GMutableSpan d
     using T = decltype(dummy);
     const VArray<T> src_typed = src.typed<T>();
     MutableSpan<T> dst_typed = dst.typed<T>();
-    threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
-      for (const int64_t index : range) {
-        dst_typed[indices[index]] = src_typed[index];
-      }
+    devirtualize_varray(src_typed, [indices, dst_typed](const auto src_typed) {
+      threading::parallel_for(
+          indices.index_range(),
+          4096,
+          [indices, dst_typed, src_typed = std::move(src_typed)](const IndexRange range) {
+            for (const int64_t index : range) {
+              dst_typed[indices[index]] = src_typed[index];
+            }
+          });
     });
   });
 }
@@ -49,11 +44,12 @@ void inverse_fill(const Span<int> &indices, GMutableSpan dst)
   bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
     using T = decltype(dummy);
     MutableSpan<T> dst_typed = dst.typed<T>();
-    threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
-      for (const int64_t index : range) {
-        dst_typed[indices[index]] = T();
-      }
-    });
+    threading::parallel_for(
+        indices.index_range(), 4096, [indices, dst_typed](const IndexRange range) {
+          for (const int64_t index : range) {
+            dst_typed[indices[index]] = T();
+          }
+        });
   });
 }
 
@@ -194,11 +190,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   Map<AttributeIDRef, AttributeKind> attributes;
   geometry_set.gather_attributes_for_propagation(supported_types,
-                                                 GeometryComponent::Type::Mesh,
+                                                 GeometryComponent::Type::Curve,
                                                  false,
                                                  params.get_output_propagation_info("Curves"),
                                                  attributes);
-  // attributes.remove("position");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     Vector<const GeometryComponent *, 3> point_components;
