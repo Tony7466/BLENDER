@@ -1453,8 +1453,6 @@ static void sculptsession_free_pbvh(Object *object)
     ss->pbvh = nullptr;
   }
 
-  ss->vert_to_poly_offsets = {};
-  ss->vert_to_poly_indices = {};
   ss->pmap = {};
   ss->edge_to_poly_offsets = {};
   ss->edge_to_poly_indices = {};
