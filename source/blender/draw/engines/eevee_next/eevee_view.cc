@@ -200,7 +200,6 @@ void CaptureView::render()
   if (!inst_.reflection_probes.do_world_update_get()) {
     return;
   }
-  // GPU_debug_capture_begin();
   inst_.reflection_probes.do_world_update_set(false);
 
   GPU_debug_group_begin("World.Capture");
@@ -216,12 +215,8 @@ void CaptureView::render()
     view.sync(view_m4, win_m4);
     inst_.pipelines.world.render(view);
   }
-  GPU_texture_update_mipmap_chain(inst_.reflection_probes.cubemap_tx_);
-  /* TODO this should be hidden behind a method in reflection_probes. */
-  inst_.manager->submit(inst_.reflection_probes.remap_ps_);
-  GPU_texture_update_mipmap_chain(inst_.reflection_probes.probes_tx_);
+  inst_.reflection_probes.remap_to_octahedral_projection();
   GPU_debug_group_end();
-  // GPU_debug_capture_end();
 }
 
 /** \} */

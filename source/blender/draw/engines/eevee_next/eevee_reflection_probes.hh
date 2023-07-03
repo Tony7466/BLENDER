@@ -38,6 +38,7 @@ class ReflectionProbeModule {
 
   Instance &instance_;
 
+  /** Texture containing a cubemap used for updating #probes_tx_. */
   Texture cubemap_tx_ = {"Probe.Cubemap"};
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
@@ -68,6 +69,8 @@ class ReflectionProbeModule {
   {
     return do_world_update_;
   }
+
+  void remap_to_octahedral_projection();
 
   /* Capture View requires access to the cubemaps texture for framebuffer configuration. */
   friend class CaptureView;
