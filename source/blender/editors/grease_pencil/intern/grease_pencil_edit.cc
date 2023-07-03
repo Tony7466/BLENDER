@@ -129,11 +129,6 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
     float w_after = float(w - w2);
 
     mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
-      /* Only compute points inside the curve range */
-      if (!curve_points.contains(point_index)) {
-        return;
-      }
-
       /* Compute the neighboring points */
       int64_t before = point_index - step;
       int64_t after = point_index + step;
@@ -220,10 +215,13 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
         const VArray<bool> cyclic = curves.cyclic();
 
         /* Selection-based mask */
-        IndexMaskMemory memory;
         bke::AttributeReader<bool> selection_attribute = curves_attributes.lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
-        const IndexMask mask = IndexMask::from_bools(selection_attribute.varray, memory);
+
+        if (!ed::curves::has_anything_selected(selection_attribute.varray, curves.points_range()))
+        {
+          return;
+        }
 
         threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
           for (const int curve_i : range) {
@@ -232,13 +230,17 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator * /*op*/)
             const IndexRange points = points_by_curve[curve_i];
             const bool is_cyclic = cyclic[curve_i];
 
+            IndexMaskMemory memory;
+            const IndexMask curve_mask = IndexMask::from_bools(
+                points, selection_attribute.varray, memory);
+
             gaussian_blur_1D_float3(is_cyclic,
                                     points,
                                     iterations,
                                     keep_shape,
                                     curves.positions_for_write(),
                                     curves_positions_copy,
-                                    mask);
+                                    curve_mask);
           }
         });
       });
