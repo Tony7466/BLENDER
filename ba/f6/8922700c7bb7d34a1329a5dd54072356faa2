@@ -1,2 +1,3 @@
 Referenced by issue #106901, Blender crashes when opening certain files (double free)
 Referenced by issue #109583, Regression: Crash on COW delete of shared custom data
+Referenced by pull request #109671, Fix #109583: Const version of mesh_calc_normals to only eval normals in geometry nodes
