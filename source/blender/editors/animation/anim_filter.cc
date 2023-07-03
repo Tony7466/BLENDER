@@ -1810,13 +1810,16 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
 
   Span<bke::greasepencil::Layer *> layers = grease_pencil->layers_for_write();
 
-  for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
-    bke::greasepencil::Layer *layer = layers[layer_index];
+  BEGIN_ANIMFILTER_SUBCHANNELS (grease_pencil->flag &GREASE_PENCIL_ANIM_CHANNEL_EXPANDED) {
+    for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
+      bke::greasepencil::Layer *layer = layers[layer_index];
 
-    /* add layer channel */
-    ANIMCHANNEL_NEW_CHANNEL(
-        static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+      /* add layer channel */
+      ANIMCHANNEL_NEW_CHANNEL(
+          static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+    }
   }
+  END_ANIMFILTER_SUBCHANNELS;
 
   return items;
 }
