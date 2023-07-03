@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 #include <cstring>
@@ -28,7 +29,7 @@ enum TransformType {
 #define COLORSPACE_SRGB ((OCIO_ConstColorSpaceRcPtr *)2)
 #define COLORSPACE_DATA ((OCIO_ConstColorSpaceRcPtr *)3)
 
-typedef struct OCIO_PackedImageDescription {
+struct OCIO_PackedImageDescription {
   float *data;
   long width;
   long height;
@@ -36,7 +37,7 @@ typedef struct OCIO_PackedImageDescription {
   long chanStrideBytes;
   long xStrideBytes;
   long yStrideBytes;
-} OCIO_PackedImageDescription;
+};
 
 struct FallbackTransform {
   FallbackTransform() : type(TRANSFORM_UNKNOWN), scale(1.0f), exponent(1.0f) {}

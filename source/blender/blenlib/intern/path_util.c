@@ -117,7 +117,7 @@ int BLI_path_sequence_decode(const char *path,
   if (head) {
     /* Name_end points to last character of head,
      * make it +1 so null-terminator is nicely placed. */
-    BLI_strncpy(head, path, name_end + 1);
+    BLI_strncpy(head, path, MIN2(head_maxncpy, name_end + 1));
   }
   if (r_digits_len) {
     *r_digits_len = 0;
@@ -196,8 +196,8 @@ static int path_normalize_impl(char *path, bool check_blend_relative_prefix)
   /* NOTE(@ideasman42):
    *   `memmove(start, eind, strlen(eind) + 1);`
    * is the same as
-   *   `strcpy(start, eind);`
-   * except `strcpy` should not be used because there is overlap,
+   *   `BLI_strncpy(start, eind, ...);`
+   * except string-copy should not be used because there is overlap,
    * so use `memmove` 's slightly more obscure syntax. */
 
   /* Inline replacement:
@@ -666,7 +666,6 @@ void BLI_path_rel(char path[FILE_MAX], const char *basepath)
 
   const char *lslash;
   char temp[FILE_MAX];
-  char res[FILE_MAX];
 
   /* If path is already relative, bail out. */
   if (BLI_path_is_rel(path)) {
@@ -739,7 +738,6 @@ void BLI_path_rel(char path[FILE_MAX], const char *basepath)
      * This is replaced by the two slashes at the beginning. */
     const char *p = temp;
     const char *q = path;
-    char *r = res;
 
 #ifdef WIN32
     while (tolower(*p) == tolower(*q))
@@ -771,7 +769,8 @@ void BLI_path_rel(char path[FILE_MAX], const char *basepath)
       }
     }
 
-    r += BLI_strcpy_rlen(r, "//");
+    char res[FILE_MAX] = "//";
+    char *r = res + 2;
 
     /* `p` now points to the slash that is at the beginning of the part
      * where the path is different from the relative path.
@@ -782,18 +781,18 @@ void BLI_path_rel(char path[FILE_MAX], const char *basepath)
     }
     while (p && p < lslash) {
       if (*p == '/') {
-        r += BLI_strcpy_rlen(r, "../");
+        r += BLI_strncpy_rlen(r, "../", sizeof(res) - (r - res));
       }
       p++;
     }
 
     /* Don't copy the slash at the beginning. */
-    r += BLI_strncpy_rlen(r, q + 1, FILE_MAX - (r - res));
+    r += BLI_strncpy_rlen(r, q + 1, sizeof(res) - (r - res));
 
 #ifdef WIN32
     BLI_str_replace_char(res + 2, '/', '\\');
 #endif
-    strcpy(path, res);
+    BLI_strncpy(path, res, FILE_MAX);
   }
 }
 
@@ -1118,9 +1117,7 @@ bool BLI_path_abs(char path[FILE_MAX], const char *basepath)
     BLI_assert(strlen(tmp) == root_dir_len);
 
     /* Step over the slashes at the beginning of the path. */
-    while (BLI_path_slash_is_native_compat(*p)) {
-      p++;
-    }
+    p = (char *)BLI_path_slash_skip(p);
     BLI_strncpy(tmp + root_dir_len, p, sizeof(tmp) - root_dir_len);
   }
   else {
@@ -1956,6 +1953,15 @@ void BLI_path_slash_rstrip(char *path)
       break;
     }
   }
+}
+
+const char *BLI_path_slash_skip(const char *path)
+{
+  /* This accounts for a null byte too. */
+  while (BLI_path_slash_is_native_compat(*path)) {
+    path++;
+  }
+  return path;
 }
 
 void BLI_path_slash_native(char *path)

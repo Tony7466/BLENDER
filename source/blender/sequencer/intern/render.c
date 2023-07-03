@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -91,7 +91,7 @@ void seq_imbuf_assign_spaces(Scene *scene, ImBuf *ibuf)
 #if 0
   /* Byte buffer is supposed to be in sequencer working space already. */
   if (ibuf->rect != NULL) {
-    IMB_colormanagement_assign_rect_colorspace(ibuf, scene->sequencer_colorspace_settings.name);
+    IMB_colormanagement_assign_byte_colorspace(ibuf, scene->sequencer_colorspace_settings.name);
   }
 #endif
   if (ibuf->float_buffer.data != NULL) {

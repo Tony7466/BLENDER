@@ -59,6 +59,7 @@
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
+#include "BKE_node.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -67,8 +68,6 @@
 #include "BKE_texture.h"
 
 #include "SEQ_iterator.h"
-
-#include "NOD_socket.h"
 
 #include "BLO_readfile.h"
 
@@ -716,7 +715,7 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
      */
     for (ma = bmain->materials.first; ma; ma = ma->id.next) {
       if (ma->nodetree && ma->nodetree->id.name[0] == '\0') {
-        strcpy(ma->nodetree->id.name, "NTShader Nodetree");
+        STRNCPY(ma->nodetree->id.name, "NTShader Nodetree");
       }
     }
 
@@ -724,7 +723,7 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
       enum { R_PANORAMA = (1 << 10) };
       if (sce->nodetree && sce->nodetree->id.name[0] == '\0') {
-        strcpy(sce->nodetree->id.name, "NTCompositing Nodetree");
+        STRNCPY(sce->nodetree->id.name, "NTCompositing Nodetree");
       }
 
       /* move to cameras */
@@ -748,7 +747,7 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
       if (tx->nodetree) {
         if (tx->nodetree->id.name[0] == '\0') {
-          strcpy(tx->nodetree->id.name, "NTTexture Nodetree");
+          STRNCPY(tx->nodetree->id.name, "NTTexture Nodetree");
         }
 
         /* which_output 0 is now "not specified" */
@@ -2315,7 +2314,7 @@ static void lib_node_do_versions_group_indices(bNode *gnode)
 
     for (link = ngroup->links.first; link; link = link->next) {
       if (link->tonode == NULL && link->fromsock->own_index == old_index) {
-        strcpy(sock->identifier, link->fromsock->identifier);
+        STRNCPY(sock->identifier, link->fromsock->identifier);
         /* deprecated */
         sock->own_index = link->fromsock->own_index;
         sock->to_index = 0;
@@ -2327,7 +2326,7 @@ static void lib_node_do_versions_group_indices(bNode *gnode)
 
     for (link = ngroup->links.first; link; link = link->next) {
       if (link->fromnode == NULL && link->tosock->own_index == old_index) {
-        strcpy(sock->identifier, link->tosock->identifier);
+        STRNCPY(sock->identifier, link->tosock->identifier);
         /* deprecated */
         sock->own_index = link->tosock->own_index;
         sock->to_index = 0;

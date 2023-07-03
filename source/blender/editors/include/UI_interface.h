@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
 #include "BLI_utildefines.h"
 #include "UI_interface_icons.h"
@@ -22,7 +23,7 @@ extern "C" {
 
 struct ARegion;
 struct AssetFilterSettings;
-struct AssetHandle;
+struct AssetRepresentation;
 struct AutoComplete;
 struct EnumPropertyItem;
 struct FileSelectParams;
@@ -87,7 +88,7 @@ typedef struct uiViewItemHandle uiViewItemHandle;
 
 /* Separator for text in search menus (right pointing arrow).
  * keep in sync with `string_search.cc`. */
-#define UI_MENU_ARROW_SEP "\xe2\x96\xb8"
+#define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
 
 /* names */
 #define UI_MAX_DRAW_STR 400
@@ -262,6 +263,13 @@ enum {
 #define UI_SIDEBAR_PANEL_WIDTH 220
 #define UI_NAVIGATION_REGION_WIDTH UI_COMPACT_PANEL_WIDTH
 #define UI_NARROW_NAVIGATION_REGION_WIDTH 100
+
+/* The width of one icon column of the Toolbar. */
+#define UI_TOOLBAR_COLUMN (1.25f * ICON_DEFAULT_HEIGHT_TOOLBAR)
+/* The space between the Toolbar and the area's edge. */
+#define UI_TOOLBAR_MARGIN (0.5f * ICON_DEFAULT_HEIGHT_TOOLBAR)
+/* Total width of Toolbar showing one icon column. */
+#define UI_TOOLBAR_WIDTH UI_TOOLBAR_MARGIN + UI_TOOLBAR_COLUMN
 
 #define UI_PANEL_CATEGORY_MARGIN_WIDTH (U.widget_unit * 1.0f)
 
@@ -926,10 +934,10 @@ void UI_but_execute(const struct bContext *C, struct ARegion *region, uiBut *but
 
 bool UI_but_online_manual_id(const uiBut *but,
                              char *r_str,
-                             size_t maxlength) ATTR_WARN_UNUSED_RESULT;
+                             size_t str_maxncpy) ATTR_WARN_UNUSED_RESULT;
 bool UI_but_online_manual_id_from_active(const struct bContext *C,
                                          char *r_str,
-                                         size_t maxlength) ATTR_WARN_UNUSED_RESULT;
+                                         size_t str_maxncpy) ATTR_WARN_UNUSED_RESULT;
 bool UI_but_is_userdef(const uiBut *but);
 
 /* Buttons
@@ -1806,8 +1814,7 @@ void UI_but_drag_attach_image(uiBut *but, struct ImBuf *imb, float scale);
  * \param asset: May be passed from a temporary variable, drag data only stores a copy of this.
  */
 void UI_but_drag_set_asset(uiBut *but,
-                           const struct AssetHandle *asset,
-                           const char *path,
+                           const struct AssetRepresentation *asset,
                            int import_type, /* eAssetImportType */
                            int icon,
                            struct ImBuf *imb,
@@ -1931,7 +1938,7 @@ struct Panel *UI_panel_add_instanced(const struct bContext *C,
  */
 void UI_panels_free_instanced(const struct bContext *C, struct ARegion *region);
 
-#define INSTANCED_PANEL_UNIQUE_STR_LEN 16
+#define INSTANCED_PANEL_UNIQUE_STR_SIZE 16
 /**
  * Find a unique key to append to the #PanelType.idname for the lookup to the panel's #uiBlock.
  * Needed for instanced panels, where there can be multiple with the same type and identifier.
@@ -2169,7 +2176,7 @@ void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
 
-int uiLayoutGetOperatorContext(uiLayout *layout);
+wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
 bool uiLayoutGetActiveDefault(uiLayout *layout);
 bool uiLayoutGetActivateInit(uiLayout *layout);
@@ -2517,7 +2524,7 @@ enum uiTemplateListFlags {
 
   UI_TEMPLATE_LIST_FLAGS_LAST
 };
-ENUM_OPERATORS(enum uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
+ENUM_OPERATORS(uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
 
 void uiTemplateList(uiLayout *layout,
                     const struct bContext *C,
@@ -2623,6 +2630,8 @@ void uiTemplateAssetView(struct uiLayout *layout,
 void uiTemplateLightLinkingCollection(struct uiLayout *layout,
                                       struct PointerRNA *ptr,
                                       const char *propname);
+
+void uiTemplateGreasePencilLayerTree(uiLayout *layout, struct bContext *C);
 
 /**
  * \return: A RNA pointer for the operator properties.
@@ -3262,6 +3271,13 @@ void UI_interface_tag_script_reload(void);
 
 /* Support click-drag motion which presses the button and closes a popover (like a menu). */
 #define USE_UI_POPOVER_ONCE
+
+/**
+ * Call the #ui::AbstractView::begin_filtering() function of the view to enable filtering.
+ * Typically used to enable a filter text button. Triggered on Ctrl+F by default.
+ * \return True when filtering was enabled successfully.
+ */
+bool UI_view_begin_filtering(const struct bContext *C, const uiViewHandle *view_handle);
 
 bool UI_view_item_is_interactive(const uiViewItemHandle *item_handle);
 bool UI_view_item_is_active(const uiViewItemHandle *item_handle);

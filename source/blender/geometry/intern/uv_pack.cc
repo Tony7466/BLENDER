@@ -339,7 +339,7 @@ UVPackIsland_Params::UVPackIsland_Params()
   only_selected_faces = false;
   use_seams = false;
   correct_aspect = false;
-  pin_method = ED_UVPACK_PIN_PACK;
+  pin_method = ED_UVPACK_PIN_NONE;
   pin_unselected = false;
   merge_overlap = false;
   margin = 0.001f;
@@ -1783,7 +1783,7 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
   rctf locked_bounds = {0.0f};     /* AABB of islands which can't translate. */
   int64_t locked_island_count = 0; /* Index of first non-locked island. */
   for (int64_t i = 0; i < islands.size(); i++) {
-    PackIsland *pack_island = islands[i];
+    PackIsland *pack_island = islands[aabbs[i]->index];
     if (pack_island->can_translate_(params)) {
       break;
     }
@@ -1796,6 +1796,12 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
     }
     float2 top_right = pack_island->pivot_ + pack_island->half_diagonal_;
     BLI_rctf_do_minmax_v(&locked_bounds, top_right);
+
+    uv_phi &phi = r_phis[aabbs[i]->index]; /* Lock in place. */
+    phi.translation = pack_island->pivot_;
+    sub_v2_v2(phi.translation, params.udim_base_offset);
+    phi.rotation = 0.0f;
+
     locked_island_count = i + 1;
   }
 
@@ -1823,6 +1829,7 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
                     params.target_aspect_y,
                     r_phis,
                     &extent);
+  rctf fast_extent = extent; /* Remember how large the "fast" packer was. */
 
   /* Call the "optimal" packer. */
   if (locked_island_count == 0) {
@@ -1841,11 +1848,17 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
     slow_aabbs = aabbs.as_span().take_front(max_xatlas);
   }
 
-  /* At this stage, `extent` contains the optimal/box_pack/xatlas UVs. */
+  /* At this stage, `extent` contains the fast/optimal/box_pack/xatlas UVs. */
 
   if (all_can_rotate) {
     /* Attempt to improve the layout even further by finding the minimal-bounding-square. */
     rotate_inside_square(slow_aabbs, islands, params, scale, margin, r_phis, &extent);
+  }
+
+  if (BLI_rctf_compare(&extent, &fast_extent, 0.0f)) {
+    /* The fast packer was the best so far. Lets just use the fast packer for everything. */
+    slow_aabbs = slow_aabbs.take_front(locked_island_count);
+    extent = locked_bounds;
   }
 
   /* Call fast packer for remaining islands, excluding everything already placed. */

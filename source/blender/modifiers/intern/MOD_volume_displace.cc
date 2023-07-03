@@ -13,6 +13,7 @@
 #include "BKE_object.h"
 #include "BKE_texture.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
 
@@ -303,7 +304,7 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
 
 static void modifyGeometrySet(ModifierData *md,
                               const ModifierEvalContext *ctx,
-                              GeometrySet *geometry_set)
+                              blender::bke::GeometrySet *geometry_set)
 {
   Volume *input_volume = geometry_set->get_volume_for_write();
   if (input_volume != nullptr) {
