@@ -1,1 +1,2 @@
 Referenced by commit 46da66f4df615d3afe5529006a8eb33454f06d04, Fix: Uninitialized boolean arrays in mesh conversion
+Referenced by issue #109471, Applying a Bevel modifer on a object with UVs pins the uv islands
