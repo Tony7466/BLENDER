@@ -233,21 +233,21 @@ void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, Resourc
     return;
   }
 
-  PassMain::Sub *ps = volume_sub_pass(
+  PassMain::Sub *object_pass = volume_sub_pass(
       *material_pass.sub_pass, inst_.scene, ob, material_pass.gpumat);
-  if (ps) {
+  if (object_pass) {
     enabled_ = true;
 
     /* Add a barrier at the start of a subpass or when 2 volumes overlaps. */
     if (!subpass_aabbs_.contains_as(shader)) {
-      ps->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+      object_pass->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
       subpass_aabbs_.add(shader, {aabb});
     }
     else {
       Vector<GridAABB> &aabbs = subpass_aabbs_.lookup(shader);
       for (GridAABB &_aabb : aabbs) {
         if (aabb.overlaps(_aabb)) {
-          ps->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+          object_pass->barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
           aabbs.clear();
           break;
         }
@@ -257,9 +257,9 @@ void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, Resourc
 
     int3 grid_size = aabb.max - aabb.min + int3(1);
 
-    ps->push_constant("drw_ResourceID", int(res_handle.resource_index()));
-    ps->push_constant("grid_coords_min", aabb.min);
-    ps->dispatch(math::divide_ceil(grid_size, int3(VOLUME_GROUP_SIZE)));
+    object_pass->push_constant("drw_ResourceID", int(res_handle.resource_index()));
+    object_pass->push_constant("grid_coords_min", aabb.min);
+    object_pass->dispatch(math::divide_ceil(grid_size, int3(VOLUME_GROUP_SIZE)));
   }
 }
 
