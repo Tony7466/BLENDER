@@ -30,8 +30,8 @@ void ReflectionProbeModule::init()
     PassSimple &pass = remap_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
-    pass.bind_texture(0, cubemap_tx_);
-    pass.bind_image(0, probes_tx_);
+    pass.bind_texture("cubemap_tx", cubemap_tx_);
+    pass.bind_image("octahedral_img", probes_tx_);
     pass.dispatch(int2(ceil_division(max_resolution_, REFLECTION_PROBE_GROUP_SIZE)));
   }
 }
