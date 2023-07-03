@@ -80,7 +80,9 @@ void USDLightReader::read_object_data(Main *bmain, const double motionSampleTime
   if (pxr::UsdAttribute intensity_attr = light_api.GetIntensityAttr()) {
     float intensity = 0.0f;
     if (intensity_attr.Get(&intensity, motionSampleTime)) {
-      blight->energy = intensity * this->import_params_.light_intensity_scale;
+      /* Convert from intensity to radiant flux. */
+      blight->energy = intensity * M_PI;
+      blight->energy *= this->import_params_.light_intensity_scale;
     }
   }
 

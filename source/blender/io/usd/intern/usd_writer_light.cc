@@ -10,6 +10,7 @@
 #include <pxr/usd/usdLux/sphereLight.h>
 
 #include "BLI_assert.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_light_types.h"
@@ -38,6 +39,9 @@ void USDLightWriter::do_write(HierarchyContext &context)
   pxr::UsdLuxLight usd_light_api;
 
 #endif
+
+  /* Convert from radiant flux to intensity. */
+  float usd_intensity = light->energy / M_PI;
 
   switch (light->type) {
     case LA_AREA:
@@ -101,19 +105,7 @@ void USDLightWriter::do_write(HierarchyContext &context)
       BLI_assert_msg(0, "is_supported() returned true for unsupported light type");
   }
 
-  /* Scale factor to get to somewhat-similar illumination. Since the USDViewer had similar
-   * over-exposure as Blender Internal with the same values, this code applies the reverse of the
-   * versioning code in light_emission_unify(). */
-  float usd_intensity;
-  if (light->type == LA_SUN) {
-    /* Untested, as the Hydra GL viewport of USDViewer doesn't support distant lights. */
-    usd_intensity = light->energy;
-  }
-  else {
-    usd_intensity = light->energy / 100.0f;
-  }
   usd_light_api.CreateIntensityAttr().Set(usd_intensity, timecode);
-
   usd_light_api.CreateColorAttr().Set(pxr::GfVec3f(light->r, light->g, light->b), timecode);
   usd_light_api.CreateSpecularAttr().Set(light->spec_fac, timecode);
 }
