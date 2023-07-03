@@ -200,15 +200,15 @@ void CaptureView::render()
   if (!inst_.reflection_probes.do_world_update_get()) {
     return;
   }
+  GPU_debug_capture_begin();
   inst_.reflection_probes.do_world_update_set(false);
 
   GPU_debug_group_begin("World.Capture");
   View view = {"World.Capture.View"};
 
   for (int face : IndexRange(6)) {
-    capture_fb_.ensure(
-        GPU_ATTACHMENT_NONE,
-        GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemaps_tx_, face));
+    capture_fb_.ensure(GPU_ATTACHMENT_NONE,
+                       GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
     GPU_framebuffer_bind(capture_fb_);
 
     float4x4 view_m4 = cubeface_mat(face);
@@ -216,8 +216,11 @@ void CaptureView::render()
     view.sync(view_m4, win_m4);
     inst_.pipelines.world.render(view);
   }
-  GPU_texture_update_mipmap_chain(inst_.reflection_probes.cubemaps_tx_);
+  GPU_texture_update_mipmap_chain(inst_.reflection_probes.cubemap_tx_);
+  /* TODO this should be hidden behind a method in reflection_probes. */
+  inst_.manager->submit(inst_.reflection_probes.remap_ps_);
   GPU_debug_group_end();
+  GPU_debug_capture_end();
 }
 
 /** \} */

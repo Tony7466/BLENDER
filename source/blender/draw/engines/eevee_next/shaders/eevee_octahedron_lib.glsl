@@ -1,13 +1,36 @@
 /**
  * Convert from a cubemap vector to an octahedron UV coordinate.
- * Z = 0.0 for top pyramid. Z = 1.0 for bottom pyramid.
  */
-vec3 octahedron_from_cubevec(vec3 cubemap_vector)
+vec2 octahedron_uv_from_direction(vec3 co)
 {
-  return cubemap_vector;
+  /* projection onto octahedron */
+  co /= dot(vec3(1.0), abs(co));
+
+  /* out-folding of the downward faces */
+  if (co.z < 0.0) {
+    vec2 sign = step(0.0, co.xy) * 2.0 - 1.0;
+    co.xy = (1.0 - abs(co.yx)) * sign;
+  }
+
+  /* mapping to [0;1]ˆ2 texture space */
+  vec2 uvs = co.xy * (0.5) + 0.5;
+
+  /* edge filtering fix */
+  // uvs = (1.0 - 2.0 * texel_size) * uvs + texel_size;
+
+  return uvs;
 }
 
-vec3 octahedron_to_cubevec(vec3 octahedron_vector)
+vec3 octahedral_to_direction(vec2 co)
 {
-  return orthahedron_vector;
+  co = co * 2.0 - 1.0;
+
+  vec2 abs_co = abs(co);
+  vec3 v = vec3(co, 1.0 - (abs_co.x + abs_co.y));
+
+  if (abs_co.x + abs_co.y > 1.0) {
+    v.xy = (abs(co.yx) - 1.0) * -sign(co.xy);
+  }
+
+  return v;
 }

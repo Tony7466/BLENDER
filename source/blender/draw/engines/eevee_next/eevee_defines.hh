@@ -26,6 +26,9 @@
 #define CULLING_ZBIN_GROUP_SIZE 1024
 #define CULLING_TILE_GROUP_SIZE 256
 
+/* Reflection Probes. */
+#define REFLECTION_PROBE_GROUP_SIZE 32
+
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
  * Be sure to update them accordingly.
@@ -121,6 +124,9 @@
 #define RBUFS_CRYPTOMATTE_SLOT 2
 #define GBUF_CLOSURE_SLOT 3
 #define GBUF_COLOR_SLOT 4
+
+/* Reflection Probe slot when updating the octahedral texture.*/
+#define REFLECTION_PROBE_OCTAHEDRAL_SLOT 0
 
 /* Uniform Buffers. */
 /* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */

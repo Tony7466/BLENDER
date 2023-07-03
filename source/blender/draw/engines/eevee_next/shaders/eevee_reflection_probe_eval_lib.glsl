@@ -3,7 +3,7 @@
 
 void light_world_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 out_specular)
 {
-  ivec3 texture_size = textureSize(reflectionProbes, 0);
+  ivec2 texture_size = textureSize(reflectionProbes, 0);
   /* TODO: This should be based by actual resolution. Currently the resolution is fixed but
    * eventually this should based on a user setting and part of the reflection probe data that will
    * be introduced by the reflection probe patch. */
