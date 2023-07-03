@@ -27,6 +27,7 @@ using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_
 
 static void test_eevee_shadow_shift_clear()
 {
+  GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
   ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
@@ -89,11 +90,13 @@ static void test_eevee_shadow_shift_clear()
 
   GPU_shader_free(sh);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_shadow_shift_clear)
 
 static void test_eevee_shadow_shift()
 {
+  GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
   ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
@@ -165,11 +168,13 @@ static void test_eevee_shadow_shift()
 
   GPU_shader_free(sh);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_shadow_shift)
 
 static void test_eevee_shadow_tag_update()
 {
+  GPU_render_begin();
   using namespace blender::math;
   StorageVectorBuffer<uint, 128> past_casters_updated = {"PastCastersUpdated"};
   StorageVectorBuffer<uint, 128> curr_casters_updated = {"CurrCastersUpdated"};
@@ -329,11 +334,13 @@ static void test_eevee_shadow_tag_update()
 
   GPU_shader_free(sh);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_shadow_tag_update)
 
 static void test_eevee_shadow_free()
 {
+  GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
@@ -458,6 +465,7 @@ static void test_eevee_shadow_free()
 
   GPU_shader_free(sh);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_shadow_free)
 
@@ -608,6 +616,7 @@ class TestAlloc {
  public:
   TestAlloc(int page_free_count)
   {
+    GPU_render_begin();
     int tiles_index = 1;
 
     for (uint i : IndexRange(0, page_free_count)) {
@@ -681,6 +690,7 @@ class TestAlloc {
 
     GPU_shader_free(sh);
     DRW_shaders_free();
+    GPU_render_end();
   }
 };
 
@@ -694,6 +704,7 @@ DRAW_TEST(eevee_shadow_alloc)
 
 static void test_eevee_shadow_finalize()
 {
+  GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
@@ -981,11 +992,13 @@ static void test_eevee_shadow_finalize()
 
   GPU_shader_free(sh);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_shadow_finalize)
 
 static void test_eevee_shadow_page_mask()
 {
+  GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
 
@@ -1161,11 +1174,13 @@ static void test_eevee_shadow_page_mask()
 
   GPU_shader_free(sh);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_shadow_page_mask)
 
 static void test_eevee_surfel_list()
 {
+  GPU_render_begin();
   StorageArrayBuffer<int> list_start_buf = {"list_start_buf"};
   StorageVectorBuffer<Surfel> surfel_buf = {"surfel_buf"};
   CaptureInfoBuf capture_info_buf = {"capture_info_buf"};
@@ -1270,6 +1285,7 @@ static void test_eevee_surfel_list()
   GPU_shader_free(sh_build);
   GPU_shader_free(sh_sort);
   DRW_shaders_free();
+  GPU_render_end();
 }
 DRAW_TEST(eevee_surfel_list)
 
