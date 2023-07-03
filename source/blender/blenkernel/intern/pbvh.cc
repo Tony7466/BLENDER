@@ -52,12 +52,12 @@ using blender::Vector;
 /* Uncomment to test if triangles of the same face are
  * properly clustered into single nodes.
  */
-//#define TEST_PBVH_FACE_SPLIT
+// #define TEST_PBVH_FACE_SPLIT
 
 /* Uncomment to test that faces are only assigned to one PBVHNode */
-//#define VALIDATE_UNIQUE_NODE_FACES
+// #define VALIDATE_UNIQUE_NODE_FACES
 
-//#define PERFCNTRS
+// #define PERFCNTRS
 #define STACK_FIXED_DEPTH 100
 
 struct PBVHStack {
@@ -260,12 +260,14 @@ static int partition_indices_material(
     if (pbvh->looptri_polys) {
       const int first = looptri_polys[pbvh->prim_indices[lo]];
       for (; face_materials_match(material_indices, sharp_faces, first, looptri_polys[indices[i]]);
-           i++) {
+           i++)
+      {
         /* pass */
       }
       for (;
            !face_materials_match(material_indices, sharp_faces, first, looptri_polys[indices[j]]);
-           j--) {
+           j--)
+      {
         /* pass */
       }
     }
@@ -2515,7 +2517,8 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
            * uninitialized values. This stores the closest vertex in the current intersecting
            * triangle. */
           if (j == 0 ||
-              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co)) {
+              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+          {
             copy_v3_v3(nearest_vertex_co, co[j]);
             r_active_vertex->i = corner_verts[lt->tri[j]];
             *r_active_face_index = pbvh->looptri_polys[looptri_i];
@@ -2580,7 +2583,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
         }
 
         if (ray_face_intersection_quad(
-                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth)) {
+                ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
+        {
           hit = true;
 
           if (r_face_normal) {
@@ -2599,7 +2603,8 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
                * uninitialized values. This stores the closest vertex in the current intersecting
                * quad. */
               if (j == 0 || len_squared_v3v3(location, co[j]) <
-                                len_squared_v3v3(location, nearest_vertex_co)) {
+                                len_squared_v3v3(location, nearest_vertex_co))
+              {
                 copy_v3_v3(nearest_vertex_co, co[j]);
 
                 r_active_vertex->i = gridkey->grid_area * grid_index +
@@ -3266,6 +3271,8 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
   vi->vert_positions = nullptr;
   vi->vertex.i = 0LL;
 
+  vi->i = vi->g = vi->gx = vi->gy = 0;
+
   BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, &gridsize, &grids);
   BKE_pbvh_node_num_verts(pbvh, node, &uniq_verts, &totvert);
   const int *vert_indices = BKE_pbvh_node_get_vert_indices(node);
@@ -3290,12 +3297,25 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
     BLI_gsetIterator_init(&vi->bm_unique_verts, node->bm_unique_verts);
     BLI_gsetIterator_init(&vi->bm_other_verts, node->bm_other_verts);
     vi->bm_vdata = &pbvh->header.bm->vdata;
+
+    if (!BLI_gsetIterator_done(&vi->bm_unique_verts)) {
+      vi->bm_vert = static_cast<BMVert *>(BLI_gsetIterator_getKey(&vi->bm_unique_verts));
+    }
+    else if (!BLI_gsetIterator_done(&vi->bm_other_verts) && mode != PBVH_ITER_UNIQUE) {
+      vi->bm_vert = static_cast<BMVert *>(BLI_gsetIterator_getKey(&vi->bm_other_verts));
+    }
+
     vi->cd_vert_mask_offset = CustomData_get_offset(vi->bm_vdata, CD_PAINT_MASK);
   }
 
   vi->gh = nullptr;
   if (vi->grids && mode == PBVH_ITER_UNIQUE) {
     vi->grid_hidden = pbvh->grid_hidden;
+  }
+
+  if (vi->grids && vi->totgrid > 0) {
+    vi->grid = vi->grids[vi->grid_indices[0]];
+    vi->gh = vi->grid_hidden[vi->grid_indices[0]];
   }
 
   vi->mask = nullptr;

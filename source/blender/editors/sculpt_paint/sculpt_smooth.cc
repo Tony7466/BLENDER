@@ -333,8 +333,6 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
 void SCULPT_smooth_new(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
 {
-  SCOPED_TIMER(__func__);
-
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -349,9 +347,8 @@ void SCULPT_smooth_new(
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
 
-  using blender::bke::pbvh::VertexRange;
-
   struct NodeData {};
+  // printf("iterations: %d\n", count + 1);
 
   for (iteration = 0; iteration <= count; iteration++) {
     blender::editors::sculpt::exec_brush<NodeData>(
@@ -388,15 +385,48 @@ void SCULPT_smooth_new(
 }
 #endif
 
+static void SCULPT_smooth_old(
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask);
+
 void SCULPT_smooth(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
 {
   printf("\n");
 
+  /* Saturate cache to get accurate test results, SCULPT_smooth_new will be
+   * profiled again at end of this function.
+   *
+   * Note that due to how cache-inefficient smoothing is we cannot accurately profile
+   * it, changing the order changes the relative times even with this initial cache
+   * saturation.
+   */
   SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
 
-  SCOPED_TIMER(__func__);
+  printf("nodes: %d leaf_limit: %d %d\n",
+         nodes.size(),
+         ob->sculpt->pbvh->leaf_limit,
+         nodes.size() * ob->sculpt->pbvh->leaf_limit);
 
+  const int count = 5;
+
+  for (int i = 0; i < count; i++) {
+    {
+      SCOPED_TIMER("SCULPT_smooth_old");
+      SCULPT_smooth_old(sd, ob, nodes, bstrength, smooth_mask);
+    }
+  }
+
+  for (int i = 0; i < count; i++) {
+    {
+      SCOPED_TIMER("SCULPT_smooth_new");
+      SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
+    }
+  }
+}
+
+static void SCULPT_smooth_old(
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
+{
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -412,6 +442,8 @@ void SCULPT_smooth(
 
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
+
+  // printf("iterations: %d\n", count + 1);
 
   for (iteration = 0; iteration <= count; iteration++) {
     const float strength = (iteration != count) ? 1.0f : last;
