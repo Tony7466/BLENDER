@@ -3312,10 +3312,15 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
   if (vi->grids && mode == PBVH_ITER_UNIQUE) {
     vi->grid_hidden = pbvh->grid_hidden;
   }
+  else {
+    vi->grid_hidden = nullptr;
+  }
 
-  if (vi->grids && vi->totgrid > 0) {
+  if (pbvh->header.type == PBVH_GRIDS && vi->totgrid > 0) {
+    /* Load first grid element. */
     vi->grid = vi->grids[vi->grid_indices[0]];
-    vi->gh = vi->grid_hidden[vi->grid_indices[0]];
+    vi->gh = vi->grid_hidden ? vi->grid_hidden[vi->grid_indices[0]] : nullptr;
+    vi->index = vi->vertex.i = vi->grid_indices[0] * vi->key.grid_area;
   }
 
   vi->mask = nullptr;

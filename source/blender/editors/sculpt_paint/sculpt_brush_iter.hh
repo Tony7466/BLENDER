@@ -28,7 +28,7 @@ class BrushTester {
     }
   };
 
-  Result operator()(PBVHVertRef /*vertex*/, const float3 & /*co*/, const float3 & /*no*/)
+  Result operator()(PBVHVertRef /*vertex*/, const float * /*co*/, const float * /*no*/)
   {
     return Result();
   }
@@ -42,15 +42,16 @@ class SphereTester {
 
  public:
   struct Result {
-    float dist_squared;
     bool in_range;
-    float3 co, no;
+    float dist_squared;
+    const float *co, *no;
     PBVHVertRef vertex;
 
-    Result() {}
-    Result(SphereTester *owner_) : owner(owner_) {}
+    inline Result() noexcept {}
+    inline Result(SphereTester *owner_) noexcept : owner(owner_) {}
 
-    ATTR_NO_OPT inline float calc_falloff(int thread_id, AutomaskingNodeData *automask_data) const
+    ATTR_NO_OPT inline float calc_falloff(int thread_id,
+                                          AutomaskingNodeData *automask_data) const noexcept
     {
       float mask = owner->apply_mask_ ? SCULPT_vertex_mask_get(owner->ss_, vertex) : 0.0f;
 
@@ -70,20 +71,22 @@ class SphereTester {
     SphereTester *owner;
   };
 
-  SphereTester(SculptSession *ss, const Brush *brush, bool apply_mask)
+  inline SphereTester(SculptSession *ss, const Brush *brush, bool apply_mask) noexcept
       : ss_(ss), brush_(brush), apply_mask_(apply_mask)
   {
     location_ = ss->cache->location;
   }
 
-  SphereTester() {}
+  inline SphereTester() noexcept {}
 
-  ATTR_NO_OPT Result operator()(PBVHVertRef vertex, const float3 &co, const float3 &no)
+  ATTR_NO_OPT inline Result operator()(PBVHVertRef vertex,
+                                       const float *co,
+                                       const float *no) noexcept
   {
     Result res(this);
 
     res.dist_squared = len_squared_v3v3(location_, co);
-    res.in_range = true;  // res.dist_squared < ss_->cache->radius_squared;
+    res.in_range = res.dist_squared < ss_->cache->radius_squared;
     res.co = co;
     res.no = no;
     res.vertex = vertex;
@@ -114,18 +117,24 @@ template<typename NodeData, typename VertexRange> struct ForwardVertexIter {
 
     bool is_mesh;
 
-    iterator(SculptSession *ss, base_iterator vd, base_iterator end_vd)
+    inline iterator(SculptSession *ss, base_iterator vd, base_iterator end_vd) noexcept
         : vd_(vd), end_(end_vd), ss_(ss)
     {
       const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
       if (vd_ != end_) {
-        load_data();
+        if (!vd_.result->in_range) {
+          falloff = 0.0f; /* Signal find_valid_iter to skip the first element. */
+        }
+        else {
+          load_data();
+        }
+
         find_valid_iter();
       }
     }
 
-    iterator(const iterator &b)
+    inline iterator(const iterator &b) noexcept
     {
       vd_ = b.vd_;
       end_ = b.end_;
@@ -134,12 +143,12 @@ template<typename NodeData, typename VertexRange> struct ForwardVertexIter {
       load_data();
     }
 
-    inline iterator &operator*()
+    inline iterator &operator*() noexcept
     {
       return *this;
     }
 
-    inline iterator &operator++()
+    inline iterator &operator++() noexcept
     {
       ++vd_;
 
@@ -151,18 +160,18 @@ template<typename NodeData, typename VertexRange> struct ForwardVertexIter {
       return *this;
     }
 
-    inline bool operator==(const iterator &b)
+    inline bool operator==(const iterator &b) noexcept
     {
       return b.vd_ == vd_;
     }
 
-    inline bool operator!=(const iterator &b)
+    inline bool operator!=(const iterator &b) noexcept
     {
       return b.vd_ != vd_;
     }
 
    private:
-    inline void load_data()
+    inline void load_data() noexcept
     {
       //
       if (vd_ == end_) {
@@ -187,12 +196,12 @@ template<typename NodeData, typename VertexRange> struct ForwardVertexIter {
       falloff = vd_.result->calc_falloff(thread_id, &vd_.node_data->automask_data);
     }
 
-    inline void find_valid_iter()
+    inline void find_valid_iter() noexcept
     {
       while (vd_ != end_ && falloff == 0.0f) {
         ++vd_;
 
-        if (vd_ != end_) {
+        if (vd_.result->in_range && vd_ != end_) {
           load_data();
         }
       }
@@ -202,14 +211,16 @@ template<typename NodeData, typename VertexRange> struct ForwardVertexIter {
     SculptSession *ss_;
   };
 
-  ForwardVertexIter(SculptSession *ss, VertexRange &range) : range_(range), ss_(ss) {}
+  inline ForwardVertexIter(SculptSession *ss, VertexRange &range) noexcept : range_(range), ss_(ss)
+  {
+  }
 
-  inline iterator begin()
+  inline iterator begin() noexcept
   {
     return iterator(ss_, range_.begin(), range_.end());
   }
 
-  inline iterator end()
+  inline iterator end() noexcept
   {
     return iterator(ss_, range_.end(), range_.end());
   }
@@ -228,11 +239,12 @@ ATTR_NO_OPT void exec_brush_intern(
     std::function<NodeData(PBVHNode *node)> node_visit_pre,
     ExecFunc &exec, /* [&](auto &vertex_range) {} */
     std::function<void(PBVHNode *node, NodeData *node_data)> node_visit_post,
+    int repeat = 0,
     bool apply_mask = true,
     bool needs_original = false,
     SculptUndoType original_type = SCULPT_UNDO_COORDS
 
-)
+    ) noexcept
 {
   SculptSession *ss = ob->sculpt;
 
@@ -272,7 +284,8 @@ ATTR_NO_OPT void exec_brush_intern(
         if (node_visit_post) {
           node_visit_post(node, &node_data->user_data);
         }
-      });
+      },
+      repeat);
 }
 
 template<typename NodeData, typename ExecFunc>
@@ -282,11 +295,12 @@ void exec_brush(Object *ob,
                 std::function<NodeData(PBVHNode *node)> node_visit_pre,
                 ExecFunc exec, /* [&](auto &vertex_range) {} */
                 std::function<void(PBVHNode *node, NodeData *node_data)> node_visit_post,
+                int repeat = 0,
                 bool apply_mask = true,
                 bool needs_original = false,
                 SculptUndoType original_type = SCULPT_UNDO_COORDS
 
-)
+                ) noexcept
 {
   SculptSession *ss = ob->sculpt;
 
@@ -299,6 +313,7 @@ void exec_brush(Object *ob,
                               node_visit_pre,
                               exec,
                               node_visit_post,
+                              repeat,
                               apply_mask,
                               needs_original,
                               original_type);
