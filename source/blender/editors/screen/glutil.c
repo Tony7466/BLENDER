@@ -451,9 +451,13 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
     immDrawPixelsTexSetupAttributes(&state);
 
     if (ibuf->float_buffer.data) {
-      if (ibuf->float_colorspace) {
-        ok = IMB_colormanagement_setup_glsl_draw_from_space(
-            view_settings, display_settings, ibuf->float_colorspace, ibuf->dither, true, false);
+      if (ibuf->float_buffer.colorspace) {
+        ok = IMB_colormanagement_setup_glsl_draw_from_space(view_settings,
+                                                            display_settings,
+                                                            ibuf->float_buffer.colorspace,
+                                                            ibuf->dither,
+                                                            true,
+                                                            false);
       }
       else {
         ok = IMB_colormanagement_setup_glsl_draw(
@@ -461,8 +465,12 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
       }
     }
     else {
-      ok = IMB_colormanagement_setup_glsl_draw_from_space(
-          view_settings, display_settings, ibuf->rect_colorspace, ibuf->dither, false, false);
+      ok = IMB_colormanagement_setup_glsl_draw_from_space(view_settings,
+                                                          display_settings,
+                                                          ibuf->byte_buffer.colorspace,
+                                                          ibuf->dither,
+                                                          false,
+                                                          false);
     }
 
     if (ok) {
@@ -613,7 +621,7 @@ void ED_draw_imbuf_ctx(
   ED_draw_imbuf_ctx_clipping(C, ibuf, x, y, use_filter, 0.0f, 0.0f, 0.0f, 0.0f, zoom_x, zoom_y);
 }
 
-int ED_draw_imbuf_method(ImBuf *ibuf)
+int ED_draw_imbuf_method(const ImBuf *ibuf)
 {
   if (U.image_draw_method == IMAGE_DRAW_METHOD_AUTO) {
     /* Use faster GLSL when CPU to GPU transfer is unlikely to be a bottleneck,

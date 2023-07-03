@@ -29,7 +29,6 @@ set(INC
   ../../../intern/ghost
   ../../../intern/guardedalloc
   ../../../intern/iksolver/extern
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/libmv
   ../../../intern/mantaflow/extern
@@ -151,8 +150,8 @@ set(SRC
   intern/gpencil_legacy.c
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
-  intern/grease_pencil_convert_legacy.cc
   intern/grease_pencil.cc
+  intern/grease_pencil_convert_legacy.cc
   intern/icons.cc
   intern/icons_rasterize.c
   intern/idprop.c
@@ -503,6 +502,7 @@ set(SRC
   BKE_vfontdata.h
   BKE_viewer_path.h
   BKE_volume.h
+  BKE_volume_openvdb.hh
   BKE_volume_render.h
   BKE_volume_to_mesh.hh
   BKE_workspace.h
@@ -556,7 +556,7 @@ set(LIB
   bf_shader_fx
   bf_simulation
   extern_fmtlib
-
+  PRIVATE bf_intern_atomic
   # For `vfontdata_freetype.c`.
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )
@@ -833,6 +833,7 @@ if(WITH_GTESTS)
     intern/cryptomatte_test.cc
     intern/curves_geometry_test.cc
     intern/fcurve_test.cc
+    intern/grease_pencil_test.cc
     intern/idprop_serialize_test.cc
     intern/image_partial_update_test.cc
     intern/image_test.cc
@@ -843,7 +844,6 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/nla_test.cc
     intern/tracking_test.cc
-    intern/grease_pencil_test.cc
   )
   set(TEST_INC
     ../editors/include

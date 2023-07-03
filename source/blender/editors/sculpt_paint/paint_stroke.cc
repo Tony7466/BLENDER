@@ -327,7 +327,7 @@ static bool paint_brush_update(bContext *C,
           brush->mtex.tex->ima, &brush->mtex.tex->iuser, nullptr);
       if (tex_ibuf && tex_ibuf->float_buffer.data == nullptr) {
         ups->do_linear_conversion = true;
-        ups->colorspace = tex_ibuf->rect_colorspace;
+        ups->colorspace = tex_ibuf->byte_buffer.colorspace;
       }
       BKE_image_pool_release_ibuf(brush->mtex.tex->ima, tex_ibuf, nullptr);
     }
@@ -1048,6 +1048,11 @@ bool paint_space_stroke_enabled(Brush *br, ePaintMode mode)
   if (mode == PAINT_MODE_SCULPT_CURVES &&
       !curves_sculpt_brush_uses_spacing(eBrushCurvesSculptTool(br->curves_sculpt_tool)))
   {
+    return false;
+  }
+
+  if (mode == PAINT_MODE_GPENCIL) {
+    /* No spacing needed for now. */
     return false;
   }
 
