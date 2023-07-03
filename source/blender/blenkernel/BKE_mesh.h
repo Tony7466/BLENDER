@@ -489,7 +489,7 @@ void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh,
 namespace blender::bke {
 
 void calc_split_normals_for_mesh(const Mesh *mesh,
-                                 const bool use_split_normals,
+                                 bool use_split_normals,
                                  MutableSpan<float3> r_corner_normals);
 
 }
