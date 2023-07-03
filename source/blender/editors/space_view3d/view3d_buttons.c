@@ -1319,6 +1319,11 @@ static bool view3d_panel_vgroup_poll(const bContext *C, PanelType *UNUSED(pt))
   return false;
 }
 
+/**
+ * Used by the slider that allows changing the active vertex weight. This is used instead of
+ * passing `&dw->weight` to `uiDefButF` directly, because the vertex weight layer might be copied
+ * while sliding the value, changing what `dw` points to.
+ */
 static float active_vertex_weight = 0.0f;
 
 static void update_active_vertex_weight(struct bContext *C, void *arg1, void *UNUSED(arg2))
