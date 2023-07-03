@@ -12,7 +12,7 @@ vec2 octahedron_uv_from_direction(vec3 co)
     co.xy = (1.0 - abs(co.yx)) * sign;
   }
 
-  /* mapping to [0;1]ˆ2 texture space */
+  /* mapping to [0;1]^2 texture space */
   vec2 uvs = co.xy * (0.5) + 0.5;
 
   /* edge filtering fix */
