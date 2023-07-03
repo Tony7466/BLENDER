@@ -1,7 +1,7 @@
 /**
  * Convert from a cubemap vector to an octahedron UV coordinate.
  */
-vec2 octahedron_uv_from_direction(vec3 co)
+vec2 octahedral_uv_from_direction(vec3 co)
 {
   /* projection onto octahedron */
   co /= dot(vec3(1.0), abs(co));

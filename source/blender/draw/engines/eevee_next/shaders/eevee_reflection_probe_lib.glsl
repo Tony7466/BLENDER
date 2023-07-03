@@ -4,5 +4,6 @@
 
 vec3 light_world_sample(vec3 L, float lod)
 {
-  return textureLod(reflectionProbes, L, lod).rgb;
+  vec2 octahedral_uv = octahedral_uv_from_direction(L);
+  return textureLod(reflectionProbes, vec3(octahedral_uv, 0.0), lod).rgb;
 }

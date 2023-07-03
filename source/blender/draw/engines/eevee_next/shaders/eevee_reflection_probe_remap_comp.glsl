@@ -8,9 +8,9 @@ void main()
   ivec3 octahedral_coord = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 octahedral_size = imageSize(octahedral_img);
   /* Group doesn't fit in output texture. */
-  /* if (any(greaterThanEqual(octahedral_coord.xy, octahedral_size.xy))) {
-     return;
-   }*/
+  if (any(greaterThanEqual(octahedral_coord.xy, octahedral_size.xy))) {
+    return;
+  }
   vec2 octahedral_uv = vec2(octahedral_coord) / vec2(octahedral_size);
   vec3 R = octahedral_to_direction(octahedral_uv);
 

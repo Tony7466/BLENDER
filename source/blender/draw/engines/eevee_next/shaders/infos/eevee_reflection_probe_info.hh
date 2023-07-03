@@ -6,7 +6,7 @@
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_data)
-    .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_CUBE, "reflectionProbes");
+    .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "reflectionProbes");
 
 /* Read cubemap and store into octahedral texture. */
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)

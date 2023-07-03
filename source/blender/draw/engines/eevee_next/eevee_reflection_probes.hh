@@ -39,7 +39,8 @@ class ReflectionProbeModule {
   Instance &instance_;
 
   Texture cubemap_tx_ = {"Probe.Cubemap"};
-  Texture cubemaps_tx_ = {"Probes"};
+  /** Probes texture stored in octahedral mapping. */
+  Texture probes_tx_ = {"Probes"};
 
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
 
@@ -54,7 +55,7 @@ class ReflectionProbeModule {
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
-    pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, cubemap_tx_);
+    pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, probes_tx_);
   }
 
   void do_world_update_set(bool value)
