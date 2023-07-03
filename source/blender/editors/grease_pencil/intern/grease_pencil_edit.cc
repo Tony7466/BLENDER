@@ -105,9 +105,6 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
                                    const Span<T> src,
                                    const IndexMask &mask)
 {
-  /* TODO ? Unlike for the legacy algorithm,
-     we don't have a smooth cap parameter */
-
   /* Avoid computation if the mask is empty */
   if (mask.is_empty()) {
     return dst;
@@ -284,10 +281,10 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Smooth parameters */
-  prop = RNA_def_int(ot->srna, "iterations", 1, 1, 100, "Iterations", "", 1, 30);
+  prop = RNA_def_int(ot->srna, "iterations", 50, 1, 100, "Iterations", "", 1, 30);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 1.0f, "Factor", "", 0.0f, 1.0f);
-  RNA_def_boolean(ot->srna, "smooth_ends", true, "Smooth Endpoints", "");
+  RNA_def_boolean(ot->srna, "smooth_ends", false, "Smooth Endpoints", "");
   RNA_def_boolean(ot->srna, "keep_shape", true, "Keep Shape", "");
 }
 
