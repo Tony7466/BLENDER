@@ -1286,8 +1286,8 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
 
     blender::Array<blender::float3> poly_cents_src;
 
-    blender::GroupedSpan<int> vert_to_loop_map_src;
-    blender::GroupedSpan<int> vert_to_poly_map_src;
+    GroupedSpan<int> vert_to_loop_map_src;
+    GroupedSpan<int> vert_to_poly_map_src;
 
     Array<int> edge_to_poly_src_offsets;
     Array<int> edge_to_poly_src_indices;

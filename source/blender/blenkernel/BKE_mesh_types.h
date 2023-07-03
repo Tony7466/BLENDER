@@ -168,6 +168,7 @@ struct MeshRuntime {
   bool poly_normals_dirty = true;
   mutable Vector<float3> vert_normals;
   mutable Vector<float3> poly_normals;
+
   /**
    * Cache of offsets for vert to poly/corner maps. The same offsets array is used to group
    * indices for both the vertex to poly and vertex to corner maps.
