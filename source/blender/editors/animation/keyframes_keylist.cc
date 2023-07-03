@@ -1167,7 +1167,9 @@ void cels_to_keylist(AnimData * /*adt*/,
   using namespace blender::bke::greasepencil;
   const Layer &layer = gpl->wrap();
   for (auto item : layer.frames().items()) {
-    Cel cel{item.key, item.value};
+    Cel cel;
+    cel.frame_number = item.key;
+    cel.frame = item.value;
 
     float cfra = float(item.key);
     ED_keylist_add_or_update_column(
