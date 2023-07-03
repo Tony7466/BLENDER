@@ -533,21 +533,12 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
 /* Node updater callback used for building ActKeyColumns from GPencil frames */
 static void nupdate_ak_cel(ActKeyColumn *ak, void * /*data*/)
 {
-  // TODO : Cel *cel = static_cast<Cel *> data;
-
-  /* Set selection status and 'touched' status */
-  // if (cel->select) {
-  //   ak->sel = SELECT;
-  // }
+  // TODO : Update cel selection
 
   /* Count keyframes in this column */
   ak->totkey++;
 
-  /* For keyframe type, 'proper' keyframes have priority over breakdowns
-   * (and other types for now). */
-  // if (gpf->key_type == BEZT_KEYTYPE_KEYFRAME) {
-  //   ak->key_type = BEZT_KEYTYPE_KEYFRAME;
-  // }
+  // TODO : update column keytype
 }
 
 /* ......... */
