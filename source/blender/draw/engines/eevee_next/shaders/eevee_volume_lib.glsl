@@ -1,3 +1,8 @@
+/**
+ * The resources expected to be defined are:
+ * - volumes_info_buf
+ */
+
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
