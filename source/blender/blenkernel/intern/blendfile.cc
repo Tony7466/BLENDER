@@ -167,9 +167,10 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
 
 static bool foreach_path_clean_cb(BPathForeachPathData * /*bpath_data*/,
                                   char *path_dst,
+                                  size_t path_dst_maxncpy,
                                   const char *path_src)
 {
-  strcpy(path_dst, path_src);
+  BLI_strncpy(path_dst, path_src, path_dst_maxncpy);
   BLI_path_slash_native(path_dst);
   return !STREQ(path_dst, path_src);
 }
@@ -226,7 +227,7 @@ static void setup_app_userdef(BlendFileData *bfd)
  * NOTE: this is only used when actually loading a real `.blend` file,
  * loading of memfile undo steps does not need it.
  */
-typedef struct ReuseOldBMainData {
+struct ReuseOldBMainData {
   Main *new_bmain;
   Main *old_bmain;
 
@@ -244,7 +245,7 @@ typedef struct ReuseOldBMainData {
   /** Used to find matching IDs by name/lib in new main, to remap ID usages of data ported over
    * from old main. */
   IDNameLib_Map *id_map;
-} ReuseOldBMainData;
+};
 
 /** Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library
  * IDs having the same absolute filepath), and create a remapping rule for these.
@@ -446,6 +447,7 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
   else {
     swap_old_bmain_data_for_blendfile(reuse_data, ID_WM);
     old_wm->init_flag &= ~WM_INIT_FLAG_WINDOW;
+    reuse_data->wm_setup_data->old_wm = old_wm;
   }
 }
 
@@ -1173,7 +1175,7 @@ UserDef *BKE_blendfile_userdef_read_from_memory(const void *filebuf,
   return userdef;
 }
 
-UserDef *BKE_blendfile_userdef_from_defaults(void)
+UserDef *BKE_blendfile_userdef_from_defaults()
 {
   UserDef *userdef = static_cast<UserDef *>(MEM_callocN(sizeof(UserDef), __func__));
   *userdef = blender::dna::shallow_copy(U_default);

@@ -338,7 +338,8 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
   }
 }
 
-static void file_draw_preview(const FileDirEntry *file,
+static void file_draw_preview(const FileList *files,
+                              const FileDirEntry *file,
                               const rcti *tile_draw_rect,
                               const float icon_aspect,
                               ImBuf *imb,
@@ -359,7 +360,7 @@ static void file_draw_preview(const FileDirEntry *file,
   bool show_outline = !is_icon &&
                       (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
-  const bool is_loading = file->flags & FILE_ENTRY_PREVIEW_LOADING;
+  const bool is_loading = !filelist_is_ready(files) || file->flags & FILE_ENTRY_PREVIEW_LOADING;
 
   BLI_assert(imb != nullptr);
 
@@ -414,6 +415,11 @@ static void file_draw_preview(const FileDirEntry *file,
 
   if (dimmed) {
     document_img_col[3] *= 0.3f;
+  }
+
+  if (!is_icon && file->typeflag & FILE_TYPE_IMAGE) {
+    /* Draw checker pattern behind image previews in case they have transparency. */
+    imm_draw_box_checker_2d(float(xco), float(yco), float(xco + ex), float(yco + ey));
   }
 
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
@@ -1036,7 +1042,8 @@ void file_draw_list(const bContext *C, ARegion *region)
       }
 
       float scale = 0;
-      file_draw_preview(file,
+      file_draw_preview(files,
+                        file,
                         &tile_draw_rect,
                         thumb_icon_aspect,
                         imb,

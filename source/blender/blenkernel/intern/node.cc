@@ -79,12 +79,12 @@
 
 #include "NOD_common.h"
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph.h"
@@ -258,6 +258,13 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     }
   }
 
+  if (ntree_src->nested_node_refs) {
+    ntree_dst->nested_node_refs = static_cast<bNestedNodeRef *>(
+        MEM_malloc_arrayN(ntree_src->nested_node_refs_num, sizeof(bNestedNodeRef), __func__));
+    uninitialized_copy_n(
+        ntree_src->nested_node_refs, ntree_src->nested_node_refs_num, ntree_dst->nested_node_refs);
+  }
+
   if (flag & LIB_ID_COPY_NO_PREVIEW) {
     ntree_dst->preview = nullptr;
   }
@@ -321,6 +328,10 @@ static void ntree_free_data(ID *id)
 
   if (ntree->id.tag & LIB_TAG_LOCALIZED) {
     BKE_libblock_free_data(&ntree->id, true);
+  }
+
+  if (ntree->nested_node_refs) {
+    MEM_freeN(ntree->nested_node_refs);
   }
 
   BKE_previewimg_free(&ntree->preview);
@@ -443,11 +454,11 @@ static void node_foreach_path(ID *id, BPathForeachPathData *bpath_data)
       for (bNode *node : ntree->all_nodes()) {
         if (node->type == SH_NODE_SCRIPT) {
           NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-          BKE_bpath_foreach_path_fixed_process(bpath_data, nss->filepath);
+          BKE_bpath_foreach_path_fixed_process(bpath_data, nss->filepath, sizeof(nss->filepath));
         }
         else if (node->type == SH_NODE_TEX_IES) {
           NodeShaderTexIES *ies = static_cast<NodeShaderTexIES *>(node->storage);
-          BKE_bpath_foreach_path_fixed_process(bpath_data, ies->filepath);
+          BKE_bpath_foreach_path_fixed_process(bpath_data, ies->filepath, sizeof(ies->filepath));
         }
       }
       break;
@@ -693,6 +704,9 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     BLO_write_string(writer, panel->name);
   }
 
+  BLO_write_struct_array(
+      writer, bNestedNodeRef, ntree->nested_node_refs_num, ntree->nested_node_refs);
+
   BKE_previewimg_blend_write(writer, ntree->preview);
 }
 
@@ -921,6 +935,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &ntree->panels_array[i]);
     BLO_read_data_address(reader, &ntree->panels_array[i]->name);
   }
+
+  BLO_read_data_address(reader, &ntree->nested_node_refs);
 
   /* TODO: should be dealt by new generic cache handling of IDs... */
   ntree->previews = nullptr;

@@ -203,8 +203,9 @@ static void find_logical_origins_for_socket_recursive(
   sockets_in_current_chain.pop_last();
 }
 
-static void update_logical_origins(const bNodeTree &ntree)
+static void update_logically_linked_sockets(const bNodeTree &ntree)
 {
+  /* Compute logically linked sockets to inputs. */
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   Span<bNode *> nodes = tree_runtime.nodes_by_id;
   threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
@@ -223,6 +224,26 @@ static void update_logical_origins(const bNodeTree &ntree)
       }
     }
   });
+
+  /* Clear logically linked sockets to outputs. */
+  threading::parallel_for(nodes.index_range(), 128, [&](const IndexRange range) {
+    for (const int i : range) {
+      bNode &node = *nodes[i];
+      for (bNodeSocket *socket : node.runtime->outputs) {
+        socket->runtime->logically_linked_sockets.clear();
+      }
+    }
+  });
+
+  /* Compute logically linked sockets to outputs using the previously computed logically linked
+   * sockets to inputs. */
+  for (const bNode *node : nodes) {
+    for (bNodeSocket *input_socket : node->runtime->inputs) {
+      for (bNodeSocket *output_socket : input_socket->runtime->logically_linked_sockets) {
+        output_socket->runtime->logically_linked_sockets.append(input_socket);
+      }
+    }
+  }
 }
 
 static void update_nodes_by_type(const bNodeTree &ntree)
@@ -502,7 +523,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
     update_nodes_by_type(ntree);
     threading::parallel_invoke(
         tree_runtime.nodes_by_id.size() > 32,
-        [&]() { update_logical_origins(ntree); },
+        [&]() { update_logically_linked_sockets(ntree); },
         [&]() { update_sockets_by_identifier(ntree); },
         [&]() {
           update_toposort(ntree,
@@ -535,4 +556,54 @@ static void ensure_topology_cache(const bNodeTree &ntree)
 void bNodeTree::ensure_topology_cache() const
 {
   blender::bke::node_tree_runtime::ensure_topology_cache(*this);
+}
+
+const bNestedNodeRef *bNodeTree::find_nested_node_ref(const int32_t nested_node_id) const
+{
+  for (const bNestedNodeRef &ref : this->nested_node_refs_span()) {
+    if (ref.id == nested_node_id) {
+      return &ref;
+    }
+  }
+  return nullptr;
+}
+
+const bNestedNodeRef *bNodeTree::nested_node_ref_from_node_id_path(
+    const blender::Span<int32_t> node_ids) const
+{
+  if (node_ids.is_empty()) {
+    return nullptr;
+  }
+  for (const bNestedNodeRef &ref : this->nested_node_refs_span()) {
+    blender::Vector<int> current_node_ids;
+    if (this->node_id_path_from_nested_node_ref(ref.id, current_node_ids)) {
+      if (current_node_ids.as_span() == node_ids) {
+        return &ref;
+      }
+    }
+  }
+  return nullptr;
+}
+
+bool bNodeTree::node_id_path_from_nested_node_ref(const int32_t nested_node_id,
+                                                  blender::Vector<int> &r_node_ids) const
+{
+  const bNestedNodeRef *ref = this->find_nested_node_ref(nested_node_id);
+  if (ref == nullptr) {
+    return false;
+  }
+  const int32_t node_id = ref->path.node_id;
+  const bNode *node = this->node_by_id(node_id);
+  if (node == nullptr) {
+    return false;
+  }
+  r_node_ids.append(node_id);
+  if (!node->is_group()) {
+    return true;
+  }
+  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+  if (group == nullptr) {
+    return false;
+  }
+  return group->node_id_path_from_nested_node_ref(ref->path.id_in_node, r_node_ids);
 }
