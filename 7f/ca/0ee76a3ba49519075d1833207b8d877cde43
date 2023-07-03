@@ -1,1 +1,2 @@
 Referenced by issue #109550, Regression: Cycles: Optix not able to render without cuda toolkit
+Referenced by pull request #109636, Fix #109550: Cycles: OptiX not able to render without CUDA toolkit
