@@ -66,8 +66,7 @@ class LookdevWorldNodeTree {
 /* -------------------------------------------------------------------- */
 /** \name Lookdev
  *
- * Look Development can override the world. In future this module would also be responsible to
- * render the lookdev spheres overlay.
+ * Look Development can override the world.
  *
  * \{ */
 
