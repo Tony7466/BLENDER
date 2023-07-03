@@ -320,10 +320,12 @@ static void node_geo_exec(GeoNodeExecParams params)
    * const mesh, so they are calculated here every time. */
   Array<float3> corner_normals_orig(surface_mesh_orig->totloop);
   Array<float3> corner_normals_eval(surface_mesh_eval->totloop);
-  BKE_mesh_calc_normals_split_ex(
-      surface_mesh_orig, nullptr, reinterpret_cast<float(*)[3]>(corner_normals_orig.data()));
-  BKE_mesh_calc_normals_split_ex(
-      surface_mesh_eval, nullptr, reinterpret_cast<float(*)[3]>(corner_normals_eval.data()));
+  const bool surface_mesh_orig_autosmooth = (surface_mesh_orig->flag & ME_AUTOSMOOTH) != 0;
+  const bool surface_mesh_eval_autosmooth = (surface_mesh_eval->flag & ME_AUTOSMOOTH) != 0;
+  bke::calc_split_normals_for_mesh(
+      surface_mesh_orig, surface_mesh_orig_autosmooth, corner_normals_orig);
+  bke::calc_split_normals_for_mesh(
+      surface_mesh_eval, surface_mesh_eval_autosmooth, corner_normals_eval);
 
   std::atomic<int> invalid_uv_count = 0;
 

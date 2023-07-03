@@ -484,6 +484,18 @@ void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh,
                                     struct MLoopNorSpaceArray *r_lnors_spacearr,
                                     float (*r_corner_normals)[3]);
 
+#ifdef __cplusplus
+
+namespace blender::bke {
+
+void calc_split_normals_for_mesh(const Mesh *mesh,
+                                 const bool use_split_normals,
+                                 MutableSpan<float3> r_corner_normals);
+
+}
+
+#endif
+
 /**
  * Higher level functions hiding most of the code needed around call to
  * #normals_loop_custom_set().
