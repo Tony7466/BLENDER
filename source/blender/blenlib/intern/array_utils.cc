@@ -4,6 +4,8 @@
 
 #include "BLI_array_utils.hh"
 
+#include "atomic_ops.h"
+
 namespace blender::array_utils {
 
 void copy(const GVArray &src, GMutableSpan dst, const int64_t grain_size)
@@ -45,25 +47,11 @@ void gather(const GSpan src, const IndexMask &indices, GMutableSpan dst, const i
   gather(GVArray::ForSpan(src), indices, dst, grain_size);
 }
 
-#if (defined(__GNUC__) && !defined(__clang__))
-[[gnu::optimize("-funroll-loops")]] [[gnu::optimize("O3")]]
-#endif
-static void
-count_indices_impl(const int *__restrict indices,
-                   const int64_t indices_num,
-                   int *__restrict counts)
-{
-#if (defined(__clang__))
-#  pragma unroll
-#endif
-  for (int64_t i = 0; i < indices_num; i++) {
-    counts[indices[i]]++;
-  }
-}
-
 void count_indices(const Span<int> indices, MutableSpan<int> counts)
 {
-  count_indices_impl(indices.data(), indices.size(), counts.data());
+  for (const int i : indices) {
+    counts[i]++;
+  }
 }
 
 void invert_booleans(MutableSpan<bool> span)
