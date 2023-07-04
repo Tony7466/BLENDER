@@ -40,7 +40,7 @@ set(SRC
   editmesh_extrude_spin_gizmo.cc
   editmesh_inset.cc
   editmesh_intersect.cc
-  editmesh_knife.c
+  editmesh_knife.cc
   editmesh_knife_project.cc
   editmesh_loopcut.c
   editmesh_mask_extract.cc
