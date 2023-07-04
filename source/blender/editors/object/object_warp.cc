@@ -79,7 +79,7 @@ static void object_warp_transverts(TransVertStore *tvs,
 {
   TransVert *tv;
   const float angle = -angle_;
-  /* cache vars for tiny speedup */
+/* cache vars for tiny speedup */
 #if 1
   const float range = max - min;
   const float range_inv = 1.0f / range;
@@ -127,7 +127,7 @@ static void object_warp_transverts(TransVertStore *tvs,
       zero_v2(co_add);
     }
 
-    /* map from x axis to (-0.5 - 0.5) */
+/* map from x axis to (-0.5 - 0.5) */
 #if 0
     val = ((val - min) / (max - min)) - 0.5f;
 #else
@@ -153,7 +153,7 @@ static int object_warp_verts_exec(bContext *C, wmOperator *op)
   const float warp_angle = RNA_float_get(op->ptr, "warp_angle");
   const float offset_angle = RNA_float_get(op->ptr, "offset_angle");
 
-  TransVertStore tvs = {NULL};
+  TransVertStore tvs = {nullptr};
   Object *obedit = CTX_data_edit_object(C);
 
   /* typically from 'rv3d' and 3d cursor */
@@ -167,7 +167,7 @@ static int object_warp_verts_exec(bContext *C, wmOperator *op)
   float min, max;
 
   ED_transverts_create_from_obedit(&tvs, obedit, TM_ALL_JOINTS | TM_SKIP_HANDLES);
-  if (tvs.transverts == NULL) {
+  if (tvs.transverts == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -285,10 +285,10 @@ void TRANSFORM_OT_vertex_warp(wmOperatorType *ot)
 
   /* hidden props */
   prop = RNA_def_float_matrix(
-      ot->srna, "viewmat", 4, 4, NULL, 0.0f, 0.0f, "Matrix", "", 0.0f, 0.0f);
+      ot->srna, "viewmat", 4, 4, nullptr, 0.0f, 0.0f, "Matrix", "", 0.0f, 0.0f);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_float_vector_xyz(
-      ot->srna, "center", 3, NULL, -FLT_MAX, FLT_MAX, "Center", "", -FLT_MAX, FLT_MAX);
+      ot->srna, "center", 3, nullptr, -FLT_MAX, FLT_MAX, "Center", "", -FLT_MAX, FLT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }

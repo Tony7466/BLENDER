@@ -60,7 +60,7 @@ set(SRC
   object_utils.cc
   object_vgroup.cc
   object_volume.cc
-  object_warp.c
+  object_warp.cc
 
   object_intern.h
 )
