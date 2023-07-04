@@ -124,7 +124,8 @@ struct EditMesh_PreSelEdgeRing {
 
 struct EditMesh_PreSelEdgeRing *EDBM_preselect_edgering_create(void)
 {
-  struct EditMesh_PreSelEdgeRing *psel = MEM_callocN(sizeof(*psel), __func__);
+  struct EditMesh_PreSelEdgeRing *psel = static_cast<EditMesh_PreSelEdgeRing *>(
+      MEM_callocN(sizeof(*psel), __func__));
   return psel;
 }
 
@@ -206,7 +207,7 @@ void EDBM_preselect_edgering_draw(struct EditMesh_PreSelEdgeRing *psel, const fl
 
 static void view3d_preselect_mesh_edgering_update_verts_from_edge(
     struct EditMesh_PreSelEdgeRing *psel,
-    BMesh *UNUSED(bm),
+    BMesh * /*bm*/,
     BMEdge *eed_start,
     int previewlines,
     const float (*coords)[3])
@@ -215,7 +216,7 @@ static void view3d_preselect_mesh_edgering_update_verts_from_edge(
   float(*verts)[3];
   int i, tot = 0;
 
-  verts = MEM_mallocN(sizeof(*psel->verts) * previewlines, __func__);
+  verts = static_cast<float(*)[3]>(MEM_mallocN(sizeof(*psel->verts) * previewlines, __func__));
 
   edgering_vcos_get_pair(&eed_start->v1, v_cos, coords);
 
@@ -238,8 +239,8 @@ static void view3d_preselect_mesh_edgering_update_edges_from_edge(
 {
   BMWalker walker;
   BMEdge *eed, *eed_last;
-  BMVert *v[2][2] = {{NULL}}, *eve_last;
-  float(*edges)[2][3] = NULL;
+  BMVert *v[2][2] = {{nullptr}}, *eve_last;
+  float(*edges)[2][3] = nullptr;
   BLI_Stack *edge_stack;
 
   int i, tot = 0;
@@ -255,20 +256,22 @@ static void view3d_preselect_mesh_edgering_update_edges_from_edge(
 
   edge_stack = BLI_stack_new(sizeof(BMEdge *), __func__);
 
-  eed_last = NULL;
-  for (eed = eed_last = BMW_begin(&walker, eed_start); eed; eed = BMW_step(&walker)) {
+  eed_last = nullptr;
+  for (eed = eed_last = static_cast<BMEdge *>(BMW_begin(&walker, eed_start)); eed;
+       eed = static_cast<BMEdge *>(BMW_step(&walker)))
+  {
     BLI_stack_push(edge_stack, &eed);
   }
   BMW_end(&walker);
 
   eed_start = *(BMEdge **)BLI_stack_peek(edge_stack);
 
-  edges = MEM_mallocN((sizeof(*edges) * (BLI_stack_count(edge_stack) + (eed_last != eed_start))) *
-                          previewlines,
-                      __func__);
+  edges = static_cast<float(*)[2][3]>(MEM_mallocN(
+      (sizeof(*edges) * (BLI_stack_count(edge_stack) + (eed_last != eed_start))) * previewlines,
+      __func__));
 
-  eve_last = NULL;
-  eed_last = NULL;
+  eve_last = nullptr;
+  eed_last = nullptr;
 
   while (!BLI_stack_is_empty(edge_stack)) {
     BLI_stack_pop(edge_stack, &eed);
