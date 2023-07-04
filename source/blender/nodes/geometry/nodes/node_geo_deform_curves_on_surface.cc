@@ -213,14 +213,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet curves_geometry = params.extract_input<GeometrySet>("Curves");
 
-  Mesh *surface_mesh_orig = nullptr;
-  bool free_suface_mesh_orig = false;
-  BLI_SCOPED_DEFER([&]() {
-    if (free_suface_mesh_orig) {
-      BKE_id_free(nullptr, surface_mesh_orig);
-    }
-  });
-
   auto pass_through_input = [&]() { params.set_output("Curves", std::move(curves_geometry)); };
 
   const Object *self_ob_eval = params.self_object();
@@ -249,21 +241,40 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.error_message_add(NodeWarningType::Error, TIP_("Curves not attached to a surface"));
     return;
   }
-  Object *surface_ob_orig = DEG_get_original_object(surface_ob_eval);
-  Mesh &surface_object_data = *static_cast<Mesh *>(surface_ob_orig->data);
 
-  if (BMEditMesh *em = surface_object_data.edit_mesh) {
-    surface_mesh_orig = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, nullptr, &surface_object_data);
-    free_suface_mesh_orig = true;
-  }
-  else {
-    surface_mesh_orig = &surface_object_data;
-  }
-  Mesh *surface_mesh_eval = BKE_modifier_get_evaluated_mesh_from_evaluated_object(surface_ob_eval);
-  if (surface_mesh_eval == nullptr) {
-    pass_through_input();
-    params.error_message_add(NodeWarningType::Error, TIP_("Surface has no mesh"));
-    return;
+  /* Temporal copies. Calculating normals requires data localization in order to be able to change
+   * the custom normals in the mesh. See #109583. */
+  Mesh *surface_mesh_orig = nullptr;
+  Mesh *surface_mesh_eval = nullptr;
+  BLI_SCOPED_DEFER([&]() {
+    if (surface_mesh_orig) {
+      BKE_id_free(nullptr, surface_mesh_orig);
+    }
+    if (surface_mesh_eval) {
+      BKE_id_free(nullptr, surface_mesh_eval);
+    }
+  });
+
+  {
+    Object *surface_ob_orig = DEG_get_original_object(surface_ob_eval);
+    Mesh *src_surface_mesh_orig = static_cast<Mesh *>(surface_ob_orig->data);
+    Mesh *src_surface_mesh_eval = BKE_modifier_get_evaluated_mesh_from_evaluated_object(
+        surface_ob_eval);
+    if (src_surface_mesh_eval == nullptr) {
+      pass_through_input();
+      params.error_message_add(NodeWarningType::Error, TIP_("Surface has no mesh"));
+      return;
+    }
+    surface_mesh_eval = BKE_mesh_copy_for_eval(src_surface_mesh_eval);
+    if (BMEditMesh *em = src_surface_mesh_orig->edit_mesh) {
+      surface_mesh_orig = BKE_mesh_from_bmesh_for_eval_nomain(
+          em->bm, nullptr, src_surface_mesh_orig);
+    }
+    else {
+      surface_mesh_orig = BKE_mesh_copy_for_eval(src_surface_mesh_orig);
+    }
+    BLI_assert(surface_mesh_eval != nullptr);
+    BLI_assert(surface_mesh_orig != nullptr);
   }
 
   BKE_mesh_wrapper_ensure_mdata(surface_mesh_eval);
