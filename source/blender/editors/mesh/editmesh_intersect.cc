@@ -47,7 +47,7 @@
 /**
  * Compare selected with itself.
  */
-static int bm_face_isect_self(BMFace *f, void *UNUSED(user_data))
+static int bm_face_isect_self(BMFace *f, void * /*user_data*/)
 {
   if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
     return 0;
@@ -58,7 +58,7 @@ static int bm_face_isect_self(BMFace *f, void *UNUSED(user_data))
 /**
  * Compare selected/unselected.
  */
-static int bm_face_isect_pair(BMFace *f, void *UNUSED(user_data))
+static int bm_face_isect_pair(BMFace *f, void * /*user_data*/)
 {
   if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
     return -1;
@@ -73,7 +73,7 @@ static int bm_face_isect_pair(BMFace *f, void *UNUSED(user_data))
  * A flipped version of #bm_face_isect_pair
  * use for boolean 'difference', which depends on order.
  */
-static int bm_face_isect_pair_swap(BMFace *f, void *UNUSED(user_data))
+static int bm_face_isect_pair_swap(BMFace *f, void * /*user_data*/)
 {
   if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
     return -1;
@@ -105,12 +105,11 @@ static void edbm_intersect_select(BMEditMesh *em, struct Mesh *me, bool do_selec
     }
   }
 
-  EDBM_update(me,
-              &(const struct EDBMUpdate_Params){
-                  .calc_looptri = true,
-                  .calc_normals = true,
-                  .is_destructive = true,
-              });
+  EDBMUpdate_Params params{};
+  params.calc_looptri = true;
+  params.calc_normals = true;
+  params.is_destructive = true;
+  EDBM_update(me, &params);
 }
 
 /* -------------------------------------------------------------------- */
@@ -202,7 +201,7 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
                                         em->looptris,
                                         em->tottri,
                                         test_fn,
-                                        NULL,
+                                        nullptr,
                                         nshapes,
                                         use_self,
                                         use_separate_all,
@@ -214,7 +213,7 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
                                     em->looptris,
                                     em->tottri,
                                     test_fn,
-                                    NULL,
+                                    nullptr,
                                     use_self,
                                     use_separate_all,
                                     true,
@@ -231,7 +230,7 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
           em->bm, BM_elem_cb_check_hflag_enabled_simple(const BMFace *, BM_ELEM_SELECT));
     }
 
-    edbm_intersect_select(em, obedit->data, has_isect);
+    edbm_intersect_select(em, static_cast<Mesh *>(obedit->data), has_isect);
 
     if (!has_isect) {
       isect_len++;
@@ -245,7 +244,7 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void edbm_intersect_ui(bContext *UNUSED(C), wmOperator *op)
+static void edbm_intersect_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *row;
@@ -255,18 +254,18 @@ static void edbm_intersect_ui(bContext *UNUSED(C), wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemS(layout);
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "separate_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "separate_mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemS(layout);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "solver", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "solver", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemS(layout);
 
   if (!use_exact) {
-    uiItemR(layout, op->ptr, "threshold", 0, NULL, ICON_NONE);
+    uiItemR(layout, op->ptr, "threshold", 0, nullptr, ICON_NONE);
   }
 }
 
@@ -279,7 +278,7 @@ void MESH_OT_intersect(wmOperatorType *ot)
        0,
        "Selected/Unselected",
        "Intersect selected with unselected faces"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem isect_separate_items[] = {
@@ -290,13 +289,13 @@ void MESH_OT_intersect(wmOperatorType *ot)
        "Cut",
        "Cut into geometry keeping each side separate (Selected/Unselected only)"},
       {ISECT_SEPARATE_NONE, "NONE", 0, "Merge", "Merge all geometry from the intersection"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem isect_intersect_solver_items[] = {
       {ISECT_SOLVER_FAST, "FAST", 0, "Fast", "Faster solver, some limitations"},
       {ISECT_SOLVER_EXACT, "EXACT", 0, "Exact", "Exact solver, slower, handles more cases"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -372,7 +371,7 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
                                   em->looptris,
                                   em->tottri,
                                   test_fn,
-                                  NULL,
+                                  nullptr,
                                   2,
                                   use_self,
                                   true,
@@ -384,7 +383,7 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
                                     em->looptris,
                                     em->tottri,
                                     test_fn,
-                                    NULL,
+                                    nullptr,
                                     false,
                                     false,
                                     true,
@@ -395,7 +394,7 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
                                     eps);
     }
 
-    edbm_intersect_select(em, obedit->data, has_isect);
+    edbm_intersect_select(em, static_cast<Mesh *>(obedit->data), has_isect);
 
     if (!has_isect) {
       isect_len++;
@@ -409,7 +408,7 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void edbm_intersect_boolean_ui(bContext *UNUSED(C), wmOperator *op)
+static void edbm_intersect_boolean_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *row;
@@ -420,17 +419,17 @@ static void edbm_intersect_boolean_ui(bContext *UNUSED(C), wmOperator *op)
   uiLayoutSetPropDecorate(layout, false);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "operation", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "operation", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemS(layout);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "solver", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "solver", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemS(layout);
 
-  uiItemR(layout, op->ptr, "use_swap", 0, NULL, ICON_NONE);
-  uiItemR(layout, op->ptr, "use_self", 0, NULL, ICON_NONE);
+  uiItemR(layout, op->ptr, "use_swap", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "use_self", 0, nullptr, ICON_NONE);
   if (!use_exact) {
-    uiItemR(layout, op->ptr, "threshold", 0, NULL, ICON_NONE);
+    uiItemR(layout, op->ptr, "threshold", 0, nullptr, ICON_NONE);
   }
 }
 
@@ -440,13 +439,13 @@ void MESH_OT_intersect_boolean(wmOperatorType *ot)
       {BMESH_ISECT_BOOLEAN_ISECT, "INTERSECT", 0, "Intersect", ""},
       {BMESH_ISECT_BOOLEAN_UNION, "UNION", 0, "Union", ""},
       {BMESH_ISECT_BOOLEAN_DIFFERENCE, "DIFFERENCE", 0, "Difference", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem isect_boolean_solver_items[] = {
       {ISECT_SOLVER_FAST, "FAST", 0, "Fast", "Faster solver, some limitations"},
       {ISECT_SOLVER_EXACT, "EXACT", 0, "Exact", "Exact solver, slower, handles more cases"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -494,8 +493,7 @@ void MESH_OT_intersect_boolean(wmOperatorType *ot)
 
 static void bm_face_split_by_edges(BMesh *bm,
                                    BMFace *f,
-                                   const char hflag,
-                                   /* reusable memory buffer */
+                                   const char hflag, /* reusable memory buffer */
                                    BLI_Buffer *edge_net_temp_buf)
 {
   const int f_index = BM_elem_index_get(f);
@@ -552,8 +550,12 @@ static void bm_face_split_by_edges(BMesh *bm,
     }
   }
 
-  BM_face_split_edgenet(
-      bm, f, edge_net_temp_buf->data, edge_net_temp_buf->count, &face_arr, &face_arr_len);
+  BM_face_split_edgenet(bm,
+                        f,
+                        static_cast<BMEdge **>(edge_net_temp_buf->data),
+                        edge_net_temp_buf->count,
+                        &face_arr,
+                        &face_arr_len);
 
   BLI_buffer_clear(edge_net_temp_buf);
 
@@ -607,15 +609,16 @@ static void ghash_insert_face_edge_link(GHash *gh,
   LinkNode *ls;
 
   if (!BLI_ghash_ensure_p(gh, f_key, &ls_base_p)) {
-    ls_base = *ls_base_p = BLI_memarena_alloc(mem_arena, sizeof(*ls_base));
-    ls_base->list = NULL;
+    ls_base = static_cast<LinkBase *>(*ls_base_p = BLI_memarena_alloc(mem_arena,
+                                                                      sizeof(*ls_base)));
+    ls_base->list = nullptr;
     ls_base->list_len = 0;
   }
   else {
-    ls_base = *ls_base_p;
+    ls_base = static_cast<LinkBase *>(*ls_base_p);
   }
 
-  ls = BLI_memarena_alloc(mem_arena, sizeof(*ls));
+  ls = static_cast<LinkNode *>(BLI_memarena_alloc(mem_arena, sizeof(*ls)));
   ls->next = ls_base->list;
   ls->link = e_val;
   ls_base->list = ls;
@@ -639,11 +642,12 @@ static int bm_edge_sort_length_cb(const void *e_a_v, const void *e_b_v)
 static void bm_face_split_by_edges_island_connect(
     BMesh *bm, BMFace *f, LinkNode *e_link, const int e_link_len, MemArena *mem_arena_edgenet)
 {
-  BMEdge **edge_arr = BLI_memarena_alloc(mem_arena_edgenet, sizeof(*edge_arr) * e_link_len);
+  BMEdge **edge_arr = static_cast<BMEdge **>(
+      BLI_memarena_alloc(mem_arena_edgenet, sizeof(*edge_arr) * e_link_len));
   int edge_arr_len = 0;
 
   while (e_link) {
-    edge_arr[edge_arr_len++] = e_link->link;
+    edge_arr[edge_arr_len++] = static_cast<BMEdge *>(e_link->link);
     e_link = e_link->next;
   }
 
@@ -664,7 +668,7 @@ static void bm_face_split_by_edges_island_connect(
     }
   }
 
-  BM_face_split_edgenet(bm, f, edge_arr, edge_arr_len, NULL, NULL);
+  BM_face_split_edgenet(bm, f, edge_arr, edge_arr_len, nullptr, nullptr);
 
   for (int i = e_link_len; i < edge_arr_len; i++) {
     BM_edge_select_set(bm, edge_arr[i], true);
@@ -700,7 +704,7 @@ static void bm_face_split_by_edges_island_connect(
  *   in this case return the closest edge in \a f_a to the \a v_pivot.
  *
  * - \a v_pivot has only edges from the same face connected,
- *   in this case return NULL. This is the most common case - no action is needed.
+ *   in this case return nullptr. This is the most common case - no action is needed.
  *
  * \return the edge to be split.
  *
@@ -744,7 +748,7 @@ static BMEdge *bm_face_split_edge_find(BMEdge *e_a,
     }
   } while ((e_b = BM_DISK_EDGE_NEXT(e_b, v_pivot)) != v_pivot->e);
 
-  BMEdge *e_split = NULL;
+  BMEdge *e_split = nullptr;
 
   /* if we have no others or the other edge is outside this face,
    * we're an endpoint to connect to a boundary */
@@ -761,7 +765,7 @@ static BMEdge *bm_face_split_edge_find(BMEdge *e_a,
       interp_v3_v3v3(v_pivot_co_test, l_iter->e->v1->co, l_iter->e->v2->co, v_pivot_fac);
 
       float dist_test_sq = len_squared_v3v3(v_pivot_co_test, v_pivot->co);
-      if ((dist_test_sq < dist_best_sq) || (e_split == NULL)) {
+      if ((dist_test_sq < dist_best_sq) || (e_split == nullptr)) {
         bool ok = true;
 
         if (UNLIKELY(BM_edge_exists(v_pivot, l_iter->e->v1) ||
@@ -811,7 +815,7 @@ static BMEdge *bm_face_split_edge_find(BMEdge *e_a,
 
 #endif /* USE_NET_ISLAND_CONNECT */
 
-static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
+static int edbm_face_split_by_edges_exec(bContext *C, wmOperator * /*op*/)
 {
   const char hflag = BM_ELEM_TAG;
 
@@ -881,7 +885,7 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
           BMLoop *l;
 
           uint loop_stack_len;
-          BMLoop *l_best = NULL;
+          BMLoop *l_best = nullptr;
 
           BLI_assert(BLI_SMALLSTACK_IS_EMPTY(loop_stack));
           loop_stack_len = 0;
@@ -962,12 +966,11 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
     }
 #endif
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
 
 #ifdef USE_NET_ISLAND_CONNECT
     /* we may have remaining isolated regions remaining,
@@ -981,7 +984,7 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
 
       {
         BMBVHTree *bmbvh = BKE_bmbvh_new(
-            bm, em->looptris, em->tottri, BMBVH_RESPECT_SELECT, NULL, false);
+            bm, em->looptris, em->tottri, BMBVH_RESPECT_SELECT, nullptr, false);
 
         BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
           BM_elem_index_set(e, -1); /* set_dirty */
@@ -1012,12 +1015,13 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
         GHashIterator gh_iter;
 
         GHASH_ITER (gh_iter, face_edge_map) {
-          BMFace *f = BLI_ghashIterator_getKey(&gh_iter);
-          struct LinkBase *e_ls_base = BLI_ghashIterator_getValue(&gh_iter);
+          BMFace *f = static_cast<BMFace *>(BLI_ghashIterator_getKey(&gh_iter));
+          struct LinkBase *e_ls_base = static_cast<LinkBase *>(
+              BLI_ghashIterator_getValue(&gh_iter));
           LinkNode *e_link = e_ls_base->list;
 
           do {
-            e = e_link->link;
+            e = static_cast<BMEdge *>(e_link->link);
 
             for (int j = 0; j < 2; j++) {
               BMVert *v_pivot = (&e->v1)[j];
@@ -1055,8 +1059,9 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
         GHashIterator gh_iter;
 
         GHASH_ITER (gh_iter, face_edge_map) {
-          BMFace *f = BLI_ghashIterator_getKey(&gh_iter);
-          struct LinkBase *e_ls_base = BLI_ghashIterator_getValue(&gh_iter);
+          BMFace *f = static_cast<BMFace *>(BLI_ghashIterator_getKey(&gh_iter));
+          struct LinkBase *e_ls_base = static_cast<LinkBase *>(
+              BLI_ghashIterator_getValue(&gh_iter));
 
           bm_face_split_by_edges_island_connect(
               bm, f, e_ls_base->list, e_ls_base->list_len, mem_arena_edgenet);
@@ -1069,14 +1074,13 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator *UNUSED(op))
 
       BLI_memarena_free(mem_arena);
 
-      BLI_ghash_free(face_edge_map, NULL, NULL);
+      BLI_ghash_free(face_edge_map, nullptr, nullptr);
 
-      EDBM_update(obedit->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = true,
-                      .calc_normals = true,
-                      .is_destructive = true,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = true;
+      params.calc_normals = true;
+      params.is_destructive = true;
+      EDBM_update(static_cast<Mesh *>(obedit->data), &params);
     }
 
     BLI_stack_free(edges_loose);
