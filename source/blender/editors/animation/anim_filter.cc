@@ -3590,13 +3590,11 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
 
       /* Modes for Specialty Data Types (i.e. not keyframes) */
       case ANIMCONT_GPENCIL: {
-        if (U.experimental.use_grease_pencil_version3) {
-          if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+        if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+          if (U.experimental.use_grease_pencil_version3) {
             items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
           }
-        }
-        else {
-          if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+          else {
             items = animdata_filter_gpencil_legacy(ac, anim_data, data, filter_mode);
           }
         }
