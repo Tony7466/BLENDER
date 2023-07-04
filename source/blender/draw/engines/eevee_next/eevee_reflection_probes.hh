@@ -57,10 +57,8 @@ struct ReflectionProbe {
 
 class ReflectionProbeModule {
  private:
-  /** The max number of probes to track. */
-  static constexpr int max_probes_ = 1;
-  /** Index into probes_ allocated for the world probe. */
-  static constexpr int world_slot_ = 0;
+  /** The max number of probes to initially allocate. */
+  static constexpr int init_num_probes_ = 1;
 
   /**
    * The maximum resolution of a cube-map side.
@@ -71,9 +69,10 @@ class ReflectionProbeModule {
 
   /**
    * Which subdivision level to use for storing the world/reflection probes in the texture.
+   * TODO: Will become a user option.
    */
-  static constexpr int world_subdivision_level_ = 0;
-  static constexpr int reflection_probe_subdivision_level_ = 0;
+  static constexpr int world_subdivision_level_ = 1;
+  static constexpr int reflection_probe_subdivision_level_ = 1;
 
   Instance &instance_;
   ReflectionProbeDataBuf data_buf_;

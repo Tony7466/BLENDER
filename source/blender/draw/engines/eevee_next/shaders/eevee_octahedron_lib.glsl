@@ -31,3 +31,13 @@ vec3 octahedral_uv_to_direction(vec2 co)
 
   return v;
 }
+
+vec2 octahedral_reflection_probe_unpack(vec2 octahedral_uv_packed, ReflectionProbeData probe_data)
+{
+  int areas_per_dimension = 1 << probe_data.layer_subdivision;
+  vec2 area_scalar = vec2(1.0 / float(areas_per_dimension));
+  vec2 area_offset = vec2(probe_data.area_index % areas_per_dimension,
+                          probe_data.area_index / areas_per_dimension) *
+                     area_scalar;
+  return octahedral_uv_packed * area_scalar + area_offset;
+}

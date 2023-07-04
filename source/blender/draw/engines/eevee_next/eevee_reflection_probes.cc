@@ -20,7 +20,7 @@ void ReflectionProbeModule::init()
     ReflectionProbeData world_probe_data{};
     world_probe_data.layer = 0;
     world_probe_data.layer_subdivision = world_subdivision_level_;
-    world_probe_data.area_index = 0;
+    world_probe_data.area_index = 1;
     world_probe_data.color = float4(0.0f);
     world_probe_data.pos = float3(0.0f);
     world_probe_data.intensity = 1.0f;
@@ -36,7 +36,7 @@ void ReflectionProbeModule::init()
     const int max_mipmap_levels = log(max_resolution_) + 1;
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
-                               max_probes_,
+                               init_num_probes_,
                                GPU_TEXTURE_USAGE_SHADER_WRITE,
                                nullptr,
                                max_mipmap_levels);
@@ -54,6 +54,7 @@ void ReflectionProbeModule::init()
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
     pass.bind_texture("cubemap_tx", cubemap_tx_);
     pass.bind_image("octahedral_img", probes_tx_);
+    pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
     pass.dispatch(int2(ceil_division(max_resolution_, REFLECTION_PROBE_GROUP_SIZE)));
   }
 }
