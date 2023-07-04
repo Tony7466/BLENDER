@@ -28,7 +28,7 @@ set(INC
 
 set(SRC
   editface.cc
-  editmesh_add.c
+  editmesh_add.cc
   editmesh_add_gizmo.c
   editmesh_attribute.cc
   editmesh_automerge.c

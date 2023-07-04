@@ -33,10 +33,10 @@
 
 /* ********* add primitive operators ************* */
 
-typedef struct MakePrimitiveData {
+struct MakePrimitiveData {
   float mat[4][4];
   bool was_editmode;
-} MakePrimitiveData;
+};
 
 static Object *make_prim_init(bContext *C,
                               const char *idname,
@@ -51,7 +51,7 @@ static Object *make_prim_init(bContext *C,
   Object *obedit = CTX_data_edit_object(C);
 
   r_creation_data->was_editmode = false;
-  if (obedit == NULL || obedit->type != OB_MESH) {
+  if (obedit == nullptr || obedit->type != OB_MESH) {
     obedit = ED_object_add_type(C, OB_MESH, idname, loc, rot, false, local_view_bits);
     ED_object_editmode_enter_ex(bmain, scene, obedit, 0);
 
@@ -76,12 +76,11 @@ static void make_prim_finish(bContext *C,
   EDBM_selectmode_flush_ex(em, SCE_SELECT_VERTEX);
 
   /* only recalc editmode tessface if we are staying in editmode */
-  EDBM_update(obedit->data,
-              &(const struct EDBMUpdate_Params){
-                  .calc_looptri = !exit_editmode,
-                  .calc_normals = false,
-                  .is_destructive = true,
-              });
+  EDBMUpdate_Params params{};
+  params.calc_looptri = !exit_editmode;
+  params.calc_normals = false;
+  params.is_destructive = true;
+  EDBM_update(static_cast<Mesh *>(obedit->data), &params);
 
   /* userdef */
   if (exit_editmode) {
@@ -102,19 +101,19 @@ static int add_primitive_plane_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, NULL, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, nullptr, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Plane"),
                           loc,
                           rot,
-                          NULL,
+                          nullptr,
                           local_view_bits,
                           &creation_data);
 
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -168,7 +167,7 @@ static int add_primitive_cube_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Cube"),
                           loc,
@@ -180,7 +179,7 @@ static int add_primitive_cube_exec(bContext *C, wmOperator *op)
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(em,
@@ -224,7 +223,7 @@ static const EnumPropertyItem fill_type_items[] = {
     {0, "NOTHING", 0, "Nothing", "Don't fill at all"},
     {1, "NGON", 0, "N-Gon", "Use n-gons"},
     {2, "TRIFAN", 0, "Triangle Fan", "Use triangle fans"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static int add_primitive_circle_exec(bContext *C, wmOperator *op)
@@ -243,19 +242,19 @@ static int add_primitive_circle_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, NULL, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, nullptr, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Circle"),
                           loc,
                           rot,
-                          NULL,
+                          nullptr,
                           local_view_bits,
                           &creation_data);
 
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -317,7 +316,7 @@ static int add_primitive_cylinder_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Cylinder"),
                           loc,
@@ -328,7 +327,7 @@ static int add_primitive_cylinder_exec(bContext *C, wmOperator *op)
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(em,
@@ -394,7 +393,7 @@ static int add_primitive_cone_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Cone"),
                           loc,
@@ -405,7 +404,7 @@ static int add_primitive_cone_exec(bContext *C, wmOperator *op)
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(em,
@@ -471,18 +470,18 @@ static int add_primitive_grid_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, NULL, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, nullptr, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Grid"),
                           loc,
                           rot,
-                          NULL,
+                          nullptr,
                           local_view_bits,
                           &creation_data);
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -545,13 +544,13 @@ static int add_primitive_monkey_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Y', loc, rot, NULL, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Y', loc, rot, nullptr, &enter_editmode, &local_view_bits, nullptr);
 
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Suzanne"),
                           loc,
                           rot,
-                          NULL,
+                          nullptr,
                           local_view_bits,
                           &creation_data);
   dia = RNA_float_get(op->ptr, "size") / 2.0f;
@@ -560,7 +559,7 @@ static int add_primitive_monkey_exec(bContext *C, wmOperator *op)
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(em,
@@ -611,7 +610,7 @@ static int add_primitive_uvsphere_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Sphere"),
                           loc,
@@ -622,7 +621,7 @@ static int add_primitive_uvsphere_exec(bContext *C, wmOperator *op)
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -680,7 +679,7 @@ static int add_primitive_icosphere_exec(bContext *C, wmOperator *op)
 
   WM_operator_view3d_unit_defaults(C, op);
   ED_object_add_generic_get_opts(
-      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, NULL);
+      C, op, 'Z', loc, rot, scale, &enter_editmode, &local_view_bits, nullptr);
   obedit = make_prim_init(C,
                           CTX_DATA_(BLT_I18NCONTEXT_ID_MESH, "Icosphere"),
                           loc,
@@ -691,7 +690,7 @@ static int add_primitive_icosphere_exec(bContext *C, wmOperator *op)
   em = BKE_editmesh_from_object(obedit);
 
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    ED_mesh_uv_ensure(static_cast<Mesh *>(obedit->data), nullptr);
   }
 
   if (!EDBM_op_call_and_selectf(
