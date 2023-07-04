@@ -59,7 +59,7 @@ set(SRC
   object_transform.cc
   object_utils.cc
   object_vgroup.cc
-  object_volume.c
+  object_volume.cc
   object_warp.c
 
   object_intern.h

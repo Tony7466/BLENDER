@@ -41,15 +41,17 @@ static Object *object_volume_add(bContext *C, wmOperator *op, const char *name)
   ushort local_view_bits;
   float loc[3], rot[3];
 
-  if (!ED_object_add_generic_get_opts(C, op, 'Z', loc, rot, NULL, NULL, &local_view_bits, NULL)) {
-    return NULL;
+  if (!ED_object_add_generic_get_opts(
+          C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr))
+  {
+    return nullptr;
   }
   return ED_object_add_type(C, OB_VOLUME, name, loc, rot, false, local_view_bits);
 }
 
 static int object_volume_add_exec(bContext *C, wmOperator *op)
 {
-  return (object_volume_add(C, op, NULL) != NULL) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+  return (object_volume_add(C, op, nullptr) != nullptr) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void OBJECT_OT_volume_add(wmOperatorType *ot)
@@ -131,7 +133,7 @@ static int volume_import_exec(bContext *C, wmOperator *op)
   return (imported) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static int volume_import_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int volume_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (RNA_struct_property_is_set(op->ptr, "filepath")) {
     return volume_import_exec(C, op);
