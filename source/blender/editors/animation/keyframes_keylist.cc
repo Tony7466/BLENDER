@@ -55,7 +55,8 @@ BLI_INLINE bool is_cfra_lt(const float a, const float b)
 
 /* --------------- */
 
-/* Just for GreasePencil for now. */
+/* Animation data of Grease Pencil cels,
+   which are drawings positioned in time. */
 struct GreasePencilCel {
   int frame_number;
   GreasePencilFrame frame;
