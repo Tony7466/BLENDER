@@ -79,7 +79,6 @@ void BKE_reports_clear(ReportList *reports)
     report = report_next;
   }
 
-  MEM_SAFE_FREE(reports->reporttimer);
   BLI_listbase_clear(&reports->list);
 }
 

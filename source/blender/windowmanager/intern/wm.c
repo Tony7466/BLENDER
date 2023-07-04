@@ -606,6 +606,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
   WM_drag_free_list(&wm->drags);
 
   wm_reports_free(wm);
+  BLI_freelistN(&wm->timers);
 
   if (wm->undo_stack) {
     BKE_undosys_stack_destroy(wm->undo_stack);
