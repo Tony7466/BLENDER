@@ -57,20 +57,20 @@
 /******************************** API ****************************/
 
 GpencilModifierData *ED_object_gpencil_modifier_add(
-    ReportList *reports, Main *bmain, Scene *UNUSED(scene), Object *ob, const char *name, int type)
+    ReportList *reports, Main *bmain, Scene * /*scene*/, Object *ob, const char *name, int type)
 {
-  GpencilModifierData *new_md = NULL;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
+  GpencilModifierData *new_md = nullptr;
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(GpencilModifierType(type));
 
   if (ob->type != OB_GPENCIL_LEGACY) {
     BKE_reportf(reports, RPT_WARNING, "Modifiers cannot be added to object '%s'", ob->id.name + 2);
-    return NULL;
+    return nullptr;
   }
 
   if (mti->flags & eGpencilModifierTypeFlag_Single) {
-    if (BKE_gpencil_modifiers_findby_type(ob, type)) {
+    if (BKE_gpencil_modifiers_findby_type(ob, GpencilModifierType(type))) {
       BKE_report(reports, RPT_WARNING, "Only one modifier of this type is allowed");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -91,7 +91,7 @@ GpencilModifierData *ED_object_gpencil_modifier_add(
     new_md->mode |= eGpencilModifierMode_Editmode;
   }
 
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -103,7 +103,7 @@ GpencilModifierData *ED_object_gpencil_modifier_add(
 static bool gpencil_object_modifier_remove(Main *bmain,
                                            Object *ob,
                                            GpencilModifierData *md,
-                                           bool *UNUSED(r_sort_depsgraph))
+                                           bool * /*r_sort_depsgraph*/)
 {
   /* It seems on rapid delete it is possible to
    * get called twice on same modifier, so make
@@ -144,7 +144,7 @@ bool ED_object_gpencil_modifier_remove(ReportList *reports,
 
 void ED_object_gpencil_modifier_clear(Main *bmain, Object *ob)
 {
-  GpencilModifierData *md = ob->greasepencil_modifiers.first;
+  GpencilModifierData *md = static_cast<GpencilModifierData *>(ob->greasepencil_modifiers.first);
   bool sort_depsgraph = false;
 
   if (!md) {
@@ -165,7 +165,7 @@ void ED_object_gpencil_modifier_clear(Main *bmain, Object *ob)
   DEG_relations_tag_update(bmain);
 }
 
-bool ED_object_gpencil_modifier_move_up(ReportList *UNUSED(reports),
+bool ED_object_gpencil_modifier_move_up(ReportList * /*reports*/,
                                         Object *ob,
                                         GpencilModifierData *md)
 {
@@ -177,7 +177,7 @@ bool ED_object_gpencil_modifier_move_up(ReportList *UNUSED(reports),
   return true;
 }
 
-bool ED_object_gpencil_modifier_move_down(ReportList *UNUSED(reports),
+bool ED_object_gpencil_modifier_move_down(ReportList * /*reports*/,
                                           Object *ob,
                                           GpencilModifierData *md)
 {
@@ -194,7 +194,7 @@ bool ED_object_gpencil_modifier_move_to_index(ReportList *reports,
                                               GpencilModifierData *md,
                                               const int index)
 {
-  BLI_assert(md != NULL);
+  BLI_assert(md != nullptr);
   BLI_assert(index >= 0);
   if (index >= BLI_listbase_count(&ob->greasepencil_modifiers)) {
     BKE_report(reports, RPT_WARNING, "Cannot move modifier beyond the end of the stack");
@@ -229,7 +229,8 @@ bool ED_object_gpencil_modifier_move_to_index(ReportList *reports,
 static bool gpencil_modifier_apply_obdata(
     ReportList *reports, Main *bmain, Depsgraph *depsgraph, Object *ob, GpencilModifierData *md)
 {
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
+      GpencilModifierType(md->type));
 
   if (mti->isDisabled && mti->isDisabled(md, 0)) {
     BKE_report(reports, RPT_ERROR, "Modifier is disabled, skipping apply");
@@ -237,10 +238,10 @@ static bool gpencil_modifier_apply_obdata(
   }
 
   if (ob->type == OB_GPENCIL_LEGACY) {
-    if (ELEM(NULL, ob, ob->data)) {
+    if (ELEM(nullptr, ob, ob->data)) {
       return false;
     }
-    if (mti->bakeModifier == NULL) {
+    if (mti->bakeModifier == nullptr) {
       BKE_report(reports, RPT_ERROR, "Not implemented");
       return false;
     }
@@ -260,7 +261,7 @@ bool ED_object_gpencil_modifier_apply(Main *bmain,
                                       Depsgraph *depsgraph,
                                       Object *ob,
                                       GpencilModifierData *md,
-                                      int UNUSED(mode))
+                                      int /*mode*/)
 {
 
   if (ob->type == OB_GPENCIL_LEGACY) {
@@ -296,8 +297,9 @@ bool ED_object_gpencil_modifier_apply(Main *bmain,
 bool ED_object_gpencil_modifier_copy(ReportList *reports, Object *ob, GpencilModifierData *md)
 {
   GpencilModifierData *nmd;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
-  GpencilModifierType type = md->type;
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
+      GpencilModifierType(md->type));
+  GpencilModifierType type = GpencilModifierType(md->type);
 
   if (mti->flags & eGpencilModifierTypeFlag_Single) {
     if (BKE_gpencil_modifiers_findby_type(ob, type)) {
@@ -332,7 +334,7 @@ static int gpencil_modifier_add_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_active_context(C);
   int type = RNA_enum_get(op->ptr, "type");
 
-  if (!ED_object_gpencil_modifier_add(op->reports, bmain, scene, ob, NULL, type)) {
+  if (!ED_object_gpencil_modifier_add(op->reports, bmain, scene, ob, nullptr, type)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -342,13 +344,13 @@ static int gpencil_modifier_add_exec(bContext *C, wmOperator *op)
 }
 
 static const EnumPropertyItem *gpencil_modifier_add_itemf(bContext *C,
-                                                          PointerRNA *UNUSED(ptr),
-                                                          PropertyRNA *UNUSED(prop),
+                                                          PointerRNA * /*ptr*/,
+                                                          PropertyRNA * /*prop*/,
                                                           bool *r_free)
 {
   Object *ob = ED_object_active_context(C);
-  EnumPropertyItem *item = NULL;
-  const EnumPropertyItem *md_item, *group_item = NULL;
+  EnumPropertyItem *item = nullptr;
+  const EnumPropertyItem *md_item, *group_item = nullptr;
   const GpencilModifierTypeInfo *mti;
   int totitem = 0, a;
 
@@ -359,7 +361,7 @@ static const EnumPropertyItem *gpencil_modifier_add_itemf(bContext *C,
   for (a = 0; rna_enum_object_greasepencil_modifier_type_items[a].identifier; a++) {
     md_item = &rna_enum_object_greasepencil_modifier_type_items[a];
     if (md_item->identifier[0]) {
-      mti = BKE_gpencil_modifier_get_info(md_item->value);
+      mti = BKE_gpencil_modifier_get_info(GpencilModifierType(md_item->value));
 
       if (mti->flags & eGpencilModifierTypeFlag_NoUserAdd) {
         continue;
@@ -367,14 +369,14 @@ static const EnumPropertyItem *gpencil_modifier_add_itemf(bContext *C,
     }
     else {
       group_item = md_item;
-      md_item = NULL;
+      md_item = nullptr;
 
       continue;
     }
 
     if (group_item) {
       RNA_enum_item_add(&item, &totitem, group_item);
-      group_item = NULL;
+      group_item = nullptr;
     }
 
     RNA_enum_item_add(&item, &totitem, md_item);
@@ -424,7 +426,7 @@ static bool gpencil_edit_modifier_poll_generic(bContext *C,
   Main *bmain = CTX_data_main(C);
   PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", rna_type);
   Object *ob = (ptr.owner_id) ? (Object *)ptr.owner_id : ED_object_active_context(C);
-  GpencilModifierData *mod = ptr.data; /* May be NULL. */
+  GpencilModifierData *mod = static_cast<GpencilModifierData *>(ptr.data); /* May be nullptr. */
 
   if (!ob || !BKE_id_is_editable(bmain, &ob->id)) {
     return false;
@@ -460,7 +462,7 @@ static bool gpencil_edit_modifier_liboverride_allowed_poll(bContext *C)
 static void gpencil_edit_modifier_properties(wmOperatorType *ot)
 {
   PropertyRNA *prop = RNA_def_string(
-      ot->srna, "modifier", NULL, MAX_NAME, "Modifier", "Name of the modifier to edit");
+      ot->srna, "modifier", nullptr, MAX_NAME, "Modifier", "Name of the modifier to edit");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -472,7 +474,7 @@ static void gpencil_edit_modifier_report_property(wmOperatorType *ot)
 }
 
 /**
- * \param event: If this isn't NULL, the operator will also look for panels underneath
+ * \param event: If this isn't nullptr, the operator will also look for panels underneath
  * the cursor with custom-data set to a modifier.
  * \param r_retval: This should be used if #event is used in order to return
  * #OPERATOR_PASS_THROUGH to check other operators with the same key set.
@@ -487,32 +489,32 @@ static bool gpencil_edit_modifier_invoke_properties(bContext *C,
   }
 
   PointerRNA ctx_ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_GpencilModifier);
-  if (ctx_ptr.data != NULL) {
-    GpencilModifierData *md = ctx_ptr.data;
+  if (ctx_ptr.data != nullptr) {
+    GpencilModifierData *md = static_cast<GpencilModifierData *>(ctx_ptr.data);
     RNA_string_set(op->ptr, "modifier", md->name);
     return true;
   }
 
   /* Check the custom data of panels under the mouse for a modifier. */
-  if (event != NULL) {
+  if (event != nullptr) {
     PointerRNA *panel_ptr = UI_region_panel_custom_data_under_cursor(C, event);
 
-    if (!(panel_ptr == NULL || RNA_pointer_is_null(panel_ptr))) {
+    if (!(panel_ptr == nullptr || RNA_pointer_is_null(panel_ptr))) {
       if (RNA_struct_is_a(panel_ptr->type, &RNA_GpencilModifier)) {
-        GpencilModifierData *md = panel_ptr->data;
+        GpencilModifierData *md = static_cast<GpencilModifierData *>(panel_ptr->data);
         RNA_string_set(op->ptr, "modifier", md->name);
         return true;
       }
 
-      BLI_assert(r_retval != NULL); /* We need the return value in this case. */
-      if (r_retval != NULL) {
+      BLI_assert(r_retval != nullptr); /* We need the return value in this case. */
+      if (r_retval != nullptr) {
         *r_retval = (OPERATOR_PASS_THROUGH | OPERATOR_CANCELLED);
       }
       return false;
     }
   }
 
-  if (r_retval != NULL) {
+  if (r_retval != nullptr) {
     *r_retval = OPERATOR_CANCELLED;
   }
   return false;
@@ -522,8 +524,8 @@ static GpencilModifierData *gpencil_edit_modifier_property_get(wmOperator *op,
                                                                Object *ob,
                                                                int type)
 {
-  if (ob == NULL) {
-    return NULL;
+  if (ob == nullptr) {
+    return nullptr;
   }
 
   char modifier_name[MAX_NAME];
@@ -533,7 +535,7 @@ static GpencilModifierData *gpencil_edit_modifier_property_get(wmOperator *op,
   md = BKE_gpencil_modifiers_findby_name(ob, modifier_name);
 
   if (md && type != 0 && md->type != type) {
-    md = NULL;
+    md = nullptr;
   }
 
   return md;
@@ -547,7 +549,7 @@ static int gpencil_modifier_remove_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_active_context(C);
   GpencilModifierData *md = gpencil_edit_modifier_property_get(op, ob, 0);
 
-  if (md == NULL) {
+  if (md == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -728,7 +730,7 @@ static int gpencil_modifier_apply_exec(bContext *C, wmOperator *op)
   int apply_as = RNA_enum_get(op->ptr, "apply_as");
   const bool do_report = RNA_boolean_get(op->ptr, "report");
 
-  if (md == NULL) {
+  if (md == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -773,7 +775,7 @@ static const EnumPropertyItem gpencil_modifier_apply_as_items[] = {
      0,
      "New Shape",
      "Apply deform-only modifier to a new shape on this object"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 void OBJECT_OT_gpencil_modifier_apply(wmOperatorType *ot)
@@ -959,12 +961,12 @@ static int time_segment_add_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_active_context(C);
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Time);
-  if (gpmd == NULL) {
+  if (gpmd == nullptr) {
     return OPERATOR_CANCELLED;
   }
   const int new_active_index = gpmd->segment_active_index + 1;
-  TimeGpencilModifierSegment *new_segments = MEM_malloc_arrayN(
-      gpmd->segments_len + 1, sizeof(TimeGpencilModifierSegment), __func__);
+  TimeGpencilModifierSegment *new_segments = static_cast<TimeGpencilModifierSegment *>(
+      MEM_malloc_arrayN)(gpmd->segments_len + 1, sizeof(TimeGpencilModifierSegment), __func__);
 
   if (gpmd->segments_len != 0) {
     /* Copy the segments before the new segment. */
@@ -994,9 +996,9 @@ static int time_segment_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int time_segment_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int time_segment_add_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+  if (gpencil_edit_modifier_invoke_properties(C, op, nullptr, nullptr)) {
     return time_segment_add_exec(C, op);
   }
   return OPERATOR_CANCELLED;
@@ -1026,7 +1028,7 @@ static int time_segment_remove_exec(bContext *C, wmOperator *op)
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Time);
 
-  if (gpmd == NULL) {
+  if (gpmd == nullptr) {
     return OPERATOR_CANCELLED;
   }
   if (gpmd->segment_active_index < 0 || gpmd->segment_active_index >= gpmd->segments_len) {
@@ -1065,9 +1067,9 @@ static int time_segment_remove_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int time_segment_remove_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int time_segment_remove_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+  if (gpencil_edit_modifier_invoke_properties(C, op, nullptr, nullptr)) {
     return time_segment_remove_exec(C, op);
   }
   return OPERATOR_CANCELLED;
@@ -1105,7 +1107,7 @@ static int time_segment_move_exec(bContext *C, wmOperator *op)
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Time);
 
-  if (gpmd == NULL) {
+  if (gpmd == nullptr) {
     return OPERATOR_CANCELLED;
   }
   if (gpmd->segments_len < 2) {
@@ -1145,9 +1147,9 @@ static int time_segment_move_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int time_segment_move_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int time_segment_move_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+  if (gpencil_edit_modifier_invoke_properties(C, op, nullptr, nullptr)) {
     return time_segment_move_exec(C, op);
   }
   return OPERATOR_CANCELLED;
@@ -1158,7 +1160,7 @@ void GPENCIL_OT_time_segment_move(wmOperatorType *ot)
   static const EnumPropertyItem segment_move[] = {
       {GP_TIME_SEGEMENT_MOVE_UP, "UP", 0, "Up", ""},
       {GP_TIME_SEGEMENT_MOVE_DOWN, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -1202,7 +1204,7 @@ static int dash_segment_add_exec(bContext *C, wmOperator *op)
   DashGpencilModifierData *dmd = (DashGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Dash);
 
-  if (dmd == NULL) {
+  if (dmd == nullptr) {
     return OPERATOR_CANCELLED;
   }
   const int new_active_index = dmd->segment_active_index + 1;
@@ -1237,9 +1239,9 @@ static int dash_segment_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int dash_segment_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int dash_segment_add_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+  if (gpencil_edit_modifier_invoke_properties(C, op, nullptr, nullptr)) {
     return dash_segment_add_exec(C, op);
   }
   return OPERATOR_CANCELLED;
@@ -1269,7 +1271,7 @@ static int dash_segment_remove_exec(bContext *C, wmOperator *op)
   DashGpencilModifierData *dmd = (DashGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Dash);
 
-  if (dmd == NULL) {
+  if (dmd == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1309,9 +1311,9 @@ static int dash_segment_remove_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int dash_segment_remove_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int dash_segment_remove_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+  if (gpencil_edit_modifier_invoke_properties(C, op, nullptr, nullptr)) {
     return dash_segment_remove_exec(C, op);
   }
   return OPERATOR_CANCELLED;
@@ -1349,7 +1351,7 @@ static int dash_segment_move_exec(bContext *C, wmOperator *op)
   DashGpencilModifierData *dmd = (DashGpencilModifierData *)gpencil_edit_modifier_property_get(
       op, ob, eGpencilModifierType_Dash);
 
-  if (dmd == NULL) {
+  if (dmd == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1390,9 +1392,9 @@ static int dash_segment_move_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int dash_segment_move_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int dash_segment_move_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+  if (gpencil_edit_modifier_invoke_properties(C, op, nullptr, nullptr)) {
     return dash_segment_move_exec(C, op);
   }
   return OPERATOR_CANCELLED;
@@ -1403,7 +1405,7 @@ void GPENCIL_OT_segment_move(wmOperatorType *ot)
   static const EnumPropertyItem segment_move[] = {
       {GP_SEGEMENT_MOVE_UP, "UP", 0, "Up", ""},
       {GP_SEGEMENT_MOVE_DOWN, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
