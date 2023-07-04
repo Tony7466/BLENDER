@@ -352,19 +352,19 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        items = tree.interface.interface_items
+        interface = tree.interface
 
         # Remember index to move the item.
-        dst_index = min(items.active_index + 1, len(items))
+        dst_index = interface.active_index + 1
         if self.item_type == 'SOCKET':
-            item = items.new_socket("Socket", data_type=self.data_type, kind={'INPUT'})
+            item = interface.new_socket("Socket", data_type=self.data_type, kind={'INPUT'})
         elif self.item_type == 'PANEL':
-            item = items.new_panel("Panel")
+            item = interface.new_panel("Panel")
         else:
             return {'CANCELLED'}
 
-        items.move(item, dst_index)
-        items.active = item
+        interface.move(item, dst_index)
+        interface.active = item
 
         return {'FINISHED'}
 
@@ -382,18 +382,18 @@ class NODE_OT_interface_item_copy(NodeInterfaceOperator, Operator):
 
         snode = context.space_data
         tree = snode.edit_tree
-        items = tree.interface.interface_items
-        return items.active is not None
+        interface = tree.interface
+        return interface.active is not None
 
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        items = tree.interface.interface_items
-        item = items.active
+        interface = tree.interface
+        item = interface.active
 
         if item:
-            items.copy(item)
-            items.active = item
+            interface.copy(item)
+            interface.active = item
 
         return {'FINISHED'}
 
@@ -407,12 +407,12 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        items = tree.interface.interface_items
-        item = items.active
+        interface = tree.interface
+        item = interface.active
 
         if item:
-            items.remove(item)
-            items.active = item
+            interface.remove(item)
+            interface.active_index -= 1
 
         return {'FINISHED'}
 
@@ -432,15 +432,15 @@ class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
     def execute(self, context):
         snode = context.space_data
         tree = snode.edit_tree
-        items = tree.interface.interface_items
-        item = items.active
+        interface = tree.interface
+        item = interface.active
 
         if self.direction == 'UP':
-            items.move(item, item.index - 1)
-            items.active = item
+            interface.move(item, interface.active_index - 1)
+            interface.active_index -= 1
         elif self.direction == 'DOWN':
-            items.move(item, item.index + 1)
-            items.active = item
+            interface.move(item, interface.active_index + 1)
+            interface.active_index += 1
 
         return {'FINISHED'}
 

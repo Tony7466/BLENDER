@@ -991,7 +991,7 @@ class NODE_PT_node_tree_declaration(Panel):
         props = up_down_col.operator("node.interface_item_move", icon='TRIA_DOWN', text="")
         props.direction = 'DOWN'
 
-        active_item = tree.interface.interface_items.active
+        active_item = tree.interface.active
         if active_item is not None:
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "name")
@@ -1002,8 +1002,6 @@ class NODE_PT_node_tree_declaration(Panel):
                 layout.prop(active_item, "data_type")
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "name")
-
-            layout.prop_search(active_item, "parent", tree.interface, "interface_items")
 
 
 class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):
