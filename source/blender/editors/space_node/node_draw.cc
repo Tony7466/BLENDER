@@ -1376,7 +1376,7 @@ static void node_draw_preview(bNodePreview *preview, rctf *prv)
   draw_rect.xmax += outline_width;
   draw_rect.ymin -= outline_width;
   draw_rect.ymax += outline_width;
-  UI_draw_roundbox_4fv(&draw_rect, false, BASIS_RAD/2, black);
+  UI_draw_roundbox_4fv(&draw_rect, false, BASIS_RAD / 2, black);
 }
 
 /* Common handle function for operator buttons that need to select the node first. */
@@ -2115,7 +2115,9 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
     if (preview) {
       const float preview_padding = 3.0f * UI_SCALE_FAC;
-      preview_height = (width - 2.0 * preview_padding) * float(preview->ysize) / float(preview->xsize) + 2.0 * preview_padding;
+      preview_height = (width - 2.0 * preview_padding) * float(preview->ysize) /
+                           float(preview->xsize) +
+                       2.0 * preview_padding;
       preview_rect.ymin = extra_info_rect.ymin + preview_padding;
       preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
       preview_rect.xmin = extra_info_rect.xmin + preview_padding;
