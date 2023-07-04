@@ -159,7 +159,7 @@ bConstraint *ED_object_constraint_active_get(Object *ob)
 /* this callback sets the text-file to be used for selected menu item */
 static void validate_pyconstraint_cb(Main *bmain, void *arg1, void *arg2)
 {
-  bPythonConstraint *data = static_cast<bPythonConstraint*>(arg1);
+  bPythonConstraint *data = static_cast<bPythonConstraint *>(arg1);
   Text *text = nullptr;
   int index = *((int *)arg2);
   int i;
@@ -168,7 +168,7 @@ static void validate_pyconstraint_cb(Main *bmain, void *arg1, void *arg2)
   if (index) {
     /* innovative use of a for...loop to search */
     for (text = static_cast<Text *>(bmain->texts.first), i = 1; text && index != i;
-         i++, text = static_cast<Text*>(text->id.next))
+         i++, text = static_cast<Text *>(text->id.next))
     {
       /* pass */
     }
@@ -195,7 +195,9 @@ static char *buildmenu_pyconstraints(Main *bmain, Text *con_text, int *pyconinde
   }
 
   /* loop through markers, adding them */
-  for (text = static_cast<Text *>(bmain->texts.first), i = 1; text; i++, text = static_cast<Text*>(text->id.next)) {
+  for (text = static_cast<Text *>(bmain->texts.first), i = 1; text;
+       i++, text = static_cast<Text *>(text->id.next))
+  {
     /* this is important to ensure that right script is shown as active */
     if (text == con_text) {
       *pyconindex = i;

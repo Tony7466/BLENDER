@@ -457,7 +457,8 @@ static int collection_link_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = ED_object_context(C);
-  Collection *collection = static_cast<Collection*>(BLI_findlink(&bmain->collections, RNA_enum_get(op->ptr, "collection")));
+  Collection *collection = static_cast<Collection *>(
+      BLI_findlink(&bmain->collections, RNA_enum_get(op->ptr, "collection")));
 
   if (ELEM(nullptr, ob, collection)) {
     return OPERATOR_CANCELLED;
@@ -533,7 +534,8 @@ static int collection_remove_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = ED_object_context(C);
-  Collection *collection = static_cast<Collection*>(CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
+  Collection *collection = static_cast<Collection *>(
+      CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
 
   if (!ob || !collection) {
     return OPERATOR_CANCELLED;
@@ -573,7 +575,8 @@ void OBJECT_OT_collection_remove(wmOperatorType *ot)
 static int collection_unlink_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Collection *collection = static_cast<Collection*>(CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
+  Collection *collection = static_cast<Collection *>(
+      CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
 
   if (!collection) {
     return OPERATOR_CANCELLED;
@@ -616,7 +619,8 @@ void OBJECT_OT_collection_unlink(wmOperatorType *ot)
 static int select_grouped_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
-  Collection *collection = static_cast<Collection*>(CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
+  Collection *collection = static_cast<Collection *>(
+      CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
 
   if (!collection) {
     return OPERATOR_CANCELLED;
