@@ -29,7 +29,7 @@ void ReflectionProbeModule::init()
     ReflectionProbe world_cubemap;
     world_cubemap.type = ReflectionProbe::Type::World;
     world_cubemap.is_dirty = true;
-    world_cubemap.is_cubemap_dirty = true;
+    world_cubemap.is_probes_tx_dirty = true;
     world_cubemap.index = 0;
     probes_.append(world_cubemap);
 
@@ -86,7 +86,7 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
     }
     case ReflectionProbe::Type::Probe: {
       // TODO: upload the baked probe to the cubemaps.
-      if (cubemap.is_cubemap_dirty) {
+      if (cubemap.is_probes_tx_dirty) {
         upload_dummy_cubemap(cubemap);
       }
       break;
@@ -97,15 +97,13 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
   }
 }
 
-void ReflectionProbeModule::sync_object(Object *ob,
-                                        ObjectHandle &ob_handle,
-                                        ResourceHandle /*res_handle*/,
-                                        bool is_dirty)
+void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
   const ::LightProbe *light_probe = (::LightProbe *)ob->data;
   if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
     return;
   }
+  const bool is_dirty = ob_handle.recalc != 0;
   ReflectionProbe &probe = find_or_insert(ob_handle, reflection_probe_subdivision_level_);
   probe.is_dirty |= is_dirty;
   probe.is_used = true;
@@ -142,7 +140,7 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
   ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
 
   first_unused->is_dirty = true;
-  first_unused->is_cubemap_dirty = true;
+  first_unused->is_probes_tx_dirty = true;
   first_unused->object_hash_value = ob_handle.object_key.hash_value;
   first_unused->type = ReflectionProbe::Type::Probe;
   first_unused->index = reflection_probe_data_index_max() + 1;
@@ -282,7 +280,7 @@ void ReflectionProbeModule::end_sync()
 
   for (ReflectionProbe &cubemap : probes_) {
     cubemap.is_dirty |= resize_layers;
-    cubemap.is_cubemap_dirty |= resize_layers;
+    cubemap.is_probes_tx_dirty |= resize_layers;
 
     if (!cubemap.needs_update()) {
       continue;
@@ -295,7 +293,7 @@ void ReflectionProbeModule::end_sync()
         break;
 
       case ReflectionProbe::Type::Probe:
-        regenerate_mipmaps = cubemap.is_cubemap_dirty;
+        regenerate_mipmaps = cubemap.is_probes_tx_dirty;
         break;
 
       case ReflectionProbe::Type::Unused:
@@ -303,7 +301,7 @@ void ReflectionProbeModule::end_sync()
         break;
     }
     cubemap.is_dirty = false;
-    cubemap.is_cubemap_dirty = false;
+    cubemap.is_probes_tx_dirty = false;
   }
 
   if (regenerate_mipmaps) {

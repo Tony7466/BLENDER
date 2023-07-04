@@ -33,7 +33,7 @@ struct ReflectionProbe {
 
   bool is_dirty = false;
   /* Should the area in the cubemap result be updated? */
-  bool is_cubemap_dirty = false;
+  bool is_probes_tx_dirty = false;
 
   /**
    * When reflection probe is a probe its ObjectKey.hash_value is copied here to keep track
@@ -93,10 +93,7 @@ class ReflectionProbeModule {
 
   void init();
   void begin_sync();
-  void sync_object(Object *ob,
-                   ObjectHandle &ob_handle,
-                   ResourceHandle /*res_handle*/,
-                   bool is_dirty);
+  void sync_object(Object *ob, ObjectHandle &ob_handle);
   void end_sync();
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)

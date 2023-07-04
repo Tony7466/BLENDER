@@ -216,7 +216,7 @@ void Instance::object_sync(Object *ob)
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
       case OB_LIGHTPROBE:
-        light_probes.sync_probe(ob, ob_handle);
+        sync.sync_light_probe(ob, ob_handle);
         break;
       default:
         break;
