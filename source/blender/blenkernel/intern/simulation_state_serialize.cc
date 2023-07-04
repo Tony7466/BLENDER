@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
+#include "BKE_idprop.hh"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -578,23 +579,35 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
   return geometry;
 }
 
-static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
-    const Span<const Material *> material_slots)
+static void serialize_material_slots(DictionaryValue &io_dict, const IDProperty *id_properties)
 {
+  if (id_properties == nullptr) {
+    return;
+  }
+  IDProperty *array_prop = IDP_GetPropertyFromGroup(id_properties, ".materials");
+  if (array_prop == nullptr) {
+    return;
+  }
+  if (array_prop->type != IDP_IDPARRAY) {
+    return;
+  }
   auto io_materials = std::make_shared<io::serialize::ArrayValue>();
-  for (const Material *material : material_slots) {
-    if (material == nullptr) {
-      io_materials->append_null();
+  for (const int i : IndexRange(array_prop->len)) {
+    auto io_material = io_materials->append_dict();
+    IDProperty *mat_prop = IDP_GetIndexArray(array_prop, i);
+    if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(mat_prop, "id_name")) {
+      if (id_name_prop->type == IDP_STRING) {
+        io_material->append_str("id_name", IDP_String(id_name_prop));
+      }
     }
-    else {
-      auto io_material = io_materials->append_dict();
-      io_material->append_str("name", material->id.name + 2);
-      if (material->id.lib != nullptr) {
-        io_material->append_str("lib_name", material->id.lib->id.name + 2);
+    if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(mat_prop, "lib_name")) {
+      if (lib_name_prop->type == IDP_STRING) {
+        io_material->append_str("lib_name", IDP_String(lib_name_prop));
       }
     }
   }
-  return io_materials;
+
+  io_dict.append("materials", io_materials);
 }
 
 static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
@@ -656,8 +669,7 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
                                                       mesh.runtime->poly_offsets_sharing_info));
     }
 
-    auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
-    io_mesh->append("materials", io_materials);
+    serialize_material_slots(*io_mesh, mesh.id.properties);
 
     auto io_attributes = serialize_attributes(mesh.attributes(), bdata_writer, bdata_sharing, {});
     io_mesh->append("attributes", io_attributes);
@@ -668,8 +680,7 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
 
     io_pointcloud->append_int("num_points", pointcloud.totpoint);
 
-    auto io_materials = serialize_material_slots({pointcloud.mat, pointcloud.totcol});
-    io_pointcloud->append("materials", io_materials);
+    serialize_material_slots(*io_pointcloud, pointcloud.id.properties);
 
     auto io_attributes = serialize_attributes(
         pointcloud.attributes(), bdata_writer, bdata_sharing, {});
@@ -693,8 +704,7 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
                                           curves.runtime->curve_offsets_sharing_info));
     }
 
-    auto io_materials = serialize_material_slots({curves_id.mat, curves_id.totcol});
-    io_curves->append("materials", io_materials);
+    serialize_material_slots(*io_curves, curves_id.id.properties);
 
     auto io_attributes = serialize_attributes(
         curves.attributes(), bdata_writer, bdata_sharing, {});
