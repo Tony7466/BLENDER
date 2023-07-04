@@ -73,8 +73,8 @@ static int edbm_screw_exec(bContext *C, wmOperator *op)
     }
 
     /* find two vertices with valence count == 1, more or less is wrong */
-    v1 = NULL;
-    v2 = NULL;
+    v1 = nullptr;
+    v2 = nullptr;
 
     BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
       valence = 0;
@@ -85,20 +85,20 @@ static int edbm_screw_exec(bContext *C, wmOperator *op)
       }
 
       if (valence == 1) {
-        if (v1 == NULL) {
+        if (v1 == nullptr) {
           v1 = eve;
         }
-        else if (v2 == NULL) {
+        else if (v2 == nullptr) {
           v2 = eve;
         }
         else {
-          v1 = NULL;
+          v1 = nullptr;
           break;
         }
       }
     }
 
-    if (v1 == NULL || v2 == NULL) {
+    if (v1 == nullptr || v2 == nullptr) {
       failed_verts_len++;
       continue;
     }
@@ -142,12 +142,11 @@ static int edbm_screw_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
   MEM_freeN(objects);
 
@@ -162,7 +161,7 @@ static int edbm_screw_exec(bContext *C, wmOperator *op)
 }
 
 /* get center and axis, in global coords */
-static int edbm_screw_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int edbm_screw_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Scene *scene = CTX_data_scene(C);
   RegionView3D *rv3d = ED_view3d_context_rv3d(C);
@@ -205,7 +204,7 @@ void MESH_OT_screw(wmOperatorType *ot)
   RNA_def_float_vector_xyz(ot->srna,
                            "center",
                            3,
-                           NULL,
+                           nullptr,
                            -1e12f,
                            1e12f,
                            "Center",
@@ -213,7 +212,7 @@ void MESH_OT_screw(wmOperatorType *ot)
                            -1e4f,
                            1e4f);
   RNA_def_float_vector(
-      ot->srna, "axis", 3, NULL, -1.0f, 1.0f, "Axis", "Axis in global view space", -1.0f, 1.0f);
+      ot->srna, "axis", 3, nullptr, -1.0f, 1.0f, "Axis", "Axis in global view space", -1.0f, 1.0f);
 }
 
 /** \} */

@@ -35,7 +35,7 @@ set(SRC
   editmesh_bevel.cc
   editmesh_bisect.cc
   editmesh_extrude.c
-  editmesh_extrude_screw.c
+  editmesh_extrude_screw.cc
   editmesh_extrude_spin.c
   editmesh_extrude_spin_gizmo.c
   editmesh_inset.c
