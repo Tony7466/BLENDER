@@ -8,10 +8,6 @@
 
 #include <algorithm>
 
-#include "BLI_index_mask.hh"
-#include "BLI_index_range.hh"
-#include "BLI_span.hh"
-
 #include "BLI_math_rotation_legacy.hh"
 #include "BLI_math_vector.hh"
 
