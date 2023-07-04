@@ -38,18 +38,18 @@ int getname_anim_fcurve(char *name, ID *id, FCurve *fcu)
   int icon = 0;
 
   /* sanity checks */
-  if (name == NULL) {
+  if (name == nullptr) {
     return icon;
   }
 
-  if (ELEM(NULL, id, fcu, fcu->rna_path)) {
-    if (fcu == NULL) {
+  if (ELEM(nullptr, id, fcu, fcu->rna_path)) {
+    if (fcu == nullptr) {
       BLI_strncpy(name, TIP_("<invalid>"), name_maxncpy);
     }
-    else if (fcu->rna_path == NULL) {
+    else if (fcu->rna_path == nullptr) {
       BLI_strncpy(name, TIP_("<no path>"), name_maxncpy);
     }
-    else { /* id == NULL */
+    else { /* id == nullptr */
       BLI_snprintf(name, name_maxncpy, "%s[%d]", fcu->rna_path, fcu->array_index);
     }
   }
@@ -62,9 +62,9 @@ int getname_anim_fcurve(char *name, ID *id, FCurve *fcu)
 
     /* try to resolve the path */
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
-      const char *structname = NULL, *propname = NULL;
+      const char *structname = nullptr, *propname = nullptr;
       char arrayindbuf[16];
-      const char *arrayname = NULL;
+      const char *arrayname = nullptr;
       short free_structname = 0;
 
       /* For now, name will consist of 3 parts: struct-name, property name, array index
@@ -102,7 +102,7 @@ int getname_anim_fcurve(char *name, ID *id, FCurve *fcu)
         PropertyRNA *nameprop = RNA_struct_name_property(ptr.type);
         if (nameprop) {
           /* this gets a string which will need to be freed */
-          structname = RNA_property_string_get_alloc(&ptr, nameprop, NULL, 0, NULL);
+          structname = RNA_property_string_get_alloc(&ptr, nameprop, nullptr, 0, nullptr);
           free_structname = 1;
         }
         else {

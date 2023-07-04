@@ -28,7 +28,7 @@ set(SRC
   anim_deps.cc
   anim_draw.cc
   anim_filter.cc
-  anim_ipo_utils.c
+  anim_ipo_utils.cc
   anim_markers.c
   anim_motion_paths.c
   anim_ops.c
