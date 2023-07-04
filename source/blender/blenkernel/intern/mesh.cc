@@ -1795,8 +1795,10 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
                                  ((mesh->flag & ME_AUTOSMOOTH) != 0);
   const float split_angle = (mesh->flag & ME_AUTOSMOOTH) != 0 ? mesh->smoothresh : float(M_PI);
 
-  /* May be nullptr. Const_cast to avoid data race while normals computing from different threads
-   * for the same mesh. */
+  /* May be null. The `const_cast` avoids reallocating the layer's data when making it mutable,
+   * which can result in memory leaks when this function is run from multiple threads. `clnors` is
+   * written to in rare cases when invalid data is found. Ideally they would not be written to, but
+   * this is the simplest way to maintain existing behavior. */
   blender::short2 *clnors = const_cast<blender::short2 *>(static_cast<const blender::short2 *>(
       CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL)));
   const bool *sharp_edges = static_cast<const bool *>(
