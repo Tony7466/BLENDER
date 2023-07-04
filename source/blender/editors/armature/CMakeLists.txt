@@ -40,7 +40,7 @@ set(SRC
   pose_group.cc
   pose_lib_2.cc
   pose_select.cc
-  pose_slide.c
+  pose_slide.cc
   pose_transform.c
   pose_utils.c
 
