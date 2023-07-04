@@ -23,8 +23,8 @@ void GatherLinkSearchOpParams::add_item(std::string socket_name,
 {
 
   std::string name = std::string(node_type_.ui_name) + " " + UI_MENU_ARROW_SEP + socket_name;
-  std::string translated_name = std::string(CTX_IFACE_(msgctxt, node_type_.ui_name)) + " " +
-                                UI_MENU_ARROW_SEP + IFACE_(socket_name.c_str());
+  std::string translated_name = std::string(IFACE_(node_type_.ui_name)) + " " + UI_MENU_ARROW_SEP +
+                                std::string(CTX_IFACE_(msgctxt, socket_name.c_str()));
 
   items_.append({std::move(name), std::move(fn), weight, translated_name});
 }
