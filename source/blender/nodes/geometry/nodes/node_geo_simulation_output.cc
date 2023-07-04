@@ -230,13 +230,25 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
             if (Mesh *mesh = geometry.get_mesh_for_write()) {
               if (IDProperty *mesh_props = mesh->id.properties) {
                 IDProperty *array_prop = IDP_GetPropertyFromGroup(mesh_props, ".materials");
+                mesh->totcol = array_prop->len;
+                mesh->mat = MEM_cnew_array<Material *>(mesh->totcol, __func__);
                 for (const int i : IndexRange(array_prop->len)) {
                   IDProperty *mat_prop = IDP_GetIndexArray(array_prop, i);
+                  IDMappingKey key;
                   if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(mat_prop, "id_name")) {
-                    std::cout << "ID Name: " << IDP_String(id_name_prop) << "\n";
+                    if (id_name_prop->type == IDP_STRING) {
+                      key.id_name = IDP_String(id_name_prop);
+                    }
                   }
                   if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(mat_prop, "lib_name")) {
-                    std::cout << "Lib Name: " << IDP_String(lib_name_prop) << "\n";
+                    if (lib_name_prop->type == IDP_STRING) {
+                      key.lib_name = IDP_String(lib_name_prop);
+                    }
+                  }
+                  ID *id = id_mapping.lookup_default(key, nullptr);
+                  if (id && GS(id->name) == ID_MA) {
+                    Material *material = reinterpret_cast<Material *>(id);
+                    mesh->mat[i] = material;
                   }
                 }
               }

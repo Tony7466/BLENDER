@@ -830,6 +830,12 @@ static void modifyGeometry(ModifierData *md,
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
+  for (const int i : IndexRange(nmd->id_mappings_num)) {
+    const NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    const nodes::IDMappingKey key = {mapping.id_name, mapping.lib_name};
+    modifier_eval_data.id_mapping.add(key, mapping.id);
+  }
+
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
   geometry_set = nodes::execute_geometry_nodes_on_geometry(
