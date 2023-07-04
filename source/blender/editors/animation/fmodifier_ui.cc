@@ -70,22 +70,22 @@ static ListBase *fmodifier_list_space_specific(const bContext *C)
 
   /* This should not be called in any other space. */
   BLI_assert(false);
-  return NULL;
+  return nullptr;
 }
 
 /**
- * Get a pointer to the panel's FModifier, and also its owner ID if \a r_owner_id is not NULL.
+ * Get a pointer to the panel's FModifier, and also its owner ID if \a r_owner_id is not nullptr.
  * Also in the graph editor, gray out the panel if the FModifier's FCurve has modifiers turned off.
  */
 static PointerRNA *fmodifier_get_pointers(const bContext *C, const Panel *panel, ID **r_owner_id)
 {
   PointerRNA *ptr = UI_panel_custom_data_get(panel);
 
-  if (r_owner_id != NULL) {
+  if (r_owner_id != nullptr) {
     *r_owner_id = ptr->owner_id;
   }
 
-  if (C != NULL && CTX_wm_space_graph(C)) {
+  if (C != nullptr && CTX_wm_space_graph(C)) {
     FCurve *fcu = ANIM_graph_context_fcurve(C);
     uiLayoutSetActive(panel->layout, !(fcu->flag & FCURVE_MOD_OFF));
   }
@@ -99,8 +99,8 @@ static PointerRNA *fmodifier_get_pointers(const bContext *C, const Panel *panel,
 static void fmodifier_reorder(bContext *C, Panel *panel, int new_index)
 {
   ID *owner_id;
-  PointerRNA *ptr = fmodifier_get_pointers(NULL, panel, &owner_id);
-  FModifier *fcm = ptr->data;
+  PointerRNA *ptr = fmodifier_get_pointers(nullptr, panel, &owner_id);
+  FModifier *fcm = static_cast<FModifier *>(ptr->data);
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(fcm->type);
 
   /* Cycles modifier has to be the first, so make sure it's kept that way. */
@@ -112,7 +112,7 @@ static void fmodifier_reorder(bContext *C, Panel *panel, int new_index)
   ListBase *modifiers = fmodifier_list_space_specific(C);
 
   /* Again, make sure we don't move a modifier before a cycles modifier. */
-  FModifier *fcm_first = modifiers->first;
+  FModifier *fcm_first = static_cast<FModifier *>(modifiers->first);
   const FModifierTypeInfo *fmi_first = get_fmodifier_typeinfo(fcm_first->type);
   if (fmi_first->requires_flag & FMI_REQUIRES_ORIGINAL_DATA && new_index == 0) {
     WM_report(RPT_ERROR, "Modifier requires original data");
@@ -133,21 +133,21 @@ static void fmodifier_reorder(bContext *C, Panel *panel, int new_index)
 
   ED_undo_push(C, "Reorder F-Curve Modifier");
 
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
   DEG_id_tag_update(owner_id, ID_RECALC_ANIMATION);
 }
 
-static short get_fmodifier_expand_flag(const bContext *UNUSED(C), Panel *panel)
+static short get_fmodifier_expand_flag(const bContext * /*C*/, Panel *panel)
 {
-  PointerRNA *ptr = fmodifier_get_pointers(NULL, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(nullptr, panel, nullptr);
   FModifier *fcm = (FModifier *)ptr->data;
 
   return fcm->ui_expand_flag;
 }
 
-static void set_fmodifier_expand_flag(const bContext *UNUSED(C), Panel *panel, short expand_flag)
+static void set_fmodifier_expand_flag(const bContext * /*C*/, Panel *panel, short expand_flag)
 {
-  PointerRNA *ptr = fmodifier_get_pointers(NULL, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(nullptr, panel, nullptr);
   FModifier *fcm = (FModifier *)ptr->data;
 
   fcm->ui_expand_flag = expand_flag;
@@ -159,7 +159,7 @@ static PanelType *fmodifier_panel_register(ARegionType *region_type,
                                            PanelTypePollFn poll,
                                            const char *id_prefix)
 {
-  PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
+  PanelType *panel_type = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), __func__));
 
   /* Intentionally leave the label field blank. The header is filled with buttons. */
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(type);
@@ -197,7 +197,7 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
                                               PanelTypePollFn poll,
                                               PanelType *parent)
 {
-  PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
+  PanelType *panel_type = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), __func__));
 
   SNPRINTF(panel_type->idname, "%s_%s", parent->idname, name);
   STRNCPY(panel_type->label, label);
@@ -209,7 +209,7 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
   panel_type->poll = poll;
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
-  BLI_assert(parent != NULL);
+  BLI_assert(parent != nullptr);
   STRNCPY(panel_type->parent_id, parent->idname);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
@@ -228,10 +228,10 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
 #define B_FMODIFIER_REDRAW 20
 
 /* Callback to remove the given modifier. */
-typedef struct FModifierDeleteContext {
+struct FModifierDeleteContext {
   ID *owner_id;
   ListBase *modifiers;
-} FModifierDeleteContext;
+};
 
 static void delete_fmodifier_cb(bContext *C, void *ctx_v, void *fcm_v)
 {
@@ -244,7 +244,7 @@ static void delete_fmodifier_cb(bContext *C, void *ctx_v, void *fcm_v)
 
   ED_undo_push(C, "Delete F-Curve Modifier");
 
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
   DEG_id_tag_update(ctx->owner_id, ID_RECALC_ANIMATION);
 }
 
@@ -265,9 +265,9 @@ static void fmodifier_frame_range_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
-  uiItemR(layout, ptr, "use_restricted_range", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_restricted_range", 0, nullptr, ICON_NONE);
 }
 
 static void fmodifier_frame_range_draw(const bContext *C, Panel *panel)
@@ -275,7 +275,7 @@ static void fmodifier_frame_range_draw(const bContext *C, Panel *panel)
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -332,16 +332,17 @@ static void fmodifier_panel_header(const bContext *C, Panel *panel)
                             0,
                             UI_UNIT_X,
                             UI_UNIT_Y,
-                            NULL,
+                            nullptr,
                             0.0,
                             0.0,
                             0.0,
                             0.0,
                             TIP_("Delete Modifier"));
-  FModifierDeleteContext *ctx = MEM_mallocN(sizeof(FModifierDeleteContext), __func__);
+  FModifierDeleteContext *ctx = static_cast<FModifierDeleteContext *>(
+      MEM_mallocN(sizeof(FModifierDeleteContext), __func__));
   ctx->owner_id = owner_id;
   ctx->modifiers = fmodifier_list_space_specific(C);
-  BLI_assert(ctx->modifiers != NULL);
+  BLI_assert(ctx->modifiers != nullptr);
 
   UI_but_funcN_set(but, delete_fmodifier_cb, ctx, fcm);
 
@@ -368,7 +369,7 @@ static void generator_panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, ptr, "use_additive", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_additive", 0, nullptr, ICON_NONE);
 
   uiItemR(layout, ptr, "poly_order", 0, IFACE_("Order"), ICON_NONE);
 
@@ -444,7 +445,7 @@ static void fn_generator_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
   uiItemR(layout, ptr, "function_type", 0, "", ICON_NONE);
 
@@ -452,13 +453,13 @@ static void fn_generator_panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropDecorate(layout, false);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "use_additive", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "use_additive", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "amplitude", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "phase_multiplier", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "phase_offset", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "value_offset", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "amplitude", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "phase_multiplier", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "phase_offset", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "value_offset", 0, nullptr, ICON_NONE);
 
   fmodifier_influence_draw(layout, ptr);
 }
@@ -489,19 +490,19 @@ static void cycles_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
   /* Before. */
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "mode_before", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "mode_before", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "cycles_before", 0, IFACE_("Count"), ICON_NONE);
 
   /* After. */
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "mode_after", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "mode_after", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "cycles_after", 0, IFACE_("Count"), ICON_NONE);
 
   fmodifier_influence_draw(layout, ptr);
@@ -533,19 +534,19 @@ static void noise_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, ptr, "blend_type", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "blend_type", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "scale", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "strength", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "offset", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "phase", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "depth", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "scale", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "strength", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "offset", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "phase", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "depth", 0, nullptr, ICON_NONE);
 
   fmodifier_influence_draw(layout, ptr);
 }
@@ -571,7 +572,7 @@ static void panel_register_noise(ARegionType *region_type,
 /** \name Envelope Modifier
  * \{ */
 
-static void fmod_envelope_addpoint_cb(bContext *C, void *fcm_dv, void *UNUSED(arg))
+static void fmod_envelope_addpoint_cb(bContext *C, void *fcm_dv, void * /*arg*/)
 {
   Scene *scene = CTX_data_scene(C);
   FMod_Envelope *env = (FMod_Envelope *)fcm_dv;
@@ -596,7 +597,8 @@ static void fmod_envelope_addpoint_cb(bContext *C, void *fcm_dv, void *UNUSED(ar
     }
 
     /* add new */
-    fedn = MEM_callocN((env->totvert + 1) * sizeof(FCM_EnvelopeData), "FCM_EnvelopeData");
+    fedn = static_cast<FCM_EnvelopeData *>(
+        MEM_callocN((env->totvert + 1) * sizeof(FCM_EnvelopeData), "FCM_EnvelopeData"));
 
     /* add the points that should occur before the point to be pasted */
     if (i > 0) {
@@ -618,7 +620,8 @@ static void fmod_envelope_addpoint_cb(bContext *C, void *fcm_dv, void *UNUSED(ar
     env->totvert++;
   }
   else {
-    env->data = MEM_callocN(sizeof(FCM_EnvelopeData), "FCM_EnvelopeData");
+    env->data = static_cast<FCM_EnvelopeData *>(
+        MEM_callocN(sizeof(FCM_EnvelopeData), "FCM_EnvelopeData"));
     *(env->data) = fed;
 
     env->totvert = 1;
@@ -627,7 +630,7 @@ static void fmod_envelope_addpoint_cb(bContext *C, void *fcm_dv, void *UNUSED(ar
 
 /* callback to remove envelope data point */
 /* TODO: should we have a separate file for things like this? */
-static void fmod_envelope_deletepoint_cb(bContext *UNUSED(C), void *fcm_dv, void *ind_v)
+static void fmod_envelope_deletepoint_cb(bContext * /*C*/, void *fcm_dv, void *ind_v)
 {
   FMod_Envelope *env = (FMod_Envelope *)fcm_dv;
   FCM_EnvelopeData *fedn;
@@ -636,7 +639,8 @@ static void fmod_envelope_deletepoint_cb(bContext *UNUSED(C), void *fcm_dv, void
   /* check that no data exists for the current frame... */
   if (env->totvert > 1) {
     /* allocate a new smaller array */
-    fedn = MEM_callocN(sizeof(FCM_EnvelopeData) * (env->totvert - 1), "FCM_EnvelopeData");
+    fedn = static_cast<FCM_EnvelopeData *>(
+        MEM_callocN(sizeof(FCM_EnvelopeData) * (env->totvert - 1), "FCM_EnvelopeData"));
 
     memcpy(fedn, env->data, sizeof(FCM_EnvelopeData) * (index));
     memcpy(fedn + index,
@@ -688,13 +692,13 @@ static void envelope_panel_draw(const bContext *C, Panel *panel)
                         0,
                         7.5 * UI_UNIT_X,
                         UI_UNIT_Y,
-                        NULL,
+                        nullptr,
                         0,
                         0,
                         0,
                         0,
                         TIP_("Add a new control-point to the envelope on the current frame"));
-  UI_but_func_set(but, fmod_envelope_addpoint_cb, env, NULL);
+  UI_but_func_set(but, fmod_envelope_addpoint_cb, env, nullptr);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, false);
@@ -708,7 +712,7 @@ static void envelope_panel_draw(const bContext *C, Panel *panel)
     row = uiLayoutRow(col, true);
     block = uiLayoutGetBlock(row);
 
-    uiItemR(row, &ctrl_ptr, "frame", 0, NULL, ICON_NONE);
+    uiItemR(row, &ctrl_ptr, "frame", 0, nullptr, ICON_NONE);
     uiItemR(row, &ctrl_ptr, "min", 0, IFACE_("Min"), ICON_NONE);
     uiItemR(row, &ctrl_ptr, "max", 0, IFACE_("Max"), ICON_NONE);
 
@@ -720,7 +724,7 @@ static void envelope_panel_draw(const bContext *C, Panel *panel)
                        0,
                        0.9 * UI_UNIT_X,
                        UI_UNIT_Y,
-                       NULL,
+                       nullptr,
                        0.0,
                        0.0,
                        0.0,
@@ -759,7 +763,7 @@ static void limits_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col, *row, *sub;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -821,15 +825,15 @@ static void stepped_panel_draw(const bContext *C, Panel *panel)
   uiLayout *col, *sub, *row;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = fmodifier_get_pointers(C, panel, NULL);
+  PointerRNA *ptr = fmodifier_get_pointers(C, panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
   /* Stepping Settings. */
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "frame_step", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "frame_offset", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "frame_step", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "frame_offset", 0, nullptr, ICON_NONE);
 
   /* Start range settings. */
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Start Frame"));
@@ -880,11 +884,12 @@ void ANIM_fmodifier_panels(const bContext *C,
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (FModifier *fcm = fmodifiers->first; fcm; fcm = fcm->next) {
+    for (FModifier *fcm = static_cast<FModifier *>(fmodifiers->first); fcm; fcm = fcm->next) {
       char panel_idname[MAX_NAME];
       panel_id_fn(fcm, panel_idname);
 
-      PointerRNA *fcm_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      PointerRNA *fcm_ptr = static_cast<PointerRNA *>(
+          MEM_mallocN(sizeof(PointerRNA), "panel customdata"));
       RNA_pointer_create(owner_id, &RNA_FModifier, fcm, fcm_ptr);
 
       UI_panel_add_instanced(C, region, &region->panels, panel_idname, fcm_ptr);
@@ -892,16 +897,18 @@ void ANIM_fmodifier_panels(const bContext *C,
   }
   else {
     /* Assuming there's only one group of instanced panels, update the custom data pointers. */
-    Panel *panel = region->panels.first;
+    Panel *panel = static_cast<Panel *>(region->panels.first);
     LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
 
       /* Move to the next instanced panel corresponding to the next modifier. */
-      while ((panel->type == NULL) || !(panel->type->flag & PANEL_TYPE_INSTANCED)) {
+      while ((panel->type == nullptr) || !(panel->type->flag & PANEL_TYPE_INSTANCED)) {
         panel = panel->next;
-        BLI_assert(panel != NULL); /* There shouldn't be fewer panels than modifiers with UIs. */
+        BLI_assert(panel !=
+                   nullptr); /* There shouldn't be fewer panels than modifiers with UIs. */
       }
 
-      PointerRNA *fcm_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      PointerRNA *fcm_ptr = static_cast<PointerRNA *>(
+          MEM_mallocN(sizeof(PointerRNA), "panel customdata"));
       RNA_pointer_create(owner_id, &RNA_FModifier, fcm, fcm_ptr);
       UI_panel_custom_data_set(panel, fcm_ptr);
 
@@ -939,7 +946,7 @@ void ANIM_modifier_panels_register_graph_only(ARegionType *region_type,
  * \{ */
 
 /* Copy/Paste Buffer itself (list of FModifier 's) */
-static ListBase fmodifier_copypaste_buf = {NULL, NULL};
+static ListBase fmodifier_copypaste_buf = {nullptr, nullptr};
 
 /* ---------- */
 
@@ -954,7 +961,7 @@ bool ANIM_fmodifiers_copy_to_buf(ListBase *modifiers, bool active)
   bool ok = true;
 
   /* sanity checks */
-  if (ELEM(NULL, modifiers, modifiers->first)) {
+  if (ELEM(nullptr, modifiers, modifiers->first)) {
     return 0;
   }
 
@@ -984,7 +991,7 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, FCurve *c
   bool ok = false;
 
   /* sanity checks */
-  if (modifiers == NULL) {
+  if (modifiers == nullptr) {
     return 0;
   }
 
@@ -996,7 +1003,7 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, FCurve *c
   }
 
   /* now copy over all the modifiers in the buffer to the end of the list */
-  for (fcm = fmodifier_copypaste_buf.first; fcm; fcm = fcm->next) {
+  for (fcm = static_cast<FModifier *>(fmodifier_copypaste_buf.first); fcm; fcm = fcm->next) {
     /* make a copy of it */
     FModifier *fcmN = copy_fmodifier(fcm);
 
