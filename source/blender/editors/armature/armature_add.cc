@@ -1485,7 +1485,7 @@ static int armature_extrude_exec(bContext *C, wmOperator *op)
             totbone++;
             newbone = static_cast<EditBone *>(MEM_callocN(sizeof(EditBone), "extrudebone"));
 
-            if (do_extrude == true) {
+            if (do_extrude != 0) {
               copy_v3_v3(newbone->head, ebone->tail);
               copy_v3_v3(newbone->tail, newbone->head);
               newbone->parent = ebone;

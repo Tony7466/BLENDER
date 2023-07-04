@@ -1223,7 +1223,7 @@ static void rearrange_animchannel_add_to_islands(ListBase *islands,
        * (it was either wrong sel status, or full already) */
       (is_sel == 0) ||
       /* 4) hidden status changes */
-      ((island->flag & REORDER_ISLAND_HIDDEN) != is_hidden))
+      (bool(island->flag & REORDER_ISLAND_HIDDEN) != is_hidden))
   {
     /* create a new island now */
     island = static_cast<tReorderChannelIsland *>(
