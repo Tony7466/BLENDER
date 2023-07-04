@@ -2344,8 +2344,8 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
-  char _pad[4];
   int id_mappings_num;
+  int active_id_mapping;
   NodesModifierIDMapping *id_mappings;
 
   /**

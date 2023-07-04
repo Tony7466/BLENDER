@@ -1333,7 +1333,7 @@ static void output_attribute_panel_draw(const bContext *C, Panel *panel)
   }
 }
 
-static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *panel)
+static void internal_dependencies_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -1347,18 +1347,38 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
     uiItemR(col, ptr, "simulation_bake_directory", 0, "Bake", ICON_NONE);
   }
   {
+    PointerRNA mappings_ptr;
+    RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd, &mappings_ptr);
+
     uiLayout *col = uiLayoutColumn(layout, false);
-    uiItemL(col, "ID Mapping", ICON_NONE);
-    for (const int i : IndexRange(nmd->id_mappings_num)) {
-      NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    uiTemplateList(col,
+                   C,
+                   "DATA_UL_nodes_modifier_id_mappings",
+                   "",
+                   ptr,
+                   "id_mappings",
+                   &mappings_ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
 
-      PointerRNA mapping_rna;
-      RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMapping, &mapping, &mapping_rna);
+    if (nmd->active_id_mapping >= 0 && nmd->active_id_mapping < nmd->id_mappings_num) {
+      NodesModifierIDMapping &active_mapping = nmd->id_mappings[nmd->active_id_mapping];
 
-      uiLayout *mapping_layout = uiLayoutColumn(col, true);
-      uiItemR(mapping_layout, &mapping_rna, "id_name", 0, "ID Name", ICON_NONE);
-      uiItemR(mapping_layout, &mapping_rna, "lib_name", 0, "Lib Name", ICON_NONE);
-      uiTemplateAnyID(mapping_layout, &mapping_rna, "id", "id_type", "ID");
+      PointerRNA active_mapping_ptr;
+      RNA_pointer_create(
+          ptr->owner_id, &RNA_NodesModifierIDMapping, &active_mapping, &active_mapping_ptr);
+
+      uiItemR(col, &active_mapping_ptr, "custom_name", 0, "Custom Name", ICON_NONE);
+      uiTemplateAnyID(col, &active_mapping_ptr, "id", "id_type", "ID");
+      if (active_mapping.flag & NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME) {
+        uiItemR(col, &active_mapping_ptr, "id_name", 0, "ID Name", ICON_NONE);
+        uiItemR(col, &active_mapping_ptr, "lib_name", 0, "Library Name", ICON_NONE);
+      }
     }
   }
 

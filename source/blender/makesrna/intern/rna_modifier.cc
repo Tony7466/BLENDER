@@ -7135,6 +7135,7 @@ static void rna_def_modifier_nodes_id_mappings(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *parm;
+  PropertyRNA *prop;
   FunctionRNA *func;
 
   srna = RNA_def_struct(brna, "NodesModifierIDMappings", nullptr);
@@ -7148,6 +7149,12 @@ static void rna_def_modifier_nodes_id_mappings(BlenderRNA *brna)
   parm = RNA_def_pointer(
       func, "id_mapping", "NodesModifierIDMapping", "ID Mapping", "Newly created mapping");
   RNA_def_function_return(func, parm);
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "active_id_mapping");
+  RNA_def_property_ui_text(prop, "Active ID Mapping Index", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, nullptr);
 }
 
 static void rna_def_modifier_nodes(BlenderRNA *brna)
