@@ -354,7 +354,7 @@ static SpaceLink *outliner_create(const ScrArea * /*area*/, const Scene * /*scen
   return (SpaceLink *)space_outliner;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void outliner_free(SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
@@ -565,7 +565,7 @@ static void outliner_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 }  // namespace blender::ed::outliner
 
-void ED_spacetype_outliner(void)
+void ED_spacetype_outliner()
 {
   using namespace blender::ed::outliner;
 

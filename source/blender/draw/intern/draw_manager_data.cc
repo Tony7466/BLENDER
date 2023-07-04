@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_volume.h"
 
 /* For debug cursor position. */
@@ -184,7 +184,7 @@ static void drw_shgroup_uniform_create_ex(DRWShadingGroup *shgroup,
   /* Happens on first uniform or if chunk is full. */
   if (!unichunk || unichunk->uniform_used == unichunk->uniform_len) {
     unichunk = static_cast<DRWUniformChunk *>(BLI_memblock_alloc(DST.vmempool->uniforms));
-    unichunk->uniform_len = ARRAY_SIZE(shgroup->uniforms->uniforms);
+    unichunk->uniform_len = BOUNDED_ARRAY_TYPE_SIZE<decltype(shgroup->uniforms->uniforms)>();
     unichunk->uniform_used = 0;
     BLI_LINKS_PREPEND(shgroup->uniforms, unichunk);
   }
@@ -2317,12 +2317,12 @@ void DRW_view_update(DRWView *view,
 #endif
 }
 
-const DRWView *DRW_view_default_get(void)
+const DRWView *DRW_view_default_get()
 {
   return DST.view_default;
 }
 
-void DRW_view_reset(void)
+void DRW_view_reset()
 {
   DST.view_default = nullptr;
   DST.view_active = nullptr;

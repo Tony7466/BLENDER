@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -25,7 +26,7 @@ ccl_device_noinline void svm_node_vector_transform(KernelGlobals kg,
   NodeVectorTransformConvertSpace to = (NodeVectorTransformConvertSpace)ito;
 
   Transform tfm;
-  bool is_object = (sd->object != OBJECT_NONE);
+  bool is_object = (sd->object != OBJECT_NONE) || (sd->type == PRIMITIVE_LAMP);
   bool is_normal = (type == NODE_VECTOR_TRANSFORM_TYPE_NORMAL);
   bool is_direction = (type == NODE_VECTOR_TRANSFORM_TYPE_VECTOR);
 

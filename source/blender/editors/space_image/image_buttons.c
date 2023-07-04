@@ -962,7 +962,10 @@ void uiTemplateImage(uiLayout *layout,
   UI_block_funcN_set(block, NULL, NULL, NULL);
 }
 
-void uiTemplateImageSettings(uiLayout *layout, PointerRNA *imfptr, bool color_management)
+void uiTemplateImageSettings(uiLayout *layout,
+                             PointerRNA *imfptr,
+                             bool color_management,
+                             bool show_z_buffer)
 {
   ImageFormatData *imf = imfptr->data;
   ID *id = imfptr->owner_id;
@@ -1014,7 +1017,7 @@ void uiTemplateImageSettings(uiLayout *layout, PointerRNA *imfptr, bool color_ma
     uiItemR(col, imfptr, "exr_codec", 0, NULL, ICON_NONE);
   }
 
-  if (BKE_imtype_supports_zbuf(imf->imtype)) {
+  if (BKE_imtype_supports_zbuf(imf->imtype) && show_z_buffer) {
     uiItemR(col, imfptr, "use_zbuffer", 0, NULL, ICON_NONE);
   }
 
@@ -1199,7 +1202,7 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
     const int len = MAX_IMAGE_INFO_LEN;
     int ofs = 0;
 
-    ofs += BLI_snprintf_rlen(str + ofs, len - ofs, TIP_("%d x %d, "), ibuf->x, ibuf->y);
+    ofs += BLI_snprintf_rlen(str + ofs, len - ofs, TIP_("%d \u00D7 %d, "), ibuf->x, ibuf->y);
 
     if (ibuf->float_buffer.data) {
       if (ibuf->channels != 4) {
@@ -1293,10 +1296,10 @@ void image_buttons_register(ARegionType *art)
   PanelType *pt;
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype image panel metadata");
-  strcpy(pt->idname, "IMAGE_PT_metadata");
-  strcpy(pt->label, N_("Metadata"));
-  strcpy(pt->category, "Image");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(pt->idname, "IMAGE_PT_metadata");
+  STRNCPY(pt->label, N_("Metadata"));
+  STRNCPY(pt->category, "Image");
+  STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->order = 10;
   pt->poll = metadata_panel_context_poll;
   pt->draw = metadata_panel_context_draw;

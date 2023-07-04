@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -53,7 +53,7 @@ uint *DRW_select_buffer_read(
   if (BLI_rcti_isect(&r, &rect_clamp, &rect_clamp)) {
     SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
-    DRW_opengl_context_enable();
+    DRW_gpu_context_enable();
     /* Update the drawing. */
     DRW_draw_select_id(depsgraph, region, v3d, rect);
 
@@ -84,7 +84,7 @@ uint *DRW_select_buffer_read(
     }
 
     GPU_framebuffer_restore();
-    DRW_opengl_context_disable();
+    DRW_gpu_context_disable();
   }
 
   if (r_buf_len) {
