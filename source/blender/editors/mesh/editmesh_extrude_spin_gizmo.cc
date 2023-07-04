@@ -55,7 +55,7 @@ static const float dial_angle_partial_margin = 0.92f;
 /** \name Spin Tool Gizmo
  * \{ */
 
-typedef struct GizmoGroupData_SpinInit {
+struct GizmoGroupData_SpinInit {
   struct {
     wmGizmo *xyz_view[4];
     wmGizmo *icon_button[3][2];
@@ -82,8 +82,7 @@ typedef struct GizmoGroupData_SpinInit {
   struct {
     int ortho_axis_active;
   } invoke;
-
-} GizmoGroupData_SpinInit;
+};
 
 /* Use dials only as a visualization when hovering over the icons. */
 #define USE_DIAL_HOVER
@@ -96,7 +95,7 @@ static const uchar shape_plus[] = {
     0x8c, 0x8c, 0xc9, 0x73, 0xc9, 0x73, 0x8c, 0x36, 0x8c, 0x36, 0x73, 0x36, 0x73,
 };
 
-static void gizmo_mesh_spin_init_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
+static void gizmo_mesh_spin_init_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   /* alpha values for normal/highlighted states */
   const float alpha = 0.6f;
@@ -104,14 +103,15 @@ static void gizmo_mesh_spin_init_setup(const bContext *UNUSED(C), wmGizmoGroup *
   const float scale_base = INIT_SCALE_BASE;
   const float scale_button = INIT_SCALE_BUTTON;
 
-  GizmoGroupData_SpinInit *ggd = MEM_callocN(sizeof(*ggd), __func__);
+  GizmoGroupData_SpinInit *ggd = static_cast<GizmoGroupData_SpinInit *>(
+      MEM_callocN(sizeof(*ggd), __func__));
   gzgroup->customdata = ggd;
   const wmGizmoType *gzt_dial = WM_gizmotype_find("GIZMO_GT_dial_3d", true);
   const wmGizmoType *gzt_button = WM_gizmotype_find("GIZMO_GT_button_2d", true);
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 2; j++) {
-      wmGizmo *gz = WM_gizmo_new_ptr(gzt_button, gzgroup, NULL);
+      wmGizmo *gz = WM_gizmo_new_ptr(gzt_button, gzgroup, nullptr);
       PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "shape");
       RNA_property_string_set_bytes(
           gz->ptr, prop, (const char *)shape_plus, ARRAY_SIZE(shape_plus));
@@ -133,7 +133,7 @@ static void gizmo_mesh_spin_init_setup(const bContext *UNUSED(C), wmGizmoGroup *
   }
 
   for (int i = 0; i < ARRAY_SIZE(ggd->gizmos.xyz_view); i++) {
-    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, NULL);
+    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, nullptr);
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_VALUE | WM_GIZMO_HIDDEN_SELECT, true);
     ggd->gizmos.xyz_view[i] = gz;
@@ -187,26 +187,26 @@ static void gizmo_mesh_spin_init_refresh_axis_orientation(wmGizmoGroup *gzgroup,
                                                           const float axis_vec[3],
                                                           const float axis_tan[3])
 {
-  GizmoGroupData_SpinInit *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinInit *ggd = static_cast<GizmoGroupData_SpinInit *>(gzgroup->customdata);
   wmGizmo *gz = ggd->gizmos.xyz_view[axis_index];
-  if (axis_tan != NULL) {
+  if (axis_tan != nullptr) {
     WM_gizmo_set_matrix_rotation_from_yz_axis(gz, axis_tan, axis_vec);
   }
   else {
     WM_gizmo_set_matrix_rotation_from_z_axis(gz, axis_vec);
   }
 
-  /* Only for display, use icons to access. */
+/* Only for display, use icons to access. */
 #ifndef USE_DIAL_HOVER
   {
-    PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ggd->data.ot_spin, NULL);
+    PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ggd->data.ot_spin, nullptr);
     RNA_float_set_array(ptr, "axis", axis_vec);
   }
 #endif
   if (axis_index < 3) {
     for (int j = 0; j < 2; j++) {
       gz = ggd->gizmos.icon_button[axis_index][j];
-      PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ggd->data.ot_spin, NULL);
+      PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ggd->data.ot_spin, nullptr);
       float axis_vec_flip[3];
       if (0 == j) {
         negate_v3_v3(axis_vec_flip, axis_vec);
@@ -221,7 +221,7 @@ static void gizmo_mesh_spin_init_refresh_axis_orientation(wmGizmoGroup *gzgroup,
 
 static void gizmo_mesh_spin_init_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  GizmoGroupData_SpinInit *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinInit *ggd = static_cast<GizmoGroupData_SpinInit *>(gzgroup->customdata);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float viewinv_m3[3][3];
   copy_m3_m4(viewinv_m3, rv3d->viewinv);
@@ -244,11 +244,11 @@ static void gizmo_mesh_spin_init_draw_prepare(const bContext *C, wmGizmoGroup *g
 
   /* Refresh handled above when using view orientation. */
   if (!equals_m3m3(viewinv_m3, ggd->prev.viewinv_m3)) {
-    gizmo_mesh_spin_init_refresh_axis_orientation(gzgroup, 3, rv3d->viewinv[2], NULL);
+    gizmo_mesh_spin_init_refresh_axis_orientation(gzgroup, 3, rv3d->viewinv[2], nullptr);
     copy_m3_m4(ggd->prev.viewinv_m3, rv3d->viewinv);
   }
 
-  /* Hack! highlight XYZ dials based on buttons */
+/* Hack! highlight XYZ dials based on buttons */
 #ifdef USE_DIAL_HOVER
   {
     PointerRNA ptr;
@@ -281,13 +281,13 @@ static void gizmo_mesh_spin_init_draw_prepare(const bContext *C, wmGizmoGroup *g
 #endif
 }
 
-static void gizmo_mesh_spin_init_invoke_prepare(const bContext *UNUSED(C),
+static void gizmo_mesh_spin_init_invoke_prepare(const bContext * /*C*/,
                                                 wmGizmoGroup *gzgroup,
                                                 wmGizmo *gz,
-                                                const wmEvent *UNUSED(event))
+                                                const wmEvent * /*event*/)
 {
   /* Set the initial ortho axis. */
-  GizmoGroupData_SpinInit *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinInit *ggd = static_cast<GizmoGroupData_SpinInit *>(gzgroup->customdata);
   ggd->invoke.ortho_axis_active = -1;
   for (int i = 0; i < 3; i++) {
     if (ELEM(gz, UNPACK2(ggd->gizmos.icon_button[i]))) {
@@ -299,9 +299,9 @@ static void gizmo_mesh_spin_init_invoke_prepare(const bContext *UNUSED(C),
 
 static void gizmo_mesh_spin_init_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  GizmoGroupData_SpinInit *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinInit *ggd = static_cast<GizmoGroupData_SpinInit *>(gzgroup->customdata);
   RegionView3D *rv3d = ED_view3d_context_rv3d((bContext *)C);
-  const float *gizmo_center = NULL;
+  const float *gizmo_center = nullptr;
   {
     Scene *scene = CTX_data_scene(C);
     const View3DCursor *cursor = &scene->cursor;
@@ -340,7 +340,7 @@ static void gizmo_mesh_spin_init_refresh(const bContext *C, wmGizmoGroup *gzgrou
   }
 
   {
-    gizmo_mesh_spin_init_refresh_axis_orientation(gzgroup, 3, rv3d->viewinv[2], NULL);
+    gizmo_mesh_spin_init_refresh_axis_orientation(gzgroup, 3, rv3d->viewinv[2], nullptr);
   }
 
 #ifdef USE_SELECT_CENTER
@@ -416,7 +416,7 @@ static void gizmo_mesh_spin_init_message_subscribe(const bContext *C,
                                                    wmGizmoGroup *gzgroup,
                                                    struct wmMsgBus *mbus)
 {
-  GizmoGroupData_SpinInit *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinInit *ggd = static_cast<GizmoGroupData_SpinInit *>(gzgroup->customdata);
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
 
@@ -430,18 +430,12 @@ static void gizmo_mesh_spin_init_message_subscribe(const bContext *C,
   PointerRNA cursor_ptr;
   RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &cursor_ptr);
   /* All cursor properties. */
-  WM_msg_subscribe_rna(mbus, &cursor_ptr, NULL, &msg_sub_value_gz_tag_refresh, __func__);
+  WM_msg_subscribe_rna(mbus, &cursor_ptr, nullptr, &msg_sub_value_gz_tag_refresh, __func__);
 
-  WM_msg_subscribe_rna_params(mbus,
-                              &(const wmMsgParams_RNA){
-                                  .ptr =
-                                      (PointerRNA){
-                                          .type = gzgroup->type->srna,
-                                      },
-                                  .prop = ggd->data.gzgt_axis_prop,
-                              },
-                              &msg_sub_value_gz_tag_refresh,
-                              __func__);
+  wmMsgParams_RNA params{};
+  params.ptr.type = gzgroup->type->srna;
+  params.prop = ggd->data.gzgt_axis_prop,
+  WM_msg_subscribe_rna_params(mbus, &params, &msg_sub_value_gz_tag_refresh, __func__);
 }
 
 void MESH_GGT_spin(wmGizmoGroupType *gzgt)
@@ -483,7 +477,7 @@ void MESH_GGT_spin(wmGizmoGroupType *gzgt)
  */
 #define USE_ANGLE_Z_ORIENT
 
-typedef struct GizmoGroupData_SpinRedo {
+struct GizmoGroupData_SpinRedo {
   /* Translate XYZ. */
   wmGizmo *translate_c;
   /* Spin angle */
@@ -526,7 +520,7 @@ typedef struct GizmoGroupData_SpinRedo {
     float orient_mat[3][3];
 
   } data;
-} GizmoGroupData_SpinRedo;
+};
 
 /**
  * XXX. calling redo from property updates is not great.
@@ -612,9 +606,10 @@ static void gizmo_mesh_spin_redo_update_from_op(GizmoGroupData_SpinRedo *ggd)
 /* depth callbacks */
 static void gizmo_spin_prop_depth_get(const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
-  float *value = value_p;
+  float *value = static_cast<float *>(value_p);
 
   BLI_assert(gz_prop->type->array_length == 1);
   UNUSED_VARS_NDEBUG(gz_prop);
@@ -630,9 +625,10 @@ static void gizmo_spin_prop_depth_set(const wmGizmo *gz,
                                       wmGizmoProperty *gz_prop,
                                       const void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
-  const float *value = value_p;
+  const float *value = static_cast<const float *>(value_p);
 
   BLI_assert(gz_prop->type->array_length == 1);
   UNUSED_VARS_NDEBUG(gz_prop);
@@ -656,9 +652,10 @@ static void gizmo_spin_prop_translate_get(const wmGizmo *gz,
                                           wmGizmoProperty *gz_prop,
                                           void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
-  float *value = value_p;
+  float *value = static_cast<float *>(value_p);
 
   BLI_assert(gz_prop->type->array_length == 3);
   UNUSED_VARS_NDEBUG(gz_prop);
@@ -670,13 +667,14 @@ static void gizmo_spin_prop_translate_set(const wmGizmo *gz,
                                           wmGizmoProperty *gz_prop,
                                           const void *value)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
 
   BLI_assert(gz_prop->type->array_length == 3);
   UNUSED_VARS_NDEBUG(gz_prop);
 
-  RNA_property_float_set_array(op->ptr, ggd->data.prop_axis_co, value);
+  RNA_property_float_set_array(op->ptr, ggd->data.prop_axis_co, static_cast<const float *>(value));
 
   gizmo_spin_exec(ggd);
 }
@@ -686,9 +684,10 @@ static void gizmo_spin_prop_axis_angle_get(const wmGizmo *gz,
                                            wmGizmoProperty *gz_prop,
                                            void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
-  float *value = value_p;
+  float *value = static_cast<float *>(value_p);
 
   BLI_assert(gz_prop->type->array_length == 1);
   UNUSED_VARS_NDEBUG(gz_prop);
@@ -717,9 +716,10 @@ static void gizmo_spin_prop_axis_angle_set(const wmGizmo *gz,
                                            wmGizmoProperty *gz_prop,
                                            const void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
-  const float *value = value_p;
+  const float *value = static_cast<const float *>(value_p);
 
   BLI_assert(gz_prop->type->array_length == 1);
   UNUSED_VARS_NDEBUG(gz_prop);
@@ -754,9 +754,10 @@ static void gizmo_spin_prop_axis_angle_set(const wmGizmo *gz,
 /* angle callbacks */
 static void gizmo_spin_prop_angle_get(const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
-  float *value = value_p;
+  float *value = static_cast<float *>(value_p);
 
   BLI_assert(gz_prop->type->array_length == 1);
   UNUSED_VARS_NDEBUG(gz_prop);
@@ -767,11 +768,12 @@ static void gizmo_spin_prop_angle_set(const wmGizmo *gz,
                                       wmGizmoProperty *gz_prop,
                                       const void *value_p)
 {
-  GizmoGroupData_SpinRedo *ggd = gz->parent_gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      gz->parent_gzgroup->customdata);
   wmOperator *op = ggd->data.op;
   BLI_assert(gz_prop->type->array_length == 1);
   UNUSED_VARS_NDEBUG(gz_prop);
-  const float *value = value_p;
+  const float *value = static_cast<const float *>(value_p);
   RNA_property_float_set(op->ptr, ggd->data.prop_angle, value[0]);
 
   gizmo_spin_exec(ggd);
@@ -790,7 +792,7 @@ static bool gizmo_mesh_spin_redo_poll(const bContext *C, wmGizmoGroupType *gzgt)
 static void gizmo_mesh_spin_redo_modal_from_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
   /* Start off dragging. */
-  GizmoGroupData_SpinRedo *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(gzgroup->customdata);
   wmWindow *win = CTX_wm_window(C);
   wmGizmo *gz = ggd->angle_z;
   wmGizmoMap *gzmap = gzgroup->parent_gzmap;
@@ -805,11 +807,12 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
   wmOperatorType *ot = WM_operatortype_find("MESH_OT_spin", true);
   wmOperator *op = WM_operator_last_redo(C);
 
-  if ((op == NULL) || (op->type != ot)) {
+  if ((op == nullptr) || (op->type != ot)) {
     return;
   }
 
-  GizmoGroupData_SpinRedo *ggd = MEM_callocN(sizeof(*ggd), __func__);
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(
+      MEM_callocN(sizeof(*ggd), __func__));
   gzgroup->customdata = ggd;
 
   const wmGizmoType *gzt_arrow = WM_gizmotype_find("GIZMO_GT_arrow_3d", true);
@@ -818,7 +821,7 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Rotate View Axis (rotate_view) */
   {
-    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, NULL);
+    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, nullptr);
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     zero_v4(gz->color);
     copy_v3_fl(gz->color_hi, 1.0f);
@@ -833,7 +836,7 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Translate Center (translate_c) */
   {
-    wmGizmo *gz = WM_gizmo_new_ptr(gzt_move, gzgroup, NULL);
+    wmGizmo *gz = WM_gizmo_new_ptr(gzt_move, gzgroup, nullptr);
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     gz->color[3] = 0.6f;
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_MOVE_STYLE_RING_2D);
@@ -845,7 +848,7 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Spin Angle (angle_z) */
   {
-    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, NULL);
+    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, nullptr);
     copy_v3_v3(gz->color, gz->color_hi);
     gz->color[3] = 0.5f;
     RNA_boolean_set(gz->ptr, "wrap_angle", false);
@@ -860,7 +863,7 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Translate X/Y Tangents (translate_xy) */
   for (int i = 0; i < 2; i++) {
-    wmGizmo *gz = WM_gizmo_new_ptr(gzt_arrow, gzgroup, NULL);
+    wmGizmo *gz = WM_gizmo_new_ptr(gzt_arrow, gzgroup, nullptr);
     UI_GetThemeColor3fv(TH_AXIS_X + i, gz->color);
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_NORMAL);
     RNA_enum_set(gz->ptr, "draw_options", 0);
@@ -870,7 +873,7 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Rotate X/Y Tangents (rotate_xy) */
   for (int i = 0; i < 2; i++) {
-    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, NULL);
+    wmGizmo *gz = WM_gizmo_new_ptr(gzt_dial, gzgroup, nullptr);
     UI_GetThemeColor3fv(TH_AXIS_X + i, gz->color);
     gz->color[3] = 0.6f;
     WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_VALUE, true);
@@ -901,7 +904,8 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
     wmGizmoMap *gzmap = region->gizmo_map;
     wmGizmoGroup *gzgroup_init = WM_gizmomap_group_find(gzmap, "MESH_GGT_spin");
     if (gzgroup_init) {
-      GizmoGroupData_SpinInit *ggd_init = gzgroup_init->customdata;
+      GizmoGroupData_SpinInit *ggd_init = static_cast<GizmoGroupData_SpinInit *>(
+          gzgroup_init->customdata);
       copy_m3_m3(ggd->data.orient_mat, ggd_init->data.orient_mat);
       if (ggd_init->invoke.ortho_axis_active != -1) {
         copy_v3_v3(ggd->data.orient_axis_relative,
@@ -951,51 +955,48 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Setup property callbacks */
   {
-    WM_gizmo_target_property_def_func(ggd->translate_c,
-                                      "offset",
-                                      &(const wmGizmoPropertyFnParams){
-                                          .value_get_fn = gizmo_spin_prop_translate_get,
-                                          .value_set_fn = gizmo_spin_prop_translate_set,
-                                          .range_get_fn = NULL,
-                                          .user_data = NULL,
-                                      });
-
-    WM_gizmo_target_property_def_func(ggd->rotate_view,
-                                      "offset",
-                                      &(const wmGizmoPropertyFnParams){
-                                          .value_get_fn = gizmo_spin_prop_axis_angle_get,
-                                          .value_set_fn = gizmo_spin_prop_axis_angle_set,
-                                          .range_get_fn = NULL,
-                                          .user_data = NULL,
-                                      });
-
-    for (int i = 0; i < 2; i++) {
-      WM_gizmo_target_property_def_func(ggd->rotate_xy[i],
-                                        "offset",
-                                        &(const wmGizmoPropertyFnParams){
-                                            .value_get_fn = gizmo_spin_prop_axis_angle_get,
-                                            .value_set_fn = gizmo_spin_prop_axis_angle_set,
-                                            .range_get_fn = NULL,
-                                            .user_data = NULL,
-                                        });
-      WM_gizmo_target_property_def_func(ggd->translate_xy[i],
-                                        "offset",
-                                        &(const wmGizmoPropertyFnParams){
-                                            .value_get_fn = gizmo_spin_prop_depth_get,
-                                            .value_set_fn = gizmo_spin_prop_depth_set,
-                                            .range_get_fn = NULL,
-                                            .user_data = NULL,
-                                        });
+    {
+      wmGizmoPropertyFnParams params{};
+      params.value_get_fn = gizmo_spin_prop_translate_get;
+      params.value_set_fn = gizmo_spin_prop_translate_set;
+      params.range_get_fn = nullptr;
+      params.user_data = nullptr;
+      WM_gizmo_target_property_def_func(ggd->translate_c, "offset", &params);
     }
 
-    WM_gizmo_target_property_def_func(ggd->angle_z,
-                                      "offset",
-                                      &(const wmGizmoPropertyFnParams){
-                                          .value_get_fn = gizmo_spin_prop_angle_get,
-                                          .value_set_fn = gizmo_spin_prop_angle_set,
-                                          .range_get_fn = NULL,
-                                          .user_data = NULL,
-                                      });
+    {
+      wmGizmoPropertyFnParams params{};
+      params.value_get_fn = gizmo_spin_prop_axis_angle_get;
+      params.value_set_fn = gizmo_spin_prop_axis_angle_set;
+      params.range_get_fn = nullptr;
+      params.user_data = nullptr;
+      WM_gizmo_target_property_def_func(ggd->rotate_view, "offset", &params);
+    }
+
+    for (int i = 0; i < 2; i++) {
+      {
+        wmGizmoPropertyFnParams params{};
+        params.value_get_fn = gizmo_spin_prop_axis_angle_get,
+        params.value_set_fn = gizmo_spin_prop_axis_angle_set, params.range_get_fn = nullptr,
+        params.user_data = nullptr,
+        WM_gizmo_target_property_def_func(ggd->rotate_xy[i], "offset", &params);
+      }
+      {
+        wmGizmoPropertyFnParams params{};
+        params.value_get_fn = gizmo_spin_prop_depth_get;
+        params.value_set_fn = gizmo_spin_prop_depth_set;
+        params.range_get_fn = nullptr;
+        params.user_data = nullptr;
+        WM_gizmo_target_property_def_func(ggd->translate_xy[i], "offset", &params);
+      }
+    }
+
+    wmGizmoPropertyFnParams params{};
+    params.value_get_fn = gizmo_spin_prop_angle_get;
+    params.value_set_fn = gizmo_spin_prop_angle_set;
+    params.range_get_fn = nullptr;
+    params.user_data = nullptr;
+    WM_gizmo_target_property_def_func(ggd->angle_z, "offset", &params);
   }
 
   wmWindow *win = CTX_wm_window(C);
@@ -1011,9 +1012,9 @@ static void gizmo_mesh_spin_redo_setup(const bContext *C, wmGizmoGroup *gzgroup)
   }
 }
 
-static void gizmo_mesh_spin_redo_draw_prepare(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
+static void gizmo_mesh_spin_redo_draw_prepare(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
-  GizmoGroupData_SpinRedo *ggd = gzgroup->customdata;
+  GizmoGroupData_SpinRedo *ggd = static_cast<GizmoGroupData_SpinRedo *>(gzgroup->customdata);
   if (ggd->data.op->next) {
     ggd->data.op = WM_operator_last_redo((bContext *)ggd->data.context);
   }
