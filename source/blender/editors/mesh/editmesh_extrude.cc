@@ -273,7 +273,8 @@ static int edbm_extrude_repeat_exec(bContext *C, wmOperator *op)
       normalize_v3_v3(offset, rv3d->persinv[2]);
     }
     else {
-      copy_v3_v3(offset, (const float[3]){0, 0, 1});
+      const float up[3] = {0, 0, 1};
+      copy_v3_v3(offset, up);
     }
     RNA_property_float_set_array(op->ptr, prop, offset);
   }

@@ -531,7 +531,7 @@ static void bm_face_split_by_edges(BMesh *bm,
 
   /* now assign all */
   /* pop free values into the next stack */
-  while ((v = BLI_SMALLSTACK_POP_EX(vert_stack, vert_stack_next))) {
+  while ((v = static_cast<BMVert *>(BLI_SMALLSTACK_POP_EX(vert_stack, vert_stack_next)))) {
     BMIter eiter;
     BMEdge *e_next;
 
@@ -805,7 +805,7 @@ static BMEdge *bm_face_split_edge_find(BMEdge *e_a,
   {
     /* reset the flag, for future use */
     BMFace *f;
-    while ((f = BLI_SMALLSTACK_POP(face_stack))) {
+    while ((f = static_cast<BMFace *>(BLI_SMALLSTACK_POP(face_stack)))) {
       BM_elem_flag_disable(f, BM_ELEM_INTERNAL_TAG);
     }
   }
@@ -901,7 +901,7 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator * /*op*/)
             /* pass */
           }
           else if (loop_stack_len == 1) {
-            l_best = BLI_SMALLSTACK_POP(loop_stack);
+            l_best = static_cast<BMLoop *>(BLI_SMALLSTACK_POP(loop_stack));
           }
           else {
             /* complicated case, match the edge with a face-loop */
@@ -915,7 +915,7 @@ static int edbm_face_split_by_edges_exec(bContext *C, wmOperator * /*op*/)
             sub_v3_v3v3(e_dir, v_other->co, v->co);
             normalize_v3(e_dir);
 
-            while ((l = BLI_SMALLSTACK_POP(loop_stack))) {
+            while ((l = static_cast<BMLoop *>(BLI_SMALLSTACK_POP(loop_stack)))) {
               float dot_test;
 
               /* Check dot first to save on expensive angle-comparison.
