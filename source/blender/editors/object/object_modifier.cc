@@ -3723,3 +3723,36 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Update id mapping in geometry nodes modifier
+ * \{ */
+
+static int geometry_nodes_id_mapping_exec(bContext *C, wmOperator * /*op*/)
+{
+  Main *bmain = CTX_data_main(C);
+  Object *ob = ED_object_active_context(C);
+  ModifierData *md = BKE_object_active_modifier(ob);
+  if (!(md && md->type == eModifierType_Nodes)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_geometry_nodes_id_mapping_update(wmOperatorType *ot)
+{
+  ot->name = "Update Geometry Nodes ID Mapping";
+  ot->description = "Find IDs used by cached data and make sure that a mapping exists";
+  ot->idname = __func__;
+
+  ot->exec = geometry_nodes_id_mapping_exec;
+  ot->poll = ED_operator_object_active;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */

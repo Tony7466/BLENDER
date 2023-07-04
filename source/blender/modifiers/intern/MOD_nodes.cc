@@ -1413,7 +1413,8 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd, &mappings_ptr);
 
   uiLayout *col = uiLayoutColumn(layout, false);
-  uiTemplateList(col,
+  uiLayout *list_row = uiLayoutRow(col, false);
+  uiTemplateList(list_row,
                  C,
                  "DATA_UL_nodes_modifier_id_mappings",
                  "",
@@ -1427,6 +1428,8 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
                  UILST_LAYOUT_DEFAULT,
                  0,
                  UI_TEMPLATE_LIST_FLAG_NONE);
+  uiLayout *ops_col = uiLayoutColumn(list_row, true);
+  uiItemO(ops_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
 
   if (nmd->active_id_mapping < 0 || nmd->active_id_mapping >= nmd->id_mappings_num) {
     return;
