@@ -58,10 +58,10 @@
 /* NOTE: there's a ed_armature_bone_unique_name() too! */
 static bool editbone_unique_check(void *arg, const char *name)
 {
-  struct {
+  struct Arg {
     ListBase *lb;
     void *bone;
-  } *data = arg;
+  } *data = static_cast<Arg *>(arg);
   EditBone *dupli = ED_armature_ebone_find_name(data->lb, name);
   return dupli && dupli != data->bone;
 }
@@ -86,13 +86,13 @@ void ED_armature_ebone_unique_name(ListBase *ebones, char *name, EditBone *bone)
 
 static bool bone_unique_check(void *arg, const char *name)
 {
-  return BKE_armature_find_bone_name((bArmature *)arg, name) != NULL;
+  return BKE_armature_find_bone_name((bArmature *)arg, name) != nullptr;
 }
 
 static void ed_armature_bone_unique_name(bArmature *arm, char *name)
 {
   BLI_uniquename_cb(
-      bone_unique_check, (void *)arm, DATA_("Bone"), '.', name, sizeof(((Bone *)NULL)->name));
+      bone_unique_check, (void *)arm, DATA_("Bone"), '.', name, sizeof(((Bone *)nullptr)->name));
 }
 
 /** \} */
@@ -110,12 +110,12 @@ static void constraint_bone_name_fix(Object *ob,
   bConstraint *curcon;
   bConstraintTarget *ct;
 
-  for (curcon = conlist->first; curcon; curcon = curcon->next) {
-    ListBase targets = {NULL, NULL};
+  for (curcon = static_cast<bConstraint *>(conlist->first); curcon; curcon = curcon->next) {
+    ListBase targets = {nullptr, nullptr};
 
     /* constraint targets */
     if (BKE_constraint_targets_get(curcon, &targets)) {
-      for (ct = targets.first; ct; ct = ct->next) {
+      for (ct = static_cast<bConstraintTarget *>(targets.first); ct; ct = ct->next) {
         if (ct->tar == ob) {
           if (STREQ(ct->subtarget, oldname)) {
             STRNCPY(ct->subtarget, newname);
@@ -156,7 +156,7 @@ void ED_armature_bone_rename(Main *bmain,
       EditBone *eBone = ED_armature_ebone_find_name(arm->edbo, oldname);
 
       if (eBone) {
-        ED_armature_ebone_unique_name(arm->edbo, newname, NULL);
+        ED_armature_ebone_unique_name(arm->edbo, newname, nullptr);
         STRNCPY(eBone->name, newname);
       }
       else {
@@ -171,7 +171,7 @@ void ED_armature_bone_rename(Main *bmain,
 
         if (arm->bonehash) {
           BLI_assert(BLI_ghash_haskey(arm->bonehash, bone->name));
-          BLI_ghash_remove(arm->bonehash, bone->name, NULL, NULL);
+          BLI_ghash_remove(arm->bonehash, bone->name, nullptr, nullptr);
         }
 
         STRNCPY(bone->name, newname);
@@ -189,7 +189,8 @@ void ED_armature_bone_rename(Main *bmain,
     DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
 
     /* do entire dbase - objects */
-    for (ob = bmain->objects.first; ob; ob = ob->id.next) {
+    for (ob = static_cast<Object *>(bmain->objects.first); ob;
+         ob = static_cast<Object *>(ob->id.next)) {
       ModifierData *md;
 
       /* we have the object using the armature */
@@ -205,7 +206,7 @@ void ED_armature_bone_rename(Main *bmain,
             /* remove the old hash entry, and replace with the new name */
             if (gh) {
               BLI_assert(BLI_ghash_haskey(gh, pchan->name));
-              BLI_ghash_remove(gh, pchan->name, NULL, NULL);
+              BLI_ghash_remove(gh, pchan->name, nullptr, nullptr);
             }
 
             STRNCPY(pchan->name, newname);
@@ -219,13 +220,16 @@ void ED_armature_bone_rename(Main *bmain,
         }
 
         /* Update any object constraints to use the new bone name */
-        for (cob = bmain->objects.first; cob; cob = cob->id.next) {
+        for (cob = static_cast<Object *>(bmain->objects.first); cob;
+             cob = static_cast<Object *>(cob->id.next))
+        {
           if (cob->constraints.first) {
             constraint_bone_name_fix(ob, &cob->constraints, oldname, newname);
           }
           if (cob->pose) {
             bPoseChannel *pchan;
-            for (pchan = cob->pose->chanbase.first; pchan; pchan = pchan->next) {
+            for (pchan = static_cast<bPoseChannel *>(cob->pose->chanbase.first); pchan;
+                 pchan = pchan->next) {
               constraint_bone_name_fix(ob, &pchan->constraints, oldname, newname);
             }
           }
@@ -246,12 +250,12 @@ void ED_armature_bone_rename(Main *bmain,
         bDeformGroup *dg = BKE_object_defgroup_find_name(ob, oldname);
         if (dg) {
           STRNCPY(dg->name, newname);
-          DEG_id_tag_update(ob->data, ID_RECALC_GEOMETRY);
+          DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_GEOMETRY);
         }
       }
 
       /* fix modifiers that might be using this name */
-      for (md = ob->modifiers.first; md; md = md->next) {
+      for (md = static_cast<ModifierData *>(ob->modifiers.first); md; md = md->next) {
         switch (md->type) {
           case eModifierType_Hook: {
             HookModifierData *hmd = (HookModifierData *)md;
@@ -286,7 +290,7 @@ void ED_armature_bone_rename(Main *bmain,
       /* fix camera focus */
       if (ob->type == OB_CAMERA) {
         Camera *cam = (Camera *)ob->data;
-        if ((cam->dof.focus_object != NULL) && (cam->dof.focus_object->data == arm)) {
+        if ((cam->dof.focus_object != nullptr) && (cam->dof.focus_object->data == arm)) {
           if (STREQ(cam->dof.focus_subtarget, oldname)) {
             STRNCPY(cam->dof.focus_subtarget, newname);
             DEG_id_tag_update(&cam->id, ID_RECALC_COPY_ON_WRITE);
@@ -299,7 +303,7 @@ void ED_armature_bone_rename(Main *bmain,
 
         bGPdata *gpd = (bGPdata *)ob->data;
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-          if ((gpl->parent != NULL) && (gpl->parent->data == arm)) {
+          if ((gpl->parent != nullptr) && (gpl->parent->data == arm)) {
             if (STREQ(gpl->parsubstr, oldname)) {
               STRNCPY(gpl->parsubstr, newname);
             }
@@ -314,7 +318,7 @@ void ED_armature_bone_rename(Main *bmain,
                 bDeformGroup *dg = BKE_object_defgroup_find_name(ob, oldname);
                 if (dg) {
                   STRNCPY(dg->name, newname);
-                  DEG_id_tag_update(ob->data, ID_RECALC_GEOMETRY);
+                  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_GEOMETRY);
                 }
               }
               break;
@@ -350,12 +354,14 @@ void ED_armature_bone_rename(Main *bmain,
     /* correct view locking */
     {
       bScreen *screen;
-      for (screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (screen = static_cast<bScreen *>(bmain->screens.first); screen;
+           screen = static_cast<bScreen *>(screen->id.next))
+      {
         ScrArea *area;
         /* add regions */
-        for (area = screen->areabase.first; area; area = area->next) {
+        for (area = static_cast<ScrArea *>(screen->areabase.first); area; area = area->next) {
           SpaceLink *sl;
-          for (sl = area->spacedata.first; sl; sl = sl->next) {
+          for (sl = static_cast<SpaceLink *>(area->spacedata.first); sl; sl = sl->next) {
             if (sl->spacetype == SPACE_VIEW3D) {
               View3D *v3d = (View3D *)sl;
               if (v3d->ob_center && v3d->ob_center->data == arm) {
@@ -377,18 +383,18 @@ void ED_armature_bone_rename(Main *bmain,
 /** \name Bone Flipping (Object & Edit Mode API)
  * \{ */
 
-typedef struct BoneFlipNameData {
+struct BoneFlipNameData {
   struct BoneFlipNameData *next, *prev;
   char *name;
   char name_flip[MAXBONENAME];
-} BoneFlipNameData;
+};
 
 void ED_armature_bones_flip_names(Main *bmain,
                                   bArmature *arm,
                                   ListBase *bones_names,
                                   const bool do_strip_numbers)
 {
-  ListBase bones_names_conflicts = {NULL};
+  ListBase bones_names_conflicts = {nullptr};
   BoneFlipNameData *bfn;
 
   /* First pass: generate flip names, and blindly rename.
@@ -396,7 +402,7 @@ void ED_armature_bones_flip_names(Main *bmain,
    * store both bone's name and expected flipped one into temp list for second pass. */
   LISTBASE_FOREACH (LinkData *, link, bones_names) {
     char name_flip[MAXBONENAME];
-    char *name = link->data;
+    char *name = static_cast<char *>(link->data);
 
     /* WARNING: if do_strip_numbers is set, expect completely mismatched names in cases like
      * Bone.R, Bone.R.001, Bone.R.002, etc. */
@@ -405,7 +411,7 @@ void ED_armature_bones_flip_names(Main *bmain,
     ED_armature_bone_rename(bmain, arm, name, name_flip);
 
     if (!STREQ(name, name_flip)) {
-      bfn = alloca(sizeof(BoneFlipNameData));
+      bfn = static_cast<BoneFlipNameData *>(alloca(sizeof(BoneFlipNameData)));
       bfn->name = name;
       STRNCPY(bfn->name_flip, name_flip);
       BLI_addtail(&bones_names_conflicts, bfn);
@@ -416,7 +422,7 @@ void ED_armature_bones_flip_names(Main *bmain,
    * Note that if the other bone was not selected, its name was not flipped,
    * so conflict remains and that second rename simply generates a new numbered alternative name.
    */
-  for (bfn = bones_names_conflicts.first; bfn; bfn = bfn->next) {
+  for (bfn = static_cast<BoneFlipNameData *>(bones_names_conflicts.first); bfn; bfn = bfn->next) {
     ED_armature_bone_rename(bmain, arm, bfn->name, bfn->name_flip);
   }
 }
@@ -441,14 +447,14 @@ static int armature_flip_names_exec(bContext *C, wmOperator *op)
       scene, view_layer, CTX_wm_view3d(C), &objects_len);
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *ob = objects[ob_index];
-    bArmature *arm = ob->data;
+    bArmature *arm = static_cast<bArmature *>(ob->data);
 
     /* Paranoia check. */
-    if (ob_active->pose == NULL) {
+    if (ob_active->pose == nullptr) {
       continue;
     }
 
-    ListBase bones_names = {NULL};
+    ListBase bones_names = {nullptr};
 
     LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
       if (EBONE_VISIBLE(arm, ebone)) {
@@ -530,11 +536,11 @@ static int armature_autoside_names_exec(bContext *C, wmOperator *op)
       scene, view_layer, CTX_wm_view3d(C), &objects_len);
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *ob = objects[ob_index];
-    bArmature *arm = ob->data;
+    bArmature *arm = static_cast<bArmature *>(ob->data);
     bool changed = false;
 
     /* Paranoia checks. */
-    if (ELEM(NULL, ob, ob->pose)) {
+    if (ELEM(nullptr, ob, ob->pose)) {
       continue;
     }
 
@@ -584,7 +590,7 @@ void ARMATURE_OT_autoside_names(wmOperatorType *ot)
       {0, "XAXIS", 0, "X-Axis", "Left/Right"},
       {1, "YAXIS", 0, "Y-Axis", "Front/Back"},
       {2, "ZAXIS", 0, "Z-Axis", "Top/Bottom"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
