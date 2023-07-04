@@ -25,7 +25,6 @@ ViewerOperation::ViewerOperation()
 
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Value);
-  this->add_input_socket(DataType::Value);
 
   image_input_ = nullptr;
   alpha_input_ = nullptr;
