@@ -30,7 +30,7 @@ set(SRC
   anim_filter.cc
   anim_ipo_utils.cc
   anim_markers.cc
-  anim_motion_paths.c
+  anim_motion_paths.cc
   anim_ops.c
   drivers.c
   fmodifier_ui.c

@@ -38,7 +38,7 @@
 static CLG_LogRef LOG = {"ed.anim.motion_paths"};
 
 /* Motion path needing to be baked (mpt) */
-typedef struct MPathTarget {
+struct MPathTarget {
   struct MPathTarget *next, *prev;
 
   bMotionPath *mpath; /* motion path in question */
@@ -52,7 +52,7 @@ typedef struct MPathTarget {
   /* "Evaluated" Copies (these come from the background COW copy
    * that provide all the coordinates we want to save off). */
   Object *ob_eval; /* evaluated object */
-} MPathTarget;
+};
 
 /* ........ */
 
@@ -72,9 +72,11 @@ Depsgraph *animviz_depsgraph_build(Main *bmain,
 
   /* Make a flat array of IDs for the DEG API. */
   const int num_ids = BLI_listbase_count(targets);
-  ID **ids = MEM_malloc_arrayN(num_ids, sizeof(ID *), "animviz IDS");
+  ID **ids = static_cast<ID **>(MEM_malloc_arrayN(num_ids, sizeof(ID *), "animviz IDS"));
   int current_id_index = 0;
-  for (MPathTarget *mpt = targets->first; mpt != NULL; mpt = mpt->next) {
+  for (MPathTarget *mpt = static_cast<MPathTarget *>(targets->first); mpt != nullptr;
+       mpt = mpt->next)
+  {
     ids[current_id_index++] = &mpt->ob->id;
   }
 
@@ -96,7 +98,7 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
   /* object itself first */
   if ((ob->avs.recalc & ANIMVIZ_RECALC_PATHS) && (ob->mpath)) {
     /* new target for object */
-    mpt = MEM_callocN(sizeof(MPathTarget), "MPathTarget Ob");
+    mpt = static_cast<MPathTarget *>(MEM_callocN(sizeof(MPathTarget), "MPathTarget Ob"));
     BLI_addtail(targets, mpt);
 
     mpt->mpath = ob->mpath;
@@ -105,13 +107,14 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 
   /* bones */
   if ((ob->pose) && (ob->pose->avs.recalc & ANIMVIZ_RECALC_PATHS)) {
-    bArmature *arm = ob->data;
+    bArmature *arm = static_cast<bArmature *>(ob->data);
     bPoseChannel *pchan;
 
-    for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+    for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next)
+    {
       if ((pchan->bone) && (arm->layer & pchan->bone->layer) && (pchan->mpath)) {
         /* new target for bone */
-        mpt = MEM_callocN(sizeof(MPathTarget), "MPathTarget PoseBone");
+        mpt = static_cast<MPathTarget *>(MEM_callocN(sizeof(MPathTarget), "MPathTarget PoseBone"));
         BLI_addtail(targets, mpt);
 
         mpt->mpath = pchan->mpath;
@@ -130,7 +133,7 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
   MPathTarget *mpt;
 
   /* for each target, check if it can be baked on the current frame */
-  for (mpt = targets->first; mpt; mpt = mpt->next) {
+  for (mpt = static_cast<MPathTarget *>(targets->first); mpt; mpt = mpt->next) {
     bMotionPath *mpath = mpt->mpath;
 
     /* current frame must be within the range the cache works for
@@ -147,7 +150,7 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
 
     /* Lookup evaluated pose channel, here because the depsgraph
      * evaluation can change them so they are not cached in mpt. */
-    bPoseChannel *pchan_eval = NULL;
+    bPoseChannel *pchan_eval = nullptr;
     if (mpt->pchan) {
       pchan_eval = BKE_pose_channel_find_name(ob_eval->pose, mpt->pchan->name);
     }
@@ -182,9 +185,9 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
 
     /* Incremental update on evaluated object if possible, for fast updating
      * while dragging in transform. */
-    bMotionPath *mpath_eval = NULL;
+    bMotionPath *mpath_eval = nullptr;
     if (mpt->pchan) {
-      mpath_eval = (pchan_eval) ? pchan_eval->mpath : NULL;
+      mpath_eval = (pchan_eval) ? pchan_eval->mpath : nullptr;
     }
     else {
       mpath_eval = ob_eval->mpath;
@@ -204,7 +207,7 @@ static void motionpaths_calc_bake_targets(ListBase *targets, int cframe)
 /* Get pointer to animviz settings for the given target. */
 static bAnimVizSettings *animviz_target_settings_get(MPathTarget *mpt)
 {
-  if (mpt->pchan != NULL) {
+  if (mpt->pchan != nullptr) {
     return &mpt->ob->pose->avs;
   }
   return &mpt->ob->avs;
@@ -231,7 +234,7 @@ static int motionpath_get_prev_keyframe(MPathTarget *mpt,
 
   float current_frame_float = current_frame;
   const ActKeyColumn *ak = ED_keylist_find_prev(keylist, current_frame_float);
-  if (ak == NULL) {
+  if (ak == nullptr) {
     return mpt->mpath->start_frame;
   }
 
@@ -256,7 +259,7 @@ static int motionpath_get_next_keyframe(MPathTarget *mpt,
 
   float current_frame_float = current_frame;
   const ActKeyColumn *ak = ED_keylist_find_next(keylist, current_frame_float);
-  if (ak == NULL) {
+  if (ak == nullptr) {
     return mpt->mpath->end_frame;
   }
 
@@ -271,11 +274,11 @@ static int motionpath_get_next_next_keyframe(MPathTarget *mpt,
   return motionpath_get_next_keyframe(mpt, keylist, frame);
 }
 
-static bool motionpath_check_can_use_keyframe_range(MPathTarget *UNUSED(mpt),
+static bool motionpath_check_can_use_keyframe_range(MPathTarget * /*mpt*/,
                                                     AnimData *adt,
                                                     ListBase *fcurve_list)
 {
-  if (adt == NULL || fcurve_list == NULL) {
+  if (adt == nullptr || fcurve_list == nullptr) {
     return false;
   }
   /* NOTE: We might needed to do a full frame range update if there is a specific setup of NLA
@@ -312,7 +315,7 @@ static void motionpath_calculate_update_range(MPathTarget *mpt,
    * channel which wasn't edited.
    * Could be optimized further by storing some flags about which channels has been modified so
    * we ignore all others (which can potentially make an update range unnecessary wide). */
-  for (FCurve *fcu = fcurve_list->first; fcu != NULL; fcu = fcu->next) {
+  for (FCurve *fcu = static_cast<FCurve *>(fcurve_list->first); fcu != nullptr; fcu = fcu->next) {
     struct AnimKeylist *keylist = ED_keylist_create();
     fcurve_to_keylist(adt, fcu, keylist, 0);
     ED_keylist_prepare_for_direct_access(keylist);
@@ -398,7 +401,7 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
   /* TODO: include reports pointer? */
 
   /* Sanity check. */
-  if (ELEM(NULL, targets, targets->first)) {
+  if (ELEM(nullptr, targets, targets->first)) {
     return;
   }
 
@@ -451,7 +454,7 @@ void animviz_calc_motionpaths(Depsgraph *depsgraph,
     /* build list of all keyframes in active action for object or pchan */
     mpt->keylist = ED_keylist_create();
 
-    ListBase *fcurve_list = NULL;
+    ListBase *fcurve_list = nullptr;
     if (adt) {
       /* get pointer to animviz settings for each target */
       bAnimVizSettings *avs = animviz_target_settings_get(mpt);
