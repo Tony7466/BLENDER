@@ -965,8 +965,8 @@ static int time_segment_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   const int new_active_index = gpmd->segment_active_index + 1;
-  TimeGpencilModifierSegment *new_segments = static_cast<TimeGpencilModifierSegment *>(
-      MEM_malloc_arrayN)(gpmd->segments_len + 1, sizeof(TimeGpencilModifierSegment), __func__);
+  TimeGpencilModifierSegment *new_segments = MEM_malloc_arrayN(
+      gpmd->segments_len + 1, sizeof(TimeGpencilModifierSegment), __func__);
 
   if (gpmd->segments_len != 0) {
     /* Copy the segments before the new segment. */
