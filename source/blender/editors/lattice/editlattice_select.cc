@@ -67,7 +67,7 @@ bool ED_lattice_deselect_all_multi_ex(Base **bases, const uint bases_len)
     Base *base_iter = bases[base_index];
     Object *ob_iter = base_iter->object;
     changed_multi |= ED_lattice_flags_set(ob_iter, 0);
-    DEG_id_tag_update(ob_iter->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
   }
   return changed_multi;
 }
@@ -114,7 +114,7 @@ static int lattice_select_random_exec(bContext *C, wmOperator *op)
 
     int a = lt->pntsu * lt->pntsv * lt->pntsw;
     int elem_map_len = 0;
-    BPoint **elem_map = MEM_mallocN(sizeof(*elem_map) * a, __func__);
+    BPoint **elem_map = static_cast<BPoint **>(MEM_mallocN(sizeof(*elem_map) * a, __func__));
     BPoint *bp = lt->def;
 
     while (a--) {
@@ -135,7 +135,7 @@ static int lattice_select_random_exec(bContext *C, wmOperator *op)
       lt->actbp = LT_ACTBP_NONE;
     }
 
-    DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
   }
   MEM_freeN(objects);
@@ -224,7 +224,7 @@ static int lattice_select_mirror_exec(bContext *C, wmOperator *op)
     }
 
     /* TODO: only notify changes. */
-    DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
   }
   MEM_freeN(objects);
@@ -317,7 +317,7 @@ static int lattice_select_more_less(bContext *C, const bool select)
     MEM_freeN(selpoints);
 
     changed = true;
-    DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
   }
   MEM_freeN(objects);
@@ -325,12 +325,12 @@ static int lattice_select_more_less(bContext *C, const bool select)
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static int lattice_select_more_exec(bContext *C, wmOperator *UNUSED(op))
+static int lattice_select_more_exec(bContext *C, wmOperator * /*op*/)
 {
   return lattice_select_more_less(C, true);
 }
 
-static int lattice_select_less_exec(bContext *C, wmOperator *UNUSED(op))
+static int lattice_select_less_exec(bContext *C, wmOperator * /*op*/)
 {
   return lattice_select_more_less(C, false);
 }
@@ -373,7 +373,7 @@ void LATTICE_OT_select_less(wmOperatorType *ot)
 
 bool ED_lattice_flags_set(Object *obedit, int flag)
 {
-  Lattice *lt = obedit->data;
+  Lattice *lt = static_cast<Lattice *>(obedit->data);
   BPoint *bp;
   int a;
   bool changed = false;
@@ -413,7 +413,7 @@ static int lattice_select_all_exec(bContext *C, wmOperator *op)
     action = SEL_SELECT;
     for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
       Object *obedit = objects[ob_index];
-      Lattice *lt = obedit->data;
+      Lattice *lt = static_cast<Lattice *>(obedit->data);
       if (BKE_lattice_is_any_selected(lt->editlatt->latt)) {
         action = SEL_DESELECT;
         break;
@@ -437,7 +437,7 @@ static int lattice_select_all_exec(bContext *C, wmOperator *op)
         changed = ED_lattice_flags_set(obedit, 0);
         break;
       case SEL_INVERT:
-        lt = obedit->data;
+        lt = static_cast<Lattice *>(obedit->data);
         bp = lt->editlatt->latt->def;
         a = lt->editlatt->latt->pntsu * lt->editlatt->latt->pntsv * lt->editlatt->latt->pntsw;
         lt->editlatt->latt->actbp = LT_ACTBP_NONE;
@@ -453,7 +453,7 @@ static int lattice_select_all_exec(bContext *C, wmOperator *op)
     }
     if (changed) {
       changed_multi = true;
-      DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
     }
   }
@@ -505,7 +505,7 @@ static int lattice_select_ungrouped_exec(bContext *C, wmOperator *op)
     BPoint *bp;
     int a, tot;
 
-    if (BLI_listbase_is_empty(&lt->vertex_group_names) || lt->dvert == NULL) {
+    if (BLI_listbase_is_empty(&lt->vertex_group_names) || lt->dvert == nullptr) {
       continue;
     }
 
@@ -518,14 +518,14 @@ static int lattice_select_ungrouped_exec(bContext *C, wmOperator *op)
 
     for (a = 0, bp = lt->def; a < tot; a++, bp++, dv++) {
       if (bp->hide == 0) {
-        if (dv->dw == NULL) {
+        if (dv->dw == nullptr) {
           bp->f1 |= SELECT;
         }
       }
     }
 
     changed = true;
-    DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
   }
   MEM_freeN(objects);
@@ -574,7 +574,7 @@ struct NearestLatticeVert_UserData {
 
 static void findnearestLattvert__doClosest(void *user_data, BPoint *bp, const float screen_co[2])
 {
-  struct NearestLatticeVert_UserData *data = user_data;
+  struct NearestLatticeVert_UserData *data = static_cast<NearestLatticeVert_UserData *>(user_data);
   float dist_test = len_manhattan_v2v2(data->mval_fl, screen_co);
 
   if ((bp->f1 & SELECT) && data->select) {
@@ -590,7 +590,7 @@ static void findnearestLattvert__doClosest(void *user_data, BPoint *bp, const fl
 
 static BPoint *findnearestLattvert(ViewContext *vc, bool select, Base **r_base)
 {
-  struct NearestLatticeVert_UserData data = {NULL};
+  struct NearestLatticeVert_UserData data = {nullptr};
 
   data.dist = ED_view3d_select_dist_px();
   data.select = select;
@@ -621,8 +621,8 @@ bool ED_lattice_select_pick(bContext *C, const int mval[2], const struct SelectP
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
-  BPoint *bp = NULL;
-  Base *basact = NULL;
+  BPoint *bp = nullptr;
+  Base *basact = nullptr;
   bool changed = false;
 
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
@@ -630,7 +630,7 @@ bool ED_lattice_select_pick(bContext *C, const int mval[2], const struct SelectP
   vc.mval[1] = mval[1];
 
   bp = findnearestLattvert(&vc, true, &basact);
-  bool found = (bp != NULL);
+  bool found = (bp != nullptr);
 
   if (params->sel_op == SEL_OP_SET) {
     if ((found && params->select_passthrough) && (bp->f1 & SELECT)) {
@@ -644,7 +644,7 @@ bool ED_lattice_select_pick(bContext *C, const int mval[2], const struct SelectP
       for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
         Object *ob = objects[ob_index];
         if (ED_lattice_flags_set(ob, 0)) {
-          DEG_id_tag_update(ob->data, ID_RECALC_SELECT);
+          DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SELECT);
           WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
         }
       }
@@ -692,7 +692,7 @@ bool ED_lattice_select_pick(bContext *C, const int mval[2], const struct SelectP
       ED_object_base_activate(C, basact);
     }
 
-    DEG_id_tag_update(vc.obedit->data, ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(vc.obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, vc.obedit->data);
 
     changed = true;
