@@ -105,7 +105,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   if (params.in_out() == SOCK_OUT) {
-    params.add_item("Output", [](LinkSearchOpParams &params) {
+    params.add_item(N_("Output"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeSwitch");
       node_storage(node).input_type = params.socket.type;
       params.update_and_connect_available_socket(node, "Output");
@@ -115,7 +115,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     /* Make sure the switch input comes first in the search for boolean sockets. */
     int true_false_weights = 0;
     if (params.other_socket().type == SOCK_BOOLEAN) {
-      params.add_item("Switch", [](LinkSearchOpParams &params) {
+      params.add_item(N_("Switch"), [](LinkSearchOpParams &params) {
         bNode &node = params.add_node("GeometryNodeSwitch");
         params.update_and_connect_available_socket(node, "Switch");
       });
@@ -123,7 +123,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     }
 
     params.add_item(
-        "False",
+        N_("False"),
         [](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeSwitch");
           node_storage(node).input_type = params.socket.type;
@@ -131,7 +131,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
         },
         true_false_weights);
     params.add_item(
-        "True",
+        N_("True"),
         [](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeSwitch");
           node_storage(node).input_type = params.socket.type;

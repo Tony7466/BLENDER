@@ -81,7 +81,7 @@ static void search_link_ops(GatherLinkSearchOpParams &params)
       (eNodeSocketDatatype)params.other_socket().type);
   if (type && *type != CD_PROP_STRING) {
     /* The input and output sockets have the same name. */
-    params.add_item("Grid", [type](LinkSearchOpParams &params) {
+    params.add_item(N_("Grid"), [type](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeSampleVolume");
       node_storage(node).grid_type = *type;
       params.update_and_connect_available_socket(node, "Grid");

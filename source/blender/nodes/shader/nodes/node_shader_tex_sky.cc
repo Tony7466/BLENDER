@@ -289,7 +289,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   if (params.node_tree().typeinfo->validate_link(
           static_cast<eNodeSocketDatatype>(params.other_socket().type), SOCK_FLOAT))
   {
-    params.add_item("Vector", [](LinkSearchOpParams &params) {
+    params.add_item(N_("Vector"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("ShaderNodeTexSky");
       NodeTexSky *tex = (NodeTexSky *)node.storage;
       tex->sun_disc = false;

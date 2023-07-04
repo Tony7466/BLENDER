@@ -146,23 +146,23 @@ static void node_map_range_gather_link_searches(GatherLinkSearchOpParams &params
 
   if (params.in_out() == SOCK_IN) {
     if (*type == CD_PROP_FLOAT3) {
-      params.add_item("Vector", SocketSearchOp{"Vector", *type}, 0);
+      params.add_item(N_("Vector"), SocketSearchOp{"Vector", *type}, 0);
     }
     else {
-      params.add_item("Value", SocketSearchOp{"Value", *type}, 0);
+      params.add_item(N_("Value"), SocketSearchOp{"Value", *type}, 0);
     }
-    params.add_item("From Min", SocketSearchOp{"From Min", *type}, -1);
-    params.add_item("From Max", SocketSearchOp{"From Max", *type}, -1);
-    params.add_item("To Min", SocketSearchOp{"To Min", *type}, -2);
-    params.add_item("To Max", SocketSearchOp{"To Max", *type}, -2);
-    params.add_item("Steps", SocketSearchOp{"Steps", *type, NODE_MAP_RANGE_STEPPED}, -3);
+    params.add_item(N_("From Min"), SocketSearchOp{"From Min", *type}, -1);
+    params.add_item(N_("From Max"), SocketSearchOp{"From Max", *type}, -1);
+    params.add_item(N_("To Min"), SocketSearchOp{"To Min", *type}, -2);
+    params.add_item(N_("To Max"), SocketSearchOp{"To Max", *type}, -2);
+    params.add_item(N_("Steps"), SocketSearchOp{"Steps", *type, NODE_MAP_RANGE_STEPPED}, -3);
   }
   else {
     if (*type == CD_PROP_FLOAT3) {
-      params.add_item("Vector", SocketSearchOp{"Vector", *type});
+      params.add_item(N_("Vector"), SocketSearchOp{"Vector", *type});
     }
     else {
-      params.add_item("Result", SocketSearchOp{"Result", *type});
+      params.add_item(N_("Result"), SocketSearchOp{"Result", *type});
     }
   }
 }

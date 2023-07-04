@@ -101,7 +101,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     /* This node does not support boolean sockets, use integer instead. */
     fixed_data_type = CD_PROP_INT32;
   }
-  params.add_item("Value", [node_type, fixed_data_type](LinkSearchOpParams &params) {
+  params.add_item(N_("Value"), [node_type, fixed_data_type](LinkSearchOpParams &params) {
     bNode &node = params.add_node(node_type);
     node.custom1 = fixed_data_type;
     params.update_and_connect_available_socket(node, "Value");

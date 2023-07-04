@@ -114,12 +114,12 @@ static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
   }
   if (params.in_out() == SOCK_IN) {
     if (ELEM(*type, CD_PROP_INT32, CD_PROP_FLOAT3, CD_PROP_FLOAT)) {
-      params.add_item("Min", [type](LinkSearchOpParams &params) {
+      params.add_item(N_("Min"), [type](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeRandomValue");
         node_storage(node).data_type = *type;
         params.update_and_connect_available_socket(node, "Min");
       });
-      params.add_item("Max", [type](LinkSearchOpParams &params) {
+      params.add_item(N_("Max"), [type](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeRandomValue");
         node_storage(node).data_type = *type;
         params.update_and_connect_available_socket(node, "Max");
@@ -128,7 +128,7 @@ static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
     search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(3));
   }
   else {
-    params.add_item("Value", [type](LinkSearchOpParams &params) {
+    params.add_item(N_("Value"), [type](LinkSearchOpParams &params) {
       bNode &node = params.add_node("FunctionNodeRandomValue");
       node_storage(node).data_type = *type;
       params.update_and_connect_available_socket(node, "Value");

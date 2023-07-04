@@ -846,8 +846,8 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
 static void search_node_add_ops(GatherAddNodeSearchParams &params)
 {
   AddNodeItem item;
-  item.ui_name = "Simulation Zone";
-  item.description = "Add a new simulation input and output nodes to the node tree";
+  item.ui_name = N_("Simulation Zone");
+  item.description = N_("Add a new simulation input and output nodes to the node tree");
   item.add_fn = [](const bContext &C, bNodeTree &node_tree, float2 cursor) {
     bNode *input = nodeAddNode(&C, &node_tree, "GeometryNodeSimulationInput");
     bNode *output = nodeAddNode(&C, &node_tree, "GeometryNodeSimulationOutput");

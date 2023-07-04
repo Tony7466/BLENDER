@@ -73,7 +73,7 @@ static void search_items_for_asset_metadata(const bNodeTree &node_tree,
 
   const AssetRepresentation *asset = ED_asset_handle_get_representation(&asset_handle);
   params.add_single_node_item(
-      ED_asset_handle_get_name(&asset_handle),
+      N_(ED_asset_handle_get_name(&asset_handle)),
       asset_data.description == nullptr ? "" : IFACE_(asset_data.description),
       [asset](const bContext &C, bNodeTree &node_tree, bNode &node) {
         Main &bmain = *CTX_data_main(&C);

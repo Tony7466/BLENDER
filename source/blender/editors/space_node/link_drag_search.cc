@@ -303,12 +303,12 @@ static void gather_socket_link_operations(const bContext &C,
   }
   NODE_TYPES_END;
 
-  search_link_ops.append({"Reroute", add_reroute_node_fn});
+  search_link_ops.append({N_("Reroute"), add_reroute_node_fn});
 
   const bool is_node_group = !(node_tree.id.flag & LIB_EMBEDDED_DATA);
 
   if (is_node_group && socket.in_out == SOCK_IN) {
-    search_link_ops.append({"Group Input", add_group_input_node_fn});
+    search_link_ops.append({N_("Group Input"), add_group_input_node_fn});
 
     int weight = -1;
     LISTBASE_FOREACH (const bNodeSocket *, interface_socket, &node_tree.inputs) {
@@ -318,7 +318,7 @@ static void gather_socket_link_operations(const bContext &C,
         continue;
       }
       search_link_ops.append({
-          std::string("Group Input") + " " + UI_MENU_ARROW_SEP + interface_socket->name,
+          std::string(N_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket->name,
           [interface_socket](nodes::LinkSearchOpParams &params) {
             add_existing_group_input_fn(params, *interface_socket);
           },

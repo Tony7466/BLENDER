@@ -169,14 +169,14 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       if (const std::optional<eNodeSocketDatatype> fixed_type = get_compare_type_for_operation(
               type, operation))
       {
-        params.add_item(item->name, SocketSearchOp{socket_name, *fixed_type, operation});
+        params.add_item(N_(item->name), SocketSearchOp{socket_name, *fixed_type, operation});
       }
     }
   }
 
   if (params.in_out() != SOCK_IN && type != SOCK_STRING) {
     params.add_item(
-        "Angle",
+        N_("Angle"),
         SocketSearchOp{
             "Angle", SOCK_VECTOR, NODE_COMPARE_GREATER_THAN, NODE_COMPARE_MODE_DIRECTION});
   }

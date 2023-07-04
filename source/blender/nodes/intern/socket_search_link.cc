@@ -125,7 +125,7 @@ void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
      * sockets. */
     const int weight = (&socket == main_socket) ? 0 : -1 - i;
     params.add_item(
-        socket.name.c_str(),
+        N_(socket.name),
         [&node_type, &socket](LinkSearchOpParams &params) {
           bNode &node = params.add_node(node_type);
           socket.make_available(node);

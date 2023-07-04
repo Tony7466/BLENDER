@@ -97,7 +97,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     return;
   }
   if (params.other_socket().type == SOCK_GEOMETRY) {
-    params.add_item("Geometry", [set_active_fn](LinkSearchOpParams &params) {
+    params.add_item(N_("Geometry"), [set_active_fn](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeViewer");
       params.connect_available_socket(node, "Geometry");
       set_active_fn(params, node);
@@ -105,7 +105,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
   if (type &&
       ELEM(type, CD_PROP_FLOAT, CD_PROP_BOOL, CD_PROP_INT32, CD_PROP_FLOAT3, CD_PROP_COLOR)) {
-    params.add_item("Value", [type, set_active_fn](LinkSearchOpParams &params) {
+    params.add_item(N_("Value"), [type, set_active_fn](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeViewer");
       node_storage(node).data_type = *type;
       params.update_and_connect_available_socket(node, "Value");

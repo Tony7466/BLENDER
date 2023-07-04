@@ -120,7 +120,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       eNodeSocketDatatype(params.other_socket().type));
   if (type && *type != CD_PROP_STRING) {
     /* The input and output sockets have the same name. */
-    params.add_item("Value", [type](LinkSearchOpParams &params) {
+    params.add_item(N_("Value"), [type](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeSampleCurve");
       node_storage(node).data_type = *type;
       params.update_and_connect_available_socket(node, "Value");

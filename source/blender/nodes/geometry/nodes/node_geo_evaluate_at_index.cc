@@ -119,13 +119,13 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
       (eNodeSocketDatatype)params.other_socket().type);
   if (type && *type != CD_PROP_STRING) {
-    params.add_item("Value", [node_type, type](LinkSearchOpParams &params) {
+    params.add_item(N_("Value"), [node_type, type](LinkSearchOpParams &params) {
       bNode &node = params.add_node(node_type);
       node.custom2 = *type;
       params.update_and_connect_available_socket(node, "Value");
     });
     params.add_item(
-        "Index",
+        N_("Index"),
         [node_type, type](LinkSearchOpParams &params) {
           bNode &node = params.add_node(node_type);
           node.custom2 = *type;

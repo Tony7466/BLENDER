@@ -173,7 +173,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
 
   int weight = 0;
   if (params.in_out() == SOCK_OUT) {
-    params.add_item("Result", [type](LinkSearchOpParams &params) {
+    params.add_item(N_("Result"), [type](LinkSearchOpParams &params) {
       bNode &node = params.add_node("ShaderNodeMix");
       node_storage(node).data_type = type;
       params.update_and_connect_available_socket(node, "Result");
@@ -181,7 +181,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
   }
   else {
     params.add_item(
-        "A",
+        CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "A"),
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("ShaderNodeMix");
           node_storage(node).data_type = type;
@@ -191,7 +191,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
         BLT_I18NCONTEXT_ID_NODETREE);
     weight--;
     params.add_item(
-        "B",
+        CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "B"),
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("ShaderNodeMix");
           node_storage(node).data_type = type;
@@ -202,7 +202,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
     weight--;
     if (ELEM(type, SOCK_VECTOR, SOCK_RGBA)) {
       params.add_item(
-          "Factor (Non-Uniform)",
+          N_("Factor (Non-Uniform)"),
           [](LinkSearchOpParams &params) {
             bNode &node = params.add_node("ShaderNodeMix");
             node_storage(node).data_type = SOCK_VECTOR;
@@ -213,7 +213,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
       weight--;
     }
     params.add_item(
-        "Factor",
+        N_("Factor"),
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("ShaderNodeMix");
           node_storage(node).data_type = type;
@@ -230,7 +230,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
   for (const EnumPropertyItem *item = rna_enum_ramp_blend_items; item->identifier != nullptr;
        item++) {
     if (item->name != nullptr && item->identifier[0] != '\0') {
-      params.add_item(item->name,
+      params.add_item(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, item->name),
                       SocketSearchOp{socket_name, item->value},
                       weight,
                       BLT_I18NCONTEXT_ID_NODETREE);
@@ -240,8 +240,8 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
 
 static void gather_add_node_searches(GatherAddNodeSearchParams &params)
 {
-  params.add_single_node_item("Mix", params.node_type().ui_description);
-  params.add_single_node_item("Mix Color",
+  params.add_single_node_item(N_("Mix"), params.node_type().ui_description);
+  params.add_single_node_item(N_("Mix Color"),
                               params.node_type().ui_description,
                               [](const bContext & /*C*/, bNodeTree & /*node_tree*/, bNode &node) {
                                 node_storage(node).data_type = SOCK_RGBA;

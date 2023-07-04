@@ -99,27 +99,27 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   else if (params.node_tree().typeinfo->validate_link(
                eNodeSocketDatatype(params.other_socket().type), SOCK_FLOAT))
   {
-    params.add_item("Count", [](LinkSearchOpParams &params) {
+    params.add_item(N_("Count"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMeshLine");
       node_storage(node).mode = GEO_NODE_MESH_LINE_MODE_OFFSET;
       params.connect_available_socket(node, "Count");
     });
-    params.add_item("Resolution", [](LinkSearchOpParams &params) {
+    params.add_item(N_("Resolution"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMeshLine");
       node_storage(node).mode = GEO_NODE_MESH_LINE_MODE_OFFSET;
       node_storage(node).count_mode = GEO_NODE_MESH_LINE_COUNT_RESOLUTION;
       params.connect_available_socket(node, "Resolution");
     });
-    params.add_item("Start Location", [](LinkSearchOpParams &params) {
+    params.add_item(N_("Start Location"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMeshLine");
       params.connect_available_socket(node, "Start Location");
     });
-    params.add_item("Offset", [](LinkSearchOpParams &params) {
+    params.add_item(N_("Offset"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMeshLine");
       params.connect_available_socket(node, "Offset");
     });
     /* The last socket is reused in end points mode. */
-    params.add_item("End Location", [](LinkSearchOpParams &params) {
+    params.add_item(N_("End Location"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeMeshLine");
       node_storage(node).mode = GEO_NODE_MESH_LINE_MODE_END_POINTS;
       params.connect_available_socket(node, "Offset");

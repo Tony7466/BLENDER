@@ -64,7 +64,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   {
     if (item->name != nullptr && item->identifier[0] != '\0') {
       NodeBooleanMathOperation operation = static_cast<NodeBooleanMathOperation>(item->value);
-      params.add_item(item->name, [operation](LinkSearchOpParams &params) {
+      params.add_item(N_(item->name), [operation](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeBooleanMath");
         node.custom1 = operation;
         params.update_and_connect_available_socket(node, "Boolean");

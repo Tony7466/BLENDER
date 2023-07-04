@@ -101,10 +101,10 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     if (params.node_tree().typeinfo->validate_link(eNodeSocketDatatype(params.other_socket().type),
                                                    SOCK_FLOAT))
     {
-      params.add_item("Start (Factor)", SocketSearchOp{"Start", GEO_NODE_CURVE_SAMPLE_FACTOR});
-      params.add_item("End (Factor)", SocketSearchOp{"End", GEO_NODE_CURVE_SAMPLE_FACTOR});
-      params.add_item("Start (Length)", SocketSearchOp{"Start", GEO_NODE_CURVE_SAMPLE_LENGTH});
-      params.add_item("End (Length)", SocketSearchOp{"End", GEO_NODE_CURVE_SAMPLE_LENGTH});
+      params.add_item(N_("Start (Factor)"), SocketSearchOp{"Start", GEO_NODE_CURVE_SAMPLE_FACTOR});
+      params.add_item(N_("End (Factor)"), SocketSearchOp{"End", GEO_NODE_CURVE_SAMPLE_FACTOR});
+      params.add_item(N_("Start (Length)"), SocketSearchOp{"Start", GEO_NODE_CURVE_SAMPLE_LENGTH});
+      params.add_item(N_("End (Length)"), SocketSearchOp{"End", GEO_NODE_CURVE_SAMPLE_LENGTH});
     }
   }
 }
