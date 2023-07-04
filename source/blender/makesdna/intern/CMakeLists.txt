@@ -43,14 +43,15 @@ file(GENERATE OUTPUT ${dna_header_string_file} CONTENT "${DNA_FILE_LIST}")
 # -----------------------------------------------------------------------------
 # Build makesdna executable
 set(SRC
-  dna_utils.c
-  makesdna.c
+  dna_utils.cc
+  makesdna.cc
   ../../blenlib/intern/BLI_assert.c
   ../../blenlib/intern/BLI_ghash.c
   ../../blenlib/intern/BLI_ghash_utils.c
   ../../blenlib/intern/BLI_memarena.c
   ../../blenlib/intern/BLI_mempool.c
   ../../blenlib/intern/hash_mm2a.c  # needed by 'BLI_ghash_utils.c', not used directly.
+  ../../blenlib/intern/string.c
   ../../../../intern/guardedalloc/intern/leak_detector.cc
   ../../../../intern/guardedalloc/intern/mallocn.c
   ../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
@@ -107,8 +108,8 @@ add_custom_command(
 # Build bf_dna library
 set(SRC
   dna_defaults.c
-  dna_genfile.c
-  dna_utils.c
+  dna_genfile.cc
+  dna_utils.cc
   ${CMAKE_CURRENT_BINARY_DIR}/dna.c
   ${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
   ${SRC_DNA_INC}
