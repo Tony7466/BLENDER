@@ -890,15 +890,14 @@ static bool parent_set_vertex_parent(bContext *C, struct ParentingContext *paren
 static int parent_set_exec(bContext *C, wmOperator *op)
 {
   const int partype = RNA_enum_get(op->ptr, "type");
-  struct ParentingContext parenting_context = {
-      .reports = op->reports,
-      .scene = CTX_data_scene(C),
-      .par = ED_object_active_context(C),
-      .partype = partype,
-      .is_vertex_tri = partype == PAR_VERTEX_TRI,
-      .xmirror = RNA_boolean_get(op->ptr, "xmirror"),
-      .keep_transform = RNA_boolean_get(op->ptr, "keep_transform"),
-  };
+  ParentingContext parenting_context{};
+  parenting_context.reports = op->reports;
+  parenting_context.scene = CTX_data_scene(C);
+  parenting_context.par = ED_object_active_context(C);
+  parenting_context.partype = partype;
+  parenting_context.is_vertex_tri = partype == PAR_VERTEX_TRI;
+  parenting_context.xmirror = RNA_boolean_get(op->ptr, "xmirror");
+  parenting_context.keep_transform = RNA_boolean_get(op->ptr, "keep_transform");
 
   bool ok;
   if (ELEM(parenting_context.partype, PAR_VERTEX, PAR_VERTEX_TRI)) {
