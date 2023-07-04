@@ -830,9 +830,40 @@ static void modifyGeometry(ModifierData *md,
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
+  /* First insert all the user defined name mappings. */
   for (const int i : IndexRange(nmd->id_mappings_num)) {
     const NodesModifierIDMapping &mapping = nmd->id_mappings[i];
-    const nodes::IDMappingKey key = {mapping.id_name, mapping.lib_name};
+    if (mapping.id == nullptr) {
+      continue;
+    }
+    nodes::IDMappingKey key;
+    if (mapping.flag & NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME) {
+      key = {mapping.id_name, mapping.lib_name};
+    }
+    else {
+      key.id_name = mapping.id->name + 2;
+      if (mapping.id->lib) {
+        key.lib_name = mapping.id->lib->id.name + 2;
+      }
+    }
+    modifier_eval_data.id_mapping.add(key, mapping.id);
+  }
+  /* Also add mappings for known IDs to avoid having to add two mappings in some situations.
+   * One from the custom name to the id and one from the real name. */
+  for (const int i : IndexRange(nmd->id_mappings_num)) {
+    const NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    if (mapping.id == nullptr) {
+      continue;
+    }
+    if ((mapping.flag & NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME) == 0) {
+      continue;
+    }
+    nodes::IDMappingKey key;
+    key.id_name = mapping.id->name + 2;
+    if (mapping.id->lib) {
+      key.lib_name = mapping.id->lib->id.name + 2;
+    }
+    /* Only added when the key does not exist already. */
     modifier_eval_data.id_mapping.add(key, mapping.id);
   }
 

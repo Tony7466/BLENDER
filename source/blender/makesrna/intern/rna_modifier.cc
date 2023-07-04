@@ -7121,6 +7121,13 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "ID Type", "Type of ID that is mapped");
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
+  prop = RNA_def_property(srna, "custom_name", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME);
+  RNA_def_property_ui_text(prop,
+                           "Custom Name",
+                           "Whether a custom name can be specified that maps to the ID. Otherwise "
+                           "it automatically uses the name of the ID");
+
   RNA_define_lib_overridable(false);
 }
 

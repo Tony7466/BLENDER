@@ -2323,12 +2323,17 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
+typedef enum NodesModifierIDMappingFlag {
+  NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME = 1 << 0,
+} NodesModifierIDMappingFlag;
+
 typedef struct NodesModifierIDMapping {
   char *id_name;
   char *lib_name;
   struct ID *id;
   int id_type;
-  char _pad[4];
+  /** #NodesModifierIDMappingFlag. */
+  uint32_t flag;
 } NodesModifierIDMapping;
 
 typedef struct NodesModifierData {
