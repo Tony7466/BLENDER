@@ -73,7 +73,7 @@ static int return_editmesh_indexar(BMEditMesh *em,
     return 0;
   }
 
-  *r_indexar = index = MEM_mallocN(4 * indexar_num, "hook indexar");
+  *r_indexar = index = static_cast<int *>(MEM_mallocN(4 * indexar_num, "hook indexar"));
   *r_indexar_num = indexar_num;
   nr = 0;
   zero_v3(r_cent);
@@ -109,7 +109,7 @@ static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name,
 
     /* find the vertices */
     BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
-      dvert = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
+      dvert = static_cast<MDeformVert *>(BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset));
 
       if (BKE_defvert_find_weight(dvert, defgrp_index) > 0.0f) {
         add_v3_v3(r_cent, eve->co);
@@ -118,7 +118,7 @@ static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name,
     }
     if (indexar_num) {
       const ListBase *defbase = BKE_object_defgroup_list(obedit);
-      bDeformGroup *dg = BLI_findlink(defbase, defgrp_index);
+      bDeformGroup *dg = static_cast<bDeformGroup *>(BLI_findlink(defbase, defgrp_index));
       BLI_strncpy(r_name, dg->name, sizeof(dg->name));
       mul_v3_fl(r_cent, 1.0f / (float)indexar_num);
       return true;
@@ -130,13 +130,13 @@ static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name,
 
 static void select_editbmesh_hook(Object *ob, HookModifierData *hmd)
 {
-  Mesh *me = ob->data;
+  Mesh *me = static_cast<Mesh *>(ob->data);
   BMEditMesh *em = me->edit_mesh;
   BMVert *eve;
   BMIter iter;
   int index = 0, nr = 0;
 
-  if (hmd->indexar == NULL) {
+  if (hmd->indexar == nullptr) {
     return;
   }
 
@@ -178,7 +178,7 @@ static int return_editlattice_indexar(Lattice *editlatt,
     return 0;
   }
 
-  *r_indexar = index = MEM_mallocN(4 * indexar_num, "hook indexar");
+  *r_indexar = index = static_cast<int *>(MEM_mallocN(4 * indexar_num, "hook indexar"));
   *r_indexar_num = indexar_num;
   nr = 0;
   zero_v3(r_cent);
@@ -204,7 +204,7 @@ static int return_editlattice_indexar(Lattice *editlatt,
 
 static void select_editlattice_hook(Object *obedit, HookModifierData *hmd)
 {
-  Lattice *lt = obedit->data, *editlt;
+  Lattice *lt = static_cast<Lattice *>(obedit->data), *editlt;
   BPoint *bp;
   int index = 0, nr = 0, a;
 
@@ -266,7 +266,8 @@ static int return_editcurve_indexar(Object *obedit,
     return 0;
   }
 
-  *r_indexar = index = MEM_mallocN(sizeof(*index) * indexar_num, "hook indexar");
+  *r_indexar = index = static_cast<int *>(
+      MEM_mallocN(sizeof(*index) * indexar_num, "hook indexar"));
   *r_indexar_num = indexar_num;
   nr = 0;
   zero_v3(r_cent);
@@ -325,20 +326,20 @@ static bool object_hook_index_array(Main *bmain,
                                     char *r_name,
                                     float r_cent[3])
 {
-  *r_indexar = NULL;
+  *r_indexar = nullptr;
   *r_indexar_num = 0;
   r_name[0] = 0;
 
   switch (obedit->type) {
     case OB_MESH: {
-      Mesh *me = obedit->data;
+      Mesh *me = static_cast<Mesh *>(obedit->data);
 
       BMEditMesh *em;
 
       EDBM_mesh_load(bmain, obedit);
       EDBM_mesh_make(obedit, scene->toolsettings->selectmode, true);
 
-      DEG_id_tag_update(obedit->data, 0);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
 
       em = me->edit_mesh;
 
@@ -356,7 +357,7 @@ static bool object_hook_index_array(Main *bmain,
       ED_curve_editnurb_make(obedit);
       return return_editcurve_indexar(obedit, r_indexar, r_indexar_num, r_cent);
     case OB_LATTICE: {
-      Lattice *lt = obedit->data;
+      Lattice *lt = static_cast<Lattice *>(obedit->data);
       return return_editlattice_indexar(lt->editlatt->latt, r_indexar, r_indexar_num, r_cent);
     }
     default:
@@ -426,7 +427,7 @@ static void object_hook_from_context(
 
   if (ptr->data) { /* if modifier context is available, use that */
     ob = (Object *)ptr->owner_id;
-    hmd = ptr->data;
+    hmd = static_cast<HookModifierData *>(ptr->data);
   }
   else { /* use the provided property */
     ob = CTX_data_edit_object(C);
@@ -438,14 +439,14 @@ static void object_hook_from_context(
     *r_hmd = hmd;
   }
   else {
-    *r_ob = NULL;
-    *r_hmd = NULL;
+    *r_ob = nullptr;
+    *r_hmd = nullptr;
   }
 }
 
 static void object_hook_select(Object *ob, HookModifierData *hmd)
 {
-  if (hmd->indexar == NULL) {
+  if (hmd->indexar == nullptr) {
     return;
   }
 
@@ -490,7 +491,7 @@ static Object *add_hook_object_new(
 {
   Base *basedit;
   Object *ob;
-  ob = BKE_object_add(bmain, scene, view_layer, OB_EMPTY, NULL);
+  ob = BKE_object_add(bmain, scene, view_layer, OB_EMPTY, nullptr);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Base *basact = BKE_view_layer_active_base_get(view_layer);
   BLI_assert(basact->object == ob);
@@ -517,8 +518,8 @@ static int add_hook_object(const bContext *C,
                            ReportList *reports)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ModifierData *md = NULL;
-  HookModifierData *hmd = NULL;
+  ModifierData *md = nullptr;
+  HookModifierData *hmd = nullptr;
   float cent[3];
   float pose_mat[4][4];
   int indexar_num, ok, *indexar;
@@ -539,8 +540,9 @@ static int add_hook_object(const bContext *C,
     mul_v3_m4v3(ob->loc, obedit->object_to_world, cent);
   }
 
-  md = obedit->modifiers.first;
-  while (md && BKE_modifier_get_info(md->type)->type == eModifierTypeType_OnlyDeform) {
+  md = static_cast<ModifierData *>(obedit->modifiers.first);
+  while (md && BKE_modifier_get_info(ModifierType(md->type))->type == eModifierTypeType_OnlyDeform)
+  {
     md = md->next;
   }
 
@@ -567,7 +569,7 @@ static int add_hook_object(const bContext *C,
   }
 
   if (mode == OBJECT_ADDHOOK_SELOB_BONE) {
-    bArmature *arm = ob->data;
+    bArmature *arm = static_cast<bArmature *>(ob->data);
     BLI_assert(ob->type == OB_ARMATURE);
     if (arm->act_bone) {
       bPoseChannel *pchan_act;
@@ -611,7 +613,7 @@ static int object_add_hook_selob_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *obedit = CTX_data_edit_object(C);
-  Object *obsel = NULL;
+  Object *obsel = nullptr;
   const bool use_bone = RNA_boolean_get(op->ptr, "use_bone");
   const int mode = use_bone ? OBJECT_ADDHOOK_SELOB_BONE : OBJECT_ADDHOOK_SELOB;
 
@@ -633,7 +635,7 @@ static int object_add_hook_selob_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (add_hook_object(C, bmain, scene, view_layer, NULL, obedit, obsel, mode, op->reports)) {
+  if (add_hook_object(C, bmain, scene, view_layer, nullptr, obedit, obsel, mode, op->reports)) {
     WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, obedit);
     return OPERATOR_FINISHED;
   }
@@ -670,7 +672,7 @@ static int object_add_hook_newob_exec(bContext *C, wmOperator *op)
   Object *obedit = CTX_data_edit_object(C);
 
   if (add_hook_object(
-          C, bmain, scene, view_layer, v3d, obedit, NULL, OBJECT_ADDHOOK_NEWOB, op->reports))
+          C, bmain, scene, view_layer, v3d, obedit, nullptr, OBJECT_ADDHOOK_NEWOB, op->reports))
   {
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -699,7 +701,7 @@ static int object_hook_remove_exec(bContext *C, wmOperator *op)
 {
   int num = RNA_enum_get(op->ptr, "modifier");
   Object *ob = CTX_data_edit_object(C);
-  HookModifierData *hmd = NULL;
+  HookModifierData *hmd = nullptr;
 
   hmd = (HookModifierData *)BLI_findlink(&ob->modifiers, num);
   if (!hmd) {
@@ -719,21 +721,21 @@ static int object_hook_remove_exec(bContext *C, wmOperator *op)
 }
 
 static const EnumPropertyItem *hook_mod_itemf(bContext *C,
-                                              PointerRNA *UNUSED(ptr),
-                                              PropertyRNA *UNUSED(prop),
+                                              PointerRNA * /*ptr*/,
+                                              PropertyRNA * /*prop*/,
                                               bool *r_free)
 {
   Object *ob = CTX_data_edit_object(C);
   EnumPropertyItem tmp = {0, "", 0, "", ""};
-  EnumPropertyItem *item = NULL;
-  ModifierData *md = NULL;
+  EnumPropertyItem *item = nullptr;
+  ModifierData *md = nullptr;
   int a, totitem = 0;
 
   if (!ob) {
     return DummyRNA_NULL_items;
   }
 
-  for (a = 0, md = ob->modifiers.first; md; md = md->next, a++) {
+  for (a = 0, md = static_cast<ModifierData *>(ob->modifiers.first); md; md = md->next, a++) {
     if (md->type == eModifierType_Hook) {
       tmp.value = a;
       tmp.icon = ICON_HOOK;
@@ -764,8 +766,8 @@ void OBJECT_OT_hook_remove(wmOperatorType *ot)
   ot->poll = hook_op_edit_poll;
 
   /* flags */
-  /* this operator removes modifier which isn't stored in local undo stack,
-   * so redoing it from redo panel gives totally weird results. */
+  /* this operator removes modifier which isn't stored in local undo stack,    * so redoing it from
+   * redo panel gives totally weird results. */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
   /* properties */
@@ -780,11 +782,11 @@ static int object_hook_reset_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_HookModifier);
   int num = RNA_enum_get(op->ptr, "modifier");
-  Object *ob = NULL;
-  HookModifierData *hmd = NULL;
+  Object *ob = nullptr;
+  HookModifierData *hmd = nullptr;
 
   object_hook_from_context(C, &ptr, num, &ob, &hmd);
-  if (hmd == NULL) {
+  if (hmd == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Could not find hook modifier");
     return OPERATOR_CANCELLED;
   }
@@ -824,13 +826,13 @@ static int object_hook_recenter_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_HookModifier);
   int num = RNA_enum_get(op->ptr, "modifier");
-  Object *ob = NULL;
-  HookModifierData *hmd = NULL;
+  Object *ob = nullptr;
+  HookModifierData *hmd = nullptr;
   Scene *scene = CTX_data_scene(C);
   float bmat[3][3], imat[3][3];
 
   object_hook_from_context(C, &ptr, num, &ob, &hmd);
-  if (hmd == NULL) {
+  if (hmd == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Could not find hook modifier");
     return OPERATOR_CANCELLED;
   }
@@ -877,14 +879,14 @@ static int object_hook_assign_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_HookModifier);
   int num = RNA_enum_get(op->ptr, "modifier");
-  Object *ob = NULL;
-  HookModifierData *hmd = NULL;
+  Object *ob = nullptr;
+  HookModifierData *hmd = nullptr;
   float cent[3];
   char name[MAX_NAME];
   int *indexar, indexar_num;
 
   object_hook_from_context(C, &ptr, num, &ob, &hmd);
-  if (hmd == NULL) {
+  if (hmd == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Could not find hook modifier");
     return OPERATOR_CANCELLED;
   }
@@ -923,8 +925,8 @@ void OBJECT_OT_hook_assign(wmOperatorType *ot)
   ot->poll = hook_op_edit_poll;
 
   /* flags */
-  /* this operator changes data stored in modifier which doesn't get pushed to undo stack,
-   * so redoing it from redo panel gives totally weird results. */
+  /* this operator changes data stored in modifier which doesn't get pushed to undo stack,    * so
+   * redoing it from redo panel gives totally weird results. */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
   /* properties */
@@ -938,11 +940,11 @@ static int object_hook_select_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", &RNA_HookModifier);
   int num = RNA_enum_get(op->ptr, "modifier");
-  Object *ob = NULL;
-  HookModifierData *hmd = NULL;
+  Object *ob = nullptr;
+  HookModifierData *hmd = nullptr;
 
   object_hook_from_context(C, &ptr, num, &ob, &hmd);
-  if (hmd == NULL) {
+  if (hmd == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Could not find hook modifier");
     return OPERATOR_CANCELLED;
   }
@@ -950,7 +952,7 @@ static int object_hook_select_exec(bContext *C, wmOperator *op)
   /* select functionality */
   object_hook_select(ob, hmd);
 
-  DEG_id_tag_update(ob->data, ID_RECALC_SELECT);
+  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
 
   return OPERATOR_FINISHED;

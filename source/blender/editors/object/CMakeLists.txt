@@ -45,7 +45,7 @@ set(SRC
   object_data_transform.cc
   object_edit.cc
   object_gpencil_modifier.cc
-  object_hook.c
+  object_hook.cc
   object_light_linking_ops.cc
   object_modes.cc
   object_modifier.cc
