@@ -260,17 +260,19 @@ void ReflectionProbeModule::end_sync()
 #endif
 
   int number_layers_needed = needed_layers_get();
-  int current_layers = cubemaps_tx_.depth() / 6;
+  int current_layers = probes_tx_.depth();
   bool resize_layers = current_layers < number_layers_needed;
   if (resize_layers) {
+    /* TODO: Create new texture and copy previous texture so we don't need to rerender all the
+     * probes.*/
     const int max_mipmap_levels = log(max_resolution_) + 1;
-    cubemaps_tx_.ensure_2d_array(GPU_RGBA16F,
-                                 int2(max_resolution_),
-                                 number_layers_needed * 6,
-                                 GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT,
-                                 NULL,
-                                 max_mipmap_levels);
-    GPU_texture_mipmap_mode(cubemaps_tx_, true, true);
+    probes_tx_.ensure_2d_array(GPU_RGBA16F,
+                               int2(max_resolution_),
+                               number_layers_needed,
+                               GPU_TEXTURE_USAGE_SHADER_WRITE,
+                               nullptr,
+                               max_mipmap_levels);
+    GPU_texture_mipmap_mode(probes_tx_, true, true);
   }
 
   /* Regenerate mipmaps when a cubemap is updated. It can be postponed when the world probe is also
@@ -307,7 +309,7 @@ void ReflectionProbeModule::end_sync()
   if (regenerate_mipmaps) {
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     if (!regenerate_mipmaps_postponed) {
-      GPU_texture_update_mipmap_chain(cubemaps_tx_);
+      GPU_texture_update_mipmap_chain(probes_tx_);
     }
   }
 }
@@ -457,15 +459,13 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
   }
 
   /* Upload the checker pattern to each side of the cubemap*/
+  /* TODO: Apply octahedral mapping. */
   int probes_per_dimension = 1 << probe_data.layer_subdivision;
   int2 probe_area_pos(probe_data.area_index % probes_per_dimension,
                       probe_data.area_index / probes_per_dimension);
   int2 pos = probe_area_pos * int2(max_resolution_ / probes_per_dimension);
-  for (int side : IndexRange(6)) {
-    int layer = 6 * probe_data.layer + side;
-    GPU_texture_update_sub(
-        cubemaps_tx_, GPU_DATA_FLOAT, data, UNPACK2(pos), layer, resolution, resolution, 1);
-  }
+  GPU_texture_update_sub(
+      probes_tx_, GPU_DATA_FLOAT, data, UNPACK2(pos), probe_data.layer, resolution, resolution, 1);
 
   MEM_freeN(data);
 }
