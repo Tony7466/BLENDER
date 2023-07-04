@@ -56,7 +56,7 @@ BLI_INLINE bool is_cfra_lt(const float a, const float b)
 /* --------------- */
 
 /* Just for GreasePencil for now. */
-struct Cel {
+struct GreasePencilCel {
   int frame_number;
   GreasePencilFrame frame;
 };
@@ -514,7 +514,7 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
 {
   ActKeyColumn *ak = static_cast<ActKeyColumn *>(
       MEM_callocN(sizeof(ActKeyColumn), "ActKeyColumnCel"));
-  Cel &cel = *static_cast<Cel *>(data);
+  GreasePencilCel &cel = *static_cast<GreasePencilCel *>(data);
 
   /* Store settings based on state of BezTriple */
   ak->cfra = cel.frame_number;
@@ -1150,15 +1150,15 @@ void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, con
   }
 }
 
-void cels_to_keylist(AnimData * /*adt*/,
-                     GreasePencilLayer *gpl,
-                     AnimKeylist *keylist,
-                     int /*saction_flag*/)
+void grease_pencil_cels_to_keylist(AnimData * /*adt*/,
+                                   GreasePencilLayer *gpl,
+                                   AnimKeylist *keylist,
+                                   int /*saction_flag*/)
 {
   using namespace blender::bke::greasepencil;
   const Layer &layer = gpl->wrap();
   for (auto item : layer.frames().items()) {
-    Cel cel;
+    GreasePencilCel cel;
     cel.frame_number = item.key;
     cel.frame = item.value;
 

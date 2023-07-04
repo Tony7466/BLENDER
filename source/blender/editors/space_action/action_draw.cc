@@ -456,13 +456,13 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
                                 scale_factor,
                                 action_flag);
             break;
-          case ALE_CELS:
-            draw_cels_channel(draw_list,
-                              ads,
-                              static_cast<GreasePencilLayer *>(ale->data),
-                              ycenter,
-                              scale_factor,
-                              action_flag);
+          case ALE_GREASE_PENCIL_CELS:
+            draw_grease_pencil_cels_channel(draw_list,
+                                            ads,
+                                            static_cast<GreasePencilLayer *>(ale->data),
+                                            ycenter,
+                                            scale_factor,
+                                            action_flag);
             break;
           case ALE_GPFRAME:
             draw_gpl_channel(draw_list,

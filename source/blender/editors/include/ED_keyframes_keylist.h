@@ -180,11 +180,11 @@ void gpencil_to_keylist(struct bDopeSheet *ads,
                         struct AnimKeylist *keylist,
                         bool active);
 
-/* Cels */
-void cels_to_keylist(struct AnimData *adt,
-                     struct GreasePencilLayer *layer,
-                     struct AnimKeylist *keylist,
-                     int saction_flag);
+/* Grease Pencil Cels */
+void grease_pencil_cels_to_keylist(struct AnimData *adt,
+                                   struct GreasePencilLayer *layer,
+                                   struct AnimKeylist *keylist,
+                                   int saction_flag);
 
 /* Grease Pencil Layer */
 void gpl_to_keylist(struct bDopeSheet *ads, struct bGPDlayer *gpl, struct AnimKeylist *keylist);

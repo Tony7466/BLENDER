@@ -93,13 +93,13 @@ void draw_summary_channel(struct AnimKeylistDrawList *draw_list,
                           float yscale_fac,
                           int saction_flag);
 
-/* Cel-framed channels */
-void draw_cels_channel(struct AnimKeylistDrawList *draw_list,
-                       struct bDopeSheet *ads,
-                       struct GreasePencilLayer *layer,
-                       float ypos,
-                       float yscale_fac,
-                       int saction_flag);
+/* Grease Pencil cels channels */
+void draw_grease_pencil_cels_channel(struct AnimKeylistDrawList *draw_list,
+                                     struct bDopeSheet *ads,
+                                     struct GreasePencilLayer *layer,
+                                     float ypos,
+                                     float yscale_fac,
+                                     int saction_flag);
 
 /* Grease Pencil Layer */
 void draw_gpl_channel(struct AnimKeylistDrawList *draw_list,

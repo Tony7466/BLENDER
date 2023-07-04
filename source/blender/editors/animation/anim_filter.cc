@@ -982,7 +982,7 @@ static bAnimListElem *make_new_animlistelem(void *data,
         ale->flag = gpl->base.flag;
 
         ale->key_data = nullptr;
-        ale->datatype = ALE_CELS;
+        ale->datatype = ALE_GREASE_PENCIL_CELS;
         break;
       }
       case ANIMTYPE_MASKLAYER: {
