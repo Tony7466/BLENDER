@@ -624,23 +624,23 @@ static void serialize_material_slots(DictionaryValue &io_dict, const IDProperty 
   if (id_properties == nullptr) {
     return;
   }
-  IDProperty *array_prop = IDP_GetPropertyFromGroup(id_properties, ".materials");
-  if (array_prop == nullptr) {
+  IDProperty *materials_prop = IDP_GetPropertyFromGroup(id_properties, ".materials");
+  if (materials_prop == nullptr) {
     return;
   }
-  if (array_prop->type != IDP_IDPARRAY) {
+  if (materials_prop->type != IDP_IDPARRAY) {
     return;
   }
   auto io_materials = std::make_shared<io::serialize::ArrayValue>();
-  for (const int i : IndexRange(array_prop->len)) {
+  for (const int i : IndexRange(materials_prop->len)) {
     auto io_material = io_materials->append_dict();
-    IDProperty *mat_prop = IDP_GetIndexArray(array_prop, i);
-    if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(mat_prop, "id_name")) {
+    IDProperty *material_prop = IDP_GetIndexArray(materials_prop, i);
+    if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(material_prop, "id_name")) {
       if (id_name_prop->type == IDP_STRING) {
         io_material->append_str("id_name", IDP_String(id_name_prop));
       }
     }
-    if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(mat_prop, "lib_name")) {
+    if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(material_prop, "lib_name")) {
       if (lib_name_prop->type == IDP_STRING) {
         io_material->append_str("lib_name", IDP_String(lib_name_prop));
       }

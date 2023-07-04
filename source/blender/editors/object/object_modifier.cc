@@ -49,6 +49,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_idprop.hh"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
@@ -69,6 +70,7 @@
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+#include "BKE_simulation_state.hh"
 #include "BKE_softbody.h"
 #include "BKE_volume.h"
 
@@ -3730,11 +3732,63 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 
 static int geometry_nodes_id_mapping_exec(bContext *C, wmOperator * /*op*/)
 {
+  using namespace blender;
+  using namespace blender::bke;
+  using namespace blender::bke::sim;
+
   Main *bmain = CTX_data_main(C);
   Object *ob = ED_object_active_context(C);
   ModifierData *md = BKE_object_active_modifier(ob);
   if (!(md && md->type == eModifierType_Nodes)) {
     return OPERATOR_CANCELLED;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  if (nmd.simulation_cache->ptr) {
+    ModifierSimulationCache &sim_cache = *nmd.simulation_cache->ptr;
+    Set<std::pair<StringRefNull, StringRefNull>> used_ids;
+    for (std::unique_ptr<ModifierSimulationStateAtFrame> &state_at_frame :
+         sim_cache.states_at_frames_) {
+      for (const std::unique_ptr<SimulationZoneState> &zone_state :
+           state_at_frame->state.zone_states_.values())
+      {
+        for (const std::unique_ptr<SimulationStateItem> &item :
+             zone_state->item_by_identifier.values()) {
+          if (const auto *geo_item = dynamic_cast<const GeometrySimulationStateItem *>(item.get()))
+          {
+            const GeometrySet &geometry = geo_item->geometry;
+            if (const Mesh *mesh = geometry.get_mesh_for_read()) {
+              if (mesh->id.properties) {
+                IDProperty *materials_prop = IDP_GetPropertyFromGroup(mesh->id.properties,
+                                                                      ".materials");
+                for (const int i : IndexRange(materials_prop->len)) {
+                  IDProperty *material_prop = IDP_GetIndexArray(materials_prop, i);
+                  StringRefNull id_name, lib_name;
+                  if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(material_prop,
+                                                                          "id_name")) {
+                    if (id_name_prop->type == IDP_STRING) {
+                      id_name = IDP_String(id_name_prop);
+                    }
+                  }
+                  if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(material_prop,
+                                                                           "lib_name")) {
+                    if (lib_name_prop->type == IDP_STRING) {
+                      lib_name = IDP_String(lib_name_prop);
+                    }
+                  }
+                  if (!id_name.is_empty()) {
+                    used_ids.add({id_name, lib_name});
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (const std::pair<StringRefNull, StringRefNull> &used_id : used_ids) {
+      std::cout << used_id.first << " " << used_id.second << "\n";
+    }
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

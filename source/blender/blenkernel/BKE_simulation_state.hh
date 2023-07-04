@@ -154,10 +154,6 @@ class ModifierSimulationCache {
  private:
   mutable std::mutex states_at_frames_mutex_;
   /**
-   * All simulation states, sorted by frame.
-   */
-  Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
-  /**
    * Used for baking to deduplicate arrays when writing and writing from storage. Sharing info
    * must be kept alive for multiple frames to detect if each data array's version has changed.
    */
@@ -166,6 +162,10 @@ class ModifierSimulationCache {
   friend ModifierSimulationState;
 
  public:
+  /**
+   * All simulation states, sorted by frame.
+   */
+  Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
   CacheState cache_state_ = CacheState::Valid;
   bool failed_finding_bake_ = false;
 
