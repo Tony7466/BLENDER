@@ -40,7 +40,7 @@ set(SRC
   keyframes_keylist.cc
   keyframing.cc
   keyingsets.cc
-  time_scrub_ui.c
+  time_scrub_ui.cc
 
   anim_intern.h
 )

@@ -123,19 +123,13 @@ static void draw_current_frame(const Scene *scene,
   float outline_color[4];
   UI_GetThemeColorShade4fv(TH_CFRAME, 5, outline_color);
 
+  rctf rect{};
+  rect.xmin = frame_x - box_width / 2 + U.pixelsize / 2;
+  rect.xmax = frame_x + box_width / 2 + U.pixelsize / 2;
+  rect.ymin = scrub_region_rect->ymin + box_padding;
+  rect.ymax = scrub_region_rect->ymax - box_padding;
   UI_draw_roundbox_4fv_ex(
-      &(const rctf){
-          .xmin = frame_x - box_width / 2 + U.pixelsize / 2,
-          .xmax = frame_x + box_width / 2 + U.pixelsize / 2,
-          .ymin = scrub_region_rect->ymin + box_padding,
-          .ymax = scrub_region_rect->ymax - box_padding,
-      },
-      bg_color,
-      NULL,
-      1.0f,
-      outline_color,
-      U.pixelsize,
-      4 * UI_SCALE_FAC);
+      &rect, bg_color, nullptr, 1.0f, outline_color, U.pixelsize, 4 * UI_SCALE_FAC);
 
   uchar text_color[4];
   UI_GetThemeColor4ubv(TH_HEADER_TEXT_HI, text_color);
@@ -237,7 +231,7 @@ void ED_time_scrub_channel_search_draw(const bContext *C, ARegion *region, bDope
   uiItemR(layout, &ptr, "filter_text", 0, "", ICON_NONE);
   uiItemR(layout, &ptr, "use_filter_invert", 0, "", ICON_ARROW_LEFTRIGHT);
   UI_block_align_end(block);
-  UI_block_layout_resolve(block, NULL, NULL);
+  UI_block_layout_resolve(block, nullptr, nullptr);
 
   /* Make sure the events are consumed from the search and don't reach other UI blocks since this
    * is drawn on top of animation-channels. */
