@@ -323,7 +323,7 @@ bool GHOST_NDOFManager::setDevice(ushort vendor_id, ushort product_id)
         case 0xC633: {
           device_type_ = NDOF_SpaceMouseEnterprise;
           hid_map_button_num_ = 31;
-          hid_map_ = ndof_HID_map_SpaceMouseEnterprise;
+          hid_map_ = ndof_HID_map_Modern3Dx;
           break;
         }
         default: {
