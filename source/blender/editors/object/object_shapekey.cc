@@ -62,7 +62,7 @@ static void ED_object_shape_key_add(bContext *C, Object *ob, const bool from_mix
 {
   Main *bmain = CTX_data_main(C);
   KeyBlock *kb;
-  if ((kb = BKE_object_shapekey_insert(bmain, ob, NULL, from_mix))) {
+  if ((kb = BKE_object_shapekey_insert(bmain, ob, nullptr, from_mix))) {
     Key *key = BKE_key_from_object(ob);
     /* for absolute shape keys, new keys may not be added last */
     ob->shapenr = BLI_findindex(&key->block, kb) + 1;
@@ -82,11 +82,11 @@ static bool object_shapekey_remove(Main *bmain, Object *ob)
   KeyBlock *kb;
   Key *key = BKE_key_from_object(ob);
 
-  if (key == NULL) {
+  if (key == nullptr) {
     return false;
   }
 
-  kb = BLI_findlink(&key->block, ob->shapenr - 1);
+  kb = static_cast<KeyBlock *>(BLI_findlink(&key->block, ob->shapenr - 1));
   if (kb) {
     return BKE_object_shapekey_remove(bmain, ob, kb);
   }
@@ -104,25 +104,26 @@ static bool object_shape_key_mirror(
   *r_totmirr = *r_totfail = 0;
 
   key = BKE_key_from_object(ob);
-  if (key == NULL) {
+  if (key == nullptr) {
     return 0;
   }
 
-  kb = BLI_findlink(&key->block, ob->shapenr - 1);
+  kb = static_cast<KeyBlock *>(BLI_findlink(&key->block, ob->shapenr - 1));
 
   if (kb) {
-    char *tag_elem = MEM_callocN(sizeof(char) * kb->totelem, "shape_key_mirror");
+    char *tag_elem = static_cast<char *>(
+        MEM_callocN(sizeof(char) * kb->totelem, "shape_key_mirror"));
 
     if (ob->type == OB_MESH) {
-      Mesh *me = ob->data;
+      Mesh *me = static_cast<Mesh *>(ob->data);
       int i1, i2;
       float *fp1, *fp2;
       float tvec[3];
 
-      ED_mesh_mirror_spatial_table_begin(ob, NULL, NULL);
+      ED_mesh_mirror_spatial_table_begin(ob, nullptr, nullptr);
 
       for (i1 = 0; i1 < me->totvert; i1++) {
-        i2 = mesh_get_x_mirror_vert(ob, NULL, i1, use_topology);
+        i2 = mesh_get_x_mirror_vert(ob, nullptr, i1, use_topology);
         if (i2 == i1) {
           fp1 = ((float *)kb->data) + i1 * 3;
           fp1[0] = -fp1[0];
@@ -153,7 +154,7 @@ static bool object_shape_key_mirror(
       ED_mesh_mirror_spatial_table_end(ob);
     }
     else if (ob->type == OB_LATTICE) {
-      Lattice *lt = ob->data;
+      Lattice *lt = static_cast<Lattice *>(ob->data);
       int i1, i2;
       float *fp1, *fp2;
       int u, v, w;
@@ -216,9 +217,9 @@ static bool object_shape_key_mirror(
 static bool shape_key_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
-  ID *data = (ob) ? ob->data : NULL;
+  ID *data = static_cast<ID *>((ob) ? ob->data : nullptr);
 
-  return (ob != NULL && !ID_IS_LINKED(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && data != NULL &&
+  return (ob != nullptr && !ID_IS_LINKED(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && data != nullptr &&
           !ID_IS_LINKED(data) && !ID_IS_OVERRIDE_LIBRARY(data));
 }
 
@@ -235,7 +236,7 @@ static bool shape_key_mode_exists_poll(bContext *C)
 
   return (shape_key_mode_poll(C) &&
           /* check a keyblock exists */
-          (BKE_keyblock_from_object(ob) != NULL));
+          (BKE_keyblock_from_object(ob) != nullptr));
 }
 
 static bool shape_key_move_poll(bContext *C)
@@ -244,7 +245,7 @@ static bool shape_key_move_poll(bContext *C)
   Object *ob = ED_object_context(C);
   Key *key = BKE_key_from_object(ob);
 
-  return (shape_key_mode_poll(C) && key != NULL && key->totkey > 1);
+  return (shape_key_mode_poll(C) && key != nullptr && key->totkey > 1);
 }
 
 /** \} */
@@ -302,7 +303,8 @@ static int shape_key_remove_exec(bContext *C, wmOperator *op)
 
   if (RNA_boolean_get(op->ptr, "all")) {
     if (RNA_boolean_get(op->ptr, "apply_mix")) {
-      float *arr = BKE_key_evaluate_object_ex(ob, NULL, NULL, 0, ob->data);
+      float *arr = BKE_key_evaluate_object_ex(
+          ob, nullptr, nullptr, 0, static_cast<ID *>(ob->data));
       MEM_freeN(arr);
     }
     changed = BKE_object_shapekey_free(bmain, ob);
@@ -321,7 +323,7 @@ static int shape_key_remove_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static bool shape_key_remove_poll_property(const bContext *UNUSED(C),
+static bool shape_key_remove_poll_property(const bContext * /*C*/,
                                            wmOperator *op,
                                            const PropertyRNA *prop)
 {
@@ -335,8 +337,8 @@ static bool shape_key_remove_poll_property(const bContext *UNUSED(C),
   return true;
 }
 
-static char *shape_key_remove_get_description(bContext *UNUSED(C),
-                                              wmOperatorType *UNUSED(ot),
+static char *shape_key_remove_get_description(bContext * /*C*/,
+                                              wmOperatorType * /*ot*/,
                                               PointerRNA *ptr)
 {
   const bool do_apply_mix = RNA_boolean_get(ptr, "apply_mix");
@@ -346,7 +348,7 @@ static char *shape_key_remove_get_description(bContext *UNUSED(C),
         TIP_("Apply current visible shape to the object data, and delete all shape keys"));
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void OBJECT_OT_shape_key_remove(wmOperatorType *ot)
@@ -380,7 +382,7 @@ void OBJECT_OT_shape_key_remove(wmOperatorType *ot)
 /** \name Shape Key Clear Operator
  * \{ */
 
-static int shape_key_clear_exec(bContext *C, wmOperator *UNUSED(op))
+static int shape_key_clear_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_object_context(C);
   Key *key = BKE_key_from_object(ob);
@@ -390,7 +392,7 @@ static int shape_key_clear_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  for (kb = key->block.first; kb; kb = kb->next) {
+  for (kb = static_cast<KeyBlock *>(key->block.first); kb; kb = kb->next) {
     kb->curval = 0.0f;
   }
 
@@ -416,7 +418,7 @@ void OBJECT_OT_shape_key_clear(wmOperatorType *ot)
 }
 
 /* starting point and step size could be optional */
-static int shape_key_retime_exec(bContext *C, wmOperator *UNUSED(op))
+static int shape_key_retime_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_object_context(C);
   Key *key = BKE_key_from_object(ob);
@@ -427,7 +429,7 @@ static int shape_key_retime_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  for (kb = key->block.first; kb; kb = kb->next) {
+  for (kb = static_cast<KeyBlock *>(key->block.first); kb; kb = kb->next) {
     kb->pos = cfra;
     cfra += 0.1f;
   }
@@ -552,7 +554,7 @@ void OBJECT_OT_shape_key_move(wmOperatorType *ot)
       {KB_MOVE_UP, "UP", 0, "Up", ""},
       {KB_MOVE_DOWN, "DOWN", 0, "Down", ""},
       {KB_MOVE_BOTTOM, "BOTTOM", 0, "Bottom", "Bottom of the list"},
-      {0, NULL, 0, NULL, NULL}};
+      {0, nullptr, 0, nullptr, nullptr}};
 
   /* identifiers */
   ot->name = "Move Shape Key";
