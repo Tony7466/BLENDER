@@ -23,7 +23,6 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   pxr::HdRendererPluginRegistry &registry = pxr::HdRendererPluginRegistry::GetInstance();
 
   pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(render_delegate_name));
 
   /* USD has limited support for Vulkan. To make it works USD should be built
    * with PXR_ENABLE_VULKAN_SUPPORT=TRUE which is not possible now */
@@ -38,6 +37,11 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
     hgi_driver_.driver = pxr::VtValue(hgi_.get());
 
     hd_drivers.push_back(&hgi_driver_);
+  }
+  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(render_delegate_name));
+
+  if (!render_delegate_) {
+    throw std::runtime_error("Cannot create render delegate: " + render_delegate_name);
   }
 
   render_index_.reset(pxr::HdRenderIndex::New(render_delegate_.Get(), hd_drivers));

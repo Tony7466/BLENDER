@@ -65,23 +65,30 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
 
   RenderEngine *bl_engine = (RenderEngine *)PyLong_AsVoidPtr(pyengine);
 
-  Engine *engine;
-  if (STREQ(engine_type, "VIEWPORT")) {
-    engine = new ViewportEngine(bl_engine, render_delegate_id);
-  }
-  else if (STREQ(engine_type, "PREVIEW")) {
-    engine = new PreviewEngine(bl_engine, render_delegate_id);
-  }
-  else {
-    if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
-      engine = new FinalEngineGL(bl_engine, render_delegate_id);
+  Engine *engine = nullptr;
+  try {
+    if (STREQ(engine_type, "VIEWPORT")) {
+      engine = new ViewportEngine(bl_engine, render_delegate_id);
+    }
+    else if (STREQ(engine_type, "PREVIEW")) {
+      engine = new PreviewEngine(bl_engine, render_delegate_id);
     }
     else {
-      engine = new FinalEngine(bl_engine, render_delegate_id);
+      if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
+        engine = new FinalEngineGL(bl_engine, render_delegate_id);
+      }
+      else {
+        engine = new FinalEngine(bl_engine, render_delegate_id);
+      }
     }
   }
+  catch (std::runtime_error &e) {
+    CLOG_ERROR(LOG_RENDER_HYDRA, "%s", e.what());
+  }
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 1, "Engine %016llx %s", engine, engine_type);
+  if (engine) {
+    CLOG_INFO(LOG_RENDER_HYDRA, 1, "Engine %016llx %s", engine, engine_type);
+  }
   return PyLong_FromVoidPtr(engine);
 }
 

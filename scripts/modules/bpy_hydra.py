@@ -63,7 +63,6 @@ class HydraRenderEngine(bpy.types.RenderEngine):
             return
 
         _bpy_hydra.engine_free(self.engine_ptr)
-        del self.engine_ptr
 
     @classmethod
     def register(cls):
@@ -95,6 +94,8 @@ class HydraRenderEngine(bpy.types.RenderEngine):
     def update(self, data, depsgraph):
         engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
         self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), engine_type, self.delegate_id)
+        if not self.engine_ptr:
+            return
 
         for key, val in self.get_sync_settings(engine_type).items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
@@ -114,6 +115,8 @@ class HydraRenderEngine(bpy.types.RenderEngine):
     def view_update(self, context, depsgraph):
         if not self.engine_ptr:
             self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), 'VIEWPORT', self.delegate_id)
+        if not self.engine_ptr:
+            return
 
         for key, val in self.get_sync_settings('VIEWPORT').items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
