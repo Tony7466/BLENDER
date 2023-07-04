@@ -110,9 +110,6 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
     return dst;
   }
 
-  /* Initialize at zero */
-  mask.foreach_index(GrainSize(256), [&](const int64_t point_index) { dst[point_index] = T(0); });
-
   /* Weight Initialization */
   const int n_half = keep_shape ? (iterations * iterations) / 8 + iterations :
                                   (iterations * iterations) / 4 + 2 * iterations + 12;
@@ -120,21 +117,33 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
   double w2 = keep_shape ?
                   (1.0 / M_SQRT3) * exp((2 * iterations * iterations) / double(n_half * 3)) :
                   0.0;
-  double total_w = 0.0;
+  Array<double> total_weight(mask.size(), 0.0);
 
   const int64_t first_pt = curve_points.first();
   const int64_t last_pt = curve_points.last();
   const int64_t nb_pts = curve_points.size();
 
-  for (int step = iterations; step > 0; step--) {
-    float w_before = float(w - w2);
-    float w_after = float(w - w2);
+  auto is_end_and_fixed = [smooth_ends, is_cyclic, first_pt, last_pt](int point_index) {
+    return !smooth_ends && !is_cyclic && ((point_index == first_pt) || (point_index == last_pt));
+  };
 
-    mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
+  /* Initialize at zero */
+  mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
+    if (!is_end_and_fixed(point_index)) {
+      dst[point_index] = T(0);
+    }
+  });
+
+  for (int step = iterations; step > 0; step--) {
+
+    mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
       /* Filter out endpoints if smooth ends is disabled */
-      if (!smooth_ends && !is_cyclic && ((point_index == first_pt) || (point_index == last_pt))) {
+      if (is_end_and_fixed(point_index)) {
         return;
       }
+
+      float w_before = float(w - w2);
+      float w_after = float(w - w2);
 
       /* Compute the neighboring points */
       int64_t before = point_index - step;
@@ -144,7 +153,15 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
         after = (after - first_pt) % nb_pts + first_pt;
       }
       else {
+        if (!smooth_ends && (before < first_pt)) {
+          w_before *= -(before - first_pt) / float(point_index - first_pt);
+        }
         before = std::max(before, first_pt);
+
+        if (!smooth_ends && (after > last_pt)) {
+          w_after *= (after - first_pt - (nb_pts - 1)) /
+                     float(nb_pts - 1 - point_index + first_pt);
+        }
         after = std::min(after, last_pt);
       }
 
@@ -155,20 +172,23 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
 
       dst[point_index] += (bval - cval) * w_before;
       dst[point_index] += (aval - cval) * w_after;
-    });
 
-    /* Update the weight values */
-    total_w += w_before;
-    total_w += w_after;
+      /* Update the weight values */
+      total_weight[mask_index] += w_before;
+      total_weight[mask_index] += w_after;
+    });
 
     w *= (n_half + step) / double(n_half + 1 - step);
     w2 *= (n_half * 3 + step) / double(n_half * 3 + 1 - step);
   }
-  total_w += w - w2;
 
   /* Normalize the weights */
-  mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
-    dst[point_index] = src[point_index] + influence * dst[point_index] / total_w;
+  mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
+    if (!is_end_and_fixed(point_index)) {
+      total_weight[mask_index] += w - w2;
+      dst[point_index] = src[point_index] +
+                         influence * dst[point_index] / total_weight[mask_index];
+    }
   });
 
   return dst.as_span();
@@ -285,7 +305,7 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 1.0f, "Factor", "", 0.0f, 1.0f);
   RNA_def_boolean(ot->srna, "smooth_ends", false, "Smooth Endpoints", "");
-  RNA_def_boolean(ot->srna, "keep_shape", true, "Keep Shape", "");
+  RNA_def_boolean(ot->srna, "keep_shape", false, "Keep Shape", "");
 }
 
 }  // namespace blender::ed::greasepencil
