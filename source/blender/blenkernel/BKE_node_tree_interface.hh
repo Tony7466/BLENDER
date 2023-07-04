@@ -32,11 +32,11 @@ inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
   bNodeTreeInterfaceItem *active = nullptr;
   int count = active_index;
   foreach_item([&active, &count](bNodeTreeInterfaceItem &item) {
-    --count;
     if (count == 0) {
       active = &item;
       return false;
     }
+    --count;
     return true;
   });
   return active;
@@ -47,11 +47,11 @@ inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
   const bNodeTreeInterfaceItem *active = nullptr;
   int count = active_index;
   foreach_item([&active, &count](const bNodeTreeInterfaceItem &item) {
-    --count;
     if (count == 0) {
       active = &item;
       return false;
     }
+    --count;
     return true;
   });
   return active;
