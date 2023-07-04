@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -20,8 +22,6 @@
  *   the shading stage. This let us do correct shadowing for each diffuse / specular
  *   lobe present in the shader using the correct normal.
  */
-
-#pragma once
 
 #include "eevee_ambient_occlusion.hh"
 #include "eevee_instance.hh"

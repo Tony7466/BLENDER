@@ -45,6 +45,8 @@ author_table = {
     "unclezeiv": "Davide Vercelli",
     "dilithjay": "Dilith Jayakody",
     "gaiaclary": "Gaia Clary",
+    "DESKTOP-ON14TH5\\Sonny Campbell": "Sonny Campbell",
+    "demeterdzadik@gmail.com": "Demeter Dzadik",
     "Diego Hernan Borghetti": "Diego Borghetti",
     "Dotsnov Valentin": "Dontsov Valentin",
     "Eitan": "Eitan Traurig",
@@ -104,6 +106,7 @@ commit_authors_overwrite = {
 
 # -----------------------------------------------------------------------------
 # Class for generating credits
+
 
 class CreditUser:
     __slots__ = (
