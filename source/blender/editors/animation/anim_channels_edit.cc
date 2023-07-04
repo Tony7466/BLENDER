@@ -421,9 +421,9 @@ static eAnimChannels_SetFlag anim_channels_selection_flag_for_toggle(const ListB
         }
         break;
       case ANIMTYPE_OBJECT:
-#if 0 /* for now, do not take object selection into account, since it gets too annoying */ 
-if (ale->flag & SELECT) { 
-return ACHANNEL_SETFLAG_CLEAR; 
+#if 0 /* for now, do not take object selection into account, since it gets too annoying */
+if (ale->flag & SELECT) {
+return ACHANNEL_SETFLAG_CLEAR;
 }
 #endif
         break;
@@ -518,15 +518,15 @@ static void anim_channels_select_set(bAnimContext *ac,
         break;
       }
       case ANIMTYPE_OBJECT: {
-#if 0 /* for now, do not take object selection into account, since it gets too annoying */ 
-Base *base = (Base *)ale->data; 
-Object *ob = base->object; 
- 
-ACHANNEL_SET_FLAG(base, sel, SELECT); 
-ACHANNEL_SET_FLAG(ob, sel, SELECT); 
- 
-if (ob->adt) { 
-ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED); 
+#if 0 /* for now, do not take object selection into account, since it gets too annoying */
+Base *base = (Base *)ale->data;
+Object *ob = base->object;
+
+ACHANNEL_SET_FLAG(base, sel, SELECT);
+ACHANNEL_SET_FLAG(ob, sel, SELECT);
+
+if (ob->adt) {
+ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
 }
 #endif
         break;
@@ -812,7 +812,11 @@ void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  rctf bounds = {.xmin = FLT_MAX, .xmax = -FLT_MAX, .ymin = FLT_MAX, .ymax = -FLT_MAX};
+  rctf bounds{};
+  bounds.xmin = FLT_MAX;
+  bounds.xmax = -FLT_MAX;
+  bounds.ymin = FLT_MAX;
+  bounds.ymax = -FLT_MAX;
   const bool include_handles = false;
   float frame_range[2] = {window_region->v2d.cur.xmin, window_region->v2d.cur.xmax};
   if (ac->scene->r.flag & SCER_PRV_RANGE) {
@@ -4053,7 +4057,11 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
   const bool use_preview_range = RNA_boolean_get(op->ptr, "use_preview_range");
   get_view_range(ac.scene, use_preview_range, range);
 
-  rctf bounds = {.xmin = FLT_MAX, .xmax = -FLT_MAX, .ymin = FLT_MAX, .ymax = -FLT_MAX};
+  rctf bounds{};
+  bounds.xmin = FLT_MAX;
+  bounds.xmax = -FLT_MAX;
+  bounds.ymin = FLT_MAX;
+  bounds.ymax = -FLT_MAX;
 
   bAnimListElem *ale;
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");

@@ -57,7 +57,7 @@ void ANIM_list_elem_update(Main *bmain, Scene *scene, bAnimListElem *ale)
   adt = BKE_animdata_from_id(id);
   if (adt) {
     DEG_id_tag_update(id, ID_RECALC_ANIMATION);
-    if (adt->action != NULL) {
+    if (adt->action != nullptr) {
       DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION);
     }
   }
@@ -70,7 +70,7 @@ void ANIM_list_elem_update(Main *bmain, Scene *scene, bAnimListElem *ale)
   }
 
   /* update data */
-  fcu = (ale->datatype == ALE_FCURVE) ? ale->key_data : NULL;
+  fcu = static_cast<FCurve *>((ale->datatype == ALE_FCURVE) ? ale->key_data : nullptr);
 
   if (fcu && fcu->rna_path) {
     /* If we have an fcurve, call the update for the property we
@@ -88,8 +88,7 @@ void ANIM_list_elem_update(Main *bmain, Scene *scene, bAnimListElem *ale)
   else {
     /* in other case we do standard depsgraph update, ideally
      * we'd be calling property update functions here too ... */
-    DEG_id_tag_update(id,
-                      /* XXX: or do we want something more restrictive? */
+    DEG_id_tag_update(id, /* XXX: or do we want something more restrictive? */
                       ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
   }
 }
@@ -98,8 +97,7 @@ void ANIM_id_update(Main *bmain, ID *id)
 {
   if (id) {
     DEG_id_tag_update_ex(bmain,
-                         id,
-                         /* XXX: or do we want something more restrictive? */
+                         id, /* XXX: or do we want something more restrictive? */
                          ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
   }
 }
@@ -123,7 +121,7 @@ static void animchan_sync_group(bAnimContext *ac, bAnimListElem *ale, bActionGro
   /* major priority is selection status
    * so we need both a group and an owner
    */
-  if (ELEM(NULL, agrp, owner_id)) {
+  if (ELEM(nullptr, agrp, owner_id)) {
     return;
   }
 
@@ -137,7 +135,7 @@ static void animchan_sync_group(bAnimContext *ac, bAnimListElem *ale, bActionGro
      */
     if (ob->pose) {
       bPoseChannel *pchan = BKE_pose_channel_find_name(ob->pose, agrp->name);
-      bArmature *arm = ob->data;
+      bArmature *arm = static_cast<bArmature *>(ob->data);
 
       if (pchan) {
         bActionGroup *bgrp;
@@ -153,7 +151,7 @@ static void animchan_sync_group(bAnimContext *ac, bAnimListElem *ale, bActionGro
         /* also sync active group status */
         if ((ob == ac->obact) && (pchan->bone == arm->act_bone)) {
           /* if no previous F-Curve has active flag, then we're the first and only one to get it */
-          if (*active_agrp == NULL) {
+          if (*active_agrp == nullptr) {
             agrp->flag |= AGRP_ACTIVE;
             *active_agrp = agrp;
           }
@@ -184,7 +182,7 @@ static void animchan_sync_fcurve_scene(bAnimListElem *ale)
   BLI_assert(GS(owner_id->name) == ID_SCE);
   Scene *scene = (Scene *)owner_id;
   FCurve *fcu = (FCurve *)ale->data;
-  Sequence *seq = NULL;
+  Sequence *seq = nullptr;
 
   /* Only affect if F-Curve involves sequence_editor.sequences. */
   char seq_name[sizeof(seq->name)];
@@ -195,7 +193,7 @@ static void animchan_sync_fcurve_scene(bAnimListElem *ale)
   /* Check if this strip is selected. */
   Editing *ed = SEQ_editing_get(scene);
   seq = SEQ_get_sequence_by_name(ed->seqbasep, seq_name, false);
-  if (seq == NULL) {
+  if (seq == nullptr) {
     return;
   }
 
@@ -217,7 +215,7 @@ static void animchan_sync_fcurve(bAnimListElem *ale)
   /* major priority is selection status, so refer to the checks done in anim_filter.c
    * skip_fcurve_selected_data() for reference about what's going on here...
    */
-  if (ELEM(NULL, fcu, fcu->rna_path, owner_id)) {
+  if (ELEM(nullptr, fcu, fcu->rna_path, owner_id)) {
     return;
   }
 
@@ -257,11 +255,11 @@ static void animchan_sync_gplayer(bAnimListElem *ale)
 void ANIM_sync_animchannels_to_data(const bContext *C)
 {
   bAnimContext ac;
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
-  bActionGroup *active_agrp = NULL;
+  bActionGroup *active_agrp = nullptr;
 
   /* get animation context info for filtering the channels */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
@@ -275,10 +273,11 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
    * don't include duplicates so that selection statuses don't override each other.
    */
   filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_CHANNELS | ANIMFILTER_NODUPLIS;
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* flush settings as appropriate depending on the types of the channels */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     switch (ale->type) {
       case ANIMTYPE_GROUP:
         animchan_sync_group(&ac, ale, &active_agrp);
@@ -301,14 +300,14 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
 {
   bAnimListElem *ale;
 
-  for (ale = anim_data->first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
     if (ale->type == ANIMTYPE_GPLAYER) {
-      bGPDlayer *gpl = ale->data;
+      bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
 
       if (ale->update & ANIM_UPDATE_ORDER) {
         ale->update &= ~ANIM_UPDATE_ORDER;
         if (gpl) {
-          BKE_gpencil_layer_frames_sort(gpl, NULL);
+          BKE_gpencil_layer_frames_sort(gpl, nullptr);
         }
       }
 
@@ -322,7 +321,7 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
       }
     }
     else if (ale->datatype == ALE_MASKLAY) {
-      MaskLayer *masklay = ale->data;
+      MaskLayer *masklay = static_cast<MaskLayer *>(ale->data);
 
       if (ale->update & ANIM_UPDATE_ORDER) {
         ale->update &= ~ANIM_UPDATE_ORDER;
@@ -343,7 +342,7 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
       }
     }
     else if (ale->datatype == ALE_FCURVE) {
-      FCurve *fcu = ale->key_data;
+      FCurve *fcu = static_cast<FCurve *>(ale->key_data);
 
       if (ale->update & ANIM_UPDATE_ORDER) {
         ale->update &= ~ANIM_UPDATE_ORDER;
@@ -376,14 +375,10 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
       }
     }
     else if (ale->update) {
-#if 0
-      if (G.debug & G_DEBUG) {
-        printf("%s: Unhandled animchannel updates (%d) for type=%d (%p)\n",
-               __func__,
-               ale->update,
-               ale->type,
-               ale->data);
-      }
+#if 0 
+if (G.debug & G_DEBUG) { 
+printf("%s: Unhandled animchannel updates (%d) for type=%d (%p)\n", __func__, ale->update, ale->type, ale->data); 
+}
 #endif
       /* Prevent crashes in cases where it can't be handled */
       ale->update = 0;
