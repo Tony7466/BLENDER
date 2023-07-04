@@ -696,7 +696,9 @@ static int outliner_id_remap_invoke(bContext *C, wmOperator *op, const wmEvent *
     outliner_id_remap_find_tree_element(C, op, &space_outliner->tree, fmval[1]);
   }
 
-  return WM_operator_props_dialog_popup(C, op, 400);
+  /* Search box for "New ID" property. If more props need to be displayed, a custom
+   * #wmOperatorType.ui() callback may be best. */
+  return WM_enum_search_invoke(C, op, event);
 }
 
 static const EnumPropertyItem *outliner_id_itemf(bContext *C,
