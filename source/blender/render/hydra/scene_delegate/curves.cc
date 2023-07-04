@@ -26,7 +26,7 @@ void CurvesData::init()
   Object *object = (Object *)id;
   write_curves((Curves *)object->data);
   write_transform();
-  write_material();
+  write_materials();
 }
 
 void CurvesData::insert()
@@ -38,7 +38,7 @@ void CurvesData::insert()
 
 void CurvesData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
 }
 
@@ -51,7 +51,7 @@ void CurvesData::update()
     bits = pxr::HdChangeTracker::AllDirty;
   }
   if (id->recalc & ID_RECALC_SHADING) {
-    write_material();
+    write_materials();
     bits |= pxr::HdChangeTracker::DirtyMaterialId | pxr::HdChangeTracker::DirtyDoubleSided;
   }
   if (id->recalc & ID_RECALC_TRANSFORM) {
@@ -179,7 +179,7 @@ void CurvesData::write_uv_maps(Curves *curves)
   }
 }
 
-void CurvesData::write_material()
+void CurvesData::write_materials()
 {
   Object *object = (Object *)id;
   Material *mat = nullptr;

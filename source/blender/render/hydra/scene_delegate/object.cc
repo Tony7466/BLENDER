@@ -9,6 +9,7 @@
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
+#include "volume.h"
 
 namespace blender::render::hydra {
 
@@ -39,7 +40,9 @@ std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_deleg
     case OB_LAMP:
       data = std::make_unique<LightData>(scene_delegate, object, prim_id);
       break;
-
+    case OB_VOLUME:
+      data = std::make_unique<VolumeData>(scene_delegate, object, prim_id);
+      break;
     default:
       break;
   }
@@ -56,6 +59,7 @@ bool ObjectData::is_supported(Object *object)
     case OB_CURVES_LEGACY:
     case OB_MBALL:
     case OB_LAMP:
+    case OB_VOLUME:
       return true;
 
     default:

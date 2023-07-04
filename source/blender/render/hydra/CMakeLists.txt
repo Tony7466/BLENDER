@@ -87,6 +87,8 @@ set(SRC
   scene_delegate/instancer.cc
   scene_delegate/image.h
   scene_delegate/image.cc
+  scene_delegate/volume.h
+  scene_delegate/volume.cc
 )
 
 set(LIB

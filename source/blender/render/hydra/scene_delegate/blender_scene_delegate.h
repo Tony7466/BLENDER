@@ -17,6 +17,7 @@
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
+#include "volume.h"
 #include "world.h"
 
 namespace blender::render::hydra {
@@ -28,6 +29,7 @@ class Engine;
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   friend ObjectData;   /* has access to instances */
   friend CurvesData;   /* has access to materials */
+  friend VolumeData;   /* has access to materials */
   friend MeshData;     /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
 
@@ -70,6 +72,8 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   pxr::VtIntArray GetInstanceIndices(pxr::SdfPath const &instancer_id,
                                      pxr::SdfPath const &prototype_id) override;
   pxr::GfMatrix4d GetInstancerTransform(pxr::SdfPath const &instancer_id) override;
+  pxr::HdVolumeFieldDescriptorVector GetVolumeFieldDescriptors(
+      pxr::SdfPath const &volume_id) override;
 
   void populate(Depsgraph *depsgraph, bContext *context);
   void clear();
@@ -96,6 +100,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   LightData *light_data(pxr::SdfPath const &id) const;
   MaterialData *material_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;
+  VolumeData *volume_data(pxr::SdfPath const &id) const;
 
   void update_objects(Object *object);
   void update_instancers(Object *object);

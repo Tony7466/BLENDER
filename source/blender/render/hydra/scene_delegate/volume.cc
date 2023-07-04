@@ -1,0 +1,179 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright 2011-2022 Blender Foundation */
+
+#include <pxr/imaging/hd/bprim.h>
+#include <pxr/imaging/hd/tokens.h>
+#include <pxr/imaging/hd/volumeFieldSchema.h>
+#include <pxr/usd/usdHydra/tokens.h>
+#include <pxr/usd/usdVol/tokens.h>
+#include <pxr/usdImaging/usdVolImaging/tokens.h>
+
+#include "BKE_material.h"
+#include "BKE_volume.h"
+#include "BLI_index_range.hh"
+#include "DNA_volume_types.h"
+
+#include "blender_scene_delegate.h"
+#include "volume.h"
+
+namespace blender::render::hydra {
+
+VolumeData::VolumeData(BlenderSceneDelegate *scene_delegate,
+                       Object *object,
+                       pxr::SdfPath const &prim_id)
+    : ObjectData(scene_delegate, object, prim_id)
+{
+}
+
+void VolumeData::init()
+{
+  ID_LOG(1, "");
+  Volume *volume = (Volume *)((Object *)this->id)->data;
+  Main *main = CTX_data_main(scene_delegate_->context);
+  if (!BKE_volume_load(volume, main)) {
+    return;
+  }
+  filepath_ = BKE_volume_grids_frame_filepath(volume);
+
+  if (volume->runtime.grids) {
+    const int num_grids = BKE_volume_num_grids(volume);
+    if (num_grids) {
+      for (const int i : IndexRange(num_grids)) {
+        const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, i);
+        const std::string grid_name = BKE_volume_grid_name(grid);
+
+        field_descriptors_.emplace_back(pxr::TfToken(grid_name),
+                                        pxr::UsdVolImagingTokens->openvdbAsset,
+                                        prim_id.AppendElementString("VF_" + grid_name));
+      }
+    }
+  }
+  write_transform();
+  write_materials();
+
+  BKE_volume_unload(volume);
+}
+
+void VolumeData::insert()
+{
+  scene_delegate_->GetRenderIndex().InsertRprim(
+      pxr::HdPrimTypeTokens->volume, scene_delegate_, prim_id);
+
+  ID_LOG(1, "");
+
+  for (auto &desc : field_descriptors_) {
+    scene_delegate_->GetRenderIndex().InsertBprim(
+        desc.fieldPrimType, scene_delegate_, desc.fieldId);
+    ID_LOG(1, "Volume field %s", desc.fieldId.GetText());
+  }
+}
+
+void VolumeData::remove()
+{
+  for (auto &desc : field_descriptors_) {
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", desc.fieldId.GetText());
+    scene_delegate_->GetRenderIndex().RemoveBprim(desc.fieldPrimType, desc.fieldId);
+  }
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
+  scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
+}
+
+void VolumeData::update()
+{
+  Object *object = (Object *)id;
+  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
+  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+    init();
+    bits = pxr::HdChangeTracker::AllDirty;
+  }
+  if (id->recalc & ID_RECALC_SHADING) {
+    write_materials();
+    bits |= pxr::HdChangeTracker::DirtyMaterialId | pxr::HdChangeTracker::DirtyDoubleSided;
+  }
+  if (id->recalc & ID_RECALC_TRANSFORM) {
+    write_transform();
+    bits |= pxr::HdChangeTracker::DirtyTransform;
+  }
+
+  if (bits == pxr::HdChangeTracker::Clean) {
+    return;
+  }
+
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(prim_id, bits);
+  ID_LOG(1, "");
+}
+
+pxr::VtValue VolumeData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
+{
+  if (key == pxr::HdVolumeFieldSchemaTokens->filePath) {
+    return pxr::VtValue(pxr::SdfAssetPath(filepath_, filepath_));
+  }
+  if (key == pxr::HdVolumeFieldSchemaTokens->fieldName) {
+    std::string name = id.GetName();
+    return pxr::VtValue(pxr::TfToken(name.substr(name.find("VF_") + 3)));
+  }
+  if (key == pxr::HdVolumeFieldSchemaTokens->fieldIndex) {
+    return pxr::VtValue(0);
+  }
+  if (key == pxr::UsdHydraTokens->textureMemory) {
+    return pxr::VtValue(0.0f);
+  }
+  return pxr::VtValue();
+}
+
+bool VolumeData::update_visibility()
+{
+  bool ret = ObjectData::update_visibility();
+  if (ret) {
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+        prim_id, pxr::HdChangeTracker::DirtyVisibility);
+    ID_LOG(1, "");
+  }
+  return ret;
+}
+
+pxr::HdVolumeFieldDescriptorVector VolumeData::field_descriptors() const
+{
+  return field_descriptors_;
+}
+
+pxr::SdfPath VolumeData::material_id() const
+{
+  if (!mat_data_) {
+    return pxr::SdfPath();
+  }
+  return mat_data_->prim_id;
+}
+
+void VolumeData::available_materials(Set<pxr::SdfPath> &paths) const
+{
+  if (mat_data_ && !mat_data_->prim_id.IsEmpty()) {
+    paths.add(mat_data_->prim_id);
+  }
+}
+
+void VolumeData::write_materials()
+{
+  Object *object = (Object *)id;
+  Material *mat = nullptr;
+  /* TODO: Using only first material. Add support for multimaterial. */
+  if (BKE_object_material_count_eval(object) > 0) {
+    mat = BKE_object_material_get_eval(object, 0);
+  }
+
+  if (!mat) {
+    mat_data_ = nullptr;
+    return;
+  }
+  pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
+  mat_data_ = scene_delegate_->material_data(p_id);
+  if (!mat_data_) {
+    scene_delegate_->materials_.add_new(
+        p_id, std::make_unique<MaterialData>(scene_delegate_, mat, p_id));
+    mat_data_ = scene_delegate_->material_data(p_id);
+    mat_data_->init();
+    mat_data_->insert();
+  }
+}
+
+}  // namespace blender::render::hydra

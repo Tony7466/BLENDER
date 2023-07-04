@@ -76,6 +76,10 @@ pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken cons
   if (c_data) {
     return c_data->get_data(id, key);
   }
+  VolumeData *v_data = volume_data(id);
+  if (v_data) {
+    return v_data->get_data(id, key);
+  }
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->get_data(key);
@@ -134,6 +138,10 @@ pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
   CurvesData *c_data = curves_data(rprim_id);
   if (c_data) {
     return c_data->material_id();
+  }
+  VolumeData *v_data = volume_data(rprim_id);
+  if (v_data) {
+    return v_data->material_id();
   }
   return pxr::SdfPath();
 }
@@ -203,6 +211,14 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(pxr::SdfPath const &
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->transform;
+}
+
+pxr::HdVolumeFieldDescriptorVector BlenderSceneDelegate::GetVolumeFieldDescriptors(
+    pxr::SdfPath const &volume_id)
+{
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", volume_id.GetText());
+  VolumeData *v_data = volume_data(volume_id);
+  return v_data->field_descriptors();
 }
 
 void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
@@ -287,7 +303,9 @@ pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
 
 ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
 {
-  pxr::SdfPath p_id = (id.GetName().find("SM_") == 0) ? id.GetParentPath() : id;
+  pxr::SdfPath p_id = (id.GetName().find("SM_") == 0 || id.GetName().find("VF_") == 0) ?
+                          id.GetParentPath() :
+                          id;
   auto obj_data = objects_.lookup_ptr(p_id);
   if (obj_data) {
     return obj_data->get();
@@ -346,6 +364,11 @@ InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool
     return i_data->get();
   }
   return nullptr;
+}
+
+VolumeData *BlenderSceneDelegate::volume_data(pxr::SdfPath const &id) const
+{
+  return dynamic_cast<VolumeData *>(object_data(id));
 }
 
 void BlenderSceneDelegate::update_objects(Object *object)
@@ -617,6 +640,10 @@ void BlenderSceneDelegate::remove_unused_objects()
     CurvesData *c_data = dynamic_cast<CurvesData *>(val.get());
     if (c_data) {
       c_data->available_materials(available_materials);
+    }
+    VolumeData *v_data = dynamic_cast<VolumeData *>(val.get());
+    if (v_data) {
+      v_data->available_materials(available_materials);
     }
   }
   for (auto &val : instancers_.values()) {
