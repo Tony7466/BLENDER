@@ -344,9 +344,8 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
     BMEdge *eed;
     float dist;
     int base_index;
-  } best = {
-      .dist = ED_view3d_select_dist_px(),
-  };
+  } best{};
+  best.dist = ED_view3d_select_dist_px();
 
   uint base_index;
   BMEdge *eed_test = EDBM_edge_find_nearest_ex(&lcd->vc,
@@ -378,13 +377,12 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
   const bool is_interactive = (event != nullptr);
 
   /* Use for redo - intentionally wrap int to uint. */
-  const struct {
+  struct {
     uint base_index;
     uint e_index;
-  } exec_data = {
-      .base_index = (uint)RNA_int_get(op->ptr, "object_index"),
-      .e_index = (uint)RNA_int_get(op->ptr, "edge_index"),
-  };
+  } exec_data{};
+  exec_data.base_index = (uint)RNA_int_get(op->ptr, "object_index");
+  exec_data.e_index = (uint)RNA_int_get(op->ptr, "edge_index");
 
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);

@@ -421,11 +421,10 @@ static void gizmo_mesh_spin_init_message_subscribe(const bContext *C,
   ARegion *region = CTX_wm_region(C);
 
   /* Subscribe to view properties */
-  wmMsgSubscribeValue msg_sub_value_gz_tag_refresh = {
-      .owner = region,
-      .user_data = gzgroup->parent_gzmap,
-      .notify = WM_gizmo_do_msg_notify_tag_refresh,
-  };
+  wmMsgSubscribeValue msg_sub_value_gz_tag_refresh{};
+  msg_sub_value_gz_tag_refresh.owner = region;
+  msg_sub_value_gz_tag_refresh.user_data = gzgroup->parent_gzmap;
+  msg_sub_value_gz_tag_refresh.notify = WM_gizmo_do_msg_notify_tag_refresh;
 
   PointerRNA cursor_ptr;
   RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &cursor_ptr);
