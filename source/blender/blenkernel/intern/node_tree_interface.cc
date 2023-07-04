@@ -175,7 +175,9 @@ bool bNodeTreeInterfacePanel::contains_item(const bNodeTreeInterfaceItem &item) 
 bool bNodeTreeInterfacePanel::find_item(const bNodeTreeInterfaceItem &item) const
 {
   bool is_child = false;
-  foreach_item([item, &is_child](const bNodeTreeInterfaceItem &titem) {
+  /* Have to capture item address here instead of just a reference,
+   * otherwise pointer comparison will not work. */
+  foreach_item([&item, &is_child](const bNodeTreeInterfaceItem &titem) {
     if (&titem == &item) {
       is_child = true;
       return false;
