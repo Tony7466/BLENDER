@@ -56,20 +56,20 @@
  * \{ */
 
 ShaderFxData *ED_object_shaderfx_add(
-    ReportList *reports, Main *bmain, Scene *UNUSED(scene), Object *ob, const char *name, int type)
+    ReportList *reports, Main *bmain, Scene * /*scene*/, Object *ob, const char *name, int type)
 {
-  ShaderFxData *new_fx = NULL;
-  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(type);
+  ShaderFxData *new_fx = nullptr;
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(type));
 
   if (ob->type != OB_GPENCIL_LEGACY) {
     BKE_reportf(reports, RPT_WARNING, "Effect cannot be added to object '%s'", ob->id.name + 2);
-    return NULL;
+    return nullptr;
   }
 
   if (fxi->flags & eShaderFxTypeFlag_Single) {
-    if (BKE_shaderfx_findby_type(ob, type)) {
+    if (BKE_shaderfx_findby_type(ob, ShaderFxType(type))) {
       BKE_report(reports, RPT_WARNING, "Only one Effect of this type is allowed");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -85,7 +85,7 @@ ShaderFxData *ED_object_shaderfx_add(
   /* make sure effect data has unique name */
   BKE_shaderfx_unique_name(&ob->shader_fx, new_fx);
 
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -102,7 +102,7 @@ static bool UNUSED_FUNCTION(object_has_shaderfx)(const Object *ob,
 {
   ShaderFxData *fx;
 
-  for (fx = ob->shader_fx.first; fx; fx = fx->next) {
+  for (fx = static_cast<ShaderFxData *>(ob->shader_fx.first); fx; fx = fx->next) {
     if ((fx != exclude) && (fx->type == type)) {
       return true;
     }
@@ -114,7 +114,7 @@ static bool UNUSED_FUNCTION(object_has_shaderfx)(const Object *ob,
 static bool object_shaderfx_remove(Main *bmain,
                                    Object *ob,
                                    ShaderFxData *fx,
-                                   bool *UNUSED(r_sort_depsgraph))
+                                   bool * /*r_sort_depsgraph*/)
 {
   /* It seems on rapid delete it is possible to
    * get called twice on same effect, so make
@@ -152,7 +152,7 @@ bool ED_object_shaderfx_remove(ReportList *reports, Main *bmain, Object *ob, Sha
 
 void ED_object_shaderfx_clear(Main *bmain, Object *ob)
 {
-  ShaderFxData *fx = ob->shader_fx.first;
+  ShaderFxData *fx = static_cast<ShaderFxData *>(ob->shader_fx.first);
   bool sort_depsgraph = false;
 
   if (!fx) {
@@ -173,7 +173,7 @@ void ED_object_shaderfx_clear(Main *bmain, Object *ob)
   DEG_relations_tag_update(bmain);
 }
 
-int ED_object_shaderfx_move_up(ReportList *UNUSED(reports), Object *ob, ShaderFxData *fx)
+int ED_object_shaderfx_move_up(ReportList * /*reports*/, Object *ob, ShaderFxData *fx)
 {
   if (fx->prev) {
     BLI_remlink(&ob->shader_fx, fx);
@@ -183,7 +183,7 @@ int ED_object_shaderfx_move_up(ReportList *UNUSED(reports), Object *ob, ShaderFx
   return 1;
 }
 
-int ED_object_shaderfx_move_down(ReportList *UNUSED(reports), Object *ob, ShaderFxData *fx)
+int ED_object_shaderfx_move_down(ReportList * /*reports*/, Object *ob, ShaderFxData *fx)
 {
   if (fx->next) {
     BLI_remlink(&ob->shader_fx, fx);
@@ -198,7 +198,7 @@ bool ED_object_shaderfx_move_to_index(ReportList *reports,
                                       ShaderFxData *fx,
                                       const int index)
 {
-  BLI_assert(fx != NULL);
+  BLI_assert(fx != nullptr);
   BLI_assert(index >= 0);
   if (index >= BLI_listbase_count(&ob->shader_fx)) {
     BKE_report(reports, RPT_WARNING, "Cannot move effect beyond the end of the stack");
@@ -263,7 +263,7 @@ static bool edit_shaderfx_poll_generic(bContext *C,
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "shaderfx", rna_type);
   Object *ob = (ptr.owner_id) ? (Object *)ptr.owner_id : ED_object_active_context(C);
-  ShaderFxData *fx = ptr.data; /* May be NULL. */
+  ShaderFxData *fx = static_cast<ShaderFxData *>(ptr.data); /* May be nullptr. */
 
   if (!ED_operator_object_active_editable_ex(C, ob)) {
     return false;
@@ -280,7 +280,7 @@ static bool edit_shaderfx_poll_generic(bContext *C,
     CTX_wm_operator_poll_msg_set(C, "Object type is not supported");
     return false;
   }
-  if (ptr.owner_id != NULL && !BKE_id_is_editable(CTX_data_main(C), ptr.owner_id)) {
+  if (ptr.owner_id != nullptr && !BKE_id_is_editable(CTX_data_main(C), ptr.owner_id)) {
     CTX_wm_operator_poll_msg_set(C, "Cannot edit library or override data");
     return false;
   }
@@ -311,7 +311,7 @@ static int shaderfx_add_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_active_context(C);
   int type = RNA_enum_get(op->ptr, "type");
 
-  if (!ED_object_shaderfx_add(op->reports, bmain, scene, ob, NULL, type)) {
+  if (!ED_object_shaderfx_add(op->reports, bmain, scene, ob, nullptr, type)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -321,13 +321,13 @@ static int shaderfx_add_exec(bContext *C, wmOperator *op)
 }
 
 static const EnumPropertyItem *shaderfx_add_itemf(bContext *C,
-                                                  PointerRNA *UNUSED(ptr),
-                                                  PropertyRNA *UNUSED(prop),
+                                                  PointerRNA * /*ptr*/,
+                                                  PropertyRNA * /*prop*/,
                                                   bool *r_free)
 {
   Object *ob = ED_object_active_context(C);
-  EnumPropertyItem *item = NULL;
-  const EnumPropertyItem *fx_item, *group_item = NULL;
+  EnumPropertyItem *item = nullptr;
+  const EnumPropertyItem *fx_item, *group_item = nullptr;
   const ShaderFxTypeInfo *mti;
   int totitem = 0, a;
 
@@ -338,7 +338,7 @@ static const EnumPropertyItem *shaderfx_add_itemf(bContext *C,
   for (a = 0; rna_enum_object_shaderfx_type_items[a].identifier; a++) {
     fx_item = &rna_enum_object_shaderfx_type_items[a];
     if (fx_item->identifier[0]) {
-      mti = BKE_shaderfx_get_info(fx_item->value);
+      mti = BKE_shaderfx_get_info(ShaderFxType(fx_item->value));
 
       if (mti->flags & eShaderFxTypeFlag_NoUserAdd) {
         continue;
@@ -346,14 +346,14 @@ static const EnumPropertyItem *shaderfx_add_itemf(bContext *C,
     }
     else {
       group_item = fx_item;
-      fx_item = NULL;
+      fx_item = nullptr;
 
       continue;
     }
 
     if (group_item) {
       RNA_enum_item_add(&item, &totitem, group_item);
-      group_item = NULL;
+      group_item = nullptr;
     }
 
     RNA_enum_item_add(&item, &totitem, fx_item);
@@ -398,7 +398,7 @@ void OBJECT_OT_shaderfx_add(wmOperatorType *ot)
 static void edit_shaderfx_properties(wmOperatorType *ot)
 {
   PropertyRNA *prop = RNA_def_string(
-      ot->srna, "shaderfx", NULL, MAX_NAME, "Shader", "Name of the shaderfx to edit");
+      ot->srna, "shaderfx", nullptr, MAX_NAME, "Shader", "Name of the shaderfx to edit");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -410,7 +410,7 @@ static void edit_shaderfx_report_property(wmOperatorType *ot)
 }
 
 /**
- * \param event: If this isn't NULL, the operator will also look for panels underneath
+ * \param event: If this isn't nullptr, the operator will also look for panels underneath
  * the cursor with custom-data set to a modifier.
  * \param r_retval: This should be used if #event is used in order to return
  * #OPERATOR_PASS_THROUGH to check other operators with the same key set.
@@ -425,32 +425,32 @@ static bool edit_shaderfx_invoke_properties(bContext *C,
   }
 
   PointerRNA ctx_ptr = CTX_data_pointer_get_type(C, "shaderfx", &RNA_ShaderFx);
-  if (ctx_ptr.data != NULL) {
-    ShaderFxData *fx = ctx_ptr.data;
+  if (ctx_ptr.data != nullptr) {
+    ShaderFxData *fx = static_cast<ShaderFxData *>(ctx_ptr.data);
     RNA_string_set(op->ptr, "shaderfx", fx->name);
     return true;
   }
 
   /* Check the custom data of panels under the mouse for an effect. */
-  if (event != NULL) {
+  if (event != nullptr) {
     PointerRNA *panel_ptr = UI_region_panel_custom_data_under_cursor(C, event);
 
-    if (!(panel_ptr == NULL || RNA_pointer_is_null(panel_ptr))) {
+    if (!(panel_ptr == nullptr || RNA_pointer_is_null(panel_ptr))) {
       if (RNA_struct_is_a(panel_ptr->type, &RNA_ShaderFx)) {
-        ShaderFxData *fx = panel_ptr->data;
+        ShaderFxData *fx = static_cast<ShaderFxData *>(panel_ptr->data);
         RNA_string_set(op->ptr, "shaderfx", fx->name);
         return true;
       }
 
-      BLI_assert(r_retval != NULL); /* We need the return value in this case. */
-      if (r_retval != NULL) {
+      BLI_assert(r_retval != nullptr); /* We need the return value in this case. */
+      if (r_retval != nullptr) {
         *r_retval = (OPERATOR_PASS_THROUGH | OPERATOR_CANCELLED);
       }
       return false;
     }
   }
 
-  if (r_retval != NULL) {
+  if (r_retval != nullptr) {
     *r_retval = OPERATOR_CANCELLED;
   }
   return false;
@@ -465,7 +465,7 @@ static ShaderFxData *edit_shaderfx_property_get(wmOperator *op, Object *ob, int 
   fx = BKE_shaderfx_findby_name(ob, shaderfx_name);
 
   if (fx && type != 0 && fx->type != type) {
-    fx = NULL;
+    fx = nullptr;
   }
 
   return fx;

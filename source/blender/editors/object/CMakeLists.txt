@@ -54,7 +54,7 @@ set(SRC
   object_relations.cc
   object_remesh.cc
   object_select.cc
-  object_shader_fx.c
+  object_shader_fx.cc
   object_shapekey.c
   object_transform.cc
   object_utils.c
