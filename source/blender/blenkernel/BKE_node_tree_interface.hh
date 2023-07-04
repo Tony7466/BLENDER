@@ -83,26 +83,55 @@ inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
   });
 }
 
-template<typename ExpectedT> struct IsExpectedTypeOperator {
-  bool &result;
+/* XXX This doesn't work because there is no actual inheritance between C structs.
+ * A handler function for a base type will not be called if the final type is
+ * a "derived" class (extended C struct).
+ */
+// template<typename ExpectedT> struct IsExpectedTypeOperator {
+//  bool &result;
 
-  template<typename ItemT> void operator()()
-  {
-    result = std::is_same<ItemT, ExpectedT>::value;
-  }
+//  template<typename ItemT> void operator()()
+//  {
+//    result = std::is_same<ItemT, ExpectedT>::value;
+//  }
 
-  void operator()()
-  {
-    result = std::is_same<bNodeTreeInterfaceSocket, ExpectedT>::value;
-  }
-};
+//  void operator()()
+//  {
+//    result = std::is_same<bNodeTreeInterfaceSocket, ExpectedT>::value;
+//  }
+//};
+
+// template<typename ItemT> bool is_expected_type(const bNodeTreeInterfaceItem &item);
+// template<> bool is_expected_type<bNodeTreeInterfaceItem>(const bNodeTreeInterfaceItem &item)
+//{
+//  /* No naked item type exists. */
+//  return false;
+//}
+// template<> bool is_expected_type<bNodeTreeInterfacePanel>(const bNodeTreeInterfaceItem &item)
+//{
+//  return item.item_type == NODE_INTERFACE_PANEL;
+//}
+// template<> bool is_expected_type<bNodeTreeInterfaceSocket>(const bNodeTreeInterfaceItem &item)
+//{
+//  return item.item_type == NODE_INTERFACE_SOCKET;
+//}
+// template<> bool is_expected_type<bNodeTreeInterfaceSocketFloat>(const bNodeTreeInterfaceItem
+// &item)
+//{
+//  if (item.item_type == NODE_INTERFACE_SOCKET) {
+//    const bNodeTreeInterfaceSocket &socket = reinterpret_cast<const bNodeTreeInterfaceSocket &>(
+//        item);
+//    return STREQ(socket.data_type, bNodeTreeInterfaceSocketFloat::socket_type_static);
+//  }
+//  return false;
+//}
 
 template<typename T> T &bNodeTreeInterfaceItem::get_as()
 {
 #  ifndef NDEBUG
-  bool is_valid = false;
-  to_static_type(IsExpectedTypeOperator<T>{is_valid});
-  BLI_assert(is_valid);
+//  bool is_valid = false;
+//  to_static_type(IsExpectedTypeOperator<T>{is_valid});
+//  BLI_assert(is_valid);
 #  endif
 
   return *reinterpret_cast<T *>(this);
@@ -111,9 +140,9 @@ template<typename T> T &bNodeTreeInterfaceItem::get_as()
 template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
 {
 #  ifndef NDEBUG
-  bool is_valid = false;
-  to_static_type(IsExpectedTypeOperator<T>{is_valid});
-  BLI_assert(is_valid);
+//  bool is_valid = false;
+//  to_static_type(IsExpectedTypeOperator<T>{is_valid});
+//  BLI_assert(is_valid);
 #  endif
 
   return *reinterpret_cast<const T *>(this);
@@ -125,22 +154,68 @@ template<typename ExpectedT> struct CastToTypeOperator {
 
   template<typename ItemT> void operator()()
   {
-    if (std::is_same<ItemT, ExpectedT>::value) {
-      result = reinterpret_cast<ExpectedT *>(item);
-    }
-    else {
-      result = nullptr;
-    }
+    check_type(reinterpret_cast<ItemT *>(item));
   }
 
   void operator()()
   {
-    if (std::is_same<bNodeTreeInterfaceItem, ExpectedT>::value) {
+    result = nullptr;
+  }
+
+  template<typename ItemT> bool check_exact_match()
+  {
+    if (std::is_same<ItemT, ExpectedT>::value) {
       result = reinterpret_cast<ExpectedT *>(item);
+      return true;
     }
     else {
       result = nullptr;
+      return false;
     }
+  }
+
+  void check_type(const bNodeTreeInterfacePanel *)
+  {
+    check_exact_match<bNodeTreeInterfacePanel>();
+  }
+  void check_type(const bNodeTreeInterfaceSocket *)
+  {
+    check_exact_match<bNodeTreeInterfaceSocket>();
+  }
+  void check_type(const bNodeTreeInterfaceSocketFloat *)
+  {
+    if (check_exact_match<bNodeTreeInterfaceSocketFloat>()) {
+      return;
+    }
+    check_exact_match<bNodeTreeInterfaceSocket>();
+  }
+  void check_type(const bNodeTreeInterfaceSocketInt *)
+  {
+    if (check_exact_match<bNodeTreeInterfaceSocketInt>()) {
+      return;
+    }
+    check_exact_match<bNodeTreeInterfaceSocket>();
+  }
+  void check_type(const bNodeTreeInterfaceSocketBool *)
+  {
+    if (check_exact_match<bNodeTreeInterfaceSocketBool>()) {
+      return;
+    }
+    check_exact_match<bNodeTreeInterfaceSocket>();
+  }
+  void check_type(const bNodeTreeInterfaceSocketString *)
+  {
+    if (check_exact_match<bNodeTreeInterfaceSocketString>()) {
+      return;
+    }
+    check_exact_match<bNodeTreeInterfaceSocket>();
+  }
+  void check_type(const bNodeTreeInterfaceSocketObject *)
+  {
+    if (check_exact_match<bNodeTreeInterfaceSocketObject>()) {
+      return;
+    }
+    check_exact_match<bNodeTreeInterfaceSocket>();
   }
 };
 
@@ -197,8 +272,7 @@ static void to_static_type_impl(Func func,
         callback(func);
       }
       else {
-        /* Call the non-templated `operator()` of the given function object. */
-        func();
+        func.template operator()<bNodeTreeInterfaceSocket>();
       }
       break;
     }

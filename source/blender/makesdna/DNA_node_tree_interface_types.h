@@ -51,8 +51,14 @@ using FinalItemTypes = std::tuple<bNodeTreeInterfacePanel,
                                   bNodeTreeInterfaceSocketString,
                                   bNodeTreeInterfaceSocketObject>;
 /* List of all item types, including intermediate classes. */
-using AllItemTypes =
-    std::tuple<bNodeTreeInterfaceItem, bNodeTreeInterfacePanel, bNodeTreeInterfaceSocket>;
+using AllItemTypes = std::tuple<bNodeTreeInterfaceItem,
+                                bNodeTreeInterfacePanel,
+                                bNodeTreeInterfaceSocket,
+                                bNodeTreeInterfaceSocketFloat,
+                                bNodeTreeInterfaceSocketInt,
+                                bNodeTreeInterfaceSocketBool,
+                                bNodeTreeInterfaceSocketString,
+                                bNodeTreeInterfaceSocketObject>;
 }  // namespace blender::bke::node_interface
 #endif
 
