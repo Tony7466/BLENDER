@@ -39,7 +39,7 @@ set(SRC
   object_bake.cc
   object_bake_api.cc
   object_bake_simulation.cc
-  object_collection.c
+  object_collection.cc
   object_constraint.c
   object_data_transfer.c
   object_data_transform.cc

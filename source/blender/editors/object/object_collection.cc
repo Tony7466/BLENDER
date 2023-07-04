@@ -43,19 +43,19 @@
 
 /********************* 3d view operators ***********************/
 
-/* can be called with C == NULL */
+/* can be called with C == nullptr */
 static const EnumPropertyItem *collection_object_active_itemf(bContext *C,
-                                                              PointerRNA *UNUSED(ptr),
-                                                              PropertyRNA *UNUSED(prop),
+                                                              PointerRNA * /*ptr*/,
+                                                              PropertyRNA * /*prop*/,
                                                               bool *r_free)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob;
-  EnumPropertyItem *item = NULL, item_tmp = {0};
+  EnumPropertyItem *item = nullptr, item_tmp = {0};
   int totitem = 0;
 
-  if (C == NULL) {
+  if (C == nullptr) {
     return DummyRNA_NULL_items;
   }
 
@@ -67,20 +67,20 @@ static const EnumPropertyItem *collection_object_active_itemf(bContext *C,
     int i = 0, count = 0;
 
     /* if 2 or more collections, add option to add to all collections */
-    collection = NULL;
+    collection = nullptr;
     while ((collection = BKE_collection_object_find(bmain, scene, collection, ob))) {
       count++;
     }
 
     if (count >= 2) {
       item_tmp.identifier = item_tmp.name = "All Collections";
-      item_tmp.value = INT_MAX; /* this will give NULL on lookup */
+      item_tmp.value = INT_MAX; /* this will give nullptr on lookup */
       RNA_enum_item_add(&item, &totitem, &item_tmp);
       RNA_enum_item_add_separator(&item, &totitem);
     }
 
     /* add collections */
-    collection = NULL;
+    collection = nullptr;
     while ((collection = BKE_collection_object_find(bmain, scene, collection, ob))) {
       item_tmp.identifier = item_tmp.name = collection->id.name + 2;
       item_tmp.icon = UI_icon_color_from_collection(collection);
@@ -102,7 +102,7 @@ static Collection *collection_object_active_find_index(Main *bmain,
                                                        Object *ob,
                                                        const int collection_object_index)
 {
-  Collection *collection = NULL;
+  Collection *collection = nullptr;
   int i = 0;
   while ((collection = BKE_collection_object_find(bmain, scene, collection, ob))) {
     if (i == collection_object_index) {
@@ -125,7 +125,7 @@ static int objects_add_active_exec(bContext *C, wmOperator *op)
   bool is_cycle = false;
   bool updated = false;
 
-  if (ob == NULL) {
+  if (ob == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -165,7 +165,7 @@ static int objects_add_active_exec(bContext *C, wmOperator *op)
   }
 
   DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -211,7 +211,7 @@ static int objects_remove_active_exec(bContext *C, wmOperator *op)
       bmain, scene, ob, single_collection_index);
   bool ok = false;
 
-  if (ob == NULL) {
+  if (ob == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -239,7 +239,7 @@ static int objects_remove_active_exec(bContext *C, wmOperator *op)
   }
 
   DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -273,7 +273,7 @@ void COLLECTION_OT_objects_remove_active(wmOperatorType *ot)
   ot->prop = prop;
 }
 
-static int collection_objects_remove_all_exec(bContext *C, wmOperator *UNUSED(op))
+static int collection_objects_remove_all_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -284,7 +284,7 @@ static int collection_objects_remove_all_exec(bContext *C, wmOperator *UNUSED(op
   CTX_DATA_END;
 
   DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -314,7 +314,7 @@ static int collection_objects_remove_exec(bContext *C, wmOperator *op)
       bmain, scene, ob, single_collection_index);
   bool updated = false;
 
-  if (ob == NULL) {
+  if (ob == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -341,7 +341,7 @@ static int collection_objects_remove_exec(bContext *C, wmOperator *op)
   }
 
   DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -382,7 +382,7 @@ static int collection_create_exec(bContext *C, wmOperator *op)
 
   RNA_string_get(op->ptr, "name", name);
 
-  Collection *collection = BKE_collection_add(bmain, NULL, name);
+  Collection *collection = BKE_collection_add(bmain, nullptr, name);
   id_fake_user_set(&collection->id);
 
   CTX_DATA_BEGIN (C, Base *, base, selected_bases) {
@@ -392,7 +392,7 @@ static int collection_create_exec(bContext *C, wmOperator *op)
   CTX_DATA_END;
 
   DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GROUP | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -417,16 +417,16 @@ void COLLECTION_OT_create(wmOperatorType *ot)
 
 /****************** properties window operators *********************/
 
-static int collection_add_exec(bContext *C, wmOperator *UNUSED(op))
+static int collection_add_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_object_context(C);
   Main *bmain = CTX_data_main(C);
 
-  if (ob == NULL) {
+  if (ob == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  Collection *collection = BKE_collection_add(bmain, NULL, "Collection");
+  Collection *collection = BKE_collection_add(bmain, nullptr, "Collection");
   id_fake_user_set(&collection->id);
   BKE_collection_object_add(bmain, collection, ob);
 
@@ -457,9 +457,9 @@ static int collection_link_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = ED_object_context(C);
-  Collection *collection = BLI_findlink(&bmain->collections, RNA_enum_get(op->ptr, "collection"));
+  Collection *collection = static_cast<Collection*>(BLI_findlink(&bmain->collections, RNA_enum_get(op->ptr, "collection")));
 
-  if (ELEM(NULL, ob, collection)) {
+  if (ELEM(nullptr, ob, collection)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -533,7 +533,7 @@ static int collection_remove_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = ED_object_context(C);
-  Collection *collection = CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data;
+  Collection *collection = static_cast<Collection*>(CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
 
   if (!ob || !collection) {
     return OPERATOR_CANCELLED;
@@ -573,7 +573,7 @@ void OBJECT_OT_collection_remove(wmOperatorType *ot)
 static int collection_unlink_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Collection *collection = CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data;
+  Collection *collection = static_cast<Collection*>(CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
 
   if (!collection) {
     return OPERATOR_CANCELLED;
@@ -592,7 +592,7 @@ static int collection_unlink_exec(bContext *C, wmOperator *op)
 
   DEG_relations_tag_update(bmain);
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -613,10 +613,10 @@ void OBJECT_OT_collection_unlink(wmOperatorType *ot)
 }
 
 /* Select objects in the same collection as the active */
-static int select_grouped_exec(bContext *C, wmOperator *UNUSED(op))
+static int select_grouped_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
-  Collection *collection = CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data;
+  Collection *collection = static_cast<Collection*>(CTX_data_pointer_get_type(C, "collection", &RNA_Collection).data);
 
   if (!collection) {
     return OPERATOR_CANCELLED;
