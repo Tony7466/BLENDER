@@ -32,7 +32,7 @@ set(SRC
   anim_markers.cc
   anim_motion_paths.cc
   anim_ops.cc
-  drivers.c
+  drivers.cc
   fmodifier_ui.c
   keyframes_draw.cc
   keyframes_edit.cc
