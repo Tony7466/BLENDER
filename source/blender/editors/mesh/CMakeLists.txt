@@ -51,7 +51,7 @@ set(SRC
   editmesh_rip.cc
   editmesh_rip_edge.cc
   editmesh_select.cc
-  editmesh_select_similar.c
+  editmesh_select_similar.cc
   editmesh_tools.cc
   editmesh_undo.cc
   editmesh_utils.cc

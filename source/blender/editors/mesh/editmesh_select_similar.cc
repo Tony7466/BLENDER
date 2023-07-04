@@ -46,8 +46,7 @@ static const EnumPropertyItem prop_similar_compare_types[] = {
     {SIM_CMP_EQ, "EQUAL", 0, "Equal", ""},
     {SIM_CMP_GT, "GREATER", 0, "Greater", ""},
     {SIM_CMP_LT, "LESS", 0, "Less", ""},
-
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem prop_similar_types[] = {
@@ -56,7 +55,6 @@ static const EnumPropertyItem prop_similar_types[] = {
     {SIMVERT_VGROUP, "VGROUP", 0, "Vertex Groups", ""},
     {SIMVERT_EDGE, "EDGE", 0, "Amount of Connecting Edges", ""},
     {SIMVERT_CREASE, "VCREASE", 0, "Vertex Crease", ""},
-
     {SIMEDGE_LENGTH, "LENGTH", 0, "Length", ""},
     {SIMEDGE_DIR, "DIR", 0, "Direction", ""},
     {SIMEDGE_FACE, "FACE", 0, "Amount of Faces Around an Edge", ""},
@@ -80,7 +78,7 @@ static const EnumPropertyItem prop_similar_types[] = {
     {SIMFACE_FREESTYLE, "FREESTYLE_FACE", 0, "Freestyle Face Marks", ""},
 #endif
 
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static int mesh_select_similar_compare_int(const int delta, const int compare)
@@ -172,10 +170,10 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  KDTree_1d *tree_1d = NULL;
-  KDTree_3d *tree_3d = NULL;
-  KDTree_4d *tree_4d = NULL;
-  GSet *gset = NULL;
+  KDTree_1d *tree_1d = nullptr;
+  KDTree_3d *tree_3d = nullptr;
+  KDTree_4d *tree_4d = nullptr;
+  GSet *gset = nullptr;
   int face_data_value = SIMFACE_DATA_NONE;
 
   switch (type) {
@@ -200,7 +198,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     Object *ob = objects[ob_index];
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
-    Material ***material_array = NULL;
+    Material ***material_array = nullptr;
     invert_m4_m4(ob->world_to_object, ob->object_to_world);
 
     if (bm->totfacesel == 0) {
@@ -238,7 +236,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
             break;
           case SIMFACE_MATERIAL: {
             Material *material = (*material_array)[face->mat_nr];
-            if (material != NULL) {
+            if (material != nullptr) {
               BLI_gset_add(gset, material);
             }
             break;
@@ -275,8 +273,9 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           }
           case SIMFACE_FREESTYLE: {
             FreestyleFace *fface;
-            fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_FREESTYLE_FACE);
-            if ((fface == NULL) || ((fface->flag & FREESTYLE_FACE_MARK) == 0)) {
+            fface = static_cast<FreestyleFace *>(
+                CustomData_bmesh_get(&bm->pdata, face->head.data, CD_FREESTYLE_FACE));
+            if ((fface == nullptr) || ((fface->flag & FREESTYLE_FACE_MARK) == 0)) {
               face_data_value |= SIMFACE_DATA_FALSE;
             }
             else {
@@ -294,15 +293,15 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 
   BLI_assert((type != SIMFACE_FREESTYLE) || (face_data_value != SIMFACE_DATA_NONE));
 
-  if (tree_1d != NULL) {
+  if (tree_1d != nullptr) {
     BLI_kdtree_1d_deduplicate(tree_1d);
     BLI_kdtree_1d_balance(tree_1d);
   }
-  if (tree_3d != NULL) {
+  if (tree_3d != nullptr) {
     BLI_kdtree_3d_deduplicate(tree_3d);
     BLI_kdtree_3d_balance(tree_3d);
   }
-  if (tree_4d != NULL) {
+  if (tree_4d != nullptr) {
     BLI_kdtree_4d_deduplicate(tree_4d);
     BLI_kdtree_4d_balance(tree_4d);
   }
@@ -312,7 +311,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
-    Material ***material_array = NULL;
+    Material ***material_array = nullptr;
 
     float ob_m3[3][3];
     copy_m3_m4(ob_m3, ob->object_to_world);
@@ -357,13 +356,14 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           }
           case SIMFACE_MATERIAL: {
             const Material *material = (*material_array)[face->mat_nr];
-            if (material == NULL) {
+            if (material == nullptr) {
               continue;
             }
 
             GSetIterator gs_iter;
             GSET_ITER (gs_iter, gset) {
-              const Material *material_iter = BLI_gsetIterator_getKey(&gs_iter);
+              const Material *material_iter = static_cast<const Material *>(
+                  BLI_gsetIterator_getKey(&gs_iter));
               if (material == material_iter) {
                 select = true;
                 break;
@@ -373,14 +373,16 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           }
           case SIMFACE_AREA: {
             float area = BM_face_calc_area_with_mat3(face, ob_m3);
-            if (ED_select_similar_compare_float_tree(tree_1d, area, thresh, compare)) {
+            if (ED_select_similar_compare_float_tree(tree_1d, area, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
           }
           case SIMFACE_PERIMETER: {
             float perimeter = BM_face_calc_perimeter_with_mat3(face, ob_m3);
-            if (ED_select_similar_compare_float_tree(tree_1d, perimeter, thresh, compare)) {
+            if (ED_select_similar_compare_float_tree(
+                    tree_1d, perimeter, thresh, eSimilarCmp(compare))) {
               select = true;
             }
             break;
@@ -432,8 +434,9 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
               break;
             }
 
-            fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_FREESTYLE_FACE);
-            if (((fface != NULL) && (fface->flag & FREESTYLE_FACE_MARK)) ==
+            fface = static_cast<FreestyleFace *>(
+                CustomData_bmesh_get(&bm->pdata, face->head.data, CD_FREESTYLE_FACE));
+            if (((fface != nullptr) && (fface->flag & FREESTYLE_FACE_MARK)) ==
                 ((face_data_value & SIMFACE_DATA_TRUE) != 0))
             {
               select = true;
@@ -451,12 +454,11 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update(ob->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = false,
-                      .is_destructive = false,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = false;
+      params.is_destructive = false;
+      EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
@@ -478,12 +480,11 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         }
       }
       EDBM_selectmode_flush(em);
-      EDBM_update(ob->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = false,
-                      .is_destructive = false,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = false;
+      params.is_destructive = false;
+      EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
@@ -491,8 +492,8 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   BLI_kdtree_4d_free(tree_4d);
-  if (gset != NULL) {
-    BLI_gset_free(gset, NULL);
+  if (gset != nullptr) {
+    BLI_gset_free(gset, nullptr);
   }
 
   return OPERATOR_FINISHED;
@@ -602,9 +603,9 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  KDTree_1d *tree_1d = NULL;
-  KDTree_3d *tree_3d = NULL;
-  GSet *gset = NULL;
+  KDTree_1d *tree_1d = nullptr;
+  KDTree_3d *tree_3d = nullptr;
+  GSet *gset = nullptr;
   int edge_data_value = SIMEDGE_DATA_NONE;
 
   switch (type) {
@@ -642,14 +643,16 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
       }
       case SIMEDGE_CREASE: {
         if (!CustomData_has_layer_named(&bm->edata, CD_PROP_FLOAT, "crease_edge")) {
-          BLI_kdtree_1d_insert(tree_1d, tree_index++, (float[1]){0.0f});
+          float pos = 0.0f;
+          BLI_kdtree_1d_insert(tree_1d, tree_index++, &pos);
           continue;
         }
         break;
       }
       case SIMEDGE_BEVEL: {
         if (!CustomData_has_layer_named(&bm->edata, CD_PROP_FLOAT, "bevel_weight_edge")) {
-          BLI_kdtree_1d_insert(tree_1d, tree_index++, (float[1]){0.0f});
+          float pos = 0.0f;
+          BLI_kdtree_1d_insert(tree_1d, tree_index++, &pos);
           continue;
         }
         break;
@@ -710,8 +713,9 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             break;
           case SIMEDGE_FREESTYLE: {
             FreestyleEdge *fedge;
-            fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_FREESTYLE_EDGE);
-            if ((fedge == NULL) || ((fedge->flag & FREESTYLE_EDGE_MARK) == 0)) {
+            fedge = static_cast<FreestyleEdge *>(
+                CustomData_bmesh_get(&bm->edata, edge->head.data, CD_FREESTYLE_EDGE));
+            if ((fedge == nullptr) || ((fedge->flag & FREESTYLE_EDGE_MARK) == 0)) {
               edge_data_value |= SIMEDGE_DATA_FALSE;
             }
             else {
@@ -735,11 +739,11 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
   BLI_assert((type != SIMEDGE_FREESTYLE) || (edge_data_value != SIMEDGE_DATA_NONE));
 
-  if (tree_1d != NULL) {
+  if (tree_1d != nullptr) {
     BLI_kdtree_1d_deduplicate(tree_1d);
     BLI_kdtree_1d_balance(tree_1d);
   }
-  if (tree_3d != NULL) {
+  if (tree_3d != nullptr) {
     BLI_kdtree_3d_deduplicate(tree_3d);
     BLI_kdtree_3d_balance(tree_3d);
   }
@@ -771,7 +775,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
           /* Proceed only if we have to select all the edges that have custom data value of 0.0f.
            * In this case we will just select all the edges.
            * Otherwise continue the for loop. */
-          if (!ED_select_similar_compare_float_tree(tree_1d, 0.0f, thresh, compare)) {
+          if (!ED_select_similar_compare_float_tree(tree_1d, 0.0f, thresh, eSimilarCmp(compare))) {
             continue;
           }
         }
@@ -829,7 +833,8 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
           }
           case SIMEDGE_LENGTH: {
             float length = edge_length_squared_worldspace_get(ob, edge);
-            if (ED_select_similar_compare_float_tree(tree_1d, length, thresh, compare)) {
+            if (ED_select_similar_compare_float_tree(
+                    tree_1d, length, thresh, eSimilarCmp(compare))) {
               select = true;
             }
             break;
@@ -864,8 +869,9 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
               break;
             }
 
-            fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_FREESTYLE_EDGE);
-            if (((fedge != NULL) && (fedge->flag & FREESTYLE_EDGE_MARK)) ==
+            fedge = static_cast<FreestyleEdge *>(
+                CustomData_bmesh_get(&bm->edata, edge->head.data, CD_FREESTYLE_EDGE));
+            if (((fedge != nullptr) && (fedge->flag & FREESTYLE_EDGE_MARK)) ==
                 ((edge_data_value & SIMEDGE_DATA_TRUE) != 0))
             {
               select = true;
@@ -880,7 +886,8 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             }
 
             const float *value = BM_ELEM_CD_GET_FLOAT_P(edge, custom_data_offset);
-            if (ED_select_similar_compare_float_tree(tree_1d, *value, thresh, compare)) {
+            if (ED_select_similar_compare_float_tree(
+                    tree_1d, *value, thresh, eSimilarCmp(compare))) {
               select = true;
             }
             break;
@@ -896,12 +903,11 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update(ob->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = false,
-                      .is_destructive = false,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = false;
+      params.is_destructive = false;
+      EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
@@ -923,20 +929,19 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
         }
       }
       EDBM_selectmode_flush(em);
-      EDBM_update(ob->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = false,
-                      .is_destructive = false,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = false;
+      params.is_destructive = false;
+      EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
   MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
-  if (gset != NULL) {
-    BLI_gset_free(gset, NULL);
+  if (gset != nullptr) {
+    BLI_gset_free(gset, nullptr);
   }
 
   return OPERATOR_FINISHED;
@@ -976,9 +981,9 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  KDTree_3d *tree_3d = NULL;
-  KDTree_1d *tree_1d = NULL;
-  GSet *gset = NULL;
+  KDTree_3d *tree_3d = nullptr;
+  KDTree_1d *tree_1d = nullptr;
+  GSet *gset = nullptr;
 
   switch (type) {
     case SIMVERT_NORMAL:
@@ -1004,7 +1009,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     BMesh *bm = em->bm;
     int cd_dvert_offset = -1;
     int cd_crease_offset = -1;
-    BLI_bitmap *defbase_selected = NULL;
+    BLI_bitmap *defbase_selected = nullptr;
     int defbase_len = 0;
 
     invert_m4_m4(ob->world_to_object, ob->object_to_world);
@@ -1026,7 +1031,8 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     }
     else if (type == SIMVERT_CREASE) {
       if (!CustomData_has_layer_named(&bm->vdata, CD_PROP_FLOAT, "crease_vert")) {
-        BLI_kdtree_1d_insert(tree_1d, tree_1d_index++, (float[1]){0.0f});
+        float pos = 0.0f;
+        BLI_kdtree_1d_insert(tree_1d, tree_1d_index++, &pos);
         continue;
       }
       cd_crease_offset = CustomData_get_offset_named(&bm->vdata, CD_PROP_FLOAT, "crease_vert");
@@ -1054,7 +1060,8 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
             break;
           }
           case SIMVERT_VGROUP: {
-            MDeformVert *dvert = BM_ELEM_CD_GET_VOID_P(vert, cd_dvert_offset);
+            MDeformVert *dvert = static_cast<MDeformVert *>(
+                BM_ELEM_CD_GET_VOID_P(vert, cd_dvert_offset));
             MDeformWeight *dw = dvert->dw;
 
             for (int i = 0; i < dvert->totweight; i++, dw++) {
@@ -1099,11 +1106,11 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Remove duplicated entries. */
-  if (tree_1d != NULL) {
+  if (tree_1d != nullptr) {
     BLI_kdtree_1d_deduplicate(tree_1d);
     BLI_kdtree_1d_balance(tree_1d);
   }
-  if (tree_3d != NULL) {
+  if (tree_3d != nullptr) {
     BLI_kdtree_3d_deduplicate(tree_3d);
     BLI_kdtree_3d_balance(tree_3d);
   }
@@ -1117,7 +1124,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     bool has_crease_layer = false;
     int cd_dvert_offset = -1;
     int cd_crease_offset = -1;
-    BLI_bitmap *defbase_selected = NULL;
+    BLI_bitmap *defbase_selected = nullptr;
     int defbase_len = 0;
 
     if (type == SIMVERT_VGROUP) {
@@ -1138,7 +1145,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
       bool found_any = false;
       GSetIterator gs_iter;
       GSET_ITER (gs_iter, gset) {
-        const char *name = BLI_gsetIterator_getKey(&gs_iter);
+        const char *name = static_cast<const char *>(BLI_gsetIterator_getKey(&gs_iter));
         int vgroup_id = BLI_findstringindex(defbase, name, offsetof(bDeformGroup, name));
         if (vgroup_id != -1) {
           BLI_BITMAP_ENABLE(defbase_selected, vgroup_id);
@@ -1157,7 +1164,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
         /* Proceed only if we have to select all the vertices that have custom data value of 0.0f.
          * In this case we will just select all the vertices.
          * Otherwise continue the for loop. */
-        if (!ED_select_similar_compare_float_tree(tree_1d, 0.0f, thresh, compare)) {
+        if (!ED_select_similar_compare_float_tree(tree_1d, 0.0f, thresh, eSimilarCmp(compare))) {
           continue;
         }
       }
@@ -1213,7 +1220,8 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
             break;
           }
           case SIMVERT_VGROUP: {
-            MDeformVert *dvert = BM_ELEM_CD_GET_VOID_P(vert, cd_dvert_offset);
+            MDeformVert *dvert = static_cast<MDeformVert *>(
+                BM_ELEM_CD_GET_VOID_P(vert, cd_dvert_offset));
             MDeformWeight *dw = dvert->dw;
 
             for (int i = 0; i < dvert->totweight; i++, dw++) {
@@ -1234,7 +1242,8 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
               break;
             }
             const float *value = BM_ELEM_CD_GET_FLOAT_P(vert, cd_crease_offset);
-            if (ED_select_similar_compare_float_tree(tree_1d, *value, thresh, compare)) {
+            if (ED_select_similar_compare_float_tree(
+                    tree_1d, *value, thresh, eSimilarCmp(compare))) {
               select = true;
             }
             break;
@@ -1254,20 +1263,19 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update(ob->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = false,
-                      .is_destructive = false,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = false;
+      params.is_destructive = false;
+      EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
   MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
-  if (gset != NULL) {
-    BLI_gset_free(gset, NULL);
+  if (gset != nullptr) {
+    BLI_gset_free(gset, nullptr);
   }
 
   return OPERATOR_FINISHED;
@@ -1303,8 +1311,8 @@ static int edbm_select_similar_exec(bContext *C, wmOperator *op)
 }
 
 static const EnumPropertyItem *select_similar_type_itemf(bContext *C,
-                                                         PointerRNA *UNUSED(ptr),
-                                                         PropertyRNA *UNUSED(prop),
+                                                         PointerRNA * /*ptr*/,
+                                                         PropertyRNA * /*prop*/,
                                                          bool *r_free)
 {
   Object *obedit;
@@ -1316,7 +1324,7 @@ static const EnumPropertyItem *select_similar_type_itemf(bContext *C,
   obedit = CTX_data_edit_object(C);
 
   if (obedit && obedit->type == OB_MESH) {
-    EnumPropertyItem *item = NULL;
+    EnumPropertyItem *item = nullptr;
     int a, totitem = 0;
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
@@ -1350,7 +1358,7 @@ static const EnumPropertyItem *select_similar_type_itemf(bContext *C,
   return prop_similar_types;
 }
 
-static bool edbm_select_similar_poll_property(const bContext *UNUSED(C),
+static bool edbm_select_similar_poll_property(const bContext * /*C*/,
                                               wmOperator *op,
                                               const PropertyRNA *prop)
 {
