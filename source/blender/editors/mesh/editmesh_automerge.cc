@@ -60,13 +60,12 @@ void EDBM_automerge(Object *obedit, bool update, const char hflag, const float d
   BMO_op_finish(bm, &findop);
   BMO_op_finish(bm, &weldop);
 
+  EDBMUpdate_Params params{};
+  params.calc_looptri = true;
+  params.calc_normals = false;
+  params.is_destructive = true;
   if ((totvert_prev != bm->totvert) && update) {
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
 }
 
@@ -79,7 +78,7 @@ void EDBM_automerge(Object *obedit, bool update, const char hflag, const float d
  * \{ */
 
 void EDBM_automerge_and_split(Object *obedit,
-                              const bool UNUSED(split_edges),
+                              const bool /*split_edges*/,
                               const bool split_faces,
                               const bool update,
                               const char hflag,
@@ -124,12 +123,11 @@ void EDBM_automerge_and_split(Object *obedit,
 #endif
 
   if (LIKELY(ok) && update) {
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
 }
 
