@@ -231,7 +231,7 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
   }
 
   op->customdata = MEM_mallocN(sizeof(BevelData), "beveldata_mesh_operator");
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   uint objects_used_len = 0;
   opdata->max_obj_scale = FLT_MIN;
 
@@ -242,7 +242,8 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
     uint ob_store_len = 0;
     Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
         scene, view_layer, v3d, &ob_store_len);
-    opdata->ob_store = MEM_malloc_arrayN(ob_store_len, sizeof(*opdata->ob_store), __func__);
+    opdata->ob_store = static_cast<BevelObjectStore *>(
+        MEM_malloc_arrayN(ob_store_len, sizeof(*opdata->ob_store), __func__));
     for (uint ob_index = 0; ob_index < ob_store_len; ob_index++) {
       Object *obedit = objects[ob_index];
       float scale = mat4_to_scale(obedit->object_to_world);
@@ -301,7 +302,7 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 
 static bool edbm_bevel_calc(wmOperator *op)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   BMOperator bmop;
   bool changed = false;
 
@@ -334,7 +335,7 @@ static bool edbm_bevel_calc(wmOperator *op)
 
     const int material = CLAMPIS(material_init, -1, obedit->totcol - 1);
 
-    Mesh *me = obedit->data;
+    Mesh *me = static_cast<Mesh *>(obedit->data);
 
     if (harden_normals && !(me->flag & ME_AUTOSMOOTH)) {
       /* harden_normals only has a visible effect if autosmooth is on, so turn it on */
@@ -385,12 +386,11 @@ static bool edbm_bevel_calc(wmOperator *op)
       continue;
     }
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
     changed = true;
   }
   return changed;
@@ -398,11 +398,11 @@ static bool edbm_bevel_calc(wmOperator *op)
 
 static void edbm_bevel_exit(bContext *C, wmOperator *op)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   ScrArea *area = CTX_wm_area(C);
 
   if (area) {
-    ED_area_status_text(area, NULL);
+    ED_area_status_text(area, nullptr);
   }
 
   for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
@@ -424,23 +424,23 @@ static void edbm_bevel_exit(bContext *C, wmOperator *op)
   }
   MEM_SAFE_FREE(opdata->ob_store);
   MEM_SAFE_FREE(op->customdata);
-  op->customdata = NULL;
+  op->customdata = nullptr;
 }
 
 static void edbm_bevel_cancel(bContext *C, wmOperator *op)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   if (opdata->is_modal) {
     for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
       Object *obedit = opdata->ob_store[ob_index].ob;
       BMEditMesh *em = BKE_editmesh_from_object(obedit);
       EDBM_redo_state_restore_and_free(&opdata->ob_store[ob_index].mesh_backup, em, true);
-      EDBM_update(obedit->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = true,
-                      .is_destructive = true,
-                  });
+
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = true;
+      params.is_destructive = true;
+      EDBM_update(static_cast<Mesh *>(obedit->data), &params);
     }
   }
 
@@ -469,7 +469,7 @@ static int edbm_bevel_exec(bContext *C, wmOperator *op)
 
 static void edbm_bevel_calc_initial_length(wmOperator *op, const wmEvent *event, bool mode_changed)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   const float mlen[2] = {
       opdata->mcenter[0] - event->mval[0],
       opdata->mcenter[1] - event->mval[1],
@@ -499,7 +499,7 @@ static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   opdata->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
 
@@ -523,7 +523,7 @@ static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   if (!edbm_bevel_calc(op)) {
     edbm_bevel_cancel(C, op);
-    ED_workspace_status_text(C, NULL);
+    ED_workspace_status_text(C, nullptr);
     return OPERATOR_CANCELLED;
   }
 
@@ -534,7 +534,7 @@ static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static void edbm_bevel_mouse_set_value(wmOperator *op, const wmEvent *event)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   int vmode = opdata->value_mode;
 
   const float mdiff[2] = {
@@ -573,7 +573,7 @@ static void edbm_bevel_mouse_set_value(wmOperator *op, const wmEvent *event)
 
 static void edbm_bevel_numinput_set_value(wmOperator *op)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   int vmode = opdata->value_mode;
   float value = (vmode == SEGMENTS_VALUE) ? opdata->segments :
@@ -645,14 +645,14 @@ wmKeyMap *bevel_modal_keymap(wmKeyConfig *keyconf)
        0,
        "Change Intersection Method",
        "Cycle through intersection methods"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Bevel Modal Map");
 
   /* This function is called for each space-type, only needs to add map once. */
   if (keymap && keymap->modal_items) {
-    return NULL;
+    return nullptr;
   }
 
   keymap = WM_modalkeymap_ensure(keyconf, "Bevel Modal Map", modal_items);
@@ -664,7 +664,7 @@ wmKeyMap *bevel_modal_keymap(wmKeyConfig *keyconf)
 
 static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  BevelData *opdata = op->customdata;
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
   const bool has_numinput = hasNumInput(&opdata->num_input[opdata->value_mode]);
   bool handled = false;
   short etype = event->type;
@@ -711,13 +711,13 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
     switch (eval) {
       case BEV_MODAL_CANCEL:
         edbm_bevel_cancel(C, op);
-        ED_workspace_status_text(C, NULL);
+        ED_workspace_status_text(C, nullptr);
         return OPERATOR_CANCELLED;
 
       case BEV_MODAL_CONFIRM:
         edbm_bevel_calc(op);
         edbm_bevel_exit(C, op);
-        ED_workspace_status_text(C, NULL);
+        ED_workspace_status_text(C, nullptr);
         return OPERATOR_FINISHED;
 
       case BEV_MODAL_SEGMENTS_UP:
@@ -910,20 +910,20 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiLayoutSetPropDecorate(layout, false);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "affect", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "affect", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, op->ptr, "offset_type", 0, NULL, ICON_NONE);
+  uiItemR(layout, op->ptr, "offset_type", 0, nullptr, ICON_NONE);
 
   if (offset_type == BEVEL_AMT_PERCENT) {
-    uiItemR(layout, op->ptr, "offset_pct", 0, NULL, ICON_NONE);
+    uiItemR(layout, op->ptr, "offset_pct", 0, nullptr, ICON_NONE);
   }
   else {
-    uiItemR(layout, op->ptr, "offset", 0, NULL, ICON_NONE);
+    uiItemR(layout, op->ptr, "offset", 0, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, op->ptr, "segments", 0, NULL, ICON_NONE);
+  uiItemR(layout, op->ptr, "segments", 0, nullptr, ICON_NONE);
   if (ELEM(profile_type, BEVEL_PROFILE_SUPERELLIPSE, BEVEL_PROFILE_CUSTOM)) {
     uiItemR(layout,
             op->ptr,
@@ -932,12 +932,12 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
             (profile_type == BEVEL_PROFILE_SUPERELLIPSE) ? IFACE_("Shape") : IFACE_("Miter Shape"),
             ICON_NONE);
   }
-  uiItemR(layout, op->ptr, "material", 0, NULL, ICON_NONE);
+  uiItemR(layout, op->ptr, "material", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, op->ptr, "harden_normals", 0, NULL, ICON_NONE);
-  uiItemR(col, op->ptr, "clamp_overlap", 0, NULL, ICON_NONE);
-  uiItemR(col, op->ptr, "loop_slide", 0, NULL, ICON_NONE);
+  uiItemR(col, op->ptr, "harden_normals", 0, nullptr, ICON_NONE);
+  uiItemR(col, op->ptr, "clamp_overlap", 0, nullptr, ICON_NONE);
+  uiItemR(col, op->ptr, "loop_slide", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumnWithHeading(layout, true, IFACE_("Mark"));
   uiLayoutSetActive(col, affect_type == BEVEL_AFFECT_EDGES);
@@ -951,7 +951,7 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiItemR(col, op->ptr, "miter_outer", 0, IFACE_("Miter Outer"), ICON_NONE);
   uiItemR(col, op->ptr, "miter_inner", 0, IFACE_("Inner"), ICON_NONE);
   if (RNA_enum_get(op->ptr, "miter_inner") == BEVEL_MITER_ARC) {
-    uiItemR(col, op->ptr, "spread", 0, NULL, ICON_NONE);
+    uiItemR(col, op->ptr, "spread", 0, nullptr, ICON_NONE);
   }
 
   uiItemS(layout);
@@ -965,7 +965,7 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiItemS(layout);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "profile_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(row, op->ptr, "profile_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   if (profile_type == BEVEL_PROFILE_CUSTOM) {
     /* Get an RNA pointer to ToolSettings to give to the curve profile template code. */
     Scene *scene = CTX_data_scene(C);
@@ -992,7 +992,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
        0,
        "Absolute",
        "Amount is absolute distance along adjacent edge"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem prop_profile_type_items[] = {
@@ -1006,7 +1006,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
        0,
        "Custom",
        "The profile can be any arbitrary path between its endpoints"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem face_strength_mode_items[] = {
@@ -1018,20 +1018,20 @@ void MESH_OT_bevel(wmOperatorType *ot)
        "Affected",
        "Set face strength on new and modified faces only"},
       {BEVEL_FACE_STRENGTH_ALL, "ALL", 0, "All", "Set face strength on all faces"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem miter_outer_items[] = {
       {BEVEL_MITER_SHARP, "SHARP", 0, "Sharp", "Outside of miter is sharp"},
       {BEVEL_MITER_PATCH, "PATCH", 0, "Patch", "Outside of miter is squared-off patch"},
       {BEVEL_MITER_ARC, "ARC", 0, "Arc", "Outside of miter is arc"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem miter_inner_items[] = {
       {BEVEL_MITER_SHARP, "SHARP", 0, "Sharp", "Inside of miter is sharp"},
       {BEVEL_MITER_ARC, "ARC", 0, "Arc", "Inside of miter is arc"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static EnumPropertyItem vmesh_method_items[] = {
@@ -1041,13 +1041,13 @@ void MESH_OT_bevel(wmOperatorType *ot)
        0,
        "Cutoff",
        "A cutoff at each profile's end before the intersection"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem prop_affect_items[] = {
       {BEVEL_AFFECT_VERTICES, "VERTICES", 0, "Vertices", "Affect only vertices"},
       {BEVEL_AFFECT_EDGES, "EDGES", 0, "Edges", "Affect only edges"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
