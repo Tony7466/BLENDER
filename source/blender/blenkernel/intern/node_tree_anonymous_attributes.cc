@@ -99,7 +99,7 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
     }
     return relations;
   }
-  if (ELEM(node.type, GEO_NODE_SERIAL_LOOP_INPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
+  if (ELEM(node.type, GEO_NODE_REPEAT_INPUT, GEO_NODE_REPEAT_OUTPUT)) {
     aal::RelationsInNode &relations = scope.construct<aal::RelationsInNode>();
     /* TODO: Add a smaller set of relations. This requires changing the inferencing algorithm to
      * make it aware of loops. */
@@ -117,11 +117,11 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
         }
       }
       else if (socket_is_field(*socket)) {
-        /* Reference relations are not added for the output node, because then nodes after the loop
-         * would have to know about the individual field sources within the loop. This is not
-         * necessary, because the field outputs of a loop already serve as field sources and
-         * anonymous attributes are extracted from them. */
-        if (node.type == GEO_NODE_SERIAL_LOOP_INPUT) {
+        /* Reference relations are not added for the output node, because then nodes after the
+         * repeat zone would have to know about the individual field sources within the repeat
+         * zone. This is not necessary, because the field outputs of a repeat zone already serve as
+         * field sources and anonymous attributes are extracted from them. */
+        if (node.type == GEO_NODE_REPEAT_INPUT) {
           for (const bNodeSocket *input_socket : node.input_sockets()) {
             if (socket_is_field(*input_socket)) {
               relations.reference_relations.append({input_socket->index(), socket->index()});

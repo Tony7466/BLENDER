@@ -35,7 +35,7 @@ static Vector<std::unique_ptr<bNodeTreeZone>> find_zone_nodes(
   Vector<std::unique_ptr<bNodeTreeZone>> zones;
   Vector<const bNode *> zone_output_nodes;
   zone_output_nodes.extend(tree.nodes_by_type("GeometryNodeSimulationOutput"));
-  zone_output_nodes.extend(tree.nodes_by_type("GeometryNodeSerialLoopOutput"));
+  zone_output_nodes.extend(tree.nodes_by_type("GeometryNodeRepeatOutput"));
   for (const bNode *node : zone_output_nodes) {
     auto zone = std::make_unique<bNodeTreeZone>();
     zone->owner = &owner;
@@ -53,10 +53,10 @@ static Vector<std::unique_ptr<bNodeTreeZone>> find_zone_nodes(
       }
     }
   }
-  for (const bNode *node : tree.nodes_by_type("GeometryNodeSerialLoopInput")) {
-    const auto &storage = *static_cast<NodeGeometrySerialLoopInput *>(node->storage);
-    if (const bNode *loop_output_node = tree.node_by_id(storage.output_node_id)) {
-      if (bNodeTreeZone *zone = r_zone_by_inout_node.lookup_default(loop_output_node, nullptr)) {
+  for (const bNode *node : tree.nodes_by_type("GeometryNodeRepeatInput")) {
+    const auto &storage = *static_cast<NodeGeometryRepeatInput *>(node->storage);
+    if (const bNode *repeat_output_node = tree.node_by_id(storage.output_node_id)) {
+      if (bNodeTreeZone *zone = r_zone_by_inout_node.lookup_default(repeat_output_node, nullptr)) {
         zone->input_node = node;
         r_zone_by_inout_node.add(node, zone);
       }
@@ -239,13 +239,13 @@ static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree
         depend_on_output_flags |= depend_on_output_flag_array[from_node_i];
       }
     }
-    if (ELEM(node->type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SERIAL_LOOP_INPUT)) {
+    if (ELEM(node->type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_REPEAT_INPUT)) {
       if (const bNodeTreeZone *zone = zone_by_inout_node.lookup_default(node, nullptr)) {
         /* Now entering a zone, so set the corresponding bit. */
         depend_on_input_flags[zone->index].set();
       }
     }
-    else if (ELEM(node->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
+    else if (ELEM(node->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
       if (const bNodeTreeZone *zone = zone_by_inout_node.lookup_default(node, nullptr)) {
         /* The output is implicitly linked to the input, so also propagate the bits from there. */
         if (const bNode *zone_input_node = zone->input_node) {

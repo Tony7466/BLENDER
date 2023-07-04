@@ -346,7 +346,7 @@ typedef struct ThemeSpace {
   unsigned char nodeclass_geometry[4], nodeclass_attribute[4];
 
   unsigned char node_zone_simulation[4];
-  unsigned char node_zone_serial_loop[4];
+  unsigned char node_zone_repeat[4];
   unsigned char _pad9[4];
   unsigned char simulated_frames[4];
 

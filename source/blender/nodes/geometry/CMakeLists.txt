@@ -152,6 +152,8 @@ set(SRC
   nodes/node_geo_raycast.cc
   nodes/node_geo_realize_instances.cc
   nodes/node_geo_remove_attribute.cc
+  nodes/node_geo_repeat_input.cc
+  nodes/node_geo_repeat_output.cc
   nodes/node_geo_rotate_instances.cc
   nodes/node_geo_sample_index.cc
   nodes/node_geo_sample_nearest.cc
@@ -164,8 +166,6 @@ set(SRC
   nodes/node_geo_self_object.cc
   nodes/node_geo_separate_components.cc
   nodes/node_geo_separate_geometry.cc
-  nodes/node_geo_serial_loop_input.cc
-  nodes/node_geo_serial_loop_output.cc
   nodes/node_geo_set_curve_handles.cc
   nodes/node_geo_set_curve_normal.cc
   nodes/node_geo_set_curve_radius.cc

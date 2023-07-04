@@ -530,11 +530,10 @@ static void find_tree_zone_hash_recursive(
       compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone.output_node);
       break;
     }
-    case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+    case GEO_NODE_REPEAT_OUTPUT: {
       /* Only show data from the first iteration for now. */
       const int iteration = 0;
-      compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*zone.output_node,
-                                                                      iteration);
+      compute_context_builder.push<bke::RepeatZoneComputeContext>(*zone.output_node, iteration);
       break;
     }
   }
@@ -575,11 +574,11 @@ Map<const bNodeTreeZone *, ComputeContextHash> GeoModifierLog::
           compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
           break;
         }
-        case GEO_NODE_SERIAL_LOOP_OUTPUT: {
+        case GEO_NODE_REPEAT_OUTPUT: {
           /* Only show data from the first iteration for now. */
-          const int loop_iteration = 0;
-          compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*zone->output_node,
-                                                                          loop_iteration);
+          const int repeat_iteration = 0;
+          compute_context_builder.push<bke::RepeatZoneComputeContext>(*zone->output_node,
+                                                                      repeat_iteration);
           break;
         }
       }
@@ -662,10 +661,10 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
             typed_elem.sim_output_node_id);
         break;
       }
-      case VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE: {
-        const auto &typed_elem = *reinterpret_cast<const SerialLoopZoneViewerPathElem *>(elem);
-        compute_context_builder.push<bke::SerialLoopZoneComputeContext>(
-            typed_elem.loop_output_node_id, typed_elem.iteration);
+      case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const RepeatZoneViewerPathElem *>(elem);
+        compute_context_builder.push<bke::RepeatZoneComputeContext>(
+            typed_elem.repeat_output_node_id, typed_elem.iteration);
         break;
       }
       default: {

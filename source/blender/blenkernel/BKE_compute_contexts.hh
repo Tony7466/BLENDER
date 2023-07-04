@@ -78,18 +78,16 @@ class SimulationZoneComputeContext : public ComputeContext {
   void print_current_in_line(std::ostream &stream) const override;
 };
 
-class SerialLoopZoneComputeContext : public ComputeContext {
+class RepeatZoneComputeContext : public ComputeContext {
  private:
-  static constexpr const char *s_static_type = "SERIAL_LOOP_ZONE";
+  static constexpr const char *s_static_type = "REPEAT_ZONE";
 
   int32_t output_node_id_;
   int iteration_;
 
  public:
-  SerialLoopZoneComputeContext(const ComputeContext *parent,
-                               int32_t output_node_id,
-                               int iteration);
-  SerialLoopZoneComputeContext(const ComputeContext *parent, const bNode &node, int iteration);
+  RepeatZoneComputeContext(const ComputeContext *parent, int32_t output_node_id, int iteration);
+  RepeatZoneComputeContext(const ComputeContext *parent, const bNode &node, int iteration);
 
   int32_t output_node_id() const
   {

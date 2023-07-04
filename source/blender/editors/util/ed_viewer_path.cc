@@ -34,9 +34,9 @@ static ViewerPathElem *viewer_path_elem_for_zone(const bNodeTreeZone &zone)
       node_elem->sim_output_node_id = zone.output_node->identifier;
       return &node_elem->base;
     }
-    case GEO_NODE_SERIAL_LOOP_OUTPUT: {
-      SerialLoopZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_serial_loop_zone();
-      node_elem->loop_output_node_id = zone.output_node->identifier;
+    case GEO_NODE_REPEAT_OUTPUT: {
+      RepeatZoneViewerPathElem *node_elem = BKE_viewer_path_elem_new_repeat_zone();
+      node_elem->repeat_output_node_id = zone.output_node->identifier;
       node_elem->iteration = 0;
       return &node_elem->base;
     }
@@ -241,7 +241,7 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
     if (!ELEM(elem->type,
               VIEWER_PATH_ELEM_TYPE_GROUP_NODE,
               VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE,
-              VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE))
+              VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE))
     {
       return std::nullopt;
     }
@@ -295,11 +295,10 @@ bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed
         zone = next_zone;
         break;
       }
-      case VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE: {
-        const auto &typed_elem = *reinterpret_cast<const SerialLoopZoneViewerPathElem *>(
-            path_elem);
+      case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const RepeatZoneViewerPathElem *>(path_elem);
         const bNodeTreeZone *next_zone = tree_zones->get_zone_by_node(
-            typed_elem.loop_output_node_id);
+            typed_elem.repeat_output_node_id);
         if (next_zone == nullptr) {
           return false;
         }

@@ -198,14 +198,14 @@ class NODE_OT_add_simulation_zone(NodeAddZoneOperator, Operator):
     output_node_type = "GeometryNodeSimulationOutput"
 
 
-class NODE_OT_add_serial_loop_zone(NodeAddZoneOperator, Operator):
-    """Add a serial loop zone that allows executing nodes a dynamic number of times"""
-    bl_idname = "node.add_serial_loop_zone"
-    bl_label = "Add Serial Loop Zone"
+class NODE_OT_add_repeat_zone(NodeAddZoneOperator, Operator):
+    """Add a repeat zone that allows executing nodes a dynamic number of times"""
+    bl_idname = "node.add_repeat_zone"
+    bl_label = "Add Repeat Zone"
     bl_options = {'REGISTER', 'UNDO'}
 
-    input_node_type = "GeometryNodeSerialLoopInput"
-    output_node_type = "GeometryNodeSerialLoopOutput"
+    input_node_type = "GeometryNodeRepeatInput"
+    output_node_type = "GeometryNodeRepeatOutput"
 
 
 
@@ -341,7 +341,7 @@ classes = (
 
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
-    NODE_OT_add_serial_loop_zone,
+    NODE_OT_add_repeat_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_panel_add,
     NODE_OT_panel_remove,

@@ -88,9 +88,9 @@ void SimulationZoneComputeContext::print_current_in_line(std::ostream &stream) c
   stream << "Simulation Zone ID: " << output_node_id_;
 }
 
-SerialLoopZoneComputeContext::SerialLoopZoneComputeContext(const ComputeContext *parent,
-                                                           const int32_t output_node_id,
-                                                           const int iteration)
+RepeatZoneComputeContext::RepeatZoneComputeContext(const ComputeContext *parent,
+                                                   const int32_t output_node_id,
+                                                   const int iteration)
     : ComputeContext(s_static_type, parent), output_node_id_(output_node_id), iteration_(iteration)
 {
   /* Mix static type and node id into a single buffer so that only a single call to #mix_in is
@@ -105,16 +105,16 @@ SerialLoopZoneComputeContext::SerialLoopZoneComputeContext(const ComputeContext 
   hash_.mix_in(buffer, buffer_size);
 }
 
-SerialLoopZoneComputeContext::SerialLoopZoneComputeContext(const ComputeContext *parent,
-                                                           const bNode &node,
-                                                           const int iteration)
-    : SerialLoopZoneComputeContext(parent, node.identifier, iteration)
+RepeatZoneComputeContext::RepeatZoneComputeContext(const ComputeContext *parent,
+                                                   const bNode &node,
+                                                   const int iteration)
+    : RepeatZoneComputeContext(parent, node.identifier, iteration)
 {
 }
 
-void SerialLoopZoneComputeContext::print_current_in_line(std::ostream &stream) const
+void RepeatZoneComputeContext::print_current_in_line(std::ostream &stream) const
 {
-  stream << "Serial Loop Zone ID: " << output_node_id_;
+  stream << "Repeat Zone ID: " << output_node_id_;
 }
 
 }  // namespace blender::bke

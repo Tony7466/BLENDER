@@ -4264,13 +4264,13 @@ static void rna_SimulationStateItem_update(Main *bmain, Scene * /*scene*/, Point
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-static bNode *find_node_by_serial_loop_item(PointerRNA *ptr)
+static bNode *find_node_by_repeat_item(PointerRNA *ptr)
 {
-  const NodeSerialLoopItem *item = static_cast<const NodeSerialLoopItem *>(ptr->data);
+  const NodeRepeatItem *item = static_cast<const NodeRepeatItem *>(ptr->data);
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeSerialLoopOutput")) {
-    auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeRepeatOutput")) {
+    auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
     if (storage->items_span().contains_ptr(item)) {
       return node;
     }
@@ -4278,10 +4278,10 @@ static bNode *find_node_by_serial_loop_item(PointerRNA *ptr)
   return nullptr;
 }
 
-static void rna_SerialLoopItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = find_node_by_serial_loop_item(ptr);
+  bNode *node = find_node_by_repeat_item(ptr);
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
@@ -4303,19 +4303,18 @@ static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContex
                               rna_SimulationStateItem_socket_type_supported);
 }
 
-static bool rna_SerialLoopItem_socket_type_supported(const EnumPropertyItem *item)
+static bool rna_RepeatItem_socket_type_supported(const EnumPropertyItem *item)
 {
-  return NodeSerialLoopItem::supports_type(eNodeSocketDatatype(item->value));
+  return NodeRepeatItem::supports_type(eNodeSocketDatatype(item->value));
 }
 
-static const EnumPropertyItem *rna_SerialLoopItem_socket_type_itemf(bContext * /*C*/,
-                                                                    PointerRNA * /*ptr*/,
-                                                                    PropertyRNA * /*prop*/,
-                                                                    bool *r_free)
+static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext * /*C*/,
+                                                                PointerRNA * /*ptr*/,
+                                                                PropertyRNA * /*prop*/,
+                                                                bool *r_free)
 {
   *r_free = true;
-  return itemf_function_check(node_socket_data_type_items,
-                              rna_SerialLoopItem_socket_type_supported);
+  return itemf_function_check(node_socket_data_type_items, rna_RepeatItem_socket_type_supported);
 }
 
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
@@ -4329,11 +4328,11 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
   NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
 }
 
-static void rna_SerialLoopItem_name_set(PointerRNA *ptr, const char *value)
+static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
 {
-  bNode *node = find_node_by_serial_loop_item(ptr);
-  NodeSerialLoopItem *item = static_cast<NodeSerialLoopItem *>(ptr->data);
-  auto *storage = static_cast<NodeGeometrySerialLoopOutput *>(node->storage);
+  bNode *node = find_node_by_repeat_item(ptr);
+  NodeRepeatItem *item = static_cast<NodeRepeatItem *>(ptr->data);
+  auto *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
   storage->set_item_name(*item, value);
 }
 
@@ -4345,9 +4344,9 @@ static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
   ED_node_type_draw_color(socket_type_idname, values);
 }
 
-static void rna_SerialLoopItem_color_get(PointerRNA *ptr, float *values)
+static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
 {
-  NodeSerialLoopItem *item = static_cast<NodeSerialLoopItem *>(ptr->data);
+  NodeRepeatItem *item = static_cast<NodeRepeatItem *>(ptr->data);
 
   const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
   ED_node_type_draw_color(socket_type_idname, values);
@@ -4363,11 +4362,11 @@ static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *
   return r_ptr;
 }
 
-static PointerRNA rna_NodeGeometrySerialLoopInput_paired_output_get(PointerRNA *ptr)
+static PointerRNA rna_NodeGeometryRepeatInput_paired_output_get(PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySerialLoopInput *storage = static_cast<NodeGeometrySerialLoopInput *>(node->storage);
+  NodeGeometryRepeatInput *storage = static_cast<NodeGeometryRepeatInput *>(node->storage);
   bNode *output_node = ntree->node_by_id(storage->output_node_id);
   PointerRNA r_ptr;
   RNA_pointer_create(&ntree->id, &RNA_Node, output_node, &r_ptr);
@@ -4395,15 +4394,15 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
   return true;
 }
 
-static bool rna_GeometryNodeSerialLoopInput_pair_with_output(
+static bool rna_GeometryNodeRepeatInput_pair_with_output(
     ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
 {
   bNodeTree *ntree = (bNodeTree *)id;
 
-  if (!NOD_geometry_serial_loop_input_pair_with_output(ntree, node, output_node)) {
+  if (!NOD_geometry_repeat_input_pair_with_output(ntree, node, output_node)) {
     BKE_reportf(reports,
                 RPT_ERROR,
-                "Failed to pair serial loop input node %s with output node %s",
+                "Failed to pair repeat input node %s with output node %s",
                 node->name,
                 output_node->name);
     return false;
@@ -4436,12 +4435,11 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
   return item;
 }
 
-static NodeSerialLoopItem *rna_NodeGeometrySerialLoopOutput_items_new(
+static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
-  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-      node->storage);
-  NodeSerialLoopItem *item = storage->add_item(name, eNodeSocketDatatype(socket_type));
+  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  NodeRepeatItem *item = storage->add_item(name, eNodeSocketDatatype(socket_type));
   if (item == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
   }
@@ -4472,19 +4470,18 @@ static void rna_NodeGeometrySimulationOutput_items_remove(
   }
 }
 
-static void rna_NodeGeometrySerialLoopOutput_items_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSerialLoopItem *item)
+static void rna_NodeGeometryRepeatOutput_items_remove(
+    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeRepeatItem *item)
 {
-  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-      node->storage);
+  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
   if (!storage->items_span().contains_ptr(item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
     return;
   }
 
   const int remove_index = item - storage->items;
-  NodeSerialLoopItem *old_items = storage->items;
-  storage->items = MEM_cnew_array<NodeSerialLoopItem>(storage->items_num - 1, __func__);
+  NodeRepeatItem *old_items = storage->items;
+  storage->items = MEM_cnew_array<NodeRepeatItem>(storage->items_num - 1, __func__);
   std::copy_n(old_items, remove_index, storage->items);
   std::copy_n(old_items + remove_index + 1,
               storage->items_num - remove_index - 1,
@@ -4511,13 +4508,10 @@ static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Ma
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-static void rna_NodeGeometrySerialLoopOutput_items_clear(ID * /*id*/,
-                                                         bNode *node,
-                                                         Main * /*bmain*/)
+static void rna_NodeGeometryRepeatOutput_items_clear(ID * /*id*/, bNode *node, Main * /*bmain*/)
 {
-  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-      node->storage);
-  for (NodeSerialLoopItem &item : storage->items_span()) {
+  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  for (NodeRepeatItem &item : storage->items_span()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(storage->items);
@@ -4543,11 +4537,10 @@ static void rna_NodeGeometrySimulationOutput_items_move(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-static void rna_NodeGeometrySerialLoopOutput_items_move(
+static void rna_NodeGeometryRepeatOutput_items_move(
     ID *id, bNode *node, Main *bmain, int from_index, int to_index)
 {
-  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-      node->storage);
+  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
   if (from_index < 0 || from_index >= storage->items_num || to_index < 0 ||
       to_index >= storage->items_num)
   {
@@ -4555,14 +4548,14 @@ static void rna_NodeGeometrySerialLoopOutput_items_move(
   }
 
   if (from_index < to_index) {
-    const NodeSerialLoopItem tmp = storage->items[from_index];
+    const NodeRepeatItem tmp = storage->items[from_index];
     for (int i = from_index; i < to_index; i++) {
       storage->items[i] = storage->items[i + 1];
     }
     storage->items[to_index] = tmp;
   }
   else if (from_index > to_index) {
-    const NodeSerialLoopItem tmp = storage->items[from_index];
+    const NodeRepeatItem tmp = storage->items[from_index];
     for (int i = from_index; i > to_index; i--) {
       storage->items[i] = storage->items[i - 1];
     }
@@ -4585,15 +4578,14 @@ static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *p
   return r_ptr;
 }
 
-static PointerRNA rna_NodeGeometrySerialLoopOutput_active_item_get(PointerRNA *ptr)
+static PointerRNA rna_NodeGeometryRepeatOutput_active_item_get(PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-      node->storage);
-  blender::MutableSpan<NodeSerialLoopItem> items = storage->items_span();
+  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  blender::MutableSpan<NodeRepeatItem> items = storage->items_span();
   PointerRNA r_ptr{};
   if (items.index_range().contains(storage->active_index)) {
-    RNA_pointer_create(ptr->owner_id, &RNA_SerialLoopItem, &items[storage->active_index], &r_ptr);
+    RNA_pointer_create(ptr->owner_id, &RNA_RepeatItem, &items[storage->active_index], &r_ptr);
   }
   return r_ptr;
 }
@@ -4608,14 +4600,13 @@ static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
                                                  static_cast<NodeSimulationItem *>(value.data));
 }
 
-static void rna_NodeGeometrySerialLoopOutput_active_item_set(PointerRNA *ptr,
-                                                             PointerRNA value,
-                                                             ReportList * /*reports*/)
+static void rna_NodeGeometryRepeatOutput_active_item_set(PointerRNA *ptr,
+                                                         PointerRNA value,
+                                                         ReportList * /*reports*/)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  NodeGeometrySerialLoopOutput *storage = static_cast<NodeGeometrySerialLoopOutput *>(
-      node->storage);
-  NodeSerialLoopItem *item = static_cast<NodeSerialLoopItem *>(value.data);
+  NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
+  NodeRepeatItem *item = static_cast<NodeRepeatItem *>(value.data);
   if (storage->items_span().contains_ptr(item)) {
     storage->active_index = item - storage->items;
   }
@@ -10310,28 +10301,28 @@ static void def_geo_simulation_input(StructRNA *srna)
   RNA_def_function_return(func, parm);
 }
 
-static void def_geo_serial_loop_input(StructRNA *srna)
+static void def_geo_repeat_input(StructRNA *srna)
 {
   PropertyRNA *prop;
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySerialLoopInput", "storage");
+  RNA_def_struct_sdna_from(srna, "NodeGeometryRepeatInput", "storage");
 
   prop = RNA_def_property(srna, "paired_output", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Node");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(
-      prop, "rna_NodeGeometrySerialLoopInput_paired_output_get", nullptr, nullptr, nullptr);
+      prop, "rna_NodeGeometryRepeatInput_paired_output_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(
-      prop, "Paired Output", "Serial loop output node that this input node is paired with");
+      prop, "Paired Output", "Repeat output node that this input node is paired with");
 
   func = RNA_def_function(
-      srna, "pair_with_output", "rna_GeometryNodeSerialLoopInput_pair_with_output");
-  RNA_def_function_ui_description(func, "Pair a serial loop input node with an output node.");
+      srna, "pair_with_output", "rna_GeometryNodeRepeatInput_pair_with_output");
+  RNA_def_function_ui_description(func, "Pair a repeat input node with an output node.");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
-      func, "output_node", "GeometryNode", "Output Node", "Serial loop output node to pair with");
+      func, "output_node", "GeometryNode", "Output Node", "Repeat output node to pair with");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */
   parm = RNA_def_boolean(
@@ -10454,47 +10445,47 @@ static void def_geo_simulation_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
-static void rna_def_serial_loop_item(BlenderRNA *brna)
+static void rna_def_repeat_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;
 
-  StructRNA *srna = RNA_def_struct(brna, "SerialLoopItem", nullptr);
-  RNA_def_struct_ui_text(srna, "Serial Loop Item", "");
-  RNA_def_struct_sdna(srna, "NodeSerialLoopItem");
+  StructRNA *srna = RNA_def_struct(brna, "RepeatItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Repeat Item", "");
+  RNA_def_struct_sdna(srna, "NodeRepeatItem");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_SerialLoopItem_name_set");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_RepeatItem_name_set");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SerialLoopItem_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_RepeatItem_update");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, node_socket_data_type_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_SerialLoopItem_socket_type_itemf");
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_RepeatItem_socket_type_itemf");
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SerialLoopItem_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_RepeatItem_update");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_SerialLoopItem_color_get", nullptr, nullptr);
+  RNA_def_property_float_funcs(prop, "rna_RepeatItem_color_get", nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Color", "Color of the corresponding socket type in the node editor");
 }
 
-static void rna_def_geo_serial_loop_output_items(BlenderRNA *brna)
+static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  srna = RNA_def_struct(brna, "NodeGeometrySerialLoopOutputItems", nullptr);
+  srna = RNA_def_struct(brna, "NodeGeometryRepeatOutputItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
-  RNA_def_struct_ui_text(srna, "Items", "Collection of serial loop items");
+  RNA_def_struct_ui_text(srna, "Items", "Collection of repeat items");
 
-  func = RNA_def_function(srna, "new", "rna_NodeGeometrySerialLoopOutput_items_new");
-  RNA_def_function_ui_description(func, "Add a item to this serial loop zone");
+  func = RNA_def_function(srna, "new", "rna_NodeGeometryRepeatOutput_items_new");
+  RNA_def_function_ui_description(func, "Add a item to this repeat zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "socket_type",
@@ -10506,20 +10497,20 @@ static void rna_def_geo_serial_loop_output_items(BlenderRNA *brna)
   parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */
-  parm = RNA_def_pointer(func, "item", "SerialLoopItem", "Item", "New item");
+  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_NodeGeometrySerialLoopOutput_items_remove");
-  RNA_def_function_ui_description(func, "Remove an item from this serial loop zone");
+  func = RNA_def_function(srna, "remove", "rna_NodeGeometryRepeatOutput_items_remove");
+  RNA_def_function_ui_description(func, "Remove an item from this repeat zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "item", "SerialLoopItem", "Item", "The item to remove");
+  parm = RNA_def_pointer(func, "item", "RepeatItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "clear", "rna_NodeGeometrySerialLoopOutput_items_clear");
-  RNA_def_function_ui_description(func, "Remove all items from this serial loop zone");
+  func = RNA_def_function(srna, "clear", "rna_NodeGeometryRepeatOutput_items_clear");
+  RNA_def_function_ui_description(func, "Remove all items from this repeat zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
 
-  func = RNA_def_function(srna, "move", "rna_NodeGeometrySerialLoopOutput_items_move");
+  func = RNA_def_function(srna, "move", "rna_NodeGeometryRepeatOutput_items_move");
   RNA_def_function_ui_description(func, "Move an item to another position");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_int(
@@ -10530,17 +10521,17 @@ static void rna_def_geo_serial_loop_output_items(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
-static void def_geo_serial_loop_output(StructRNA *srna)
+static void def_geo_repeat_output(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySerialLoopOutput", "storage");
+  RNA_def_struct_sdna_from(srna, "NodeGeometryRepeatOutput", "storage");
 
-  prop = RNA_def_property(srna, "loop_items", PROP_COLLECTION, PROP_NONE);
+  prop = RNA_def_property(srna, "repeat_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "items", "items_num");
-  RNA_def_property_struct_type(prop, "SerialLoopItem");
+  RNA_def_property_struct_type(prop, "RepeatItem");
   RNA_def_property_ui_text(prop, "Items", "");
-  RNA_def_property_srna(prop, "NodeGeometrySerialLoopOutputItems");
+  RNA_def_property_srna(prop, "NodeGeometryRepeatOutputItems");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, nullptr, "active_index");
@@ -10549,10 +10540,10 @@ static void def_geo_serial_loop_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, nullptr);
 
   prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "SerialLoopItem");
+  RNA_def_property_struct_type(prop, "RepeatItem");
   RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeGeometrySerialLoopOutput_active_item_get",
-                                 "rna_NodeGeometrySerialLoopOutput_active_item_set",
+                                 "rna_NodeGeometryRepeatOutput_active_item_get",
+                                 "rna_NodeGeometryRepeatOutput_active_item_set",
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -14087,7 +14078,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geometry_nodetree(brna);
 
   rna_def_simulation_state_item(brna);
-  rna_def_serial_loop_item(brna);
+  rna_def_repeat_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \
@@ -14140,7 +14131,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_cmp_output_file_slot_file(brna);
   rna_def_cmp_output_file_slot_layer(brna);
   rna_def_geo_simulation_output_items(brna);
-  rna_def_geo_serial_loop_output_items(brna);
+  rna_def_geo_repeat_output_items(brna);
 
   rna_def_node_instance_hash(brna);
 }

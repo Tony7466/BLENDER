@@ -482,10 +482,10 @@ static void find_side_effect_nodes_for_viewer_path(
         zone = next_zone;
         break;
       }
-      case VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE: {
-        const auto &typed_elem = *reinterpret_cast<const SerialLoopZoneViewerPathElem *>(elem);
+      case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE: {
+        const auto &typed_elem = *reinterpret_cast<const RepeatZoneViewerPathElem *>(elem);
         const bke::bNodeTreeZone *next_zone = tree_zones->get_zone_by_node(
-            typed_elem.loop_output_node_id);
+            typed_elem.repeat_output_node_id);
         if (next_zone == nullptr) {
           return;
         }
@@ -498,8 +498,8 @@ static void find_side_effect_nodes_for_viewer_path(
           return;
         }
         local_side_effect_nodes.add(compute_context_builder.hash(), lf_zone_node);
-        compute_context_builder.push<bke::SerialLoopZoneComputeContext>(*next_zone->output_node,
-                                                                        typed_elem.iteration);
+        compute_context_builder.push<bke::RepeatZoneComputeContext>(*next_zone->output_node,
+                                                                    typed_elem.iteration);
         zone = next_zone;
         break;
       }

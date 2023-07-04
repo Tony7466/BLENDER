@@ -1273,7 +1273,7 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
    * so we have to build a map first to find copied output nodes in the new tree. */
   Map<int32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
-    if (ELEM(item.key->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
+    if (ELEM(item.key->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
       dst_output_node_map.add_new(item.key->identifier, item.value);
     }
   }
@@ -1293,9 +1293,8 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
         }
         break;
       }
-      case GEO_NODE_SERIAL_LOOP_INPUT: {
-        NodeGeometrySerialLoopInput *data = static_cast<NodeGeometrySerialLoopInput *>(
-            dst_node->storage);
+      case GEO_NODE_REPEAT_INPUT: {
+        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
         if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
                                                                           nullptr)) {
           data->output_node_id = output_node->identifier;

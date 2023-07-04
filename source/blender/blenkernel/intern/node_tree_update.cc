@@ -588,8 +588,8 @@ class NodeTreeMainUpdater {
         }
       }
     }
-    if (node.type == GEO_NODE_SERIAL_LOOP_INPUT) {
-      const NodeGeometrySerialLoopInput *data = static_cast<const NodeGeometrySerialLoopInput *>(
+    if (node.type == GEO_NODE_REPEAT_INPUT) {
+      const NodeGeometryRepeatInput *data = static_cast<const NodeGeometryRepeatInput *>(
           node.storage);
       if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
         if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {

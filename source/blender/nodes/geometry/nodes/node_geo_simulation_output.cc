@@ -837,8 +837,8 @@ std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(
     if (const auto *node_context = dynamic_cast<const bke::NodeGroupComputeContext *>(context)) {
       node_ids.append(node_context->node_id());
     }
-    else if (dynamic_cast<const bke::SerialLoopZoneComputeContext *>(context) != nullptr) {
-      /* Simulation can't be used in a loop. */
+    else if (dynamic_cast<const bke::RepeatZoneComputeContext *>(context) != nullptr) {
+      /* Simulation can't be used in a repeat zone. */
       return std::nullopt;
     }
   }

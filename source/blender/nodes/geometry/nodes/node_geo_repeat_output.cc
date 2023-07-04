@@ -18,10 +18,8 @@
 
 namespace blender::nodes {
 
-static std::unique_ptr<SocketDeclaration> socket_declaration_for_serial_loop_item(
-    const NodeSerialLoopItem &item,
-    const eNodeSocketInOut in_out,
-    const int corresponding_input = -1)
+static std::unique_ptr<SocketDeclaration> socket_declaration_for_repeat_item(
+    const NodeRepeatItem &item, const eNodeSocketInOut in_out, const int corresponding_input = -1)
 {
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
 
@@ -91,43 +89,42 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_serial_loop_ite
   return decl;
 }
 
-void socket_declarations_for_serial_loop_items(const Span<NodeSerialLoopItem> items,
-                                               NodeDeclaration &r_declaration)
+void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
+                                          NodeDeclaration &r_declaration)
 {
   for (const int i : items.index_range()) {
-    const NodeSerialLoopItem &item = items[i];
-    r_declaration.inputs.append(socket_declaration_for_serial_loop_item(item, SOCK_IN));
+    const NodeRepeatItem &item = items[i];
+    r_declaration.inputs.append(socket_declaration_for_repeat_item(item, SOCK_IN));
     r_declaration.outputs.append(
-        socket_declaration_for_serial_loop_item(item, SOCK_OUT, r_declaration.inputs.size() - 1));
+        socket_declaration_for_repeat_item(item, SOCK_OUT, r_declaration.inputs.size() - 1));
   }
   r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
   r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
 }
 }  // namespace blender::nodes
-namespace blender::nodes::node_geo_serial_loop_output_cc {
+namespace blender::nodes::node_geo_repeat_output_cc {
 
-NODE_STORAGE_FUNCS(NodeGeometrySerialLoopOutput);
+NODE_STORAGE_FUNCS(NodeGeometryRepeatOutput);
 
 static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  const bNode &node,
                                  NodeDeclaration &r_declaration)
 {
-  const NodeGeometrySerialLoopOutput &storage = node_storage(node);
-  socket_declarations_for_serial_loop_items(storage.items_span(), r_declaration);
+  const NodeGeometryRepeatOutput &storage = node_storage(node);
+  socket_declarations_for_repeat_items(storage.items_span(), r_declaration);
 }
 
 static void search_node_add_ops(GatherAddNodeSearchParams &params)
 {
   AddNodeItem item;
-  item.ui_name = IFACE_("Serial Loop Zone");
-  item.description = TIP_("Add a new serial loop input and output nodes to the node tree");
+  item.ui_name = IFACE_("Repeat Zone");
+  item.description = TIP_("Add a new repeat input and output nodes to the node tree");
   item.add_fn = [](const bContext &C, bNodeTree &node_tree, float2 cursor) {
-    bNode *input = nodeAddNode(&C, &node_tree, "GeometryNodeSerialLoopInput");
-    bNode *output = nodeAddNode(&C, &node_tree, "GeometryNodeSerialLoopOutput");
-    static_cast<NodeGeometrySerialLoopInput *>(input->storage)->output_node_id =
-        output->identifier;
+    bNode *input = nodeAddNode(&C, &node_tree, "GeometryNodeRepeatInput");
+    bNode *output = nodeAddNode(&C, &node_tree, "GeometryNodeRepeatOutput");
+    static_cast<NodeGeometryRepeatInput *>(input->storage)->output_node_id = output->identifier;
 
-    NodeSerialLoopItem &item = node_storage(*output).items[0];
+    NodeRepeatItem &item = node_storage(*output).items[0];
 
     update_node_declaration_and_sockets(node_tree, *input);
     update_node_declaration_and_sockets(node_tree, *output);
@@ -151,11 +148,11 @@ static void search_node_add_ops(GatherAddNodeSearchParams &params)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometrySerialLoopOutput *data = MEM_cnew<NodeGeometrySerialLoopOutput>(__func__);
+  NodeGeometryRepeatOutput *data = MEM_cnew<NodeGeometryRepeatOutput>(__func__);
 
   data->next_identifier = 0;
 
-  data->items = MEM_cnew_array<NodeSerialLoopItem>(1, __func__);
+  data->items = MEM_cnew_array<NodeRepeatItem>(1, __func__);
   data->items[0].name = BLI_strdup(DATA_("Geometry"));
   data->items[0].socket_type = SOCK_GEOMETRY;
   data->items[0].identifier = data->next_identifier++;
@@ -166,8 +163,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_free_storage(bNode *node)
 {
-  NodeGeometrySerialLoopOutput &storage = node_storage(*node);
-  for (NodeSerialLoopItem &item : storage.items_span()) {
+  NodeGeometryRepeatOutput &storage = node_storage(*node);
+  for (NodeRepeatItem &item : storage.items_span()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(storage.items);
@@ -176,10 +173,10 @@ static void node_free_storage(bNode *node)
 
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
-  const NodeGeometrySerialLoopOutput &src_storage = node_storage(*src_node);
-  NodeGeometrySerialLoopOutput *dst_storage = MEM_cnew<NodeGeometrySerialLoopOutput>(__func__);
+  const NodeGeometryRepeatOutput &src_storage = node_storage(*src_node);
+  NodeGeometryRepeatOutput *dst_storage = MEM_cnew<NodeGeometryRepeatOutput>(__func__);
 
-  dst_storage->items = MEM_cnew_array<NodeSerialLoopItem>(src_storage.items_num, __func__);
+  dst_storage->items = MEM_cnew_array<NodeRepeatItem>(src_storage.items_num, __func__);
   dst_storage->items_num = src_storage.items_num;
   dst_storage->active_index = src_storage.active_index;
   dst_storage->next_identifier = src_storage.next_identifier;
@@ -196,11 +193,11 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
-  NodeGeometrySerialLoopOutput &storage = node_storage(*node);
+  NodeGeometryRepeatOutput &storage = node_storage(*node);
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSerialLoopItem *item = storage.add_item(
-              link->fromsock->name, eNodeSocketDatatype(link->fromsock->type)))
+      if (const NodeRepeatItem *item = storage.add_item(link->fromsock->name,
+                                                        eNodeSocketDatatype(link->fromsock->type)))
       {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(node, SOCK_IN, item->identifier_str().c_str());
@@ -213,8 +210,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   }
   if (link->fromnode == node) {
     if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSerialLoopItem *item = storage.add_item(
-              link->tosock->name, eNodeSocketDatatype(link->tosock->type)))
+      if (const NodeRepeatItem *item = storage.add_item(link->tosock->name,
+                                                        eNodeSocketDatatype(link->tosock->type)))
       {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(node, SOCK_OUT, item->identifier_str().c_str());
@@ -228,19 +225,19 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return false;
 }
 
-}  // namespace blender::nodes::node_geo_serial_loop_output_cc
+}  // namespace blender::nodes::node_geo_repeat_output_cc
 
-blender::Span<NodeSerialLoopItem> NodeGeometrySerialLoopOutput::items_span() const
+blender::Span<NodeRepeatItem> NodeGeometryRepeatOutput::items_span() const
 {
-  return blender::Span<NodeSerialLoopItem>(items, items_num);
+  return blender::Span<NodeRepeatItem>(items, items_num);
 }
 
-blender::MutableSpan<NodeSerialLoopItem> NodeGeometrySerialLoopOutput::items_span()
+blender::MutableSpan<NodeRepeatItem> NodeGeometryRepeatOutput::items_span()
 {
-  return blender::MutableSpan<NodeSerialLoopItem>(items, items_num);
+  return blender::MutableSpan<NodeRepeatItem>(items, items_num);
 }
 
-bool NodeSerialLoopItem::supports_type(const eNodeSocketDatatype type)
+bool NodeRepeatItem::supports_type(const eNodeSocketDatatype type)
 {
   return ELEM(type,
               SOCK_FLOAT,
@@ -257,23 +254,23 @@ bool NodeSerialLoopItem::supports_type(const eNodeSocketDatatype type)
               SOCK_COLLECTION);
 }
 
-std::string NodeSerialLoopItem::identifier_str() const
+std::string NodeRepeatItem::identifier_str() const
 {
   return "Item_" + std::to_string(this->identifier);
 }
 
-NodeSerialLoopItem *NodeGeometrySerialLoopOutput::add_item(const char *name,
-                                                           const eNodeSocketDatatype type)
+NodeRepeatItem *NodeGeometryRepeatOutput::add_item(const char *name,
+                                                   const eNodeSocketDatatype type)
 {
-  if (!NodeSerialLoopItem::supports_type(type)) {
+  if (!NodeRepeatItem::supports_type(type)) {
     return nullptr;
   }
   const int insert_index = this->items_num;
-  NodeSerialLoopItem *old_items = this->items;
+  NodeRepeatItem *old_items = this->items;
 
-  this->items = MEM_cnew_array<NodeSerialLoopItem>(this->items_num + 1, __func__);
+  this->items = MEM_cnew_array<NodeRepeatItem>(this->items_num + 1, __func__);
   std::copy_n(old_items, insert_index, this->items);
-  NodeSerialLoopItem &new_item = this->items[insert_index];
+  NodeRepeatItem &new_item = this->items[insert_index];
   std::copy_n(old_items + insert_index + 1,
               this->items_num - insert_index,
               this->items + insert_index + 1);
@@ -287,21 +284,21 @@ NodeSerialLoopItem *NodeGeometrySerialLoopOutput::add_item(const char *name,
   return &new_item;
 }
 
-void NodeGeometrySerialLoopOutput::set_item_name(NodeSerialLoopItem &item, const char *name)
+void NodeGeometryRepeatOutput::set_item_name(NodeRepeatItem &item, const char *name)
 {
   char unique_name[MAX_NAME + 4];
   STRNCPY(unique_name, name);
 
   struct Args {
-    NodeGeometrySerialLoopOutput *storage;
-    const NodeSerialLoopItem *item;
+    NodeGeometryRepeatOutput *storage;
+    const NodeRepeatItem *item;
   } args = {this, &item};
 
   const char *default_name = nodeStaticSocketLabel(item.socket_type, 0);
   BLI_uniquename_cb(
       [](void *arg, const char *name) {
         const Args &args = *static_cast<Args *>(arg);
-        for (const NodeSerialLoopItem &item : args.storage->items_span()) {
+        for (const NodeRepeatItem &item : args.storage->items_span()) {
           if (&item != args.item) {
             if (STREQ(item.name, name)) {
               return true;
@@ -320,20 +317,17 @@ void NodeGeometrySerialLoopOutput::set_item_name(NodeSerialLoopItem &item, const
   item.name = BLI_strdup(unique_name);
 }
 
-void register_node_type_geo_serial_loop_output()
+void register_node_type_geo_repeat_output()
 {
-  namespace file_ns = blender::nodes::node_geo_serial_loop_output_cc;
+  namespace file_ns = blender::nodes::node_geo_repeat_output_cc;
 
   static bNodeType ntype;
-  geo_node_type_base(
-      &ntype, GEO_NODE_SERIAL_LOOP_OUTPUT, "Serial Loop Output", NODE_CLASS_INTERFACE);
+  geo_node_type_base(&ntype, GEO_NODE_REPEAT_OUTPUT, "Repeat Output", NODE_CLASS_INTERFACE);
   ntype.initfunc = file_ns::node_init;
   ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   ntype.insert_link = file_ns::node_insert_link;
-  node_type_storage(&ntype,
-                    "NodeGeometrySerialLoopOutput",
-                    file_ns::node_free_storage,
-                    file_ns::node_copy_storage);
+  node_type_storage(
+      &ntype, "NodeGeometryRepeatOutput", file_ns::node_free_storage, file_ns::node_copy_storage);
   nodeRegisterType(&ntype);
 }

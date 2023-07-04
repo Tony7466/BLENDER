@@ -1424,9 +1424,9 @@ struct ZoneBuildInfo {
 
 /**
  * Describes what the individual inputs and outputs of the #LazyFunction mean that's created for
- * the serial loop body.
+ * the repeat body.
  */
-struct SerialLoopBodyIndices {
+struct RepeatBodyIndices {
   IndexRange main_inputs;
   IndexRange main_outputs;
   IndexRange border_link_inputs;
@@ -1436,34 +1436,34 @@ struct SerialLoopBodyIndices {
   IndexRange border_link_usages;
 
   /**
-   * Some anonymous attribute sets are input into the loop body from the outside. These two maps
-   * indicate which loop body input corresponds to attribute set. Attribute sets are identified by
-   * either a "field source index" or "caller propagation index".
+   * Some anonymous attribute sets are input into the repeat body from the outside. These two maps
+   * indicate which repeat body input corresponds to attribute set. Attribute sets are identified
+   * by either a "field source index" or "caller propagation index".
    */
   Map<int, int> attribute_set_input_by_field_source_index;
   Map<int, int> attribute_set_input_by_caller_propagation_index;
 };
 
-class LazyFunctionForSerialLoopZone : public LazyFunction {
+class LazyFunctionForRepeatZone : public LazyFunction {
  private:
   const bNodeTreeZone &zone_;
-  const bNode &loop_output_bnode_;
+  const bNode &repeat_output_bnode_;
   const ZoneBuildInfo &zone_info_;
   const LazyFunction &body_fn_;
-  const SerialLoopBodyIndices &body_indices_;
+  const RepeatBodyIndices &body_indices_;
 
  public:
-  LazyFunctionForSerialLoopZone(const bNodeTreeZone &zone,
-                                ZoneBuildInfo &zone_info,
-                                const LazyFunction &body_fn,
-                                const SerialLoopBodyIndices &body_indices)
+  LazyFunctionForRepeatZone(const bNodeTreeZone &zone,
+                            ZoneBuildInfo &zone_info,
+                            const LazyFunction &body_fn,
+                            const RepeatBodyIndices &body_indices)
       : zone_(zone),
-        loop_output_bnode_(*zone.output_node),
+        repeat_output_bnode_(*zone.output_node),
         zone_info_(zone_info),
         body_fn_(body_fn),
         body_indices_(body_indices)
   {
-    debug_name_ = "Serial Loop Zone";
+    debug_name_ = "Repeat Zone";
 
     for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
       inputs_.append_as(socket->name, *socket->typeinfo->geometry_nodes_cpp_type);
@@ -1512,39 +1512,39 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
 
-    const NodeGeometrySerialLoopOutput &node_storage =
-        *static_cast<const NodeGeometrySerialLoopOutput *>(loop_output_bnode_.storage);
+    const NodeGeometryRepeatOutput &node_storage = *static_cast<const NodeGeometryRepeatOutput *>(
+        repeat_output_bnode_.storage);
 
     /* Number of iterations to evaluate. */
     const int iterations = std::max<int>(
         0, params.get_input<ValueOrField<int>>(zone_info_.main_input_indices[0]).as_value());
 
-    const int loop_items_num = node_storage.items_num;
-    /* Gather data types of the loop items. */
-    Array<const CPPType *> loop_item_types(loop_items_num);
+    const int repeat_items_num = node_storage.items_num;
+    /* Gather data types of the repeat items. */
+    Array<const CPPType *> repeat_item_types(repeat_items_num);
     for (const int i : body_indices_.main_inputs.index_range()) {
       const int input_i = body_indices_.main_inputs[i];
       const CPPType &type = *body_fn_.inputs()[input_i].type;
-      loop_item_types[i] = &type;
+      repeat_item_types[i] = &type;
     }
 
     LinearAllocator<> allocator;
-    Array<void *, 64> loop_item_values((iterations + 1) * loop_items_num, nullptr);
+    Array<void *, 64> repeat_item_values((iterations + 1) * repeat_items_num, nullptr);
     /* Allocate memory for the looped values. */
     for (const int iteration : IndexRange(iterations)) {
-      MutableSpan<void *> item_values = loop_item_values.as_mutable_span().slice(
-          (iteration + 1) * loop_items_num, loop_items_num);
-      for (const int item_i : IndexRange(loop_items_num)) {
-        const CPPType &type = *loop_item_types[item_i];
+      MutableSpan<void *> item_values = repeat_item_values.as_mutable_span().slice(
+          (iteration + 1) * repeat_items_num, repeat_items_num);
+      for (const int item_i : IndexRange(repeat_items_num)) {
+        const CPPType &type = *repeat_item_types[item_i];
         void *buffer = allocator.allocate(type.size(), type.alignment());
         item_values[item_i] = buffer;
       }
     }
 
-    /* Load the inputs of the first loop iteration. */
-    MutableSpan<void *> first_item_values = loop_item_values.as_mutable_span().take_front(
-        loop_items_num);
-    for (const int i : IndexRange(loop_items_num)) {
+    /* Load the inputs of the first repeat iteration. */
+    MutableSpan<void *> first_item_values = repeat_item_values.as_mutable_span().take_front(
+        repeat_items_num);
+    for (const int i : IndexRange(repeat_items_num)) {
       /* +1 because of the iterations input. */
       const int input_index = zone_info_.main_input_indices[i + 1];
       void *value = params.try_get_input_data_ptr(input_index);
@@ -1562,7 +1562,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       border_link_input_values[i] = value;
     }
 
-    /* Load attribute sets that are needed to propagate attributes correctly in the loop. */
+    /* Load attribute sets that are needed to propagate attributes correctly in the zone. */
     Map<int, bke::AnonymousAttributeSet *> attribute_set_by_field_source_index;
     Map<int, bke::AnonymousAttributeSet *> attribute_set_by_caller_propagation_index;
     for (const auto item : zone_info_.attribute_set_input_by_field_source_index.items()) {
@@ -1578,23 +1578,23 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
 
     const int body_inputs_num = body_fn_.inputs().size();
     const int body_outputs_num = body_fn_.outputs().size();
-    /* Evaluate the loop eagerly, one iteration at a time.
+    /* Evaluate the repeat zone eagerly, one iteration at a time.
      * This can be made more lazy as a separate step. */
     for (const int iteration : IndexRange(iterations)) {
-      /* Prepare all data that has to be passed into the evaluation of the loop body. */
+      /* Prepare all data that has to be passed into the evaluation of the repeat zone body. */
       Array<GMutablePointer> inputs(body_inputs_num);
       Array<GMutablePointer> outputs(body_outputs_num);
       Array<std::optional<lf::ValueUsage>> input_usages(body_inputs_num);
       Array<lf::ValueUsage> output_usages(body_outputs_num, lf::ValueUsage::Used);
       Array<bool> set_outputs(body_outputs_num, false);
 
-      /* Prepare pointers to the main input and output values of the loop,
+      /* Prepare pointers to the main input and output values of the repeat zone,
        * as well as their usages. */
-      Array<bool> tmp_main_input_usages(loop_items_num);
-      for (const int i : IndexRange(loop_items_num)) {
-        const CPPType &type = *loop_item_types[i];
-        void *prev_value = loop_item_values[iteration * loop_items_num + i];
-        void *next_value = loop_item_values[(iteration + 1) * loop_items_num + i];
+      Array<bool> tmp_main_input_usages(repeat_items_num);
+      for (const int i : IndexRange(repeat_items_num)) {
+        const CPPType &type = *repeat_item_types[i];
+        void *prev_value = repeat_item_values[iteration * repeat_items_num + i];
+        void *next_value = repeat_item_values[(iteration + 1) * repeat_items_num + i];
         inputs[body_indices_.main_inputs[i]] = {type, prev_value};
         outputs[body_indices_.main_outputs[i]] = {type, next_value};
         outputs[body_indices_.main_input_usages[i]] = &tmp_main_input_usages[i];
@@ -1604,7 +1604,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         /* All main outputs are used currently. */
         inputs[input_index] = &static_true;
       }
-      /* Prepare border link values for the loop body. */
+      /* Prepare border link values for the repeat body. */
       Array<bool> tmp_border_link_usages(border_links_num);
       for (const int i : IndexRange(border_links_num)) {
         const int input_index = body_indices_.border_link_inputs[i];
@@ -1618,7 +1618,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         outputs[usage_index] = &tmp_border_link_usages[i];
       }
 
-      /* Prepare attribute sets that are passed into the loop body. */
+      /* Prepare attribute sets that are passed into the repeat body. */
       for (const auto item : body_indices_.attribute_set_input_by_field_source_index.items()) {
         bke::AnonymousAttributeSet &attribute_set =
             *allocator
@@ -1637,9 +1637,9 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
         inputs[item.value] = &attribute_set;
       }
 
-      /* Prepare evaluation context for the loop body. */
-      bke::SerialLoopZoneComputeContext body_compute_context{
-          user_data.compute_context, loop_output_bnode_, iteration};
+      /* Prepare evaluation context for the repeat body. */
+      bke::RepeatZoneComputeContext body_compute_context{
+          user_data.compute_context, repeat_output_bnode_, iteration};
       GeoNodesLFUserData body_user_data = user_data;
       body_user_data.compute_context = &body_compute_context;
       if (user_data.modifier_data->socket_log_contexts) {
@@ -1652,7 +1652,7 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
 
       lf::BasicParams body_params{
           body_fn_, inputs, outputs, input_usages, output_usages, set_outputs};
-      /* Actually evaluate the loop body. */
+      /* Actually evaluate the repeat body. */
       body_fn_.execute(body_params, body_context);
 
       /* Destruct values that are not needed after the evaluation anymore. */
@@ -1668,12 +1668,12 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
       }
     }
 
-    /* Set outputs of the serial loop zone. */
-    for (const int i : IndexRange(loop_items_num)) {
-      void *computed_value = loop_item_values[iterations * loop_items_num + i];
+    /* Set outputs of the repeat zone. */
+    for (const int i : IndexRange(repeat_items_num)) {
+      void *computed_value = repeat_item_values[iterations * repeat_items_num + i];
       const int output_index = zone_info_.main_output_indices[i];
       void *r_value = params.get_output_data_ptr(output_index);
-      const CPPType &type = *loop_item_types[i];
+      const CPPType &type = *repeat_item_types[i];
       type.move_construct(computed_value, r_value);
       params.output_set(output_index);
     }
@@ -1686,10 +1686,10 @@ class LazyFunctionForSerialLoopZone : public LazyFunction {
 
     /* Destruct remaining values. */
     for (const int iteration : IndexRange(iterations)) {
-      MutableSpan<void *> item_values = loop_item_values.as_mutable_span().slice(
-          (iteration + 1) * loop_items_num, loop_items_num);
-      for (const int item_i : IndexRange(loop_items_num)) {
-        const CPPType &type = *loop_item_types[item_i];
+      MutableSpan<void *> item_values = repeat_item_values.as_mutable_span().slice(
+          (iteration + 1) * repeat_items_num, repeat_items_num);
+      for (const int item_i : IndexRange(repeat_items_num)) {
+        const CPPType &type = *repeat_item_types[item_i];
         type.destruct(item_values[item_i]);
       }
     }
@@ -1799,8 +1799,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           this->build_simulation_zone_function(zone);
           break;
         }
-        case GEO_NODE_SERIAL_LOOP_OUTPUT: {
-          this->build_serial_loop_zone_function(zone);
+        case GEO_NODE_REPEAT_OUTPUT: {
+          this->build_repeat_zone_function(zone);
           break;
         }
         default: {
@@ -1965,11 +1965,11 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   }
 
   /**
-   * Builds a #LazyFunction for a serial loop zone. For that it first builds a lazy-function graph
+   * Builds a #LazyFunction for a repeat zone. For that it first builds a lazy-function graph
    * from all the nodes in the zone, and then wraps that in another lazy-function that implements
-   * the looping behavior.
+   * the repeating behavior.
    */
-  void build_serial_loop_zone_function(const bNodeTreeZone &zone)
+  void build_repeat_zone_function(const bNodeTreeZone &zone)
   {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
     lf::Graph &lf_body_graph = scope_.construct<lf::Graph>();
@@ -1978,10 +1978,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     Vector<const lf::OutputSocket *, 16> lf_body_inputs;
     Vector<const lf::InputSocket *, 16> lf_body_outputs;
-    SerialLoopBodyIndices &body_indices = scope_.construct<SerialLoopBodyIndices>();
+    RepeatBodyIndices &body_indices = scope_.construct<RepeatBodyIndices>();
 
     lf::DummyNode &lf_main_input_node = this->build_dummy_node_for_sockets(
-        "Loop Input", {}, zone.input_node->output_sockets().drop_back(1), lf_body_graph);
+        "Repeat Input", {}, zone.input_node->output_sockets().drop_back(1), lf_body_graph);
     for (const int i : zone.input_node->output_sockets().drop_back(1).index_range()) {
       const bNodeSocket &bsocket = zone.input_node->output_socket(i);
       lf::OutputSocket &lf_socket = lf_main_input_node.output(i);
@@ -1991,7 +1991,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     body_indices.main_inputs = lf_body_inputs.index_range();
 
     lf::DummyNode &lf_main_output_node = this->build_dummy_node_for_sockets(
-        "Loop Output", zone.output_node->input_sockets().drop_back(1), {}, lf_body_graph);
+        "Repeat Output", zone.output_node->input_sockets().drop_back(1), {}, lf_body_graph);
     lf_body_outputs.extend(lf_main_output_node.inputs());
     body_indices.main_outputs = lf_body_outputs.index_range();
 
@@ -2088,7 +2088,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     // std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
-    auto &fn = scope_.construct<LazyFunctionForSerialLoopZone>(
+    auto &fn = scope_.construct<LazyFunctionForRepeatZone>(
         zone, zone_info, body_graph_fn, body_indices);
     zone_info.lazy_function = &fn;
   }
@@ -3793,7 +3793,7 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
   }
   for (const std::unique_ptr<bNodeTreeZone> &zone : tree_zones->zones) {
     if (zone->input_node == nullptr || zone->output_node == nullptr) {
-      /* Simulations and serial loops need input and output nodes. */
+      /* Simulations and repeats need input and output nodes. */
       return nullptr;
     }
   }

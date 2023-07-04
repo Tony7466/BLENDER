@@ -3337,8 +3337,8 @@ static StructRNA *rna_viewer_path_elem_refine(PointerRNA *ptr)
       return &RNA_SimulationZoneViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
       return &RNA_ViewerNodeViewerPathElem;
-    case VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE:
-      return &RNA_SerialLoopZoneViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE:
+      return &RNA_RepeatZoneViewerPathElem;
   }
   BLI_assert_unreachable();
   return nullptr;
@@ -8081,7 +8081,7 @@ static const EnumPropertyItem viewer_path_elem_type_items[] = {
     {VIEWER_PATH_ELEM_TYPE_GROUP_NODE, "GROUP_NODE", ICON_NONE, "Group Node", ""},
     {VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE, "SIMULATION_ZONE", ICON_NONE, "Simulation Zone", ""},
     {VIEWER_PATH_ELEM_TYPE_VIEWER_NODE, "VIEWER_NODE", ICON_NONE, "Viewer Node", ""},
-    {VIEWER_PATH_ELEM_TYPE_SERIAL_LOOP_ZONE, "SERIAL_LOOP_ZONE", ICON_NONE, "Serial Loop", ""},
+    {VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE, "REPEAT_ZONE", ICON_NONE, "Repeat", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -8149,15 +8149,15 @@ static void rna_def_simulation_zone_viewer_path_elem(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Simulation Output Node ID", "");
 }
 
-static void rna_def_serial_loop_zone_viewer_path_elem(BlenderRNA *brna)
+static void rna_def_repeat_zone_viewer_path_elem(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "SerialLoopZoneViewerPathElem", "ViewerPathElem");
+  srna = RNA_def_struct(brna, "RepeatZoneViewerPathElem", "ViewerPathElem");
 
-  prop = RNA_def_property(srna, "loop_output_node_id", PROP_INT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Loop Output Node ID", "");
+  prop = RNA_def_property(srna, "repeat_output_node_id", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Repeat Output Node ID", "");
 }
 
 static void rna_def_viewer_node_viewer_path_elem(BlenderRNA *brna)
@@ -8181,7 +8181,7 @@ static void rna_def_viewer_path(BlenderRNA *brna)
   rna_def_modifier_viewer_path_elem(brna);
   rna_def_group_node_viewer_path_elem(brna);
   rna_def_simulation_zone_viewer_path_elem(brna);
-  rna_def_serial_loop_zone_viewer_path_elem(brna);
+  rna_def_repeat_zone_viewer_path_elem(brna);
   rna_def_viewer_node_viewer_path_elem(brna);
 
   srna = RNA_def_struct(brna, "ViewerPath", nullptr);

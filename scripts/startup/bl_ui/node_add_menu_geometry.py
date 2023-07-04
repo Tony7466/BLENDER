@@ -641,7 +641,7 @@ class NODE_MT_category_GEO_LAYOUT(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "NodeFrame")
         node_add_menu.add_node_type(layout, "NodeReroute")
-        node_add_menu.add_serial_loop_zone(layout, label="Serial Loop")
+        node_add_menu.add_repeat_zone(layout, label="Repeat")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

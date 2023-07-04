@@ -708,7 +708,7 @@ set(geo_node_tests
   curves/interpolate_curves
   geometry
   instance
-  serial_loops
+  repeat_zone
   mesh_primitives
   mesh
   mesh/extrude

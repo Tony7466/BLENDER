@@ -161,9 +161,8 @@ static void remap_pairing(bNodeTree &dst_tree,
         }
         break;
       }
-      case GEO_NODE_SERIAL_LOOP_INPUT: {
-        NodeGeometrySerialLoopInput *data = static_cast<NodeGeometrySerialLoopInput *>(
-            dst_node->storage);
+      case GEO_NODE_REPEAT_INPUT: {
+        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
         if (data->output_node_id == 0) {
           continue;
         }
@@ -819,29 +818,27 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
       }
     }
   }
-  for (bNode *input_node : ntree.nodes_by_type("GeometryNodeSerialLoopInput")) {
-    const NodeGeometrySerialLoopInput &input_data =
-        *static_cast<const NodeGeometrySerialLoopInput *>(input_node->storage);
+  for (bNode *input_node : ntree.nodes_by_type("GeometryNodeRepeatInput")) {
+    const NodeGeometryRepeatInput &input_data = *static_cast<const NodeGeometryRepeatInput *>(
+        input_node->storage);
 
     if (bNode *output_node = ntree.node_by_id(input_data.output_node_id)) {
       const bool input_selected = nodes_to_group.contains(input_node);
       const bool output_selected = nodes_to_group.contains(output_node);
       if (input_selected && !output_selected) {
-        BKE_reportf(
-            &reports,
-            RPT_WARNING,
-            "Can not add serial loop input node '%s' to a group without its paired output '%s'",
-            input_node->name,
-            output_node->name);
+        BKE_reportf(&reports,
+                    RPT_WARNING,
+                    "Can not add repeat input node '%s' to a group without its paired output '%s'",
+                    input_node->name,
+                    output_node->name);
         return false;
       }
       if (output_selected && !input_selected) {
-        BKE_reportf(
-            &reports,
-            RPT_WARNING,
-            "Can not add serial loop output node '%s' to a group without its paired input '%s'",
-            output_node->name,
-            input_node->name);
+        BKE_reportf(&reports,
+                    RPT_WARNING,
+                    "Can not add repeat output node '%s' to a group without its paired input '%s'",
+                    output_node->name,
+                    input_node->name);
         return false;
       }
     }

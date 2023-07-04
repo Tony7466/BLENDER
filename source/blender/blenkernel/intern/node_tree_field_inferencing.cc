@@ -319,7 +319,7 @@ static eFieldStateSyncResult simulation_nodes_field_state_sync(
   return res;
 }
 
-static eFieldStateSyncResult serial_loop_field_state_sync(
+static eFieldStateSyncResult repeat_field_state_sync(
     const bNode &input_node,
     const bNode &output_node,
     const MutableSpan<SocketFieldState> field_state_by_socket_id)
@@ -372,11 +372,11 @@ static bool propagate_special_data_requirements(
       }
       break;
     }
-    case GEO_NODE_SERIAL_LOOP_INPUT: {
-      const NodeGeometrySerialLoopInput &data = *static_cast<const NodeGeometrySerialLoopInput *>(
+    case GEO_NODE_REPEAT_INPUT: {
+      const NodeGeometryRepeatInput &data = *static_cast<const NodeGeometryRepeatInput *>(
           node.storage);
       if (const bNode *output_node = tree.node_by_id(data.output_node_id)) {
-        const eFieldStateSyncResult sync_result = serial_loop_field_state_sync(
+        const eFieldStateSyncResult sync_result = repeat_field_state_sync(
             node, *output_node, field_state_by_socket_id);
         if (bool(sync_result & eFieldStateSyncResult::CHANGED_B)) {
           need_update = true;
@@ -384,12 +384,12 @@ static bool propagate_special_data_requirements(
       }
       break;
     }
-    case GEO_NODE_SERIAL_LOOP_OUTPUT: {
-      for (const bNode *input_node : tree.nodes_by_type("GeometryNodeSerialLoopInput")) {
-        const NodeGeometrySerialLoopInput &data =
-            *static_cast<const NodeGeometrySerialLoopInput *>(input_node->storage);
+    case GEO_NODE_REPEAT_OUTPUT: {
+      for (const bNode *input_node : tree.nodes_by_type("GeometryNodeRepeatInput")) {
+        const NodeGeometryRepeatInput &data = *static_cast<const NodeGeometryRepeatInput *>(
+            input_node->storage);
         if (node.identifier == data.output_node_id) {
-          const eFieldStateSyncResult sync_result = serial_loop_field_state_sync(
+          const eFieldStateSyncResult sync_result = repeat_field_state_sync(
               *input_node, node, field_state_by_socket_id);
           if (bool(sync_result & eFieldStateSyncResult::CHANGED_A)) {
             need_update = true;
@@ -412,7 +412,7 @@ static void propagate_data_requirements_from_right_to_left(
 
   while (true) {
     /* Node updates may require several passes due to cyclic dependencies caused by simulation or
-     * serial loop input/output nodes. */
+     * repeat input/output nodes. */
     bool need_update = false;
 
     for (const bNode *node : toposort_result) {

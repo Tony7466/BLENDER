@@ -1746,7 +1746,7 @@ typedef struct NodeGeometrySimulationOutput {
 #endif
 } NodeGeometrySimulationOutput;
 
-typedef struct NodeSerialLoopItem {
+typedef struct NodeRepeatItem {
   char *name;
   /** #eNodeSocketDatatype. */
   short socket_type;
@@ -1761,28 +1761,28 @@ typedef struct NodeSerialLoopItem {
   static bool supports_type(eNodeSocketDatatype type);
   std::string identifier_str() const;
 #endif
-} NodeSerialLoopItem;
+} NodeRepeatItem;
 
-typedef struct NodeGeometrySerialLoopInput {
+typedef struct NodeGeometryRepeatInput {
   /** bNode.identifier of the corresponding output node. */
   int32_t output_node_id;
-} NodeGeometrySerialLoopInput;
+} NodeGeometryRepeatInput;
 
-typedef struct NodeGeometrySerialLoopOutput {
-  NodeSerialLoopItem *items;
+typedef struct NodeGeometryRepeatOutput {
+  NodeRepeatItem *items;
   int items_num;
   int active_index;
-  /** Identifier to give to the next loop item. */
+  /** Identifier to give to the next repeat item. */
   int next_identifier;
   char _pad[4];
 
 #ifdef __cplusplus
-  blender::Span<NodeSerialLoopItem> items_span() const;
-  blender::MutableSpan<NodeSerialLoopItem> items_span();
-  NodeSerialLoopItem *add_item(const char *name, eNodeSocketDatatype type);
-  void set_item_name(NodeSerialLoopItem &item, const char *name);
+  blender::Span<NodeRepeatItem> items_span() const;
+  blender::MutableSpan<NodeRepeatItem> items_span();
+  NodeRepeatItem *add_item(const char *name, eNodeSocketDatatype type);
+  void set_item_name(NodeRepeatItem &item, const char *name);
 #endif
-} NodeGeometrySerialLoopOutput;
+} NodeGeometryRepeatOutput;
 
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */

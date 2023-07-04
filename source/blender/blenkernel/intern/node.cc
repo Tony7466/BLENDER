@@ -676,11 +676,11 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         BLO_write_string(writer, item.name);
       }
     }
-    if (node->type == GEO_NODE_SERIAL_LOOP_OUTPUT) {
-      const NodeGeometrySerialLoopOutput &storage =
-          *static_cast<const NodeGeometrySerialLoopOutput *>(node->storage);
-      BLO_write_struct_array(writer, NodeSerialLoopItem, storage.items_num, storage.items);
-      for (const NodeSerialLoopItem &item : Span(storage.items, storage.items_num)) {
+    if (node->type == GEO_NODE_REPEAT_OUTPUT) {
+      const NodeGeometryRepeatOutput &storage = *static_cast<const NodeGeometryRepeatOutput *>(
+          node->storage);
+      BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
+      for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
         BLO_write_string(writer, item.name);
       }
     }
@@ -880,11 +880,11 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           }
           break;
         }
-        case GEO_NODE_SERIAL_LOOP_OUTPUT: {
-          NodeGeometrySerialLoopOutput &storage = *static_cast<NodeGeometrySerialLoopOutput *>(
+        case GEO_NODE_REPEAT_OUTPUT: {
+          NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(
               node->storage);
           BLO_read_data_address(reader, &storage.items);
-          for (const NodeSerialLoopItem &item : Span(storage.items, storage.items_num)) {
+          for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
             BLO_read_data_address(reader, &item.name);
           }
           break;

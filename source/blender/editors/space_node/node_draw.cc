@@ -2199,8 +2199,8 @@ static void node_draw_basis(const bContext &C,
   if (!ELEM(node.type,
             GEO_NODE_SIMULATION_INPUT,
             GEO_NODE_SIMULATION_OUTPUT,
-            GEO_NODE_SERIAL_LOOP_INPUT,
-            GEO_NODE_SERIAL_LOOP_OUTPUT))
+            GEO_NODE_REPEAT_INPUT,
+            GEO_NODE_REPEAT_OUTPUT))
   {
     node_draw_shadow(snode, node, BASIS_RAD, 1.0f);
   }
@@ -2481,8 +2481,8 @@ static void node_draw_basis(const bContext &C,
       UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, color_outline);
       color_outline[3] = 1.0f;
     }
-    else if (ELEM(node.type, GEO_NODE_SERIAL_LOOP_INPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
-      UI_GetThemeColor4fv(TH_NODE_ZONE_SERIAL_LOOP, color_outline);
+    else if (ELEM(node.type, GEO_NODE_REPEAT_INPUT, GEO_NODE_REPEAT_OUTPUT)) {
+      UI_GetThemeColor4fv(TH_NODE_ZONE_REPEAT, color_outline);
       color_outline[3] = 1.0f;
     }
     else {
@@ -3232,7 +3232,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
       return TH_NODE_ZONE_SIMULATION;
     }
-    return TH_NODE_ZONE_SERIAL_LOOP;
+    return TH_NODE_ZONE_REPEAT;
   };
 
   const uint pos = GPU_vertformat_attr_add(

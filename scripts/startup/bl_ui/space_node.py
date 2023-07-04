@@ -1106,7 +1106,7 @@ class NODE_PT_simulation_zone_items(Panel):
                 layout.prop(active_item, "attribute_domain")
 
 
-class NODE_UL_serial_loop_zone_items(bpy.types.UIList):
+class NODE_UL_repeat_zone_items(bpy.types.UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row(align=True)
@@ -1117,14 +1117,14 @@ class NODE_UL_serial_loop_zone_items(bpy.types.UIList):
             layout.template_node_socket(color=item.color)
 
 
-class NODE_PT_serial_loop_zone_items(Panel):
+class NODE_PT_repeat_zone_items(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Node"
-    bl_label = "Serial Loop"
+    bl_label = "Repeat"
 
-    input_node_type = 'GeometryNodeSerialLoopInput'
-    output_node_type = 'GeometryNodeSerialLoopOutput'
+    input_node_type = 'GeometryNodeRepeatInput'
+    output_node_type = 'GeometryNodeRepeatOutput'
 
     @classmethod
     def get_output_node(cls, context):
@@ -1152,25 +1152,25 @@ class NODE_PT_serial_loop_zone_items(Panel):
         output_node = self.get_output_node(context)
         split = layout.row()
         split.template_list(
-            "NODE_UL_serial_loop_zone_items",
+            "NODE_UL_repeat_zone_items",
             "",
             output_node,
-            "loop_items",
+            "repeat_items",
             output_node,
             "active_index")
 
         ops_col = split.column()
 
         add_remove_col = ops_col.column(align=True)
-        add_remove_col.operator("node.serial_loop_zone_item_add", icon='ADD', text="")
-        add_remove_col.operator("node.serial_loop_zone_item_remove", icon='REMOVE', text="")
+        add_remove_col.operator("node.repeat_zone_item_add", icon='ADD', text="")
+        add_remove_col.operator("node.repeat_zone_item_remove", icon='REMOVE', text="")
 
         ops_col.separator()
 
         up_down_col = ops_col.column(align=True)
-        props = up_down_col.operator("node.serial_loop_zone_item_move", icon='TRIA_UP', text="")
+        props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_UP', text="")
         props.direction = 'UP'
-        props = up_down_col.operator("node.serial_loop_zone_item_move", icon='TRIA_DOWN', text="")
+        props = up_down_col.operator("node.repeat_zone_item_move", icon='TRIA_DOWN', text="")
         props.direction = 'DOWN'
 
         active_item = output_node.active_item
@@ -1247,8 +1247,8 @@ classes = (
     NODE_PT_panels,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
-    NODE_UL_serial_loop_zone_items,
-    NODE_PT_serial_loop_zone_items,
+    NODE_UL_repeat_zone_items,
+    NODE_PT_repeat_zone_items,
     NODE_PT_active_node_properties,
 
     node_panel(EEVEE_MATERIAL_PT_settings),

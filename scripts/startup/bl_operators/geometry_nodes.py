@@ -350,9 +350,9 @@ class SimulationZoneItemMoveOperator(SimulationZoneOperator, Operator):
         return {'FINISHED'}
 
 
-class SerialLoopZoneOperator:
-    input_node_type = 'GeometryNodeSerialLoopInput'
-    output_node_type = 'GeometryNodeSerialLoopOutput'
+class RepeatZoneOperator:
+    input_node_type = 'GeometryNodeRepeatInput'
+    output_node_type = 'GeometryNodeRepeatOutput'
 
     @classmethod
     def get_output_node(cls, context):
@@ -377,17 +377,17 @@ class SerialLoopZoneOperator:
         return True
 
 
-class SerialLoopZoneItemAddOperator(SerialLoopZoneOperator, Operator):
-    """Add a loop item to the serial loop zone"""
-    bl_idname = "node.serial_loop_zone_item_add"
-    bl_label = "Add Loop Item"
+class RepeatZoneItemAddOperator(RepeatZoneOperator, Operator):
+    """Add a repeat item to the repeat zone"""
+    bl_idname = "node.repeat_zone_item_add"
+    bl_label = "Add Repeat Item"
     bl_options = {'REGISTER', 'UNDO'}
 
     default_socket_type = 'GEOMETRY'
 
     def execute(self, context):
         node = self.get_output_node(context)
-        loop_items = node.loop_items
+        repeat_items = node.repeat_items
 
         # Remember index to move the item.
         if node.active_item:
@@ -395,38 +395,38 @@ class SerialLoopZoneItemAddOperator(SerialLoopZoneOperator, Operator):
             dst_type = node.active_item.socket_type
             dst_name = node.active_item.name
         else:
-            dst_index = len(loop_items)
+            dst_index = len(repeat_items)
             dst_type = self.default_socket_type
             # Empty name so it is based on the type.
             dst_name = ""
-        loop_items.new(dst_type, dst_name)
-        loop_items.move(len(loop_items) - 1, dst_index)
+        repeat_items.new(dst_type, dst_name)
+        repeat_items.move(len(repeat_items) - 1, dst_index)
         node.active_index = dst_index
 
         return {'FINISHED'}
 
 
-class SerialLoopZoneItemRemoveOperator(SerialLoopZoneOperator, Operator):
-    """Remove a loop item from the serial loop zone"""
-    bl_idname = "node.serial_loop_zone_item_remove"
-    bl_label = "Remove Loop Item"
+class RepeatZoneItemRemoveOperator(RepeatZoneOperator, Operator):
+    """Remove a repeat item from the repeat zone"""
+    bl_idname = "node.repeat_zone_item_remove"
+    bl_label = "Remove Repeat Item"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         node = self.get_output_node(context)
-        loop_items = node.loop_items
+        repeat_items = node.repeat_items
 
         if node.active_item:
-            loop_items.remove(node.active_item)
-            node.active_index = min(node.active_index, len(loop_items) - 1)
+            repeat_items.remove(node.active_item)
+            node.active_index = min(node.active_index, len(repeat_items) - 1)
 
         return {'FINISHED'}
 
 
-class SerialLoopZoneItemMoveOperator(SerialLoopZoneOperator, Operator):
-    """Move a serial loop state item up or down in the list"""
-    bl_idname = "node.serial_loop_zone_item_move"
-    bl_label = "Move Loop Item"
+class RepeatZoneItemMoveOperator(RepeatZoneOperator, Operator):
+    """Move a repeat item up or down in the list"""
+    bl_idname = "node.repeat_zone_item_move"
+    bl_label = "Move Repeat Item"
     bl_options = {'REGISTER', 'UNDO'}
 
     direction: EnumProperty(
@@ -437,13 +437,13 @@ class SerialLoopZoneItemMoveOperator(SerialLoopZoneOperator, Operator):
 
     def execute(self, context):
         node = self.get_output_node(context)
-        loop_items = node.loop_items
+        repeat_items = node.repeat_items
 
         if self.direction == 'UP' and node.active_index > 0:
-            loop_items.move(node.active_index, node.active_index - 1)
+            repeat_items.move(node.active_index, node.active_index - 1)
             node.active_index = node.active_index - 1
-        elif self.direction == 'DOWN' and node.active_index < len(loop_items) - 1:
-            loop_items.move(node.active_index, node.active_index + 1)
+        elif self.direction == 'DOWN' and node.active_index < len(repeat_items) - 1:
+            repeat_items.move(node.active_index, node.active_index + 1)
             node.active_index = node.active_index + 1
 
         return {'FINISHED'}
@@ -456,7 +456,7 @@ classes = (
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,
     SimulationZoneItemMoveOperator,
-    SerialLoopZoneItemAddOperator,
-    SerialLoopZoneItemRemoveOperator,
-    SerialLoopZoneItemMoveOperator,
+    RepeatZoneItemAddOperator,
+    RepeatZoneItemRemoveOperator,
+    RepeatZoneItemMoveOperator,
 )

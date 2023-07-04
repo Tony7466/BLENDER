@@ -294,14 +294,14 @@ static Vector<const bNode *> get_implicit_origin_nodes(const bNodeTree &ntree, b
       }
     }
   }
-  if (node.type == GEO_NODE_SERIAL_LOOP_OUTPUT) {
-    for (const bNode *serial_loop_input_node :
-         ntree.runtime->nodes_by_type.lookup(nodeTypeFind("GeometryNodeSerialLoopInput")))
+  if (node.type == GEO_NODE_REPEAT_OUTPUT) {
+    for (const bNode *repeat_input_node :
+         ntree.runtime->nodes_by_type.lookup(nodeTypeFind("GeometryNodeRepeatInput")))
     {
-      const auto &storage = *static_cast<const NodeGeometrySerialLoopInput *>(
-          serial_loop_input_node->storage);
+      const auto &storage = *static_cast<const NodeGeometryRepeatInput *>(
+          repeat_input_node->storage);
       if (storage.output_node_id == node.identifier) {
-        origin_nodes.append(serial_loop_input_node);
+        origin_nodes.append(repeat_input_node);
       }
     }
   }
@@ -317,10 +317,10 @@ static Vector<const bNode *> get_implicit_target_nodes(const bNodeTree &ntree, b
       target_nodes.append(sim_output_node);
     }
   }
-  if (node.type == GEO_NODE_SERIAL_LOOP_INPUT) {
-    const auto &storage = *static_cast<const NodeGeometrySerialLoopInput *>(node.storage);
-    if (const bNode *serial_loop_output_node = ntree.node_by_id(storage.output_node_id)) {
-      target_nodes.append(serial_loop_output_node);
+  if (node.type == GEO_NODE_REPEAT_INPUT) {
+    const auto &storage = *static_cast<const NodeGeometryRepeatInput *>(node.storage);
+    if (const bNode *repeat_output_node = ntree.node_by_id(storage.output_node_id)) {
+      target_nodes.append(repeat_output_node);
     }
   }
   return target_nodes;
