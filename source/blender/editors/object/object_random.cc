@@ -92,11 +92,11 @@ static int object_rand_verts_exec(bContext *C, wmOperator *op)
   bool changed_multi = false;
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len, ob_mode);
+      scene, view_layer, CTX_wm_view3d(C), &objects_len, eObjectMode(ob_mode));
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *ob_iter = objects[ob_index];
 
-    TransVertStore tvs = {NULL};
+    TransVertStore tvs = {nullptr};
 
     if (ob_iter) {
       int mode = TM_ALL_JOINTS;

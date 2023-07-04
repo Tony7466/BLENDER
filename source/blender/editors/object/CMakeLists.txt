@@ -50,7 +50,7 @@ set(SRC
   object_modes.cc
   object_modifier.cc
   object_ops.cc
-  object_random.c
+  object_random.cc
   object_relations.c
   object_remesh.cc
   object_select.c
