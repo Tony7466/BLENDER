@@ -53,7 +53,7 @@ set(SRC
   object_random.cc
   object_relations.cc
   object_remesh.cc
-  object_select.c
+  object_select.cc
   object_shader_fx.c
   object_shapekey.c
   object_transform.cc
