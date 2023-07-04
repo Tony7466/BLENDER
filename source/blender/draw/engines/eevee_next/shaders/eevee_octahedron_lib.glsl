@@ -32,12 +32,21 @@ vec3 octahedral_uv_to_direction(vec2 co)
   return v;
 }
 
-vec2 octahedral_reflection_probe_unpack(vec2 octahedral_uv_packed, ReflectionProbeData probe_data)
+vec2 octahedral_reflection_probe_unpack(vec2 octahedral_uv,
+                                        ReflectionProbeData probe_data,
+                                        float lod)
 {
+  /* Fix artifacts near edges. */
+  int i_lod = int(ceil(lod));
+  float texel_size = 1.0 / (1 << (12 - probe_data.layer_subdivision - i_lod));
+  octahedral_uv = (1.0 - 2.0 * texel_size) * octahedral_uv + texel_size;
+
   int areas_per_dimension = 1 << probe_data.layer_subdivision;
   vec2 area_scalar = vec2(1.0 / float(areas_per_dimension));
+  octahedral_uv *= area_scalar;
+
   vec2 area_offset = vec2(probe_data.area_index % areas_per_dimension,
                           probe_data.area_index / areas_per_dimension) *
                      area_scalar;
-  return octahedral_uv_packed * area_scalar + area_offset;
+  return octahedral_uv + area_offset;
 }

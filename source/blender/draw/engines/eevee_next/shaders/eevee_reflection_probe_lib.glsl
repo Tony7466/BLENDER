@@ -5,7 +5,7 @@
 vec4 reflection_probes_sample(vec3 L, float lod, ReflectionProbeData probe_data)
 {
   vec2 octahedral_uv_packed = octahedral_uv_from_direction(L);
-  vec2 octahedral_uv = octahedral_reflection_probe_unpack(octahedral_uv_packed, probe_data);
+  vec2 octahedral_uv = octahedral_reflection_probe_unpack(octahedral_uv_packed, probe_data, lod);
   return textureLod(reflectionProbes, vec3(octahedral_uv, probe_data.layer), lod);
 }
 
