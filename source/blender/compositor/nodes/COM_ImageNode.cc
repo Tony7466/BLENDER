@@ -227,7 +227,7 @@ void ImageNode::convert_to_operations(NodeConverter &converter,
     }
     else {
       /* happens when unlinking image datablock from multilayer node */
-      for (int i = 3; i < number_of_outputs; i++) {
+      for (int i = 2; i < number_of_outputs; i++) {
         NodeOutput *output = this->get_output_socket(i);
         NodeOperation *operation = nullptr;
         switch (output->get_data_type()) {
