@@ -36,7 +36,7 @@ set(SRC
   editarmature_undo.cc
   meshlaplacian.cc
   pose_edit.cc
-  pose_group.c
+  pose_group.cc
   pose_lib_2.c
   pose_select.c
   pose_slide.c

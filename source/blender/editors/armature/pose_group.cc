@@ -56,17 +56,17 @@ static bool pose_group_poll(bContext *C)
   return true;
 }
 
-static int pose_group_add_exec(bContext *C, wmOperator *UNUSED(op))
+static int pose_group_add_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_pose_object_from_context(C);
 
   /* only continue if there's an object and pose */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
 
   /* for now, just call the API function for this */
-  BKE_pose_add_group(ob->pose, NULL);
+  BKE_pose_add_group(ob->pose, nullptr);
 
   /* notifiers for updates */
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
@@ -89,12 +89,12 @@ void POSE_OT_group_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int pose_group_remove_exec(bContext *C, wmOperator *UNUSED(op))
+static int pose_group_remove_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_pose_object_from_context(C);
 
   /* only continue if there's an object and pose */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -126,7 +126,7 @@ void POSE_OT_group_remove(wmOperatorType *ot)
 /* ------------ */
 
 /* invoke callback which presents a list of bone-groups for the user to choose from */
-static int pose_groups_menu_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int pose_groups_menu_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Object *ob = ED_pose_object_from_context(C);
   bPose *pose;
@@ -138,7 +138,7 @@ static int pose_groups_menu_invoke(bContext *C, wmOperator *op, const wmEvent *U
   int i;
 
   /* only continue if there's an object, and a pose there too */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
   pose = ob->pose;
@@ -169,7 +169,8 @@ static int pose_groups_menu_invoke(bContext *C, wmOperator *op, const wmEvent *U
     }
 
     /* add entries for each group */
-    for (grp = pose->agroups.first, i = 1; grp; grp = grp->next, i++) {
+    for (grp = static_cast<bActionGroup *>(pose->agroups.first), i = 1; grp; grp = grp->next, i++)
+    {
       uiItemIntO(layout, grp->name, ICON_NONE, op->idname, "type", i);
     }
 
@@ -192,7 +193,7 @@ static int pose_group_assign_exec(bContext *C, wmOperator *op)
   bool done = false;
 
   /* only continue if there's an object, and a pose there too */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -203,7 +204,7 @@ static int pose_group_assign_exec(bContext *C, wmOperator *op)
    */
   pose->active_group = RNA_int_get(op->ptr, "type");
   if (pose->active_group == 0) {
-    BKE_pose_add_group(ob->pose, NULL);
+    BKE_pose_add_group(ob->pose, nullptr);
   }
 
   /* add selected bones to group then */
@@ -243,13 +244,13 @@ void POSE_OT_group_assign(wmOperatorType *ot)
   RNA_def_int(ot->srna, "type", 0, 0, INT_MAX, "Bone Group Index", "", 0, 10);
 }
 
-static int pose_group_unassign_exec(bContext *C, wmOperator *UNUSED(op))
+static int pose_group_unassign_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_pose_object_from_context(C);
   bool done = false;
 
   /* only continue if there's an object, and a pose there too */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -291,12 +292,12 @@ void POSE_OT_group_unassign(wmOperatorType *ot)
 static int group_move_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_pose_object_from_context(C);
-  bPose *pose = (ob) ? ob->pose : NULL;
+  bPose *pose = (ob) ? ob->pose : nullptr;
   bPoseChannel *pchan;
   bActionGroup *grp;
   int dir = RNA_enum_get(op->ptr, "direction");
 
-  if (ELEM(NULL, ob, pose)) {
+  if (ELEM(nullptr, ob, pose)) {
     return OPERATOR_CANCELLED;
   }
   if (pose->active_group <= 0) {
@@ -304,8 +305,8 @@ static int group_move_exec(bContext *C, wmOperator *op)
   }
 
   /* get group to move */
-  grp = BLI_findlink(&pose->agroups, pose->active_group - 1);
-  if (grp == NULL) {
+  grp = static_cast<bActionGroup *>(BLI_findlink(&pose->agroups, pose->active_group - 1));
+  if (grp == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -316,7 +317,8 @@ static int group_move_exec(bContext *C, wmOperator *op)
 
     pose->active_group += dir;
     /* fix changed bone group indices in bones (swap grpIndexA with grpIndexB) */
-    for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+    for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next)
+    {
       if (pchan->agrp_index == grpIndexB) {
         pchan->agrp_index = grpIndexA;
       }
@@ -337,7 +339,7 @@ void POSE_OT_group_move(wmOperatorType *ot)
   static const EnumPropertyItem group_slot_move[] = {
       {-1, "UP", 0, "Up", ""},
       {1, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -361,29 +363,29 @@ void POSE_OT_group_move(wmOperatorType *ot)
 }
 
 /* bone group sort element */
-typedef struct tSortActionGroup {
+struct tSortActionGroup {
   bActionGroup *agrp;
   int index;
-} tSortActionGroup;
+};
 
 /* compare bone groups by name */
 static int compare_agroup(const void *sgrp_a_ptr, const void *sgrp_b_ptr)
 {
-  const tSortActionGroup *sgrp_a = sgrp_a_ptr;
-  const tSortActionGroup *sgrp_b = sgrp_b_ptr;
+  const tSortActionGroup *sgrp_a = static_cast<const tSortActionGroup *>(sgrp_a_ptr);
+  const tSortActionGroup *sgrp_b = static_cast<const tSortActionGroup *>(sgrp_b_ptr);
 
   return strcmp(sgrp_a->agrp->name, sgrp_b->agrp->name);
 }
 
-static int group_sort_exec(bContext *C, wmOperator *UNUSED(op))
+static int group_sort_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_pose_object_from_context(C);
-  bPose *pose = (ob) ? ob->pose : NULL;
+  bPose *pose = (ob) ? ob->pose : nullptr;
   bPoseChannel *pchan;
   tSortActionGroup *agrp_array;
   bActionGroup *agrp;
 
-  if (ELEM(NULL, ob, pose)) {
+  if (ELEM(nullptr, ob, pose)) {
     return OPERATOR_CANCELLED;
   }
   if (pose->active_group <= 0) {
@@ -392,9 +394,11 @@ static int group_sort_exec(bContext *C, wmOperator *UNUSED(op))
 
   /* create temporary array with bone groups and indices */
   int agrp_count = BLI_listbase_count(&pose->agroups);
-  agrp_array = MEM_mallocN(sizeof(tSortActionGroup) * agrp_count, "sort bone groups");
+  agrp_array = static_cast<tSortActionGroup *>(
+      MEM_mallocN(sizeof(tSortActionGroup) * agrp_count, "sort bone groups"));
   int i;
-  for (agrp = pose->agroups.first, i = 0; agrp; agrp = agrp->next, i++) {
+  for (agrp = static_cast<bActionGroup *>(pose->agroups.first), i = 0; agrp;
+       agrp = agrp->next, i++) {
     BLI_assert(i < agrp_count);
     agrp_array[i].agrp = agrp;
     agrp_array[i].index = i + 1;
@@ -410,7 +414,7 @@ static int group_sort_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* Fix changed bone group indices in bones. */
-  for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
     for (i = 0; i < agrp_count; i++) {
       if (pchan->agrp_index == agrp_array[i].index) {
         pchan->agrp_index = i + 1;
@@ -465,19 +469,19 @@ static void pose_group_select(Object *ob, bool select)
   FOREACH_PCHAN_VISIBLE_IN_OBJECT_END;
 }
 
-static int pose_group_select_exec(bContext *C, wmOperator *UNUSED(op))
+static int pose_group_select_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_pose_object_from_context(C);
 
   /* only continue if there's an object, and a pose there too */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
 
   pose_group_select(ob, 1);
 
   /* notifiers for updates */
-  bArmature *arm = ob->data;
+  bArmature *arm = static_cast<bArmature *>(ob->data);
   DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
   ED_outliner_select_sync_from_pose_bone_tag(C);
@@ -500,19 +504,19 @@ void POSE_OT_group_select(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int pose_group_deselect_exec(bContext *C, wmOperator *UNUSED(op))
+static int pose_group_deselect_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = ED_pose_object_from_context(C);
 
   /* only continue if there's an object, and a pose there too */
-  if (ELEM(NULL, ob, ob->pose)) {
+  if (ELEM(nullptr, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
   }
 
   pose_group_select(ob, 0);
 
   /* notifiers for updates */
-  bArmature *arm = ob->data;
+  bArmature *arm = static_cast<bArmature *>(ob->data);
   DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
   ED_outliner_select_sync_from_pose_bone_tag(C);
