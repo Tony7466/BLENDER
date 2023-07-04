@@ -1799,7 +1799,6 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
    * for the same mesh. */
   blender::short2 *clnors = const_cast<blender::short2 *>(static_cast<const blender::short2 *>(
       CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL)));
-
   const bool *sharp_edges = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge"));
   const bool *sharp_faces = static_cast<const bool *>(
