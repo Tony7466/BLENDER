@@ -445,6 +445,9 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
   keymap = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Edit Mode", 0, 0);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
+  keymap = WM_keymap_ensure(wm->defaultconf, "Grease Pencil Paint Mode", 0, 0);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
   /* editfont keymap swallows all... */
   keymap = WM_keymap_ensure(wm->defaultconf, "Font", 0, 0);
   WM_event_add_keymap_handler(&region->handlers, keymap);
@@ -1726,16 +1729,16 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
     case CTX_MODE_OBJECT:
       ARRAY_SET_ITEMS(contexts, ".objectmode");
       break;
-    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_paint");
       break;
-    case CTX_MODE_SCULPT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_sculpt");
       break;
-    case CTX_MODE_WEIGHT_GPENCIL:
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_weight");
       break;
-    case CTX_MODE_VERTEX_GPENCIL:
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_vertex");
       break;
     case CTX_MODE_SCULPT_CURVES:
@@ -1746,19 +1749,19 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
   }
 
   switch (mode) {
-    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_PAINT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_paint");
       break;
-    case CTX_MODE_SCULPT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_sculpt");
       break;
-    case CTX_MODE_WEIGHT_GPENCIL:
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_weight");
       break;
     case CTX_MODE_EDIT_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_edit");
       break;
-    case CTX_MODE_VERTEX_GPENCIL:
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY:
       ARRAY_SET_ITEMS(contexts, ".greasepencil_vertex");
       break;
     default:
