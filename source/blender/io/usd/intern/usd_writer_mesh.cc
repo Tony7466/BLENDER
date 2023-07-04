@@ -33,6 +33,7 @@
 namespace blender::io::usd {
 
 const pxr::TfToken empty_token;
+const pxr::UsdTimeCode defaultTime = pxr::UsdTimeCode::Default();
 
 USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
@@ -408,7 +409,6 @@ struct USDMeshData {
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
-  pxr::UsdTimeCode defaultTime = pxr::UsdTimeCode::Default();
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
   const pxr::SdfPath &usd_path = usd_export_context_.usd_path;
 

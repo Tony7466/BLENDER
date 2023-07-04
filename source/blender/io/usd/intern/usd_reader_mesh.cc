@@ -218,6 +218,9 @@ static const int convert_usd_varying_to_blender(const std::string usd_domain)
       {pxr::UsdGeomTokens->faceVarying.GetString(), ATTR_DOMAIN_CORNER},
       {pxr::UsdGeomTokens->vertex.GetString(), ATTR_DOMAIN_POINT},
       {pxr::UsdGeomTokens->face.GetString(), ATTR_DOMAIN_FACE},
+      /* As there's no "constant" type in Blender, for now we're
+       * translating into a point Attribute. */
+      {pxr::UsdGeomTokens->constant.GetString(), ATTR_DOMAIN_POINT},
       /* Notice: Edge types are not supported! */
   };
 
@@ -485,7 +488,7 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
 {
   const StringRef primvar_name(primvar.StripPrimvarsName(primvar.GetName()).GetString());
 
-  pxr::VtArray<pxr::GfVec2d> usd_uvs;
+  pxr::VtArray<pxr::GfVec2f> usd_uvs;
   if (!primvar.ComputeFlattened(&usd_uvs, motionSampleTime)) {
     WM_reportf(RPT_WARNING,
                "USD Import: couldn't compute values for uv attribute '%s'",
@@ -531,8 +534,15 @@ void copy_prim_array_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
   pxr::VtArray<T> primvar_array;
 
   if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
-    for (const auto index : buffer.span.index_range()) {
-      buffer.span[index] = primvar_array[index];
+    int64_t index = 0;
+    for (const auto value : primvar_array) {
+      buffer.span[index] = value;
+      index += 1;
+    }
+    /* handle size mismatches, such as constant colors */
+    auto last_value = primvar_array[primvar_array.size() - 1];
+    for (; index < buffer.span.size(); index += 1) {
+      buffer.span[index] = last_value;
     }
   }
   else {
@@ -551,9 +561,15 @@ void copy_prim_array_to_blender_buffer2(const pxr::UsdGeomPrimvar &primvar,
   pxr::VtArray<T> primvar_array;
 
   if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
-    for (const auto index : buffer.span.index_range()) {
-      auto value = primvar_array[index];
+    int64_t index = 0;
+    for (const auto value : primvar_array) {
       buffer.span[index] = {value[0], value[1]};
+      index += 1;
+    }
+    /* handle size mismatches, such as constant colors */
+    auto last_value = primvar_array[primvar_array.size() - 1];
+    for (; index < buffer.span.size(); index += 1) {
+      buffer.span[index] = {last_value[0], last_value[1]};
     }
   }
   else {
@@ -572,9 +588,15 @@ void copy_prim_array_to_blender_buffer3(const pxr::UsdGeomPrimvar &primvar,
   pxr::VtArray<T> primvar_array;
 
   if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
-    for (const auto index : buffer.span.index_range()) {
-      auto value = primvar_array[index];
+    int64_t index = 0;
+    for (const auto value : primvar_array) {
       buffer.span[index] = {value[0], value[1], value[2]};
+      index += 1;
+    }
+    /* handle size mismatches, such as constant colors */
+    auto last_value = primvar_array[primvar_array.size() - 1];
+    for (; index < buffer.span.size(); index += 1) {
+      buffer.span[index] = {last_value[0], last_value[1], last_value[2]};
     }
   }
   else {
@@ -593,9 +615,15 @@ void copy_prim_array_to_blender_buffer_color(const pxr::UsdGeomPrimvar &primvar,
   pxr::VtArray<T> primvar_array;
 
   if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
-    for (const auto index : buffer.span.index_range()) {
-      auto value = primvar_array[index];
+    int64_t index = 0;
+    for (const auto value : primvar_array) {
       buffer.span[index] = {value[0], value[1], value[2], 1.0f};
+      index += 1;
+    }
+    /* handle size mismatches, such as constant colors */
+    auto last_value = primvar_array[primvar_array.size() - 1];
+    for (; index < buffer.span.size(); index += 1) {
+      buffer.span[index] = {last_value[0], last_value[1], last_value[2], 1.0f};
     }
   }
   else {
@@ -865,13 +893,6 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
                  &mesh->id.name[2]);
       continue;
     }
-
-    WM_reportf(RPT_WARNING,
-               "+++ Reading primvar %s, mesh %s (%s > %s)",
-               pv.GetName().GetText(),
-               &mesh->id.name[2],
-               pv.GetTypeName().GetAsToken().GetText(),
-               pv.GetInterpolation().GetText());
 
     const pxr::SdfValueTypeName type = pv.GetTypeName();
     const pxr::TfToken varying_type = pv.GetInterpolation();
