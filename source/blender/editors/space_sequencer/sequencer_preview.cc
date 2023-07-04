@@ -146,7 +146,6 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
     if (*stop || G.is_break) {
       BLI_task_pool_cancel(task_pool);
 
-      /* Clear all pending jobs data. */
       LISTBASE_FOREACH (PreviewJobAudio *, previewjb, &pj->previews) {
         clear_sound_waveform_loading_tag(previewjb->sound);
       }
