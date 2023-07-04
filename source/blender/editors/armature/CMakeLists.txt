@@ -31,7 +31,7 @@ set(SRC
   armature_ops.cc
   armature_relations.cc
   armature_select.cc
-  armature_skinning.c
+  armature_skinning.cc
   armature_utils.c
   editarmature_undo.cc
   meshlaplacian.cc
