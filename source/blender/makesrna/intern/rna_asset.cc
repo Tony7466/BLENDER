@@ -20,6 +20,7 @@
 #ifdef RNA_RUNTIME
 
 #  include "AS_asset_library.h"
+#  include "AS_asset_representation.hh"
 
 #  include "BKE_asset.h"
 #  include "BKE_context.h"
@@ -60,7 +61,7 @@ int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info)
 
   return rna_AssetMetaData_editable_from_owner_id(ptr->owner_id, asset_data, r_info) ?
              PROP_EDITABLE :
-             0;
+             PropertyFlag(0);
 }
 
 static char *rna_AssetTag_path(const PointerRNA *ptr)
@@ -83,7 +84,7 @@ static int rna_AssetTag_editable(PointerRNA *ptr, const char **r_info)
 
   return rna_AssetMetaData_editable_from_owner_id(ptr->owner_id, owner_id->asset_data, r_info) ?
              PROP_EDITABLE :
-             0;
+             PropertyFlag(0);
 }
 
 static AssetTag *rna_AssetMetaData_tag_new(
@@ -367,7 +368,7 @@ static void rna_AssetHandle_get_full_library_path(
 static PointerRNA rna_AssetHandle_local_id_get(PointerRNA *ptr)
 {
   const AssetHandle *asset = static_cast<const AssetHandle *>(ptr->data);
-  ID *id = ED_asset_handle_get_local_id(asset);
+  ID *id = ED_asset_handle_get_representation(asset)->local_id();
   return rna_pointer_inherit_refine(ptr, &RNA_ID, id);
 }
 
