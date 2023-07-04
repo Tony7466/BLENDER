@@ -16,12 +16,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_math_base_safe.h"
-#include "BLI_math_geom.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -792,7 +790,7 @@ static float vfont_descent(const VFontData *vfd)
   return vfd->em_height - vfont_ascent(vfd);
 }
 
-struct TextboxBounds {
+struct TextboxBounds_Cursor {
   /* Stores the maximun #xofs assigned to a character in the textbox. This value is scaled by
    * 1 / #font_size. */
   float xmax;
@@ -800,7 +798,7 @@ struct TextboxBounds {
    * 1 / #font_size. */
   float ymin;
   int last_char_index;
-} TextboxBounds;
+} TextboxBounds_Cursor;
 
 static bool vfont_to_curve(Object *ob,
                            Curve *cu,
@@ -946,13 +944,11 @@ static bool vfont_to_curve(Object *ob,
   }
 
   i = 0;
-  struct TextboxBounds *tb_bounds = MEM_malloc_arrayN(
-      cu->totbox, sizeof(struct TextboxBounds), "TextboxBounds");
+  struct TextboxBounds_Cursor *tb_bounds = NULL;
 
-  for (curbox = 0; curbox < cu->totbox; curbox++) {
-    tb_bounds[curbox].xmax = 0;
-    tb_bounds[curbox].ymin = 0;
-    tb_bounds[curbox].last_char_index = 0;
+  if (cu->textoncurve == NULL && cu->totbox > 1 && cursor_params != NULL && slen > 0) {
+    tb_bounds = MEM_calloc_arrayN(
+        cu->totbox, sizeof(struct TextboxBounds_Cursor), "TextboxBounds_Cursor");
   }
 
   curbox = 0;
@@ -1079,8 +1075,6 @@ static bool vfont_to_curve(Object *ob,
       }
     }
 
-    tb_bounds[curbox].xmax = max_ff(tb_bounds[curbox].xmax, xof);
-
     if (ascii == '\n' || ascii == 0 || ct->dobreak) {
       ct->xof = xof;
       ct->yof = yof;
@@ -1096,8 +1090,11 @@ static bool vfont_to_curve(Object *ob,
 
       CLAMP_MIN(maxlen, lineinfo[lnr].x_min);
 
-      tb_bounds[curbox].ymin = yof;
-      tb_bounds[curbox].last_char_index = i;
+      if (tb_bounds != NULL) {
+        tb_bounds[curbox].xmax = max_ff(tb_bounds[curbox].xmax, xof);
+        tb_bounds[curbox].ymin = yof;
+        tb_bounds[curbox].last_char_index = i;
+      }
 
       if ((tb_scale.h != 0.0f) && (-(yof - tb_scale.y) > (tb_scale.h - linedist) - yof_scale)) {
         if (cu->totbox > (curbox + 1)) {
@@ -1775,13 +1772,14 @@ static bool vfont_to_curve(Object *ob,
   }
 
   if (cursor_params) {
+    float *cursor_location = cursor_params->cursor_location;
     /* Erasing all text could give slen = 0 */
     if (slen == 0) {
       cursor_params->r_string_offset = -1;
     }
     else if (cu->textoncurve != NULL) {
 
-      int best_match = -1;
+      int closest_char = -1;
       float closest_distance = FLT_MAX;
 
       for (i = 0; i <= slen; i++) {
@@ -1789,67 +1787,49 @@ static bool vfont_to_curve(Object *ob,
             chartransdata[i].xof * font_size,
             chartransdata[i].yof * font_size,
         };
-        const float distance = len_squared_v2v2(cursor_params->cursor_location, char_location);
+        const float distance = len_squared_v2v2(cursor_location, char_location);
         if (closest_distance > distance) {
-          best_match = i;
+          closest_char = i;
           closest_distance = distance;
         }
       }
 
-      cursor_params->r_string_offset = best_match;
+      cursor_params->r_string_offset = closest_char;
     }
     else {
       /* Find the first box closest to the mouse. */
       int start = 0;
-      int end = 0;
-      int closest_box = 0;
-      float best_distance = FLT_MAX;
-      for (curbox = 0; curbox < cu->totbox; curbox++) {
-        rctf box_rect = {
-            cu->tb[curbox].x,
-            max_ff(tb_bounds[curbox].xmax * font_size, cu->tb[curbox].x + cu->tb[curbox].w),
-            tb_bounds[curbox].ymin * font_size,
-            cu->tb[curbox].y + (linedist * font_size),
-        };
-        /* If the mouse is inside this box, we will take it as the closest. */
-        if (BLI_rctf_isect_pt_v(&box_rect, cursor_params->cursor_location)) {
-          closest_box = curbox;
-          break;
+      int end = slen;
+      if (tb_bounds != NULL) {
+        int closest_box = 0;
+        float closest_distance = FLT_MAX;
+        for (curbox = 0; curbox < cu->totbox; curbox++) {
+          /* Get the closest point in the box to the mouse by clamping the mouse position to the
+           * box bounds. */
+          float closest_point[2] = {clamp_f(cursor_location[0],
+                                            cu->tb[curbox].x,
+                                            max_ff(tb_bounds[curbox].xmax * font_size,
+                                                   cu->tb[curbox].x + cu->tb[curbox].w)),
+                                    clamp_f(cursor_location[1],
+                                            tb_bounds[curbox].ymin * font_size,
+                                            cu->tb[curbox].y + (linedist * font_size))};
+
+          float distance = len_squared_v2v2(cursor_location, closest_point);
+          if (distance < closest_distance) {
+            closest_distance = distance;
+            closest_box = curbox;
+          }
         }
-        /*
-         * points[0] *------* points[2]
-         *           |      |
-         *           |      |
-         * points[1] *------* points[3]
-         */
-
-        float points[4][2] = {{box_rect.xmin, box_rect.ymax},
-                              {box_rect.xmin, box_rect.ymin},
-                              {box_rect.xmax, box_rect.ymax},
-                              {box_rect.xmax, box_rect.ymin}};
-        /* Find the closest distance between the mouse and the box borders. */
-        float distance = min_ffff(
-            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[0], points[1]),
-            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[0], points[2]),
-            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[3], points[2]),
-            dist_squared_to_line_segment_v2(cursor_params->cursor_location, points[3], points[1]));
-
-        if (distance < best_distance) {
-          best_distance = distance;
-          closest_box = curbox;
+        if (closest_box != 0) {
+          start = tb_bounds[closest_box - 1].last_char_index + 1;
         }
+        end = tb_bounds[closest_box].last_char_index;
+        MEM_freeN(tb_bounds);
       }
-
-      if (closest_box != 0) {
-        start = tb_bounds[closest_box - 1].last_char_index + 1;
-      }
-      end = tb_bounds[closest_box].last_char_index;
-
       const float interline_offset = ((linedist - 0.5f) / 2.0f) * font_size;
       /* Loop until find the line where the mouse is over. */
       for (i = start; i <= end; i++) {
-        if (cursor_params->cursor_location[1] >=
-            ((chartransdata[i].yof * font_size) - interline_offset)) {
+        if (cursor_location[1] >= ((chartransdata[i].yof * font_size) - interline_offset)) {
           break;
         }
       }
@@ -1869,7 +1849,7 @@ static bool vfont_to_curve(Object *ob,
         che = find_vfont_char(vfd, ascii);
         const float charwidth = char_width(cu, che, info);
         const float charhalf = (charwidth / 2.0f);
-        if (cursor_params->cursor_location[0] <= ((chartransdata[i].xof + charhalf) * font_size)) {
+        if (cursor_location[0] <= ((chartransdata[i].xof + charhalf) * font_size)) {
           break;
         }
       }
@@ -1882,7 +1862,6 @@ static bool vfont_to_curve(Object *ob,
       cursor_params->r_string_offset = i;
     }
   }
-  MEM_freeN(tb_bounds);
   /* Scale to fit only works for single text box layouts. */
   if (ELEM(iter_data->status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT)) {
     /* Always cleanup before going to the scale-to-fit repetition. */
