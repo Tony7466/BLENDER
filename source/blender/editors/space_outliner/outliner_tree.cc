@@ -294,6 +294,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_ID_BASE, TSE_GENERIC_LABEL)) {
     /* pass */
   }
+  else if (type == TSE_BONE) {
+    /* pass */
+  }
   else if (type == TSE_SOME_ID) {
     if (!te->abstract_element) {
       BLI_assert_msg(0, "Expected this ID type to be ported to new Outliner tree-element design");
@@ -329,6 +332,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   }
   else if (ELEM(type,
                 TSE_ANIM_DATA,
+                TSE_BONE,
                 TSE_DRIVER_BASE,
                 TSE_NLA,
                 TSE_NLA_ACTION,
