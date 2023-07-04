@@ -375,6 +375,37 @@ template<typename T>
   return true;
 }
 
+[[nodiscard]] static bool load_materials(const DictionaryValue &io_component, ID &id)
+{
+  const io::serialize::ArrayValue *io_materials = io_component.lookup_array("materials");
+  if (!io_materials) {
+    return true;
+  }
+
+  IDProperty *materials_prop = IDP_NewIDPArray(".materials");
+  for (const int i : io_materials->elements().index_range()) {
+    IDPropertyTemplate idprop = {0};
+    IDProperty *material_prop = IDP_New(IDP_GROUP, &idprop, std::to_string(i).c_str());
+
+    const DictionaryValue *io_material = io_materials->elements()[i]->as_dictionary_value();
+    if (io_material != nullptr) {
+      if (const std::optional<StringRefNull> id_name = io_material->lookup_str("id_name")) {
+        IDP_AddToGroup(material_prop, IDP_NewString(id_name->c_str(), "id_name"));
+      }
+      if (const std::optional<StringRefNull> lib_name = io_material->lookup_str("lib_name")) {
+        IDP_AddToGroup(material_prop, IDP_NewString(lib_name->c_str(), "lib_name"));
+      }
+    }
+
+    IDP_AppendArray(materials_prop, material_prop);
+    /* IDP_AppendArray does a shallo copy. */
+    MEM_freeN(material_prop);
+  }
+  IDProperty *id_props = IDP_GetProperties(&id, true);
+  IDP_ReplaceInGroup(id_props, materials_prop);
+  return true;
+}
+
 static PointCloud *try_load_pointcloud(const DictionaryValue &io_geometry,
                                        const BDataReader &bdata_reader,
                                        const BDataSharing &bdata_sharing)
@@ -398,6 +429,9 @@ static PointCloud *try_load_pointcloud(const DictionaryValue &io_geometry,
 
   bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
   if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return cancel();
+  }
+  if (!load_materials(*io_pointcloud, pointcloud->id)) {
     return cancel();
   }
   return pointcloud;
@@ -446,6 +480,9 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return cancel();
+  }
+  if (!load_materials(*io_curves, curves_id->id)) {
     return cancel();
   }
 
@@ -499,6 +536,9 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return cancel();
+  }
+  if (!load_materials(*io_mesh, mesh->id)) {
     return cancel();
   }
 
