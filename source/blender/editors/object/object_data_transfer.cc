@@ -46,7 +46,7 @@
  * Note some are 'fake' ones, i.e. they are not hold by real CDLayers. */
 /* Not shared with modifier, since we use a usual enum here, not a multi-choice one. */
 static const EnumPropertyItem DT_layer_items[] = {
-    RNA_ENUM_ITEM_HEADING(N_("Vertex Data"), NULL),
+    RNA_ENUM_ITEM_HEADING(N_("Vertex Data"), nullptr),
     {DT_TYPE_MDEFORMVERT,
      "VGROUP_WEIGHTS",
      0,
@@ -67,7 +67,7 @@ static const EnumPropertyItem DT_layer_items[] = {
      "Colors",
      "Color Attributes"},
 
-    RNA_ENUM_ITEM_HEADING(N_("Edge Data"), NULL),
+    RNA_ENUM_ITEM_HEADING(N_("Edge Data"), nullptr),
     {DT_TYPE_SHARP_EDGE, "SHARP_EDGE", 0, "Sharp", "Transfer sharp mark"},
     {DT_TYPE_SEAM, "SEAM", 0, "UV Seam", "Transfer UV seam mark"},
     {DT_TYPE_CREASE, "CREASE", 0, "Subdivision Crease", "Transfer crease values"},
@@ -78,7 +78,7 @@ static const EnumPropertyItem DT_layer_items[] = {
      "Freestyle Mark",
      "Transfer Freestyle edge mark"},
 
-    RNA_ENUM_ITEM_HEADING(N_("Face Corner Data"), NULL),
+    RNA_ENUM_ITEM_HEADING(N_("Face Corner Data"), nullptr),
     {DT_TYPE_LNOR, "CUSTOM_NORMAL", 0, "Custom Normals", "Transfer custom normals"},
     {DT_TYPE_MPROPCOL_LOOP | DT_TYPE_MLOOPCOL_LOOP,
      "COLOR_CORNER",
@@ -87,14 +87,14 @@ static const EnumPropertyItem DT_layer_items[] = {
      "Color Attributes"},
     {DT_TYPE_UV, "UV", 0, "UVs", "Transfer UV layers"},
 
-    RNA_ENUM_ITEM_HEADING(N_("Face Data"), NULL),
+    RNA_ENUM_ITEM_HEADING(N_("Face Data"), nullptr),
     {DT_TYPE_SHARP_FACE, "SMOOTH", 0, "Smooth", "Transfer flat/smooth mark"},
     {DT_TYPE_FREESTYLE_FACE,
      "FREESTYLE_FACE",
      0,
      "Freestyle Mark",
      "Transfer Freestyle face mark"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static void dt_add_vcol_layers(const CustomData *cdata,
@@ -105,7 +105,7 @@ static void dt_add_vcol_layers(const CustomData *cdata,
   int types[2] = {CD_PROP_COLOR, CD_PROP_BYTE_COLOR};
   int idx = 0;
   for (int i = 0; i < 2; i++) {
-    eCustomDataType type = types[i];
+    eCustomDataType type = eCustomDataType(types[i]);
 
     if (!(mask & CD_TYPE_AS_MASK(type))) {
       continue;
@@ -126,19 +126,19 @@ static void dt_add_vcol_layers(const CustomData *cdata,
 /* NOTE: #rna_enum_dt_layers_select_src_items enum is from rna_modifier.cc. */
 static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
                                                           PointerRNA *ptr,
-                                                          PropertyRNA *UNUSED(prop),
+                                                          PropertyRNA * /*prop*/,
                                                           bool *r_free)
 {
   if (!C) { /* needed for docs and i18n tools */
     return rna_enum_dt_layers_select_src_items;
   }
 
-  EnumPropertyItem *item = NULL, tmp_item = {0};
+  EnumPropertyItem *item = nullptr, tmp_item = {0};
   int totitem = 0;
   const int data_type = RNA_enum_get(ptr, "data_type");
 
   PropertyRNA *prop = RNA_struct_find_property(ptr, "use_reverse_transfer");
-  const bool reverse_transfer = prop != NULL && RNA_property_boolean_get(ptr, prop);
+  const bool reverse_transfer = prop != nullptr && RNA_property_boolean_get(ptr, prop);
   const int layers_select_dst = reverse_transfer ? RNA_enum_get(ptr, "layers_select_src") :
                                                    RNA_enum_get(ptr, "layers_select_dst");
 
@@ -150,7 +150,7 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
       &item, &totitem, rna_enum_dt_layers_select_src_items, DT_LAYERS_ALL_SRC);
 
   Object *ob_src = ED_object_active_context(C);
-  if (ob_src == NULL) {
+  if (ob_src == nullptr) {
     RNA_enum_item_end(&item, &totitem);
     *r_free = true;
     return item;
@@ -170,7 +170,7 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
     RNA_enum_item_add_separator(&item, &totitem);
 
     const ListBase *defbase = BKE_object_defgroup_list(ob_src);
-    for (i = 0, dg = defbase->first; dg; i++, dg = dg->next) {
+    for (i = 0, dg = static_cast<const bDeformGroup *>(defbase->first); dg; i++, dg = dg->next) {
       tmp_item.value = i;
       tmp_item.identifier = tmp_item.name = dg->name;
       RNA_enum_item_add(&item, &totitem, &tmp_item);
@@ -241,18 +241,18 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
 /* NOTE: #rna_enum_dt_layers_select_dst_items enum is from `rna_modifier.cc`. */
 static const EnumPropertyItem *dt_layers_select_dst_itemf(bContext *C,
                                                           PointerRNA *ptr,
-                                                          PropertyRNA *UNUSED(prop),
+                                                          PropertyRNA * /*prop*/,
                                                           bool *r_free)
 {
   if (!C) { /* needed for docs and i18n tools */
     return rna_enum_dt_layers_select_dst_items;
   }
 
-  EnumPropertyItem *item = NULL;
+  EnumPropertyItem *item = nullptr;
   int totitem = 0;
 
   PropertyRNA *prop = RNA_struct_find_property(ptr, "use_reverse_transfer");
-  const bool reverse_transfer = prop != NULL && RNA_property_boolean_get(ptr, prop);
+  const bool reverse_transfer = prop != nullptr && RNA_property_boolean_get(ptr, prop);
   const int layers_select_src = reverse_transfer ? RNA_enum_get(ptr, "layers_select_dst") :
                                                    RNA_enum_get(ptr, "layers_select_src");
 
@@ -295,10 +295,10 @@ static const EnumPropertyItem *dt_layers_select_itemf(bContext *C,
 /* NOTE: rna_enum_dt_mix_mode_items enum is from `rna_modifier.cc`. */
 static const EnumPropertyItem *dt_mix_mode_itemf(bContext *C,
                                                  PointerRNA *ptr,
-                                                 PropertyRNA *UNUSED(prop),
+                                                 PropertyRNA * /*prop*/,
                                                  bool *r_free)
 {
-  EnumPropertyItem *item = NULL;
+  EnumPropertyItem *item = nullptr;
   int totitem = 0;
 
   const int dtdata_type = RNA_enum_get(ptr, "data_type");
@@ -334,7 +334,7 @@ static const EnumPropertyItem *dt_mix_mode_itemf(bContext *C,
   return item;
 }
 
-static bool data_transfer_check(bContext *UNUSED(C), wmOperator *op)
+static bool data_transfer_check(bContext * /*C*/, wmOperator *op)
 {
   const int layers_select_src = RNA_enum_get(op->ptr, "layers_select_src");
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "layers_select_dst");
@@ -364,14 +364,16 @@ static void data_transfer_exec_preprocess_objects(bContext *C,
     return; /* Nothing else to do in this case... */
   }
 
-  for (ctx_ob = ctx_objects->first; ctx_ob; ctx_ob = ctx_ob->next) {
-    Object *ob = ctx_ob->ptr.data;
+  for (ctx_ob = static_cast<CollectionPointerLink *>(ctx_objects->first); ctx_ob;
+       ctx_ob = ctx_ob->next)
+  {
+    Object *ob = static_cast<Object *>(ctx_ob->ptr.data);
     Mesh *me;
     if ((ob == ob_src) || (ob->type != OB_MESH)) {
       continue;
     }
 
-    me = ob->data;
+    me = static_cast<Mesh *>(ob->data);
     if (ID_IS_LINKED(me) || ID_IS_OVERRIDE_LIBRARY(me)) {
       /* Do not transfer to linked/override data, not supported. */
       BKE_reportf(op->reports,
@@ -402,7 +404,7 @@ static bool data_transfer_exec_is_object_valid(wmOperator *op,
     return true;
   }
 
-  me = ob_dst->data;
+  me = static_cast<Mesh *>(ob_dst->data);
   if (me->id.tag & LIB_TAG_DOIT) {
     me->id.tag &= ~LIB_TAG_DOIT;
     return true;
@@ -461,7 +463,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
   SpaceTransform space_transform_data;
   SpaceTransform *space_transform = (use_object_transform && !use_auto_transform) ?
                                         &space_transform_data :
-                                        NULL;
+                                        nullptr;
 
   if (is_frozen) {
     BKE_report(
@@ -487,8 +489,10 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 
   data_transfer_exec_preprocess_objects(C, op, ob_src, &ctx_objects, reverse_transfer);
 
-  for (ctx_ob_dst = ctx_objects.first; ctx_ob_dst; ctx_ob_dst = ctx_ob_dst->next) {
-    Object *ob_dst = ctx_ob_dst->ptr.data;
+  for (ctx_ob_dst = static_cast<CollectionPointerLink *>(ctx_objects.first); ctx_ob_dst;
+       ctx_ob_dst = ctx_ob_dst->next)
+  {
+    Object *ob_dst = static_cast<Object *>(ctx_ob_dst->ptr.data);
 
     if (reverse_transfer) {
       SWAP(Object *, ob_src, ob_dst);
@@ -520,7 +524,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
                                         layers_select_dst,
                                         mix_mode,
                                         mix_factor,
-                                        NULL,
+                                        nullptr,
                                         false,
                                         op->reports))
       {
@@ -543,7 +547,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     DEG_relations_tag_update(CTX_data_main(C));
-    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, nullptr);
   }
 
 #if 0 /* TODO */
@@ -560,12 +564,12 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 static bool data_transfer_poll(bContext *C)
 {
   Object *ob = ED_object_active_context(C);
-  ID *data = (ob) ? ob->data : NULL;
-  return (ob != NULL && ob->type == OB_MESH && data != NULL);
+  ID *data = static_cast<ID *>((ob) ? ob->data : nullptr);
+  return (ob != nullptr && ob->type == OB_MESH && data != nullptr);
 }
 
 /* Used by both OBJECT_OT_data_transfer and OBJECT_OT_datalayout_transfer */
-static bool data_transfer_poll_property(const bContext *UNUSED(C),
+static bool data_transfer_poll_property(const bContext * /*C*/,
                                         wmOperator *op,
                                         const PropertyRNA *prop)
 {
@@ -642,8 +646,8 @@ static bool data_transfer_poll_property(const bContext *UNUSED(C),
   return true;
 }
 
-static char *data_transfer_get_description(bContext *UNUSED(C),
-                                           wmOperatorType *UNUSED(ot),
+static char *data_transfer_get_description(bContext * /*C*/,
+                                           wmOperatorType * /*ot*/,
                                            PointerRNA *ptr)
 {
   const bool reverse_transfer = RNA_boolean_get(ptr, "use_reverse_transfer");
@@ -653,7 +657,7 @@ static char *data_transfer_get_description(bContext *UNUSED(C),
         "Transfer data layer(s) (weights, edge sharp, etc.) from selected meshes to active one"));
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void OBJECT_OT_data_transfer(wmOperatorType *ot)
@@ -787,7 +791,7 @@ void OBJECT_OT_data_transfer(wmOperatorType *ot)
                       DT_LAYERS_ACTIVE_SRC,
                       "Source Layers Selection",
                       "Which layers to transfer, in case of multi-layers types");
-  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, dt_layers_select_itemf);
+  RNA_def_property_enum_funcs_runtime(prop, nullptr, nullptr, dt_layers_select_itemf);
 
   prop = RNA_def_enum(ot->srna,
                       "layers_select_dst",
@@ -795,7 +799,7 @@ void OBJECT_OT_data_transfer(wmOperatorType *ot)
                       DT_LAYERS_ACTIVE_DST,
                       "Destination Layers Matching",
                       "How to match source and destination layers");
-  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, dt_layers_select_itemf);
+  RNA_def_property_enum_funcs_runtime(prop, nullptr, nullptr, dt_layers_select_itemf);
 
   prop = RNA_def_enum(ot->srna,
                       "mix_mode",
@@ -803,7 +807,7 @@ void OBJECT_OT_data_transfer(wmOperatorType *ot)
                       CDT_MIX_TRANSFER,
                       "Mix Mode",
                       "How to affect destination elements with source values");
-  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, dt_mix_mode_itemf);
+  RNA_def_property_enum_funcs_runtime(prop, nullptr, nullptr, dt_mix_mode_itemf);
   RNA_def_float(
       ot->srna,
       "mix_factor",
@@ -884,8 +888,10 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
 
     data_transfer_exec_preprocess_objects(C, op, ob_src, &ctx_objects, false);
 
-    for (ctx_ob_dst = ctx_objects.first; ctx_ob_dst; ctx_ob_dst = ctx_ob_dst->next) {
-      Object *ob_dst = ctx_ob_dst->ptr.data;
+    for (ctx_ob_dst = static_cast<CollectionPointerLink *>(ctx_objects.first); ctx_ob_dst;
+         ctx_ob_dst = ctx_ob_dst->next)
+    {
+      Object *ob_dst = static_cast<Object *>(ctx_ob_dst->ptr.data);
       if (data_transfer_exec_is_object_valid(op, ob_src, ob_dst, false)) {
         BKE_object_data_transfer_layout(depsgraph,
                                         ob_src_eval,
@@ -903,7 +909,7 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
   }
 
   DEG_relations_tag_update(CTX_data_main(C));
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -953,7 +959,7 @@ void OBJECT_OT_datalayout_transfer(wmOperatorType *ot)
                       DT_LAYERS_ACTIVE_SRC,
                       "Source Layers Selection",
                       "Which layers to transfer, in case of multi-layers types");
-  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, dt_layers_select_src_itemf);
+  RNA_def_property_enum_funcs_runtime(prop, nullptr, nullptr, dt_layers_select_src_itemf);
 
   prop = RNA_def_enum(ot->srna,
                       "layers_select_dst",
@@ -961,5 +967,5 @@ void OBJECT_OT_datalayout_transfer(wmOperatorType *ot)
                       DT_LAYERS_ACTIVE_DST,
                       "Destination Layers Matching",
                       "How to match source and destination layers");
-  RNA_def_property_enum_funcs_runtime(prop, NULL, NULL, dt_layers_select_dst_itemf);
+  RNA_def_property_enum_funcs_runtime(prop, nullptr, nullptr, dt_layers_select_dst_itemf);
 }

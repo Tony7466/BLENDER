@@ -41,7 +41,7 @@ set(SRC
   object_bake_simulation.cc
   object_collection.cc
   object_constraint.cc
-  object_data_transfer.c
+  object_data_transfer.cc
   object_data_transform.cc
   object_edit.cc
   object_gpencil_modifier.c
