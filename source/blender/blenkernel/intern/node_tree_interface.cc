@@ -42,7 +42,7 @@ struct CopyItemOperator {
 
 void copy_item(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem &src)
 {
-  dst.to_static_type(CopyItemOperator{dst, src});
+  dst.to_static_type<blender::bke::node_interface::AllItemTypes>(CopyItemOperator{dst, src});
 }
 
 struct ItemFreeOperator {
@@ -63,7 +63,7 @@ struct ItemFreeOperator {
 
 void free_item(bNodeTreeInterfaceItem &item)
 {
-  item.to_static_type(ItemFreeOperator{item});
+  item.to_static_type<blender::bke::node_interface::AllItemTypes>(ItemFreeOperator{item});
 }
 
 }  // namespace

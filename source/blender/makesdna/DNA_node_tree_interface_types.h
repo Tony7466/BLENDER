@@ -18,14 +18,43 @@
 #  include <memory>
 #endif
 
+struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
+struct bNodeTreeInterfaceSocketFloat;
+struct bNodeTreeInterfaceSocketInt;
+struct bNodeTreeInterfaceSocketBool;
+struct bNodeTreeInterfaceSocketString;
+struct bNodeTreeInterfaceSocketObject;
 
 /** Type of interface item. */
 typedef enum eNodeTreeInterfaceItemType {
   NODE_INTERFACE_PANEL = 0,
   NODE_INTERFACE_SOCKET = 1,
 } eNodeTreeInterfaceItemType;
+
+#ifdef __cplusplus
+
+namespace blender::bke::node_interface {
+
+/* List of final item types. */
+using SocketItemTypes = std::tuple<bNodeTreeInterfaceSocketFloat,
+                                   bNodeTreeInterfaceSocketInt,
+                                   bNodeTreeInterfaceSocketBool,
+                                   bNodeTreeInterfaceSocketString,
+                                   bNodeTreeInterfaceSocketObject>;
+/* List of final item types. */
+using FinalItemTypes = std::tuple<bNodeTreeInterfacePanel,
+                                  bNodeTreeInterfaceSocketFloat,
+                                  bNodeTreeInterfaceSocketInt,
+                                  bNodeTreeInterfaceSocketBool,
+                                  bNodeTreeInterfaceSocketString,
+                                  bNodeTreeInterfaceSocketObject>;
+/* List of all item types, including intermediate classes. */
+using AllItemTypes =
+    std::tuple<bNodeTreeInterfaceItem, bNodeTreeInterfacePanel, bNodeTreeInterfaceSocket>;
+}  // namespace blender::bke::node_interface
+#endif
 
 /** Describes a socket and all necessary details for a node declaration. */
 typedef struct bNodeTreeInterfaceItem {
@@ -41,12 +70,12 @@ typedef struct bNodeTreeInterfaceItem {
   template<typename T> const T *get_as_ptr() const;
 
   /* Call function with the static item type. */
-  template<typename... Types, typename Func>
+  template<typename TypeArgs, typename Func>
   static void to_static_type(Func func,
                              eNodeTreeInterfaceItemType item_type,
                              blender::StringRef data_type);
   /* Call function with the static type of the item instance. */
-  template<typename... Types, typename Func> void to_static_type(Func func);
+  template<typename TypeArgs, typename Func> void to_static_type(Func func);
 
   /* Overloaded by subclasses */
   void copy_impl(const bNodeTreeInterfaceItem &src);

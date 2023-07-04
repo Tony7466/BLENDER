@@ -135,38 +135,44 @@ template<typename ExpectedT> struct CastToTypeOperator {
 template<typename T> T *bNodeTreeInterfaceItem::get_as_ptr()
 {
   T *result = nullptr;
-  to_static_type(CastToTypeOperator<T>{this, result});
+  to_static_type<blender::bke::node_interface::AllItemTypes>(CastToTypeOperator<T>{this, result});
   return result;
 }
 
 template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
 {
   const T *result = nullptr;
-  to_static_type(CastToTypeOperator<T>{this, result});
+  to_static_type<blender::bke::node_interface::AllItemTypes>(CastToTypeOperator<T>{this, result});
   return result;
 }
 
-template<typename... Types, typename Func>
-void bNodeTreeInterfaceItem::to_static_type(Func func,
-                                            eNodeTreeInterfaceItemType item_type,
-                                            blender::StringRef data_type)
+/* Build a lookup table to avoid having to compare the socket data type with every type name
+ * one after another. */
+template<typename Func, typename... Types>
+static auto build_callback_map(const std::tuple<Types...> & /*dummy*/)
 {
-  using Callback = void (*)(const Func &func);
+  using Callback = void (*)(Func &);
+  using CallbackMap = blender::Map<std::string, Callback>;
 
-  /* Build a lookup table to avoid having to compare the socket data type with every type name
-   * one after another. */
-  static const blender::Map<std::string, Callback> callback_map = []() {
-    blender::Map<std::string, Callback> callback_map;
-    /* This adds an entry in the map for every type in #Types. */
-    (callback_map.add_new(Types::socket_type_static,
-                          [](const Func &func) {
-                            /* Call the templated `operator()` of the given function
-                             * object. */
-                            func.template operator()<Types>();
-                          }),
-     ...);
-    return callback_map;
-  }();
+  CallbackMap callback_map;
+  /* This adds an entry in the map for every type in #Types. */
+  (callback_map.add_new(Types::socket_type_static,
+                        [](Func &func) {
+                          /* Call the templated `operator()` of the given function
+                           * object. */
+                          func.template operator()<Types>();
+                        }),
+   ...);
+  return callback_map;
+};
+
+template<typename Func, typename... Types>
+static void to_static_type_impl(Func func,
+                                eNodeTreeInterfaceItemType item_type,
+                                blender::StringRef data_type)
+{
+  static auto callback_map = build_callback_map<Func>(
+      blender::bke::node_interface::SocketItemTypes());
 
   switch (item_type) {
     case NODE_INTERFACE_PANEL: {
@@ -174,7 +180,7 @@ void bNodeTreeInterfaceItem::to_static_type(Func func,
       break;
     }
     case NODE_INTERFACE_SOCKET: {
-      const Callback callback = callback_map.lookup_default(data_type, nullptr);
+      const auto callback = callback_map.lookup_default(data_type, nullptr);
       if (callback != nullptr) {
         callback(func);
       }
@@ -184,16 +190,37 @@ void bNodeTreeInterfaceItem::to_static_type(Func func,
       }
       break;
     }
+    default:
+      /* Call the non-templated `operator()` of the given function object. */
+      func();
+      break;
   }
 }
 
-template<typename... Types, typename Func> void bNodeTreeInterfaceItem::to_static_type(Func func)
+template<typename Func, typename... Types>
+static void to_static_type_resolve(std::tuple<Types...> /*dummy*/,
+                                   Func func,
+                                   eNodeTreeInterfaceItemType item_type,
+                                   blender::StringRef data_type)
+{
+  to_static_type_impl<Func, Types...>(func, item_type, data_type);
+}
+
+template<typename TypeArgs, typename Func>
+void bNodeTreeInterfaceItem::to_static_type(Func func,
+                                            eNodeTreeInterfaceItemType item_type,
+                                            blender::StringRef data_type)
+{
+  to_static_type_resolve(TypeArgs(), func, item_type, data_type);
+}
+
+template<typename TypeArgs, typename Func> void bNodeTreeInterfaceItem::to_static_type(Func func)
 {
   const char *data_type = nullptr;
   if (item_type == NODE_INTERFACE_SOCKET) {
     data_type = reinterpret_cast<bNodeTreeInterfaceSocket *>(this)->data_type;
   }
-  to_static_type(func, eNodeTreeInterfaceItemType(item_type), data_type);
+  to_static_type<TypeArgs>(func, eNodeTreeInterfaceItemType(item_type), data_type);
 }
 
 template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
