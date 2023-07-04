@@ -836,26 +836,17 @@ static void modifyGeometry(ModifierData *md,
     if (mapping.id == nullptr) {
       continue;
     }
-    nodes::IDMappingKey key;
-    if (mapping.flag & NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME) {
-      key = {mapping.id_name, mapping.lib_name};
+    if (StringRef(mapping.id_name).is_empty()) {
+      continue;
     }
-    else {
-      key.id_name = mapping.id->name + 2;
-      if (mapping.id->lib) {
-        key.lib_name = mapping.id->lib->id.name + 2;
-      }
-    }
+    const nodes::IDMappingKey key = {mapping.id_name, mapping.lib_name};
     modifier_eval_data.id_mapping.add(key, mapping.id);
   }
-  /* Also add mappings for known IDs to avoid having to add two mappings in some situations.
-   * One from the custom name to the id and one from the real name. */
+  /* Then insert all IDs with their actual name (unless the same name is used by another mapping
+   * already). */
   for (const int i : IndexRange(nmd->id_mappings_num)) {
     const NodesModifierIDMapping &mapping = nmd->id_mappings[i];
     if (mapping.id == nullptr) {
-      continue;
-    }
-    if ((mapping.flag & NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME) == 0) {
       continue;
     }
     nodes::IDMappingKey key;
@@ -1373,12 +1364,9 @@ static void internal_dependencies_panel_draw(const bContext *C, Panel *panel)
       RNA_pointer_create(
           ptr->owner_id, &RNA_NodesModifierIDMapping, &active_mapping, &active_mapping_ptr);
 
-      uiItemR(col, &active_mapping_ptr, "custom_name", 0, "Custom Name", ICON_NONE);
       uiTemplateAnyID(col, &active_mapping_ptr, "id", "id_type", "ID");
-      if (active_mapping.flag & NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME) {
-        uiItemR(col, &active_mapping_ptr, "id_name", 0, "ID Name", ICON_NONE);
-        uiItemR(col, &active_mapping_ptr, "lib_name", 0, "Library Name", ICON_NONE);
-      }
+      uiItemR(col, &active_mapping_ptr, "id_name", 0, "ID Name", ICON_NONE);
+      uiItemR(col, &active_mapping_ptr, "lib_name", 0, "Library Name", ICON_NONE);
     }
   }
 

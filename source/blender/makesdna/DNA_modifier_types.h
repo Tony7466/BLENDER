@@ -2323,17 +2323,12 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
-typedef enum NodesModifierIDMappingFlag {
-  NODES_MODIFIER_ID_MAPPING_CUSTOM_NAME = 1 << 0,
-} NodesModifierIDMappingFlag;
-
 typedef struct NodesModifierIDMapping {
   char *id_name;
   char *lib_name;
   struct ID *id;
   int id_type;
-  /** #NodesModifierIDMappingFlag. */
-  uint32_t flag;
+  char _pad[4];
 } NodesModifierIDMapping;
 
 typedef struct NodesModifierData {
@@ -2344,6 +2339,7 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
+
   int id_mappings_num;
   int active_id_mapping;
   NodesModifierIDMapping *id_mappings;
