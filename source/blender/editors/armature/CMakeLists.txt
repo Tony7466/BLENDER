@@ -41,7 +41,7 @@ set(SRC
   pose_lib_2.cc
   pose_select.cc
   pose_slide.cc
-  pose_transform.c
+  pose_transform.cc
   pose_utils.c
 
   armature_intern.h
