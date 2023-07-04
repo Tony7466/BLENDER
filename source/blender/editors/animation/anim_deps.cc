@@ -375,9 +375,9 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
       }
     }
     else if (ale->update) {
-#if 0 
-if (G.debug & G_DEBUG) { 
-printf("%s: Unhandled animchannel updates (%d) for type=%d (%p)\n", __func__, ale->update, ale->type, ale->data); 
+#if 0
+if (G.debug & G_DEBUG) {
+printf("%s: Unhandled animchannel updates (%d) for type=%d (%p)\n", __func__, ale->update, ale->type, ale->data);
 }
 #endif
       /* Prevent crashes in cases where it can't be handled */
@@ -392,7 +392,7 @@ void ANIM_animdata_freelist(ListBase *anim_data)
 {
 #ifndef NDEBUG
   bAnimListElem *ale, *ale_next;
-  for (ale = anim_data->first; ale; ale = ale_next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale_next) {
     ale_next = ale->next;
     BLI_assert(ale->update == 0);
     MEM_freeN(ale);
