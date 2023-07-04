@@ -3730,7 +3730,7 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 /** \name Update id mapping in geometry nodes modifier
  * \{ */
 
-static int geometry_nodes_id_mapping_exec(bContext *C, wmOperator * /*op*/)
+static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -3841,8 +3841,9 @@ static int geometry_nodes_id_mapping_exec(bContext *C, wmOperator * /*op*/)
 
       const int new_mappings_num = nmd.id_mappings_num + 1;
       nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
-          MEM_recallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
+          MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
       NodesModifierIDMapping &new_mapping = nmd.id_mappings[nmd.id_mappings_num];
+      memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
       nmd.id_mappings_num = new_mappings_num;
 
       new_mapping.id_type = ID_MA;
@@ -3859,6 +3860,8 @@ static int geometry_nodes_id_mapping_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
+  CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
+
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -3871,7 +3874,60 @@ void OBJECT_OT_geometry_nodes_id_mapping_update(wmOperatorType *ot)
   ot->description = "Find IDs used by cached data and make sure that a mapping exists";
   ot->idname = __func__;
 
-  ot->exec = geometry_nodes_id_mapping_exec;
+  ot->exec = geometry_nodes_id_mapping_update_exec;
+  ot->poll = ED_operator_object_active;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Remove id mapping in geometry nodes modifier
+ * \{ */
+
+static int geometry_nodes_id_mapping_remove_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  Main *bmain = CTX_data_main(C);
+  Object *ob = ED_object_active_context(C);
+  ModifierData *md = BKE_object_active_modifier(ob);
+  if (!(md && md->type == eModifierType_Nodes)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  if (nmd.active_id_mapping < 0 || nmd.active_id_mapping >= nmd.id_mappings_num) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierIDMapping &active_mapping = nmd.id_mappings[nmd.active_id_mapping];
+  MEM_SAFE_FREE(active_mapping.id_name);
+  MEM_SAFE_FREE(active_mapping.lib_name);
+  id_us_min(active_mapping.id);
+  active_mapping.id = nullptr;
+
+  memmove(nmd.id_mappings + nmd.active_id_mapping,
+          nmd.id_mappings + nmd.active_id_mapping + 1,
+          sizeof(NodesModifierIDMapping) * (nmd.id_mappings_num - nmd.active_id_mapping));
+  nmd.id_mappings_num--;
+
+  CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_geometry_nodes_id_mapping_remove(wmOperatorType *ot)
+{
+  ot->name = "Remove Geometry Nodes ID Mapping";
+  ot->description = "Remove active id mapping from geometry nodes modifier";
+  ot->idname = __func__;
+
+  ot->exec = geometry_nodes_id_mapping_remove_exec;
   ot->poll = ED_operator_object_active;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

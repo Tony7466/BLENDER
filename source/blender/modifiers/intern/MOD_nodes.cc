@@ -1430,6 +1430,7 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
                  UI_TEMPLATE_LIST_FLAG_NONE);
   uiLayout *ops_col = uiLayoutColumn(list_row, true);
   uiItemO(ops_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
+  uiItemO(ops_col, "", ICON_X, "OBJECT_OT_geometry_nodes_id_mapping_remove");
 
   if (nmd->active_id_mapping < 0 || nmd->active_id_mapping >= nmd->id_mappings_num) {
     return;
