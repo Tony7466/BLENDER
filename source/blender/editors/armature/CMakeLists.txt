@@ -25,7 +25,7 @@ set(INC_SYS
 )
 
 set(SRC
-  armature_add.c
+  armature_add.cc
   armature_edit.c
   armature_naming.c
   armature_ops.c
