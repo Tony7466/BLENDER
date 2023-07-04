@@ -4,6 +4,7 @@
 
 set(INC
   ../include
+  ../../asset_system
   ../../blenfont
   ../../blenkernel
   ../../blenlib
@@ -37,7 +38,7 @@ set(SRC
   meshlaplacian.cc
   pose_edit.cc
   pose_group.cc
-  pose_lib_2.c
+  pose_lib_2.cc
   pose_select.c
   pose_slide.c
   pose_transform.c

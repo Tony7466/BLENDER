@@ -46,15 +46,15 @@
 
 #include "armature_intern.h"
 
-typedef enum ePoseBlendState {
+enum ePoseBlendState {
   POSE_BLEND_INIT,
   POSE_BLEND_BLENDING,
   POSE_BLEND_ORIGINAL,
   POSE_BLEND_CONFIRM,
   POSE_BLEND_CANCEL,
-} ePoseBlendState;
+};
 
-typedef struct PoseBlendData {
+struct PoseBlendData {
   ePoseBlendState state;
   bool needs_redraw;
 
@@ -85,7 +85,7 @@ typedef struct PoseBlendData {
 
   /** Info-text to print in header. */
   char headerstr[UI_MAX_DRAW_STR];
-} PoseBlendData;
+};
 
 /**
  * Return the bAction that should be blended.
@@ -118,8 +118,9 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, PoseBlendData *pbd)
   }
 
   AnimData *adt = BKE_animdata_from_id(&pbd->ob->id);
-  if (adt != NULL && adt->action != NULL &&
-      !BKE_id_is_editable(CTX_data_main(C), &adt->action->id)) {
+  if (adt != nullptr && adt->action != nullptr &&
+      !BKE_id_is_editable(CTX_data_main(C), &adt->action->id))
+  {
     /* Changes to linked-in Actions are not allowed. */
     return;
   }
@@ -128,14 +129,14 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, PoseBlendData *pbd)
   bAction *act = poselib_action_to_blend(pbd);
 
   KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_WHOLE_CHARACTER_ID);
-  ListBase dsources = {NULL, NULL};
+  ListBase dsources = {nullptr, nullptr};
 
   /* start tagging/keying */
-  const bArmature *armature = pbd->ob->data;
+  const bArmature *armature = static_cast<const bArmature *>(pbd->ob->data);
   LISTBASE_FOREACH (bActionGroup *, agrp, &act->groups) {
     /* Only for selected bones unless there aren't any selected, in which case all are included. */
     bPoseChannel *pchan = BKE_pose_channel_find_name(pose, agrp->name);
-    if (pchan == NULL) {
+    if (pchan == nullptr) {
       continue;
     }
 
@@ -150,11 +151,11 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, PoseBlendData *pbd)
   }
 
   /* Perform actual auto-keying. */
-  ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, (float)scene->r.cfra);
+  ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, (float)scene->r.cfra);
   BLI_freelistN(&dsources);
 
   /* send notifiers for this */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 /* Apply the relevant changes to the pose */
@@ -211,9 +212,9 @@ static void poselib_set_flipped(PoseBlendData *pbd, const bool new_flipped)
 }
 
 /* Return operator return value. */
-static int poselib_blend_handle_event(bContext *UNUSED(C), wmOperator *op, const wmEvent *event)
+static int poselib_blend_handle_event(bContext * /*C*/, wmOperator *op, const wmEvent *event)
 {
-  PoseBlendData *pbd = op->customdata;
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
 
   ED_slider_modal(pbd->slider, event);
   const float factor = ED_slider_factor_get(pbd->slider);
@@ -270,8 +271,8 @@ static int poselib_blend_handle_event(bContext *UNUSED(C), wmOperator *op, const
 
 static Object *get_poselib_object(bContext *C)
 {
-  if (C == NULL) {
-    return NULL;
+  if (C == nullptr) {
+    return nullptr;
   }
   return BKE_object_pose_armature_get(CTX_data_active_object(C));
 }
@@ -288,7 +289,7 @@ static bAction *poselib_blend_init_get_action(bContext *C, wmOperator *op)
   /* Poll callback should check. */
   BLI_assert(asset_handle_valid);
 
-  PoseBlendData *pbd = op->customdata;
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
 
   pbd->temp_id_consumer = ED_asset_temp_id_consumer_create(&asset_handle);
   return (bAction *)ED_asset_temp_id_consumer_ensure_local_id(
@@ -297,7 +298,8 @@ static bAction *poselib_blend_init_get_action(bContext *C, wmOperator *op)
 
 static bAction *flip_pose(bContext *C, Object *ob, bAction *action)
 {
-  bAction *action_copy = (bAction *)BKE_id_copy_ex(NULL, &action->id, NULL, LIB_ID_COPY_LOCALIZE);
+  bAction *action_copy = (bAction *)BKE_id_copy_ex(
+      nullptr, &action->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
   /* Lock the window manager while flipping the pose. Flipping requires temporarily modifying the
    * pose, which can cause unwanted visual glitches. */
@@ -314,21 +316,22 @@ static bAction *flip_pose(bContext *C, Object *ob, bAction *action)
 /* Return true on success, false if the context isn't suitable. */
 static bool poselib_blend_init_data(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  op->customdata = NULL;
+  op->customdata = nullptr;
 
   /* check if valid poselib */
   Object *ob = get_poselib_object(C);
-  if (ELEM(NULL, ob, ob->pose, ob->data)) {
+  if (ELEM(nullptr, ob, ob->pose, ob->data)) {
     BKE_report(op->reports, RPT_ERROR, TIP_("Pose lib is only for armatures in pose mode"));
     return false;
   }
 
   /* Set up blend state info. */
   PoseBlendData *pbd;
-  op->customdata = pbd = MEM_callocN(sizeof(PoseBlendData), "PoseLib Preview Data");
+  op->customdata = pbd = static_cast<PoseBlendData *>(
+      MEM_callocN(sizeof(PoseBlendData), "PoseLib Preview Data"));
 
   pbd->act = poselib_blend_init_get_action(C, op);
-  if (pbd->act == NULL) {
+  if (pbd->act == nullptr) {
     return false;
   }
 
@@ -336,7 +339,7 @@ static bool poselib_blend_init_data(bContext *C, wmOperator *op, const wmEvent *
   pbd->blend_factor = RNA_float_get(op->ptr, "blend_factor");
 
   /* Only construct the flipped pose if there is a chance it's actually needed. */
-  const bool is_interactive = (event != NULL);
+  const bool is_interactive = (event != nullptr);
   if (is_interactive || pbd->is_flipped) {
     pbd->act_flipped = flip_pose(C, ob, pbd->act);
   }
@@ -391,12 +394,12 @@ static bool poselib_blend_init_data(bContext *C, wmOperator *op, const wmEvent *
 
 static void poselib_blend_cleanup(bContext *C, wmOperator *op)
 {
-  PoseBlendData *pbd = op->customdata;
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
   wmWindow *win = CTX_wm_window(C);
 
   /* Redraw the header so that it doesn't show any of our stuff anymore. */
-  ED_area_status_text(pbd->area, NULL);
-  ED_workspace_status_text(C, NULL);
+  ED_area_status_text(pbd->area, nullptr);
+  ED_workspace_status_text(C, nullptr);
 
   if (pbd->slider) {
     ED_slider_destroy(C, pbd->slider);
@@ -437,26 +440,26 @@ static void poselib_blend_cleanup(bContext *C, wmOperator *op)
 
 static void poselib_blend_free(wmOperator *op)
 {
-  PoseBlendData *pbd = op->customdata;
-  if (pbd == NULL) {
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
+  if (pbd == nullptr) {
     return;
   }
 
   if (pbd->act_flipped) {
-    BKE_id_free(NULL, pbd->act_flipped);
+    BKE_id_free(nullptr, pbd->act_flipped);
   }
   poselib_tempload_exit(pbd);
 
   /* Free temp data for operator */
   BKE_pose_backup_free(pbd->pose_backup);
-  pbd->pose_backup = NULL;
+  pbd->pose_backup = nullptr;
 
   MEM_SAFE_FREE(op->customdata);
 }
 
 static int poselib_blend_exit(bContext *C, wmOperator *op)
 {
-  PoseBlendData *pbd = op->customdata;
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
   const ePoseBlendState exit_state = pbd->state;
 
   poselib_blend_cleanup(C, op);
@@ -474,7 +477,7 @@ static int poselib_blend_exit(bContext *C, wmOperator *op)
 /* Cancel previewing operation (called when exiting Blender) */
 static void poselib_blend_cancel(bContext *C, wmOperator *op)
 {
-  PoseBlendData *pbd = op->customdata;
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
   pbd->state = POSE_BLEND_CANCEL;
   poselib_blend_exit(C, op);
 }
@@ -484,7 +487,7 @@ static int poselib_blend_modal(bContext *C, wmOperator *op, const wmEvent *event
 {
   const int operator_result = poselib_blend_handle_event(C, op, event);
 
-  const PoseBlendData *pbd = op->customdata;
+  const PoseBlendData *pbd = static_cast<const PoseBlendData *>(op->customdata);
   if (ELEM(pbd->state, POSE_BLEND_CONFIRM, POSE_BLEND_CANCEL)) {
     return poselib_blend_exit(C, op);
   }
@@ -533,14 +536,14 @@ static int poselib_blend_invoke(bContext *C, wmOperator *op, const wmEvent *even
 /* Single-shot apply. */
 static int poselib_blend_exec(bContext *C, wmOperator *op)
 {
-  if (!poselib_blend_init_data(C, op, NULL)) {
+  if (!poselib_blend_init_data(C, op, nullptr)) {
     poselib_blend_free(op);
     return OPERATOR_CANCELLED;
   }
 
   poselib_blend_apply(C, op);
 
-  PoseBlendData *pbd = op->customdata;
+  PoseBlendData *pbd = static_cast<PoseBlendData *>(op->customdata);
   pbd->state = POSE_BLEND_CONFIRM;
   return poselib_blend_exit(C, op);
 }
@@ -558,7 +561,7 @@ static bool poselib_asset_in_context(bContext *C)
 static bool poselib_blend_poll(bContext *C)
 {
   Object *ob = get_poselib_object(C);
-  if (ELEM(NULL, ob, ob->pose, ob->data)) {
+  if (ELEM(nullptr, ob, ob->pose, ob->data)) {
     /* Pose lib is only for armatures in pose mode. */
     return false;
   }
