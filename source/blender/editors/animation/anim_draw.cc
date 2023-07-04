@@ -217,13 +217,13 @@ void ANIM_draw_action_framerange(
 AnimData *ANIM_nla_mapping_get(bAnimContext *ac, bAnimListElem *ale)
 {
   /* sanity checks */
-  if (ac == NULL) {
-    return NULL;
+  if (ac == nullptr) {
+    return nullptr;
   }
 
   /* abort if rendering - we may get some race condition issues... */
   if (G.is_rendering) {
-    return NULL;
+    return nullptr;
   }
 
   /* apart from strictly keyframe-related contexts, this shouldn't even happen */
@@ -248,7 +248,7 @@ AnimData *ANIM_nla_mapping_get(bAnimContext *ac, bAnimListElem *ale)
   }
 
   /* cannot handle... */
-  return NULL;
+  return nullptr;
 }
 
 /* ------------------- */
@@ -293,7 +293,7 @@ static short bezt_nlamapping_apply(KeyframeEditData *ked, BezTriple *bezt)
 
 void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, bool only_keys)
 {
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   KeyframeEditFunc map_cb;
 
   /* init edit data
@@ -312,7 +312,7 @@ void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, boo
   }
 
   /* apply to F-Curve */
-  ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, map_cb, NULL);
+  ANIM_fcurve_keyframes_loop(&ked, fcu, nullptr, map_cb, nullptr);
 }
 
 /* *************************************************** */
@@ -565,7 +565,7 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   Mask *mask = CTX_data_edit_mask(C);
-  bDopeSheet ads = {NULL};
+  bDopeSheet ads = {nullptr};
   struct AnimKeylist *keylist = ED_keylist_create();
   const ActKeyColumn *aknext, *akprev;
   float cfranext, cfraprev;
@@ -586,7 +586,7 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
 
   if (ob) {
     ob_to_keylist(&ads, ob, keylist, 0);
-    gpencil_to_keylist(&ads, ob->data, keylist, false);
+    gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, false);
   }
 
   if (mask) {
@@ -613,7 +613,7 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
       }
       cfranext = aknext->cfra;
     }
-  } while ((aknext != NULL) && (donenext == false));
+  } while ((aknext != nullptr) && (donenext == false));
 
   do {
     akprev = ED_keylist_find_prev(keylist, cfraprev);
@@ -630,7 +630,7 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
       }
       cfraprev = akprev->cfra;
     }
-  } while ((akprev != NULL) && (doneprev == false));
+  } while ((akprev != nullptr) && (doneprev == false));
 
   /* free temp stuff */
   ED_keylist_free(keylist);

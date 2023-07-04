@@ -26,7 +26,7 @@ set(SRC
   anim_channels_defines.cc
   anim_channels_edit.cc
   anim_deps.cc
-  anim_draw.c
+  anim_draw.cc
   anim_filter.cc
   anim_ipo_utils.c
   anim_markers.c
