@@ -36,7 +36,7 @@ set(SRC
   fmodifier_ui.cc
   keyframes_draw.cc
   keyframes_edit.cc
-  keyframes_general.c
+  keyframes_general.cc
   keyframes_keylist.cc
   keyframing.c
   keyingsets.c

@@ -56,7 +56,7 @@ bool duplicate_fcurve_keys(FCurve *fcu)
   bool changed = false;
 
   /* this can only work when there is an F-Curve, and also when there are some BezTriples */
-  if (ELEM(NULL, fcu, fcu->bezt)) {
+  if (ELEM(nullptr, fcu, fcu->bezt)) {
     return changed;
   }
 
@@ -64,7 +64,8 @@ bool duplicate_fcurve_keys(FCurve *fcu)
     /* If a key is selected */
     if (fcu->bezt[i].f2 & SELECT) {
       /* Expand the list */
-      BezTriple *newbezt = MEM_callocN(sizeof(BezTriple) * (fcu->totvert + 1), "beztriple");
+      BezTriple *newbezt = static_cast<BezTriple *>(
+          MEM_callocN(sizeof(BezTriple) * (fcu->totvert + 1), "beztriple"));
 
       memcpy(newbezt, fcu->bezt, sizeof(BezTriple) * (i + 1));
       memcpy(newbezt + i + 1, fcu->bezt + i, sizeof(BezTriple));
@@ -98,7 +99,7 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
   int totCount, i;
 
   /* Check if any points. */
-  if ((fcu == NULL) || (fcu->bezt == NULL) || (fcu->totvert == 0) ||
+  if ((fcu == nullptr) || (fcu->bezt == nullptr) || (fcu->totvert == 0) ||
       (!cleardefault && fcu->totvert == 1))
   {
     return;
@@ -107,12 +108,12 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
   /* make a copy of the old BezTriples, and clear F-Curve */
   old_bezts = fcu->bezt;
   totCount = fcu->totvert;
-  fcu->bezt = NULL;
+  fcu->bezt = nullptr;
   fcu->totvert = 0;
 
   /* now insert first keyframe, as it should be ok */
   bezt = old_bezts;
-  insert_bezt_fcurve(fcu, bezt, 0);
+  insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
   if (!(bezt->f2 & SELECT)) {
     lastb = fcu->bezt;
     lastb->f1 = lastb->f2 = lastb->f3 = 0;
@@ -131,7 +132,7 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
       next[1] = beztn->vec[1][1];
     }
     else {
-      beztn = NULL;
+      beztn = nullptr;
       next[0] = next[1] = 0.0f;
     }
     lastb = (fcu->bezt + (fcu->totvert - 1));
@@ -144,7 +145,7 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
     cur[1] = bezt->vec[1][1];
 
     if (!(bezt->f2 & SELECT)) {
-      insert_bezt_fcurve(fcu, bezt, 0);
+      insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
       lastb = (fcu->bezt + (fcu->totvert - 1));
       lastb->f1 = lastb->f2 = lastb->f3 = 0;
       continue;
@@ -161,7 +162,7 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
         if (cur[1] > next[1]) {
           if (IS_EQT(cur[1], prev[1], thresh) == 0) {
             /* add new keyframe */
-            insert_bezt_fcurve(fcu, bezt, 0);
+            insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
           }
         }
       }
@@ -169,7 +170,7 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
         /* only add if values are a considerable distance apart */
         if (IS_EQT(cur[1], prev[1], thresh) == 0) {
           /* add new keyframe */
-          insert_bezt_fcurve(fcu, bezt, 0);
+          insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
         }
       }
     }
@@ -179,18 +180,18 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
         /* does current have same value as previous and next? */
         if (IS_EQT(cur[1], prev[1], thresh) == 0) {
           /* add new keyframe */
-          insert_bezt_fcurve(fcu, bezt, 0);
+          insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
         }
         else if (IS_EQT(cur[1], next[1], thresh) == 0) {
           /* add new keyframe */
-          insert_bezt_fcurve(fcu, bezt, 0);
+          insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
         }
       }
       else {
         /* add if value doesn't equal that of previous */
         if (IS_EQT(cur[1], prev[1], thresh) == 0) {
           /* add new keyframe */
-          insert_bezt_fcurve(fcu, bezt, 0);
+          insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
         }
       }
     }
@@ -223,7 +224,7 @@ void clean_fcurve(bAnimContext *ac, bAnimListElem *ale, float thresh, bool clear
       if (BKE_fcurve_is_empty(fcu)) {
         AnimData *adt = ale->adt;
         ANIM_fcurve_delete_from_animdata(ac, adt, fcu);
-        ale->key_data = NULL;
+        ale->key_data = nullptr;
       }
     }
   }
@@ -271,7 +272,7 @@ static bool find_fcurve_segment(FCurve *fcu,
 
 ListBase find_fcurve_segments(FCurve *fcu)
 {
-  ListBase segments = {NULL, NULL};
+  ListBase segments = {nullptr, nullptr};
 
   /* Ignore baked curves. */
   if (!fcu->bezt) {
@@ -284,7 +285,7 @@ ListBase find_fcurve_segments(FCurve *fcu)
 
   while (find_fcurve_segment(fcu, current_index, &segment_start_idx, &segment_len)) {
     FCurveSegment *segment;
-    segment = MEM_callocN(sizeof(*segment), "FCurveSegment");
+    segment = static_cast<FCurveSegment *>(MEM_callocN(sizeof(*segment), "FCurveSegment"));
     segment->start_index = segment_start_idx;
     segment->length = segment_len;
     BLI_addtail(&segments, segment);
@@ -574,7 +575,7 @@ bool decimate_fcurve(bAnimListElem *ale, float remove_ratio, float error_sq_max)
 {
   FCurve *fcu = (FCurve *)ale->key_data;
   /* Check if the curve actually has any points. */
-  if (fcu == NULL || fcu->bezt == NULL || fcu->totvert == 0) {
+  if (fcu == nullptr || fcu->bezt == nullptr || fcu->totvert == 0) {
     return true;
   }
 
@@ -600,14 +601,14 @@ bool decimate_fcurve(bAnimListElem *ale, float remove_ratio, float error_sq_max)
   BLI_freelistN(&segments);
 
   uint old_totvert = fcu->totvert;
-  fcu->bezt = NULL;
+  fcu->bezt = nullptr;
   fcu->totvert = 0;
 
   for (int i = 0; i < old_totvert; i++) {
     BezTriple *bezt = (old_bezts + i);
     bezt->f2 &= ~BEZT_FLAG_IGNORE_TAG;
     if ((bezt->f2 & BEZT_FLAG_TEMP_TAG) == 0) {
-      insert_bezt_fcurve(fcu, bezt, 0);
+      insert_bezt_fcurve(fcu, bezt, eInsertKeyFlags(0));
     }
   }
   /* now free the memory used by the old BezTriples */
@@ -625,16 +626,16 @@ bool decimate_fcurve(bAnimListElem *ale, float remove_ratio, float error_sq_max)
  * \{ */
 
 /* temp struct used for smooth_fcurve */
-typedef struct tSmooth_Bezt {
+struct tSmooth_Bezt {
   float *h1, *h2, *h3; /* bezt->vec[0,1,2][1] */
   float y1, y2, y3;    /* averaged before/new/after y-values */
-} tSmooth_Bezt;
+};
 
 void smooth_fcurve(FCurve *fcu)
 {
   int totSel = 0;
 
-  if (fcu->bezt == NULL) {
+  if (fcu->bezt == nullptr) {
     return;
   }
 
@@ -651,7 +652,8 @@ void smooth_fcurve(FCurve *fcu)
     tSmooth_Bezt *tarray, *tsb;
 
     /* allocate memory in one go */
-    tsb = tarray = MEM_callocN(totSel * sizeof(tSmooth_Bezt), "tSmooth_Bezt Array");
+    tsb = tarray = static_cast<tSmooth_Bezt *>(
+        MEM_callocN(totSel * sizeof(tSmooth_Bezt), "tSmooth_Bezt Array"));
 
     /* populate tarray with data of selected points */
     bezt = fcu->bezt;
@@ -686,9 +688,9 @@ void smooth_fcurve(FCurve *fcu)
        * as we don't have enough data there). */
       if (ELEM(i, 0, (totSel - 1)) == 0) {
         const tSmooth_Bezt *tP1 = tsb - 1;
-        const tSmooth_Bezt *tP2 = (i - 2 > 0) ? (tsb - 2) : (NULL);
+        const tSmooth_Bezt *tP2 = (i - 2 > 0) ? (tsb - 2) : (nullptr);
         const tSmooth_Bezt *tN1 = tsb + 1;
-        const tSmooth_Bezt *tN2 = (i + 2 < totSel) ? (tsb + 2) : (NULL);
+        const tSmooth_Bezt *tN2 = (i + 2 < totSel) ? (tsb + 2) : (nullptr);
 
         const float p1 = *tP1->h2;
         const float p2 = (tP2) ? (*tP2->h2) : (*tP1->h2);
@@ -733,9 +735,9 @@ void smooth_fcurve(FCurve *fcu)
  * \{ */
 
 /* little cache for values... */
-typedef struct TempFrameValCache {
+struct TempFrameValCache {
   float frame, val;
-} TempFrameValCache;
+};
 
 void sample_fcurve_segment(FCurve *fcu,
                            const float start_frame,
@@ -749,12 +751,12 @@ void sample_fcurve_segment(FCurve *fcu,
 
 void sample_fcurve(FCurve *fcu)
 {
-  BezTriple *bezt, *start = NULL, *end = NULL;
+  BezTriple *bezt, *start = nullptr, *end = nullptr;
   TempFrameValCache *value_cache, *fp;
   int sfra, range;
   int i, n;
 
-  if (fcu->bezt == NULL) { /* ignore baked */
+  if (fcu->bezt == nullptr) { /* ignore baked */
     return;
   }
 
@@ -786,7 +788,8 @@ void sample_fcurve(FCurve *fcu)
         sfra = (int)floor(start->vec[1][0]);
 
         if (range) {
-          value_cache = MEM_callocN(sizeof(TempFrameValCache) * range, "IcuFrameValCache");
+          value_cache = static_cast<TempFrameValCache *>(
+              MEM_callocN(sizeof(TempFrameValCache) * range, "IcuFrameValCache"));
 
           /* sample values */
           for (n = 1, fp = value_cache; n < range && fp; n++, fp++) {
@@ -796,7 +799,8 @@ void sample_fcurve(FCurve *fcu)
 
           /* add keyframes with these, tagging as 'breakdowns' */
           for (n = 1, fp = value_cache; n < range && fp; n++, fp++) {
-            insert_vert_fcurve(fcu, fp->frame, fp->val, BEZT_KEYTYPE_BREAKDOWN, 1);
+            insert_vert_fcurve(
+                fcu, fp->frame, fp->val, BEZT_KEYTYPE_BREAKDOWN, eInsertKeyFlags(1));
           }
 
           /* free temp cache */
@@ -808,13 +812,13 @@ void sample_fcurve(FCurve *fcu)
         }
 
         /* the current selection island has ended, so start again from scratch */
-        start = NULL;
-        end = NULL;
+        start = nullptr;
+        end = nullptr;
       }
       else {
         /* just set start keyframe */
         start = bezt;
-        end = NULL;
+        end = nullptr;
       }
     }
   }
@@ -837,13 +841,13 @@ void sample_fcurve(FCurve *fcu)
  * \{ */
 
 /* globals for copy/paste data (like for other copy/paste buffers) */
-static ListBase animcopybuf = {NULL, NULL};
+static ListBase animcopybuf = {nullptr, nullptr};
 static float animcopy_firstframe = 999999999.0f;
 static float animcopy_lastframe = -999999999.0f;
 static float animcopy_cfra = 0.0;
 
 /* datatype for use in copy/paste buffer */
-typedef struct tAnimCopybufItem {
+struct tAnimCopybufItem {
   struct tAnimCopybufItem *next, *prev;
 
   ID *id;            /* ID which owns the curve */
@@ -856,14 +860,14 @@ typedef struct tAnimCopybufItem {
 
   short id_type; /* Result of `GS(id->name)`. */
   bool is_bone;  /* special flag for armature bones */
-} tAnimCopybufItem;
+};
 
 void ANIM_fcurves_copybuf_free(void)
 {
   tAnimCopybufItem *aci, *acn;
 
   /* free each buffer element */
-  for (aci = animcopybuf.first; aci; aci = acn) {
+  for (aci = static_cast<tAnimCopybufItem *>(animcopybuf.first); aci; aci = acn) {
     acn = aci->next;
 
     /* free keyframes */
@@ -897,7 +901,7 @@ short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
   ANIM_fcurves_copybuf_free();
 
   /* assume that each of these is an F-Curve */
-  for (ale = anim_data->first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
     tAnimCopybufItem *aci;
     BezTriple *bezt, *nbezt, *newbuf;
@@ -908,17 +912,18 @@ short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
      * - this check should also eliminate any problems associated with using sample-data
      */
     if (ANIM_fcurve_keyframes_loop(
-            NULL, fcu, NULL, ANIM_editkeyframes_ok(BEZT_OK_SELECTED), NULL) == 0)
+            nullptr, fcu, nullptr, ANIM_editkeyframes_ok(BEZT_OK_SELECTED), nullptr) == 0)
     {
       continue;
     }
 
     /* init copybuf item info */
-    aci = MEM_callocN(sizeof(tAnimCopybufItem), "AnimCopybufItem");
+    aci = static_cast<tAnimCopybufItem *>(
+        MEM_callocN(sizeof(tAnimCopybufItem), "AnimCopybufItem"));
     aci->id = ale->id;
     aci->id_type = GS(ale->id->name);
     aci->grp = fcu->grp;
-    aci->rna_path = MEM_dupallocN(fcu->rna_path);
+    aci->rna_path = static_cast<char *>(MEM_dupallocN(fcu->rna_path));
     aci->array_index = fcu->array_index;
 
     /* Detect if this is a bone. We do that here rather than during pasting because ID pointers
@@ -945,7 +950,8 @@ short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
     for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
       if (BEZT_ISSEL_ANY(bezt)) {
         /* add to buffer */
-        newbuf = MEM_callocN(sizeof(BezTriple) * (aci->totvert + 1), "copybuf beztriple");
+        newbuf = static_cast<BezTriple *>(
+            MEM_callocN(sizeof(BezTriple) * (aci->totvert + 1), "copybuf beztriple"));
 
         /* assume that since we are just re-sizing the array, just copy all existing data across */
         if (aci->bezt) {
@@ -978,7 +984,7 @@ short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
   }
 
   /* check if anything ended up in the buffer */
-  if (ELEM(NULL, animcopybuf.first, animcopybuf.last)) {
+  if (ELEM(nullptr, animcopybuf.first, animcopybuf.last)) {
     return -1;
   }
 
@@ -1014,14 +1020,14 @@ static void flip_names(tAnimCopybufItem *aci, char **r_name)
   len_old = str_end - str_start;
   postfix_l = strlen(str_end);
 
-  /* Temporary substitute with NULL terminator. */
+  /* Temporary substitute with nullptr terminator. */
   BLI_assert(str_start[len_old] == '\"');
   str_start[len_old] = 0;
   const int len_new = BLI_string_flip_side_name(bname_new, str_start, false, sizeof(bname_new));
   str_start[len_old] = '\"';
 
-  str_iter = *r_name = MEM_mallocN(sizeof(char) * (prefix_l + postfix_l + len_new + 1),
-                                   "flipped_path");
+  str_iter = *r_name = static_cast<char *>(
+      MEM_mallocN(sizeof(char) * (prefix_l + postfix_l + len_new + 1), "flipped_path"));
 
   memcpy(str_iter, aci->rna_path, prefix_l);
   str_iter += prefix_l;
@@ -1041,11 +1047,11 @@ static tAnimCopybufItem *pastebuf_match_path_full(FCurve *fcu,
 {
   tAnimCopybufItem *aci;
 
-  for (aci = animcopybuf.first; aci; aci = aci->next) {
+  for (aci = static_cast<tAnimCopybufItem *>(animcopybuf.first); aci; aci = aci->next) {
     if (to_simple || (aci->rna_path && fcu->rna_path)) {
       if (!to_simple && flip && aci->is_bone && fcu->rna_path) {
         if ((from_single) || (aci->array_index == fcu->array_index)) {
-          char *name = NULL;
+          char *name = nullptr;
           flip_names(aci, &name);
           if (STREQ(name, fcu->rna_path)) {
             MEM_freeN(name);
@@ -1069,11 +1075,11 @@ static tAnimCopybufItem *pastebuf_match_path_full(FCurve *fcu,
 static tAnimCopybufItem *pastebuf_match_path_property(Main *bmain,
                                                       FCurve *fcu,
                                                       const short from_single,
-                                                      const short UNUSED(to_simple))
+                                                      const short /*to_simple*/)
 {
   tAnimCopybufItem *aci;
 
-  for (aci = animcopybuf.first; aci; aci = aci->next) {
+  for (aci = static_cast<tAnimCopybufItem *>(animcopybuf.first); aci; aci = aci->next) {
     /* check that paths exist */
     if (aci->rna_path && fcu->rna_path) {
       /* find the property of the fcurve and compare against the end of the tAnimCopybufItem
@@ -1120,11 +1126,11 @@ static tAnimCopybufItem *pastebuf_match_path_property(Main *bmain,
 /* least strict matching heuristic: indices only */
 static tAnimCopybufItem *pastebuf_match_index_only(FCurve *fcu,
                                                    const short from_single,
-                                                   const short UNUSED(to_simple))
+                                                   const short /*to_simple*/)
 {
   tAnimCopybufItem *aci;
 
-  for (aci = animcopybuf.first; aci; aci = aci->next) {
+  for (aci = static_cast<tAnimCopybufItem *>(animcopybuf.first); aci; aci = aci->next) {
     /* check that paths exist */
     if ((from_single) || (aci->array_index == fcu->array_index)) {
       break;
@@ -1265,7 +1271,7 @@ const EnumPropertyItem rna_enum_keyframe_paste_offset_items[] = {
      "Frame Relative",
      "Paste keys relative to the current frame when copying"},
     {KEYFRAME_PASTE_OFFSET_NONE, "NONE", 0, "No Offset", "Paste keys from original time"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 const EnumPropertyItem rna_enum_keyframe_paste_offset_value[] = {
@@ -1294,7 +1300,7 @@ const EnumPropertyItem rna_enum_keyframe_paste_offset_value[] = {
      0,
      "No Offset",
      "Paste keys with the same value as they were copied"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 const EnumPropertyItem rna_enum_keyframe_paste_merge_items[] = {
@@ -1310,7 +1316,7 @@ const EnumPropertyItem rna_enum_keyframe_paste_merge_items[] = {
      0,
      "Overwrite Entire Range",
      "Overwrite keys in pasted range, using the range of all copied keys"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static float paste_get_y_offset(bAnimContext *ac,
@@ -1406,9 +1412,9 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
     FCurve *fcu;
     tAnimCopybufItem *aci;
 
-    ale = anim_data->first;
+    ale = static_cast<bAnimListElem *>(anim_data->first);
     fcu = (FCurve *)ale->data; /* destination F-Curve */
-    aci = animcopybuf.first;
+    aci = static_cast<tAnimCopybufItem *>(animcopybuf.first);
 
     offset[1] = paste_get_y_offset(ac, aci, ale, value_offset_mode);
     paste_animedit_keys_fcurve(fcu, aci, offset, merge_mode, false);
@@ -1423,7 +1429,7 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
     for (pass = 0; pass < 3; pass++) {
       uint totmatch = 0;
 
-      for (ale = anim_data->first; ale; ale = ale->next) {
+      for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
         /* Find buffer item to paste from:
          * - If names don't matter (i.e. only 1 channel in buffer), don't check id/group
          * - If names do matter, only check if id-type is ok for now
@@ -1432,7 +1438,7 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
          */
         AnimData *adt = ANIM_nla_mapping_get(ac, ale);
         FCurve *fcu = (FCurve *)ale->data; /* destination F-Curve */
-        tAnimCopybufItem *aci = NULL;
+        tAnimCopybufItem *aci = nullptr;
 
         switch (pass) {
           case 0:
@@ -1457,9 +1463,9 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
 
           offset[1] = paste_get_y_offset(ac, aci, ale, value_offset_mode);
           if (adt) {
-            ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
+            ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
             paste_animedit_keys_fcurve(fcu, aci, offset, merge_mode, flip);
-            ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 0);
+            ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
           }
           else {
             paste_animedit_keys_fcurve(fcu, aci, offset, merge_mode, flip);
