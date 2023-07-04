@@ -238,6 +238,10 @@ static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
     BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
     return nullptr;
   }
+
+  if (parent == nullptr) {
+    parent = &interface->root_panel;
+  }
   const int index = parent->items().as_span().first_index_try(item);
   if (!parent->items().index_range().contains(index)) {
     return nullptr;
