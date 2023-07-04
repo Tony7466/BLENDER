@@ -42,7 +42,7 @@ set(SRC
   editmesh_intersect.cc
   editmesh_knife.cc
   editmesh_knife_project.cc
-  editmesh_loopcut.c
+  editmesh_loopcut.cc
   editmesh_mask_extract.cc
   editmesh_path.c
   editmesh_polybuild.c

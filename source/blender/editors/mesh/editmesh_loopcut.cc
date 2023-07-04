@@ -55,7 +55,7 @@ struct MeshCoordsCache {
 };
 
 /* struct for properties used while drawing */
-typedef struct RingSelOpData {
+struct RingSelOpData {
   ARegion *region;   /* region that ringsel was activated in */
   void *draw_handle; /* for drawing preview loop */
 
@@ -83,12 +83,12 @@ typedef struct RingSelOpData {
 
   float cuts; /* cuts as float so smooth mouse pan works in small increments */
   float smoothness;
-} RingSelOpData;
+};
 
 /* modal loop selection drawing callback */
-static void ringsel_draw(const bContext *UNUSED(C), ARegion *UNUSED(region), void *arg)
+static void ringsel_draw(const bContext * /*C*/, ARegion * /*region*/, void *arg)
 {
-  RingSelOpData *lcd = arg;
+  RingSelOpData *lcd = static_cast<RingSelOpData *>(arg);
   EDBM_preselect_edgering_draw(lcd->presel_edgering, lcd->ob->object_to_world);
 }
 
@@ -103,7 +103,7 @@ static void edgering_select(RingSelOpData *lcd)
       Object *ob_iter = lcd->bases[base_index]->object;
       BMEditMesh *em = BKE_editmesh_from_object(ob_iter);
       EDBM_flag_disable_all(em, BM_ELEM_SELECT);
-      DEG_id_tag_update(ob_iter->data, ID_RECALC_SELECT);
+      DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
       WM_main_add_notifier(NC_GEOM | ND_SELECT, ob_iter->data);
     }
   }
@@ -121,7 +121,9 @@ static void edgering_select(RingSelOpData *lcd)
            BMW_FLAG_TEST_HIDDEN,
            BMW_NIL_LAY);
 
-  for (eed = BMW_begin(&walker, eed_start); eed; eed = BMW_step(&walker)) {
+  for (eed = static_cast<BMEdge *>(BMW_begin(&walker, eed_start)); eed;
+       eed = static_cast<BMEdge *>(BMW_step(&walker)))
+  {
     BM_edge_select_set(em->bm, eed, true);
   }
   BMW_end(&walker);
@@ -136,7 +138,7 @@ static void ringsel_find_edge(RingSelOpData *lcd, const int previewlines)
       Object *ob_eval = DEG_get_evaluated_object(lcd->vc.depsgraph, lcd->ob);
       BMEditMesh *em_eval = BKE_editmesh_from_object(ob_eval);
       gcache->coords = BKE_editmesh_vert_coords_when_deformed(
-          lcd->vc.depsgraph, em_eval, scene_eval, ob_eval, NULL, &gcache->is_alloc);
+          lcd->vc.depsgraph, em_eval, scene_eval, ob_eval, nullptr, &gcache->is_alloc);
       gcache->is_init = true;
     }
 
@@ -150,7 +152,7 @@ static void ringsel_find_edge(RingSelOpData *lcd, const int previewlines)
 
 static void ringsel_finish(bContext *C, wmOperator *op)
 {
-  RingSelOpData *lcd = op->customdata;
+  RingSelOpData *lcd = static_cast<RingSelOpData *>(op->customdata);
   const int cuts = RNA_int_get(op->ptr, "number_cuts");
   const float smoothness = RNA_float_get(op->ptr, "smoothness");
   const int smooth_falloff = RNA_enum_get(op->ptr, "falloff");
@@ -167,7 +169,7 @@ static void ringsel_finish(bContext *C, wmOperator *op)
     edgering_select(lcd);
 
     if (lcd->do_cut) {
-      const bool is_macro = (op->opm != NULL);
+      const bool is_macro = (op->opm != nullptr);
       /* a single edge (rare, but better support) */
       const bool is_edge_wire = BM_edge_is_wire(lcd->eed);
       const bool is_single = is_edge_wire || !BM_edge_is_any_face_len_test(lcd->eed, 4);
@@ -195,12 +197,11 @@ static void ringsel_finish(bContext *C, wmOperator *op)
 
       /* when used in a macro the tessfaces will be recalculated anyway,
        * this is needed here because modifiers depend on updated tessellation, see #45920 */
-      EDBM_update(lcd->ob->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = true,
-                      .calc_normals = false,
-                      .is_destructive = true,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = true;
+      params.calc_normals = false;
+      params.is_destructive = true;
+      EDBM_update(static_cast<Mesh *>(lcd->ob->data), &params);
 
       if (is_single) {
         /* de-select endpoints */
@@ -238,16 +239,16 @@ static void ringsel_finish(bContext *C, wmOperator *op)
       }
 
       EDBM_selectmode_flush(lcd->em);
-      DEG_id_tag_update(lcd->ob->data, ID_RECALC_SELECT);
+      DEG_id_tag_update(static_cast<ID *>(lcd->ob->data), ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, lcd->ob->data);
     }
   }
 }
 
 /* called when modal loop selection is done... */
-static void ringsel_exit(bContext *UNUSED(C), wmOperator *op)
+static void ringsel_exit(bContext * /*C*/, wmOperator *op)
 {
-  RingSelOpData *lcd = op->customdata;
+  RingSelOpData *lcd = static_cast<RingSelOpData *>(op->customdata);
 
   /* deactivate the extra drawing stuff in 3D-View */
   ED_region_draw_cb_exit(lcd->region->type, lcd->draw_handle);
@@ -268,7 +269,7 @@ static void ringsel_exit(bContext *UNUSED(C), wmOperator *op)
 
   /* free the custom data */
   MEM_freeN(lcd);
-  op->customdata = NULL;
+  op->customdata = nullptr;
 }
 
 /* called when modal loop selection gets set up... */
@@ -278,7 +279,8 @@ static int ringsel_init(bContext *C, wmOperator *op, bool do_cut)
   Scene *scene = CTX_data_scene(C);
 
   /* alloc new customdata */
-  lcd = op->customdata = MEM_callocN(sizeof(RingSelOpData), "ringsel Modal Op Data");
+  lcd = static_cast<RingSelOpData *>(
+      op->customdata = MEM_callocN(sizeof(RingSelOpData), "ringsel Modal Op Data"));
 
   em_setup_viewcontext(C, &lcd->vc);
 
@@ -290,8 +292,8 @@ static int ringsel_init(bContext *C, wmOperator *op, bool do_cut)
       lcd->region->type, ringsel_draw, lcd, REGION_DRAW_POST_VIEW);
   lcd->presel_edgering = EDBM_preselect_edgering_create();
   /* Initialize once the cursor is over a mesh. */
-  lcd->ob = NULL;
-  lcd->em = NULL;
+  lcd->ob = nullptr;
+  lcd->em = nullptr;
   lcd->extend = do_cut ? false : RNA_boolean_get(op->ptr, "extend");
   lcd->do_cut = do_cut;
   lcd->cuts = RNA_int_get(op->ptr, "number_cuts");
@@ -328,9 +330,9 @@ static void loopcut_update_edge(RingSelOpData *lcd,
     lcd->em = lcd->vc.em;
     ringsel_find_edge(lcd, previewlines);
   }
-  else if (e == NULL) {
-    lcd->ob = NULL;
-    lcd->em = NULL;
+  else if (e == nullptr) {
+    lcd->ob = nullptr;
+    lcd->em = nullptr;
     lcd->base_index = UINT_MAX;
   }
 }
@@ -347,8 +349,15 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
   };
 
   uint base_index;
-  BMEdge *eed_test = EDBM_edge_find_nearest_ex(
-      &lcd->vc, &best.dist, NULL, false, false, NULL, lcd->bases, lcd->bases_len, &base_index);
+  BMEdge *eed_test = EDBM_edge_find_nearest_ex(&lcd->vc,
+                                               &best.dist,
+                                               nullptr,
+                                               false,
+                                               false,
+                                               nullptr,
+                                               lcd->bases,
+                                               lcd->bases_len,
+                                               &base_index);
 
   if (eed_test) {
     best.ob = lcd->bases[base_index]->object;
@@ -366,7 +375,7 @@ static void loopcut_mouse_move(RingSelOpData *lcd, const int previewlines)
 /* called by both init() and exec() */
 static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const bool is_interactive = (event != NULL);
+  const bool is_interactive = (event != nullptr);
 
   /* Use for redo - intentionally wrap int to uint. */
   const struct {
@@ -425,11 +434,12 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
     WM_event_add_modal_handler(C, op);
   }
 
-  RingSelOpData *lcd = op->customdata;
+  RingSelOpData *lcd = static_cast<RingSelOpData *>(op->customdata);
 
   lcd->bases = bases;
   lcd->bases_len = bases_len;
-  lcd->geom_cache = MEM_callocN(sizeof(*lcd->geom_cache) * bases_len, __func__);
+  lcd->geom_cache = static_cast<MeshCoordsCache *>(
+      MEM_callocN(sizeof(*lcd->geom_cache) * bases_len, __func__));
 
   if (is_interactive) {
     copy_v2_v2_int(lcd->vc.mval, event->mval);
@@ -481,16 +491,16 @@ static int ringcut_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     wmGizmoMap *gzmap = region->gizmo_map;
     wmGizmoGroup *gzgroup = gzmap ? WM_gizmomap_group_find(gzmap,
                                                            "VIEW3D_GGT_mesh_preselect_edgering") :
-                                    NULL;
-    if ((gzgroup != NULL) && gzgroup->gizmos.first) {
-      wmGizmo *gz = gzgroup->gizmos.first;
+                                    nullptr;
+    if ((gzgroup != nullptr) && gzgroup->gizmos.first) {
+      wmGizmo *gz = static_cast<wmGizmo *>(gzgroup->gizmos.first);
       const int object_index = RNA_int_get(gz->ptr, "object_index");
       const int edge_index = RNA_int_get(gz->ptr, "edge_index");
 
       if (object_index != -1 && edge_index != -1) {
         RNA_int_set(op->ptr, "object_index", object_index);
         RNA_int_set(op->ptr, "edge_index", edge_index);
-        return loopcut_init(C, op, NULL);
+        return loopcut_init(C, op, nullptr);
       }
       return OPERATOR_CANCELLED;
     }
@@ -501,14 +511,14 @@ static int ringcut_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static int loopcut_exec(bContext *C, wmOperator *op)
 {
-  return loopcut_init(C, op, NULL);
+  return loopcut_init(C, op, nullptr);
 }
 
 static int loopcut_finish(RingSelOpData *lcd, bContext *C, wmOperator *op)
 {
   /* finish */
   ED_region_tag_redraw(lcd->region);
-  ED_workspace_status_text(C, NULL);
+  ED_workspace_status_text(C, nullptr);
 
   if (lcd->eed) {
     /* set for redo */
@@ -534,7 +544,7 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_PASS_THROUGH;
   }
 
-  RingSelOpData *lcd = op->customdata;
+  RingSelOpData *lcd = static_cast<RingSelOpData *>(op->customdata);
   float cuts = lcd->cuts;
   float smoothness = lcd->smoothness;
   bool show_cuts = false;
@@ -569,14 +579,14 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
       case RIGHTMOUSE: /* abort */ /* XXX hardcoded */
         ED_region_tag_redraw(lcd->region);
         ringsel_exit(C, op);
-        ED_workspace_status_text(C, NULL);
+        ED_workspace_status_text(C, nullptr);
 
         return OPERATOR_CANCELLED;
       case EVT_ESCKEY:
         if (event->val == KM_RELEASE) {
           /* cancel */
           ED_region_tag_redraw(lcd->region);
-          ED_workspace_status_text(C, NULL);
+          ED_workspace_status_text(C, nullptr);
 
           ringcut_cancel(C, op);
           return OPERATOR_CANCELLED;
@@ -626,14 +636,14 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
         handled = true;
         break;
       case MOUSEMOVE: {
-        /* mouse moved somewhere to select another loop */
+/* mouse moved somewhere to select another loop */
 
-        /* This is normally disabled for all modal operators.
-         * This is an exception since mouse movement doesn't relate to numeric input.
-         *
-         * If numeric input changes we'll need to add this back see: D2973 */
+/* This is normally disabled for all modal operators.
+ * This is an exception since mouse movement doesn't relate to numeric input.
+ *
+ * If numeric input changes we'll need to add this back see: D2973 */
 #if 0
-        if (!has_numinput)
+if (!has_numinput)
 #endif
         {
           lcd->vc.mval[0] = event->mval[0];
@@ -698,19 +708,19 @@ static int loopcut_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
 void MESH_OT_edgering_select(wmOperatorType *ot)
 {
-  /* description */
-  ot->name = "Edge Ring Select";
-  ot->idname = "MESH_OT_edgering_select";
-  ot->description = "Select an edge ring";
+/* description */
+ot->name = "Edge Ring Select";
+ot->idname = "MESH_OT_edgering_select";
+ot->description = "Select an edge ring";
 
-  /* callbacks */
-  ot->invoke = ringsel_invoke;
-  ot->poll = ED_operator_editmesh_region_view3d;
+/* callbacks */
+ot->invoke = ringsel_invoke;
+ot->poll = ED_operator_editmesh_region_view3d;
 
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+/* flags */
+ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
+RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
 }
 
 #endif
@@ -768,7 +778,7 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
 #ifdef USE_LOOPSLIDE_HACK
-  prop = RNA_def_boolean_array(ot->srna, "mesh_select_mode_init", 3, NULL, "", "");
+  prop = RNA_def_boolean_array(ot->srna, "mesh_select_mode_init", 3, nullptr, "", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 #endif
 }
