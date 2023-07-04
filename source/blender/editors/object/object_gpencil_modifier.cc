@@ -965,8 +965,8 @@ static int time_segment_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   const int new_active_index = gpmd->segment_active_index + 1;
-  TimeGpencilModifierSegment *new_segments = MEM_malloc_arrayN(
-      gpmd->segments_len + 1, sizeof(TimeGpencilModifierSegment), __func__);
+  TimeGpencilModifierSegment *new_segments = static_cast<TimeGpencilModifierSegment *>(
+      MEM_malloc_arrayN(gpmd->segments_len + 1, sizeof(TimeGpencilModifierSegment), __func__));
 
   if (gpmd->segments_len != 0) {
     /* Copy the segments before the new segment. */
@@ -1040,8 +1040,8 @@ static int time_segment_remove_exec(bContext *C, wmOperator *op)
     gpmd->segment_active_index = -1;
   }
   else {
-    TimeGpencilModifierSegment *new_segments = MEM_malloc_arrayN(
-        gpmd->segments_len, sizeof(TimeGpencilModifierSegment), __func__);
+    TimeGpencilModifierSegment *new_segments = static_cast<TimeGpencilModifierSegment *>(
+        MEM_malloc_arrayN(gpmd->segments_len, sizeof(TimeGpencilModifierSegment), __func__));
 
     /* Copy the segments before the deleted segment. */
     memcpy(new_segments,
@@ -1208,8 +1208,8 @@ static int dash_segment_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   const int new_active_index = dmd->segment_active_index + 1;
-  DashGpencilModifierSegment *new_segments = MEM_malloc_arrayN(
-      dmd->segments_len + 1, sizeof(DashGpencilModifierSegment), __func__);
+  DashGpencilModifierSegment *new_segments = static_cast<DashGpencilModifierSegment *>(
+      MEM_malloc_arrayN(dmd->segments_len + 1, sizeof(DashGpencilModifierSegment), __func__));
 
   if (dmd->segments_len != 0) {
     /* Copy the segments before the new segment. */
@@ -1284,8 +1284,8 @@ static int dash_segment_remove_exec(bContext *C, wmOperator *op)
     dmd->segment_active_index = -1;
   }
   else {
-    DashGpencilModifierSegment *new_segments = MEM_malloc_arrayN(
-        dmd->segments_len, sizeof(DashGpencilModifierSegment), __func__);
+    DashGpencilModifierSegment *new_segments = static_cast<DashGpencilModifierSegment *>(
+        MEM_malloc_arrayN(dmd->segments_len, sizeof(DashGpencilModifierSegment), __func__));
 
     /* Copy the segments before the deleted segment. */
     memcpy(new_segments,
