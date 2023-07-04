@@ -272,19 +272,41 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
   const bool keep_shape = RNA_boolean_get(op->ptr, "keep_shape");
   const bool smooth_ends = RNA_boolean_get(op->ptr, "smooth_ends");
 
+  const bool smooth_position = RNA_boolean_get(op->ptr, "smooth_position");
+  const bool smooth_radius = RNA_boolean_get(op->ptr, "smooth_radius");
+  const bool smooth_opacity = RNA_boolean_get(op->ptr, "smooth_opacity");
+
+  if (!(smooth_position || smooth_radius || smooth_opacity)) {
+    /* If there's nothing to be done, then do nothing. */
+    return OPERATOR_FINISHED;
+  }
+
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
         /* Smooth all selected curves in the current drawing */
 
         /* Curves geometry and attributes*/
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        Array<float3> curves_positions_copy(curves.positions());
-        bke::AttributeAccessor curves_attributes = curves.attributes();
-
+        /* Position */
+        Array<float3> curves_positions_copy;
+        if (smooth_position) {
+          curves_positions_copy = curves.positions();
+        }
+        /* Opacity */
+        Array<float3> curves_opacities_copy;
+        if (smooth_opacity) {
+          curves_opacities_copy = drawing.opacities();
+        }
+        /* Radius */
+        Array<float3> curves_radii_copy;
+        if (smooth_radius) {
+          curves_radii_copy = drawing.radii();
+        }
+        /* Cyclic */
         const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
         const VArray<bool> cyclic = curves.cyclic();
-
-        /* Selection-based mask */
+        /* Selection */
+        bke::AttributeAccessor curves_attributes = curves.attributes();
         bke::AttributeReader<bool> selection_attribute = curves_attributes.lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
@@ -304,15 +326,41 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
             const IndexMask curve_mask = IndexMask::from_bools(
                 points, selection_attribute.varray, memory);
 
-            gaussian_blur_1D_float3(is_cyclic,
-                                    points,
-                                    iterations,
-                                    influence,
-                                    smooth_ends,
-                                    keep_shape,
-                                    curves.positions_for_write(),
-                                    curves_positions_copy,
-                                    curve_mask);
+            if (smooth_position) {
+              gaussian_blur_1D_float3(is_cyclic,
+                                      points,
+                                      iterations,
+                                      influence,
+                                      smooth_ends,
+                                      keep_shape,
+                                      curves.positions_for_write(),
+                                      curves_positions_copy,
+                                      curve_mask);
+            }
+
+            if (smooth_opacity) {
+              gaussian_blur_1D_float(is_cyclic,
+                                     points,
+                                     iterations,
+                                     influence,
+                                     smooth_ends,
+                                     false,
+                                     drawing.opacities_for_write(),
+                                     curves_opacities_copy,
+                                     curve_mask);
+            }
+
+            if (smooth_radius) {
+              gaussian_blur_1D_float(is_cyclic,
+                                     points,
+                                     iterations,
+                                     influence,
+                                     smooth_ends,
+                                     false,
+                                     drawing.radii_for_write(),
+                                     curves_radii_copy,
+                                     curve_mask);
+            }
           }
         });
       });
@@ -344,6 +392,10 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
   RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 1.0f, "Factor", "", 0.0f, 1.0f);
   RNA_def_boolean(ot->srna, "smooth_ends", false, "Smooth Endpoints", "");
   RNA_def_boolean(ot->srna, "keep_shape", false, "Keep Shape", "");
+
+  RNA_def_boolean(ot->srna, "smooth_position", true, "Position", "");
+  RNA_def_boolean(ot->srna, "smooth_radius", true, "Radius", "");
+  RNA_def_boolean(ot->srna, "smooth_opacity", false, "Opacity", "");
 }
 
 }  // namespace blender::ed::greasepencil
