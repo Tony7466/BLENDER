@@ -1510,7 +1510,8 @@ static bool makeTreeData(BVHTreeFromMesh *treeData,
 }
 
 
-static bool surfacedeformBind(Object *ob,
+static bool surfacedeformBind(bContext *C,
+                              Object *ob,
                               Depsgraph *depsgraph,
                               SurDeformGpencilModifierData *smd_orig,
                               SurDeformGpencilModifierData *smd_eval,
@@ -1524,8 +1525,9 @@ static bool surfacedeformBind(Object *ob,
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
   Object *ob_target_orig = smd_orig->target;
-  Object *ob_target_eval = DEG_get_evaluated_object(depsgraph, ob_target_orig);
+  Object *ob_target_eval;
   Mesh *mesh_target;
+  Depsgraph *dg;
   
 
   /*If unbind mode: unbind and exit */
@@ -1598,7 +1600,7 @@ static bool surfacedeformBind(Object *ob,
 
   smd_orig->target_verts_num = target_verts_num;
   smd_orig->target_polys_num = target_polys_num;
-  float current_frame = BKE_scene_frame_get(scene);
+  float current_frame = scene->r.cfra;
 
  
   LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers)
@@ -1642,8 +1644,13 @@ static bool surfacedeformBind(Object *ob,
         add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf);
         smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
         smd_eval->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
+
+        dg = CTX_data_depsgraph_pointer(C);
+        scene = CTX_data_scene(C);
         BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
-        BKE_scene_graph_update_for_newframe(depsgraph);
+        scene->r.cfra = curr_gpf->framenum;
+        BKE_scene_graph_update_for_newframe(dg);
+        ob_target_eval = DEG_get_evaluated_object(dg, ob_target_orig);
         mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
         const float(*positions)[3] = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
         const MPoly *mpoly = BKE_mesh_polys(mesh_target);
@@ -1695,13 +1702,14 @@ static bool surfacedeformBind(Object *ob,
         free_bvhtree_from_mesh(&treeData);
         //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
       }
-
+      BKE_scene_frame_set(scene, current_frame);
+      BKE_scene_graph_update_for_newframe(dg);
     }
     else {
-      const float(*positions)[3] = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
-      const MPoly *mpoly = BKE_mesh_polys(mesh_target);
-      const MEdge *medge = BKE_mesh_edges(mesh_target);
-      const MLoop *mloop = BKE_mesh_loops(mesh_target);
+      const float(*positions)[3] = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
+      const MPoly *mpoly = BKE_mesh_polys(target);
+      const MEdge *medge = BKE_mesh_edges(target);
+      const MLoop *mloop = BKE_mesh_loops(target);
       if (!makeTreeData(&treeData,
                         target,
                         smd_eval,
@@ -1765,7 +1773,7 @@ static bool surfacedeformBind(Object *ob,
     
   }
   
-  BKE_scene_frame_set(scene, current_frame);
+ 
   free_bvhtree_from_mesh(&treeData);
   freeAdjacencyMap(vert_edges, adj_array, edge_polys);
   
@@ -1934,7 +1942,8 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
   uint target_polys_num = BKE_mesh_wrapper_poly_len(target);
   //Mesh *target = <
 
-  if (!surfacedeformBind(ob,
+  if (!surfacedeformBind(C,
+                         ob,
                          depsgraph,
                          smd_orig,
                          smd_eval,

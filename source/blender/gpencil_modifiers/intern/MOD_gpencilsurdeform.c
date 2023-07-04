@@ -636,7 +636,6 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     while (smd->layers->frames->frame_number != gpf->framenum &&
           smd->layers->frames->frame_idx < smd->layers->num_of_frames)
     { 
-      smd->layers->frames++;
       i++;
       if (i == smd->layers->num_of_frames) 
       {
@@ -644,6 +643,10 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
        /*No end of stroke evaluation. All the strokes won't be evaluated till a new, bound frame 
        is accessed.*/
         return;
+      }
+      else
+      {
+        smd->layers->frames++;
       }
     }
   }
