@@ -85,19 +85,28 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(obact->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(ob_eval->data);
-  BLI_assert(grease_pencil_orig.has_active_layer());
-  const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
-  int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
-
-  bke::greasepencil::Drawing &drawing_orig =
-      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings(index_orig))->wrap();
 
   const Span<bke::greasepencil::StrokePoint> stroke_points =
       grease_pencil_eval.runtime->stroke_buffer();
+
+  /* No stroke to create, return. */
+  if (stroke_points.size() == 0) {
+    return;
+  }
+
+  /* The object should have an active layer. */
+  BLI_assert(grease_pencil_orig.has_active_layer());
+
+  /* Create the new stroke from the stroke buffer. */
+  const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
+  const int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
+
+  bke::greasepencil::Drawing &drawing_orig =
+      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings()[index_orig])->wrap();
   CurvesGeometry &curves = drawing_orig.strokes_for_write();
 
-  int num_old_curves = curves.curves_num();
-  int num_old_points = curves.points_num();
+  const int num_old_curves = curves.curves_num();
+  const int num_old_points = curves.points_num();
   curves.resize(num_old_points + stroke_points.size(), num_old_curves + 1);
 
   curves.offsets_for_write()[num_old_curves] = num_old_points;
@@ -120,7 +129,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
     opacities[point_i] = point.opacity;
   }
 
-  /* Set material index attribute. */
+  /* TODO: Set material index attribute. */
   int material_index = 0;
   SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
