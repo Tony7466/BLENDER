@@ -33,7 +33,7 @@
 /* uses total number of selected edges around a vertex to choose how to extend */
 #define USE_TRICKY_EXTEND
 
-static int edbm_rip_edge_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int edbm_rip_edge_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
@@ -50,7 +50,7 @@ static int edbm_rip_edge_invoke(bContext *C, wmOperator *UNUSED(op), const wmEve
 
     BMIter viter;
     BMVert *v;
-    const float mval_fl[2] = {UNPACK2(event->mval)};
+    const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
     float cent_sco[2];
     int cent_tot;
     bool changed = false;
@@ -124,7 +124,7 @@ static int edbm_rip_edge_invoke(bContext *C, wmOperator *UNUSED(op), const wmEve
       if (BM_elem_flag_test(v, BM_ELEM_SELECT) && BM_elem_flag_test(v, BM_ELEM_TAG) == false) {
         /* Rules for */
         float angle_best = FLT_MAX;
-        BMEdge *e_best = NULL;
+        BMEdge *e_best = nullptr;
 
 #ifdef USE_TRICKY_EXTEND
         /* first check if we can select the edge to split based on selection-only */
@@ -139,7 +139,7 @@ static int edbm_rip_edge_invoke(bContext *C, wmOperator *UNUSED(op), const wmEve
           }
         }
         if (tot_sel != 1) {
-          e_best = NULL;
+          e_best = nullptr;
         }
 
         /* only one edge selected, operate on that */
@@ -211,12 +211,11 @@ static int edbm_rip_edge_invoke(bContext *C, wmOperator *UNUSED(op), const wmEve
 
       BM_mesh_select_mode_flush(bm);
 
-      EDBM_update(obedit->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = true,
-                      .calc_normals = false,
-                      .is_destructive = true,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = true;
+      params.calc_normals = false;
+      params.is_destructive = true;
+      EDBM_update(static_cast<Mesh *>(obedit->data), &params);
     }
   }
 
