@@ -45,7 +45,7 @@ static void edbm_extrude_edge_exclude_mirror(
   /* If a mirror modifier with clipping is on, we need to adjust some
    * of the cases above to handle edges on the line of symmetry.
    */
-  for (md = obedit->modifiers.first; md; md = md->next) {
+  for (md = static_cast<ModifierData *>(obedit->modifiers.first); md; md = md->next) {
     if ((md->type == eModifierType_Mirror) && (md->mode & eModifierMode_Realtime)) {
       MirrorModifierData *mmd = (MirrorModifierData *)md;
 
@@ -269,7 +269,7 @@ static int edbm_extrude_repeat_exec(bContext *C, wmOperator *op)
 
   if (!RNA_property_is_set(op->ptr, prop)) {
     RegionView3D *rv3d = CTX_wm_region_view3d(C);
-    if (rv3d != NULL) {
+    if (rv3d != nullptr) {
       normalize_v3_v3(offset, rv3d->persinv[2]);
     }
     else {
@@ -305,12 +305,11 @@ static int edbm_extrude_repeat_exec(bContext *C, wmOperator *op)
           em->bm, BMO_FLAG_DEFAULTS, "translate vec=%v verts=%hv", offset_local, BM_ELEM_SELECT);
     }
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
 
   MEM_freeN(objects);
@@ -334,8 +333,16 @@ void MESH_OT_extrude_repeat(wmOperatorType *ot)
 
   /* props */
   RNA_def_int(ot->srna, "steps", 10, 0, 1000000, "Steps", "", 0, 180);
-  PropertyRNA *prop = RNA_def_float_vector_xyz(
-      ot->srna, "offset", 3, NULL, -100000, 100000, "Offset", "Offset vector", -1000.0f, 1000.0f);
+  PropertyRNA *prop = RNA_def_float_vector_xyz(ot->srna,
+                                               "offset",
+                                               3,
+                                               nullptr,
+                                               -100000,
+                                               100000,
+                                               "Offset",
+                                               "Offset vector",
+                                               -1000.0f,
+                                               1000.0f);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_float(ot->srna, "scale_offset", 1.0f, 0.0f, 1e12f, "Scale Offset", "", 0.0f, 100.0f);
 }
@@ -439,12 +446,11 @@ static int edbm_extrude_region_exec(bContext *C, wmOperator *op)
     }
     /* This normally happens when pushing undo but modal operators
      * like this one don't push undo data until after modal mode is done. */
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
   MEM_freeN(objects);
   return OPERATOR_FINISHED;
@@ -498,12 +504,11 @@ static int edbm_extrude_context_exec(bContext *C, wmOperator *op)
 
     /* This normally happens when pushing undo but modal operators
      * like this one don't push undo data until after modal mode is done. */
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
   MEM_freeN(objects);
   return OPERATOR_FINISHED;
@@ -551,12 +556,11 @@ static int edbm_extrude_verts_exec(bContext *C, wmOperator *op)
 
     edbm_extrude_verts_indiv(em, op, BM_ELEM_SELECT);
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
   MEM_freeN(objects);
 
@@ -605,12 +609,11 @@ static int edbm_extrude_edges_exec(bContext *C, wmOperator *op)
 
     edbm_extrude_edges_indiv(em, op, BM_ELEM_SELECT, use_normal_flip);
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
   MEM_freeN(objects);
 
@@ -659,12 +662,11 @@ static int edbm_extrude_faces_exec(bContext *C, wmOperator *op)
 
     edbm_extrude_discrete_faces(em, op, BM_ELEM_SELECT);
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
   MEM_freeN(objects);
 
@@ -899,12 +901,11 @@ static int edbm_dupli_extrude_cursor_invoke(bContext *C, wmOperator *op, const w
 
     /* This normally happens when pushing undo but modal operators
      * like this one don't push undo data until after modal mode is done. */
-    EDBM_update(vc.obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(vc.obedit->data), &params);
 
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
