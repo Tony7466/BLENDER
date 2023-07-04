@@ -105,6 +105,44 @@ static Span<T> gaussian_blur_1D_ex(const bool is_cyclic,
                                    const Span<T> src,
                                    const IndexMask &mask)
 {
+  /* 1D Gaussian-like smoothing function.
+   *
+   * Note : This is the same algorithm used by BKE_gpencil_stroke_smooth_point (Legacy)
+   * Overview of the algorithm here and in the following smooth functions:
+   *
+   *   The smooth functions return the new attribute in question for a single point.
+   *   The result is stored in r_gps->points[point_index], while the data is read from gps.
+   *   To get a correct result, duplicate the stroke point data and read from the copy,
+   *   while writing to the real stroke. Not doing that will result in acceptable, but
+   *   asymmetric results.
+   *
+   * This algorithm works as long as all points are being smoothed. If there is
+   * points that should not get smoothed, use the old repeat smooth pattern with
+   * the parameter "iterations" set to 1 or 2. (2 matches the old algorithm).
+   *
+   * This function uses a binomial kernel, which is the discrete version of gaussian blur.
+   * The weight for a vertex at the relative index point_index is
+   * w = nCr(n, j + n/2) / 2^n = (n/1 * (n-1)/2 * ... * (n-j-n/2)/(j+n/2)) / 2^n
+   * All weights together sum up to 1
+   * This is equivalent to doing multiple iterations of averaging neighbors,
+   * where n = iterations * 2 and -n/2 <= j <= n/2
+   *
+   * Now the problem is that nCr(n, j + n/2) is very hard to compute for n > 500, since even
+   * double precision isn't sufficient. A very good robust approximation for n > 20 is
+   * nCr(n, j + n/2) / 2^n = sqrt(2/(pi*n)) * exp(-2*j*j/n)
+   *
+   * There is one more problem left: The old smooth algorithm was doing a more aggressive
+   * smooth. To solve that problem, choose a different n/2, which does not match the range and
+   * normalize the weights on finish. This may cause some artifacts at low values.
+   *
+   * keep_shape is a new option to stop the stroke from severely deforming.
+   * It uses different partially negative weights.
+   * w = 2 * (nCr(n, j + n/2) / 2^n) - (nCr(3*n, j + n) / 2^(3*n))
+   *   ~ 2 * sqrt(2/(pi*n)) * exp(-2*j*j/n) - sqrt(2/(pi*3*n)) * exp(-2*j*j/(3*n))
+   * All weights still sum up to 1.
+   * Note these weights only work because the averaging is done in relative coordinates.
+   */
+
   /* Avoid computation if the mask is empty */
   if (mask.is_empty()) {
     return dst;
