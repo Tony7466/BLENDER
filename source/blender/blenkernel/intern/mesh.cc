@@ -221,7 +221,8 @@ static void mesh_foreach_path(ID *id, BPathForeachPathData *bpath_data)
 {
   Mesh *me = (Mesh *)id;
   if (me->ldata.external) {
-    BKE_bpath_foreach_path_fixed_process(bpath_data, me->ldata.external->filepath);
+    BKE_bpath_foreach_path_fixed_process(
+        bpath_data, me->ldata.external->filepath, sizeof(me->ldata.external->filepath));
   }
 }
 
@@ -661,6 +662,26 @@ static int customdata_compare(
           }
           break;
         }
+        case CD_PROP_QUATERNION: {
+          const float(*l1_data)[4] = (float(*)[4])l1->data;
+          const float(*l2_data)[4] = (float(*)[4])l2->data;
+
+          for (int i = 0; i < total_length; i++) {
+            if (compare_threshold_relative(l1_data[i][0], l2_data[i][0], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+            if (compare_threshold_relative(l1_data[i][1], l2_data[i][1], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+            if (compare_threshold_relative(l1_data[i][2], l2_data[i][2], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+            if (compare_threshold_relative(l1_data[i][3], l2_data[i][3], thresh)) {
+              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+            }
+          }
+          break;
+        }
         case CD_PROP_INT32: {
           const int *l1_data = (int *)l1->data;
           const int *l2_data = (int *)l2->data;
@@ -916,11 +937,14 @@ void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
   mesh->poly_offset_indices[mesh->totpoly] = mesh->totloop;
 }
 
-int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
+MutableSpan<int> Mesh::poly_offsets_for_write()
 {
+  if (this->totpoly == 0) {
+    return {};
+  }
   blender::implicit_sharing::make_trivial_data_mutable(
-      &mesh->poly_offset_indices, &mesh->runtime->poly_offsets_sharing_info, mesh->totpoly + 1);
-  return mesh->poly_offset_indices;
+      &this->poly_offset_indices, &this->runtime->poly_offsets_sharing_info, this->totpoly + 1);
+  return {this->poly_offset_indices, this->totpoly + 1};
 }
 
 static void mesh_ensure_cdlayers_primary(Mesh &mesh)
@@ -1253,18 +1277,6 @@ void BKE_mesh_texspace_get_reference(Mesh *me,
   }
 }
 
-void BKE_mesh_texspace_copy_from_object(Mesh *me, Object *ob)
-{
-  float *texspace_location, *texspace_size;
-  char *texspace_flag;
-
-  if (BKE_object_obdata_texspace_get(ob, &texspace_flag, &texspace_location, &texspace_size)) {
-    me->texspace_flag = *texspace_flag;
-    copy_v3_v3(me->texspace_location, texspace_location);
-    copy_v3_v3(me->texspace_size, texspace_size);
-  }
-}
-
 float (*BKE_mesh_orco_verts_get(Object *ob))[3]
 {
   Mesh *me = (Mesh *)ob->data;
@@ -1491,21 +1503,15 @@ void BKE_mesh_looptri_get_real_edges(const blender::int2 *edges,
   }
 }
 
-bool BKE_mesh_minmax(const Mesh *me, float r_min[3], float r_max[3])
+std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
 {
   using namespace blender;
-  if (me->totvert == 0) {
-    return false;
+  if (this->totvert == 0) {
+    return std::nullopt;
   }
-
-  me->runtime->bounds_cache.ensure(
-      [me](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(me->vert_positions()); });
-
-  const Bounds<float3> &bounds = me->runtime->bounds_cache.data();
-  copy_v3_v3(r_min, math::min(bounds.min, float3(r_min)));
-  copy_v3_v3(r_max, math::max(bounds.max, float3(r_max)));
-
-  return true;
+  this->runtime->bounds_cache.ensure(
+      [&](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(this->vert_positions()); });
+  return this->runtime->bounds_cache.data();
 }
 
 void Mesh::bounds_set_eager(const blender::Bounds<float3> &bounds)

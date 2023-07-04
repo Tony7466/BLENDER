@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
 #include "BLI_utildefines.h"
 #include "UI_interface_icons.h"
@@ -87,7 +88,7 @@ typedef struct uiViewItemHandle uiViewItemHandle;
 
 /* Separator for text in search menus (right pointing arrow).
  * keep in sync with `string_search.cc`. */
-#define UI_MENU_ARROW_SEP "\xe2\x96\xb8"
+#define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
 
 /* names */
 #define UI_MAX_DRAW_STR 400
@@ -1937,7 +1938,7 @@ struct Panel *UI_panel_add_instanced(const struct bContext *C,
  */
 void UI_panels_free_instanced(const struct bContext *C, struct ARegion *region);
 
-#define INSTANCED_PANEL_UNIQUE_STR_LEN 16
+#define INSTANCED_PANEL_UNIQUE_STR_SIZE 16
 /**
  * Find a unique key to append to the #PanelType.idname for the lookup to the panel's #uiBlock.
  * Needed for instanced panels, where there can be multiple with the same type and identifier.
@@ -2175,7 +2176,7 @@ void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
 
-int uiLayoutGetOperatorContext(uiLayout *layout);
+wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
 bool uiLayoutGetActiveDefault(uiLayout *layout);
 bool uiLayoutGetActivateInit(uiLayout *layout);
@@ -2523,7 +2524,7 @@ enum uiTemplateListFlags {
 
   UI_TEMPLATE_LIST_FLAGS_LAST
 };
-ENUM_OPERATORS(enum uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
+ENUM_OPERATORS(uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
 
 void uiTemplateList(uiLayout *layout,
                     const struct bContext *C,
@@ -2629,6 +2630,8 @@ void uiTemplateAssetView(struct uiLayout *layout,
 void uiTemplateLightLinkingCollection(struct uiLayout *layout,
                                       struct PointerRNA *ptr,
                                       const char *propname);
+
+void uiTemplateGreasePencilLayerTree(uiLayout *layout, struct bContext *C);
 
 /**
  * \return: A RNA pointer for the operator properties.
@@ -3268,6 +3271,13 @@ void UI_interface_tag_script_reload(void);
 
 /* Support click-drag motion which presses the button and closes a popover (like a menu). */
 #define USE_UI_POPOVER_ONCE
+
+/**
+ * Call the #ui::AbstractView::begin_filtering() function of the view to enable filtering.
+ * Typically used to enable a filter text button. Triggered on Ctrl+F by default.
+ * \return True when filtering was enabled successfully.
+ */
+bool UI_view_begin_filtering(const struct bContext *C, const uiViewHandle *view_handle);
 
 bool UI_view_item_is_interactive(const uiViewItemHandle *item_handle);
 bool UI_view_item_is_active(const uiViewItemHandle *item_handle);

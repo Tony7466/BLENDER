@@ -195,7 +195,7 @@ typedef enum eWM_CursorWrapAxis {
 
 /**
  * Context to call operator in for #WM_operator_name_call.
- * rna_ui.c contains EnumPropertyItem's of these, keep in sync.
+ * rna_ui.cc contains EnumPropertyItem's of these, keep in sync.
  */
 typedef enum wmOperatorCallContext {
   /* if there's invoke, call it, otherwise exec */
@@ -515,6 +515,7 @@ typedef struct wmNotifier {
 #define NS_MODE_PARTICLE (10 << 8)
 #define NS_EDITMODE_CURVES (11 << 8)
 #define NS_EDITMODE_GREASE_PENCIL (12 << 8)
+#define NS_EDITMODE_POINT_CLOUD (13 << 8)
 
 /* subtype 3d view editing */
 #define NS_VIEW3D_GPU (16 << 8)

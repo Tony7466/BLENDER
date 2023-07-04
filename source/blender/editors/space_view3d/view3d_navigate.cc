@@ -101,6 +101,8 @@ static eV3D_OpEvent view3d_navigate_event(ViewOpsData *vod, const wmEvent *event
 {
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
+      case VIEW_MODAL_CANCEL:
+        return VIEW_CANCEL;
       case VIEW_MODAL_CONFIRM:
         return VIEW_CONFIRM;
       case VIEWROT_MODAL_AXIS_SNAP_ENABLE:
@@ -496,7 +498,7 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
   return is_set;
 }
 
-static eViewOpsFlag viewops_flag_from_prefs(void)
+static eViewOpsFlag viewops_flag_from_prefs()
 {
   const bool use_select = (U.uiflag & USER_ORBIT_SELECTION) != 0;
   const bool use_depth = (U.uiflag & USER_DEPTH_NAVIGATE) != 0;
@@ -1766,7 +1768,7 @@ static int vieworbit_exec(bContext *C, wmOperator *op)
 
   /* support for switching to the opposite view (even when in locked views) */
   view_opposite = (fabsf(angle) == float(M_PI)) ? ED_view3d_axis_view_opposite(rv3d->view) :
-                                                  RV3D_VIEW_USER;
+                                                  char(RV3D_VIEW_USER);
   orbitdir = RNA_enum_get(op->ptr, "type");
 
   if ((RV3D_LOCK_FLAGS(rv3d) & RV3D_LOCK_ROTATION) && (view_opposite == RV3D_VIEW_USER)) {
