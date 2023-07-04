@@ -57,7 +57,7 @@ bool ED_object_calc_active_center_for_editmode(Object *obedit,
       break;
     }
     case OB_ARMATURE: {
-      bArmature *arm = obedit->data;
+      bArmature *arm = static_cast<bArmature *>(obedit->data);
       EditBone *ebo = arm->act_edbone;
 
       if (ebo && (!select_only || (ebo->flag & (BONE_SELECTED | BONE_ROOTSEL)))) {
@@ -69,7 +69,7 @@ bool ED_object_calc_active_center_for_editmode(Object *obedit,
     }
     case OB_CURVES_LEGACY:
     case OB_SURF: {
-      Curve *cu = obedit->data;
+      Curve *cu = static_cast<Curve *>(obedit->data);
 
       if (ED_curve_active_center(cu, r_center)) {
         return true;
@@ -77,7 +77,7 @@ bool ED_object_calc_active_center_for_editmode(Object *obedit,
       break;
     }
     case OB_MBALL: {
-      MetaBall *mb = obedit->data;
+      MetaBall *mb = static_cast<MetaBall *>(obedit->data);
       MetaElem *ml_act = mb->lastelem;
 
       if (ml_act && (!select_only || (ml_act->flag & SELECT))) {
@@ -87,7 +87,7 @@ bool ED_object_calc_active_center_for_editmode(Object *obedit,
       break;
     }
     case OB_LATTICE: {
-      BPoint *actbp = BKE_lattice_active_point_get(obedit->data);
+      BPoint *actbp = BKE_lattice_active_point_get(static_cast<Lattice *>(obedit->data));
 
       if (actbp) {
         copy_v3_v3(r_center, actbp->vec);
@@ -163,8 +163,9 @@ struct XFormObjectSkipChild {
 
 struct XFormObjectSkipChild_Container *ED_object_xform_skip_child_container_create(void)
 {
-  struct XFormObjectSkipChild_Container *xcs = MEM_callocN(sizeof(*xcs), __func__);
-  if (xcs->obchild_in_obmode_map == NULL) {
+  struct XFormObjectSkipChild_Container *xcs = static_cast<XFormObjectSkipChild_Container *>(
+      MEM_callocN(sizeof(*xcs), __func__));
+  if (xcs->obchild_in_obmode_map == nullptr) {
     xcs->obchild_in_obmode_map = BLI_ghash_ptr_new(__func__);
   }
   return xcs;
@@ -186,18 +187,18 @@ void ED_object_xform_skip_child_container_item_ensure_from_array(
   ListBase *object_bases = BKE_view_layer_object_bases_get(view_layer);
   LISTBASE_FOREACH (Base *, base, object_bases) {
     Object *ob = base->object;
-    if (ob->parent != NULL) {
+    if (ob->parent != nullptr) {
       if (!BLI_gset_haskey(objects_in_transdata, ob)) {
         if (BLI_gset_haskey(objects_in_transdata, ob->parent)) {
           ED_object_xform_skip_child_container_item_ensure(
-              xcs, ob, NULL, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
+              xcs, ob, nullptr, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
         }
       }
       else {
         if (!BLI_gset_haskey(objects_in_transdata, ob->parent)) {
           Object *ob_parent_recurse = ob->parent;
-          if (ob_parent_recurse != NULL) {
-            while (ob_parent_recurse != NULL) {
+          if (ob_parent_recurse != nullptr) {
+            while (ob_parent_recurse != nullptr) {
               if (BLI_gset_haskey(objects_in_transdata, ob_parent_recurse)) {
                 break;
               }
@@ -220,21 +221,21 @@ void ED_object_xform_skip_child_container_item_ensure_from_array(
     if (BLI_gset_haskey(objects_in_transdata, ob)) {
       /* pass. */
     }
-    else if (ob->parent != NULL) {
+    else if (ob->parent != nullptr) {
       if (BLI_gset_haskey(objects_in_transdata, ob->parent)) {
         if (!BLI_gset_haskey(objects_in_transdata, ob)) {
           ED_object_xform_skip_child_container_item_ensure(
-              xcs, ob, NULL, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
+              xcs, ob, nullptr, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
         }
       }
     }
   }
-  BLI_gset_free(objects_in_transdata, NULL);
+  BLI_gset_free(objects_in_transdata, nullptr);
 }
 
 void ED_object_xform_skip_child_container_destroy(struct XFormObjectSkipChild_Container *xcs)
 {
-  BLI_ghash_free(xcs->obchild_in_obmode_map, NULL, MEM_freeN);
+  BLI_ghash_free(xcs->obchild_in_obmode_map, nullptr, MEM_freeN);
   MEM_freeN(xcs);
 }
 
@@ -245,7 +246,8 @@ void ED_object_xform_skip_child_container_item_ensure(struct XFormObjectSkipChil
 {
   void **xf_p;
   if (!BLI_ghash_ensure_p(xcs->obchild_in_obmode_map, ob, &xf_p)) {
-    struct XFormObjectSkipChild *xf = MEM_mallocN(sizeof(*xf), __func__);
+    struct XFormObjectSkipChild *xf = static_cast<XFormObjectSkipChild *>(
+        MEM_mallocN(sizeof(*xf), __func__));
     copy_m4_m4(xf->parentinv_orig, ob->parentinv);
     copy_m4_m4(xf->obmat_orig, ob->object_to_world);
     copy_m4_m4(xf->parent_obmat_orig, ob->parent->object_to_world);
@@ -267,8 +269,9 @@ void ED_object_xform_skip_child_container_update_all(struct XFormObjectSkipChild
 
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, xcs->obchild_in_obmode_map) {
-    Object *ob = BLI_ghashIterator_getKey(&gh_iter);
-    struct XFormObjectSkipChild *xf = BLI_ghashIterator_getValue(&gh_iter);
+    Object *ob = static_cast<Object *>(BLI_ghashIterator_getKey(&gh_iter));
+    struct XFormObjectSkipChild *xf = static_cast<XFormObjectSkipChild *>(
+        BLI_ghashIterator_getValue(&gh_iter));
 
     /* The following blocks below assign 'dmat'. */
     float dmat[4][4];
@@ -345,17 +348,18 @@ struct XFormObjectData_Extra {
 
 void ED_object_data_xform_container_item_ensure(struct XFormObjectData_Container *xds, Object *ob)
 {
-  if (xds->obdata_in_obmode_map == NULL) {
+  if (xds->obdata_in_obmode_map == nullptr) {
     xds->obdata_in_obmode_map = BLI_ghash_ptr_new(__func__);
   }
 
   void **xf_p;
   if (!BLI_ghash_ensure_p(xds->obdata_in_obmode_map, ob->data, &xf_p)) {
-    struct XFormObjectData_Extra *xf = MEM_mallocN(sizeof(*xf), __func__);
+    struct XFormObjectData_Extra *xf = static_cast<XFormObjectData_Extra *>(
+        MEM_mallocN(sizeof(*xf), __func__));
     copy_m4_m4(xf->obmat_orig, ob->object_to_world);
     xf->ob = ob;
-    /* Result may be NULL, that's OK. */
-    xf->xod = ED_object_data_xform_create(ob->data);
+    /* Result may be nullptr, that's OK. */
+    xf->xod = ED_object_data_xform_create(static_cast<ID *>(ob->data));
     *xf_p = xf;
   }
 }
@@ -364,16 +368,17 @@ void ED_object_data_xform_container_update_all(struct XFormObjectData_Container 
                                                struct Main *bmain,
                                                Depsgraph *depsgraph)
 {
-  if (xds->obdata_in_obmode_map == NULL) {
+  if (xds->obdata_in_obmode_map == nullptr) {
     return;
   }
   BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
 
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, xds->obdata_in_obmode_map) {
-    ID *id = BLI_ghashIterator_getKey(&gh_iter);
-    struct XFormObjectData_Extra *xf = BLI_ghashIterator_getValue(&gh_iter);
-    if (xf->xod == NULL) {
+    ID *id = static_cast<ID *>(BLI_ghashIterator_getKey(&gh_iter));
+    struct XFormObjectData_Extra *xf = static_cast<XFormObjectData_Extra *>(
+        BLI_ghashIterator_getValue(&gh_iter));
+    if (xf->xod == nullptr) {
       continue;
     }
 
@@ -397,7 +402,7 @@ void ED_object_data_xform_container_update_all(struct XFormObjectData_Container 
 /** Callback for #GHash free. */
 static void trans_obdata_in_obmode_free_elem(void *xf_p)
 {
-  struct XFormObjectData_Extra *xf = xf_p;
+  struct XFormObjectData_Extra *xf = static_cast<XFormObjectData_Extra *>(xf_p);
   if (xf->xod) {
     ED_object_data_xform_destroy(xf->xod);
   }
@@ -406,14 +411,15 @@ static void trans_obdata_in_obmode_free_elem(void *xf_p)
 
 struct XFormObjectData_Container *ED_object_data_xform_container_create(void)
 {
-  struct XFormObjectData_Container *xds = MEM_callocN(sizeof(*xds), __func__);
+  struct XFormObjectData_Container *xds = static_cast<XFormObjectData_Container *>(
+      MEM_callocN(sizeof(*xds), __func__));
   xds->obdata_in_obmode_map = BLI_ghash_ptr_new(__func__);
   return xds;
 }
 
 void ED_object_data_xform_container_destroy(struct XFormObjectData_Container *xds)
 {
-  BLI_ghash_free(xds->obdata_in_obmode_map, NULL, trans_obdata_in_obmode_free_elem);
+  BLI_ghash_free(xds->obdata_in_obmode_map, nullptr, trans_obdata_in_obmode_free_elem);
   MEM_freeN(xds);
 }
 
@@ -452,7 +458,7 @@ void ED_object_xform_array_m4(Object **objects, uint objects_len, const float ma
         i++;
       }
     }
-    BLI_gset_free(objects_set, NULL);
+    BLI_gset_free(objects_set, nullptr);
   }
 
   /* Detect translation only matrix, prevent rotation/scale channels from being touched at all. */
