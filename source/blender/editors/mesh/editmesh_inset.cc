@@ -39,13 +39,13 @@
 
 #include "mesh_intern.h" /* own include */
 
-typedef struct {
+struct InsetObjectStore {
   /** Must have a valid edit-mesh. */
   Object *ob;
   BMBackup mesh_backup;
-} InsetObjectStore;
+};
 
-typedef struct {
+struct InsetData {
   float old_thickness;
   float old_depth;
   bool modify_depth;
@@ -64,11 +64,11 @@ typedef struct {
   int launch_event;
   float mcenter[2];
   void *draw_handle_pixel;
-} InsetData;
+};
 
 static void edbm_inset_update_header(wmOperator *op, bContext *C)
 {
-  InsetData *opdata = op->customdata;
+  InsetData *opdata = static_cast<InsetData *>(op->customdata);
 
   const char *str = TIP_(
       "Confirm: Enter/LClick, Cancel: (Esc/RClick), Thickness: %s, "
@@ -124,7 +124,8 @@ static bool edbm_inset_init(bContext *C, wmOperator *op, const bool is_modal)
     RNA_float_set(op->ptr, "depth", 0.0f);
   }
 
-  op->customdata = opdata = MEM_mallocN(sizeof(InsetData), "inset_operator_data");
+  op->customdata = opdata = static_cast<InsetData *>(
+      MEM_mallocN(sizeof(InsetData), "inset_operator_data"));
 
   uint objects_used_len = 0;
 
@@ -134,7 +135,8 @@ static bool edbm_inset_init(bContext *C, wmOperator *op, const bool is_modal)
     uint ob_store_len = 0;
     Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
         scene, view_layer, CTX_wm_view3d(C), &ob_store_len);
-    opdata->ob_store = MEM_malloc_arrayN(ob_store_len, sizeof(*opdata->ob_store), __func__);
+    opdata->ob_store = static_cast<InsetObjectStore *>(
+        MEM_malloc_arrayN(ob_store_len, sizeof(*opdata->ob_store), __func__));
     for (uint ob_index = 0; ob_index < ob_store_len; ob_index++) {
       Object *obedit = objects[ob_index];
       float scale = mat4_to_scale(obedit->object_to_world);
@@ -184,7 +186,7 @@ static void edbm_inset_exit(bContext *C, wmOperator *op)
   InsetData *opdata;
   ScrArea *area = CTX_wm_area(C);
 
-  opdata = op->customdata;
+  opdata = static_cast<InsetData *>(op->customdata);
 
   if (opdata->is_modal) {
     ARegion *region = CTX_wm_region(C);
@@ -196,7 +198,7 @@ static void edbm_inset_exit(bContext *C, wmOperator *op)
   }
 
   if (area) {
-    ED_area_status_text(area, NULL);
+    ED_area_status_text(area, nullptr);
   }
 
   MEM_SAFE_FREE(opdata->ob_store);
@@ -207,18 +209,17 @@ static void edbm_inset_cancel(bContext *C, wmOperator *op)
 {
   InsetData *opdata;
 
-  opdata = op->customdata;
+  opdata = static_cast<InsetData *>(op->customdata);
   if (opdata->is_modal) {
     for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
       Object *obedit = opdata->ob_store[ob_index].ob;
       BMEditMesh *em = BKE_editmesh_from_object(obedit);
       EDBM_redo_state_restore_and_free(&opdata->ob_store[ob_index].mesh_backup, em, true);
-      EDBM_update(obedit->data,
-                  &(const struct EDBMUpdate_Params){
-                      .calc_looptri = false,
-                      .calc_normals = false,
-                      .is_destructive = true,
-                  });
+      EDBMUpdate_Params params{};
+      params.calc_looptri = false;
+      params.calc_normals = false;
+      params.is_destructive = true;
+      EDBM_update(static_cast<Mesh *>(obedit->data), &params);
     }
   }
 
@@ -246,7 +247,7 @@ static bool edbm_inset_calc(wmOperator *op)
   const bool use_individual = RNA_boolean_get(op->ptr, "use_individual");
   const bool use_interpolate = RNA_boolean_get(op->ptr, "use_interpolate");
 
-  opdata = op->customdata;
+  opdata = static_cast<InsetData *>(op->customdata);
 
   for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
     Object *obedit = opdata->ob_store[ob_index].ob;
@@ -308,12 +309,11 @@ static bool edbm_inset_calc(wmOperator *op)
       continue;
     }
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
     changed = true;
   }
   return changed;
@@ -345,7 +345,7 @@ static int edbm_inset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  opdata = op->customdata;
+  opdata = static_cast<InsetData *>(op->customdata);
 
   opdata->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
 
@@ -370,7 +370,7 @@ static int edbm_inset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static int edbm_inset_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  InsetData *opdata = op->customdata;
+  InsetData *opdata = static_cast<InsetData *>(op->customdata);
   const bool has_numinput = hasNumInput(&opdata->num_input);
 
   /* Modal numinput active, try to handle numeric inputs first... */
