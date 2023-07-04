@@ -54,7 +54,7 @@
 static bool keyingset_poll_default_add(bContext *C)
 {
   /* as long as there's an active Scene, it's fine */
-  return (CTX_data_scene(C) != NULL);
+  return (CTX_data_scene(C) != nullptr);
 }
 
 /* poll callback for editing active KeyingSet */
@@ -62,7 +62,7 @@ static bool keyingset_poll_active_edit(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
 
-  if (scene == NULL) {
+  if (scene == nullptr) {
     return 0;
   }
 
@@ -76,14 +76,14 @@ static bool keyingset_poll_activePath_edit(bContext *C)
   Scene *scene = CTX_data_scene(C);
   KeyingSet *ks;
 
-  if (scene == NULL) {
+  if (scene == nullptr) {
     return 0;
   }
   if (scene->active_keyingset <= 0) {
     return 0;
   }
 
-  ks = BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+  ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
 
   /* there must be an active KeyingSet and an active path */
   return ((ks) && (ks->paths.first) && (ks->active_path > 0));
@@ -91,11 +91,11 @@ static bool keyingset_poll_activePath_edit(bContext *C)
 
 /* Add a Default (Empty) Keying Set ------------------------- */
 
-static int add_default_keyingset_exec(bContext *C, wmOperator *UNUSED(op))
+static int add_default_keyingset_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
-  eKS_Settings flag = 0;
-  eInsertKeyFlags keyingflag = 0;
+  eKS_Settings flag = eKS_Settings(0);
+  eInsertKeyFlags keyingflag = eInsertKeyFlags(0);
 
   /* validate flags
    * - absolute KeyingSets should be created by default
@@ -106,12 +106,12 @@ static int add_default_keyingset_exec(bContext *C, wmOperator *UNUSED(op))
   keyingflag = ANIM_get_keyframing_flags(scene, false);
 
   /* call the API func, and set the active keyingset index */
-  BKE_keyingset_add(&scene->keyingsets, NULL, NULL, flag, keyingflag);
+  BKE_keyingset_add(&scene->keyingsets, nullptr, nullptr, flag, keyingflag);
 
   scene->active_keyingset = BLI_listbase_count(&scene->keyingsets);
 
   /* send notifiers */
-  WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, NULL);
+  WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -149,7 +149,7 @@ static int remove_active_keyingset_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ks = BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+  ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
 
   /* free KeyingSet's data, then remove it from the scene */
   BKE_keyingset_free(ks);
@@ -159,7 +159,7 @@ static int remove_active_keyingset_exec(bContext *C, wmOperator *op)
   scene->active_keyingset--;
 
   /* send notifiers */
-  WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, NULL);
+  WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -193,10 +193,10 @@ static int add_empty_ks_path_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ks = BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+  ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
 
   /* don't use the API method for this, since that checks on values... */
-  ksp = MEM_callocN(sizeof(KS_Path), "KeyingSetPath Empty");
+  ksp = static_cast<KS_Path *>(MEM_callocN(sizeof(KS_Path), "KeyingSetPath Empty"));
   BLI_addtail(&ks->paths, ksp);
   ks->active_path = BLI_listbase_count(&ks->paths);
 
@@ -224,11 +224,12 @@ void ANIM_OT_keying_set_path_add(wmOperatorType *ot)
 static int remove_active_ks_path_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  KeyingSet *ks = BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+  KeyingSet *ks = static_cast<KeyingSet *>(
+      BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
 
   /* if there is a KeyingSet, find the nominated path to remove */
   if (ks) {
-    KS_Path *ksp = BLI_findlink(&ks->paths, ks->active_path - 1);
+    KS_Path *ksp = static_cast<KS_Path *>(BLI_findlink(&ks->paths, ks->active_path - 1));
 
     if (ksp) {
       /* remove the active path from the KeyingSet */
@@ -270,10 +271,10 @@ void ANIM_OT_keying_set_path_remove(wmOperatorType *ot)
 static int add_keyingset_button_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  KeyingSet *ks = NULL;
-  PropertyRNA *prop = NULL;
-  PointerRNA ptr = {NULL};
-  char *path = NULL;
+  KeyingSet *ks = nullptr;
+  PropertyRNA *prop = nullptr;
+  PointerRNA ptr = {nullptr};
+  char *path = nullptr;
   bool changed = false;
   int index = 0, pflag = 0;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -289,8 +290,8 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
    * - add a new one if it doesn't exist
    */
   if (scene->active_keyingset == 0) {
-    eKS_Settings flag = 0;
-    eInsertKeyFlags keyingflag = 0;
+    eKS_Settings flag = eKS_Settings(0);
+    eInsertKeyFlags keyingflag = eInsertKeyFlags(0);
 
     /* validate flags
      * - absolute KeyingSets should be created by default
@@ -314,7 +315,7 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   else {
-    ks = BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+    ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
   }
 
   /* check if property is able to be added */
@@ -334,7 +335,7 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
       }
 
       /* add path to this setting */
-      BKE_keyingset_add_path(ks, ptr.owner_id, NULL, path, index, pflag, KSP_GROUP_KSNAME);
+      BKE_keyingset_add_path(ks, ptr.owner_id, nullptr, path, index, pflag, KSP_GROUP_KSNAME);
       ks->active_path = BLI_listbase_count(&ks->paths);
       changed = true;
 
@@ -345,7 +346,7 @@ static int add_keyingset_button_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, NULL);
+    WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, nullptr);
 
     /* show notification/report header, so that users notice that something changed */
     BKE_reportf(op->reports, RPT_INFO, "Property added to Keying Set: '%s'", ks->name);
@@ -377,10 +378,10 @@ void ANIM_OT_keyingset_button_add(wmOperatorType *ot)
 static int remove_keyingset_button_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  KeyingSet *ks = NULL;
-  PropertyRNA *prop = NULL;
-  PointerRNA ptr = {NULL};
-  char *path = NULL;
+  KeyingSet *ks = nullptr;
+  PropertyRNA *prop = nullptr;
+  PointerRNA ptr = {nullptr};
+  char *path = nullptr;
   bool changed = false;
   int index = 0;
 
@@ -404,7 +405,7 @@ static int remove_keyingset_button_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ks = BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+  ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
 
   if (ptr.owner_id && ptr.data && prop) {
     path = RNA_path_from_ID_to_property(&ptr, prop);
@@ -427,7 +428,7 @@ static int remove_keyingset_button_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, NULL);
+    WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, nullptr);
 
     /* show warning */
     BKE_report(op->reports, RPT_INFO, "Property removed from keying set");
@@ -457,7 +458,7 @@ void ANIM_OT_keyingset_button_remove(wmOperatorType *ot)
 /* This operator checks if a menu should be shown
  * for choosing the KeyingSet to make the active one. */
 
-static int keyingset_active_menu_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int keyingset_active_menu_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   uiPopupMenu *pup;
   uiLayout *layout;
@@ -480,7 +481,7 @@ static int keyingset_active_menu_exec(bContext *C, wmOperator *op)
   scene->active_keyingset = type;
 
   /* send notifiers */
-  WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, NULL);
+  WM_event_add_notifier(C, NC_SCENE | ND_KEYINGSET, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -513,30 +514,31 @@ void ANIM_OT_keying_set_active_set(wmOperatorType *ot)
 /* REGISTERED KEYING SETS */
 
 /* Keying Set Type Info declarations */
-static ListBase keyingset_type_infos = {NULL, NULL};
+static ListBase keyingset_type_infos = {nullptr, nullptr};
 
-ListBase builtin_keyingsets = {NULL, NULL};
+ListBase builtin_keyingsets = {nullptr, nullptr};
 
 /* --------------- */
 
 KeyingSetInfo *ANIM_keyingset_info_find_name(const char name[])
 {
   /* sanity checks */
-  if ((name == NULL) || (name[0] == 0)) {
-    return NULL;
+  if ((name == nullptr) || (name[0] == 0)) {
+    return nullptr;
   }
 
   /* search by comparing names */
-  return BLI_findstring(&keyingset_type_infos, name, offsetof(KeyingSetInfo, idname));
+  return static_cast<KeyingSetInfo *>(
+      BLI_findstring(&keyingset_type_infos, name, offsetof(KeyingSetInfo, idname)));
 }
 
 KeyingSet *ANIM_builtin_keyingset_get_named(KeyingSet *prevKS, const char name[])
 {
-  KeyingSet *ks, *first = NULL;
+  KeyingSet *ks, *first = nullptr;
 
   /* sanity checks  any name to check? */
   if (name[0] == 0) {
-    return NULL;
+    return nullptr;
   }
 
   /* get first KeyingSet to use */
@@ -544,7 +546,7 @@ KeyingSet *ANIM_builtin_keyingset_get_named(KeyingSet *prevKS, const char name[]
     first = prevKS->next;
   }
   else {
-    first = builtin_keyingsets.first;
+    first = static_cast<KeyingSet *>(builtin_keyingsets.first);
   }
 
   /* loop over KeyingSets checking names */
@@ -554,13 +556,13 @@ KeyingSet *ANIM_builtin_keyingset_get_named(KeyingSet *prevKS, const char name[]
     }
   }
 
-  /* complain about missing keying sets on debug builds */
+/* complain about missing keying sets on debug builds */
 #ifndef NDEBUG
   printf("%s: '%s' not found\n", __func__, name);
 #endif
 
   /* no matches found */
-  return NULL;
+  return nullptr;
 }
 
 /* --------------- */
@@ -591,7 +593,7 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *ksi)
   /* find relevant builtin KeyingSets which use this, and remove them */
   /* TODO: this isn't done now, since unregister is really only used at the moment when we
    * reload the scripts, which kind of defeats the purpose of "builtin"? */
-  for (ks = builtin_keyingsets.first; ks; ks = ksn) {
+  for (ks = static_cast<KeyingSet *>(builtin_keyingsets.first); ks; ks = ksn) {
     ksn = ks->next;
 
     /* remove if matching typeinfo name */
@@ -600,7 +602,9 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *ksi)
       BKE_keyingset_free(ks);
       BLI_remlink(&builtin_keyingsets, ks);
 
-      for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      for (scene = static_cast<Scene *>(bmain->scenes.first); scene;
+           scene = static_cast<Scene *>(scene->id.next))
+      {
         BLI_remlink_safe(&scene->keyingsets, ks);
       }
 
@@ -617,7 +621,7 @@ void ANIM_keyingset_infos_exit(void)
   KeyingSetInfo *ksi, *next;
 
   /* free type infos */
-  for (ksi = keyingset_type_infos.first; ksi; ksi = next) {
+  for (ksi = static_cast<KeyingSetInfo *>(keyingset_type_infos.first); ksi; ksi = next) {
     next = ksi->next;
 
     /* free extra RNA data, and remove from list */
@@ -634,11 +638,11 @@ void ANIM_keyingset_infos_exit(void)
 bool ANIM_keyingset_find_id(KeyingSet *ks, ID *id)
 {
   /* sanity checks */
-  if (ELEM(NULL, ks, id)) {
+  if (ELEM(nullptr, ks, id)) {
     return false;
   }
 
-  return BLI_findptr(&ks->paths, id, offsetof(KS_Path, id)) != NULL;
+  return BLI_findptr(&ks->paths, id, offsetof(KS_Path, id)) != nullptr;
 }
 
 /* ******************************************* */
@@ -649,8 +653,8 @@ bool ANIM_keyingset_find_id(KeyingSet *ks, ID *id)
 KeyingSet *ANIM_scene_get_active_keyingset(const Scene *scene)
 {
   /* if no scene, we've got no hope of finding the Keying Set */
-  if (scene == NULL) {
-    return NULL;
+  if (scene == nullptr) {
+    return nullptr;
   }
 
   /* currently, there are several possibilities here:
@@ -659,9 +663,10 @@ KeyingSet *ANIM_scene_get_active_keyingset(const Scene *scene)
    * - < 0: a builtin keying set
    */
   if (scene->active_keyingset > 0) {
-    return BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1);
+    return static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, scene->active_keyingset - 1));
   }
-  return BLI_findlink(&builtin_keyingsets, (-scene->active_keyingset) - 1);
+  return static_cast<KeyingSet *>(
+      BLI_findlink(&builtin_keyingsets, (-scene->active_keyingset) - 1));
 }
 
 int ANIM_scene_get_keyingset_index(Scene *scene, KeyingSet *ks)
@@ -669,7 +674,7 @@ int ANIM_scene_get_keyingset_index(Scene *scene, KeyingSet *ks)
   int index;
 
   /* if no KeyingSet provided, have none */
-  if (ks == NULL) {
+  if (ks == nullptr) {
     return 0;
   }
 
@@ -705,9 +710,9 @@ KeyingSet *ANIM_get_keyingset_for_autokeying(const Scene *scene, const char *tra
     return ANIM_scene_get_active_keyingset(scene);
   }
   if (IS_AUTOKEY_FLAG(scene, INSERTAVAIL)) {
-    return ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_AVAILABLE_ID);
+    return ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_AVAILABLE_ID);
   }
-  return ANIM_builtin_keyingset_get_named(NULL, transformKSName);
+  return ANIM_builtin_keyingset_get_named(nullptr, transformKSName);
 }
 
 static void anim_keyingset_visit_for_search_impl(const bContext *C,
@@ -716,16 +721,16 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
                                                  const bool use_poll)
 {
   /* Poll requires context. */
-  if (use_poll && (C == NULL)) {
+  if (use_poll && (C == nullptr)) {
     return;
   }
 
-  Scene *scene = C ? CTX_data_scene(C) : NULL;
+  Scene *scene = C ? CTX_data_scene(C) : nullptr;
   KeyingSet *ks;
 
   /* Active Keying Set. */
   if (!use_poll || (scene && scene->active_keyingset)) {
-    StringPropertySearchVisitParams visit_params = {NULL};
+    StringPropertySearchVisitParams visit_params = {nullptr};
     visit_params.text = "__ACTIVE__";
     visit_params.info = "Active Keying Set";
     visit_fn(visit_user_data, &visit_params);
@@ -733,11 +738,11 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
 
   /* User-defined Keying Sets. */
   if (scene && scene->keyingsets.first) {
-    for (ks = scene->keyingsets.first; ks; ks = ks->next) {
+    for (ks = static_cast<KeyingSet *>(scene->keyingsets.first); ks; ks = ks->next) {
       if (use_poll && !ANIM_keyingset_context_ok_poll((bContext *)C, ks)) {
         continue;
       }
-      StringPropertySearchVisitParams visit_params = {NULL};
+      StringPropertySearchVisitParams visit_params = {nullptr};
       visit_params.text = ks->idname;
       visit_params.info = ks->name;
       visit_fn(visit_user_data, &visit_params);
@@ -745,11 +750,11 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
   }
 
   /* Builtin Keying Sets. */
-  for (ks = builtin_keyingsets.first; ks; ks = ks->next) {
+  for (ks = static_cast<KeyingSet *>(builtin_keyingsets.first); ks; ks = ks->next) {
     if (use_poll && !ANIM_keyingset_context_ok_poll((bContext *)C, ks)) {
       continue;
     }
-    StringPropertySearchVisitParams visit_params = {NULL};
+    StringPropertySearchVisitParams visit_params = {nullptr};
     visit_params.text = ks->idname;
     visit_params.info = ks->name;
     visit_fn(visit_user_data, &visit_params);
@@ -757,9 +762,9 @@ static void anim_keyingset_visit_for_search_impl(const bContext *C,
 }
 
 void ANIM_keyingset_visit_for_search(const bContext *C,
-                                     PointerRNA *UNUSED(ptr),
-                                     PropertyRNA *UNUSED(prop),
-                                     const char *UNUSED(edit_text),
+                                     PointerRNA * /*ptr*/,
+                                     PropertyRNA * /*prop*/,
+                                     const char * /*edit_text*/,
                                      StringPropertySearchVisitFunc visit_fn,
                                      void *visit_user_data)
 {
@@ -767,9 +772,9 @@ void ANIM_keyingset_visit_for_search(const bContext *C,
 }
 
 void ANIM_keyingset_visit_for_search_no_poll(const bContext *C,
-                                             PointerRNA *UNUSED(ptr),
-                                             PropertyRNA *UNUSED(prop),
-                                             const char *UNUSED(edit_text),
+                                             PointerRNA * /*ptr*/,
+                                             PropertyRNA * /*prop*/,
+                                             const char * /*edit_text*/,
                                              StringPropertySearchVisitFunc visit_fn,
                                              void *visit_user_data)
 {
@@ -779,17 +784,17 @@ void ANIM_keyingset_visit_for_search_no_poll(const bContext *C,
 /* Menu of All Keying Sets ----------------------------- */
 
 const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
-                                                    PointerRNA *UNUSED(ptr),
-                                                    PropertyRNA *UNUSED(prop),
+                                                    PointerRNA * /*ptr*/,
+                                                    PropertyRNA * /*prop*/,
                                                     bool *r_free)
 {
   Scene *scene = CTX_data_scene(C);
   KeyingSet *ks;
-  EnumPropertyItem *item = NULL, item_tmp = {0};
+  EnumPropertyItem *item = nullptr, item_tmp = {0};
   int totitem = 0;
   int i = 0;
 
-  if (C == NULL) {
+  if (C == nullptr) {
     return DummyRNA_DEFAULT_items;
   }
 
@@ -813,7 +818,7 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
    * - these are listed in the order in which they were defined for the active scene
    */
   if (scene->keyingsets.first) {
-    for (ks = scene->keyingsets.first; ks; ks = ks->next, i++) {
+    for (ks = static_cast<KeyingSet *>(scene->keyingsets.first); ks; ks = ks->next, i++) {
       if (ANIM_keyingset_context_ok_poll(C, ks)) {
         item_tmp.identifier = ks->idname;
         item_tmp.name = ks->name;
@@ -829,7 +834,7 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
 
   /* builtin Keying Sets */
   i = -1;
-  for (ks = builtin_keyingsets.first; ks; ks = ks->next, i--) {
+  for (ks = static_cast<KeyingSet *>(builtin_keyingsets.first); ks; ks = ks->next, i--) {
     /* only show KeyingSet if context is suitable */
     if (ANIM_keyingset_context_ok_poll(C, ks)) {
       item_tmp.identifier = ks->idname;
@@ -848,26 +853,28 @@ const EnumPropertyItem *ANIM_keying_sets_enum_itemf(bContext *C,
 
 KeyingSet *ANIM_keyingset_get_from_enum_type(Scene *scene, int type)
 {
-  KeyingSet *ks = NULL;
+  KeyingSet *ks = nullptr;
 
   if (type == 0) {
     type = scene->active_keyingset;
   }
 
   if (type > 0) {
-    ks = BLI_findlink(&scene->keyingsets, type - 1);
+    ks = static_cast<KeyingSet *>(BLI_findlink(&scene->keyingsets, type - 1));
   }
   else {
-    ks = BLI_findlink(&builtin_keyingsets, -type - 1);
+    ks = static_cast<KeyingSet *>(BLI_findlink(&builtin_keyingsets, -type - 1));
   }
   return ks;
 }
 
 KeyingSet *ANIM_keyingset_get_from_idname(Scene *scene, const char *idname)
 {
-  KeyingSet *ks = BLI_findstring(&scene->keyingsets, idname, offsetof(KeyingSet, idname));
-  if (ks == NULL) {
-    ks = BLI_findstring(&builtin_keyingsets, idname, offsetof(KeyingSet, idname));
+  KeyingSet *ks = static_cast<KeyingSet *>(
+      BLI_findstring(&scene->keyingsets, idname, offsetof(KeyingSet, idname)));
+  if (ks == nullptr) {
+    ks = static_cast<KeyingSet *>(
+        BLI_findstring(&builtin_keyingsets, idname, offsetof(KeyingSet, idname)));
   }
   return ks;
 }
@@ -883,7 +890,7 @@ bool ANIM_keyingset_context_ok_poll(bContext *C, KeyingSet *ks)
     KeyingSetInfo *ksi = ANIM_keyingset_info_find_name(ks->typeinfo);
 
     /* get the associated 'type info' for this KeyingSet */
-    if (ksi == NULL) {
+    if (ksi == nullptr) {
       return 0;
     }
     /* TODO: check for missing callbacks! */
@@ -901,10 +908,10 @@ bool ANIM_keyingset_context_ok_poll(bContext *C, KeyingSet *ks)
  * - this is basically a wrapper for PointerRNA's in a linked list
  * - do not allow this to be accessed from outside for now
  */
-typedef struct tRKS_DSource {
+struct tRKS_DSource {
   struct tRKS_DSource *next, *prev;
   PointerRNA ptr; /* the whole point of this exercise! */
-} tRKS_DSource;
+};
 
 /* Iterator used for overriding the behavior of iterators defined for
  * relative Keying Sets, with the main usage of this being operators
@@ -917,7 +924,7 @@ static void RKS_ITER_overrides_list(KeyingSetInfo *ksi,
 {
   tRKS_DSource *ds;
 
-  for (ds = dsources->first; ds; ds = ds->next) {
+  for (ds = static_cast<tRKS_DSource *>(dsources->first); ds; ds = ds->next) {
     /* run generate callback on this data */
     ksi->generate(ksi, C, ks, &ds->ptr);
   }
@@ -931,15 +938,15 @@ void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *s
    * - we must have somewhere to output the data
    * - we must have both srna+data (and with id too optionally), or id by itself only
    */
-  if (dsources == NULL) {
+  if (dsources == nullptr) {
     return;
   }
-  if (ELEM(NULL, srna, data) && (id == NULL)) {
+  if (ELEM(nullptr, srna, data) && (id == nullptr)) {
     return;
   }
 
   /* allocate new elem, and add to the list */
-  ds = MEM_callocN(sizeof(tRKS_DSource), "tRKS_DSource");
+  ds = static_cast<tRKS_DSource *>(MEM_callocN(sizeof(tRKS_DSource), "tRKS_DSource"));
   BLI_addtail(dsources, ds);
 
   /* depending on what data we have, create using ID or full pointer call */
@@ -956,8 +963,8 @@ void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *s
 eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, KeyingSet *ks)
 {
   /* sanity check */
-  if (ks == NULL) {
-    return 0;
+  if (ks == nullptr) {
+    return eModifyKey_Returns(0);
   }
 
   /* if relative Keying Sets, poll and build up the paths */
@@ -970,7 +977,7 @@ eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, Keyi
     BKE_keyingset_free(ks);
 
     /* get the associated 'type info' for this KeyingSet */
-    if (ksi == NULL) {
+    if (ksi == nullptr) {
       return MODIFYKEY_MISSING_TYPEINFO;
     }
     /* TODO: check for missing callbacks! */
@@ -1002,7 +1009,7 @@ eModifyKey_Returns ANIM_validate_keyingset(bContext *C, ListBase *dsources, Keyi
   }
 
   /* succeeded; return 0 to tag error free */
-  return 0;
+  return eModifyKey_Returns(0);
 }
 
 /* Determine which keying flags apply based on the override flags */
@@ -1013,12 +1020,12 @@ static eInsertKeyFlags keyingset_apply_keying_flags(const eInsertKeyFlags base_f
   /* Pass through all flags by default (i.e. even not explicitly listed ones). */
   eInsertKeyFlags result = base_flags;
 
-  /* The logic for whether a keying flag applies is as follows:
-   * - If the flag in question is set in "overrides", that means that the
-   *   status of that flag in "own_flags" is used
-   * - If however the flag isn't set, then its value in "base_flags" is used
-   *   instead (i.e. no override)
-   */
+/* The logic for whether a keying flag applies is as follows:
+ * - If the flag in question is set in "overrides", that means that the
+ *   status of that flag in "own_flags" is used
+ * - If however the flag isn't set, then its value in "base_flags" is used
+ *   instead (i.e. no override)
+ */
 #define APPLY_KEYINGFLAG_OVERRIDE(kflag) \
   if (overrides & kflag) { \
     result &= ~kflag; \
@@ -1044,25 +1051,26 @@ int ANIM_apply_keyingset(
   Scene *scene = CTX_data_scene(C);
   ReportList *reports = CTX_wm_reports(C);
   KS_Path *ksp;
-  ListBase nla_cache = {NULL, NULL};
+  ListBase nla_cache = {nullptr, nullptr};
   const eInsertKeyFlags base_kflags = ANIM_get_keyframing_flags(scene, true);
-  const char *groupname = NULL;
-  eInsertKeyFlags kflag = 0;
+  const char *groupname = nullptr;
+  eInsertKeyFlags kflag = eInsertKeyFlags(0);
   int num_channels = 0;
   char keytype = scene->toolsettings->keyframe_type;
 
   /* sanity checks */
-  if (ks == NULL) {
+  if (ks == nullptr) {
     return 0;
   }
 
   /* get flags to use */
   if (mode == MODIFYKEY_MODE_INSERT) {
     /* use context settings as base */
-    kflag = keyingset_apply_keying_flags(base_kflags, ks->keyingoverride, ks->keyingflag);
+    kflag = keyingset_apply_keying_flags(
+        base_kflags, eInsertKeyFlags(ks->keyingoverride), eInsertKeyFlags(ks->keyingflag));
   }
   else if (mode == MODIFYKEY_MODE_DELETE) {
-    kflag = 0;
+    kflag = eInsertKeyFlags(0);
   }
 
   /* if relative Keying Sets, poll and build up the paths */
@@ -1076,12 +1084,12 @@ int ANIM_apply_keyingset(
   }
 
   /* apply the paths as specified in the KeyingSet now */
-  for (ksp = ks->paths.first; ksp; ksp = ksp->next) {
+  for (ksp = static_cast<KS_Path *>(ks->paths.first); ksp; ksp = ksp->next) {
     int arraylen, i;
     eInsertKeyFlags kflag2;
 
     /* skip path if no ID pointer is specified */
-    if (ksp->id == NULL) {
+    if (ksp->id == nullptr) {
       BKE_reportf(reports,
                   RPT_WARNING,
                   "Skipping path in keying set, as it has no ID (KS = '%s', path = '%s[%d]')",
@@ -1093,11 +1101,12 @@ int ANIM_apply_keyingset(
 
     /* Since keying settings can be defined on the paths too,
      * apply the settings for this path first. */
-    kflag2 = keyingset_apply_keying_flags(kflag, ksp->keyingoverride, ksp->keyingflag);
+    kflag2 = keyingset_apply_keying_flags(
+        kflag, eInsertKeyFlags(ksp->keyingoverride), eInsertKeyFlags(ksp->keyingflag));
 
     /* get pointer to name of group to add channels to */
     if (ksp->groupmode == KSP_GROUP_NONE) {
-      groupname = NULL;
+      groupname = nullptr;
     }
     else if (ksp->groupmode == KSP_GROUP_KSNAME) {
       groupname = ks->name;
@@ -1147,7 +1156,7 @@ int ANIM_apply_keyingset(
                                         ksp->rna_path,
                                         i,
                                         &anim_eval_context,
-                                        keytype,
+                                        eBezTriple_KeyframeType(keytype),
                                         &nla_cache,
                                         kflag2);
       }
@@ -1172,7 +1181,7 @@ int ANIM_apply_keyingset(
     }
 
     /* send notifiers for updates (this doesn't require context to work!) */
-    WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_ADDED, NULL);
+    WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
   }
 
   BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
