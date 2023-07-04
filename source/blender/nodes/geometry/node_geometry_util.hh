@@ -147,6 +147,7 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                                 const Object &self_object,
                                 const ComputeContext &compute_context,
                                 const bNode &sim_output_node,
+                                const Map<IDMappingKey, ID *> &id_mapping,
                                 Span<void *> r_output_values);
 
 void copy_with_checked_indices(const GVArray &src,

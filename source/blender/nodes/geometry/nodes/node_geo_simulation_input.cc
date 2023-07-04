@@ -102,6 +102,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
                                *modifier_data.self_object,
                                *user_data.compute_context,
                                node_,
+                               modifier_data.id_mapping,
                                output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i + 1);

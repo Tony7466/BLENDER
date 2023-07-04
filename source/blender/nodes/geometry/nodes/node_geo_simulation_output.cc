@@ -172,8 +172,7 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
         IDP_AppendArray(array_prop, mat_prop);
       }
       IDProperty *mesh_props = IDP_GetProperties(&mesh->id, true);
-      const bool success = IDP_AddToGroup(mesh_props, array_prop);
-      BLI_assert(success);
+      IDP_ReplaceInGroup(mesh_props, array_prop);
       remove_materials(&mesh->mat, &mesh->totcol);
     }
     if (Curves *curves = geometry.get_curves_for_write()) {
@@ -199,6 +198,7 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                                 const Object &self_object,
                                 const ComputeContext &compute_context,
                                 const bNode &node,
+                                const Map<IDMappingKey, ID *> &id_mapping,
                                 Span<void *> r_output_values)
 {
   /* Some attributes stored in the simulation state become anonymous attributes in geometry nodes.
@@ -735,8 +735,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
             nullptr;
     if (eval_data.is_first_evaluation && current_zone_state != nullptr) {
       /* Common case when data is cached already. */
-      this->output_cached_state(
-          params, *modifier_data.self_object, *user_data.compute_context, *current_zone_state);
+      this->output_cached_state(params, user_data, *current_zone_state);
       return;
     }
 
@@ -757,14 +756,12 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
               nullptr;
       if (next_zone_state == nullptr) {
         /* Output the last cached simulation state. */
-        this->output_cached_state(
-            params, *modifier_data.self_object, *user_data.compute_context, *prev_zone_state);
+        this->output_cached_state(params, user_data, *prev_zone_state);
         return;
       }
       /* A previous and next frame is cached already, but the current frame is not. */
       this->output_mixed_cached_state(params,
-                                      *modifier_data.self_object,
-                                      *user_data.compute_context,
+                                      user_data,
                                       *prev_zone_state,
                                       *next_zone_state,
                                       modifier_data.simulation_state_mix_factor);
@@ -786,29 +783,31 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       return;
     }
     values_to_simulation_state(simulation_items_, input_values, new_zone_state);
-    this->output_cached_state(
-        params, *modifier_data.self_object, *user_data.compute_context, new_zone_state);
+    this->output_cached_state(params, user_data, new_zone_state);
   }
 
   void output_cached_state(lf::Params &params,
-                           const Object &self_object,
-                           const ComputeContext &compute_context,
+                           const GeoNodesLFUserData &user_data,
                            const bke::sim::SimulationZoneState &state) const
   {
     Array<void *> output_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
       output_values[i] = params.get_output_data_ptr(i);
     }
-    simulation_state_to_values(
-        simulation_items_, state, self_object, compute_context, node_, output_values);
+    simulation_state_to_values(simulation_items_,
+                               state,
+                               *user_data.modifier_data->self_object,
+                               *user_data.compute_context,
+                               node_,
+                               user_data.modifier_data->id_mapping,
+                               output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i);
     }
   }
 
   void output_mixed_cached_state(lf::Params &params,
-                                 const Object &self_object,
-                                 const ComputeContext &compute_context,
+                                 const GeoNodesLFUserData &user_data,
                                  const bke::sim::SimulationZoneState &prev_state,
                                  const bke::sim::SimulationZoneState &next_state,
                                  const float mix_factor) const
@@ -817,8 +816,13 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     for (const int i : simulation_items_.index_range()) {
       output_values[i] = params.get_output_data_ptr(i);
     }
-    simulation_state_to_values(
-        simulation_items_, prev_state, self_object, compute_context, node_, output_values);
+    simulation_state_to_values(simulation_items_,
+                               prev_state,
+                               *user_data.modifier_data->self_object,
+                               *user_data.compute_context,
+                               node_,
+                               user_data.modifier_data->id_mapping,
+                               output_values);
 
     Array<void *> next_values(simulation_items_.size());
     LinearAllocator<> allocator;
@@ -826,8 +830,13 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       const CPPType &type = *outputs_[i].type;
       next_values[i] = allocator.allocate(type.size(), type.alignment());
     }
-    simulation_state_to_values(
-        simulation_items_, next_state, self_object, compute_context, node_, next_values);
+    simulation_state_to_values(simulation_items_,
+                               next_state,
+                               *user_data.modifier_data->self_object,
+                               *user_data.compute_context,
+                               node_,
+                               user_data.modifier_data->id_mapping,
+                               next_values);
 
     for (const int i : simulation_items_.index_range()) {
       mix_simulation_state(simulation_items_[i], output_values[i], next_values[i], mix_factor);

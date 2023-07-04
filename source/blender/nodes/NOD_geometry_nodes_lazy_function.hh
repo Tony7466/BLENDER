@@ -39,6 +39,21 @@ namespace blender::nodes {
 using lf::LazyFunction;
 using mf::MultiFunction;
 
+struct IDMappingKey {
+  StringRef id_name;
+  StringRef lib_name;
+
+  uint64_t hash() const
+  {
+    return get_default_hash_2(this->id_name, this->lib_name);
+  }
+
+  friend bool operator==(const IDMappingKey &a, const IDMappingKey &b)
+  {
+    return a.id_name == b.id_name && a.lib_name == b.lib_name;
+  }
+};
+
 /**
  * Data that is passed into geometry nodes evaluation from the modifier.
  */
@@ -72,6 +87,7 @@ struct GeoNodesModifierData {
    * If this is null, all socket values will be logged.
    */
   const Set<ComputeContextHash> *socket_log_contexts = nullptr;
+  Map<IDMappingKey, ID *> id_mapping;
 };
 
 struct GeoNodesOperatorData {
