@@ -13,6 +13,7 @@
 #include "BKE_object.h"
 #include "BKE_texture.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
 
@@ -170,8 +171,7 @@ template<typename GridType> struct DisplaceOp {
   openvdb::Vec3d evaluate_texture(const openvdb::Vec3f &pos) const
   {
     TexResult texture_result = {0};
-    BKE_texture_get_value(
-        nullptr, this->texture, const_cast<float *>(pos.asV()), &texture_result, false);
+    BKE_texture_get_value(this->texture, const_cast<float *>(pos.asV()), &texture_result, false);
     return {texture_result.trgba[0], texture_result.trgba[1], texture_result.trgba[2]};
   }
 };
@@ -304,7 +304,7 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
 
 static void modifyGeometrySet(ModifierData *md,
                               const ModifierEvalContext *ctx,
-                              GeometrySet *geometry_set)
+                              blender::bke::GeometrySet *geometry_set)
 {
   Volume *input_volume = geometry_set->get_volume_for_write();
   if (input_volume != nullptr) {

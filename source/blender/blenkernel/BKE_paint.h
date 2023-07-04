@@ -22,6 +22,8 @@
 #include "BKE_attribute.h"
 #include "BKE_pbvh.h"
 
+#include "bmesh.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -184,6 +186,7 @@ eObjectMode BKE_paint_object_mode_from_paintmode(ePaintMode mode);
 bool BKE_paint_ensure_from_paintmode(struct Scene *sce, ePaintMode mode);
 struct Paint *BKE_paint_get_active_from_paintmode(struct Scene *sce, ePaintMode mode);
 const struct EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(ePaintMode mode);
+const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(ePaintMode mode);
 const char *BKE_paint_get_tool_prop_id_from_paintmode(ePaintMode mode);
 uint BKE_paint_get_brush_tool_offset_from_paintmode(ePaintMode mode);
 struct Paint *BKE_paint_get_active(struct Scene *sce, struct ViewLayer *view_layer);
@@ -876,7 +879,7 @@ void BKE_sculpt_update_object_after_eval(struct Depsgraph *depsgraph, struct Obj
  */
 struct MultiresModifierData *BKE_sculpt_multires_active(const struct Scene *scene,
                                                         struct Object *ob);
-int *BKE_sculpt_face_sets_ensure(struct Mesh *mesh);
+int *BKE_sculpt_face_sets_ensure(struct Object *ob);
 /**
  * Create the attribute used to store face visibility and retrieve its data.
  * Note that changes to the face visibility have to be propagated to other domains

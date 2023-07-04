@@ -124,6 +124,7 @@ class AssetLibrary {
    */
   AssetRepresentation &add_external_asset(StringRef relative_asset_path,
                                           StringRef name,
+                                          int id_type,
                                           std::unique_ptr<AssetMetaData> metadata);
   /** See #AssetLibrary::add_external_asset(). */
   AssetRepresentation &add_local_id_asset(StringRef relative_asset_path, ID &id);
@@ -171,6 +172,8 @@ class AssetLibrary {
 };
 
 Vector<AssetLibraryReference> all_valid_asset_library_refs();
+
+AssetLibraryReference all_library_reference();
 
 }  // namespace blender::asset_system
 

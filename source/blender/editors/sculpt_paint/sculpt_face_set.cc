@@ -41,7 +41,7 @@
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -344,8 +344,8 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, mode == SCULPT_FACE_SET_MASKED, false);
 
@@ -464,7 +464,6 @@ enum eSculptFaceSetsInitMode {
   SCULPT_FACE_SETS_FROM_CREASES = 4,
   SCULPT_FACE_SETS_FROM_SHARP_EDGES = 5,
   SCULPT_FACE_SETS_FROM_BEVEL_WEIGHT = 6,
-  SCULPT_FACE_SETS_FROM_FACE_MAPS = 7,
   SCULPT_FACE_SETS_FROM_FACE_SET_BOUNDARIES = 8,
 };
 
@@ -518,13 +517,7 @@ static EnumPropertyItem prop_sculpt_face_sets_init_types[] = {
         "Face Sets from Sharp Edges",
         "Create Face Sets using Sharp Edges as boundaries",
     },
-    {
-        SCULPT_FACE_SETS_FROM_FACE_MAPS,
-        "FACE_MAPS",
-        0,
-        "Face Sets from Face Maps",
-        "Create a Face Set per Face Map",
-    },
+
     {
         SCULPT_FACE_SETS_FROM_FACE_SET_BOUNDARIES,
         "FACE_SET_BOUNDARIES",
@@ -610,13 +603,6 @@ static void sculpt_face_sets_init_loop(Object *ob, const int mode)
       ss->face_sets[i] = material_indices[i] + 1;
     }
   }
-  else if (mode == SCULPT_FACE_SETS_FROM_FACE_MAPS) {
-    const int *face_maps = static_cast<const int *>(
-        CustomData_get_layer(&mesh->pdata, CD_FACEMAP));
-    for (const int i : IndexRange(mesh->totpoly)) {
-      ss->face_sets[i] = face_maps ? face_maps[i] : 1;
-    }
-  }
 }
 
 static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
@@ -650,7 +636,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   const float threshold = RNA_float_get(op->ptr, "threshold");
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   const bke::AttributeAccessor attributes = mesh->attributes();
 
   switch (mode) {
@@ -686,7 +672,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     }
     case SCULPT_FACE_SETS_FROM_CREASES: {
       const float *creases = static_cast<const float *>(
-          CustomData_get_layer(&mesh->edata, CD_CREASE));
+          CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "crease_edge"));
       sculpt_face_sets_init_flood_fill(
           ob, [&](const int /*from_face*/, const int edge, const int /*to_face*/) -> bool {
             return creases ? creases[edge] < threshold : true;
@@ -717,10 +703,6 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
           ob, [&](const int from_face, const int /*edge*/, const int to_face) -> bool {
             return face_sets_copy[from_face] == face_sets_copy[to_face];
           });
-      break;
-    }
-    case SCULPT_FACE_SETS_FROM_FACE_MAPS: {
-      sculpt_face_sets_init_loop(ob, SCULPT_FACE_SETS_FROM_FACE_MAPS);
       break;
     }
   }
@@ -1087,7 +1069,7 @@ static void sculpt_face_set_grow(Object *ob,
         if (neighbor_face_index == p) {
           continue;
         }
-        if (abs(prev_face_sets[neighbor_face_index]) == active_face_set_id) {
+        if (prev_face_sets[neighbor_face_index] == active_face_set_id) {
           ss->face_sets[p] = active_face_set_id;
         }
       }
@@ -1109,13 +1091,13 @@ static void sculpt_face_set_shrink(Object *ob,
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }
-    if (abs(prev_face_sets[p]) == active_face_set_id) {
+    if (prev_face_sets[p] == active_face_set_id) {
       for (const int vert_i : corner_verts.slice(polys[p])) {
         for (const int neighbor_face_index : ss->pmap[vert_i]) {
           if (neighbor_face_index == p) {
             continue;
           }
-          if (abs(prev_face_sets[neighbor_face_index]) != active_face_set_id) {
+          if (prev_face_sets[neighbor_face_index] != active_face_set_id) {
             ss->face_sets[p] = prev_face_sets[neighbor_face_index];
           }
         }
@@ -1315,7 +1297,7 @@ static void sculpt_face_set_edit_modify_geometry(bContext *C,
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   ED_sculpt_undo_geometry_begin(ob, op);
-  sculpt_face_set_apply_edit(ob, abs(active_face_set), mode, modify_hidden);
+  sculpt_face_set_apply_edit(ob, active_face_set, mode, modify_hidden);
   ED_sculpt_undo_geometry_end(ob);
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -1358,7 +1340,7 @@ static void sculpt_face_set_edit_modify_face_sets(Object *ob,
   for (PBVHNode *node : nodes) {
     SCULPT_undo_push_node(ob, node, SCULPT_UNDO_FACE_SETS);
   }
-  sculpt_face_set_apply_edit(ob, abs(active_face_set), mode, modify_hidden);
+  sculpt_face_set_apply_edit(ob, active_face_set, mode, modify_hidden);
   SCULPT_undo_push_end(ob);
   face_set_edit_do_post_visibility_updates(ob, nodes);
 }
@@ -1382,7 +1364,7 @@ static void sculpt_face_set_edit_modify_coordinates(bContext *C,
     BKE_pbvh_node_mark_update(node);
     SCULPT_undo_push_node(ob, node, SCULPT_UNDO_COORDS);
   }
-  sculpt_face_set_apply_edit(ob, abs(active_face_set), mode, false, strength);
+  sculpt_face_set_apply_edit(ob, active_face_set, mode, false, strength);
 
   if (ss->deform_modifiers_active || ss->shapekey_active) {
     SCULPT_flush_stroke_deform(sd, ob, true);
@@ -1405,7 +1387,7 @@ static bool sculpt_face_set_edit_init(bContext *C, wmOperator *op)
     return false;
   }
 
-  ss->face_sets = BKE_sculpt_face_sets_ensure(BKE_mesh_from_object(ob));
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, false);
 
   return true;

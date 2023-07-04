@@ -167,7 +167,7 @@ static float meshdeform_dynamic_bind(MeshDeformModifierData *mmd, float (*dco)[3
   float gridvec[3], dvec[3], ivec[3], wx, wy, wz;
   float weight, cageweight, totweight, *cageco;
   int i, j, a, x, y, z, size;
-#ifdef BLI_HAVE_SSE2
+#if BLI_HAVE_SSE2
   __m128 co = _mm_setzero_ps();
 #else
   float co[3] = {0.0f, 0.0f, 0.0f};
@@ -222,7 +222,7 @@ static float meshdeform_dynamic_bind(MeshDeformModifierData *mmd, float (*dco)[3
     for (j = 0; j < cell->influences_num; j++, inf++) {
       cageco = dco[inf->vertex];
       cageweight = weight * inf->weight;
-#ifdef BLI_HAVE_SSE2
+#if BLI_HAVE_SSE2
       {
         __m128 cageweight_r = _mm_set1_ps(cageweight);
         /* This will load one extra element, this is ok because
@@ -240,7 +240,7 @@ static float meshdeform_dynamic_bind(MeshDeformModifierData *mmd, float (*dco)[3
     }
   }
 
-#ifdef BLI_HAVE_SSE2
+#if BLI_HAVE_SSE2
   copy_v3_v3(vec, (float *)&co);
 #else
   copy_v3_v3(vec, co);
@@ -441,7 +441,7 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   MOD_previous_vcos_store(md, vertexCos); /* if next modifier needs original vertices */
 
@@ -459,8 +459,7 @@ static void deformVertsEM(ModifierData *md,
                           float (*vertexCos)[3],
                           int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(
-      ctx->object, editData, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {

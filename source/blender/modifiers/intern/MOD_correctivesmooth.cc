@@ -660,11 +660,11 @@ static void correctivesmooth_modifier_do(ModifierData *md,
       }
       else {
         const Mesh *me = static_cast<const Mesh *>(ob->data);
-        rest_coords = BKE_mesh_vert_positions(me);
+        rest_coords = reinterpret_cast<const float(*)[3]>(me->vert_positions().data());
         me_numVerts = me->totvert;
       }
 
-      BLI_assert((uint)me_numVerts == verts_num);
+      BLI_assert(uint(me_numVerts) == verts_num);
     }
 
 #ifdef DEBUG_TIME
@@ -744,7 +744,7 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   correctivesmooth_modifier_do(
       md, ctx->depsgraph, ctx->object, mesh_src, vertexCos, uint(verts_num), nullptr);
@@ -761,8 +761,7 @@ static void deformVertsEM(ModifierData *md,
                           float (*vertexCos)[3],
                           int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(
-      ctx->object, editData, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {
