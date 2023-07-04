@@ -22,8 +22,8 @@ set(INC_SYS
 
 set(SRC
   editmball_undo.cc
-  mball_edit.c
-  mball_ops.c
+  mball_edit.cc
+  mball_ops.cc
 
   mball_intern.h
 )

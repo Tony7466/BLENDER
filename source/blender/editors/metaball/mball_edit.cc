@@ -53,8 +53,8 @@ void ED_mball_editmball_free(Object *obedit)
 {
   MetaBall *mb = (MetaBall *)obedit->data;
 
-  mb->editelems = NULL;
-  mb->lastelem = NULL;
+  mb->editelems = nullptr;
+  mb->lastelem = nullptr;
 }
 
 void ED_mball_editmball_make(Object *obedit)
@@ -62,7 +62,7 @@ void ED_mball_editmball_make(Object *obedit)
   MetaBall *mb = (MetaBall *)obedit->data;
   MetaElem *ml; /*, *newml;*/
 
-  ml = mb->elems.first;
+  ml = static_cast<MetaElem *>(mb->elems.first);
 
   while (ml) {
     if (ml->flag & SELECT) {
@@ -74,7 +74,7 @@ void ED_mball_editmball_make(Object *obedit)
   mb->editelems = &mb->elems;
 }
 
-void ED_mball_editmball_load(Object *UNUSED(obedit)) {}
+void ED_mball_editmball_load(Object * /*obedit*/) {}
 
 /** \} */
 
@@ -102,13 +102,13 @@ bool ED_mball_deselect_all_multi(bContext *C)
  * \{ */
 
 MetaElem *ED_mball_add_primitive(
-    bContext *UNUSED(C), Object *obedit, bool obedit_is_new, float mat[4][4], float dia, int type)
+    bContext * /*C*/, Object *obedit, bool obedit_is_new, float mat[4][4], float dia, int type)
 {
   MetaBall *mball = (MetaBall *)obedit->data;
   MetaElem *ml;
 
   /* Deselect all existing metaelems */
-  ml = mball->editelems->first;
+  ml = static_cast<MetaElem *>(mball->editelems->first);
   while (ml) {
     ml->flag &= ~SELECT;
     ml = ml->next;
@@ -213,7 +213,7 @@ static const EnumPropertyItem prop_similar_types[] = {
     {SIMMBALL_RADIUS, "RADIUS", 0, "Radius", ""},
     {SIMMBALL_STIFFNESS, "STIFFNESS", 0, "Stiffness", ""},
     {SIMMBALL_ROTATION, "ROTATION", 0, "Rotation", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static void mball_select_similar_type_get(
@@ -222,7 +222,7 @@ static void mball_select_similar_type_get(
   float tree_entry[3] = {0.0f, 0.0f, 0.0f};
   MetaElem *ml;
   int tree_index = 0;
-  for (ml = mb->editelems->first; ml; ml = ml->next) {
+  for (ml = static_cast<MetaElem *>(mb->editelems->first); ml; ml = ml->next) {
     if (ml->flag & SELECT) {
       switch (type) {
         case SIMMBALL_RADIUS: {
@@ -269,7 +269,7 @@ static bool mball_select_similar_type(Object *obedit,
 {
   MetaElem *ml;
   bool changed = false;
-  for (ml = mb->editelems->first; ml; ml = ml->next) {
+  for (ml = static_cast<MetaElem *>(mb->editelems->first); ml; ml = ml->next) {
     bool select = false;
     switch (type) {
       case SIMMBALL_RADIUS: {
@@ -339,8 +339,8 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
   tot_mball_selected_all = BKE_mball_select_count_multi(bases, bases_len);
 
   short type_ref = 0;
-  KDTree_1d *tree_1d = NULL;
-  KDTree_3d *tree_3d = NULL;
+  KDTree_1d *tree_1d = nullptr;
+  KDTree_3d *tree_3d = nullptr;
 
   switch (type) {
     case SIMMBALL_RADIUS:
@@ -360,7 +360,7 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
     switch (type) {
       case SIMMBALL_TYPE: {
         MetaElem *ml;
-        for (ml = mb->editelems->first; ml; ml = ml->next) {
+        for (ml = static_cast<MetaElem *>(mb->editelems->first); ml; ml = ml->next) {
           if (ml->flag & SELECT) {
             short mball_type = 1 << (ml->type + 1);
             type_ref |= mball_type;
@@ -379,11 +379,11 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
     }
   }
 
-  if (tree_1d != NULL) {
+  if (tree_1d != nullptr) {
     BLI_kdtree_1d_deduplicate(tree_1d);
     BLI_kdtree_1d_balance(tree_1d);
   }
-  if (tree_3d != NULL) {
+  if (tree_3d != nullptr) {
     BLI_kdtree_3d_deduplicate(tree_3d);
     BLI_kdtree_3d_balance(tree_3d);
   }
@@ -396,7 +396,7 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
     switch (type) {
       case SIMMBALL_TYPE: {
         MetaElem *ml;
-        for (ml = mb->editelems->first; ml; ml = ml->next) {
+        for (ml = static_cast<MetaElem *>(mb->editelems->first); ml; ml = ml->next) {
           short mball_type = 1 << (ml->type + 1);
           if (mball_type & type_ref) {
             ml->flag |= SELECT;
@@ -422,10 +422,10 @@ static int mball_select_similar_exec(bContext *C, wmOperator *op)
   }
 
   MEM_freeN(bases);
-  if (tree_1d != NULL) {
+  if (tree_1d != nullptr) {
     BLI_kdtree_1d_free(tree_1d);
   }
-  if (tree_3d != NULL) {
+  if (tree_3d != nullptr) {
     BLI_kdtree_3d_free(tree_3d);
   }
   return OPERATOR_FINISHED;
@@ -529,7 +529,7 @@ void MBALL_OT_select_random_metaelems(wmOperatorType *ot)
  * \{ */
 
 /* Duplicate selected MetaElements */
-static int duplicate_metaelems_exec(bContext *C, wmOperator *UNUSED(op))
+static int duplicate_metaelems_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -545,11 +545,11 @@ static int duplicate_metaelems_exec(bContext *C, wmOperator *UNUSED(op))
       continue;
     }
 
-    ml = mb->editelems->last;
+    ml = static_cast<MetaElem *>(mb->editelems->last);
     if (ml) {
       while (ml) {
         if (ml->flag & SELECT) {
-          newml = MEM_dupallocN(ml);
+          newml = static_cast<MetaElem *>(MEM_dupallocN(ml));
           BLI_addtail(mb->editelems, newml);
           mb->lastelem = newml;
           ml->flag &= ~SELECT;
@@ -557,7 +557,7 @@ static int duplicate_metaelems_exec(bContext *C, wmOperator *UNUSED(op))
         ml = ml->prev;
       }
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, mb);
-      DEG_id_tag_update(obedit->data, 0);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     }
   }
   MEM_freeN(objects);
@@ -587,7 +587,7 @@ void MBALL_OT_duplicate_metaelems(wmOperatorType *ot)
  * Delete all selected MetaElems (not MetaBall).
  * \{ */
 
-static int delete_metaelems_exec(bContext *C, wmOperator *UNUSED(op))
+static int delete_metaelems_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -603,13 +603,13 @@ static int delete_metaelems_exec(bContext *C, wmOperator *UNUSED(op))
       continue;
     }
 
-    ml = mb->editelems->first;
+    ml = static_cast<MetaElem *>(mb->editelems->first);
     if (ml) {
       while (ml) {
         next = ml->next;
         if (ml->flag & SELECT) {
           if (mb->lastelem == ml) {
-            mb->lastelem = NULL;
+            mb->lastelem = nullptr;
           }
           BLI_remlink(mb->editelems, ml);
           MEM_freeN(ml);
@@ -617,7 +617,7 @@ static int delete_metaelems_exec(bContext *C, wmOperator *UNUSED(op))
         ml = next;
       }
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, mb);
-      DEG_id_tag_update(obedit->data, 0);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     }
   }
   MEM_freeN(objects);
@@ -654,7 +654,7 @@ static int hide_metaelems_exec(bContext *C, wmOperator *op)
   MetaElem *ml;
   const bool invert = RNA_boolean_get(op->ptr, "unselected") ? SELECT : 0;
 
-  ml = mb->editelems->first;
+  ml = static_cast<MetaElem *>(mb->editelems->first);
 
   if (ml) {
     while (ml) {
@@ -664,7 +664,7 @@ static int hide_metaelems_exec(bContext *C, wmOperator *op)
       ml = ml->next;
     }
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, mb);
-    DEG_id_tag_update(obedit->data, 0);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
 
   return OPERATOR_FINISHED;
@@ -711,7 +711,7 @@ static int reveal_metaelems_exec(bContext *C, wmOperator *op)
   }
   if (changed) {
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, mb);
-    DEG_id_tag_update(obedit->data, 0);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
 
   return OPERATOR_FINISHED;
@@ -747,8 +747,8 @@ Base *ED_mball_base_and_elem_from_select_buffer(Base **bases,
                                                 MetaElem **r_ml)
 {
   const uint hit_object = select_id & 0xFFFF;
-  Base *base = NULL;
-  MetaElem *ml = NULL;
+  Base *base = nullptr;
+  MetaElem *ml = nullptr;
   /* TODO(@ideasman42): optimize, eg: sort & binary search. */
   for (uint base_index = 0; base_index < bases_len; base_index++) {
     if (bases[base_index]->object->runtime.select_id == hit_object) {
@@ -756,10 +756,10 @@ Base *ED_mball_base_and_elem_from_select_buffer(Base **bases,
       break;
     }
   }
-  if (base != NULL) {
+  if (base != nullptr) {
     const uint hit_elem = (select_id & ~MBALLSEL_ANY) >> 16;
-    MetaBall *mb = base->object->data;
-    ml = BLI_findlink(mb->editelems, hit_elem);
+    MetaBall *mb = static_cast<MetaBall *>(base->object->data);
+    ml = static_cast<MetaElem *>(BLI_findlink(mb->editelems, hit_elem));
   }
   *r_ml = ml;
   return base;
@@ -835,7 +835,7 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
 
     MetaElem *ml;
     Base *base = ED_mball_base_and_elem_from_select_buffer(bases, bases_len, select_id, &ml);
-    if (ml == NULL) {
+    if (ml == nullptr) {
       continue;
     }
     *r_base = base;
@@ -852,8 +852,8 @@ static bool ed_mball_findnearest_metaelem(bContext *C,
 
 bool ED_mball_select_pick(bContext *C, const int mval[2], const struct SelectPick_Params *params)
 {
-  Base *base = NULL;
-  MetaElem *ml = NULL;
+  Base *base = nullptr;
+  MetaElem *ml = nullptr;
   uint selmask = 0;
 
   bool changed = false;
