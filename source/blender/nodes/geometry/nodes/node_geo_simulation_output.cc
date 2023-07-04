@@ -170,6 +170,8 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
           }
         }
         IDP_AppendArray(array_prop, mat_prop);
+        /* IDP_AppendArray does a shallo copy. */
+        MEM_freeN(mat_prop);
       }
       IDProperty *mesh_props = IDP_GetProperties(&mesh->id, true);
       IDP_ReplaceInGroup(mesh_props, array_prop);
