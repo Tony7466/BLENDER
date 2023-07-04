@@ -31,7 +31,7 @@ set(SRC
   anim_ipo_utils.cc
   anim_markers.cc
   anim_motion_paths.cc
-  anim_ops.c
+  anim_ops.cc
   drivers.c
   fmodifier_ui.c
   keyframes_draw.cc

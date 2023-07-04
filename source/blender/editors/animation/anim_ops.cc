@@ -72,7 +72,7 @@ static bool change_frame_poll(bContext *C)
       }
     }
     if (area->spacetype == SPACE_GRAPH) {
-      const SpaceGraph *sipo = area->spacedata.first;
+      const SpaceGraph *sipo = static_cast<const SpaceGraph *>(area->spacedata.first);
       /* Driver Editor's X axis is not time. */
       if (sipo->mode != SIPO_MODE_DRIVERS) {
         return true;
@@ -138,7 +138,7 @@ static void change_frame_apply(bContext *C, wmOperator *op, const bool always_up
   const float old_subframe = scene->r.subframe;
 
   if (do_snap) {
-    if (CTX_wm_space_seq(C) && SEQ_editing_get(scene) != NULL) {
+    if (CTX_wm_space_seq(C) && SEQ_editing_get(scene) != nullptr) {
       frame = seq_frame_apply_snap(C, scene, frame);
     }
     else {
@@ -197,7 +197,7 @@ static float frame_from_event(bContext *C, const wmEvent *event)
 
 static void change_frame_seq_preview_begin(bContext *C, const wmEvent *event, SpaceSeq *sseq)
 {
-  BLI_assert(sseq != NULL);
+  BLI_assert(sseq != nullptr);
   ARegion *region = CTX_wm_region(C);
   if (ED_space_sequencer_check_show_strip(sseq) && !ED_time_scrub_event_in_region(region, event)) {
     ED_sequencer_special_preview_set(C, event->mval);
@@ -206,9 +206,9 @@ static void change_frame_seq_preview_begin(bContext *C, const wmEvent *event, Sp
 
 static void change_frame_seq_preview_end(SpaceSeq *sseq)
 {
-  BLI_assert(sseq != NULL);
+  BLI_assert(sseq != nullptr);
   UNUSED_VARS_NDEBUG(sseq);
-  if (ED_sequencer_special_preview_get() != NULL) {
+  if (ED_sequencer_special_preview_get() != nullptr) {
     ED_sequencer_special_preview_clear();
   }
 }
@@ -230,7 +230,7 @@ static int change_frame_invoke(bContext *C, wmOperator *op, const wmEvent *event
 {
   ARegion *region = CTX_wm_region(C);
   bScreen *screen = CTX_wm_screen(C);
-  if (CTX_wm_space_seq(C) != NULL && region->regiontype == RGN_TYPE_PREVIEW) {
+  if (CTX_wm_space_seq(C) != nullptr && region->regiontype == RGN_TYPE_PREVIEW) {
     return OPERATOR_CANCELLED;
   }
 
@@ -292,13 +292,13 @@ static bool need_extra_redraw_after_scrubbing_ends(bContext *C)
   return false;
 }
 
-static void change_frame_cancel(bContext *C, wmOperator *UNUSED(op))
+static void change_frame_cancel(bContext *C, wmOperator * /*op*/)
 {
   bScreen *screen = CTX_wm_screen(C);
   screen->scrubbing = false;
 
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (sseq != NULL) {
+  if (sseq != nullptr) {
     change_frame_seq_preview_end(sseq);
   }
 
@@ -359,7 +359,7 @@ static int change_frame_modal(bContext *C, wmOperator *op, const wmEvent *event)
     screen->scrubbing = false;
 
     SpaceSeq *sseq = CTX_wm_space_seq(C);
-    if (sseq != NULL) {
+    if (sseq != nullptr) {
       change_frame_seq_preview_end(sseq);
     }
     if (need_extra_redraw_after_scrubbing_ends(C)) {
@@ -431,7 +431,7 @@ static int anim_set_sfra_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   int frame;
 
-  if (scene == NULL) {
+  if (scene == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -486,7 +486,7 @@ static int anim_set_efra_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   int frame;
 
-  if (scene == NULL) {
+  if (scene == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -608,13 +608,13 @@ static void ANIM_OT_previewrange_set(wmOperatorType *ot)
 /** \name Clear Preview Range Operator
  * \{ */
 
-static int previewrange_clear_exec(bContext *C, wmOperator *UNUSED(op))
+static int previewrange_clear_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   ScrArea *curarea = CTX_wm_area(C);
 
   /* sanity checks */
-  if (ELEM(NULL, scene, curarea)) {
+  if (ELEM(nullptr, scene, curarea)) {
     return OPERATOR_CANCELLED;
   }
 
