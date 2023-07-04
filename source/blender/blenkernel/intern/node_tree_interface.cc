@@ -362,8 +362,6 @@ static bNodeTreeInterfacePanel *make_panel(blender::StringRef name)
 void bNodeTreeInterfacePanel::copy_items(
     const blender::Span<const bNodeTreeInterfaceItem *> items_src)
 {
-  MEM_SAFE_FREE(items_array);
-
   items_num = items_src.size();
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
 
