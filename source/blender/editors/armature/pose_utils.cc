@@ -55,7 +55,7 @@ static void fcurves_to_pchan_links_get(ListBase *pfLinks,
                                        bAction *act,
                                        bPoseChannel *pchan)
 {
-  ListBase curves = {NULL, NULL};
+  ListBase curves = {nullptr, nullptr};
   int transFlags = action_get_item_transforms(act, ob, pchan, &curves);
 
   pchan->flag &= ~(POSE_LOC | POSE_ROT | POSE_SIZE | POSE_BBONE_SHAPE);
@@ -63,7 +63,8 @@ static void fcurves_to_pchan_links_get(ListBase *pfLinks,
   /* check if any transforms found... */
   if (transFlags) {
     /* make new linkage data */
-    tPChanFCurveLink *pfl = MEM_callocN(sizeof(tPChanFCurveLink), "tPChanFCurveLink");
+    tPChanFCurveLink *pfl = static_cast<tPChanFCurveLink *>(
+        MEM_callocN(sizeof(tPChanFCurveLink), "tPChanFCurveLink"));
     PointerRNA ptr;
 
     pfl->ob = ob;
@@ -122,10 +123,10 @@ static void fcurves_to_pchan_links_get(ListBase *pfLinks,
 Object *poseAnim_object_get(Object *ob_)
 {
   Object *ob = BKE_object_pose_armature_get(ob_);
-  if (!ELEM(NULL, ob, ob->data, ob->adt, ob->adt->action)) {
+  if (!ELEM(nullptr, ob, ob->data, ob->adt, ob->adt->action)) {
     return ob;
   }
-  return NULL;
+  return nullptr;
 }
 
 void poseAnim_mapping_get(bContext *C, ListBase *pfLinks)
@@ -135,15 +136,15 @@ void poseAnim_mapping_get(bContext *C, ListBase *pfLinks)
    */
   Object *prev_ob, *ob_pose_armature;
 
-  prev_ob = NULL;
-  ob_pose_armature = NULL;
+  prev_ob = nullptr;
+  ob_pose_armature = nullptr;
   CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     if (ob != prev_ob) {
       prev_ob = ob;
       ob_pose_armature = poseAnim_object_get(ob);
     }
 
-    if (ob_pose_armature == NULL) {
+    if (ob_pose_armature == nullptr) {
       continue;
     }
 
@@ -155,15 +156,15 @@ void poseAnim_mapping_get(bContext *C, ListBase *pfLinks)
    * i.e. if nothing selected, do whole pose
    */
   if (BLI_listbase_is_empty(pfLinks)) {
-    prev_ob = NULL;
-    ob_pose_armature = NULL;
+    prev_ob = nullptr;
+    ob_pose_armature = nullptr;
     CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, visible_pose_bones, Object *, ob) {
       if (ob != prev_ob) {
         prev_ob = ob;
         ob_pose_armature = poseAnim_object_get(ob);
       }
 
-      if (ob_pose_armature == NULL) {
+      if (ob_pose_armature == nullptr) {
         continue;
       }
 
@@ -175,10 +176,10 @@ void poseAnim_mapping_get(bContext *C, ListBase *pfLinks)
 
 void poseAnim_mapping_free(ListBase *pfLinks)
 {
-  tPChanFCurveLink *pfl, *pfln = NULL;
+  tPChanFCurveLink *pfl, *pfln = nullptr;
 
   /* free the temp pchan links and their data */
-  for (pfl = pfLinks->first; pfl; pfl = pfln) {
+  for (pfl = static_cast<tPChanFCurveLink *>(pfLinks->first); pfl; pfl = pfln) {
     pfln = pfl->next;
 
     /* free custom properties */
@@ -199,7 +200,7 @@ void poseAnim_mapping_free(ListBase *pfLinks)
 
 /* ------------------------- */
 
-void poseAnim_mapping_refresh(bContext *C, Scene *UNUSED(scene), Object *ob)
+void poseAnim_mapping_refresh(bContext *C, Scene * /*scene*/, Object *ob)
 {
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
@@ -215,7 +216,7 @@ void poseAnim_mapping_reset(ListBase *pfLinks)
   tPChanFCurveLink *pfl;
 
   /* iterate over each pose-channel affected, restoring all channels to their original values */
-  for (pfl = pfLinks->first; pfl; pfl = pfl->next) {
+  for (pfl = static_cast<tPChanFCurveLink *>(pfLinks->first); pfl; pfl = pfl->next) {
     bPoseChannel *pchan = pfl->pchan;
 
     /* just copy all the values over regardless of whether they changed or not */
@@ -257,7 +258,7 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
     ob = poseAnim_object_get(ob);
 
     /* Ensure validity of the settings from the context. */
-    if (ob == NULL) {
+    if (ob == nullptr) {
       continue;
     }
 
@@ -274,14 +275,14 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
 
   /* Insert keyframes as necessary if auto-key-framing. */
   KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_WHOLE_CHARACTER_ID);
-  ListBase dsources = {NULL, NULL};
+  ListBase dsources = {nullptr, nullptr};
   tPChanFCurveLink *pfl;
 
   /* iterate over each pose-channel affected, tagging bones to be keyed */
   /* XXX: here we already have the information about what transforms exist, though
    * it might be easier to just overwrite all using normal mechanisms
    */
-  for (pfl = pfLinks->first; pfl; pfl = pfl->next) {
+  for (pfl = static_cast<tPChanFCurveLink *>(pfLinks->first); pfl; pfl = pfl->next) {
     bPoseChannel *pchan = pfl->pchan;
 
     if ((pfl->ob->id.tag & LIB_TAG_DOIT) == 0) {
@@ -293,7 +294,7 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
   }
 
   /* insert keyframes for all relevant bones in one go */
-  ANIM_apply_keyingset(C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, cframe);
+  ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, cframe);
   BLI_freelistN(&dsources);
 
   /* do the bone paths
@@ -316,7 +317,9 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
 
 LinkData *poseAnim_mapping_getNextFCurve(ListBase *fcuLinks, LinkData *prev, const char *path)
 {
-  LinkData *first = (prev) ? prev->next : (fcuLinks) ? fcuLinks->first : NULL;
+  LinkData *first = static_cast<LinkData *>((prev)     ? prev->next :
+                                            (fcuLinks) ? fcuLinks->first :
+                                                         nullptr);
   LinkData *ld;
 
   /* check each link to see if the linked F-Curve has a matching path */
@@ -330,7 +333,7 @@ LinkData *poseAnim_mapping_getNextFCurve(ListBase *fcuLinks, LinkData *prev, con
   }
 
   /* none found */
-  return NULL;
+  return nullptr;
 }
 
 /* *********************************************** */

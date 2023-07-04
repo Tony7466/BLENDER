@@ -42,7 +42,7 @@ set(SRC
   pose_select.cc
   pose_slide.cc
   pose_transform.cc
-  pose_utils.c
+  pose_utils.cc
 
   armature_intern.h
   meshlaplacian.h
