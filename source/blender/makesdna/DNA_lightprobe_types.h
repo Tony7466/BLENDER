@@ -61,7 +61,9 @@ typedef struct LightProbe {
   /** Surface element density for scene surface cache. In surfel per unit distance. */
   float surfel_density;
 
-  char _pad1[4];
+  /** Resolution of the light probe when baked to a texture. Contains `eLightProbeBakeResolution`.
+   */
+  int bake_resolution;
 
   /** Object to use as a parallax origin. */
   struct Object *parallax_ob;
@@ -70,6 +72,17 @@ typedef struct LightProbe {
   /** Object visibility group, inclusive or exclusive. */
   struct Collection *visibility_grp;
 } LightProbe;
+
+/* LightProbe->bake_resolution, World->bake_resolution. */
+typedef enum eLightProbeBakeResolution {
+  LIGHT_PROBE_BAKE_RESOLUTION_64 = 6,
+  LIGHT_PROBE_BAKE_RESOLUTION_128 = 7,
+  LIGHT_PROBE_BAKE_RESOLUTION_256 = 8,
+  LIGHT_PROBE_BAKE_RESOLUTION_512 = 9,
+  LIGHT_PROBE_BAKE_RESOLUTION_1024 = 10,
+  LIGHT_PROBE_BAKE_RESOLUTION_2048 = 11,
+  LIGHT_PROBE_BAKE_RESOLUTION_4096 = 12,
+} eLightProbeBakeResolution;
 
 /* Probe->type */
 enum {

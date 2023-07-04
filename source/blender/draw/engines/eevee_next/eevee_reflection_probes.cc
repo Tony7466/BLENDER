@@ -26,7 +26,7 @@ void ReflectionProbeModule::init()
     /* Initialize the world probe. */
     ReflectionProbeData world_probe_data{};
     world_probe_data.layer = 0;
-    world_probe_data.layer_subdivision = world_subdivision_level_;
+    world_probe_data.layer_subdivision = 0;
     world_probe_data.area_index = 0;
     world_probe_data.color = float4(0.0f);
     world_probe_data.pos = float3(0.0f);
@@ -103,6 +103,13 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
       break;
     }
   }
+}
+
+void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle*/)
+{
+  ReflectionProbe &probe = probes_[0];
+  ReflectionProbeData &probe_data = data_buf_[probe.index];
+  probe_data.layer_subdivision = 12 - world->bake_resolution;
 }
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)

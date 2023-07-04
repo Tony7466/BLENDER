@@ -57,6 +57,17 @@ static EnumPropertyItem lightprobe_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static EnumPropertyItem lightprobe_bake_resolution_items[] = {
+    {LIGHT_PROBE_BAKE_RESOLUTION_64, "64", 0, "64", ""},
+    {LIGHT_PROBE_BAKE_RESOLUTION_128, "128", 0, "128", ""},
+    {LIGHT_PROBE_BAKE_RESOLUTION_256, "256", 0, "256", ""},
+    {LIGHT_PROBE_BAKE_RESOLUTION_512, "512", 0, "512", ""},
+    {LIGHT_PROBE_BAKE_RESOLUTION_1024, "1024", 0, "1024", ""},
+    {LIGHT_PROBE_BAKE_RESOLUTION_2048, "2048", 0, "2048", ""},
+    {LIGHT_PROBE_BAKE_RESOLUTION_4096, "4096", 0, "4096", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static void rna_def_lightprobe(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -187,6 +198,12 @@ static void rna_def_lightprobe(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "vis_blur");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Visibility Blur", "Filter size of the visibility blur");
+  RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
+
+  prop = RNA_def_property(srna, "bake_resolution", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "bake_resolution");
+  RNA_def_property_enum_items(prop, lightprobe_bake_resolution_items);
+  RNA_def_property_ui_text(prop, "Resolution", "Resolution when baked to a texture");
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "intensity", PROP_FLOAT, PROP_NONE);

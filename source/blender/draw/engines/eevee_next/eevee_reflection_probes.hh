@@ -20,6 +20,7 @@ namespace blender::eevee {
 
 class Instance;
 struct ObjectHandle;
+struct WorldHandle;
 class CaptureView;
 
 /* -------------------------------------------------------------------- */
@@ -71,7 +72,6 @@ class ReflectionProbeModule {
    * Which subdivision level to use for storing the world/reflection probes in the texture.
    * TODO: Will become a user option.
    */
-  static constexpr int world_subdivision_level_ = 1;
   static constexpr int reflection_probe_subdivision_level_ = 1;
 
   Instance &instance_;
@@ -92,6 +92,7 @@ class ReflectionProbeModule {
 
   void init();
   void begin_sync();
+  void sync_world(::World *world, WorldHandle &ob_handle);
   void sync_object(Object *ob, ObjectHandle &ob_handle);
   void end_sync();
 

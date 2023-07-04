@@ -13,6 +13,7 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
+#include "DNA_world_types.h"
 
 #include "DNA_genfile.h"
 
@@ -276,6 +277,18 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->grid_bake_samples = 2048;
         lightprobe->surfel_density = 1.0f;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "bake_resolution")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_512;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "bake_resolution")) {
+      LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+        world->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_512;
       }
     }
   }
