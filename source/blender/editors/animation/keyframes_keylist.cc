@@ -1158,7 +1158,7 @@ void grease_pencil_cels_to_keylist(AnimData * /*adt*/,
   using namespace blender::bke::greasepencil;
   const Layer &layer = gpl->wrap();
   for (auto item : layer.frames().items()) {
-    GreasePencilCel cel;
+    GreasePencilCel cel{};
     cel.frame_number = item.key;
     cel.frame = item.value;
 
