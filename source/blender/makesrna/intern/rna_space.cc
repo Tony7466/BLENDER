@@ -7407,7 +7407,7 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Show Named Attributes", "Show when nodes are using named attributes");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
-  
+
   prop = RNA_def_property(srna, "show_previews", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", SN_OVERLAY_SHOW_PREVIEWS);
   RNA_def_property_boolean_default(prop, false);
