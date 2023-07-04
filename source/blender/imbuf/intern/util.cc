@@ -264,7 +264,6 @@ static int isffmpeg(const char *filepath)
                                  ".exr",
                                  ".cin",
                                  ".wav",
-                                 ".svg",
                                  nullptr))
   {
     return 0;

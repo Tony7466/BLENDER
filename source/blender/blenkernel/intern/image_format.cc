@@ -97,9 +97,6 @@ int BKE_imtype_to_ftype(const char imtype, ImbFormatOptions *r_options)
   if (imtype == R_IMF_IMTYPE_TIFF) {
     return IMB_FTYPE_TIF;
   }
-  if (imtype == R_IMF_IMTYPE_SVG) {
-    return IMB_FTYPE_SVG;
-  }
   if (ELEM(imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
     return IMB_FTYPE_OPENEXR;
   }
@@ -151,9 +148,6 @@ char BKE_ftype_to_imtype(const int ftype, const ImbFormatOptions *options)
   }
   if (ftype == IMB_FTYPE_TIF) {
     return R_IMF_IMTYPE_TIFF;
-  }
-  if (ftype == IMB_FTYPE_SVG) {
-    return R_IMF_IMTYPE_SVG;
   }
   if (ftype == IMB_FTYPE_OPENEXR) {
     return R_IMF_IMTYPE_OPENEXR;
@@ -435,9 +429,6 @@ static int image_path_ext_from_imformat_impl(const char imtype,
   else if (imtype == R_IMF_IMTYPE_PSD) {
     r_ext[ext_num++] = ".psd";
   }
-  else if (imtype == R_IMF_IMTYPE_SVG) {
-    r_ext[ext_num++] = ".svg";
-  }
 #ifdef WITH_OPENEXR
   else if (ELEM(imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
     r_ext[ext_num++] = ".exr";
@@ -625,9 +616,6 @@ void BKE_image_format_to_imbuf(ImBuf *ibuf, const ImageFormatData *imf)
   else if (imtype == R_IMF_IMTYPE_BMP) {
     ibuf->ftype = IMB_FTYPE_BMP;
   }
-  else if (imtype == R_IMF_IMTYPE_SVG) {
-    ibuf->ftype = IMB_FTYPE_SVG;
-  }
   else if (imtype == R_IMF_IMTYPE_TIFF) {
     ibuf->ftype = IMB_FTYPE_TIF;
 
@@ -783,9 +771,6 @@ void BKE_image_format_from_imbuf(ImageFormatData *im_format, const ImBuf *imbuf)
   }
   else if (ftype == IMB_FTYPE_BMP) {
     im_format->imtype = R_IMF_IMTYPE_BMP;
-  }
-  else if (ftype == IMB_FTYPE_SVG) {
-    im_format->imtype = R_IMF_IMTYPE_SVG;
   }
   else if (ftype == IMB_FTYPE_TIF) {
     im_format->imtype = R_IMF_IMTYPE_TIFF;

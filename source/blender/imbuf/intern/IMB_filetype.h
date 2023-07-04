@@ -289,15 +289,8 @@ struct ImBuf *imb_load_psd(const unsigned char *mem,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Format: SVG (#IMB_FTYPE_SVG)
+/** \name Format: SVG - Only for thumbnails.
  * \{ */
-
-bool imb_is_a_svg(const unsigned char *buf, size_t size);
-
-struct ImBuf *imb_load_svg(const unsigned char *mem,
-                           size_t size,
-                           int flags,
-                           char colorspace[IM_MAX_SPACE]);
 
 struct ImBuf *imb_load_filepath_thumbnail_svg(const char *filepath,
                                               const int flags,
