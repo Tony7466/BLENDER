@@ -95,12 +95,11 @@ static int edbm_spin_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = false,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = false;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
 
   MEM_freeN(objects);
@@ -109,7 +108,7 @@ static int edbm_spin_exec(bContext *C, wmOperator *op)
 }
 
 /* get center and axis, in global coords */
-static int edbm_spin_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int edbm_spin_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Scene *scene = CTX_data_scene(C);
   View3D *v3d = CTX_wm_view3d(C);
@@ -153,7 +152,7 @@ static int edbm_spin_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e
   return ret;
 }
 
-static bool edbm_spin_poll_property(const bContext *UNUSED(C),
+static bool edbm_spin_poll_property(const bContext * /*C*/,
                                     wmOperator *op,
                                     const PropertyRNA *prop)
 {
@@ -213,7 +212,7 @@ void MESH_OT_spin(wmOperatorType *ot)
   RNA_def_float_vector_xyz(ot->srna,
                            "center",
                            3,
-                           NULL,
+                           nullptr,
                            -1e12f,
                            1e12f,
                            "Center",
@@ -221,7 +220,7 @@ void MESH_OT_spin(wmOperatorType *ot)
                            -1e4f,
                            1e4f);
   RNA_def_float_vector(
-      ot->srna, "axis", 3, NULL, -1.0f, 1.0f, "Axis", "Axis in global view space", -1.0f, 1.0f);
+      ot->srna, "axis", 3, nullptr, -1.0f, 1.0f, "Axis", "Axis in global view space", -1.0f, 1.0f);
 
   WM_gizmogrouptype_append(MESH_GGT_spin);
 #ifdef USE_GIZMO
