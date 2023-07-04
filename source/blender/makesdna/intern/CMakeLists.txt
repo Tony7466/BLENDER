@@ -53,6 +53,7 @@ set(SRC_BLENLIB
   ../../blenlib/intern/BLI_mempool.c
   ../../blenlib/intern/endian_switch.c
   ../../blenlib/intern/listbase.cc
+  ../../blenlib/intern/string.c
 
   # Dependency of BLI_ghash.c
   ../../blenlib/intern/hash_mm2a.c
