@@ -72,15 +72,14 @@ static float edbm_rip_edgedist_squared(ARegion *region,
 }
 
 #if 0
-static float edbm_rip_linedist(
-    ARegion *region, float mat[4][4], const float co1[3], const float co2[3], const float mvalf[2])
+static float edbm_rip_linedist( ARegion *region, float mat[4][4], const float co1[3], const float co2[3], const float mvalf[2])
 {
-  float vec1[2], vec2[2];
+float vec1[2], vec2[2];
 
-  ED_view3d_project_float_v2_m4(region, co1, vec1, mat);
-  ED_view3d_project_float_v2_m4(region, co2, vec2, mat);
+ED_view3d_project_float_v2_m4(region, co1, vec1, mat);
+ED_view3d_project_float_v2_m4(region, co2, vec2, mat);
 
-  return dist_to_line_v2(mvalf, vec1, vec2);
+return dist_to_line_v2(mvalf, vec1, vec2);
 }
 #endif
 
@@ -204,7 +203,7 @@ static BMEdge *edbm_ripsel_edge_mark_step(BMVert *v, const int uid)
       return e;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 typedef struct EdgeLoopPair {
@@ -224,7 +223,7 @@ static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
   int uid_end;
   int uid = bm->totedge; /* can start anywhere */
 
-  EdgeLoopPair *eloop_pairs = NULL;
+  EdgeLoopPair *eloop_pairs = nullptr;
   BLI_array_declare(eloop_pairs);
   EdgeLoopPair *lp;
 
@@ -246,7 +245,7 @@ static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
     BMEdge *e_first;
     BMEdge *e_last;
 
-    e_first = NULL;
+    e_first = nullptr;
     BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
       if (IS_VISIT_POSSIBLE(e) && !IS_VISIT_DONE(e)) {
         e_first = e;
@@ -254,14 +253,14 @@ static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
       }
     }
 
-    if (e_first == NULL) {
+    if (e_first == nullptr) {
       break;
     }
 
     /* Initialize. */
     e_first = e;
     v_step = e_first->v1;
-    e_step = NULL; /* quiet warning, will never remain this value */
+    e_step = nullptr; /* quiet warning, will never remain this value */
 
     uid_start = uid;
     while ((e = edbm_ripsel_edge_mark_step(v_step, uid))) {
@@ -298,13 +297,13 @@ static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
     UNUSED_VARS_NDEBUG(tot);
 
 #if 0
-    printf("%s: found contiguous edge loop of (%d)\n", __func__, uid_end - uid_start);
+printf("%s: found contiguous edge loop of (%d)\n", __func__, uid_end - uid_start);
 #endif
   }
 
   /* null terminate */
   lp = BLI_array_append_ret(eloop_pairs);
-  lp->l_a = lp->l_b = NULL;
+  lp->l_a = lp->l_b = nullptr;
 
   return eloop_pairs;
 }
@@ -324,7 +323,7 @@ static BMEdge *edbm_ripsel_edge_uid_step(BMEdge *e_orig, BMVert **v_prev)
       return e;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static BMVert *edbm_ripsel_edloop_pair_start_vert(BMEdge *e)
@@ -403,7 +402,8 @@ static UnorderedLoopPair *edbm_tagged_loop_pairs_to_fill(BMesh *bm)
   }
 
   if (total_tag) {
-    UnorderedLoopPair *uloop_pairs = MEM_mallocN(total_tag * sizeof(UnorderedLoopPair), __func__);
+    UnorderedLoopPair *uloop_pairs = static_cast<UnorderedLoopPair *>(
+        MEM_mallocN(total_tag * sizeof(UnorderedLoopPair), __func__));
     UnorderedLoopPair *ulp = uloop_pairs;
 
     BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
@@ -425,7 +425,7 @@ static UnorderedLoopPair *edbm_tagged_loop_pairs_to_fill(BMesh *bm)
 
     return uloop_pairs;
   }
-  return NULL;
+  return nullptr;
 }
 
 static void edbm_tagged_loop_pairs_do_fill_faces(BMesh *bm, UnorderedLoopPair *uloop_pairs)
@@ -442,7 +442,7 @@ static void edbm_tagged_loop_pairs_do_fill_faces(BMesh *bm, UnorderedLoopPair *u
       BMLoop *l_iter;
       BMVert *f_verts[4];
 
-      if (v_shared == NULL) {
+      if (v_shared == nullptr) {
         /* quad */
         f_verts[0] = ulp->l_pair[0]->e->v1;
         f_verts[1] = ulp->l_pair[1]->e->v1;
@@ -461,7 +461,7 @@ static void edbm_tagged_loop_pairs_do_fill_faces(BMesh *bm, UnorderedLoopPair *u
         f_verts[0] = v_shared;
         f_verts[1] = BM_edge_other_vert(ulp->l_pair[0]->e, v_shared);
         f_verts[2] = BM_edge_other_vert(ulp->l_pair[1]->e, v_shared);
-        f_verts[3] = NULL;
+        f_verts[3] = nullptr;
 
         /* don't use the flip flags */
         if (v_shared == ulp->l_pair[0]->v) {
@@ -503,7 +503,7 @@ static void edbm_tagged_loop_pairs_do_fill_faces(BMesh *bm, UnorderedLoopPair *u
  */
 static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obedit, bool do_fill)
 {
-  UnorderedLoopPair *fill_uloop_pairs = NULL;
+  UnorderedLoopPair *fill_uloop_pairs = nullptr;
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -514,7 +514,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
   BMVert *v;
   const int totvert_orig = bm->totvert;
   int i;
-  float projectMat[4][4], fmval[3] = {event->mval[0], event->mval[1]};
+  float projectMat[4][4], fmval[3] = {float(event->mval[0]), float(event->mval[1])};
   float dist_sq = FLT_MAX;
   float d;
   bool is_wire, is_manifold_region;
@@ -529,7 +529,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
     v = (BMVert *)ese.ele;
   }
   else {
-    ese.ele = NULL;
+    ese.ele = nullptr;
 
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
       if (BM_elem_flag_test(v, BM_ELEM_SELECT)) {
@@ -538,15 +538,15 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
     }
   }
 
-  /* (v == NULL) should be impossible */
-  if ((v == NULL) || (v->e == NULL)) {
+  /* (v == nullptr) should be impossible */
+  if ((v == nullptr) || (v->e == nullptr)) {
     return OPERATOR_CANCELLED;
   }
 
   is_wire = BM_vert_is_wire(v);
   is_manifold_region = BM_vert_is_manifold_region(v);
 
-  e_best = NULL;
+  e_best = nullptr;
 
   {
     BMEdge *e;
@@ -559,7 +559,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
         if ((is_manifold_region == false) || BM_edge_is_manifold(e)) {
           d = edbm_rip_edgedist_squared(
               region, projectMat, e->v1->co, e->v2->co, fmval, INSET_DEFAULT);
-          if ((e_best == NULL) || (d < dist_sq)) {
+          if ((e_best == nullptr) || (d < dist_sq)) {
             dist_sq = d;
             e_best = e;
           }
@@ -586,7 +586,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
     }
 
     if (do_fill) {
-      BM_edge_create(bm, v, v_new, NULL, BM_CREATE_NOP);
+      BM_edge_create(bm, v, v_new, nullptr, BM_CREATE_NOP);
     }
 
     return OPERATOR_FINISHED;
@@ -610,18 +610,18 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
       l = l_all[i1];
       edbm_calc_loop_co(l, l_mid_co);
       d = edbm_rip_edgedist_squared(region, projectMat, l->v->co, l_mid_co, fmval, INSET_DEFAULT);
-      if ((e_best == NULL) || (d < dist_sq)) {
+      if ((e_best == nullptr) || (d < dist_sq)) {
         dist_sq = d;
 
         /* find the edge that is not in this loop */
-        e_best = NULL;
+        e_best = nullptr;
         for (i2 = 0; i2 < 3; i2++) {
           if (!BM_edge_in_loop(e_all[i2], l)) {
             e_best = e_all[i2];
             break;
           }
         }
-        BLI_assert(e_best != NULL);
+        BLI_assert(e_best != nullptr);
       }
     }
   }
@@ -724,7 +724,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
 
     if (do_fill) {
       /* match extrude vert-order */
-      BM_edge_create(bm, vout[1], vout[0], NULL, BM_CREATE_NOP);
+      BM_edge_create(bm, vout[1], vout[0], nullptr, BM_CREATE_NOP);
     }
 
     MEM_freeN(vout);
@@ -797,7 +797,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
       v_rip = BM_face_loop_separate_multi(bm, larr, larr_len);
     }
     else {
-      v_rip = NULL;
+      v_rip = nullptr;
     }
 
     if (v_rip) {
@@ -813,7 +813,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
 
   {
     /* --- select which vert --- */
-    BMVert *v_best = NULL;
+    BMVert *v_best = nullptr;
     float l_corner_co[3];
 
     dist_sq = FLT_MAX;
@@ -829,7 +829,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
           edbm_calc_loop_co(l, l_corner_co);
           d = edbm_rip_edgedist_squared(
               region, projectMat, l->v->co, l_corner_co, fmval, INSET_DEFAULT);
-          if ((v_best == NULL) || (d < dist_sq)) {
+          if ((v_best == nullptr) || (d < dist_sq)) {
             v_best = v;
             dist_sq = d;
           }
@@ -862,7 +862,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
  */
 static int edbm_rip_invoke__edge(bContext *C, const wmEvent *event, Object *obedit, bool do_fill)
 {
-  UnorderedLoopPair *fill_uloop_pairs = NULL;
+  UnorderedLoopPair *fill_uloop_pairs = nullptr;
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -873,7 +873,7 @@ static int edbm_rip_invoke__edge(bContext *C, const wmEvent *event, Object *obed
   BMVert *v;
   const int totvert_orig = bm->totvert;
   const int totedge_orig = bm->totedge;
-  float projectMat[4][4], fmval[3] = {event->mval[0], event->mval[1]};
+  float projectMat[4][4], fmval[3] = {float(event->mval[0]), float(event->mval[1])};
 
   EdgeLoopPair *eloop_pairs;
 
@@ -889,7 +889,7 @@ static int edbm_rip_invoke__edge(bContext *C, const wmEvent *event, Object *obed
     int totedge_manifold; /* manifold, visible edges */
     int i;
 
-    e_best = NULL;
+    e_best = nullptr;
     i = 0;
     totedge_manifold = 0;
     all_manifold = true;
@@ -1023,7 +1023,7 @@ static int edbm_rip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     if (bm->totfacesel) {
       /* highly nifty but hard to support since the operator can fail and we're left
        * with modified selection */
-      // WM_operator_name_call(C, "MESH_OT_region_to_loop", WM_OP_INVOKE_DEFAULT, NULL, event);
+      // WM_operator_name_call(C, "MESH_OT_region_to_loop", WM_OP_INVOKE_DEFAULT, nullptr, event);
       continue;
     }
     error_face_selected = false;
@@ -1072,12 +1072,11 @@ static int edbm_rip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
     error_rip_failed = false;
 
-    EDBM_update(obedit->data,
-                &(const struct EDBMUpdate_Params){
-                    .calc_looptri = true,
-                    .calc_normals = true,
-                    .is_destructive = true,
-                });
+    EDBMUpdate_Params params{};
+    params.calc_looptri = true;
+    params.calc_normals = true;
+    params.is_destructive = true;
+    EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
 
   MEM_freeN(objects);
