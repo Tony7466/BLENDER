@@ -895,7 +895,7 @@ void GHOST_ContextCGL::initClear()
 #endif
   }
   else {
-#if WITH_METAL
+#if WITH_METAL_BACKEND
     // TODO (mg_gpusw_apple) this path is never taken, this is legacy left from inital integration
     // of metal and gl, the whole file should be cleaned up and stripped of the legacy path
     id<MTLCommandBuffer> cmdBuffer = [s_sharedMetalCommandQueue commandBuffer];
