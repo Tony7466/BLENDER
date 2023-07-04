@@ -49,7 +49,7 @@ set(SRC
   object_light_linking_ops.cc
   object_modes.cc
   object_modifier.cc
-  object_ops.c
+  object_ops.cc
   object_random.c
   object_relations.c
   object_remesh.cc
