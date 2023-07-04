@@ -21,7 +21,7 @@ set(INC_SYS
 
 set(SRC
   editlattice_select.cc
-  editlattice_tools.c
+  editlattice_tools.cc
   editlattice_undo.c
   lattice_ops.c
 

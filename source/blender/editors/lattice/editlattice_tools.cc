@@ -48,12 +48,12 @@ static bool make_regular_poll(bContext *C)
   return (ob && ob->type == OB_LATTICE);
 }
 
-static int make_regular_exec(bContext *C, wmOperator *UNUSED(op))
+static int make_regular_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
-  const bool is_editmode = CTX_data_edit_object(C) != NULL;
+  const bool is_editmode = CTX_data_edit_object(C) != nullptr;
 
   if (is_editmode) {
     uint objects_len;
@@ -61,13 +61,13 @@ static int make_regular_exec(bContext *C, wmOperator *UNUSED(op))
         scene, view_layer, CTX_wm_view3d(C), &objects_len);
     for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
       Object *ob = objects[ob_index];
-      Lattice *lt = ob->data;
+      Lattice *lt = static_cast<Lattice *>(ob->data);
 
-      if (lt->editlatt->latt == NULL) {
+      if (lt->editlatt->latt == nullptr) {
         continue;
       }
 
-      BKE_lattice_resize(lt->editlatt->latt, lt->pntsu, lt->pntsv, lt->pntsw, NULL);
+      BKE_lattice_resize(lt->editlatt->latt, lt->pntsu, lt->pntsv, lt->pntsw, nullptr);
 
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
@@ -80,8 +80,8 @@ static int make_regular_exec(bContext *C, wmOperator *UNUSED(op))
         continue;
       }
 
-      Lattice *lt = ob->data;
-      BKE_lattice_resize(lt, lt->pntsu, lt->pntsv, lt->pntsw, NULL);
+      Lattice *lt = static_cast<Lattice *>(ob->data);
+      BKE_lattice_resize(lt, lt->pntsu, lt->pntsv, lt->pntsw, nullptr);
 
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
@@ -201,7 +201,7 @@ static int lattice_flip_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   uint objects_len;
   bool changed = false;
-  const eLattice_FlipAxes axis = RNA_enum_get(op->ptr, "axis");
+  const eLattice_FlipAxes axis = eLattice_FlipAxes(RNA_enum_get(op->ptr, "axis"));
 
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C), &objects_len);
@@ -238,7 +238,7 @@ static int lattice_flip_exec(bContext *C, wmOperator *op)
         break;
 
       default:
-        printf("lattice_flip(): Unknown flipping axis (%u)\n", axis);
+        printf("lattice_flip(): Unknown flipping axis (%d)\n", axis);
         return OPERATOR_CANCELLED;
     }
 
@@ -334,7 +334,7 @@ void LATTICE_OT_flip(wmOperatorType *ot)
       {LATTICE_FLIP_U, "U", 0, "U (X) Axis", ""},
       {LATTICE_FLIP_V, "V", 0, "V (Y) Axis", ""},
       {LATTICE_FLIP_W, "W", 0, "W (Z) Axis", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
