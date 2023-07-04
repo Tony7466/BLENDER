@@ -57,7 +57,7 @@ set(SRC
   editmesh_utils.cc
   mesh_data.cc
   mesh_mirror.cc
-  mesh_ops.c
+  mesh_ops.cc
   meshtools.cc
 
   mesh_intern.h
