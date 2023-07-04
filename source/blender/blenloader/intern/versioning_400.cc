@@ -282,13 +282,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "bake_resolution")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
-        lightprobe->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_512;
+        lightprobe->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_1024;
       }
     }
 
     if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "bake_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
-        world->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_512;
+        world->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_1024;
       }
     }
   }

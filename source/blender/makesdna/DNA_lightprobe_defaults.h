@@ -31,7 +31,7 @@
     .vis_blur = 0.2f, \
     .intensity = 1.0f, \
     .flag = LIGHTPROBE_FLAG_SHOW_INFLUENCE, \
-    .bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_512, \
+    .bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_1024, \
   }
 
 /** \} */
