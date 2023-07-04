@@ -750,7 +750,7 @@ static bool imb_exr_multilayer_parse_channels_from_file(ExrHandle *data);
 
 /* ********************** */
 
-void *IMB_exr_get_handle(void)
+void *IMB_exr_get_handle()
 {
   ExrHandle *data = MEM_cnew<ExrHandle>("exr handle");
   data->multiView = new StringVector();
@@ -1480,6 +1480,8 @@ static int imb_exr_split_token(const char *str, const char *end, const char **to
 
 static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *passname)
 {
+  const int layname_maxncpy = EXR_TOT_MAXNAME;
+  const int passname_maxncpy = EXR_TOT_MAXNAME;
   const char *name = echan->m->name.c_str();
   const char *end = name + strlen(name);
   const char *token;
@@ -1490,13 +1492,13 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
     layname[0] = '\0';
 
     if (ELEM(name[0], 'R', 'G', 'B', 'A')) {
-      strcpy(passname, "Combined");
+      BLI_strncpy(passname, "Combined", passname_maxncpy);
     }
     else if (name[0] == 'Z') {
-      strcpy(passname, "Depth");
+      BLI_strncpy(passname, "Depth", passname_maxncpy);
     }
     else {
-      strcpy(passname, name);
+      BLI_strncpy(passname, name, passname_maxncpy);
     }
 
     return 1;
@@ -1565,7 +1567,7 @@ static int imb_exr_split_channel_name(ExrChannel *echan, char *layname, char *pa
 
   /* all preceding tokens combined as layer name */
   if (end > name) {
-    BLI_strncpy(layname, name, int(end - name) + 1);
+    BLI_strncpy(layname, name, std::min(layname_maxncpy, int(end - name) + 1));
   }
   else {
     layname[0] = '\0';
@@ -1756,12 +1758,10 @@ static ExrHandle *imb_exr_begin_read_mem(IStream &file_stream,
 static void exr_printf(const char *fmt, ...)
 {
 #if 0
-  char output[1024];
   va_list args;
   va_start(args, fmt);
-  std::vsprintf(output, fmt, args);
+  vprintf(fmt, args);
   va_end(args);
-  printf("%s", output);
 #else
   (void)fmt;
 #endif
@@ -2300,7 +2300,7 @@ ImBuf *imb_load_filepath_thumbnail_openexr(const char *filepath,
   return nullptr;
 }
 
-void imb_initopenexr(void)
+void imb_initopenexr()
 {
   /* In a multithreaded program, staticInitialize() must be called once during startup, before the
    * program accesses any other functions or classes in the IlmImf library. */
@@ -2308,7 +2308,7 @@ void imb_initopenexr(void)
   Imf::setGlobalThreadCount(BLI_system_thread_count());
 }
 
-void imb_exitopenexr(void)
+void imb_exitopenexr()
 {
   /* Tells OpenEXR to free thread pool, also ensures there is no running tasks. */
   Imf::setGlobalThreadCount(0);

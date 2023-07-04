@@ -66,9 +66,9 @@
 #include "IMB_imbuf_types.h"
 
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -97,10 +97,11 @@ struct CompoJob {
   bNodeTree *localtree;
   /* Render instance. */
   Render *re;
-  /* Jon system integration. */
+  /* Job system integration. */
   const bool *stop;
   bool *do_update;
   float *progress;
+  bool cancelled;
 };
 
 float node_socket_calculate_height(const bNodeSocket &socket)
@@ -209,7 +210,13 @@ static void compo_freejob(void *cjv)
   CompoJob *cj = (CompoJob *)cjv;
 
   if (cj->localtree) {
-    bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    /* Merge back node previews, only for completed jobs. */
+    if (!cj->cancelled) {
+      bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    }
+
+    bke::ntreeFreeTree(cj->localtree);
+    MEM_freeN(cj->localtree);
   }
   if (cj->compositor_depsgraph != nullptr) {
     DEG_graph_free(cj->compositor_depsgraph);
@@ -243,7 +250,7 @@ static void compo_initjob(void *cjv)
   }
 
   cj->re = RE_NewSceneRender(scene);
-  RE_system_gpu_context_create(cj->re);
+  RE_system_gpu_context_ensure(cj->re);
 }
 
 /* Called before redraw notifiers, it moves finished previews over. */
@@ -302,8 +309,6 @@ static void compo_startjob(void *cjv,
     }
   }
 
-  RE_system_gpu_context_destroy(cj->re);
-
   ntree->runtime->test_break = nullptr;
   ntree->runtime->stats_draw = nullptr;
   ntree->runtime->progress = nullptr;
@@ -315,6 +320,7 @@ static void compo_canceljob(void *cjv)
   Main *bmain = cj->bmain;
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_CANCEL);
+  cj->cancelled = true;
 }
 
 static void compo_completejob(void *cjv)

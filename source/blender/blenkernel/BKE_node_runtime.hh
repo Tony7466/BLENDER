@@ -33,8 +33,8 @@ struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
-namespace blender::bke::node_tree_zones {
-class TreeZones;
+namespace blender::bke {
+class bNodeTreeZones;
 }
 namespace blender::bke::anonymous_attribute_inferencing {
 struct AnonymousAttributeInferencingResult;
@@ -149,7 +149,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   mutable std::atomic<int> allow_use_dirty_topology_cache = 0;
 
   CacheMutex tree_zones_cache_mutex;
-  std::unique_ptr<node_tree_zones::TreeZones> tree_zones;
+  std::unique_ptr<bNodeTreeZones> tree_zones;
 
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> links;
@@ -536,6 +536,16 @@ inline blender::Span<const bNodePanel *> bNodeTree::panels() const
 inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
 {
   return blender::MutableSpan(panels_array, panels_num);
+}
+
+inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()
+{
+  return {this->nested_node_refs, this->nested_node_refs_num};
+}
+
+inline blender::Span<bNestedNodeRef> bNodeTree::nested_node_refs_span() const
+{
+  return {this->nested_node_refs, this->nested_node_refs_num};
 }
 
 /** \} */

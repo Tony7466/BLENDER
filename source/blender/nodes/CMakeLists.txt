@@ -62,7 +62,7 @@ set(SRC
   NOD_common.h
   NOD_composite.h
   NOD_derived_node_tree.hh
-  NOD_geometry.h
+  NOD_geometry.hh
   NOD_geometry_exec.hh
   NOD_geometry_nodes_execute.hh
   NOD_geometry_nodes_lazy_function.hh
@@ -72,7 +72,7 @@ set(SRC
   NOD_node_declaration.hh
   NOD_register.hh
   NOD_shader.h
-  NOD_socket.h
+  NOD_socket.hh
   NOD_socket_declarations.hh
   NOD_socket_declarations_geometry.hh
   NOD_socket_search_link.hh

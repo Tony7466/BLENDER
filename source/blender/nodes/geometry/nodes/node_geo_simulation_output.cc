@@ -17,7 +17,7 @@
 #include "UI_interface.h"
 
 #include "NOD_common.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 
 #include "FN_field_cpp_type.hh"
 
@@ -693,8 +693,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     EvalData &eval_data = *static_cast<EvalData *>(context.storage);
     BLI_SCOPED_DEFER([&]() { eval_data.is_first_evaluation = false; });
 
-    const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,
-                                                                      node_.identifier);
+    const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(user_data, node_.identifier);
 
     const bke::sim::SimulationZoneState *current_zone_state =
         modifier_data.current_simulation_state ?
@@ -823,19 +822,23 @@ std::unique_ptr<LazyFunction> get_simulation_output_lazy_function(
   return std::make_unique<file_ns::LazyFunctionForSimulationOutputNode>(node, own_lf_graph_info);
 }
 
-bke::sim::SimulationZoneID get_simulation_zone_id(const ComputeContext &compute_context,
+bke::sim::SimulationZoneID get_simulation_zone_id(const GeoNodesLFUserData &user_data,
                                                   const int output_node_id)
 {
-  bke::sim::SimulationZoneID zone_id;
-  for (const ComputeContext *context = &compute_context; context != nullptr;
+  Vector<int> node_ids;
+  for (const ComputeContext *context = user_data.compute_context; context != nullptr;
        context = context->parent())
   {
     if (const auto *node_context = dynamic_cast<const bke::NodeGroupComputeContext *>(context)) {
-      zone_id.node_ids.append(node_context->node_id());
+      node_ids.append(node_context->node_id());
     }
   }
-  std::reverse(zone_id.node_ids.begin(), zone_id.node_ids.end());
-  zone_id.node_ids.append(output_node_id);
+  std::reverse(node_ids.begin(), node_ids.end());
+  node_ids.append(output_node_id);
+  const bNestedNodeRef *nested_node_ref = user_data.root_ntree->nested_node_ref_from_node_id_path(
+      node_ids);
+  bke::sim::SimulationZoneID zone_id;
+  zone_id.nested_node_id = nested_node_ref->id;
   return zone_id;
 }
 
@@ -995,7 +998,7 @@ blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() con
   return blender::Span<NodeSimulationItem>(items, items_num);
 }
 
-blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_span_for_write()
+blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_span()
 {
   return blender::MutableSpan<NodeSimulationItem>(items, items_num);
 }
@@ -1047,6 +1050,7 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
                                               '.',
                                               unique_name,
                                               ARRAY_SIZE(unique_name));
+  MEM_delete(item->name);
   item->name = BLI_strdup(unique_name);
   return name_changed;
 }
@@ -1077,7 +1081,7 @@ void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                              const char *name)
 {
-  for (NodeSimulationItem &item : sim->items_span_for_write()) {
+  for (NodeSimulationItem &item : sim->items_span()) {
     if (STREQ(item.name, name)) {
       return &item;
     }
@@ -1164,7 +1168,7 @@ void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *si
 
 void NOD_geometry_simulation_output_clear_items(NodeGeometrySimulationOutput *sim)
 {
-  for (NodeSimulationItem &item : sim->items_span_for_write()) {
+  for (NodeSimulationItem &item : sim->items_span()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(sim->items);

@@ -1026,8 +1026,8 @@ static void override_idtemplate_menu()
   MenuType *mt;
 
   mt = MEM_cnew<MenuType>(__func__);
-  strcpy(mt->idname, "UI_MT_idtemplate_liboverride");
-  strcpy(mt->label, N_("Library Override"));
+  STRNCPY(mt->idname, "UI_MT_idtemplate_liboverride");
+  STRNCPY(mt->label, N_("Library Override"));
   mt->poll = override_idtemplate_menu_poll;
   mt->draw = override_idtemplate_menu_draw;
   WM_menutype_add(mt);
@@ -1658,7 +1658,7 @@ struct uiEditSourceButStore {
 /* should only ever be set while the edit source operator is running */
 static uiEditSourceStore *ui_editsource_info = nullptr;
 
-bool UI_editsource_enable_check(void)
+bool UI_editsource_enable_check()
 {
   return (ui_editsource_info != nullptr);
 }
@@ -2548,7 +2548,7 @@ static void UI_OT_drop_material(wmOperatorType *ot)
 /** \name Operator & Keymap Registration
  * \{ */
 
-void ED_operatortypes_ui(void)
+void ED_operatortypes_ui()
 {
   WM_operatortype_append(UI_OT_copy_data_path_button);
   WM_operatortype_append(UI_OT_copy_as_driver_button);
