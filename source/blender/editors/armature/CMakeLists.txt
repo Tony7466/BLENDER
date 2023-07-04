@@ -30,7 +30,7 @@ set(SRC
   armature_naming.cc
   armature_ops.cc
   armature_relations.cc
-  armature_select.c
+  armature_select.cc
   armature_skinning.c
   armature_utils.c
   editarmature_undo.cc
