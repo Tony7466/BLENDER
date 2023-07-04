@@ -51,7 +51,7 @@
 
 static Scene *scene_add(Main *bmain, Scene *scene_old, eSceneCopyMethod method)
 {
-  Scene *scene_new = NULL;
+  Scene *scene_new = nullptr;
   if (method == SCE_COPY_NEW) {
     scene_new = BKE_scene_add(bmain, DATA_("Scene"));
   }
@@ -73,9 +73,9 @@ Scene *ED_scene_sequencer_add(Main *bmain,
                               eSceneCopyMethod method,
                               const bool assign_strip)
 {
-  Sequence *seq = NULL;
+  Sequence *seq = nullptr;
   Scene *scene_active = CTX_data_scene(C);
-  Scene *scene_strip = NULL;
+  Scene *scene_strip = nullptr;
   /* Sequencer need to use as base the scene defined in the strip, not the main scene. */
   Editing *ed = scene_active->ed;
   if (ed) {
@@ -86,7 +86,7 @@ Scene *ED_scene_sequencer_add(Main *bmain,
   }
 
   /* If no scene assigned to the strip, only NEW scene mode is logic. */
-  if (scene_strip == NULL) {
+  if (scene_strip == nullptr) {
     method = SCE_COPY_NEW;
   }
 
@@ -131,21 +131,21 @@ bool ED_scene_delete(bContext *C, Main *bmain, Scene *scene)
   Scene *scene_new;
 
   /* kill running jobs */
-  wmWindowManager *wm = bmain->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_ANY);
 
   if (scene->id.prev) {
-    scene_new = scene->id.prev;
+    scene_new = static_cast<Scene *>(scene->id.prev);
   }
   else if (scene->id.next) {
-    scene_new = scene->id.next;
+    scene_new = static_cast<Scene *>(scene->id.next);
   }
   else {
     return false;
   }
 
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    if (win->parent != NULL) { /* We only care about main windows here... */
+    if (win->parent != nullptr) { /* We only care about main windows here... */
       continue;
     }
     if (win->scene == scene) {
@@ -190,7 +190,9 @@ static void view_layer_remove_unset_nodetrees(const Main *bmain, Scene *scene, V
 {
   int act_layer_index = BLI_findindex(&scene->view_layers, layer);
 
-  for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
+  for (Scene *sce = static_cast<Scene *>(bmain->scenes.first); sce;
+       sce = static_cast<Scene *>(sce->id.next))
+  {
     if (sce->nodetree) {
       BKE_nodetree_remove_layer_n(sce->nodetree, scene, act_layer_index);
     }
@@ -218,7 +220,7 @@ bool ED_scene_view_layer_delete(Main *bmain, Scene *scene, ViewLayer *layer, Rep
   BLI_assert(BLI_listbase_is_empty(&scene->view_layers) == false);
 
   /* Remove from windows. */
-  wmWindowManager *wm = bmain->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (win->scene == scene && STREQ(win->view_layer_name, layer->name)) {
       ViewLayer *first_layer = BKE_view_layer_default_view(scene);
@@ -249,7 +251,7 @@ static int scene_new_exec(bContext *C, wmOperator *op)
   wmWindow *win = CTX_wm_window(C);
   int type = RNA_enum_get(op->ptr, "type");
 
-  ED_scene_add(bmain, C, win, type);
+  ED_scene_add(bmain, C, win, eSceneCopyMethod(type));
 
   return OPERATOR_FINISHED;
 }
@@ -267,7 +269,7 @@ static EnumPropertyItem scene_new_items[] = {
      "Linked Copy",
      "Link in the collections from the current scene (shallow copy)"},
     {SCE_COPY_FULL, "FULL_COPY", 0, "Full Copy", "Make a full copy of the current scene"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static void SCENE_OT_new(wmOperatorType *ot)
@@ -301,7 +303,7 @@ static int scene_new_sequencer_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   int type = RNA_enum_get(op->ptr, "type");
 
-  if (ED_scene_sequencer_add(bmain, C, type, true) == NULL) {
+  if (ED_scene_sequencer_add(bmain, C, eSceneCopyMethod(type), true) == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -316,11 +318,11 @@ static bool scene_new_sequencer_poll(bContext *C)
 }
 
 static const EnumPropertyItem *scene_new_sequencer_enum_itemf(bContext *C,
-                                                              PointerRNA *UNUSED(ptr),
-                                                              PropertyRNA *UNUSED(prop),
+                                                              PointerRNA * /*ptr*/,
+                                                              PropertyRNA * /*prop*/,
                                                               bool *r_free)
 {
-  EnumPropertyItem *item = NULL;
+  EnumPropertyItem *item = nullptr;
   int totitem = 0;
   uint item_index;
 
@@ -328,14 +330,14 @@ static const EnumPropertyItem *scene_new_sequencer_enum_itemf(bContext *C,
   RNA_enum_item_add(&item, &totitem, &scene_new_items[item_index]);
 
   bool has_scene_or_no_context = false;
-  if (C == NULL) {
+  if (C == nullptr) {
     /* For documentation generation. */
     has_scene_or_no_context = true;
   }
   else {
     Scene *scene = CTX_data_scene(C);
     Sequence *seq = SEQ_select_active_get(scene);
-    if (seq && (seq->type == SEQ_TYPE_SCENE) && (seq->scene != NULL)) {
+    if (seq && (seq->type == SEQ_TYPE_SCENE) && (seq->scene != nullptr)) {
       has_scene_or_no_context = true;
     }
   }
@@ -388,7 +390,7 @@ static bool scene_delete_poll(bContext *C)
   return BKE_scene_can_be_removed(bmain, scene);
 }
 
-static int scene_delete_exec(bContext *C, wmOperator *UNUSED(op))
+static int scene_delete_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
 
