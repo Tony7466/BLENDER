@@ -46,22 +46,22 @@ static CLG_LogRef LOG = {"ed.undo.mball"};
 /** \name Undo Conversion
  * \{ */
 
-typedef struct UndoMBall {
+struct UndoMBall {
   ListBase editelems;
   int lastelem_index;
   size_t undo_size;
-} UndoMBall;
+};
 
 /* free all MetaElems from ListBase */
 static void freeMetaElemlist(ListBase *lb)
 {
   MetaElem *ml;
 
-  if (lb == NULL) {
+  if (lb == nullptr) {
     return;
   }
 
-  while ((ml = BLI_pophead(lb))) {
+  while ((ml = static_cast<MetaElem *>(BLI_pophead(lb)))) {
     MEM_freeN(ml);
   }
 }
@@ -69,12 +69,14 @@ static void freeMetaElemlist(ListBase *lb)
 static void undomball_to_editmball(UndoMBall *umb, MetaBall *mb)
 {
   freeMetaElemlist(mb->editelems);
-  mb->lastelem = NULL;
+  mb->lastelem = nullptr;
 
   /* copy 'undo' MetaElems to 'edit' MetaElems */
   int index = 0;
-  for (MetaElem *ml_undo = umb->editelems.first; ml_undo; ml_undo = ml_undo->next, index += 1) {
-    MetaElem *ml_edit = MEM_dupallocN(ml_undo);
+  for (MetaElem *ml_undo = static_cast<MetaElem *>(umb->editelems.first); ml_undo;
+       ml_undo = ml_undo->next, index += 1)
+  {
+    MetaElem *ml_edit = static_cast<MetaElem *>(MEM_dupallocN(ml_undo));
     BLI_addtail(mb->editelems, ml_edit);
     if (index == umb->lastelem_index) {
       mb->lastelem = ml_edit;
@@ -91,8 +93,10 @@ static void *editmball_from_undomball(UndoMBall *umb, MetaBall *mb)
 
   /* copy contents of current ListBase to the undo ListBase */
   int index = 0;
-  for (MetaElem *ml_edit = mb->editelems->first; ml_edit; ml_edit = ml_edit->next, index += 1) {
-    MetaElem *ml_undo = MEM_dupallocN(ml_edit);
+  for (MetaElem *ml_edit = static_cast<MetaElem *>(mb->editelems->first); ml_edit;
+       ml_edit = ml_edit->next, index += 1)
+  {
+    MetaElem *ml_undo = static_cast<MetaElem *>(MEM_dupallocN(ml_edit));
     BLI_addtail(&umb->editelems, ml_undo);
     if (ml_edit == mb->lastelem) {
       umb->lastelem_index = index;
@@ -116,12 +120,12 @@ static Object *editmball_object_from_context(bContext *C)
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *obedit = BKE_view_layer_edit_object_get(view_layer);
   if (obedit && obedit->type == OB_MBALL) {
-    MetaBall *mb = obedit->data;
-    if (mb->editelems != NULL) {
+    MetaBall *mb = static_cast<MetaBall *>(obedit->data);
+    if (mb->editelems != nullptr) {
       return obedit;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -132,20 +136,20 @@ static Object *editmball_object_from_context(bContext *C)
  * \note This is similar for all edit-mode types.
  * \{ */
 
-typedef struct MBallUndoStep_Elem {
+struct MBallUndoStep_Elem {
   UndoRefID_Object obedit_ref;
   UndoMBall data;
-} MBallUndoStep_Elem;
+};
 
-typedef struct MBallUndoStep {
+struct MBallUndoStep {
   UndoStep step;
   MBallUndoStep_Elem *elems;
   uint elems_len;
-} MBallUndoStep;
+};
 
 static bool mball_undosys_poll(bContext *C)
 {
-  return editmball_object_from_context(C) != NULL;
+  return editmball_object_from_context(C) != nullptr;
 }
 
 static bool mball_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
@@ -159,7 +163,8 @@ static bool mball_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
   uint objects_len = 0;
   Object **objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer, &objects_len);
 
-  us->elems = MEM_callocN(sizeof(*us->elems) * objects_len, __func__);
+  us->elems = static_cast<MBallUndoStep_Elem *>(
+      MEM_callocN(sizeof(*us->elems) * objects_len, __func__));
   us->elems_len = objects_len;
 
   for (uint i = 0; i < objects_len; i++) {
@@ -167,7 +172,7 @@ static bool mball_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
     MBallUndoStep_Elem *elem = &us->elems[i];
 
     elem->obedit_ref.ptr = ob;
-    MetaBall *mb = ob->data;
+    MetaBall *mb = static_cast<MetaBall *>(ob->data);
     editmball_from_undomball(&elem->data, mb);
     mb->needs_flush_to_id = 1;
     us->step.data_size += elem->data.undo_size;
@@ -179,11 +184,8 @@ static bool mball_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
   return true;
 }
 
-static void mball_undosys_step_decode(bContext *C,
-                                      Main *bmain,
-                                      UndoStep *us_p,
-                                      const eUndoStepDir UNUSED(dir),
-                                      bool UNUSED(is_final))
+static void mball_undosys_step_decode(
+    bContext *C, Main *bmain, UndoStep *us_p, const eUndoStepDir /*dir*/, bool /*is_final*/)
 {
   MBallUndoStep *us = (MBallUndoStep *)us_p;
 
@@ -195,8 +197,8 @@ static void mball_undosys_step_decode(bContext *C,
   for (uint i = 0; i < us->elems_len; i++) {
     MBallUndoStep_Elem *elem = &us->elems[i];
     Object *obedit = elem->obedit_ref.ptr;
-    MetaBall *mb = obedit->data;
-    if (mb->editelems == NULL) {
+    MetaBall *mb = static_cast<MetaBall *>(obedit->data);
+    if (mb->editelems == nullptr) {
       /* Should never fail, may not crash but can give odd behavior. */
       CLOG_ERROR(&LOG,
                  "name='%s', failed to enter edit-mode for object '%s', undo state invalid",
@@ -218,7 +220,7 @@ static void mball_undosys_step_decode(bContext *C,
 
   bmain->is_memfile_undo_flush_needed = true;
 
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, NULL);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
 }
 
 static void mball_undosys_step_free(UndoStep *us_p)
