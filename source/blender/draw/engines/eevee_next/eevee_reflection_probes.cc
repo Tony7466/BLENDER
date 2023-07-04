@@ -5,6 +5,13 @@
 #include "eevee_reflection_probes.hh"
 #include "eevee_instance.hh"
 
+/* Generate dummy light probe texture.
+ *
+ * Reflection probes aren't implemented yet. For testing purposes this can be enabled to generate a
+ * dummy texture based on the object color of the light probe.
+ */
+#define GENERATE_DUMMY_LIGHT_PROBE_TEXTURE false
+
 namespace blender::eevee {
 
 void ReflectionProbeModule::init()
@@ -16,22 +23,22 @@ void ReflectionProbeModule::init()
       data_buf_[i] = init_probe_data;
     }
 
-    /* Initialize the world cubemap. */
+    /* Initialize the world probe. */
     ReflectionProbeData world_probe_data{};
     world_probe_data.layer = 0;
     world_probe_data.layer_subdivision = world_subdivision_level_;
-    world_probe_data.area_index = 1;
+    world_probe_data.area_index = 0;
     world_probe_data.color = float4(0.0f);
     world_probe_data.pos = float3(0.0f);
     world_probe_data.intensity = 1.0f;
     data_buf_[0] = world_probe_data;
 
-    ReflectionProbe world_cubemap;
-    world_cubemap.type = ReflectionProbe::Type::World;
-    world_cubemap.is_dirty = true;
-    world_cubemap.is_probes_tx_dirty = true;
-    world_cubemap.index = 0;
-    probes_.append(world_cubemap);
+    ReflectionProbe world_probe;
+    world_probe.type = ReflectionProbe::Type::World;
+    world_probe.is_dirty = true;
+    world_probe.is_probes_tx_dirty = true;
+    world_probe.index = 0;
+    probes_.append(world_probe);
 
     const int max_mipmap_levels = log(max_resolution_) + 1;
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
@@ -100,6 +107,7 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
+#if GENERATE_DUMMY_LIGHT_PROBE_TEXTURE
   const ::LightProbe *light_probe = (::LightProbe *)ob->data;
   if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
     return;
@@ -114,6 +122,9 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe_data.color = ob->color;
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
   probe_data.intensity = light_probe->intensity;
+#else
+  UNUSED_VARS(ob, ob_handle);
+#endif
 }
 
 ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
@@ -253,11 +264,6 @@ void ReflectionProbeModule::end_sync()
   remove_unused_probes();
   data_buf_.push_update();
 
-#if true
-  debug_print();
-  validate();
-#endif
-
   int number_layers_needed = needed_layers_get();
   int current_layers = probes_tx_.depth();
   bool resize_layers = current_layers < number_layers_needed;
@@ -347,70 +353,6 @@ void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_da
   BLI_assert(reflection_probe_data_index_max() == max_index - 1);
 }
 
-void ReflectionProbeModule::debug_print() const
-{
-  std::stringstream out;
-
-  out << "\n *** " << __func__ << " ***\n";
-  for (const ReflectionProbe &probe : probes_) {
-    switch (probe.type) {
-      case ReflectionProbe::Type::Unused: {
-        out << "UNUSED\n";
-
-        break;
-      }
-      case ReflectionProbe::Type::World: {
-        out << "WORLD";
-        out << " is_dirty: " << probe.is_dirty;
-        out << " index: " << probe.index;
-        out << "\n";
-        break;
-      }
-      case ReflectionProbe::Type::Probe: {
-        out << "PROBE";
-        out << " is_dirty: " << probe.is_dirty;
-        out << " is_used: " << probe.is_used;
-        out << " ob_hash: " << probe.object_hash_value;
-        out << " index: " << probe.index;
-        out << "\n";
-        break;
-      }
-    }
-
-    if (probe.index != -1) {
-      const ReflectionProbeData &data = data_buf_[probe.index];
-      out << " - layer: " << data.layer;
-      out << " subdivision: " << data.layer_subdivision;
-      out << " area: " << data.area_index;
-      out << "\n";
-      out << "   intensity: " << data.intensity;
-      out << "\n";
-    }
-  }
-
-  printf("%s", out.str().c_str());
-}
-
-void ReflectionProbeModule::validate() const
-{
-  for (const ReflectionProbe &probe : probes_) {
-    switch (probe.type) {
-      case ReflectionProbe::Type::Unused: {
-        BLI_assert(probe.index == -1);
-        break;
-      }
-      case ReflectionProbe::Type::World: {
-        BLI_assert(probe.index != -1);
-        break;
-      }
-      case ReflectionProbe::Type::Probe: {
-        BLI_assert(probe.index != -1);
-        break;
-      }
-    }
-  }
-}
-
 /* -------------------------------------------------------------------- */
 /** \name World
  *
@@ -431,6 +373,62 @@ bool ReflectionProbe::needs_update() const
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Debugging
+ *
+ * \{ */
+
+void ReflectionProbeModule::debug_print() const
+{
+  std::ostream &os = std::cout;
+  for (const ReflectionProbe &probe : probes_) {
+    os << probe;
+
+    if (probe.index != -1) {
+      os << data_buf_[probe.index];
+    }
+  }
+}
+
+std::ostream &operator<<(std::ostream &os, const ReflectionProbeData &probe_data)
+{
+  os << " - layer: " << probe_data.layer;
+  os << " subdivision: " << probe_data.layer_subdivision;
+  os << " area: " << probe_data.area_index;
+  os << "\n";
+  os << "   intensity: " << probe_data.intensity;
+  os << "\n";
+
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
+{
+  switch (probe.type) {
+    case ReflectionProbe::Type::Unused: {
+      os << "UNUSED\n";
+
+      break;
+    }
+    case ReflectionProbe::Type::World: {
+      os << "WORLD";
+      os << " is_dirty: " << probe.is_dirty;
+      os << " index: " << probe.index;
+      os << "\n";
+      break;
+    }
+    case ReflectionProbe::Type::Probe: {
+      os << "PROBE";
+      os << " is_dirty: " << probe.is_dirty;
+      os << " is_used: " << probe.is_used;
+      os << " ob_hash: " << probe.object_hash_value;
+      os << " index: " << probe.index;
+      os << "\n";
+      break;
+    }
+  }
+  return os;
+}
 void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
 {
   const ReflectionProbeData &probe_data = data_buf_[probe.index];
@@ -458,7 +456,6 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
   }
 
   /* Upload the checker pattern to each side of the cubemap*/
-  /* TODO: Apply octahedral mapping. */
   int probes_per_dimension = 1 << probe_data.layer_subdivision;
   int2 probe_area_pos(probe_data.area_index % probes_per_dimension,
                       probe_data.area_index / probes_per_dimension);
@@ -468,6 +465,8 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
 
   MEM_freeN(data);
 }
+
+/** \} */
 
 void ReflectionProbeModule::remap_to_octahedral_projection()
 {

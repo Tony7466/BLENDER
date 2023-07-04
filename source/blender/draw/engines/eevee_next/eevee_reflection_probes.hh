@@ -107,7 +107,6 @@ class ReflectionProbeModule {
   }
 
   void debug_print() const;
-  void validate() const;
 
  private:
   void sync(const ReflectionProbe &cubemap);
@@ -146,5 +145,9 @@ class ReflectionProbeModule {
   /* Capture View requires access to the cubemaps texture for frame-buffer configuration. */
   friend class CaptureView;
 };
+
+std::ostream &operator<<(std::ostream &os, const ReflectionProbeModule &module);
+std::ostream &operator<<(std::ostream &os, const ReflectionProbeData &probe_data);
+std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe);
 
 }  // namespace blender::eevee
