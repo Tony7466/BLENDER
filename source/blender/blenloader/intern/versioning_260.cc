@@ -95,8 +95,7 @@ static void do_versions_nodetree_convert_angle(bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == CMP_NODE_ROTATE) {
       /* Convert degrees to radians. */
-      bNodeSocket *sock = static_cast<bNodeSocket *>(
-          static_cast<bNodeSocket *>(node->inputs.first)->next);
+      bNodeSocket *sock = static_cast<bNodeSocket *>(node->inputs.first)->next;
       ((bNodeSocketValueFloat *)sock->default_value)->value = DEG2RADF(
           ((bNodeSocketValueFloat *)sock->default_value)->value);
     }
@@ -2336,7 +2335,7 @@ void do_versions_after_linking_260(Main *bmain)
       for (link = static_cast<bNodeLink *>(ntree->links.first); link != nullptr; link = next_link)
       {
         bool free_link = false;
-        next_link = static_cast<bNodeLink *>(link->next);
+        next_link = link->next;
 
         if (link->fromnode == nullptr) {
           if (input_node) {
@@ -2402,7 +2401,7 @@ void do_versions_after_linking_260(Main *bmain)
 
       for (link = static_cast<bNodeLink *>(ntree->links.first); link != nullptr; link = next_link)
       {
-        next_link = static_cast<bNodeLink *>(link->next);
+        next_link = link->next;
         if (link->fromnode == nullptr || link->tonode == nullptr) {
           nodeRemLink(ntree, link);
         }
