@@ -26,5 +26,5 @@ void color_to_blender_normal_new_shading(vec3 color, out vec3 normal)
 
 void node_normal_map_mix(float strength, vec3 newnormal, out vec3 outnormal)
 {
-  outnormal = normalize(mix(g_data.N, newnormal, max(strength, 0.0)));
+  outnormal = normalize(vec3(g_data.N.xy + newnormal.xy * strength, mix(g_data.N.z, newnormal.z, saturate(strength))));
 }
