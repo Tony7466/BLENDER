@@ -239,6 +239,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_GENERIC_LABEL)) {
     id = nullptr;
   }
+  else if (type == TSE_BONE) {
+    id = ((BoneElementCreateData *)idv)->armature_id;
+  }
 
   /* exceptions */
   if (ELEM(type, TSE_ID_BASE, TSE_GENERIC_LABEL)) {

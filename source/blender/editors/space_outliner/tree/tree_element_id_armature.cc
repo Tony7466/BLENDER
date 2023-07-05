@@ -83,7 +83,9 @@ static void outliner_add_bone(SpaceOutliner *space_outliner,
                               TreeElement *parent,
                               int *a)
 {
-  TreeElement *te = outliner_add_element(space_outliner, lb, id, parent, TSE_BONE, *a);
+  BoneElementCreateData bone_data = {id, curBone};
+
+  TreeElement *te = outliner_add_element(space_outliner, lb, &bone_data, parent, TSE_BONE, *a);
 
   (*a)++;
 

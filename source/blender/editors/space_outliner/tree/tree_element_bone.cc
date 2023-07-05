@@ -15,8 +15,8 @@
 
 namespace blender::ed::outliner {
 
-TreeElementBone::TreeElementBone(TreeElement &legacy_te, Bone &bone)
-    : AbstractTreeElement(legacy_te)
+TreeElementBone::TreeElementBone(TreeElement &legacy_te, ID &armature_id, Bone &bone)
+    : AbstractTreeElement(legacy_te), armature_id_(armature_id), bone_(bone)
 {
   BLI_assert(legacy_te.store_elem->type == TSE_BONE);
   legacy_te.name = bone.name;

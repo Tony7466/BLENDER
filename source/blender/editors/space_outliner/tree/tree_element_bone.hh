@@ -13,9 +13,11 @@
 namespace blender::ed::outliner {
 
 class TreeElementBone final : public AbstractTreeElement {
+  ID &armature_id_;
+  Bone &bone_;
 
  public:
-  TreeElementBone(TreeElement &legacy_te, Bone &bone);
+  TreeElementBone(TreeElement &legacy_te, ID &armature_id, Bone &bone);
 };
 
 }  // namespace blender::ed::outliner
