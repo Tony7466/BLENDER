@@ -793,7 +793,7 @@ static float vfont_descent(const VFontData *vfd)
 typedef struct TextBoxBounds_ForCursor {
   /**
    * Describes the minimum rectangle that contains all characters in a text-box, the values
-   * ​​are scaled by `1 / #font_size`. */
+   * are scaled by `1 / #font_size`. */
   struct rctf bounds;
   int last_char_index;
 } TextBoxBounds_ForCursor;
@@ -1376,7 +1376,7 @@ static bool vfont_to_curve(Object *ob,
 
       rctf *bounds = &tb_bounds->bounds;
       /* In a text-box with no curves, 'yof' only decrements over lines, 'ymax' and 'ymin'
-       * ​​can be obtained from any character in the first and last line of the text-box. */
+       * can be obtained from any character in the first and last line of the text-box. */
       bounds->ymax = chartransdata[start_char].yof;
       bounds->ymin = chartransdata[end_char].yof;
 
