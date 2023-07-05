@@ -66,9 +66,9 @@
 #include "IMB_imbuf_types.h"
 
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
