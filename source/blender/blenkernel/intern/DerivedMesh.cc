@@ -1133,6 +1133,21 @@ static void editbmesh_calc_modifier_final_normals_or_defer(
   editbmesh_calc_modifier_final_normals(mesh_final, final_datamask);
 }
 
+static float (*mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh))[3]
+{
+  switch (mesh->runtime->wrapper_type) {
+    case ME_WRAPPER_TYPE_BMESH:
+      if (mesh->runtime->edit_data->vertexCos == nullptr) {
+        mesh->runtime->edit_data->vertexCos = editbmesh_vert_coords_alloc(mesh->edit_mesh);
+      }
+      return mesh->runtime->edit_data->vertexCos;
+    case ME_WRAPPER_TYPE_MDATA:
+    case ME_WRAPPER_TYPE_SUBD:
+      return reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data());
+  }
+  return nullptr;
+}
+
 static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                      const Scene *scene,
                                      Object *ob,
@@ -1235,7 +1250,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                     &mectx,
                                     em_input,
                                     mesh_final,
-                                    BKE_mesh_wrapper_vert_coords_ensure_for_write(mesh_final),
+                                    mesh_wrapper_vert_coords_ensure_for_write(mesh_final),
                                     BKE_mesh_wrapper_vert_len(mesh_final));
         BKE_mesh_wrapper_tag_positions_changed(mesh_final);
       }

@@ -181,20 +181,6 @@ const float (*BKE_mesh_wrapper_vert_coords(const Mesh *mesh))[3]
   return nullptr;
 }
 
-float (*BKE_mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh))[3]
-{
-  switch (mesh->runtime->wrapper_type) {
-    case ME_WRAPPER_TYPE_BMESH:
-      if (mesh->runtime->edit_data->vertexCos == nullptr) {
-        mesh->runtime->edit_data->vertexCos = editbmesh_vert_coords_alloc(mesh->edit_mesh);
-      }
-      return mesh->runtime->edit_data->vertexCos;
-    case ME_WRAPPER_TYPE_MDATA:
-    case ME_WRAPPER_TYPE_SUBD:
-      return reinterpret_cast<float(*)[3]>(mesh->vert_positions_for_write().data());
-  }
-  return nullptr;
-}
 
 const float (*BKE_mesh_wrapper_poly_normals(Mesh *mesh))[3]
 {

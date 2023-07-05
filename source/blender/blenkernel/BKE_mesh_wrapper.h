@@ -32,10 +32,6 @@ int BKE_mesh_wrapper_poly_len(const struct Mesh *me);
  */
 const float (*BKE_mesh_wrapper_vert_coords(const struct Mesh *mesh))[3];
 
-/**
- * Return the mesh's contiguous array of vertices, creating it if necessary.
- */
-float (*BKE_mesh_wrapper_vert_coords_ensure_for_write(struct Mesh *mesh))[3];
 
 /**
  * Return a contiguous array of face normal values, if available.
