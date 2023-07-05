@@ -43,6 +43,7 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+#include "RNA_enum_types.h"
 #include "RNA_path.h"
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
@@ -1025,8 +1026,8 @@ static void override_idtemplate_menu()
   MenuType *mt;
 
   mt = MEM_cnew<MenuType>(__func__);
-  strcpy(mt->idname, "UI_MT_idtemplate_liboverride");
-  strcpy(mt->label, N_("Library Override"));
+  STRNCPY(mt->idname, "UI_MT_idtemplate_liboverride");
+  STRNCPY(mt->label, N_("Library Override"));
   mt->poll = override_idtemplate_menu_poll;
   mt->draw = override_idtemplate_menu_draw;
   WM_menutype_add(mt);
@@ -1657,7 +1658,7 @@ struct uiEditSourceButStore {
 /* should only ever be set while the edit source operator is running */
 static uiEditSourceStore *ui_editsource_info = nullptr;
 
-bool UI_editsource_enable_check(void)
+bool UI_editsource_enable_check()
 {
   return (ui_editsource_info != nullptr);
 }
@@ -2342,6 +2343,48 @@ static void UI_OT_list_start_filter(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name UI View Start Filter Operator
+ * \{ */
+
+static bool ui_view_focused_poll(bContext *C)
+{
+  const ARegion *region = CTX_wm_region(C);
+  if (!region) {
+    return false;
+  }
+  const wmWindow *win = CTX_wm_window(C);
+  const uiViewHandle *view = UI_region_view_find_at(region, win->eventstate->xy, 0);
+
+  return view != nullptr;
+}
+
+static int ui_view_start_filter_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+{
+  const ARegion *region = CTX_wm_region(C);
+  const uiViewHandle *hovered_view = UI_region_view_find_at(region, event->xy, 0);
+
+  if (!UI_view_begin_filtering(C, hovered_view)) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void UI_OT_view_start_filter(wmOperatorType *ot)
+{
+  ot->name = "View Filter";
+  ot->idname = "UI_OT_view_start_filter";
+  ot->description = "Start entering filter text for the data-set in focus";
+
+  ot->invoke = ui_view_start_filter_invoke;
+  ot->poll = ui_view_focused_poll;
+
+  ot->flag = OPTYPE_INTERNAL;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name UI View Drop Operator
  * \{ */
 
@@ -2505,7 +2548,7 @@ static void UI_OT_drop_material(wmOperatorType *ot)
 /** \name Operator & Keymap Registration
  * \{ */
 
-void ED_operatortypes_ui(void)
+void ED_operatortypes_ui()
 {
   WM_operatortype_append(UI_OT_copy_data_path_button);
   WM_operatortype_append(UI_OT_copy_as_driver_button);
@@ -2528,6 +2571,7 @@ void ED_operatortypes_ui(void)
 
   WM_operatortype_append(UI_OT_list_start_filter);
 
+  WM_operatortype_append(UI_OT_view_start_filter);
   WM_operatortype_append(UI_OT_view_drop);
   WM_operatortype_append(UI_OT_view_item_rename);
 

@@ -39,11 +39,10 @@ set(SRC
   intern/utils.hh
 
   AS_asset_library.h
-  AS_asset_representation.h
 )
 
 set(LIB
-    bf_blenkernel
+  bf_blenkernel
 )
 
 

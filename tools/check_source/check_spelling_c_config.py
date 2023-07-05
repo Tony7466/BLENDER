@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # these must be all lower case for comparisons
@@ -50,6 +52,7 @@ dict_custom = {
     "breaked",
     "callables",
     "canonicalization",
+    "canonicalize",
     "canonicalized",
     "canonicalizing",
     "catadioptric",
@@ -70,6 +73,7 @@ dict_custom = {
     "copyable",
     "counterforce",
     "criterium",
+    "crosshair",
     "crosstalk",
     "customizable",
     "deallocate",
@@ -136,6 +140,7 @@ dict_custom = {
     "homogenous",
     "ideographic",
     "illuminant",
+    "imbricated",
     "impactful",
     "incrementation",
     "initializer",
@@ -297,6 +302,8 @@ dict_custom = {
     "situationally",
     "skippable",
     "sortable",
+    "stepsize",
+    "stepwise",
     "stitchable",
     "subclass",
     "subclasses",
@@ -483,6 +490,8 @@ dict_custom = {
     "coord",
     "coords",
     "ctrl",  # control (modifier key).
+    "ie",
+    "init",
     "iter",  # iteration.
     "multi",
     "numpad",  # numeric-pad.
@@ -507,6 +516,9 @@ dict_custom = {
     "codepage",
     "contructor",
     "decimator",
+    "decref",
+    "decrefed",
+    "decrefing",
     "diff",
     "diffs",
     "endian",
@@ -517,6 +529,9 @@ dict_custom = {
     "foo",
     "hashable",
     "http",
+    "incref",
+    "increfed",
+    "increfing",
     "intelisense",
     "jitter",
     "jittered",
@@ -596,6 +611,7 @@ dict_custom = {
     "normals",
     "nurbs",
     "octree",
+    "quaternion",
     "quaternions",
     "radiosity",
     "reflectance",

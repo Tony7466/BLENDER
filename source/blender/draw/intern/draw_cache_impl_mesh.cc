@@ -43,7 +43,7 @@
 #include "BKE_modifier.h"
 #include "BKE_object_deform.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_modifier.h"
 
 #include "atomic_ops.h"
@@ -392,6 +392,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
         }
         case CD_PROP_BYTE_COLOR:
         case CD_PROP_COLOR:
+        case CD_PROP_QUATERNION:
         case CD_PROP_FLOAT3:
         case CD_PROP_BOOL:
         case CD_PROP_INT8:

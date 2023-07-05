@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Header,
@@ -1369,7 +1372,7 @@ class USERPREF_PT_file_paths_script_directories(FilePathsPanel, Panel):
 
         row = path_col.row(align=True)  # Padding
         row.separator()
-        row.label(text="Path")
+        row.label(text="Path", text_ctxt=i18n_contexts.editor_filebrowser)
 
         row.operator("preferences.script_directory_add", text="", icon='ADD', emboss=False)
 
@@ -1515,12 +1518,16 @@ class USERPREF_PT_file_paths_asset_libraries(FilePathsPanel, Panel):
         props = col.operator("preferences.asset_library_remove", text="", icon='REMOVE')
         props.index = active_library_index
 
-        if active_library_index < 0:
+        try:
+            active_library = None if active_library_index < 0 else paths.asset_libraries[active_library_index]
+        except IndexError:
+            active_library = None
+
+        if active_library is None:
             return
 
         layout.separator()
 
-        active_library = paths.asset_libraries[active_library_index]
         layout.prop(active_library, "path")
         layout.prop(active_library, "import_method", text="Import Method")
         layout.prop(active_library, "use_relative_path")
@@ -2410,6 +2417,8 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
                 ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
+                ({"property": "use_node_panels"}, ("blender/blender/issues/105248", "#105248")),
+                ({"property": "use_rotation_socket"}, ("/blender/blender/issues/92967", "#92967")),
             ),
         )
 
@@ -2426,7 +2435,7 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
                 ({"property": "enable_workbench_next"}, ("blender/blender/issues/101619", "#101619")),
-                ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/40", "Grease Pencil 3.0")),
+                ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
             ),
         )

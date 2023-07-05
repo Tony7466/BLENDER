@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -448,7 +450,8 @@ static bool balanced_braces(char *current_str_begin, char *current_str_end)
  *
  * Constants declared within function-scope do not exhibit this problem.
  */
-static void extract_global_scope_constants(std::string &str, std::stringstream &global_scope_out)
+static void extract_global_scope_constants(std::string &str,
+                                           std::stringstream & /*global_scope_out*/)
 {
   char *current_str_begin = &*str.begin();
   char *current_str_end = &*str.end();
@@ -488,7 +491,7 @@ static void extract_global_scope_constants(std::string &str, std::stringstream &
 #endif
 
 static bool extract_ssbo_pragma_info(const MTLShader *shader,
-                                     const MSLGeneratorInterface &msl_iface,
+                                     const MSLGeneratorInterface & /*msl_iface*/,
                                      const std::string &in_vertex_src,
                                      MTLPrimitiveType &out_prim_tye,
                                      uint32_t &out_num_output_verts)
@@ -801,19 +804,19 @@ std::string MTLShader::fragment_interface_declare(const shader::ShaderCreateInfo
 }
 
 std::string MTLShader::MTLShader::geometry_interface_declare(
-    const shader::ShaderCreateInfo &info) const
+    const shader::ShaderCreateInfo & /*info*/) const
 {
   BLI_assert_msg(false, "Geometry shading unsupported by Metal");
   return "";
 }
 
-std::string MTLShader::geometry_layout_declare(const shader::ShaderCreateInfo &info) const
+std::string MTLShader::geometry_layout_declare(const shader::ShaderCreateInfo & /*info*/) const
 {
   BLI_assert_msg(false, "Geometry shading unsupported by Metal");
   return "";
 }
 
-std::string MTLShader::compute_layout_declare(const ShaderCreateInfo &info) const
+std::string MTLShader::compute_layout_declare(const ShaderCreateInfo & /*info*/) const
 {
   /* Metal supports compute shaders. THis function is a pass-through.
    * Compute shader interface population happens during mtl_shader_generator, as part of GLSL
@@ -1462,6 +1465,9 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;
 
+  ss_compute << "#define GPU_ARB_texture_cube_map_array 1\n"
+                "#define GPU_ARB_shader_draw_parameters 1\n";
+
 #ifndef NDEBUG
   extract_global_scope_constants(shd_builder_->glsl_compute_source_, ss_compute);
 #endif
@@ -1971,14 +1977,14 @@ bool MSLGeneratorInterface::use_argument_buffer_for_samplers() const
   return use_argument_buffer;
 }
 
-uint32_t MSLGeneratorInterface::num_samplers_for_stage(ShaderStage stage) const
+uint32_t MSLGeneratorInterface::num_samplers_for_stage(ShaderStage /*stage*/) const
 {
   /* NOTE: Sampler bindings and argument buffer shared across stages,
    * in case stages share texture/sampler bindings. */
   return texture_samplers.size();
 }
 
-uint32_t MSLGeneratorInterface::max_sampler_index_for_stage(ShaderStage stage) const
+uint32_t MSLGeneratorInterface::max_sampler_index_for_stage(ShaderStage /*stage*/) const
 {
   /* NOTE: Sampler bindings and argument buffer shared across stages,
    * in case stages share texture/sampler bindings. */
@@ -2503,6 +2509,7 @@ std::string MSLGeneratorInterface::generate_msl_uniform_structs(ShaderStage shad
     return "";
   }
   BLI_assert(shader_stage == ShaderStage::VERTEX || shader_stage == ShaderStage::FRAGMENT);
+  UNUSED_VARS_NDEBUG(shader_stage);
   std::stringstream out;
 
   /* Common Uniforms. */
@@ -2533,7 +2540,7 @@ std::string MSLGeneratorInterface::generate_msl_uniform_structs(ShaderStage shad
 }
 
 /* NOTE: Uniform macro definition vars can conflict with other parameters. */
-std::string MSLGeneratorInterface::generate_msl_uniform_undefs(ShaderStage shader_stage)
+std::string MSLGeneratorInterface::generate_msl_uniform_undefs(ShaderStage /*shader_stage*/)
 {
   std::stringstream out;
 
@@ -2708,6 +2715,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_transform_feedback_out_st
     ShaderStage shader_stage)
 {
   BLI_assert(shader_stage == ShaderStage::VERTEX || shader_stage == ShaderStage::FRAGMENT);
+  UNUSED_VARS_NDEBUG(shader_stage);
   std::stringstream out;
   vertex_output_varyings_tf.clear();
 
@@ -3111,6 +3119,14 @@ std::string MSLGeneratorInterface::generate_msl_fragment_input_population()
     /* When gl_Position is not set, first VertexIn element is used for position. */
     out << "\t" << shader_stage_inst_name << ".gl_FragCoord = v_in."
         << this->vertex_output_varyings[0].name << ";" << std::endl;
+  }
+
+  /* Assign default gl_FragDepth.
+   * If gl_FragDepth is used, it should default to the original depth value. Resolves #107159 where
+   * overlay_wireframe_frag may not write to gl_FragDepth. */
+  if (this->uses_gl_FragDepth) {
+    out << "\t" << shader_stage_inst_name << ".gl_FragDepth = " << shader_stage_inst_name
+        << ".gl_FragCoord.z;" << std::endl;
   }
 
   /* NOTE: We will only assign to the intersection of the vertex output and fragment input.
