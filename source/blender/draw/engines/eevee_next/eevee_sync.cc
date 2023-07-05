@@ -318,8 +318,8 @@ void SyncModule::sync_curves(Object *ob,
     mat_nr = part_settings->omat;
   }
 
-  // bool has_motion = inst_.velocity.step_object_sync(ob, ob_handle.object_key, ob_handle.recalc);
-  bool has_motion = false;
+  bool has_motion = inst_.velocity.step_object_sync(
+      ob, ob_handle.object_key, res_handle, ob_handle.recalc);
   Material &material = inst_.materials.material_get(ob, has_motion, mat_nr - 1, MAT_GEOM_CURVES);
 
   auto drawcall_add = [&](MaterialPass &matpass) {
@@ -347,9 +347,6 @@ void SyncModule::sync_curves(Object *ob,
       inst_.materials.material_array_get(ob, has_motion).gpu_materials[mat_nr - 1];
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
-
-  /* TODO(fclem) Hair velocity. */
-  // shading_passes.velocity.gpencil_add(ob, ob_handle);
 
   bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
