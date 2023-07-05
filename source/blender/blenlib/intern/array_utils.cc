@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
+#include "BLI_threads.h"
 
 #include "atomic_ops.h"
 
@@ -49,7 +50,7 @@ void gather(const GSpan src, const IndexMask &indices, GMutableSpan dst, const i
 
 void count_indices(const Span<int> indices, MutableSpan<int> counts)
 {
-  if (indices.size() < 8192) {
+  if (indices.size() < 8192 || BLI_system_thread_count() < 4) {
     for (const int i : indices) {
       counts[i]++;
     }
