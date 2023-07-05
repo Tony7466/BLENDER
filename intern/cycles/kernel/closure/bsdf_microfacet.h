@@ -171,38 +171,27 @@ ccl_device_forceinline float3 microfacet_beckmann_sample_vndf(const float3 wi,
 }
 
 /* GGX VNDF importance sampling algorithm from:
- * Sampling the GGX Distribution of Visible Normals.
- * Eric Heitz, JCGT Vol. 7, No. 4, 2018.
- * https://jcgt.org/published/0007/04/01/ */
+ * Sampling Visible GGX Normals with Spherical Caps.
+ * Jonathan Dupuy and Anis Benyoub, HPG Vol. 42, No. 8, 2023.
+ * https://diglib.eg.org/bitstream/handle/10.1111/cgf14867/v42i8_03_14867.pdf */
 ccl_device_forceinline float3 microfacet_ggx_sample_vndf(const float3 wi,
                                                          const float alpha_x,
                                                          const float alpha_y,
                                                          const float2 rand)
 {
-  /* Section 3.2: Transforming the view direction to the hemisphere configuration. */
+  /* Transforming the view direction to the hemisphere configuration. */
   float3 wi_ = normalize(make_float3(alpha_x * wi.x, alpha_y * wi.y, wi.z));
 
-  /* Section 4.1: Orthonormal basis. */
-  float lensq = sqr(wi_.x) + sqr(wi_.y);
-  float3 T1, T2;
-  if (lensq > 1e-7f) {
-    T1 = make_float3(-wi_.y, wi_.x, 0.0f) * inversesqrtf(lensq);
-    T2 = cross(wi_, T1);
-  }
-  else {
-    /* Normal incidence, any basis is fine. */
-    T1 = make_float3(1.0f, 0.0f, 0.0f);
-    T2 = make_float3(0.0f, 1.0f, 0.0f);
-  }
+  /* Sample a spherical cap in (-wi_.z, 1]. */
+  const float cos_theta = mix(-wi_.z, 1.0f, 1.0f - rand.x);
+  const float sin_theta = sin_from_cos(cos_theta);
+  const float phi = M_2PI_F * rand.y;
+  const float3 wo_ = make_float3(sin_theta * cosf(phi), sin_theta * sinf(phi), cos_theta);
 
-  /* Section 4.2: Parameterization of the projected area. */
-  float2 t = concentric_sample_disk(rand);
-  t.y = mix(safe_sqrtf(1.0f - sqr(t.x)), t.y, 0.5f * (1.0f + wi_.z));
+  /* Compute unnormalized halfway direction. */
+  const float3 H_ = wo_ + wi_;
 
-  /* Section 4.3: Reprojection onto hemisphere. */
-  float3 H_ = t.x * T1 + t.y * T2 + safe_sqrtf(1.0f - len_squared(t)) * wi_;
-
-  /* Section 3.4: Transforming the normal back to the ellipsoid configuration. */
+  /* Transforming the normal back to the ellipsoid configuration. */
   return normalize(make_float3(alpha_x * H_.x, alpha_y * H_.y, max(0.0f, H_.z)));
 }
 
