@@ -952,7 +952,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
   /* We validate clnors data on the fly - cheapest way to do! */
   int2 clnors_avg(0);
-  short2 *clnor_ref = nullptr;
+  const short2 *clnor_ref = nullptr;
   int clnors_count = 0;
   bool clnors_invalid = false;
 
@@ -1006,15 +1006,14 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
       if (!clnors_data.is_empty()) {
         /* Accumulate all clnors, if they are not all equal we have to fix that! */
-        short2 *clnor = &clnors_data[mlfan_vert_index];
+        const short2 *clnor = &clnors_data[mlfan_vert_index];
         if (clnors_count) {
-          clnors_invalid |= ((*clnor_ref)[0] != (*clnor)[0] || (*clnor_ref)[1] != (*clnor)[1]);
+          clnors_invalid |= *clnor_ref != *clnor;
         }
         else {
           clnor_ref = clnor;
         }
-        clnors_avg[0] += (*clnor)[0];
-        clnors_avg[1] += (*clnor)[1];
+        clnors_avg += int2(*clnor);
         clnors_count++;
       }
     }
@@ -1071,14 +1070,12 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
     if (!clnors_data.is_empty()) {
       if (clnors_invalid) {
-        clnors_avg[0] /= clnors_count;
-        clnors_avg[1] /= clnors_count;
+        clnors_avg /= clnors_count;
         /* Fix/update all clnors of this fan with computed average value. */
         if (G.debug & G_DEBUG) {
           printf("Invalid clnors in this fan!\n");
         }
-        clnors_data.fill_indices(processed_corners.as_span(),
-                                 short2(clnors_avg[0], clnors_avg[1]));
+        clnors_data.fill_indices(processed_corners.as_span(), short2(clnors_avg));
         // print_v2("new clnors", clnors_avg);
       }
       /* Extra bonus: since small-stack is local to this function,
