@@ -3489,10 +3489,9 @@ static void *acf_gpd_setting_ptr(bAnimListElem *ale,
                                  eAnimChannel_Settings /*setting*/,
                                  short *r_type)
 {
-  GreasePencil *gpd = (GreasePencil *)ale->data;
+  GreasePencil *grease_pencil = (GreasePencil *)ale->data;
 
-  /* All flags are just in gpd->flag for now... */
-  return GET_ACF_FLAG_PTR(gpd->flag, r_type);
+  return GET_ACF_FLAG_PTR(grease_pencil->flag, r_type);
 }
 
 /* Get the appropriate flag(s) for the setting when it is valid. */
