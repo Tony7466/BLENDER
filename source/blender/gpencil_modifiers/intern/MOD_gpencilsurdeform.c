@@ -547,7 +547,6 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   bGPdata *gpd_orig = ob_orig->data;
   if (smd->layers == NULL)
   {
-    freeData;
     smd_orig->flags = 0;
     return;
   }
