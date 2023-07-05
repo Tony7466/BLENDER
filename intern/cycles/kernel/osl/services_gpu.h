@@ -465,37 +465,37 @@ ccl_device_forceinline void copy_matrix(ccl_private float *res, const Projection
   res[14] = tfm.z.w;
   res[15] = tfm.w.w;
 }
-ccl_device_forceinline void copy_identity_matrix(ccl_private float *res, float value = 1.0f)
-{
-  res[0] = value;
-  res[1] = 0.0f;
-  res[2] = 0.0f;
-  res[3] = 0.0f;
-  res[4] = 0.0f;
-  res[5] = value;
-  res[6] = 0.0f;
-  res[7] = 0.0f;
-  res[8] = 0.0f;
-  res[9] = 0.0f;
-  res[10] = value;
-  res[11] = 0.0f;
-  res[12] = 0.0f;
-  res[13] = 0.0f;
-  res[14] = 0.0f;
-  res[15] = value;
-}
-ccl_device_forceinline Transform convert_transform(ccl_private const float *m)
+ccl_device_forceinline Transform make_transform(ccl_private const float *m)
 {
   return make_transform(
       m[0], m[4], m[8], m[12], m[1], m[5], m[9], m[13], m[2], m[6], m[10], m[14]);
+}
+ccl_device_forceinline ProjectionTransform make_projection(ccl_private const float *m)
+{
+  return make_projection(m[0],
+                         m[4],
+                         m[8],
+                         m[12],
+                         m[1],
+                         m[5],
+                         m[9],
+                         m[13],
+                         m[2],
+                         m[6],
+                         m[10],
+                         m[14],
+                         m[3],
+                         m[7],
+                         m[11],
+                         m[15]);
 }
 
 ccl_device_extern void osl_mul_mmm(ccl_private float *res,
                                    ccl_private const float *a,
                                    ccl_private const float *b)
 {
-  const Transform tfm_a = convert_transform(a);
-  const Transform tfm_b = convert_transform(b);
+  const ProjectionTransform tfm_a = make_projection(a);
+  const ProjectionTransform tfm_b = make_projection(b);
   copy_matrix(res, tfm_a * tfm_b);
 }
 
@@ -510,9 +510,9 @@ ccl_device_extern void osl_div_mmm(ccl_private float *res,
                                    ccl_private const float *a,
                                    ccl_private const float *b)
 {
-  const Transform tfm_a = convert_transform(a);
-  const Transform tfm_b = convert_transform(b);
-  copy_matrix(res, tfm_a * transform_inverse(tfm_b));
+  const ProjectionTransform tfm_a = make_projection(a);
+  const ProjectionTransform tfm_b = make_projection(b);
+  copy_matrix(res, tfm_a * projection_inverse(tfm_b));
 }
 
 ccl_device_extern void osl_div_mmf(ccl_private float *res, ccl_private const float *a, float b)
@@ -524,8 +524,8 @@ ccl_device_extern void osl_div_mmf(ccl_private float *res, ccl_private const flo
 
 ccl_device_extern void osl_div_mfm(ccl_private float *res, float a, ccl_private const float *b)
 {
-  const Transform tfm_b = convert_transform(b);
-  copy_matrix(res, transform_inverse(tfm_b));
+  const ProjectionTransform tfm_b = make_projection(b);
+  copy_matrix(res, projection_inverse(tfm_b));
   for (int i = 0; i < 16; ++i) {
     res[i] *= a;
   }
@@ -534,15 +534,18 @@ ccl_device_extern void osl_div_mfm(ccl_private float *res, float a, ccl_private 
 ccl_device_extern void osl_div_m_ff(ccl_private float *res, float a, float b)
 {
   float f = (b == 0) ? 0.0f : (a / b);
-  copy_identity_matrix(res, f);
+  copy_matrix(res, projection_identity());
+  for (int i = 0; i < 16; ++i) {
+    res[i] *= f;
+  }
 }
 
 ccl_device_extern void osl_transform_vmv(ccl_private float3 *res,
                                          ccl_private const float *m,
                                          ccl_private const float3 *v)
 {
-  const Transform tfm_m = convert_transform(m);
-  *res = transform_point(&tfm_m, *v);
+  const ProjectionTransform tfm_m = make_projection(m);
+  *res = transform_perspective(&tfm_m, *v);
 }
 
 ccl_device_extern void osl_transform_dvmdv(ccl_private float3 *res,
@@ -550,8 +553,7 @@ ccl_device_extern void osl_transform_dvmdv(ccl_private float3 *res,
                                            ccl_private const float3 *v)
 {
   for (int i = 0; i < 3; ++i) {
-    const Transform tfm_m = convert_transform(m + i * 16);
-    res[i] = transform_point(&tfm_m, v[i]);
+    osl_transform_vmv(res + i, m + i * 16, v + i);
   }
 }
 
@@ -559,7 +561,7 @@ ccl_device_extern void osl_transformv_vmv(ccl_private float3 *res,
                                           ccl_private const float *m,
                                           ccl_private const float3 *v)
 {
-  const Transform tfm_m = convert_transform(m);
+  const Transform tfm_m = make_transform(m);
   *res = transform_direction(&tfm_m, *v);
 }
 
@@ -568,8 +570,7 @@ ccl_device_extern void osl_transformv_dvmdv(ccl_private float3 *res,
                                             ccl_private const float3 *v)
 {
   for (int i = 0; i < 3; ++i) {
-    const Transform tfm_m = convert_transform(m + i * 16);
-    res[i] = transform_direction(&tfm_m, v[i]);
+    osl_transformv_vmv(res + i, m + i * 16, v + i);
   }
 }
 
@@ -577,8 +578,8 @@ ccl_device_extern void osl_transformn_vmv(ccl_private float3 *res,
                                           ccl_private const float *m,
                                           ccl_private const float3 *v)
 {
-  const Transform tfm_m = convert_transform(m);
-  *res = transform_direction(&tfm_m, *v);
+  const Transform tfm_m = transform_inverse(make_transform(m));
+  *res = transform_direction_transposed(&tfm_m, *v);
 }
 
 ccl_device_extern void osl_transformn_dvmdv(ccl_private float3 *res,
@@ -586,8 +587,7 @@ ccl_device_extern void osl_transformn_dvmdv(ccl_private float3 *res,
                                             ccl_private const float3 *v)
 {
   for (int i = 0; i < 3; ++i) {
-    const Transform tfm_m = convert_transform(m + i * 16);
-    res[i] = transform_direction(&tfm_m, v[i]);
+    osl_transformn_vmv(res + i, m + i * 16, v + i);
   }
 }
 
@@ -596,7 +596,7 @@ ccl_device_extern bool osl_get_matrix(ccl_private ShaderGlobals *sg,
                                       DeviceString from)
 {
   if (from == DeviceStrings::u_common || from == DeviceStrings::u_world) {
-    copy_identity_matrix(res);
+    copy_matrix(res, projection_identity());
     return true;
   }
   if (from == DeviceStrings::u_shader || from == DeviceStrings::u_object) {
@@ -640,7 +640,7 @@ ccl_device_extern bool osl_get_inverse_matrix(ccl_private ShaderGlobals *sg,
                                               DeviceString to)
 {
   if (to == DeviceStrings::u_common || to == DeviceStrings::u_world) {
-    copy_identity_matrix(res);
+    copy_matrix(res, projection_identity());
     return true;
   }
   if (to == DeviceStrings::u_shader || to == DeviceStrings::u_object) {
@@ -2250,8 +2250,9 @@ ccl_device_extern float osl_filterwidth_fdf(ccl_private const float *x)
 
 ccl_device_extern void osl_filterwidth_vdv(ccl_private float *res, ccl_private const float *x)
 {
-  for (int i = 0; i < 3; ++i)
+  for (int i = 0; i < 3; ++i) {
     res[i] = osl_filterwidth_fdf(x + i);
+  }
 }
 
 ccl_device_extern bool osl_raytype_bit(ccl_private ShaderGlobals *sg, int bit)

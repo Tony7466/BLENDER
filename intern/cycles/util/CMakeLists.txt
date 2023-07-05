@@ -82,6 +82,7 @@ set(SRC_HEADERS
   profiling.h
   progress.h
   projection.h
+  projection_inverse.h
   queue.h
   rect.h
   set.h
@@ -98,6 +99,7 @@ set(SRC_HEADERS
   thread.h
   time.h
   transform.h
+  transform_inverse.h
   types.h
   types_float2.h
   types_float2_impl.h
