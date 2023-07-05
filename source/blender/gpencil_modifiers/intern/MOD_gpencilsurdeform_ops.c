@@ -1330,8 +1330,6 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
 
   sdef_layer->frames = temp_frames_pointer;
 
-  /* Free stroke array*/
-  MEM_SAFE_FREE(sdef_layer->frames);
   return true;
 }
 
@@ -1419,22 +1417,22 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
 
   if (data.success == MOD_SDEF_BIND_RESULT_MEM_ERR) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    freeData_a(smd_orig);
+    //freeData_a(smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
                                    "Target has edges with more than two polygons");
-    freeData_a(smd_orig);
+    //freeData_a(smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_CONCAVE_ERR) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
                                    "Target contains concave polygons");
-    freeData_a(smd_orig);
+    //freeData_a(smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_OVERLAP_ERR) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
                                    "Target contains overlapping vertices");
-    freeData_a(smd_orig);
+    //freeData_a(smd_orig);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_GENERIC_ERR) {
     /* I know this message is vague, but I could not think of a way
@@ -1443,12 +1441,12 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
      * because this is very unlikely to occur */
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
                                    "Target contains invalid polygons");
-    freeData_a(smd_orig);
+    //freeData_a(smd_orig);
   }
   else if (current_stroke->stroke_verts_num == 0 || !current_stroke->verts) {
     data.success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "No vertices were bound");
-    freeData_a(smd_orig);
+    //freeData_a(smd_orig);
   }
 
   /*End: pass onto the next stroke
@@ -1563,7 +1561,10 @@ static bool surfacedeformBind(bContext *C,
   /*Bind mode*/
 
 
-
+   float(*positions);
+   MPoly *mpoly;
+   MEdge *medge;
+   MLoop *mloop;
   uint tedges_num = target->totedge;
   // uint current_stroke_idx = smd_orig->current_stroke_index;
   SDefAdjacencyArray *vert_edges;
@@ -1652,10 +1653,10 @@ static bool surfacedeformBind(bContext *C,
         BKE_scene_graph_update_for_newframe(dg);
         ob_target_eval = DEG_get_evaluated_object(dg, ob_target_orig);
         mesh_target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target_eval);
-        const float(*positions)[3] = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
-        const MPoly *mpoly = BKE_mesh_polys(mesh_target);
-        const MEdge *medge = BKE_mesh_edges(mesh_target);
-        const MLoop *mloop = BKE_mesh_loops(mesh_target);
+        positions = BKE_mesh_vert_positions(mesh_target);  //  FOR 3.4 +
+        mpoly = BKE_mesh_polys(mesh_target);
+        medge = BKE_mesh_edges(mesh_target);
+        mloop = BKE_mesh_loops(mesh_target);
         tedges_num = mesh_target->totedge;
         if (!makeTreeData(&treeData,
                           mesh_target,
@@ -1678,7 +1679,10 @@ static bool surfacedeformBind(bContext *C,
           smd_orig->layers->frames->strokes = NULL;
         }
         uint s = 0;
+        uint stroke_error = 0;
         LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes) {
+          if (stroke_error)
+            continue;
           if (!surfacedeformBind_stroke(s,
                                         smd_orig,
                                         smd_eval,
@@ -1693,10 +1697,15 @@ static bool surfacedeformBind(bContext *C,
                                         treeData,
                                         vert_edges,
                                         edge_polys)) {
-            return false;
+            stroke_error = 1;
+            continue;
           }
           s++;
           smd_orig->layers->frames->strokes++;
+        }
+        if (stroke_error) {
+          free_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf);
+          continue;
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
         free_bvhtree_from_mesh(&treeData);
@@ -1706,10 +1715,10 @@ static bool surfacedeformBind(bContext *C,
       BKE_scene_graph_update_for_newframe(dg);
     }
     else {
-      const float(*positions)[3] = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
-      const MPoly *mpoly = BKE_mesh_polys(target);
-      const MEdge *medge = BKE_mesh_edges(target);
-      const MLoop *mloop = BKE_mesh_loops(target);
+      positions = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
+      mpoly = BKE_mesh_polys(target);
+      medge = BKE_mesh_edges(target);
+      mloop = BKE_mesh_loops(target);
       if (!makeTreeData(&treeData,
                         target,
                         smd_eval,
@@ -1744,7 +1753,10 @@ static bool surfacedeformBind(bContext *C,
           smd_orig->layers->frames->strokes_num = 0;
           smd_orig->layers->frames->strokes = NULL;
         }
+        uint stroke_error = 0;
         LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_frame->strokes) {
+          if (stroke_error)
+            continue;
           if (!surfacedeformBind_stroke(s,
                                         smd_orig,
                                         smd_eval,
@@ -1759,10 +1771,16 @@ static bool surfacedeformBind(bContext *C,
                                         treeData,
                                         vert_edges,
                                         edge_polys)) {
-            return false;
+            
+            stroke_error = 1;
+            continue;
           }
           s++;
           smd_orig->layers->frames->strokes++;
+        }
+        if (stroke_error) {
+          free_frame(smd_orig, smd_eval, smd_orig->layers, curr_frame);
+          continue;
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
       }
