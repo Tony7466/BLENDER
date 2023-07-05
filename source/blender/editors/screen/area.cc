@@ -932,8 +932,8 @@ static void fullscreen_azone_init(ScrArea *area, ARegion *region)
 
 /**
  * Return true if the background color alpha is close to fully transparent. That is, a value of
- * less than 50 on a [0-255] scale (arbitrary/eyeballed threshold). Assumes the region uses
- * #TH_BACK for its background.
+ * less than 50 on a [0-255] scale (rather arbitrary threshold). Assumes the region uses #TH_BACK
+ * for its background.
  */
 static bool region_back_is_barely_visible(const ScrArea *area, const ARegion *region)
 {
@@ -955,14 +955,15 @@ static bool region_back_is_barely_visible(const ScrArea *area, const ARegion *re
 static void region_azone_edge(const ScrArea *area, AZone *az, const ARegion *region)
 {
   /* If there is no visible region background, users typically expect the #AZone to be closer to
-   * the content, so move it a bit. Headers-like regions are usually thin and there's not much
-   * padding around them, so don't touch the #AZone there (also avoids mouse hover conflicts with
-   * actual contents).
-   * Note that this is an arbitrary amount that matches nicely with numbers elsewhere. */
-  const int overlap_padding = (region->overlap && region_back_is_barely_visible(area, region) &&
-                               !RGN_TYPE_IS_HEADER_ANY(region->regiontype)) ?
-                                  int(0.4f * U.widget_unit) :
-                                  0;
+   * the content, so move it a bit. */
+  const int overlap_padding =
+      (region->overlap && region_back_is_barely_visible(area, region) &&
+       /* Header-like regions are usually thin and there's not much padding around them, applying
+        * an offset would make the edge overlap buttons.*/
+       !RGN_TYPE_IS_HEADER_ANY(region->regiontype)) ?
+          /* Note that this is an arbitrary amount that matches nicely with numbers elsewhere. */
+          int(0.4f * U.widget_unit) :
+          0;
 
   switch (az->edge) {
     case AE_TOP_TO_BOTTOMRIGHT:
