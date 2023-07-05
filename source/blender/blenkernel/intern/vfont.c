@@ -792,13 +792,9 @@ static float vfont_descent(const VFontData *vfd)
 
 typedef struct TextBoxBounds_ForCursor {
   /**
-   * Stores the maximum #xofs assigned to a character in the text-box.
-   * This value is scaled by `1 / #font_size`. */
-  float xmax;
-  /**
-   * Stores the minimum #yofs assigned to a character in the text-box.
-   * This value is scaled by `1 / font_size`. */
-  float ymin;
+   * Describes the minimum rectangle that contains all characters in a text-box, the values
+   * ​​are scaled by `1 / #font_size`. */
+  struct rctf bounds;
   int last_char_index;
 } TextBoxBounds_ForCursor;
 
@@ -951,7 +947,12 @@ static bool vfont_to_curve(Object *ob,
       tb_bounds_for_cursor = MEM_calloc_arrayN(
           cu->totbox, sizeof(TextBoxBounds_ForCursor), "TextboxBounds_Cursor");
       for (curbox = 0; curbox < cu->totbox; curbox++) {
-        tb_bounds_for_cursor[curbox].last_char_index = -1;
+        TextBoxBounds_ForCursor *tb_bounds = &tb_bounds_for_cursor[curbox];
+        tb_bounds->last_char_index = -1;
+        tb_bounds->bounds.xmin = FLT_MAX;
+        tb_bounds->bounds.xmax = -FLT_MAX;
+        tb_bounds->bounds.ymin = FLT_MAX;
+        tb_bounds->bounds.ymax = -FLT_MAX;
       }
     }
     curbox = 0;
@@ -1097,8 +1098,6 @@ static bool vfont_to_curve(Object *ob,
       CLAMP_MIN(maxlen, lineinfo[lnr].x_min);
 
       if (tb_bounds_for_cursor != NULL) {
-        tb_bounds_for_cursor[curbox].xmax = max_ff(tb_bounds_for_cursor[curbox].xmax, xof);
-        tb_bounds_for_cursor[curbox].ymin = yof;
         tb_bounds_for_cursor[curbox].last_char_index = i;
       }
 
@@ -1358,6 +1357,36 @@ static bool vfont_to_curve(Object *ob,
       for (i = 0; i <= slen; i++) {
         ct->yof += yoff;
         ct++;
+      }
+    }
+  }
+  if (tb_bounds_for_cursor != NULL) {
+    for (curbox = 0; curbox < cu->totbox; curbox++) {
+      TextBoxBounds_ForCursor *tb_bounds = &tb_bounds_for_cursor[curbox];
+      if (tb_bounds->last_char_index == -1) {
+        continue;
+      }
+      const int start_char = curbox > 0 ? (tb_bounds - 1)->last_char_index + 1 : 0;
+      const int end_char = tb_bounds->last_char_index;
+
+      struct TempLineInfo *start_line = &lineinfo[chartransdata[start_char].linenr];
+      struct TempLineInfo *end_line = &lineinfo[chartransdata[end_char].linenr];
+
+      int char_offset = start_char;
+
+      rctf *bounds = &tb_bounds->bounds;
+      /* In a text-box with no curves, 'yof' only decrements over lines, 'ymax' and 'ymin'
+       * ​​can be obtained from any character in the first and last line of the text-box. */
+      bounds->ymax = chartransdata[start_char].yof;
+      bounds->ymin = chartransdata[end_char].yof;
+
+      for (struct TempLineInfo *line = start_line; line <= end_line; line++) {
+        const struct CharTrans *first_char_line = &chartransdata[char_offset];
+        const struct CharTrans *last_char_line = &chartransdata[char_offset + line->char_nr];
+
+        bounds->xmin = min_fff(bounds->xmin, first_char_line->xof, last_char_line->xof);
+        bounds->xmax = max_fff(bounds->xmax, first_char_line->xof, last_char_line->xof);
+        char_offset += line->char_nr + 1;
       }
     }
   }
@@ -1816,16 +1845,15 @@ static bool vfont_to_curve(Object *ob,
           if (tb_bounds->last_char_index == -1) {
             continue;
           }
-          const TextBox *tb = &cu->tb[curbox];
           /* The closest point in the box to the `cursor_location`
            * by clamping it to the bounding box. */
           const float closest_point[2] = {
               clamp_f(cursor_location[0],
-                      tb->x,                                               /* Min. */
-                      max_ff(tb_bounds->xmax * font_size, tb->x + tb->w)), /* Max. */
+                      tb_bounds->bounds.xmin * font_size,
+                      tb_bounds->bounds.xmax * font_size),
               clamp_f(cursor_location[1],
-                      tb_bounds->ymin * font_size,     /* Min. */
-                      tb->y + (linedist * font_size)), /* Max. */
+                      tb_bounds->bounds.ymin * font_size,
+                      tb_bounds->bounds.ymax * font_size),
           };
 
           const float test_dist_sq = len_squared_v2v2(cursor_location, closest_point);
