@@ -5408,6 +5408,21 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       prop, "Auto-offset Margin", "Minimum distance between nodes for Auto-offsetting nodes");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ADJUSTABLE_CLICK_SELECT);
+  RNA_def_property_ui_text(
+      prop, "Adjustable Click-Select", "Use additional options for single-click select");
+
+  prop = RNA_def_property(srna, "select_unbiased", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_SELECT_UNBIASED);
+  RNA_def_property_ui_text(
+      prop, "Select Unbiased", "Click-select will not favor unselected mesh elements");
+
+  prop = RNA_def_property(srna, "selection_radius", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.1f, 150.0f);
+  RNA_def_property_ui_range(prop, 0.1f, 150.0f, 0.01f, 2);
+  RNA_def_property_ui_text(prop, "Radius", "Size of single-click selection radius");
+
   /* cursor */
   prop = RNA_def_property(srna, "use_cursor_lock_adjust", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_LOCK_CURSOR_ADJUST);

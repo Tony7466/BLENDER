@@ -108,7 +108,12 @@
 
 float ED_view3d_select_dist_px()
 {
-  return 75.0f * U.pixelsize;
+  if (U.flag & USER_ADJUSTABLE_CLICK_SELECT) {
+    return U.selection_radius * U.pixelsize;
+  }
+  else {
+    return 75.0f * U.pixelsize;
+  }
 }
 
 void ED_view3d_viewcontext_init(bContext *C, ViewContext *vc, Depsgraph *depsgraph)

@@ -192,6 +192,7 @@ const UserDef U_default = {
     .render_display_type = USER_RENDER_DISPLAY_WINDOW,
     .filebrowser_display_type = USER_TEMP_SPACE_DISPLAY_WINDOW,
     .viewport_aa = 8,
+    .selection_radius = 75.0f,
 
     .walk_navigation =
         {

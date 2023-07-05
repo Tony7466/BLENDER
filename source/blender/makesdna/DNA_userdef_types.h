@@ -940,6 +940,12 @@ typedef struct UserDef {
   char drag_threshold;
   char move_threshold;
 
+  /** Adjustable selection radius */
+  float selection_radius;
+  char adjustable_click_select;
+  char select_unbiased;
+  char _pad9[2];
+
   char font_path_ui[1024];
   char font_path_ui_mono[1024];
 
@@ -1042,8 +1048,8 @@ typedef enum eUserPref_SpaceData_Flag {
 typedef enum eUserPref_Flag {
   USER_AUTOSAVE = (1 << 0),
   USER_FLAG_NUMINPUT_ADVANCED = (1 << 1),
-  USER_FLAG_UNUSED_2 = (1 << 2), /* cleared */
-  USER_FLAG_UNUSED_3 = (1 << 3), /* cleared */
+  USER_ADJUSTABLE_CLICK_SELECT = (1 << 2),
+  USER_SELECT_UNBIASED = (1 << 3),
   USER_FLAG_UNUSED_4 = (1 << 4), /* cleared */
   USER_TRACKBALL = (1 << 5),
   USER_FLAG_UNUSED_6 = (1 << 6), /* cleared */
