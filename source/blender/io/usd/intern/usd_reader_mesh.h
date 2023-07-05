@@ -77,7 +77,7 @@ class USDMeshReader : public USDGeomReader {
   void read_custom_data(const ImportSettings *settings, Mesh *mesh, double motionSampleTime);
 
   void read_color_data_primvar(Mesh *mesh,
-                               const pxr::UsdGeomPrimvar &primvar,
+                               const pxr::UsdGeomPrimvar &color_primvar,
                                const double motionSampleTime);
   void read_uv_data_primvar(Mesh *mesh,
                             const pxr::UsdGeomPrimvar &primvar,
