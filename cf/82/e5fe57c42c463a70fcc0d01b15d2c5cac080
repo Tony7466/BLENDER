@@ -1,0 +1,1 @@
+Referenced by issue #109720, bpy.app.driver_namespace: no way to properly initialize for driver in material
