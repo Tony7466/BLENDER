@@ -539,6 +539,10 @@ class IMAGE_MT_uvs_context_menu(Menu):
 
             layout.operator_enum("uv.align", "axis")  # W, 2/3/4.
 
+            layout.operator_context = 'INVOKE_DEFAULT'
+
+            layout.operator("transform.uv_edge_slide", text="UV Edge Slide")
+
             layout.separator()
 
             # Remove

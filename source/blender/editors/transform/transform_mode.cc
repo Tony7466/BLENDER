@@ -1142,6 +1142,8 @@ static TransModeInfo *mode_info_get(TransInfo *t, const int mode)
       return &TransMode_rotatenormal;
     case TFM_GPENCIL_OPACITY:
       return &TransMode_gpopacity;
+    case TFM_UV_EDGE_SLIDE:
+      return &TransMode_edgeslideuv;
   }
   return nullptr;
 }

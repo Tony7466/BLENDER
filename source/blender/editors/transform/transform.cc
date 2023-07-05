@@ -532,7 +532,8 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
                                          UVCALC_TRANSFORM_CORRECT;
 
     if ((t->data_type == &TransConvertType_Mesh) &&
-        (t->settings->uvcalc_flag & uvcalc_correct_flag)) {
+        (t->settings->uvcalc_flag & uvcalc_correct_flag))
+    {
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
 
@@ -637,6 +638,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
     case TFM_MODAL_ROTATE:
     case TFM_MODAL_RESIZE:
     case TFM_MODAL_VERT_EDGE_SLIDE:
+    case TFM_MODAL_UV_EDGE_SLIDE:
     case TFM_MODAL_TRACKBALL:
     case TFM_MODAL_ROTATE_NORMALS: {
       if (!transform_mode_is_changeable(t->mode)) {
@@ -750,6 +752,7 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
       {TFM_MODAL_NODE_ATTACH_OFF, "NODE_ATTACH_OFF", 0, "Node Attachment (Off)", ""},
       {TFM_MODAL_TRANSLATE, "TRANSLATE", 0, "Move", ""},
       {TFM_MODAL_VERT_EDGE_SLIDE, "VERT_EDGE_SLIDE", 0, "Vert/Edge Slide", ""},
+      {TFM_MODAL_UV_EDGE_SLIDE, "UV_EDGE_SLIDE", 0, "UV Edge Slide", ""},
       {TFM_MODAL_ROTATE, "ROTATE", 0, "Rotate", ""},
       {TFM_MODAL_TRACKBALL, "TRACKBALL", 0, "TrackBall", ""},
       {TFM_MODAL_RESIZE, "RESIZE", 0, "Resize", ""},
@@ -1087,6 +1090,71 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         handled = true;
         break;
 
+      case TFM_MODAL_UV_EDGE_SLIDE:
+        /* only switch when... */
+        if (!transform_mode_is_changeable(t->mode)) {
+          break;
+        }
+
+        if ((event->val == TFM_MODAL_TRANSLATE && t->mode == TFM_TRANSLATION) ||
+            (event->val == TFM_MODAL_RESIZE && t->mode == TFM_RESIZE))
+        {
+          if (t->data_type == &TransConvertType_Tracking) {
+            restoreTransObjects(t);
+
+            t->flag ^= T_ALT_TRANSFORM;
+            t->redraw |= TREDRAW_HARD;
+            handled = true;
+          }
+          break;
+        }
+
+        if ((event->val == TFM_MODAL_ROTATE && t->mode == TFM_ROTATION) ||
+            (event->val == TFM_MODAL_TRACKBALL && t->mode == TFM_TRACKBALL) ||
+            (event->val == TFM_MODAL_ROTATE_NORMALS && t->mode == TFM_NORMAL_ROTATION) ||
+            (event->val == TFM_MODAL_UV_EDGE_SLIDE && ELEM(t->mode, TFM_UV_EDGE_SLIDE)))
+        {
+          break;
+        }
+
+        if (event->val == TFM_MODAL_ROTATE_NORMALS && t->data_type != &TransConvertType_Mesh) {
+          break;
+        }
+
+        restoreTransObjects(t);
+        resetTransModal(t);
+        resetTransRestrictions(t);
+
+        if (event->val == TFM_MODAL_TRANSLATE) {
+          transform_mode_init(t, nullptr, TFM_TRANSLATION);
+        }
+        else if (event->val == TFM_MODAL_ROTATE) {
+          transform_mode_init(t, nullptr, TFM_ROTATION);
+        }
+        else if (event->val == TFM_MODAL_TRACKBALL) {
+          transform_mode_init(t, nullptr, TFM_TRACKBALL);
+        }
+        else if (event->val == TFM_MODAL_ROTATE_NORMALS) {
+          transform_mode_init(t, nullptr, TFM_NORMAL_ROTATION);
+        }
+        else if (event->val == TFM_MODAL_RESIZE) {
+          /* Scale isn't normally very useful after extrude along normals, see #39756 */
+          if ((t->con.mode & CON_APPLY) && (t->orient[t->orient_curr].type == V3D_ORIENT_NORMAL)) {
+            stopConstraint(t);
+          }
+          transform_mode_init(t, nullptr, TFM_RESIZE);
+        }
+        else {
+
+          transform_mode_init(t, nullptr, TFM_UV_EDGE_SLIDE);
+        }
+
+        /* Need to reinitialize after mode change. */
+        initSnapping(t, nullptr);
+        applyMouseInput(t, &t->mouse, t->mval, t->values);
+        t->redraw |= TREDRAW_HARD;
+        handled = true;
+        break;
       case TFM_MODAL_SNAP_INV_ON:
         if (!(t->modifiers & MOD_SNAP_INVERT)) {
           t->modifiers |= MOD_SNAP_INVERT;

@@ -146,6 +146,9 @@ extern TransModeInfo TransMode_seqslide;
 extern TransModeInfo TransMode_edgeslide;
 void transform_mode_edge_slide_reproject_input(TransInfo *t);
 
+/* transform_mode_edge_uv_slide.cc */
+extern TransModeInfo TransMode_edgeslideuv;
+
 /* `transform_mode_gpopacity.cc` */
 
 extern TransModeInfo TransMode_gpopacity;

@@ -71,6 +71,7 @@ static const char OP_EDGE_CREASE[] = "TRANSFORM_OT_edge_crease";
 static const char OP_VERT_CREASE[] = "TRANSFORM_OT_vert_crease";
 static const char OP_EDGE_BWEIGHT[] = "TRANSFORM_OT_edge_bevelweight";
 static const char OP_SEQ_SLIDE[] = "TRANSFORM_OT_seq_slide";
+static const char OP_UV_EDGE_SLIDE[] = "TRANSFORM_OT_uv_edge_slide";
 static const char OP_NORMAL_ROTATION[] = "TRANSFORM_OT_rotate_normal";
 
 static void TRANSFORM_OT_translate(wmOperatorType *ot);
@@ -92,6 +93,7 @@ static void TRANSFORM_OT_edge_crease(wmOperatorType *ot);
 static void TRANSFORM_OT_vert_crease(wmOperatorType *ot);
 static void TRANSFORM_OT_edge_bevelweight(wmOperatorType *ot);
 static void TRANSFORM_OT_seq_slide(wmOperatorType *ot);
+static void TRANSFORM_OT_uv_edge_slide(wmOperatorType *ot);
 static void TRANSFORM_OT_rotate_normal(wmOperatorType *ot);
 
 static TransformModeItem transform_modes[] = {
@@ -114,6 +116,7 @@ static TransformModeItem transform_modes[] = {
     {OP_VERT_CREASE, TFM_VERT_CREASE, TRANSFORM_OT_vert_crease},
     {OP_EDGE_BWEIGHT, TFM_BWEIGHT, TRANSFORM_OT_edge_bevelweight},
     {OP_SEQ_SLIDE, TFM_SEQ_SLIDE, TRANSFORM_OT_seq_slide},
+    {OP_UV_EDGE_SLIDE, TFM_UV_EDGE_SLIDE, TRANSFORM_OT_uv_edge_slide},
     {OP_NORMAL_ROTATION, TFM_NORMAL_ROTATION, TRANSFORM_OT_rotate_normal},
     {nullptr, 0},
 };
@@ -151,6 +154,7 @@ const EnumPropertyItem rna_enum_transform_mode_types[] = {
     {TFM_ALIGN, "ALIGN", 0, "Align", ""},
     {TFM_EDGE_SLIDE, "EDGESLIDE", 0, "Edge Slide", ""},
     {TFM_SEQ_SLIDE, "SEQSLIDE", 0, "Sequence Slide", ""},
+    {TFM_UV_EDGE_SLIDE, "EDGEUVSLIDE", 0, "Edge Slide UV", ""},
     {TFM_GPENCIL_OPACITY, "GPENCIL_OPACITY", 0, "Grease Pencil Opacity", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -567,7 +571,8 @@ static bool transform_poll_property(const bContext *C, wmOperator *op, const Pro
         /* Special case: show constraint axis if we don't have values,
          * needed for mirror operator. */
         if (STREQ(prop_id, "constraint_axis") &&
-            (RNA_struct_find_property(op->ptr, "value") == nullptr)) {
+            (RNA_struct_find_property(op->ptr, "value") == nullptr))
+        {
           return true;
         }
 
@@ -1306,6 +1311,27 @@ static void TRANSFORM_OT_edge_bevelweight(wmOperatorType *ot)
   WM_operatortype_props_advanced_begin(ot);
 
   Transform_Properties(ot, P_SNAP);
+}
+
+static void TRANSFORM_OT_uv_edge_slide(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Edge Slide";
+  ot->description = "Slide an edge loop along a mesh";
+  ot->idname = OP_UV_EDGE_SLIDE;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* api callbacks */
+  ot->invoke = transform_invoke;
+  ot->exec = transform_exec;
+  ot->modal = transform_modal;
+  ot->cancel = transform_cancel;
+  ot->poll = ED_operator_uvedit;
+  ot->poll_property = transform_poll_property;
+
+  WM_operatortype_props_advanced_begin(ot);
+
+  RNA_def_float_factor(ot->srna, "value", 0, -1.0f, 1.0f, "Factor", "", -1.0f, 1.0f);
 }
 
 static void TRANSFORM_OT_seq_slide(wmOperatorType *ot)
