@@ -253,10 +253,7 @@ IDTypeInfo IDType_ID_GP = {
 
 namespace blender::bke::greasepencil {
 
-/** Curves attributes getters
- *
- */
-
+/* Curves attributes getters */
 static int domain_num(const CurvesGeometry &curves, const eAttrDomain domain)
 {
   return domain == ATTR_DOMAIN_POINT ? curves.points_num() : curves.curves_num();
