@@ -532,14 +532,22 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
 }
 
 /* Node updater callback used for building ActKeyColumns from GPencil frames */
-static void nupdate_ak_cel(ActKeyColumn *ak, void * /*data*/)
+static void nupdate_ak_cel(ActKeyColumn *ak, void *data)
 {
-  // TODO : Update cel selection
+  GreasePencilCel &cel = *static_cast<GreasePencilCel *>(data);
+
+  /* Update selection status */
+  if (cel.frame.flag & GP_FRAME_SELECTED) {
+    ak->sel = SELECT;
+  }
 
   /* Count keyframes in this column */
   ak->totkey++;
 
-  // TODO : update column keytype
+  /* Update keytype status */
+  if (cel.frame.type == BEZT_KEYTYPE_KEYFRAME) {
+    ak->key_type = BEZT_KEYTYPE_KEYFRAME;
+  }
 }
 
 /* ......... */
