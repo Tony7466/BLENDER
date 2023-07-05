@@ -76,6 +76,18 @@ class Drawing : public ::GreasePencilDrawing {
    */
   Span<uint3> triangles() const;
   void tag_positions_changed();
+
+  /**
+   * Per-point opacity value
+   */
+  Span<float> opacities() const;
+  MutableSpan<float> opacities_for_write();
+
+  /**
+   * Per-point radius value
+   */
+  Span<float> radii() const;
+  MutableSpan<float> radii_for_write();
 };
 
 class LayerGroup;

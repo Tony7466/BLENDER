@@ -46,6 +46,9 @@ using blender::Span;
 using blender::uint3;
 using blender::VectorSet;
 
+static const std::string ATTR_OPACITY = "opacity";
+static const std::string ATTR_RADIUS = "radius";
+
 static void grease_pencil_init_data(ID *id)
 {
   using namespace blender::bke;
@@ -250,6 +253,61 @@ IDTypeInfo IDType_ID_GP = {
 
 namespace blender::bke::greasepencil {
 
+/** Curves attributes getters
+ *
+ */
+
+static int domain_num(const CurvesGeometry &curves, const eAttrDomain domain)
+{
+  return domain == ATTR_DOMAIN_POINT ? curves.points_num() : curves.curves_num();
+}
+static const CustomData &domain_custom_data(const CurvesGeometry &curves, const eAttrDomain domain)
+{
+  return domain == ATTR_DOMAIN_POINT ? curves.point_data : curves.curve_data;
+}
+static CustomData &domain_custom_data(CurvesGeometry &curves, const eAttrDomain domain)
+{
+  return domain == ATTR_DOMAIN_POINT ? curves.point_data : curves.curve_data;
+}
+
+template<typename T>
+static Span<T> get_span_attribute(const CurvesGeometry &curves,
+                                  const eAttrDomain domain,
+                                  const StringRefNull name)
+{
+  const int num = domain_num(curves, domain);
+  const CustomData &custom_data = domain_custom_data(curves, domain);
+  const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
+
+  T *data = (T *)CustomData_get_layer_named(&custom_data, type, name.c_str());
+  if (data == nullptr) {
+    return {};
+  }
+  return {data, num};
+}
+
+template<typename T>
+static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
+                                            const eAttrDomain domain,
+                                            const StringRefNull name,
+                                            const T default_value = T())
+{
+  const int num = domain_num(curves, domain);
+  const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
+  CustomData &custom_data = domain_custom_data(curves, domain);
+
+  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), num);
+  if (data != nullptr) {
+    return {data, num};
+  }
+  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name.c_str());
+  MutableSpan<T> span = {data, num};
+  if (num > 0 && span.first() != default_value) {
+    span.fill(default_value);
+  }
+  return span;
+}
+
 Drawing::Drawing()
 {
   this->base.type = GP_DRAWING;
@@ -338,6 +396,26 @@ const bke::CurvesGeometry &Drawing::strokes() const
 bke::CurvesGeometry &Drawing::strokes_for_write()
 {
   return this->geometry.wrap();
+}
+
+Span<float> Drawing::opacities() const
+{
+  return get_span_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY);
+}
+
+MutableSpan<float> Drawing::opacities_for_write()
+{
+  return get_mutable_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY);
+}
+
+Span<float> Drawing::radii() const
+{
+  return get_span_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_RADIUS);
+}
+
+MutableSpan<float> Drawing::radii_for_write()
+{
+  return get_mutable_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_RADIUS);
 }
 
 void Drawing::tag_positions_changed()
