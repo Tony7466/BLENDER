@@ -42,7 +42,7 @@ GPU_SHADER_CREATE_INFO(eevee_geom_gpencil)
     .additional_info("eevee_shared")
     .define("MAT_GEOM_GPENCIL")
     .vertex_source("eevee_geom_gpencil_vert.glsl")
-    .additional_info("draw_gpencil", "draw_resource_id_varying", "draw_resource_id_new");
+    .additional_info("draw_gpencil_new", "draw_resource_id_varying", "draw_resource_id_new");
 
 GPU_SHADER_CREATE_INFO(eevee_geom_curves)
     .additional_info("eevee_shared")
@@ -109,7 +109,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
                      "eevee_sampling_data",
                      /* Added at runtime because of test shaders not having `node_tree`. */
                      //  "eevee_render_pass_out",
-                     "eevee_cryptomatte_out");
+                     "eevee_cryptomatte_out",
+                     "eevee_ambient_occlusion_data");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     .vertex_out(eevee_surf_iface)
@@ -123,7 +124,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      "eevee_camera",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
-                     "eevee_shadow_data"
+                     "eevee_shadow_data",
+                     "eevee_ambient_occlusion_data"
                      /* Optionally added depending on the material. */
                      // "eevee_render_pass_out",
                      // "eevee_cryptomatte_out",
@@ -140,6 +142,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_capture)
     .additional_info("eevee_camera", "eevee_utility_texture");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_depth)
+    .define("MAT_DEPTH")
     .vertex_out(eevee_surf_iface)
     .fragment_source("eevee_surf_depth_frag.glsl")
     .additional_info("eevee_sampling_data", "eevee_camera", "eevee_utility_texture");

@@ -750,7 +750,7 @@ static int rna_ToolSettings_snap_mode_get(PointerRNA *ptr)
   return ts->snap_mode;
 }
 
-static void rna_ToolSettings_snap_mode_set(struct PointerRNA *ptr, int value)
+static void rna_ToolSettings_snap_mode_set(PointerRNA *ptr, int value)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
   if (value != 0) {
@@ -892,7 +892,7 @@ static PointerRNA rna_Scene_objects_get(CollectionPropertyIterator *iter)
 
 /* End of read-only Iterator of all the scene objects. */
 
-static void rna_Scene_set_set(PointerRNA *ptr, PointerRNA value, struct ReportList * /*reports*/)
+static void rna_Scene_set_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Scene *scene = (Scene *)ptr->data;
   Scene *set = (Scene *)value.data;
@@ -1113,7 +1113,7 @@ static PointerRNA rna_Scene_active_keying_set_get(PointerRNA *ptr)
 
 static void rna_Scene_active_keying_set_set(PointerRNA *ptr,
                                             PointerRNA value,
-                                            struct ReportList * /*reports*/)
+                                            ReportList * /*reports*/)
 {
   Scene *scene = (Scene *)ptr->data;
   KeyingSet *ks = (KeyingSet *)value.data;
@@ -1627,7 +1627,7 @@ static PointerRNA rna_RenderSettings_active_view_get(PointerRNA *ptr)
 
 static void rna_RenderSettings_active_view_set(PointerRNA *ptr,
                                                PointerRNA value,
-                                               struct ReportList * /*reports*/)
+                                               ReportList * /*reports*/)
 {
   RenderData *rd = (RenderData *)ptr->data;
   SceneRenderView *srv = (SceneRenderView *)value.data;
@@ -2368,7 +2368,7 @@ PointerRNA rna_FreestyleLineSet_linestyle_get(PointerRNA *ptr)
 
 void rna_FreestyleLineSet_linestyle_set(PointerRNA *ptr,
                                         PointerRNA value,
-                                        struct ReportList * /*reports*/)
+                                        ReportList * /*reports*/)
 {
   FreestyleLineSet *lineset = (FreestyleLineSet *)ptr->data;
 
@@ -4400,7 +4400,7 @@ static void rna_def_view_layer_aovs(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_pointer(func, "aov", "AOV", "", "Newly created AOV");
   RNA_def_function_return(func, parm);
 
-  /* Defined in `rna_layer.c`. */
+  /* Defined in `rna_layer.cc`. */
   func = RNA_def_function(srna, "remove", "rna_ViewLayer_remove_aov");
   parm = RNA_def_pointer(func, "aov", "AOV", "", "AOV to remove");
   RNA_def_function_ui_description(func, "Remove an AOV");
@@ -5905,13 +5905,6 @@ static void rna_def_scene_image_format_data(BlenderRNA *brna)
                            "Amount of time to determine best compression: "
                            "0 = no compression with fast file output, "
                            "100 = maximum lossless compression with slow file output");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
-  /* flag */
-  prop = RNA_def_property(srna, "use_zbuffer", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", R_IMF_FLAG_ZBUF);
-  RNA_def_property_ui_text(
-      prop, "Z Buffer", "Save the z-depth per pixel (32-bit unsigned integer z-buffer)");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "use_preview", PROP_BOOLEAN, PROP_NONE);

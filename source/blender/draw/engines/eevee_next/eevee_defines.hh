@@ -26,6 +26,9 @@
 #define CULLING_ZBIN_GROUP_SIZE 1024
 #define CULLING_TILE_GROUP_SIZE 256
 
+/* Reflection Probes. */
+#define REFLECTION_PROBE_GROUP_SIZE 16
+
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
  * Be sure to update them accordingly.
@@ -90,6 +93,9 @@
 #define DOF_GATHER_GROUP_SIZE DOF_TILES_SIZE
 #define DOF_RESOLVE_GROUP_SIZE (DOF_TILES_SIZE * 2)
 
+/* Ambient Occlusion. */
+#define AMBIENT_OCCLUSION_PASS_TILE_SIZE 16
+
 /* IrradianceBake. */
 #define SURFEL_GROUP_SIZE 256
 #define SURFEL_LIST_GROUP_SIZE 256
@@ -126,6 +132,7 @@
 /* Only during surface shading (forward and deferred eval). */
 #define HIZ_BUF_SLOT 3
 #define IRRADIANCE_GRID_BUF_SLOT 4
+#define AO_BUF_SLOT 5
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
