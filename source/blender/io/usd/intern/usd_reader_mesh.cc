@@ -535,7 +535,8 @@ void copy_prim_array_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
 {
   pxr::VtArray<T> primvar_array;
 
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
+  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)
+      && primvar_array.size() == buffer.span.size()) {
     int64_t index = 0;
     for (const auto value : primvar_array) {
       buffer.span[index] = value;
@@ -562,7 +563,8 @@ void copy_prim_array_to_blender_buffer2(const pxr::UsdGeomPrimvar &primvar,
 {
   pxr::VtArray<T> primvar_array;
 
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
+  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)
+      && primvar_array.size() == buffer.span.size()) {
     int64_t index = 0;
     for (const auto value : primvar_array) {
       buffer.span[index] = {value[0], value[1]};
@@ -589,7 +591,8 @@ void copy_prim_array_to_blender_buffer3(const pxr::UsdGeomPrimvar &primvar,
 {
   pxr::VtArray<T> primvar_array;
 
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
+  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)
+      && primvar_array.size() == buffer.span.size()) {
     int64_t index = 0;
     for (const auto value : primvar_array) {
       buffer.span[index] = {value[0], value[1], value[2]};
@@ -616,7 +619,8 @@ void copy_prim_array_to_blender_buffer_color(const pxr::UsdGeomPrimvar &primvar,
 {
   pxr::VtArray<T> primvar_array;
 
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)) {
+  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime)
+      && primvar_array.size() == buffer.span.size()) {
     int64_t index = 0;
     for (const auto value : primvar_array) {
       buffer.span[index] = {value[0], value[1], value[2], 1.0f};

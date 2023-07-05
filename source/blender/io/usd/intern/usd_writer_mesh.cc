@@ -84,8 +84,10 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
 
   attributes.for_all(
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
-        /* Skipping "internal" Blender properties. */
-        if (attribute_id.name()[0] == '.' || attribute_id.name() == "position") {
+        /* Skipping "internal" Blender properties. Also skipping
+         * material_index as it's dealt with elsewhere. */
+        if (attribute_id.name()[0] == '.' ||
+            ELEM(attribute_id.name(), "position", "material_index")) {
           return true;
         }
 
@@ -148,7 +150,7 @@ static const pxr::TfToken convert_blender_domain_to_usd(const eAttrDomain blende
     case ATTR_DOMAIN_POINT:
       return pxr::UsdGeomTokens->vertex;
     case ATTR_DOMAIN_FACE:
-      return pxr::UsdGeomTokens->face;
+      return pxr::UsdGeomTokens->uniform;
 
     /* Notice: Edge types are not supported in USD! */
     default:
@@ -255,7 +257,7 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
     WM_reportf(RPT_WARNING,
                "Mesh %s, Attribute %s cannot be converted to USD.",
                &mesh->id.name[2],
-               attribute_id.name());
+               attribute_id.name().data());
     return;
   }
 
