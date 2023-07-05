@@ -1586,7 +1586,15 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
+
+  /* Viewport-Facing Select */
+  char viewport_facing_select;
+  char viewport_facing_select_mode;
+  char _pad0[1];
+  float viewport_facing_select_threshold;
+  char viewport_facing_select_vert;
+  char viewport_facing_select_edge;
+  char viewport_facing_select_face;
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
@@ -2395,6 +2403,40 @@ typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_ROTATE = (1 << 1),
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
 } eSnapTransformMode;
+
+/** #ToolSettings.viewport_facing_mode */
+enum {
+  VIEWPORT_FACING_SELECT_BOTH = (1 << 0),
+  VIEWPORT_FACING_SELECT_NEAR = (1 << 1),
+  VIEWPORT_FACING_SELECT_XRAY = (1 << 2),
+};
+
+/** #ToolSettings.viewport_facing_select_vert */
+enum {
+  VIEWPORT_FACING_SELECT_FRONT_VERTS = (1 << 0),
+  VIEWPORT_FACING_SELECT_FRONT_VERTS_FACE = (1 << 1),
+  VIEWPORT_FACING_SELECT_REAR_VERTS = (1 << 2),
+  VIEWPORT_FACING_SELECT_REAR_VERTS_FACE = (1 << 3),
+  VIEWPORT_FACING_SELECT_ALL_VERTS = (1 << 4),
+};
+
+/** #ToolSettings.viewport_facing_select_edge */
+enum {
+  VIEWPORT_FACING_SELECT_FRONT_EDGES = (1 << 0),
+  VIEWPORT_FACING_SELECT_FRONT_EDGES_FACE = (1 << 1),
+  VIEWPORT_FACING_SELECT_REAR_EDGES = (1 << 2),
+  VIEWPORT_FACING_SELECT_REAR_EDGES_FACE = (1 << 3),
+  VIEWPORT_FACING_SELECT_ALL_EDGES = (1 << 4),
+};
+
+/** #ToolSettings.viewport_facing_select_face */
+enum {
+  VIEWPORT_FACING_SELECT_FRONT_FACES = (1 << 0),
+  VIEWPORT_FACING_SELECT_FRONT_FACES_VERT = (1 << 1),
+  VIEWPORT_FACING_SELECT_REAR_FACES = (1 << 2),
+  VIEWPORT_FACING_SELECT_REAR_FACES_VERT = (1 << 3),
+  VIEWPORT_FACING_SELECT_ALL_FACES = (1 << 4),
+};
 
 /** #ToolSettings::selectmode */
 enum {

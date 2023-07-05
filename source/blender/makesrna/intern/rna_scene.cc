@@ -3100,6 +3100,108 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem viewport_facing_select_mode_items[] = {
+      {VIEWPORT_FACING_SELECT_BOTH,
+       "BOTH",
+       0,
+       "Near and X-Ray",
+       "Use viewport-facing selection in near select and X-Ray"},
+      {VIEWPORT_FACING_SELECT_NEAR,
+       "NEAR",
+       0,
+       "Near",
+       "Use viewport-facing selection in near select"},
+      {VIEWPORT_FACING_SELECT_XRAY, "XRAY", 0, "X-Ray", "Use viewport-facing selection in X-Ray"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem viewport_facing_select_vert_items[] = {
+      {VIEWPORT_FACING_SELECT_FRONT_VERTS,
+       "FRONT_VERTS",
+       0,
+       "Front Verts",
+       "Select vertices with viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_FRONT_VERTS_FACE,
+       "FRONT_VERTS_FACE",
+       0,
+       "Verts of Front Face",
+       "Select vertices if they are part of a face that has a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_REAR_VERTS,
+       "REAR_VERTS",
+       0,
+       "Rear Verts",
+       "Select vertices without viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_REAR_VERTS_FACE,
+       "REAR_VERTS_FACE",
+       0,
+       "Verts of Rear Face",
+       "Select vertices if they are part of a face that does not have a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_ALL_VERTS,
+       "ALL_VERTS",
+       0,
+       "All Verts",
+       "Select vertices regarless of their normal direction"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem viewport_facing_select_edge_items[] = {
+      {VIEWPORT_FACING_SELECT_FRONT_EDGES,
+       "FRONT_EDGES",
+       0,
+       "Front Edges",
+       "Select edges with viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_FRONT_EDGES_FACE,
+       "FRONT_EDGES_FACE",
+       0,
+       "Edges of Front Face",
+       "Select edges if they are part of a face that has a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_REAR_EDGES,
+       "REAR_EDGES",
+       0,
+       "Rear Edges",
+       "Select edges without viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_REAR_EDGES_FACE,
+       "REAR_EDGES_FACE",
+       0,
+       "Edges of Rear Face",
+       "Select edges if they are part of a face that does not have a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_ALL_EDGES,
+       "ALL_EDGES",
+       0,
+       "All Edges",
+       "Select edges regarless of their normal direction"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem viewport_facing_select_face_items[] = {
+      {VIEWPORT_FACING_SELECT_FRONT_FACES,
+       "FRONT_FACES",
+       0,
+       "Front Faces",
+       "Select faces with viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_FRONT_FACES_VERT,
+       "FRONT_FACES_VERT",
+       0,
+       "Faces of Front Vert",
+       "Select faces if they have a vertex with a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_REAR_FACES,
+       "REAR_FACES",
+       0,
+       "Rear Faces",
+       "Select faces without viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_REAR_FACES_VERT,
+       "REAR_FACES_VERT",
+       0,
+       "Faces of Rear Vert",
+       "Select faces if they have a vertex without a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_ALL_FACES,
+       "ALL_FACES",
+       0,
+       "All Faces",
+       "Select faces regarless of their normal direction"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "ToolSettings", nullptr);
   RNA_def_struct_path_func(srna, "rna_ToolSettings_path");
   RNA_def_struct_ui_text(srna, "Tool Settings", "");
@@ -3827,6 +3929,43 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "normal_vector", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_ui_text(prop, "Normal Vector", "Normal Vector used to copy, add or multiply");
   RNA_def_property_ui_range(prop, -10000.0, 10000.0, 1, 3);
+
+  /* Viewport-Facing Select */
+  prop = RNA_def_property(srna, "viewport_facing_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "viewport_facing_select", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Viewport Facing Select",
+      "Filter box, lasso, and circle selection of mesh elements based on the direction of their "
+      "normals compared to the viewport");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "viewport_facing_select_mode");
+  RNA_def_property_enum_items(prop, viewport_facing_select_mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "Which selection modes to use viewport-facing selection");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_vert", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "viewport_facing_select_vert");
+  RNA_def_property_enum_items(prop, viewport_facing_select_vert_items);
+  RNA_def_property_ui_text(prop, "Vert", "Direction and mode for vertices");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_edge", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "viewport_facing_select_edge");
+  RNA_def_property_enum_items(prop, viewport_facing_select_edge_items);
+  RNA_def_property_ui_text(prop, "Edge", "Direction and mode for edges");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "viewport_facing_select_face");
+  RNA_def_property_enum_items(prop, viewport_facing_select_face_items);
+  RNA_def_property_ui_text(prop, "Face", "Direction and mode for faces");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, -0.999999, 0.999999);
+  RNA_def_property_ui_range(prop, -0.999999, 0.999999, 1.0, 6);
+  RNA_def_property_ui_text(
+      prop,
+      "Threshold",
+      "How close the angles of the viewport and mesh element need to be for selection to occur");
 
   /* Unified Paint Settings */
   prop = RNA_def_property(srna, "unified_paint_settings", PROP_POINTER, PROP_NONE);
