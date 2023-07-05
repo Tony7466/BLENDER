@@ -880,7 +880,9 @@ typedef struct UserDef {
   /** #eGPUBackendType */
   short gpu_backend;
 
-  char _pad7[4];
+  /** Keymap click-drag direction style */
+  char click_drag_direction;
+  char _pad7[3];
 
   /** Private, defaults to 20 for 72 DPI setting. */
   short widget_unit;
@@ -1192,6 +1194,13 @@ typedef enum eUserpref_TableAPI {
   USER_TABLET_NATIVE = 1,
   USER_TABLET_WINTAB = 2,
 } eUserpref_TabletAPI;
+
+/** #UserDef.click_drag_direction_types */
+ typedef enum eUserpref_Click_Drag_Direction {
+  USER_CLICK_DRAG_DIRECTION_EIGHT_WAY = 0,
+  USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT = 1,
+  USER_CLICK_DRAG_DIRECTION_UP_DOWN = 2,
+} eUserpref_Click_Drag_Direction;
 
 /** #UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {
