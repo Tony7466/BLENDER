@@ -347,6 +347,11 @@ float grid_snap_floor(float x, float offset) {
   return floor((x - offset) / grid_size) * grid_size + offset;
 }
 
+float grid_snap_floor(float x, float offset) {
+  const float grid_size = NODE_GRID_STEP_SIZE;
+  return floor((x - offset) / grid_size) * grid_size + offset;
+}
+
 /**
  * Based on settings and sockets in node, set drawing rect info.
  */
