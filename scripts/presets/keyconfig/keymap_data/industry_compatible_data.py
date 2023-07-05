@@ -655,10 +655,9 @@ def km_view3d(params):
         ("view3d.rotate", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True}, None),
         ("view3d.move", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
         ("view3d.zoom", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True}, None),
-        ("view3d.view_selected", {"type": 'F', "value": 'PRESS', "shift": True},
-         {"properties": [("use_all_regions", True)]}),
         ("view3d.view_selected", {"type": 'F', "value": 'PRESS'},
          {"properties": [("use_all_regions", False)]}),
+        ("view3d.view_center_pick", {"type": 'F', "value": 'PRESS', "shift": True}, None),
         ("view3d.smoothview", {"type": 'TIMER1', "value": 'ANY', "any": True}, None),
         # Trackpad
         ("view3d.rotate", {"type": 'TRACKPADPAN', "value": 'ANY'}, None),
@@ -757,9 +756,6 @@ def km_view3d(params):
         ("view3d.toggle_xray", {"type": 'X', "value": 'PRESS', "alt": True}, None),
         ("wm.context_toggle", {"type": 'X', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.use_snap')]}),
-        # Modes
-        op_menu_pie("VIEW3D_MT_object_mode_pie", {"type": 'FOUR', "value": 'PRESS'}),
-        ("object.transfer_mode", {"type": 'ACCENT_GRAVE', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -2303,10 +2299,7 @@ def km_grease_pencil(_params):
 
 def _grease_pencil_selection(params):
     return [
-        ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
-         {"properties": [("extend", True), ("toggle", True)]}),
         # Select all
-        ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True,
          "shift": True}, {"properties": [("action", 'DESELECT')]}),
         ("gpencil.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
@@ -2341,8 +2334,11 @@ def km_grease_pencil_stroke_edit_mode(params):
         # Normal select
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK'},
          {"properties": [("deselect_all", True)]}),
+        ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
+         {"properties": [("extend", True), ("toggle", True)]}),
         # Selection
         *_grease_pencil_selection(params),
+        ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         # Duplicate and move selected points
         ("gpencil.duplicate_move", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
         # Delete
@@ -2403,8 +2399,6 @@ def km_grease_pencil_stroke_paint_mode(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Brush strength
         ("wm.radial_control", {"type": 'U', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_paint.brush.gpencil_settings.pen_strength')]}),
@@ -2415,6 +2409,8 @@ def km_grease_pencil_stroke_paint_mode(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Color operators
+        ("gpencil.tint_flip", {"type": 'X', "value": 'PRESS'}, None),
         # Draw context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_draw_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
         # Show/hide
@@ -2554,18 +2550,33 @@ def km_grease_pencil_stroke_sculpt_mode(params):
          {"properties": [("data_path", 'tool_settings.use_gpencil_select_mask_stroke')]}),
          ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.use_gpencil_select_mask_segment')]}),
+        # Normal Selection
+        ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True},
+         {"properties": [("deselect_all", True)]}),
+        ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True, "ctrl": True},
+         {"properties": [("extend", True), ("toggle", True)]}),
         # Selection
         *_grease_pencil_selection(params),
-        # Brush strength
+        # Brush properties
         ("wm.radial_control", {"type": 'U', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.strength')]}),
-        # Brush size
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
         ("wm.radial_control", {"type": 'S', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.size')]}),
         # Copy
         ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         # Display
         *_grease_pencil_display(),
+        # Keyframes
+        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'S', "value": 'PRESS', "shift": True}),
+        ("gpencil.blank_frame_add", {"type": 'S', "value": 'PRESS', "shift": True, "alt": True}, None),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        # Material menu
+        op_menu("GPENCIL_MT_material_active", {"type": 'Y', "value": 'PRESS', "alt": True}),
         # Context menu
         op_panel("VIEW3D_PT_gpencil_sculpt_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
     ])
@@ -2762,8 +2773,6 @@ def km_grease_pencil_stroke_weight_mode(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Brush strength
         ("wm.radial_control", {"type": 'U', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_weight_paint.brush.strength')]}),
@@ -2779,6 +2788,8 @@ def km_grease_pencil_stroke_weight_mode(params):
         # Keyframes
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'S', "value": 'PRESS', "shift": True}),
         ("gpencil.blank_frame_add", {"type": 'S', "value": 'PRESS', "shift": True, "alt": True}, None),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu",
                                        {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
@@ -2862,8 +2873,6 @@ def km_grease_pencil_stroke_vertex_mode(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Selection Modes
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.use_gpencil_vertex_select_mask_point')]}),
@@ -2871,6 +2880,11 @@ def km_grease_pencil_stroke_vertex_mode(params):
          {"properties": [("data_path", 'tool_settings.use_gpencil_vertex_select_mask_stroke')]}),
          ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.use_gpencil_vertex_select_mask_segment')]}),
+        # Normal Selection
+        ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True},
+         {"properties": [("deselect_all", True)]}),
+        ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True, "ctrl": True},
+         {"properties": [("extend", True), ("toggle", True)]}),
         # Selection
         *_grease_pencil_selection(params),
         # Brush strength
@@ -2883,11 +2897,15 @@ def km_grease_pencil_stroke_vertex_mode(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Color operators
+        ("gpencil.tint_flip", {"type": 'X', "value": 'PRESS'}, None),
         # Display
         *_grease_pencil_display(),
         # Keyframes
         op_menu("VIEW3D_MT_gpencil_animation", {"type": 'S', "value": 'PRESS', "shift": True}),
         ("gpencil.blank_frame_add", {"type": 'S', "value": 'PRESS', "shift": True, "alt": True}, None),
+        # Active layer
+        op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Tools
         op_tool_cycle("builtin.select_box", {"type": 'Q', "value": 'PRESS'}),
         op_tool_cycle("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
@@ -3041,10 +3059,10 @@ def km_face_mask(params):
          {"properties": [("unselected", True)]}),
         ("paint.face_vert_reveal", {"type": 'H', "value": 'PRESS', "alt": True}, None),
         ("paint.face_select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
-        ("paint.vert_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "alt": True},
-         {"properties": [("select", True)]}),
-        ("paint.vert_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "shift": True, "alt": True},
-         {"properties": [("select", False)]}),
+        ("paint.face_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "alt": True},
+         {"properties": [("deselect", False)]}),
+        ("paint.face_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "ctrl": True, "alt": True},
+         {"properties": [("deselect", True)]}),
     ])
 
     return keymap
@@ -3072,7 +3090,7 @@ def km_weight_paint_vertex_selection(params):
         ("paint.vert_select_linked", {"type": 'L', "value": 'PRESS', "alt": True}, None),
         ("paint.vert_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "alt": True},
          {"properties": [("select", True)]}),
-        ("paint.vert_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "shift": True, "alt": True},
+        ("paint.vert_select_linked_pick", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "ctrl": True, "alt": True},
          {"properties": [("select", False)]}),
     ])
 
@@ -3363,8 +3381,6 @@ def km_image_paint(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Brush strokes
         ("paint.image_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
@@ -3382,17 +3398,17 @@ def km_image_paint(params):
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("image_paint", color=True, zoom=True, rotation=True, secondary_rotation=True),
         # Stencil Controls
-        ("brush.stencil_control", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SCALE')]}),
-        ("brush.stencil_control", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'ROTATION')]}),
-        ("brush.stencil_control", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'TRANSLATION'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
         # Mask Modes
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
@@ -3420,8 +3436,6 @@ def km_vertex_paint(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Brush Strokes
         ("paint.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
@@ -3440,17 +3454,17 @@ def km_vertex_paint(params):
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("vertex_paint", color=True, rotation=True),
         # Stencil Controls
-        ("brush.stencil_control", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SCALE')]}),
-        ("brush.stencil_control", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'ROTATION')]}),
-        ("brush.stencil_control", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'TRANSLATION'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
         # Mask Modes
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
@@ -3479,8 +3493,6 @@ def km_weight_paint(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Brush Strokes
         ("paint.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
@@ -3517,6 +3529,7 @@ def km_weight_paint(params):
         op_tool_cycle("builtin.scale", {"type": 'R', "value": 'PRESS'}),
         op_tool_cycle("builtin.transform", {"type": 'T', "value": 'PRESS'}),
         # Tools
+        op_tool_cycle("builtin.cursor", {"type": 'C', "value": 'PRESS'}),
         op_tool_cycle("builtin.select_box", {"type": 'Q', "value": 'PRESS'}),
         op_tool_cycle("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
     ])
@@ -3533,8 +3546,6 @@ def km_sculpt(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Sculpt Pivot
         ("sculpt.set_pivot_position", {"type": 'RIGHTMOUSE', 'value': 'PRESS', "shift": True},
          {"properties": [("mode", 'SURFACE')]}),
@@ -3618,17 +3629,17 @@ def km_sculpt(params):
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("sculpt", rotation=True),
         # Stencil
-        ("brush.stencil_control", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SCALE')]}),
-        ("brush.stencil_control", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'ROTATION')]}),
-        ("brush.stencil_control", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'TRANSLATION'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True, "key_modifier": 'Z'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
         # Stabilize Stroke
         ("wm.context_toggle", {"type": 'L', "value": 'PRESS'},
@@ -4022,8 +4033,6 @@ def km_sculpt_curves(params):
     )
 
     items.extend([
-        # Navigation
-        ("view3d.view_center_pick", {"type": 'F', "value": 'CLICK'}, None),
         # Brush strokes
         ("sculpt_curves.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
@@ -4052,6 +4061,21 @@ def km_sculpt_curves(params):
 
     return keymap
 
+
+def km_object_non_modal(params):
+    items = []
+    keymap = (
+        "Object Non-modal",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("object.transfer_mode", {"type": 'ACCENT_GRAVE', "value": 'PRESS'}, None),
+        op_menu_pie("VIEW3D_MT_object_mode_pie", {"type": 'FOUR', "value": 'PRESS'}),
+    ])
+
+    return keymap
 
 
 # ------------------------------------------------------------------------------
@@ -4408,6 +4432,7 @@ def generate_keymaps_impl(params=None):
         km_font(params),
         km_curves(params),
         km_sculpt_curves(params),
+        km_object_non_modal(params),
 
         # Modal maps.
         km_knife_tool_modal_map(params),
