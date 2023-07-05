@@ -19,18 +19,18 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-class PaintOperation : public GreasePencilStrokeOperation {
+class EraseOperation : public GreasePencilStrokeOperation {
 
  public:
-  ~PaintOperation() override {}
+  ~EraseOperation() override {}
 
-  void on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension) override;
-  void on_stroke_done(const bContext &C) override;
+  void on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension) override {}
+  void on_stroke_done(const bContext &C) override {}
 };
 
-std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation()
+std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation()
 {
-  return std::make_unique<PaintOperation>();
+  return std::make_unique<EraseOperation>();
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

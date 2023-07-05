@@ -1741,6 +1741,15 @@ class _defs_paint_grease_pencil:
             icon="brush.gpencil_draw.draw",
             data_block='DRAW',
         )
+    
+    @ToolDef.from_fn
+    def erase():
+        return dict(
+            idname="builtin_brush.Erase",
+            label="Erase",
+            icon="brush.gpencil_draw.erase",
+            data_block='ERASE',
+        )
 
 
 class _defs_image_generic:
@@ -3105,6 +3114,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_view3d_generic.cursor,
             None,
             _defs_paint_grease_pencil.draw,
+            _defs_paint_grease_pencil.erase,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
