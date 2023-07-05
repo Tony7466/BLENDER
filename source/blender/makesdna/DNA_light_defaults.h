@@ -22,6 +22,7 @@
     .b = 1.0f, \
     .k = 1.0f, \
     .energy = 10.0f, \
+    .energy_deprecated = 10.0f, \
     .dist = 25.0f, \
     .spotsize = DEG2RADF(45.0f), \
     .spotblend = 0.15f, \

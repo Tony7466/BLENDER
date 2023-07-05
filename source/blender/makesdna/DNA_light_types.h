@@ -38,11 +38,11 @@ typedef struct Light {
   float shdwr, shdwg, shdwb, shdwpad;
 
   float energy, dist, spotsize, spotblend;
+  float energy_deprecated DNA_DEPRECATED;
 
   /** Quad1 and Quad2 attenuation. */
   float att1, att2;
   float coeff_const, coeff_lin, coeff_quad;
-  char _pad0[4];
   struct CurveMapping *curfalloff;
   short falloff_type;
   char _pad2[2];
