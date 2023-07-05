@@ -28,13 +28,13 @@ using namespace blender;
  * \{ */
 
 struct SnapCache_EditMesh : public SnapObjectContext::SnapCache {
-  /* Loose Verts, Edges, Tris. */
+  /* Loose Verts, Edges, Triangles. */
   BVHTree *bvhtree[3];
   bool cached[3];
 
   struct BMEditMesh *em;
 
-  /** Default callbacks to BVH nearest and ray-cast used only for tris. */
+  /** Default callbacks to BVH nearest and ray-cast used only for triangles. */
   BVHTree_NearestPointCallback nearest_callback;
   BVHTree_RayCastCallback raycast_callback;
 
