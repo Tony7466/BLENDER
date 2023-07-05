@@ -217,10 +217,12 @@ static const int convert_usd_varying_to_blender(const std::string usd_domain)
   static std::unordered_map<std::string, int> domain_map{
       {pxr::UsdGeomTokens->faceVarying.GetString(), ATTR_DOMAIN_CORNER},
       {pxr::UsdGeomTokens->vertex.GetString(), ATTR_DOMAIN_POINT},
+      {pxr::UsdGeomTokens->varying.GetString(), ATTR_DOMAIN_POINT},
       {pxr::UsdGeomTokens->face.GetString(), ATTR_DOMAIN_FACE},
       /* As there's no "constant" type in Blender, for now we're
        * translating into a point Attribute. */
       {pxr::UsdGeomTokens->constant.GetString(), ATTR_DOMAIN_POINT},
+      {pxr::UsdGeomTokens->uniform.GetString(), ATTR_DOMAIN_FACE},
       /* Notice: Edge types are not supported! */
   };
 
@@ -677,6 +679,7 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
     case CD_PROP_COLOR: {
       pxr::VtArray<pxr::GfVec3f> primvar_array;
       bke::SpanAttributeWriter<ColorGeometry4f> buffer =
+          get_attribute_buffer_for_write<ColorGeometry4f>(mesh, name, domain);
           get_attribute_buffer_for_write<ColorGeometry4f>(mesh, name, domain);
       copy_prim_array_to_blender_buffer_color<pxr::GfVec3f, ColorGeometry4f>(
           primvar, buffer, motionSampleTime);
