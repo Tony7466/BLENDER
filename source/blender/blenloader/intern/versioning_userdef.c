@@ -65,6 +65,10 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 #define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_ATLEAST(userdef, ver, subver)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
+  if (!USER_VERSION_ATLEAST(400, 8)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.header);
+  }
+
   if (!USER_VERSION_ATLEAST(300, 41)) {
     memcpy(btheme, &U_theme_default, sizeof(*btheme));
   }
