@@ -240,7 +240,9 @@ static int gizmo_preselect_elem_test_select(bContext *C, wmGizmo *gz, const int 
       Object *ob = gz_ele->bases[gz_ele->base_index]->object;
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
       Mesh *me_eval = (Mesh *)DEG_get_evaluated_id(depsgraph, static_cast<ID *>(ob->data));
-      coords = BKE_mesh_wrapper_vert_coords(me_eval);
+      if (BKE_mesh_wrapper_vert_len(me_eval) == bm->totvert) {
+        coords = BKE_mesh_wrapper_vert_coords(me_eval);
+      }
     }
     EDBM_preselect_elem_update_from_single(gz_ele->psel, bm, best.ele, coords);
     EDBM_preselect_elem_update_preview(gz_ele->psel, &vc, bm, best.ele, mval);
