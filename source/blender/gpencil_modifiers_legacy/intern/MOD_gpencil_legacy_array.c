@@ -34,7 +34,6 @@
 #include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_scene.h"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
