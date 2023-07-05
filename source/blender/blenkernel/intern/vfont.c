@@ -1372,7 +1372,7 @@ static bool vfont_to_curve(Object *ob,
       struct TempLineInfo *start_line = &lineinfo[chartransdata[start_char].linenr];
       struct TempLineInfo *end_line = &lineinfo[chartransdata[end_char].linenr];
 
-      int char_offset = start_char;
+      int char_idx_offset = start_char;
 
       rctf *bounds = &tb_bounds->bounds;
       /* In a text-box with no curves, 'yof' only decrements over lines, 'ymax' and 'ymin'
@@ -1381,12 +1381,12 @@ static bool vfont_to_curve(Object *ob,
       bounds->ymin = chartransdata[end_char].yof;
 
       for (struct TempLineInfo *line = start_line; line <= end_line; line++) {
-        const struct CharTrans *first_char_line = &chartransdata[char_offset];
-        const struct CharTrans *last_char_line = &chartransdata[char_offset + line->char_nr];
+        const struct CharTrans *first_char_line = &chartransdata[char_idx_offset];
+        const struct CharTrans *last_char_line = &chartransdata[char_idx_offset + line->char_nr];
 
-        bounds->xmin = min_fff(bounds->xmin, first_char_line->xof, last_char_line->xof);
-        bounds->xmax = max_fff(bounds->xmax, first_char_line->xof, last_char_line->xof);
-        char_offset += line->char_nr + 1;
+        bounds->xmin = min_ff(bounds->xmin, first_char_line->xof);
+        bounds->xmax = max_ff(bounds->xmax, last_char_line->xof);
+        char_idx_offset += line->char_nr + 1;
       }
     }
   }
