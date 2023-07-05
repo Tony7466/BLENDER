@@ -342,12 +342,8 @@ float2 node_from_view(const bNode &node, const float2 &co)
   ;
 }
 
-float grid_snap_floor(float x, float offset) {
-  const float grid_size = NODE_GRID_STEP_SIZE;
-  return floor((x - offset) / grid_size) * grid_size + offset;
-}
-
-float grid_snap_floor(float x, float offset) {
+float grid_snap_floor(const float x, const float offset)
+{
   const float grid_size = NODE_GRID_STEP_SIZE;
   return floor((x - offset) / grid_size) * grid_size + offset;
 }
@@ -540,8 +536,7 @@ static void node_update_basis(const bContext &C,
     if (socket->flag & SOCK_MULTI_INPUT) {
       if (align_to_grid) {
         if (socket->runtime->total_inputs > 1) {
-          multi_input_socket_offset = (socket->runtime->total_inputs - 1) *
-                                      NODE_GRID_STEP_SIZE;
+          multi_input_socket_offset = (socket->runtime->total_inputs - 1) * NODE_GRID_STEP_SIZE;
         }
       }
       else {
