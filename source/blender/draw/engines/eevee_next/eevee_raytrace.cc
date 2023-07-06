@@ -112,8 +112,12 @@ void RaytracingModule::sync()
     pass.bind_image("ray_time_img", &ray_time_tx_);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
     pass.bind_image("out_radiance_img", &out_radiance_tx_);
+    pass.bind_image("out_hit_variance_img", &hit_variance_tx_);
+    pass.bind_image("out_hit_depth_img", &hit_depth_tx_);
+    pass.bind_image("tile_mask_img", &tile_mask_tx_);
     pass.bind_ubo("raytrace_buf", &data_);
     inst_.sampling.bind_resources(&pass);
+    inst_.hiz_buffer.bind_resources(&pass);
     pass.dispatch(ray_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -162,6 +166,7 @@ void RaytracingModule::trace(eClosureBits closure_bit, GPUTexture *out_radiance_
                  "Only reflection and refraction are implemented.");
 
   int2 extent(GPU_texture_width(out_radiance_tx), GPU_texture_height(out_radiance_tx));
+  int2 dummy_extent(1, 1);
 
   DRW_stats_group_start("Raytracing");
 
@@ -205,6 +210,8 @@ void RaytracingModule::trace(eClosureBits closure_bit, GPUTexture *out_radiance_
   {
     /* Denoise spatial. */
     denoised_spatial_tx_.acquire(extent, GPU_RGBA16F);
+    hit_variance_tx_.acquire(use_temporal_denoise_ ? extent : dummy_extent, GPU_R32F);
+    hit_depth_tx_.acquire(use_temporal_denoise_ ? extent : dummy_extent, GPU_R32F);
     out_radiance_tx_ = !use_temporal_denoise_ ? out_radiance_tx : denoised_spatial_tx_;
 
     if (closure_bit == CLOSURE_REFLECTION) {
@@ -222,6 +229,8 @@ void RaytracingModule::trace(eClosureBits closure_bit, GPUTexture *out_radiance_
 
   if (!use_temporal_denoise_) {
     denoised_spatial_tx_.release();
+    hit_variance_tx_.release();
+    hit_depth_tx_.release();
     DRW_stats_group_end();
     return;
   }
@@ -234,6 +243,8 @@ void RaytracingModule::trace(eClosureBits closure_bit, GPUTexture *out_radiance_
     inst_.manager->submit(denoise_temporal_ps_, view);
 
     denoised_spatial_tx_.release();
+    hit_variance_tx_.release();
+    hit_depth_tx_.release();
   }
 
   if (!use_bilateral_denoise_) {

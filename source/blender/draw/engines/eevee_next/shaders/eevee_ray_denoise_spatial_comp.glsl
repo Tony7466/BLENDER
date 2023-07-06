@@ -13,10 +13,11 @@
  * https://www.ea.com/seed/news/seed-dd18-presentation-slides-raytracing
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
 /* Blue noise categorized into 4 sets of samples.
@@ -156,12 +157,36 @@ void main()
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
   ivec2 texel_fullres = texel * raytrace_buf.resolution_scale + raytrace_buf.resolution_bias;
 
-  if (any(greaterThan(texel, raytrace_buf.full_resolution))) {
+  if (raytrace_buf.skip_denoise) {
+    imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
     return;
   }
 
-  if (raytrace_buf.skip_denoise) {
-    imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
+  /* Clear neighbor tiles that will not be processed. */
+  /* TODO(fclem): Optimize this. We don't need to clear the whole ring. This adds a ~8% cost  */
+  for (int x = -1; x <= 1; x++) {
+    for (int y = -1; y <= 1; y++) {
+      if (x == 0 && y == 0) {
+        continue;
+      }
+
+      ivec2 tile_coord_neighbor = ivec2(tile_coord) + ivec2(x, y);
+      if (!in_image_range(tile_coord_neighbor, tile_mask_img)) {
+        continue;
+      }
+
+      bool tile_is_unused = imageLoad(tile_mask_img, tile_coord_neighbor).r == 0;
+      if (tile_is_unused) {
+        ivec2 texel_fullres_neighbor = texel_fullres + ivec2(x, y) * int(tile_size);
+
+        imageStore(out_radiance_img, texel_fullres_neighbor, vec4(0.0));
+        imageStore(out_hit_variance_img, texel_fullres_neighbor, vec4(0.0));
+        imageStore(out_hit_depth_img, texel_fullres_neighbor, vec4(0.0));
+      }
+    }
+  }
+
+  if (any(greaterThan(texel, raytrace_buf.full_resolution))) {
     return;
   }
 
@@ -199,6 +224,7 @@ void main()
   vec3 rgb_moment = vec3(0.0);
   vec3 radiance_accum = vec3(0.0);
   float weight_accum = 0.0;
+  float closest_hit_time = 1.0e10;
   for (int i = 0; i < sample_count; i++, sample_id++) {
     ivec2 sample_texel = texel + resolve_sample_offsets_get(sample_id);
 
@@ -213,6 +239,8 @@ void main()
       continue;
     }
 
+    closest_hit_time = min(closest_hit_time, ray_time);
+
     /* Slide 54. */
     /* TODO(fclem): Apparently, ratio estimator should be pdf_bsdf / pdf_ray. */
     float weight = bxdf_eval(closure, ray_direction, V) * ray_pdf_inv;
@@ -224,8 +252,19 @@ void main()
     rgb_mean += ray_radiance.rgb;
     rgb_moment += sqr(ray_radiance.rgb);
   }
+  float inv_weight = safe_rcp(weight_accum);
 
-  radiance_accum *= safe_rcp(weight_accum);
+  radiance_accum *= inv_weight;
+  rgb_mean *= inv_weight;
+  rgb_moment *= inv_weight;
+
+  vec3 rgb_variance = abs(rgb_moment - sqr(rgb_mean));
+  float hit_variance = max_v3(rgb_variance);
+
+  float scene_z = get_view_z_from_depth(texelFetch(hiz_tx, texel_fullres, 0).r);
+  float hit_depth = get_depth_from_view_z(scene_z - closest_hit_time);
 
   imageStore(out_radiance_img, texel_fullres, vec4(radiance_accum, 0.0));
+  imageStore(out_hit_variance_img, texel_fullres, vec4(hit_variance));
+  imageStore(out_hit_depth_img, texel_fullres, vec4(hit_depth));
 }

@@ -53,6 +53,9 @@ class RaytracingModule {
   /** Textures containing the ray hit radiance denoised (full-res). */
   TextureFromPool denoised_spatial_tx_ = {"denoised_spatial_tx_"};
   TextureFromPool denoised_temporal_tx_ = {"denoised_temporal_tx_"};
+  /** Ray hit variance and hit depth for temporal denoising. Output of spatial denoise. */
+  TextureFromPool hit_variance_tx_ = {"hit_variance_tx_"};
+  TextureFromPool hit_depth_tx_ = {"hit_depth_tx_"};
   /** Output of the denoise passes. */
   GPUTexture *out_radiance_tx_ = nullptr;
 
