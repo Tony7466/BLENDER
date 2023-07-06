@@ -457,8 +457,8 @@ static float butterworth_calculate_blend_value(float *samples,
   const float blend_in_y_filtered = filtered_values[start_index + blend_in_out];
   const float blend_out_y_filtered = filtered_values[end_index - blend_in_out];
 
-  const float slope_in_samples = samples[start_index + 1] - samples[start_index];
-  const float slope_out_samples = samples[end_index - 1] - samples[end_index];
+  const float slope_in_samples = samples[start_index] - samples[start_index - 1];
+  const float slope_out_samples = samples[end_index] - samples[end_index + 1];
   const float slope_in_filtered = filtered_values[start_index + blend_in_out - 1] -
                                   filtered_values[start_index + blend_in_out];
   const float slope_out_filtered = filtered_values[end_index - blend_in_out] -
