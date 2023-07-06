@@ -7,16 +7,21 @@ void main()
 {
   ReflectionProbeData probe_data = reflection_probe_buf[0];
 
-  ivec3 octahedral_coord = ivec3(gl_GlobalInvocationID.xyz);
-  // TODO: dispatch should also consider this.
+  ivec3 texture_coord = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 texture_size = imageSize(octahedral_img);
+
+  ivec3 octahedral_coord = ivec3(gl_GlobalInvocationID.xyz);
   ivec2 octahedral_size = ivec2(texture_size.x >> probe_data.layer_subdivision,
                                 texture_size.y >> probe_data.layer_subdivision);
-  /* Group doesn't fit in output texture. */
+  /* Exit when pixel being written doesn't fit in the area reserved for the probe. */
   if (any(greaterThanEqual(octahedral_coord.xy, octahedral_size.xy))) {
     return;
   }
-  vec2 octahedral_uv = vec2(octahedral_coord.xy) / vec2(octahedral_size.xy);
+
+  vec2 texel_size = vec2(1.0) / vec2(octahedral_size);
+
+  vec2 uv = vec2(octahedral_coord.xy) / vec2(octahedral_size.xy);
+  vec2 octahedral_uv = octahedral_uv_from_layer_texture_coords(uv, probe_data, texel_size);
   vec3 R = octahedral_uv_to_direction(octahedral_uv);
 
   vec4 col = textureLod(cubemap_tx, R, 0.0);

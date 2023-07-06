@@ -109,7 +109,7 @@ void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle
 {
   ReflectionProbe &probe = probes_[0];
   ReflectionProbeData &probe_data = data_buf_[probe.index];
-  probe_data.layer_subdivision = 12 - world->bake_resolution;
+  probe_data.layer_subdivision = max_ii(int(log2(max_resolution_)) - world->bake_resolution, 0);
 }
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)

@@ -20,6 +20,7 @@ vec2 octahedral_uv_from_direction(vec3 co)
 
 vec3 octahedral_uv_to_direction(vec2 co)
 {
+  /* Change range to between [-1..1] */
   co = co * 2.0 - 1.0;
 
   vec2 abs_co = abs(co);
@@ -32,14 +33,23 @@ vec3 octahedral_uv_to_direction(vec2 co)
   return v;
 }
 
-vec2 octahedral_reflection_probe_unpack(vec2 octahedral_uv,
-                                        ReflectionProbeData probe_data,
-                                        float lod)
+/**
+ * Number of pixels to add near the edges to fix edge bleeding.
+ * This also limits the number of mipmap levels that can be savely used.
+ */
+#define OCTAHEDRON_NUM_BORDER_TEXEL 16.0
+
+/**
+ * Return the UV coordinates on the packed octahedral texture layer when applying the given
+ * octahedral_uv to a specific probe.
+ */
+vec2 octahedral_uv_to_layer_texture_coords(vec2 octahedral_uv,
+                                           ReflectionProbeData probe_data,
+                                           vec2 texel_size)
 {
-  /* Fix artifacts near edges. */
-  int i_lod = int(ceil(lod));
-  float texel_size = 1.0 / (1 << (12 - probe_data.layer_subdivision - i_lod));
-  octahedral_uv = (1.0 - 2.0 * texel_size) * octahedral_uv + texel_size;
+  /* Fix artifacts near edges. Proved one texel  on each side.*/
+  octahedral_uv = octahedral_uv * (1.0 - 2.0 * OCTAHEDRON_NUM_BORDER_TEXEL * texel_size) +
+                  OCTAHEDRON_NUM_BORDER_TEXEL * texel_size;
 
   int areas_per_dimension = 1 << probe_data.layer_subdivision;
   vec2 area_scalar = vec2(1.0 / float(areas_per_dimension));
@@ -49,4 +59,68 @@ vec2 octahedral_reflection_probe_unpack(vec2 octahedral_uv,
                           probe_data.area_index / areas_per_dimension) *
                      area_scalar;
   return octahedral_uv + area_offset;
+}
+
+/**
+ * Return the octahedral uv coordinates for the given texture uv coordinate on the packed
+ * octahedral texture layer for the given probe.
+ *
+ * It also applies wrapping in the additional space near borders.
+ * NOTE this function doesn't apply the translation part of the packing.
+ */
+vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
+                                             ReflectionProbeData probe_data,
+                                             vec2 texel_size)
+
+{
+  /* Apply border region. */
+  vec2 shrinked_uv = (uv - OCTAHEDRON_NUM_BORDER_TEXEL * texel_size) /
+                     (1.0 - 2.0 * OCTAHEDRON_NUM_BORDER_TEXEL * texel_size);
+
+  /* Mirror until the coordinates fit. */
+  /* there are 12 cases. but some of them use the same solution.
+   * NOTE: We could also reduce the branches by folding at center xy axis so there are only 3
+   * posibilities. */
+
+  /* Fix right side. */
+  if (shrinked_uv.x > 1.0 && !(shrinked_uv.y < 0.0 && shrinked_uv.y > 1.0)) {
+    shrinked_uv.x = 2.0 - shrinked_uv.x;
+    shrinked_uv.y = 1.0 - shrinked_uv.y;
+  }
+  /* Fix left side. */
+  else if (shrinked_uv.x < 0.0 && !(shrinked_uv.y < 0.0 && shrinked_uv.y > 1.0)) {
+    shrinked_uv.x = -shrinked_uv.x;
+    shrinked_uv.y = 1.0 - shrinked_uv.y;
+  }
+  /* Fix top side. */
+  else if (shrinked_uv.y > 1.0 && !(shrinked_uv.x < 0.0 && shrinked_uv.x > 1.0)) {
+    shrinked_uv.x = 1.0 - shrinked_uv.x;
+    shrinked_uv.y = 2.0 - shrinked_uv.y;
+  }
+  /* Fix bottom side. */
+  else if (shrinked_uv.y < 0.0 && !(shrinked_uv.x < 0.0 && shrinked_uv.x > 1.0)) {
+    shrinked_uv.x = 1.0 - shrinked_uv.x;
+    shrinked_uv.y = -shrinked_uv.y;
+  }
+  /* Fix bottom left. */
+  else if (shrinked_uv.x < 0.0 && shrinked_uv.y < 0.0) {
+    shrinked_uv.x = 1.0 + shrinked_uv.x;
+    shrinked_uv.y = 1.0 + shrinked_uv.y;
+  }
+  /* Fix bottom right. */
+  else if (shrinked_uv.x > 1.0 && shrinked_uv.y < 0.0) {
+    shrinked_uv.x = shrinked_uv.x - 1.0;
+    shrinked_uv.y = 1.0 + shrinked_uv.y;
+  }
+  /* Fix bottom right. */
+  else if (shrinked_uv.x > 1.0 && shrinked_uv.y > 1.0) {
+    shrinked_uv.x = shrinked_uv.x - 1.0;
+    shrinked_uv.y = shrinked_uv.y - 1.0;
+  }
+  /* Fix bottom right. */
+  else if (shrinked_uv.x < 0.0 && shrinked_uv.y > 1.0) {
+    shrinked_uv.x = 1.0 + shrinked_uv.x;
+    shrinked_uv.y = shrinked_uv.y - 1.0;
+  }
+  return shrinked_uv;
 }
