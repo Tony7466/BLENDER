@@ -73,7 +73,7 @@ struct NodeExtraInfoRow {
   std::string text;
   int icon;
   const char *tooltip = nullptr;
-  
+
   uiButToolTipFunc tooltip_fn = nullptr;
   void *tooltip_fn_arg = nullptr;
   void (*tooltip_fn_free_arg)(void *) = nullptr;

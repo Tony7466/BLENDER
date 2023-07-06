@@ -796,10 +796,11 @@ static void node_update_basis(const bContext &C,
   { /* Overlay data */
     node.runtime->extra_infos = node_get_extra_info(tree_draw_ctx, *snode, node);
     bNodeInstanceHash *previews =
-    (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
+        (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
     if (node.flag & NODE_PREVIEW && previews && snode->overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
       node.runtime->preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, *key);
-      if (!node.runtime->preview || !(node.runtime->preview->xsize && node.runtime->preview->ysize)) {
+      if (!node.runtime->preview ||
+          !(node.runtime->preview->xsize && node.runtime->preview->ysize)) {
         node.runtime->preview = nullptr;
       }
     }
@@ -809,8 +810,8 @@ static void node_update_basis(const bContext &C,
       const float preview_padding = 3.0f * UI_SCALE_FAC;
       const float width = (node.width - 6.0f) * UI_SCALE_FAC;
       overlay_height += (width - 2.0 * preview_padding) * float(node.runtime->preview->ysize) /
-                           float(node.runtime->preview->xsize) +
-                       2.0 * preview_padding;
+                            float(node.runtime->preview->xsize) +
+                        2.0 * preview_padding;
     }
     node.runtime->totr.xmin = node.runtime->node_rect.xmin;
     node.runtime->totr.xmax = node.runtime->node_rect.xmax;
