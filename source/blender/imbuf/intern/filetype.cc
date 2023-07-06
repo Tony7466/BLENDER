@@ -200,6 +200,10 @@ const ImFileType IMB_FILE_TYPES[] = {
     },
 #endif
     {
+        /* Only implementing thumbnailing for SVG file type to support specialized importers.
+         * General file loading, if wanted, would require a better library and would have to
+         * support features like user-specified resolution. */
+
         /*init*/ nullptr,
         /*exit*/ nullptr,
         /*is_a*/ nullptr,

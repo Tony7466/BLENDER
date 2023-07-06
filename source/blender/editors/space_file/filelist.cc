@@ -1504,7 +1504,7 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   //  printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
   BLI_assert(preview->flags &
              (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_BLENDER |
-              FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
+              FILE_TYPE_OBJECT_IO | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
 
   if (preview->flags & FILE_TYPE_IMAGE) {
     source = THB_SOURCE_IMAGE;
@@ -1518,6 +1518,9 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   }
   else if (preview->flags & FILE_TYPE_FTFONT) {
     source = THB_SOURCE_FONT;
+  }
+  else if (preview->flags & FILE_TYPE_OBJECT_IO) {
+    source = THB_SOURCE_OBJECT_IO;
   }
 
   IMB_thumb_path_lock(preview->filepath);
@@ -1620,8 +1623,9 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     return;
   }
 
-  if (!(entry->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT |
-                           FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
+  if (!(entry->typeflag &
+        (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_OBJECT_IO |
+         FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
   {
     return;
   }
@@ -2744,7 +2748,7 @@ int ED_path_extension_type(const char *path)
     return FILE_TYPE_ARCHIVE;
   }
   if (BLI_path_extension_check_n(
-          path, ".obj", ".mtl", ".3ds", ".fbx", ".glb", ".gltf", ".ply", ".stl", nullptr))
+          path, ".obj", ".mtl", ".3ds", ".fbx", ".glb", ".gltf", ".svg", ".ply", ".stl", nullptr))
   {
     return FILE_TYPE_OBJECT_IO;
   }

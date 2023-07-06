@@ -56,7 +56,6 @@ const char *imb_ext_image[] = {
     ".tif",
     ".tiff",
     ".tx",
-    ".svg",
 #ifdef WITH_OPENJPEG
     ".jp2",  ".j2c",
 #endif

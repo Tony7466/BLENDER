@@ -15,6 +15,10 @@
 
 extern "C" {
 
+/* Currently only creating thumbnails for this format to support specialized importers. General
+ * file loading, if wanted, would require a better library and would have to support features
+ * like user-specified output resolution. */
+
 ImBuf *imb_load_filepath_thumbnail_svg(const char *filepath,
                                        const int /* flags */,
                                        const size_t max_thumb_size,
