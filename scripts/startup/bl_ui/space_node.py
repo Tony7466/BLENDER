@@ -143,6 +143,8 @@ class NODE_HT_header(Header):
             NODE_MT_editor_menus.draw_collapsible(context, layout)
             layout.separator_spacer()
 
+            if snode.node_tree and snode.node_tree.asset_data:
+                layout.popover(panel="NODE_PT_geometry_node_asset_traits")
             if snode.geometry_nodes_type == 'MODIFIER':
                 ob = context.object
 
@@ -160,7 +162,7 @@ class NODE_HT_header(Header):
                     else:
                         row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
             else:
-                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
+                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_operator")
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
@@ -427,6 +429,33 @@ class NODE_PT_material_slots(Panel):
             row.operator("object.material_slot_assign", text="Assign")
             row.operator("object.material_slot_select", text="Select")
             row.operator("object.material_slot_deselect", text="Deselect")
+
+
+class NODE_PT_geometry_node_asset_traits(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Asset"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        snode = context.space_data
+        traits = snode.node_tree.asset_traits
+
+        col = layout.column(heading="Type")
+        col.prop(traits, "is_operator")
+        col = layout.column(heading="Mode")
+        col.active = traits.is_operator
+        col.prop(traits, "is_mode_edit")
+        col.prop(traits, "is_mode_sculpt")
+        col = layout.column(heading="Geometry")
+        col.active = traits.is_operator
+        col.prop(traits, "is_type_mesh")
+        col.prop(traits, "is_type_curve")
+        if context.preferences.experimental.use_new_point_cloud_type:
+            col.prop(traits, "is_type_point_cloud")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
@@ -1157,6 +1186,7 @@ classes = (
     NODE_MT_context_menu,
     NODE_MT_view_pie,
     NODE_PT_material_slots,
+    NODE_PT_geometry_node_asset_traits,
     NODE_PT_node_color_presets,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,

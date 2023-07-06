@@ -252,6 +252,24 @@ class NewGeometryNodeTreeAssign(Operator):
         return {'FINISHED'}
 
 
+class NewGeometryNodeGroupOperator(Operator):
+    """Create a new geometry node group for an operator"""
+    bl_idname = "node.new_geometry_node_group_operator"
+    bl_label = "New Geometry Node Operator Group"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.type == 'NODE_EDITOR' and context.space_data.geometry_nodes_type == 'OPERATOR'
+
+    def execute(self, context):
+        group = geometry_node_group_empty_new()
+        group.asset_mark()
+        group.asset_traits.is_operator = True
+        context.space_data.node_tree = group
+        return {'FINISHED'}
+
+
 class SimulationZoneOperator:
     input_node_type = 'GeometryNodeSimulationInput'
     output_node_type = 'GeometryNodeSimulationOutput'
@@ -353,6 +371,7 @@ class SimulationZoneItemMoveOperator(SimulationZoneOperator, Operator):
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
+    NewGeometryNodeGroupOperator,
     MoveModifierToNodes,
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,

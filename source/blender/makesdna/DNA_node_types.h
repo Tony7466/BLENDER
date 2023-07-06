@@ -52,6 +52,7 @@ typedef struct bNodeSocketRuntimeHandle bNodeSocketRuntimeHandle;
 
 struct AnimData;
 struct Collection;
+struct GeometryNodeAssetTraits;
 struct ID;
 struct Image;
 struct ListBase;
@@ -662,6 +663,8 @@ typedef struct bNodeTree {
   int nested_node_refs_num;
   bNestedNodeRef *nested_node_refs;
 
+  struct GeometryNodeAssetTraits *geometry_node_asset_traits;
+
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
 
@@ -864,6 +867,19 @@ typedef struct bNodeSocketValueTexture {
 typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
+
+typedef struct GeometryNodeAssetTraits {
+  int flag;
+} GeometryNodeAssetTraits;
+
+typedef enum GeometryNodeAssetTraitFlag {
+  GEO_NODE_ASSET_TRAIT_OPERATOR = (1 << 0),
+  GEO_NODE_ASSET_TRAIT_EDIT = (1 << 1),
+  GEO_NODE_ASSET_TRAIT_SCULPT = (1 << 2),
+  GEO_NODE_ASSET_TRAIT_MESH = (1 << 3),
+  GEO_NODE_ASSET_TRAIT_CURVE = (1 << 4),
+  GEO_NODE_ASSET_TRAIT_POINT_CLOUD = (1 << 5),
+} GeometryNodeAssetTraitFlag;
 
 /* Data structs, for `node->storage`. */
 
