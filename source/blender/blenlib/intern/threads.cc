@@ -437,7 +437,7 @@ void BLI_spin_unlock(SpinLock *spin)
 #endif
 }
 
-void BLI_spin_end([[maybe_unused]] SpinLock *spin)
+void BLI_spin_end(SpinLock *spin)
 {
 #ifdef WITH_TBB
   tbb::spin_mutex *spin_mutex = tbb_spin_mutex_cast(spin);
@@ -446,6 +446,7 @@ void BLI_spin_end([[maybe_unused]] SpinLock *spin)
   BLI_mutex_end(spin);
 #elif defined(_MSC_VER)
   /* Nothing to do, spin is a simple integer type. */
+  UNUSED_VARS(spin);
 #else
   pthread_spin_destroy(spin);
 #endif
