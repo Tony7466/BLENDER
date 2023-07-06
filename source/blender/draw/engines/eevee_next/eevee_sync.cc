@@ -174,9 +174,7 @@ void SyncModule::sync_point_cloud(Object *ob,
       return;
     }
     PassMain::Sub &object_pass = matpass.sub_pass->sub("Point Cloud Sub Pass");
-    /* TODO(Miguel Pozo): Pass the actual gpumat.
-     * pointcloud_surface_shaded_get seems broken. */
-    GPUBatch *geometry = point_cloud_sub_pass_setup(object_pass, ob, nullptr /*matpass.gpumat*/);
+    GPUBatch *geometry = point_cloud_sub_pass_setup(object_pass, ob, matpass.gpumat);
     matpass.sub_pass->draw(geometry, res_handle);
   };
 

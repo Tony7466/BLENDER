@@ -312,6 +312,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     case MAT_GEOM_MESH:
       /** Noop. */
       break;
+    case MAT_GEOM_POINT_CLOUD:
     case MAT_GEOM_CURVES:
       /** Hair attributes come from sampler buffer. Transfer attributes to sampler. */
       for (auto &input : info.vertex_inputs_) {
@@ -342,7 +343,6 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       }
       info.vertex_inputs_.clear();
       break;
-    case MAT_GEOM_POINT_CLOUD:
     case MAT_GEOM_VOLUME:
       /** No attributes supported. */
       info.vertex_inputs_.clear();
