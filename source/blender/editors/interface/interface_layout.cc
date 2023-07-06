@@ -1302,7 +1302,6 @@ static void ui_item_menu_hold(bContext *C, ARegion *butregion, uiBut *but)
   UI_popup_menu_but_set(pup, butregion, but);
 
   block->flag |= UI_BLOCK_POPUP_HOLD;
-  block->flag |= UI_BLOCK_IS_FLIP;
 
   char direction = UI_DIR_DOWN;
   if (!but->drawstr[0]) {
@@ -1572,9 +1571,6 @@ void uiItemsFullEnumO_items(uiLayout *layout,
       if (item->name) {
         if (item != item_array && !radial && split != nullptr) {
           target = uiLayoutColumn(split, layout->align);
-
-          /* inconsistent, but menus with labels do not look good flipped */
-          block->flag |= UI_BLOCK_NO_FLIP;
         }
 
         uiBut *but;
@@ -1677,9 +1673,6 @@ void uiItemsFullEnumO(uiLayout *layout,
     if (free) {
       MEM_freeN((void *)item_array);
     }
-
-    /* intentionally don't touch UI_BLOCK_IS_FLIP here,
-     * we don't know the context this is called in */
   }
   else if (prop && RNA_property_type(prop) != PROP_ENUM) {
     RNA_warning("%s.%s, not an enum type", RNA_struct_identifier(ptr.type), propname);
@@ -2737,8 +2730,6 @@ void uiItemsEnumR(uiLayout *layout, PointerRNA *ptr, const char *propname)
       if (item[i].name) {
         if (i != 0) {
           column = uiLayoutColumn(split, false);
-          /* inconsistent, but menus with labels do not look good flipped */
-          block->flag |= UI_BLOCK_NO_FLIP;
         }
 
         uiItemL(column, item[i].name, ICON_NONE);
@@ -2756,9 +2747,6 @@ void uiItemsEnumR(uiLayout *layout, PointerRNA *ptr, const char *propname)
   if (free) {
     MEM_freeN((void *)item);
   }
-
-  /* intentionally don't touch UI_BLOCK_IS_FLIP here,
-   * we don't know the context this is called in */
 }
 
 /* Pointer RNA button with search */
@@ -2969,20 +2957,13 @@ void uiItemPointerR(uiLayout *layout,
 void ui_item_menutype_func(bContext *C, uiLayout *layout, void *arg_mt)
 {
   MenuType *mt = (MenuType *)arg_mt;
-
   UI_menutype_draw(C, mt, layout);
-
-  /* Menus are created flipped (from event handling point of view). */
-  layout->root->block->flag ^= UI_BLOCK_IS_FLIP;
 }
 
 void ui_item_paneltype_func(bContext *C, uiLayout *layout, void *arg_pt)
 {
   PanelType *pt = (PanelType *)arg_pt;
   UI_paneltype_draw(C, pt, layout);
-
-  /* Panels are created flipped (from event handling POV). */
-  layout->root->block->flag ^= UI_BLOCK_IS_FLIP;
 }
 
 static uiBut *ui_item_menu(uiLayout *layout,
@@ -3545,8 +3526,6 @@ static void menu_item_enum_opname_menu(bContext * /*C*/, uiLayout *layout, void 
   uiLayoutSetOperatorContext(layout, lvl->opcontext);
   uiItemsFullEnumO(layout, lvl->opname, lvl->propname, op_props, lvl->opcontext, 0);
 
-  layout->root->block->flag |= UI_BLOCK_IS_FLIP;
-
   /* override default, needed since this was assumed pre 2.70 */
   UI_block_direction_set(layout->root->block, UI_DIR_DOWN);
 }
@@ -3635,7 +3614,6 @@ static void menu_item_enum_rna_menu(bContext * /*C*/, uiLayout *layout, void *ar
 
   uiLayoutSetOperatorContext(layout, lvl->opcontext);
   uiItemsEnumR(layout, &lvl->rnapoin, lvl->propname);
-  layout->root->block->flag |= UI_BLOCK_IS_FLIP;
 }
 
 void uiItemMenuEnumR_prop(

@@ -136,10 +136,8 @@ enum {
 /** #uiBlock.flag (controls) */
 enum {
   UI_BLOCK_LOOP = 1 << 0,
-  /** Indicate that items in a popup are drawn with inverted order. Used for arrow key navigation
-   *  so that it knows to invert the navigation direction to match the drawing order. */
-  UI_BLOCK_IS_FLIP = 1 << 1,
-  UI_BLOCK_NO_FLIP = 1 << 2,
+  UI_BLOCK_UNUSED_1 = 1 << 1,
+  UI_BLOCK_UNUSED_2 = 1 << 2,
   UI_BLOCK_NUMSELECT = 1 << 3,
   /** Don't apply window clipping. */
   UI_BLOCK_NO_WIN_CLIP = 1 << 4,
@@ -874,7 +872,6 @@ void UI_block_direction_set(uiBlock *block, char direction);
 /**
  * This call escapes if there's alignment flags.
  */
-void UI_block_order_flip(uiBlock *block);
 void UI_block_flag_enable(uiBlock *block, int flag);
 void UI_block_flag_disable(uiBlock *block, int flag);
 void UI_block_translate(uiBlock *block, int x, int y);

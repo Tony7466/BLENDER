@@ -3870,7 +3870,7 @@ static uiBlock *ui_icon_view_menu_cb(bContext *C, ARegion *region, void *arg_lit
   const int h = UI_UNIT_X * (args.icon_scale + args.show_labels);
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS_PULLDOWN);
-  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_NO_FLIP);
+  UI_block_flag_enable(block, UI_BLOCK_LOOP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   bool free;
