@@ -1,1 +1,2 @@
 Referenced by issue #105926, Sharp edge attribute gets cleared if all edges of mesh are sharp
+Referenced by commit 827baed610b88734fadff3214f0e4bce0274a726, Mesh: Fix missing multithreading in part of BMesh to Mesh conversion
