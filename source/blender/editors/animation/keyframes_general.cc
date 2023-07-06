@@ -392,12 +392,14 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, const float factor
 
 ButterworthCoefficients *ED_anim_allocate_butterworth_coefficients(const int filter_order)
 {
-  ButterworthCoefficients *bw_coeff = MEM_callocN(sizeof(ButterworthCoefficients),
-                                                  "Butterworth Coefficients");
+  ButterworthCoefficients *bw_coeff = static_cast<ButterworthCoefficients *>(
+      MEM_callocN(sizeof(ButterworthCoefficients), "Butterworth Coefficients"));
   bw_coeff->filter_order = filter_order;
-  bw_coeff->d1 = MEM_callocN(sizeof(double) * filter_order, "coeff filtered");
-  bw_coeff->d2 = MEM_callocN(sizeof(double) * filter_order, "coeff samples");
-  bw_coeff->A = MEM_callocN(sizeof(double) * filter_order, "Butterworth A");
+  bw_coeff->d1 = static_cast<double *>(
+      MEM_callocN(sizeof(double) * filter_order, "coeff filtered"));
+  bw_coeff->d2 = static_cast<double *>(
+      MEM_callocN(sizeof(double) * filter_order, "coeff samples"));
+  bw_coeff->A = static_cast<double *>(MEM_callocN(sizeof(double) * filter_order, "Butterworth A"));
   return bw_coeff;
 }
 
@@ -452,12 +454,12 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
 {
   const int filter_order = bw_coeff->filter_order;
 
-  float *filtered_values = MEM_callocN(sizeof(float) * sample_count,
-                                       "Butterworth Filtered FCurve Values");
+  float *filtered_values = static_cast<float *>(
+      MEM_callocN(sizeof(float) * sample_count, "Butterworth Filtered FCurve Values"));
 
-  double *w0 = MEM_callocN(sizeof(double) * filter_order, "w0");
-  double *w1 = MEM_callocN(sizeof(double) * filter_order, "w1");
-  double *w2 = MEM_callocN(sizeof(double) * filter_order, "w2");
+  double *w0 = static_cast<double *>(MEM_callocN(sizeof(double) * filter_order, "w0"));
+  double *w1 = static_cast<double *>(MEM_callocN(sizeof(double) * filter_order, "w1"));
+  double *w2 = static_cast<double *>(MEM_callocN(sizeof(double) * filter_order, "w2"));
 
   /* The values need to be offset so the first sample starts at 0. This avoids oscillations at the
    * start and end of the curve. */
