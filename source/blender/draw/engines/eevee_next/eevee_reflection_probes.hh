@@ -117,6 +117,7 @@ class ReflectionProbeModule {
   int needed_layers_get() const;
 
   void remove_unused_probes();
+  void recalc_lod_factors();
 
   /* TODO: also add _len() which is a max + 1. */
   /* Get the number of reflection probe data elements. */

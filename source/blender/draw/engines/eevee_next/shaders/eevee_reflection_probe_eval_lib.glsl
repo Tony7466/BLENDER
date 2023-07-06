@@ -39,13 +39,7 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
     const float dist = 4.0 * M_PI / 6.0;
 
     /* http://http.developer.nvidia.com/GPUGems3/gpugems3_ch20.html : Equation 13 */
-    /* TODO: lod_factor should be precalculated and stored inside the reflection probe data. */
-    const float bias = 0.0;
-    const float lod_factor =
-        bias +
-        0.5 * log(float(square_i(texture_size.x >> probe_data.layer_subdivision))) / log(2.0);
-    float lod = clamp(lod_factor - 0.5 * log2(pdf * dist), 0.0, lod_cube_max);
-
+    float lod = clamp(probe_data.lod_factor - 0.5 * log2(pdf * dist), 0.0, lod_cube_max);
     vec4 l_col = reflection_probes_sample(L, lod, probe_data);
 
     /* Clamped brightness. */

@@ -268,7 +268,6 @@ ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(
 void ReflectionProbeModule::end_sync()
 {
   remove_unused_probes();
-  data_buf_.push_update();
 
   int number_layers_needed = needed_layers_get();
   int current_layers = probes_tx_.depth();
@@ -284,6 +283,9 @@ void ReflectionProbeModule::end_sync()
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
   }
+
+  recalc_lod_factors();
+  data_buf_.push_update();
 
   /* Regenerate mipmaps when a cubemap is updated. It can be postponed when the world probe is also
    * updated. In this case it would happen as part of the WorldProbePipeline. */
@@ -356,6 +358,21 @@ void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_da
   }
   data_buf_[max_index].layer = -1;
   BLI_assert(reflection_probe_data_index_max() == max_index - 1);
+}
+
+void ReflectionProbeModule::recalc_lod_factors()
+{
+  for (ReflectionProbeData &probe_data : data_buf_) {
+    if (probe_data.layer == -1) {
+      return;
+    }
+
+    const float bias = 0.0;
+    const float lod_factor =
+        bias +
+        0.5 * log(float(square_i(probes_tx_.width() >> probe_data.layer_subdivision))) / log(2.0);
+    probe_data.lod_factor = lod_factor;
+  }
 }
 
 /* -------------------------------------------------------------------- */

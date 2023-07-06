@@ -1060,11 +1060,14 @@ struct ReflectionProbeData {
   int area_index;
 
   /**
+   * LOD factor for mipmap selection.
+   */
+  float lod_factor;
+
+  /**
    * Artistic control to change the intensity during evaluation phase.
    */
   float intensity;
-
-  int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
