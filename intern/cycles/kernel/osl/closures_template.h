@@ -28,15 +28,6 @@ OSL_CLOSURE_STRUCT_BEGIN(Translucent, translucent)
   OSL_CLOSURE_STRUCT_MEMBER(Translucent, VECTOR, packed_float3, N, NULL)
 OSL_CLOSURE_STRUCT_END(Translucent, translucent)
 
-OSL_CLOSURE_STRUCT_BEGIN(Reflection, reflection)
-  OSL_CLOSURE_STRUCT_MEMBER(Reflection, VECTOR, packed_float3, N, NULL)
-OSL_CLOSURE_STRUCT_END(Reflection, reflection)
-
-OSL_CLOSURE_STRUCT_BEGIN(Refraction, refraction)
-  OSL_CLOSURE_STRUCT_MEMBER(Refraction, VECTOR, packed_float3, N, NULL)
-  OSL_CLOSURE_STRUCT_MEMBER(Refraction, FLOAT, float, ior, NULL)
-OSL_CLOSURE_STRUCT_END(Refraction, refraction)
-
 OSL_CLOSURE_STRUCT_BEGIN(Transparent, transparent)
 OSL_CLOSURE_STRUCT_END(Transparent, transparent)
 
