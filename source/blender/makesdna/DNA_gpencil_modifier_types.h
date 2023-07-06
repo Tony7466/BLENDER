@@ -1336,6 +1336,7 @@ typedef struct SDefGPVert {/* 83771 - For each vertex there ca be more than one 
 } SDefGPVert;
 
 typedef struct SDefGPStroke {
+  struct SDefGPStroke *first;
   SDefGPVert *verts;
   unsigned int stroke_idx;
   /* Number of of vertices on the deformed stroke upon the bind process. former bind_verts_num */
@@ -1345,6 +1346,7 @@ typedef struct SDefGPStroke {
 } SDefGPStroke;
 
 typedef struct SDefGPFrame{
+  struct SDefGPFrame *first;
   /*SDefGPStroke in this SDefGPFrame*/
   SDefGPStroke *strokes;
   /*Number on the timeline this frame sits on.*/
@@ -1359,6 +1361,7 @@ typedef struct SDefGPFrame{
 } SDefGPFrame;
 
 typedef struct SDefGPLayer{
+  struct SDefGPLayer *first;
   SDefGPFrame *frames;
   /*Index of inside the modifier*/
   unsigned int layer_idx; 
