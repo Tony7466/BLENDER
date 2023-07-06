@@ -14,7 +14,7 @@ namespace blender::nodes::node_geo_resample_topology_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Mesh")).supported_type(GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Geometry>(N_("Mesh")).supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Int>(N_("Count"))
       .description(N_("Number of points to resample edges"))
       .hide_value()
@@ -55,8 +55,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     evaluator.evaluate();
 
     Map<bke::AttributeIDRef, bke::AttributeKind> attributes;
-    geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_MESH},
-                                                   GEO_COMPONENT_TYPE_MESH,
+    geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Mesh},
+                                                   GeometryComponent::Type::Mesh,
                                                    false,
                                                    params.get_output_propagation_info("Mesh"),
                                                    attributes);

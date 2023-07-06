@@ -17,13 +17,13 @@ Builder::Builder()
   mesh_primitives_.reserve(4);
   mesh_primitives_.add_new("Vertices", {});
   mesh_primitives_.add_new("Edges", {});
-  mesh_primitives_.add_new("Loops", {});
+  mesh_primitives_.add_new("Corners", {});
   mesh_primitives_.add_new("Faces", {});
 }
 
 void Builder::push_element(const StringRef &primitive_type,
-                  const StringRef &identifier,
-                  const OffsetRange &element)
+                           const StringRef &identifier,
+                           const OffsetRange &element)
 {
   Branch &branch = mesh_primitives_.lookup(primitive_type);
   if (branch.ordered_elements.is_empty()) {
@@ -44,15 +44,15 @@ void Builder::push_element(const StringRef &primitive_type,
 }
 
 void Builder::push_element_by_size(const StringRef &primitive_type,
-                          const StringRef identifier,
-                          const int total)
+                                   const StringRef identifier,
+                                   const int total)
 {
   this->push_element(primitive_type, identifier, OffsetRange{IndexRange(total), std::nullopt});
 }
 
 void Builder::push_virtual_element(const StringRef primitive_type,
-                          const StringRef identifier,
-                          const VArray<int> counts)
+                                   const StringRef identifier,
+                                   const VArray<int> counts)
 {
   if (counts.is_single()) {
     const int total_size = counts.get_internal_single() * counts.size();
@@ -78,7 +78,7 @@ IndexRange Builder::lookup_range(const StringRef primitive_type, const StringRef
 }
 
 OffsetIndices<int> Builder::lookup_offsets(const StringRef primitive_type,
-                                  const StringRef identifier) const
+                                           const StringRef identifier) const
 {
   const Branch &branch = mesh_primitives_.lookup(primitive_type);
   const OffsetRange &offset_range = *branch.named_elements.lookup(identifier);
@@ -101,10 +101,16 @@ void Builder::finalize()
 
   const int tot_vert = branch_total("Vertices");
   const int tot_edge = branch_total("Edges");
-  const int tot_loop = branch_total("Loops");
+  const int tot_loop = branch_total("Corners");
   const int tot_face = branch_total("Faces");
+  printf("%d, %d, %d, %d;\n", tot_vert, tot_edge, tot_loop, tot_face);
+  std::stringstream abc;
 
-  result = BKE_mesh_new_nomain(tot_vert, tot_edge, tot_loop, tot_face);
+  this->status(abc);
+
+  std::cout << abc.str();
+
+  result = BKE_mesh_new_nomain(tot_vert, tot_edge, tot_face, tot_loop);
 }
 
 Mesh &Builder::mesh() const
@@ -118,11 +124,21 @@ void Builder::status(std::stringstream &stream) const
   stream << "Status:\n";
   stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
   stream << "  Customs{\n";
-  mesh_primitives_.lookup("Vertices").status(stream, "Vertices");
-  mesh_primitives_.lookup("Edges").status(stream, "Edges");
-  mesh_primitives_.lookup("Loops").status(stream, "Loops");
-  mesh_primitives_.lookup("Faces").status(stream, "Faces");
+  mesh_primitives_.lookup("Vertices").status(stream, "    Vertices");
+  mesh_primitives_.lookup("Edges").status(stream, "    Edges");
+  mesh_primitives_.lookup("Corners").status(stream, "    Corners");
+  mesh_primitives_.lookup("Faces").status(stream, "    Faces");
   stream << "};\n";
+}
+
+void Builder::Branch::status(std::stringstream &stream, const char *pref) const
+{
+  for (const int index : this->ordered_elements.index_range()) {
+    const Builder::OffsetRange &offset_range = this->ordered_elements[index];
+    std::stringstream prefix;
+    prefix << pref << ": " << index << ": ";
+    offset_range.status(stream, prefix.str().data());
+  }
 }
 
 void Builder::OffsetRange::status(std::stringstream &stream, const char *pref) const
@@ -130,10 +146,6 @@ void Builder::OffsetRange::status(std::stringstream &stream, const char *pref) c
   stream << pref << "{Start: " << range.start();
   stream << " : Size: " << range.size();
   stream << ", End: " << range.one_after_last() << "}\n";
-}
-
-void Builder::Branch::status(std::stringstream &stream, const char *pref) const
-{
 }
 
 }  // namespace blender::geometry::builder

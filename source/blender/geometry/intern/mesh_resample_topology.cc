@@ -120,22 +120,22 @@ namespace propagation {
 
 template<typename T>
 void edges_have_created_new_verts(const OffsetIndices<int> offsets,
-                                  const Span<MEdge> edges,
+                                  const Span<int2> edges,
                                   const Span<T> src,
                                   MutableSpan<T> dst)
 {
   for (const int index : offsets.index_range()) {
-    const MEdge edge = edges[index];
+    const int2 edge = edges[index];
 
-    const T value_on_a_edge_vertex = src[edge.v1];
-    const T value_on_b_edge_vertex = src[edge.v2];
+    const T value_on_a_edge_vertex = src[edge[0]];
+    const T value_on_b_edge_vertex = src[edge[1]];
 
     const IndexRange range = offsets[index];
     const int size = range.size();
 
     for (const int index_in_edge : IndexRange(size)) {
       const float factor = float(index_in_edge + 1) / float(size + 1);
-      dst[range.start() + index_in_edge] = attribute_math::mix2(
+      dst[range.start() + index_in_edge] = bke::attribute_math::mix2(
           factor, value_on_a_edge_vertex, value_on_b_edge_vertex);
     }
   }
@@ -155,70 +155,71 @@ void edges_have_created_new_edges(const OffsetIndices<int> offsets,
 
 template<typename T>
 void polys_have_created_new_verts(const OffsetIndices<int> offsets,
-                                  const Span<MPoly> polys,
-                                  const Span<MLoop> loops,
+                                  const OffsetIndices<int> poly_offsets,
+                                  const Span<int> src_corner_verts,
+                                  const Span<int> src_corner_edges,
                                   const Span<int> resample_edge_num,
                                   const Span<T> src,
                                   MutableSpan<T> dst)
 {
+  /*
+    Array<int> vertical_linkeds;
+    Array<int> horizontal_linkeds;
 
-  Array<int> vertical_linkeds;
-  Array<int> horizontal_linkeds;
+    for (const int poly_i : polys.index_range()) {
+      const MPoly src_poly = polys[poly_i];
+      const Span<MLoop> src_loops = loops.slice(src_poly.loopstart, src_poly.totloop);
+      const IndexRange poly_vertices = offsets[poly_i];
 
-  for (const int poly_i : polys.index_range()) {
-    const MPoly src_poly = polys[poly_i];
-    const Span<MLoop> src_loops = loops.slice(src_poly.loopstart, src_poly.totloop);
-    const IndexRange poly_vertices = offsets[poly_i];
+      if (src_loops.size() != 4) {
+        return;
+      }
 
-    if (src_loops.size() != 4) {
-      return;
-    }
+      const int &points_a = src_loops[0].v;
+      const int &points_b = src_loops[1].v;
+      const int &points_c = src_loops[2].v;
+      const int &points_d = src_loops[3].v;
 
-    const int &points_a = src_loops[0].v;
-    const int &points_b = src_loops[1].v;
-    const int &points_c = src_loops[2].v;
-    const int &points_d = src_loops[3].v;
+      const int &points_num_edge_a = resample_edge_num[src_loops[0].e];
+      const int &points_num_edge_b = resample_edge_num[src_loops[1].e];
+      const int &points_num_edge_c = resample_edge_num[src_loops[2].e];
+      const int &points_num_edge_d = resample_edge_num[src_loops[3].e];
 
-    const int &points_num_edge_a = resample_edge_num[src_loops[0].e];
-    const int &points_num_edge_b = resample_edge_num[src_loops[1].e];
-    const int &points_num_edge_c = resample_edge_num[src_loops[2].e];
-    const int &points_num_edge_d = resample_edge_num[src_loops[3].e];
+      const ResampleQuad resample(
+          points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
 
-    const ResampleQuad resample(
-        points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
+      const int &hor_connection = resample.horizontal.total_connectios;
+      const int &hor_other_side = resample.horizontal.less_points;
+      const int &ver_connection = resample.vertical.total_connectios;
+      const int &ver_other_side = resample.vertical.less_points;
 
-    const int &hor_connection = resample.horizontal.total_connectios;
-    const int &hor_other_side = resample.horizontal.less_points;
-    const int &ver_connection = resample.vertical.total_connectios;
-    const int &ver_other_side = resample.vertical.less_points;
+      horizontal_linkeds.reinitialize(hor_connection);
+      vertical_linkeds.reinitialize(ver_connection);
 
-    horizontal_linkeds.reinitialize(hor_connection);
-    vertical_linkeds.reinitialize(ver_connection);
+      for (const int index : IndexRange(hor_connection)) {
+        const float d_index = float((hor_other_side + 1) * (1 + index));
+        const float d_total = float(hor_connection + 1);
+        horizontal_linkeds[index] = int(std::round(d_index / d_total));
+      }
 
-    for (const int index : IndexRange(hor_connection)) {
-      const float d_index = float((hor_other_side + 1) * (1 + index));
-      const float d_total = float(hor_connection + 1);
-      horizontal_linkeds[index] = int(std::round(d_index / d_total));
-    }
+      for (const int index : IndexRange(ver_connection)) {
+        const float d_index = float((ver_other_side + 1) * (1 + index));
+        const float d_total = float(ver_connection + 1);
+        vertical_linkeds[index] = int(std::round(d_index / d_total));
+      }
 
-    for (const int index : IndexRange(ver_connection)) {
-      const float d_index = float((ver_other_side + 1) * (1 + index));
-      const float d_total = float(ver_connection + 1);
-      vertical_linkeds[index] = int(std::round(d_index / d_total));
-    }
-
-    const auto intersection =
-        [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
-      float2 result = {};
-      isect_seg_seg_v2_point_ex(p1, p2, p3, p4, 0.2f, result);
-      /*
-      printf(">\n");
-      printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
-      printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
-      printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
-      printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
-      printf(" - xr: %f, yr: %f;\n", result.x, result.y);
-      */
+      const auto intersection =
+          [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
+        float2 result = {};
+        isect_seg_seg_v2_point_ex(p1, p2, p3, p4, 0.2f, result);
+        /*
+        printf(">\n");
+        printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
+        printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
+        printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
+        printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
+        printf(" - xr: %f, yr: %f;\n", result.x, result.y);
+        *//*
       return result;
     };
 
@@ -242,10 +243,10 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
       for (const int index_v : f_v) {
         const float2 uv_point = colculate_result(index_h, index_v);
 
-        dst[point_index] = attribute_math::mix2(
+        dst[point_index] = bke::attribute_math::mix2(
             uv_point.x,
-            attribute_math::mix2(uv_point.y, src[points_a], src[points_b]),
-            attribute_math::mix2(uv_point.y, src[points_d], src[points_c]));
+            bke::attribute_math::mix2(uv_point.y, src[points_a], src[points_b]),
+            bke::attribute_math::mix2(uv_point.y, src[points_d], src[points_c]));
 
         point_index++;
       }
@@ -259,20 +260,18 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
       for (const int index_v : l_v) {
         const float2 uv_point = colculate_result(index_h, index_v);
 
-        dst[point_index] = attribute_math::mix2(
+        dst[point_index] = bke::attribute_math::mix2(
             uv_point.x,
-            attribute_math::mix2(uv_point.y, src[points_a], src[points_b]),
-            attribute_math::mix2(uv_point.y, src[points_d], src[points_c]));
+            bke::attribute_math::mix2(uv_point.y, src[points_a], src[points_b]),
+            bke::attribute_math::mix2(uv_point.y, src[points_d], src[points_c]));
 
         point_index++;
       }
     }
-  }
+  }*/
 }
 
-template<typename T> void polys_have_created_new_edges()
-{
-}
+template<typename T> void polys_have_created_new_edges() {}
 
 template<typename T>
 void loops_have_created_new_loops(const OffsetIndices<int> offsets,
@@ -291,9 +290,7 @@ template<typename T> void polys_have_created_new_polys(const Span<T> src, Mutabl
   dst.copy_from(src);
 }
 
-template<typename T> void polys_have_created_new_loops()
-{
-}
+template<typename T> void polys_have_created_new_loops() {}
 
 void attribute_on_domain(const eAttrDomain domain,
                          const builder::MeshBuilder &builder,
@@ -305,7 +302,7 @@ void attribute_on_domain(const eAttrDomain domain,
 {
   const CPPType &type = src_value.type();
 
-  attribute_math::convert_to_static_type(type, [&](auto dumpy) {
+  bke::attribute_math::convert_to_static_type(type, [&](auto dumpy) {
     using T = decltype(dumpy);
     const Span<T> src_typed_values = src_value.typed<T>();
     MutableSpan<T> dst_typed_values = dst_value.typed<T>();
@@ -317,21 +314,23 @@ void attribute_on_domain(const eAttrDomain domain,
           MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
           dst_vert_vertices.copy_from(src_typed_values);
 
-          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Vertices",
-                                                                                  "of Edge");
+          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets(
+              "Vertices", "of Resampled Edge");
           MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-              builder.lookup_range("Vertices", "of Edge"));
+              builder.lookup_range("Vertices", "of Resampled Edge"));
           edges_have_created_new_verts<T>(
               edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
 
-          const IndexRange poly_vert_mapping = builder.lookup_range("Vertices", "of Face Grid");
-          const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets("Vertices",
-                                                                                  "of Face Grid");
+          const IndexRange poly_vert_mapping = builder.lookup_range("Vertices",
+                                                                    "of Grid Resampled Face");
+          const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets(
+              "Vertices", "of Grid Resampled Face");
 
           MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
           polys_have_created_new_verts<T>(face_vertices_offsets,
                                           src_mesh.polys(),
-                                          src_mesh.loops(),
+                                          src_mesh.corner_verts(),
+                                          src_mesh.corner_edges(),
                                           resample_edge_num,
                                           src_typed_values,
                                           poly_dst_vert_vertices);
@@ -341,10 +340,10 @@ void attribute_on_domain(const eAttrDomain domain,
           MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
           dst_vert_vertices.copy_from(src_typed_values);
 
-          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Vertices",
-                                                                                  "of Edge");
+          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets(
+              "Vertices", "of Resampled Edge");
           MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-              builder.lookup_range("Vertices", "of Edge"));
+              builder.lookup_range("Vertices", "of Resampled Edge"));
           edges_have_created_new_verts<T>(
               edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
         }
@@ -352,25 +351,27 @@ void attribute_on_domain(const eAttrDomain domain,
       }
       case ATTR_DOMAIN_EDGE: {
         if (try_to_fill_by_grid) {
-          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "of Edge");
+          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets(
+              "Edges", "of Resampled Edge");
           edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
           polys_have_created_new_edges<T>();
         }
         else {
-          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "of Edge");
+          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets(
+              "Edges", "of Resampled Edge");
           edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
         }
         break;
       }
       case ATTR_DOMAIN_CORNER: {
         if (try_to_fill_by_grid) {
-          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("Loops",
-                                                                               "of Face Grid");
+          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets(
+              "Corners", "of Grid Resampled Face");
           loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         }
         else {
           const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets(
-              "Loops", "of Face N-gon Loop");
+              "Corners", "of Non-Grid Resampled Face");
           /* Loops and edges propagation is equal. */
           edges_have_created_new_edges<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         }
@@ -397,94 +398,97 @@ void attribute_on_domain(const eAttrDomain domain,
 
 namespace topology {
 
-void build_face_loops(const bool flip_order,
-                      const IndexRange edge_mappng,
-                      const Span<MEdge> dst_edges,
-                      MutableSpan<MLoop> dst_loops_r)
+void build_face_loops(const bool left_right,
+                      const IndexRange dst_edges_range,
+                      const Span<int2> dst_edges_of_corner,
+                      MutableSpan<int> r_dst_corner_verts,
+                      MutableSpan<int> r_dst_corner_edges)
 {
-  if (flip_order) {
-    for (const int index : IndexRange(edge_mappng.size())) {
-      dst_loops_r[index].e = edge_mappng[index];
-      dst_loops_r[index].v = dst_edges[index].v1;
+  if (left_right) {
+    for (const int index : IndexRange(dst_edges_range.size())) {
+      r_dst_corner_verts[index] = dst_edges_of_corner[index][0];
+      r_dst_corner_edges[index] = dst_edges_range[index];
     }
   }
   else {
-    for (const int i : IndexRange(edge_mappng.size())) {
-      const int index = edge_mappng.size() - 1 - i;
-      dst_loops_r[index].e = edge_mappng[i];
-      dst_loops_r[index].v = dst_edges[i].v2;
+    for (const int i : IndexRange(dst_edges_range.size())) {
+      const int index = dst_edges_range.size() - 1 - i;
+      r_dst_corner_verts[index] = dst_edges_of_corner[i][1];
+      r_dst_corner_edges[index] = dst_edges_range[i];
     }
   }
 }
 
-void build_faces_loops(const Span<MEdge> src_edges,
-                       const Span<MLoop> src_loops,
-                       const OffsetIndices<int> dst_edges,
-                       const OffsetIndices<int> dst_loops,
-                       const Span<MEdge> dst_edge_value,
-                       MutableSpan<MLoop> r_dst_loops)
+void build_faces_loops(const Span<int2> src_edges,
+                       const Span<int> src_corner_verts,
+                       const Span<int> src_corner_edges,
+                       const OffsetIndices<int> dst_edge_offsets,
+                       const OffsetIndices<int> dst_corner_offsets,
+                       const Span<int2> dst_edges,
+                       MutableSpan<int> r_corner_verts,
+                       MutableSpan<int> r_corner_edges)
 {
-  for (const int loop_index : src_loops.index_range()) {
-    const MLoop src_loop = src_loops[loop_index];
-    const MEdge src_edge = src_edges[src_loop.e];
-    const IndexRange dst_edge = dst_edges[src_loop.e];
-    const bool flip_order = src_edge.v1 == src_loop.v;
+  for (const int corner_index : src_corner_verts.index_range()) {
+    const int src_corner_vert = src_corner_verts[corner_index];
+    const int src_corner_edge = src_corner_edges[corner_index];
+    const int2 src_edge = src_edges[src_corner_edge];
+    const IndexRange dst_edges_range = dst_edge_offsets[src_corner_edge];
+    const bool left_right = src_edge[0] == src_corner_vert;
 
-    const Span<MEdge> dst_loop_edges = dst_edge_value.slice(dst_edge);
-    MutableSpan<MLoop> dst_loops_r = r_dst_loops.slice(dst_loops[loop_index]);
+    const Span<int2> dst_edges_of_corner = dst_edges.slice(dst_edges_range);
+    MutableSpan<int> dst_corner_verts = r_corner_verts.slice(dst_corner_offsets[corner_index]);
+    MutableSpan<int> dst_corner_edges = r_corner_edges.slice(dst_corner_offsets[corner_index]);
 
-    build_face_loops(flip_order, dst_edge, dst_loop_edges, dst_loops_r);
+    build_face_loops(
+        left_right, dst_edges_range, dst_edges_of_corner, dst_corner_verts, dst_corner_edges);
   }
 }
 
-void build_faces(const Span<MPoly> src_polys,
-                 const OffsetIndices<int> dst_loop,
-                 MutableSpan<MPoly> dst_polys)
+void build_faces(const OffsetIndices<int> src_polys,
+                 const OffsetIndices<int> dst_corners,
+                 MutableSpan<int> r_polys_offsets)
 {
+  printf("<< %d -- %d;\n", src_polys.size(), r_polys_offsets.size());
   for (const int index : src_polys.index_range()) {
-    const MPoly src_poly = src_polys[index];
-
-    const IndexRange src_loops(src_poly.loopstart, src_poly.totloop);
-
-    const int loopstart = dst_loop[src_loops.first()].start();
-    const int totloop = dst_loop[src_loops.last()].one_after_last() - loopstart;
-
-    MPoly &dst_poly = dst_polys[index];
-
-    dst_poly.loopstart = loopstart;
-    dst_poly.totloop = totloop;
+    const IndexRange src_corners_range = src_polys[index];
+    const int total_corners = dst_corners[src_corners_range].size();
+    r_polys_offsets[index] = total_corners;
   }
+  offset_indices::accumulate_counts_to_offsets(r_polys_offsets);
 }
 
-void build_edge_vert_indices(const OffsetIndices<int> new_edges,
-                             const OffsetIndices<int> new_verts_for_edges,
-                             const Span<MEdge> edges,
+void build_edge_vert_indices(const OffsetIndices<int> dst_edges,
+                             const OffsetIndices<int> dst_verts_in_edges,
+                             const Span<int2> src_edges,
                              const IndexRange vert_mapping,
-                             MutableSpan<MEdge> r_edges)
+                             MutableSpan<int2> r_edges)
 {
-  for (const int index : new_edges.index_range()) {
-    const MEdge src_edge = edges[index];
-    MutableSpan<MEdge> dst_edges = r_edges.slice(new_edges[index]);
+  for (const int index : src_edges.index_range()) {
+    const int2 src_edge = src_edges[index];
+    MutableSpan<int2> edges = r_edges.slice(dst_edges[index]);
 
-    if (dst_edges.size() == 1) {
-      dst_edges.first().v1 = src_edge.v1;
-      dst_edges.first().v2 = src_edge.v2;
+    if (edges.size() == 1) {
+      edges.first() = src_edge;
       continue;
     }
 
-    const IndexRange dst_vertices = new_verts_for_edges[index];
+    const IndexRange dst_vertices = dst_verts_in_edges[index];
+    const IndexRange dst_left_vertices = dst_vertices.drop_back(1);
+    const IndexRange dst_right_vertices = dst_vertices.drop_front(1);
 
-    int v1 = -1;
-    int v2 = src_edge.v1;
-    for (const int i : dst_edges.drop_back(1).index_range()) {
-      v1 = v2;
-      v2 = vert_mapping[dst_vertices[i]];
-      dst_edges[i].v1 = v1;
-      dst_edges[i].v2 = v2;
+    edges.first()[0] = src_edge[0];
+    edges.first()[1] = vert_mapping[dst_left_vertices.first()];
+
+    const IndexRange edges_to_fill = edges.index_range().drop_front(1).drop_back(1);
+    for (const int i : edges_to_fill.index_range()) {
+      const int index = edges_to_fill[i];
+      edges[index][0] = vert_mapping[dst_left_vertices[i]];
+      edges[index][1] = vert_mapping[dst_right_vertices[i]];
+      printf("<< %d-%d;\n", edges[index][0], edges[index][1]);
     }
 
-    dst_edges.last().v1 = vert_mapping[dst_vertices.last()];
-    dst_edges.last().v2 = src_edge.v2;
+    edges.last()[0] = vert_mapping[dst_right_vertices.last()];
+    edges.last()[1] = src_edge[1];
   }
 }
 
@@ -506,31 +510,30 @@ void compute_mesh(const Mesh &mesh,
         [resample_edge_num](const int64_t index) -> int { return resample_edge_num[index] + 1; });
 
     builder.push_virtual_element(
-        "Vertices", "of Edge", std::move(new_vertices_for_original_edges));
-    builder.push_virtual_element("Edges", "of Edge", std::move(new_edges_for_original_edges));
+        "Vertices", "of Resampled Edge", std::move(new_vertices_for_original_edges));
+    builder.push_virtual_element(
+        "Edges", "of Resampled Edge", std::move(new_edges_for_original_edges));
   }
 
   if (try_to_fill_by_grid) {
     /* Face grid. */
-    builder.push_element_by_size("Loops", "of Face Grid", 0);
+    builder.push_element_by_size("Corners", "of Grid Resampled Face", 0);
 
-    const Span<MLoop> src_loops = mesh.loops();
-    const Span<MPoly> src_polys = mesh.polys();
+    const OffsetIndices<int> src_polys = mesh.polys();
+    const Span<int> src_loop_edges = mesh.corner_edges();
 
     VArray<int> new_verts_for_original_faces = VArray<int>::ForFunc(
-        mesh.totpoly, [resample_edge_num, src_loops, src_polys](const int64_t index) -> int {
-          const MPoly face = src_polys[index];
-          const IndexRange loop_range(face.loopstart, face.totloop);
-          const Span<MLoop> loops = src_loops.slice(loop_range);
+        mesh.totpoly, [resample_edge_num, src_loop_edges, src_polys](const int poly_index) -> int {
+          const Span<int> poly_edges = src_loop_edges.slice(src_polys[poly_index]);
 
-          if (loops.size() != 4) {
+          if (poly_edges.size() != 4) {
             return 0;
           }
 
-          const int &points_num_edge_a = resample_edge_num[loops[0].e];
-          const int &points_num_edge_b = resample_edge_num[loops[1].e];
-          const int &points_num_edge_c = resample_edge_num[loops[2].e];
-          const int &points_num_edge_d = resample_edge_num[loops[3].e];
+          const int &points_num_edge_a = resample_edge_num[poly_edges[0]];
+          const int &points_num_edge_b = resample_edge_num[poly_edges[1]];
+          const int &points_num_edge_c = resample_edge_num[poly_edges[2]];
+          const int &points_num_edge_d = resample_edge_num[poly_edges[3]];
 
           {
             const bool horizontal_equal = points_num_edge_a == points_num_edge_c;
@@ -547,19 +550,18 @@ void compute_mesh(const Mesh &mesh,
         });
 
     builder.push_virtual_element(
-        "Vertices", "of Face Grid", std::move(new_verts_for_original_faces));
+        "Vertices", "of Grid Resampled Face", std::move(new_verts_for_original_faces));
   }
   else {
     /* New loops for original loops. */
-    const Span<MLoop> src_loops = mesh.loops();
-    VArray<int> new_loops_for_original_faces = VArray<int>::ForFunc(
-        mesh.totloop, [resample_edge_num, src_loops](const int64_t index) -> int {
-          const MLoop src_loop = src_loops[index];
-          return resample_edge_num[src_loop.e] + 1;
+    const Span<int> src_loop_edges = mesh.corner_edges();
+    VArray<int> new_corners_for_original_faces = VArray<int>::ForFunc(
+        src_loop_edges.size(), [resample_edge_num, src_loop_edges](const int corner_index) -> int {
+          return resample_edge_num[src_loop_edges[corner_index]] + 1;
         });
 
     builder.push_virtual_element(
-        "Loops", "of Face N-gon Loop", std::move(new_loops_for_original_faces));
+        "Corners", "of Non-Grid Resampled Face", std::move(new_corners_for_original_faces));
 
     /* New faces for original faces. */
     builder.push_element_by_size("Faces", "of Face N-gon", mesh.totpoly);
@@ -578,25 +580,27 @@ void build_topology(const Mesh &mesh,
   Mesh &result = builder.mesh();
 
   build_edge_vert_indices(
-      builder.lookup_offsets("Edges", "of Edge"),
-      builder.lookup_offsets("Vertices", "of Edge"),
+      builder.lookup_offsets("Edges", "of Resampled Edge"),
+      builder.lookup_offsets("Vertices", "of Resampled Edge"),
       mesh.edges(),
-      builder.lookup_range("Vertices", "of Edge"),
-      result.edges_for_write().slice(builder.lookup_range("Edges", "of Edge")));
+      builder.lookup_range("Vertices", "of Resampled Edge"),
+      result.edges_for_write().slice(builder.lookup_range("Edges", "of Resampled Edge")));
 
   if (try_to_fill_by_grid) {
     /* pass */
   }
   else {
-    build_faces_loops(mesh.edges(),
-                      mesh.loops(),
-                      builder.lookup_offsets("Edges", "of Edge"),
-                      builder.lookup_offsets("Loops", "of Face N-gon Loop"),
-                      result.edges(),
-                      result.loops_for_write());
     build_faces(mesh.polys(),
-                builder.lookup_offsets("Loops", "of Face N-gon Loop"),
-                result.polys_for_write());
+                builder.lookup_offsets("Corners", "of Non-Grid Resampled Face"),
+                result.poly_offsets_for_write());
+    build_faces_loops(mesh.edges(),
+                      mesh.corner_verts(),
+                      mesh.corner_edges(),
+                      builder.lookup_offsets("Edges", "of Resampled Edge"),
+                      builder.lookup_offsets("Corners", "of Non-Grid Resampled Face"),
+                      result.edges(),
+                      result.corner_verts_for_write(),
+                      result.corner_edges_for_write());
   }
 }
 
@@ -621,7 +625,8 @@ static void propagate_attributes(const Mesh &src_mesh,
               ATTR_DOMAIN_POINT,
               ATTR_DOMAIN_EDGE,
               ATTR_DOMAIN_CORNER,
-              ATTR_DOMAIN_FACE)) {
+              ATTR_DOMAIN_FACE))
+    {
       continue;
     }
 
@@ -652,11 +657,14 @@ static void propagate_attributes(const Mesh &src_mesh,
 Mesh &resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
                         const bool try_to_fill_by_grid,
-                        const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
+                        Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
   builder::MeshBuilder builder;
   compute_mesh(mesh, resample_edge_num, try_to_fill_by_grid, builder);
   build_topology(mesh, resample_edge_num, try_to_fill_by_grid, builder);
+  attributes.remove(".edge_verts");
+  attributes.remove("crease_vert");
+  attributes.remove("crease_edge");
   propagate_attributes(mesh, resample_edge_num, try_to_fill_by_grid, builder, attributes);
 
   return builder.mesh();
