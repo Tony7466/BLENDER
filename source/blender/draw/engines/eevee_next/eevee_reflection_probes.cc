@@ -50,8 +50,8 @@ void ReflectionProbeModule::init()
 
     /* Cube-map is half of the resolution of the octahedral map. */
     cubemap_tx_.ensure_cube(
-        GPU_RGBA16F, max_resolution_ / 2, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr, 1);
-    GPU_texture_mipmap_mode(cubemap_tx_, false, true);
+        GPU_RGBA16F, max_resolution_ / 2, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr, 9999);
+    GPU_texture_mipmap_mode(cubemap_tx_, true, true);
   }
 
   {
@@ -61,6 +61,8 @@ void ReflectionProbeModule::init()
     pass.bind_texture("cubemap_tx", cubemap_tx_);
     pass.bind_image("octahedral_img", probes_tx_);
     pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    /* TODO this should be added in a subpass with the correct resolution to reduce overshooting
+     * the area on the texture. */
     pass.dispatch(int2(ceil_division(max_resolution_, REFLECTION_PROBE_GROUP_SIZE)));
   }
 }
