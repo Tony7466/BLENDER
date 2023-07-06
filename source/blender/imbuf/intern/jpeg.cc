@@ -60,11 +60,11 @@ bool imb_is_a_jpeg(const uchar *mem, const size_t size)
  * JPG ERROR HANDLING
  *---------------------------------------------------------- */
 
-typedef struct my_error_mgr {
+struct my_error_mgr {
   jpeg_error_mgr pub; /* "public" fields */
 
   jmp_buf setjmp_buffer; /* for return to caller */
-} my_error_mgr;
+};
 
 typedef my_error_mgr *my_error_ptr;
 
@@ -567,7 +567,7 @@ static void write_jpeg(jpeg_compress_struct *cinfo, ImBuf *ibuf)
 
   jpeg_start_compress(cinfo, true);
 
-  strcpy(neogeo, "NeoGeo");
+  STRNCPY(neogeo, "NeoGeo");
   neogeo_word = (NeoGeo_Word *)(neogeo + 6);
   memset(neogeo_word, 0, sizeof(*neogeo_word));
   neogeo_word->quality = ibuf->foptions.quality;

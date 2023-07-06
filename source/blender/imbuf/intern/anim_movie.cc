@@ -95,58 +95,6 @@ static void free_anim_movie(anim * /*anim*/)
   /* pass */
 }
 
-static int an_stringdec(const char *filepath, char *head, char *tail, ushort *numlen)
-{
-  ushort len, nume, nums = 0;
-  short i;
-  bool found = false;
-
-  len = strlen(filepath);
-  nume = len;
-
-  for (i = len - 1; i >= 0; i--) {
-    if (filepath[i] == SEP) {
-      break;
-    }
-    if (isdigit(filepath[i])) {
-      if (found) {
-        nums = i;
-      }
-      else {
-        nume = i;
-        nums = i;
-        found = true;
-      }
-    }
-    else {
-      if (found) {
-        break;
-      }
-    }
-  }
-  if (found) {
-    strcpy(tail, &filepath[nume + 1]);
-    strcpy(head, filepath);
-    head[nums] = '\0';
-    *numlen = nume - nums + 1;
-    return int(atoi(&(filepath)[nums]));
-  }
-  tail[0] = '\0';
-  strcpy(head, filepath);
-  *numlen = 0;
-  return true;
-}
-
-static void an_stringenc(char *filepath,
-                         const size_t string_maxncpy,
-                         const char *head,
-                         const char *tail,
-                         ushort numlen,
-                         int pic)
-{
-  BLI_path_sequence_encode(filepath, string_maxncpy, head, tail, numlen, pic);
-}
-
 #ifdef WITH_AVI
 static void free_anim_avi(anim *anim)
 {
@@ -485,7 +433,7 @@ static ImBuf *avi_fetchibuf(anim *anim, int position)
     MEM_freeN(tmp);
   }
 
-  ibuf->rect_colorspace = colormanage_colorspace_get_named(anim->colorspace);
+  ibuf->byte_buffer.colorspace = colormanage_colorspace_get_named(anim->colorspace);
 
   return ibuf;
 }
@@ -1466,7 +1414,8 @@ static ImBuf *ffmpeg_fetchibuf(anim *anim, int position, IMB_Timecode_Type tc)
       MEM_mallocN_aligned(size_t(4) * anim->x * anim->y, 32, "ffmpeg ibuf"));
   IMB_assign_byte_buffer(anim->cur_frame_final, buffer_data, IB_TAKE_OWNERSHIP);
 
-  anim->cur_frame_final->rect_colorspace = colormanage_colorspace_get_named(anim->colorspace);
+  anim->cur_frame_final->byte_buffer.colorspace = colormanage_colorspace_get_named(
+      anim->colorspace);
 
   AVFrame *final_frame = ffmpeg_frame_by_pts_get(anim, pts_to_search);
   if (final_frame == nullptr) {
@@ -1593,9 +1542,6 @@ ImBuf *IMB_anim_absolute(anim *anim,
                          IMB_Proxy_Size preview_size)
 {
   ImBuf *ibuf = nullptr;
-  char head[256], tail[256];
-  ushort digits;
-  int pic;
   int filter_y;
   if (anim == nullptr) {
     return nullptr;
@@ -1628,15 +1574,20 @@ ImBuf *IMB_anim_absolute(anim *anim,
   }
 
   switch (anim->curtype) {
-    case ANIM_SEQUENCE:
-      pic = an_stringdec(anim->filepath_first, head, tail, &digits);
-      pic += position;
-      an_stringenc(anim->filepath, sizeof(anim->filepath), head, tail, digits, pic);
+    case ANIM_SEQUENCE: {
+      constexpr size_t filepath_size = BOUNDED_ARRAY_TYPE_SIZE<decltype(anim->filepath_first)>();
+      char head[filepath_size], tail[filepath_size];
+      ushort digits;
+      const int pic = BLI_path_sequence_decode(
+                          anim->filepath_first, head, sizeof(head), tail, sizeof(tail), &digits) +
+                      position;
+      BLI_path_sequence_encode(anim->filepath, sizeof(anim->filepath), head, tail, digits, pic);
       ibuf = IMB_loadiffname(anim->filepath, IB_rect, anim->colorspace);
       if (ibuf) {
         anim->cur_position = position;
       }
       break;
+    }
     case ANIM_MOVIE:
       ibuf = movie_fetchibuf(anim, position);
       if (ibuf) {

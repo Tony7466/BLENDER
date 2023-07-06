@@ -119,7 +119,8 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
  * absolute, in which case it is not altered.
  */
 static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data,
-                                                char *r_path_dst,
+                                                char *path_dst,
+                                                size_t path_dst_maxncpy,
                                                 const char *path_src)
 {
   const char **data = bpath_data->user_data;
@@ -142,7 +143,7 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
      * because it won't work for paths that start with "//../" */
     BLI_path_normalize(filepath);
     BLI_path_rel(filepath, base_new);
-    BLI_strncpy(r_path_dst, filepath, FILE_MAX);
+    BLI_strncpy(path_dst, filepath, path_dst_maxncpy);
     return true;
   }
 
@@ -505,10 +506,16 @@ void BKE_lib_id_make_local_generic(Main *bmain, ID *id, const int flags)
 
   if (force_local) {
     BKE_lib_id_clear_library_data(bmain, id, flags);
+    if ((flags & LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR) != 0) {
+      BKE_lib_override_library_make_local(id);
+    }
     BKE_lib_id_expand_local(bmain, id, flags);
   }
   else if (force_copy) {
-    ID *id_new = BKE_id_copy(bmain, id);
+    const int copy_flags =
+        (LIB_ID_COPY_DEFAULT |
+         ((flags & LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR) != 0 ? LIB_ID_COPY_NO_LIB_OVERRIDE : 0));
+    ID *id_new = BKE_id_copy_ex(bmain, id, NULL, copy_flags);
 
     /* Should not fail in expected use cases,
      * but a few ID types cannot be copied (LIB, WM, SCR...). */
@@ -1620,7 +1627,7 @@ bool BKE_id_new_name_validate(
 
   result = BKE_main_namemap_get_name(bmain, id, name);
 
-  strcpy(id->name + 2, name);
+  BLI_strncpy(id->name + 2, name, sizeof(id->name) - 2);
   id_sort_by_name(lb, id, NULL);
   return result;
 }
@@ -2012,7 +2019,7 @@ void BKE_libblock_rename(Main *bmain, ID *id, const char *name)
 
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separator_char)
 {
-  strcpy(name, id->name + 2);
+  BLI_strncpy(name, id->name + 2, MAX_ID_FULL_NAME);
 
   if (ID_IS_LINKED(id)) {
     const size_t idname_len = strlen(id->name + 2);
@@ -2020,7 +2027,7 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separa
 
     name[idname_len] = separator_char ? separator_char : ' ';
     name[idname_len + 1] = '[';
-    strcpy(name + idname_len + 2, id->lib->id.name + 2);
+    BLI_strncpy(name + idname_len + 2, id->lib->id.name + 2, MAX_ID_FULL_NAME - (idname_len + 2));
     name[idname_len + 2 + libname_len] = ']';
     name[idname_len + 2 + libname_len + 1] = '\0';
   }

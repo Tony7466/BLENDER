@@ -535,7 +535,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "AS_asset_representation.h"
+#  include "AS_asset_representation.hh"
 
 #  include "DNA_anim_types.h"
 #  include "DNA_asset_types.h"
@@ -583,7 +583,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "UI_interface.h"
 #  include "UI_view2d.h"
 
-static StructRNA *rna_Space_refine(struct PointerRNA *ptr)
+static StructRNA *rna_Space_refine(PointerRNA *ptr)
 {
   SpaceLink *space = (SpaceLink *)ptr->data;
 
@@ -1724,7 +1724,7 @@ static bool rna_SpaceImageEditor_show_maskedit_get(PointerRNA *ptr)
 
 static void rna_SpaceImageEditor_image_set(PointerRNA *ptr,
                                            PointerRNA value,
-                                           struct ReportList * /*reports*/)
+                                           ReportList * /*reports*/)
 {
   BLI_assert(BKE_id_is_in_global_main(static_cast<ID *>(value.data)));
   SpaceImage *sima = static_cast<SpaceImage *>(ptr->data);
@@ -1733,7 +1733,7 @@ static void rna_SpaceImageEditor_image_set(PointerRNA *ptr,
 
 static void rna_SpaceImageEditor_mask_set(PointerRNA *ptr,
                                           PointerRNA value,
-                                          struct ReportList * /*reports*/)
+                                          ReportList * /*reports*/)
 {
   SpaceImage *sima = (SpaceImage *)(ptr->data);
 
@@ -1860,7 +1860,7 @@ static void rna_SpaceImageEditor_image_update(Main * /*bmain*/, Scene * /*scene*
   }
 }
 
-static void rna_SpaceImageEditor_scopes_update(struct bContext *C, struct PointerRNA *ptr)
+static void rna_SpaceImageEditor_scopes_update(bContext *C, PointerRNA *ptr)
 {
   SpaceImage *sima = (SpaceImage *)ptr->data;
   ImBuf *ibuf;
@@ -1933,7 +1933,7 @@ static void rna_SpaceTextEditor_word_wrap_set(PointerRNA *ptr, bool value)
 
 static void rna_SpaceTextEditor_text_set(PointerRNA *ptr,
                                          PointerRNA value,
-                                         struct ReportList * /*reports*/)
+                                         ReportList * /*reports*/)
 {
   SpaceText *st = (SpaceText *)(ptr->data);
 
@@ -1951,7 +1951,7 @@ static void rna_SpaceTextEditor_text_set(PointerRNA *ptr,
   }
 }
 
-static bool rna_SpaceTextEditor_text_is_syntax_highlight_supported(struct SpaceText *space)
+static bool rna_SpaceTextEditor_text_is_syntax_highlight_supported(SpaceText *space)
 {
   return ED_text_is_syntax_highlight_supported(space->text);
 }
@@ -1970,7 +1970,7 @@ static void rna_SpaceTextEditor_updateEdited(Main * /*bmain*/, Scene * /*scene*/
 /* NOTE: this function exists only to avoid id reference-counting. */
 static void rna_SpaceProperties_pin_id_set(PointerRNA *ptr,
                                            PointerRNA value,
-                                           struct ReportList * /*reports*/)
+                                           ReportList * /*reports*/)
 {
   SpaceProperties *sbuts = (SpaceProperties *)(ptr->data);
   sbuts->pinid = static_cast<ID *>(value.data);
@@ -2114,7 +2114,7 @@ static int rna_SpaceProperties_search_filter_length(PointerRNA *ptr)
   return ED_buttons_search_string_length(sbuts);
 }
 
-static void rna_SpaceProperties_search_filter_set(struct PointerRNA *ptr, const char *value)
+static void rna_SpaceProperties_search_filter_set(PointerRNA *ptr, const char *value)
 {
   SpaceProperties *sbuts = static_cast<SpaceProperties *>(ptr->data);
 
@@ -2178,7 +2178,7 @@ static void rna_ConsoleLine_cursor_index_range(
 
 static void rna_SpaceDopeSheetEditor_action_set(PointerRNA *ptr,
                                                 PointerRNA value,
-                                                struct ReportList * /*reports*/)
+                                                ReportList * /*reports*/)
 {
   SpaceAction *saction = (SpaceAction *)(ptr->data);
   bAction *act = (bAction *)value.data;
@@ -2202,7 +2202,7 @@ static void rna_SpaceDopeSheetEditor_action_set(PointerRNA *ptr,
       }
     }
     else if (saction->mode == SACTCONT_SHAPEKEY) {
-      /* as the name says, "shapekey-level" only... */
+      /* As the name says, "shape-key level" only. */
       if (act->idroot == ID_KE) {
         saction->action = act;
       }
@@ -2509,7 +2509,7 @@ static char *rna_SpaceNodeOverlay_path(const PointerRNA * /*ptr*/)
 
 static void rna_SpaceNodeEditor_node_tree_set(PointerRNA *ptr,
                                               const PointerRNA value,
-                                              struct ReportList * /*reports*/)
+                                              ReportList * /*reports*/)
 {
   SpaceNode *snode = (SpaceNode *)ptr->data;
   ED_node_tree_start(snode, (bNodeTree *)value.data, nullptr, nullptr);
@@ -2643,7 +2643,7 @@ static void rna_SpaceNodeEditor_cursor_location_from_region(SpaceNode *snode,
 
 static void rna_SpaceClipEditor_clip_set(PointerRNA *ptr,
                                          PointerRNA value,
-                                         struct ReportList * /*reports*/)
+                                         ReportList * /*reports*/)
 {
   SpaceClip *sc = (SpaceClip *)(ptr->data);
   bScreen *screen = (bScreen *)ptr->owner_id;
@@ -2653,7 +2653,7 @@ static void rna_SpaceClipEditor_clip_set(PointerRNA *ptr,
 
 static void rna_SpaceClipEditor_mask_set(PointerRNA *ptr,
                                          PointerRNA value,
-                                         struct ReportList * /*reports*/)
+                                         ReportList * /*reports*/)
 {
   SpaceClip *sc = (SpaceClip *)(ptr->data);
 
@@ -2701,7 +2701,7 @@ static char *rna_FileSelectParams_path(const PointerRNA * /*ptr*/)
   return BLI_strdup("params");
 }
 
-int rna_FileSelectParams_filename_editable(struct PointerRNA *ptr, const char **r_info)
+int rna_FileSelectParams_filename_editable(PointerRNA *ptr, const char **r_info)
 {
   FileSelectParams *params = static_cast<FileSelectParams *>(ptr->data);
 
@@ -2789,14 +2789,14 @@ static PointerRNA rna_FileBrowser_FileSelectEntry_asset_data_get(PointerRNA *ptr
     return PointerRNA_NULL;
   }
 
-  AssetMetaData *asset_data = AS_asset_representation_metadata_get(entry->asset);
+  AssetMetaData *asset_data = &entry->asset->get_metadata();
 
   /* Note that the owning ID of the RNA pointer (`ptr->owner_id`) has to be set carefully:
    * Local IDs (`entry->id`) own their asset metadata themselves. Asset metadata from other blend
    * files are owned by the file browser (`entry`). Only if this is set correctly, we can tell from
    * the metadata RNA pointer if the metadata is stored locally and can thus be edited or not. */
 
-  if (AS_asset_representation_is_local_id(entry->asset)) {
+  if (entry->asset->is_local_id()) {
     PointerRNA id_ptr;
     RNA_id_pointer_create(entry->id, &id_ptr);
     return rna_pointer_inherit_refine(&id_ptr, &RNA_AssetMetaData, asset_data);
@@ -2999,8 +2999,8 @@ static void rna_FileBrowser_FSMenu_begin(CollectionPropertyIterator *iter, FSMen
 {
   ListBaseIterator *internal = &iter->internal.listbase;
 
-  struct FSMenu *fsmenu = ED_fsmenu_get();
-  struct FSMenuEntry *fsmentry = ED_fsmenu_get_category(fsmenu, category);
+  FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenuEntry *fsmentry = ED_fsmenu_get_category(fsmenu, category);
 
   internal->link = (fsmentry) ? (Link *)fsmentry : nullptr;
   internal->skip = nullptr;
@@ -3028,7 +3028,7 @@ static void rna_FileBrowser_FSMenuSystem_data_begin(CollectionPropertyIterator *
 
 static int rna_FileBrowser_FSMenuSystem_data_length(PointerRNA * /*ptr*/)
 {
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   return ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_SYSTEM);
 }
@@ -3041,7 +3041,7 @@ static void rna_FileBrowser_FSMenuSystemBookmark_data_begin(CollectionPropertyIt
 
 static int rna_FileBrowser_FSMenuSystemBookmark_data_length(PointerRNA * /*ptr*/)
 {
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   return ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS);
 }
@@ -3054,7 +3054,7 @@ static void rna_FileBrowser_FSMenuBookmark_data_begin(CollectionPropertyIterator
 
 static int rna_FileBrowser_FSMenuBookmark_data_length(PointerRNA * /*ptr*/)
 {
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   return ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_BOOKMARKS);
 }
@@ -3067,7 +3067,7 @@ static void rna_FileBrowser_FSMenuRecent_data_begin(CollectionPropertyIterator *
 
 static int rna_FileBrowser_FSMenuRecent_data_length(PointerRNA * /*ptr*/)
 {
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   return ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_RECENT);
 }
@@ -3103,7 +3103,7 @@ static void rna_FileBrowser_FSMenu_active_set(PointerRNA *ptr,
                                               const FSMenuCategory category)
 {
   SpaceFile *sf = static_cast<SpaceFile *>(ptr->data);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FSMenuEntry *fsm = ED_fsmenu_get_entry(fsmenu, category, value);
 
   if (fsm && sf->params) {
@@ -3136,13 +3136,13 @@ static void rna_FileBrowser_FSMenu_active_range(PointerRNA * /*ptr*/,
                                                 int *softmax,
                                                 const FSMenuCategory category)
 {
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   *min = *softmin = -1;
   *max = *softmax = ED_fsmenu_get_nentries(fsmenu, category) - 1;
 }
 
-static void rna_FileBrowser_FSMenu_active_update(struct bContext *C, PointerRNA *ptr)
+static void rna_FileBrowser_FSMenu_active_update(bContext *C, PointerRNA *ptr)
 {
   ScrArea *area = rna_area_from_space(ptr);
   ED_file_change_dir_ex(C, area);
@@ -3331,8 +3331,12 @@ static StructRNA *rna_viewer_path_elem_refine(PointerRNA *ptr)
       return &RNA_IDViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_MODIFIER:
       return &RNA_ModifierViewerPathElem;
-    case VIEWER_PATH_ELEM_TYPE_NODE:
-      return &RNA_NodeViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_GROUP_NODE:
+      return &RNA_GroupNodeViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE:
+      return &RNA_SimulationZoneViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
+      return &RNA_ViewerNodeViewerPathElem;
   }
   BLI_assert_unreachable();
   return nullptr;
@@ -3346,7 +3350,7 @@ static void rna_FileAssetSelectParams_catalog_id_get(PointerRNA *ptr, char *valu
 
 static int rna_FileAssetSelectParams_catalog_id_length(PointerRNA * /*ptr*/)
 {
-  return UUID_STRING_LEN - 1;
+  return UUID_STRING_SIZE - 1;
 }
 
 static void rna_FileAssetSelectParams_catalog_id_set(PointerRNA *ptr, const char *value)
@@ -3379,7 +3383,7 @@ static const EnumPropertyItem dt_uv_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static struct IDFilterEnumPropertyItem rna_enum_space_file_id_filter_categories[] = {
+static IDFilterEnumPropertyItem rna_enum_space_file_id_filter_categories[] = {
     /* Categories */
     {FILTER_ID_SCE, "category_scene", ICON_SCENE_DATA, "Scenes", "Show scenes"},
     {FILTER_ID_AC, "category_animation", ICON_ANIM_DATA, "Animations", "Show animation data"},
@@ -5444,7 +5448,7 @@ static void rna_def_space_properties(BlenderRNA *brna)
       prop, "Tab Search Results", "Whether or not each visible tab has a search result");
 
   prop = RNA_def_property(srna, "search_filter", PROP_STRING, PROP_NONE);
-  /* The search filter is stored in the property editor's runtime struct which
+  /* The search filter is stored in the property editor's runtime  which
    * is only defined in an internal header, so use the getter / setter here. */
   RNA_def_property_string_funcs(prop,
                                 "rna_SpaceProperties_search_filter_get",
@@ -6616,7 +6620,7 @@ static void rna_def_fileselect_idfilter(BlenderRNA *brna)
   RNA_def_struct_ui_text(
       srna, "File Select ID Filter", "Which ID types to show/hide, when browsing a library");
 
-  const struct IDFilterEnumPropertyItem *individual_ids_and_categories[] = {
+  const IDFilterEnumPropertyItem *individual_ids_and_categories[] = {
       rna_enum_id_type_filter_items,
       rna_enum_space_file_id_filter_categories,
       nullptr,
@@ -6649,7 +6653,7 @@ static void rna_def_fileselect_asset_idfilter(BlenderRNA *brna)
   static char experimental_prop_names[INDEX_ID_MAX][MAX_NAME];
 
   for (uint i = 0; rna_enum_id_type_filter_items[i].identifier; i++) {
-    const struct IDFilterEnumPropertyItem *item = &rna_enum_id_type_filter_items[i];
+    const IDFilterEnumPropertyItem *item = &rna_enum_id_type_filter_items[i];
     const bool is_experimental = (ED_ASSET_TYPE_IDS_NON_EXPERIMENTAL_FLAGS & item->flag) == 0;
 
     const char *identifier = rna_enum_id_type_filter_items[i].identifier;
@@ -7033,6 +7037,7 @@ static void rna_def_filemenu_entry(BlenderRNA *brna)
                                 "rna_FileBrowser_FSMenuEntry_path_length",
                                 "rna_FileBrowser_FSMenuEntry_path_set");
   RNA_def_property_ui_text(prop, "Path", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
 
   /* Use #PROP_FILENAME sub-type so the UI can manipulate non-UTF8 names. */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_FILENAME);
@@ -7328,6 +7333,7 @@ static void rna_def_space_node_path_api(BlenderRNA *brna, PropertyRNA *cprop)
       prop, "rna_SpaceNodeEditor_path_get", "rna_SpaceNodeEditor_path_length", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_struct_ui_text(srna, "Path", "Get the node tree path as a string");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
 
   func = RNA_def_function(srna, "clear", "rna_SpaceNodeEditor_path_clear");
   RNA_def_function_ui_description(func, "Reset the node tree path");
@@ -7429,6 +7435,20 @@ static void rna_def_space_node(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem geometry_nodes_type_items[] = {
+      {SNODE_GEOMETRY_MODIFIER,
+       "MODIFIER",
+       0,
+       "Modifier",
+       "Edit node group from active object's active modifier"},
+      {SNODE_GEOMETRY_OPERATOR,
+       "OPERATOR",
+       0,
+       "Operator",
+       "Edit any geometry node group for use as an operator"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem backdrop_channels_items[] = {
       {SNODE_USE_ALPHA,
        "COLOR_ALPHA",
@@ -7480,6 +7500,13 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "shaderfrom");
   RNA_def_property_enum_items(prop, shader_type_items);
   RNA_def_property_ui_text(prop, "Shader Type", "Type of data to take shader from");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "geometry_nodes_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "geometry_nodes_type");
+  RNA_def_property_enum_items(prop, geometry_nodes_type_items);
+  RNA_def_property_ui_text(prop, "Geometry Nodes Type", "");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 
@@ -8049,7 +8076,9 @@ static void rna_def_spreadsheet_row_filter(BlenderRNA *brna)
 static const EnumPropertyItem viewer_path_elem_type_items[] = {
     {VIEWER_PATH_ELEM_TYPE_ID, "ID", ICON_NONE, "ID", ""},
     {VIEWER_PATH_ELEM_TYPE_MODIFIER, "MODIFIER", ICON_NONE, "Modifier", ""},
-    {VIEWER_PATH_ELEM_TYPE_NODE, "NODE", ICON_NONE, "Node", ""},
+    {VIEWER_PATH_ELEM_TYPE_GROUP_NODE, "GROUP_NODE", ICON_NONE, "Group Node", ""},
+    {VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE, "SIMULATION_ZONE", ICON_NONE, "Simulation Zone", ""},
+    {VIEWER_PATH_ELEM_TYPE_VIEWER_NODE, "VIEWER_NODE", ICON_NONE, "Viewer Node", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -8065,6 +8094,11 @@ static void rna_def_viewer_path_elem(BlenderRNA *brna)
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, viewer_path_elem_type_items);
   RNA_def_property_ui_text(prop, "Type", "Type of the path element");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "ui_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "UI Name", "Name that can be displayed in the UI for this element");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
@@ -8090,15 +8124,37 @@ static void rna_def_modifier_viewer_path_elem(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Modifier Name", "");
 }
 
-static void rna_def_node_viewer_path_elem(BlenderRNA *brna)
+static void rna_def_group_node_viewer_path_elem(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "NodeViewerPathElem", "ViewerPathElem");
+  srna = RNA_def_struct(brna, "GroupNodeViewerPathElem", "ViewerPathElem");
 
-  prop = RNA_def_property(srna, "node_name", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Node Name", "");
+  prop = RNA_def_property(srna, "node_id", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Node ID", "");
+}
+
+static void rna_def_simulation_zone_viewer_path_elem(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "SimulationZoneViewerPathElem", "ViewerPathElem");
+
+  prop = RNA_def_property(srna, "sim_output_node_id", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Simulation Output Node ID", "");
+}
+
+static void rna_def_viewer_node_viewer_path_elem(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "ViewerNodeViewerPathElem", "ViewerPathElem");
+
+  prop = RNA_def_property(srna, "node_id", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Node ID", "");
 }
 
 static void rna_def_viewer_path(BlenderRNA *brna)
@@ -8109,7 +8165,9 @@ static void rna_def_viewer_path(BlenderRNA *brna)
   rna_def_viewer_path_elem(brna);
   rna_def_id_viewer_path_elem(brna);
   rna_def_modifier_viewer_path_elem(brna);
-  rna_def_node_viewer_path_elem(brna);
+  rna_def_group_node_viewer_path_elem(brna);
+  rna_def_simulation_zone_viewer_path_elem(brna);
+  rna_def_viewer_node_viewer_path_elem(brna);
 
   srna = RNA_def_struct(brna, "ViewerPath", nullptr);
   RNA_def_struct_ui_text(srna, "Viewer Path", "Path to data that is viewed");
