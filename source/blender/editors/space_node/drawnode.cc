@@ -1635,11 +1635,8 @@ static float2 socket_link_connection_location(const bNode &node,
 {
   const float2 socket_location = socket.runtime->location;
   if (socket.is_multi_input() && socket.is_input() && !(node.flag & NODE_HIDDEN)) {
-    /* If link didn't connected to socket. In this case, at less this link have to be counted in
-     * the list as single one. */
-    const int total_inputs = math::max<int>(1, socket.runtime->total_inputs);
     return node_link_calculate_multi_input_position(
-        socket_location, link.multi_input_socket_index, total_inputs);
+        socket_location, link.multi_input_socket_index, socket.runtime->total_inputs);
   }
   return socket_location;
 }

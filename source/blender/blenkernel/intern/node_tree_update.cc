@@ -684,7 +684,6 @@ class NodeTreeMainUpdater {
       link.tonode = &node;
       link.tosock = to_socket;
       link.flag |= NODE_LINK_VALID;
-      link.multi_input_socket_index = 0;
       node.runtime->internal_links.append(link);
     }
     BKE_ntree_update_tag_node_internal_link(&ntree, &node);
