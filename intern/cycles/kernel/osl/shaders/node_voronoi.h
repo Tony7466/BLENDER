@@ -8,7 +8,6 @@
 #include "vector4.h"
 
 #define vector3 point
-#define FLT_MAX 3.402823466e+38  // max value
 
 struct VoronoiParams {
   float scale;
