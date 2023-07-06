@@ -69,7 +69,8 @@ static const EnumPropertyItem *collection_object(bContext *C,
     Collection *collection;
     int i = 0, count = 0;
 
-  }}
+  }
+}
 /* ******************** default callbacks for nla space ***************** */
 
 static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
