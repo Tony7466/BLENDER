@@ -214,9 +214,6 @@ static void build_face_to_face_by_edge_map(const OffsetIndices<int> polys,
   });
   const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
   r_indices.reinitialize(offsets.total_size());
-  if (offsets.is_empty()) {
-    return;
-  }
 
   threading::parallel_for(polys.index_range(), 1024, [&](IndexRange range) {
     for (const int poly_i : range) {
