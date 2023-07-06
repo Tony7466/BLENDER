@@ -966,7 +966,7 @@ typedef struct UserDef {
   /** Pie menu distance from center before a direction is set. */
   short pie_menu_threshold;
 
-  short _pad6[2];
+  int color_picker_size;
 
   char factor_display_type;
 

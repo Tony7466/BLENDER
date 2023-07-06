@@ -6017,7 +6017,12 @@ static int ui_do_but_GRIP(
       int dragstartx = data->dragstartx;
       int dragstarty = data->dragstarty;
       ui_window_to_block(data->region, block, &dragstartx, &dragstarty);
-      data->value = data->origvalue + (horizontal ? mx - dragstartx : dragstarty - my);
+      if (but->a1 < 0.0f) {
+        data->value = data->origvalue - (horizontal ? mx - dragstartx : dragstarty - my);
+      }
+      else {
+        data->value = data->origvalue + (horizontal ? mx - dragstartx : dragstarty - my);
+      }
       ui_numedit_apply(C, block, but, data);
     }
 

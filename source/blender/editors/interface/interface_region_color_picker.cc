@@ -344,12 +344,11 @@ static void ui_colorpicker_create_mode_cb(bContext * /*C*/, void *bt1, void * /*
   ui_colorpicker_hide_reveal(bt->block, (ePickerType)colormode);
 }
 
-#define PICKER_H (7.5f * U.widget_unit)
-#define PICKER_W (7.5f * U.widget_unit)
-#define PICKER_SPACE (0.3f * U.widget_unit)
-#define PICKER_BAR (0.7f * U.widget_unit)
-
-#define PICKER_TOTAL_W (PICKER_W + PICKER_SPACE + PICKER_BAR)
+#define PICKER_TOTAL_W (U.color_picker_size * UI_SCALE_FAC)
+#define PICKER_BAR ((10.0f * UI_SCALE_FAC) + (6 * U.pixelsize))
+#define PICKER_SPACE (8.0f * UI_SCALE_FAC)
+#define PICKER_W (PICKER_TOTAL_W - PICKER_BAR - PICKER_SPACE)
+#define PICKER_H PICKER_W
 
 static void ui_colorpicker_circle(uiBlock *block,
                                   PointerRNA *ptr,
@@ -476,6 +475,24 @@ static void ui_colorpicker_square(uiBlock *block,
   hsv_but->custom_data = cpicker;
 }
 
+static void ui_block_colorpicker_resize_update(bContext * /* C */, void * /* arg1 */, void *arg2)
+{
+  uiBlock *block = (uiBlock *)arg2;
+  ARegion *region = block->handle->region;
+  block->handle->can_refresh = true;
+
+  U.color_picker_size = MAX2(MIN2(U.color_picker_size, 400), 150);
+  U.runtime.is_dirty = true;
+
+  const int width = int(PICKER_TOTAL_W + (UI_SCALE_FAC * 42.0f));
+  const int height = int(PICKER_H + (7.2f * UI_UNIT_Y));
+
+  region->winrct.xmax = region->winrct.xmin + width;
+  region->winrct.ymax = region->winrct.ymin + height;
+  ED_region_update_rect(region);
+  ED_region_tag_redraw(region);
+}
+
 /* a HS circle, V slider, rgb/hsv/hex sliders */
 static void ui_block_colorpicker(uiBlock *block,
                                  uiBut *from_but,
@@ -529,6 +546,7 @@ static void ui_block_colorpicker(uiBlock *block,
       ui_colorpicker_circle(block, ptr, prop, cpicker);
       break;
   }
+
 
   /* mode */
   yco = -1.5f * UI_UNIT_Y;
@@ -606,6 +624,22 @@ static void ui_block_colorpicker(uiBlock *block,
     UI_but_func_set(bt, ui_popup_close_cb, bt, nullptr);
     bt->custom_data = cpicker;
   }
+
+  bt = uiDefIconButI(block,
+                     UI_BTYPE_GRIP,
+                     0,
+                     ICON_GRIP,
+                     butwidth + 10,
+                     yco - 2.0f * UI_UNIT_Y,
+                     short(UI_UNIT_X),
+                     short(UI_UNIT_Y * 0.9f),
+                     &U.color_picker_size,
+                     150.0f,
+                     400.0f,
+                     -1.0f,
+                     0.0f,
+                     "Change color picker size");
+  UI_but_func_set(bt, ui_block_colorpicker_resize_update, bt, block);
 
   /* NOTE: don't disable UI_BUT_UNDO for RGBA values, since these don't add undo steps. */
 

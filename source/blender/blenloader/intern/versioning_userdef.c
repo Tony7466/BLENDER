@@ -844,6 +844,9 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+    if (userdef->color_picker_size == 0) {
+      userdef->color_picker_size = 200;
+    }
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
