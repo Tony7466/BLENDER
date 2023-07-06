@@ -104,7 +104,7 @@ void PathTraceWork::set_effective_full_buffer_params(const BufferParams &effecti
   effective_big_tile_params_ = effective_big_tile_params;
 }
 
-void PathTraceWork::set_current_work_set(int i) 
+void PathTraceWork::    set_current_work_set(int i) 
 {
   
   buffers_ = work_set_.render_buffers_set_[i];
@@ -163,12 +163,13 @@ void PathTraceWork::render_samples(RenderStatistics &statistics,
 void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
 {
   SCOPED_MARKER(device_, "copy_to_display");
-  for (int i = 0; i < work_set_.size(); i++) {
-    SCOPED_MARKER(device_, "copy_to_display_work_set");
-  set_current_work_set(i);
+  set_slices_effective_params();
+  //for (int i = 0; i < work_set_.size(); i++) {
+  //  SCOPED_MARKER(device_, "copy_to_display_work_set");
+  //set_current_work_set(i);
   if(effective_buffer_params_.height > 0)
     copy_to_display_impl(display, pass_mode, num_samples);
-  }
+  //}
 }
 
 bool PathTraceWork::copy_render_buffers_from_device()
@@ -284,8 +285,9 @@ bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
                                            const PassAccessor::Destination &destination)
 {
   
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
+  //for (int i = 0; i < work_set_.size(); i++) {
+  //set_current_work_set(i);
+  set_slices_effective_params();
   if(effective_buffer_params_.height > 0) {
   const int offset_y = (effective_buffer_params_.full_y + effective_buffer_params_.window_y) -
                        (effective_big_tile_params_.full_y + effective_big_tile_params_.window_y);
@@ -296,15 +298,16 @@ bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
 
   if (!pass_accessor.get_render_tile_pixels(buffers_, slice_destination)) return false;
   }
-  }
+  //}
   return true;
 }
 
 bool PathTraceWork::set_render_tile_pixels(PassAccessor &pass_accessor,
                                            const PassAccessor::Source &source)
 {
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
+  //for (int i = 0; i < work_set_.size(); i++) {
+  //set_current_work_set(i);
+  set_slices_effective_params();
   if(effective_buffer_params_.height > 0) {
   const int offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   const int width = effective_buffer_params_.width;
@@ -314,7 +317,7 @@ bool PathTraceWork::set_render_tile_pixels(PassAccessor &pass_accessor,
 
   if (!pass_accessor.set_render_tile_pixels(buffers_, slice_source)) return false;
   }
-  }
+  //}
   return true;
 }
 

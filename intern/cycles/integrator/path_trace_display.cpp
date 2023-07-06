@@ -92,7 +92,7 @@ int2 PathTraceDisplay::get_texture_size() const
  */
 
 void PathTraceDisplay::copy_pixels_to_texture(
-    const half4 *rgba_pixels, int texture_x, int texture_y, int pixels_width, int pixels_height)
+    const half4 *rgba_pixels, int texture_x, int texture_y, int pixels_width, int pixels_height, int slice_start_y, int slice_height, int slice_stride)
 {
   DCHECK(update_state_.is_active);
 
@@ -116,20 +116,24 @@ void PathTraceDisplay::copy_pixels_to_texture(
 
   const int texture_width = texture_state_.size.x;
   const int texture_height = texture_state_.size.y;
-
+  //mapped_rgba_pixels += slice_start_y*texture_width;
   if (texture_x == 0 && texture_y == 0 && pixels_width == texture_width &&
-      pixels_height == texture_height)
+      pixels_height == texture_height && pixels_height == slice_height)
   {
     const size_t size_in_bytes = sizeof(half4) * texture_width * texture_height;
     memcpy(mapped_rgba_pixels, rgba_pixels, size_in_bytes);
   }
   else {
     const half4 *rgba_row = rgba_pixels;
-    half4 *mapped_rgba_row = mapped_rgba_pixels + texture_y * texture_width + texture_x;
-    for (int y = 0; y < pixels_height;
-         ++y, rgba_row += pixels_width, mapped_rgba_row += texture_width) {
-      memcpy(mapped_rgba_row, rgba_row, sizeof(half4) * pixels_width);
-    }
+    half4 *mapped_rgba_row = mapped_rgba_pixels + (texture_y + slice_start_y)* texture_width + texture_x;
+    /* loop over each slice */
+      for(int y = 0;y < pixels_height; y += slice_height) {
+          int height = std::min(slice_height, pixels_height - y);
+          for (int rows = 0; rows < height;++rows,rgba_row += pixels_width, mapped_rgba_row += texture_width) {
+              memcpy(mapped_rgba_row, rgba_row, sizeof(half4) * pixels_width);
+          }
+          mapped_rgba_row += texture_width*(slice_stride - slice_height);
+      }
   }
 
   unmap_texture_buffer();

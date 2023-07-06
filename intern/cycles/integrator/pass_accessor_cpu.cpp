@@ -47,8 +47,11 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_float(
 
   parallel_for(0, buffer_params.window_height, [&](int64_t y) {
     const float *buffer = window_data + y * buffer_row_stride;
+      int slice = y/buffer_params.slice_height;
+      int slice_y = y - slice*buffer_params.slice_height;
+      int pixel_y = buffer_params.slice_start_y + slice*buffer_params.slice_stride + slice_y;
     float *pixel = destination.pixels +
-                   (y * buffer_params.width + destination.offset) * pixel_stride;
+                   (pixel_y * buffer_params.width + destination.offset) * pixel_stride;
     func(kfilm_convert, buffer, pixel, buffer_params.window_width, pass_stride, pixel_stride);
   });
 }
@@ -72,7 +75,10 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_half_rgba(
 
   parallel_for(0, buffer_params.window_height, [&](int64_t y) {
     const float *buffer = window_data + y * buffer_row_stride;
-    half4 *pixel = dst_start + y * destination_stride;
+      int slice = y/buffer_params.slice_height;
+      int slice_y = y - slice*buffer_params.slice_height;
+      int pixel_y = buffer_params.slice_start_y + slice*buffer_params.slice_stride + slice_y;
+    half4 *pixel = dst_start + pixel_y * destination_stride;
     func(kfilm_convert, buffer, pixel, buffer_params.window_width, pass_stride);
   });
 }

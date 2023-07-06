@@ -983,8 +983,8 @@ void PathTraceWorkGPU::copy_to_display_naive(PathTraceDisplay *display,
 
   queue_->copy_from_device(display_rgba_half_);
   queue_->synchronize();
-
-  display->copy_pixels_to_texture(display_rgba_half_.data(), texture_x, texture_y, width, height);
+    
+  display->copy_pixels_to_texture(display_rgba_half_.data(), texture_x, texture_y, width, height, effective_buffer_params_.slice_start_y, effective_buffer_params_.slice_height, effective_buffer_params_.slice_stride);
 }
 
 bool PathTraceWorkGPU::copy_to_display_interop(PathTraceDisplay *display,

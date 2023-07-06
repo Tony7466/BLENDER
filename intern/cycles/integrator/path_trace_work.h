@@ -112,8 +112,8 @@ class PathTraceWork {
   virtual bool zero_render_buffers_impl() = 0 ;
   virtual bool zero_master_render_buffers_impl() = 0 ;
 
-  void reset_master_buffer(size_t width, size_t height) {
-    master_buffers_->reset(width, height);
+  void reset_master_buffer(BufferParams &params) /*size_t width, size_t height)*/ {
+      master_buffers_->reset(params, -1, NULL);//width, height);
     master_buffers_->zero();
   };
 

@@ -72,7 +72,7 @@ class PathTraceDisplay {
    * once, update all the slices and release
    * the lock once. This will ensure that draw() will never use partially updated texture. */
   void copy_pixels_to_texture(
-      const half4 *rgba_pixels, int texture_x, int texture_y, int pixels_width, int pixels_height);
+      const half4 *rgba_pixels, int texture_x, int texture_y, int pixels_width, int pixels_height, int slice_start_y, int slice_height, int slice_stride);
 
   /* --------------------------------------------------------------------
    * Texture buffer mapping.
