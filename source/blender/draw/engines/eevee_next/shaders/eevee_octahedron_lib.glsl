@@ -34,12 +34,6 @@ vec3 octahedral_uv_to_direction(vec2 co)
 }
 
 /**
- * Number of pixels to add near the edges to fix edge bleeding.
- * This also limits the number of mipmap levels that can be savely used.
- */
-#define OCTAHEDRON_NUM_BORDER_TEXEL 16.0
-
-/**
  * Return the UV coordinates on the packed octahedral texture layer when applying the given
  * octahedral_uv to a specific probe.
  */
@@ -48,8 +42,8 @@ vec2 octahedral_uv_to_layer_texture_coords(vec2 octahedral_uv,
                                            vec2 texel_size)
 {
   /* Fix artifacts near edges. Proved one texel  on each side.*/
-  octahedral_uv = octahedral_uv * (1.0 - 2.0 * OCTAHEDRON_NUM_BORDER_TEXEL * texel_size) +
-                  OCTAHEDRON_NUM_BORDER_TEXEL * texel_size;
+  octahedral_uv = octahedral_uv * (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size) +
+                  REFLECTION_PROBE_BORDER_SIZE * texel_size;
 
   int areas_per_dimension = 1 << probe_data.layer_subdivision;
   vec2 area_scalar = vec2(1.0 / float(areas_per_dimension));
@@ -74,8 +68,8 @@ vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
 
 {
   /* Apply border region. */
-  vec2 shrinked_uv = (uv - OCTAHEDRON_NUM_BORDER_TEXEL * texel_size) /
-                     (1.0 - 2.0 * OCTAHEDRON_NUM_BORDER_TEXEL * texel_size);
+  vec2 shrinked_uv = (uv - REFLECTION_PROBE_BORDER_SIZE * texel_size) /
+                     (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size);
 
   /* Mirror until the coordinates fit. */
   /* there are 12 cases. but some of them use the same solution.

@@ -29,6 +29,9 @@
 /* Reflection Probes. */
 #define REFLECTION_PROBES_MAX 256
 #define REFLECTION_PROBE_GROUP_SIZE 16
+/* Number of additional pixels on the border of an octahedral map to reserve for fixing leakage.*/
+#define REFLECTION_PROBE_BORDER_SIZE 16.0
+#define REFLECTION_PROBE_MIPMAP_LEVELS 5
 
 /**
  * IMPORTANT: Some data packing are tweaked for these values.

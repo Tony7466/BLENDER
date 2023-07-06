@@ -8,7 +8,8 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
                            ReflectionProbeData probe_data)
 {
   ivec3 texture_size = textureSize(reflectionProbes, 0);
-  float lod_cube_max = log(float(texture_size.x)) + 1.0 - float(probe_data.layer_subdivision);
+  float lod_cube_max = min(log(float(texture_size.x)) - float(probe_data.layer_subdivision) + 1.0,
+                           REFLECTION_PROBE_MIPMAP_LEVELS);
 
   /* Pow2f to distributed across lod more evenly */
   float roughness = clamp(pow2f(reflection.roughness), 1e-4f, 0.9999f);
@@ -43,8 +44,7 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
     const float lod_factor =
         bias +
         0.5 * log(float(square_i(texture_size.x >> probe_data.layer_subdivision))) / log(2.0);
-    /* -2: Don't use LOD levels that are smaller than 4x4 pixels. */
-    float lod = clamp(lod_factor - 0.5 * log2(pdf * dist), 0.0, lod_cube_max - 2.0);
+    float lod = clamp(lod_factor - 0.5 * log2(pdf * dist), 0.0, lod_cube_max);
 
     vec4 l_col = reflection_probes_sample(L, lod, probe_data);
 

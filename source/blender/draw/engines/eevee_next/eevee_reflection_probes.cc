@@ -40,13 +40,12 @@ void ReflectionProbeModule::init()
     world_probe.index = 0;
     probes_.append(world_probe);
 
-    const int max_mipmap_levels = log(max_resolution_) + 1;
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                init_num_probes_,
                                GPU_TEXTURE_USAGE_SHADER_WRITE,
                                nullptr,
-                               max_mipmap_levels);
+                               REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
 
     /* Cube-map is half of the resolution of the octahedral map. */
@@ -277,13 +276,12 @@ void ReflectionProbeModule::end_sync()
   if (resize_layers) {
     /* TODO: Create new texture and copy previous texture so we don't need to rerender all the
      * probes.*/
-    const int max_mipmap_levels = log(max_resolution_) + 1;
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                number_layers_needed,
                                GPU_TEXTURE_USAGE_SHADER_WRITE,
                                nullptr,
-                               max_mipmap_levels);
+                               REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
   }
 
