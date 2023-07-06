@@ -116,7 +116,7 @@
 #  define MAKE_ID(a, b, c, d) ((int)(a) << 24 | (int)(b) << 16 | (c) << 8 | (d))
 #else
 /* Little Endian */
-#  define MAKE_ID(a, b, c, d) ((int)(d) << 24 | (int)(c) << 16 | (b) << 8 | (a))
+#  define MAKE_ID(a, b, c, d) (int(d) << 24 | int(c) << 16 | (b) << 8 | (a))
 #endif
 
 /* ************************* DIV ********************** */
@@ -296,7 +296,7 @@ int DNA_struct_alias_find_nr(const SDNA *sdna, const char *str)
 
 BLI_INLINE const char *pad_up_4(const char *ptr)
 {
-  return (const char *)((((uintptr_t)ptr) + 3) & ~3);
+  return (const char *)((uintptr_t(ptr) + 3) & ~3);
 }
 
 /**
@@ -563,18 +563,18 @@ SDNA *DNA_sdna_from_data(const void *data,
  */
 static SDNA *g_sdna = nullptr;
 
-void DNA_sdna_current_init(void)
+void DNA_sdna_current_init()
 {
   g_sdna = DNA_sdna_from_data(DNAstr, DNAlen, false, false, nullptr);
 }
 
-const SDNA *DNA_sdna_current_get(void)
+const SDNA *DNA_sdna_current_get()
 {
   BLI_assert(g_sdna != nullptr);
   return g_sdna;
 }
 
-void DNA_sdna_current_free(void)
+void DNA_sdna_current_free()
 {
   DNA_sdna_free(g_sdna);
   g_sdna = nullptr;
@@ -681,7 +681,7 @@ const char *DNA_struct_get_compareflags(const SDNA *oldsdna, const SDNA *newsdna
     BLI_assert(compare_flags[a] != SDNA_CMP_UNKNOWN);
   }
 
-  /* First struct in `util.h` is struct Link, this is skipped in compare_flags (als # 0).
+  /* First struct is `struct Link`, this is skipped in compare_flags (at index `0`).
    * was a bug, and this way dirty patched! Solve this later. */
   compare_flags[0] = SDNA_CMP_EQUAL;
 
@@ -960,7 +960,7 @@ static int elem_offset(const SDNA *sdna,
                        const char *name,
                        const SDNA_Struct *old)
 {
-  /* without arraypart, so names can differ: return old namenr and type */
+  /* Without array-part, so names can differ: return old `namenr` and type. */
 
   /* in old is the old struct */
   int offset = 0;
@@ -1390,7 +1390,9 @@ static void init_reconstruct_step_for_member(const SDNA *oldsdna,
 }
 
 /** Useful function when debugging the reconstruct steps. */
-static void print_reconstruct_step(ReconstructStep *step, const SDNA *oldsdna, const SDNA *newsdna)
+[[maybe_unused]] static void print_reconstruct_step(ReconstructStep *step,
+                                                    const SDNA *oldsdna,
+                                                    const SDNA *newsdna)
 {
   switch (step->type) {
     case RECONSTRUCT_STEP_INIT_ZERO: {
@@ -1561,7 +1563,6 @@ DNA_ReconstructInfo *DNA_reconstruct_info_create(const SDNA *oldsdna,
       printf("\n");
     }
 #endif
-    UNUSED_VARS(print_reconstruct_step);
   }
 
   return reconstruct_info;

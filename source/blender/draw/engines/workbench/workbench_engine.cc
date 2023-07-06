@@ -7,7 +7,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_fluid_types.h"
@@ -163,10 +163,13 @@ class Instance {
         sculpt_sync(ob_ref, handle, object_state);
         emitter_handle = handle;
       }
-      else if (ELEM(ob->type, OB_MESH, OB_POINTCLOUD)) {
+      else if (ob->type == OB_MESH) {
         ResourceHandle handle = manager.resource_handle(ob_ref);
         mesh_sync(ob_ref, handle, object_state);
         emitter_handle = handle;
+      }
+      else if (ob->type == OB_POINTCLOUD) {
+        point_cloud_sync(manager, ob_ref, object_state);
       }
       else if (ob->type == OB_CURVES) {
         curves_sync(manager, ob_ref, object_state);
@@ -201,30 +204,27 @@ class Instance {
     }
   }
 
-  MeshPass &get_mesh_pass(ObjectRef &ob_ref, bool is_transparent)
+  template<typename F>
+  void draw_to_mesh_pass(ObjectRef &ob_ref, bool is_transparent, F draw_callback)
   {
     const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
 
     if (scene_state.xray_mode || is_transparent) {
       if (in_front) {
-        return transparent_ps.accumulation_in_front_ps_;
-        if (scene_state.draw_transparent_depth) {
-          return transparent_depth_ps.in_front_ps_;
-        }
+        draw_callback(transparent_ps.accumulation_in_front_ps_);
+        draw_callback(transparent_depth_ps.in_front_ps_);
       }
       else {
-        return transparent_ps.accumulation_ps_;
-        if (scene_state.draw_transparent_depth) {
-          return transparent_depth_ps.main_ps_;
-        }
+        draw_callback(transparent_ps.accumulation_ps_);
+        draw_callback(transparent_depth_ps.main_ps_);
       }
     }
     else {
       if (in_front) {
-        return opaque_ps.gbuffer_in_front_ps_;
+        draw_callback(opaque_ps.gbuffer_in_front_ps_);
       }
       else {
-        return opaque_ps.gbuffer_ps_;
+        draw_callback(opaque_ps.gbuffer_ps_);
       }
     }
   }
@@ -240,9 +240,10 @@ class Instance {
     resources.material_buf.append(material);
     int material_index = resources.material_buf.size() - 1;
 
-    get_mesh_pass(ob_ref, material.is_transparent())
-        .get_subpass(eGeometryType::MESH, image, sampler_state, iuser)
-        .draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, material.is_transparent(), [&](MeshPass &mesh_pass) {
+      mesh_pass.get_subpass(eGeometryType::MESH, image, sampler_state, iuser)
+          .draw(batch, handle, material_index);
+    });
   }
 
   void mesh_sync(ObjectRef &ob_ref, ResourceHandle handle, const ObjectState &object_state)
@@ -363,6 +364,22 @@ class Instance {
     }
   }
 
+  void point_cloud_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
+  {
+    ResourceHandle handle = manager.resource_handle(ob_ref);
+
+    Material mat = get_material(ob_ref, object_state.color_type);
+    resources.material_buf.append(mat);
+    int material_index = resources.material_buf.size() - 1;
+
+    draw_to_mesh_pass(ob_ref, mat.is_transparent(), [&](MeshPass &mesh_pass) {
+      PassMain::Sub &pass =
+          mesh_pass.get_subpass(eGeometryType::POINTCLOUD).sub("Point Cloud SubPass");
+      GPUBatch *batch = point_cloud_sub_pass_setup(pass, ob_ref.object);
+      pass.draw(batch, handle, material_index);
+    });
+  }
+
   void hair_sync(Manager &manager,
                  ObjectRef &ob_ref,
                  ResourceHandle emitter_handle,
@@ -383,13 +400,14 @@ class Instance {
     resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
 
-    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
-                              .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
-                              .sub("Hair SubPass");
-
-    pass.push_constant("emitter_object_id", int(emitter_handle.raw));
-    GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
-    pass.draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, mat.is_transparent(), [&](MeshPass &mesh_pass) {
+      PassMain::Sub &pass = mesh_pass
+                                .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
+                                .sub("Hair SubPass");
+      pass.push_constant("emitter_object_id", int(emitter_handle.raw));
+      GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
+      pass.draw(batch, handle, material_index);
+    });
   }
 
   void curves_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
@@ -401,12 +419,11 @@ class Instance {
     resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
 
-    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
-                              .get_subpass(eGeometryType::CURVES)
-                              .sub("Curves SubPass");
-
-    GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object);
-    pass.draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, mat.is_transparent(), [&](MeshPass &mesh_pass) {
+      PassMain::Sub &pass = mesh_pass.get_subpass(eGeometryType::CURVES).sub("Curves SubPass");
+      GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object);
+      pass.draw(batch, handle, material_index);
+    });
   }
 
   void draw(Manager &manager, GPUTexture *depth_tx, GPUTexture *color_tx)
@@ -451,12 +468,8 @@ class Instance {
       }
     }
 
-    opaque_ps.draw(manager,
-                   view,
-                   resources,
-                   resolution,
-                   &shadow_ps,
-                   transparent_ps.accumulation_ps_.is_empty());
+    opaque_ps.draw(
+        manager, view, resources, resolution, scene_state.draw_shadows ? &shadow_ps : nullptr);
     transparent_ps.draw(manager, view, resources, resolution);
     transparent_depth_ps.draw(manager, view, resources);
 
