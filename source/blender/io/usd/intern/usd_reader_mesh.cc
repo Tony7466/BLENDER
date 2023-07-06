@@ -6,7 +6,6 @@
  * NVIDIA Corporation. All rights reserved. */
 
 #include "usd_reader_mesh.h"
-#include "usd_hash_types.h"
 #include "usd_reader_material.h"
 
 #include "BKE_attribute.hh"
@@ -15,6 +14,9 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
+
+#include "BLI_hash.hh"
+#include "usd_hash_types.h"
 
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -208,7 +210,6 @@ static std::optional<eCustomDataType> convert_usd_type_to_blender(
   }();
 
   const eCustomDataType *value = type_map.lookup_ptr(usd_type);
-
   if (value == nullptr) {
     WM_reportf(RPT_WARNING, "Unsupported type for mesh data.");
     return std::nullopt;
@@ -526,131 +527,45 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
   uv_data.finish();
 }
 
-template<typename T>
-bke::SpanAttributeWriter<T> get_attribute_for_write(Mesh *mesh,
-                                                    const pxr::TfToken name,
-                                                    const int domain)
+template<typename USDT, typename BlenderT> inline BlenderT convert_value(const USDT &value);
+
+template<> inline float2 convert_value(const pxr::GfVec2f &value)
 {
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  bke::SpanAttributeWriter<T> data = attributes.lookup_or_add_for_write_only_span<T>(
-      name.GetText(), static_cast<eAttrDomain>(domain));
-  return std::move(data);
+  return float2(value[0], value[1]);
+}
+template<> inline float3 convert_value(const pxr::GfVec3f &value)
+{
+  return float3(value[0], value[1], value[2]);
+}
+template<> inline ColorGeometry4f convert_value(const pxr::GfVec3f &value)
+{
+  return ColorGeometry4f(value[0], value[1], value[2], 1.0f);
 }
 
-template<typename T, typename U>
+template<typename USDT, typename BlenderT>
 void copy_prim_array_to_blender_attribute(const pxr::UsdGeomPrimvar &primvar,
-                                          bke::SpanAttributeWriter<U> &attribute,
-                                          const double motionSampleTime)
+                                          const double motionSampleTime,
+                                          MutableSpan<BlenderT> attribute)
 {
-  pxr::VtArray<T> primvar_array;
+  pxr::VtArray<USDT> primvar_array;
 
   if (primvar.ComputeFlattened(&primvar_array, motionSampleTime) &&
-      primvar_array.size() == attribute.span.size())
+      primvar_array.size() == attribute.size())
   {
-    int64_t index = 0;
-    for (const auto value : primvar_array) {
-      attribute.span[index] = value;
-      index += 1;
+    if constexpr (std::is_same_v<USDT, BlenderT>) {
+      const Span<USDT> src(primvar_array.data(), primvar_array.size());
+      attribute.copy_from(src);
     }
-    /* handle size mismatches, such as constant colors */
-    auto last_value = primvar_array[primvar_array.size() - 1];
-    for (; index < attribute.span.size(); index += 1) {
-      attribute.span[index] = last_value;
+    else {
+      for (const int64_t i : attribute.index_range()) {
+        attribute[i] = convert_value<USDT, BlenderT>(primvar_array[i]);
+      }
     }
   }
   else {
     WM_reportf(
         RPT_WARNING, "Unable to get array values for primvar %s", primvar.GetName().GetText());
   }
-
-  attribute.finish();
-}
-
-template<typename T, typename U>
-void copy_prim_array_to_blender_attribute2(const pxr::UsdGeomPrimvar &primvar,
-                                           bke::SpanAttributeWriter<U> &attribute,
-                                           const double motionSampleTime)
-{
-  pxr::VtArray<T> primvar_array;
-
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime) &&
-      primvar_array.size() == attribute.span.size())
-  {
-    int64_t index = 0;
-    for (const auto value : primvar_array) {
-      attribute.span[index] = {value[0], value[1]};
-      index += 1;
-    }
-    /* handle size mismatches, such as constant colors */
-    auto last_value = primvar_array[primvar_array.size() - 1];
-    for (; index < attribute.span.size(); index += 1) {
-      attribute.span[index] = {last_value[0], last_value[1]};
-    }
-  }
-  else {
-    WM_reportf(
-        RPT_WARNING, "Unable to get array values for primvar %s", primvar.GetName().GetText());
-  }
-
-  attribute.finish();
-}
-
-template<typename T, typename U>
-void copy_prim_array_to_blender_attribute3(const pxr::UsdGeomPrimvar &primvar,
-                                           bke::SpanAttributeWriter<U> &attribute,
-                                           const double motionSampleTime)
-{
-  pxr::VtArray<T> primvar_array;
-
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime) &&
-      primvar_array.size() == attribute.span.size())
-  {
-    int64_t index = 0;
-    for (const auto value : primvar_array) {
-      attribute.span[index] = {value[0], value[1], value[2]};
-      index += 1;
-    }
-    /* handle size mismatches, such as constant colors */
-    auto last_value = primvar_array[primvar_array.size() - 1];
-    for (; index < attribute.span.size(); index += 1) {
-      attribute.span[index] = {last_value[0], last_value[1], last_value[2]};
-    }
-  }
-  else {
-    WM_reportf(
-        RPT_WARNING, "Unable to get array values for primvar %s", primvar.GetName().GetText());
-  }
-
-  attribute.finish();
-}
-
-template<typename T, typename U>
-void copy_prim_array_to_blender_attribute_color(const pxr::UsdGeomPrimvar &primvar,
-                                                bke::SpanAttributeWriter<U> &attribute,
-                                                const double motionSampleTime)
-{
-  pxr::VtArray<T> primvar_array;
-
-  if (primvar.ComputeFlattened(&primvar_array, motionSampleTime) &&
-      primvar_array.size() == attribute.span.size())
-  {
-    int64_t index = 0;
-    for (const auto value : primvar_array) {
-      attribute.span[index] = {value[0], value[1], value[2], 1.0f};
-      index += 1;
-    }
-    /* handle size mismatches, such as constant colors */
-    auto last_value = primvar_array[primvar_array.size() - 1];
-    for (; index < attribute.span.size(); index += 1) {
-      attribute.span[index] = {last_value[0], last_value[1], last_value[2], 1.0f};
-    }
-  }
-  else {
-    WM_reportf(
-        RPT_WARNING, "Unable to get array values for primvar %s", primvar.GetName().GetText());
-  }
-
-  attribute.finish();
 }
 
 void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
@@ -668,46 +583,35 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
     return;
   }
 
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
+      name.GetText(), *domain, *type);
   switch (*type) {
-    case CD_PROP_FLOAT: {
-      bke::SpanAttributeWriter<float> attribute = get_attribute_for_write<float>(
-          mesh, name, *domain);
-      copy_prim_array_to_blender_attribute<float, float>(primvar, attribute, motionSampleTime);
+    case CD_PROP_FLOAT:
+      copy_prim_array_to_blender_attribute<float>(
+          primvar, motionSampleTime, attribute.span.typed<float>());
       break;
-    }
-    case CD_PROP_INT32: {
-      bke::SpanAttributeWriter<int32_t> attribute = get_attribute_for_write<int32_t>(
-          mesh, name, *domain);
-      copy_prim_array_to_blender_attribute<int32_t, int32_t>(primvar, attribute, motionSampleTime);
+    case CD_PROP_INT32:
+      copy_prim_array_to_blender_attribute<int32_t>(
+          primvar, motionSampleTime, attribute.span.typed<int>());
       break;
-    }
-    case CD_PROP_FLOAT2: {
-      bke::SpanAttributeWriter<float2> attribute = get_attribute_for_write<float2>(
-          mesh, name, *domain);
-      copy_prim_array_to_blender_attribute2<pxr::GfVec2f, float2>(
-          primvar, attribute, motionSampleTime);
+    case CD_PROP_FLOAT2:
+      copy_prim_array_to_blender_attribute<pxr::GfVec2f>(
+          primvar, motionSampleTime, attribute.span.typed<float2>());
       break;
-    }
-    case CD_PROP_FLOAT3: {
-      bke::SpanAttributeWriter<float3> attribute = get_attribute_for_write<float3>(
-          mesh, name, *domain);
-      copy_prim_array_to_blender_attribute3<pxr::GfVec3f, float3>(
-          primvar, attribute, motionSampleTime);
+    case CD_PROP_FLOAT3:
+      copy_prim_array_to_blender_attribute<pxr::GfVec3f>(
+          primvar, motionSampleTime, attribute.span.typed<float3>());
       break;
-    }
-    case CD_PROP_COLOR: {
-      bke::SpanAttributeWriter<ColorGeometry4f> attribute =
-          get_attribute_for_write<ColorGeometry4f>(mesh, name, *domain);
-      copy_prim_array_to_blender_attribute_color<pxr::GfVec3f, ColorGeometry4f>(
-          primvar, attribute, motionSampleTime);
+    case CD_PROP_COLOR:
+      copy_prim_array_to_blender_attribute<pxr::GfVec3f>(
+          primvar, motionSampleTime, attribute.span.typed<ColorGeometry4f>());
+
       break;
-    }
-    case CD_PROP_BOOL: {
-      bke::SpanAttributeWriter<bool> attribute = get_attribute_for_write<bool>(
-          mesh, name, *domain);
-      copy_prim_array_to_blender_attribute<bool, bool>(primvar, attribute, motionSampleTime);
+    case CD_PROP_BOOL:
+      copy_prim_array_to_blender_attribute<bool>(
+          primvar, motionSampleTime, attribute.span.typed<bool>());
       break;
-    }
     default:
       WM_reportf(RPT_ERROR,
                  "Generic primvar %s: invalid type %s.",
@@ -715,6 +619,7 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
                  sdf_type.GetAsToken().GetText());
       break;
   }
+  attribute.finish();
 }
 
 void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTime)
