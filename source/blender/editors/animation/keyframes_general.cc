@@ -439,6 +439,52 @@ static double butterworth_filter_value(
   }
   return x;
 }
+
+static float butterworth_calculate_blend_value(float *samples,
+                                               float *filtered_values,
+                                               const int start_index,
+                                               const int end_index,
+                                               const int sample_index,
+                                               const int blend_in_out)
+{
+  if (start_index == end_index || blend_in_out == 0) {
+    return samples[start_index];
+  }
+
+  const float blend_in_y_samples = samples[start_index];
+  const float blend_out_y_samples = samples[end_index];
+
+  const float blend_in_y_filtered = filtered_values[start_index + blend_in_out];
+  const float blend_out_y_filtered = filtered_values[end_index - blend_in_out];
+
+  const float slope_in_samples = samples[start_index + 1] - samples[start_index];
+  const float slope_out_samples = samples[end_index - 1] - samples[end_index];
+  const float slope_in_filtered = filtered_values[start_index + blend_in_out - 1] -
+                                  filtered_values[start_index + blend_in_out];
+  const float slope_out_filtered = filtered_values[end_index - blend_in_out] -
+                                   filtered_values[end_index - blend_in_out - 1];
+
+  if (sample_index - start_index <= blend_in_out) {
+    const int blend_index = sample_index - start_index;
+    const float blend_in_out_factor = clamp_f((float)blend_index / blend_in_out, 0.0f, 1.0f);
+    const float blend_value = interpf(blend_in_y_filtered +
+                                          slope_in_filtered * (blend_in_out - blend_index),
+                                      blend_in_y_samples + slope_in_samples * blend_index,
+                                      blend_in_out_factor);
+    return blend_value;
+  }
+  if (end_index - sample_index <= blend_in_out) {
+    const int blend_index = end_index - sample_index;
+    const float blend_in_out_factor = clamp_f((float)blend_index / blend_in_out, 0.0f, 1.0f);
+    const float blend_value = interpf(blend_out_y_filtered +
+                                          slope_out_filtered * (blend_in_out - blend_index),
+                                      blend_out_y_samples + slope_out_samples * blend_index,
+                                      blend_in_out_factor);
+    return blend_value;
+  }
+  return 0;
+}
+
 /**
  * \param samples are expected to start at the first frame of the segment with a buffer of size
  * segment->filter_order at the left.
@@ -488,26 +534,37 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
 
   const int segment_end_index = segment->start_index + segment->length;
   BezTriple left_bezt = fcu->bezt[segment->start_index];
-  const float blend_in_y = fcu->bezt[segment->start_index].vec[1][1];
-  const float blend_out_y = fcu->bezt[segment_end_index - 1].vec[1][1];
+  BezTriple right_bezt = fcu->bezt[segment_end_index - 1];
+
+  const int samples_start_index = filter_order * sample_rate;
+  const int samples_end_index = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0] + filter_order) *
+                                sample_rate;
+
+  const int blend_in_out_clamped = min_ii(blend_in_out,
+                                          (samples_end_index - samples_start_index) / 2);
 
   for (int i = segment->start_index; i < segment_end_index; i++) {
     float blend_in_out_factor;
-    float blend_value = 0;
-    if (blend_in_out == 0) {
+    if (blend_in_out_clamped == 0) {
       blend_in_out_factor = 1;
     }
     else if (i < segment->start_index + segment->length / 2) {
-      blend_in_out_factor = min_ff((float)(i - segment->start_index) / blend_in_out, 1.0f);
-      blend_value = blend_in_y;
+      blend_in_out_factor = min_ff((float)(i - segment->start_index) / blend_in_out_clamped, 1.0f);
     }
     else {
-      blend_in_out_factor = min_ff((float)(segment_end_index - i - 1) / blend_in_out, 1.0f);
-      blend_value = blend_out_y;
+      blend_in_out_factor = min_ff((float)(segment_end_index - i - 1) / blend_in_out_clamped,
+                                   1.0f);
     }
 
     const float x_delta = fcu->bezt[i].vec[1][0] - left_bezt.vec[1][0] + filter_order;
     const int filter_index = (int)(x_delta * sample_rate);
+    const float blend_value = butterworth_calculate_blend_value(samples,
+                                                                filtered_values,
+                                                                samples_start_index,
+                                                                samples_end_index,
+                                                                filter_index,
+                                                                blend_in_out_clamped);
+
     const float blended_value = interpf(
         filtered_values[filter_index], blend_value, blend_in_out_factor);
     const float key_y_value = interpf(blended_value, samples[filter_index], factor);
