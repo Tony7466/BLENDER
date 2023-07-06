@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -120,7 +122,7 @@ void LightProbeModule::end_sync()
       if (grid_update_) {
         light_cache->flag |= LIGHTCACHE_UPDATE_GRID;
       }
-      /* TODO(fclem): Reflection Cubemap should capture albedo + normal and be
+      /* TODO(fclem): Reflection Cube-map should capture albedo + normal and be
        * relit at runtime. So no dependency like in the old system. */
       if (cube_update_) {
         light_cache->flag |= LIGHTCACHE_UPDATE_CUBE;
