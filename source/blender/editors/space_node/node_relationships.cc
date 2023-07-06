@@ -1901,7 +1901,7 @@ static bNode *node_find_frame_to_attach(ARegion &region,
     if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
       continue;
     }
-    if (BLI_rctf_isect_pt_v(&frame->runtime->totr, cursor)) {
+    if (BLI_rctf_isect_pt_v(&frame->runtime->node_rect, cursor)) {
       return frame;
     }
   }
@@ -2109,10 +2109,10 @@ void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
      * segment. */
     for (int i = 0; i < NODE_LINK_RESOL; i++) {
       /* Check if the node rectangle intersects the line from this point to next one. */
-      if (BLI_rctf_isect_segment(&node_to_insert->runtime->totr, coords[i], coords[i + 1])) {
+      if (BLI_rctf_isect_segment(&node_to_insert->runtime->node_rect, coords[i], coords[i + 1])) {
         /* Store the shortest distance to the upper left edge of all intersections found so far. */
-        const float node_xy[] = {node_to_insert->runtime->totr.xmin,
-                                 node_to_insert->runtime->totr.ymax};
+        const float node_xy[] = {node_to_insert->runtime->node_rect.xmin,
+                                 node_to_insert->runtime->node_rect.ymax};
 
         /* To be precise coords should be clipped by `select->totr`, but not done since there's no
          * real noticeable difference. */
@@ -2427,7 +2427,7 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
 
   const float min_margin = U.node_margin * UI_SCALE_FAC;
   const float width = NODE_WIDTH(insert);
-  const bool needs_alignment = (next->runtime->totr.xmin - prev->runtime->totr.xmax) <
+  const bool needs_alignment = (next->runtime->node_rect.xmin - prev->runtime->node_rect.xmax) <
                                (width + (min_margin * 2.0f));
 
   float margin = width;
@@ -2480,8 +2480,8 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
 
   /* *** ensure offset at the left (or right for right_alignment case) of insert_node *** */
 
-  float dist = right_alignment ? totr_insert.xmin - prev->runtime->totr.xmax :
-                                 next->runtime->totr.xmin - totr_insert.xmax;
+  float dist = right_alignment ? totr_insert.xmin - prev->runtime->node_rect.xmax :
+                                 next->runtime->node_rect.xmin - totr_insert.xmax;
   /* distance between insert_node and prev is smaller than min margin */
   if (dist < min_margin) {
     const float addval = (min_margin - dist) * (right_alignment ? 1.0f : -1.0f);
@@ -2495,8 +2495,8 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
 
   /* *** ensure offset at the right (or left for right_alignment case) of insert_node *** */
 
-  dist = right_alignment ? next->runtime->totr.xmin - totr_insert.xmax :
-                           totr_insert.xmin - prev->runtime->totr.xmax;
+  dist = right_alignment ? next->runtime->node_rect.xmin - totr_insert.xmax :
+                           totr_insert.xmin - prev->runtime->node_rect.xmax;
   /* distance between insert_node and next is smaller than min margin */
   if (dist < min_margin) {
     const float addval = (min_margin - dist) * (right_alignment ? 1.0f : -1.0f);

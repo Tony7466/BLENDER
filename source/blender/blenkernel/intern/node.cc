@@ -4218,8 +4218,8 @@ bool nodeDeclarationEnsure(bNodeTree *ntree, bNode *node)
 
 void nodeDimensionsGet(const bNode *node, float *r_width, float *r_height)
 {
-  *r_width = node->runtime->totr.xmax - node->runtime->totr.xmin;
-  *r_height = node->runtime->totr.ymax - node->runtime->totr.ymin;
+  *r_width = node->runtime->node_rect.xmax - node->runtime->node_rect.xmin;
+  *r_height = node->runtime->node_rect.ymax - node->runtime->node_rect.ymin;
 }
 
 void nodeTagUpdateID(bNode *node)
