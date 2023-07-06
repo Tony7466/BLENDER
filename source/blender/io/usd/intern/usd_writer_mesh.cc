@@ -82,40 +82,40 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
     active_set_name = mesh->ldata.layers[active_uv_set_index].name;
   }
 
-  attributes.for_all(
-      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
-        /* Skipping "internal" Blender properties. Also skipping
-         * material_index as it's dealt with elsewhere. */
-        if (attribute_id.name()[0] == '.' ||
-            ELEM(attribute_id.name(), "position", "material_index")) {
-          return true;
-        }
+  attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
+                         const bke::AttributeMetaData &meta_data) {
+    /* Skipping "internal" Blender properties. Also skipping
+     * material_index as it's dealt with elsewhere. */
+    if (attribute_id.name()[0] == '.' || ELEM(attribute_id.name(), "position", "material_index")) {
+      return true;
+    }
 
-        /* UV Data. */
-        if (meta_data.domain == ATTR_DOMAIN_CORNER && meta_data.data_type == CD_PROP_FLOAT2) {
-          if (usd_export_context_.export_params.export_uvmaps) {
-            write_uv_data(mesh, usd_mesh, attribute_id, meta_data, active_set_name);
-          }
-        }
+    /* UV Data. */
+    if (meta_data.domain == ATTR_DOMAIN_CORNER && meta_data.data_type == CD_PROP_FLOAT2) {
+      if (usd_export_context_.export_params.export_uvmaps) {
+        write_uv_data(mesh, usd_mesh, attribute_id, meta_data, active_set_name);
+      }
+    }
 
-        /* Color data. */
-        else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
-                 ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
-        {
-          if (usd_export_context_.export_params.export_mesh_colors) {
-            write_color_data(mesh, usd_mesh, attribute_id, meta_data);
-          }
-        }
+    /* Color data. */
+    else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
+             ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
+    {
+      if (usd_export_context_.export_params.export_mesh_colors) {
+        write_color_data(mesh, usd_mesh, attribute_id, meta_data);
+      }
+    }
 
-        else {
-          write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
-        }
+    else {
+      write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
+    }
 
-        return true;
-      });
+    return true;
+  });
 }
 
-static std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(const eCustomDataType blender_type)
+static std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(
+    const eCustomDataType blender_type)
 {
   switch (blender_type) {
     case CD_PROP_FLOAT:
@@ -139,7 +139,8 @@ static std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(const eC
   }
 }
 
-static const std::optional<pxr::TfToken> convert_blender_domain_to_usd(const eAttrDomain blender_domain)
+static const std::optional<pxr::TfToken> convert_blender_domain_to_usd(
+    const eAttrDomain blender_domain)
 {
   switch (blender_domain) {
     case ATTR_DOMAIN_CORNER:
@@ -158,9 +159,9 @@ static const std::optional<pxr::TfToken> convert_blender_domain_to_usd(const eAt
 
 template<typename T>
 const VArray<T> get_attribute_array(const Mesh *mesh,
-                                     const bke::AttributeIDRef &attribute_id,
-                                     const bke::AttributeMetaData &meta_data,
-                                     const T default_value)
+                                    const bke::AttributeIDRef &attribute_id,
+                                    const bke::AttributeMetaData &meta_data,
+                                    const T default_value)
 {
   return *mesh->attributes().lookup_or_default<T>(attribute_id, meta_data.domain, default_value);
 }
@@ -248,13 +249,13 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
 
   /* Varying type depends on original domain. */
   const std::optional<pxr::TfToken> prim_varying = convert_blender_domain_to_usd(meta_data.domain);
-  const std::optional<pxr::SdfValueTypeName> prim_attr_type = convert_blender_type_to_usd(meta_data.data_type);
+  const std::optional<pxr::SdfValueTypeName> prim_attr_type = convert_blender_type_to_usd(
+      meta_data.data_type);
 
   if (!prim_varying.has_value() || !prim_attr_type.has_value()) {
-    WM_reportf(RPT_WARNING,
-               "Mesh %s, Attribute %s cannot be converted to USD.",
-               &mesh->id.name[2],
-_    return;
+    WM_reportf(
+        RPT_WARNING, "Mesh %s, Attribute %s cannot be converted to USD.", &mesh->id.name[2]);
+    return;
   }
 
   pxr::UsdGeomPrimvar attribute_pv = pvApi.CreatePrimvar(
