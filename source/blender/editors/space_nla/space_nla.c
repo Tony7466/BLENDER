@@ -92,13 +92,13 @@ static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
   /* header */
   region = MEM_callocN(sizeof(ARegion), "header for nla");
 
-  BLI_addtail(&snla->regionbase, region);
+  BLI_addtail(&snla->Collection, region);
   region->regiontype = RGN_TYPE_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
   /* channel list region */
   region = MEM_callocN(sizeof(ARegion), "channel list for nla");
-  BLI_addtail(&snla->regionbase, region);
+  BLI_addtail(&snla->Collection, region);
   region->regiontype = RGN_TYPE_CHANNELS;
   region->alignment = RGN_ALIGN_LEFT;
   Collection = BKE_collection_object_find
