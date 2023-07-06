@@ -1,6 +1,5 @@
 #pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_material_voronoi.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_material_fractal_voronoi.glsl)
 
