@@ -62,13 +62,13 @@ vec3 attr_load_uv(vec3 attr)
 
 #elif defined(MAT_GEOM_POINT_CLOUD)
 
-#  pragma BLENDER_REQUIRE(common_pointcloud_lib.glsl)
-
 /* -------------------------------------------------------------------- */
 /** \name Point Cloud
  *
  * Point Cloud objects loads attributes from buffers through sampler buffers.
  * \{ */
+
+#  pragma BLENDER_REQUIRE(common_pointcloud_lib.glsl)
 
 #  ifdef OBINFO_LIB
 vec3 attr_load_orco(vec4 orco)

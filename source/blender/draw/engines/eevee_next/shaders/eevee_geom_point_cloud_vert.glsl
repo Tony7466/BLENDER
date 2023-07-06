@@ -15,6 +15,8 @@ void main()
 
   init_interface();
 
+  point_cloud_interp.ID = pointcloud_get_point_id();
+  pointcloud_get_pos_and_radius(point_cloud_interp.position, point_cloud_interp.radius);
   pointcloud_get_pos_and_nor(interp.P, interp.N);
 
 #ifdef MAT_VELOCITY
