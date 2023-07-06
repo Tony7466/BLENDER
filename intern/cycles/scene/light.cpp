@@ -1152,9 +1152,13 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       float3 axis_v = normalize_len(extentv, &len_v);
       float area = len_u * len_v;
       if (light->ellipse) {
-        area *= -M_PI_4_F;
+        area *= M_PI_4_F;
       }
       float invarea = (area != 0.0f) ? 1.0f / area : 1.0f;
+      if (light->ellipse) {
+        /* Negative inverse area indicates ellipse. */
+        invarea = -invarea;
+      }
       float3 dir = light->dir;
 
       dir = safe_normalize(dir);
@@ -1278,9 +1282,13 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       float3 axis_v = normalize_len(extentv, &len_v);
       float area = len_u * len_v;
       if (light->ellipse) {
-        area *= -M_PI_4_F;
+        area *= M_PI_4_F;
       }
       float invarea = (light->normalize && area != 0.0f) ? 1.0f / area : 1.0f;
+      if (light->ellipse) {
+        /* Negative inverse area indicates ellipse. */
+        invarea = -invarea;
+      }
       float3 dir = light->dir;
 
       const float half_spread = 0.5f * light->spread;
