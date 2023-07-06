@@ -51,8 +51,6 @@ vec4 reflection_probe_eval(ClosureReflection reflection,
     const float firefly_factor = 1e16;
     l_col.rgb *= 1.0 - max(0.0, luma - firefly_factor) / luma;
 
-    /* Apply intensity factor for artistic control. */
-    l_col.rgb *= probe_data.intensity;
     return l_col;
   }
   return vec4(0.0);

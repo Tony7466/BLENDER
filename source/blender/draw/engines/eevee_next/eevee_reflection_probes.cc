@@ -7,8 +7,8 @@
 
 /* Generate dummy light probe texture.
  *
- * Reflection probes aren't implemented yet. For testing purposes this can be enabled to generate a
- * dummy texture based on the object color of the light probe.
+ * Baking of Light probes aren't implemented yet. For testing purposes this can be enabled to
+ * generate a dummy texture.
  */
 #define GENERATE_DUMMY_LIGHT_PROBE_TEXTURE false
 
@@ -20,7 +20,7 @@ void ReflectionProbeModule::init()
     ReflectionProbeData init_probe_data = {};
     init_probe_data.layer = -1;
     for (int i : IndexRange(REFLECTION_PROBES_MAX)) {
-      data_buf_[i] = init_probe_data;
+      data_buf_.data()->probe_data[i] = init_probe_data;
     }
 
     /* Initialize the world probe. */
@@ -28,10 +28,8 @@ void ReflectionProbeModule::init()
     world_probe_data.layer = 0;
     world_probe_data.layer_subdivision = 0;
     world_probe_data.area_index = 0;
-    world_probe_data.color = float4(0.0f);
     world_probe_data.pos = float3(0.0f);
-    world_probe_data.intensity = 1.0f;
-    data_buf_[0] = world_probe_data;
+    data_buf_.data()->probe_data[0] = world_probe_data;
 
     ReflectionProbe world_probe;
     world_probe.type = ReflectionProbe::Type::World;
@@ -80,7 +78,7 @@ int ReflectionProbeModule::needed_layers_get() const
   const int max_probe_data_index = reflection_probe_data_index_max();
   int max_layer = 0;
   for (const ReflectionProbeData &data :
-       Span<ReflectionProbeData>(data_buf_.data(), max_probe_data_index + 1))
+       Span<ReflectionProbeData>(data_buf_.data()->probe_data, max_probe_data_index + 1))
   {
     max_layer = max_ii(max_layer, data.layer);
   }
@@ -106,11 +104,19 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
   }
 }
 
+static int layer_subdivision_for(const int max_resolution,
+                                 const eLightProbeBakeResolution bake_resolution)
+{
+  int i_bake_resolution = int(bake_resolution);
+  return max_ii(int(log2(max_resolution)) - i_bake_resolution, 0);
+}
+
 void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle*/)
 {
   ReflectionProbe &probe = probes_[0];
-  ReflectionProbeData &probe_data = data_buf_[probe.index];
-  probe_data.layer_subdivision = max_ii(int(log2(max_resolution_)) - world->bake_resolution, 0);
+  ReflectionProbeData &probe_data = data_buf_.data()->probe_data[probe.index];
+  probe_data.layer_subdivision = layer_subdivision_for(
+      max_resolution_, static_cast<eLightProbeBakeResolution>(world->bake_resolution));
 }
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
@@ -121,15 +127,15 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     return;
   }
   const bool is_dirty = ob_handle.recalc != 0;
-  ReflectionProbe &probe = find_or_insert(ob_handle, reflection_probe_subdivision_level_);
+  int subdivision = layer_subdivision_for(
+      max_resolution_, static_cast<eLightProbeBakeResolution>(light_probe->bake_resolution));
+  ReflectionProbe &probe = find_or_insert(ob_handle, subdivision);
   probe.is_dirty |= is_dirty;
   probe.is_used = true;
 
-  /* TODO: remove debug color.*/
   ReflectionProbeData &probe_data = data_buf_[probe.index];
-  probe_data.color = ob->color;
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
-  probe_data.intensity = light_probe->intensity;
+  probe_data.layer_subdivision = subdivision;
 #else
   UNUSED_VARS(ob, ob_handle);
 #endif
@@ -165,7 +171,7 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
   first_unused->type = ReflectionProbe::Type::Probe;
   first_unused->index = reflection_probe_data_index_max() + 1;
 
-  data_buf_[first_unused->index] = probe_data;
+  data_buf_.data()->probe_data[first_unused->index] = probe_data;
 
   return *first_unused;
 }
@@ -259,8 +265,8 @@ ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(
     int subdivision_level) const
 {
   ProbeLocationFinder location_finder(needed_layers_get() + 1, subdivision_level);
-  for (const ReflectionProbeData &data :
-       Span<ReflectionProbeData>(data_buf_.data(), reflection_probe_data_index_max() + 1))
+  for (const ReflectionProbeData &data : Span<ReflectionProbeData>(
+           data_buf_.data()->probe_data, reflection_probe_data_index_max() + 1))
   {
     location_finder.mark_space_used(data);
   }
@@ -358,13 +364,13 @@ void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_da
       probe.index--;
     }
   }
-  data_buf_[max_index].layer = -1;
+  data_buf_.data()->probe_data[max_index].layer = -1;
   BLI_assert(reflection_probe_data_index_max() == max_index - 1);
 }
 
 void ReflectionProbeModule::recalc_lod_factors()
 {
-  for (ReflectionProbeData &probe_data : data_buf_) {
+  for (ReflectionProbeData &probe_data : data_buf_.data()->probe_data) {
     if (probe_data.layer == -1) {
       return;
     }
@@ -409,7 +415,7 @@ void ReflectionProbeModule::debug_print() const
     os << probe;
 
     if (probe.index != -1) {
-      os << data_buf_[probe.index];
+      os << data_buf_.data()->probe_data[probe.index];
     }
   }
 }
@@ -419,8 +425,6 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbeData &probe_data
   os << " - layer: " << probe_data.layer;
   os << " subdivision: " << probe_data.layer_subdivision;
   os << " area: " << probe_data.area_index;
-  os << "\n";
-  os << "   intensity: " << probe_data.intensity;
   os << "\n";
 
   return os;
@@ -453,9 +457,10 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
   }
   return os;
 }
+
 void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
 {
-  const ReflectionProbeData &probe_data = data_buf_[probe.index];
+  const ReflectionProbeData &probe_data = data_buf_.data()->probe_data[probe.index];
   const int resolution = max_resolution_ >> probe_data.layer_subdivision;
   float4 *data = static_cast<float4 *>(
       MEM_mallocN(sizeof(float4) * resolution * resolution, __func__));
@@ -469,7 +474,10 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
       int ty = (y / BLOCK_SIZE) & 1;
       bool solid = (tx + ty) & 1;
       if (solid) {
-        data[index] = float4(probe_data.color.x, probe_data.color.y, probe_data.color.z, 1.0f);
+        data[index] = float4((probe.index & 1) == 0 ? 0.0f : 1.0f,
+                             (probe.index & 2) == 0 ? 0.0f : 1.0f,
+                             (probe.index & 4) == 0 ? 0.0f : 1.0f,
+                             1.0f);
       }
       else {
         data[index] = float4(0.0f);

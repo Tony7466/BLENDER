@@ -68,12 +68,6 @@ class ReflectionProbeModule {
    */
   static constexpr int max_resolution_ = 2048;
 
-  /**
-   * Which subdivision level to use for storing the world/reflection probes in the texture.
-   * TODO: Will become a user option.
-   */
-  static constexpr int reflection_probe_subdivision_level_ = 1;
-
   Instance &instance_;
   ReflectionProbeDataBuf data_buf_;
   Vector<ReflectionProbe> probes_;

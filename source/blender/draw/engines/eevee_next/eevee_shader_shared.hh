@@ -1029,16 +1029,9 @@ BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
 /** Mapping data to locate a reflection probe in texture. */
 struct ReflectionProbeData {
   /**
-   * Dummy color of the reflection probe. Is used during development to generate a dummy reflection
-   * probe result, until baking has been implemented.
-   *
-   * This ensures that we are able to develop the reflection probe evaluation separately from
-   * baking.
-   *
-   * TODO: remove this attribute when baking has been implemented.
-   * NOTE: alpha channel is not used, but here for alignment reasons.
+   * Position of the light probe in world space.
+   * World probe uses origin.
    */
-  float4 color;
   packed_float3 pos;
 
   /** On which layer of the cubemaps array is this reflection probe stored. */
@@ -1064,12 +1057,14 @@ struct ReflectionProbeData {
    */
   float lod_factor;
 
-  /**
-   * Artistic control to change the intensity during evaluation phase.
-   */
-  float intensity;
+  int _pad[1];
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
+
+struct ReflectionProbeBuffer {
+  ReflectionProbeData probe_data[REFLECTION_PROBES_MAX];
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeBuffer, 16)
 
 /** \} */
 
@@ -1129,8 +1124,7 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
-using ReflectionProbeDataBuf =
-    draw::StorageArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
+using ReflectionProbeDataBuf = draw::UniformBuffer<ReflectionProbeBuffer>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;

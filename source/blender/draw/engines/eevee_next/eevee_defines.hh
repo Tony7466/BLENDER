@@ -137,6 +137,9 @@
 #define HIZ_BUF_SLOT 3
 #define IRRADIANCE_GRID_BUF_SLOT 4
 #define AO_BUF_SLOT 5
+/* SLOT 6 is used by render shaders (Film, DoF and Motion Blur). Need to check if it should be
+ * assigned a different slot. */
+#define REFLECTION_PROBE_BUF_SLOT 7
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
@@ -156,8 +159,6 @@
 #define SHADOW_PAGE_INFO_SLOT 4
 #define SAMPLING_BUF_SLOT 6
 #define CRYPTOMATTE_BUF_SLOT 7
-/* Only during reflection probe evaluation. */
-#define REFLECTION_PROBE_BUF_SLOT 7
 
 /* Only during pre-pass. */
 #define VELOCITY_OBJ_PREV_BUF_SLOT 0
