@@ -43,7 +43,8 @@ vec2 octahedral_uv_to_layer_texture_coords(vec2 octahedral_uv,
 {
   /* Fix artifacts near edges. Proved one texel  on each side.*/
   octahedral_uv = octahedral_uv * (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size) +
-                  REFLECTION_PROBE_BORDER_SIZE * texel_size;
+                  REFLECTION_PROBE_BORDER_SIZE * texel_size + 0.5 * texel_size;
+  ;
 
   int areas_per_dimension = 1 << probe_data.layer_subdivision;
   vec2 area_scalar = vec2(1.0 / float(areas_per_dimension));
