@@ -36,7 +36,7 @@ void raytrace_clip_ray_to_near_plane(inout Ray ray)
 #ifdef METAL_AMD_RAYTRACE_WORKAROUND
 __attribute__((noinline))
 #endif
-bool raytrace_screen(RaytraceData rt_data,
+bool raytrace_screen(RayTraceData rt_data,
                      HiZData hiz_data,
                      sampler2D hiz_tx,
                      float stride_rand,

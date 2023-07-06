@@ -52,7 +52,7 @@ void main()
   }
 
   vec3 diffuse_light = vec3(0.0);
-  vec3 reflection_light = imageLoad(out_specular_light_img, texel).rgb;
+  vec3 reflection_light = imageLoad(indirect_reflection_img, texel).rgb;
   float shadow = 1.0;
 
   light_eval(diffuse_data,

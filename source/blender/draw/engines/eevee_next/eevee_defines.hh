@@ -59,6 +59,10 @@
 
 /* Ray-tracing. */
 #define RAYTRACE_GROUP_SIZE 8
+/* Keep this as a define to avoid shader variations. */
+#define RAYTRACE_RADIANCE_FORMAT GPU_RGBA16F
+#define RAYTRACE_VARIANCE_FORMAT GPU_R16F
+#define RAYTRACE_TILEMASK_FORMAT GPU_R8UI
 
 /* Minimum visibility size. */
 #define LIGHTPROBE_FILTER_VIS_GROUP_SIZE 16

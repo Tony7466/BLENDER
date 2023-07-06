@@ -78,7 +78,7 @@ void main()
     /* Fallback to nearest lightprobe. */
     // radiance = lightprobe_cubemap_eval(ray.origin, ray.direction, roughness, rand_probe);
     radiance = light_world_sample(ray.direction, 0.0);
-    hit_time = 1.0;
+    hit_time = 10000.0;
   }
 
   imageStore(ray_time_img, texel, vec4(hit_time));

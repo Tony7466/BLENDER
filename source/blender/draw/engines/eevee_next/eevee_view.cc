@@ -124,7 +124,8 @@ void ShadingView::render()
   inst_.lights.set_view(render_view_new_, extent_);
 
   /* TODO(Miguel Pozo): Deferred and forward prepass should happen before the GBuffer pass. */
-  inst_.pipelines.deferred.render(render_view_new_, prepass_fb_, combined_fb_, extent_);
+  inst_.pipelines.deferred.render(
+      render_view_new_, prepass_fb_, combined_fb_, extent_, rt_buffer_opaque_, rt_buffer_refract_);
 
   // inst_.lookdev.render_overlay(view_fb_);
 

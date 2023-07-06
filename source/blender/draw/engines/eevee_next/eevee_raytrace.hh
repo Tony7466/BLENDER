@@ -5,7 +5,7 @@
 /** \file
  * \ingroup eevee
  *
- * The raytracing module class handles ray generation, scheduling, tracing and denoising.
+ * The ray-tracing module class handles ray generation, scheduling, tracing and denoising.
  */
 
 #pragma once
@@ -19,10 +19,81 @@ namespace blender::eevee {
 class Instance;
 
 /* -------------------------------------------------------------------- */
+/** \name Raytracing Buffers
+ *
+ * Contain persistent data used for temporal denoising. Similar to \class GBuffer but only contains
+ * persistent data.
+ * \{ */
+
+/**
+ * Contain persistent buffer that need to be stored per view.
+ */
+struct RayTraceBuffer {
+  /** Set of buffers that need to be allocated for each ray type. */
+  struct DenoiseBuffer {
+    /* Persistent history buffers. */
+    Texture radiance_history_tx = {"radiance_tx"};
+    Texture variance_history_tx = {"variance_tx"};
+    /* Map of tiles that were processed inside the history buffer. */
+    Texture tilemask_history_tx = {"tilemask_tx"};
+    /** Perspective matrix for which the history buffers were recorded. */
+    float4x4 history_persmat;
+    /**
+     * Textures containing the ray hit radiance denoised (full-res). One of them is result_tx.
+     * One might become result buffer so it need instantiation by closure type to avoid reuse.
+     */
+    TextureFromPool denoised_spatial_tx = {"denoised_spatial_tx"};
+    TextureFromPool denoised_temporal_tx = {"denoised_temporal_tx"};
+    TextureFromPool denoised_bilateral_tx = {"denoised_bilateral_tx"};
+  };
+  /**
+   * One for each closure type. Not to be mistaken with deferred layer type.
+   * For instance the opaque deferred layer will only used the reflection history buffer.
+   */
+  DenoiseBuffer reflection, refraction;
+};
+
+/**
+ * Contains the result texture.
+ * The result buffer is usually short lived and is kept in a TextureFromPool managed by the mode.
+ * This structure contains a reference to it so that it can be freed after use by the caller.
+ */
+class RayTraceResult {
+ private:
+  /** Result is in a temporary texture that needs to be released. */
+  TextureFromPool *result_ = nullptr;
+  /** History buffer to swap the tmp texture that does not need to be released. */
+  Texture *history_ = nullptr;
+
+ public:
+  RayTraceResult() = default;
+  RayTraceResult(TextureFromPool &result) : result_(result.ptr()){};
+  RayTraceResult(TextureFromPool &result, Texture &history)
+      : result_(result.ptr()), history_(history.ptr()){};
+
+  GPUTexture *get()
+  {
+    return *result_;
+  }
+
+  void release()
+  {
+    if (history_) {
+      /* Swap after last use. */
+      TextureFromPool::swap(*result_, *history_);
+    }
+    /* NOTE: This releases the previous history. */
+    result_->release();
+  }
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Raytracing
  * \{ */
 
-class RaytracingModule {
+class RayTraceModule {
  private:
   Instance &inst_;
 
@@ -43,22 +114,30 @@ class RaytracingModule {
   /** Indirect dispatch rays. Avoid dispatching workgroups that ultimately won't do any tracing. */
   DispatchIndirectBuf ray_dispatch_buf_ = {"ray_dispatch_buf_"};
   /** Tile buffer that contains tile coordinates. */
-  RaytraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
+  RayTraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
   /** Texture containing the ray direction and pdf. */
   TextureFromPool ray_data_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit time. */
   TextureFromPool ray_time_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit radiance (tracing-res). */
   TextureFromPool ray_radiance_tx_ = {"ray_radiance_tx"};
-  /** Textures containing the ray hit radiance denoised (full-res). */
-  TextureFromPool denoised_spatial_tx_ = {"denoised_spatial_tx_"};
-  TextureFromPool denoised_temporal_tx_ = {"denoised_temporal_tx_"};
-  /** Ray hit variance and hit depth for temporal denoising. Output of spatial denoise. */
-  TextureFromPool hit_variance_tx_ = {"hit_variance_tx_"};
+  /** Textures containing the ray hit radiance denoised (full-res). One of them is result_tx. */
+  GPUTexture *denoised_spatial_tx_ = nullptr;
+  GPUTexture *denoised_temporal_tx_ = nullptr;
+  GPUTexture *denoised_bilateral_tx_ = nullptr;
+  /** Ray hit depth for temporal denoising. Output of spatial denoise. */
   TextureFromPool hit_depth_tx_ = {"hit_depth_tx_"};
-  /** Output of the denoise passes. */
-  GPUTexture *out_radiance_tx_ = nullptr;
+  /** Ray hit variance for temporal denoising. Output of spatial denoise. */
+  TextureFromPool hit_variance_tx_ = {"hit_variance_tx_"};
+  /** Temporally stable variance for temporal denoising. Output of temporal denoise. */
+  TextureFromPool denoise_variance_tx_ = {"denoise_variance_tx_"};
+  /** Persistent texture reference for temporal denoising input. */
+  GPUTexture *radiance_history_tx_ = nullptr;
+  GPUTexture *variance_history_tx_ = nullptr;
+  GPUTexture *tilemask_history_tx_ = nullptr;
 
+  /** Dummy texture when the tracing is disabled. */
+  TextureFromPool dummy_result_tx_ = {"dummy_result_tx"};
   /** Pointer to inst_.render_buffers.depth_tx.stencil_view() updated before submission. */
   GPUTexture *renderbuf_stencil_view_ = nullptr;
   /** Pointer to inst_.render_buffers.depth_tx updated before submission. */
@@ -71,37 +150,32 @@ class RaytracingModule {
   bool use_temporal_denoise_ = true;
   bool use_bilateral_denoise_ = true;
 
-  RaytraceDataBuf data_;
+  RayTraceDataBuf data_;
 
  public:
-  RaytracingModule(Instance &inst) : inst_(inst){};
+  RayTraceModule(Instance &inst) : inst_(inst){};
 
   void init();
 
   void sync();
 
   /**
-   * Raytrace the scene and resolve a radiance buffer for the corresponding `closure_bit` into the
+   * RayTrace the scene and resolve a radiance buffer for the corresponding `closure_bit` into the
    * given `out_radiance_tx`.
+   *
+   * Should not be conditionally executed as it manages the RayTraceResult.
+   *
+   * \arg active_closures is a mask of all active closures in a deferred layer.
+   * \arg raytrace_closure is type of closure the rays are to be casted for.
    */
-  void trace(eClosureBits closure_bit, GPUTexture *out_radiance_tx, View &view);
-
-  TextureFromPool &release_results(int2 extent, eClosureBits closure_bit, View &view);
+  RayTraceResult trace(RayTraceBuffer &rt_buffer,
+                       eClosureBits active_closures,
+                       eClosureBits raytrace_closure,
+                       View &view);
 
   void debug_pass_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 };
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Raytracing Buffers
- *
- * Contain persistent data used for temporal denoising. Similar to \class GBuffer but only contains
- * persistent data.
- * \{ */
-
-struct RaytraceBuffer {};
 
 /** \} */
 

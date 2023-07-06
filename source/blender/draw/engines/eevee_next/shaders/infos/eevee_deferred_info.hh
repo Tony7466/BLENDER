@@ -28,12 +28,17 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_base)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     /* Chaining to next pass. */
     .image_out(2, Qualifier::WRITE, GPU_RGBA16F, "out_diffuse_light_img")
-    .image_out(3, Qualifier::READ_WRITE, GPU_RGBA16F, "out_specular_light_img");
+    .image_out(3, Qualifier::WRITE, GPU_RGBA16F, "out_specular_light_img");
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
     .sampler(1, ImageType::FLOAT_2D_ARRAY, "gbuffer_color_tx")
+    .image(4,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ,
+           ImageType::FLOAT_2D,
+           "indirect_reflection_img")
     .additional_info("eevee_shared",
                      "eevee_utility_texture",
                      "eevee_sampling_data",

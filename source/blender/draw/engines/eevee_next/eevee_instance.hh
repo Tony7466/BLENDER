@@ -58,7 +58,7 @@ class Instance {
   ShadowModule shadows;
   LightModule lights;
   AmbientOcclusion ambient_occlusion;
-  RaytracingModule raytracing;
+  RayTraceModule raytracing;
   ReflectionProbeModule reflection_probes;
   VelocityModule velocity;
   MotionBlurModule motion_blur;

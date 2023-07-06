@@ -21,6 +21,7 @@
 namespace blender::eevee {
 
 class Instance;
+class RayTraceBuffer;
 
 /* -------------------------------------------------------------------- */
 /** \name World Background Pipeline
@@ -176,8 +177,8 @@ class DeferredLayer {
   TextureFromPool specular_light_tx_ = {"specular_light_accum_tx"};
 
   /* Reference to ray-tracing result. */
-  GPUTexture *ray_refraction_tx_ = nullptr;
-  GPUTexture *ray_reflection_tx_ = nullptr;
+  GPUTexture *indirect_refraction_tx_ = nullptr;
+  GPUTexture *indirect_reflection_tx_ = nullptr;
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
@@ -188,7 +189,11 @@ class DeferredLayer {
   PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
 
-  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+  void render(View &view,
+              Framebuffer &prepass_fb,
+              Framebuffer &combined_fb,
+              int2 extent,
+              RayTraceBuffer &rt_buffer);
 };
 
 class DeferredPipeline {
@@ -209,7 +214,12 @@ class DeferredPipeline {
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
-  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+  void render(View &view,
+              Framebuffer &prepass_fb,
+              Framebuffer &combined_fb,
+              int2 extent,
+              RayTraceBuffer &rt_buffer_opaque_layer,
+              RayTraceBuffer &rt_buffer_refract_layer);
 };
 
 /** \} */

@@ -1,7 +1,6 @@
 
 /**
  * Spatial ray reuse. Denoise raytrace result using ratio estimator.
- * Also add in temporal reuse.
  *
  * Input: Ray direction * hit time, Ray radiance, Ray hit depth
  * Ouput: Ray radiance reconstructed, Mean Ray hit depth, Radiance Variance
@@ -180,7 +179,7 @@ void main()
         ivec2 texel_fullres_neighbor = texel_fullres + ivec2(x, y) * int(tile_size);
 
         imageStore(out_radiance_img, texel_fullres_neighbor, vec4(0.0));
-        imageStore(out_hit_variance_img, texel_fullres_neighbor, vec4(0.0));
+        imageStore(out_variance_img, texel_fullres_neighbor, vec4(0.0));
         imageStore(out_hit_depth_img, texel_fullres_neighbor, vec4(0.0));
       }
     }
@@ -219,7 +218,6 @@ void main()
   }
 #endif
 
-  float hit_depth_mean = 0.0;
   vec3 rgb_mean = vec3(0.0);
   vec3 rgb_moment = vec3(0.0);
   vec3 radiance_accum = vec3(0.0);
@@ -248,7 +246,6 @@ void main()
     radiance_accum += ray_radiance.rgb * weight;
     weight_accum += weight;
 
-    hit_depth_mean += ray_radiance.a;
     rgb_mean += ray_radiance.rgb;
     rgb_moment += sqr(ray_radiance.rgb);
   }
@@ -265,6 +262,6 @@ void main()
   float hit_depth = get_depth_from_view_z(scene_z - closest_hit_time);
 
   imageStore(out_radiance_img, texel_fullres, vec4(radiance_accum, 0.0));
-  imageStore(out_hit_variance_img, texel_fullres, vec4(hit_variance));
+  imageStore(out_variance_img, texel_fullres, vec4(hit_variance));
   imageStore(out_hit_depth_img, texel_fullres, vec4(hit_depth));
 }

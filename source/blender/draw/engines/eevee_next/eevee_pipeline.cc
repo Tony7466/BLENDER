@@ -413,6 +413,8 @@ void DeferredLayer::end_sync()
     eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
     eval_light_ps_.bind_image("out_diffuse_light_img", &diffuse_light_tx_);
     eval_light_ps_.bind_image("out_specular_light_img", &specular_light_tx_);
+    eval_light_ps_.bind_image("indirect_refraction_img", &indirect_refraction_tx_);
+    eval_light_ps_.bind_image("indirect_reflection_img", &indirect_reflection_tx_);
     eval_light_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
     eval_light_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
     eval_light_ps_.push_constant("is_last_eval_pass", is_last_eval_pass);
@@ -465,7 +467,8 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
 void DeferredLayer::render(View &view,
                            Framebuffer &prepass_fb,
                            Framebuffer &combined_fb,
-                           int2 extent)
+                           int2 extent,
+                           RayTraceBuffer &rt_buffer)
 {
   GPU_framebuffer_bind(prepass_fb);
   inst_.manager->submit(prepass_ps_, view);
@@ -479,30 +482,31 @@ void DeferredLayer::render(View &view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(gbuffer_ps_, view);
 
+  RayTraceResult refract_result = inst_.raytracing.trace(
+      rt_buffer, closure_bits_, CLOSURE_REFRACTION, view);
+  indirect_refraction_tx_ = refract_result.get();
+
+  RayTraceResult reflect_result = inst_.raytracing.trace(
+      rt_buffer, closure_bits_, CLOSURE_REFLECTION, view);
+  indirect_reflection_tx_ = reflect_result.get();
+
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
+  diffuse_light_tx_.clear(float4(0.0f));
   specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   specular_light_tx_.clear(float4(0.0f));
 
-  if (closure_bits_ & CLOSURE_REFRACTION) {
-    inst_.raytracing.trace(CLOSURE_REFRACTION, specular_light_tx_, view);
-  }
-
-  if (closure_bits_ & CLOSURE_REFLECTION) {
-    inst_.raytracing.trace(CLOSURE_REFLECTION, specular_light_tx_, view);
-  }
-
-  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
-  diffuse_light_tx_.clear(float4(0.0f));
-
   inst_.manager->submit(eval_light_ps_, view);
 
-  specular_light_tx_.release();
+  refract_result.release();
+  reflect_result.release();
 
   if (closure_bits_ & CLOSURE_SSS) {
     inst_.subsurface.render(view, combined_fb, diffuse_light_tx_);
   }
 
   diffuse_light_tx_.release();
+  specular_light_tx_.release();
 
   inst_.gbuffer.release();
 }
@@ -552,14 +556,16 @@ PassMain::Sub *DeferredPipeline::material_add(::Material *blender_mat, GPUMateri
 void DeferredPipeline::render(View &view,
                               Framebuffer &prepass_fb,
                               Framebuffer &combined_fb,
-                              int2 extent)
+                              int2 extent,
+                              RayTraceBuffer &rt_buffer_opaque_layer,
+                              RayTraceBuffer &rt_buffer_refract_layer)
 {
   DRW_stats_group_start("Deferred.Opaque");
-  opaque_layer_.render(view, prepass_fb, combined_fb, extent);
+  opaque_layer_.render(view, prepass_fb, combined_fb, extent, rt_buffer_opaque_layer);
   DRW_stats_group_end();
 
   DRW_stats_group_start("Deferred.Refract");
-  refraction_layer_.render(view, prepass_fb, combined_fb, extent);
+  refraction_layer_.render(view, prepass_fb, combined_fb, extent, rt_buffer_refract_layer);
   DRW_stats_group_end();
 }
 

@@ -979,7 +979,7 @@ enum eClosureBits : uint32_t {
   CLOSURE_AMBIENT_OCCLUSION = (1u << 12u),
 };
 
-struct RaytraceData {
+struct RayTraceData {
   /** ViewProjection matrix used to render the previous frame. */
   float4x4 history_persmat;
   /** False if the history buffer was just allocated and contains uninitialized data. */
@@ -1006,7 +1006,7 @@ struct RaytraceData {
   int _pad1;
   int _pad2;
 };
-BLI_STATIC_ASSERT_ALIGN(RaytraceData, 16)
+BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
 /** \} */
 
@@ -1108,8 +1108,8 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
-using RaytraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
-using RaytraceDataBuf = draw::UniformBuffer<RaytraceData>;
+using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
+using RayTraceDataBuf = draw::UniformBuffer<RayTraceData>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;
