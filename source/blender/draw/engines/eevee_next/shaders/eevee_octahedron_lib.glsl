@@ -73,10 +73,6 @@ vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
                      (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size);
 
   /* Mirror until the coordinates fit. */
-  /* there are 12 cases. but some of them use the same solution.
-   * NOTE: We could also reduce the branches by folding at center xy axis so there are only 3
-   * posibilities. */
-  /* NOTE: Looking at the final result this is just a repeating pattern. */
   /* Fix right side. */
   if (shrinked_uv.x > 1.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y > 1.0)) {
     shrinked_uv.x = 2.0 - shrinked_uv.x;
@@ -97,25 +93,9 @@ vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
     shrinked_uv.x = 1.0 - shrinked_uv.x;
     shrinked_uv.y = -shrinked_uv.y;
   }
-  /* Fix bottom left. */
-  else if (shrinked_uv.x < 0.0 && shrinked_uv.y < 0.0) {
-    shrinked_uv.x = 1.0 + shrinked_uv.x;
-    shrinked_uv.y = 1.0 + shrinked_uv.y;
-  }
-  /* Fix bottom right. */
-  else if (shrinked_uv.x > 1.0 && shrinked_uv.y < 0.0) {
-    shrinked_uv.x = shrinked_uv.x - 1.0;
-    shrinked_uv.y = 1.0 + shrinked_uv.y;
-  }
-  /* Fix top right. */
-  else if (shrinked_uv.x > 1.0 && shrinked_uv.y > 1.0) {
-    shrinked_uv.x = shrinked_uv.x - 1.0;
-    shrinked_uv.y = shrinked_uv.y - 1.0;
-  }
-  /* Fix top left. */
-  else if (shrinked_uv.x < 0.0 && shrinked_uv.y > 1.0) {
-    shrinked_uv.x = 1.0 + shrinked_uv.x;
-    shrinked_uv.y = shrinked_uv.y - 1.0;
+  else {
+    /* Normal case or fixing corners. */
+    shrinked_uv = fract(shrinked_uv);
   }
   return shrinked_uv;
 }
