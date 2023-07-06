@@ -129,6 +129,9 @@ bool VelocityModule::step_object_sync(Object *ob,
         case OB_CURVES:
           data.pos_buf = DRW_curves_pos_buffer_get(ob);
           break;
+        case OB_POINTCLOUD:
+          /* TODO(Miguel Pozo) */
+          break;
         default:
           data.pos_buf = DRW_cache_object_pos_vertbuf_get(ob);
           break;

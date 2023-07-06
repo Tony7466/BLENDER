@@ -342,6 +342,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       }
       info.vertex_inputs_.clear();
       break;
+    case MAT_GEOM_POINT_CLOUD:
     case MAT_GEOM_VOLUME:
       /** No attributes supported. */
       info.vertex_inputs_.clear();
@@ -380,8 +381,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   {
-    /* Only mesh and curves support vertex displacement for now. */
-    if (ELEM(geometry_type, MAT_GEOM_MESH, MAT_GEOM_CURVES, MAT_GEOM_GPENCIL)) {
+    if (ELEM(
+            geometry_type, MAT_GEOM_MESH, MAT_GEOM_POINT_CLOUD, MAT_GEOM_CURVES, MAT_GEOM_GPENCIL))
+    {
       vert_gen << "vec3 nodetree_displacement()\n";
       vert_gen << "{\n";
       vert_gen << ((codegen.displacement) ? codegen.displacement : "return vec3(0);\n");
@@ -441,6 +443,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
     case MAT_GEOM_MESH:
       info.additional_info("eevee_geom_mesh");
+      break;
+    case MAT_GEOM_POINT_CLOUD:
+      info.additional_info("eevee_geom_point_cloud");
       break;
   }
 

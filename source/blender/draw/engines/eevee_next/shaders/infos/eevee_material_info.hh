@@ -38,6 +38,15 @@ GPU_SHADER_CREATE_INFO(eevee_geom_mesh)
     .vertex_source("eevee_geom_mesh_vert.glsl")
     .additional_info("draw_modelmat_new", "draw_resource_id_varying", "draw_view");
 
+GPU_SHADER_CREATE_INFO(eevee_geom_point_cloud)
+    .additional_info("eevee_shared")
+    .define("MAT_GEOM_POINT_CLOUD")
+    .vertex_source("eevee_geom_point_cloud_vert.glsl")
+    .additional_info("draw_pointcloud_new",
+                     "draw_modelmat_new",
+                     "draw_resource_id_varying",
+                     "draw_view");
+
 GPU_SHADER_CREATE_INFO(eevee_geom_gpencil)
     .additional_info("eevee_shared")
     .define("MAT_GEOM_GPENCIL")
