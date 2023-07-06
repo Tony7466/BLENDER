@@ -40,9 +40,6 @@ void USDLightWriter::do_write(HierarchyContext &context)
 
 #endif
 
-  /* Convert from radiant flux to intensity. */
-  float usd_intensity = light->energy / M_PI;
-
   switch (light->type) {
     case LA_AREA:
       switch (light->area_shape) {
@@ -103,6 +100,16 @@ void USDLightWriter::do_write(HierarchyContext &context)
     }
     default:
       BLI_assert_msg(0, "is_supported() returned true for unsupported light type");
+  }
+
+  float usd_intensity;
+  if (light->type == LA_SUN) {
+    /* Unclear why, but approximately matches Karma. */
+    usd_intensity = light->energy / 4.0f;
+  }
+  else {
+    /* Convert from radiant flux to intensity. */
+    usd_intensity = light->energy / M_PI;
   }
 
   usd_light_api.CreateIntensityAttr().Set(usd_intensity, timecode);
