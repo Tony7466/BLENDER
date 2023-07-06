@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#pragma once
 
 #pragma once
 
@@ -10,9 +14,13 @@ struct Mesh;
 
 namespace blender::geometry {
 
-Mesh &resample_topology(const Mesh &mesh,
+/**
+ * Param\ mask: contains only edges valid to resample. With enought count to resample.
+ */
+Mesh *resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
-                        const bool try_to_fill_by_grid,
+                        const IndexMask &mask,
+                        const bool fill_grid,
                         Map<bke::AttributeIDRef, bke::AttributeKind> attributes);
 
 }  // namespace blender::geometry

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 
@@ -154,13 +156,13 @@ void edges_have_created_new_edges(const OffsetIndices<int> offsets,
 }
 
 template<typename T>
-void polys_have_created_new_verts(const OffsetIndices<int> offsets,
-                                  const OffsetIndices<int> poly_offsets,
-                                  const Span<int> src_corner_verts,
-                                  const Span<int> src_corner_edges,
-                                  const Span<int> resample_edge_num,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
+void polys_have_created_new_verts(const OffsetIndices<int> /*offsets*/,
+                                  const OffsetIndices<int> /*poly_offsets*/,
+                                  const Span<int> /*src_corner_verts*/,
+                                  const Span<int> /*src_corner_edges*/,
+                                  const Span<int> /*resample_edge_num*/,
+                                  const Span<T> /*src*/,
+                                  MutableSpan<T> /*dst*/)
 {
   /*
     Array<int> vertical_linkeds;
@@ -295,7 +297,7 @@ template<typename T> void polys_have_created_new_loops() {}
 void attribute_on_domain(const eAttrDomain domain,
                          const builder::MeshBuilder &builder,
                          const Span<int> resample_edge_num,
-                         const bool try_to_fill_by_grid,
+                         const bool fill_grid,
                          const Mesh &src_mesh,
                          const GSpan src_value,
                          GMutableSpan dst_value)
@@ -309,7 +311,7 @@ void attribute_on_domain(const eAttrDomain domain,
 
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
-        if (try_to_fill_by_grid) {
+        if (fill_grid) {
           const IndexRange vert_mapping = builder.lookup_range("Vertices", "of Vertex");
           MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
           dst_vert_vertices.copy_from(src_typed_values);
@@ -350,7 +352,7 @@ void attribute_on_domain(const eAttrDomain domain,
         break;
       }
       case ATTR_DOMAIN_EDGE: {
-        if (try_to_fill_by_grid) {
+        if (fill_grid) {
           const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets(
               "Edges", "of Resampled Edge");
           edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
@@ -364,7 +366,7 @@ void attribute_on_domain(const eAttrDomain domain,
         break;
       }
       case ATTR_DOMAIN_CORNER: {
-        if (try_to_fill_by_grid) {
+        if (fill_grid) {
           const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets(
               "Corners", "of Grid Resampled Face");
           loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
@@ -378,7 +380,7 @@ void attribute_on_domain(const eAttrDomain domain,
         break;
       }
       case ATTR_DOMAIN_FACE: {
-        if (try_to_fill_by_grid) {
+        if (fill_grid) {
           polys_have_created_new_polys<T>(src_typed_values, dst_typed_values);
           polys_have_created_new_loops<T>();
         }
@@ -448,7 +450,6 @@ void build_faces(const OffsetIndices<int> src_polys,
                  const OffsetIndices<int> dst_corners,
                  MutableSpan<int> r_polys_offsets)
 {
-  printf("<< %d -- %d;\n", src_polys.size(), r_polys_offsets.size());
   for (const int index : src_polys.index_range()) {
     const IndexRange src_corners_range = src_polys[index];
     const int total_corners = dst_corners[src_corners_range].size();
@@ -457,37 +458,37 @@ void build_faces(const OffsetIndices<int> src_polys,
   offset_indices::accumulate_counts_to_offsets(r_polys_offsets);
 }
 
-void build_edge_vert_indices(const OffsetIndices<int> dst_edges,
-                             const OffsetIndices<int> dst_verts_in_edges,
-                             const Span<int2> src_edges,
-                             const IndexRange vert_mapping,
-                             MutableSpan<int2> r_edges)
+void build_edges(const OffsetIndices<int> dst_edges,
+                 const OffsetIndices<int> dst_verts,
+                 const IndexRange vert_mapping,
+                 const Span<int2> src_edges,
+                 MutableSpan<int2> r_edges)
 {
-  for (const int index : src_edges.index_range()) {
-    const int2 src_edge = src_edges[index];
-    MutableSpan<int2> edges = r_edges.slice(dst_edges[index]);
+  for (const int edge_index : src_edges.index_range()) {
+    const int2 src_edge = src_edges[edge_index];
+    MutableSpan<int2> edges = r_edges.slice(dst_edges[edge_index]);
+    BLI_assert(!edges.is_empty());
 
     if (edges.size() == 1) {
       edges.first() = src_edge;
       continue;
     }
 
-    const IndexRange dst_vertices = dst_verts_in_edges[index];
-    const IndexRange dst_left_vertices = dst_vertices.drop_back(1);
-    const IndexRange dst_right_vertices = dst_vertices.drop_front(1);
+    const IndexRange verts_on_edge = dst_verts[edge_index];
+    const IndexRange dst_left_verts = verts_on_edge.drop_back(1);
+    const IndexRange dst_right_verts = verts_on_edge.drop_front(1);
 
     edges.first()[0] = src_edge[0];
-    edges.first()[1] = vert_mapping[dst_left_vertices.first()];
+    edges.first()[1] = vert_mapping[verts_on_edge.first()];
 
     const IndexRange edges_to_fill = edges.index_range().drop_front(1).drop_back(1);
     for (const int i : edges_to_fill.index_range()) {
       const int index = edges_to_fill[i];
-      edges[index][0] = vert_mapping[dst_left_vertices[i]];
-      edges[index][1] = vert_mapping[dst_right_vertices[i]];
-      printf("<< %d-%d;\n", edges[index][0], edges[index][1]);
+      edges[index][0] = vert_mapping[dst_left_verts[i]];
+      edges[index][1] = vert_mapping[dst_right_verts[i]];
     }
 
-    edges.last()[0] = vert_mapping[dst_right_vertices.last()];
+    edges.last()[0] = vert_mapping[verts_on_edge.last()];
     edges.last()[1] = src_edge[1];
   }
 }
@@ -496,7 +497,7 @@ void build_edge_vert_indices(const OffsetIndices<int> dst_edges,
 
 void compute_mesh(const Mesh &mesh,
                   const Span<int> resample_edge_num,
-                  const bool try_to_fill_by_grid,
+                  const bool fill_grid,
                   builder::MeshBuilder &builder)
 {
   /* New verices for original verts. */
@@ -515,7 +516,7 @@ void compute_mesh(const Mesh &mesh,
         "Edges", "of Resampled Edge", std::move(new_edges_for_original_edges));
   }
 
-  if (try_to_fill_by_grid) {
+  if (fill_grid) {
     /* Face grid. */
     builder.push_element_by_size("Corners", "of Grid Resampled Face", 0);
 
@@ -572,21 +573,20 @@ void compute_mesh(const Mesh &mesh,
 
 void build_topology(const Mesh &mesh,
                     const Span<int> /*resample_edge_num*/,
-                    const bool try_to_fill_by_grid,
+                    const bool fill_grid,
                     const builder::MeshBuilder &builder)
 {
   using namespace topology;
 
   Mesh &result = builder.mesh();
 
-  build_edge_vert_indices(
-      builder.lookup_offsets("Edges", "of Resampled Edge"),
-      builder.lookup_offsets("Vertices", "of Resampled Edge"),
-      mesh.edges(),
-      builder.lookup_range("Vertices", "of Resampled Edge"),
-      result.edges_for_write().slice(builder.lookup_range("Edges", "of Resampled Edge")));
+  build_edges(builder.lookup_offsets("Edges", "of Resampled Edge"),
+              builder.lookup_offsets("Vertices", "of Resampled Edge"),
+              builder.lookup_range("Vertices", "of Resampled Edge"),
+              mesh.edges(),
+              result.edges_for_write().slice(builder.lookup_range("Edges", "of Resampled Edge")));
 
-  if (try_to_fill_by_grid) {
+  if (fill_grid) {
     /* pass */
   }
   else {
@@ -606,7 +606,7 @@ void build_topology(const Mesh &mesh,
 
 static void propagate_attributes(const Mesh &src_mesh,
                                  const Span<int> resample_edge_num,
-                                 const bool try_to_fill_by_grid,
+                                 const bool fill_grid,
                                  const builder::MeshBuilder &builder,
                                  const Map<bke::AttributeIDRef, bke::AttributeKind> &attributes)
 {
@@ -645,7 +645,7 @@ static void propagate_attributes(const Mesh &src_mesh,
     attribute_on_domain(attribute.domain,
                         builder,
                         resample_edge_num,
-                        try_to_fill_by_grid,
+                        fill_grid,
                         src_mesh,
                         src_attribute_value,
                         dst_attribute_value);
@@ -654,20 +654,21 @@ static void propagate_attributes(const Mesh &src_mesh,
   }
 }
 
-Mesh &resample_topology(const Mesh &mesh,
+Mesh *resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
-                        const bool try_to_fill_by_grid,
+                        const IndexMask & /*mask*/,
+                        const bool fill_grid,
                         Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
   builder::MeshBuilder builder;
-  compute_mesh(mesh, resample_edge_num, try_to_fill_by_grid, builder);
-  build_topology(mesh, resample_edge_num, try_to_fill_by_grid, builder);
+  compute_mesh(mesh, resample_edge_num, fill_grid, builder);
+  build_topology(mesh, resample_edge_num, fill_grid, builder);
   attributes.remove(".edge_verts");
-  attributes.remove("crease_vert");
-  attributes.remove("crease_edge");
-  propagate_attributes(mesh, resample_edge_num, try_to_fill_by_grid, builder, attributes);
+  attributes.remove(".corner_edge");
+  attributes.remove(".corner_vert");
+  propagate_attributes(mesh, resample_edge_num, fill_grid, builder, attributes);
 
-  return builder.mesh();
+  return &builder.mesh();
 }
 
 }  // namespace blender::geometry

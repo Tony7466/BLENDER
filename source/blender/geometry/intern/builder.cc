@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_linear_allocator.hh"
 #include "BLI_map.hh"
@@ -103,12 +105,6 @@ void Builder::finalize()
   const int tot_edge = branch_total("Edges");
   const int tot_loop = branch_total("Corners");
   const int tot_face = branch_total("Faces");
-  printf("%d, %d, %d, %d;\n", tot_vert, tot_edge, tot_loop, tot_face);
-  std::stringstream abc;
-
-  this->status(abc);
-
-  std::cout << abc.str();
 
   result = BKE_mesh_new_nomain(tot_vert, tot_edge, tot_face, tot_loop);
 }
