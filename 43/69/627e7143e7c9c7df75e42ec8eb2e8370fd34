@@ -1,2 +1,3 @@
 Referenced by issue #108880, Regression: Skin and Miffor modifiers cause mesh collapse
 Referenced by pull request #109627, Fix #109565: Array modifier changes the Root vertex of Skin modifier
+Referenced by commit 74772c69208039e5bdee80491ff9c039d7cef6e5, Fix #109565: Array modifier changes the Root vertex of Skin modifier
