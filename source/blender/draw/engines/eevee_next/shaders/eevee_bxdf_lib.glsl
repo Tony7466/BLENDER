@@ -10,6 +10,16 @@
  *
  * \{ */
 
+float bxdf_ggx_D(float NH, float a2)
+{
+  return a2 / (M_PI * sqr((NH * a2 - NH) * NH + 1.0));
+}
+
+float bxdf_ggx_smith_G1(float NX, float a2)
+{
+  return 2.0 / (1.0 + sqrt(1.0 + a2 * (1 - NX * NX) / (NX * NX)));
+}
+
 float bxdf_ggx_D_opti(float NH, float a2)
 {
   float tmp = (NH * a2 - NH) * NH + 1.0;

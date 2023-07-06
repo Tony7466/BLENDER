@@ -16,10 +16,9 @@ float sample_pdf_ggx_reflect(float NH, float NV, float VH, float G1, float alpha
 {
   float a2 = sqr(alpha);
 #if GGX_USE_VISIBLE_NORMAL
-  float D = a2 / bxdf_ggx_D_opti(NH, a2);
-  return G1 * VH * D / NV;
+  return G1 * VH * bxdf_ggx_D(NH, a2) / NV;
 #else
-  return NH * a2 / bxdf_ggx_D_opti(NH, a2);
+  return NH * bxdf_ggx_D(NH, a2);
 #endif
 }
 
