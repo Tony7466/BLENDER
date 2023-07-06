@@ -437,7 +437,7 @@ void BLI_spin_unlock(SpinLock *spin)
 #endif
 }
 
-void BLI_spin_end(SpinLock *spin)
+void BLI_spin_end([[maybe_unused]] SpinLock *spin)
 {
 #ifdef WITH_TBB
   tbb::spin_mutex *spin_mutex = tbb_spin_mutex_cast(spin);
