@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "DNA_collection_types.h"
+#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "MEM_guardedalloc.h"
@@ -20,18 +21,22 @@
 #include "BKE_context.h"
 #include "BKE_lib_remap.h"
 #include "BKE_screen.h"
+#include "BKE_collection.h"
+#include "BKE_object.h"
 
 #include "ED_anim_api.h"
 #include "ED_markers.h"
 #include "ED_screen.h"
 #include "ED_space_api.h"
 #include "ED_time_scrub_ui.h"
+#include "ED_object.h"
 
 #include "WM_api.h"
 #include "WM_message.h"
 #include "WM_types.h"
 
 #include "RNA_access.h"
+#include "RNA_enum_types.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -41,6 +46,30 @@
 
 #include "nla_intern.h" /* own include */
 
+/* ********************initialization of the search system in the collections******************** */
+static const EnumPropertyItem *collection_object(bContext *C,
+                                                 PointerRNA *UNUSED(ptr),
+                                                 PropertyRNA *UNUSED(prop),
+                                                 bool *r_free)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  Object *ob;
+  EnumPropertyItem *item = NULL, item_tmp = {0};
+  int totitem = 0;
+
+  if (C == NULL) {
+    return DummyRNA_NULL_items;
+  }
+
+  ob = ED_object_context(C);
+
+  /* check that the object exists */
+  if (ob) {
+    Collection *collection;
+    int i = 0, count = 0;
+
+  }}
 /* ******************** default callbacks for nla space ***************** */
 
 static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
@@ -71,6 +100,7 @@ static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
   BLI_addtail(&snla->regionbase, region);
   region->regiontype = RGN_TYPE_CHANNELS;
   region->alignment = RGN_ALIGN_LEFT;
+  Collection = BKE_collection_object_find
 
   /* only need to set these settings since this will use the 'stack' configuration */
   region->v2d.scroll = V2D_SCROLL_BOTTOM;
