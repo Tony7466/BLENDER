@@ -197,17 +197,17 @@ static void build_face_to_face_by_edge_map(const OffsetIndices<int> polys,
                                            Array<int> &r_offsets,
                                            Array<int> &r_indices)
 {
-  Array<int> edge_to_poly_offsets_data;
+  Array<int> edge_to_poly_offset_data;
   Array<int> edge_to_poly_indices;
   const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
-      polys, corner_edges, edges_num, edge_to_poly_offsets_data, edge_to_poly_indices);
-  const OffsetIndices<int> edge_to_poly_offsets(edge_to_poly_offsets_data);
+      polys, corner_edges, edges_num, edge_to_poly_offset_data, edge_to_poly_indices);
+  const OffsetIndices<int> edge_to_poly_offsets(edge_to_poly_offset_data);
 
   r_offsets = Array<int>(polys.size() + 1, 0);
   threading::parallel_for(polys.index_range(), 4096, [&](const IndexRange range) {
     for (const int poly_i : range) {
       for (const int edge : corner_edges.slice(polys[poly_i])) {
-        /* Subtract polygon itself from list of all polygons connected to edge. */
+        /* Subtract polygon itself from the number of polygons connected to the edge. */
         r_offsets[poly_i] += edge_to_poly_offsets[edge].size() - 1;
       }
     }
