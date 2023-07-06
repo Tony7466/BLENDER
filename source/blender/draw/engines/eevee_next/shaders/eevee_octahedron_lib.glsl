@@ -74,22 +74,22 @@ vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
 
   /* Mirror until the coordinates fit. */
   /* Fix right side. */
-  if (shrinked_uv.x > 1.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y > 1.0)) {
+  if (shrinked_uv.x >= 1.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y >= 1.0)) {
     shrinked_uv.x = 2.0 - shrinked_uv.x;
     shrinked_uv.y = 1.0 - shrinked_uv.y;
   }
   /* Fix left side. */
-  else if (shrinked_uv.x < 0.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y > 1.0)) {
+  else if (shrinked_uv.x < 0.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y >= 1.0)) {
     shrinked_uv.x = -shrinked_uv.x;
     shrinked_uv.y = 1.0 - shrinked_uv.y;
   }
   /* Fix top side. */
-  else if (shrinked_uv.y > 1.0 && !(shrinked_uv.x < 0.0 || shrinked_uv.x > 1.0)) {
+  else if (shrinked_uv.y >= 1.0 && !(shrinked_uv.x < 0.0 || shrinked_uv.x >= 1.0)) {
     shrinked_uv.x = 1.0 - shrinked_uv.x;
     shrinked_uv.y = 2.0 - shrinked_uv.y;
   }
   /* Fix bottom side. */
-  else if (shrinked_uv.y < 0.0 && !(shrinked_uv.x < 0.0 || shrinked_uv.x > 1.0)) {
+  else if (shrinked_uv.y < 0.0 && !(shrinked_uv.x < 0.0 || shrinked_uv.x >= 1.0)) {
     shrinked_uv.x = 1.0 - shrinked_uv.x;
     shrinked_uv.y = -shrinked_uv.y;
   }
