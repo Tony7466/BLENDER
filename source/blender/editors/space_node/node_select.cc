@@ -799,7 +799,7 @@ static int node_box_select_exec(bContext *C, wmOperator *op)
         /* Frame nodes are selectable by their borders (including their whole rect - as for other
          * nodes - would prevent selection of other nodes inside that frame. */
         const rctf frame_inside = node_frame_rect_inside(snode, *node);
-        if (BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr) &&
+        if (BLI_rctf_isect(&rectf, &node->runtime->node_rect, nullptr) &&
             !BLI_rctf_inside_rctf(&frame_inside, &rectf))
         {
           nodeSetSelected(node, select);
@@ -808,7 +808,7 @@ static int node_box_select_exec(bContext *C, wmOperator *op)
         break;
       }
       default: {
-        is_inside = BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr);
+        is_inside = BLI_rctf_isect(&rectf, &node->runtime->node_rect, nullptr);
         break;
       }
     }
@@ -905,7 +905,7 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
         rctf frame_inside = node_frame_rect_inside(*snode, *node);
         const float radius_adjusted = float(radius) / zoom;
         BLI_rctf_pad(&frame_inside, -2.0f * radius_adjusted, -2.0f * radius_adjusted);
-        if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius_adjusted) &&
+        if (BLI_rctf_isect_circle(&node->runtime->node_rect, offset, radius_adjusted) &&
             !BLI_rctf_isect_circle(&frame_inside, offset, radius_adjusted))
         {
           nodeSetSelected(node, select);
@@ -913,7 +913,7 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
         break;
       }
       default: {
-        if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius / zoom)) {
+        if (BLI_rctf_isect_circle(&node->runtime->node_rect, offset, radius / zoom)) {
           nodeSetSelected(node, select);
         }
         break;
@@ -1000,7 +1000,7 @@ static bool do_lasso_select_node(bContext *C,
         BLI_rctf_rcti_copy(&rectf, &rect);
         UI_view2d_region_to_view_rctf(&region->v2d, &rectf, &rectf);
         const rctf frame_inside = node_frame_rect_inside(*snode, *node);
-        if (BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr) &&
+        if (BLI_rctf_isect(&rectf, &node->runtime->node_rect, nullptr) &&
             !BLI_rctf_inside_rctf(&frame_inside, &rectf))
         {
           nodeSetSelected(node, select);
@@ -1010,8 +1010,8 @@ static bool do_lasso_select_node(bContext *C,
       }
       default: {
         int2 screen_co;
-        const float2 center = {BLI_rctf_cent_x(&node->runtime->totr),
-                               BLI_rctf_cent_y(&node->runtime->totr)};
+        const float2 center = {BLI_rctf_cent_x(&node->runtime->node_rect),
+                               BLI_rctf_cent_y(&node->runtime->node_rect)};
 
         /* marker in screen coords */
         if (UI_view2d_view_to_region_clip(
@@ -1296,7 +1296,7 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
 
   node_select_single(*C, *new_active_node);
 
-  if (!BLI_rctf_inside_rctf(&region->v2d.cur, &new_active_node->runtime->totr)) {
+  if (!BLI_rctf_inside_rctf(&region->v2d.cur, &new_active_node->runtime->node_rect)) {
     const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
     space_node_view_flag(*C, *snode, *region, NODE_SELECT, smooth_viewtx);
   }
@@ -1379,7 +1379,7 @@ static void node_find_exec_fn(bContext *C, void * /*arg1*/, void *arg2)
     ARegion *region = CTX_wm_region(C);
     node_select_single(*C, *active);
 
-    if (!BLI_rctf_inside_rctf(&region->v2d.cur, &active->runtime->totr)) {
+    if (!BLI_rctf_inside_rctf(&region->v2d.cur, &active->runtime->node_rect)) {
       space_node_view_flag(*C, *snode, *region, NODE_SELECT, U.smooth_viewtx);
     }
   }

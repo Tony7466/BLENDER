@@ -97,7 +97,7 @@ struct NodeClipboard {
     node_map.add_new(&node, new_node);
 
     NodeClipboardItem item;
-    item.draw_rect = node.runtime->totr;
+    item.draw_rect = node.runtime->node_rect;
     item.node = new_node;
     item.id = new_node->id;
     if (item.id) {
