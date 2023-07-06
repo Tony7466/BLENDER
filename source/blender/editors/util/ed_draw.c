@@ -56,6 +56,7 @@
 
 #define SLIDE_PIXEL_DISTANCE (300.0f * UI_SCALE_FAC)
 #define OVERSHOOT_RANGE_DELTA 0.2f
+#define SLIDER_UNIT_STRING_SIZE 64
 
 typedef struct tSlider {
   Scene *scene;
@@ -83,7 +84,7 @@ typedef struct tSlider {
   SliderMode slider_mode;
 
   /* What unit to add to the slider. */
-  char unit_string[64];
+  char unit_string[SLIDER_UNIT_STRING_SIZE];
 
   /** Enable range beyond factor_bounds.
    * This is set by the code that uses the slider, as not all operations support
@@ -582,7 +583,7 @@ void ED_slider_mode_set(tSlider *slider, SliderMode mode)
 
 void ED_slider_unit_set(tSlider *slider, const char *unit)
 {
-  strcpy(slider->unit_string, unit);
+  BLI_strncpy(slider->unit_string, unit, SLIDER_UNIT_STRING_SIZE);
 }
 
 /** \} */
