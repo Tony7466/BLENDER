@@ -463,6 +463,7 @@ set(SRC
   BKE_paint.h
   BKE_particle.h
   BKE_pbvh.h
+  BKE_pbvh_api.hh
   BKE_pbvh_pixels.hh
   BKE_pointcache.h
   BKE_pointcloud.h
@@ -502,6 +503,7 @@ set(SRC
   BKE_vfontdata.h
   BKE_viewer_path.h
   BKE_volume.h
+  BKE_volume_openvdb.hh
   BKE_volume_render.h
   BKE_volume_to_mesh.hh
   BKE_workspace.h
