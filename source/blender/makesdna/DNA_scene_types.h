@@ -1526,6 +1526,20 @@ typedef enum eSeqImageFitMethod {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name NLA Tool Settings
+ * \{ */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Graph Editor Tool Settings
+ * \{ */
+typedef struct GraphEditorToolSettings {
+  short snap_flag;
+} GraphEditorToolSettings;
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Tool Settings
  * \{ */
 
