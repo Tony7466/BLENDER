@@ -83,7 +83,7 @@ typedef struct tSlider {
   SliderMode slider_mode;
 
   /* What unit to add to the slider. */
-  const char *unit_string;
+  char unit_string[64];
 
   /** Enable range beyond factor_bounds.
    * This is set by the code that uses the slider, as not all operations support
@@ -413,7 +413,7 @@ tSlider *ED_slider_create(bContext *C)
   slider->factor_bounds[0] = 0;
   slider->factor_bounds[1] = 1;
 
-  slider->unit_string = "%";
+  slider->unit_string[0] = "%";
 
   slider->slider_mode = SLIDER_MODE_PERCENT;
 
@@ -582,7 +582,7 @@ void ED_slider_mode_set(tSlider *slider, SliderMode mode)
 
 void ED_slider_unit_set(tSlider *slider, const char *unit)
 {
-  slider->unit_string = unit;
+  strcpy(slider->unit_string, unit);
 }
 
 /** \} */
