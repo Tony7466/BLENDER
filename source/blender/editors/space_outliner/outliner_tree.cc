@@ -240,7 +240,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
     id = nullptr;
   }
   else if (type == TSE_BONE) {
-    id = ((BoneElementCreateData *)idv)->armature_id;
+    id = static_cast<BoneElementCreateData *>(idv)->armature_id;
   }
 
   /* exceptions */
