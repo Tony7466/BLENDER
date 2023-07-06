@@ -35,7 +35,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
 #include "BKE_screen.h"
@@ -3187,8 +3186,7 @@ void DRW_render_context_enable(Render *render)
   if (re_system_gpu_context != NULL) {
     DRW_system_gpu_render_context_enable(re_system_gpu_context);
     /* We need to query gpu context after a gl context has been bound. */
-    void *re_blender_gpu_context = NULL;
-    re_blender_gpu_context = RE_blender_gpu_context_get(render);
+    void *re_blender_gpu_context = RE_blender_gpu_context_ensure(render);
     DRW_blender_gpu_render_context_enable(re_blender_gpu_context);
   }
   else {
@@ -3208,8 +3206,7 @@ void DRW_render_context_disable(Render *render)
   void *re_system_gpu_context = RE_system_gpu_context_get(render);
 
   if (re_system_gpu_context != NULL) {
-    void *re_blender_gpu_context = NULL;
-    re_blender_gpu_context = RE_blender_gpu_context_get(render);
+    void *re_blender_gpu_context = RE_blender_gpu_context_ensure(render);
     /* GPU rendering may occur during context disable. */
     DRW_blender_gpu_render_context_disable(re_blender_gpu_context);
     GPU_render_end();

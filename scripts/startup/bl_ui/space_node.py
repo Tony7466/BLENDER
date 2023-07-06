@@ -139,25 +139,28 @@ class NODE_HT_header(Header):
                 layout.prop(snode_id, "use_nodes")
 
         elif snode.tree_type == 'GeometryNodeTree':
+            layout.prop(snode, "geometry_nodes_type", text="")
             NODE_MT_editor_menus.draw_collapsible(context, layout)
             layout.separator_spacer()
 
-            ob = context.object
+            if snode.geometry_nodes_type == 'MODIFIER':
+                ob = context.object
 
-            row = layout.row()
-            if snode.pin:
-                row.enabled = False
-                row.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
-            elif ob:
-                active_modifier = ob.modifiers.active
-                if active_modifier and active_modifier.type == 'NODES':
-                    if active_modifier.node_group:
-                        row.template_ID(active_modifier, "node_group", new="object.geometry_node_tree_copy_assign")
+                row = layout.row()
+                if snode.pin:
+                    row.enabled = False
+                    row.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
+                elif ob:
+                    active_modifier = ob.modifiers.active
+                    if active_modifier and active_modifier.type == 'NODES':
+                        if active_modifier.node_group:
+                            row.template_ID(active_modifier, "node_group", new="object.geometry_node_tree_copy_assign")
+                        else:
+                            row.template_ID(active_modifier, "node_group", new="node.new_geometry_node_group_assign")
                     else:
-                        row.template_ID(active_modifier, "node_group", new="node.new_geometry_node_group_assign")
-                else:
-                    row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
-
+                        row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
+            else:
+                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
@@ -1157,7 +1160,6 @@ classes = (
     NODE_PT_node_color_presets,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
-    NODE_PT_active_node_properties,
     NODE_PT_texture_mapping,
     NODE_PT_active_tool,
     NODE_PT_backdrop,
@@ -1171,6 +1173,7 @@ classes = (
     NODE_PT_panels,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
+    NODE_PT_active_node_properties,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
     node_panel(MATERIAL_PT_viewport),
