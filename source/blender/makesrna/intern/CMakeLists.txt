@@ -147,8 +147,10 @@ endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   string(APPEND GENSRC_FLAGS " -Wno-missing-variable-declarations")
 elseif(MSVC)
-  # Restore warn C4100 (unreferenced formal parameter) back to w4
-  remove_cc_flag(/w34100)
+  remove_cc_flag(
+    # Restore warn C4100 (unreferenced formal parameter) back to w4.
+    "/w34100"
+  )
 endif()
 
 set(GENSRC_C ${GENSRC})
@@ -206,7 +208,6 @@ set(SRC
   ../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
   ../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
   ../../../../intern/guardedalloc/intern/memory_usage.cc
-  ../../blenlib/intern/string.c
 
   # Needed for defaults.
   ../../../../release/datafiles/userdef/userdef_default.c
@@ -427,6 +428,7 @@ add_cc_flags_custom_test(makesrna)
 
 add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
 setup_platform_linker_flags(makesrna)
+setup_platform_linker_libs(makesrna)
 blender_target_include_dirs(makesrna ${INC})
 blender_target_include_dirs_sys(makesrna ${INC_SYS})
 
