@@ -1718,8 +1718,10 @@ static float2 socket_link_connection_location(const bNode &node,
 {
   const float2 socket_location = socket.runtime->location;
   if (socket.is_multi_input() && socket.is_input() && !(node.flag & NODE_HIDDEN)) {
+    /* Since \link is exist, at least one link always connected to socket. */
+    const int clamped_total_inputs = math::max<int>(1, socket.runtime->total_inputs);
     return node_link_calculate_multi_input_position(
-        socket_location, link.multi_input_socket_index, socket.runtime->total_inputs);
+        socket_location, link.multi_input_socket_index, clamped_total_inputs);
   }
   return socket_location;
 }
