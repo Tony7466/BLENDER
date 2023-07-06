@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -15,8 +17,8 @@ set(INC
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/atomic
   ../../../../intern/guardedalloc
+  ../../../../extern/fmtlib/include
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../../makesdna/intern
@@ -48,6 +50,8 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  extern_fmtlib
+  PRIVATE bf_intern_atomic
 )
 
 if(WIN32)
@@ -66,24 +70,12 @@ if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()
 
-if(WITH_IMAGE_TIFF)
-  add_definitions(-DWITH_TIFF)
-endif()
-
 if(WITH_IMAGE_OPENJPEG)
   add_definitions(-DWITH_OPENJPEG)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
-endif()
-
-if(WITH_IMAGE_HDR)
-  add_definitions(-DWITH_HDR)
 endif()
 
 if(WITH_IMAGE_WEBP)

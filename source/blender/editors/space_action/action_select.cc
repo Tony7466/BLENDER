@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -35,7 +36,7 @@
 #include "UI_view2d.h"
 
 #include "ED_anim_api.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_keyframes_edit.h"
 #include "ED_keyframes_keylist.h"
 #include "ED_markers.h"
@@ -274,7 +275,8 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
       }
       else {
         if (ANIM_fcurve_keyframes_loop(
-                &ked, static_cast<FCurve *>(ale->key_data), nullptr, test_cb, nullptr)) {
+                &ked, static_cast<FCurve *>(ale->key_data), nullptr, test_cb, nullptr))
+        {
           sel = SELECT_SUBTRACT;
           break;
         }
@@ -493,7 +495,8 @@ static void box_select_action(bAnimContext *ac, const rcti rect, short mode, sho
 
   /* loop over data, doing box select */
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-       ale = ale->next, ymax -= channel_step) {
+       ale = ale->next, ymax -= channel_step)
+  {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* get new vertical minimum extent of channel */
@@ -759,7 +762,8 @@ static void region_select_action_keys(
 
   /* loop over data, doing region select */
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-       ale = ale->next, ymax -= channel_step) {
+       ale = ale->next, ymax -= channel_step)
+  {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* get new vertical minimum extent of channel */
@@ -1472,7 +1476,8 @@ static void actkeys_select_leftright(bAnimContext *ac, short leftright, short se
 
       for (marker = static_cast<TimeMarker *>(markers->first); marker; marker = marker->next) {
         if (((leftright == ACTKEYS_LRSEL_LEFT) && (marker->frame < scene->r.cfra)) ||
-            ((leftright == ACTKEYS_LRSEL_RIGHT) && (marker->frame >= scene->r.cfra))) {
+            ((leftright == ACTKEYS_LRSEL_RIGHT) && (marker->frame >= scene->r.cfra)))
+        {
           marker->flag |= SELECT;
         }
         else {

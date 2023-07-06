@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -125,6 +127,10 @@ typedef enum eAssetImportMethod {
    * be reused from an earlier append. */
   ASSET_IMPORT_APPEND_REUSE = 2,
 } eAssetImportMethod;
+
+typedef enum eAssetLibrary_Flag {
+  ASSET_LIBRARY_RELATIVE_PATH = (1 << 0),
+} eAssetLibrary_Flag;
 
 /**
  * Information to identify an asset library. May be either one of the predefined types (current

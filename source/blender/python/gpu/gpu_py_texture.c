@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -140,7 +142,8 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
                                         PyC_ParseStringEnum,
                                         &pygpu_textureformat,
                                         &BPyGPU_BufferType,
-                                        &pybuffer_obj)) {
+                                        &pybuffer_obj))
+  {
     return NULL;
   }
 
@@ -301,7 +304,8 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_dataformat, &py_values)) {
+          args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_dataformat, &py_values))
+  {
     return NULL;
   }
 
@@ -315,8 +319,8 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
     return NULL;
   }
 
-  if (shape != 1 &&
-      ELEM(pygpu_dataformat.value_found, GPU_DATA_UINT_24_8, GPU_DATA_10_11_11_REV)) {
+  if (shape != 1 && ELEM(pygpu_dataformat.value_found, GPU_DATA_UINT_24_8, GPU_DATA_10_11_11_REV))
+  {
     PyErr_SetString(PyExc_AttributeError,
                     "`UINT_24_8` and `10_11_11_REV` only support single values");
     return NULL;
@@ -329,7 +333,8 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
                   py_values,
                   shape,
                   (pygpu_dataformat.value_found == GPU_DATA_FLOAT) ? &PyFloat_Type : &PyLong_Type,
-                  "clear") == -1) {
+                  "clear") == -1)
+  {
     return NULL;
   }
 
@@ -436,7 +441,7 @@ static PyGetSetDef pygpu_texture__tp_getseters[] = {
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
 };
 
-static struct PyMethodDef pygpu_texture__tp_methods[] = {
+static PyMethodDef pygpu_texture__tp_methods[] = {
     {"clear",
      (PyCFunction)pygpu_texture_clear,
      METH_VARARGS | METH_KEYWORDS,
@@ -551,7 +556,7 @@ static PyObject *pygpu_texture_from_image(PyObject *UNUSED(self), PyObject *arg)
   return BPyGPUTexture_CreatePyObject(tex, true);
 }
 
-static struct PyMethodDef pygpu_texture__m_methods[] = {
+static PyMethodDef pygpu_texture__m_methods[] = {
     {"from_image", (PyCFunction)pygpu_texture_from_image, METH_O, pygpu_texture_from_image_doc},
     {NULL, NULL, 0, NULL},
 };

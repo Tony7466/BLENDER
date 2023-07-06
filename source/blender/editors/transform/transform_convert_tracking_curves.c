@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -247,7 +248,8 @@ static void flushTransTrackingCurves(TransInfo *t)
   /* flush to 2d vector from internally used 3d vector */
   for (td_index = 0, td = tc->data, td2d = tc->data_2d, tdt = tc->custom.type.data;
        td_index < tc->data_len;
-       td_index++, td2d++, td++, tdt++) {
+       td_index++, td2d++, td++, tdt++)
+  {
     {
       td2d->loc2d[tdt->coord] = tdt->prev_pos[tdt->coord] + td2d->loc[1] * tdt->scale;
     }

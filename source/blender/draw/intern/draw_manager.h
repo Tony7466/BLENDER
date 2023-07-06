@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -362,7 +363,7 @@ struct DRWUniform {
         GPUTexture *texture;
         GPUTexture **texture_ref;
       };
-      eGPUSamplerState sampler_state;
+      GPUSamplerState sampler_state;
     };
     /* DRW_UNIFORM_BLOCK */
     union {
@@ -665,13 +666,13 @@ typedef struct DRWManager {
 
   /* ---------- Nothing after this point is cleared after use ----------- */
 
-  /* gl_context serves as the offset for clearing only
+  /* system_gpu_context serves as the offset for clearing only
    * the top portion of the struct so DO NOT MOVE IT! */
   /** Unique ghost context used by the draw manager. */
-  void *gl_context;
-  GPUContext *gpu_context;
+  void *system_gpu_context;
+  GPUContext *blender_gpu_context;
   /** Mutex to lock the drw manager and avoid concurrent context usage. */
-  TicketMutex *gl_context_mutex;
+  TicketMutex *system_gpu_context_mutex;
 
   GPUDrawList *draw_list;
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Kévin Dietrich. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -16,7 +17,6 @@
 #include "BLI_math_vector_types.hh"
 
 struct CustomData;
-struct MPoly;
 struct Mesh;
 
 using Alembic::Abc::ICompoundProperty;
@@ -32,7 +32,7 @@ struct CDStreamConfig {
   int *corner_verts;
   int totloop;
 
-  MPoly *polys;
+  int *poly_offsets;
   int totpoly;
 
   float3 *positions;
@@ -74,7 +74,7 @@ struct CDStreamConfig {
   CDStreamConfig()
       : corner_verts(NULL),
         totloop(0),
-        polys(NULL),
+        poly_offsets(NULL),
         totpoly(0),
         totvert(0),
         pack_uvs(false),

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -76,8 +77,8 @@ struct MeshRenderData {
   /** Mesh */
   Mesh *me;
   blender::Span<blender::float3> vert_positions;
-  blender::Span<MEdge> edges;
-  blender::Span<MPoly> polys;
+  blender::Span<blender::int2> edges;
+  blender::OffsetIndices<int> polys;
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
   BMVert *eve_act;
@@ -86,6 +87,7 @@ struct MeshRenderData {
   BMFace *efa_act_uv;
   /* The triangulation of #Mesh polygons, owned by the mesh. */
   blender::Span<MLoopTri> looptris;
+  blender::Span<int> looptri_polys;
   const int *material_indices;
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::float3> poly_normals;
@@ -184,29 +186,29 @@ BLI_INLINE const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *me)
 
 BLI_INLINE BMFace *bm_original_face_get(const MeshRenderData *mr, int idx)
 {
-  return ((mr->p_origindex != NULL) && (mr->p_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
+  return ((mr->p_origindex != nullptr) && (mr->p_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
              BM_face_at_index(mr->bm, mr->p_origindex[idx]) :
-             NULL;
+             nullptr;
 }
 
 BLI_INLINE BMEdge *bm_original_edge_get(const MeshRenderData *mr, int idx)
 {
-  return ((mr->e_origindex != NULL) && (mr->e_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
+  return ((mr->e_origindex != nullptr) && (mr->e_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
              BM_edge_at_index(mr->bm, mr->e_origindex[idx]) :
-             NULL;
+             nullptr;
 }
 
 BLI_INLINE BMVert *bm_original_vert_get(const MeshRenderData *mr, int idx)
 {
-  return ((mr->v_origindex != NULL) && (mr->v_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
+  return ((mr->v_origindex != nullptr) && (mr->v_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
              BM_vert_at_index(mr->bm, mr->v_origindex[idx]) :
-             NULL;
+             nullptr;
 }
 
 BLI_INLINE const float *bm_vert_co_get(const MeshRenderData *mr, const BMVert *eve)
 {
   const float(*vert_coords)[3] = mr->bm_vert_coords;
-  if (vert_coords != NULL) {
+  if (vert_coords != nullptr) {
     return vert_coords[BM_elem_index_get(eve)];
   }
 
@@ -217,7 +219,7 @@ BLI_INLINE const float *bm_vert_co_get(const MeshRenderData *mr, const BMVert *e
 BLI_INLINE const float *bm_vert_no_get(const MeshRenderData *mr, const BMVert *eve)
 {
   const float(*vert_normals)[3] = mr->bm_vert_normals;
-  if (vert_normals != NULL) {
+  if (vert_normals != nullptr) {
     return vert_normals[BM_elem_index_get(eve)];
   }
 
@@ -228,7 +230,7 @@ BLI_INLINE const float *bm_vert_no_get(const MeshRenderData *mr, const BMVert *e
 BLI_INLINE const float *bm_face_no_get(const MeshRenderData *mr, const BMFace *efa)
 {
   const float(*poly_normals)[3] = mr->bm_poly_normals;
-  if (poly_normals != NULL) {
+  if (poly_normals != nullptr) {
     return poly_normals[BM_elem_index_get(efa)];
   }
 
@@ -253,23 +255,20 @@ using ExtractPolyBMeshFn = void(const MeshRenderData *mr,
                                 const BMFace *f,
                                 int f_index,
                                 void *data);
-using ExtractPolyMeshFn = void(const MeshRenderData *mr,
-                               const MPoly *poly,
-                               int poly_index,
-                               void *data);
+using ExtractPolyMeshFn = void(const MeshRenderData *mr, int poly_index, void *data);
 using ExtractLEdgeBMeshFn = void(const MeshRenderData *mr,
                                  const BMEdge *eed,
-                                 int ledge_index,
+                                 int loose_edge_i,
                                  void *data);
 using ExtractLEdgeMeshFn = void(const MeshRenderData *mr,
-                                const MEdge *edge,
-                                int ledge_index,
+                                blender::int2 edge,
+                                int loose_edge_i,
                                 void *data);
 using ExtractLVertBMeshFn = void(const MeshRenderData *mr,
                                  const BMVert *eve,
-                                 int lvert_index,
+                                 int loose_vert_i,
                                  void *data);
-using ExtractLVertMeshFn = void(const MeshRenderData *mr, int lvert_index, void *data);
+using ExtractLVertMeshFn = void(const MeshRenderData *mr, int loose_vert_i, void *data);
 using ExtractLooseGeomSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                       const MeshRenderData *mr,
                                       void *buffer,
@@ -298,7 +297,7 @@ using ExtractIterSubdivMeshFn = void(const DRWSubdivCache *subdiv_cache,
                                      const MeshRenderData *mr,
                                      void *data,
                                      uint subdiv_quad_index,
-                                     const MPoly *coarse_quad);
+                                     int coarse_quad_index);
 using ExtractFinishSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                    const MeshRenderData *mr,
                                    MeshBatchCache *cache,

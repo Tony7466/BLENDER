@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -14,12 +16,11 @@ set(INC
   ../../makesrna
   ../../nodes
   ../../windowmanager
-  ../../../../extern/fast_float
   ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
-
+  ../../../../extern/fast_float
 )
 
 set(SRC

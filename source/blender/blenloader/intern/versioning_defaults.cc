@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -50,7 +52,7 @@
 #include "BKE_main_namemap.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_paint.h"
@@ -262,7 +264,7 @@ void BLO_update_defaults_workspace(WorkSpace *workspace, const char *app_templat
 
     /* For 2D animation template. */
     if (STREQ(workspace->id.name + 2, "Drawing")) {
-      workspace->object_mode = OB_MODE_PAINT_GPENCIL;
+      workspace->object_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
     }
 
     /* For Sculpting template. */
@@ -288,7 +290,7 @@ void BLO_update_defaults_workspace(WorkSpace *workspace, const char *app_templat
 
 static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 {
-  BLI_strncpy(scene->r.engine, RE_engine_id_BLENDER_EEVEE, sizeof(scene->r.engine));
+  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
 
   scene->r.cfra = 1.0f;
 
@@ -553,7 +555,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       if (object->type == OB_GPENCIL_LEGACY) {
         /* Set grease pencil object in drawing mode */
         bGPdata *gpd = (bGPdata *)object->data;
-        object->mode = OB_MODE_PAINT_GPENCIL;
+        object->mode = OB_MODE_PAINT_GPENCIL_LEGACY;
         gpd->flag |= GP_DATA_STROKE_PAINTMODE;
         break;
       }
@@ -637,7 +639,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
      * its values are overwritten by #BKE_brush_sculpt_reset below. */
     brush->alpha = 1.0;
 
-    /* Enable antialiasing by default */
+    /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
   }
 

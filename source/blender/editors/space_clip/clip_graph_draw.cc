@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -31,13 +32,13 @@
 
 #include "clip_intern.h" /* own include */
 
-typedef struct TrackMotionCurveUserData {
+struct TrackMotionCurveUserData {
   SpaceClip *sc;
   MovieTrackingTrack *act_track;
   bool sel;
   float xscale, yscale, hsize;
   uint pos;
-} TrackMotionCurveUserData;
+};
 
 static void tracking_segment_point_cb(void *userdata,
                                       MovieTrackingTrack * /*track*/,
@@ -118,7 +119,6 @@ static void tracking_segment_knot_cb(void *userdata,
                                      float val)
 {
   TrackMotionCurveUserData *data = (TrackMotionCurveUserData *)userdata;
-  int sel = 0, sel_flag;
 
   if (track != data->act_track) {
     return;
@@ -127,8 +127,9 @@ static void tracking_segment_knot_cb(void *userdata,
     return;
   }
 
-  sel_flag = value_source == CLIP_VALUE_SOURCE_SPEED_X ? MARKER_GRAPH_SEL_X : MARKER_GRAPH_SEL_Y;
-  sel = (marker->flag & sel_flag) ? 1 : 0;
+  const int sel_flag = value_source == CLIP_VALUE_SOURCE_SPEED_X ? MARKER_GRAPH_SEL_X :
+                                                                   MARKER_GRAPH_SEL_Y;
+  const bool sel = (marker->flag & sel_flag) != 0;
 
   if (sel == data->sel) {
     immUniformThemeColor(sel ? TH_HANDLE_VERTEX_SELECT : TH_HANDLE_VERTEX);

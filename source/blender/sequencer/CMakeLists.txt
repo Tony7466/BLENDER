@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2011 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2011 Blender Foundation
 
 set(INC
   .
@@ -15,7 +16,6 @@ set(INC
   ../makesrna
   ../render
   ../windowmanager
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/guardedalloc
 
@@ -90,6 +90,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
+  PRIVATE bf_intern_atomic
 )
 
 if(WITH_AUDASPACE)

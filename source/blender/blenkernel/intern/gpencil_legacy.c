@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -275,12 +276,12 @@ static void greasepencil_blend_read_lib(BlendLibReader *reader, ID *id)
   /* Layers */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Layer -> Parent References */
-    BLO_read_id_address(reader, gpd->id.lib, &gpl->parent);
+    BLO_read_id_address(reader, id, &gpl->parent);
   }
 
   /* materials */
   for (int a = 0; a < gpd->totcol; a++) {
-    BLO_read_id_address(reader, gpd->id.lib, &gpd->mat[a]);
+    BLO_read_id_address(reader, id, &gpd->mat[a]);
   }
 }
 
@@ -592,8 +593,8 @@ bGPDframe *BKE_gpencil_frame_addcopy(bGPDlayer *gpl, int cframe)
       break;
     }
     if (gpf->framenum == cframe) {
-      /* This only happens when we're editing with framelock on...
-       * - Delete the new frame and don't do anything else here...
+      /* This only happens when we're editing with frame-lock on.
+       * - Delete the new frame and don't do anything else here.
        */
       BKE_gpencil_free_strokes(new_frame);
       MEM_freeN(new_frame);
@@ -675,7 +676,7 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd,
   }
 
   /* auto-name */
-  BLI_strncpy(gpl->info, DATA_(name), sizeof(gpl->info));
+  STRNCPY_UTF8(gpl->info, DATA_(name));
   BLI_uniquename(&gpd->layers,
                  gpl,
                  (gpd->flag & GP_DATA_ANNOTATIONS) ? DATA_("Note") : DATA_("GP_Layer"),
@@ -917,7 +918,7 @@ bGPDframe *BKE_gpencil_frame_duplicate(const bGPDframe *gpf_src, const bool dup_
   return gpf_dst;
 }
 
-void BKE_gpencil_frame_copy_strokes(bGPDframe *gpf_src, struct bGPDframe *gpf_dst)
+void BKE_gpencil_frame_copy_strokes(bGPDframe *gpf_src, bGPDframe *gpf_dst)
 {
   bGPDstroke *gps_dst = NULL;
   /* error checking */
@@ -1018,9 +1019,9 @@ void BKE_gpencil_layer_copy_settings(const bGPDlayer *gpl_src, bGPDlayer *gpl_ds
   gpl_dst->pass_index = gpl_src->pass_index;
   gpl_dst->parent = gpl_src->parent;
   copy_m4_m4(gpl_dst->inverse, gpl_src->inverse);
-  BLI_strncpy(gpl_dst->parsubstr, gpl_src->parsubstr, 64);
+  STRNCPY(gpl_dst->parsubstr, gpl_src->parsubstr);
   gpl_dst->partype = gpl_src->partype;
-  BLI_strncpy(gpl_dst->viewlayername, gpl_src->viewlayername, 64);
+  STRNCPY(gpl_dst->viewlayername, gpl_src->viewlayername);
   copy_v3_v3(gpl_dst->location, gpl_src->location);
   copy_v3_v3(gpl_dst->rotation, gpl_src->rotation);
   copy_v3_v3(gpl_dst->scale, gpl_src->scale);
@@ -1383,7 +1384,8 @@ bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_
 
   /* Don't select first frame if greater than current frame. */
   if ((gpl->actframe != NULL) && (gpl->actframe == gpl->frames.first) &&
-      (gpl->actframe->framenum > cframe)) {
+      (gpl->actframe->framenum > cframe))
+  {
     gpl->actframe = NULL;
   }
 
@@ -1435,7 +1437,7 @@ bGPDlayer_Mask *BKE_gpencil_layer_mask_add(bGPDlayer *gpl, const char *name)
 
   bGPDlayer_Mask *mask = MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask");
   BLI_addtail(&gpl->mask_layers, mask);
-  BLI_strncpy(mask->name, name, sizeof(mask->name));
+  STRNCPY(mask->name, name);
   gpl->act_mask++;
 
   return mask;
@@ -1465,8 +1467,8 @@ void BKE_gpencil_layer_mask_remove_ref(bGPdata *gpd, const char *name)
 static int gpencil_cb_sort_masks(const void *arg1, const void *arg2)
 {
   /* sort is inverted as layer list. */
-  const struct bGPDlayer_Mask *mask1 = arg1;
-  const struct bGPDlayer_Mask *mask2 = arg2;
+  const bGPDlayer_Mask *mask1 = arg1;
+  const bGPDlayer_Mask *mask2 = arg2;
   int val = 0;
 
   if (mask1->sort_index < mask2->sort_index) {
@@ -1548,7 +1550,7 @@ static int gpencil_cb_cmp_frame(void *thunk, const void *a, const void *b)
   return 0;
 }
 
-void BKE_gpencil_layer_frames_sort(struct bGPDlayer *gpl, bool *r_has_duplicate_frames)
+void BKE_gpencil_layer_frames_sort(bGPDlayer *gpl, bool *r_has_duplicate_frames)
 {
   BLI_listbase_sort_r(&gpl->frames, gpencil_cb_cmp_frame, r_has_duplicate_frames);
 }
@@ -1571,7 +1573,7 @@ bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
   return NULL;
 }
 
-bGPDlayer *BKE_gpencil_layer_get_by_name(bGPdata *gpd, char *name, int first_if_not_found)
+bGPDlayer *BKE_gpencil_layer_get_by_name(bGPdata *gpd, const char *name, int first_if_not_found)
 {
   bGPDlayer *gpl;
 
@@ -1673,7 +1675,8 @@ Material *BKE_gpencil_brush_material_get(Brush *brush)
   Material *ma = NULL;
 
   if ((brush != NULL) && (brush->gpencil_settings != NULL) &&
-      (brush->gpencil_settings->material != NULL)) {
+      (brush->gpencil_settings->material != NULL))
+  {
     ma = brush->gpencil_settings->material;
   }
 
@@ -1744,7 +1747,8 @@ Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *n
 Material *BKE_gpencil_object_material_from_brush_get(Object *ob, Brush *brush)
 {
   if ((brush) && (brush->gpencil_settings) &&
-      (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED)) {
+      (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED))
+  {
     Material *ma = BKE_gpencil_brush_material_get(brush);
     return ma;
   }
@@ -1878,7 +1882,8 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
   }
   /* Keep a valid active index if we still have some vertex groups. */
   if (!BLI_listbase_is_empty(&gpd->vertex_group_names) &&
-      BKE_object_defgroup_active_index_get(ob) < 1) {
+      BKE_object_defgroup_active_index_get(ob) < 1)
+  {
     BKE_object_defgroup_active_index_set(ob, 1);
   }
 
@@ -1972,7 +1977,7 @@ bool BKE_gpencil_material_index_used(bGPdata *gpd, int index)
   return false;
 }
 
-void BKE_gpencil_material_remap(struct bGPdata *gpd, const uint *remap, uint remap_len)
+void BKE_gpencil_material_remap(bGPdata *gpd, const uint *remap, uint remap_len)
 {
   const short remap_len_short = (short)remap_len;
 
@@ -2022,7 +2027,8 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
     }
     for (int idx_secondary = 0; idx_secondary < *totcol; idx_secondary++) {
       if ((idx_secondary == idx_primary) ||
-          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary))) {
+          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary)))
+      {
         continue;
       }
       if (BLI_ghash_haskey(mat_used, POINTER_FROM_INT(idx_secondary))) {
@@ -2031,15 +2037,16 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
 
       /* Read secondary material to compare with primary material. */
       ma_secondary = BKE_gpencil_material(ob, idx_secondary + 1);
-      if ((ma_secondary == NULL) ||
-          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary))) {
+      if ((ma_secondary == NULL) || BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary)))
+      {
         continue;
       }
       gp_style_primary = ma_primary->gp_style;
       gp_style_secondary = ma_secondary->gp_style;
 
       if ((gp_style_primary == NULL) || (gp_style_secondary == NULL) ||
-          (gp_style_secondary->flag & GP_MATERIAL_LOCKED)) {
+          (gp_style_secondary->flag & GP_MATERIAL_LOCKED))
+      {
         continue;
       }
 
@@ -2050,18 +2057,21 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
 
       /* Check materials have same stroke and fill attributes. */
       if ((gp_style_primary->flag & GP_MATERIAL_STROKE_SHOW) !=
-          (gp_style_secondary->flag & GP_MATERIAL_STROKE_SHOW)) {
+          (gp_style_secondary->flag & GP_MATERIAL_STROKE_SHOW))
+      {
         continue;
       }
 
       if ((gp_style_primary->flag & GP_MATERIAL_FILL_SHOW) !=
-          (gp_style_secondary->flag & GP_MATERIAL_FILL_SHOW)) {
+          (gp_style_secondary->flag & GP_MATERIAL_FILL_SHOW))
+      {
         continue;
       }
 
       /* Check materials have the same type. */
       if ((gp_style_primary->stroke_style != gp_style_secondary->stroke_style) ||
-          (gp_style_primary->fill_style != gp_style_secondary->fill_style)) {
+          (gp_style_primary->fill_style != gp_style_secondary->fill_style))
+      {
         continue;
       }
 
@@ -2092,7 +2102,8 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
                       gp_style_secondary->stroke_rgba[3],
                       val_threshold) ||
           !compare_ff(
-              gp_style_primary->fill_rgba[3], gp_style_secondary->fill_rgba[3], val_threshold)) {
+              gp_style_primary->fill_rgba[3], gp_style_secondary->fill_rgba[3], val_threshold))
+      {
         continue;
       }
 
@@ -2211,8 +2222,7 @@ int BKE_gpencil_object_material_index_get_by_name(Object *ob, const char *name)
   Material *read_ma = NULL;
   for (short i = 0; i < *totcol; i++) {
     read_ma = BKE_object_material_get(ob, i + 1);
-    /* Material names are like "MAMaterial.001" */
-    if (STREQ(name, &read_ma->id.name[2])) {
+    if (STREQ(name, read_ma->id.name + 2)) {
       return i;
     }
   }
@@ -2258,7 +2268,7 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
 
   /* Try to find the default palette. */
   const char *palette_id = "Palette";
-  struct Palette *palette = BLI_findstring(&bmain->palettes, palette_id, offsetof(ID, name) + 2);
+  Palette *palette = BLI_findstring(&bmain->palettes, palette_id, offsetof(ID, name) + 2);
 
   if (palette == NULL) {
     /* Fall back to the first palette. */
@@ -2298,7 +2308,7 @@ bool BKE_gpencil_from_image(
 
   ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
-  if (ibuf && ibuf->rect) {
+  if (ibuf && ibuf->byte_buffer.data) {
     int img_x = ibuf->x;
     int img_y = ibuf->y;
 
@@ -2463,7 +2473,8 @@ void BKE_gpencil_visible_stroke_advanced_iter(ViewLayer *view_layer,
      * generate renders, putting only selected GP layers for each View Layer.
      * This is used only in final render and never in Viewport. */
     if ((view_layer != NULL) && (gpl->viewlayername[0] != '\0') &&
-        !STREQ(view_layer->name, gpl->viewlayername)) {
+        !STREQ(view_layer->name, gpl->viewlayername))
+    {
       /* Do not skip masks when rendering the view-layer so that it can still be used to clip
        * other layers. Instead set their opacity to zero. */
       if (gpencil_is_layer_mask(view_layer, gpd, gpl)) {
@@ -2622,8 +2633,8 @@ void BKE_gpencil_visible_stroke_advanced_iter(ViewLayer *view_layer,
   }
 }
 
-void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig,
-                                                const struct bGPDframe *gpf_eval)
+void BKE_gpencil_frame_original_pointers_update(const bGPDframe *gpf_orig,
+                                                const bGPDframe *gpf_eval)
 {
   bGPDstroke *gps_eval = gpf_eval->strokes.first;
   LISTBASE_FOREACH (bGPDstroke *, gps_orig, &gpf_orig->strokes) {
@@ -2650,8 +2661,8 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
   }
 }
 
-void BKE_gpencil_layer_original_pointers_update(const struct bGPDlayer *gpl_orig,
-                                                const struct bGPDlayer *gpl_eval)
+void BKE_gpencil_layer_original_pointers_update(const bGPDlayer *gpl_orig,
+                                                const bGPDlayer *gpl_eval)
 {
   bGPDframe *gpf_eval = gpl_eval->frames.first;
   LISTBASE_FOREACH (bGPDframe *, gpf_orig, &gpl_orig->frames) {
@@ -2843,7 +2854,8 @@ int BKE_gpencil_material_find_index_by_name_prefix(Object *ob, const char *name_
   for (int i = 0; i < ob->totcol; i++) {
     Material *ma = BKE_object_material_get(ob, i + 1);
     if ((ma != NULL) && (ma->gp_style != NULL) &&
-        STREQLEN(ma->id.name + 2, name_prefix, name_prefix_len)) {
+        STREQLEN(ma->id.name + 2, name_prefix, name_prefix_len))
+    {
       return i;
     }
   }
@@ -2851,7 +2863,7 @@ int BKE_gpencil_material_find_index_by_name_prefix(Object *ob, const char *name_
   return -1;
 }
 
-void BKE_gpencil_frame_selected_hash(bGPdata *gpd, struct GHash *r_list)
+void BKE_gpencil_frame_selected_hash(bGPdata *gpd, GHash *r_list)
 {
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
@@ -2863,7 +2875,8 @@ void BKE_gpencil_frame_selected_hash(bGPdata *gpd, struct GHash *r_list)
 
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_iter->frames) {
       if (((gpf == gpl->actframe) && (!is_multiedit)) ||
-          ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+          ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit)))
+      {
         if (!BLI_ghash_lookup(r_list, POINTER_FROM_INT(gpf->framenum))) {
           BLI_ghash_insert(r_list, POINTER_FROM_INT(gpf->framenum), gpf);
         }

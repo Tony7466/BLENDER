@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup EEVEE
@@ -59,7 +60,8 @@ void eevee_shader_material_create_info_amend(GPUMaterial *gpumat,
     info.define("USE_SHADER_TO_RGBA");
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_BARYCENTRIC) && !is_volume && !is_hair &&
-      !is_point_cloud && !is_background) {
+      !is_point_cloud && !is_background)
+  {
     info.define("USE_BARYCENTRICS");
     info.builtins(BuiltinBits::BARYCENTRIC_COORD);
   }

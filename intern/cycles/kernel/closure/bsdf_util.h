@@ -1,10 +1,9 @@
-/* SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
- * Adapted from Open Shading Language
- * Copyright (c) 2009-2010 Sony Pictures Imageworks Inc., et al.
- * All Rights Reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Modifications Copyright 2011-2022 Blender Foundation. */
+ * Adapted code from Open Shading Language. */
 
 #pragma once
 
@@ -75,10 +74,15 @@ ccl_device Spectrum fresnel_conductor(float cosi, const Spectrum eta, const Spec
   return (Rparl2 + Rperp2) * 0.5f;
 }
 
-ccl_device float ior_from_F0(Spectrum f0)
+ccl_device float ior_from_F0(float f0)
 {
-  const float sqrt_f0 = sqrtf(clamp(average(f0), 0.0f, 0.99f));
+  const float sqrt_f0 = sqrtf(clamp(f0, 0.0f, 0.99f));
   return (1.0f + sqrt_f0) / (1.0f - sqrt_f0);
+}
+
+ccl_device float F0_from_ior(float ior)
+{
+  return sqr((ior - 1.0f) / (ior + 1.0f));
 }
 
 ccl_device float schlick_fresnel(float u)
@@ -96,7 +100,7 @@ ccl_device_forceinline Spectrum interpolate_fresnel_color(float3 L,
 {
   /* Compute the real Fresnel term and remap it from real_F0..1 to F0..1.
    * The reason why we use this remapping instead of directly doing the
-   * Schlick approximation lerp(F0, 1.0, (1.0-cosLH)^5) is that for cases
+   * Schlick approximation mix(F0, 1.0, (1.0-cosLH)^5) is that for cases
    * with similar IORs (e.g. ice in water), the relative IOR can be close
    * enough to 1.0 that the Schlick approximation becomes inaccurate. */
   float real_F = fresnel_dielectric_cos(dot(L, H), ior);

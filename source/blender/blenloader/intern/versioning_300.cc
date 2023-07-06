@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -65,8 +67,10 @@
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_screen.h"
+#include "BKE_simulation_state_serialize.hh"
+#include "BKE_workspace.h"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
@@ -203,8 +207,8 @@ static void version_idproperty_move_data_string(IDPropertyUIDataString *ui_data,
 
 static void version_idproperty_ui_data(IDProperty *idprop_group)
 {
-  if (idprop_group ==
-      nullptr) { /* nullptr check here to reduce verbosity of calls to this function. */
+  /* `nullptr` check here to reduce verbosity of calls to this function. */
+  if (idprop_group == nullptr) {
     return;
   }
 
@@ -458,7 +462,7 @@ static void do_versions_sequencer_speed_effect_recursive(Scene *scene, const Lis
             }
           }
           if (substr) {
-            char *new_path = BLI_str_replaceN(fcu->rna_path, "speed_factor", substr);
+            char *new_path = BLI_string_replaceN(fcu->rna_path, "speed_factor", substr);
             MEM_freeN(fcu->rna_path);
             fcu->rna_path = new_path;
           }
@@ -496,44 +500,6 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
   return true;
 }
 
-static bNodeLink *find_connected_link(bNodeTree *ntree, bNodeSocket *in_socket)
-{
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    if (link->tosock == in_socket) {
-      return link;
-    }
-  }
-  return nullptr;
-}
-
-static void add_realize_instances_before_socket(bNodeTree *ntree,
-                                                bNode *node,
-                                                bNodeSocket *geometry_socket)
-{
-  BLI_assert(geometry_socket->type == SOCK_GEOMETRY);
-  bNodeLink *link = find_connected_link(ntree, geometry_socket);
-  if (link == nullptr) {
-    return;
-  }
-
-  /* If the realize instances node is already before this socket, no need to continue. */
-  if (link->fromnode->type == GEO_NODE_REALIZE_INSTANCES) {
-    return;
-  }
-
-  bNode *realize_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
-  realize_node->parent = node->parent;
-  realize_node->locx = node->locx - 100;
-  realize_node->locy = node->locy;
-  nodeAddLink(ntree,
-              link->fromnode,
-              link->fromsock,
-              realize_node,
-              static_cast<bNodeSocket *>(realize_node->inputs.first));
-  link->fromnode = realize_node;
-  link->fromsock = static_cast<bNodeSocket *>(realize_node->outputs.first);
-}
-
 /**
  * If a node used to realize instances implicitly and will no longer do so in 3.0, add a "Realize
  * Instances" node in front of it to avoid changing behavior. Don't do this if the node will be
@@ -554,7 +520,8 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
              GEO_NODE_TRIM_CURVE,
              GEO_NODE_REPLACE_MATERIAL,
              GEO_NODE_SUBDIVIDE_MESH,
-             GEO_NODE_TRIANGULATE)) {
+             GEO_NODE_TRIANGULATE))
+    {
       bNodeSocket *geometry_socket = static_cast<bNodeSocket *>(node->inputs.first);
       add_realize_instances_before_socket(ntree, node, geometry_socket);
     }
@@ -680,6 +647,11 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
       seq_speed_factor_fix_rna_path(seq, &scene->adt->drivers);
     }
 
+    /* Pitch value of 0 has been found in some files. This would cause problems. */
+    if (seq->pitch <= 0.0f) {
+      seq->pitch = 1.0f;
+    }
+
     seq->speed_factor = seq->pitch;
   }
   else {
@@ -698,11 +670,11 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   const int content_length = SEQ_time_strip_length_get(scene, seq);
 
-  SEQ_retiming_data_ensure(seq);
+  SEQ_retiming_data_ensure(scene, seq);
 
   SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
-  seq->speed_factor = 0.0f;
+  seq->speed_factor = 1.0f;
 
   return true;
 }
@@ -863,7 +835,8 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
               GEO_NODE_MESH_PRIMITIVE_CYLINDER,
               GEO_NODE_MESH_PRIMITIVE_GRID,
               GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE,
-              GEO_NODE_MESH_PRIMITIVE_UV_SPHERE)) {
+              GEO_NODE_MESH_PRIMITIVE_UV_SPHERE))
+    {
       continue;
     }
     bNodeSocket *primitive_output_socket = nullptr;
@@ -920,7 +893,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
         store_attribute_name_input->default_value);
     const char *uv_map_name = node->type == GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE ? "UVMap" :
                                                                                  "uv_map";
-    BLI_strncpy(name_value->value, uv_map_name, sizeof(name_value->value));
+    STRNCPY(name_value->value, uv_map_name);
 
     nodeAddLink(&ntree,
                 node,
@@ -937,7 +910,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -955,7 +928,8 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
       continue;
     }
     if (static_cast<const NodeGeometryExtrudeMesh *>(node->storage)->mode !=
-        GEO_NODE_EXTRUDE_MESH_EDGES) {
+        GEO_NODE_EXTRUDE_MESH_EDGES)
+    {
       continue;
     }
     bNodeSocket *geometry_in_socket = nodeFindSocket(node, SOCK_IN, "Mesh");
@@ -981,8 +955,8 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
       bNode *capture_node = geometry_in_link->fromnode;
       const NodeGeometryAttributeCapture &capture_storage =
           *static_cast<const NodeGeometryAttributeCapture *>(capture_node->storage);
-      if (capture_storage.data_type != CD_PROP_BOOL ||
-          capture_storage.domain != ATTR_DOMAIN_FACE) {
+      if (capture_storage.data_type != CD_PROP_BOOL || capture_storage.domain != ATTR_DOMAIN_FACE)
+      {
         return false;
       }
       bNodeSocket *capture_in_socket = nodeFindSocket(capture_node, SOCK_IN, "Value_003");
@@ -1036,7 +1010,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     nodeAddLink(&ntree,
                 capture_node,
                 nodeFindSocket(capture_node, SOCK_OUT, "Geometry"),
-                capture_node,
+                node,
                 geometry_in_socket);
     geometry_in_link->tonode = capture_node;
     geometry_in_link->tosock = nodeFindSocket(capture_node, SOCK_IN, "Geometry");
@@ -1070,7 +1044,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -1115,22 +1089,26 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
       ToolSettings *tool_settings = scene->toolsettings;
       ImagePaintSettings *imapaint = &tool_settings->imapaint;
       if (imapaint->canvas != nullptr &&
-          ELEM(imapaint->canvas->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE)) {
+          ELEM(imapaint->canvas->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE))
+      {
         imapaint->canvas = nullptr;
       }
       if (imapaint->stencil != nullptr &&
-          ELEM(imapaint->stencil->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE)) {
+          ELEM(imapaint->stencil->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE))
+      {
         imapaint->stencil = nullptr;
       }
       if (imapaint->clone != nullptr &&
-          ELEM(imapaint->clone->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE)) {
+          ELEM(imapaint->clone->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE))
+      {
         imapaint->clone = nullptr;
       }
     }
 
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       if (brush->clone.image != nullptr &&
-          ELEM(brush->clone.image->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE)) {
+          ELEM(brush->clone.image->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE))
+      {
         brush->clone.image = nullptr;
       }
     }
@@ -1262,8 +1240,7 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     /* Ensure tiled image sources contain a UDIM token. */
     LISTBASE_FOREACH (Image *, ima, &bmain->images) {
       if (ima->source == IMA_SRC_TILED) {
-        char *filename = (char *)BLI_path_basename(ima->filepath);
-        BKE_image_ensure_tile_token(filename);
+        BKE_image_ensure_tile_token(ima->filepath, sizeof(ima->filepath));
       }
     }
   }
@@ -1348,6 +1325,18 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 6)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed == nullptr) {
+        continue;
+      }
+
+      SEQ_for_each_callback(
+          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1360,16 +1349,6 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed == nullptr) {
-        continue;
-      }
-
-      SEQ_for_each_callback(
-          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
-    }
   }
 }
 
@@ -1384,13 +1363,13 @@ static void version_switch_node_input_prefix(Main *bmain)
             if (socket == node->inputs.first) {
               continue;
             }
-            strcpy(socket->name, socket->name[0] == 'A' ? "False" : "True");
+            STRNCPY(socket->name, socket->name[0] == 'A' ? "False" : "True");
 
             /* Replace "A" and "B", but keep the unique number suffix at the end. */
             char number_suffix[8];
-            BLI_strncpy(number_suffix, socket->identifier + 1, sizeof(number_suffix));
-            strcpy(socket->identifier, socket->name);
-            strcat(socket->identifier, number_suffix);
+            STRNCPY(number_suffix, socket->identifier + 1);
+            BLI_string_join(
+                socket->identifier, sizeof(socket->identifier), socket->name, number_suffix);
           }
         }
       }
@@ -1410,7 +1389,8 @@ static bool replace_bbone_len_scale_rnapath(char **p_old_path, int *p_index)
   int len = strlen(old_path);
 
   if (BLI_str_endswith(old_path, ".bbone_curveiny") ||
-      BLI_str_endswith(old_path, ".bbone_curveouty")) {
+      BLI_str_endswith(old_path, ".bbone_curveouty"))
+  {
     old_path[len - 1] = 'z';
     return true;
   }
@@ -1418,7 +1398,8 @@ static bool replace_bbone_len_scale_rnapath(char **p_old_path, int *p_index)
   if (BLI_str_endswith(old_path, ".bbone_scaleinx") ||
       BLI_str_endswith(old_path, ".bbone_scaleiny") ||
       BLI_str_endswith(old_path, ".bbone_scaleoutx") ||
-      BLI_str_endswith(old_path, ".bbone_scaleouty")) {
+      BLI_str_endswith(old_path, ".bbone_scaleouty"))
+  {
     int index = (old_path[len - 1] == 'y' ? 2 : 0);
 
     old_path[len - 1] = 0;
@@ -1565,22 +1546,14 @@ static void version_geometry_nodes_add_attribute_input_settings(NodesModifierDat
     }
 
     char use_attribute_prop_name[MAX_IDPROP_NAME];
-    BLI_snprintf(use_attribute_prop_name,
-                 sizeof(use_attribute_prop_name),
-                 "%s%s",
-                 property->name,
-                 "_use_attribute");
+    SNPRINTF(use_attribute_prop_name, "%s%s", property->name, "_use_attribute");
 
     IDPropertyTemplate idprop = {0};
     IDProperty *use_attribute_prop = IDP_New(IDP_INT, &idprop, use_attribute_prop_name);
     IDP_AddToGroup(nmd->settings.properties, use_attribute_prop);
 
     char attribute_name_prop_name[MAX_IDPROP_NAME];
-    BLI_snprintf(attribute_name_prop_name,
-                 sizeof(attribute_name_prop_name),
-                 "%s%s",
-                 property->name,
-                 "_attribute_name");
+    SNPRINTF(attribute_name_prop_name, "%s%s", property->name, "_attribute_name");
 
     IDProperty *attribute_prop = IDP_New(IDP_STRING, &idprop, attribute_name_prop_name);
     IDP_AddToGroup(nmd->settings.properties, attribute_prop);
@@ -1776,9 +1749,22 @@ static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_da
 {
   if ((seq->len == 1) &&
       (seq->type == SEQ_TYPE_IMAGE ||
-       ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) == 0))) {
+       ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) == 0)))
+  {
     seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
   }
+  return true;
+}
+
+static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->type != SEQ_TYPE_SOUND_RAM || seq->speed_factor != 0.0f) {
+    return true;
+  }
+
+  seq->speed_factor = 1.0f;
+  SEQ_retiming_data_clear(seq);
+  seq->startofs = 0.0f;
   return true;
 }
 
@@ -1796,7 +1782,7 @@ static void version_liboverride_rnacollections_insertion_object_constraints(
     ListBase *constraints, IDOverrideLibraryProperty *op)
 {
   LISTBASE_FOREACH_MUTABLE (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
-    if (opop->operation != IDOVERRIDE_LIBRARY_OP_INSERT_AFTER) {
+    if (opop->operation != LIBOVERRIDE_OP_INSERT_AFTER) {
       continue;
     }
     bConstraint *constraint_anchor = static_cast<bConstraint *>(
@@ -1830,7 +1816,7 @@ static void version_liboverride_rnacollections_insertion_object(Object *object)
   op = BKE_lib_override_library_property_find(liboverride, "modifiers");
   if (op != nullptr) {
     LISTBASE_FOREACH_MUTABLE (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
-      if (opop->operation != IDOVERRIDE_LIBRARY_OP_INSERT_AFTER) {
+      if (opop->operation != LIBOVERRIDE_OP_INSERT_AFTER) {
         continue;
       }
       ModifierData *mod_anchor = static_cast<ModifierData *>(
@@ -1859,7 +1845,7 @@ static void version_liboverride_rnacollections_insertion_object(Object *object)
   op = BKE_lib_override_library_property_find(liboverride, "grease_pencil_modifiers");
   if (op != nullptr) {
     LISTBASE_FOREACH_MUTABLE (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
-      if (opop->operation != IDOVERRIDE_LIBRARY_OP_INSERT_AFTER) {
+      if (opop->operation != LIBOVERRIDE_OP_INSERT_AFTER) {
         continue;
       }
       GpencilModifierData *gp_mod_anchor = static_cast<GpencilModifierData *>(
@@ -1918,7 +1904,7 @@ static void version_liboverride_rnacollections_insertion_animdata(ID *id)
   op = BKE_lib_override_library_property_find(liboverride, "animation_data.nla_tracks");
   if (op != nullptr) {
     LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
-      if (opop->operation != IDOVERRIDE_LIBRARY_OP_INSERT_AFTER) {
+      if (opop->operation != LIBOVERRIDE_OP_INSERT_AFTER) {
         continue;
       }
       /* NLA tracks are only referenced by index, which limits possibilities, basically they are
@@ -1954,7 +1940,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "FunctionNodeCombineColor");
+          STRNCPY(node->idname, "FunctionNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -1963,7 +1949,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "FunctionNodeSeparateColor");
+          STRNCPY(node->idname, "FunctionNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2021,7 +2007,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2030,7 +2016,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2040,7 +2026,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YCC;
           storage->ycc_mode = node->custom1;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2049,7 +2035,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YUV;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2058,7 +2044,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2067,7 +2053,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2077,7 +2063,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YCC;
           storage->ycc_mode = node->custom1;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2086,7 +2072,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YUV;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2101,13 +2087,13 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
         case TEX_NODE_COMPOSE_LEGACY: {
           node->type = TEX_NODE_COMBINE_COLOR;
           node->custom1 = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "TextureNodeCombineColor");
+          STRNCPY(node->idname, "TextureNodeCombineColor");
           break;
         }
         case TEX_NODE_DECOMPOSE_LEGACY: {
           node->type = TEX_NODE_SEPARATE_COLOR;
           node->custom1 = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "TextureNodeSeparateColor");
+          STRNCPY(node->idname, "TextureNodeSeparateColor");
           break;
         }
       }
@@ -2141,7 +2127,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "ShaderNodeCombineColor");
+          STRNCPY(node->idname, "ShaderNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2150,7 +2136,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "ShaderNodeCombineColor");
+          STRNCPY(node->idname, "ShaderNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2159,7 +2145,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "ShaderNodeSeparateColor");
+          STRNCPY(node->idname, "ShaderNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2168,7 +2154,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "ShaderNodeSeparateColor");
+          STRNCPY(node->idname, "ShaderNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2185,7 +2171,7 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
   version_node_output_socket_name(ntree, SH_NODE_MIX_RGB_LEGACY, "Color", "Result_Color");
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == SH_NODE_MIX_RGB_LEGACY) {
-      strcpy(node->idname, "ShaderNodeMix");
+      STRNCPY(node->idname, "ShaderNodeMix");
       node->type = SH_NODE_MIX;
       NodeShaderMix *data = (NodeShaderMix *)MEM_callocN(sizeof(NodeShaderMix), __func__);
       data->blend_type = node->custom1;
@@ -2207,7 +2193,8 @@ static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (format != &scene->r.im_format && ELEM(format->view_settings.curve_mapping,
                                                 scene->view_settings.curve_mapping,
-                                                scene->r.im_format.view_settings.curve_mapping)) {
+                                                scene->r.im_format.view_settings.curve_mapping))
+      {
         format->view_settings.curve_mapping = BKE_curvemapping_copy(
             format->view_settings.curve_mapping);
         break;
@@ -2220,6 +2207,148 @@ static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
       format->view_settings.curve_mapping = nullptr;
       format->view_settings.flag &= ~COLORMANAGE_VIEW_USE_CURVES;
     }
+  }
+}
+
+/**
+ * Some editors would manually manage visibility of regions, or lazy create them based on
+ * context. Ensure they are always there now, and use the new #ARegionType.poll().
+ */
+static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
+{
+  ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
+
+  switch (sl->spacetype) {
+    case SPACE_FILE: {
+      if (ARegion *ui_region = do_versions_add_region_if_not_found(
+              regionbase, RGN_TYPE_UI, "versioning: UI region for file", RGN_TYPE_TOOLS))
+      {
+        ui_region->alignment = RGN_ALIGN_TOP;
+        ui_region->flag |= RGN_FLAG_DYNAMIC_SIZE;
+      }
+
+      if (ARegion *exec_region = do_versions_add_region_if_not_found(
+              regionbase, RGN_TYPE_EXECUTE, "versioning: execute region for file", RGN_TYPE_UI))
+      {
+        exec_region->alignment = RGN_ALIGN_BOTTOM;
+        exec_region->flag = RGN_FLAG_DYNAMIC_SIZE;
+      }
+
+      if (ARegion *tool_props_region = do_versions_add_region_if_not_found(
+              regionbase,
+              RGN_TYPE_TOOL_PROPS,
+              "versioning: tool props region for file",
+              RGN_TYPE_EXECUTE))
+      {
+        tool_props_region->alignment = RGN_ALIGN_RIGHT;
+        tool_props_region->flag = RGN_FLAG_HIDDEN;
+      }
+      break;
+    }
+    case SPACE_CLIP: {
+      ARegion *region;
+
+      region = do_versions_ensure_region(
+          regionbase, RGN_TYPE_UI, "versioning: properties region for clip", RGN_TYPE_HEADER);
+      region->alignment = RGN_ALIGN_RIGHT;
+      region->flag &= ~RGN_FLAG_HIDDEN;
+
+      region = do_versions_ensure_region(
+          regionbase, RGN_TYPE_CHANNELS, "versioning: channels region for clip", RGN_TYPE_UI);
+      region->alignment = RGN_ALIGN_LEFT;
+      region->flag &= ~RGN_FLAG_HIDDEN;
+      region->v2d.scroll = V2D_SCROLL_BOTTOM;
+      region->v2d.flag = V2D_VIEWSYNC_AREA_VERTICAL;
+
+      region = do_versions_ensure_region(
+          regionbase, RGN_TYPE_PREVIEW, "versioning: preview region for clip", RGN_TYPE_WINDOW);
+      region->flag &= ~RGN_FLAG_HIDDEN;
+
+      break;
+    }
+    case SPACE_SEQ: {
+      ARegion *region;
+
+      do_versions_ensure_region(regionbase,
+                                RGN_TYPE_CHANNELS,
+                                "versioning: channels region for sequencer",
+                                RGN_TYPE_TOOLS);
+
+      region = do_versions_ensure_region(regionbase,
+                                         RGN_TYPE_PREVIEW,
+                                         "versioning: preview region for sequencer",
+                                         RGN_TYPE_CHANNELS);
+      sequencer_init_preview_region(region);
+
+      break;
+    }
+  }
+}
+
+/**
+ * Change override RNA path from `frame_{start,end}` to `frame_{start,end}_raw`.
+ * See #102662.
+ */
+static void version_liboverride_nla_strip_frame_start_end(IDOverrideLibrary *liboverride,
+                                                          const char *parent_rna_path,
+                                                          NlaStrip *strip)
+{
+  if (!strip) {
+    return;
+  }
+
+  /* Escape the strip name for inclusion in the RNA path. */
+  char name_esc_strip[sizeof(strip->name) * 2];
+  BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
+
+  const std::string rna_path_strip = std::string(parent_rna_path) + ".strips[\"" + name_esc_strip +
+                                     "\"]";
+
+  { /* Rename .frame_start -> .frame_start_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
+
+  { /* Rename .frame_end -> .frame_end_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
+
+  { /* Remove .frame_start_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
+
+  { /* Remove .frame_end_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
+
+  /* Handle meta-strip contents. */
+  LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
+    version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_strip.c_str(), substrip);
+  }
+}
+
+/** Fix the `frame_start` and `frame_end` overrides on NLA strips. See #102662. */
+static void version_liboverride_nla_frame_start_end(ID *id, AnimData *adt, void * /*user_data*/)
+{
+  IDOverrideLibrary *liboverride = id->override_library;
+  if (!liboverride) {
+    return;
+  }
+
+  int track_index;
+  LISTBASE_FOREACH_INDEX (NlaTrack *, track, &adt->nla_tracks, track_index) {
+    char *rna_path_track = BLI_sprintfN("animation_data.nla_tracks[%d]", track_index);
+
+    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips) {
+      version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_track, strip);
+    }
+
+    MEM_freeN(rna_path_track);
   }
 }
 
@@ -2394,22 +2523,22 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       tool_settings->snap_node_mode &= ~((1 << 5) | (1 << 6));
       tool_settings->snap_uv_mode &= ~(1 << 4);
       if (snap_mode & (1 << 4)) {
-        tool_settings->snap_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_mode |= (1 << 6); /* SCE_SNAP_TO_INCREMENT */
       }
       if (snap_mode & (1 << 5)) {
-        tool_settings->snap_mode |= (1 << 4); /* SCE_SNAP_MODE_EDGE_MIDPOINT */
+        tool_settings->snap_mode |= (1 << 4); /* SCE_SNAP_TO_EDGE_MIDPOINT */
       }
       if (snap_mode & (1 << 6)) {
-        tool_settings->snap_mode |= (1 << 5); /* SCE_SNAP_MODE_EDGE_PERPENDICULAR */
+        tool_settings->snap_mode |= (1 << 5); /* SCE_SNAP_TO_EDGE_PERPENDICULAR */
       }
       if (snap_node_mode & (1 << 5)) {
-        tool_settings->snap_node_mode |= (1 << 0); /* SCE_SNAP_MODE_NODE_X */
+        tool_settings->snap_node_mode |= (1 << 0); /* SCE_SNAP_TO_NODE_X */
       }
       if (snap_node_mode & (1 << 6)) {
-        tool_settings->snap_node_mode |= (1 << 1); /* SCE_SNAP_MODE_NODE_Y */
+        tool_settings->snap_node_mode |= (1 << 1); /* SCE_SNAP_TO_NODE_Y */
       }
       if (snap_uv_mode & (1 << 4)) {
-        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_TO_INCREMENT */
       }
 
       SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
@@ -2441,7 +2570,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == GEO_NODE_SUBDIVIDE_MESH) {
-            strcpy(node->idname, "GeometryNodeMeshSubdivide");
+            STRNCPY(node->idname, "GeometryNodeMeshSubdivide");
           }
         }
       }
@@ -2453,7 +2582,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *tool_settings = scene->toolsettings;
       if (tool_settings->snap_uv_mode & (1 << 4)) {
-        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_TO_INCREMENT */
         tool_settings->snap_uv_mode &= ~(1 << 4);
       }
     }
@@ -2466,8 +2595,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 13)) {
     /* Convert Surface Deform to sparse-capable bind structure. */
-    if (!DNA_struct_elem_find(
-            fd->filesdna, "SurfaceDeformModifierData", "int", "num_mesh_verts")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "SurfaceDeformModifierData", "int", "num_mesh_verts"))
+    {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
           if (md->type == eModifierType_SurfaceDeform) {
@@ -2493,15 +2622,16 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(
-            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library"))
+    {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
         BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
       }
     }
 
     if (!DNA_struct_elem_find(
-            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref")) {
+            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
@@ -2578,6 +2708,44 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  /* Move visibility from Cycles to Blender. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      IDProperty *cvisibility = version_cycles_visibility_properties_from_ID(&object->id);
+      int flag = 0;
+
+      if (cvisibility) {
+        flag |= version_cycles_property_boolean(cvisibility, "camera", true) ? 0 : OB_HIDE_CAMERA;
+        flag |= version_cycles_property_boolean(cvisibility, "diffuse", true) ? 0 :
+                                                                                OB_HIDE_DIFFUSE;
+        flag |= version_cycles_property_boolean(cvisibility, "glossy", true) ? 0 : OB_HIDE_GLOSSY;
+        flag |= version_cycles_property_boolean(cvisibility, "transmission", true) ?
+                    0 :
+                    OB_HIDE_TRANSMISSION;
+        flag |= version_cycles_property_boolean(cvisibility, "scatter", true) ?
+                    0 :
+                    OB_HIDE_VOLUME_SCATTER;
+        flag |= version_cycles_property_boolean(cvisibility, "shadow", true) ? 0 : OB_HIDE_SHADOW;
+      }
+
+      IDProperty *cobject = version_cycles_properties_from_ID(&object->id);
+      if (cobject) {
+        flag |= version_cycles_property_boolean(cobject, "is_holdout", false) ? OB_HOLDOUT : 0;
+        flag |= version_cycles_property_boolean(cobject, "is_shadow_catcher", false) ?
+                    OB_SHADOW_CATCHER :
+                    0;
+      }
+
+      if (object->type == OB_LAMP) {
+        flag |= OB_HIDE_CAMERA | OB_SHADOW_CATCHER;
+      }
+
+      /* Clear unused bits from old version, and add new flags. */
+      object->visibility_flag &= (OB_HIDE_VIEWPORT | OB_HIDE_SELECT | OB_HIDE_RENDER);
+      object->visibility_flag |= flag;
+    }
+  }
+
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 18)) {
     if (!DNA_struct_elem_find(
             fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
@@ -2587,7 +2755,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     if (!DNA_struct_elem_find(
-            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref")) {
+            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
@@ -2674,7 +2843,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 22)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "LineartGpencilModifierData", "bool", "use_crease_on_smooth")) {
+            fd->filesdna, "LineartGpencilModifierData", "bool", "use_crease_on_smooth"))
+    {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         if (ob->type == OB_GPENCIL_LEGACY) {
           LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
@@ -2781,6 +2951,24 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     };
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->r.scemode &= ~(R_EXR_TILE_FILE | R_FULL_SAMPLE);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 25)) {
+    enum {
+      DENOISER_NLM = 1,
+      DENOISER_OPENIMAGEDENOISE = 4,
+    };
+
+    /* Removal of NLM denoiser. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      IDProperty *cscene = version_cycles_properties_from_ID(&scene->id);
+
+      if (cscene) {
+        if (version_cycles_property_int(cscene, "denoiser", DENOISER_NLM) == DENOISER_NLM) {
+          version_cycles_property_int_set(cscene, "denoiser", DENOISER_OPENIMAGEDENOISE);
+        }
+      }
     }
   }
 
@@ -3099,7 +3287,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   /* Special case to handle older in-development 3.1 files, before change from 3.0 branch gets
    * merged in master. */
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 42) ||
-      (bmain->versionfile == 301 && !MAIN_VERSION_ATLEAST(bmain, 301, 3))) {
+      (bmain->versionfile == 301 && !MAIN_VERSION_ATLEAST(bmain, 301, 3)))
+  {
     /* Update LibOverride operations regarding insertions in RNA collections (i.e. modifiers,
      * constraints and NLA tracks). */
     ID *id_iter;
@@ -3133,7 +3322,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
                 sizeof(NodeFunctionCompare), __func__);
             data->data_type = SOCK_FLOAT;
             data->operation = node->custom1;
-            strcpy(node->idname, "FunctionNodeCompare");
+            STRNCPY(node->idname, "FunctionNodeCompare");
             node->storage = data;
           }
         }
@@ -3149,20 +3338,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
             snode->overlay.flag |= SN_OVERLAY_SHOW_PATH;
           }
         }
-      }
-    }
-  }
-
-  if (!MAIN_VERSION_ATLEAST(bmain, 301, 5)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type != NTREE_GEOMETRY) {
-        continue;
-      }
-      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        if (node->type != GEO_NODE_REALIZE_INSTANCES) {
-          continue;
-        }
-        node->custom1 |= GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR;
       }
     }
   }
@@ -3246,7 +3421,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 301, 7) ||
-      (bmain->versionfile == 302 && !MAIN_VERSION_ATLEAST(bmain, 302, 4))) {
+      (bmain->versionfile == 302 && !MAIN_VERSION_ATLEAST(bmain, 302, 4)))
+  {
     /* Duplicate value for two flags that mistakenly had the same numeric value. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
@@ -3409,7 +3585,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         /* Do not 'lock' an ID already edited by the user. */
         continue;
       }
-      id->override_library->flag |= IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED;
+      id->override_library->flag |= LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
     }
     FOREACH_MAIN_ID_END;
 
@@ -4018,7 +4194,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Grease Pencil Build modifier:
      * Set default value for new natural draw-speed factor and maximum gap. */
     if (!DNA_struct_elem_find(fd->filesdna, "BuildGpencilModifierData", "float", "speed_fac") ||
-        !DNA_struct_elem_find(fd->filesdna, "BuildGpencilModifierData", "float", "speed_maxgap")) {
+        !DNA_struct_elem_find(fd->filesdna, "BuildGpencilModifierData", "float", "speed_maxgap"))
+    {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
           if (md->type == eGpencilModifierType_Build) {
@@ -4179,10 +4356,173 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 5)) {
+    /* Some regions used to be added/removed dynamically. Ensure they are always there, there is a
+     * `ARegionType.poll()` now. */
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          version_ensure_missing_regions(area, sl);
+
+          /* Ensure expected region state. Previously this was modified to hide/unhide regions. */
+
+          const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                       &sl->regionbase;
+          if (sl->spacetype == SPACE_SEQ) {
+            ARegion *region_main = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                       RGN_TYPE_WINDOW);
+            region_main->flag &= ~RGN_FLAG_HIDDEN;
+            region_main->alignment = RGN_ALIGN_NONE;
+
+            ARegion *region_preview = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                          RGN_TYPE_PREVIEW);
+            region_preview->flag &= ~RGN_FLAG_HIDDEN;
+            region_preview->alignment = RGN_ALIGN_NONE;
+
+            ARegion *region_channels = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                           RGN_TYPE_CHANNELS);
+            region_channels->alignment = RGN_ALIGN_LEFT;
+          }
+        }
+      }
+
+      /* Replace old hard coded names with brush names, see: #106057. */
+      const char *tool_replace_table[][2] = {
+          {"selection_paint", "Paint Selection"},
+          {"add", "Add"},
+          {"delete", "Delete"},
+          {"density", "Density"},
+          {"comb", "Comb"},
+          {"snake_hook", "Snake Hook"},
+          {"grow_shrink", "Grow / Shrink"},
+          {"pinch", "Pinch"},
+          {"puff", "Puff"},
+          {"smooth", "Comb"},
+          {"slide", "Slide"},
+      };
+      LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
+        BKE_workspace_tool_id_replace_table(workspace,
+                                            SPACE_VIEW3D,
+                                            CTX_MODE_SCULPT_CURVES,
+                                            "builtin_brush.",
+                                            tool_replace_table,
+                                            ARRAY_SIZE(tool_replace_table));
+      }
+    }
+
+    /* Rename Grease Pencil weight draw brush. */
+    do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
+  }
+
+  /* fcm->name was never used to store modifier name so it has always been an empty string. Now
+   * this property supports name editing. So assign value to name variable of Fmodifier otherwise
+   * modifier interface would show an empty name field. Also ensure uniqueness when opening old
+   * files. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 7)) {
+    LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+      LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+        LISTBASE_FOREACH (FModifier *, fcm, &fcu->modifiers) {
+          BKE_fmodifier_name_set(fcm, "");
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 8)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      ob->flag |= OB_FLAG_USE_SIMULATION_CACHE;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 9)) {
+    /* Fix sound strips with speed factor set to 0. See #107289. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_ACTION) {
+            SpaceAction *saction = reinterpret_cast<SpaceAction *>(sl);
+            saction->cache_display |= TIME_CACHE_SIMULATION_NODES;
+          }
+        }
+      }
+    }
+
+    /* Enable the iTaSC ITASC_TRANSLATE_ROOT_BONES flag for backward compatibility.
+     * See #104606. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_ARMATURE || ob->pose == nullptr) {
+        continue;
+      }
+      bPose *pose = ob->pose;
+      if (pose->iksolver != IKSOLVER_ITASC || pose->ikparam == nullptr) {
+        continue;
+      }
+      bItasc *ikparam = (bItasc *)pose->ikparam;
+      ikparam->flag |= ITASC_TRANSLATE_ROOT_BONES;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 10)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Set default values for new members. */
+      scene->toolsettings->snap_mode_tools = SCE_SNAP_TO_GEOM;
+      scene->toolsettings->plane_axis = 2;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 11)) {
+    BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, nullptr);
+
+    /* Store simulation bake directory in geometry nodes modifier. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+        if (md->type != eModifierType_Nodes) {
+          continue;
+        }
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        if (nmd->simulation_bake_directory) {
+          continue;
+        }
+        const std::string bake_dir = blender::bke::sim::get_default_modifier_bake_directory(
+            *bmain, *ob, *md);
+        nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          /* #107870: Movie Clip Editor hangs in "Clip" view */
+          if (sl->spacetype == SPACE_CLIP) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            ARegion *region_main = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                       RGN_TYPE_WINDOW);
+            region_main->flag &= ~RGN_FLAG_HIDDEN;
+            ARegion *region_tools = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                        RGN_TYPE_TOOLS);
+            region_tools->alignment = RGN_ALIGN_LEFT;
+            if (!(region_tools->flag & RGN_FLAG_HIDDEN_BY_USER)) {
+              region_tools->flag &= ~RGN_FLAG_HIDDEN;
+            }
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
+   * - #do_versions_after_linking_300 in this file.
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *

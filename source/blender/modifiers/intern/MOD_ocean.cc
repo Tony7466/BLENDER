@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -41,8 +42,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #ifdef WITH_OCEANSIM
 static void init_cache_data(Object *ob, OceanModifierData *omd, const int resolution)
@@ -151,8 +152,8 @@ static bool dependsOnNormals(ModifierData *md)
 #ifdef WITH_OCEANSIM
 
 struct GenerateOceanGeometryData {
-  float (*vert_positions)[3];
-  blender::MutableSpan<MPoly> polys;
+  blender::MutableSpan<blender::float3> vert_positions;
+  blender::MutableSpan<int> poly_offsets;
   blender::MutableSpan<int> corner_verts;
   float (*mloopuvs)[2];
 
@@ -195,8 +196,7 @@ static void generate_ocean_geometry_polys(void *__restrict userdata,
     gogd->corner_verts[fi * 4 + 2] = vi + 1 + gogd->res_x + 1;
     gogd->corner_verts[fi * 4 + 3] = vi + gogd->res_x + 1;
 
-    gogd->polys[fi].loopstart = fi * 4;
-    gogd->polys[fi].totloop = 4;
+    gogd->poly_offsets[fi] = fi * 4;
   }
 }
 
@@ -256,11 +256,11 @@ static Mesh *generate_ocean_geometry(OceanModifierData *omd, Mesh *mesh_orig, co
   gogd.sx /= gogd.rx;
   gogd.sy /= gogd.ry;
 
-  result = BKE_mesh_new_nomain(verts_num, 0, polys_num * 4, polys_num);
+  result = BKE_mesh_new_nomain(verts_num, 0, polys_num, polys_num * 4);
   BKE_mesh_copy_parameters_for_eval(result, mesh_orig);
 
-  gogd.vert_positions = BKE_mesh_vert_positions_for_write(result);
-  gogd.polys = result->polys_for_write();
+  gogd.vert_positions = result->vert_positions_for_write();
+  gogd.poly_offsets = result->poly_offsets_for_write();
   gogd.corner_verts = result->corner_verts_for_write();
 
   TaskParallelSettings settings;
@@ -352,8 +352,8 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
   CLAMP(cfra_for_cache, omd->bakestart, omd->bakeend);
   cfra_for_cache -= omd->bakestart; /* shift to 0 based */
 
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(result);
-  const blender::Span<MPoly> polys = mesh->polys();
+  blender::MutableSpan<blender::float3> positions = result->vert_positions_for_write();
+  const blender::OffsetIndices polys = result->polys();
 
   /* Add vertex-colors before displacement: allows lookup based on position. */
 
@@ -377,15 +377,16 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
     if (mloopcols) { /* unlikely to fail */
 
       for (const int i : polys.index_range()) {
-        const int *corner_vert = &corner_verts[polys[i].loopstart];
-        MLoopCol *mlcol = &mloopcols[polys[i].loopstart];
+        const blender::IndexRange poly = polys[i];
+        const int *corner_vert = &corner_verts[poly.start()];
+        MLoopCol *mlcol = &mloopcols[poly.start()];
 
         MLoopCol *mlcolspray = nullptr;
         if (omd->flag & MOD_OCEAN_GENERATE_SPRAY) {
-          mlcolspray = &mloopcols_spray[polys[i].loopstart];
+          mlcolspray = &mloopcols_spray[poly.start()];
         }
 
-        for (j = polys[i].totloop; j--; corner_vert++, mlcol++) {
+        for (j = poly.size(); j--; corner_vert++, mlcol++) {
           const float *vco = positions[*corner_vert];
           const float u = OCEAN_CO(size_co_inv, vco[0]);
           const float v = OCEAN_CO(size_co_inv, vco[1]);
@@ -696,7 +697,7 @@ ModifierTypeInfo modifierType_Ocean = {
     /*icon*/ ICON_MOD_OCEAN,
 
     /*copyData*/ copyData,
-    /*deformMatrices*/ nullptr,
+    /*deformVerts*/ nullptr,
 
     /*deformMatrices*/ nullptr,
     /*deformVertsEM*/ nullptr,

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -192,7 +194,8 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
       }
     }
     if ((tangent_mask & DM_TANGENT_MASK_ORCO) &&
-        CustomData_get_named_layer_index(loopdata_out, CD_TANGENT, "") == -1) {
+        CustomData_get_named_layer_index(loopdata_out, CD_TANGENT, "") == -1)
+    {
       CustomData_add_layer_named(
           loopdata_out, CD_TANGENT, CD_SET_DEFAULT, int(loopdata_out_len), "");
     }

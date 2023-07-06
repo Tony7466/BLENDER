@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -109,7 +110,8 @@ bool WM_platform_support_perform_checks(void)
   /* Check if previous check matches the current check. Don't update the approval when running in
    * `background`. this could have been triggered by installing add-ons via installers. */
   if (support_level != GPU_SUPPORT_LEVEL_UNSUPPORTED && !G.factory_startup &&
-      wm_platform_support_check_approval(platform_key, !G.background)) {
+      wm_platform_support_check_approval(platform_key, !G.background))
+  {
     /* If it matches the user has confirmed and wishes to use it. */
     return result;
   }

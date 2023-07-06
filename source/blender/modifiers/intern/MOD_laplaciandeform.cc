@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -39,8 +40,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 #include "eigen_capi.h"
 
@@ -77,7 +78,7 @@ struct LaplacianSystem {
   MeshElemMap *ringv_map;   /* Map of vertex per vertex */
 };
 
-static LaplacianSystem *newLaplacianSystem(void)
+static LaplacianSystem *newLaplacianSystem()
 {
   LaplacianSystem *sys = MEM_cnew<LaplacianSystem>(__func__);
 
@@ -109,7 +110,7 @@ static LaplacianSystem *initLaplacianSystem(int verts_num,
   sys->tris_num = tris_num;
   sys->anchors_num = anchors_num;
   sys->repeat = iterations;
-  BLI_strncpy(sys->anchor_grp_name, defgrpName, sizeof(sys->anchor_grp_name));
+  STRNCPY(sys->anchor_grp_name, defgrpName);
   sys->co = static_cast<float(*)[3]>(MEM_malloc_arrayN(verts_num, sizeof(float[3]), __func__));
   sys->no = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(float[3]), __func__));
   sys->delta = static_cast<float(*)[3]>(MEM_calloc_arrayN(verts_num, sizeof(float[3]), __func__));
@@ -176,7 +177,7 @@ static void createFaceRingMap(const int mvert_tot,
 }
 
 static void createVertRingMap(const int mvert_tot,
-                              const blender::Span<MEdge> edges,
+                              const blender::Span<blender::int2> edges,
                               MeshElemMap **r_map,
                               int **r_indices)
 {
@@ -185,8 +186,8 @@ static void createVertRingMap(const int mvert_tot,
   int *indices, *index_iter;
 
   for (const int i : edges.index_range()) {
-    vid[0] = edges[i].v1;
-    vid[1] = edges[i].v2;
+    vid[0] = edges[i][0];
+    vid[1] = edges[i][1];
     map[vid[0]].count++;
     map[vid[1]].count++;
     indices_num += 2;
@@ -199,8 +200,8 @@ static void createVertRingMap(const int mvert_tot,
     map[i].count = 0;
   }
   for (const int i : edges.index_range()) {
-    vid[0] = edges[i].v1;
-    vid[1] = edges[i].v2;
+    vid[0] = edges[i][0];
+    vid[1] = edges[i][1];
     map[vid[0]].indices[map[vid[0]].count] = vid[1];
     map[vid[0]].count++;
     map[vid[1]].indices[map[vid[1]].count] = vid[0];
@@ -547,7 +548,7 @@ static void initSystem(
       }
     }
 
-    const blender::Span<MEdge> edges = mesh->edges();
+    const blender::Span<blender::int2> edges = mesh->edges();
     const blender::Span<int> corner_verts = mesh->corner_verts();
     const blender::Span<MLoopTri> looptris = mesh->looptris();
 
@@ -748,7 +749,7 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   LaplacianDeformModifier_do(
       (LaplacianDeformModifierData *)md, ctx->object, mesh_src, vertexCos, verts_num);
@@ -765,8 +766,7 @@ static void deformVertsEM(ModifierData *md,
                           float (*vertexCos)[3],
                           int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(
-      ctx->object, editData, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {

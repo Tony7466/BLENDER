@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -44,22 +45,22 @@ struct FlagIdentifierPair {
 };
 
 static void event_ids_from_flag(char *str,
-                                const int str_maxlen,
+                                const int str_maxncpy,
                                 const struct FlagIdentifierPair *flag_data,
                                 const int flag_data_len,
                                 const uint flag)
 {
   int ofs = 0;
-  ofs += BLI_strncpy_rlen(str + ofs, "{", str_maxlen - ofs);
+  ofs += BLI_strncpy_rlen(str + ofs, "{", str_maxncpy - ofs);
   for (int i = 0; i < flag_data_len; i++) {
     if (flag & flag_data[i].flag) {
       if (ofs != 1) {
-        ofs += BLI_strncpy_rlen(str + ofs, "|", str_maxlen - ofs);
+        ofs += BLI_strncpy_rlen(str + ofs, "|", str_maxncpy - ofs);
       }
-      ofs += BLI_strncpy_rlen(str + ofs, flag_data[i].id, str_maxlen - ofs);
+      ofs += BLI_strncpy_rlen(str + ofs, flag_data[i].id, str_maxncpy - ofs);
     }
   }
-  ofs += BLI_strncpy_rlen(str + ofs, "}", str_maxlen - ofs);
+  ofs += BLI_strncpy_rlen(str + ofs, "}", str_maxncpy - ofs);
 }
 
 static void event_ids_from_type_and_value(const short type,
@@ -353,7 +354,8 @@ bool WM_event_consecutive_gesture_test_break(const wmWindow *win, const wmEvent 
     /* Mouse motion is checked because the user may navigate to a new area
      * and perform the same gesture - logically it's best to view this as two separate gestures. */
     if (len_manhattan_v2v2_int(event->xy, win->event_queue_consecutive_gesture_xy) >
-        WM_EVENT_CURSOR_MOTION_THRESHOLD) {
+        WM_EVENT_CURSOR_MOTION_THRESHOLD)
+    {
       return true;
     }
   }
@@ -380,7 +382,7 @@ bool WM_event_consecutive_gesture_test_break(const wmWindow *win, const wmEvent 
  *
  * \{ */
 
-int WM_event_drag_threshold(const struct wmEvent *event)
+int WM_event_drag_threshold(const wmEvent *event)
 {
   int drag_threshold;
   BLI_assert(event->prev_press_type != MOUSEMOVE);
@@ -440,7 +442,7 @@ void WM_event_drag_start_xy(const wmEvent *event, int r_xy[2])
 /** \name Event Text Queries
  * \{ */
 
-char WM_event_utf8_to_ascii(const struct wmEvent *event)
+char WM_event_utf8_to_ascii(const wmEvent *event)
 {
   if (BLI_str_utf8_size(event->utf8_buf) == 1) {
     return event->utf8_buf[0];
@@ -501,7 +503,7 @@ void WM_event_ndof_rotate_get(const wmNDOFMotionData *ndof, float r_rot[3])
   r_rot[2] = ndof->rvec[2] * ((U.ndof_flag & NDOF_ROTZ_INVERT_AXIS) ? -1.0f : 1.0f);
 }
 
-float WM_event_ndof_to_axis_angle(const struct wmNDOFMotionData *ndof, float axis[3])
+float WM_event_ndof_to_axis_angle(const wmNDOFMotionData *ndof, float axis[3])
 {
   float angle;
   angle = normalize_v3_v3(axis, ndof->rvec);
@@ -513,7 +515,7 @@ float WM_event_ndof_to_axis_angle(const struct wmNDOFMotionData *ndof, float axi
   return ndof->dt * angle;
 }
 
-void WM_event_ndof_to_quat(const struct wmNDOFMotionData *ndof, float q[4])
+void WM_event_ndof_to_quat(const wmNDOFMotionData *ndof, float q[4])
 {
   float axis[3];
   float angle;
@@ -530,7 +532,7 @@ void WM_event_ndof_to_quat(const struct wmNDOFMotionData *ndof, float q[4])
  * \{ */
 
 #ifdef WITH_XR_OPENXR
-bool WM_event_is_xr(const struct wmEvent *event)
+bool WM_event_is_xr(const wmEvent *event)
 {
   return (event->type == EVT_XR_ACTION && event->custom == EVT_DATA_XR);
 }
@@ -571,7 +573,7 @@ float WM_event_tablet_data(const wmEvent *event, int *pen_flip, float tilt[2])
   return event->tablet.pressure;
 }
 
-bool WM_event_is_tablet(const struct wmEvent *event)
+bool WM_event_is_tablet(const wmEvent *event)
 {
   return (event->tablet.active != EVT_TABLET_NONE);
 }
@@ -586,7 +588,7 @@ bool WM_event_is_tablet(const struct wmEvent *event)
  *
  * \{ */
 
-int WM_event_absolute_delta_x(const struct wmEvent *event)
+int WM_event_absolute_delta_x(const wmEvent *event)
 {
   int dx = event->xy[0] - event->prev_xy[0];
 
@@ -597,7 +599,7 @@ int WM_event_absolute_delta_x(const struct wmEvent *event)
   return dx;
 }
 
-int WM_event_absolute_delta_y(const struct wmEvent *event)
+int WM_event_absolute_delta_y(const wmEvent *event)
 {
   int dy = event->xy[1] - event->prev_xy[1];
 

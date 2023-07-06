@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spimage
@@ -48,7 +49,7 @@
 
 #include "BLF_api.h"
 
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_image.h"
 #include "ED_mask.h"
 #include "ED_render.h"
@@ -128,9 +129,7 @@ void ED_image_draw_info(Scene *scene,
                         int y,
                         const uchar cp[4],
                         const float fp[4],
-                        const float linearcol[4],
-                        const int *zp,
-                        const float *zpf)
+                        const float linearcol[4])
 {
   rcti color_rect;
   char str[256];
@@ -175,21 +174,6 @@ void ED_image_draw_info(Scene *scene,
   BLF_position(blf_mono_font, dx, dy, 0);
   BLF_draw(blf_mono_font, str, sizeof(str));
   dx += BLF_width(blf_mono_font, str, sizeof(str));
-
-  if (zp) {
-    BLF_color3ub(blf_mono_font, 255, 255, 255);
-    SNPRINTF(str, " Z:%-.4f |", 0.5f + 0.5f * (((float)*zp) / (float)0x7fffffff));
-    BLF_position(blf_mono_font, dx, dy, 0);
-    BLF_draw(blf_mono_font, str, sizeof(str));
-    dx += BLF_width(blf_mono_font, str, sizeof(str));
-  }
-  if (zpf) {
-    BLF_color3ub(blf_mono_font, 255, 255, 255);
-    SNPRINTF(str, " Z:%-.3f |", *zpf);
-    BLF_position(blf_mono_font, dx, dy, 0);
-    BLF_draw(blf_mono_font, str, sizeof(str));
-    dx += BLF_width(blf_mono_font, str, sizeof(str));
-  }
 
   if (channels == 1 && (cp != NULL || fp != NULL)) {
     if (fp != NULL) {

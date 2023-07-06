@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -34,9 +35,9 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 static void initData(ModifierData *md)
 {
@@ -65,7 +66,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 {
   SmoothModifierData *smd = (SmoothModifierData *)md;
 
-  /* ask for vertexgroups if we need them */
+  /* Ask for vertex-groups if we need them. */
   if (smd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
@@ -95,7 +96,7 @@ static void smoothModifier_do(
   const float fac_orig = 1.0f - fac_new;
   const bool invert_vgroup = (smd->flag & MOD_SMOOTH_INVERT_VGROUP) != 0;
 
-  const blender::Span<MEdge> edges = mesh->edges();
+  const blender::Span<blender::int2> edges = mesh->edges();
 
   const MDeformVert *dvert;
   int defgrp_index;
@@ -109,8 +110,8 @@ static void smoothModifier_do(
 
     for (const int i : edges.index_range()) {
       float fvec[3];
-      const uint idx1 = edges[i].v1;
-      const uint idx2 = edges[i].v2;
+      const uint idx1 = edges[i][0];
+      const uint idx2 = edges[i][1];
 
       mid_v3_v3v3(fvec, vertexCos[idx1], vertexCos[idx2]);
 
@@ -182,10 +183,9 @@ static void deformVerts(ModifierData *md,
                         int verts_num)
 {
   SmoothModifierData *smd = (SmoothModifierData *)md;
-  Mesh *mesh_src = nullptr;
 
   /* mesh_src is needed for vgroups, and taking edges into account. */
-  mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
 
   smoothModifier_do(smd, ctx->object, mesh_src, vertexCos, verts_num);
 
@@ -202,10 +202,9 @@ static void deformVertsEM(ModifierData *md,
                           int verts_num)
 {
   SmoothModifierData *smd = (SmoothModifierData *)md;
-  Mesh *mesh_src = nullptr;
 
   /* mesh_src is needed for vgroups, and taking edges into account. */
-  mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr, verts_num, false);
+  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
 
   /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   BKE_mesh_wrapper_ensure_mdata(mesh_src);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 by Janne Karhu. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 by Janne Karhu. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -900,7 +901,8 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
   }
 
   if (!BKE_mesh_is_deformed_only(final_mesh) &&
-      !CustomData_get_layer(&final_mesh->fdata, CD_ORIGINDEX)) {
+      !CustomData_get_layer(&final_mesh->fdata, CD_ORIGINDEX))
+  {
     printf(
         "Can't create particles with the current modifier stack, disable destructive modifiers\n");
     // XXX error("Can't paint with the current modifier stack, disable destructive modifiers");

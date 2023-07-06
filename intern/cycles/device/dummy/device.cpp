@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/dummy/device.h"
 
@@ -20,7 +21,7 @@ class DummyDevice : public Device {
 
   ~DummyDevice() {}
 
-  virtual BVHLayoutMask get_bvh_layout_mask() const override
+  virtual BVHLayoutMask get_bvh_layout_mask(uint /*kernel_features*/) const override
   {
     return 0;
   }

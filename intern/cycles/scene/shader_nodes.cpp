@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/shader_nodes.h"
 #include "scene/colorspace.h"
@@ -758,12 +759,7 @@ static void sky_texture_precompute_nishita(SunSky *sunsky,
   float pixel_top[3];
   SKY_nishita_skymodel_precompute_sun(
       sun_elevation, sun_size, altitude, air_density, dust_density, pixel_bottom, pixel_top);
-  /* limit sun rotation between 0 and 360 degrees */
-  sun_rotation = fmodf(sun_rotation, M_2PI_F);
-  if (sun_rotation < 0.0f) {
-    sun_rotation += M_2PI_F;
-  }
-  sun_rotation = M_2PI_F - sun_rotation;
+
   /* send data to svm_sky */
   sunsky->nishita_data[0] = pixel_bottom[0];
   sunsky->nishita_data[1] = pixel_bottom[1];
@@ -872,6 +868,37 @@ NODE_DEFINE(SkyTextureNode)
 }
 
 SkyTextureNode::SkyTextureNode() : TextureNode(get_node_type()) {}
+
+void SkyTextureNode::simplify_settings(Scene * /* scene */)
+{
+  /* Patch sun position so users are able to animate the daylight cycle while keeping the shading
+   * code simple. */
+  float new_sun_elevation = sun_elevation;
+  float new_sun_rotation = sun_rotation;
+
+  /* Wrap `new_sun_elevation` into [-2PI..2PI] range. */
+  new_sun_elevation = fmodf(new_sun_elevation, M_2PI_F);
+  /* Wrap `new_sun_elevation` into [-PI..PI] range. */
+  if (fabsf(new_sun_elevation) >= M_PI_F) {
+    new_sun_elevation -= copysignf(2.0f, new_sun_elevation) * M_PI_F;
+  }
+  /* Wrap `new_sun_elevation` into [-PI/2..PI/2] range while keeping the same absolute position. */
+  if (new_sun_elevation >= M_PI_2_F || new_sun_elevation <= -M_PI_2_F) {
+    new_sun_elevation = copysignf(M_PI_F, new_sun_elevation) - new_sun_elevation;
+    new_sun_rotation += M_PI_F;
+  }
+
+  /* Wrap `new_sun_rotation` into [-2PI..2PI] range. */
+  new_sun_rotation = fmodf(new_sun_rotation, M_2PI_F);
+  /* Wrap `new_sun_rotation` into [0..2PI] range. */
+  if (new_sun_rotation < 0.0f) {
+    new_sun_rotation += M_2PI_F;
+  }
+  new_sun_rotation = M_2PI_F - new_sun_rotation;
+
+  sun_elevation = new_sun_elevation;
+  sun_rotation = new_sun_rotation;
+}
 
 void SkyTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1181,9 +1208,14 @@ NODE_DEFINE(VoronoiTextureNode)
   feature_enum.insert("n_sphere_radius", NODE_VORONOI_N_SPHERE_RADIUS);
   SOCKET_ENUM(feature, "Feature", feature_enum, NODE_VORONOI_F1);
 
+  SOCKET_BOOLEAN(use_normalize, "Normalize", false);
+
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(w, "W", 0.0f);
   SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
+  SOCKET_IN_FLOAT(detail, "Detail", 0.0f);
+  SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(lacunarity, "Lacunarity", 2.0f);
   SOCKET_IN_FLOAT(smoothness, "Smoothness", 5.0f);
   SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
   SOCKET_IN_FLOAT(randomness, "Randomness", 1.0f);
@@ -1204,6 +1236,9 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *vector_in = input("Vector");
   ShaderInput *w_in = input("W");
   ShaderInput *scale_in = input("Scale");
+  ShaderInput *detail_in = input("Detail");
+  ShaderInput *roughness_in = input("Roughness");
+  ShaderInput *lacunarity_in = input("Lacunarity");
   ShaderInput *smoothness_in = input("Smoothness");
   ShaderInput *exponent_in = input("Exponent");
   ShaderInput *randomness_in = input("Randomness");
@@ -1217,6 +1252,9 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
   int w_in_stack_offset = compiler.stack_assign_if_linked(w_in);
   int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
+  int detail_stack_offset = compiler.stack_assign_if_linked(detail_in);
+  int roughness_stack_offset = compiler.stack_assign_if_linked(roughness_in);
+  int lacunarity_stack_offset = compiler.stack_assign_if_linked(lacunarity_in);
   int smoothness_stack_offset = compiler.stack_assign_if_linked(smoothness_in);
   int exponent_stack_offset = compiler.stack_assign_if_linked(exponent_in);
   int randomness_stack_offset = compiler.stack_assign_if_linked(randomness_in);
@@ -1229,19 +1267,21 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, metric);
   compiler.add_node(
       compiler.encode_uchar4(
-          vector_stack_offset, w_in_stack_offset, scale_stack_offset, smoothness_stack_offset),
-      compiler.encode_uchar4(exponent_stack_offset,
-                             randomness_stack_offset,
-                             distance_stack_offset,
-                             color_stack_offset),
-      compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset),
-      __float_as_int(w));
+          vector_stack_offset, w_in_stack_offset, scale_stack_offset, detail_stack_offset),
+      compiler.encode_uchar4(roughness_stack_offset,
+                             lacunarity_stack_offset,
+                             smoothness_stack_offset,
+                             exponent_stack_offset),
+      compiler.encode_uchar4(
+          randomness_stack_offset, use_normalize, distance_stack_offset, color_stack_offset),
+      compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset));
 
-  compiler.add_node(__float_as_int(scale),
+  compiler.add_node(
+      __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
+  compiler.add_node(__float_as_int(lacunarity),
                     __float_as_int(smoothness),
                     __float_as_int(exponent),
                     __float_as_int(randomness));
-
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
 
@@ -1252,6 +1292,7 @@ void VoronoiTextureNode::compile(OSLCompiler &compiler)
   compiler.parameter(this, "dimensions");
   compiler.parameter(this, "feature");
   compiler.parameter(this, "metric");
+  compiler.parameter(this, "use_normalize");
   compiler.add(this, "node_voronoi_texture");
 }
 
@@ -2156,7 +2197,8 @@ void ConvertNode::constant_fold(const ConstantFolder &folder)
       ShaderInput *prev_in = prev->inputs[0];
 
       if (SocketType::is_float3(from) && (to == SocketType::FLOAT || SocketType::is_float3(to)) &&
-          prev_in->link) {
+          prev_in->link)
+      {
         folder.bypass(prev_in->link);
       }
     }
@@ -2308,68 +2350,6 @@ void BsdfNode::compile(OSLCompiler & /*compiler*/)
   assert(0);
 }
 
-/* Anisotropic BSDF Closure */
-
-NODE_DEFINE(AnisotropicBsdfNode)
-{
-  NodeType *type = NodeType::add("anisotropic_bsdf", create, NodeType::SHADER);
-
-  SOCKET_IN_COLOR(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
-  SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
-  SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
-
-  static NodeEnum distribution_enum;
-  distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
-  distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-  SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
-
-  SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
-
-  SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
-  SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.5f);
-  SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
-
-  SOCKET_OUT_CLOSURE(BSDF, "BSDF");
-
-  return type;
-}
-
-AnisotropicBsdfNode::AnisotropicBsdfNode() : BsdfNode(get_node_type())
-{
-  closure = CLOSURE_BSDF_MICROFACET_GGX_ID;
-}
-
-void AnisotropicBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
-{
-  if (shader->has_surface_link()) {
-    ShaderInput *tangent_in = input("Tangent");
-
-    if (!tangent_in->link)
-      attributes->add(ATTR_STD_GENERATED);
-  }
-
-  ShaderNode::attributes(shader, attributes);
-}
-
-void AnisotropicBsdfNode::compile(SVMCompiler &compiler)
-{
-  closure = distribution;
-
-  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID)
-    BsdfNode::compile(
-        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
-  else
-    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
-}
-
-void AnisotropicBsdfNode::compile(OSLCompiler &compiler)
-{
-  compiler.parameter(this, "distribution");
-  compiler.add(this, "node_anisotropic_bsdf");
-}
-
 /* Glossy BSDF Closure */
 
 NODE_DEFINE(GlossyBsdfNode)
@@ -2385,9 +2365,14 @@ NODE_DEFINE(GlossyBsdfNode)
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
   distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_ID);
   distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
   SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
+
+  SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
+
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.0f);
+  SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
 
   SOCKET_OUT_CLOSURE(BSDF, "BSDF");
 
@@ -2400,8 +2385,32 @@ GlossyBsdfNode::GlossyBsdfNode() : BsdfNode(get_node_type())
   distribution_orig = NBUILTIN_CLOSURES;
 }
 
+bool GlossyBsdfNode::is_isotropic()
+{
+  ShaderInput *anisotropy_input = input("Anisotropy");
+  /* Keep in sync with the thresholds in OSL's node_glossy_bsdf and SVM's svm_node_closure_bsdf. */
+  return (!anisotropy_input->link && fabsf(anisotropy) <= 1e-4f);
+}
+
+void GlossyBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  if (shader->has_surface_link()) {
+    ShaderInput *tangent_in = input("Tangent");
+    if (!tangent_in->link && !is_isotropic())
+      attributes->add(ATTR_STD_GENERATED);
+  }
+
+  ShaderNode::attributes(shader, attributes);
+}
+
 void GlossyBsdfNode::simplify_settings(Scene *scene)
 {
+  /* If the anisotropy is close enough to zero, fall back to the isotropic case. */
+  ShaderInput *tangent_input = input("Tangent");
+  if (tangent_input->link && is_isotropic()) {
+    tangent_input->disconnect();
+  }
+
   if (distribution_orig == NBUILTIN_CLOSURES) {
     roughness_orig = roughness;
     distribution_orig = distribution;
@@ -2450,10 +2459,12 @@ void GlossyBsdfNode::compile(SVMCompiler &compiler)
 
   if (closure == CLOSURE_BSDF_REFLECTION_ID)
     BsdfNode::compile(compiler, NULL, NULL);
+  /* TODO: Just use weight for legacy MultiGGX? Would also simplify OSL. */
   else if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID)
-    BsdfNode::compile(compiler, input("Roughness"), NULL, NULL, input("Color"));
+    BsdfNode::compile(
+        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
   else
-    BsdfNode::compile(compiler, input("Roughness"), NULL);
+    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
 }
 
 void GlossyBsdfNode::compile(OSLCompiler &compiler)
@@ -2476,7 +2487,7 @@ NODE_DEFINE(GlassBsdfNode)
   distribution_enum.insert("sharp", CLOSURE_BSDF_SHARP_GLASS_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);
   distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.0f);
@@ -2754,8 +2765,8 @@ NODE_DEFINE(PrincipledBsdfNode)
   NodeType *type = NodeType::add("principled_bsdf", create, NodeType::SHADER);
 
   static NodeEnum distribution_enum;
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
 
@@ -2815,7 +2826,8 @@ void PrincipledBsdfNode::expand(ShaderGraph *graph)
   ShaderInput *emission_in = input("Emission");
   ShaderInput *emission_strength_in = input("Emission Strength");
   if ((emission_in->link || emission != zero_float3()) &&
-      (emission_strength_in->link || emission_strength != 0.0f)) {
+      (emission_strength_in->link || emission_strength != 0.0f))
+  {
     /* Create add closure and emission, and relink inputs. */
     AddClosureNode *add = graph->create_node<AddClosureNode>();
     EmissionNode *emission_node = graph->create_node<EmissionNode>();
@@ -3531,10 +3543,8 @@ NODE_DEFINE(PrincipledHairBsdfNode)
   SOCKET_IN_FLOAT(melanin, "Melanin", 0.8f);
   SOCKET_IN_FLOAT(melanin_redness, "Melanin Redness", 1.0f);
   SOCKET_IN_COLOR(tint, "Tint", make_float3(1.f, 1.f, 1.f));
-  SOCKET_IN_VECTOR(absorption_coefficient,
-                   "Absorption Coefficient",
-                   make_float3(0.245531f, 0.52f, 1.365f),
-                   SocketType::VECTOR);
+  SOCKET_IN_VECTOR(
+      absorption_coefficient, "Absorption Coefficient", make_float3(0.245531f, 0.52f, 1.365f));
 
   SOCKET_IN_FLOAT(offset, "Offset", 2.f * M_PI_F / 180.f);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.3f);
@@ -5726,7 +5736,7 @@ void SeparateHSVNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_separate_hsv");
 }
 
-/* Hue Saturation Value */
+/* Hue/Saturation/Value */
 
 NODE_DEFINE(HSVNode)
 {
@@ -5794,7 +5804,8 @@ void AttributeNode::attributes(Shader *shader, AttributeRequestSet *attributes)
   ShaderOutput *alpha_out = output("Alpha");
 
   if (!color_out->links.empty() || !vector_out->links.empty() || !fac_out->links.empty() ||
-      !alpha_out->links.empty()) {
+      !alpha_out->links.empty())
+  {
     attributes->add_standard(attribute);
   }
 
@@ -6593,7 +6604,8 @@ void VectorMathNode::compile(SVMCompiler &compiler)
 
   /* 3 Vector Operators */
   if (math_type == NODE_VECTOR_MATH_WRAP || math_type == NODE_VECTOR_MATH_FACEFORWARD ||
-      math_type == NODE_VECTOR_MATH_MULTIPLY_ADD) {
+      math_type == NODE_VECTOR_MATH_MULTIPLY_ADD)
+  {
     ShaderInput *vector3_in = input("Vector3");
     int vector3_stack_offset = compiler.stack_assign(vector3_in);
     compiler.add_node(

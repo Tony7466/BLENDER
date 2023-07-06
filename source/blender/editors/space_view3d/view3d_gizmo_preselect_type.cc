@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -161,7 +163,8 @@ static int gizmo_preselect_elem_test_select(bContext *C, wmGizmo *gz, const int 
                                               &base_index_face,
                                               &eve_test,
                                               &eed_test,
-                                              &efa_test)) {
+                                              &efa_test))
+    {
       if (EDBM_preselect_action_get(gz_ele->psel) == PRESELECT_ACTION_DELETE) {
         /* Delete action */
         if (efa_test) {
@@ -193,7 +196,8 @@ static int gizmo_preselect_elem_test_select(bContext *C, wmGizmo *gz, const int 
           best.base_index = base_index_vert;
         }
         if (!BM_vert_is_boundary(vert) &&
-            EDBM_preselect_action_get(gz_ele->psel) != PRESELECT_ACTION_DELETE) {
+            EDBM_preselect_action_get(gz_ele->psel) != PRESELECT_ACTION_DELETE)
+        {
           best.ele = (BMElem *)eve_test;
           best.base_index = base_index_vert;
         }
@@ -358,7 +362,8 @@ static int gizmo_preselect_edgering_test_select(bContext *C, wmGizmo *gz, const 
     View3D *v3d = CTX_wm_view3d(C);
     BKE_view_layer_synced_ensure(scene, view_layer);
     if ((gz_ring->bases) == nullptr ||
-        (gz_ring->bases[0] != BKE_view_layer_active_base_get(view_layer))) {
+        (gz_ring->bases[0] != BKE_view_layer_active_base_get(view_layer)))
+    {
       MEM_SAFE_FREE(gz_ring->bases);
       gz_ring->bases = BKE_view_layer_array_from_bases_in_edit_mode(
           scene, view_layer, v3d, &gz_ring->bases_len);
@@ -480,7 +485,7 @@ static void GIZMO_GT_mesh_preselect_edgering_3d(wmGizmoType *gzt)
 /** \name Gizmo API
  * \{ */
 
-void ED_gizmotypes_preselect_3d(void)
+void ED_gizmotypes_preselect_3d()
 {
   WM_gizmotype_append(GIZMO_GT_mesh_preselect_elem_3d);
   WM_gizmotype_append(GIZMO_GT_mesh_preselect_edgering_3d);

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -37,11 +39,10 @@ set(SRC
   intern/utils.hh
 
   AS_asset_library.h
-  AS_asset_representation.h
 )
 
 set(LIB
-    bf_blenkernel
+  bf_blenkernel
 )
 
 

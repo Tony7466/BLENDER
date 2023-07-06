@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pybmesh
@@ -140,7 +141,7 @@ static PyObject *bpy_bmeditselseq_discard(BPy_BMEditSelSeq *self, BPy_BMElem *va
   Py_RETURN_NONE;
 }
 
-static struct PyMethodDef bpy_bmeditselseq_methods[] = {
+static PyMethodDef bpy_bmeditselseq_methods[] = {
     {"validate",
      (PyCFunction)bpy_bmeditselseq_validate,
      METH_NOARGS,
@@ -305,7 +306,7 @@ static PySequenceMethods bpy_bmeditselseq_as_sequence = {
 };
 
 static PyMappingMethods bpy_bmeditselseq_as_mapping = {
-    /*mp_len*/ (lenfunc)bpy_bmeditselseq_length,
+    /*mp_length*/ (lenfunc)bpy_bmeditselseq_length,
     /*mp_subscript*/ (binaryfunc)bpy_bmeditselseq_subscript,
     /*mp_ass_subscript*/ (objobjargproc)NULL,
 };

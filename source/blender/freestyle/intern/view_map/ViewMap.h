@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -1224,7 +1226,8 @@ class ViewEdge : public Interface1D {
               iMin,
               iMax,
               Vec2r(current->vertexA()->point2D()[0], current->vertexA()->point2D()[1]),
-              Vec2r(current->vertexB()->point2D()[0], current->vertexB()->point2D()[1]))) {
+              Vec2r(current->vertexB()->point2D()[0], current->vertexB()->point2D()[1])))
+      {
         return true;
       }
       current = current->nextEdge();
@@ -1243,7 +1246,8 @@ class ViewEdge : public Interface1D {
               iMin,
               iMax,
               Vec2r(current->vertexA()->point2D()[0], current->vertexA()->point2D()[1]),
-              Vec2r(current->vertexB()->point2D()[0], current->vertexB()->point2D()[1]))) {
+              Vec2r(current->vertexB()->point2D()[0], current->vertexB()->point2D()[1])))
+      {
         return false;
       }
       current = current->nextEdge();
@@ -1463,7 +1467,8 @@ class ViewShape {
           for (vector<ViewVertex::directedViewEdge>::iterator ve = vedges.begin(),
                                                               veend = vedges.end();
                ve != veend;
-               ve++) {
+               ve++)
+          {
             ViewEdge *current = (ViewEdge *)((ve)->first)->userdata;
             newEdges.push_back(ViewVertex::directedViewEdge(current, ve->second));
           }

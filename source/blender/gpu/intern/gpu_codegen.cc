@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -86,12 +87,14 @@ struct GPUCodegenCreateInfo : ShaderCreateInfo {
 };
 
 struct GPUPass {
-  struct GPUPass *next;
+  GPUPass *next;
 
   GPUShader *shader;
   GPUCodegenCreateInfo *create_info = nullptr;
   /** Orphaned GPUPasses gets freed by the garbage collector. */
   uint refcount;
+  /** The last time the refcount was greater than 0. */
+  int gc_timestamp;
   /** Identity hash generated from all GLSL code. */
   uint32_t hash;
   /** Did we already tried to compile the attached GPUShader. */
@@ -155,7 +158,8 @@ static GPUPass *gpu_pass_cache_resolve_collision(GPUPass *pass,
   BLI_spin_lock(&pass_cache_spin);
   for (; pass && (pass->hash == hash); pass = pass->next) {
     if (*reinterpret_cast<ShaderCreateInfo *>(info) ==
-        *reinterpret_cast<ShaderCreateInfo *>(pass->create_info)) {
+        *reinterpret_cast<ShaderCreateInfo *>(pass->create_info))
+    {
       BLI_spin_unlock(&pass_cache_spin);
       return pass;
     }
@@ -360,25 +364,27 @@ void GPUCodegen::generate_attribs()
     eGPUType input_type, iface_type;
 
     load_ss << "var_attrs." << var_name;
-    switch (attr->type) {
-      case CD_ORCO:
-        /* Need vec4 to detect usage of default attribute. */
-        input_type = GPU_VEC4;
-        iface_type = GPU_VEC3;
-        load_ss << " = attr_load_orco(" << attr_name << ");\n";
-        break;
-      case CD_HAIRLENGTH:
-        iface_type = input_type = GPU_FLOAT;
-        load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
-        break;
-      case CD_TANGENT:
-        iface_type = input_type = GPU_VEC4;
-        load_ss << " = attr_load_tangent(" << attr_name << ");\n";
-        break;
-      default:
-        iface_type = input_type = GPU_VEC4;
-        load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
-        break;
+    if (attr->is_hair_length) {
+      iface_type = input_type = GPU_FLOAT;
+      load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
+    }
+    else {
+      switch (attr->type) {
+        case CD_ORCO:
+          /* Need vec4 to detect usage of default attribute. */
+          input_type = GPU_VEC4;
+          iface_type = GPU_VEC3;
+          load_ss << " = attr_load_orco(" << attr_name << ");\n";
+          break;
+        case CD_TANGENT:
+          iface_type = input_type = GPU_VEC4;
+          load_ss << " = attr_load_tangent(" << attr_name << ");\n";
+          break;
+        default:
+          iface_type = input_type = GPU_VEC4;
+          load_ss << " = attr_load_" << input_type << "(" << attr_name << ");\n";
+          break;
+      }
     }
 
     info.vertex_in(slot--, to_type(input_type), attr_name);
@@ -453,7 +459,7 @@ void GPUCodegen::generate_resources()
     }
     ss << "};\n\n";
 
-    info.uniform_buf(1, "NodeTree", GPU_UBO_BLOCK_NAME, Frequency::BATCH);
+    info.uniform_buf(GPU_NODE_TREE_UBO_SLOT, "NodeTree", GPU_UBO_BLOCK_NAME, Frequency::BATCH);
   }
 
   if (!BLI_listbase_is_empty(&graph.uniform_attrs.list)) {
@@ -480,16 +486,26 @@ void GPUCodegen::generate_library()
   GPUCodegenCreateInfo &info = *create_info;
 
   void *value;
-  /* Iterate over libraries. We need to keep this struct intact in case
-   * it is required for the optimization pass. */
+  blender::Vector<std::string> source_files;
+
+  /* Iterate over libraries. We need to keep this struct intact in case it is required for the
+   * optimization pass. The first pass just collects the keys from the GSET, given items in a GSET
+   * are unordered this can cause order differences between invocations, so we collect the keys
+   * first, and sort them before doing actual work, to guarantee stable behavior while still
+   * having cheap insertions into the GSET */
   GHashIterator *ihash = BLI_ghashIterator_new((GHash *)graph.used_libraries);
   while (!BLI_ghashIterator_done(ihash)) {
     value = BLI_ghashIterator_getKey(ihash);
-    auto deps = gpu_shader_dependency_get_resolved_source((const char *)value);
-    info.dependencies_generated.extend_non_duplicates(deps);
+    source_files.append((const char *)value);
     BLI_ghashIterator_step(ihash);
   }
   BLI_ghashIterator_free(ihash);
+
+  std::sort(source_files.begin(), source_files.end());
+  for (auto &key : source_files) {
+    auto deps = gpu_shader_dependency_get_resolved_source(key.c_str());
+    info.dependencies_generated.extend_non_duplicates(deps);
+  }
 }
 
 void GPUCodegen::node_serialize(std::stringstream &eval_ss, const GPUNode *node)
@@ -840,7 +856,8 @@ static bool gpu_pass_shader_validate(GPUPass *pass, GPUShader *shader)
 
   /* Validate against opengl limit. */
   if ((active_samplers_len > GPU_max_textures_frag()) ||
-      (active_samplers_len > GPU_max_textures_vert())) {
+      (active_samplers_len > GPU_max_textures_vert()))
+  {
     return false;
   }
 
@@ -907,40 +924,35 @@ void GPU_pass_release(GPUPass *pass)
   BLI_spin_unlock(&pass_cache_spin);
 }
 
-void GPU_pass_cache_garbage_collect(void)
+void GPU_pass_cache_garbage_collect()
 {
-  static int lasttime = 0;
   const int shadercollectrate = 60; /* hardcoded for now. */
   int ctime = int(PIL_check_seconds_timer());
-
-  if (ctime < shadercollectrate + lasttime) {
-    return;
-  }
-
-  lasttime = ctime;
 
   BLI_spin_lock(&pass_cache_spin);
   GPUPass *next, **prev_pass = &pass_cache;
   for (GPUPass *pass = pass_cache; pass; pass = next) {
     next = pass->next;
-    if (pass->refcount == 0) {
+    if (pass->refcount > 0) {
+      pass->gc_timestamp = ctime;
+    }
+    else if (pass->gc_timestamp + shadercollectrate < ctime) {
       /* Remove from list */
       *prev_pass = next;
       gpu_pass_free(pass);
+      continue;
     }
-    else {
-      prev_pass = &pass->next;
-    }
+    prev_pass = &pass->next;
   }
   BLI_spin_unlock(&pass_cache_spin);
 }
 
-void GPU_pass_cache_init(void)
+void GPU_pass_cache_init()
 {
   BLI_spin_init(&pass_cache_spin);
 }
 
-void GPU_pass_cache_free(void)
+void GPU_pass_cache_free()
 {
   BLI_spin_lock(&pass_cache_spin);
   while (pass_cache) {
@@ -961,7 +973,7 @@ void GPU_pass_cache_free(void)
 
 void gpu_codegen_init(void) {}
 
-void gpu_codegen_exit(void)
+void gpu_codegen_exit()
 {
   BKE_material_defaults_free_gpu();
   GPU_shader_free_builtin_shaders();

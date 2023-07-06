@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Adapted from code copyright 2009-2010 NVIDIA Corporation
- * Modifications Copyright 2011-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
 
 #include "bvh/build.h"
 
@@ -527,7 +530,7 @@ BVHNode *BVHBuild::run()
     if (progress.get_cancel()) {
       rootnode->deleteSubtree();
       rootnode = NULL;
-      VLOG_WORK << "BVH build cancelled.";
+      VLOG_WORK << "BVH build canceled.";
     }
     else {
       /*rotate(rootnode, 4, 5);*/
@@ -689,7 +692,8 @@ BVHNode *BVHBuild::build_node(const BVHObjectBinning &range, int level)
   if (!(range.size() > 0 && params.top_level && level == 0)) {
     /* Make leaf node when threshold reached or SAH tells us. */
     if ((params.small_enough_for_leaf(size, level)) ||
-        (range_within_max_leaf_size(range, references) && leafSAH < splitSAH)) {
+        (range_within_max_leaf_size(range, references) && leafSAH < splitSAH))
+    {
       return create_leaf_node(range, references);
     }
   }
@@ -708,7 +712,8 @@ BVHNode *BVHBuild::build_node(const BVHObjectBinning &range, int level)
     unalignedLeafSAH = params.sah_primitive_cost * unaligned_range.leafSAH;
     if (!(range.size() > 0 && params.top_level && level == 0)) {
       if (unalignedLeafSAH < unalignedSplitSAH && unalignedSplitSAH < splitSAH &&
-          range_within_max_leaf_size(range, references)) {
+          range_within_max_leaf_size(range, references))
+      {
         return create_leaf_node(range, references);
       }
     }
@@ -1167,8 +1172,8 @@ BVHNode *BVHBuild::create_leaf_node(const BVHRange &range, const vector<BVHRefer
 
 void BVHBuild::rotate(BVHNode *node, int max_depth, int iterations)
 {
-  /* in tested scenes, this resulted in slightly slower raytracing, so disabled
-   * it for now. could be implementation bug, or depend on the scene */
+  /* In tested scenes, this resulted in slightly slower ray-tracing, so disabled
+   * it for now. could be implementation bug, or depend on the scene. */
   if (node)
     for (int i = 0; i < iterations; i++)
       rotate(node, max_depth);

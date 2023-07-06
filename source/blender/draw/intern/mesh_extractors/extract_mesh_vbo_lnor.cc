@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -57,15 +58,11 @@ static void extract_lnor_iter_poly_bm(const MeshRenderData *mr,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr,
-                                        const MPoly *poly,
-                                        const int poly_index,
-                                        void *data)
+static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr, const int poly_index, void *data)
 {
   const bool hidden = mr->hide_poly && mr->hide_poly[poly_index];
 
-  const int ml_index_end = poly->loopstart + poly->totloop;
-  for (int ml_index = poly->loopstart; ml_index < ml_index_end; ml_index += 1) {
+  for (const int ml_index : mr->polys[poly_index]) {
     const int vert = mr->corner_verts[ml_index];
     GPUPackedNormal *lnor_data = &(*(GPUPackedNormal **)data)[ml_index];
     if (!mr->loop_normals.is_empty()) {
@@ -81,8 +78,8 @@ static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr,
     /* Flag for paint mode overlay.
      * Only use origindex in edit mode where it is used to display the edge-normals.
      * In paint mode it will use the un-mapped data to draw the wire-frame. */
-    if (hidden ||
-        (mr->edit_bmesh && (mr->v_origindex) && mr->v_origindex[vert] == ORIGINDEX_NONE)) {
+    if (hidden || (mr->edit_bmesh && (mr->v_origindex) && mr->v_origindex[vert] == ORIGINDEX_NONE))
+    {
       lnor_data->w = -1;
     }
     else if (mr->select_poly && mr->select_poly[poly_index]) {
@@ -182,14 +179,12 @@ static void extract_lnor_hq_iter_poly_bm(const MeshRenderData *mr,
 }
 
 static void extract_lnor_hq_iter_poly_mesh(const MeshRenderData *mr,
-                                           const MPoly *poly,
                                            const int poly_index,
                                            void *data)
 {
   const bool hidden = mr->hide_poly && mr->hide_poly[poly_index];
 
-  const int ml_index_end = poly->loopstart + poly->totloop;
-  for (int ml_index = poly->loopstart; ml_index < ml_index_end; ml_index += 1) {
+  for (const int ml_index : mr->polys[poly_index]) {
     const int vert = mr->corner_verts[ml_index];
     gpuHQNor *lnor_data = &(*(gpuHQNor **)data)[ml_index];
     if (!mr->loop_normals.is_empty()) {
@@ -205,8 +200,8 @@ static void extract_lnor_hq_iter_poly_mesh(const MeshRenderData *mr,
     /* Flag for paint mode overlay.
      * Only use origindex in edit mode where it is used to display the edge-normals.
      * In paint mode it will use the un-mapped data to draw the wire-frame. */
-    if (hidden ||
-        (mr->edit_bmesh && (mr->v_origindex) && mr->v_origindex[vert] == ORIGINDEX_NONE)) {
+    if (hidden || (mr->edit_bmesh && (mr->v_origindex) && mr->v_origindex[vert] == ORIGINDEX_NONE))
+    {
       lnor_data->w = -1;
     }
     else if (mr->select_poly && mr->select_poly[poly_index]) {

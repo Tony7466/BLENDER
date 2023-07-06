@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -178,12 +180,8 @@ class ProjectApply(Operator):
 
     def execute(self, _context):
         image_name = ProjectEdit._proj_hack[0]  # TODO, deal with this nicer
-
-        try:
-            image = bpy.data.images[image_name, None]
-        except KeyError:
-            import traceback
-            traceback.print_exc()
+        image = bpy.data.images.get((image_name, None))
+        if image is None:
             self.report({'ERROR'}, tip_("Could not find image '%s'") % image_name)
             return {'CANCELLED'}
 

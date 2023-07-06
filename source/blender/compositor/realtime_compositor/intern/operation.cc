@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <limits>
 #include <memory>
@@ -33,7 +35,11 @@ void Operation::evaluate()
 
   execute();
 
+  compute_preview();
+
   release_inputs();
+
+  release_unneeded_results();
 }
 
 Result &Operation::get_result(StringRef identifier)
@@ -132,6 +138,8 @@ void Operation::add_and_evaluate_input_processor(StringRef identifier, SimpleOpe
   processor->evaluate();
 }
 
+void Operation::compute_preview(){};
+
 Result &Operation::get_input(StringRef identifier) const
 {
   return *results_mapped_to_inputs_.lookup(identifier);
@@ -198,6 +206,15 @@ void Operation::release_inputs()
 {
   for (Result *result : results_mapped_to_inputs_.values()) {
     result->release();
+  }
+}
+
+void Operation::release_unneeded_results()
+{
+  for (Result &result : results_.values()) {
+    if (!result.should_compute() && result.is_allocated()) {
+      result.release();
+    }
   }
 }
 

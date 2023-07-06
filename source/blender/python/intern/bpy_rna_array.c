@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -144,7 +146,8 @@ static int validate_array_type(PyObject *seq,
                                    is_dynamic,
                                    check_item_type,
                                    item_type_str,
-                                   error_prefix) == -1) {
+                                   error_prefix) == -1)
+      {
         ok = 0;
       }
 
@@ -191,8 +194,8 @@ static int validate_array_type(PyObject *seq,
         Py_DECREF(item);
 
 #if 0
-        BLI_snprintf(
-            error_str, error_str_size, "sequence items should be of type %s", item_type_str);
+        SNPRINTF(
+            error_str, "sequence items should be of type %s", item_type_str);
 #endif
         PyErr_Format(PyExc_TypeError,
                      "%s expected sequence items of type %s, not %s",
@@ -402,7 +405,8 @@ static int validate_array(PyObject *rvalue,
                             (prop_flag & PROP_DYNAMIC) != 0,
                             check_item_type,
                             item_type_str,
-                            error_prefix) == -1) {
+                            error_prefix) == -1)
+    {
       return -1;
     }
 
@@ -537,7 +541,8 @@ static int py_to_array(PyObject *seq,
                      check_item_type,
                      item_type_str,
                      &totitem,
-                     error_prefix) == -1) {
+                     error_prefix) == -1)
+  {
     return -1;
   }
 
@@ -564,7 +569,7 @@ static int py_to_array(PyObject *seq,
      * python data, the check here is mainly for completeness. */
     if (copy_values(seq, ptr, prop, 0, data, item_size, NULL, convert_item, NULL) != NULL) {
       if (param_data == NULL) {
-        /* NULL can only pass through in case RNA property arraylength is 0 (impossible?) */
+        /* NULL can only pass through in case RNA property array-length is 0 (impossible?) */
         rna_set_array(ptr, prop, data);
         PyMem_FREE(data);
       }
@@ -643,7 +648,8 @@ static int py_to_array_index(PyObject *py,
                        check_item_type,
                        item_type_str,
                        &totitem,
-                       error_prefix) == -1) {
+                       error_prefix) == -1)
+    {
       return -1;
     }
 
