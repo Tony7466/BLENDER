@@ -213,6 +213,9 @@ static const char *node_socket_get_translation_context(const bNodeSocket &socket
 static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
                                                    const bNodeSocket &sock,
                                                    uiLayout &layout);
+static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_ctx,
+                                                    const SpaceNode &snode,
+                                                    const bNode &node);
 
 /** Return true when \a a should be behind \a b and false otherwise. */
 static bool compare_node_depth(const bNode *a, const bNode *b)
