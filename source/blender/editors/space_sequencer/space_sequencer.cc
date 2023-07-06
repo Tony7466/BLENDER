@@ -420,7 +420,7 @@ static void SEQUENCER_GGT_gizmo2d_rotate(wmGizmoGroupType *gzgt)
   ED_widgetgroup_gizmo2d_rotate_callbacks_set(gzgt);
 }
 
-static void sequencer_gizmos(void)
+static void sequencer_gizmos()
 {
   const wmGizmoMapType_Params params = {SPACE_SEQ, RGN_TYPE_PREVIEW};
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&params);
@@ -992,7 +992,7 @@ static void sequencer_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceSeq, sl);
 }
 
-void ED_spacetype_sequencer(void)
+void ED_spacetype_sequencer()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype sequencer");
   ARegionType *art;
@@ -1060,7 +1060,7 @@ void ED_spacetype_sequencer(void)
   /* Toolbar. */
   art = MEM_cnew<ARegionType>("spacetype sequencer tools region");
   art->regionid = RGN_TYPE_TOOLS;
-  art->prefsizex = (int)UI_TOOLBAR_WIDTH;
+  art->prefsizex = int(UI_TOOLBAR_WIDTH);
   art->prefsizey = 50; /* XXX */
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->message_subscribe = ED_region_generic_tools_region_message_subscribe;

@@ -571,7 +571,8 @@ void BKE_pointcloud_to_mesh(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/
   BLI_assert(ob->type == OB_POINTCLOUD);
 
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-  const GeometrySet geometry = blender::bke::object_get_evaluated_geometry_set(*ob_eval);
+  const blender::bke::GeometrySet geometry = blender::bke::object_get_evaluated_geometry_set(
+      *ob_eval);
 
   Mesh *mesh = BKE_mesh_add(bmain, ob->id.name + 2);
 
@@ -688,7 +689,7 @@ static void curve_to_mesh_eval_ensure(Object &object)
 
 static const Curves *get_evaluated_curves_from_object(const Object *object)
 {
-  if (GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval) {
+  if (blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval) {
     return geometry_set_eval->get_curves_for_read();
   }
   return nullptr;
@@ -982,28 +983,26 @@ static int find_object_active_key_uid(const Key &key, const Object &object)
 }
 
 static void move_shapekey_layers_to_keyblocks(const Mesh &mesh,
-                                              CustomData &custom_data,
+                                              const CustomData &custom_data,
                                               Key &key_dst,
                                               const int actshape_uid)
 {
   using namespace blender::bke;
   for (const int i : IndexRange(CustomData_number_of_layers(&custom_data, CD_SHAPEKEY))) {
     const int layer_index = CustomData_get_layer_index_n(&custom_data, CD_SHAPEKEY, i);
-    CustomDataLayer &layer = custom_data.layers[layer_index];
+    const CustomDataLayer &layer = custom_data.layers[layer_index];
 
     KeyBlock *kb = keyblock_ensure_from_uid(key_dst, layer.uid, layer.name);
     MEM_SAFE_FREE(kb->data);
 
     kb->totelem = mesh.totvert;
-
+    kb->data = MEM_malloc_arrayN(kb->totelem, sizeof(float3), __func__);
+    MutableSpan<float3> kb_coords(static_cast<float3 *>(kb->data), kb->totelem);
     if (kb->uid == actshape_uid) {
-      kb->data = MEM_malloc_arrayN(kb->totelem, sizeof(float3), __func__);
-      MutableSpan<float3> kb_coords(static_cast<float3 *>(kb->data), kb->totelem);
       mesh.attributes().lookup<float3>("position").varray.materialize(kb_coords);
     }
     else {
-      kb->data = layer.data;
-      layer.data = nullptr;
+      kb_coords.copy_from({static_cast<const float3 *>(layer.data), mesh.totvert});
     }
   }
 

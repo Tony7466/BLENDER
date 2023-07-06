@@ -78,12 +78,12 @@
 
 #include "NOD_common.h"
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph.h"
@@ -253,6 +253,13 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     }
   }
 
+  if (ntree_src->nested_node_refs) {
+    ntree_dst->nested_node_refs = static_cast<bNestedNodeRef *>(
+        MEM_malloc_arrayN(ntree_src->nested_node_refs_num, sizeof(bNestedNodeRef), __func__));
+    uninitialized_copy_n(
+        ntree_src->nested_node_refs, ntree_src->nested_node_refs_num, ntree_dst->nested_node_refs);
+  }
+
   if (flag & LIB_ID_COPY_NO_PREVIEW) {
     ntree_dst->preview = nullptr;
   }
@@ -314,6 +321,10 @@ static void ntree_free_data(ID *id)
 
   if (ntree->id.tag & LIB_TAG_LOCALIZED) {
     BKE_libblock_free_data(&ntree->id, true);
+  }
+
+  if (ntree->nested_node_refs) {
+    MEM_freeN(ntree->nested_node_refs);
   }
 
   BKE_previewimg_free(&ntree->preview);
@@ -436,11 +447,11 @@ static void node_foreach_path(ID *id, BPathForeachPathData *bpath_data)
       for (bNode *node : ntree->all_nodes()) {
         if (node->type == SH_NODE_SCRIPT) {
           NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-          BKE_bpath_foreach_path_fixed_process(bpath_data, nss->filepath);
+          BKE_bpath_foreach_path_fixed_process(bpath_data, nss->filepath, sizeof(nss->filepath));
         }
         else if (node->type == SH_NODE_TEX_IES) {
           NodeShaderTexIES *ies = static_cast<NodeShaderTexIES *>(node->storage);
-          BKE_bpath_foreach_path_fixed_process(bpath_data, ies->filepath);
+          BKE_bpath_foreach_path_fixed_process(bpath_data, ies->filepath, sizeof(ies->filepath));
         }
       }
       break;
@@ -684,6 +695,9 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     BLO_write_string(writer, panel->name);
   }
 
+  BLO_write_struct_array(
+      writer, bNestedNodeRef, ntree->nested_node_refs_num, ntree->nested_node_refs);
+
   BKE_previewimg_blend_write(writer, ntree->preview);
 }
 
@@ -910,6 +924,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &ntree->panels_array[i]);
     BLO_read_data_address(reader, &ntree->panels_array[i]->name);
   }
+
+  BLO_read_data_address(reader, &ntree->nested_node_refs);
 
   /* TODO: should be dealt by new generic cache handling of IDs... */
   ntree->previews = nullptr;
@@ -2891,28 +2907,22 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
   }
 }
 
-void nodeToView(const bNode *node, const float x, const float y, float *rx, float *ry)
+float2 nodeToView(const bNode *node, const float2 loc)
 {
-  float mapping_x = 0.0f;
-  float mapping_y = 0.0f;
+  float2 view_loc = loc;
   for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
-    mapping_x += node_iter->locx;
-    mapping_y += node_iter->locy;
+    view_loc += float2(node_iter->locx, node_iter->locy);
   }
-  *rx = mapping_x + x;
-  *ry = mapping_y + y;
+  return view_loc;
 }
 
-void nodeFromView(const bNode *node, const float x, const float y, float *rx, float *ry)
+float2 nodeFromView(const bNode *node, const float2 view_loc)
 {
-  float mapping_x = 0.0f;
-  float mapping_y = 0.0f;
+  float2 loc = view_loc;
   for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
-    mapping_x += node_iter->locx;
-    mapping_y += node_iter->locy;
+    loc -= float2(node_iter->locx, node_iter->locy);
   }
-  *rx = -mapping_x + x;
-  *ry = -mapping_y + y;
+  return loc;
 }
 
 }  // namespace blender::bke
@@ -2922,13 +2932,14 @@ void nodeAttachNode(bNodeTree *ntree, bNode *node, bNode *parent)
   BLI_assert(parent->type == NODE_FRAME);
   BLI_assert(!nodeIsParentAndChild(parent, node));
 
-  float locx, locy;
-  blender::bke::nodeToView(node, 0.0f, 0.0f, &locx, &locy);
+  const blender::float2 loc = blender::bke::nodeToView(node, {});
 
   node->parent = parent;
   BKE_ntree_update_tag_parent_change(ntree, node);
   /* transform to parent space */
-  blender::bke::nodeFromView(parent, locx, locy, &node->locx, &node->locy);
+  const blender::float2 new_loc = blender::bke::nodeFromView(parent, loc);
+  node->locx = new_loc.x;
+  node->locy = new_loc.y;
 }
 
 void nodeDetachNode(bNodeTree *ntree, bNode *node)
@@ -2937,10 +2948,9 @@ void nodeDetachNode(bNodeTree *ntree, bNode *node)
     BLI_assert(node->parent->type == NODE_FRAME);
 
     /* transform to view space */
-    float locx, locy;
-    blender::bke::nodeToView(node, 0.0f, 0.0f, &locx, &locy);
-    node->locx = locx;
-    node->locy = locy;
+    const blender::float2 loc = blender::bke::nodeToView(node, {});
+    node->locx = loc.x;
+    node->locy = loc.y;
     node->parent = nullptr;
     BKE_ntree_update_tag_parent_change(ntree, node);
   }
@@ -3659,9 +3669,6 @@ void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
     if (ntree->typeinfo->local_merge) {
       ntree->typeinfo->local_merge(bmain, localtree, ntree);
     }
-
-    ntreeFreeTree(localtree);
-    MEM_freeN(localtree);
   }
 }
 
@@ -3860,7 +3867,7 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel)
   return ntree->panels().first_index_try(const_cast<bNodePanel *>(panel));
 }
 
-bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag)
+bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name)
 {
   bNodePanel **old_panels_array = ntree->panels_array;
   const Span<const bNodePanel *> old_panels = ntree->panels();
@@ -3873,7 +3880,7 @@ bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag)
             new_panels.data());
 
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
-  *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
+  *new_panel = {BLI_strdup(name)};
   new_panels[new_panels.size() - 1] = new_panel;
 
   MEM_SAFE_FREE(old_panels_array);
@@ -3883,7 +3890,7 @@ bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag)
   return new_panel;
 }
 
-bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int index)
+bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int index)
 {
   if (!blender::IndexRange(ntree->panels().size() + 1).contains(index)) {
     return nullptr;
@@ -3905,7 +3912,7 @@ bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int i
             new_panels.drop_front(index + 1).data());
 
   bNodePanel *new_panel = MEM_cnew<bNodePanel>(__func__);
-  *new_panel = {BLI_strdup(name), flag, ntree->next_panel_identifier++};
+  *new_panel = {BLI_strdup(name)};
   new_panels[index] = new_panel;
 
   MEM_SAFE_FREE(old_panels_array);
@@ -4448,12 +4455,7 @@ void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int
     return;
   }
 
-  /* Kind of hacky and weak... Ideally would be better to use RNA here. :| */
-  const char *tmp = CTX_IFACE_(BLT_I18NCONTEXT_ID_NODETREE, node->typeinfo->ui_name);
-  if (tmp == node->typeinfo->ui_name) {
-    tmp = IFACE_(node->typeinfo->ui_name);
-  }
-  BLI_strncpy(label, tmp, label_maxncpy);
+  BLI_strncpy(label, IFACE_(node->typeinfo->ui_name), label_maxncpy);
 }
 
 const char *nodeSocketLabel(const bNodeSocket *sock)

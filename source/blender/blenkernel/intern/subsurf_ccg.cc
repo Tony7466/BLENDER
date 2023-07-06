@@ -40,7 +40,6 @@
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
 #include "BKE_scene.h"
 #include "BKE_subsurf.h"
 
@@ -1700,6 +1699,8 @@ static CCGDerivedMesh *getCCGDerivedMesh(CCGSubSurf *ss,
                    0,
                    ccgSubSurf_getNumFinalFaces(ss) * 4,
                    ccgSubSurf_getNumFinalFaces(ss));
+  CustomData_free_layer_named(&ccgdm->dm.vertData, "position", ccgSubSurf_getNumFinalVerts(ss));
+  CustomData_free_layer_named(&ccgdm->dm.edgeData, ".edge_verts", ccgSubSurf_getNumFinalEdges(ss));
   CustomData_free_layer_named(
       &ccgdm->dm.loopData, ".corner_vert", ccgSubSurf_getNumFinalFaces(ss) * 4);
   CustomData_free_layer_named(

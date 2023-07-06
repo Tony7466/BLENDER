@@ -378,6 +378,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                                    const ModifierEvalContext *ctx,
                                    Mesh *mesh)
 {
+  using namespace blender;
   if (mesh->totvert == 0) {
     return mesh;
   }
@@ -458,12 +459,9 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   }
 
   if (amd->offset_type & MOD_ARR_OFF_RELATIVE) {
-    float min[3], max[3];
-    INIT_MINMAX(min, max);
-    BKE_mesh_minmax(mesh, min, max);
-
+    const Bounds<float3> bounds = *mesh->bounds_min_max();
     for (j = 3; j--;) {
-      offset[3][j] += amd->scale[j] * (max[j] - min[j]);
+      offset[3][j] += amd->scale[j] * (bounds.max[j] - bounds.min[j]);
     }
   }
 
@@ -828,7 +826,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     if (tot_doubles > 0) {
       Mesh *tmp = result;
       result = geometry::mesh_merge_verts(
-          *tmp, MutableSpan<int>{full_doubles_map, result->totvert}, tot_doubles);
+          *tmp, MutableSpan<int>{full_doubles_map, result->totvert}, tot_doubles, false);
       BKE_id_free(nullptr, tmp);
     }
     MEM_freeN(full_doubles_map);

@@ -75,7 +75,6 @@ typedef struct RenderView {
 
   /* if this exists, result of composited layers */
   RenderBuffer combined_buffer;
-  RenderBuffer z_buffer;
 
   /* optional, 32 bits version of picture, used for sequencer, OpenGL render and image curves */
   RenderByteBuffer byte_buffer;
@@ -135,7 +134,6 @@ typedef struct RenderResult {
 
   /* if this exists, a copy of one of layers, or result of composited layers */
   RenderBuffer combined_buffer;
-  RenderBuffer z_buffer;
 
   /* coordinates within final image (after cropping) */
   rcti tilerect;
@@ -222,11 +220,16 @@ void RE_FreeAllPersistentData(void);
  */
 void RE_FreePersistentData(const struct Scene *scene);
 
-/*
- * Free cached GPU textures to reduce memory usage. Before rendering all are cleard
- * and on UI changes when detected they are no longer used.
+/**
+ * Free cached GPU textures to reduce memory usage.
  */
-void RE_FreeGPUTextureCaches(const bool only_unused);
+void RE_FreeGPUTextureCaches(void);
+
+/**
+ * Free cached GPU textures, contexts and compositor to reduce memory usage,
+ * when nothing in the UI requires them anymore.
+ */
+void RE_FreeUnusedGPUResources(void);
 
 /**
  * Get results and statistics.
@@ -264,15 +267,6 @@ struct RenderStats *RE_GetStats(struct Render *re);
  * Caller is responsible for allocating `rect` in correct size!
  */
 void RE_ResultGet32(struct Render *re, unsigned int *rect);
-/**
- * Only for acquired results, for lock.
- *
- * \note The caller is responsible for allocating `rect` in correct size!
- */
-void RE_AcquiredResultGet32(struct Render *re,
-                            struct RenderResult *result,
-                            unsigned int *rect,
-                            int view_id);
 
 void RE_render_result_full_channel_name(char *fullname,
                                         const char *layname,
@@ -438,10 +432,12 @@ void RE_current_scene_update_cb(struct Render *re,
                                 void *handle,
                                 void (*f)(void *handle, struct Scene *scene));
 
-void RE_system_gpu_context_create(Render *re);
-void RE_system_gpu_context_destroy(Render *re);
+void RE_system_gpu_context_ensure(Render *re);
+void RE_system_gpu_context_free(Render *re);
 void *RE_system_gpu_context_get(Render *re);
-void *RE_blender_gpu_context_get(Render *re);
+
+void *RE_blender_gpu_context_ensure(Render *re);
+void RE_blender_gpu_context_free(Render *re);
 
 /**
  * \param x: ranges from -1 to 1.
