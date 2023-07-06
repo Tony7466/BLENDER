@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_string.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -24,6 +25,7 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
+#include "BKE_report.h"
 
 #include "DEG_depsgraph_query.h"
 #include "ED_object.h"
@@ -194,20 +196,23 @@ static void rollback_layers_a(SurDeformGpencilModifierData *smd)
 {
   if (smd->layers == NULL)
     return;
-  for (int l = 0; l < smd->num_of_layers; l++) {
+  smd->layers = smd->layers->first;
+  /* for (int l = 0; l < smd->num_of_layers; l++) {
     if (smd->layers->layer_idx == 0) {
       return;
     }
     else {
       smd->layers--;
     }
-  }
+  }*/
 }
 
 static void rollback_lframes_a(SurDeformGpencilModifierData *smd, SDefGPLayer *layer)
 {
   if (layer->frames == NULL)
     return;
+  layer->frames = layer->frames->first;
+  return;
   for (int f = 0; f < layer->num_of_frames; f++) {
     if (layer->frames->frame_idx == 0) {
       return;
@@ -223,6 +228,8 @@ static void rollback_strokes_a(SurDeformGpencilModifierData *smd, SDefGPFrame *f
 
   if (frame->strokes == NULL)
     return;
+  frame->strokes = frame->strokes->first;
+  return;
   for (int s = 0; s < frame->strokes_num; s++) {
     if (frame->strokes->stroke_idx == 0) {
       return;
@@ -1122,28 +1129,10 @@ static bool add_layer(SurDeformGpencilModifierData *smd_orig,
 
   rollback_layers_a(smd_orig);
 
-  /* every time we add a new layer to our array, by the bind operator, we should
-  free the old one and copy in to a new bigger/smaller location.
-
-  */
-
-  /*if this is the first layer, so num_of_layers has just become one, we don't need to copy
-   * anything.*/
-  /*
-  if (smd_orig->num_of_layers > 1)
-  {
-    smd_orig->layers = MEM_recallocN_id(smd_orig->layers, sizeof(*smd_orig->layers) *
-  smd_orig->num_of_layers, "SDefGPLayers");
-  }
-  else
-  {
-    smd_orig->layers = MEM_calloc_arrayN(smd_orig->num_of_layers, sizeof(*smd_orig->layers),
-  "SDefGPLayers"); } /**/
-
   /*We can't use MEM_recallocN because it doesn't support arrays.
    */
   smd_orig->num_of_layers++;
-  void *temp_lay_pointer = MEM_calloc_arrayN(
+  SDefGPLayer *temp_lay_pointer = MEM_calloc_arrayN(
       smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers");
 
   if (temp_lay_pointer == NULL) {
@@ -1160,10 +1149,12 @@ static bool add_layer(SurDeformGpencilModifierData *smd_orig,
     MEM_SAFE_FREE(smd_orig->layers);
   }
   smd_orig->layers = temp_lay_pointer;
-  // smd_orig->layers = temp_layers_pointer;
   uint old_lay_index;
-  /*Now smd_orig->layers is on 0. we need to bring it to the new layer position.*/
+  /*Now smd_orig->layers is on 0.
+  * We know this is the first ayer.
+  Then we need to bring it to the new layer position.*/
   for (int l = 0; l < smd_orig->num_of_layers - 1; l++) {
+    smd_orig->layers->first = temp_lay_pointer;
     old_lay_index = smd_orig->layers->layer_idx;
     smd_orig->layers++;
   }
@@ -1172,6 +1163,7 @@ static bool add_layer(SurDeformGpencilModifierData *smd_orig,
   smd_orig->layers->frames = NULL;
   smd_orig->layers->num_of_frames = 0;
   smd_orig->layers->blender_layer = gpl;
+  smd_orig->layers->first = temp_lay_pointer;
   if (smd_orig->num_of_layers > 1) {
     smd_orig->layers->layer_idx = old_lay_index + 1;
   }
@@ -1191,78 +1183,86 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
                       SDefGPLayer *sdef_layer,
                       bGPDframe *gpf)
   {
-  rollback_lframes_a(smd_orig, sdef_layer);
+    rollback_lframes_a(smd_orig, sdef_layer);
+    SDefGPFrame *first_frame;
   
-  /* every time we add a new frame to our array, by the bind operator, we should
-  free the old one and copy in to a new bigger/smaller location.
+    /* every time we add a new frame to our array, by the bind operator, we should
+    free the old one and copy in to a new bigger/smaller location.
+    We can't use MEM_recallocN because it doesn't support arrays.
+    */
+    sdef_layer->num_of_frames++;
+    void *temp_frames_pointer = MEM_calloc_arrayN(
+        sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
 
-  We can't use MEM_recallocN because it doesn't support arrays.
-  */
-  sdef_layer->num_of_frames++;
-  void *temp_frames_pointer = MEM_calloc_arrayN(
-      sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
-
-  if (temp_frames_pointer == NULL) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    return false;
-  }
-
-  /*if this is the first frame, so num_of_frame has just become one, we don't need to copy
-   * anything.*/
-  if (sdef_layer->num_of_frames > 1) {
-    memcpy(temp_frames_pointer,
-           sdef_layer->frames,
-           sizeof(*sdef_layer->frames) * (sdef_layer->num_of_frames - 1));
-    MEM_SAFE_FREE(sdef_layer->frames);
-  }
-
-  sdef_layer->frames = temp_frames_pointer;
-
-  /*Now sdef_layer->frames is on 0. we need to bring it to the new frame position.*/
-  uint frame_idx = 0;
-  sdef_layer->frames->frame_idx = frame_idx;
-  for (int f = 0; f < sdef_layer->num_of_frames - 1; f++) {
-    sdef_layer->frames++;
-    frame_idx++;
-    sdef_layer->frames->frame_idx = frame_idx;
-  }
-
-  /*Fill in the frame data*/
-  sdef_layer->frames->blender_frame = gpf;
-  sdef_layer->frames->frame_number = gpf->framenum; // Not storing it because it could just change
-  sdef_layer->frames->strokes_num = BLI_listbase_count(&(gpf->strokes));
-
-  /*Allocate the strokes*/
-  sdef_layer->frames->strokes = MEM_calloc_arrayN(
-      sdef_layer->frames->strokes_num, sizeof(*sdef_layer->frames->strokes), "SDefGPStrokes");
-  if (sdef_layer->frames->strokes == NULL) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    return false;
-  }
-
-  /*if (gps->prev == NULL){ //gps should have different arrays for different frames, so this should
-    work. allocate_stroke_array(BLI_listbase_count(&(gpf->strokes)), smd_orig, smd); printf("first
-    bind exec \n"); smd_orig->layers->frames->strokes->stroke_idx = 0;
+    if (temp_frames_pointer == NULL) {
+      BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
+      return false;
     }
-    else {
-      uint old_idx = smd_orig->layers->frames->strokes->stroke_idx;
-      (smd_orig->layers->frames->strokes)++; /* increase smd->strokes pointer by 1 *
-      smd_orig->layers->frames->strokes->stroke_idx = old_idx + 1;   /*increase stroke idx value*
-    }*/
 
-  return true;
+    /*if this is the first frame, so num_of_frame has just become one, we don't need to copy
+     * anything.*/
+    if (sdef_layer->num_of_frames > 1) {
+      memcpy(temp_frames_pointer,
+             sdef_layer->frames,
+             sizeof(*sdef_layer->frames) * (sdef_layer->num_of_frames - 1));
+      MEM_SAFE_FREE(sdef_layer->frames);
+    }
+
+    sdef_layer->frames = temp_frames_pointer;
+
+    /*First frame changed location with the rellocation of the array.*/
+    first_frame = sdef_layer->frames;
+
+    /*Now sdef_layer->frames is on 0. we need to bring it to the new frame position.*/
+    
+    uint frame_idx = 0;
+    sdef_layer->frames->frame_idx = frame_idx;
+    for (int f = 0; f < sdef_layer->num_of_frames - 1; f++) {
+      sdef_layer->frames->first = first_frame;
+      sdef_layer->frames++;
+      frame_idx++;
+      sdef_layer->frames->frame_idx = frame_idx;
+    }
+
+    /*Fill in the frame data*/
+    sdef_layer->frames->blender_frame = gpf;
+    sdef_layer->frames->frame_number = gpf->framenum; // Not storing it because it could just change
+    sdef_layer->frames->strokes_num = BLI_listbase_count(&(gpf->strokes));
+    sdef_layer->frames->first = first_frame;
+
+    /*Allocate the strokes*/
+    sdef_layer->frames->strokes = MEM_calloc_arrayN(
+        sdef_layer->frames->strokes_num, sizeof(*sdef_layer->frames->strokes), "SDefGPStrokes");
+    if (sdef_layer->frames->strokes == NULL) {
+      BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
+      return false;
+    }
+
+    /*if (gps->prev == NULL){ //gps should have different arrays for different frames, so this should
+      work. allocate_stroke_array(BLI_listbase_count(&(gpf->strokes)), smd_orig, smd); printf("first
+      bind exec \n"); smd_orig->layers->frames->strokes->stroke_idx = 0;
+      }
+      else {
+        uint old_idx = smd_orig->layers->frames->strokes->stroke_idx;
+        (smd_orig->layers->frames->strokes)++; /* increase smd->strokes pointer by 1 *
+        smd_orig->layers->frames->strokes->stroke_idx = old_idx + 1;   /*increase stroke idx value*
+      }*/
+
+    return true;
 }
 
 /*Free a single layer*/
 static bool free_layer(SurDeformGpencilModifierData *smd_orig,
                        SurDeformGpencilModifierData *smd_eval,
-                       bGPDlayer *gpl)
+                       char *layer_info)
 {
+  if (!smd_orig->layers)
+    return true;
   /* If we're not on the first layer, rollback the pointer*/
   if (smd_orig->layers->layer_idx > 0) {
     rollback_layers_a(smd_orig);
   }
-
+  SDefGPLayer *first_layer = smd_orig->layers->first;
   /*Do the same thing as add, but in reverse*/
   smd_orig->num_of_layers--;
   SDefGPLayer *temp_layers_pointer = MEM_calloc_arrayN(
@@ -1278,7 +1278,11 @@ static bool free_layer(SurDeformGpencilModifierData *smd_orig,
   if (smd_orig->num_of_layers > 0) {
     /* Copy one layer at a time, except the one we are unbinding*/
     for (int l = 0; l < smd_orig->num_of_layers; l++) {
-      if (smd_orig->layers[l].blender_layer == gpl) {
+      /*Not sure if this works as intended, unused func so not tested*/
+      if (!strcmp(smd_orig->layers[l].layer_info, layer_info)) {
+        if (&smd_orig->layers[l] == first_layer) {
+          first_layer = &smd_orig->layers[l + 1];
+        }
         l--;
         continue;
       }
@@ -1288,6 +1292,12 @@ static bool free_layer(SurDeformGpencilModifierData *smd_orig,
   }
 
   smd_orig->layers = temp_layers_pointer;
+  /*Set the first layer again if the first was the one being removed*/
+  if (smd_orig->layers->first != first_layer) {
+    for (int l = 0; l < smd_orig->num_of_layers; l++) {
+      smd_orig->layers[l].first = first_layer;
+    }
+  }
 
   return true;
 }
@@ -1296,14 +1306,13 @@ static bool free_layer(SurDeformGpencilModifierData *smd_orig,
 static bool free_frame(SurDeformGpencilModifierData *smd_orig,
                        SurDeformGpencilModifierData *smd_eval,
                        SDefGPLayer *sdef_layer,
-                       bGPDframe *gpf)
+                       uint framenum)
 {
-  if (sdef_layer->frames == NULL) return false;
+  if (sdef_layer->frames == NULL) return true;
   /* If we're not on the first frame, rollback the pointer*/
   if (sdef_layer->frames->frame_idx > 0) {
     rollback_lframes_a(smd_orig, sdef_layer);
   }
-
   /*Do the same thing as add, but in reverse */
   sdef_layer->num_of_frames--;
   SDefGPFrame *temp_frames_pointer = MEM_calloc_arrayN(
@@ -1313,13 +1322,13 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
     return false;
   }
-
+  SDefGPFrame *first_frame = temp_frames_pointer;
   /*if this was the last frame, so num_of_frame has just become 0, we don't need to copy
    * anything.*/
   if (sdef_layer->num_of_frames > 0) {
     /* Copy one frame at a time, except the one we are unbinding*/
     for (int f = 0; f < sdef_layer->num_of_frames; f++) {
-      if (sdef_layer->frames[f].frame_number == gpf->framenum) {
+      if (sdef_layer->frames[f].frame_number == framenum) {
         f--;
         continue;
       }
@@ -1327,8 +1336,14 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
     }
     MEM_SAFE_FREE(sdef_layer->frames);
   }
-
-  sdef_layer->frames = temp_frames_pointer;
+  
+  sdef_layer->frames = first_frame;
+  /*Set the first frame again if the first was the one being removed*/
+  if (sdef_layer->frames->first != first_frame) {
+    for (int f = 0; f < sdef_layer->num_of_frames; f++) {
+      sdef_layer->frames[f].first = first_frame;
+    }
+  }
 
   return true;
 }
@@ -1355,6 +1370,8 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   current_stroke->stroke_verts_num = verts_num;
   current_stroke->verts = MEM_calloc_arrayN(
       verts_num, sizeof(*current_stroke->verts), "SDefBindVerts");
+  char error_label[128];
+  uint framenum = smd_orig->layers->frames->frame_number;
 
   if (current_stroke->verts == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1416,43 +1433,60 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   //}
 
   if (data.success == MOD_SDEF_BIND_RESULT_MEM_ERR) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    //freeData_a(smd_orig);
+
+    BLI_sprintf(error_label,
+                "Layer:%s Frame:%u Stroke:&u \n Out of memory",
+                smd_orig->layers->layer_info,
+                framenum,
+                stroke_idx);
+    
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
-                                   "Target has edges with more than two polygons");
-    //freeData_a(smd_orig);
+    BLI_sprintf(error_label,
+                "Layer:%s Frame:%u Stroke:&u \n Target has edges with more than two polygons",
+                smd_orig->layers->layer_info,
+                framenum,
+                stroke_idx);
+   
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_CONCAVE_ERR) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
-                                   "Target contains concave polygons");
-    //freeData_a(smd_orig);
+    BLI_sprintf(error_label,
+                "Layer:%s Frame:%u Stroke:&u \n Target contains concave polygons",
+                smd_orig->layers->layer_info,
+                framenum,
+                stroke_idx);
+
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_OVERLAP_ERR) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
-                                   "Target contains overlapping vertices");
-    //freeData_a(smd_orig);
+    BLI_sprintf(error_label,
+                "Layer:%s Frame:%u Stroke:&u \n Target contains overlapping vertices",
+                smd_orig->layers->layer_info,
+                framenum,
+                stroke_idx);
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_GENERIC_ERR) {
     /* I know this message is vague, but I could not think of a way
      * to explain this with a reasonably sized message.
      * Though it shouldn't really matter all that much,
      * because this is very unlikely to occur */
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval,
-                                   "Target contains invalid polygons");
-    //freeData_a(smd_orig);
+    BLI_sprintf(error_label,
+                "Layer:%s Frame:%u Stroke:&u \n Target contains invalid polygons",
+                smd_orig->layers->layer_info,
+                framenum,
+                stroke_idx);
   }
   else if (current_stroke->stroke_verts_num == 0 || !current_stroke->verts) {
     data.success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "No vertices were bound");
-    //freeData_a(smd_orig);
+    BLI_sprintf(error_label,
+                "Layer:%s Frame:%u Stroke:&u \n No vertices were bound",
+                smd_orig->layers->layer_info,
+                framenum,
+                stroke_idx);
   }
 
-  /*End: pass onto the next stroke
-  if (stroke_idx < smd_orig->layers->frames->strokes_num - 1) {
-    (smd_orig->layers->frames->strokes)++; // increase smd->strokes pointer by 1 
-  } */
+  if (data.success != 1) {
+    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, error_label);
+  }
   return data.success == 1;
 }
 
@@ -1540,13 +1574,14 @@ static bool surfacedeformBind(bContext *C,
       freeData_a(smd_orig);
     }
     else {
+      uint framenum = BKE_gpencil_frame_retime_get(
+                          depsgraph, scene, ob, smd_orig->layers->blender_layer)
+                          ->framenum;
       for (int l = 0; l < smd_orig->num_of_layers; l++) {
 
         free_frame(smd_orig,
                     smd_eval,
-                    &(smd_orig->layers[l]),
-                    BKE_gpencil_frame_retime_get(
-                        depsgraph, scene, ob, smd_orig->layers[l].blender_layer));
+                    &(smd_orig->layers[l]), framenum);
       }
     }
     rollback_layers_a(smd_orig);
@@ -1680,6 +1715,7 @@ static bool surfacedeformBind(bContext *C,
         }
         uint s = 0;
         uint stroke_error = 0;
+        SDefGPStroke *first_stroke; 
         LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes) {
           if (stroke_error)
             continue;
@@ -1700,6 +1736,10 @@ static bool surfacedeformBind(bContext *C,
             stroke_error = 1;
             continue;
           }
+          if (s == 0) {
+            first_stroke = smd_orig->layers->frames->strokes;
+          }
+          smd_orig->layers->frames->strokes->first = first_stroke; //meglio metterlo nella funzione surfacedeformBind_stroke? Boh 
           s++;
           smd_orig->layers->frames->strokes++;
         }
@@ -1707,7 +1747,11 @@ static bool surfacedeformBind(bContext *C,
           free_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf);
           continue;
         }
-        rollback_strokes_a(smd_orig, smd_orig->layers->frames);
+        /*Stroke pointer is one place beyond end of array, idk if I should have prevented this somehow,
+        dirty memory so can't use rollback strokes function. Bring it back to first_stroke we conveniently recorded earler. */
+        if (smd_orig->layers->frames->strokes != NULL) {
+          smd_orig->layers->frames->strokes = first_stroke;
+        }
         free_bvhtree_from_mesh(&treeData);
         //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
       }
@@ -1754,6 +1798,7 @@ static bool surfacedeformBind(bContext *C,
           smd_orig->layers->frames->strokes = NULL;
         }
         uint stroke_error = 0;
+        SDefGPStroke *first_stroke; 
         LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_frame->strokes) {
           if (stroke_error)
             continue;
@@ -1775,6 +1820,10 @@ static bool surfacedeformBind(bContext *C,
             stroke_error = 1;
             continue;
           }
+          if (s == 0) {
+            first_stroke = smd_orig->layers->frames->strokes;
+          }
+          smd_orig->layers->frames->strokes->first = first_stroke;
           s++;
           smd_orig->layers->frames->strokes++;
         }
@@ -1782,7 +1831,12 @@ static bool surfacedeformBind(bContext *C,
           free_frame(smd_orig, smd_eval, smd_orig->layers, curr_frame);
           continue;
         }
-        rollback_strokes_a(smd_orig, smd_orig->layers->frames);
+        /*Stroke pointer is one place beyond end of array, idk if I should have prevented this
+        somehow, dirty memory so can't use rollback strokes function. Bring it back to first_stroke
+        we conveniently recorded earler. */
+        if (smd_orig->layers->frames->strokes != NULL) {
+          smd_orig->layers->frames->strokes = first_stroke;
+        }
       }
       //free_bvhtree_from_mesh(&treeData);
       //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
@@ -1975,6 +2029,10 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
   else
   {
     printf("bind good \n");
+  }
+
+  if (md_eval->error) {
+    BKE_report(op->reports, RPT_ERROR, &md_eval->error);  // report the error
   }
   
   smd_orig->flags &= ~GP_MOD_SDEF_DO_BIND;

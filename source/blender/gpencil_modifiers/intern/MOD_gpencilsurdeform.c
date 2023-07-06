@@ -85,28 +85,18 @@ typedef struct SDefDeformData {
 
 void rollback_layers(SurDeformGpencilModifierData *smd)
 {
-  if (smd->layers == NULL) return;
-  for (int l = 0; l < smd->num_of_layers; l++)
-  {
-      if (smd->layers->layer_idx == 0)
-      {
-        return;
-      }
-      else
-      {
-        smd->layers--;
-      }
-  }
+  if (smd->layers == NULL)
+    return;
+  smd->layers = smd->layers->first;
 
 }
 
 static void rollback_frames(SurDeformGpencilModifierData *smd, SDefGPLayer *layer)
 {
-  if (layer->frames == NULL) return;
-  while (layer->frames->frame_idx != 0)
-  {
-    layer->frames--;
-  }
+  if (layer->frames == NULL)
+    return;
+  layer->frames = layer->frames->first;
+  return;
   
 }
 
@@ -114,10 +104,8 @@ static void rollback_strokes(SurDeformGpencilModifierData *smd, SDefGPFrame *fra
 {
   
   if (frame->strokes == NULL) return;
-  while (frame->strokes->stroke_idx != 0 )
-  {
-    frame->strokes--;
-  }
+  frame->strokes = frame->strokes->first;
+  return;
   
 }
 struct SurDeformGpencilModifierData *get_original_modifier(Object *ob, SurDeformGpencilModifierData *smd, GpencilModifierData *md)
@@ -138,48 +126,6 @@ struct SurDeformGpencilModifierData *get_original_modifier(Object *ob, SurDeform
   return smd_orig;
 }
 
-/*Free a single frame*/
-static bool free_frame_b(SurDeformGpencilModifierData *smd_orig,
-                       SurDeformGpencilModifierData *smd_eval,
-                       SDefGPLayer *sdef_layer,
-                       bGPDframe *gpf)
-{
-  if (sdef_layer->frames == NULL) return false;
-  /* If we're not on the first frame, rollback the pointer*/
-  if (sdef_layer->frames->frame_idx > 0) {
-    rollback_frames(smd_orig, sdef_layer);
-  }
-
-  /*Do the same thing as add, but in reverse */
-  sdef_layer->num_of_frames--;
-  SDefGPFrame *temp_frames_pointer = MEM_calloc_arrayN(
-      sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
-
-  if (temp_frames_pointer == NULL) {
-    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
-    return false;
-  }
-
-  /*if this was the last frame, so num_of_frame has just become 0, we don't need to copy
-   * anything.*/
-  if (sdef_layer->num_of_frames > 0) {
-    /* Copy one frame at a time, except the one we are unbinding*/
-    for (int f = 0; f < sdef_layer->num_of_frames; f++) {
-      if (sdef_layer->frames[f].blender_frame == gpf) {
-        f--;
-        continue;
-      }
-      memcpy(&temp_frames_pointer[f], &(sdef_layer->frames[f]), sizeof(*sdef_layer->frames));
-    }
-    MEM_SAFE_FREE(sdef_layer->frames);
-  }
-
-  sdef_layer->frames = temp_frames_pointer;
-
-  /* Free stroke array*/
-  MEM_SAFE_FREE(sdef_layer->frames);
-  return true;
-}
 
 
 
@@ -254,12 +200,14 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
     tsmd->layers = MEM_dupallocN(smd->layers);
     for(int l = 0; l < smd->num_of_layers; l++)
     {
+      tsmd->layers[l].first = tsmd->layers;
       if (smd->layers[l].frames)
       {
         rollback_frames(smd, &smd->layers[l]);
         tsmd->layers[l].frames = MEM_dupallocN(smd->layers[l].frames);
         for (int f = 0; f < smd->layers[l].num_of_frames; f++)
         {
+          tsmd->layers[l].frames[f].first = tsmd->layers[l].frames;
           if (smd->layers[l].frames[f].strokes)  
           {
             rollback_strokes(smd, &smd->layers[l].frames[f] );
@@ -267,6 +215,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
             for(int k = 0; k < smd->layers[l].frames[f].strokes_num; k++)
             {
+              tsmd->layers[l].frames[f].strokes[k].first = tsmd->layers[l].frames[f].strokes;
               if (smd->layers[l].frames[f].strokes[k].verts) 
               {
                 tsmd->layers[l].frames[f].strokes[k].verts = MEM_dupallocN(smd->layers[l].frames[f].strokes[k].verts);
@@ -556,34 +505,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
 
-  /* If after the file is loaded the pointers were lost, we need to match the 
-  new pointers of blender_layer and blender_frame. 
-  TODO: If this process fails at any point, free the bind data. */
-  /*uint current_frame_idx = smd->layers->frames->frame_idx;
-  rollback_frames(smd, smd->layers);
-  if (smd->layers->blender_layer == NULL)
-  {
-    LISTBASE_FOREACH (bGPDlayer *, l_temp, &gpd_orig->layers)
-    {
-      if (l_temp->info == smd->layers->layer_info)
-      {
-        smd->layers->blender_layer = l_temp;
-        for (int f = 0; f < smd->layers->num_of_frames; f++) 
-        {
-          LISTBASE_FOREACH (bGPDframe*, f_temp, &l_temp->frames)
-          {
-            if (f_temp->framenum == smd->layers->frames[f].frame_number)
-            {
-              smd->layers->frames[f].blender_frame = f_temp;
-              break;
-            }
-          }
-        }
-        break;
-      }
-    }
-  }
-  smd->layers->frames = &smd->layers->frames[current_frame_idx]; */
+  
   
   
   /*Check only one time. Once the evaluation is over, the flag data will be copied again from 
@@ -684,7 +606,8 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   {
     BKE_gpencil_modifier_set_error(
           md, "Frame number changed from %u to %i", smd->layers->frames->frame_number, gpf->framenum);
-      free_frame_b(smd_orig, smd, smd->layers, gpf);
+      //free_frame_b(smd_orig, smd, smd->layers, gpf);
+    // TODO: RUN FREE FRAME OPERATOR
       return;
   }
 
@@ -757,11 +680,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   SDefGPLayer *curr_layer = NULL;
   SDefGPFrame *curr_frame = NULL;
   
-//  Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  //bGPdata *gpd = ob_orig->data;
- // bGPDlayer *gpl_orig = BKE_gpencil_layer_active_get(gpd);
- // bGPDframe *gpf_orig = BKE_gpencil_frame_retime_get(depsgraph, DEG_get_evaluated_scene(depsgraph), ob, gpl_orig);
-  
+
   /*If we are on stroke 0, check all the current frames of all the layers in memory with their pointer
   to bGPDframe to find the right one and point to that. */
   if (gps->prev == NULL)
@@ -821,7 +740,6 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
     TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
-    SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
     settings.use_threading = (current_sdef_stroke->stroke_verts_num > 10000);
     BLI_task_parallel_range(0, current_sdef_stroke->stroke_verts_num, &data, deformVert, &settings);
 
@@ -850,20 +768,11 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
   if (smd->flags & GP_MOD_SDEF_WITHHOLD_EVALUATION) return;
 
 
-
-  //SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
-
-  //smd->flags = smd_orig->flags;
-
- 
-  
   surfacedeformModifier_do(md, smd, depsgraph, gps, gpf, gpl, ob, NULL /*, mesh_src*/);
  
   /*if (!ELEM(mesh_src, NULL, mesh)) {
     BKE_id_free(NULL, mesh_src);
   }*/
-  
-
   
 
 }
