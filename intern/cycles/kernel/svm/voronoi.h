@@ -110,19 +110,19 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0f;
+  float smoothDistance = 0.0f;
   float smoothPosition = 0.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
+  float h = -1.0f;
   for (int i = -2; i <= 2; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition);
-    float h = smoothDistance < 0.0f ?
-                  1.0f :
-                  smoothstep(0.0f,
-                             1.0f,
-                             0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
+    h = h == -1.0f ?
+            1.0f :
+            smoothstep(
+                0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
     float correctionFactor = params.smoothness * h * (1.0f - h);
     smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
     correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -273,21 +273,21 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0f;
+  float smoothDistance = 0.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float2 smoothPosition = make_float2(0.0f, 0.0f);
+  float h = -1.0f;
   for (int j = -2; j <= 2; j++) {
     for (int i = -2; i <= 2; i++) {
       float2 cellOffset = make_float2(i, j);
       float2 pointPosition = cellOffset +
                              hash_float2_to_float2(cellPosition + cellOffset) * params.randomness;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-      float h = smoothDistance < 0.0f ?
-                    1.0f :
-                    smoothstep(0.0f,
-                               1.0f,
-                               0.5f +
-                                   0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
+      h = h == -1.0f ?
+              1.0f :
+              smoothstep(0.0f,
+                         1.0f,
+                         0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
       float correctionFactor = params.smoothness * h * (1.0f - h);
       smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
       correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -473,9 +473,10 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0f;
+  float smoothDistance = 0.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float3 smoothPosition = make_float3(0.0f, 0.0f, 0.0f);
+  float h = -1.0f;
   for (int k = -2; k <= 2; k++) {
     for (int j = -2; j <= 2; j++) {
       for (int i = -2; i <= 2; i++) {
@@ -483,12 +484,11 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
         float3 pointPosition = cellOffset + hash_float3_to_float3(cellPosition + cellOffset) *
                                                 params.randomness;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-        float h = smoothDistance < 0.0f ?
-                      1.0f :
-                      smoothstep(0.0f,
-                                 1.0f,
-                                 0.5f + 0.5f * (smoothDistance - distanceToPoint) /
-                                            params.smoothness);
+        h = h == -1.0f ?
+                1.0f :
+                smoothstep(0.0f,
+                           1.0f,
+                           0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
         float correctionFactor = params.smoothness * h * (1.0f - h);
         smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
         correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -690,9 +690,10 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0f;
+  float smoothDistance = 0.0f;
   float3 smoothColor = make_float3(0.0f, 0.0f, 0.0f);
   float4 smoothPosition = zero_float4();
+  float h = -1.0f;
   for (int u = -2; u <= 2; u++) {
     for (int k = -2; k <= 2; k++) {
       ccl_loop_no_unroll for (int j = -2; j <= 2; j++)
@@ -702,12 +703,11 @@ ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &para
           float4 pointPosition = cellOffset + hash_float4_to_float4(cellPosition + cellOffset) *
                                                   params.randomness;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-          float h = smoothDistance < 0.0f ?
-                        1.0f :
-                        smoothstep(0.0f,
-                                   1.0f,
-                                   0.5f + 0.5f * (smoothDistance - distanceToPoint) /
-                                              params.smoothness);
+          h = h == -1.0f ?
+                  1.0f :
+                  smoothstep(0.0f,
+                             1.0f,
+                             0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
           float correctionFactor = params.smoothness * h * (1.0f - h);
           smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
           correctionFactor /= 1.0f + 3.0f * params.smoothness;

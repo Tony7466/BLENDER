@@ -156,19 +156,19 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, float coord)
   float cellPosition = floor(coord);
   float localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0;
+  float smoothDistance = 0.0;
   float smoothPosition = 0.0;
   vec3 smoothColor = vec3(0.0);
+  float h = -1.0;
   for (int i = -2; i <= 2; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition);
-    float h = smoothDistance < 0.0 ?
-                  1.0 :
-                  smoothstep(0.0,
-                             1.0,
-                             0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
+    h = h == -1.0 ? 1.0 :
+                    smoothstep(0.0,
+                               1.0,
+                               0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
     float correctionFactor = params.smoothness * h * (1.0 - h);
     smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
     correctionFactor /= 1.0 + 3.0 * params.smoothness;
@@ -316,20 +316,20 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec2 coord)
   vec2 cellPosition = floor(coord);
   vec2 localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0;
+  float smoothDistance = 0.0;
   vec3 smoothColor = vec3(0.0);
   vec2 smoothPosition = vec2(0.0);
+  float h = -1.0;
   for (int j = -2; j <= 2; j++) {
     for (int i = -2; i <= 2; i++) {
       vec2 cellOffset = vec2(i, j);
       vec2 pointPosition = cellOffset +
                            hash_vec2_to_vec2(cellPosition + cellOffset) * params.randomness;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-      float h = smoothDistance < 0.0 ?
-                    1.0 :
-                    smoothstep(0.0,
-                               1.0,
-                               0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
+      h = h == -1.0 ?
+              1.0 :
+              smoothstep(
+                  0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
       float correctionFactor = params.smoothness * h * (1.0 - h);
       smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
       correctionFactor /= 1.0 + 3.0 * params.smoothness;
@@ -512,9 +512,10 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec3 coord)
   vec3 cellPosition = floor(coord);
   vec3 localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0;
+  float smoothDistance = 0.0;
   vec3 smoothColor = vec3(0.0);
   vec3 smoothPosition = vec3(0.0);
+  float h = -1.0;
   for (int k = -2; k <= 2; k++) {
     for (int j = -2; j <= 2; j++) {
       for (int i = -2; i <= 2; i++) {
@@ -522,12 +523,10 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec3 coord)
         vec3 pointPosition = cellOffset +
                              hash_vec3_to_vec3(cellPosition + cellOffset) * params.randomness;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-        float h = smoothDistance < 0.0 ?
-                      1.0 :
-                      smoothstep(0.0,
-                                 1.0,
-                                 0.5 +
-                                     0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
+        h = h == -1.0 ?
+                1.0 :
+                smoothstep(
+                    0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
         float correctionFactor = params.smoothness * h * (1.0 - h);
         smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
         correctionFactor /= 1.0 + 3.0 * params.smoothness;
@@ -723,9 +722,10 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec4 coord)
   vec4 cellPosition = floor(coord);
   vec4 localPosition = coord - cellPosition;
 
-  float smoothDistance = -1.0;
+  float smoothDistance = 0.0;
   vec3 smoothColor = vec3(0.0);
   vec4 smoothPosition = vec4(0.0);
+  float h = -1.0;
   for (int u = -2; u <= 2; u++) {
     for (int k = -2; k <= 2; k++) {
       for (int j = -2; j <= 2; j++) {
@@ -734,12 +734,11 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec4 coord)
           vec4 pointPosition = cellOffset +
                                hash_vec4_to_vec4(cellPosition + cellOffset) * params.randomness;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-          float h = smoothDistance < 0.0 ?
-                        1.0 :
-                        smoothstep(0.0,
-                                   1.0,
-                                   0.5 + 0.5 * (smoothDistance - distanceToPoint) /
-                                             params.smoothness);
+          h = h == -1.0 ?
+                  1.0 :
+                  smoothstep(0.0,
+                             1.0,
+                             0.5 + 0.5 * (smoothDistance - distanceToPoint) / params.smoothness);
           float correctionFactor = params.smoothness * h * (1.0 - h);
           smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
           correctionFactor /= 1.0 + 3.0 * params.smoothness;
