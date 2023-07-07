@@ -742,9 +742,9 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   WPGradient_vertStoreBase *vert_cache = static_cast<WPGradient_vertStoreBase *>(
       gesture->user_data.data);
   Object *ob = CTX_data_active_object(C);
-  Mesh *me = (Mesh *)ob->data;
-  bDeformGroup *dg = (bDeformGroup *)BLI_findlink(&me->vertex_group_names,
-                                                  me->vertex_group_active_index - 1);
+  Mesh *me = static_cast<Mesh *>(ob->data);
+  bDeformGroup *dg = static_cast<bDeformGroup *>(
+      BLI_findlink(&me->vertex_group_names, me->vertex_group_active_index - 1));
 
   int ret;
 
