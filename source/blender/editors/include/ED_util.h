@@ -73,6 +73,7 @@ void ED_region_image_metadata_draw(
 /* Slider */
 
 struct tSlider;
+typedef enum SliderMode { SLIDER_MODE_PERCENT = 0, SLIDER_MODE_FLOAT = 1 } SliderMode;
 
 typedef enum SliderMode { SLIDER_MODE_PERCENT = 0, SLIDER_MODE_FLOAT = 1 } SliderMode;
 

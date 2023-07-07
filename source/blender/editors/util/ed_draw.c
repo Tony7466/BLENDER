@@ -56,6 +56,7 @@
 
 #define SLIDE_PIXEL_DISTANCE (300.0f * UI_SCALE_FAC)
 #define OVERSHOOT_RANGE_DELTA 0.2f
+#define SLIDER_UNIT_STRING_SIZE 64
 
 typedef struct tSlider {
   Scene *scene;
@@ -83,7 +84,7 @@ typedef struct tSlider {
   SliderMode slider_mode;
 
   /* What unit to add to the slider. */
-  const char *unit_string;
+  char unit_string[SLIDER_UNIT_STRING_SIZE];
 
   /** Enable range beyond factor_bounds.
    * This is set by the code that uses the slider, as not all operations support
@@ -355,22 +356,24 @@ static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
   }
 
   /* Draw factor string. */
-  float percentage_string_pixel_size[2];
+  float factor_string_pixel_size[2];
   BLF_width_and_height(fontid,
                        factor_string,
                        sizeof(factor_string),
-                       &percentage_string_pixel_size[0],
-                       &percentage_string_pixel_size[1]);
+                       &factor_string_pixel_size[0],
+                       &factor_string_pixel_size[1]);
 
   BLF_position(fontid,
-               main_line_rect.xmin - 6.0 * U.pixelsize - percentage_string_pixel_size[0],
-               (region->winy / 2) - percentage_string_pixel_size[1] / 2,
+               main_line_rect.xmin - 24.0 * U.pixelsize - factor_string_pixel_size[0] / 2,
+               (region->winy / 2) - factor_string_pixel_size[1] / 2,
                0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
 }
 
 static void slider_update_factor(tSlider *slider, const wmEvent *event)
 {
+  /* Normalize so no matter the factor bounds, the mouse distance travelled from min to max is
+   * constant. */
   const float slider_range = slider->factor_bounds[1] - slider->factor_bounds[0];
   const float factor_delta = (event->xy[0] - slider->last_cursor[0]) /
                              (SLIDE_PIXEL_DISTANCE / slider_range);
@@ -411,7 +414,7 @@ tSlider *ED_slider_create(bContext *C)
   slider->factor_bounds[0] = 0;
   slider->factor_bounds[1] = 1;
 
-  slider->unit_string = "%";
+  slider->unit_string[0] = '%';
 
   slider->slider_mode = SLIDER_MODE_PERCENT;
 
@@ -580,7 +583,7 @@ void ED_slider_mode_set(tSlider *slider, SliderMode mode)
 
 void ED_slider_unit_set(tSlider *slider, const char *unit)
 {
-  slider->unit_string = unit;
+  BLI_strncpy(slider->unit_string, unit, SLIDER_UNIT_STRING_SIZE);
 }
 
 /** \} */
