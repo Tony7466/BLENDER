@@ -166,7 +166,7 @@ class EEVEE_WORLD_PT_probe(WorldButtonsPanel, Panel):
         world = context.world
 
         layout.use_property_split = True
-        layout.prop(world, "bake_resolution")
+        layout.prop(world, "probe_resolution")
 
 
 class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):

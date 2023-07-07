@@ -105,10 +105,10 @@ void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
 }
 
 static int layer_subdivision_for(const int max_resolution,
-                                 const eLightProbeBakeResolution bake_resolution)
+                                 const eLightProbeResolution probe_resolution)
 {
-  int i_bake_resolution = int(bake_resolution);
-  return max_ii(int(log2(max_resolution)) - i_bake_resolution, 0);
+  int i_probe_resolution = int(probe_resolution);
+  return max_ii(int(log2(max_resolution)) - i_probe_resolution, 0);
 }
 
 void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle*/)
@@ -116,7 +116,7 @@ void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle
   ReflectionProbe &probe = probes_[0];
   ReflectionProbeData &probe_data = data_buf_.data()->probe_data[probe.index];
   probe_data.layer_subdivision = layer_subdivision_for(
-      max_resolution_, static_cast<eLightProbeBakeResolution>(world->bake_resolution));
+      max_resolution_, static_cast<eLightProbeResolution>(world->probe_resolution));
 }
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
@@ -128,7 +128,7 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   }
   const bool is_dirty = ob_handle.recalc != 0;
   int subdivision = layer_subdivision_for(
-      max_resolution_, static_cast<eLightProbeBakeResolution>(light_probe->bake_resolution));
+      max_resolution_, static_cast<eLightProbeResolution>(light_probe->resolution));
   ReflectionProbe &probe = find_or_insert(ob_handle, subdivision);
   probe.is_dirty |= is_dirty;
   probe.is_used = true;

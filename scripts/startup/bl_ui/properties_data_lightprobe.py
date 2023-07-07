@@ -113,7 +113,7 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
 
         elif probe.type == 'CUBEMAP':
             col = layout.column()
-            col.prop(probe, "bake_resolution")
+            col.prop(probe, "resolution")
 
         elif probe.type == 'PLANAR':
             # Currently unsupported

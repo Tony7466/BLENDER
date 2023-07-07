@@ -28,7 +28,7 @@
     .miststa = 5.0f, \
     .mistdist = 25.0f, \
   \
-    .bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_1024, \
+    .probe_resolution = LIGHT_PROBE_RESOLUTION_1024, \
   }
 
 /** \} */

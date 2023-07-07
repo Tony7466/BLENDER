@@ -288,15 +288,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     /* Set default bake resolution. */
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "bake_resolution")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "resolution")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
-        lightprobe->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_1024;
+        lightprobe->resolution = LIGHT_PROBE_RESOLUTION_1024;
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "bake_resolution")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "probe_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
-        world->bake_resolution = LIGHT_PROBE_BAKE_RESOLUTION_1024;
+        world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
       }
     }
 

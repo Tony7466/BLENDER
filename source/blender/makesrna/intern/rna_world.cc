@@ -109,13 +109,13 @@ void rna_World_lightgroup_set(PointerRNA *ptr, const char *value)
 
 #else
 
-static const EnumPropertyItem world_bake_resolution_items[] = {
-    {LIGHT_PROBE_BAKE_RESOLUTION_64, "64", 0, "64", ""},
-    {LIGHT_PROBE_BAKE_RESOLUTION_128, "128", 0, "128", ""},
-    {LIGHT_PROBE_BAKE_RESOLUTION_256, "256", 0, "256", ""},
-    {LIGHT_PROBE_BAKE_RESOLUTION_512, "512", 0, "512", ""},
-    {LIGHT_PROBE_BAKE_RESOLUTION_1024, "1024", 0, "1024", ""},
-    {LIGHT_PROBE_BAKE_RESOLUTION_2048, "2048", 0, "2048", ""},
+static const EnumPropertyItem world_probe_resolution_items[] = {
+    {LIGHT_PROBE_RESOLUTION_64, "64", 0, "64", ""},
+    {LIGHT_PROBE_RESOLUTION_128, "128", 0, "128", ""},
+    {LIGHT_PROBE_RESOLUTION_256, "256", 0, "256", ""},
+    {LIGHT_PROBE_RESOLUTION_512, "512", 0, "512", ""},
+    {LIGHT_PROBE_RESOLUTION_1024, "1024", 0, "1024", ""},
+    {LIGHT_PROBE_RESOLUTION_2048, "2048", 0, "2048", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -275,9 +275,9 @@ void RNA_def_world(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Lightgroup", "Lightgroup that the world belongs to");
 
   /* Reflection Probe Baking. */
-  prop = RNA_def_property(srna, "bake_resolution", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "bake_resolution");
-  RNA_def_property_enum_items(prop, world_bake_resolution_items);
+  prop = RNA_def_property(srna, "probe_resolution", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "probe_resolution");
+  RNA_def_property_enum_items(prop, world_probe_resolution_items);
   RNA_def_property_ui_text(prop, "Resolution", "Resolution when baked to a texture");
   RNA_def_property_update(prop, 0, "rna_World_draw_update");
 
