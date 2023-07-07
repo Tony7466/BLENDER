@@ -61,7 +61,7 @@ vec2 octahedral_uv_to_layer_texture_coords(vec2 octahedral_uv,
  * octahedral texture layer for the given probe.
  *
  * It also applies wrapping in the additional space near borders.
- * NOTE this function doesn't apply the translation part of the packing.
+ * NOTE: Doesn't apply the translation part of the packing.
  */
 vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
                                              ReflectionProbeData probe_data,
@@ -71,31 +71,9 @@ vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
   /* Apply border region. */
   vec2 shrinked_uv = (uv - REFLECTION_PROBE_BORDER_SIZE * texel_size) /
                      (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size);
-
-  /* Mirror until the coordinates fit. */
-  /* Fix right side. */
-  if (shrinked_uv.x >= 1.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y >= 1.0)) {
-    shrinked_uv.x = 2.0 - shrinked_uv.x;
-    shrinked_uv.y = 1.0 - shrinked_uv.y;
-  }
-  /* Fix left side. */
-  else if (shrinked_uv.x < 0.0 && !(shrinked_uv.y < 0.0 || shrinked_uv.y >= 1.0)) {
-    shrinked_uv.x = -shrinked_uv.x;
-    shrinked_uv.y = 1.0 - shrinked_uv.y;
-  }
-  /* Fix top side. */
-  else if (shrinked_uv.y >= 1.0 && !(shrinked_uv.x < 0.0 || shrinked_uv.x >= 1.0)) {
-    shrinked_uv.x = 1.0 - shrinked_uv.x;
-    shrinked_uv.y = 2.0 - shrinked_uv.y;
-  }
-  /* Fix bottom side. */
-  else if (shrinked_uv.y < 0.0 && !(shrinked_uv.x < 0.0 || shrinked_uv.x >= 1.0)) {
-    shrinked_uv.x = 1.0 - shrinked_uv.x;
-    shrinked_uv.y = -shrinked_uv.y;
-  }
-  else {
-    /* Normal case or fixing corners. */
-    shrinked_uv = fract(shrinked_uv);
-  }
-  return shrinked_uv;
+  /* Use ping/pong to extend the octahedral coordinates. */
+  vec2 translated_pos = shrinked_uv + vec2(2.0);
+  ivec2 checker_pos = ivec2(translated_pos);
+  bool is_even = ((checker_pos.x + checker_pos.y) & 1) == 0;
+  return is_even ? fract(shrinked_uv) : vec2(1.0) - fract(shrinked_uv);
 }
