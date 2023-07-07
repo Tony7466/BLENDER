@@ -220,7 +220,10 @@ static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu, View2D *v2d, boo
   immEnd();
 }
 
-static void draw_locked_keyframe_vertices(FCurve *fcu, View2D *v2d, uint attr_id)
+static void draw_locked_keyframe_vertices(FCurve *fcu,
+                                          View2D *v2d,
+                                          const uint attr_id,
+                                          const float unit_scale)
 {
   const float correction_factor = 0.05f * BLI_rctf_size_x(&v2d->cur);
 
@@ -229,7 +232,9 @@ static void draw_locked_keyframe_vertices(FCurve *fcu, View2D *v2d, uint attr_id
   float scale[2];
   UI_view2d_scale_get(v2d, &scale[0], &scale[1]);
   scale[0] /= vertex_size;
-  scale[1] /= vertex_size;
+  /* Dividing by the unit scale is needed to display euler correctly (internally they are radians
+   * but displayed as degrees) and all curves when normalization is turned on. */
+  scale[1] /= vertex_size / unit_scale;
 
   set_fcurve_vertex_color(fcu, false);
 
@@ -272,7 +277,8 @@ static void draw_fcurve_active_vertex(const FCurve *fcu, const View2D *v2d, cons
 }
 
 /* helper func - draw keyframe vertices only for an F-Curve */
-static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, uint pos)
+static void draw_fcurve_keyframe_vertices(
+    FCurve *fcu, View2D *v2d, bool edit, const uint pos, const float unit_scale)
 {
   if (edit) {
     immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
@@ -292,7 +298,7 @@ static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, u
     GPU_blend(GPU_BLEND_ALPHA);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-    draw_locked_keyframe_vertices(fcu, v2d, pos);
+    draw_locked_keyframe_vertices(fcu, v2d, pos, unit_scale);
 
     immUnbindProgram();
     GPU_blend(GPU_BLEND_NONE);
@@ -402,10 +408,8 @@ static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handl
   immUnbindProgram();
 }
 
-static void draw_fcurve_vertices(ARegion *region,
-                                 FCurve *fcu,
-                                 bool do_handles,
-                                 bool sel_handle_only)
+static void draw_fcurve_vertices(
+    ARegion *region, FCurve *fcu, bool do_handles, bool sel_handle_only, const float unit_scale)
 {
   View2D *v2d = &region->v2d;
 
@@ -428,7 +432,7 @@ static void draw_fcurve_vertices(ARegion *region,
   }
 
   /* draw keyframes over the handles */
-  draw_fcurve_keyframe_vertices(fcu, v2d, !(fcu->flag & FCURVE_PROTECTED), pos);
+  draw_fcurve_keyframe_vertices(fcu, v2d, !(fcu->flag & FCURVE_PROTECTED), pos, unit_scale);
 
   GPU_program_point_size(false);
   GPU_blend(GPU_BLEND_NONE);
@@ -552,7 +556,7 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
 /* Samples ---------------- */
 
 /* helper func - draw keyframe vertices only for an F-Curve */
-static void draw_fcurve_samples(ARegion *region, FCurve *fcu)
+static void draw_fcurve_samples(ARegion *region, FCurve *fcu, const float unit_scale)
 {
   FPoint *first, *last;
   float scale[2];
@@ -560,8 +564,9 @@ static void draw_fcurve_samples(ARegion *region, FCurve *fcu)
   /* get view settings */
   const float hsize = UI_GetThemeValuef(TH_VERTEX_SIZE);
   UI_view2d_scale_get(&region->v2d, &scale[0], &scale[1]);
+
   scale[0] /= hsize;
-  scale[1] /= hsize;
+  scale[1] /= hsize / unit_scale;
 
   /* get verts */
   first = fcu->fpt;
@@ -1190,7 +1195,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
     else if (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert)) {
       short mapping_flag = ANIM_get_normalization_flags(ac);
       float offset;
-      float unit_scale = ANIM_unit_mapping_get_factor(
+      const float unit_scale = ANIM_unit_mapping_get_factor(
           ac->scene, ale->id, fcu, mapping_flag, &offset);
 
       /* apply unit-scaling to all values via OpenGL */
@@ -1210,11 +1215,12 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
           draw_fcurve_handles(sipo, fcu);
         }
 
-        draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));
+        draw_fcurve_vertices(
+            region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY), unit_scale);
       }
       else {
         /* samples: only draw two indicators at either end as indicators */
-        draw_fcurve_samples(region, fcu);
+        draw_fcurve_samples(region, fcu, unit_scale);
       }
 
       GPU_matrix_pop();
