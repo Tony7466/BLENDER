@@ -5217,7 +5217,7 @@ static void rna_def_modifier_weightvgedit(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "add_threshold", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "add_threshold");
+  RNA_def_property_float_sdna(prop, nullptr, "add_threshold");
   RNA_def_property_range(prop, -1000.0, 1000.0);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1, -1);
   RNA_def_property_ui_text(prop,
@@ -5227,7 +5227,7 @@ static void rna_def_modifier_weightvgedit(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "remove_threshold", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "rem_threshold");
+  RNA_def_property_float_sdna(prop, nullptr, "rem_threshold");
   RNA_def_property_range(prop, -1000.0, 1000.0);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1, -1);
   RNA_def_property_ui_text(prop,
