@@ -1498,7 +1498,7 @@ int insert_keyframe(Main *bmain,
   }
 
   if (!BKE_id_is_editable(bmain, id)) {
-    BKE_reportf(reports, RPT_ERROR, "ID block for %s is not editable", rna_path);
+    BKE_reportf(reports, RPT_ERROR, "'%s' on %s is not editable", rna_path, id->name + 2);
     return 0;
   }
 
