@@ -41,7 +41,7 @@
 
 void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
 {
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 9)) {
     /* Fix area light scaling. */
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->energy = light->energy_deprecated;
