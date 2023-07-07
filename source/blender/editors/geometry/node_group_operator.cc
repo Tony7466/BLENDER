@@ -39,7 +39,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -69,9 +69,51 @@ namespace blender::ed::geometry {
 /** \name Operator
  * \{ */
 
-static const bNodeTree *get_node_group(const bContext &C)
+static const asset_system::AssetRepresentation *get_asset_at_full_path(
+    const bContext &C, const StringRefNull asset_full_path, ReportList *reports)
 {
-  const asset_system::AssetRepresentation *asset = CTX_wm_asset(&C);
+  const AssetLibraryReference library_ref = asset_system::all_library_reference();
+  ED_assetlist_storage_fetch(&library_ref, &C);
+  ED_assetlist_ensure_previews_job(&library_ref, &C);
+  asset_system::AssetLibrary *library = ED_assetlist_library_get_once_available(library_ref);
+  if (!library) {
+    return nullptr;
+  }
+
+  const asset_system::AssetRepresentation *matching_asset = nullptr;
+  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (asset.get_identifier().full_path() == asset_full_path) {
+      matching_asset = &asset;
+      return false;
+    }
+    return true;
+  });
+  if (reports && !matching_asset) {
+    BKE_reportf(reports, RPT_ERROR, "No asset found at %s", asset_full_path.c_str());
+  }
+  return matching_asset;
+}
+
+static std::string rna_get_string(PointerRNA &ptr, const StringRefNull name)
+{
+  char *value = RNA_string_get_alloc(&ptr, name.c_str(), nullptr, 0, nullptr);
+  std::string result = value ? value : "";
+  MEM_SAFE_FREE(value);
+  return result;
+}
+
+/** \note Does not check asset type or meta data. */
+static const asset_system::AssetRepresentation *get_asset(const bContext &C,
+                                                          PointerRNA &ptr,
+                                                          ReportList *reports)
+{
+  const std::string path = rna_get_string(ptr, "asset_full_path");
+  return get_asset_at_full_path(C, path, reports);
+}
+
+static const bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
+{
+  const asset_system::AssetRepresentation *asset = get_asset(C, ptr, reports);
   if (!asset) {
     return nullptr;
   }
@@ -81,6 +123,9 @@ static const bNodeTree *get_node_group(const bContext &C)
     return nullptr;
   }
   if (node_group->type != NTREE_GEOMETRY) {
+    if (reports) {
+      BKE_report(reports, RPT_ERROR, "Asset is not a geometry node group");
+    }
     return nullptr;
   }
   return node_group;
@@ -216,7 +261,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   }
   const eObjectMode mode = eObjectMode(active_object->mode);
 
-  const bNodeTree *node_tree = get_node_group(*C);
+  const bNodeTree *node_tree = get_node_group(*C, *op->ptr, op->reports);
   if (!node_tree) {
     return OPERATOR_CANCELLED;
   }
@@ -241,7 +286,6 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     nodes::GeoNodesOperatorData operator_eval_data{};
     operator_eval_data.depsgraph = depsgraph;
     operator_eval_data.self_object = object;
-    operator_eval_data.scene = scene;
 
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object);
 
@@ -268,7 +312,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 
 static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  const bNodeTree *node_tree = get_node_group(*C);
+  const bNodeTree *node_tree = get_node_group(*C, *op->ptr, op->reports);
   if (!node_tree) {
     return OPERATOR_CANCELLED;
   }
@@ -279,11 +323,9 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
   return run_node_group_exec(C, op);
 }
 
-static char *run_node_group_get_description(bContext *C,
-                                            wmOperatorType * /*ot*/,
-                                            PointerRNA * /*ptr*/)
+static char *run_node_group_get_description(bContext *C, wmOperatorType * /*ot*/, PointerRNA *ptr)
 {
-  const asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
+  const asset_system::AssetRepresentation *asset = get_asset(*C, *ptr, nullptr);
   if (!asset) {
     return nullptr;
   }
@@ -292,22 +334,6 @@ static char *run_node_group_get_description(bContext *C,
     return nullptr;
   }
   return BLI_strdup(description);
-}
-
-static bool run_node_group_poll(bContext *C)
-{
-  const asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
-  if (!asset) {
-    return false;
-  }
-  const Object *object = CTX_data_active_object(C);
-  if (object->type != OB_CURVES) {
-    return false;
-  }
-  if (object->mode != OB_MODE_SCULPT_CURVES) {
-    return false;
-  }
-  return true;
 }
 
 static void add_attribute_search_or_value_buttons(const bContext &C,
@@ -345,7 +371,6 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
   }
 
   if (use_attribute) {
-    // TODO: PROPER ATTRIBUTE SEARCH
     uiItemR(layout, md_ptr, rna_path_attribute_name.c_str(), 0, "", ICON_NONE);
     uiItemL(layout, "", ICON_BLANK1);
   }
@@ -427,20 +452,16 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
   PointerRNA bmain_ptr;
   RNA_main_pointer_create(bmain, &bmain_ptr);
 
-  // TODO: DOESN'T WORK
-  const bNodeTree *node_tree = get_node_group(*C);
+  const bNodeTree *node_tree = get_node_group(*C, *op->ptr, nullptr);
   if (!node_tree) {
     return;
   }
 
   int socket_index;
   LISTBASE_FOREACH_INDEX (bNodeSocket *, io_socket, &node_tree->inputs, socket_index) {
-    std::cout << "Input identifier: " << io_socket->identifier << '\n';
     draw_property_for_socket(
         *C, *node_tree, layout, op->properties, &bmain_ptr, op->ptr, *io_socket, socket_index);
   }
-  // uiDefAutoButsRNA(
-  //     layout, op->ptr, nullptr, nullptr, nullptr, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, false);
 }
 
 void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
@@ -449,14 +470,17 @@ void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
   ot->idname = __func__;
   ot->description = "Execute a node group on geometry";
 
-  ot->poll = run_node_group_poll;
+  /* Poll is not possible, since it doesn't have access to the operator's properties. */
   ot->invoke = run_node_group_invoke;
   ot->exec = run_node_group_exec;
   ot->get_description = run_node_group_get_description;
-  ot->get_name = run_node_group_get_name;
   ot->ui = run_node_group_ui;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  PropertyRNA *prop;
+  prop = RNA_def_string(ot->srna, "asset_full_path", nullptr, 0, "Asset Name", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -571,9 +595,17 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
 
   for (const asset_system::AssetRepresentation *asset : assets) {
     uiLayout *col = uiLayoutColumn(layout, false);
-    PointerRNA asset_ptr = asset::create_asset_rna_ptr(asset);
-    uiLayoutSetContextPointer(col, "asset", &asset_ptr);
-    uiItemO(col, IFACE_(asset->get_name().c_str()), ICON_NONE, "GEOMETRY_OT_execute_node_group");
+    wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
+    PointerRNA props_ptr;
+    uiItemFullO_ptr(col,
+                    ot,
+                    IFACE_(asset->get_name().c_str()),
+                    ICON_NONE,
+                    nullptr,
+                    WM_OP_INVOKE_DEFAULT,
+                    0,
+                    &props_ptr);
+    RNA_string_set(&props_ptr, "asset_full_path", asset->get_identifier().full_path().c_str());
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
