@@ -64,7 +64,7 @@ typedef struct World {
   char _pad3[2];
 
   /** Eevee settings. */
-  /** 
+  /**
    * Resolution of the world probe when baked to a texture. Contains `eLightProbeResolution`.
    */
   int probe_resolution;
