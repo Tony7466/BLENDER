@@ -234,7 +234,7 @@ static void draw_locked_keyframe_vertices(FCurve *fcu,
   scale[0] /= vertex_size;
   /* Dividing by the unit scale is needed to display euler correctly (internally they are radians
    * but displayed as degrees) and all curves when normalization is turned on. */
-  scale[1] /= vertex_size / unit_scale;
+  scale[1] = scale[1] / vertex_size * unit_scale;
 
   set_fcurve_vertex_color(fcu, false);
 
