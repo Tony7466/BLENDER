@@ -162,9 +162,8 @@ void SyncModule::sync_point_cloud(Object *ob,
 {
   int material_slot = 1;
 
-  /*bool has_motion = inst_.velocity.step_object_sync(
-      ob, ob_handle.object_key, res_handle, ob_handle.recalc);*/
-  bool has_motion = false;
+  bool has_motion = inst_.velocity.step_object_sync(
+      ob, ob_handle.object_key, res_handle, ob_handle.recalc);
 
   Material &material = inst_.materials.material_get(
       ob, has_motion, material_slot - 1, MAT_GEOM_POINT_CLOUD);
