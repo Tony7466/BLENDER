@@ -97,9 +97,10 @@ static int gpu_shader_normal_map(GPUMaterial *mat,
       GPU_link(mat,
                "node_normal_map",
                GPU_attribute(mat, CD_TANGENT, nm->uv_map),
+               strength,
                newnormal,
-               &newnormal);
-      break;
+               &out[0].link);
+      return true;
     case SHD_SPACE_OBJECT:
     case SHD_SPACE_BLENDER_OBJECT:
       GPU_link(mat, "normal_transform_object_to_world", newnormal, &newnormal);
