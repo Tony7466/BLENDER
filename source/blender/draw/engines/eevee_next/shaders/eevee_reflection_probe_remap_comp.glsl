@@ -25,6 +25,7 @@ void main()
   vec3 R = octahedral_uv_to_direction(octahedral_uv);
 
   vec4 col = textureLod(cubemap_tx, R, float(probe_data.layer_subdivision));
+  // col.xy = octahedral_uv;
 
   int probes_per_dimension = 1 << probe_data.layer_subdivision;
   ivec2 area_coord = ivec2(probe_data.area_index % probes_per_dimension,

@@ -44,7 +44,6 @@ vec2 octahedral_uv_to_layer_texture_coords(vec2 octahedral_uv,
   /* Fix artifacts near edges. Proved one texel  on each side.*/
   octahedral_uv = octahedral_uv * (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size) +
                   REFLECTION_PROBE_BORDER_SIZE * texel_size + 0.5 * texel_size;
-  ;
 
   int areas_per_dimension = 1 << probe_data.layer_subdivision;
   vec2 area_scalar = vec2(1.0 / float(areas_per_dimension));
@@ -72,7 +71,7 @@ vec2 octahedral_uv_from_layer_texture_coords(vec2 uv,
   vec2 shrinked_uv = (uv - REFLECTION_PROBE_BORDER_SIZE * texel_size) /
                      (1.0 - 2.0 * REFLECTION_PROBE_BORDER_SIZE * texel_size);
   /* Use ping/pong to extend the octahedral coordinates. */
-  vec2 translated_pos = shrinked_uv + vec2(2.0);
+  vec2 translated_pos = clamp(-sign(shrinked_uv), vec2(0.0), vec2(1.0)) * vec2(2.0) + shrinked_uv;
   ivec2 checker_pos = ivec2(translated_pos);
   bool is_even = ((checker_pos.x + checker_pos.y) & 1) == 0;
   return is_even ? fract(shrinked_uv) : vec2(1.0) - fract(shrinked_uv);
