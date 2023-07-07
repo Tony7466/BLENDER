@@ -6,6 +6,17 @@
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
 
+vec4 quaternion_from_vector_delta(vec3 from, vec3 to)
+{
+  return normalize(vec4(cross(from, to), 1.0 + dot(from, to)));
+}
+
+vec3 quaternion_transform(vec4 a, vec3 vector)
+{
+  vec3 t = cross(a.xyz, vector) * 2.0;
+  return vector + t * a.w + cross(a.xyz, t);
+}
+
 void main()
 {
   DRW_VIEW_FROM_RESOURCE_ID;
@@ -27,6 +38,28 @@ void main()
                         camera_buf.viewinv[2].xyz;
     facing_mat[1] = normalize(cross(camera_buf.viewinv[0].xyz, facing_mat[2]));
     facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
+
+#ifdef MAT_SHADOW
+    /* Since only half of the shape is rendered, ensure it's facing towards the light,
+     * but aligned with the camera axes. */
+    vec3 new_z_axis;
+    {
+      vec3 shadowmap_V = cameraVec(point_cloud_interp.position);
+      float max_abs_dot = -1.0f;
+      for (int i = 0; i < 3; i++) {
+        float _dot = dot(facing_mat[i], shadowmap_V);
+        if (abs(_dot) > max_abs_dot) {
+          max_abs_dot = abs(_dot);
+          new_z_axis = facing_mat[i] * sign(_dot);
+        }
+      }
+    }
+
+    vec4 delta_quat = quaternion_from_vector_delta(facing_mat[2], new_z_axis);
+    facing_mat[2] = new_z_axis;
+    facing_mat[1] = quaternion_transform(delta_quat, facing_mat[1]);
+    facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
+#endif
   }
 
   interp.N = pointcloud_get_normal(facing_mat);
