@@ -2697,6 +2697,14 @@ static void widget_state_menu_item(uiWidgetType *wt,
     if (state->but_flag & UI_ACTIVE) {
       copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
     }
+
+    if (state->but_flag & UI_BUT_REDALERT) {
+      const uchar red[4] = {255, 0, 0};
+      if ((state->but_flag & UI_ACTIVE) == 0) {
+        color_blend_v3_v3(wt->wcol.text, red, 0.6f);
+      }
+      color_blend_v3_v3(wt->wcol.inner, red, 0.6f);
+    }
   }
 }
 
@@ -3990,7 +3998,7 @@ static void widget_pulldownbut(uiWidgetColors *wcol,
   float back[4];
   UI_GetThemeColor4fv(TH_BACK, back);
 
-  if ((state->but_flag & UI_ACTIVE) || (back[3] < 1.0f)) {
+  if ((state->but_flag & (UI_ACTIVE | UI_BUT_REDALERT)) || (back[3] < 1.0f)) {
     uiWidgetBase wtb;
     const float rad = widget_radius_from_zoom(zoom, wcol);
 
@@ -4002,6 +4010,15 @@ static void widget_pulldownbut(uiWidgetColors *wcol,
     else {
       wcol->inner[3] *= 1.0f - back[3];
       wcol->outline[3] = 0.0f;
+    }
+
+    if (state->but_flag & UI_BUT_REDALERT) {
+      const uchar red[4] = {255, 0, 0};
+      if ((state->but_flag & UI_ACTIVE) == 0) {
+        color_blend_v3_v3(wcol->text, red, 0.6f);
+      }
+      color_blend_v3_v3(wcol->inner, red, 0.6f);
+      color_blend_v3_v3(wcol->outline, red, 0.6f);
     }
 
     widget_init(&wtb);

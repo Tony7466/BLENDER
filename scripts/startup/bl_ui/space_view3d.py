@@ -195,6 +195,7 @@ class VIEW3D_HT_tool_header(Header):
         elif mode_string == 'PARTICLE':
             layout.popover_group(context=".particlemode", **popover_kw)
         elif mode_string == 'OBJECT':
+            layout.alert = True
             layout.popover_group(context=".objectmode", **popover_kw)
         elif mode_string in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
             # Grease pencil layer.
@@ -944,8 +945,9 @@ class VIEW3D_MT_editor_menus(Menu):
         gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL',
                                        'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
         tool_settings = context.scene.tool_settings
-
-        layout.menu("VIEW3D_MT_view")
+        sub = layout.row()
+        sub.alert = True
+        sub.menu("VIEW3D_MT_view")
 
         # Select Menu
         if gp_edit:
@@ -1271,7 +1273,9 @@ class VIEW3D_MT_view(Menu):
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_view_cameras", text="Cameras")
+        sub = layout.row()
+        sub.alert = True
+        sub.menu("VIEW3D_MT_view_cameras", text="Cameras")
 
         layout.separator()
         layout.menu("VIEW3D_MT_view_viewpoint")

@@ -50,6 +50,7 @@ class OUTLINER_HT_header(Header):
 
         row = layout.row(align=True)
         if display_mode in {'SCENES', 'VIEW_LAYER', 'LIBRARY_OVERRIDES'}:
+            row.alert = True
             row.popover(
                 panel="OUTLINER_PT_filter",
                 text="",

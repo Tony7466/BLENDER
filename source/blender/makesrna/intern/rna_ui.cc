@@ -1343,6 +1343,7 @@ static void rna_def_ui_layout(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "alert", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_UILayout_alert_get", "rna_UILayout_alert_set");
+  RNA_def_property_ui_text(prop, "Alert", "When true, widgets will draw in red (background and/or text)");
 
   prop = RNA_def_property(srna, "alignment", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, alignment_items);

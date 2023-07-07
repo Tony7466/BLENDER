@@ -3057,6 +3057,10 @@ static uiBut *ui_item_menu(uiLayout *layout,
     UI_but_type_set_menu_from_pulldown(but);
   }
 
+  if (layout->redalert) {
+    UI_but_flag_enable(but, UI_BUT_REDALERT);
+  }
+
   return but;
 }
 
