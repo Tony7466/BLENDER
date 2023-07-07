@@ -188,7 +188,7 @@ int ReflectionProbeModule::reflection_probe_data_index_max() const
 }
 
 /**
- * Utility class to find a location in the cubemap that can be used to store a new probe cubemap in
+ * Utility class to find a location in the probes_tx_ that can be used to store a new probe in
  * a specified subdivision level.
  */
 class ProbeLocationFinder {
@@ -301,8 +301,10 @@ void ReflectionProbeModule::end_sync()
   bool regenerate_mipmaps_postponed = false;
 
   for (ReflectionProbe &cubemap : probes_) {
-    cubemap.is_dirty |= resize_layers;
-    cubemap.is_probes_tx_dirty |= resize_layers;
+    if (resize_layers) {
+      cubemap.is_dirty = true;
+      cubemap.is_probes_tx_dirty = true;
+    }
 
     if (!cubemap.needs_update()) {
       continue;
@@ -382,26 +384,6 @@ void ReflectionProbeModule::recalc_lod_factors()
     probe_data.lod_factor = lod_factor;
   }
 }
-
-/* -------------------------------------------------------------------- */
-/** \name World
- *
- * \{ */
-
-bool ReflectionProbe::needs_update() const
-{
-  switch (type) {
-    case Type::Unused:
-      return false;
-    case Type::World:
-      return is_dirty;
-    case Type::Probe:
-      return is_dirty && is_used;
-  }
-  return false;
-}
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Debugging
@@ -502,7 +484,12 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
 
 void ReflectionProbeModule::remap_to_octahedral_projection()
 {
+  const ReflectionProbe &world_probe = probes_[0];
+  const ReflectionProbeData &probe_data = data_buf_[world_probe.index];
+  dispatch_probe_pack_ = int2(
+      ceil_division(max_resolution_ >> probe_data.layer_subdivision, REFLECTION_PROBE_GROUP_SIZE));
   instance_.manager->submit(remap_ps_);
+  /* TODO: Performance - Should only update the area that has changed. */
   GPU_texture_update_mipmap_chain(probes_tx_);
 }
 

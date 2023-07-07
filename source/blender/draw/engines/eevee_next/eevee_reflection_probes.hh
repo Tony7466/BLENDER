@@ -33,7 +33,7 @@ struct ReflectionProbe {
   Type type = Type::Unused;
 
   bool is_dirty = false;
-  /* Should the area in the cubemap result be updated? */
+  /* Should the area in the probes_tx_ be updated? */
   bool is_probes_tx_dirty = false;
 
   /**
@@ -53,7 +53,18 @@ struct ReflectionProbe {
    */
   int index = -1;
 
-  bool needs_update() const;
+  bool needs_update() const
+  {
+    switch (type) {
+      case Type::Unused:
+        return false;
+      case Type::World:
+        return is_dirty;
+      case Type::Probe:
+        return is_dirty && is_used;
+    }
+    return false;
+  }
 };
 
 class ReflectionProbeModule {
@@ -72,7 +83,7 @@ class ReflectionProbeModule {
   ReflectionProbeDataBuf data_buf_;
   Vector<ReflectionProbe> probes_;
 
-  /** Texture containing a cubemap used for updating #probes_tx_. */
+  /** Texture containing a cubemap used as input for updating #probes_tx_. */
   Texture cubemap_tx_ = {"Probe.Cubemap"};
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
@@ -80,6 +91,8 @@ class ReflectionProbeModule {
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
 
   bool do_world_update_ = false;
+
+  int2 dispatch_probe_pack_ = int2(0);
 
  public:
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
