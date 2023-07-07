@@ -32,6 +32,7 @@ namespace blender::ui {
 
 class AbstractTreeView;
 class AbstractTreeViewItem;
+class AbstractTreeViewItemDropTarget;
 
 /* ---------------------------------------------------------------------- */
 /** \name Tree-View Item Container
@@ -114,6 +115,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
 
   friend class AbstractTreeViewItem;
   friend class TreeViewBuilder;
+  friend class AbstractTreeViewItemDropTarget;
 
  public:
   virtual ~AbstractTreeView() = default;
@@ -121,6 +123,11 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
   void draw_overlays(const ARegion &region) const override;
 
   void foreach_item(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
+
+  /**
+   * \param xy: The mouse coordinates in window space.
+   */
+  AbstractTreeViewItem *find_hovered(const int xy[2]);
 
   /** Visual feature: Define a number of item rows the view will always show at minimum. If there
    * are fewer items, empty dummy items will be added. These contribute to the view bounds, so the
@@ -182,6 +189,9 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   virtual void build_row(uiLayout &row) = 0;
 
+  virtual std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
+  virtual std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target();
+
   AbstractTreeView &get_tree_view() const;
 
   void begin_renaming();
@@ -192,6 +202,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * can't be sure about the item state.
    */
   bool is_collapsed() const;
+  bool is_collapsible() const;
 
  protected:
   /**
@@ -247,11 +258,8 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * Note that this does a linear lookup in the old block, so isn't too great performance-wise.
    */
   bool is_hovered() const;
-  bool is_collapsible() const;
 
   void ensure_parents_uncollapsed();
-
-  uiButViewItem *view_item_button() const;
 
  private:
   static void tree_row_click_fn(struct bContext *, void *, void *);
@@ -318,6 +326,37 @@ class BasicTreeViewItem : public AbstractTreeViewItem {
 /** \} */
 
 /* ---------------------------------------------------------------------- */
+/** \name Drag & Drop
+ * \{ */
+
+/**
+ * Class to define the behavior when dropping something onto/into a view item, plus the behavior
+ * when dragging over this item. An item can return a drop target for itself via a custom
+ * implementation of #AbstractTreeViewItem::create_drop_target().
+ *
+ * By default the drop target only supports dropping into/onto itself. To support
+ * inserting/reordering behavior, where dropping before or after the drop-target is supported, pass
+ * a different #DropBehavior to the constructor.
+ */
+class AbstractTreeViewItemDropTarget : public DropTargetInterface {
+ protected:
+  AbstractTreeView &view_;
+  const DropBehavior behavior_;
+
+ public:
+  AbstractTreeViewItemDropTarget(AbstractTreeView &view,
+                                 DropBehavior behavior = DropBehavior::Insert);
+
+  std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
+
+  /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
+   * exception if the view is not of the requested type. */
+  template<class ViewType> inline ViewType &get_view() const;
+};
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
 /** \name Tree-View Builder
  * \{ */
 
@@ -341,6 +380,13 @@ inline ItemT &TreeViewItemContainer::add_tree_item(Args &&...args)
 
   return dynamic_cast<ItemT &>(
       add_tree_item(std::make_unique<ItemT>(std::forward<Args>(args)...)));
+}
+
+template<class ViewType> ViewType &AbstractTreeViewItemDropTarget::get_view() const
+{
+  static_assert(std::is_base_of<AbstractTreeView, ViewType>::value,
+                "Type must derive from and implement the ui::AbstractTreeView interface");
+  return dynamic_cast<ViewType &>(view_);
 }
 
 }  // namespace blender::ui

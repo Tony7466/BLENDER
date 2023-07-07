@@ -78,6 +78,30 @@ void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) con
   foreach_item_recursive(iter_fn, options);
 }
 
+AbstractTreeViewItem *AbstractTreeView::find_hovered(const int xy[2])
+{
+  AbstractTreeViewItem *hovered_item = nullptr;
+  foreach_item_recursive(
+      [&, this](const AbstractTreeViewItem &item) {
+        if (hovered_item) {
+          return;
+        }
+
+        uiButViewItem *but = item.view_item_button();
+        if (!but) {
+          return;
+        }
+        rctf win_rect;
+        ui_block_to_window_rctf(region_, block_, &win_rect, &but->rect);
+        if (BLI_rctf_isect_y(&win_rect, xy[1])) {
+          hovered_item = reinterpret_cast<AbstractTreeViewItem *>(but->view_item);
+        }
+      },
+      IterOptions::SkipCollapsed | IterOptions::SkipFiltered);
+
+  return hovered_item;
+}
+
 void AbstractTreeView::set_min_rows(int min_rows)
 {
   min_rows_ = min_rows;
@@ -225,6 +249,59 @@ void AbstractTreeView::change_state_delayed()
 #endif
 
   foreach_item([](AbstractTreeViewItem &item) { item.change_state_delayed(); });
+}
+
+/* ---------------------------------------------------------------------- */
+
+AbstractTreeViewItemDropTarget::AbstractTreeViewItemDropTarget(AbstractTreeView &view,
+                                                               DropBehavior behavior)
+    : view_(view), behavior_(behavior)
+{
+}
+
+std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_location(
+    const wmEvent &event) const
+{
+  if (behavior_ == DropBehavior::Insert) {
+    return DROP_INTO;
+  }
+
+  const AbstractTreeViewItem *hovered_item = view_.find_hovered(event.xy);
+  if (!hovered_item) {
+    return std::nullopt;
+  }
+  uiButViewItem *hovered_but = hovered_item->view_item_button();
+
+  rctf but_win_rect;
+  ui_block_to_window_rctf(view_.region_, view_.block_, &but_win_rect, &hovered_but->rect);
+  const float item_height = BLI_rctf_size_y(&but_win_rect);
+
+  BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::Reorder_and_Insert));
+
+  const int segment_count =
+      (behavior_ == DropBehavior::Reorder) ?
+          /* Divide into upper (insert before) and lower (insert after) half. */
+          2 :
+          /* Upper (insert before), middle (insert into) and lower (insert after) third. */
+          3;
+  const float segment_height = item_height / segment_count;
+
+  if (event.xy[1] - but_win_rect.ymin > (item_height - segment_height)) {
+    return DROP_BEFORE;
+  }
+  if (event.xy[1] - but_win_rect.ymin <= segment_height) {
+    if (behavior_ == DropBehavior::Reorder_and_Insert && hovered_item->is_collapsible() &&
+        !hovered_item->is_collapsed())
+    {
+      /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
+       * after. */
+      return DROP_INTO;
+    }
+    return DROP_AFTER;
+  }
+
+  BLI_assert(behavior_ == DropBehavior::Reorder_and_Insert);
+  return DROP_INTO;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -388,6 +465,16 @@ bool AbstractTreeViewItem::matches_single(const AbstractTreeViewItem &other) con
   return label_ == other.label_;
 }
 
+std::unique_ptr<DropTargetInterface> AbstractTreeViewItem::create_item_drop_target()
+{
+  return create_drop_target();
+}
+
+std::unique_ptr<AbstractTreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target()
+{
+  return nullptr;
+}
+
 AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
 {
   return dynamic_cast<AbstractTreeView &>(get_view());
@@ -497,11 +584,6 @@ bool AbstractTreeViewItem::matches(const AbstractViewItem &other) const
   }
 
   return true;
-}
-
-uiButViewItem *AbstractTreeViewItem::view_item_button() const
-{
-  return view_item_but_;
 }
 
 void AbstractTreeViewItem::change_state_delayed()

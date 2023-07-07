@@ -33,6 +33,7 @@ struct uiSearchItems;
 struct uiViewHandle;
 struct uiViewItemHandle;
 struct wmDrag;
+struct wmEvent;
 
 void UI_but_func_set(uiBut *but, std::function<void(bContext &)> func);
 void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)> func);
@@ -41,6 +42,7 @@ namespace blender::ui {
 
 class AbstractGridView;
 class AbstractTreeView;
+class DropTargetInterface;
 
 /**
  * An item in a breadcrumb-like context. Currently this struct is very simple, but more
@@ -67,15 +69,44 @@ void attribute_search_add_items(StringRefNull str,
                                 uiSearchItems *items,
                                 bool is_first);
 
+enum DropLocation {
+  DROP_INTO,
+  DROP_BEFORE,
+  DROP_AFTER,
+};
+
+struct DragInfo {
+  const wmDrag &drag_data;
+  const wmEvent &event;
+  const DropLocation drop_location;
+
+  DragInfo(const wmDrag &drag, const wmEvent &event, DropLocation drop_location);
+};
+
+/**
+ * Drop targets sometimes want to support multiple behaviors (e.g. inserting into vs. inserting
+ * before/after). This can be used to toggle that, #DropTargetInterface::determine_drop_location()
+ * can then use this to return the wanted drop location (before, into or after).
+ */
+enum class DropBehavior {
+  Reorder,
+  Insert,
+  Reorder_and_Insert,
+};
+
 /**
  * This provides a common interface for UI elements that want to support dragging & dropping
  * entities into/onto them. With it, the element can determine if the dragged entity can be dropped
  * onto itself, provide feedback while dragging and run custom code for the dropping.
  *
- * Note that this is just an interface. A #wmDropBox is needed to request instances of it from a UI
- * element and call its functions. For example the drop box using "UI_OT_view_drop" implements
- * dropping for views and view items via this interface. To support other kinds of UI elements,
- * similar drop boxes would be necessary.
+ * By default the drop target behaves so that data can be dragged into or onto it.
+ * #determine_drop_location() can be overridden to change that.
+ *
+ * Note that this is just an interface (not in the strict sense of a Java/C# interface though). A
+ * #wmDropBox is needed to request instances of it from a UI element and call its functions. For
+ * example the drop box using "UI_OT_view_drop" implements dropping for views and view items via
+ * this interface. To support other kinds of UI elements, similar drop boxes would be necessary.
+ *
  */
 class DropTargetInterface {
  public:
@@ -91,32 +122,41 @@ class DropTargetInterface {
    *                         a non-null pointer.
    */
   virtual bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const = 0;
+
+  virtual std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
   /**
    * Custom text to display when dragging over the element using this drop target. Should
    * explain what happens when dropping the data onto this UI element. Will only be used if
    * #DropTargetInterface::can_drop() returns true, so the implementing override doesn't have
    * to check that again. The returned value must be a translated string.
    */
-  virtual std::string drop_tooltip(const wmDrag &drag) const = 0;
+  virtual std::string drop_tooltip(const DragInfo &drag) const = 0;
   /**
    * Execute the logic to apply a drop of the data dragged with \a drag onto/into the UI element
    * this drop target is for.
    */
-  virtual bool on_drop(bContext *C, const wmDrag &drag) const = 0;
+  virtual bool on_drop(bContext *C, const DragInfo &drag) const = 0;
 };
+
+bool drop_target_can_drop(const DropTargetInterface &drop_target,
+                          const wmDrag &drag,
+                          const char **r_disabled_hint);
 
 /**
  * Let a drop target handle a drop event.
  * \return True if the dropping was successful.
  */
 bool drop_target_apply_drop(bContext &C,
+                            const wmEvent &event,
                             const DropTargetInterface &drop_target,
                             const ListBase &drags);
 /**
  * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
  * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
  */
-char *drop_target_tooltip(const DropTargetInterface &drop_target, const wmDrag &drag);
+char *drop_target_tooltip(const DropTargetInterface &drop_target,
+                          const wmDrag &drag,
+                          const wmEvent &event);
 
 std::unique_ptr<DropTargetInterface> view_drop_target(uiViewHandle *view_handle);
 std::unique_ptr<DropTargetInterface> view_item_drop_target(uiViewItemHandle *item_handle);
