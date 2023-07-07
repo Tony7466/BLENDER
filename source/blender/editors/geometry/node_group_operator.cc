@@ -317,7 +317,7 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
     return OPERATOR_CANCELLED;
   }
 
-  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, *op->properties);
+  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, true, *op->properties);
   nodes::update_output_properties_from_node_tree(*node_tree, op->properties, *op->properties);
 
   return run_node_group_exec(C, op);
@@ -336,8 +336,7 @@ static char *run_node_group_get_description(bContext *C, wmOperatorType * /*ot*/
   return BLI_strdup(description);
 }
 
-static void add_attribute_search_or_value_buttons(const bContext &C,
-                                                  uiLayout *layout,
+static void add_attribute_search_or_value_buttons(uiLayout *layout,
                                                   PointerRNA *md_ptr,
                                                   const bNodeSocket &socket)
 {
@@ -356,7 +355,7 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
   uiLayout *name_row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(name_row, UI_LAYOUT_ALIGN_RIGHT);
 
-  const int use_attribute = RNA_int_get(md_ptr, rna_path_use_attribute.c_str()) != 0;
+  const bool use_attribute = RNA_boolean_get(md_ptr, rna_path_use_attribute.c_str());
   if (socket.type == SOCK_BOOLEAN && !use_attribute) {
     uiItemL(name_row, "", ICON_NONE);
   }
@@ -371,8 +370,8 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
   }
 
   if (use_attribute) {
-    uiItemR(layout, md_ptr, rna_path_attribute_name.c_str(), 0, "", ICON_NONE);
-    uiItemL(layout, "", ICON_BLANK1);
+    /* TODO: Add attribute search. */
+    uiItemR(prop_row, md_ptr, rna_path_attribute_name.c_str(), 0, "", ICON_NONE);
   }
   else {
     const char *name = socket.type == SOCK_BOOLEAN ? socket.name : "";
@@ -383,8 +382,7 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
       prop_row, md_ptr, rna_path_use_attribute.c_str(), UI_ITEM_R_ICON_ONLY, "", ICON_SPREADSHEET);
 }
 
-static void draw_property_for_socket(const bContext &C,
-                                     const bNodeTree &node_tree,
+static void draw_property_for_socket(const bNodeTree &node_tree,
                                      uiLayout *layout,
                                      IDProperty *op_properties,
                                      PointerRNA *bmain_ptr,
@@ -432,7 +430,7 @@ static void draw_property_for_socket(const bContext &C,
       break;
     default:
       if (nodes::input_has_attribute_toggle(node_tree, socket_index)) {
-        add_attribute_search_or_value_buttons(C, row, op_ptr, socket);
+        add_attribute_search_or_value_buttons(row, op_ptr, socket);
       }
       else {
         uiItemR(row, op_ptr, rna_path, 0, socket.name, ICON_NONE);
@@ -457,10 +455,10 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
     return;
   }
 
-  int socket_index;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, io_socket, &node_tree->inputs, socket_index) {
+  int input_index;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, io_socket, &node_tree->inputs, input_index) {
     draw_property_for_socket(
-        *C, *node_tree, layout, op->properties, &bmain_ptr, op->ptr, *io_socket, socket_index);
+        *node_tree, layout, op->properties, &bmain_ptr, op->ptr, *io_socket, input_index);
   }
 }
 
@@ -479,7 +477,7 @@ void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   PropertyRNA *prop;
-  prop = RNA_def_string(ot->srna, "asset_full_path", nullptr, 0, "Asset Name", "");
+  prop = RNA_def_string(ot->srna, "asset_full_path", nullptr, 0, "Asset Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
