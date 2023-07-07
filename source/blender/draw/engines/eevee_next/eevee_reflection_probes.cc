@@ -10,7 +10,7 @@
  * Baking of Light probes aren't implemented yet. For testing purposes this can be enabled to
  * generate a dummy texture.
  */
-#define GENERATE_DUMMY_LIGHT_PROBE_TEXTURE false
+#define GENERATE_DUMMY_LIGHT_PROBE_TEXTURE true
 
 namespace blender::eevee {
 
