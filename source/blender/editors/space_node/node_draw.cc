@@ -543,6 +543,7 @@ static void node_update_basis(const bContext &C,
   node.runtime->node_rect.ymin = min_ff(dy, loc.y - 2 * NODE_DY);
   { /* Overlay data */
     node.runtime->extra_infos = node_get_extra_info(tree_draw_ctx, *snode, node);
+    node.runtime->preview = nullptr;
     bNodeInstanceHash *previews =
         (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
     if (node.flag & NODE_PREVIEW && previews && snode->overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
@@ -557,9 +558,11 @@ static void node_update_basis(const bContext &C,
     if (node.runtime->preview) {
       const float preview_padding = 3.0f * UI_SCALE_FAC;
       const float width = (node.width - 6.0f) * UI_SCALE_FAC;
-      overlay_height += (width - 2.0 * preview_padding) * float(node.runtime->preview->ysize) /
-                            float(node.runtime->preview->xsize) +
-                        2.0 * preview_padding;
+      const float preview_height_non_clipped = (width - 2.0 * preview_padding) *
+                                                   float(node.runtime->preview->ysize) /
+                                                   float(node.runtime->preview->xsize) +
+                                               2.0 * preview_padding;
+      overlay_height += fmin(preview_height_non_clipped, width);
     }
     node.runtime->totr = node.runtime->node_rect;
     node.runtime->totr.ymax += overlay_height * 2 / UI_SCALE_FAC;
@@ -2132,15 +2135,29 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
     if (preview) {
-      const float preview_padding = 3.0f * UI_SCALE_FAC;
-      preview_height = (width - 2.0 * preview_padding) * float(preview->ysize) /
-                           float(preview->xsize) +
-                       2.0 * preview_padding;
-      preview_rect.ymin = extra_info_rect.ymin + preview_padding;
-      preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
-      preview_rect.xmin = extra_info_rect.xmin + preview_padding;
-      preview_rect.xmax = extra_info_rect.xmax - preview_padding;
-      extra_info_rect.ymax += preview_height;
+      if (preview->xsize > preview->ysize) {
+        const float preview_padding = 3.0f * UI_SCALE_FAC;
+        preview_height = (width - 2.0 * preview_padding) * float(preview->ysize) /
+                             float(preview->xsize) +
+                         2.0 * preview_padding;
+        preview_rect.ymin = extra_info_rect.ymin + preview_padding;
+        preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
+        preview_rect.xmin = extra_info_rect.xmin + preview_padding;
+        preview_rect.xmax = extra_info_rect.xmax - preview_padding;
+        extra_info_rect.ymax += preview_height;
+      }
+      else {
+        const float preview_padding = 3.0f * UI_SCALE_FAC;
+        preview_height = width;
+        const float preview_width = (width - 2.0 * preview_padding) * float(preview->xsize) /
+                                        float(preview->ysize) +
+                                    2.0 * preview_padding;
+        preview_rect.ymin = extra_info_rect.ymin + preview_padding;
+        preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
+        preview_rect.xmin = extra_info_rect.xmin + preview_padding + (width - preview_width) / 2;
+        preview_rect.xmax = extra_info_rect.xmax - preview_padding - (width - preview_width) / 2;
+        extra_info_rect.ymax += preview_height;
+      }
     }
 
     if (node.flag & NODE_MUTED) {
