@@ -197,6 +197,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * can't be sure about the item state.
    */
   bool is_collapsed() const;
+  bool is_collapsible() const;
 
  protected:
   /**
@@ -252,7 +253,6 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * Note that this does a linear lookup in the old block, so isn't too great performance-wise.
    */
   bool is_hovered() const;
-  bool is_collapsible() const;
 
   void ensure_parents_uncollapsed();
 

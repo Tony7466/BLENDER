@@ -35,12 +35,12 @@ class LayerTreeView : public AbstractTreeView {
   GreasePencil &grease_pencil_;
 };
 
-class LayerViewItemDropTarget : public AbstractTreeViewItemDropTarget {
-  Layer &drop_layer_;
+class LayerNodeDropTarget : public AbstractTreeViewItemDropTarget {
+  TreeNode &drop_tree_node_;
 
  public:
-  LayerViewItemDropTarget(AbstractTreeView &view, Layer &layer)
-      : AbstractTreeViewItemDropTarget(view, DropBehavior::Reorder), drop_layer_(layer)
+  LayerNodeDropTarget(AbstractTreeView &view, TreeNode &drop_tree_node, DropBehavior behavior)
+      : AbstractTreeViewItemDropTarget(view, behavior), drop_tree_node_(drop_tree_node)
   {
   }
 
@@ -56,9 +56,11 @@ class LayerViewItemDropTarget : public AbstractTreeViewItemDropTarget {
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
 
     std::string_view drag_name = drag_layer.name();
-    std::string_view drop_name = drop_layer_.name();
+    std::string_view drop_name = drop_tree_node_.name;
 
     switch (drag_info.drop_location) {
+      case DROP_INTO:
+        return fmt::format(TIP_("Move layer {} into {}"), drag_name, drop_name);
       case DROP_BEFORE:
         return fmt::format(TIP_("Move layer {} before {}"), drag_name, drop_name);
       case DROP_AFTER:
@@ -76,24 +78,40 @@ class LayerViewItemDropTarget : public AbstractTreeViewItemDropTarget {
     const wmDragGreasePencilLayer *drag_grease_pencil =
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
-    LayerGroup &drop_group = drop_layer_.parent_group();
+
+    LayerGroup &drag_parent = drag_layer.parent_group();
+    LayerGroup *drop_parent_group = drop_tree_node_.parent_group();
+    if (!drop_parent_group) {
+      /* Root node is not added to the tree view, so there should never be a drop target for this.
+       */
+      BLI_assert_unreachable();
+      return false;
+    }
 
     switch (drag_info.drop_location) {
-      case DROP_INTO:
-        return false;
+      case DROP_INTO: {
+        BLI_assert_msg(drop_tree_node_.is_group(),
+                       "Inserting should not be possible for layers, only for groups, because "
+                       "only groups use DropBehavior::Reorder_and_Insert");
+
+        LayerGroup &drop_group = drop_tree_node_.as_group_for_write();
+        drag_parent.unlink_node(&drag_layer.as_node());
+        drop_group.add_layer(&drag_layer);
+        return true;
+      }
       case DROP_BEFORE:
-        drop_group.unlink_layer(&drag_layer);
+        drag_parent.unlink_node(&drag_layer.as_node());
         /* Draw order is inverted, so inserting before means inserting below. */
-        drop_group.add_layer_after(&drag_layer, &drop_layer_);
+        drop_parent_group->add_layer_after(&drag_layer, &drop_tree_node_);
         return true;
       case DROP_AFTER:
-        drop_group.unlink_layer(&drag_layer);
+        drag_parent.unlink_node(&drag_layer.as_node());
         /* Draw order is inverted, so inserting after means inserting above. */
-        drop_group.add_layer_before(&drag_layer, &drop_layer_);
+        drop_parent_group->add_layer_before(&drag_layer, &drop_tree_node_);
         return true;
-      default:
-        return false;
     }
+
+    return false;
   }
 };
 
@@ -187,7 +205,8 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target() override
   {
-    return std::make_unique<LayerViewItemDropTarget>(get_tree_view(), layer_);
+    return std::make_unique<LayerNodeDropTarget>(
+        get_tree_view(), layer_.as_node(), DropBehavior::Reorder);
   }
 
  private:
@@ -251,6 +270,12 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
   StringRef get_rename_string() const override
   {
     return group_.name();
+  }
+
+  std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target() override
+  {
+    return std::make_unique<LayerNodeDropTarget>(
+        get_tree_view(), group_.as_node(), DropBehavior::Reorder_and_Insert);
   }
 
  private:

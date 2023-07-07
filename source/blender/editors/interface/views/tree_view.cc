@@ -252,7 +252,8 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
     return std::nullopt;
   }
   /* Check that the item is actually from this tree. */
-  AbstractViewItem &hovered_item = reinterpret_cast<AbstractViewItem &>(*hovered_but->view_item);
+  AbstractTreeViewItem &hovered_item = dynamic_cast<AbstractTreeViewItem &>(
+      reinterpret_cast<AbstractViewItem &>(*hovered_but->view_item));
   if (&hovered_item.get_view() != &view_) {
     return std::nullopt;
   }
@@ -277,7 +278,14 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
   if (event.xy[1] - win_rect.ymin > (item_height - segment_height)) {
     return DROP_BEFORE;
   }
-  if (event.xy[1] - win_rect.ymin <= (item_height + segment_height)) {
+  if (event.xy[1] - win_rect.ymin <= segment_height) {
+    if (behavior_ == DropBehavior::Reorder_and_Insert && hovered_item.is_collapsible() &&
+        !hovered_item.is_collapsed())
+    {
+      /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
+       * after. */
+      return DROP_INTO;
+    }
     return DROP_AFTER;
   }
 
