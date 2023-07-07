@@ -94,8 +94,8 @@ static int gpu_shader_normal_map(GPUMaterial *mat,
   switch (nm->space) {
     case SHD_SPACE_TANGENT:
       GPU_material_flag_set(mat, GPU_MATFLAG_OBJECT_INFO);
-      /* We return directly from the node_normal_map as strength 
-      * has already been applied for the tangent case */
+      /* We return directly from the node_normal_map as strength
+       * has already been applied for the tangent case */
       GPU_link(mat,
                "node_normal_map",
                GPU_attribute(mat, CD_TANGENT, nm->uv_map),
