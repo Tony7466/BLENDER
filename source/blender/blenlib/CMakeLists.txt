@@ -11,7 +11,6 @@ set(INC
   ..
   # ../blenkernel  # don't add this back!
   ../makesdna
-  ../../../intern/atomic
   ../../../intern/eigen
   ../../../intern/guardedalloc
 )
@@ -394,7 +393,7 @@ set(LIB
   bf_intern_eigen
   bf_intern_guardedalloc
   extern_wcwidth
-
+  PRIVATE bf::intern::atomic
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )

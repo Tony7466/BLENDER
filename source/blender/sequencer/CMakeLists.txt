@@ -16,7 +16,6 @@ set(INC
   ../makesrna
   ../render
   ../windowmanager
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/guardedalloc
 
@@ -91,6 +90,7 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_AUDASPACE)
