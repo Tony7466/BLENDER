@@ -34,46 +34,46 @@ void pointcloud_get_pos_and_radius(out vec3 outpos, out float outradius)
   outradius = dot(abs(mat3(ModelMatrix) * pos_rad.www), vec3(1.0 / 3.0));
 }
 
-/* Return world position and normal. */
-void pointcloud_get_pos_nor_radius(out vec3 outpos, out vec3 outnor, out float outradius)
+vec3 pointcloud_get_normal(mat3 facing_mat)
 {
-  vec3 p;
-  float radius;
-  pointcloud_get_pos_and_radius(p, radius);
-
-  mat3 facing_mat = pointcloud_get_facing_matrix(p);
-
   int vert_id = 0;
 #  ifdef GPU_VERTEX_SHADER
   /* NOTE: Avoid modulo by non-power-of-two in shader. See Index buffer setup. */
   vert_id = gl_VertexID % 32;
 #  endif
 
-  vec3 pos_inst = vec3(0.0);
+  vec3 N = vec3(0.0);
 
   switch (vert_id) {
     case 0:
-      pos_inst.z = 1.0;
+      N.z = 1.0;
       break;
     case 1:
-      pos_inst.x = 1.0;
+      N.x = 1.0;
       break;
     case 2:
-      pos_inst.y = 1.0;
+      N.y = 1.0;
       break;
     case 3:
-      pos_inst.x = -1.0;
+      N.x = -1.0;
       break;
     case 4:
-      pos_inst.y = -1.0;
+      N.y = -1.0;
       break;
   }
 
+  return facing_mat * N;
+}
+
+/* Return world position and normal. */
+void pointcloud_get_pos_nor_radius(out vec3 outpos, out vec3 outnor, out float outradius)
+{
+  pointcloud_get_pos_and_radius(outpos, outradius);
   /* TODO(fclem): remove multiplication here. Here only for keeping the size correct for now. */
-  radius *= 0.01;
-  outnor = facing_mat * pos_inst;
-  outpos = p + outnor * radius;
-  outradius = radius;
+  outradius *= 0.01;
+  mat3 facing_mat = pointcloud_get_facing_matrix(outpos);
+  outnor = pointcloud_get_normal(facing_mat);
+  outpos += outnor * outradius;
 }
 
 /* Return world position and normal. */

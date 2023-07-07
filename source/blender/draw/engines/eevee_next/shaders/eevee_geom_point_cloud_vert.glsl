@@ -17,7 +17,22 @@ void main()
 
   point_cloud_interp.ID = pointcloud_get_point_id();
   pointcloud_get_pos_and_radius(point_cloud_interp.position, point_cloud_interp.radius);
-  pointcloud_get_pos_and_nor(interp.P, interp.N);
+
+  mat3 facing_mat;
+  {
+    /* Same logic as pointcloud_get_facing_matrix(), but ensuring we use the actual camera matrices
+     * so shadowmaps are rendered correctly. */
+    facing_mat[2] = camera_buf.persmat[3][3] == 0.0 ?
+                        normalize(camera_buf.viewinv[3].xyz - point_cloud_interp.position) :
+                        camera_buf.viewinv[2].xyz;
+    facing_mat[1] = normalize(cross(camera_buf.viewinv[0].xyz, facing_mat[2]));
+    facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
+  }
+
+  interp.N = pointcloud_get_normal(facing_mat);
+  /* TODO(fclem): remove multiplication here. Here only for keeping the size correct for now. */
+  float radius = point_cloud_interp.radius * 0.01;
+  interp.P = point_cloud_interp.position + interp.N * radius;
 
 #ifdef MAT_VELOCITY
   /* TODO(Miguel Pozo) */
