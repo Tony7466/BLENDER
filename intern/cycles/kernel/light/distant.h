@@ -15,7 +15,11 @@ ccl_device_inline void distant_light_uv(const ccl_global KernelLight *klight,
                                         ccl_private float *u,
                                         ccl_private float *v)
 {
-  const float fac = 0.5f / (sinf(0.5f * klight->distant.angle) * len(D - klight->co));
+  /* Map direction (x, y, z) to disk [-0.5, 0.5]^2:
+   * r^2 = (1 - z) / (1 - cos(klight->distant.angle))
+   * u_ = 0.5 * x * r / sin_angle(D, -klight->co)
+   * v_ = 0.5 * y * r / sin_angle(D, -klight->co) */
+  const float fac = klight->distant.half_inv_sin_half_angle / len(D - klight->co);
 
   /* Get u axis and v axis. */
   const Transform itfm = klight->itfm;
