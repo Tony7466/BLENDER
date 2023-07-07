@@ -155,6 +155,12 @@ Quaternion to_axis_angle(AxisAngle axis_angle)
   return quat;
 }
 
+Quaternion from_vector_delta(vec3 from, vec3 to)
+{
+  vec4 quat = normalize(vec4(cross(from, to), 1.0 + dot(from, to)));
+  return Quaternion(UNPACK4(quat));
+}
+
 AxisAngle to_axis_angle(Quaternion quat)
 {
   /* Calculate angle/2, and sin(angle/2). */
@@ -179,6 +185,13 @@ AxisAngle to_axis_angle(EulerXYZ eul)
 {
   /* Use quaternions as intermediate representation for now... */
   return to_axis_angle(to_quaternion(eul));
+}
+
+vec3 rotate(vec3 vector, Quaternion rotation)
+{
+  vec4 quat = as_vec4(rotation);
+  vec3 t = cross(quat.xyz, vector) * 2.0;
+  return vector + t * quat.w + cross(quat.xyz, t);
 }
 
 /** \} */

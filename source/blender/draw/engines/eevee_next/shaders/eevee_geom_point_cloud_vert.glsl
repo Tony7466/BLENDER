@@ -1,21 +1,11 @@
 
+#pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
 #pragma BLENDER_REQUIRE(common_pointcloud_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
-
-vec4 quaternion_from_vector_delta(vec3 from, vec3 to)
-{
-  return normalize(vec4(cross(from, to), 1.0 + dot(from, to)));
-}
-
-vec3 quaternion_transform(vec4 a, vec3 vector)
-{
-  vec3 t = cross(a.xyz, vector) * 2.0;
-  return vector + t * a.w + cross(a.xyz, t);
-}
 
 void main()
 {
@@ -55,9 +45,9 @@ void main()
       }
     }
 
-    vec4 delta_quat = quaternion_from_vector_delta(facing_mat[2], new_z_axis);
+    Quaternion delta = from_vector_delta(facing_mat[2], new_z_axis);
     facing_mat[2] = new_z_axis;
-    facing_mat[1] = quaternion_transform(delta_quat, facing_mat[1]);
+    facing_mat[1] = rotate(facing_mat[1], delta);
     facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
 #endif
   }
