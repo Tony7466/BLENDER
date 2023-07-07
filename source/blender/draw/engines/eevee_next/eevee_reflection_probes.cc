@@ -10,7 +10,7 @@
  * Baking of Light probes aren't implemented yet. For testing purposes this can be enabled to
  * generate a dummy texture.
  */
-#define GENERATE_DUMMY_LIGHT_PROBE_TEXTURE false
+#define GENERATE_DUMMY_LIGHT_PROBE_TEXTURE true
 
 namespace blender::eevee {
 
@@ -36,7 +36,7 @@ void ReflectionProbeModule::init()
     world_probe.do_update_data = true;
     world_probe.do_render = true;
     world_probe.index = 0;
-    probes_.append(world_probe);
+    probes_.add(world_object_key_, world_probe);
 
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
@@ -59,11 +59,12 @@ void ReflectionProbeModule::init()
     pass.bind_texture("cubemap_tx", cubemap_tx_);
     pass.bind_image("octahedral_img", probes_tx_);
     pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    pass.dispatch(&dispatch_probe_pack_);
   }
 }
 void ReflectionProbeModule::begin_sync()
 {
-  for (ReflectionProbe &reflection_probe : probes_) {
+  for (ReflectionProbe &reflection_probe : probes_.values()) {
     if (reflection_probe.type == ReflectionProbe::Type::Probe) {
       reflection_probe.is_probe_used = false;
     }
@@ -109,7 +110,7 @@ static int layer_subdivision_for(const int max_resolution,
 
 void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle*/)
 {
-  ReflectionProbe &probe = probes_[0];
+  const ReflectionProbe &probe = probes_.lookup(world_object_key_);
   ReflectionProbeData &probe_data = data_buf_[probe.index];
   probe_data.layer_subdivision = layer_subdivision_for(
       max_resolution_, static_cast<eLightProbeResolution>(world->probe_resolution));
@@ -126,8 +127,8 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   int subdivision = layer_subdivision_for(
       max_resolution_, static_cast<eLightProbeResolution>(light_probe->resolution));
   ReflectionProbe &probe = find_or_insert(ob_handle, subdivision);
-  probe.is_dirty |= is_dirty;
-  probe.is_used = true;
+  probe.do_update_data |= is_dirty;
+  probe.is_probe_used = true;
 
   ReflectionProbeData &probe_data = data_buf_[probe.index];
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
@@ -140,42 +141,27 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
                                                        int subdivision_level)
 {
-  ReflectionProbe *first_unused = nullptr;
-  for (ReflectionProbe &reflection_probe : probes_) {
-    if (reflection_probe.type == ReflectionProbe::Type::Probe &&
-        reflection_probe.object_hash_value == ob_handle.object_key.hash_value)
-    {
-      return reflection_probe;
-    }
-    if (first_unused == nullptr && reflection_probe.type == ReflectionProbe::Type::Unused) {
-      first_unused = &reflection_probe;
-    }
-  }
+  ReflectionProbe &reflection_probe = probes_.lookup_or_add_cb(
+      ob_handle.object_key.hash_value, [this, subdivision_level]() {
+        ReflectionProbe probe;
+        ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
 
-  if (first_unused == nullptr) {
-    ReflectionProbe new_slot{};
-    probes_.append_as(new_slot);
-    first_unused = &probes_.last();
-  }
-  BLI_assert(first_unused != nullptr);
-  first_unused->index = -1;
-  ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
+        probe.do_update_data = true;
+        probe.do_render = true;
+        probe.type = ReflectionProbe::Type::Probe;
+        probe.index = reflection_probe_data_index_max() + 1;
 
-  first_unused->do_update_data = true;
-  first_unused->do_render = true;
-  first_unused->object_hash_value = ob_handle.object_key.hash_value;
-  first_unused->type = ReflectionProbe::Type::Probe;
-  first_unused->index = reflection_probe_data_index_max() + 1;
+        data_buf_[probe.index] = probe_data;
+        return probe;
+      });
 
-  data_buf_[first_unused->index] = probe_data;
-
-  return *first_unused;
+  return reflection_probe;
 }
 
 int ReflectionProbeModule::reflection_probe_data_index_max() const
 {
   int result = -1;
-  for (const ReflectionProbe &probe : probes_) {
+  for (const ReflectionProbe &probe : probes_.values()) {
     if (probe.type != ReflectionProbe::Type::Unused) {
       result = max_ii(result, probe.index);
     }
@@ -296,7 +282,7 @@ void ReflectionProbeModule::end_sync()
   bool regenerate_mipmaps = false;
   bool regenerate_mipmaps_postponed = false;
 
-  for (ReflectionProbe &probe : probes_) {
+  for (ReflectionProbe &probe : probes_.values()) {
     if (resize_layers) {
       probe.do_update_data = true;
       probe.do_render = true;
@@ -334,14 +320,22 @@ void ReflectionProbeModule::end_sync()
 
 void ReflectionProbeModule::remove_unused_probes()
 {
-  for (ReflectionProbe &probe : probes_) {
-    if (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used) {
-      remove_reflection_probe_data(probe.index);
-      probe.type = ReflectionProbe::Type::Unused;
-      probe.object_hash_value = 0;
-      BLI_assert(probe.index == -1);
+  bool found = false;
+  do {
+    found = false;
+    uint64_t key_to_remove = 0;
+    for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
+      const ReflectionProbe &probe = item.value;
+      if (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used) {
+        key_to_remove = item.key;
+        found = true;
+        break;
+      }
     }
-  }
+    if (found) {
+      probes_.remove(key_to_remove);
+    }
+  } while (found);
 }
 
 void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_data_index)
@@ -354,7 +348,7 @@ void ReflectionProbeModule::remove_reflection_probe_data(int reflection_probe_da
   for (int index = reflection_probe_data_index; index < max_index; index++) {
     data_buf_[index] = data_buf_[index + 1];
   }
-  for (ReflectionProbe &probe : probes_) {
+  for (ReflectionProbe &probe : probes_.values()) {
     if (probe.index == reflection_probe_data_index) {
       probe.index = -1;
     }
@@ -389,7 +383,7 @@ void ReflectionProbeModule::recalc_lod_factors()
 void ReflectionProbeModule::debug_print() const
 {
   std::ostream &os = std::cout;
-  for (const ReflectionProbe &probe : probes_) {
+  for (const ReflectionProbe &probe : probes_.values()) {
     os << probe;
 
     if (probe.index != -1) {
@@ -427,7 +421,6 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
       os << "PROBE";
       os << " is_dirty: " << probe.do_update_data;
       os << " is_used: " << probe.is_probe_used;
-      os << " ob_hash: " << probe.object_hash_value;
       os << " index: " << probe.index;
       os << "\n";
       break;
@@ -480,10 +473,11 @@ void ReflectionProbeModule::upload_dummy_texture(const ReflectionProbe &probe)
 
 void ReflectionProbeModule::remap_to_octahedral_projection()
 {
-  const ReflectionProbe &world_probe = probes_[0];
+  const ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
   const ReflectionProbeData &probe_data = data_buf_[world_probe.index];
-  dispatch_probe_pack_ = int2(
-      ceil_division(max_resolution_ >> probe_data.layer_subdivision, REFLECTION_PROBE_GROUP_SIZE));
+  dispatch_probe_pack_ = int3(int2(ceil_division(max_resolution_ >> probe_data.layer_subdivision,
+                                                 REFLECTION_PROBE_GROUP_SIZE)),
+                              1);
   instance_.manager->submit(remap_ps_);
   /* TODO: Performance - Should only update the area that has changed. */
   GPU_texture_update_mipmap_chain(probes_tx_);

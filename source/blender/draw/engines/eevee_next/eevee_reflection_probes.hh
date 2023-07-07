@@ -38,14 +38,8 @@ struct ReflectionProbe {
   bool do_render = false;
 
   /**
-   * When reflection probe is a probe its ObjectKey.hash_value is copied here to keep track
-   * between draws.
-   */
-  uint64_t object_hash_value = 0;
-
-  /**
    * Probes that aren't used during a draw can be cleared.
-   * 
+   *
    * Only valid when type == Type::Probe.
    */
   bool is_probe_used = false;
@@ -85,9 +79,11 @@ class ReflectionProbeModule {
    */
   static constexpr int max_resolution_ = 2048;
 
+  static constexpr uint64_t world_object_key_ = 0;
+
   Instance &instance_;
   ReflectionProbeDataBuf data_buf_;
-  Vector<ReflectionProbe> probes_;
+  Map<uint64_t, ReflectionProbe> probes_;
 
   /** Texture containing a cubemap used as input for updating #probes_tx_. */
   Texture cubemap_tx_ = {"Probe.Cubemap"};
@@ -98,7 +94,7 @@ class ReflectionProbeModule {
 
   bool do_world_update_ = false;
 
-  int2 dispatch_probe_pack_ = int2(0);
+  int3 dispatch_probe_pack_ = int3(0);
 
  public:
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
