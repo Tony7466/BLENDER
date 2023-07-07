@@ -189,6 +189,35 @@ class ProbeLocationFinder {
     taken_spots_.resize(num_spots, false);
   }
 
+  void print_debug() const
+  {
+    std::ostream &os = std::cout;
+    int layer = 0;
+    int row = 0;
+    int column = 0;
+
+    os << "subdivision " << subdivision_level_ << "\n";
+
+    for (bool spot_taken : taken_spots_) {
+      if (row == 0 && column == 0) {
+        os << "layer " << layer << "\n";
+      }
+
+      os << (spot_taken ? '1' : '0');
+
+      column++;
+      if (column == probes_per_dimension_) {
+        os << "\n";
+        column = 0;
+        row++;
+      }
+      if (row == probes_per_dimension_) {
+        row = 0;
+        layer++;
+      }
+    }
+  }
+
   /**
    * Mark space to be occupied by the given probe_data.
    *
@@ -246,13 +275,17 @@ class ProbeLocationFinder {
 ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(
     int subdivision_level) const
 {
+  std::cout << __func__ << "\n";
   ProbeLocationFinder location_finder(needed_layers_get() + 1, subdivision_level);
   for (const ReflectionProbeData &data :
        Span<ReflectionProbeData>(data_buf_.data(), reflection_probe_data_index_max() + 1))
   {
     location_finder.mark_space_used(data);
   }
-  return location_finder.first_free_spot();
+  location_finder.print_debug();
+  ReflectionProbeData free_spot = location_finder.first_free_spot();
+  std::cout << free_spot.area_index << "\n";
+  return free_spot;
 }
 
 void ReflectionProbeModule::end_sync()
