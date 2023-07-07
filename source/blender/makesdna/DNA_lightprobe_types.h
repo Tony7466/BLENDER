@@ -81,7 +81,6 @@ typedef enum eLightProbeBakeResolution {
   LIGHT_PROBE_BAKE_RESOLUTION_512 = 9,
   LIGHT_PROBE_BAKE_RESOLUTION_1024 = 10,
   LIGHT_PROBE_BAKE_RESOLUTION_2048 = 11,
-  LIGHT_PROBE_BAKE_RESOLUTION_4096 = 12,
 } eLightProbeBakeResolution;
 
 /* Probe->type */
