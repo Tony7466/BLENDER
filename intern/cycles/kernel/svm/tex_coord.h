@@ -313,7 +313,7 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
 
       object_inverse_normal_transform(kg, sd, &normal);
     }
-
+    /* Apply strength in the tangent case. */
     color.x *= strength;
     color.y *= strength;
 
@@ -338,7 +338,7 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
       object_normal_transform(kg, sd, &N);
     else
       N = safe_normalize(N);
-
+    /* Apply strength in all but tangent space. */
     if (strength != 1.0f) {
       strength = max(strength, 0.0f);
       N = safe_normalize(sd->N + (N - sd->N) * strength);
@@ -349,7 +349,6 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
   if (is_backfacing) {
     N = -N;
   }
-
 
   if (is_zero(N)) {
     N = sd->N;
