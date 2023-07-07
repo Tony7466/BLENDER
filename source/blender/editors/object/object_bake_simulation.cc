@@ -11,6 +11,7 @@
 #include "BLI_fileops.hh"
 #include "BLI_path_util.h"
 #include "BLI_serialize.hh"
+#include "BLI_string_utils.h"
 #include "BLI_vector.hh"
 
 #include "PIL_time.h"
@@ -170,7 +171,7 @@ static int calculate_to_frame_invoke(bContext *C, wmOperator *op, const wmEvent 
   wmJob *wm_job = WM_jobs_get(wm,
                               CTX_wm_window(C),
                               CTX_data_scene(C),
-                              "Bake Simulation Nodes",
+                              "Calculate Simulation",
                               WM_JOB_PROGRESS,
                               WM_JOB_TYPE_CALCULATE_SIMULATION_NODES);
 
@@ -286,7 +287,7 @@ static void bake_simulation_job_startjob(void *customdata,
 
     char frame_file_c_str[64];
     SNPRINTF(frame_file_c_str, "%011.5f", double(frame));
-    BLI_str_replace_char(frame_file_c_str, '.', '_');
+    BLI_string_replace_char(frame_file_c_str, '.', '_');
     const StringRefNull frame_file_str = frame_file_c_str;
 
     BKE_scene_graph_update_for_newframe(job.depsgraph);
@@ -341,7 +342,7 @@ static void bake_simulation_job_startjob(void *customdata,
       NodesModifierData &nmd = *modifier_bake_data.nmd;
       if (nmd.simulation_cache) {
         /* Tag the caches as being baked so that they are not changed anymore. */
-        nmd.simulation_cache->ptr->cache_state_ = CacheState::Baked;
+        nmd.simulation_cache->ptr->cache_state = CacheState::Baked;
       }
     }
     DEG_id_tag_update(&object_bake_data.object->id, ID_RECALC_GEOMETRY);
@@ -362,7 +363,7 @@ static void bake_simulation_job_endjob(void *customdata)
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
 }
 
-static int bake_simulation_execute(bContext *C, wmOperator *op)
+static int bake_simulation_exec(bContext *C, wmOperator *op)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
@@ -556,7 +557,7 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
   if (has_existing_bake_data) {
     return WM_operator_confirm_message(C, op, "Overwrite existing bake data");
   }
-  return bake_simulation_execute(C, op);
+  return bake_simulation_exec(C, op);
 }
 
 static int bake_simulation_modal(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
@@ -647,7 +648,7 @@ void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
   ot->description = "Bake simulations in geometry nodes modifiers";
   ot->idname = __func__;
 
-  ot->exec = bake_simulation_execute;
+  ot->exec = bake_simulation_exec;
   ot->invoke = bake_simulation_invoke;
   ot->modal = bake_simulation_modal;
   ot->poll = bake_simulation_poll;

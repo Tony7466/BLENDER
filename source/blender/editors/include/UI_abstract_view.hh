@@ -35,6 +35,7 @@
 
 struct bContext;
 struct uiBlock;
+struct uiButViewItem;
 struct uiLayout;
 struct uiViewItemHandle;
 struct ViewLink;
@@ -89,6 +90,8 @@ class AbstractView {
    */
   virtual bool begin_filtering(const bContext &C) const;
 
+  virtual void draw_overlays(const ARegion &region) const;
+
   /**
    * Makes \a item valid for display in this view. Behavior is undefined for items not registered
    * with this.
@@ -137,6 +140,8 @@ class AbstractViewItem {
    * If this wasn't done, the behavior of items is undefined.
    */
   AbstractView *view_ = nullptr;
+  /** Every visible item gets a button of type #UI_BTYPE_VIEW_ITEM during the layout building. */
+  uiButViewItem *view_item_but_ = nullptr;
   bool is_activatable_ = true;
   bool is_interactive_ = true;
   bool is_active_ = false;

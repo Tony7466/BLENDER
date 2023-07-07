@@ -35,6 +35,7 @@ struct uiViewItemHandle;
 struct wmDrag;
 struct wmEvent;
 
+void UI_but_func_set(uiBut *but, std::function<void(bContext &)> func);
 void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)> func);
 
 namespace blender::ui {
