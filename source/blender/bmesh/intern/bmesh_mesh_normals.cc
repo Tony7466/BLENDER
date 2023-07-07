@@ -50,14 +50,14 @@ static void bm_edge_tag_from_smooth(const float (*fnos)[3],
  * assuming no other tool using it would run concurrently to clnors editing. */
 #define BM_LNORSPACE_UPDATE _FLAG_MF
 
-typedef struct BMVertsCalcNormalsWithCoordsData {
+struct BMVertsCalcNormalsWithCoordsData {
   /* Read-only data. */
   const float (*fnos)[3];
   const float (*vcos)[3];
 
   /* Write data. */
   float (*vnos)[3];
-} BMVertsCalcNormalsWithCoordsData;
+};
 
 BLI_INLINE void bm_vert_calc_normals_accum_loop(const BMLoop *l_iter,
                                                 const float e1diff[3],
@@ -235,7 +235,7 @@ static void bm_face_calc_normals_cb(void * /*userdata*/,
   BM_face_calc_normal(f, f->no);
 }
 
-void BM_mesh_normals_update_ex(BMesh *bm, const struct BMeshNormalsUpdate_Params *params)
+void BM_mesh_normals_update_ex(BMesh *bm, const BMeshNormalsUpdate_Params *params)
 {
   if (params->face_normals) {
     /* Calculate all face normals. */
@@ -279,7 +279,7 @@ static void bm_partial_verts_parallel_range_calc_normal_cb(
 
 void BM_mesh_normals_update_with_partial_ex(BMesh * /*bm*/,
                                             const BMPartialUpdate *bmpinfo,
-                                            const struct BMeshNormalsUpdate_Params *params)
+                                            const BMeshNormalsUpdate_Params *params)
 {
   BLI_assert(bmpinfo->params.do_normals);
   /* While harmless, exit early if there is nothing to do. */
@@ -1161,7 +1161,7 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
   }
 }
 
-typedef struct BMLoopsCalcNormalsWithCoordsData {
+struct BMLoopsCalcNormalsWithCoordsData {
   /* Read-only data. */
   const float (*fnos)[3];
   const float (*vcos)[3];
@@ -1174,15 +1174,15 @@ typedef struct BMLoopsCalcNormalsWithCoordsData {
   /* Output. */
   float (*r_lnos)[3];
   MLoopNorSpaceArray *r_lnors_spacearr;
-} BMLoopsCalcNormalsWithCoordsData;
+};
 
-typedef struct BMLoopsCalcNormalsWithCoords_TLS {
+struct BMLoopsCalcNormalsWithCoords_TLS {
   blender::Vector<blender::float3, 16> *edge_vectors;
 
   /** Copied from #BMLoopsCalcNormalsWithCoordsData.r_lnors_spacearr when it's not nullptr. */
   MLoopNorSpaceArray *lnors_spacearr;
   MLoopNorSpaceArray lnors_spacearr_buf;
-} BMLoopsCalcNormalsWithCoords_TLS;
+};
 
 static void bm_mesh_loops_calc_normals_for_vert_init_fn(const void *__restrict userdata,
                                                         void *__restrict chunk)

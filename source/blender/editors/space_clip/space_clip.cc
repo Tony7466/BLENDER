@@ -200,7 +200,7 @@ static SpaceLink *clip_create(const ScrArea * /*area*/, const Scene * /*scene*/)
   return (SpaceLink *)sc;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void clip_free(SpaceLink *sl)
 {
   SpaceClip *sc = (SpaceClip *)sl;
@@ -217,7 +217,7 @@ static void clip_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void clip_init(struct wmWindowManager * /*wm*/, ScrArea *area)
+static void clip_init(wmWindowManager * /*wm*/, ScrArea *area)
 {
   ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
 
@@ -337,7 +337,7 @@ static void clip_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
-static void clip_operatortypes(void)
+static void clip_operatortypes()
 {
   /* ** clip_ops.c ** */
   WM_operatortype_append(CLIP_OT_open);
@@ -463,7 +463,7 @@ static void clip_operatortypes(void)
   WM_operatortype_append(CLIP_OT_dopesheet_view_all);
 }
 
-static void clip_keymap(struct wmKeyConfig *keyconf)
+static void clip_keymap(wmKeyConfig *keyconf)
 {
   /* ******** Global hotkeys available for all regions ******** */
   WM_keymap_ensure(keyconf, "Clip", SPACE_CLIP, 0);
@@ -538,7 +538,7 @@ static void clip_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 }
 
 /* area+region dropbox definition */
-static void clip_dropboxes(void)
+static void clip_dropboxes()
 {
   ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
 
@@ -577,7 +577,7 @@ static void CLIP_GGT_navigate(wmGizmoGroupType *gzgt)
   VIEW2D_GGT_navigate_impl(gzgt, "CLIP_GGT_navigate");
 }
 
-static void clip_gizmos(void)
+static void clip_gizmos()
 {
   const wmGizmoMapType_Params gizmo_params{SPACE_CLIP, RGN_TYPE_WINDOW};
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&gizmo_params);
@@ -1110,7 +1110,7 @@ static void clip_properties_region_listener(const wmRegionListenerParams *params
 
 /********************* registration ********************/
 
-static void clip_id_remap(ScrArea * /*area*/, SpaceLink *slink, const struct IDRemapper *mappings)
+static void clip_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceClip *sclip = (SpaceClip *)slink;
 
@@ -1143,7 +1143,7 @@ static void clip_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceClip, sl);
 }
 
-void ED_spacetype_clip(void)
+void ED_spacetype_clip()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype clip");
   ARegionType *art;

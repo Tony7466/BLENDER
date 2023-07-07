@@ -39,7 +39,7 @@
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.h"
 
 #include "GPU_batch.h"
@@ -1372,12 +1372,12 @@ GPUBatch *DRW_pbvh_lines_get(PBVHBatches *batches,
   return batch.lines;
 }
 
-void DRW_pbvh_update_pre(struct PBVHBatches *batches, struct PBVH_GPU_Args *args)
+void DRW_pbvh_update_pre(PBVHBatches *batches, PBVH_GPU_Args *args)
 {
   batches->update_pre(args);
 }
 
-int drw_pbvh_material_index_get(struct PBVHBatches *batches)
+int drw_pbvh_material_index_get(PBVHBatches *batches)
 {
   return batches->material_index;
 }

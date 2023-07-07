@@ -119,7 +119,8 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
  * absolute, in which case it is not altered.
  */
 static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data,
-                                                char *r_path_dst,
+                                                char *path_dst,
+                                                size_t path_dst_maxncpy,
                                                 const char *path_src)
 {
   const char **data = bpath_data->user_data;
@@ -142,7 +143,7 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
      * because it won't work for paths that start with "//../" */
     BLI_path_normalize(filepath);
     BLI_path_rel(filepath, base_new);
-    BLI_strncpy(r_path_dst, filepath, FILE_MAX);
+    BLI_strncpy(path_dst, filepath, path_dst_maxncpy);
     return true;
   }
 
@@ -453,7 +454,7 @@ void lib_id_copy_ensure_local(Main *bmain, const ID *old_id, ID *new_id, const i
 }
 
 void BKE_lib_id_make_local_generic_action_define(
-    struct Main *bmain, struct ID *id, int flags, bool *r_force_local, bool *r_force_copy)
+    Main *bmain, ID *id, int flags, bool *r_force_local, bool *r_force_copy)
 {
   bool force_local = (flags & LIB_ID_MAKELOCAL_FORCE_LOCAL) != 0;
   bool force_copy = (flags & LIB_ID_MAKELOCAL_FORCE_COPY) != 0;
@@ -505,10 +506,16 @@ void BKE_lib_id_make_local_generic(Main *bmain, ID *id, const int flags)
 
   if (force_local) {
     BKE_lib_id_clear_library_data(bmain, id, flags);
+    if ((flags & LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR) != 0) {
+      BKE_lib_override_library_make_local(id);
+    }
     BKE_lib_id_expand_local(bmain, id, flags);
   }
   else if (force_copy) {
-    ID *id_new = BKE_id_copy(bmain, id);
+    const int copy_flags =
+        (LIB_ID_COPY_DEFAULT |
+         ((flags & LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR) != 0 ? LIB_ID_COPY_NO_LIB_OVERRIDE : 0));
+    ID *id_new = BKE_id_copy_ex(bmain, id, NULL, copy_flags);
 
     /* Should not fail in expected use cases,
      * but a few ID types cannot be copied (LIB, WM, SCR...). */
@@ -1075,17 +1082,14 @@ void BKE_main_id_tag_listbase(ListBase *lb, const int tag, const bool value)
   }
 }
 
-void BKE_main_id_tag_idcode(struct Main *mainvar,
-                            const short type,
-                            const int tag,
-                            const bool value)
+void BKE_main_id_tag_idcode(Main *mainvar, const short type, const int tag, const bool value)
 {
   ListBase *lb = which_libbase(mainvar, type);
 
   BKE_main_id_tag_listbase(lb, tag, value);
 }
 
-void BKE_main_id_tag_all(struct Main *mainvar, const int tag, const bool value)
+void BKE_main_id_tag_all(Main *mainvar, const int tag, const bool value)
 {
   ListBase *lbarray[INDEX_ID_MAX];
   int a;
@@ -1461,16 +1465,14 @@ void *BKE_libblock_copy(Main *bmain, const ID *id)
 
 /* ***************** ID ************************ */
 
-ID *BKE_libblock_find_name(struct Main *bmain, const short type, const char *name)
+ID *BKE_libblock_find_name(Main *bmain, const short type, const char *name)
 {
   ListBase *lb = which_libbase(bmain, type);
   BLI_assert(lb != NULL);
   return BLI_findstring(lb, name, offsetof(ID, name) + 2);
 }
 
-struct ID *BKE_libblock_find_session_uuid(Main *bmain,
-                                          const short type,
-                                          const uint32_t session_uuid)
+ID *BKE_libblock_find_session_uuid(Main *bmain, const short type, const uint32_t session_uuid)
 {
   ListBase *lb = which_libbase(bmain, type);
   BLI_assert(lb != NULL);
@@ -1594,7 +1596,7 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
 }
 
 bool BKE_id_new_name_validate(
-    struct Main *bmain, ListBase *lb, ID *id, const char *tname, const bool do_linked_data)
+    Main *bmain, ListBase *lb, ID *id, const char *tname, const bool do_linked_data)
 {
   bool result = false;
   char name[MAX_ID_NAME - 2];
@@ -1625,7 +1627,7 @@ bool BKE_id_new_name_validate(
 
   result = BKE_main_namemap_get_name(bmain, id, name);
 
-  strcpy(id->name + 2, name);
+  BLI_strncpy(id->name + 2, name, sizeof(id->name) - 2);
   id_sort_by_name(lb, id, NULL);
   return result;
 }
@@ -1664,7 +1666,7 @@ static int id_refcount_recompute_callback(LibraryIDLinkCallbackData *cb_data)
   return IDWALK_RET_NOP;
 }
 
-void BKE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_only)
+void BKE_main_id_refcount_recompute(Main *bmain, const bool do_linked_only)
 {
   ID *id;
 
@@ -2017,7 +2019,7 @@ void BKE_libblock_rename(Main *bmain, ID *id, const char *name)
 
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separator_char)
 {
-  strcpy(name, id->name + 2);
+  BLI_strncpy(name, id->name + 2, MAX_ID_FULL_NAME);
 
   if (ID_IS_LINKED(id)) {
     const size_t idname_len = strlen(id->name + 2);
@@ -2025,7 +2027,7 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separa
 
     name[idname_len] = separator_char ? separator_char : ' ';
     name[idname_len + 1] = '[';
-    strcpy(name + idname_len + 2, id->lib->id.name + 2);
+    BLI_strncpy(name + idname_len + 2, id->lib->id.name + 2, MAX_ID_FULL_NAME - (idname_len + 2));
     name[idname_len + 2 + libname_len] = ']';
     name[idname_len + 2 + libname_len + 1] = '\0';
   }
@@ -2052,7 +2054,7 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
   }
 }
 
-char *BKE_id_to_unique_string_key(const struct ID *id)
+char *BKE_id_to_unique_string_key(const ID *id)
 {
   if (!ID_IS_LINKED(id)) {
     return BLI_strdup(id->name);

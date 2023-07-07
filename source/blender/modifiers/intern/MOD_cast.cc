@@ -417,7 +417,7 @@ static void cuboid_do(CastModifierData *cmd,
       coord = 1;
     }
     if (d[2] > dmax) {
-      /* dmax = d[2]; */ /* commented, we don't need it */
+      // dmax = d[2]; /* commented, we don't need it */
       coord = 2;
     }
 
@@ -466,7 +466,7 @@ static void deformVerts(ModifierData *md,
 
   if (ctx->object->type == OB_MESH && cmd->defgrp_name[0] != '\0') {
     /* mesh_src is only needed for vgroups. */
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
+    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
   }
 
   if (cmd->type == MOD_CAST_TYPE_CUBOID) {
@@ -492,7 +492,7 @@ static void deformVertsEM(ModifierData *md,
   Mesh *mesh_src = nullptr;
 
   if (cmd->defgrp_name[0] != '\0') {
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr, verts_num, false);
+    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
   }
 
   if (mesh && BKE_mesh_wrapper_type(mesh) == ME_WRAPPER_TYPE_MDATA) {

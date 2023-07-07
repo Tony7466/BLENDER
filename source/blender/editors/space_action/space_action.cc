@@ -127,7 +127,7 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   return (SpaceLink *)saction;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void action_free(SpaceLink * /*sl*/)
 {
   //  SpaceAction *saction = (SpaceAction *) sl;
@@ -885,7 +885,7 @@ static void action_main_region_view2d_changed(const bContext * /*C*/, ARegion *r
   action_clamp_scroll(region);
 }
 
-void ED_spacetype_action(void)
+void ED_spacetype_action()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype action");
   ARegionType *art;

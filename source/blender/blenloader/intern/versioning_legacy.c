@@ -61,14 +61,13 @@
 #include "BKE_mesh.h" /* for ME_ defines (patching) */
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_modifier.h"
+#include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
-
-#include "NOD_socket.h"
 
 #include "BLO_readfile.h"
 
@@ -324,7 +323,7 @@ static void customdata_version_242(Mesh *me)
     if (layer->type == CD_MTFACE) {
       if (layer->name[0] == 0) {
         if (mtfacen == 0) {
-          strcpy(layer->name, "UVMap");
+          STRNCPY(layer->name, "UVMap");
         }
         else {
           SNPRINTF(layer->name, "UVMap.%.3d", mtfacen);
@@ -335,7 +334,7 @@ static void customdata_version_242(Mesh *me)
     else if (layer->type == CD_MCOL) {
       if (layer->name[0] == 0) {
         if (mcoln == 0) {
-          strcpy(layer->name, "Col");
+          STRNCPY(layer->name, "Col");
         }
         else {
           SNPRINTF(layer->name, "Col.%.3d", mcoln);
@@ -843,7 +842,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     VFont *vf;
     for (vf = bmain->fonts.first; vf; vf = vf->id.next) {
       if (BLI_str_endswith(vf->filepath, ".Bfont")) {
-        strcpy(vf->filepath, FO_BUILTIN_NAME);
+        STRNCPY(vf->filepath, FO_BUILTIN_NAME);
       }
     }
   }
@@ -1370,7 +1369,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
     while (sce) {
       if (sce->toolsettings == NULL) {
-        sce->toolsettings = MEM_callocN(sizeof(struct ToolSettings), "Tool Settings Struct");
+        sce->toolsettings = MEM_callocN(sizeof(ToolSettings), "Tool Settings Struct");
         sce->toolsettings->doublimit = 0.001f;
       }
       sce = sce->id.next;
@@ -1476,7 +1475,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       for (kb = key->block.first; kb; kb = kb->next) {
         if (kb == key->refkey) {
           if (kb->name[0] == 0) {
-            strcpy(kb->name, "Basis");
+            STRNCPY(kb->name, "Basis");
           }
         }
         else {
@@ -1512,7 +1511,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       }
     }
 
-    /* updating stepsize for ghost drawing */
     for (arm = bmain->armatures.first; arm; arm = arm->id.next) {
       bone_version_239(&arm->bonebase);
       if (arm->layer == 0) {
@@ -1547,7 +1545,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 241) {
     Object *ob;
     Scene *sce;
-    Light *la;
     bArmature *arm;
     bNodeTree *ntree;
 
@@ -1592,12 +1589,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       ntree_version_241(ntree);
     }
 
-    for (la = bmain->lights.first; la; la = la->id.next) {
-      if (la->buffers == 0) {
-        la->buffers = 1;
-      }
-    }
-
     /* for empty drawsize and drawtype */
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       if (ob->empty_drawsize == 0.0f) {
@@ -1611,8 +1602,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       Image *ima;
       for (ima = bmain->images.first; ima; ima = ima->id.next) {
         if (STREQ(ima->filepath, "Compositor")) {
-          strcpy(ima->id.name + 2, "Viewer Node");
-          strcpy(ima->filepath, "Viewer Node");
+          BLI_strncpy(ima->id.name + 2, "Viewer Node", sizeof(ima->id.name) - 2);
+          STRNCPY(ima->filepath, "Viewer Node");
         }
       }
     }
@@ -1923,7 +1914,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     Scene *sce;
     Object *ob;
     Image *ima;
-    Light *la;
     Material *ma;
     ParticleSettings *part;
     bNodeTree *ntree;
@@ -2036,17 +2026,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
             clmd->point_cache = BKE_ptcache_add(&clmd->ptcaches);
             clmd->point_cache->step = 1;
           }
-        }
-      }
-    }
-
-    if (bmain->versionfile != 245 || bmain->subversionfile < 1) {
-      for (la = bmain->lights.first; la; la = la->id.next) {
-        la->falloff_type = LA_FALLOFF_INVLINEAR;
-
-        if (la->curfalloff == NULL) {
-          la->curfalloff = BKE_curvemapping_add(1, 0.0f, 1.0f, 1.0f, 0.0f);
-          BKE_curvemapping_init(la->curfalloff);
         }
       }
     }

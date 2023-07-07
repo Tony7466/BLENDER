@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -113,7 +113,7 @@ void GPENCIL_engine_init(void *ved)
     stl->pd->v3d_color_type = (v3d->shading.type == OB_SOLID) ? v3d->shading.color_type : -1;
     /* Special case: If Vertex Paint mode, use always Vertex mode. */
     if (v3d->shading.type == OB_SOLID && ctx->obact && ctx->obact->type == OB_GPENCIL_LEGACY &&
-        ctx->obact->mode == OB_MODE_VERTEX_GPENCIL)
+        ctx->obact->mode == OB_MODE_VERTEX_GPENCIL_LEGACY)
     {
       stl->pd->v3d_color_type = V3D_SHADING_VERTEX_COLOR;
     }
@@ -343,7 +343,7 @@ typedef struct gpIterPopulateData {
   int stroke_index_last;
   int stroke_index_offset;
   /* Infos for call batching. */
-  struct GPUBatch *geom;
+  GPUBatch *geom;
   int vfirst, vcount;
 } gpIterPopulateData;
 
@@ -364,7 +364,7 @@ static void gpencil_drawcall_flush(gpIterPopulateData *iter)
 
 /* Group draw-calls that are consecutive and with the same type. Reduces GPU driver overhead. */
 static void gpencil_drawcall_add(gpIterPopulateData *iter,
-                                 struct GPUBatch *geom,
+                                 GPUBatch *geom,
                                  int v_first,
                                  int v_count)
 {

@@ -39,6 +39,8 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_openexr.h"
 
+#include "GPU_texture.h"
+
 #include "RE_engine.h"
 
 #include "render_result.h"
@@ -54,7 +56,6 @@ static void render_result_views_free(RenderResult *rr)
 
     RE_RenderByteBuffer_data_free(&rv->byte_buffer);
     RE_RenderBuffer_data_free(&rv->combined_buffer);
-    RE_RenderBuffer_data_free(&rv->z_buffer);
 
     MEM_freeN(rv);
   }
@@ -86,7 +87,6 @@ void render_result_free(RenderResult *rr)
 
   RE_RenderByteBuffer_data_free(&rr->byte_buffer);
   RE_RenderBuffer_data_free(&rr->combined_buffer);
-  RE_RenderBuffer_data_free(&rr->z_buffer);
 
   if (rr->text) {
     MEM_freeN(rr->text);
@@ -115,6 +115,18 @@ void render_result_free_list(ListBase *lb, RenderResult *rr)
   }
 }
 
+void render_result_free_gpu_texture_caches(RenderResult *rr)
+{
+  LISTBASE_FOREACH (RenderLayer *, rl, &rr->layers) {
+    LISTBASE_FOREACH (RenderPass *, rpass, &rl->passes) {
+      if (rpass->buffer.gpu_texture) {
+        GPU_texture_free(rpass->buffer.gpu_texture);
+        rpass->buffer.gpu_texture = nullptr;
+      }
+    }
+  }
+}
+
 /********************************* multiview *************************************/
 
 void render_result_views_shallowcopy(RenderResult *dst, RenderResult *src)
@@ -132,7 +144,6 @@ void render_result_views_shallowcopy(RenderResult *dst, RenderResult *src)
     STRNCPY(rv->name, rview->name);
 
     rv->combined_buffer = rview->combined_buffer;
-    rv->z_buffer = rview->z_buffer;
     rv->byte_buffer = rview->byte_buffer;
   }
 }
@@ -402,9 +413,38 @@ void RE_create_render_pass(RenderResult *rr,
   }
 }
 
-void RE_pass_set_buffer_data(struct RenderPass *pass, float *data)
+void RE_pass_set_buffer_data(RenderPass *pass, float *data)
 {
   RE_RenderBuffer_assign_data(&pass->buffer, data);
+}
+
+GPUTexture *RE_pass_ensure_gpu_texture_cache(Render *re, RenderPass *rpass)
+{
+  if (rpass->buffer.gpu_texture) {
+    return rpass->buffer.gpu_texture;
+  }
+  if (rpass->buffer.data == nullptr) {
+    return nullptr;
+  }
+
+  const eGPUTextureFormat format = (rpass->channels == 1) ? GPU_R16F :
+                                   (rpass->channels == 3) ? GPU_RGB16F :
+                                                            GPU_RGBA16F;
+
+  rpass->buffer.gpu_texture = GPU_texture_create_2d("RenderBuffer.gpu_texture",
+                                                    rpass->rectx,
+                                                    rpass->recty,
+                                                    1,
+                                                    format,
+                                                    GPU_TEXTURE_USAGE_GENERAL,
+                                                    nullptr);
+
+  if (rpass->buffer.gpu_texture) {
+    GPU_texture_update(rpass->buffer.gpu_texture, GPU_DATA_FLOAT, rpass->buffer.data);
+    re->result_has_gpu_texture_caches = true;
+  }
+
+  return rpass->buffer.gpu_texture;
 }
 
 void RE_render_result_full_channel_name(char *fullname,
@@ -781,31 +821,35 @@ void render_result_single_layer_end(Render *re)
   re->pushedresult = nullptr;
 }
 
-int render_result_exr_file_read_path(RenderResult *rr,
-                                     RenderLayer *rl_single,
-                                     const char *filepath)
+bool render_result_exr_file_read_path(RenderResult *rr,
+                                      RenderLayer *rl_single,
+                                      ReportList *reports,
+                                      const char *filepath)
 {
   void *exrhandle = IMB_exr_get_handle();
   int rectx, recty;
 
   if (!IMB_exr_begin_read(exrhandle, filepath, &rectx, &recty, false)) {
-    printf("failed being read %s\n", filepath);
     IMB_exr_close(exrhandle);
-    return 0;
+    return false;
   }
 
-  if (rr == nullptr || rectx != rr->rectx || recty != rr->recty) {
-    if (rr) {
-      printf("error in reading render result: dimensions don't match\n");
-    }
-    else {
-      printf("error in reading render result: nullptr result pointer\n");
-    }
+  ListBase layers = (rr) ? rr->layers : ListBase{rl_single, rl_single};
+  const int expected_rectx = (rr) ? rr->rectx : rl_single->rectx;
+  const int expected_recty = (rr) ? rr->recty : rl_single->recty;
+  bool found_channels = false;
+
+  if (rectx != expected_rectx || recty != expected_recty) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "reading render result: dimensions don't match, expected %dx%d",
+                expected_rectx,
+                expected_recty);
     IMB_exr_close(exrhandle);
-    return 0;
+    return true;
   }
 
-  LISTBASE_FOREACH (RenderLayer *, rl, &rr->layers) {
+  LISTBASE_FOREACH (RenderLayer *, rl, &layers) {
     if (rl_single && rl_single != rl) {
       continue;
     }
@@ -813,14 +857,39 @@ int render_result_exr_file_read_path(RenderResult *rr,
     /* passes are allocated in sync */
     LISTBASE_FOREACH (RenderPass *, rpass, &rl->passes) {
       const int xstride = rpass->channels;
+      const int ystride = xstride * rectx;
       int a;
       char fullname[EXR_PASS_MAXNAME];
 
       for (a = 0; a < xstride; a++) {
         RE_render_result_full_channel_name(
             fullname, nullptr, rpass->name, rpass->view, rpass->chan_id, a);
-        IMB_exr_set_channel(
-            exrhandle, rl->name, fullname, xstride, xstride * rectx, rpass->buffer.data + a);
+
+        if (IMB_exr_set_channel(
+                exrhandle, rl->name, fullname, xstride, ystride, rpass->buffer.data + a)) {
+          found_channels = true;
+        }
+        else if (rl_single) {
+          if (IMB_exr_set_channel(
+                  exrhandle, nullptr, fullname, xstride, ystride, rpass->buffer.data + a)) {
+            found_channels = true;
+          }
+          else {
+            BKE_reportf(nullptr,
+                        RPT_WARNING,
+                        "reading render result: expected channel \"%s.%s\" or \"%s\" not found",
+                        rl->name,
+                        fullname,
+                        fullname);
+          }
+        }
+        else {
+          BKE_reportf(nullptr,
+                      RPT_WARNING,
+                      "reading render result: expected channel \"%s.%s\" not found",
+                      rl->name,
+                      fullname);
+        }
       }
 
       RE_render_result_full_channel_name(
@@ -828,10 +897,13 @@ int render_result_exr_file_read_path(RenderResult *rr,
     }
   }
 
-  IMB_exr_read_channels(exrhandle);
+  if (found_channels) {
+    IMB_exr_read_channels(exrhandle);
+  }
+
   IMB_exr_close(exrhandle);
 
-  return 1;
+  return true;
 }
 
 #define FILE_CACHE_MAX (FILE_MAXFILE + FILE_MAXFILE + MAX_ID_NAME + 100)
@@ -928,7 +1000,6 @@ ImBuf *RE_render_result_rect_to_ibuf(RenderResult *rr,
   /* if not exists, BKE_imbuf_write makes one */
   IMB_assign_shared_byte_buffer(ibuf, rv->byte_buffer.data, rv->byte_buffer.sharing_info);
   IMB_assign_shared_float_buffer(ibuf, rv->combined_buffer.data, rv->combined_buffer.sharing_info);
-  IMB_assign_shared_float_z_buffer(ibuf, rv->z_buffer.data, rv->z_buffer.sharing_info);
 
   /* float factor for random dither, imbuf takes care of it */
   ibuf->dither = dither;
@@ -1132,17 +1203,11 @@ static RenderView *duplicate_render_view(RenderView *rview)
 
   /* Reset buffers, they are not supposed to be shallow-coped. */
   new_rview->combined_buffer = {};
-  new_rview->z_buffer = {};
   new_rview->byte_buffer = {};
 
   if (rview->combined_buffer.data != nullptr) {
     RE_RenderBuffer_assign_data(&new_rview->combined_buffer,
                                 static_cast<float *>(MEM_dupallocN(rview->combined_buffer.data)));
-  }
-
-  if (rview->z_buffer.data != nullptr) {
-    RE_RenderBuffer_assign_data(&new_rview->z_buffer,
-                                static_cast<float *>(MEM_dupallocN(rview->z_buffer.data)));
   }
 
   if (rview->byte_buffer.data != nullptr) {
@@ -1170,16 +1235,11 @@ RenderResult *RE_DuplicateRenderResult(RenderResult *rr)
 
   /* Reset buffers, they are not supposed to be shallow-coped. */
   new_rr->combined_buffer = {};
-  new_rr->z_buffer = {};
   new_rr->byte_buffer = {};
 
   if (rr->combined_buffer.data) {
     RE_RenderBuffer_assign_data(&new_rr->combined_buffer,
                                 static_cast<float *>(MEM_dupallocN(rr->combined_buffer.data)));
-  }
-  if (rr->z_buffer.data) {
-    RE_RenderBuffer_assign_data(&new_rr->z_buffer,
-                                static_cast<float *>(MEM_dupallocN(rr->z_buffer.data)));
   }
   if (rr->byte_buffer.data) {
     RE_RenderByteBuffer_assign_data(&new_rr->byte_buffer,
@@ -1200,6 +1260,7 @@ template<class BufferType> static BufferType render_buffer_new(decltype(BufferTy
 
   buffer.data = data;
   buffer.sharing_info = blender::implicit_sharing::info_for_mem_free(data);
+  buffer.gpu_texture = nullptr;
 
   return buffer;
 }
@@ -1212,6 +1273,11 @@ template<class BufferType> static void render_buffer_data_free(BufferType *rende
   }
 
   blender::implicit_sharing::free_shared_data(&render_buffer->data, &render_buffer->sharing_info);
+
+  if (render_buffer->gpu_texture) {
+    GPU_texture_free(render_buffer->gpu_texture);
+    render_buffer->gpu_texture = nullptr;
+  }
 }
 
 template<class BufferType>

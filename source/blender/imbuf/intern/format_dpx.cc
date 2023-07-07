@@ -2,6 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/** \file
+ * \ingroup imbuf
+ */
+
 #include "oiio/openimageio_support.hh"
 
 #include "IMB_colormanagement.h"
@@ -35,7 +39,7 @@ ImBuf *imb_load_dpx(const uchar *mem, size_t size, int flags, char colorspace[IM
   return ibuf;
 }
 
-bool imb_save_dpx(struct ImBuf *ibuf, const char *filepath, int flags)
+bool imb_save_dpx(ImBuf *ibuf, const char *filepath, int flags)
 {
   int bits_per_sample = 8;
   if (ibuf->foptions.flag & CINEON_10BIT) {

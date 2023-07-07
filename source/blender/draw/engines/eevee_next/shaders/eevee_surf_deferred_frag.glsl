@@ -10,6 +10,7 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
@@ -124,7 +125,7 @@ void main()
     /* SubSurface Scattering. */
     vec4 closure;
     closure.xyz = gbuffer_sss_radii_pack(g_diffuse_data.sss_radius);
-    closure.w = gbuffer_object_id_unorm16_pack(g_diffuse_data.sss_id);
+    closure.w = gbuffer_object_id_unorm16_pack(g_diffuse_data.sss_id > 0 ? uint(resource_id) : 0);
     imageStore(out_gbuff_closure_img, ivec3(out_texel, 2), closure);
   }
 

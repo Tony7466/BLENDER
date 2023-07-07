@@ -27,7 +27,7 @@
 #include "BPY_extern.h"
 
 void bpy_app_generic_callback(struct Main *main,
-                              struct PointerRNA **pointers,
+                              PointerRNA **pointers,
                               const int pointers_num,
                               void *arg);
 
@@ -88,6 +88,8 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"composite_pre", "on a compositing background job (before)"},
     {"composite_post", "on a compositing background job (after)"},
     {"composite_cancel", "on a compositing background job (cancel)"},
+    {"animation_playback_pre", "on starting animation playback"},
+    {"animation_playback_post", "on ending animation playback"},
 
 /* sets the permanent tag */
 #define APP_CB_OTHER_FIELDS 1
@@ -344,7 +346,7 @@ static PyObject *choose_arguments(PyObject *func, PyObject *args_all, PyObject *
 
 /* the actual callback - not necessarily called from py */
 void bpy_app_generic_callback(struct Main *UNUSED(main),
-                              struct PointerRNA **pointers,
+                              PointerRNA **pointers,
                               const int pointers_num,
                               void *arg)
 {

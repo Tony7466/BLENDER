@@ -31,6 +31,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_fcurve.h"
@@ -817,16 +818,36 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   return false;
 }
 
+/* Return the azone's calculated rect. */
+static void area_actionzone_get_rect(AZone *az, rcti *rect)
+{
+  if (az->type == AZONE_REGION_SCROLL) {
+    /* For scroll azones use the area around the region's scroll-bar location. */
+    rcti scroller_vert = (az->direction == AZ_SCROLL_HOR) ? az->region->v2d.hor :
+                                                            az->region->v2d.vert;
+    BLI_rcti_translate(&scroller_vert, az->region->winrct.xmin, az->region->winrct.ymin);
+    rect->xmin = scroller_vert.xmin -
+                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymin = scroller_vert.ymin -
+                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+    rect->xmax = scroller_vert.xmax +
+                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymax = scroller_vert.ymax +
+                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+  }
+  else {
+    azone_clipped_rect_calc(az, rect);
+  }
+}
+
 static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const bool test_only)
 {
   AZone *az = NULL;
 
   for (az = area->actionzones.first; az; az = az->next) {
-    rcti az_rect_clip;
-    if (BLI_rcti_isect_pt_v(&az->rect, xy) &&
-        /* Check clipping if this is clipped */
-        (!azone_clipped_rect_calc(az, &az_rect_clip) || BLI_rcti_isect_pt_v(&az_rect_clip, xy)))
-    {
+    rcti az_rect;
+    area_actionzone_get_rect(az, &az_rect);
+    if (BLI_rcti_isect_pt_v(&az_rect, xy)) {
 
       if (az->type == AZONE_AREA) {
         break;
@@ -915,16 +936,14 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
             float dist_fac = 0.0f, alpha = 0.0f;
 
             if (az->direction == AZ_SCROLL_HOR) {
-              float hide_width = (az->y2 - az->y1) / 2.0f;
-              dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / hide_width;
+              dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / V2D_SCROLL_HIDE_WIDTH;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
 
               v2d->alpha_hor = alpha * 255;
             }
             else if (az->direction == AZ_SCROLL_VERT) {
-              float hide_width = (az->x2 - az->x1) / 2.0f;
-              dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / hide_width;
+              dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / V2D_SCROLL_HIDE_HEIGHT;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
 
@@ -2100,7 +2119,7 @@ static bool area_split_allowed(const ScrArea *area, const eScreenAxis dir_axis)
   return true;
 }
 
-static void area_split_draw_cb(const struct wmWindow *UNUSED(win), void *userdata)
+static void area_split_draw_cb(const wmWindow *UNUSED(win), void *userdata)
 {
   const wmOperator *op = userdata;
 
@@ -2817,14 +2836,20 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         const int size_no_snap = rmd->origval + delta;
         rmd->region->sizex = size_no_snap;
+        /* Clamp before snapping, so the snapping doesn't use a size that's invalid anyway. It will
+         * check for and respect the max-width too. */
+        CLAMP(rmd->region->sizex, 0, rmd->maxsize);
 
         if (rmd->region->type->snap_size) {
           short sizex_test = rmd->region->type->snap_size(rmd->region, rmd->region->sizex, 0);
-          if (abs(rmd->region->sizex - sizex_test) < snap_size_threshold) {
+          if ((abs(rmd->region->sizex - sizex_test) < snap_size_threshold) &&
+              /* Don't snap to a new size if that would exceed the maximum width. */
+              sizex_test <= rmd->maxsize)
+          {
             rmd->region->sizex = sizex_test;
           }
         }
-        CLAMP(rmd->region->sizex, 0, rmd->maxsize);
+        BLI_assert(rmd->region->sizex <= rmd->maxsize);
 
         if (size_no_snap < UI_UNIT_X / aspect) {
           rmd->region->sizex = rmd->origval;
@@ -2850,14 +2875,20 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         const int size_no_snap = rmd->origval + delta;
         rmd->region->sizey = size_no_snap;
+        /* Clamp before snapping, so the snapping doesn't use a size that's invalid anyway. It will
+         * check for and respect the max-height too. */
+        CLAMP(rmd->region->sizey, 0, rmd->maxsize);
 
         if (rmd->region->type->snap_size) {
           short sizey_test = rmd->region->type->snap_size(rmd->region, rmd->region->sizey, 1);
-          if (abs(rmd->region->sizey - sizey_test) < snap_size_threshold) {
+          if ((abs(rmd->region->sizey - sizey_test) < snap_size_threshold) &&
+              /* Don't snap to a new size if that would exceed the maximum height. */
+              (sizey_test <= rmd->maxsize))
+          {
             rmd->region->sizey = sizey_test;
           }
         }
-        CLAMP(rmd->region->sizey, 0, rmd->maxsize);
+        BLI_assert(rmd->region->sizey <= rmd->maxsize);
 
         /* NOTE: `UI_UNIT_Y / 4` means you need to drag the footer and execute region
          * almost all the way down for it to become hidden, this is done
@@ -3180,6 +3211,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool keyframe_jump_poll(bContext *C)
+{
+  /* There is a keyframe jump operator specifically for the Graph Editor. */
+  return ED_operator_screenactive_norender(C) && CTX_wm_area(C)->spacetype != SPACE_GRAPH;
+}
+
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 {
   ot->name = "Jump to Keyframe";
@@ -3188,7 +3225,7 @@ static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 
   ot->exec = keyframe_jump_exec;
 
-  ot->poll = ED_operator_screenactive_norender;
+  ot->poll = keyframe_jump_poll;
   ot->flag = OPTYPE_UNDO_GROUPED;
   ot->undo_group = "Frame Change";
 
@@ -3341,11 +3378,14 @@ static bool screen_maximize_area_poll(bContext *C)
   const wmWindow *win = CTX_wm_window(C);
   const bScreen *screen = CTX_wm_screen(C);
   const ScrArea *area = CTX_wm_area(C);
+  const wmWindowManager *wm = CTX_wm_manager(C);
   return ED_operator_areaactive(C) &&
          /* Don't allow maximizing global areas but allow minimizing from them. */
          ((screen->state != SCREENNORMAL) || !ED_area_is_global(area)) &&
          /* Don't change temporary screens. */
-         !WM_window_is_temp_screen(win);
+         !WM_window_is_temp_screen(win) &&
+         /* Don't maximize when dragging. */
+         BLI_listbase_is_empty(&wm->drags);
 }
 
 static void SCREEN_OT_screen_full_area(wmOperatorType *ot)
@@ -3405,7 +3445,7 @@ typedef struct sAreaJoinData {
 
 } sAreaJoinData;
 
-static void area_join_draw_cb(const struct wmWindow *UNUSED(win), void *userdata)
+static void area_join_draw_cb(const wmWindow *UNUSED(win), void *userdata)
 {
   const wmOperator *op = userdata;
 
@@ -3913,7 +3953,7 @@ static void SCREEN_OT_redo_last(wmOperatorType *ot)
 /** \name Region Quad-View Operator
  * \{ */
 
-static void view3d_localview_update_rv3d(struct RegionView3D *rv3d)
+static void view3d_localview_update_rv3d(RegionView3D *rv3d)
 {
   if (rv3d->localvd) {
     rv3d->localvd->view = rv3d->view;
@@ -4850,18 +4890,26 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 {
   bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
-  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_ensure_evaluated_depsgraph(C));
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Main *bmain = DEG_get_bmain(depsgraph);
 
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0);
     BKE_sound_stop_scene(scene_eval);
 
+    BKE_callback_exec_id_depsgraph(
+        bmain, &scene->id, depsgraph, BKE_CB_EVT_ANIMATION_PLAYBACK_POST);
+
     /* Triggers redraw of sequencer preview so that it does not show to fps anymore after stopping
      * playback. */
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SEQUENCER, scene);
   }
   else {
+    BKE_callback_exec_id_depsgraph(
+        bmain, &scene->id, depsgraph, BKE_CB_EVT_ANIMATION_PLAYBACK_PRE);
+
     /* these settings are currently only available from a menu in the TimeLine */
     if (mode == 1) { /* XXX only play audio forwards!? */
       BKE_sound_play_scene(scene_eval);
@@ -5054,7 +5102,7 @@ static int fullscreen_back_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void SCREEN_OT_back_to_previous(struct wmOperatorType *ot)
+static void SCREEN_OT_back_to_previous(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Back to Previous Screen";
@@ -5119,7 +5167,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_userpref_show(struct wmOperatorType *ot)
+static void SCREEN_OT_userpref_show(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
@@ -5208,7 +5256,7 @@ static int drivers_editor_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_drivers_editor_show(struct wmOperatorType *ot)
+static void SCREEN_OT_drivers_editor_show(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Show Drivers Editor";
@@ -5254,7 +5302,7 @@ static int info_log_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_info_log_show(struct wmOperatorType *ot)
+static void SCREEN_OT_info_log_show(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Show Info Log";

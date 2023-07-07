@@ -55,12 +55,6 @@ static void psys_path_iter_get(ParticlePathIterator *iter,
   }
 }
 
-typedef struct ParticlePathModifier {
-  struct ParticlePathModifier *next, *prev;
-
-  void (*apply)(ParticleCacheKey *keys, int totkeys, ParticleCacheKey *parent_keys);
-} ParticlePathModifier;
-
 /* ------------------------------------------------------------------------- */
 
 static void do_kink_spiral_deform(ParticleKey *state,
@@ -132,7 +126,7 @@ static void do_kink_spiral(ParticleThreadContext *ctx,
                            int *r_totkeys,
                            float *r_max_length)
 {
-  struct ParticleSettings *part = ctx->sim.psys->part;
+  ParticleSettings *part = ctx->sim.psys->part;
   const int seed = ctx->sim.psys->child_seed + (int)(cpa - ctx->sim.psys->child);
   const int totkeys = ctx->segments + 1;
   const int extrakeys = ctx->extra_segments;
@@ -289,7 +283,7 @@ static bool check_path_length(int k,
 }
 
 void psys_apply_child_modifiers(ParticleThreadContext *ctx,
-                                struct ListBase *UNUSED(modifiers),
+                                ListBase *UNUSED(modifiers),
                                 ChildParticle *cpa,
                                 ParticleTexture *ptex,
                                 const float orco[3],
@@ -298,18 +292,16 @@ void psys_apply_child_modifiers(ParticleThreadContext *ctx,
                                 ParticleCacheKey *parent_keys,
                                 const float parent_orco[3])
 {
-  struct ParticleSettings *part = ctx->sim.psys->part;
-  struct Material *ma = ctx->ma;
+  ParticleSettings *part = ctx->sim.psys->part;
+  Material *ma = ctx->ma;
   const bool draw_col_ma = (part->draw_col == PART_DRAW_COL_MAT);
   const bool use_length_check = !ELEM(part->kink, PART_KINK_SPIRAL);
 
-  // ParticlePathModifier *mod;
   ParticleCacheKey *key;
   int totkeys, k;
   float max_length;
 
-  /* TODO: for the future: use true particle modifiers that work on the whole curve.
-   * `modifiers` & `mod` are unused. */
+  /* TODO: for the future: use true particle modifiers that work on the whole curve. */
 
   if (part->kink == PART_KINK_SPIRAL) {
     do_kink_spiral(
@@ -568,7 +560,7 @@ static float do_clump_level(float result[3],
                             float clumpfac,
                             float clumppow,
                             float pa_clump,
-                            CurveMapping *clumpcurve)
+                            const CurveMapping *clumpcurve)
 {
   float clump = 0.0f;
 
@@ -610,7 +602,7 @@ float do_clump(ParticleKey *state,
                float pa_clump,
                bool use_clump_noise,
                float clump_noise_size,
-               CurveMapping *clumpcurve)
+               const CurveMapping *clumpcurve)
 {
   float clump;
 
@@ -726,7 +718,7 @@ static void twist_get_axis(const ParticleChildModifierContext *modifier_ctx,
   }
 }
 
-static float BKE_curvemapping_integrate_clamped(CurveMapping *curve,
+static float BKE_curvemapping_integrate_clamped(const CurveMapping *curve,
                                                 float start,
                                                 float end,
                                                 float step)

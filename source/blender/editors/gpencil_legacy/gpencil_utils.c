@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation.
+/* SPDX-FileCopyrightText: 2014 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -596,7 +596,7 @@ void gpencil_point_conversion_init(bContext *C, GP_SpaceConversion *r_gsc)
   if (area->spacetype == SPACE_VIEW3D) {
     wmWindow *win = CTX_wm_window(C);
     Scene *scene = CTX_data_scene(C);
-    struct Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     View3D *v3d = (View3D *)CTX_wm_space_data(C);
     RegionView3D *rv3d = region->regiondata;
 
@@ -1783,13 +1783,13 @@ float ED_gpencil_cursor_radius(bContext *C, int x, int y)
   return radius;
 }
 
-float ED_gpencil_radial_control_scale(struct bContext *C,
-                                      struct Brush *brush,
+float ED_gpencil_radial_control_scale(bContext *C,
+                                      Brush *brush,
                                       float initial_value,
                                       const int mval[2])
 {
   float scale_fac = 1.0f;
-  if ((brush && brush->gpencil_settings) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL) &&
+  if ((brush && brush->gpencil_settings) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
       (brush->gpencil_tool == GPAINT_TOOL_DRAW))
   {
     float cursor_radius = ED_gpencil_cursor_radius(C, mval[0], mval[1]);
@@ -2029,7 +2029,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
   }
 
   switch (newmode) {
-    case OB_MODE_EDIT_GPENCIL:
+    case OB_MODE_EDIT_GPENCIL_LEGACY:
       gpd->flag |= GP_DATA_STROKE_EDITMODE;
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
@@ -2037,7 +2037,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, false, NULL);
       break;
-    case OB_MODE_PAINT_GPENCIL:
+    case OB_MODE_PAINT_GPENCIL_LEGACY:
       gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
       gpd->flag |= GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
@@ -2045,7 +2045,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
-    case OB_MODE_SCULPT_GPENCIL:
+    case OB_MODE_SCULPT_GPENCIL_LEGACY:
       gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag |= GP_DATA_STROKE_SCULPTMODE;
@@ -2053,7 +2053,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
-    case OB_MODE_WEIGHT_GPENCIL:
+    case OB_MODE_WEIGHT_GPENCIL_LEGACY:
       gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
@@ -2061,7 +2061,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
-    case OB_MODE_VERTEX_GPENCIL:
+    case OB_MODE_VERTEX_GPENCIL_LEGACY:
       gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
@@ -2724,12 +2724,12 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
    * This is done in order to keep cache small and improve speed. */
   if (*buffer_used + 1 > *buffer_size) {
     if ((*buffer_size == 0) || (buffer_array == NULL)) {
-      p = MEM_callocN(sizeof(struct tGPspoint) * GP_STROKE_BUFFER_CHUNK, "GPencil Sbuffer");
+      p = MEM_callocN(sizeof(tGPspoint) * GP_STROKE_BUFFER_CHUNK, "GPencil Sbuffer");
       *buffer_size = GP_STROKE_BUFFER_CHUNK;
     }
     else {
       *buffer_size += GP_STROKE_BUFFER_CHUNK;
-      p = MEM_recallocN(buffer_array, sizeof(struct tGPspoint) * *buffer_size);
+      p = MEM_recallocN(buffer_array, sizeof(tGPspoint) * *buffer_size);
     }
 
     if (p == NULL) {

@@ -156,7 +156,7 @@ static PyObject *py_bvhtree_raycast_to_py(const BVHTreeRayHit *hit)
   return py_retval;
 }
 
-static PyObject *py_bvhtree_raycast_to_py_none(void)
+static PyObject *py_bvhtree_raycast_to_py_none()
 {
   PyObject *py_retval = PyTuple_New(4);
 
@@ -210,7 +210,7 @@ static PyObject *py_bvhtree_nearest_to_py(const BVHTreeNearest *nearest)
   return py_retval;
 }
 
-static PyObject *py_bvhtree_nearest_to_py_none(void)
+static PyObject *py_bvhtree_nearest_to_py_none()
 {
   PyObject *py_retval = PyTuple_New(4);
 
@@ -754,7 +754,7 @@ static PyObject *C_BVHTree_FromPolygons(PyObject * /*cls*/, PyObject *args, PyOb
     /* ngon support (much more involved) */
     const uint polys_len = uint(PySequence_Fast_GET_SIZE(py_tris_fast));
     struct PolyLink {
-      struct PolyLink *next;
+      PolyLink *next;
       uint len;
       uint poly[0];
     } *plink_first = nullptr, **p_plink_prev = &plink_first, *plink = nullptr;
@@ -1155,7 +1155,7 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
       MEM_mallocN(sizeof(*coords) * size_t(coords_len), __func__));
   uint(*tris)[3] = static_cast<uint(*)[3]>(
       MEM_mallocN(sizeof(*tris) * size_t(looptris.size()), __func__));
-  memcpy(coords, BKE_mesh_vert_positions(mesh), sizeof(float[3]) * size_t(mesh->totvert));
+  memcpy(coords, mesh->vert_positions().data(), sizeof(float[3]) * size_t(mesh->totvert));
 
   BVHTree *tree;
 
@@ -1324,7 +1324,7 @@ static PyModuleDef bvhtree_moduledef = {
     /*m_free*/ nullptr,
 };
 
-PyMODINIT_FUNC PyInit_mathutils_bvhtree(void)
+PyMODINIT_FUNC PyInit_mathutils_bvhtree()
 {
   PyObject *m = PyModule_Create(&bvhtree_moduledef);
 

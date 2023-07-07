@@ -560,7 +560,7 @@ int screen_area_join(bContext *C, bScreen *screen, ScrArea *sa1, ScrArea *sa2)
   return screen_area_join_ex(C, screen, sa1, sa2, false);
 }
 
-bool screen_area_close(struct bContext *C, bScreen *screen, ScrArea *area)
+bool screen_area_close(bContext *C, bScreen *screen, ScrArea *area)
 {
   if (area == NULL) {
     return false;
@@ -716,7 +716,10 @@ void ED_screens_init(Main *bmain, wmWindowManager *wm)
   }
 }
 
-static bool region_poll(const bScreen *screen, const ScrArea *area, const ARegion *region)
+static bool region_poll(const bContext *C,
+                        const bScreen *screen,
+                        const ScrArea *area,
+                        const ARegion *region)
 {
   if (!region->type || !region->type->poll) {
     /* Show region by default. */
@@ -727,20 +730,27 @@ static bool region_poll(const bScreen *screen, const ScrArea *area, const ARegio
   params.screen = screen;
   params.area = area;
   params.region = region;
+  params.context = C;
 
   return region->type->poll(&params);
 }
 
 static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *screen)
 {
+  ScrArea *prev_area = CTX_wm_area(C);
+  ARegion *prev_region = CTX_wm_region(C);
+
   bool any_changed = false;
   ED_screen_areas_iter (win, screen, area) {
+    CTX_wm_area_set(C, area);
+
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       const int old_region_flag = region->flag;
 
       region->flag &= ~RGN_FLAG_POLL_FAILED;
 
-      if (region_poll(screen, area, region) == false) {
+      CTX_wm_region_set(C, region);
+      if (region_poll(C, screen, area, region) == false) {
         region->flag |= RGN_FLAG_POLL_FAILED;
       }
 
@@ -757,6 +767,9 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
   if (any_changed) {
     screen->do_refresh = true;
   }
+
+  CTX_wm_area_set(C, prev_area);
+  CTX_wm_region_set(C, prev_region);
 }
 
 void ED_screen_ensure_updated(bContext *C, wmWindowManager *wm, wmWindow *win, bScreen *screen)
@@ -1887,7 +1900,7 @@ bool ED_screen_stereo3d_required(const bScreen *screen, const Scene *scene)
 
 Scene *ED_screen_scene_find_with_window(const bScreen *screen,
                                         const wmWindowManager *wm,
-                                        struct wmWindow **r_window)
+                                        wmWindow **r_window)
 {
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (WM_window_get_active_screen(win) == screen) {

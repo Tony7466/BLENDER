@@ -13,6 +13,8 @@
 
 #include "BLT_translation.h"
 
+#include "GPU_immediate.h"
+
 #include "interface_intern.hh"
 
 #include "UI_interface.h"
@@ -52,7 +54,15 @@ AbstractTreeViewItem &TreeViewItemContainer::add_tree_item(
 void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptions options) const
 {
   for (const auto &child : children_) {
-    iter_fn(*child);
+    bool skip = false;
+    if (bool(options & IterOptions::SkipFiltered) && !child->is_filtered_visible_cached()) {
+      skip = true;
+    }
+
+    if (!skip) {
+      iter_fn(*child);
+    }
+
     if (bool(options & IterOptions::SkipCollapsed) && child->is_collapsed()) {
       continue;
     }
@@ -71,6 +81,92 @@ void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) con
 void AbstractTreeView::set_min_rows(int min_rows)
 {
   min_rows_ = min_rows;
+}
+
+AbstractTreeViewItem *AbstractTreeView::find_last_visible_descendant(
+    const AbstractTreeViewItem &parent) const
+{
+  if (parent.is_collapsed()) {
+    return nullptr;
+  }
+
+  AbstractTreeViewItem *last_descendant = parent.children_.last().get();
+  while (!last_descendant->children_.is_empty() && !last_descendant->is_collapsed()) {
+    last_descendant = last_descendant->children_.last().get();
+  }
+
+  return last_descendant;
+}
+
+void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
+                                                      const TreeViewOrItem &parent,
+                                                      const uint pos) const
+{
+  for (const auto &item : parent.children_) {
+    if (!item->is_collapsible() || item->is_collapsed()) {
+      continue;
+    }
+
+    draw_hierarchy_lines_recursive(region, *item, pos);
+
+    const AbstractTreeViewItem *first_descendant = item->children_.first().get();
+    const AbstractTreeViewItem *last_descendant = find_last_visible_descendant(*item);
+    if (!first_descendant->view_item_but_ || !last_descendant || !last_descendant->view_item_but_)
+    {
+      return;
+    }
+    const uiButViewItem &first_child_but = *first_descendant->view_item_button();
+    const uiButViewItem &last_child_but = *last_descendant->view_item_button();
+
+    BLI_assert(first_child_but.block == last_child_but.block);
+    const uiBlock *block = first_child_but.block;
+
+    rcti first_child_rect;
+    ui_but_to_pixelrect(&first_child_rect, &region, block, &first_child_but);
+    rcti last_child_rect;
+    ui_but_to_pixelrect(&last_child_rect, &region, block, &last_child_but);
+
+    /* Small vertical padding. */
+    const short line_padding = UI_UNIT_Y / 4.0f;
+    const float x = first_child_rect.xmin + first_descendant->indent_width() -
+                    UI_ICON_SIZE * 0.5f + 2 * UI_SCALE_FAC;
+    immBegin(GPU_PRIM_LINES, 2);
+    immVertex2f(pos, x, first_child_rect.ymax - line_padding);
+    immVertex2f(pos, x, last_child_rect.ymin + line_padding);
+    immEnd();
+  }
+}
+
+void AbstractTreeView::draw_hierarchy_lines(const ARegion &region) const
+{
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uchar col[4];
+
+  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
+
+  float viewport_size[4];
+  GPU_viewport_size_get_f(viewport_size);
+  immUniform2f("viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
+  immUniform1i("colors_len", 0); /* "simple"  mode */
+  immUniform1f("dash_width", 8.0f);
+  /* >= is 1.0 for un-dashed lines. */
+  immUniform1f("udash_factor", 1.0f);
+  UI_GetThemeColorBlend3ubv(TH_BACK, TH_TEXT, 0.4f, col);
+  col[3] = 255;
+  immUniformColor4ubv(col);
+
+  GPU_line_width(1.0f);
+  GPU_blend(GPU_BLEND_ALPHA);
+  draw_hierarchy_lines_recursive(region, *this, pos);
+  GPU_blend(GPU_BLEND_NONE);
+
+  immUnbindProgram();
+}
+
+void AbstractTreeView::draw_overlays(const ARegion &region) const
+{
+  draw_hierarchy_lines(region);
 }
 
 void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
@@ -100,7 +196,7 @@ AbstractTreeViewItem *AbstractTreeView::find_matching_child(
     const AbstractTreeViewItem &lookup_item, const TreeViewOrItem &items)
 {
   for (const auto &iter_item : items.children_) {
-    if (lookup_item.matches_single(*iter_item)) {
+    if (lookup_item.matches(*iter_item)) {
       /* We have a matching item! */
       return iter_item.get();
     }
@@ -114,14 +210,26 @@ void AbstractTreeView::change_state_delayed()
   BLI_assert_msg(
       is_reconstructed(),
       "These state changes are supposed to be delayed until reconstruction is completed");
+
+/* Debug-only sanity check: Ensure only one item requests to be active. */
+#ifndef NDEBUG
+  bool has_active = false;
+  foreach_item([&has_active](AbstractTreeViewItem &item) {
+    if (item.should_be_active().value_or(false)) {
+      BLI_assert_msg(
+          !has_active,
+          "Only one view item should ever return true for its `should_be_active()` method");
+      has_active = true;
+    }
+  });
+#endif
+
   foreach_item([](AbstractTreeViewItem &item) { item.change_state_delayed(); });
 }
 
 /* ---------------------------------------------------------------------- */
 
-void AbstractTreeViewItem::tree_row_click_fn(struct bContext * /*C*/,
-                                             void *but_arg1,
-                                             void * /*arg2*/)
+void AbstractTreeViewItem::tree_row_click_fn(bContext * /*C*/, void *but_arg1, void * /*arg2*/)
 {
   uiButViewItem *item_but = (uiButViewItem *)but_arg1;
   AbstractTreeViewItem &tree_item = reinterpret_cast<AbstractTreeViewItem &>(*item_but->view_item);
@@ -142,14 +250,18 @@ void AbstractTreeViewItem::add_treerow_button(uiBlock &block)
   UI_but_func_set(view_item_but_, tree_row_click_fn, view_item_but_, nullptr);
 }
 
+int AbstractTreeViewItem::indent_width() const
+{
+  return count_parents() * UI_ICON_SIZE;
+}
+
 void AbstractTreeViewItem::add_indent(uiLayout &row) const
 {
   uiBlock *block = uiLayoutGetBlock(&row);
   uiLayout *subrow = uiLayoutRow(&row, true);
   uiLayoutSetFixedSize(subrow, true);
 
-  const float indent_size = count_parents() * UI_ICON_SIZE;
-  uiDefBut(block, UI_BTYPE_SEPR, 0, "", 0, 0, indent_size, 0, nullptr, 0.0, 0.0, 0, 0, "");
+  uiDefBut(block, UI_BTYPE_SEPR, 0, "", 0, 0, indent_width(), 0, nullptr, 0.0, 0.0, 0, 0, "");
 
   /* Indent items without collapsing icon some more within their parent. Makes it clear that they
    * are actually nested and not just a row at the same level without a chevron. */
@@ -161,7 +273,7 @@ void AbstractTreeViewItem::add_indent(uiLayout &row) const
   UI_block_layout_set_current(block, &row);
 }
 
-void AbstractTreeViewItem::collapse_chevron_click_fn(struct bContext *C,
+void AbstractTreeViewItem::collapse_chevron_click_fn(bContext *C,
                                                      void * /*but_arg1*/,
                                                      void * /*arg2*/)
 {
@@ -170,7 +282,7 @@ void AbstractTreeViewItem::collapse_chevron_click_fn(struct bContext *C,
    * lookup the hovered item via context here. */
 
   const wmWindow *win = CTX_wm_window(C);
-  const ARegion *region = CTX_wm_region(C);
+  const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
   uiViewItemHandle *hovered_item_handle = UI_region_views_find_item_at(region,
                                                                        win->eventstate->xy);
 
@@ -295,6 +407,9 @@ void AbstractTreeViewItem::activate()
   BLI_assert_msg(get_tree_view().is_reconstructed(),
                  "Item activation can't be done until reconstruction is completed");
 
+  if (!is_activatable_) {
+    return;
+  }
   if (is_active()) {
     return;
   }
@@ -384,7 +499,7 @@ bool AbstractTreeViewItem::matches(const AbstractViewItem &other) const
   return true;
 }
 
-uiButViewItem *AbstractTreeViewItem::view_item_button()
+uiButViewItem *AbstractTreeViewItem::view_item_button() const
 {
   return view_item_but_;
 }
@@ -430,7 +545,8 @@ void TreeViewLayoutBuilder::build_from_tree(const AbstractTreeView &tree_view)
   uiLayoutColumn(box, false);
 
   tree_view.foreach_item([this](AbstractTreeViewItem &item) { build_row(item); },
-                         AbstractTreeView::IterOptions::SkipCollapsed);
+                         AbstractTreeView::IterOptions::SkipCollapsed |
+                             AbstractTreeView::IterOptions::SkipFiltered);
 
   UI_block_layout_set_current(&block(), &parent_layout);
 }
@@ -464,14 +580,16 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
     uiLayoutSetActive(overlap, false);
   }
 
-  uiLayoutRow(overlap, false);
+  uiLayout *row = uiLayoutRow(overlap, false);
+  /* Enable emboss for mouse hover highlight. */
+  uiLayoutSetEmboss(row, UI_EMBOSS);
   /* Every item gets one! Other buttons can be overlapped on top. */
   item.add_treerow_button(block_);
 
   /* After adding tree-row button (would disable hover highlighting). */
   UI_block_emboss_set(&block_, UI_EMBOSS_NONE);
 
-  uiLayout *row = uiLayoutRow(overlap, true);
+  row = uiLayoutRow(overlap, true);
   item.add_indent(*row);
   item.add_collapse_chevron(block_);
 
@@ -504,7 +622,7 @@ void TreeViewBuilder::ensure_min_rows_items(AbstractTreeView &tree_view)
   int tot_visible_items = 0;
   tree_view.foreach_item(
       [&tot_visible_items](AbstractTreeViewItem & /*item*/) { tot_visible_items++; },
-      AbstractTreeView::IterOptions::SkipCollapsed);
+      AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
 
   if (tot_visible_items >= tree_view.min_rows_) {
     return;

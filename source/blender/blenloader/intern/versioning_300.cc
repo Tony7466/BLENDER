@@ -462,7 +462,7 @@ static void do_versions_sequencer_speed_effect_recursive(Scene *scene, const Lis
             }
           }
           if (substr) {
-            char *new_path = BLI_str_replaceN(fcu->rna_path, "speed_factor", substr);
+            char *new_path = BLI_string_replaceN(fcu->rna_path, "speed_factor", substr);
             MEM_freeN(fcu->rna_path);
             fcu->rna_path = new_path;
           }
@@ -670,7 +670,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   const int content_length = SEQ_time_strip_length_get(scene, seq);
 
-  SEQ_retiming_data_ensure(seq);
+  SEQ_retiming_data_ensure(scene, seq);
 
   SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
@@ -1363,7 +1363,7 @@ static void version_switch_node_input_prefix(Main *bmain)
             if (socket == node->inputs.first) {
               continue;
             }
-            strcpy(socket->name, socket->name[0] == 'A' ? "False" : "True");
+            STRNCPY(socket->name, socket->name[0] == 'A' ? "False" : "True");
 
             /* Replace "A" and "B", but keep the unique number suffix at the end. */
             char number_suffix[8];
@@ -1940,7 +1940,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "FunctionNodeCombineColor");
+          STRNCPY(node->idname, "FunctionNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -1949,7 +1949,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "FunctionNodeSeparateColor");
+          STRNCPY(node->idname, "FunctionNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2007,7 +2007,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2016,7 +2016,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2026,7 +2026,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YCC;
           storage->ycc_mode = node->custom1;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2035,7 +2035,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YUV;
-          strcpy(node->idname, "CompositorNodeCombineColor");
+          STRNCPY(node->idname, "CompositorNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2044,7 +2044,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2053,7 +2053,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2063,7 +2063,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YCC;
           storage->ycc_mode = node->custom1;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2072,7 +2072,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)MEM_callocN(
               sizeof(NodeCMPCombSepColor), __func__);
           storage->mode = CMP_NODE_COMBSEP_COLOR_YUV;
-          strcpy(node->idname, "CompositorNodeSeparateColor");
+          STRNCPY(node->idname, "CompositorNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2087,13 +2087,13 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
         case TEX_NODE_COMPOSE_LEGACY: {
           node->type = TEX_NODE_COMBINE_COLOR;
           node->custom1 = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "TextureNodeCombineColor");
+          STRNCPY(node->idname, "TextureNodeCombineColor");
           break;
         }
         case TEX_NODE_DECOMPOSE_LEGACY: {
           node->type = TEX_NODE_SEPARATE_COLOR;
           node->custom1 = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "TextureNodeSeparateColor");
+          STRNCPY(node->idname, "TextureNodeSeparateColor");
           break;
         }
       }
@@ -2127,7 +2127,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "ShaderNodeCombineColor");
+          STRNCPY(node->idname, "ShaderNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2136,7 +2136,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "ShaderNodeCombineColor");
+          STRNCPY(node->idname, "ShaderNodeCombineColor");
           node->storage = storage;
           break;
         }
@@ -2145,7 +2145,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_RGB;
-          strcpy(node->idname, "ShaderNodeSeparateColor");
+          STRNCPY(node->idname, "ShaderNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2154,7 +2154,7 @@ static void versioning_replace_legacy_combined_and_separate_color_nodes(bNodeTre
           NodeCombSepColor *storage = (NodeCombSepColor *)MEM_callocN(sizeof(NodeCombSepColor),
                                                                       __func__);
           storage->mode = NODE_COMBSEP_COLOR_HSV;
-          strcpy(node->idname, "ShaderNodeSeparateColor");
+          STRNCPY(node->idname, "ShaderNodeSeparateColor");
           node->storage = storage;
           break;
         }
@@ -2171,7 +2171,7 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
   version_node_output_socket_name(ntree, SH_NODE_MIX_RGB_LEGACY, "Color", "Result_Color");
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == SH_NODE_MIX_RGB_LEGACY) {
-      strcpy(node->idname, "ShaderNodeMix");
+      STRNCPY(node->idname, "ShaderNodeMix");
       node->type = SH_NODE_MIX;
       NodeShaderMix *data = (NodeShaderMix *)MEM_callocN(sizeof(NodeShaderMix), __func__);
       data->blend_type = node->custom1;
@@ -2180,46 +2180,6 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
       data->data_type = SOCK_RGBA;
       data->factor_mode = NODE_MIX_MODE_UNIFORM;
       node->storage = data;
-    }
-  }
-}
-
-static void versioning_replace_legacy_glossy_node(bNodeTree *ntree)
-{
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == SH_NODE_BSDF_GLOSSY_LEGACY) {
-      strcpy(node->idname, "ShaderNodeBsdfAnisotropic");
-      node->type = SH_NODE_BSDF_GLOSSY;
-    }
-  }
-}
-
-static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
-{
-  /* Find all glossy, glass and refraction BSDF nodes that have their distribution
-   * set to SHARP and set them to GGX, disconnect any link to the Roughness input
-   * and set its value to zero. */
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (!ELEM(node->type, SH_NODE_BSDF_GLOSSY, SH_NODE_BSDF_GLASS, SH_NODE_BSDF_REFRACTION)) {
-      continue;
-    }
-    if (node->custom1 != SHD_GLOSSY_SHARP_DEPRECATED) {
-      continue;
-    }
-
-    node->custom1 = SHD_GLOSSY_GGX;
-    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
-      if (!STREQ(socket->identifier, "Roughness")) {
-        continue;
-      }
-
-      if (socket->link != nullptr) {
-        nodeRemLink(ntree, socket->link);
-      }
-      bNodeSocketValueFloat *socket_value = (bNodeSocketValueFloat *)socket->default_value;
-      socket_value->value = 0.0f;
-
-      break;
     }
   }
 }
@@ -2563,22 +2523,22 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       tool_settings->snap_node_mode &= ~((1 << 5) | (1 << 6));
       tool_settings->snap_uv_mode &= ~(1 << 4);
       if (snap_mode & (1 << 4)) {
-        tool_settings->snap_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_mode |= (1 << 6); /* SCE_SNAP_TO_INCREMENT */
       }
       if (snap_mode & (1 << 5)) {
-        tool_settings->snap_mode |= (1 << 4); /* SCE_SNAP_MODE_EDGE_MIDPOINT */
+        tool_settings->snap_mode |= (1 << 4); /* SCE_SNAP_TO_EDGE_MIDPOINT */
       }
       if (snap_mode & (1 << 6)) {
-        tool_settings->snap_mode |= (1 << 5); /* SCE_SNAP_MODE_EDGE_PERPENDICULAR */
+        tool_settings->snap_mode |= (1 << 5); /* SCE_SNAP_TO_EDGE_PERPENDICULAR */
       }
       if (snap_node_mode & (1 << 5)) {
-        tool_settings->snap_node_mode |= (1 << 0); /* SCE_SNAP_MODE_NODE_X */
+        tool_settings->snap_node_mode |= (1 << 0); /* SCE_SNAP_TO_NODE_X */
       }
       if (snap_node_mode & (1 << 6)) {
-        tool_settings->snap_node_mode |= (1 << 1); /* SCE_SNAP_MODE_NODE_Y */
+        tool_settings->snap_node_mode |= (1 << 1); /* SCE_SNAP_TO_NODE_Y */
       }
       if (snap_uv_mode & (1 << 4)) {
-        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_TO_INCREMENT */
       }
 
       SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
@@ -2610,7 +2570,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
           if (node->type == GEO_NODE_SUBDIVIDE_MESH) {
-            strcpy(node->idname, "GeometryNodeMeshSubdivide");
+            STRNCPY(node->idname, "GeometryNodeMeshSubdivide");
           }
         }
       }
@@ -2622,7 +2582,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *tool_settings = scene->toolsettings;
       if (tool_settings->snap_uv_mode & (1 << 4)) {
-        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_TO_INCREMENT */
         tool_settings->snap_uv_mode &= ~(1 << 4);
       }
     }
@@ -2745,6 +2705,44 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           do_version_constraints_spline_ik_joint_bindings(&pchan->constraints);
         }
       }
+    }
+  }
+
+  /* Move visibility from Cycles to Blender. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      IDProperty *cvisibility = version_cycles_visibility_properties_from_ID(&object->id);
+      int flag = 0;
+
+      if (cvisibility) {
+        flag |= version_cycles_property_boolean(cvisibility, "camera", true) ? 0 : OB_HIDE_CAMERA;
+        flag |= version_cycles_property_boolean(cvisibility, "diffuse", true) ? 0 :
+                                                                                OB_HIDE_DIFFUSE;
+        flag |= version_cycles_property_boolean(cvisibility, "glossy", true) ? 0 : OB_HIDE_GLOSSY;
+        flag |= version_cycles_property_boolean(cvisibility, "transmission", true) ?
+                    0 :
+                    OB_HIDE_TRANSMISSION;
+        flag |= version_cycles_property_boolean(cvisibility, "scatter", true) ?
+                    0 :
+                    OB_HIDE_VOLUME_SCATTER;
+        flag |= version_cycles_property_boolean(cvisibility, "shadow", true) ? 0 : OB_HIDE_SHADOW;
+      }
+
+      IDProperty *cobject = version_cycles_properties_from_ID(&object->id);
+      if (cobject) {
+        flag |= version_cycles_property_boolean(cobject, "is_holdout", false) ? OB_HOLDOUT : 0;
+        flag |= version_cycles_property_boolean(cobject, "is_shadow_catcher", false) ?
+                    OB_SHADOW_CATCHER :
+                    0;
+      }
+
+      if (object->type == OB_LAMP) {
+        flag |= OB_HIDE_CAMERA | OB_SHADOW_CATCHER;
+      }
+
+      /* Clear unused bits from old version, and add new flags. */
+      object->visibility_flag &= (OB_HIDE_VIEWPORT | OB_HIDE_SELECT | OB_HIDE_RENDER);
+      object->visibility_flag |= flag;
     }
   }
 
@@ -2953,6 +2951,24 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     };
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->r.scemode &= ~(R_EXR_TILE_FILE | R_FULL_SAMPLE);
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 25)) {
+    enum {
+      DENOISER_NLM = 1,
+      DENOISER_OPENIMAGEDENOISE = 4,
+    };
+
+    /* Removal of NLM denoiser. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      IDProperty *cscene = version_cycles_properties_from_ID(&scene->id);
+
+      if (cscene) {
+        if (version_cycles_property_int(cscene, "denoiser", DENOISER_NLM) == DENOISER_NLM) {
+          version_cycles_property_int_set(cscene, "denoiser", DENOISER_OPENIMAGEDENOISE);
+        }
+      }
     }
   }
 
@@ -3306,7 +3322,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
                 sizeof(NodeFunctionCompare), __func__);
             data->data_type = SOCK_FLOAT;
             data->operation = node->custom1;
-            strcpy(node->idname, "FunctionNodeCompare");
+            STRNCPY(node->idname, "FunctionNodeCompare");
             node->storage = data;
           }
         }
@@ -4456,31 +4472,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 306, 10)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       /* Set default values for new members. */
-      scene->toolsettings->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      scene->toolsettings->snap_mode_tools = SCE_SNAP_TO_GEOM;
       scene->toolsettings->plane_axis = 2;
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
-
-    /* Convert anisotropic BSDF node to glossy BSDF. */
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      versioning_replace_legacy_glossy_node(ntree);
-      versioning_remove_microfacet_sharp_distribution(ntree);
-    }
-    FOREACH_NODETREE_END;
-
-    BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, NULL);
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 11)) {
+    BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, nullptr);
 
     /* Store simulation bake directory in geometry nodes modifier. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
@@ -4497,5 +4495,40 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
       }
     }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          /* #107870: Movie Clip Editor hangs in "Clip" view */
+          if (sl->spacetype == SPACE_CLIP) {
+            const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                         &sl->regionbase;
+            ARegion *region_main = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                       RGN_TYPE_WINDOW);
+            region_main->flag &= ~RGN_FLAG_HIDDEN;
+            ARegion *region_tools = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                        RGN_TYPE_TOOLS);
+            region_tools->alignment = RGN_ALIGN_LEFT;
+            if (!(region_tools->flag & RGN_FLAG_HIDDEN_BY_USER)) {
+              region_tools->flag &= ~RGN_FLAG_HIDDEN;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - #do_versions_after_linking_300 in this file.
+   * - "versioning_userdef.c", #blo_do_versions_userdef
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
   }
 }

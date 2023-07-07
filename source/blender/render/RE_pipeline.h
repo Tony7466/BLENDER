@@ -14,6 +14,7 @@
 
 #include "BLI_implicit_sharing.h"
 
+struct GPUTexture;
 struct ImBuf;
 struct Image;
 struct ImageFormatData;
@@ -44,16 +45,20 @@ typedef struct Render Render;
 /* Buffer of a floating point values which uses implicit sharing.
  *
  * The buffer is allocated by render passes creation, and then is shared with the render result
- * and image buffer. */
+ * and image buffer.
+ *
+ * The GPU texture is an optional read-only copy of the render buffer in GPU memory. */
 typedef struct RenderBuffer {
   float *data;
   const ImplicitSharingInfoHandle *sharing_info;
+  struct GPUTexture *gpu_texture;
 } RenderBuffer;
 
 /* Specialized render buffer to store 8bpp passes. */
 typedef struct RenderByteBuffer {
   uint8_t *data;
   const ImplicitSharingInfoHandle *sharing_info;
+  struct GPUTexture *gpu_texture;
 } RenderByteBuffer;
 
 /* Render Result usage:
@@ -70,7 +75,6 @@ typedef struct RenderView {
 
   /* if this exists, result of composited layers */
   RenderBuffer combined_buffer;
-  RenderBuffer z_buffer;
 
   /* optional, 32 bits version of picture, used for sequencer, OpenGL render and image curves */
   RenderByteBuffer byte_buffer;
@@ -130,7 +134,6 @@ typedef struct RenderResult {
 
   /* if this exists, a copy of one of layers, or result of composited layers */
   RenderBuffer combined_buffer;
-  RenderBuffer z_buffer;
 
   /* coordinates within final image (after cropping) */
   rcti tilerect;
@@ -206,6 +209,7 @@ void RE_FreeAllRender(void);
  * On file load, free render results.
  */
 void RE_FreeAllRenderResults(void);
+
 /**
  * On file load or changes engines, free persistent render data.
  * Assumes no engines are currently rendering.
@@ -215,6 +219,17 @@ void RE_FreeAllPersistentData(void);
  * Free persistent render data, optionally only for the given scene.
  */
 void RE_FreePersistentData(const struct Scene *scene);
+
+/**
+ * Free cached GPU textures to reduce memory usage.
+ */
+void RE_FreeGPUTextureCaches(void);
+
+/**
+ * Free cached GPU textures, contexts and compositor to reduce memory usage,
+ * when nothing in the UI requires them anymore.
+ */
+void RE_FreeUnusedGPUResources(void);
 
 /**
  * Get results and statistics.
@@ -252,15 +267,6 @@ struct RenderStats *RE_GetStats(struct Render *re);
  * Caller is responsible for allocating `rect` in correct size!
  */
 void RE_ResultGet32(struct Render *re, unsigned int *rect);
-/**
- * Only for acquired results, for lock.
- *
- * \note The caller is responsible for allocating `rect` in correct size!
- */
-void RE_AcquiredResultGet32(struct Render *re,
-                            struct RenderResult *result,
-                            unsigned int *rect,
-                            int view_id);
 
 void RE_render_result_full_channel_name(char *fullname,
                                         const char *layname,
@@ -426,10 +432,12 @@ void RE_current_scene_update_cb(struct Render *re,
                                 void *handle,
                                 void (*f)(void *handle, struct Scene *scene));
 
-void RE_gl_context_create(Render *re);
-void RE_gl_context_destroy(Render *re);
-void *RE_gl_context_get(Render *re);
-void *RE_gpu_context_get(Render *re);
+void RE_system_gpu_context_ensure(Render *re);
+void RE_system_gpu_context_free(Render *re);
+void *RE_system_gpu_context_get(Render *re);
+
+void *RE_blender_gpu_context_ensure(Render *re);
+void RE_blender_gpu_context_free(Render *re);
 
 /**
  * \param x: ranges from -1 to 1.
@@ -462,6 +470,11 @@ struct RenderPass *RE_pass_find_by_type(struct RenderLayer *rl,
  * sharing with other users.
  */
 void RE_pass_set_buffer_data(struct RenderPass *pass, float *data);
+
+/**
+ * Ensure a GPU texture corresponding to the render buffer data exists.
+ */
+struct GPUTexture *RE_pass_ensure_gpu_texture_cache(struct Render *re, struct RenderPass *rpass);
 
 /* shaded view or baking options */
 #define RE_BAKE_NORMALS 0

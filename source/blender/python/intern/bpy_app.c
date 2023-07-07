@@ -29,6 +29,8 @@
 #include "bpy_app_handlers.h"
 #include "bpy_driver.h"
 
+#include "BPY_extern_python.h" /* For #BPY_python_app_help_text_fn. */
+
 /* modules */
 #include "bpy_app_icons.h"
 #include "bpy_app_timers.h"
@@ -549,7 +551,7 @@ static PyObject *bpy_app_help_text(PyObject *UNUSED(self), PyObject *args, PyObj
   return result;
 }
 
-static struct PyMethodDef bpy_app_methods[] = {
+static PyMethodDef bpy_app_methods[] = {
     {"is_job_running",
      (PyCFunction)bpy_app_is_job_running,
      METH_VARARGS | METH_KEYWORDS | METH_STATIC,

@@ -156,9 +156,9 @@ static void sclip_zoom_set_factor_exec(bContext *C, const wmEvent *event, float 
 /** \name Open Clip Operator
  * \{ */
 
-static void clip_filesel(bContext *C, wmOperator *op, const char *path)
+static void clip_filesel(bContext *C, wmOperator *op, const char *dirpath)
 {
-  RNA_string_set(op->ptr, "directory", path);
+  RNA_string_set(op->ptr, "directory", dirpath);
 
   WM_event_add_fileselect(C, op);
 }
@@ -261,7 +261,7 @@ static int open_exec(bContext *C, wmOperator *op)
 static int open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);
-  char path[FILE_MAX];
+  char dirpath[FILE_MAX];
   MovieClip *clip = nullptr;
 
   if (sc) {
@@ -269,13 +269,13 @@ static int open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
   }
 
   if (clip) {
-    STRNCPY(path, clip->filepath);
+    STRNCPY(dirpath, clip->filepath);
 
-    BLI_path_abs(path, CTX_data_main(C)->filepath);
-    BLI_path_parent_dir(path);
+    BLI_path_abs(dirpath, CTX_data_main(C)->filepath);
+    BLI_path_parent_dir(dirpath);
   }
   else {
-    STRNCPY(path, U.textudir);
+    STRNCPY(dirpath, U.textudir);
   }
 
   if (RNA_struct_property_is_set(op->ptr, "files")) {
@@ -288,7 +288,7 @@ static int open_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 
   open_init(C, op);
 
-  clip_filesel(C, op, path);
+  clip_filesel(C, op, dirpath);
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -357,13 +357,13 @@ void CLIP_OT_reload(wmOperatorType *ot)
 /** \name View Pan Operator
  * \{ */
 
-typedef struct ViewPanData {
+struct ViewPanData {
   float x, y;
   float xof, yof, xorig, yorig;
   int launch_event;
   bool own_cursor;
   float *vec;
-} ViewPanData;
+};
 
 static void view_pan_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -530,7 +530,7 @@ void CLIP_OT_view_pan(wmOperatorType *ot)
 /** \name View Zoom Operator
  * \{ */
 
-typedef struct ViewZoomData {
+struct ViewZoomData {
   float x, y;
   float zoom;
   int launch_event;
@@ -538,7 +538,7 @@ typedef struct ViewZoomData {
   wmTimer *timer;
   double timer_lastdraw;
   bool own_cursor;
-} ViewZoomData;
+};
 
 static void view_zoom_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1168,14 +1168,14 @@ void CLIP_OT_change_frame(wmOperatorType *ot)
 /** \name Rebuild Proxies Operator
  * \{ */
 
-typedef struct ProxyBuildJob {
+struct ProxyJob {
   Scene *scene;
-  struct Main *main;
+  Main *main;
   MovieClip *clip;
   int clip_flag;
   bool stop;
-  struct IndexBuildContext *index_context;
-} ProxyJob;
+  IndexBuildContext *index_context;
+};
 
 static void proxy_freejob(void *pjv)
 {
@@ -1226,7 +1226,7 @@ static void do_movie_proxy(void *pjv,
 {
   ProxyJob *pj = static_cast<ProxyJob *>(pjv);
   MovieClip *clip = pj->clip;
-  struct MovieDistortion *distortion = nullptr;
+  MovieDistortion *distortion = nullptr;
 
   if (pj->index_context) {
     IMB_anim_index_rebuild(pj->index_context, stop, do_update, progress);
@@ -1280,7 +1280,7 @@ static void do_movie_proxy(void *pjv,
  * thread for maximal speed
  */
 
-typedef struct ProxyQueue {
+struct ProxyQueue {
   int cfra;
   int sfra;
   int efra;
@@ -1289,14 +1289,14 @@ typedef struct ProxyQueue {
   const bool *stop;
   bool *do_update;
   float *progress;
-} ProxyQueue;
+};
 
-typedef struct ProxyThread {
+struct ProxyThread {
   MovieClip *clip;
-  struct MovieDistortion *distortion;
+  MovieDistortion *distortion;
   int *build_sizes, build_count;
   int *build_undistort_sizes, build_undistort_count;
-} ProxyThread;
+};
 
 static uchar *proxy_thread_next_frame(ProxyQueue *queue,
                                       MovieClip *clip,
@@ -1870,7 +1870,7 @@ void CLIP_OT_lock_selection_toggle(wmOperatorType *ot)
 /** \name Macros
  * \{ */
 
-void ED_operatormacros_clip(void)
+void ED_operatormacros_clip()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;

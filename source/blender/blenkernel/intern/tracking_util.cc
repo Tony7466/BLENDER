@@ -673,7 +673,7 @@ static ImBuf *accessor_get_ibuf(TrackingImageAccessor *accessor,
 {
   /* First try to get fully processed image from the cache. */
   CACHE_PRINTF("Calculate new buffer for frame %d\n", frame);
-  /* And now we do postprocessing of the original frame. */
+  /* And now we do post-processing of the original frame. */
   ImBuf *orig_ibuf = accessor_get_preprocessed_ibuf(accessor, clip_index, frame);
   if (orig_ibuf == nullptr) {
     return nullptr;
@@ -781,7 +781,7 @@ static ImBuf *accessor_get_ibuf(TrackingImageAccessor *accessor,
   return final_ibuf;
 }
 
-static libmv_CacheKey accessor_get_image_callback(struct libmv_FrameAccessorUserData *user_data,
+static libmv_CacheKey accessor_get_image_callback(libmv_FrameAccessorUserData *user_data,
                                                   int clip_index,
                                                   int frame,
                                                   libmv_InputMode input_mode,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -53,7 +53,7 @@
 
 /* temp struct to hold data */
 struct GPHookData_cb {
-  struct CurveMapping *curfalloff;
+  CurveMapping *curfalloff;
 
   char falloff_type;
   float falloff;

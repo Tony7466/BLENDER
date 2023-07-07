@@ -119,6 +119,15 @@ struct wmWindowManager;
 #include "gizmo/WM_gizmo_api.h"
 
 #ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
+#else
+typedef struct AssetRepresentationHandle AssetRepresentationHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -195,7 +204,7 @@ typedef enum eWM_CursorWrapAxis {
 
 /**
  * Context to call operator in for #WM_operator_name_call.
- * rna_ui.c contains EnumPropertyItem's of these, keep in sync.
+ * rna_ui.cc contains EnumPropertyItem's of these, keep in sync.
  */
 typedef enum wmOperatorCallContext {
   /* if there's invoke, call it, otherwise exec */
@@ -515,6 +524,7 @@ typedef struct wmNotifier {
 #define NS_MODE_PARTICLE (10 << 8)
 #define NS_EDITMODE_CURVES (11 << 8)
 #define NS_EDITMODE_GREASE_PENCIL (12 << 8)
+#define NS_EDITMODE_POINT_CLOUD (13 << 8)
 
 /* subtype 3d view editing */
 #define NS_VIEW3D_GPU (16 << 8)
@@ -1095,16 +1105,8 @@ typedef struct wmDragID {
 } wmDragID;
 
 typedef struct wmDragAsset {
-  /* NOTE: Can't store the #AssetHandle here, since the #FileDirEntry it wraps may be freed while
-   * dragging. So store necessary data here directly. */
-
-  char name[64]; /* MAX_NAME */
-  /* Always freed. */
-  const char *path;
-  int id_type;
-  struct AssetMetaData *metadata;
   int import_method; /* eAssetImportType */
-  bool use_relative_path;
+  const AssetRepresentationHandle *asset;
 
   /* FIXME: This is temporary evil solution to get scene/view-layer/etc in the copy callback of the
    * #wmDropBox.

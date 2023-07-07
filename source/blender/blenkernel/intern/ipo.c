@@ -1098,7 +1098,7 @@ static char *get_rna_access(ID *id,
       propname = "eval_time";
       break;
 
-    /* XXX problematic blocktypes */
+    /* XXX problematic block-types. */
     case ID_SEQ: /* sequencer strip */
       /* SEQ_FAC1: */
       switch (adrcode) {
@@ -1165,7 +1165,7 @@ static char *get_rna_access(ID *id,
     else if ((blocktype == ID_KE) && STREQ(actname, "Shape")) {
       /* Actionified "Shape" IPO's -
        * these are forced onto object level via the action container there... */
-      strcpy(buf, "data.shape_keys");
+      STRNCPY(buf, "data.shape_keys");
     }
     else {
       /* Pose-Channel */

@@ -68,7 +68,7 @@ void ED_space_image_set(Main *bmain, SpaceImage *sima, Image *ima, bool automati
   WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, NULL);
 }
 
-void ED_space_image_sync(struct Main *bmain, struct Image *image, bool ignore_render_viewer)
+void ED_space_image_sync(Main *bmain, Image *image, bool ignore_render_viewer)
 {
   wmWindowManager *wm = (wmWindowManager *)bmain->wm.first;
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
@@ -198,7 +198,7 @@ int ED_space_image_get_display_channel_mask(ImBuf *ibuf)
 
   const bool color = ibuf->channels >= 3;
   const bool alpha = ibuf->channels == 4;
-  const bool zbuf = ibuf->z_buffer.data || ibuf->float_z_buffer.data || (ibuf->channels == 1);
+  const bool zbuf = ibuf->channels == 1;
 
   if (!alpha) {
     result &= ~(SI_USE_ALPHA | SI_SHOW_ALPHA);
@@ -381,7 +381,7 @@ void ED_image_point_pos__reverse(SpaceImage *sima,
   r_co[1] = (co[1] * height * zoomy) + (float)sy;
 }
 
-bool ED_image_slot_cycle(struct Image *image, int direction)
+bool ED_image_slot_cycle(Image *image, int direction)
 {
   const int cur = image->render_slot;
   int i, slot;
@@ -415,9 +415,9 @@ bool ED_image_slot_cycle(struct Image *image, int direction)
   return (cur != image->render_slot);
 }
 
-void ED_space_image_scopes_update(const struct bContext *C,
-                                  struct SpaceImage *sima,
-                                  struct ImBuf *ibuf,
+void ED_space_image_scopes_update(const bContext *C,
+                                  SpaceImage *sima,
+                                  ImBuf *ibuf,
                                   bool use_view_settings)
 {
   Scene *scene = CTX_data_scene(C);
@@ -471,7 +471,7 @@ bool ED_space_image_show_uvedit(const SpaceImage *sima, Object *obedit)
   }
 
   if (obedit && obedit->type == OB_MESH) {
-    struct BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
     bool ret;
 
     ret = EDBM_uv_check(em);

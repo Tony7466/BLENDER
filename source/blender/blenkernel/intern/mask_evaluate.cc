@@ -187,11 +187,11 @@ float (*BKE_mask_spline_differentiate(
 
 /* ** feather points self-intersection collapse routine ** */
 
-typedef struct FeatherEdgesBucket {
+struct FeatherEdgesBucket {
   int tot_segment;
   int (*segments)[2];
   int alloc_segment;
-} FeatherEdgesBucket;
+};
 
 static void feather_bucket_add_edge(FeatherEdgesBucket *bucket, int start, int end)
 {
@@ -910,7 +910,7 @@ void BKE_mask_layer_evaluate_deform(MaskLayer *masklay, const float ctime)
   }
 }
 
-void BKE_mask_eval_animation(struct Depsgraph *depsgraph, Mask *mask)
+void BKE_mask_eval_animation(Depsgraph *depsgraph, Mask *mask)
 {
   float ctime = DEG_get_ctime(depsgraph);
   DEG_debug_print_eval(depsgraph, __func__, mask->id.name, mask);
@@ -919,7 +919,7 @@ void BKE_mask_eval_animation(struct Depsgraph *depsgraph, Mask *mask)
   }
 }
 
-void BKE_mask_eval_update(struct Depsgraph *depsgraph, Mask *mask)
+void BKE_mask_eval_update(Depsgraph *depsgraph, Mask *mask)
 {
   const bool is_depsgraph_active = DEG_is_active(depsgraph);
   float ctime = DEG_get_ctime(depsgraph);

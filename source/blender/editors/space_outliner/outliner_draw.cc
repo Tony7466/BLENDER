@@ -675,7 +675,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   BLI_mempool *ts = space_outliner->treestore;
   TreeStoreElem *tselem = static_cast<TreeStoreElem *>(tsep);
 
@@ -1853,21 +1853,23 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
             tree_element_cast<TreeElementOverridesPropertyOperation>(te))
     {
       StringRefNull op_label = override_op_elem->getOverrideOperationLabel();
-      uiDefBut(block,
-               UI_BTYPE_LABEL,
-               0,
-               op_label.c_str(),
-               x + pad_x,
-               te->ys + pad_y,
-               item_max_width,
-               item_height,
-               nullptr,
-               0,
-               0,
-               0,
-               0,
-               "");
-      continue;
+      if (!op_label.is_empty()) {
+        uiDefBut(block,
+                 UI_BTYPE_LABEL,
+                 0,
+                 op_label.c_str(),
+                 x + pad_x,
+                 te->ys + pad_y,
+                 item_max_width,
+                 item_height,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 "");
+        continue;
+      }
     }
 
     PointerRNA *ptr = &override_elem->override_rna_ptr;

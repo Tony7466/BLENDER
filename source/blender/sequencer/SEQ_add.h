@@ -7,7 +7,7 @@
 /** \file
  * \ingroup sequencer
  */
-
+#include "BLI_utildefines.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,12 +23,14 @@ typedef enum eSeqLoadFlags {
   SEQ_LOAD_MOVIE_SYNC_FPS = (1 << 3),
   SEQ_LOAD_SET_VIEW_TRANSFORM = (1 << 4),
 } eSeqLoadFlags;
+ENUM_OPERATORS(eSeqLoadFlags, SEQ_LOAD_SET_VIEW_TRANSFORM)
 
 /* Api for adding new sequence strips. */
 typedef struct SeqLoadData {
   int start_frame;
   int channel;
-  char name[64];   /* Strip name. */
+  char name[64]; /* Strip name. */
+  /** Typically a `filepath` but may reference any kind of path. */
   char path[1024]; /* 1024 = FILE_MAX */
   struct {
     int len;

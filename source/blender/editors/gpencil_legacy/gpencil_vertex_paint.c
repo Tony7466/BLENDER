@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation.
+/* SPDX-FileCopyrightText: 2015 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -159,12 +159,12 @@ static tGP_Selected *gpencil_select_buffer_ensure(tGP_Selected *buffer_array,
    * This is done in order to keep cache small and improve speed. */
   if (*buffer_used + 1 > *buffer_size) {
     if ((*buffer_size == 0) || (buffer_array == NULL)) {
-      p = MEM_callocN(sizeof(struct tGP_Selected) * GP_SELECT_BUFFER_CHUNK, __func__);
+      p = MEM_callocN(sizeof(tGP_Selected) * GP_SELECT_BUFFER_CHUNK, __func__);
       *buffer_size = GP_SELECT_BUFFER_CHUNK;
     }
     else {
       *buffer_size += GP_SELECT_BUFFER_CHUNK;
-      p = MEM_recallocN(buffer_array, sizeof(struct tGP_Selected) * *buffer_size);
+      p = MEM_recallocN(buffer_array, sizeof(tGP_Selected) * *buffer_size);
     }
 
     if (p == NULL) {
@@ -702,8 +702,8 @@ static bool gpencil_vertexpaint_brush_init(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   Object *ob = CTX_data_active_object(C);
-  Paint *paint = ob->mode == OB_MODE_VERTEX_GPENCIL ? &ts->gp_vertexpaint->paint :
-                                                      &ts->gp_paint->paint;
+  Paint *paint = ob->mode == OB_MODE_VERTEX_GPENCIL_LEGACY ? &ts->gp_vertexpaint->paint :
+                                                             &ts->gp_paint->paint;
 
   /* set the brush using the tool */
   tGP_BrushVertexpaintData *gso;
@@ -990,8 +990,8 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
                                                const float bound_mat[4][4])
 {
   Object *ob = CTX_data_active_object(C);
-  const char tool = ob->mode == OB_MODE_VERTEX_GPENCIL ? gso->brush->gpencil_vertex_tool :
-                                                         gso->brush->gpencil_tool;
+  const char tool = ob->mode == OB_MODE_VERTEX_GPENCIL_LEGACY ? gso->brush->gpencil_vertex_tool :
+                                                                gso->brush->gpencil_tool;
   const int radius = (gso->brush->flag & GP_BRUSH_USE_PRESSURE) ?
                          gso->brush->size * gso->pressure :
                          gso->brush->size;

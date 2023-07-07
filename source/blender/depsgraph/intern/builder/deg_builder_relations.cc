@@ -1469,7 +1469,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
         }
         else {
           /* Standard object relation. */
-          // TODO: loc vs rot vs scale?
+          /* TODO: loc vs rot vs scale? */
           if (&ct->tar->id == id) {
             /* Constraint targeting own object:
              * - This case is fine IF we're dealing with a bone
@@ -3459,8 +3459,8 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
 /* **** ID traversal callbacks functions **** */
 
 void DepsgraphRelationBuilder::modifier_walk(void *user_data,
-                                             struct Object * /*object*/,
-                                             struct ID **idpoin,
+                                             Object * /*object*/,
+                                             ID **idpoin,
                                              int /*cb_flag*/)
 {
   BuilderWalkUserData *data = (BuilderWalkUserData *)user_data;

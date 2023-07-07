@@ -130,7 +130,7 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
   MTFace *mtface = (MTFace *)CustomData_get_layer_for_write(
       &mesh->fdata, CD_MTFACE, mesh->totface);
   const MFace *mface = (const MFace *)CustomData_get_layer(&mesh->fdata, CD_MFACE);
-  const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
+  const Span<float3> positions = mesh->vert_positions();
   const Span<float3> vert_normals = mesh->vert_normals();
 
   if ((!mtface || !mface) && !uv_warning_shown_) {
@@ -159,7 +159,7 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
       const int num = pa->num_dmcache >= 0 ? pa->num_dmcache : pa->num;
 
       if (num < mesh->totface) {
-        /* TODO(Sybren): check whether the NULL check here and if(mface) are actually required
+        /* TODO(Sybren): check whether the null check here and if(mface) are actually required
          */
         const MFace *face = mface == nullptr ? nullptr : &mface[num];
         MTFace *tface = mtface + num;
@@ -171,7 +171,7 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
           uv_values.emplace_back(r_uv[0], r_uv[1]);
 
           psys_interpolate_face(mesh,
-                                positions,
+                                reinterpret_cast<const float(*)[3]>(positions.data()),
                                 reinterpret_cast<const float(*)[3]>(vert_normals.data()),
                                 face,
                                 tface,
@@ -255,7 +255,7 @@ void ABCHairWriter::write_hair_child_sample(const HierarchyContext &context,
   const MFace *mface = (const MFace *)CustomData_get_layer(&mesh->fdata, CD_MFACE);
   MTFace *mtface = (MTFace *)CustomData_get_layer_for_write(
       &mesh->fdata, CD_MTFACE, mesh->totface);
-  const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
+  const Span<float3> positions = mesh->vert_positions();
   const Span<float3> vert_normals = mesh->vert_normals();
 
   ParticleSystem *psys = context.particle_system;
@@ -289,7 +289,7 @@ void ABCHairWriter::write_hair_child_sample(const HierarchyContext &context,
       uv_values.emplace_back(r_uv[0], r_uv[1]);
 
       psys_interpolate_face(mesh,
-                            positions,
+                            reinterpret_cast<const float(*)[3]>(positions.data()),
                             reinterpret_cast<const float(*)[3]>(vert_normals.data()),
                             face,
                             tface,
