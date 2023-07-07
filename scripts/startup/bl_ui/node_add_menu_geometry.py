@@ -574,18 +574,6 @@ class NODE_MT_category_GEO_UTILITIES_MATH(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
-class NODE_MT_category_operator(Menu):
-    bl_idname = "NODE_MT_category_operator"
-    bl_label = "Operator"
-
-    def draw(self, _context):
-        layout = self.layout
-        node_add_menu.add_node_type(layout, "GeometryNodeOperator3DCursor")
-        node_add_menu.add_node_type(layout, "GeometryNodeOperatorSelection")
-        node_add_menu.add_node_type(layout, "GeometryNodeOperatorSelectionSet")
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
-
 class NODE_MT_category_GEO_UV(Menu):
     bl_idname = "NODE_MT_category_GEO_UV"
     bl_label = "UV"
@@ -660,8 +648,7 @@ class NODE_MT_geometry_node_add_all(Menu):
     bl_idname = "NODE_MT_geometry_node_add_all"
     bl_label = ""
 
-    def draw(self, context):
-        snode = context.space_data
+    def draw(self, _context):
         layout = self.layout
         layout.menu("NODE_MT_geometry_node_GEO_ATTRIBUTE")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT")
@@ -681,9 +668,6 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_TEXTURE")
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
-        if snode.geometry_nodes_type == 'OPERATOR':
-            layout.menu("NODE_MT_category_operator")
-            layout.separator()
         layout.menu("NODE_MT_category_GEO_GROUP")
         layout.menu("NODE_MT_category_GEO_LAYOUT")
         node_add_menu.draw_root_assets(layout)
@@ -719,7 +703,6 @@ classes = (
     NODE_MT_category_PRIMITIVES_MESH,
     NODE_MT_geometry_node_mesh_topology,
     NODE_MT_category_GEO_POINT,
-    NODE_MT_category_operator,
     NODE_MT_category_simulation,
     NODE_MT_category_GEO_VOLUME,
     NODE_MT_geometry_node_GEO_MATERIAL,

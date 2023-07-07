@@ -217,9 +217,6 @@ class GeoNodeExecParams {
       if (data->modifier_data) {
         return data->modifier_data->depsgraph;
       }
-      if (data->operator_data) {
-        return data->operator_data->depsgraph;
-      }
     }
     return nullptr;
   }

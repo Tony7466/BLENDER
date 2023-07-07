@@ -1360,9 +1360,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
 #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
-#define GEO_NODE_OPERATOR_SELECTION 2105
-#define GEO_NODE_OPERATOR_SET_SELECTION 2106
-#define GEO_NODE_OPERATOR_3D_CURSOR 2107
 
 /** \} */
 

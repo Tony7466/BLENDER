@@ -144,9 +144,6 @@ set(SRC
   nodes/node_geo_object_info.cc
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_offset_sdf_volume.cc
-  nodes/node_geo_operator_3d_cursor.cc
-  nodes/node_geo_operator_selection.cc
-  nodes/node_geo_operator_set_selection.cc
   nodes/node_geo_points.cc
   nodes/node_geo_points_to_sdf_volume.cc
   nodes/node_geo_points_to_vertices.cc
