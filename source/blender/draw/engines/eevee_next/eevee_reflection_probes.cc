@@ -33,8 +33,8 @@ void ReflectionProbeModule::init()
 
     ReflectionProbe world_probe;
     world_probe.type = ReflectionProbe::Type::World;
-    world_probe.is_dirty = true;
-    world_probe.is_probes_tx_dirty = true;
+    world_probe.do_update_data = true;
+    world_probe.do_render = true;
     world_probe.index = 0;
     probes_.append(world_probe);
 
@@ -59,16 +59,13 @@ void ReflectionProbeModule::init()
     pass.bind_texture("cubemap_tx", cubemap_tx_);
     pass.bind_image("octahedral_img", probes_tx_);
     pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
-    /* TODO this should be added in a subpass with the correct resolution to reduce overshooting
-     * the area on the texture. */
-    pass.dispatch(int2(ceil_division(max_resolution_, REFLECTION_PROBE_GROUP_SIZE)));
   }
 }
 void ReflectionProbeModule::begin_sync()
 {
   for (ReflectionProbe &reflection_probe : probes_) {
     if (reflection_probe.type == ReflectionProbe::Type::Probe) {
-      reflection_probe.is_used = false;
+      reflection_probe.is_probe_used = false;
     }
   }
 }
@@ -85,16 +82,15 @@ int ReflectionProbeModule::needed_layers_get() const
   return max_layer + 1;
 }
 
-void ReflectionProbeModule::sync(const ReflectionProbe &cubemap)
+void ReflectionProbeModule::sync(const ReflectionProbe &probe)
 {
-  switch (cubemap.type) {
+  switch (probe.type) {
     case ReflectionProbe::Type::World: {
       break;
     }
     case ReflectionProbe::Type::Probe: {
-      // TODO: upload the baked probe to the cubemaps.
-      if (cubemap.is_probes_tx_dirty) {
-        upload_dummy_cubemap(cubemap);
+      if (probe.do_render) {
+        upload_dummy_texture(probe);
       }
       break;
     }
@@ -165,8 +161,8 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
   first_unused->index = -1;
   ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
 
-  first_unused->is_dirty = true;
-  first_unused->is_probes_tx_dirty = true;
+  first_unused->do_update_data = true;
+  first_unused->do_render = true;
   first_unused->object_hash_value = ob_handle.object_key.hash_value;
   first_unused->type = ReflectionProbe::Type::Probe;
   first_unused->index = reflection_probe_data_index_max() + 1;
@@ -295,37 +291,37 @@ void ReflectionProbeModule::end_sync()
   recalc_lod_factors();
   data_buf_.push_update();
 
-  /* Regenerate mipmaps when a cubemap is updated. It can be postponed when the world probe is also
-   * updated. In this case it would happen as part of the WorldProbePipeline. */
+  /* Regenerate mipmaps when a probe texture is updated. It can be postponed when the world probe
+   * is also updated. In this case it would happen as part of the WorldProbePipeline. */
   bool regenerate_mipmaps = false;
   bool regenerate_mipmaps_postponed = false;
 
-  for (ReflectionProbe &cubemap : probes_) {
+  for (ReflectionProbe &probe : probes_) {
     if (resize_layers) {
-      cubemap.is_dirty = true;
-      cubemap.is_probes_tx_dirty = true;
+      probe.do_update_data = true;
+      probe.do_render = true;
     }
 
-    if (!cubemap.needs_update()) {
+    if (!probe.needs_update()) {
       continue;
     }
-    sync(cubemap);
+    sync(probe);
 
-    switch (cubemap.type) {
+    switch (probe.type) {
       case ReflectionProbe::Type::World:
         regenerate_mipmaps_postponed = true;
         break;
 
       case ReflectionProbe::Type::Probe:
-        regenerate_mipmaps = cubemap.is_probes_tx_dirty;
+        regenerate_mipmaps = probe.do_render;
         break;
 
       case ReflectionProbe::Type::Unused:
         BLI_assert_unreachable();
         break;
     }
-    cubemap.is_dirty = false;
-    cubemap.is_probes_tx_dirty = false;
+    probe.do_update_data = false;
+    probe.do_render = false;
   }
 
   if (regenerate_mipmaps) {
@@ -339,7 +335,7 @@ void ReflectionProbeModule::end_sync()
 void ReflectionProbeModule::remove_unused_probes()
 {
   for (ReflectionProbe &probe : probes_) {
-    if (probe.type == ReflectionProbe::Type::Probe && !probe.is_used) {
+    if (probe.type == ReflectionProbe::Type::Probe && !probe.is_probe_used) {
       remove_reflection_probe_data(probe.index);
       probe.type = ReflectionProbe::Type::Unused;
       probe.object_hash_value = 0;
@@ -422,15 +418,15 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
     }
     case ReflectionProbe::Type::World: {
       os << "WORLD";
-      os << " is_dirty: " << probe.is_dirty;
+      os << " is_dirty: " << probe.do_update_data;
       os << " index: " << probe.index;
       os << "\n";
       break;
     }
     case ReflectionProbe::Type::Probe: {
       os << "PROBE";
-      os << " is_dirty: " << probe.is_dirty;
-      os << " is_used: " << probe.is_used;
+      os << " is_dirty: " << probe.do_update_data;
+      os << " is_used: " << probe.is_probe_used;
       os << " ob_hash: " << probe.object_hash_value;
       os << " index: " << probe.index;
       os << "\n";
@@ -440,7 +436,7 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
   return os;
 }
 
-void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
+void ReflectionProbeModule::upload_dummy_texture(const ReflectionProbe &probe)
 {
   const ReflectionProbeData &probe_data = data_buf_[probe.index];
   const int resolution = max_resolution_ >> probe_data.layer_subdivision;
@@ -469,7 +465,7 @@ void ReflectionProbeModule::upload_dummy_cubemap(const ReflectionProbe &probe)
     }
   }
 
-  /* Upload the checker pattern to each side of the cubemap*/
+  /* Upload the checker pattern. */
   int probes_per_dimension = 1 << probe_data.layer_subdivision;
   int2 probe_area_pos(probe_data.area_index % probes_per_dimension,
                       probe_data.area_index / probes_per_dimension);

@@ -32,9 +32,10 @@ struct ReflectionProbe {
 
   Type type = Type::Unused;
 
-  bool is_dirty = false;
+  /* Probe data needs to be updated. */
+  bool do_update_data = false;
   /* Should the area in the probes_tx_ be updated? */
-  bool is_probes_tx_dirty = false;
+  bool do_render = false;
 
   /**
    * When reflection probe is a probe its ObjectKey.hash_value is copied here to keep track
@@ -44,8 +45,10 @@ struct ReflectionProbe {
 
   /**
    * Probes that aren't used during a draw can be cleared.
+   * 
+   * Only valid when type == Type::Probe.
    */
-  bool is_used = false;
+  bool is_probe_used = false;
 
   /**
    * Index into ReflectionProbeDataBuf.
@@ -53,15 +56,18 @@ struct ReflectionProbe {
    */
   int index = -1;
 
+  /**
+   * Check if the probe needs to be updated during this sample.
+   */
   bool needs_update() const
   {
     switch (type) {
       case Type::Unused:
         return false;
       case Type::World:
-        return is_dirty;
+        return do_update_data || do_render;
       case Type::Probe:
-        return is_dirty && is_used;
+        return (do_update_data || do_render) && is_probe_used;
     }
     return false;
   }
@@ -142,7 +148,7 @@ class ReflectionProbeModule {
    */
   ReflectionProbeData find_empty_reflection_probe_data(int subdivision_level) const;
 
-  void upload_dummy_cubemap(const ReflectionProbe &probe);
+  void upload_dummy_texture(const ReflectionProbe &probe);
 
   bool do_world_update_get() const
   {
