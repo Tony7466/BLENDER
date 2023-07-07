@@ -1034,14 +1034,12 @@ struct ReflectionProbeData {
    */
   packed_float3 pos;
 
-  /** On which layer of the cubemaps array is this reflection probe stored. */
+  /** On which layer of the texture array is this reflection probe stored. */
   int layer;
 
   /**
    * Subdivision of the layer. 0 = no subdivision and resolution would be
    * ReflectionProbeModule::MAX_RESOLUTION.
-   *
-   * Design: technically we could fill different subdivisions in a single layer to improve packing.
    */
   int layer_subdivision;
 
@@ -1060,11 +1058,6 @@ struct ReflectionProbeData {
   int _pad[1];
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
-
-struct ReflectionProbeBuffer {
-  ReflectionProbeData probe_data[REFLECTION_PROBES_MAX];
-};
-BLI_STATIC_ASSERT_ALIGN(ReflectionProbeBuffer, 16)
 
 /** \} */
 
@@ -1124,7 +1117,8 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
-using ReflectionProbeDataBuf = draw::UniformBuffer<ReflectionProbeBuffer>;
+using ReflectionProbeDataBuf =
+    draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;
