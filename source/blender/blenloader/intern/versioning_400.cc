@@ -13,6 +13,8 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
+#include "DNA_scene_types.h"
+#include "DNA_world_types.h"
 
 #include "DNA_genfile.h"
 
@@ -233,6 +235,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
+        ts->snap_mode &= ~SCE_SNAP_TO_FACE;
         ts->snap_mode |= SCE_SNAP_INDIVIDUAL_PROJECT;
       }
 #undef SCE_SNAP_PROJECT
@@ -256,6 +259,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
+    LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+      act->frame_start = max_ff(act->frame_start, MINAFRAMEF);
+      act->frame_end = min_ff(act->frame_end, MAXFRAMEF);
+    }
+  }
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -275,6 +284,27 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->grid_bake_samples = 2048;
         lightprobe->surfel_density = 1.0f;
+      }
+    }
+
+    /* Set default bake resolution. */
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "resolution")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->resolution = LIGHT_PROBE_RESOLUTION_1024;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "probe_resolution")) {
+      LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+        world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
+      }
+    }
+
+    /* Clear removed "Z Buffer" flag. */
+    {
+      const int R_IMF_FLAG_ZBUF_LEGACY = 1 << 0;
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->r.im_format.flag &= ~R_IMF_FLAG_ZBUF_LEGACY;
       }
     }
   }
