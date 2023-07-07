@@ -276,7 +276,7 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
 
   bool is_backfacing = (sd->flag & SD_BACKFACING) != 0;
   float3 N;
-
+  float strength = stack_load_float(stack, strength_offset);
   if (space == NODE_NORMAL_MAP_TANGENT) {
     /* tangent space */
     if (sd->object == OBJECT_NONE || (sd->type & PRIMITIVE_TRIANGLE) == 0) {
@@ -314,6 +314,9 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
       object_inverse_normal_transform(kg, sd, &normal);
     }
 
+    color.x *= strength;
+    color.y *= strength;
+
     /* apply normal map */
     float3 B = sign * cross(normal, tangent);
     N = safe_normalize(color.x * tangent + color.y * B + color.z * normal);
@@ -335,6 +338,11 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
       object_normal_transform(kg, sd, &N);
     else
       N = safe_normalize(N);
+
+    if (strength != 1.0f) {
+      strength = max(strength, 0.0f);
+      N = safe_normalize(sd->N + (N - sd->N) * strength);
+    }
   }
 
   /* invert normal for backfacing polygons */
@@ -342,12 +350,6 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
     N = -N;
   }
 
-  float strength = stack_load_float(stack, strength_offset);
-
-  if (strength != 1.0f) {
-    strength = max(strength, 0.0f);
-    N = safe_normalize(sd->N + (N - sd->N) * strength);
-  }
 
   if (is_zero(N)) {
     N = sd->N;
