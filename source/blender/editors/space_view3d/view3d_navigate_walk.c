@@ -89,6 +89,8 @@ enum {
   WALK_MODAL_ACCELERATE,
   WALK_MODAL_DECELERATE,
   WALK_MODAL_AXIS_LOCK_Z,
+  WALK_MODAL_INCREASE_JUMP,
+  WALK_MODAL_DECREASE_JUMP,
 };
 
 enum {
@@ -166,6 +168,9 @@ void walk_modal_keymap(wmKeyConfig *keyconf)
       {WALK_MODAL_GRAVITY_TOGGLE, "GRAVITY_TOGGLE", 0, "Toggle Gravity", "Toggle gravity effect"},
 
       {WALK_MODAL_AXIS_LOCK_Z, "AXIS_LOCK_Z", 0, "Z Axis Correction", "Z axis correction"},
+
+      {WALK_MODAL_INCREASE_JUMP, "INCREASE_JUMP", 0, "Increase Jump Height", "Increase jump height"},
+      {WALK_MODAL_DECREASE_JUMP, "DECREASE_JUMP", 0, "Decrease Jump Height", "Decrease jump height"},
 
       {0, NULL, 0, NULL, NULL},
   };
@@ -285,8 +290,9 @@ typedef struct WalkInfo {
   int active_directions;
 
   float speed_jump;
-  /** Maximum jump height. */
+  /** Current maximum jump height. */
   float jump_height;
+
   /** To use for fast/slow speeds. */
   float speed_factor;
 
@@ -895,6 +901,22 @@ static void walkEvent(WalkInfo *walk, const wmEvent *event)
           walk->zlock_momentum = 0.0f;
         }
         break;
+
+#define JUMP_HEIGHT_FACTOR 1.5f
+#define JUMP_HEIGHT_MIN 0.1f
+
+      case WALK_MODAL_INCREASE_JUMP:
+        walk->jump_height *= JUMP_HEIGHT_FACTOR;
+        break;
+      case WALK_MODAL_DECREASE_JUMP:
+        walk->jump_height /= JUMP_HEIGHT_FACTOR;
+        if (walk->jump_height < JUMP_HEIGHT_MIN) {
+          walk->jump_height = JUMP_HEIGHT_MIN;
+        }
+        break;
+
+#undef JUMP_HEIGHT_FACTOR
+#undef JUMP_HEIGHT_MIN
     }
   }
 }
