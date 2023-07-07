@@ -156,8 +156,10 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_ray_denoise_spatial_refract";
     case RAY_DENOISE_TEMPORAL:
       return "eevee_ray_denoise_temporal";
-    case RAY_DENOISE_BILATERAL:
-      return "eevee_ray_denoise_bilateral";
+    case RAY_DENOISE_BILATERAL_REFLECT:
+      return "eevee_ray_denoise_bilateral_reflect";
+    case RAY_DENOISE_BILATERAL_REFRACT:
+      return "eevee_ray_denoise_bilateral_refract";
     case RAY_GENERATE_REFLECT:
       return "eevee_ray_generate_reflect";
     case RAY_GENERATE_REFRACT:

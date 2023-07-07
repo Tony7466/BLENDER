@@ -218,7 +218,6 @@ void main()
   }
 #endif
 
-  vec3 rgb_mean = vec3(0.0);
   vec3 rgb_moment = vec3(0.0);
   vec3 radiance_accum = vec3(0.0);
   float weight_accum = 0.0;
@@ -246,13 +245,13 @@ void main()
     radiance_accum += ray_radiance.rgb * weight;
     weight_accum += weight;
 
-    rgb_mean += ray_radiance.rgb;
-    rgb_moment += sqr(ray_radiance.rgb);
+    rgb_moment += sqr(ray_radiance.rgb) * weight;
   }
   float inv_weight = safe_rcp(weight_accum);
 
   radiance_accum *= inv_weight;
-  rgb_mean *= inv_weight;
+  /* Use radiance sum as signal mean. */
+  vec3 rgb_mean = radiance_accum;
   rgb_moment *= inv_weight;
 
   vec3 rgb_variance = abs(rgb_moment - sqr(rgb_mean));

@@ -50,6 +50,12 @@ float interlieved_gradient_noise(vec2 pixel, float seed, float offset)
   return fract(offset + 52.9829189 * fract(0.06711056 * pixel.x + 0.00583715 * pixel.y));
 }
 
+vec2 interlieved_gradient_noise(vec2 pixel, vec2 seed, vec2 offset)
+{
+  return vec2(interlieved_gradient_noise(pixel, seed.x, offset.x),
+              interlieved_gradient_noise(pixel, seed.y, offset.y));
+}
+
 /* From: http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html */
 float van_der_corput_radical_inverse(uint bits)
 {
@@ -71,6 +77,14 @@ vec2 hammersley_2d(float i, float sample_count)
   vec2 rand;
   rand.x = i / sample_count;
   rand.y = van_der_corput_radical_inverse(uint(i));
+  return rand;
+}
+
+vec2 hammersley_2d(uint i, uint sample_count)
+{
+  vec2 rand;
+  rand.x = float(i) / float(sample_count);
+  rand.y = van_der_corput_radical_inverse(i);
   return rand;
 }
 

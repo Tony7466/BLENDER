@@ -105,7 +105,8 @@ class RayTraceModule {
   draw::PassSimple denoise_spatial_reflect_ps_ = {"DenoiseSpatial.Reflection"};
   draw::PassSimple denoise_spatial_refract_ps_ = {"DenoiseSpatial.Refraction"};
   draw::PassSimple denoise_temporal_ps_ = {"DenoiseTemporal"};
-  draw::PassSimple denoise_bilateral_ps_ = {"DenoiseBilateral"};
+  draw::PassSimple denoise_bilateral_reflect_ps_ = {"DenoiseBilateral.Reflection"};
+  draw::PassSimple denoise_bilateral_refract_ps_ = {"DenoiseBilateral.Refraction"};
 
   /** Dispatch with enough tiles for the whole screen. */
   int3 tile_dispatch_size_ = int3(1);
@@ -142,8 +143,6 @@ class RayTraceModule {
   GPUTexture *renderbuf_stencil_view_ = nullptr;
   /** Pointer to inst_.render_buffers.depth_tx updated before submission. */
   GPUTexture *renderbuf_depth_view_ = nullptr;
-  /** Closure being ray-traced. (Is #eClosureBits but is being used as push_constant). */
-  int closure_active_;
 
   bool enabled_ = false;
   bool use_spatial_denoise_ = true;

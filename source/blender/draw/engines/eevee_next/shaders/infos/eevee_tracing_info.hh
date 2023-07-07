@@ -25,7 +25,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_tile_classify)
     .image(0, RAYTRACE_TILEMASK_FORMAT, Qualifier::WRITE, ImageType::UINT_2D, "tile_mask_img")
     .storage_buf(1, Qualifier::READ_WRITE, "DispatchCommand", "ray_dispatch_buf")
     .storage_buf(4, Qualifier::WRITE, "uint", "ray_tiles_buf[]")
-    .push_constant(Type::INT, "closure_active")
+    .uniform_buf(1, "RayTraceData", "raytrace_buf")
     .compute_source("eevee_ray_tile_classify_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_generate)
@@ -75,8 +75,8 @@ EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_spatial)
 
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_temporal)
     .do_static_compilation(true)
-    .additional_info("eevee_shared", "draw_view", "eevee_hiz_data")
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
+    .additional_info("eevee_shared", "draw_view", "eevee_hiz_data")
     .uniform_buf(1, "RayTraceData", "raytrace_buf")
     .sampler(0, ImageType::FLOAT_2D, "radiance_history_tx")
     .sampler(1, ImageType::FLOAT_2D, "variance_history_tx")
@@ -90,8 +90,17 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_temporal)
     .compute_source("eevee_ray_denoise_temporal_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
-    // .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
+    .additional_info("eevee_shared", "eevee_sampling_data", "draw_view", "eevee_hiz_data")
+    .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
+    .image(1, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "in_radiance_img")
+    .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "out_radiance_img")
+    .image(3, RAYTRACE_VARIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "in_variance_img")
+    .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D, "tile_mask_img")
+    .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .uniform_buf(1, "RayTraceData", "raytrace_buf")
     .compute_source("eevee_ray_denoise_bilateral_comp.glsl");
+
+EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_denoise_bilateral)
 
 /** \} */

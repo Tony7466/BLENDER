@@ -61,7 +61,7 @@ void RayTraceModule::sync()
     pass.bind_image("tile_mask_img", &tile_mask_tx_);
     pass.bind_ssbo("ray_dispatch_buf", &ray_dispatch_buf_);
     pass.bind_ssbo("ray_tiles_buf", &ray_tiles_buf_);
-    pass.push_constant("closure_active", &closure_active_);
+    pass.bind_ubo("raytrace_buf", &data_);
     pass.dispatch(&tile_dispatch_size_);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
@@ -138,21 +138,23 @@ void RayTraceModule::sync()
     pass.dispatch(ray_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
-#if 0
-  {
-    PassSimple &pass = denoise_bilateral_ps_;
+  for (auto type : IndexRange(2)) {
+    PassSimple &pass = (type == 0) ? denoise_bilateral_reflect_ps_ : denoise_bilateral_refract_ps_;
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(RAY_DENOISE_BILATERAL));
-    pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
-    pass.bind_texture("depth_tx", &renderbuf_depth_view_);
+    pass.shader_set(inst_.shaders.static_shader_get((type == 0) ? RAY_DENOISE_BILATERAL_REFLECT :
+                                                                  RAY_DENOISE_BILATERAL_REFRACT));
     pass.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
-    pass.bind_image("in_ray_radiance_img", &denoised_temporal_tx_);
-    pass.bind_image("out_ray_radiance_img", &denoised_bilateral_tx_);
+    pass.bind_image("in_radiance_img", &denoised_temporal_tx_);
+    pass.bind_image("out_radiance_img", &denoised_bilateral_tx_);
+    pass.bind_image("in_variance_img", &denoise_variance_tx_);
+    pass.bind_image("tile_mask_img", &tile_mask_tx_);
+    pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
+    pass.bind_ubo("raytrace_buf", &data_);
     inst_.sampling.bind_resources(&pass);
+    inst_.hiz_buffer.bind_resources(&pass);
     pass.dispatch(ray_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
-#endif
 }
 
 void RayTraceModule::debug_pass_sync() {}
@@ -173,24 +175,25 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   PassSimple *generate_ray_ps = nullptr;
   PassSimple *trace_ray_ps = nullptr;
   PassSimple *denoise_spatial_ps = nullptr;
+  PassSimple *denoise_bilateral_ps = nullptr;
   RayTraceBuffer::DenoiseBuffer *denoise_buf = nullptr;
 
   if (raytrace_closure == CLOSURE_REFLECTION) {
     generate_ray_ps = &generate_reflect_ps_;
     trace_ray_ps = &trace_reflect_ps_;
     denoise_spatial_ps = &denoise_spatial_reflect_ps_;
+    denoise_bilateral_ps = &denoise_bilateral_reflect_ps_;
     denoise_buf = &rt_buffer.reflection;
   }
   else if (raytrace_closure == CLOSURE_REFRACTION) {
     generate_ray_ps = &generate_refract_ps_;
     trace_ray_ps = &trace_refract_ps_;
     denoise_spatial_ps = &denoise_spatial_refract_ps_;
+    denoise_bilateral_ps = &denoise_bilateral_refract_ps_;
     denoise_buf = &rt_buffer.refraction;
   }
 
-  closure_active_ = active_closures & raytrace_closure;
-
-  if (closure_active_ == 0) {
+  if ((active_closures & raytrace_closure) == 0) {
     /* Early out. Release persistent buffers. */
     denoise_buf->denoised_spatial_tx.acquire(int2(1), RAYTRACE_RADIANCE_FORMAT);
     denoise_buf->radiance_history_tx.free();
@@ -213,6 +216,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_start("Raytracing");
 
+  data_.closure_active = raytrace_closure;
   data_.history_persmat = denoise_buf->history_persmat;
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
@@ -287,7 +291,6 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->denoised_spatial_tx.release();
   }
 
-  tile_mask_tx_.release();
   hit_variance_tx_.release();
   hit_depth_tx_.release();
 
@@ -295,9 +298,10 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->denoised_bilateral_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
     denoised_bilateral_tx_ = denoise_buf->denoised_bilateral_tx;
 
-    inst_.manager->submit(denoise_bilateral_ps_, view);
+    inst_.manager->submit(*denoise_bilateral_ps, view);
 
     /* Swap after last use. */
+    TextureFromPool::swap(denoise_buf->denoised_temporal_tx, denoise_buf->radiance_history_tx);
     TextureFromPool::swap(denoise_variance_tx_, denoise_buf->variance_history_tx);
 
     result = {denoise_buf->denoised_bilateral_tx};
@@ -305,6 +309,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->denoised_temporal_tx.release();
   }
 
+  tile_mask_tx_.release();
   denoise_variance_tx_.release();
 
   DRW_stats_group_end();

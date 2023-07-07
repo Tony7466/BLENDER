@@ -1003,6 +1003,8 @@ struct RayTraceData {
   int pool_offset;
   /** If set to true will bypass spatial denoising. */
   bool1 skip_denoise;
+  /** Closure being ray-traced. */
+  eClosureBits closure_active;
   int _pad1;
   int _pad2;
 };
