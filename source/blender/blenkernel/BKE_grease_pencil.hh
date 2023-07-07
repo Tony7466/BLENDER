@@ -135,7 +135,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   Layer &as_layer_for_write();
 
   /**
-   * \returns the parent layer group or null for root nodes.
+   * \returns the parent layer group or nullptr for the root group.
    */
   LayerGroup *parent_group() const;
 };
@@ -302,7 +302,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   bool is_locked() const;
 
   /**
-   * \returns the layer as a `TreeNode`.
+   * \returns the group as a `TreeNode`.
    */
   const TreeNode &as_node() const;
   TreeNode &as_node();

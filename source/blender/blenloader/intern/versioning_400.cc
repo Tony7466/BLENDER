@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
@@ -38,8 +39,18 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main * /*bmain*/)
+void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
 {
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 9)) {
+    /* Fix area light scaling. */
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->energy = light->energy_deprecated;
+      if (light->type == LA_AREA) {
+        light->energy *= M_PI_4;
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -133,7 +144,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -197,6 +209,37 @@ static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
       socket_value->value = 0.0f;
 
       break;
+    }
+  }
+}
+
+static void version_replace_texcoord_normal_socket(bNodeTree *ntree)
+{
+  /* The normal of a spot light was set to the incoming light direction, replace with the
+   * `Incoming` socket from the Geometry shader node. */
+  bNode *geometry_node = nullptr;
+  bNode *transform_node = nullptr;
+  bNodeSocket *incoming_socket = nullptr;
+  bNodeSocket *vec_in_socket = nullptr;
+  bNodeSocket *vec_out_socket = nullptr;
+
+  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
+    if (link->fromnode->type == SH_NODE_TEX_COORD && STREQ(link->fromsock->identifier, "Normal")) {
+      if (geometry_node == nullptr) {
+        geometry_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_NEW_GEOMETRY);
+        incoming_socket = nodeFindSocket(geometry_node, SOCK_OUT, "Incoming");
+
+        transform_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECT_TRANSFORM);
+        vec_in_socket = nodeFindSocket(transform_node, SOCK_IN, "Vector");
+        vec_out_socket = nodeFindSocket(transform_node, SOCK_OUT, "Vector");
+
+        NodeShaderVectTransform *nodeprop = (NodeShaderVectTransform *)transform_node->storage;
+        nodeprop->type = SHD_VECT_TRANSFORM_TYPE_NORMAL;
+
+        nodeAddLink(ntree, geometry_node, incoming_socket, transform_node, vec_in_socket);
+      }
+      nodeAddLink(ntree, transform_node, vec_out_socket, link->tonode, link->tosock);
+      nodeRemLink(ntree, link);
     }
   }
 }
@@ -265,6 +308,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       act->frame_end = min_ff(act->frame_end, MAXFRAMEF);
     }
   }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 9)) {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      if (light->type == LA_SPOT && light->nodetree) {
+        version_replace_texcoord_normal_socket(light->nodetree);
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
