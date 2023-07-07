@@ -2,6 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/** \file
+ * \ingroup imbuf
+ *
+ * SVG vector graphics format support for the purpose of thumbnail-display.
+ * While loading these as an #ImBuf is trivial to support, it would expose
+ * limitations of NANOSVG and users may end up needing more advanced options
+ * specific to loading vector graphics (such as resolution control), see #109567 for details.
+ */
+
 #include "IMB_colormanagement.h"
 #include "IMB_filetype.h"
 #include "IMB_imbuf_types.h"
@@ -12,12 +21,6 @@
 #define NANOSVGRAST_IMPLEMENTATION
 
 #include "../../../extern/nanosvg/nanosvgrast.h"
-
-extern "C" {
-
-/* Currently only creating thumbnails for this format to support specialized importers. General
- * file loading, if wanted, would require a better library and would have to support features
- * like user-specified output resolution. */
 
 ImBuf *imb_load_filepath_thumbnail_svg(const char *filepath,
                                        const int /* flags */,
@@ -65,5 +68,4 @@ ImBuf *imb_load_filepath_thumbnail_svg(const char *filepath,
   }
 
   return ibuf;
-}
 }
