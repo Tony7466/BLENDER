@@ -1291,38 +1291,43 @@ static Image *image_open_single(Main *bmain,
     return NULL;
   }
 
-  if (!exists) {
-    /* only image path after save, never ibuf */
-    if (is_relative_path) {
-      BLI_path_rel(ima->filepath, relbase);
-    }
+  /* If image already exists, update its file path based on relative path property, see: #109561.
+   */
+  if (exists) {
+    STRNCPY(ima->filepath, range->filepath);
+    return ima;
+  }
 
-    /* handle multiview images */
-    if (use_multiview) {
-      ImageOpenData *iod = op->customdata;
-      ImageFormatData *imf = &iod->im_format;
+  /* only image path after save, never ibuf */
+  if (is_relative_path) {
+    BLI_path_rel(ima->filepath, relbase);
+  }
 
-      ima->flag |= IMA_USE_VIEWS;
-      ima->views_format = imf->views_format;
-      *ima->stereo3d_format = imf->stereo3d_format;
-    }
-    else {
-      ima->flag &= ~IMA_USE_VIEWS;
-      BKE_image_free_views(ima);
-    }
+  /* handle multiview images */
+  if (use_multiview) {
+    ImageOpenData *iod = op->customdata;
+    ImageFormatData *imf = &iod->im_format;
 
-    if (ima->source == IMA_SRC_FILE) {
-      if (range->udims_detected && range->udim_tiles.first) {
-        ima->source = IMA_SRC_TILED;
-        ImageTile *first_tile = ima->tiles.first;
-        first_tile->tile_number = range->offset;
-        LISTBASE_FOREACH (LinkData *, node, &range->udim_tiles) {
-          BKE_image_add_tile(ima, POINTER_AS_INT(node->data), NULL);
-        }
+    ima->flag |= IMA_USE_VIEWS;
+    ima->views_format = imf->views_format;
+    *ima->stereo3d_format = imf->stereo3d_format;
+  }
+  else {
+    ima->flag &= ~IMA_USE_VIEWS;
+    BKE_image_free_views(ima);
+  }
+
+  if (ima->source == IMA_SRC_FILE) {
+    if (range->udims_detected && range->udim_tiles.first) {
+      ima->source = IMA_SRC_TILED;
+      ImageTile *first_tile = ima->tiles.first;
+      first_tile->tile_number = range->offset;
+      LISTBASE_FOREACH (LinkData *, node, &range->udim_tiles) {
+        BKE_image_add_tile(ima, POINTER_AS_INT(node->data), NULL);
       }
-      else if (range->length > 1) {
-        ima->source = IMA_SRC_SEQUENCE;
-      }
+    }
+    else if (range->length > 1) {
+      ima->source = IMA_SRC_SEQUENCE;
     }
   }
 
