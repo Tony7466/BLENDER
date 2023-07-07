@@ -593,7 +593,7 @@ static void mesh_batch_cache_init(Object *object, Mesh *me)
   if (cache->is_editmode == false) {
     // cache->edge_len = mesh_render_edges_len_get(me);
     // cache->tri_len = mesh_render_looptri_len_get(me);
-    // cache->poly_len = mesh_render_polys_len_get(me);
+    // cache->face_len = mesh_render_faces_len_get(me);
     // cache->vert_len = mesh_render_verts_len_get(me);
   }
 
@@ -798,7 +798,7 @@ static void mesh_buffer_cache_clear(MeshBufferCache *mbc)
   mesh_buffer_list_clear(&mbc->buff);
 
   mbc->loose_geom = {};
-  mbc->poly_sorted = {};
+  mbc->face_sorted = {};
 }
 
 static void mesh_batch_cache_free_subdiv_cache(MeshBatchCache *cache)

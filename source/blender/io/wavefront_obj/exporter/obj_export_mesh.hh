@@ -41,7 +41,7 @@ class OBJMesh : NonCopyable {
   Mesh *owned_export_mesh_ = nullptr;
   Span<float3> mesh_positions_;
   Span<int2> mesh_edges_;
-  OffsetIndices<int> mesh_polys_;
+  OffsetIndices<int> mesh_faces_;
   Span<int> mesh_corner_verts_;
   VArray<bool> sharp_faces_;
 

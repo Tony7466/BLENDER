@@ -23,9 +23,9 @@
 /** \name Ensure Data (derived from coords)
  * \{ */
 
-void BKE_editmesh_cache_ensure_poly_normals(BMEditMesh *em, EditMeshData *emd)
+void BKE_editmesh_cache_ensure_face_normals(BMEditMesh *em, EditMeshData *emd)
 {
-  if (!(emd->vertexCos && (emd->polyNos == nullptr))) {
+  if (!(emd->vertexCos && (emd->faceNos == nullptr))) {
     return;
   }
 
@@ -36,18 +36,18 @@ void BKE_editmesh_cache_ensure_poly_normals(BMEditMesh *em, EditMeshData *emd)
 
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
-  float(*polyNos)[3] = static_cast<float(*)[3]>(
-      MEM_mallocN(sizeof(*polyNos) * bm->totface, __func__));
+  float(*faceNos)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(*faceNos) * bm->totface, __func__));
 
   const float(*vertexCos)[3] = emd->vertexCos;
 
   BM_ITER_MESH_INDEX (efa, &fiter, bm, BM_FACES_OF_MESH, i) {
     BM_elem_index_set(efa, i); /* set_inline */
-    BM_face_calc_normal_vcos(bm, efa, polyNos[i], vertexCos);
+    BM_face_calc_normal_vcos(bm, efa, faceNos[i], vertexCos);
   }
   bm->elem_index_dirty &= ~BM_FACE;
 
-  emd->polyNos = (const float(*)[3])polyNos;
+  emd->faceNos = (const float(*)[3])faceNos;
 }
 
 void BKE_editmesh_cache_ensure_vert_normals(BMEditMesh *em, EditMeshData *emd)
@@ -57,26 +57,26 @@ void BKE_editmesh_cache_ensure_vert_normals(BMEditMesh *em, EditMeshData *emd)
   }
 
   BMesh *bm = em->bm;
-  const float(*vertexCos)[3], (*polyNos)[3];
+  const float(*vertexCos)[3], (*faceNos)[3];
   float(*vertexNos)[3];
 
-  /* Calculate vertex normals from poly normals. */
-  BKE_editmesh_cache_ensure_poly_normals(em, emd);
+  /* Calculate vertex normals from face normals. */
+  BKE_editmesh_cache_ensure_face_normals(em, emd);
 
   BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-  polyNos = emd->polyNos;
+  faceNos = emd->faceNos;
   vertexCos = emd->vertexCos;
   vertexNos = static_cast<float(*)[3]>(MEM_callocN(sizeof(*vertexNos) * bm->totvert, __func__));
 
-  BM_verts_calc_normal_vcos(bm, polyNos, vertexCos, vertexNos);
+  BM_verts_calc_normal_vcos(bm, faceNos, vertexCos, vertexNos);
 
   emd->vertexNos = (const float(*)[3])vertexNos;
 }
 
-void BKE_editmesh_cache_ensure_poly_centers(BMEditMesh *em, EditMeshData *emd)
+void BKE_editmesh_cache_ensure_face_centers(BMEditMesh *em, EditMeshData *emd)
 {
-  if (emd->polyCos != nullptr) {
+  if (emd->faceCos != nullptr) {
     return;
   }
   BMesh *bm = em->bm;
@@ -85,8 +85,8 @@ void BKE_editmesh_cache_ensure_poly_centers(BMEditMesh *em, EditMeshData *emd)
   BMIter fiter;
   int i;
 
-  float(*polyCos)[3] = static_cast<float(*)[3]>(
-      MEM_mallocN(sizeof(*polyCos) * bm->totface, __func__));
+  float(*faceCos)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(*faceCos) * bm->totface, __func__));
 
   if (emd->vertexCos) {
     const float(*vertexCos)[3];
@@ -95,16 +95,16 @@ void BKE_editmesh_cache_ensure_poly_centers(BMEditMesh *em, EditMeshData *emd)
     BM_mesh_elem_index_ensure(bm, BM_VERT);
 
     BM_ITER_MESH_INDEX (efa, &fiter, bm, BM_FACES_OF_MESH, i) {
-      BM_face_calc_center_median_vcos(bm, efa, polyCos[i], vertexCos);
+      BM_face_calc_center_median_vcos(bm, efa, faceCos[i], vertexCos);
     }
   }
   else {
     BM_ITER_MESH_INDEX (efa, &fiter, bm, BM_FACES_OF_MESH, i) {
-      BM_face_calc_center_median(efa, polyCos[i]);
+      BM_face_calc_center_median(efa, faceCos[i]);
     }
   }
 
-  emd->polyCos = (const float(*)[3])polyCos;
+  emd->faceCos = (const float(*)[3])faceCos;
 }
 
 /** \} */

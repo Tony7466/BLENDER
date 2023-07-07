@@ -88,13 +88,13 @@ enum {
  * the number of triangles for each polygon is guaranteed to be the corner count - 2,
  * even for degenerate geometry. See #ME_POLY_TRI_TOT macro.
  *
- * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given poly).
+ * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given face).
  *
  * \code{.c}
  * // loop over all looptri's for a given polygon: i
- * const IndexRange poly = polys[i];
- * MLoopTri *lt = &looptri[poly_to_tri_count(i, poly.start())];
- * int j, lt_tot = ME_POLY_TRI_TOT(poly.size());
+ * const IndexRange face = faces[i];
+ * MLoopTri *lt = &looptri[poly_to_tri_count(i, face.start())];
+ * int j, lt_tot = ME_POLY_TRI_TOT(face.size());
  *
  * for (j = 0; j < lt_tot; j++, lt++) {
  *     int vtri[3] = {
@@ -375,7 +375,7 @@ enum {
  * This only stores the polygon size & flags, the vertex & edge indices are stored in the "corner
  * edges" array.
  *
- * Typically accessed with #Mesh.polys().
+ * Typically accessed with #Mesh.faces().
  */
 typedef struct MPoly {
   /** Offset into loop array and number of loops in the face. */
@@ -453,7 +453,7 @@ typedef struct MLoop {
 #endif
 
 /**
- * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::polys() for face data stored in the
+ * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::faces() for face data stored in the
  * blend file. Use for reading old files and in a handful of cases which should be removed
  * eventually.
  */

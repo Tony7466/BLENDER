@@ -298,14 +298,14 @@ static void particle_calculate_parent_uvs(ParticleSystem *psys,
   ParticleData *particle = &psys->particles[parent_index];
   int num = particle->num_dmcache;
   if (ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    if (particle->num < psmd->mesh_final->totface) {
+    if (particle->num < psmd->mesh_final->totface_legacy) {
       num = particle->num;
     }
   }
   if (!ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
     const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata, CD_MFACE);
     if (UNLIKELY(mfaces == NULL)) {
-      BLI_assert_msg(psmd->mesh_final->totpoly == 0,
+      BLI_assert_msg(psmd->mesh_final->faces_num == 0,
                      "A mesh with polygons should always have a generated 'CD_MFACE' layer!");
       return;
     }
@@ -333,14 +333,14 @@ static void particle_calculate_parent_mcol(ParticleSystem *psys,
   ParticleData *particle = &psys->particles[parent_index];
   int num = particle->num_dmcache;
   if (ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    if (particle->num < psmd->mesh_final->totface) {
+    if (particle->num < psmd->mesh_final->totface_legacy) {
       num = particle->num;
     }
   }
   if (!ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
     const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata, CD_MFACE);
     if (UNLIKELY(mfaces == NULL)) {
-      BLI_assert_msg(psmd->mesh_final->totpoly == 0,
+      BLI_assert_msg(psmd->mesh_final->faces_num == 0,
                      "A mesh with polygons should always have a generated 'CD_MFACE' layer!");
       return;
     }
@@ -961,7 +961,8 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
     }
     if (cache->num_col_layers) {
       for (int j = 0; j < cache->num_col_layers; j++) {
-        mcols[j] = (const MCol *)CustomData_get_layer_n(&psmd->mesh_final->fdata, CD_MCOL, j);
+        mcols[j] = (const MCol *)CustomData_get_layer_n(
+            &psmd->mesh_final->fdata, CD_MCOL, j);
       }
     }
   }
@@ -1251,7 +1252,8 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
     if (num_col_layers) {
       mcols = MEM_mallocN(sizeof(*mcols) * num_col_layers, "Color layers");
       for (int i = 0; i < num_col_layers; i++) {
-        mcols[i] = (const MCol *)CustomData_get_layer_n(&psmd->mesh_final->fdata, CD_MCOL, i);
+        mcols[i] = (const MCol *)CustomData_get_layer_n(
+            &psmd->mesh_final->fdata, CD_MCOL, i);
       }
     }
   }

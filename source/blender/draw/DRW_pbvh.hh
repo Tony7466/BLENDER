@@ -35,7 +35,7 @@ struct PBVH_GPU_Args {
   BMesh *bm;
   const Mesh *me;
   const float (*vert_positions)[3];
-  blender::OffsetIndices<int> polys;
+  blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
   int mesh_verts_num, mesh_faces_num, mesh_grids_num;
@@ -64,7 +64,7 @@ struct PBVH_GPU_Args {
   int node_verts_num;
 
   const MLoopTri *mlooptri;
-  const int *looptri_polys;
+  const int *looptri_faces;
   PBVHNode *node;
 
   /* BMesh. */

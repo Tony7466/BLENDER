@@ -62,9 +62,9 @@ static void extract_orco_iter_poly_bm(const MeshRenderData * /*mr*/,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_orco_iter_poly_mesh(const MeshRenderData *mr, const int poly_index, void *data)
+static void extract_orco_iter_face_mesh(const MeshRenderData *mr, const int face_index, void *data)
 {
-  for (const int ml_index : mr->polys[poly_index]) {
+  for (const int ml_index : mr->faces[face_index]) {
     const int vert = mr->corner_verts[ml_index];
     MeshExtract_Orco_Data *orco_data = (MeshExtract_Orco_Data *)data;
     float *loop_orco = orco_data->vbo_data[ml_index];
@@ -78,7 +78,7 @@ constexpr MeshExtract create_extractor_orco()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_orco_init;
   extractor.iter_poly_bm = extract_orco_iter_poly_bm;
-  extractor.iter_poly_mesh = extract_orco_iter_poly_mesh;
+  extractor.iter_face_mesh = extract_orco_iter_face_mesh;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_Orco_Data);
   extractor.use_threading = true;

@@ -248,7 +248,7 @@ struct MeshBufferCache {
 
   MeshExtractLooseGeom loose_geom;
 
-  SortedPolyData poly_sorted;
+  SortedPolyData face_sorted;
 };
 
 #define FOREACH_MESH_BUFFER_CACHE(batch_cache, mbc) \
@@ -276,7 +276,7 @@ struct MeshBatchCache {
   /* Settings to determine if cache is invalid. */
   int edge_len;
   int tri_len;
-  int poly_len;
+  int face_len;
   int vert_len;
   int mat_len;
   /* Instantly invalidates cache, skipping mesh check */

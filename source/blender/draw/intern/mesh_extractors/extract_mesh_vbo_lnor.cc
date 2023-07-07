@@ -58,18 +58,18 @@ static void extract_lnor_iter_poly_bm(const MeshRenderData *mr,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr, const int poly_index, void *data)
+static void extract_lnor_iter_face_mesh(const MeshRenderData *mr, const int face_index, void *data)
 {
-  const bool hidden = mr->hide_poly && mr->hide_poly[poly_index];
+  const bool hidden = mr->hide_poly && mr->hide_poly[face_index];
 
-  for (const int ml_index : mr->polys[poly_index]) {
+  for (const int ml_index : mr->faces[face_index]) {
     const int vert = mr->corner_verts[ml_index];
     GPUPackedNormal *lnor_data = &(*(GPUPackedNormal **)data)[ml_index];
     if (!mr->loop_normals.is_empty()) {
       *lnor_data = GPU_normal_convert_i10_v3(mr->loop_normals[ml_index]);
     }
-    else if (mr->sharp_faces && mr->sharp_faces[poly_index]) {
-      *lnor_data = GPU_normal_convert_i10_v3(mr->poly_normals[poly_index]);
+    else if (mr->sharp_faces && mr->sharp_faces[face_index]) {
+      *lnor_data = GPU_normal_convert_i10_v3(mr->face_normals[face_index]);
     }
     else {
       *lnor_data = GPU_normal_convert_i10_v3(mr->vert_normals[vert]);
@@ -82,7 +82,7 @@ static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr, const int poly
     {
       lnor_data->w = -1;
     }
-    else if (mr->select_poly && mr->select_poly[poly_index]) {
+    else if (mr->select_poly && mr->select_poly[face_index]) {
       lnor_data->w = 1;
     }
     else {
@@ -120,7 +120,7 @@ constexpr MeshExtract create_extractor_lnor()
   extractor.init = extract_lnor_init;
   extractor.init_subdiv = extract_lnor_init_subdiv;
   extractor.iter_poly_bm = extract_lnor_iter_poly_bm;
-  extractor.iter_poly_mesh = extract_lnor_iter_poly_mesh;
+  extractor.iter_face_mesh = extract_lnor_iter_face_mesh;
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(GPUPackedNormal *);
   extractor.use_threading = true;
@@ -178,20 +178,20 @@ static void extract_lnor_hq_iter_poly_bm(const MeshRenderData *mr,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_lnor_hq_iter_poly_mesh(const MeshRenderData *mr,
-                                           const int poly_index,
+static void extract_lnor_hq_iter_face_mesh(const MeshRenderData *mr,
+                                           const int face_index,
                                            void *data)
 {
-  const bool hidden = mr->hide_poly && mr->hide_poly[poly_index];
+  const bool hidden = mr->hide_poly && mr->hide_poly[face_index];
 
-  for (const int ml_index : mr->polys[poly_index]) {
+  for (const int ml_index : mr->faces[face_index]) {
     const int vert = mr->corner_verts[ml_index];
     gpuHQNor *lnor_data = &(*(gpuHQNor **)data)[ml_index];
     if (!mr->loop_normals.is_empty()) {
       normal_float_to_short_v3(&lnor_data->x, mr->loop_normals[ml_index]);
     }
-    else if (mr->sharp_faces && mr->sharp_faces[poly_index]) {
-      normal_float_to_short_v3(&lnor_data->x, mr->poly_normals[poly_index]);
+    else if (mr->sharp_faces && mr->sharp_faces[face_index]) {
+      normal_float_to_short_v3(&lnor_data->x, mr->face_normals[face_index]);
     }
     else {
       normal_float_to_short_v3(&lnor_data->x, mr->vert_normals[vert]);
@@ -204,7 +204,7 @@ static void extract_lnor_hq_iter_poly_mesh(const MeshRenderData *mr,
     {
       lnor_data->w = -1;
     }
-    else if (mr->select_poly && mr->select_poly[poly_index]) {
+    else if (mr->select_poly && mr->select_poly[face_index]) {
       lnor_data->w = 1;
     }
     else {
@@ -219,7 +219,7 @@ constexpr MeshExtract create_extractor_lnor_hq()
   extractor.init = extract_lnor_hq_init;
   extractor.init_subdiv = extract_lnor_init_subdiv;
   extractor.iter_poly_bm = extract_lnor_hq_iter_poly_bm;
-  extractor.iter_poly_mesh = extract_lnor_hq_iter_poly_mesh;
+  extractor.iter_face_mesh = extract_lnor_hq_iter_face_mesh;
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(gpuHQNor *);
   extractor.use_threading = true;

@@ -1167,7 +1167,7 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (bmain->versionfile == 250 && bmain->subversionfile > 1) {
       for (me = bmain->meshes.first; me; me = me->id.next) {
-        CustomData_free_layer_active(&me->fdata, CD_MDISPS, me->totface);
+        CustomData_free_layer_active(&me->fdata, CD_MDISPS, me->totface_legacy);
       }
 
       for (ob = bmain->objects.first; ob; ob = ob->id.next) {

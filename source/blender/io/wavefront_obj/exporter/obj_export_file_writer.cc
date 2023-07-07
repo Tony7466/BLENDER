@@ -320,14 +320,14 @@ OBJWriter::func_vert_uv_normal_indices OBJWriter::get_poly_element_writer(
   return &OBJWriter::write_vert_indices;
 }
 
-static int get_smooth_group(const OBJMesh &mesh, const OBJExportParams &params, int poly_idx)
+static int get_smooth_group(const OBJMesh &mesh, const OBJExportParams &params, int face_idx)
 {
-  if (poly_idx < 0) {
+  if (face_idx < 0) {
     return NEGATIVE_INIT;
   }
   int group = SMOOTH_GROUP_DISABLED;
-  if (mesh.is_ith_poly_smooth(poly_idx)) {
-    group = !params.export_smooth_groups ? SMOOTH_GROUP_DEFAULT : mesh.ith_smooth_group(poly_idx);
+  if (mesh.is_ith_poly_smooth(face_idx)) {
+    group = !params.export_smooth_groups ? SMOOTH_GROUP_DEFAULT : mesh.ith_smooth_group(face_idx);
   }
   return group;
 }
@@ -404,7 +404,7 @@ void OBJWriter::write_poly_elements(FormatHandler &fh,
       }
     }
 
-    /* Write polygon elements. */
+    /* Write face elements. */
     (this->*poly_element_writer)(buf,
                                  offsets,
                                  poly_vertex_indices,

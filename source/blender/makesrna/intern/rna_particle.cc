@@ -391,7 +391,7 @@ static void rna_Particle_uv_on_emitter(ParticleData *particle,
   BKE_mesh_tessface_ensure(modifier->mesh_final); /* BMESH - UNTIL MODIFIER IS UPDATED FOR POLYS */
 
   if (ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    if (particle->num < modifier->mesh_final->totface) {
+    if (particle->num < modifier->mesh_final->totface_legacy) {
       num = particle->num;
     }
   }
@@ -532,7 +532,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
   int num = -1;
 
   BKE_mesh_tessface_ensure(modifier->mesh_final); /* BMESH - UNTIL MODIFIER IS UPDATED FOR POLYS */
-  totface = modifier->mesh_final->totface;
+  totface = modifier->mesh_final->totface_legacy;
   totvert = modifier->mesh_final->totvert;
 
   /* 1. check that everything is ok & updated */

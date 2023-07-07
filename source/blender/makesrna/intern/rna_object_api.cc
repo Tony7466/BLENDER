@@ -552,11 +552,11 @@ static void rna_Mesh_assign_verts_to_group(
 /* don't call inside a loop */
 static int mesh_looptri_to_poly_index(Mesh *me_eval, const int tri_index)
 {
-  const int *looptri_polys = BKE_mesh_runtime_looptri_polys_ensure(me_eval);
-  const int poly_i = looptri_polys[tri_index];
+  const int *looptri_faces = BKE_mesh_runtime_looptri_faces_ensure(me_eval);
+  const int face_i = looptri_faces[tri_index];
   const int *index_mp_to_orig = static_cast<const int *>(
       CustomData_get_layer(&me_eval->pdata, CD_ORIGINDEX));
-  return index_mp_to_orig ? index_mp_to_orig[poly_i] : poly_i;
+  return index_mp_to_orig ? index_mp_to_orig[face_i] : face_i;
 }
 
 /* TODO(sergey): Make the Python API more clear that evaluation might happen, or require

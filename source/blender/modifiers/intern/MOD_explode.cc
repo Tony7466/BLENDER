@@ -101,9 +101,10 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
   const bool invert_vgroup = (emd->flag & eExplodeFlag_INVERT_VGROUP) != 0;
 
   blender::MutableSpan<blender::float3> positions = mesh->vert_positions_for_write();
-  mface = (MFace *)CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface);
+  mface = (MFace *)CustomData_get_layer_for_write(
+      &mesh->fdata, CD_MFACE, mesh->totface_legacy);
   totvert = mesh->totvert;
-  totface = mesh->totface;
+  totface = mesh->totface_legacy;
   totpart = psmd->psys->totpart;
 
   rng = BLI_rng_new_srandom(psys->seed);
@@ -217,7 +218,7 @@ static const short add_faces[24] = {
 static MFace *get_dface(Mesh *mesh, Mesh *split, int cur, int i, MFace *mf)
 {
   MFace *mfaces = static_cast<MFace *>(
-      CustomData_get_layer_for_write(&split->fdata, CD_MFACE, split->totface));
+      CustomData_get_layer_for_write(&split->fdata, CD_MFACE, split->totface_legacy));
   MFace *df = &mfaces[cur];
   CustomData_copy_data(&mesh->fdata, &split->fdata, i, cur, 1);
   *df = *mf;
@@ -286,13 +287,13 @@ static void remap_uvs_3_6_9_12(
   int l;
 
   for (l = 0; l < layers_num; l++) {
-    mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&split->fdata, CD_MTFACE, l, split->totface));
+    mf = static_cast<MTFace *>(CustomData_get_layer_n_for_write(
+        &split->fdata, CD_MTFACE, l, split->totface_legacy));
     df1 = mf + cur;
     df2 = df1 + 1;
     df3 = df1 + 2;
     mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface));
+        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface_legacy));
     mf += i;
 
     copy_v2_v2(df1->uv[0], mf->uv[c0]);
@@ -348,12 +349,12 @@ static void remap_uvs_5_10(
   int l;
 
   for (l = 0; l < layers_num; l++) {
-    mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&split->fdata, CD_MTFACE, l, split->totface));
+    mf = static_cast<MTFace *>(CustomData_get_layer_n_for_write(
+        &split->fdata, CD_MTFACE, l, split->totface_legacy));
     df1 = mf + cur;
     df2 = df1 + 1;
     mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface));
+        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface_legacy));
     mf += i;
 
     copy_v2_v2(df1->uv[0], mf->uv[c0]);
@@ -422,14 +423,14 @@ static void remap_uvs_15(
   int l;
 
   for (l = 0; l < layers_num; l++) {
-    mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&split->fdata, CD_MTFACE, l, split->totface));
+    mf = static_cast<MTFace *>(CustomData_get_layer_n_for_write(
+        &split->fdata, CD_MTFACE, l, split->totface_legacy));
     df1 = mf + cur;
     df2 = df1 + 1;
     df3 = df1 + 2;
     df4 = df1 + 3;
     mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface));
+        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface_legacy));
     mf += i;
 
     copy_v2_v2(df1->uv[0], mf->uv[c0]);
@@ -500,13 +501,13 @@ static void remap_uvs_7_11_13_14(
   int l;
 
   for (l = 0; l < layers_num; l++) {
-    mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&split->fdata, CD_MTFACE, l, split->totface));
+    mf = static_cast<MTFace *>(CustomData_get_layer_n_for_write(
+        &split->fdata, CD_MTFACE, l, split->totface_legacy));
     df1 = mf + cur;
     df2 = df1 + 1;
     df3 = df1 + 2;
     mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface));
+        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface_legacy));
     mf += i;
 
     copy_v2_v2(df1->uv[0], mf->uv[c0]);
@@ -562,12 +563,12 @@ static void remap_uvs_19_21_22(
   int l;
 
   for (l = 0; l < layers_num; l++) {
-    mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&split->fdata, CD_MTFACE, l, split->totface));
+    mf = static_cast<MTFace *>(CustomData_get_layer_n_for_write(
+        &split->fdata, CD_MTFACE, l, split->totface_legacy));
     df1 = mf + cur;
     df2 = df1 + 1;
     mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface));
+        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface_legacy));
     mf += i;
 
     copy_v2_v2(df1->uv[0], mf->uv[c0]);
@@ -626,12 +627,12 @@ static void remap_uvs_23(
   int l;
 
   for (l = 0; l < layers_num; l++) {
-    mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&split->fdata, CD_MTFACE, l, split->totface));
+    mf = static_cast<MTFace *>(CustomData_get_layer_n_for_write(
+        &split->fdata, CD_MTFACE, l, split->totface_legacy));
     df1 = mf + cur;
     df2 = df1 + 1;
     mf = static_cast<MTFace *>(
-        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface));
+        CustomData_get_layer_n_for_write(&mesh->fdata, CD_MTFACE, l, mesh->totface_legacy));
     mf += i;
 
     copy_v2_v2(df1->uv[0], mf->uv[c0]);
@@ -654,12 +655,12 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   Mesh *split_m;
   MFace *mf = nullptr, *df1 = nullptr;
   MFace *mface = static_cast<MFace *>(
-      CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface));
+      CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface_legacy));
   float *dupve;
   EdgeHash *edgehash;
   EdgeHashIterator *ehi;
   int totvert = mesh->totvert;
-  int totface = mesh->totface;
+  int totface = mesh->totface_legacy;
 
   int *facesplit = static_cast<int *>(MEM_calloc_arrayN(totface, sizeof(int), __func__));
   int *vertpa = static_cast<int *>(MEM_calloc_arrayN(totvert, sizeof(int), __func__));
@@ -887,10 +888,11 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   }
 
   MFace *split_mface = static_cast<MFace *>(
-      CustomData_get_layer_for_write(&split_m->fdata, CD_MFACE, split_m->totface));
+      CustomData_get_layer_for_write(&split_m->fdata, CD_MFACE, split_m->totface_legacy));
   for (i = 0; i < curdupface; i++) {
     mf = &split_mface[i];
-    BKE_mesh_mface_index_validate(mf, &split_m->fdata, i, ((mf->flag & ME_FACE_SEL) ? 4 : 3));
+    BKE_mesh_mface_index_validate(
+        mf, &split_m->fdata, i, ((mf->flag & ME_FACE_SEL) ? 4 : 3));
   }
 
   BLI_edgehash_free(edgehash, nullptr);
@@ -926,10 +928,10 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   int i, v, u;
   int ed_v1, ed_v2, mindex = 0;
 
-  totface = mesh->totface;
+  totface = mesh->totface_legacy;
   totvert = mesh->totvert;
   mface = static_cast<MFace *>(
-      CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface));
+      CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface_legacy));
   totpart = psmd->psys->totpart;
 
   sim.depsgraph = ctx->depsgraph;
@@ -994,7 +996,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
       mesh, totdup, 0, totface - delface, 0, 0, CD_MASK_EVERYTHING);
 
   MTFace *mtface = static_cast<MTFace *>(CustomData_get_layer_named_for_write(
-      &explode->fdata, CD_MTFACE, emd->uvname, explode->totface));
+      &explode->fdata, CD_MTFACE, emd->uvname, explode->totface_legacy));
 
   /* getting back to object space */
   invert_m4_m4(imat, ctx->object->object_to_world);
@@ -1053,7 +1055,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
   /* Map new vertices to faces. */
   MFace *explode_mface = static_cast<MFace *>(
-      CustomData_get_layer_for_write(&explode->fdata, CD_MFACE, explode->totface));
+      CustomData_get_layer_for_write(&explode->fdata, CD_MFACE, explode->totface_legacy));
   for (i = 0, u = 0; i < totface; i++) {
     MFace source;
     int orig_v4;
@@ -1163,7 +1165,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     /* 1. find faces to be exploded if needed */
     if (emd->facepa == nullptr || psmd->flag & eParticleSystemFlag_Pars ||
         emd->flag & eExplodeFlag_CalcFaces ||
-        MEM_allocN_len(emd->facepa) / sizeof(int) != mesh->totface)
+        MEM_allocN_len(emd->facepa) / sizeof(int) != mesh->totface_legacy)
     {
       if (psmd->flag & eParticleSystemFlag_Pars) {
         psmd->flag &= ~eParticleSystemFlag_Pars;
