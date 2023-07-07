@@ -142,9 +142,15 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
       }
     }
     else if (_lightType == HdPrimTypeTokens->sphereLight) {
-      value = sceneDelegate->GetLightParamValue(id, HdLightTokens->radius);
-      if (!value.IsEmpty()) {
-        _light->set_size(value.Get<float>());
+      value = sceneDelegate->GetLightParamValue(id, TfToken("treatAsPoint"));
+      if (!value.IsEmpty() && value.Get<bool>()) {
+        _light->set_size(0.0f);
+      }
+      else {
+        value = sceneDelegate->GetLightParamValue(id, HdLightTokens->radius);
+        if (!value.IsEmpty()) {
+          _light->set_size(value.Get<float>());
+        }
       }
 
       bool shaping = false;

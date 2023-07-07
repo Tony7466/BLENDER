@@ -7,6 +7,7 @@
 #include <pxr/usd/usdLux/diskLight.h>
 #include <pxr/usd/usdLux/distantLight.h>
 #include <pxr/usd/usdLux/rectLight.h>
+#include <pxr/usd/usdLux/shapingAPI.h>
 #include <pxr/usd/usdLux/sphereLight.h>
 
 #include "BLI_assert.h"
@@ -23,7 +24,7 @@ USDLightWriter::USDLightWriter(const USDExporterContext &ctx) : USDAbstractWrite
 bool USDLightWriter::is_supported(const HierarchyContext *context) const
 {
   Light *light = static_cast<Light *>(context->object->data);
-  return ELEM(light->type, LA_AREA, LA_LOCAL, LA_SUN);
+  return ELEM(light->type, LA_AREA, LA_LOCAL, LA_SUN, LA_SPOT);
 }
 
 void USDLightWriter::do_write(HierarchyContext &context)
@@ -78,9 +79,22 @@ void USDLightWriter::do_write(HierarchyContext &context)
         }
       }
       break;
-    case LA_LOCAL: {
+    case LA_LOCAL:
+    case LA_SPOT: {
       pxr::UsdLuxSphereLight sphere_light = pxr::UsdLuxSphereLight::Define(stage, usd_path);
       sphere_light.CreateRadiusAttr().Set(light->radius, timecode);
+      if (light->radius == 0.0f) {
+        sphere_light.CreateTreatAsPointAttr().Set(true, timecode);
+      }
+
+      if (light->type == LA_SPOT) {
+        pxr::UsdLuxShapingAPI shaping_api = pxr::UsdLuxShapingAPI::Apply(sphere_light.GetPrim());
+        if (shaping_api) {
+          shaping_api.CreateShapingConeAngleAttr().Set(RAD2DEGF(light->spotsize) / 2.0f, timecode);
+          shaping_api.CreateShapingConeSoftnessAttr().Set(light->spotblend, timecode);
+        }
+      }
+
 #if PXR_VERSION >= 2111
       usd_light_api = sphere_light.LightAPI();
 #else
@@ -115,6 +129,7 @@ void USDLightWriter::do_write(HierarchyContext &context)
   usd_light_api.CreateIntensityAttr().Set(usd_intensity, timecode);
   usd_light_api.CreateColorAttr().Set(pxr::GfVec3f(light->r, light->g, light->b), timecode);
   usd_light_api.CreateSpecularAttr().Set(light->spec_fac, timecode);
+  usd_light_api.CreateNormalizeAttr().Set(true, timecode);
 }
 
 }  // namespace blender::io::usd
