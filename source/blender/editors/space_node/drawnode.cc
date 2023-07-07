@@ -238,7 +238,7 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
 
     NodeResizeDirection dir = NODE_RESIZE_NONE;
 
-    const rctf &totr = node->runtime->node_rect;
+    const rctf &totr = node->runtime->totr;
 
     if (x > totr.xmax - size && x <= totr.xmax && y >= totr.ymin && y < totr.ymax) {
       dir |= NODE_RESIZE_RIGHT;
@@ -258,8 +258,8 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
 
   if (node->flag & NODE_HIDDEN) {
     /* right part of node */
-    rctf totr = node->runtime->node_rect;
-    totr.xmin = node->runtime->node_rect.xmax - 1.0f * U.widget_unit;
+    rctf totr = node->runtime->totr;
+    totr.xmin = node->runtime->totr.xmax - 1.0f * U.widget_unit;
     if (BLI_rctf_isect_pt(&totr, x, y)) {
       return NODE_RESIZE_RIGHT;
     }
@@ -267,7 +267,7 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
     return NODE_RESIZE_NONE;
   }
 
-  const rctf &totr = node->runtime->node_rect;
+  const rctf &totr = node->runtime->totr;
   NodeResizeDirection dir = NODE_RESIZE_NONE;
 
   if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax) {

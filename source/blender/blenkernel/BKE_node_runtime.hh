@@ -68,16 +68,6 @@ struct NodeIDEquality {
   }
 };
 
-typedef char *(*uiButToolTipFunc)(struct bContext *C, void *argN, const char *tip);
-struct NodeExtraInfoRow {
-  std::string text;
-  int icon;
-  const char *tooltip = nullptr;
-
-  uiButToolTipFunc tooltip_fn = nullptr;
-  void *tooltip_fn_arg = nullptr;
-  void (*tooltip_fn_free_arg)(void *) = nullptr;
-};
 }  // namespace blender
 
 namespace blender::bke {
@@ -269,12 +259,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   short preview_xsize, preview_ysize = 0;
   /** Entire bound-box (world-space). */
   rctf totr{};
-  /** Node only (no overlay) bound-box (world-space). */
-  rctf node_rect{};
-
-  /** Store infos of the overlay to know the overlay size before drawing it. */
-  Vector<NodeExtraInfoRow> extra_infos;
-  bNodePreview *preview = nullptr;
 
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag = 0;

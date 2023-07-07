@@ -39,7 +39,6 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
@@ -213,9 +212,6 @@ static const char *node_socket_get_translation_context(const bNodeSocket &socket
 static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
                                                    const bNodeSocket &sock,
                                                    uiLayout &layout);
-static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_ctx,
-                                                    const SpaceNode &snode,
-                                                    const bNode &node);
 
 /** Return true when \a a should be behind \a b and false otherwise. */
 static bool compare_node_depth(const bNode *a, const bNode *b)
@@ -344,14 +340,12 @@ float2 node_from_view(const bNode &node, const float2 &co)
  * Based on settings and sockets in node, set drawing rect info.
  */
 static void node_update_basis(const bContext &C,
-                              TreeDrawContext &tree_draw_ctx,
+                              const TreeDrawContext & /*tree_draw_ctx*/,
                               bNodeTree &ntree,
                               bNode &node,
-                              uiBlock &block,
-                              const bNodeInstanceKey *key)
+                              uiBlock &block)
 {
   PointerRNA nodeptr;
-  const SpaceNode *snode = CTX_wm_space_node(&C);
   RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
 
   const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
@@ -537,36 +531,10 @@ static void node_update_basis(const bContext &C,
     dy -= NODE_DYS / 2;
   }
 
-  node.runtime->node_rect.xmin = loc.x;
-  node.runtime->node_rect.xmax = loc.x + NODE_WIDTH(node);
-  node.runtime->node_rect.ymax = loc.y;
-  node.runtime->node_rect.ymin = min_ff(dy, loc.y - 2 * NODE_DY);
-  { /* Overlay data */
-    node.runtime->extra_infos = node_get_extra_info(tree_draw_ctx, *snode, node);
-    node.runtime->preview = nullptr;
-    bNodeInstanceHash *previews =
-        (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
-    if (node.flag & NODE_PREVIEW && previews && snode->overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
-      node.runtime->preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, *key);
-      if (!node.runtime->preview ||
-          !(node.runtime->preview->xsize && node.runtime->preview->ysize)) {
-        node.runtime->preview = nullptr;
-      }
-    }
-    /* overlay height calculation */
-    float overlay_height = node.runtime->extra_infos.size() * (20.0f * UI_SCALE_FAC);
-    if (node.runtime->preview) {
-      const float preview_padding = 3.0f * UI_SCALE_FAC;
-      const float width = (node.width - 6.0f) * UI_SCALE_FAC;
-      const float preview_height_non_clipped = (width - 2.0 * preview_padding) *
-                                                   float(node.runtime->preview->ysize) /
-                                                   float(node.runtime->preview->xsize) +
-                                               2.0 * preview_padding;
-      overlay_height += fmin(preview_height_non_clipped, width);
-    }
-    node.runtime->totr = node.runtime->node_rect;
-    node.runtime->totr.ymax += overlay_height * 2 / UI_SCALE_FAC;
-  }
+  node.runtime->totr.xmin = loc.x;
+  node.runtime->totr.xmax = loc.x + NODE_WIDTH(node);
+  node.runtime->totr.ymax = loc.y;
+  node.runtime->totr.ymin = min_ff(dy, loc.y - 2 * NODE_DY);
 
   /* Set the block bounds to clip mouse events from underlying nodes.
    * Add a margin for sockets on each side. */
@@ -608,10 +576,10 @@ static void node_update_hidden(bNode &node, uiBlock &block)
     hiddenrad += 5.0f * float(tot - 4);
   }
 
-  node.runtime->node_rect.xmin = loc.x;
-  node.runtime->node_rect.xmax = loc.x + max_ff(NODE_WIDTH(node), 2 * hiddenrad);
-  node.runtime->node_rect.ymax = loc.y + (hiddenrad - 0.5f * NODE_DY);
-  node.runtime->node_rect.ymin = node.runtime->node_rect.ymax - 2 * hiddenrad;
+  node.runtime->totr.xmin = loc.x;
+  node.runtime->totr.xmax = loc.x + max_ff(NODE_WIDTH(node), 2 * hiddenrad);
+  node.runtime->totr.ymax = loc.y + (hiddenrad - 0.5f * NODE_DY);
+  node.runtime->totr.ymin = node.runtime->totr.ymax - 2 * hiddenrad;
 
   /* Output sockets. */
   float rad = float(M_PI) / (1.0f + float(totout));
@@ -621,8 +589,8 @@ static void node_update_hidden(bNode &node, uiBlock &block)
     if (socket->is_visible()) {
       /* Round the socket location to stop it from jiggling. */
       socket->runtime->location = {
-          round(node.runtime->node_rect.xmax - hiddenrad + sinf(rad) * hiddenrad),
-          round(node.runtime->node_rect.ymin + hiddenrad + cosf(rad) * hiddenrad)};
+          round(node.runtime->totr.xmax - hiddenrad + sinf(rad) * hiddenrad),
+          round(node.runtime->totr.ymin + hiddenrad + cosf(rad) * hiddenrad)};
       rad += drad;
     }
   }
@@ -634,8 +602,8 @@ static void node_update_hidden(bNode &node, uiBlock &block)
     if (socket->is_visible()) {
       /* Round the socket location to stop it from jiggling. */
       socket->runtime->location = {
-          round(node.runtime->node_rect.xmin + hiddenrad + sinf(rad) * hiddenrad),
-          round(node.runtime->node_rect.ymin + hiddenrad + cosf(rad) * hiddenrad)};
+          round(node.runtime->totr.xmin + hiddenrad + sinf(rad) * hiddenrad),
+          round(node.runtime->totr.ymin + hiddenrad + cosf(rad) * hiddenrad)};
       rad += drad;
     }
   }
@@ -643,10 +611,10 @@ static void node_update_hidden(bNode &node, uiBlock &block)
   /* Set the block bounds to clip mouse events from underlying nodes.
    * Add a margin for sockets on each side. */
   UI_block_bounds_set_explicit(&block,
-                               node.runtime->node_rect.xmin - NODE_SOCKSIZE,
-                               node.runtime->node_rect.ymin,
-                               node.runtime->node_rect.xmax + NODE_SOCKSIZE,
-                               node.runtime->node_rect.ymax);
+                               node.runtime->totr.xmin - NODE_SOCKSIZE,
+                               node.runtime->totr.ymin,
+                               node.runtime->totr.xmax + NODE_SOCKSIZE,
+                               node.runtime->totr.ymax);
 }
 
 static int node_get_colorid(TreeDrawContext &tree_draw_ctx, const bNode &node)
@@ -1357,7 +1325,7 @@ static void node_draw_preview_background(rctf *rect)
 }
 
 /* Not a callback. */
-static void node_draw_preview(const bNodePreview *preview, rctf *prv)
+static void node_draw_preview(bNodePreview *preview, rctf *prv)
 {
   float xrect = BLI_rctf_size_x(prv);
   float yrect = BLI_rctf_size_y(prv);
@@ -1430,7 +1398,7 @@ static void node_draw_shadow(const SpaceNode &snode,
                              const float radius,
                              const float alpha)
 {
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
   ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.flag & SELECT);
 }
@@ -1878,6 +1846,16 @@ static std::string node_get_execution_time_label(TreeDrawContext &tree_draw_ctx,
   return stream.str() + " ms";
 }
 
+struct NodeExtraInfoRow {
+  std::string text;
+  int icon;
+  const char *tooltip = nullptr;
+
+  uiButToolTipFunc tooltip_fn = nullptr;
+  void *tooltip_fn_arg = nullptr;
+  void (*tooltip_fn_free_arg)(void *) = nullptr;
+};
+
 struct NamedAttributeTooltipArg {
   Map<StringRefNull, geo_log::NamedAttributeUsage> usage_by_attribute;
 };
@@ -2105,16 +2083,17 @@ static void node_draw_extra_info_row(const bNode &node,
 }
 
 static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
+                                       const SpaceNode &snode,
                                        const bNode &node,
+                                       bNodePreview *preview,
                                        uiBlock &block)
 {
-  Vector<NodeExtraInfoRow> extra_info_rows = node.runtime->extra_infos;
-  const bNodePreview *preview = node.runtime->preview;
+  Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
   if (extra_info_rows.size() == 0 && !preview) {
     return;
   }
 
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   float color[4];
   rctf extra_info_rect;
 
@@ -2208,9 +2187,15 @@ static void node_draw_basis(const bContext &C,
                             bNodeInstanceKey key)
 {
   const float iconbutw = NODE_HEADER_ICON_SIZE;
+  bNodeInstanceHash *previews =
+      (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
 
   /* Skip if out of view. */
-  if (BLI_rctf_isect(&node.runtime->totr, &v2d.cur, nullptr) == false) {
+  rctf rect_with_preview = node.runtime->totr;
+  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+    rect_with_preview.ymax += NODE_WIDTH(node);
+  }
+  if (BLI_rctf_isect(&rect_with_preview, &v2d.cur, nullptr) == false) {
     UI_block_end(&C, &block);
     return;
   }
@@ -2220,13 +2205,21 @@ static void node_draw_basis(const bContext &C,
     node_draw_shadow(snode, node, BASIS_RAD, 1.0f);
   }
 
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   float color[4];
   int color_id = node_get_colorid(tree_draw_ctx, node);
 
   GPU_line_width(1.0f);
 
-  node_draw_extra_info_panel(tree_draw_ctx, node, block);
+  bNodePreview *preview = nullptr;
+  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+    preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
+    if (!preview || !(preview->xsize && preview->ysize)) {
+      preview = nullptr;
+    }
+  }
+
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, preview, block);
 
   /* Header. */
   {
@@ -2524,7 +2517,7 @@ static void node_draw_hidden(const bContext &C,
                              bNode &node,
                              uiBlock &block)
 {
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   float centy = BLI_rctf_cent_y(&rct);
   float hiddenrad = BLI_rctf_size_y(&rct) / 2.0f;
 
@@ -2533,7 +2526,7 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(tree_draw_ctx, node, block);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -2836,7 +2829,7 @@ static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
   node.width = max.x - node.offsetx;
   node.height = -max.y + node.offsety;
 
-  node.runtime->node_rect = rect;
+  node.runtime->totr = rect;
 }
 
 static void reroute_node_prepare_for_draw(bNode &node)
@@ -2849,18 +2842,17 @@ static void reroute_node_prepare_for_draw(bNode &node)
 
   const float size = 8.0f;
   node.width = size * 2;
-  node.runtime->node_rect.xmin = loc.x - size;
-  node.runtime->node_rect.xmax = loc.x + size;
-  node.runtime->node_rect.ymax = loc.y + size;
-  node.runtime->node_rect.ymin = loc.y - size;
+  node.runtime->totr.xmin = loc.x - size;
+  node.runtime->totr.xmax = loc.x + size;
+  node.runtime->totr.ymax = loc.y + size;
+  node.runtime->totr.ymin = loc.y - size;
 }
 
 static void node_update_nodetree(const bContext &C,
                                  TreeDrawContext &tree_draw_ctx,
                                  bNodeTree &ntree,
                                  Span<bNode *> nodes,
-                                 Span<uiBlock *> blocks,
-                                 const bNodeInstanceKey parent_key)
+                                 Span<uiBlock *> blocks)
 {
   /* Make sure socket "used" tags are correct, for displaying value buttons. */
   SpaceNode *snode = CTX_wm_space_node(&C);
@@ -2883,8 +2875,7 @@ static void node_update_nodetree(const bContext &C,
         node_update_hidden(node, block);
       }
       else {
-        const bNodeInstanceKey key = BKE_node_instance_key(parent_key, &ntree, nodes[i]);
-        node_update_basis(C, tree_draw_ctx, ntree, node, block, &key);
+        node_update_basis(C, tree_draw_ctx, ntree, node, block);
       }
     }
   }
@@ -2926,7 +2917,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   const float width = BLF_width(fontid, label, sizeof(label));
   const int label_height = frame_node_label_height(*data);
 
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   const float label_x = BLI_rctf_cent_x(&rct) - (0.5f * width);
   const float label_y = rct.ymax - label_height - (0.5f * margin);
 
@@ -2984,7 +2975,7 @@ static void frame_node_draw(const bContext &C,
                             uiBlock &block)
 {
   /* Skip if out of view. */
-  if (BLI_rctf_isect(&node.runtime->node_rect, &region.v2d.cur, nullptr) == false) {
+  if (BLI_rctf_isect(&node.runtime->totr, &region.v2d.cur, nullptr) == false) {
     UI_block_end(&C, &block);
     return;
   }
@@ -3002,7 +2993,7 @@ static void frame_node_draw(const bContext &C,
     UI_GetThemeColor4fv(TH_NODE_FRAME, color);
   }
 
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
   UI_draw_roundbox_4fv(&rct, true, BASIS_RAD, color);
 
@@ -3021,7 +3012,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(tree_draw_ctx, node, block);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
@@ -3031,9 +3022,9 @@ static void reroute_node_draw(
     const bContext &C, ARegion &region, bNodeTree &ntree, const bNode &node, uiBlock &block)
 {
   /* Skip if out of view. */
-  const rctf &rct = node.runtime->node_rect;
+  const rctf &rct = node.runtime->totr;
   if (rct.xmax < region.v2d.cur.xmin || rct.xmin > region.v2d.cur.xmax ||
-      rct.ymax < region.v2d.cur.ymin || node.runtime->node_rect.ymin > region.v2d.cur.ymax)
+      rct.ymax < region.v2d.cur.ymin || node.runtime->totr.ymin > region.v2d.cur.ymax)
   {
     UI_block_end(&C, &block);
     return;
@@ -3044,8 +3035,8 @@ static void reroute_node_draw(
     char showname[128]; /* 128 used below */
     STRNCPY(showname, node.label);
     const short width = 512;
-    const int x = BLI_rctf_cent_x(&node.runtime->node_rect) - (width / 2);
-    const int y = node.runtime->node_rect.ymax;
+    const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
+    const int y = node.runtime->totr.ymax;
 
     uiBut *label_but = uiDefBut(&block,
                                 UI_BTYPE_LABEL,
@@ -3286,7 +3277,7 @@ static void node_draw_nodetree(const bContext &C,
 #ifdef USE_DRAW_TOT_UPDATE
     /* Unrelated to background nodes, update the v2d->tot,
      * can be anywhere before we draw the scroll bars. */
-    BLI_rctf_union(&region.v2d.tot, &nodes[i]->runtime->node_rect);
+    BLI_rctf_union(&region.v2d.tot, &nodes[i]->runtime->totr);
 #endif
 
     if (!(nodes[i]->flag & NODE_BACKGROUND)) {
@@ -3437,7 +3428,7 @@ static void draw_nodetree(const bContext &C,
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
 
-  node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks, parent_key);
+  node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);
   node_draw_zones(tree_draw_ctx, region, *snode, ntree);
   node_draw_nodetree(C, tree_draw_ctx, region, *snode, ntree, nodes, blocks, parent_key);
 }

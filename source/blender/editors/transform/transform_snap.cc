@@ -1240,10 +1240,10 @@ static void TargetSnapOffset(TransInfo *t, TransData *td)
       t->tsnap.snap_source[0] -= 0.0f;
     }
     if (border & NODE_RIGHT) {
-      t->tsnap.snap_source[0] += BLI_rctf_size_x(&node->runtime->node_rect);
+      t->tsnap.snap_source[0] += BLI_rctf_size_x(&node->runtime->totr);
     }
     if (border & NODE_BOTTOM) {
-      t->tsnap.snap_source[1] -= BLI_rctf_size_y(&node->runtime->node_rect);
+      t->tsnap.snap_source[1] -= BLI_rctf_size_y(&node->runtime->totr);
     }
     if (border & NODE_TOP) {
       t->tsnap.snap_source[1] += 0.0f;
@@ -1507,10 +1507,8 @@ static bool snapNodeTest(View2D *v2d, bNode *node, eSnapTargetOP snap_target_sel
   /* node is use for snapping only if a) snap mode matches and b) node is inside the view */
   return (((snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) && !(node->flag & NODE_SELECT)) ||
           (snap_target_select == SCE_SNAP_TARGET_ALL && !(node->flag & NODE_ACTIVE))) &&
-         (node->runtime->node_rect.xmin < v2d->cur.xmax &&
-          node->runtime->node_rect.xmax > v2d->cur.xmin &&
-          node->runtime->node_rect.ymin < v2d->cur.ymax &&
-          node->runtime->node_rect.ymax > v2d->cur.ymin);
+         (node->runtime->totr.xmin < v2d->cur.xmax && node->runtime->totr.xmax > v2d->cur.xmin &&
+          node->runtime->totr.ymin < v2d->cur.ymax && node->runtime->totr.ymax > v2d->cur.ymin);
 }
 
 static NodeBorder snapNodeBorder(eSnapMode snap_node_mode)
@@ -1540,7 +1538,7 @@ static bool snapNode(ToolSettings *ts,
   rcti totr;
   int new_dist;
 
-  UI_view2d_view_to_region_rcti(v2d, &node->runtime->node_rect, &totr);
+  UI_view2d_view_to_region_rcti(v2d, &node->runtime->totr, &totr);
 
   if (border & NODE_LEFT) {
     new_dist = abs(totr.xmin - mval[0]);
