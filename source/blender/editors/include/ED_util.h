@@ -75,8 +75,6 @@ void ED_region_image_metadata_draw(
 struct tSlider;
 typedef enum SliderMode { SLIDER_MODE_PERCENT = 0, SLIDER_MODE_FLOAT = 1 } SliderMode;
 
-typedef enum SliderMode { SLIDER_MODE_PERCENT = 0, SLIDER_MODE_FLOAT = 1 } SliderMode;
-
 struct tSlider *ED_slider_create(struct bContext *C);
 /**
  * For modal operations so the percentage doesn't pop on the first mouse movement.
