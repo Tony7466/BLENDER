@@ -83,6 +83,13 @@ void ED_assets_pre_save(Main *bmain)
       continue;
     }
 
+    const IDTypeInfo *id_type_info = BKE_idtype_get_info_from_id(id);
+    BKE_asset_metadata_trait_ensure(id->asset_data, id_type_info->name);
+
+    if (id_type_info->asset_type_info && id_type_info->asset_type_info->ensure_traits_fn) {
+      id_type_info->asset_type_info->ensure_traits_fn(id, id->asset_data);
+    }
+
     if (id->asset_data->local_type_info->pre_save_fn) {
       id->asset_data->local_type_info->pre_save_fn(id, id->asset_data);
     }

@@ -61,12 +61,13 @@ using namespace blender::bke::idprop;
  *     "copyright": "<copyright>",
  *     "license": "<license>",
  *     "tags": ["<tag>"],
+ *     "traits": ["<trait>"],
  *     "properties": [..]
  *   }]
  * }
  * \endcode
  *
- * NOTE: entries, author, description, copyright, license, tags and properties are optional
+ * NOTE: entries, author, description, copyright, license, tags, traits and properties are optional
  * attributes.
  *
  * NOTE: File browser uses name and idcode separate. Inside the index they are joined together like
@@ -83,6 +84,7 @@ constexpr StringRef ATTRIBUTE_ENTRIES_AUTHOR("author");
 constexpr StringRef ATTRIBUTE_ENTRIES_COPYRIGHT("copyright");
 constexpr StringRef ATTRIBUTE_ENTRIES_LICENSE("license");
 constexpr StringRef ATTRIBUTE_ENTRIES_TAGS("tags");
+constexpr StringRef ATTRIBUTE_ENTRIES_TRAITS("traits");
 constexpr StringRef ATTRIBUTE_ENTRIES_PROPERTIES("properties");
 
 /** Abstract class for #BlendFile and #AssetIndexFile. */
@@ -229,6 +231,21 @@ struct AssetEntryReader {
     }
   }
 
+  void add_traits_to_meta_data(AssetMetaData *asset_data) const
+  {
+    const DictionaryValue::LookupValue *value_ptr = lookup.lookup_ptr(ATTRIBUTE_ENTRIES_TRAITS);
+    if (value_ptr == nullptr) {
+      return;
+    }
+
+    const ArrayValue *array_value = (*value_ptr)->as_array_value();
+    const ArrayValue::Items &elements = array_value->elements();
+    for (const ArrayValue::Item &item : elements) {
+      const StringRefNull trait_value = item->as_string_value()->value();
+      BKE_asset_metadata_trait_ensure(asset_data, trait_value.c_str());
+    }
+  }
+
   void add_properties_to_meta_data(AssetMetaData *asset_data) const
   {
     BLI_assert(asset_data->properties == nullptr);
@@ -309,6 +326,17 @@ struct AssetEntryWriter {
     }
   }
 
+  void add_traits(const ListBase /* AssetTrait */ *asset_traits)
+  {
+    ArrayValue *traits = new ArrayValue();
+    attributes.append_as(std::pair(ATTRIBUTE_ENTRIES_TRAITS, traits));
+    ArrayValue::Items &trait_items = traits->elements();
+
+    LISTBASE_FOREACH (AssetTrait *, trait, asset_traits) {
+      trait_items.append_as(new StringValue(trait->value));
+    }
+  }
+
   void add_properties(const IDProperty *properties)
   {
     std::unique_ptr<Value> value = convert_to_serialize_values(properties);
@@ -345,6 +373,10 @@ static void init_value_from_file_indexer_entry(AssetEntryWriter &result,
 
   if (!BLI_listbase_is_empty(&asset_data.tags)) {
     result.add_tags(&asset_data.tags);
+  }
+
+  if (!BLI_listbase_is_empty(&asset_data.traits)) {
+    result.add_traits(&asset_data.traits);
   }
 
   if (asset_data.properties != nullptr) {
@@ -431,6 +463,7 @@ static void init_indexer_entry_from_value(FileIndexerEntry &indexer_entry,
   asset_data->catalog_id = entry.get_catalog_id();
 
   entry.add_tags_to_meta_data(asset_data);
+  entry.add_traits_to_meta_data(asset_data);
   entry.add_properties_to_meta_data(asset_data);
 }
 

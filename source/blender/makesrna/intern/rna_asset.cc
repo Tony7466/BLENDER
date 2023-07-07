@@ -136,6 +136,14 @@ static void rna_AssetMetaData_tag_remove(ID *id,
   RNA_POINTER_INVALIDATE(tag_ptr);
 }
 
+static char *rna_AssetTrait_path(const PointerRNA *ptr)
+{
+  const AssetTrait *asset_trait = static_cast<AssetTrait *>(ptr->data);
+  char asset_trait_value_esc[sizeof(asset_trait->value) * 2];
+  BLI_str_escape(asset_trait_value_esc, asset_trait->value, sizeof(asset_trait_value_esc));
+  return BLI_sprintfN("asset_data.traits[\"%s\"]", asset_trait_value_esc);
+}
+
 static IDProperty **rna_AssetMetaData_idprops(PointerRNA *ptr)
 {
   AssetMetaData *asset_data = static_cast<AssetMetaData *>(ptr->data);
@@ -440,6 +448,21 @@ static void rna_def_asset_tags_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
+static void rna_def_asset_trait(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "AssetTrait", NULL);
+  RNA_def_struct_path_func(srna, "rna_AssetTrait_path");
+  RNA_def_struct_ui_text(srna, "Asset Trait", "Keywords describing type characteristics of an asset (managed by Blender, not the user)");
+
+  prop = RNA_def_property(srna, "value", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_maxlength(prop, MAX_NAME);
+  RNA_def_property_ui_text(prop, "Value", "The identifier that makes up this asset trait");
+  RNA_def_struct_name_property(srna, prop);
+}
+
 static void rna_def_asset_data(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -506,6 +529,15 @@ static void rna_def_asset_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active_tag", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(prop, nullptr, nullptr, "rna_AssetMetaData_active_tag_range");
   RNA_def_property_ui_text(prop, "Active Tag", "Index of the tag set for editing");
+
+  prop = RNA_def_property(srna, "traits", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AssetTrait");
+  RNA_def_property_editable_func(prop, "rna_AssetMetaData_editable");
+  RNA_def_property_ui_text(
+      prop,
+      "Asset Traits",
+      "Keywords describing type characteristics of an asset. Used to determine how an asset "
+      "should behave, and to provide additional information and filtering options to the user");
 
   prop = RNA_def_property(srna, "catalog_id", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
@@ -614,6 +646,7 @@ void RNA_def_asset(BlenderRNA *brna)
   RNA_define_animate_sdna(false);
 
   rna_def_asset_tag(brna);
+  rna_def_asset_trait(brna);
   rna_def_asset_data(brna);
   rna_def_asset_library_reference(brna);
   rna_def_asset_handle(brna);

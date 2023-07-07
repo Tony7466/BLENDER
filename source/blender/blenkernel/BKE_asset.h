@@ -26,6 +26,7 @@ struct IDProperty;
 struct PreviewImage;
 
 typedef void (*PreSaveFn)(void *asset_ptr, struct AssetMetaData *asset_data);
+typedef void (*EnsureTraitsFn)(void *asset_ptr, struct AssetMetaData *asset_data);
 
 typedef struct AssetTypeInfo {
   /**
@@ -33,6 +34,8 @@ typedef struct AssetTypeInfo {
    * saved.
    */
   PreSaveFn pre_save_fn;
+  /* Callback for custom traits. */
+  EnsureTraitsFn ensure_traits_fn;
 } AssetTypeInfo;
 
 struct AssetMetaData *BKE_asset_metadata_create(void);
@@ -59,6 +62,19 @@ struct AssetTag *BKE_asset_metadata_tag_add(struct AssetMetaData *asset_data, co
 struct AssetTagEnsureResult BKE_asset_metadata_tag_ensure(struct AssetMetaData *asset_data,
                                                           const char *name);
 void BKE_asset_metadata_tag_remove(struct AssetMetaData *asset_data, struct AssetTag *tag);
+
+struct AssetTraitEnsureResult {
+  struct AssetTrait *trait;
+  /* Set to false if a trait with this value was already present. */
+  bool is_new;
+};
+
+/**
+ * Make sure there is a trait with value \a value, create one if needed.
+ */
+struct AssetTraitEnsureResult BKE_asset_metadata_trait_ensure(struct AssetMetaData *asset_data,
+                                                              const char *value);
+void BKE_asset_metadata_trait_remove(struct AssetMetaData *asset_data, struct AssetTrait *trait);
 
 /** Clean up the catalog ID (white-spaces removed, length reduced, etc.) and assign it. */
 void BKE_asset_metadata_catalog_id_clear(struct AssetMetaData *asset_data);

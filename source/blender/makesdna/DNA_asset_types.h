@@ -36,6 +36,15 @@ typedef struct AssetTag {
   char name[64]; /* MAX_NAME */
 } AssetTag;
 
+/**
+ * \brief Keywords describing type characteristics of an asset. Managed by Blender, not the user.
+ * These should never be translated for storage, only when displayed in the UI.
+ */
+typedef struct AssetTrait {
+  struct AssetTrait *next, *prev;
+  char value[64]; /* MAX_NAME */
+} AssetTrait;
+
 #
 #
 typedef struct AssetFilterSettings {
@@ -100,6 +109,9 @@ typedef struct AssetMetaData {
   short tot_tags;
 
   char _pad[4];
+
+  /** See #AssetTrait. */
+  ListBase traits;
 } AssetMetaData;
 
 typedef enum eAssetLibraryType {
