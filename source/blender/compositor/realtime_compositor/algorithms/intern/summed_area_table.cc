@@ -164,12 +164,7 @@ static void compute_complete_blocks(Context &context,
   const int2 input_size = input.domain().size;
   const int2 number_of_groups = math::divide_ceil(input_size, group_size);
 
-  /* We take the maximum of both axis to compute to cascade their accumulation in the shader, see
-   * the function description for more information. */
-  const int parallel_axis_groups = math::max(number_of_groups.x, number_of_groups.y);
-  const int2 number_of_sub_groups = math::divide_ceil(number_of_groups, group_size);
-  const int serial_axis_groups = math::max(number_of_sub_groups.x, number_of_sub_groups.y);
-  GPU_compute_dispatch(shader, parallel_axis_groups, serial_axis_groups, 1);
+  GPU_compute_dispatch(shader, number_of_groups.x, number_of_groups.y, 1);
 
   GPU_shader_unbind();
   input.unbind_as_texture();

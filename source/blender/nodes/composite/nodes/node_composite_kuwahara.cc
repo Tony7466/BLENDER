@@ -78,8 +78,8 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute_classic()
   {
-    // summed_area_table(context(), get_input("Image"), get_result("Image"));
-    // return;
+    summed_area_table(context(), get_input("Image"), get_result("Image"));
+    return;
 
     GPUShader *shader = shader_manager().get("compositor_kuwahara_classic");
     GPU_shader_bind(shader);
