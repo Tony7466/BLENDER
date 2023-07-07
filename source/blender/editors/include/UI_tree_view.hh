@@ -124,6 +124,11 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
 
   void foreach_item(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
 
+  /**
+   * \param xy: The mouse coordinates in window space.
+   */
+  AbstractTreeViewItem *find_hovered(const int xy[2]);
+
   /** Visual feature: Define a number of item rows the view will always show at minimum. If there
    * are fewer items, empty dummy items will be added. These contribute to the view bounds, so the
    * drop target of the view includes them, but they are not interactive (e.g. no mouse-hover
@@ -255,8 +260,6 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   bool is_hovered() const;
 
   void ensure_parents_uncollapsed();
-
-  uiButViewItem *view_item_button() const;
 
  private:
   static void tree_row_click_fn(struct bContext *, void *, void *);

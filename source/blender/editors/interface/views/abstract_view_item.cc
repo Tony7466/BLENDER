@@ -225,6 +225,11 @@ AbstractView &AbstractViewItem::get_view() const
   return *view_;
 }
 
+uiButViewItem *AbstractViewItem::view_item_button() const
+{
+  return view_item_but_;
+}
+
 void AbstractViewItem::disable_activatable()
 {
   is_activatable_ = false;

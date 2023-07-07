@@ -78,6 +78,30 @@ void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) con
   foreach_item_recursive(iter_fn, options);
 }
 
+AbstractTreeViewItem *AbstractTreeView::find_hovered(const int xy[2])
+{
+  AbstractTreeViewItem *hovered_item = nullptr;
+  foreach_item_recursive(
+      [&, this](const AbstractTreeViewItem &item) {
+        if (hovered_item) {
+          return;
+        }
+
+        uiButViewItem *but = item.view_item_button();
+        if (!but) {
+          return;
+        }
+        rctf win_rect;
+        ui_block_to_window_rctf(region_, block_, &win_rect, &but->rect);
+        if (BLI_rctf_isect_y(&win_rect, xy[1])) {
+          hovered_item = reinterpret_cast<AbstractTreeViewItem *>(but->view_item);
+        }
+      },
+      IterOptions::SkipCollapsed | IterOptions::SkipFiltered);
+
+  return hovered_item;
+}
+
 void AbstractTreeView::set_min_rows(int min_rows)
 {
   min_rows_ = min_rows;
@@ -242,30 +266,17 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
     return DROP_INTO;
   }
 
-  /* Note that iterating over items here and getting the view button doesn't work, since this is
-   * typically called when these buttons were freed already (by drop-box interaction code). */
+  const AbstractTreeViewItem *hovered_item = view_.find_hovered(event.xy);
+  if (!hovered_item) {
+    return std::nullopt;
+  }
+  uiButViewItem *hovered_but = hovered_item->view_item_button();
 
-  uiButViewItem *hovered_but = static_cast<uiButViewItem *>(
-      ui_view_item_find_mouse_over(view_.region_, event.xy));
-  BLI_assert(!hovered_but || (hovered_but->type == UI_BTYPE_VIEW_ITEM));
-  if (!hovered_but || !hovered_but->view_item) {
-    return std::nullopt;
-  }
-  /* Check that the item is actually from this tree. */
-  AbstractTreeViewItem &hovered_item = dynamic_cast<AbstractTreeViewItem &>(
-      reinterpret_cast<AbstractViewItem &>(*hovered_but->view_item));
-  if (&hovered_item.get_view() != &view_) {
-    return std::nullopt;
-  }
+  rctf but_win_rect;
+  ui_block_to_window_rctf(view_.region_, view_.block_, &but_win_rect, &hovered_but->rect);
+  const float item_height = BLI_rctf_size_y(&but_win_rect);
 
   BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::Reorder_and_Insert));
-
-  rctf win_rect;
-  ui_block_to_window_rctf(view_.region_, view_.block_, &win_rect, &hovered_but->rect);
-  const float item_height = BLI_rctf_size_y(&win_rect);
-  if (!BLI_rctf_isect_y(&win_rect, event.xy[1])) {
-    return std::nullopt;
-  }
 
   const int segment_count =
       (behavior_ == DropBehavior::Reorder) ?
@@ -275,12 +286,12 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
           3;
   const float segment_height = item_height / segment_count;
 
-  if (event.xy[1] - win_rect.ymin > (item_height - segment_height)) {
+  if (event.xy[1] - but_win_rect.ymin > (item_height - segment_height)) {
     return DROP_BEFORE;
   }
-  if (event.xy[1] - win_rect.ymin <= segment_height) {
-    if (behavior_ == DropBehavior::Reorder_and_Insert && hovered_item.is_collapsible() &&
-        !hovered_item.is_collapsed())
+  if (event.xy[1] - but_win_rect.ymin <= segment_height) {
+    if (behavior_ == DropBehavior::Reorder_and_Insert && hovered_item->is_collapsible() &&
+        !hovered_item->is_collapsed())
     {
       /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
        * after. */
@@ -573,11 +584,6 @@ bool AbstractTreeViewItem::matches(const AbstractViewItem &other) const
   }
 
   return true;
-}
-
-uiButViewItem *AbstractTreeViewItem::view_item_button() const
-{
-  return view_item_but_;
 }
 
 void AbstractTreeViewItem::change_state_delayed()

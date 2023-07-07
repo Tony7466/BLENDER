@@ -195,6 +195,8 @@ class AbstractViewItem {
   /** Get the view this item is registered for using #AbstractView::register_item(). */
   AbstractView &get_view() const;
 
+  uiButViewItem *view_item_button() const;
+
   /** Disable the interacting with this item, meaning the buttons drawn will be disabled and there
    * will be no mouse hover feedback for the view row. */
   void disable_interaction();
