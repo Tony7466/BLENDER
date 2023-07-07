@@ -171,6 +171,8 @@ void UI_view2d_mask_from_win(const struct View2D *v2d, struct rcti *r_mask);
 
 void UI_view2d_zoom_cache_reset(void);
 
+void UI_view2d_curRect_clamp_y(struct View2D *v2d);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
