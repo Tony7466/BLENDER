@@ -91,7 +91,7 @@ void seq_imbuf_assign_spaces(Scene *scene, ImBuf *ibuf)
 #if 0
   /* Byte buffer is supposed to be in sequencer working space already. */
   if (ibuf->rect != NULL) {
-    IMB_colormanagement_assign_rect_colorspace(ibuf, scene->sequencer_colorspace_settings.name);
+    IMB_colormanagement_assign_byte_colorspace(ibuf, scene->sequencer_colorspace_settings.name);
   }
 #endif
   if (ibuf->float_buffer.data != NULL) {
@@ -1580,11 +1580,6 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         ibufs_arr[view_id] = IMB_allocImBuf(rres.rectx, rres.recty, 32, 0);
         IMB_assign_shared_float_buffer(
             ibufs_arr[view_id], rres.combined_buffer.data, rres.combined_buffer.sharing_info);
-
-        if (rres.z_buffer.data) {
-          IMB_assign_shared_float_z_buffer(
-              ibufs_arr[view_id], rres.z_buffer.data, rres.z_buffer.sharing_info);
-        }
 
         /* float buffers in the sequencer are not linear */
         seq_imbuf_to_sequencer_space(context->scene, ibufs_arr[view_id], false);

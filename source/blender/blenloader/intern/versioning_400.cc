@@ -14,6 +14,8 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
+#include "DNA_scene_types.h"
+#include "DNA_world_types.h"
 
 #include "DNA_genfile.h"
 
@@ -37,15 +39,23 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main * /*bmain*/)
+void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
 {
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 9)) {
+    /* Fix area light scaling. */
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->energy = light->energy_deprecated;
+      if (light->type == LA_AREA) {
+        light->energy *= M_PI_4;
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_400 in this file.
-   * - "versioning_cycles.cc", #blo_do_versions_cycles
-   * - "versioning_cycles.cc", #do_versions_after_linking_cycles
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *
@@ -134,7 +144,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -261,13 +272,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 5)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *ts = scene->toolsettings;
-      if (ts->snap_mode_tools != SCE_SNAP_MODE_NONE) {
-        ts->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      if (ts->snap_mode_tools != SCE_SNAP_TO_NONE) {
+        ts->snap_mode_tools = SCE_SNAP_TO_GEOM;
       }
 
 #define SCE_SNAP_PROJECT (1 << 3)
       if (ts->snap_flag & SCE_SNAP_PROJECT) {
-        ts->snap_mode |= SCE_SNAP_MODE_FACE_RAYCAST;
+        ts->snap_mode &= ~SCE_SNAP_TO_FACE;
+        ts->snap_mode |= SCE_SNAP_INDIVIDUAL_PROJECT;
       }
 #undef SCE_SNAP_PROJECT
     }
@@ -290,6 +302,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 8)) {
+    LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+      act->frame_start = max_ff(act->frame_start, MINAFRAMEF);
+      act->frame_end = min_ff(act->frame_end, MAXFRAMEF);
+    }
+  }
+
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 9)) {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       if (light->type == LA_SPOT && light->nodetree) {
@@ -303,8 +322,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_400 in this file.
-   * - "versioning_cycles.cc", #blo_do_versions_cycles
-   * - "versioning_cycles.cc", #do_versions_after_linking_cycles
    * - "versioning_userdef.c", #blo_do_versions_userdef
    * - "versioning_userdef.c", #do_versions_theme
    *
@@ -319,6 +336,27 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->grid_bake_samples = 2048;
         lightprobe->surfel_density = 1.0f;
+      }
+    }
+
+    /* Set default bake resolution. */
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "resolution")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->resolution = LIGHT_PROBE_RESOLUTION_1024;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "probe_resolution")) {
+      LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+        world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
+      }
+    }
+
+    /* Clear removed "Z Buffer" flag. */
+    {
+      const int R_IMF_FLAG_ZBUF_LEGACY = 1 << 0;
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->r.im_format.flag &= ~R_IMF_FLAG_ZBUF_LEGACY;
       }
     }
   }

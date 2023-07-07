@@ -990,12 +990,6 @@ static void do_version_curvemapping_walker(Main *bmain, void (*callback)(CurveMa
   }
   FOREACH_NODETREE_END;
 
-  LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-    if (light->curfalloff) {
-      callback(light->curfalloff);
-    }
-  }
-
   LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
     if (brush->curve) {
       callback(brush->curve);
@@ -1195,7 +1189,7 @@ static void displacement_node_insert(bNodeTree *ntree)
     nodeRemLink(ntree, link);
 
     /* Add displacement node. */
-    bNode *node = nodeAddStaticNode(NULL, ntree, SH_NODE_DISPLACEMENT);
+    bNode *node = nodeAddStaticNode(nullptr, ntree, SH_NODE_DISPLACEMENT);
     node->locx = 0.5f * (fromnode->locx + tonode->locx);
     node->locy = 0.5f * (fromnode->locy + tonode->locy);
 
@@ -1272,7 +1266,7 @@ static void square_roughness_node_insert(bNodeTree *ntree)
     nodeRemLink(ntree, link);
 
     /* Add sqrt node. */
-    bNode *node = nodeAddStaticNode(NULL, ntree, SH_NODE_MATH);
+    bNode *node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
     node->custom1 = NODE_MATH_POWER;
     node->locx = 0.5f * (fromnode->locx + tonode->locx);
     node->locy = 0.5f * (fromnode->locy + tonode->locy);
@@ -1364,7 +1358,7 @@ static void ambient_occlusion_node_relink(bNodeTree *ntree)
 
 static void image_node_colorspace(bNode *node)
 {
-  if (node->id == NULL) {
+  if (node->id == nullptr) {
     return;
   }
 
@@ -1402,11 +1396,11 @@ static void light_emission_node_to_energy(Light *light, float *energy, float col
 
   /* Find emission node */
   bNode *output_node = ntreeShaderOutputNode(ntree, SHD_OUTPUT_CYCLES);
-  if (output_node == NULL) {
+  if (output_node == nullptr) {
     return;
   }
 
-  bNode *emission_node = NULL;
+  bNode *emission_node = nullptr;
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     if (link->tonode == output_node && link->fromnode->type == SH_NODE_EMISSION) {
       emission_node = link->fromnode;
@@ -1414,7 +1408,7 @@ static void light_emission_node_to_energy(Light *light, float *energy, float col
     }
   }
 
-  if (emission_node == NULL) {
+  if (emission_node == nullptr) {
     return;
   }
 
@@ -1440,7 +1434,7 @@ static void light_emission_node_to_energy(Light *light, float *energy, float col
 static void light_emission_unify(Light *light, const char *engine)
 {
   if (light->type != LA_SUN) {
-    light->energy *= 100.0f;
+    light->energy_deprecated *= 100.0f;
   }
 
   /* Attempt to extract constant energy and color from nodes. */
@@ -1451,16 +1445,16 @@ static void light_emission_unify(Light *light, const char *engine)
   if (STREQ(engine, "CYCLES")) {
     if (use_nodes) {
       /* Energy extracted from nodes */
-      light->energy = energy;
+      light->energy_deprecated = energy;
       copy_v3_v3(&light->r, color);
     }
     else {
       /* Default cycles multipliers if there are no nodes */
       if (light->type == LA_SUN) {
-        light->energy = 1.0f;
+        light->energy_deprecated = 1.0f;
       }
       else {
-        light->energy = 100.0f;
+        light->energy_deprecated = 100.0f;
       }
     }
   }
@@ -1536,12 +1530,12 @@ static void update_vector_math_node_add_and_subtract_operators(bNodeTree *ntree)
           ELEM(node->custom1, NODE_VECTOR_MATH_ADD, NODE_VECTOR_MATH_SUBTRACT))
       {
 
-        bNode *absNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        bNode *absNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
         absNode->custom1 = NODE_VECTOR_MATH_ABSOLUTE;
         absNode->locx = node->locx + node->width + 20.0f;
         absNode->locy = node->locy;
 
-        bNode *dotNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        bNode *dotNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
         dotNode->custom1 = NODE_VECTOR_MATH_DOT_PRODUCT;
         dotNode->locx = absNode->locx + absNode->width + 20.0f;
         dotNode->locy = absNode->locy;
@@ -1627,7 +1621,7 @@ static void update_vector_math_node_cross_product_operator(bNodeTree *ntree)
       if (node->custom1 == NODE_VECTOR_MATH_CROSS_PRODUCT) {
         bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
         if (version_node_socket_is_used(sockOutVector)) {
-          bNode *normalizeNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          bNode *normalizeNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
           normalizeNode->custom1 = NODE_VECTOR_MATH_NORMALIZE;
           normalizeNode->locx = node->locx + node->width + 20.0f;
           normalizeNode->locy = node->locy;
@@ -1648,7 +1642,7 @@ static void update_vector_math_node_cross_product_operator(bNodeTree *ntree)
 
         bNodeSocket *sockOutValue = nodeFindSocket(node, SOCK_OUT, "Value");
         if (version_node_socket_is_used(sockOutValue)) {
-          bNode *lengthNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          bNode *lengthNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
           lengthNode->custom1 = NODE_VECTOR_MATH_LENGTH;
           lengthNode->locx = node->locx + node->width + 20.0f;
           if (version_node_socket_is_used(sockOutVector)) {
@@ -1697,7 +1691,7 @@ static void update_vector_math_node_normalize_operator(bNodeTree *ntree)
       {
         bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
         if (version_node_socket_is_used(sockOutVector)) {
-          bNode *lengthNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          bNode *lengthNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
           lengthNode->custom1 = NODE_VECTOR_MATH_LENGTH;
           lengthNode->locx = node->locx + node->width + 20.0f;
           lengthNode->locy = node->locy;
@@ -1784,7 +1778,7 @@ static void update_vector_math_node_average_operator(bNodeTree *ntree)
         node->custom1 = NODE_VECTOR_MATH_ADD;
         bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
         if (version_node_socket_is_used(sockOutVector)) {
-          bNode *normalizeNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          bNode *normalizeNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
           normalizeNode->custom1 = NODE_VECTOR_MATH_NORMALIZE;
           normalizeNode->locx = node->locx + node->width + 20.0f;
           normalizeNode->locy = node->locy;
@@ -1805,7 +1799,7 @@ static void update_vector_math_node_average_operator(bNodeTree *ntree)
 
         bNodeSocket *sockOutValue = nodeFindSocket(node, SOCK_OUT, "Value");
         if (version_node_socket_is_used(sockOutValue)) {
-          bNode *lengthNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          bNode *lengthNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
           lengthNode->custom1 = NODE_VECTOR_MATH_LENGTH;
           lengthNode->locx = node->locx + node->width + 20.0f;
           if (version_node_socket_is_used(sockOutVector)) {
@@ -1948,9 +1942,9 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
       bNodeSocket *sockScale = nodeFindSocket(node, SOCK_IN, "Scale");
       copy_v3_v3(version_cycles_node_socket_vector_value(sockScale), mapping->size);
 
-      bNode *maximumNode = NULL;
+      bNode *maximumNode = nullptr;
       if (mapping->flag & TEXMAP_CLIP_MIN) {
-        maximumNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        maximumNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
         maximumNode->custom1 = NODE_VECTOR_MATH_MAXIMUM;
         if (mapping->flag & TEXMAP_CLIP_MAX) {
           maximumNode->locx = node->locx + (node->width + 20.0f) * 2.0f;
@@ -1980,9 +1974,9 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
         need_update = true;
       }
 
-      bNode *minimumNode = NULL;
+      bNode *minimumNode = nullptr;
       if (mapping->flag & TEXMAP_CLIP_MAX) {
-        minimumNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        minimumNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_VECTOR_MATH);
         minimumNode->custom1 = NODE_VECTOR_MATH_MINIMUM;
         minimumNode->locx = node->locx + node->width + 20.0f;
         minimumNode->locy = node->locy;
@@ -2014,7 +2008,7 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
       }
 
       MEM_freeN(node->storage);
-      node->storage = NULL;
+      node->storage = nullptr;
 
       char node_name_esc[sizeof(node->name) * 2];
       BLI_str_escape(node_name_esc, node->name, sizeof(node_name_esc));
@@ -2136,7 +2130,7 @@ static void update_voronoi_node_crackle(bNodeTree *ntree)
       {
         tex->feature = SHD_VORONOI_F1;
 
-        bNode *voronoiNode = nodeAddStaticNode(NULL, ntree, SH_NODE_TEX_VORONOI);
+        bNode *voronoiNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_TEX_VORONOI);
         NodeTexVoronoi *texVoronoi = (NodeTexVoronoi *)voronoiNode->storage;
         texVoronoi->feature = SHD_VORONOI_F2;
         texVoronoi->distance = tex->distance;
@@ -2176,7 +2170,7 @@ static void update_voronoi_node_crackle(bNodeTree *ntree)
                       sockVoronoiExponent);
         }
 
-        bNode *subtractNode = nodeAddStaticNode(NULL, ntree, SH_NODE_MATH);
+        bNode *subtractNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
         subtractNode->custom1 = NODE_MATH_SUBTRACT;
         subtractNode->locx = voronoiNode->locx + voronoiNode->width + 20.0f;
         subtractNode->locy = voronoiNode->locy;
@@ -2267,7 +2261,7 @@ static void update_voronoi_node_square_distance(bNodeTree *ntree)
           ELEM(tex->feature, SHD_VORONOI_F1, SHD_VORONOI_F2) &&
           version_node_socket_is_used(sockDistance))
       {
-        bNode *multiplyNode = nodeAddStaticNode(NULL, ntree, SH_NODE_MATH);
+        bNode *multiplyNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
         multiplyNode->custom1 = NODE_MATH_MULTIPLY;
         multiplyNode->locx = node->locx + node->width + 20.0f;
         multiplyNode->locy = node->locy;
@@ -2313,11 +2307,11 @@ static void update_noise_and_wave_distortion(bNodeTree *ntree)
       bNodeSocket *sockDistortion = nodeFindSocket(node, SOCK_IN, "Distortion");
       float *distortion = version_cycles_node_socket_float_value(sockDistortion);
 
-      if (version_node_socket_is_used(sockDistortion) && sockDistortion->link != NULL) {
+      if (version_node_socket_is_used(sockDistortion) && sockDistortion->link != nullptr) {
         bNode *distortionInputNode = sockDistortion->link->fromnode;
         bNodeSocket *distortionInputSock = sockDistortion->link->fromsock;
 
-        bNode *mulNode = nodeAddStaticNode(NULL, ntree, SH_NODE_MATH);
+        bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
         mulNode->custom1 = NODE_MATH_MULTIPLY;
         mulNode->locx = node->locx;
         mulNode->locy = node->locy - 240.0f;
@@ -3818,42 +3812,42 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         switch (scene->toolsettings->snap_mode) {
           case 0:
-            scene->toolsettings->snap_mode = (1 << 4); /* SCE_SNAP_MODE_INCREMENT */
+            scene->toolsettings->snap_mode = (1 << 4); /* SCE_SNAP_TO_INCREMENT */
             break;
           case 1:
-            scene->toolsettings->snap_mode = (1 << 0); /* SCE_SNAP_MODE_VERTEX */
+            scene->toolsettings->snap_mode = (1 << 0); /* SCE_SNAP_TO_VERTEX */
             break;
           case 2:
-            scene->toolsettings->snap_mode = (1 << 1); /* SCE_SNAP_MODE_EDGE */
+            scene->toolsettings->snap_mode = (1 << 1); /* SCE_SNAP_TO_EDGE */
             break;
           case 3:
-            scene->toolsettings->snap_mode = (1 << 2); /* SCE_SNAP_MODE_FACE_RAYCAST */
+            scene->toolsettings->snap_mode = (1 << 2); /* SCE_SNAP_INDIVIDUAL_PROJECT */
             break;
           case 4:
-            scene->toolsettings->snap_mode = (1 << 3); /* SCE_SNAP_MODE_VOLUME */
+            scene->toolsettings->snap_mode = (1 << 3); /* SCE_SNAP_TO_VOLUME */
             break;
         }
         switch (scene->toolsettings->snap_node_mode) {
           case 5:
-            scene->toolsettings->snap_node_mode = (1 << 5); /* SCE_SNAP_MODE_NODE_X */
+            scene->toolsettings->snap_node_mode = (1 << 5); /* SCE_SNAP_TO_NODE_X */
             break;
           case 6:
-            scene->toolsettings->snap_node_mode = (1 << 6); /* SCE_SNAP_MODE_NODE_Y */
+            scene->toolsettings->snap_node_mode = (1 << 6); /* SCE_SNAP_TO_NODE_Y */
             break;
           case 7:
             scene->toolsettings->snap_node_mode =
-                (1 << 5) | (1 << 6); /* SCE_SNAP_MODE_NODE_X | SCE_SNAP_MODE_NODE_Y */
+                (1 << 5) | (1 << 6); /* SCE_SNAP_TO_NODE_X | SCE_SNAP_TO_NODE_Y */
             break;
           case 8:
-            scene->toolsettings->snap_node_mode = (1 << 7); /* SCE_SNAP_MODE_GRID */
+            scene->toolsettings->snap_node_mode = (1 << 7); /* SCE_SNAP_TO_GRID */
             break;
         }
         switch (scene->toolsettings->snap_uv_mode) {
           case 0:
-            scene->toolsettings->snap_uv_mode = (1 << 4); /* SCE_SNAP_MODE_INCREMENT */
+            scene->toolsettings->snap_uv_mode = (1 << 4); /* SCE_SNAP_TO_INCREMENT */
             break;
           case 1:
-            scene->toolsettings->snap_uv_mode = (1 << 0); /* SCE_SNAP_MODE_VERTEX */
+            scene->toolsettings->snap_uv_mode = (1 << 0); /* SCE_SNAP_TO_VERTEX */
             break;
         }
       }
@@ -5749,8 +5743,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 15)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      if (scene->toolsettings->snap_node_mode == SCE_SNAP_MODE_NODE_X) {
-        scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_GRID;
+      if (scene->toolsettings->snap_node_mode == SCE_SNAP_TO_NODE_X) {
+        scene->toolsettings->snap_node_mode = SCE_SNAP_TO_GRID;
       }
     }
 
