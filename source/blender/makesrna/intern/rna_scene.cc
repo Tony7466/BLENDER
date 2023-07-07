@@ -201,6 +201,20 @@ const EnumPropertyItem rna_enum_snap_node_element_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_snap_graph_element_items[] = {
+    {SCE_SNAP_TO_FRAME, "FRAME", 0, "Frame", "Snap to frame"},
+    {SCE_SNAP_TO_SECOND, "SECOND", 0, "Second", "Snap to seconds"},
+    {SCE_SNAP_TO_MARKERS, "MARKER", 0, "Nearest Marker", "Snap to nearest marker"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_snap_action_element_items[] = {
+    {SCE_SNAP_TO_FRAME, "FRAME", 0, "Frame", "Snap to frame"},
+    {SCE_SNAP_TO_SECOND, "SECOND", 0, "Second", "Snap to seconds"},
+    {SCE_SNAP_TO_MARKERS, "MARKER", 0, "Nearest Marker", "Snap to nearest marker"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem snap_uv_element_items[] = {
     {SCE_SNAP_TO_INCREMENT,

@@ -662,9 +662,8 @@ static eSnapMode snap_mode_from_spacetype(TransInfo *t)
     return snap_mode;
   }
 
-  if (ELEM(t->spacetype, SPACE_ACTION, SPACE_NLA)) {
-    /* No incremental snapping. */
-    return eSnapMode(0);
+  if (ELEM(t->spacetype, SPACE_ACTION, SPACE_NLA, SPACE_GRAPH)) {
+    return eSnapMode(ts->snap_mode);
   }
 
   return SCE_SNAP_TO_INCREMENT;

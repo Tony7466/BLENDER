@@ -1526,20 +1526,6 @@ typedef enum eSeqImageFitMethod {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name NLA Tool Settings
- * \{ */
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Graph Editor Tool Settings
- * \{ */
-typedef struct GraphEditorToolSettings {
-  short snap_flag;
-} GraphEditorToolSettings;
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Tool Settings
  * \{ */
 
@@ -1658,13 +1644,14 @@ typedef struct ToolSettings {
   short snap_mode;
   char snap_node_mode;
   char snap_uv_mode;
+  short snap_anim_mode;
   /** Generic flags (per space-type), #eSnapFlag. */
   short snap_flag;
   short snap_flag_node;
   short snap_flag_seq;
   short snap_flag_anim;
   short snap_uv_flag;
-  char _pad[6];
+  char _pad[4];
   /** Default snap source, #eSnapSourceOP. */
   /**
    * TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
@@ -2378,7 +2365,12 @@ typedef enum eSnapMode {
   /** For snap individual elements. */
   SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 8),
   SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 9),
+
+  SCE_SNAP_TO_FRAME = (1 << 10),
+  SCE_SNAP_TO_SECOND = (1 << 11),
+  SCE_SNAP_TO_MARKERS = (1 << 12),
 } eSnapMode;
+
 /* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
 /* TODO: move this macro to a more general place. */
 #ifdef ENUM_OPERATORS

@@ -6269,7 +6269,7 @@ static void rna_def_space_dopesheet(BlenderRNA *brna)
   /* autosnap */
   prop = RNA_def_property(srna, "auto_snap", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "autosnap");
-  RNA_def_property_enum_items(prop, autosnap_items);
+  RNA_def_property_enum_items(prop, rna_enum_snap_action_element_items);
   RNA_def_property_ui_text(
       prop, "Auto Snap", "Automatic time snapping settings for transformations");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_DOPESHEET, nullptr);
@@ -6437,7 +6437,7 @@ static void rna_def_space_graph(BlenderRNA *brna)
   /* Auto-snap. */
   prop = RNA_def_property(srna, "auto_snap", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "autosnap");
-  RNA_def_property_enum_items(prop, autosnap_items);
+  RNA_def_property_enum_items(prop, rna_enum_snap_graph_element_items);
   RNA_def_property_ui_text(
       prop, "Auto Snap", "Automatic time snapping settings for transformations");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
