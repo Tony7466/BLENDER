@@ -886,6 +886,15 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
     const blender::ColorGeometry4f &color = *static_cast<blender::ColorGeometry4f *>(socket_value);
     ss << fmt::format(TIP_("({}, {}, {}, {}) (Color)"), color.r, color.g, color.b, color.a);
   }
+  else if (socket_type.is<blender::math::Quaternion>()) {
+    const blender::math::Quaternion &rotation = *static_cast<blender::math::Quaternion *>(
+        socket_value);
+    const blender::math::EulerXYZ euler = blender::math::to_euler(rotation);
+    ss << fmt::format(TIP_("({}°, {}°, {}°) (Rotation)"),
+                      euler.x().degree(),
+                      euler.y().degree(),
+                      euler.z().degree());
+  }
   else if (socket_type.is<bool>()) {
     ss << fmt::format(TIP_("{} (Boolean)"),
                       ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")));
@@ -922,6 +931,9 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
     }
     else if (socket_type.is<blender::ColorGeometry4f>()) {
       ss << TIP_("Color field based on:");
+    }
+    else if (socket_type.is<blender::math::Quaternion>()) {
+      ss << TIP_("Rotation field based on:");
     }
     ss << "\n";
 
