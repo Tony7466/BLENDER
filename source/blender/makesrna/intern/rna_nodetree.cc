@@ -2208,7 +2208,7 @@ static const EnumPropertyItem *rna_FunctionNodeCompare_operation_itemf(bContext 
 
 static bool random_value_type_supported(const EnumPropertyItem *item)
 {
-  return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_BOOL, CD_PROP_INT32);
+  return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_BOOL, CD_PROP_INT32, CD_PROP_QUATERNION);
 }
 static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext * /*C*/,
                                                                       PointerRNA * /*ptr*/,
