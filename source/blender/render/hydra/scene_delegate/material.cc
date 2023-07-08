@@ -67,9 +67,7 @@ void MaterialData::update()
         m_data->update_double_sided(this);
       }
     }
-    for (auto &i_data : scene_delegate_->instancers_.values()) {
-      i_data->update_double_sided(this);
-    }
+    scene_delegate_->instancer_data_->update_double_sided(this);
   }
 }
 

@@ -111,19 +111,16 @@ void LightData::remove()
 
 void LightData::update()
 {
-  ID_LOG(1, "");
-
   Object *object = (Object *)id;
   Light *light = (Light *)object->data;
-  if (prim_type(light) != prim_type_) {
-    remove();
-    init();
-    insert();
-    return;
-  }
-
   pxr::HdDirtyBits bits = pxr::HdLight::Clean;
   if (id->recalc & ID_RECALC_GEOMETRY || light->id.recalc & ID_RECALC_GEOMETRY) {
+    if (prim_type(light) != prim_type_) {
+      remove();
+      init();
+      insert();
+      return;
+    }
     init();
     bits = pxr::HdLight::AllDirty;
   }
@@ -133,6 +130,7 @@ void LightData::update()
   }
   if (bits != pxr::HdChangeTracker::Clean) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id, bits);
+    ID_LOG(1, "");
   }
 }
 

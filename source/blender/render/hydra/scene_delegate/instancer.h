@@ -12,7 +12,7 @@
 
 namespace blender::render::hydra {
 
-class InstancerData : public ObjectData {
+class InstancerData : public IdData {
   struct MeshInstance {
     std::unique_ptr<MeshData> data;
     pxr::VtIntArray indices;
@@ -25,9 +25,8 @@ class InstancerData : public ObjectData {
   };
 
  public:
-  InstancerData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
-  static bool is_supported(Object *object);
-  static bool is_visible(BlenderSceneDelegate *scene_delegate, Object *object);
+  InstancerData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
+  static bool is_instance_supported(Object *object);
 
   void init() override;
   void insert() override;
@@ -35,25 +34,28 @@ class InstancerData : public ObjectData {
   void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  bool update_visibility() override;
-
   pxr::GfMatrix4d get_transform(pxr::SdfPath const &id) const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
   pxr::VtIntArray indices(pxr::SdfPath const &id) const;
   ObjectData *object_data(pxr::SdfPath const &id) const;
   pxr::SdfPathVector prototypes() const;
-  void check_update(Object *object);
-  void check_remove(Set<std::string> &available_objects);
   void available_materials(Set<pxr::SdfPath> &paths) const;
-  void update_as_parent();
   void update_double_sided(MaterialData *mat_data);
 
+  /* Following update functions are working together:
+       pre_update()
+         update_instance()
+         update_instance()
+         ...
+       post_update() */
+  void pre_update();
+  void update_instance(Object *parent_ob, DupliObject *dupli);
+  void post_update();
+
  private:
-  bool is_instance_visible(Object *object);
   pxr::SdfPath object_prim_id(Object *object) const;
   pxr::SdfPath light_prim_id(LightInstance const &inst, int index) const;
   int light_prim_id_index(pxr::SdfPath const &id) const;
-  void write_instances();
   void update_light_instance(LightInstance &inst);
   MeshInstance *mesh_instance(pxr::SdfPath const &id) const;
   LightInstance *light_instance(pxr::SdfPath const &id) const;
@@ -62,7 +64,5 @@ class InstancerData : public ObjectData {
   Map<pxr::SdfPath, LightInstance> light_instances_;
   pxr::VtMatrix4dArray mesh_transforms_;
 };
-
-using InstancerDataMap = Map<pxr::SdfPath, std::unique_ptr<InstancerData>>;
 
 }  // namespace blender::render::hydra

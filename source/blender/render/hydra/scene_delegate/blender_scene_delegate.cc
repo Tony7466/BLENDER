@@ -3,7 +3,6 @@
 
 #include <bitset>
 
-#include "BKE_object.h"
 #include "BLI_set.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_scene_types.h"
@@ -32,6 +31,7 @@ BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            Engine *engine)
     : HdSceneDelegate(parent_index, delegate_id), engine(engine)
 {
+  instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
 }
 
 pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
@@ -164,7 +164,7 @@ bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
   }
   InstancerData *i_data = instancer_data(id, true);
   if (i_data) {
-    return i_data->visible;
+    return true;
   }
   return object_data(id)->visible;
 }
@@ -210,7 +210,7 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(pxr::SdfPath const &
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
-  return i_data->transform;
+  return i_data->get_transform(instancer_id);
 }
 
 pxr::HdVolumeFieldDescriptorVector BlenderSceneDelegate::GetVolumeFieldDescriptors(
@@ -236,7 +236,7 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
   else {
     set_light_shading_settings();
     set_world_shading_settings();
-    add_new_objects();
+    update_collection();
     update_world();
   }
 }
@@ -246,15 +246,11 @@ void BlenderSceneDelegate::clear()
   for (auto &obj_data : objects_.values()) {
     obj_data->remove();
   }
-  for (auto &i_data : instancers_.values()) {
-    i_data->remove();
-  }
+  objects_.clear();
+  instancer_data_->remove();
   for (auto &mat_data : materials_.values()) {
     mat_data->remove();
   }
-
-  objects_.clear();
-  instancers_.clear();
   materials_.clear();
 
   depsgraph = nullptr;
@@ -291,9 +287,9 @@ pxr::SdfPath BlenderSceneDelegate::material_prim_id(Material *mat) const
   return prim_id((ID *)mat, "M");
 }
 
-pxr::SdfPath BlenderSceneDelegate::instancer_prim_id(Object *object) const
+pxr::SdfPath BlenderSceneDelegate::instancer_prim_id() const
 {
-  return prim_id((ID *)object, "I");
+  return GetDelegateID().AppendElementString("Instancer");
 }
 
 pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
@@ -325,6 +321,11 @@ MeshData *BlenderSceneDelegate::mesh_data(pxr::SdfPath const &id) const
 CurvesData *BlenderSceneDelegate::curves_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<CurvesData *>(object_data(id));
+}
+
+VolumeData *BlenderSceneDelegate::volume_data(pxr::SdfPath const &id) const
+{
+  return dynamic_cast<VolumeData *>(object_data(id));
 }
 
 LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id) const
@@ -359,80 +360,10 @@ InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool
     p_id = id;
   }
 
-  auto i_data = instancers_.lookup_ptr(p_id);
-  if (i_data) {
-    return i_data->get();
+  if (instancer_data_ && p_id == instancer_data_->prim_id) {
+    return instancer_data_.get();
   }
   return nullptr;
-}
-
-VolumeData *BlenderSceneDelegate::volume_data(pxr::SdfPath const &id) const
-{
-  return dynamic_cast<VolumeData *>(object_data(id));
-}
-
-void BlenderSceneDelegate::update_objects(Object *object)
-{
-  if (!ObjectData::is_supported(object)) {
-    return;
-  }
-  if (!shading_settings.use_scene_lights && object->type == OB_LAMP) {
-    return;
-  }
-  pxr::SdfPath id = object_prim_id(object);
-  ObjectData *obj_data = object_data(id);
-  if (obj_data) {
-    obj_data->update_parent();
-    obj_data->update();
-    obj_data->update_visibility();
-    return;
-  }
-
-  if (!ObjectData::is_visible(this, object)) {
-    /* Do not export new object if it is invisible */
-    return;
-  }
-
-  objects_.add_new(id, ObjectData::create(this, object, id));
-  obj_data = object_data(id);
-  obj_data->update_parent();
-  obj_data->init();
-  obj_data->insert();
-}
-
-void BlenderSceneDelegate::update_instancers(Object *object)
-{
-  /* Check object inside instancers */
-  for (auto &i_data : instancers_.values()) {
-    i_data->check_update(object);
-  }
-
-  pxr::SdfPath id = instancer_prim_id(object);
-  InstancerData *i_data = instancer_data(id);
-  if (i_data) {
-    if ((object->transflag & OB_DUPLI) == 0) {
-      /* Object isn't instancer anymore and should be removed */
-      i_data->remove();
-      instancers_.remove(id);
-      return;
-    }
-
-    i_data->update();
-    return;
-  }
-
-  if ((object->transflag & OB_DUPLI) == 0) {
-    return;
-  }
-
-  if (!InstancerData::is_visible(this, object)) {
-    /* Do not export new instancer if it is invisible */
-    return;
-  }
-
-  i_data = instancers_.lookup_or_add(id, std::make_unique<InstancerData>(this, object, id)).get();
-  i_data->init();
-  i_data->insert();
 }
 
 void BlenderSceneDelegate::update_world()
@@ -458,7 +389,6 @@ void BlenderSceneDelegate::update_world()
 void BlenderSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
-  bool do_update_visibility = false;
   bool do_update_world = false;
 
   if (set_world_shading_settings()) {
@@ -466,19 +396,12 @@ void BlenderSceneDelegate::check_updates()
   }
 
   if (set_light_shading_settings()) {
-    if (shading_settings.use_scene_lights) {
-      add_new_objects();
-    }
-    else {
-      do_update_collection = true;
-    }
+    do_update_collection = true;
   }
 
   DEGIDIterData data = {0};
   data.graph = depsgraph;
   data.only_updated = true;
-  eEvaluationMode deg_mode = DEG_get_mode(depsgraph);
-
   ITER_BEGIN (DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id)
   {
     CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
@@ -489,14 +412,7 @@ void BlenderSceneDelegate::check_updates()
 
     switch (GS(id->name)) {
       case ID_OB: {
-        Object *object = (Object *)id;
-        CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
-                  2,
-                  "Visibility: %s [%s]",
-                  object->id.name,
-                  std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
-        update_objects(object);
-        update_instancers(object);
+        do_update_collection = true;
       } break;
 
       case ID_MA: {
@@ -513,20 +429,15 @@ void BlenderSceneDelegate::check_updates()
       } break;
 
       case ID_SCE: {
-        if (id->recalc & ID_RECALC_COPY_ON_WRITE && !(id->recalc & ID_RECALC_SELECT)) {
-          do_update_collection = true;
-          do_update_visibility = true;
-        }
-        if (id->recalc & ID_RECALC_BASE_FLAGS) {
-          do_update_visibility = true;
-        }
-        if (id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY)) {
+        if ((id->recalc & ID_RECALC_COPY_ON_WRITE && !(id->recalc & ID_RECALC_SELECT)) ||
+            id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_BASE_FLAGS))
+        {
           do_update_collection = true;
         }
-        if (id->recalc & ID_RECALC_AUDIO_VOLUME) {
-          if ((scene->world && !world_data_) || (!scene->world && world_data_)) {
-            do_update_world = true;
-          }
+        if (id->recalc & ID_RECALC_AUDIO_VOLUME &&
+            ((scene->world && !world_data_) || (!scene->world && world_data_)))
+        {
+          do_update_world = true;
         }
       } break;
 
@@ -540,57 +451,23 @@ void BlenderSceneDelegate::check_updates()
     update_world();
   }
   if (do_update_collection) {
-    remove_unused_objects();
-  }
-  if (do_update_visibility) {
-    update_visibility();
+    update_collection();
   }
 }
 
-void BlenderSceneDelegate::add_new_objects()
+void BlenderSceneDelegate::update_collection()
 {
-  DEGObjectIterSettings settings = {0};
-  settings.depsgraph = depsgraph;
-  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
-  DEGObjectIterData data = {0};
-  data.settings = &settings;
-  data.graph = settings.depsgraph;
-  data.flag = settings.flags;
-  eEvaluationMode deg_mode = DEG_get_mode(depsgraph);
-
-  ITER_BEGIN (DEG_iterator_objects_begin,
-              DEG_iterator_objects_next,
-              DEG_iterator_objects_end,
-              &data,
-              Object *,
-              object)
-  {
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
-              2,
-              "Visibility: %s [%s]",
-              object->id.name,
-              std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
-    if (object_data(object_prim_id(object))) {
-      continue;
-    }
-    update_objects(object);
-    update_instancers(object);
-  }
-  ITER_END;
-}
-
-void BlenderSceneDelegate::remove_unused_objects()
-{
-  /* Get available objects */
   Set<std::string> available_objects;
 
   DEGObjectIterSettings settings = {0};
   settings.depsgraph = depsgraph;
-  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
+  settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEGObjectIterData data = {0};
   data.settings = &settings;
   data.graph = settings.depsgraph;
   data.flag = settings.flags;
+
+  instancer_data_->pre_update();
 
   ITER_BEGIN (DEG_iterator_objects_begin,
               DEG_iterator_objects_next,
@@ -599,27 +476,37 @@ void BlenderSceneDelegate::remove_unused_objects()
               Object *,
               object)
   {
-    available_objects.add(instancer_prim_id(object).GetName());
-    if (ObjectData::is_supported(object)) {
-      if (!shading_settings.use_scene_lights && object->type == OB_LAMP) {
-        continue;
-      }
-      available_objects.add(object_prim_id(object).GetName());
+    if (data.dupli_object_current) {
+      instancer_data_->update_instance(data.dupli_parent, data.dupli_object_current);
+      continue;
+    }
+
+    if (!ObjectData::is_supported(object)) {
+      continue;
+    }
+    if (!ObjectData::is_visible(this, object)) {
+      continue;
+    }
+    if (!shading_settings.use_scene_lights && object->type == OB_LAMP) {
+      continue;
+    }
+
+    available_objects.add(object_prim_id(object).GetName());
+
+    pxr::SdfPath id = object_prim_id(object);
+    ObjectData *obj_data = object_data(id);
+    if (obj_data) {
+      obj_data->update();
+    }
+    else {
+      obj_data = objects_.lookup_or_add(id, ObjectData::create(this, object, id)).get();
+      obj_data->init();
+      obj_data->insert();
     }
   }
   ITER_END;
 
-  /* Remove unused instancers */
-  instancers_.remove_if([&](auto item) {
-    bool ret = !available_objects.contains(item.key.GetName());
-    if (ret) {
-      item.value->remove();
-    }
-    else {
-      item.value->check_remove(available_objects);
-    }
-    return ret;
-  });
+  instancer_data_->post_update();
 
   /* Remove unused objects */
   objects_.remove_if([&](auto item) {
@@ -646,9 +533,7 @@ void BlenderSceneDelegate::remove_unused_objects()
       v_data->available_materials(available_materials);
     }
   }
-  for (auto &val : instancers_.values()) {
-    val->available_materials(available_materials);
-  }
+  instancer_data_->available_materials(available_materials);
 
   materials_.remove_if([&](auto item) {
     bool ret = !available_materials.contains(item.key);
@@ -657,48 +542,6 @@ void BlenderSceneDelegate::remove_unused_objects()
     }
     return ret;
   });
-}
-
-void BlenderSceneDelegate::update_visibility()
-{
-  /* Updating visibility of existing objects/instancers */
-  for (auto &val : objects_.values()) {
-    val->update_visibility();
-  }
-  for (auto &val : instancers_.values()) {
-    val->update_visibility();
-  }
-
-  /* Add objects/instancers which were invisible before and not added yet */
-  DEGObjectIterSettings settings = {0};
-  settings.depsgraph = depsgraph;
-  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
-  DEGObjectIterData data = {0};
-  data.settings = &settings;
-  data.graph = settings.depsgraph;
-  data.flag = settings.flags;
-  eEvaluationMode deg_mode = DEG_get_mode(depsgraph);
-
-  ITER_BEGIN (DEG_iterator_objects_begin,
-              DEG_iterator_objects_next,
-              DEG_iterator_objects_end,
-              &data,
-              Object *,
-              object)
-  {
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
-              2,
-              "Visibility: %s [%s]",
-              object->id.name,
-              std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
-    if (!object_data(object_prim_id(object))) {
-      update_objects(object);
-    }
-    if (!instancer_data(instancer_prim_id(object))) {
-      update_instancers(object);
-    }
-  }
-  ITER_END;
 }
 
 bool BlenderSceneDelegate::set_light_shading_settings()

@@ -58,7 +58,7 @@ template<class T> const T IdData::get_data(pxr::TfToken const &key) const
             level, \
             "%s (%s): " msg, \
             prim_id.GetText(), \
-            id->name, \
+            id ? id->name : "", \
             ##__VA_ARGS__);
 
 }  // namespace blender::render::hydra

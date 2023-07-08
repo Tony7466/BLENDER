@@ -7,6 +7,7 @@
 #include <pxr/base/gf/matrix4d.h>
 
 #include "BKE_layer.h"
+#include "BKE_object.h"
 #include "BLI_map.hh"
 #include "DNA_object_types.h"
 
@@ -23,18 +24,17 @@ class ObjectData : public IdData {
                                             Object *object,
                                             pxr::SdfPath const &prim_id);
   static bool is_supported(Object *object);
-  static bool is_visible(BlenderSceneDelegate *scene_delegate, Object *object);
+  static bool is_visible(BlenderSceneDelegate *scene_delegate,
+                         Object *object,
+                         int mode = OB_VISIBLE_SELF);
 
   virtual bool update_visibility();
-  void update_parent();
 
   pxr::GfMatrix4d transform;
   bool visible = true;
 
  protected:
   void write_transform();
-
-  Object *parent_ = nullptr;
 };
 
 using ObjectDataMap = Map<pxr::SdfPath, std::unique_ptr<ObjectData>>;

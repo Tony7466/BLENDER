@@ -8,7 +8,6 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
-#include "BKE_object.h"
 
 #include "blender_scene_delegate.h"
 #include "mesh.h"
@@ -299,12 +298,15 @@ void MeshData::write_materials()
     }
 
     pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
-    m.mat_data = scene_delegate_->materials_
-                     .lookup_or_add(p_id,
-                                    std::make_unique<MaterialData>(scene_delegate_, mat, p_id))
-                     .get();
-    m.mat_data->init();
-    m.mat_data->insert();
+    m.mat_data = scene_delegate_->material_data(p_id);
+    if (!m.mat_data) {
+      m.mat_data = scene_delegate_->materials_
+                       .lookup_or_add(p_id,
+                                      std::make_unique<MaterialData>(scene_delegate_, mat, p_id))
+                       .get();
+      m.mat_data->init();
+      m.mat_data->insert();
+    }
   }
 }
 

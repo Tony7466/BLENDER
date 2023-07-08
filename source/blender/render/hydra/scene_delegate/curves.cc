@@ -6,7 +6,6 @@
 
 #include "BKE_customdata.h"
 #include "BKE_material.h"
-#include "BKE_object.h"
 
 #include "blender_scene_delegate.h"
 

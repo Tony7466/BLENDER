@@ -91,30 +91,26 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   pxr::SdfPath prim_id(ID *id, const char *prefix) const;
   pxr::SdfPath object_prim_id(Object *object) const;
   pxr::SdfPath material_prim_id(Material *mat) const;
-  pxr::SdfPath instancer_prim_id(Object *object) const;
+  pxr::SdfPath instancer_prim_id() const;
   pxr::SdfPath world_prim_id() const;
 
   ObjectData *object_data(pxr::SdfPath const &id) const;
   MeshData *mesh_data(pxr::SdfPath const &id) const;
   CurvesData *curves_data(pxr::SdfPath const &id) const;
+  VolumeData *volume_data(pxr::SdfPath const &id) const;
   LightData *light_data(pxr::SdfPath const &id) const;
   MaterialData *material_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;
-  VolumeData *volume_data(pxr::SdfPath const &id) const;
 
-  void update_objects(Object *object);
-  void update_instancers(Object *object);
   void update_world();
   void check_updates();
-  void add_new_objects();
-  void remove_unused_objects();
-  void update_visibility();
+  void update_collection();
   bool set_light_shading_settings();
   bool set_world_shading_settings();
 
   ObjectDataMap objects_;
   MaterialDataMap materials_;
-  InstancerDataMap instancers_;
+  std::unique_ptr<InstancerData> instancer_data_;
   std::unique_ptr<WorldData> world_data_;
 };
 

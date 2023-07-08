@@ -45,7 +45,7 @@ static std::string cache_image_file(Image *image,
       BKE_image_path_ext_from_imformat(&scene->r.im_format, &r_ext);
       opts.im_format = scene->r.im_format;
     }
-    
+
     snprintf(file_name, sizeof(file_name), "img_%016llx%s", (uintptr_t)image, r_ext);
 
     file_path = get_cache_file(file_name);
@@ -64,8 +64,6 @@ static std::string cache_image_file(Image *image,
     }
   }
   BKE_image_save_options_free(&opts);
-
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s -> %s", image->id.name, file_path.c_str());
   return file_path;
 }
 
@@ -98,7 +96,7 @@ std::string cache_image_color(float color[4])
   char name[128];
   snprintf(name,
            sizeof(name),
-           "color_%02x-%02x-%02x.hdr",
+           "color_%02x%02x%02x.hdr",
            int(color[0] * 255),
            int(color[1] * 255),
            int(color[2] * 255));
