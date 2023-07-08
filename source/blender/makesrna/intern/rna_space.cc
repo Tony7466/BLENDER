@@ -2402,6 +2402,15 @@ static void rna_SpaceConsole_rect_update(Main * /*bmain*/, Scene * /*scene*/, Po
   WM_main_add_notifier(NC_SPACE | ND_SPACE_CONSOLE | NA_EDITED, sc);
 }
 
+static void rna_SpaceConsole_prompt_set(PointerRNA *ptr, const char *value)
+{
+  if (BLI_strcaseeq(value, ">>> ")) {
+    /* If default greater-than signs, replace with nicer characters ❯❯❯. */
+    SpaceConsole *sc = static_cast<SpaceConsole *>(ptr->data);
+    BLI_strncpy(sc->prompt, "\xe2\x9d\xaf\xe2\x9d\xaf\xe2\x9d\xaf ", sizeof(sc->prompt));
+  }
+}
+
 static void rna_SequenceEditor_update_cache(Main * /*bmain*/, Scene *scene, PointerRNA * /*ptr*/)
 {
   SEQ_cache_cleanup(scene);
@@ -6595,6 +6604,7 @@ static void rna_def_space_console(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "prompt", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Prompt", "Command line prompt");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_SpaceConsole_prompt_set");
 
   prop = RNA_def_property(srna, "language", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Language", "Command line prompt language");
