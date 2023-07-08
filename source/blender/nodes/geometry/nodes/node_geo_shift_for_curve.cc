@@ -18,13 +18,55 @@ namespace blender::nodes::node_geo_shift_for_curve_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(
+      GeometryComponent::Type::Curve);
 
   b.add_input<decl::Float>("Factor").min(0.0f).max(1.0f).subtype(PROP_FACTOR).field_on_all();
   b.add_input<decl::Int>("Curve Index").min(0.0f).field_on_all();
   b.add_input<decl::Float>("Distance").subtype(PROP_DISTANCE).field_on_all();
 
   b.add_output<decl::Float>("Factor").dependent_field();
+}
+
+static std::optional<float> point_on_segment(const float3 &a,
+                                             const float3 b,
+                                             const float3 centre,
+                                             const float radius,
+                                             const float min_segment_point)
+{
+  BLI_assert(radius >= 0.0f);
+  const float3 ab_segment = b - a;
+  const float3 segment_to_centre = centre - a;
+
+  const float dot = math::dot(segment_to_centre, ab_segment) / math::dot(ab_segment, ab_segment);
+  const float3 projection = ab_segment * dot;
+  const float projection_length = math::distance(projection, segment_to_centre);
+  if (math::abs(projection_length - radius) < 0.000001) {
+    return dot;
+  }
+  if (projection_length > radius) {
+    printf(">> %f, %f\n", projection_length, radius);
+    return std::nullopt;
+  }
+
+  const float segment_cos = projection_length / radius;
+  const float segment_sin = math::sqrt(1.0f - segment_cos * segment_cos);
+
+  const float result_point_a = dot - (segment_sin * radius) / math::length(ab_segment);
+  const float result_point_b = dot + (segment_sin * radius) / math::length(ab_segment);
+
+  const float &result_min_point = math::min(result_point_a, result_point_b);
+  const float &result_max_point = math::max(result_point_a, result_point_b);
+
+  if (result_min_point >= min_segment_point && result_min_point <= 1.0f) {
+    return result_min_point;
+  }
+  if (result_max_point >= min_segment_point && result_max_point <= 1.0f) {
+    return result_max_point;
+  }
+
+  printf("2\n");
+  return std::nullopt;
 }
 
 class ShiftForCurveFunction : public mf::MultiFunction {
@@ -36,6 +78,10 @@ class ShiftForCurveFunction : public mf::MultiFunction {
   ShiftForCurveFunction(GeometrySet geometry_set) : geometry_set_(std::move(geometry_set))
   {
     BLI_assert(geometry_set_.has_curves());
+    const Curves &curves_id = *geometry_set_.get_curves_for_read();
+    const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+    BLI_assert(curves.points_num() > 0);
+    curves.ensure_can_interpolate_to_evaluated();
     mf::SignatureBuilder builder{"Shift for Curve", signature_};
     builder.single_input<float>("Factor");
     builder.single_input<int>("Curve Index");
@@ -53,55 +99,103 @@ class ShiftForCurveFunction : public mf::MultiFunction {
 
     const Curves &curves_id = *geometry_set_.get_curves_for_read();
     const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-    BLI_assert(curves.points_num() > 0);
-    curves.ensure_can_interpolate_to_evaluated();
     const Span<float3> evaluated_positions = curves.evaluated_positions();
     const OffsetIndices evaluated_points_by_curve = curves.evaluated_points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
-
+    // std::cout << "\n";
     const auto shift_for_curve = [&](const int curve_index, const IndexMask &mask) {
       const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-      const Span<float> accumulated_lengths = curves.evaluated_lengths_for_curve(curve_index, cyclic[curve_index]);
+      const Span<float> accumulated_lengths = curves.evaluated_lengths_for_curve(
+          curve_index, cyclic[curve_index]);
+
+      for (const int i : accumulated_lengths.index_range()) {
+        const float value = accumulated_lengths[i];
+        // std::cout << value;
+        // std::cout << (value != accumulated_lengths.last() ? "\t" : "\n");
+      }
+
+      for (const int i : accumulated_lengths.index_range()) {
+        const float value = accumulated_lengths[i];
+        // std::cout << i;
+        // std::cout << (value != accumulated_lengths.last() ? "\t" : "\n");
+      }
+
+      for (const int i : evaluated_points.index_range()) {
+        const float3 value = evaluated_positions[evaluated_points[i]];
+        // std::cout << value;
+        // std::cout << (value != evaluated_positions[evaluated_points.last()] ? "\t" : "\n");
+      }
+
+      for (const int i : evaluated_points.index_range()) {
+        const float3 value = evaluated_positions[evaluated_points[i]];
+        // std::cout << i;
+        // std::cout << (value != evaluated_positions[evaluated_points.last()] ? "\t" : "\n");
+      }
 
       Array<int> segmet_indices(mask.size());
       Array<float> segmet_factors(mask.size());
 
-      mask.foreach_index([&](const int index, const int pos){
+      mask.foreach_index([&](const int index, const int pos) {
         const float factor = factors[index];
-        length_parameterize::sample_at_length(accumulated_lengths, factor, segmet_indices[pos], segmet_factors[pos]);
+        length_parameterize::sample_at_length(
+            accumulated_lengths, factor, segmet_indices[pos], segmet_factors[pos]);
+        // std::cout << " - Segment: " << segmet_indices[pos] << ", factor: " <<
+        // segmet_factors[pos] << "\n";
       });
 
       Array<float3> target_positions(mask.size());
-      length_parameterize::interpolate<float3>(evaluated_positions.slice(evaluated_points), segmet_indices, segmet_factors, target_positions);
+      length_parameterize::interpolate<float3>(evaluated_positions.slice(evaluated_points),
+                                               segmet_indices,
+                                               segmet_factors,
+                                               target_positions);
 
-      mask.foreach_index([&](const int index, const int pos){
+      mask.foreach_index([&](const int index, const int pos) {
         const float3 &target_position = target_positions[pos];
         const float target_distances = distances[index];
         const int prev_segment_index = segmet_indices[pos];
 
         const int segment_index = [&]() -> int {
-          const IndexRange next_range = evaluated_points.index_range().drop_back(1).drop_front(prev_segment_index);
+          const IndexRange next_range = evaluated_points.index_range().drop_back(1).drop_front(
+              prev_segment_index);
           for (const int index : next_range) {
             const float3 &position = evaluated_positions[evaluated_points[index + 1]];
-            const bool in_range = math::distance_manhattan(target_position, position) < target_distances;
+            const bool in_range = math::distance(target_position, position) < target_distances;
+            // std::cout << "  - Passed segment index: " << index << "\n";
             if (!in_range) {
               return index;
             }
           }
+          printf("Last seg index\n");
           return prev_segment_index;
         }();
 
+        // std::cout << " - Result segment index: " << segment_index << "\n";
+
         const float3 position = evaluated_positions[segment_index];
         const float3 position_next = evaluated_positions[segment_index + 1];
-        
-        const float l1 = math::distance_manhattan(target_position, position);
-        const float l2 = math::distance_manhattan(target_position, position_next);
-        
-        const float factor = (target_distances - l1) / (l2 - l1);
-        
-        float length;
-        length_parameterize::interpolate<float>(accumulated_lengths, {segment_index}, {factor}, MutableSpan(&length, 1));
-        sampled_values[index] = length;
+
+        const float l1 = math::distance(target_position, position);
+        const float l2 = math::distance(target_position, position_next);
+
+        const float self_segmet_min = segment_index == prev_segment_index ? segmet_factors[pos] :
+                                                                            0.0f;
+        const auto result_factor = point_on_segment(
+            position, position_next, target_position, target_distances, self_segmet_min);
+
+        BLI_assert(result_factor.has_value());
+
+        // std::cout << " - Result factor: " << result_factor.value() << "\n";
+
+        // float length;
+
+        const float prev_len = (segment_index == 0) ? 0.0f :
+                                                      accumulated_lengths[segment_index - 1];
+        const float next_len = accumulated_lengths[segment_index];
+
+        sampled_values[index] = math::interpolate(prev_len, next_len, result_factor.value());
+
+        // length_parameterize::interpolate<float>(accumulated_lengths, {segment_index},
+        // {result_factor.value()}, MutableSpan(&length, 1)); sampled_values[index] = length;
       });
     };
 
@@ -166,8 +260,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float> distance_field = params.extract_input<Field<float>>("Distance");
 
   std::shared_ptr<FieldOperation> sample_op = FieldOperation::Create(
-        std::make_unique<ShiftForCurveFunction>(std::move(geometry_set)),
-        {std::move(length_field), std::move(index_field), std::move(distance_field)});
+      std::make_unique<ShiftForCurveFunction>(std::move(geometry_set)),
+      {std::move(length_field), std::move(index_field), std::move(distance_field)});
 
   params.set_output("Factor", Field<float>(sample_op, 0));
 }
