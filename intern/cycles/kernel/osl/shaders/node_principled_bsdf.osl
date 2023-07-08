@@ -62,7 +62,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                                           SubsurfaceAnisotropy);
     }
     else {
-      BSDF = BaseColor * principled_diffuse(Normal, Roughness);
+      BSDF = BaseColor * diffuse(Normal);
     }
 
     if (Sheen > 1e-5) {

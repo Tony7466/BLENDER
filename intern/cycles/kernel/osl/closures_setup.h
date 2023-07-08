@@ -20,7 +20,6 @@
 #include "kernel/closure/bsdf_toon.h"
 #include "kernel/closure/bsdf_hair.h"
 #include "kernel/closure/bsdf_hair_principled.h"
-#include "kernel/closure/bsdf_principled_diffuse.h"
 #include "kernel/closure/volume.h"
 #include "kernel/closure/bsdf_diffuse_ramp.h"
 #include "kernel/closure/bsdf_phong_ramp.h"
@@ -623,31 +622,6 @@ ccl_device void osl_closure_glossy_toon_setup(KernelGlobals kg,
   bsdf->smooth = closure->smooth;
 
   sd->flag |= bsdf_glossy_toon_setup(bsdf);
-}
-
-/* Disney principled closures */
-
-ccl_device void osl_closure_principled_diffuse_setup(
-    KernelGlobals kg,
-    ccl_private ShaderData *sd,
-    uint32_t path_flag,
-    float3 weight,
-    ccl_private const PrincipledDiffuseClosure *closure)
-{
-  if (osl_closure_skip(kg, sd, path_flag, LABEL_DIFFUSE)) {
-    return;
-  }
-
-  ccl_private PrincipledDiffuseBsdf *bsdf = (ccl_private PrincipledDiffuseBsdf *)bsdf_alloc(
-      sd, sizeof(PrincipledDiffuseBsdf), rgb_to_spectrum(weight));
-  if (!bsdf) {
-    return;
-  }
-
-  bsdf->N = closure->N;
-  bsdf->roughness = closure->roughness;
-
-  sd->flag |= bsdf_principled_diffuse_setup(bsdf);
 }
 
 /* Variable cone emissive closure

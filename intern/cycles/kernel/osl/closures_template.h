@@ -132,11 +132,6 @@ OSL_CLOSURE_STRUCT_BEGIN(GlossyToon, glossy_toon)
   OSL_CLOSURE_STRUCT_MEMBER(GlossyToon, FLOAT, float, smooth, NULL)
 OSL_CLOSURE_STRUCT_END(GlossyToon, glossy_toon)
 
-OSL_CLOSURE_STRUCT_BEGIN(PrincipledDiffuse, principled_diffuse)
-  OSL_CLOSURE_STRUCT_MEMBER(PrincipledDiffuse, VECTOR, packed_float3, N, NULL)
-  OSL_CLOSURE_STRUCT_MEMBER(PrincipledDiffuse, FLOAT, float, roughness, NULL)
-OSL_CLOSURE_STRUCT_END(PrincipledDiffuse, principled_diffuse)
-
 OSL_CLOSURE_STRUCT_BEGIN(GenericEmissive, emission)
 OSL_CLOSURE_STRUCT_END(GenericEmissive, emission)
 

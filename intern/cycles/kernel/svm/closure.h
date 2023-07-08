@@ -173,15 +173,14 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         if (subsurface <= CLOSURE_WEIGHT_CUTOFF && diffuse_weight > CLOSURE_WEIGHT_CUTOFF) {
           Spectrum diff_weight = weight * rgb_to_spectrum(base_color) * diffuse_weight;
 
-          ccl_private PrincipledDiffuseBsdf *bsdf = (ccl_private PrincipledDiffuseBsdf *)
-              bsdf_alloc(sd, sizeof(PrincipledDiffuseBsdf), diff_weight);
+          ccl_private DiffuseBsdf *bsdf = (ccl_private DiffuseBsdf *)bsdf_alloc(
+              sd, sizeof(DiffuseBsdf), diff_weight);
 
           if (bsdf) {
             bsdf->N = N;
-            bsdf->roughness = roughness;
 
             /* setup bsdf */
-            sd->flag |= bsdf_principled_diffuse_setup(bsdf, PRINCIPLED_DIFFUSE_FULL);
+            sd->flag |= bsdf_diffuse_setup(bsdf);
           }
         }
         else if (subsurface > CLOSURE_WEIGHT_CUTOFF) {
@@ -207,15 +206,14 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       if (diffuse_weight > CLOSURE_WEIGHT_CUTOFF) {
         Spectrum diff_weight = weight * rgb_to_spectrum(base_color) * diffuse_weight;
 
-        ccl_private PrincipledDiffuseBsdf *bsdf = (ccl_private PrincipledDiffuseBsdf *)bsdf_alloc(
-            sd, sizeof(PrincipledDiffuseBsdf), diff_weight);
+        ccl_private DiffuseBsdf *bsdf = (ccl_private DiffuseBsdf *)bsdf_alloc(
+            sd, sizeof(DiffuseBsdf), diff_weight);
 
         if (bsdf) {
           bsdf->N = N;
-          bsdf->roughness = roughness;
 
           /* setup bsdf */
-          sd->flag |= bsdf_principled_diffuse_setup(bsdf, PRINCIPLED_DIFFUSE_FULL);
+          sd->flag |= bsdf_diffuse_setup(bsdf);
         }
       }
 #endif
