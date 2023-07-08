@@ -25,31 +25,30 @@ void main()
        * stored starting from the second row. */
       imageStore(complete_x_prologues_sum_img, ivec2(y, 0), vec4(0.0));
     }
-    else {
-      /* A parallel reduction loop to sum the prologues. This is exactly the same as the parallel
-       * reduction loop in the shader "compositor_parallel_reduction.glsl", see that shader for
-       * more information. */
-      complete_prologue[gl_LocalInvocationIndex] = accumulated_color;
-      for (uint stride = gl_WorkGroupSize.x / 2; stride > 0; stride /= 2) {
-        barrier();
 
-        if (gl_LocalInvocationIndex >= stride) {
-          continue;
-        }
-
-        complete_prologue[gl_LocalInvocationIndex] =
-            complete_prologue[gl_LocalInvocationIndex] +
-            complete_prologue[gl_LocalInvocationIndex + stride];
-      }
-
+    /* A parallel reduction loop to sum the prologues. This is exactly the same as the parallel
+     * reduction loop in the shader "compositor_parallel_reduction.glsl", see that shader for
+     * more information. */
+    complete_prologue[gl_LocalInvocationIndex] = accumulated_color;
+    for (uint stride = gl_WorkGroupSize.x / 2; stride > 0; stride /= 2) {
       barrier();
-      if (gl_LocalInvocationIndex == 0) {
-        /*  Note that we store using a transposed texel, but that is only to undo the transposition
-         * mentioned above. Also note that we start from the second row because the first row is
-         * set to zero as mentioned above. */
-        vec4 sum = complete_prologue[0];
-        imageStore(complete_x_prologues_sum_img, ivec2(y, gl_WorkGroupID.x + 1), sum);
+
+      if (gl_LocalInvocationIndex >= stride) {
+        continue;
       }
+
+      complete_prologue[gl_LocalInvocationIndex] =
+          complete_prologue[gl_LocalInvocationIndex] +
+          complete_prologue[gl_LocalInvocationIndex + stride];
+    }
+
+    barrier();
+    if (gl_LocalInvocationIndex == 0) {
+      /*  Note that we store using a transposed texel, but that is only to undo the transposition
+       * mentioned above. Also note that we start from the second row because the first row is
+       * set to zero as mentioned above. */
+      vec4 sum = complete_prologue[0];
+      imageStore(complete_x_prologues_sum_img, ivec2(y, gl_WorkGroupID.x + 1), sum);
     }
   }
 }
