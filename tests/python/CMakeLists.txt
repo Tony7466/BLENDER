@@ -712,9 +712,15 @@ if(WITH_COMPOSITOR_REALTIME_TEST)
       input
       output
       vector
+      matte
 
       multiple_node_setups
     )
+    
+    if(WITH_LIBMV)
+      list(APPEND compositor_tests distort)
+    endif()
+
     foreach(comp_test ${compositor_tests})
         add_python_test(
           compositor_${comp_test}_realtime_test
