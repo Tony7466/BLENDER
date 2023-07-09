@@ -2207,7 +2207,7 @@ static const EnumPropertyItem *rna_FunctionNodeCompare_operation_itemf(bContext 
 }
 
 static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext * /*C*/,
-                                                                      PointerRNA * ptr,
+                                                                      PointerRNA * /*ptr*/,
                                                                       PropertyRNA * /*prop*/,
                                                                       bool *r_free)
 {
@@ -2216,10 +2216,7 @@ static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext *
   const auto type_supported = [&](const EnumPropertyItem* item) -> bool {
     const eCustomDataType data_type = eCustomDataType(item->value);
     if (U.experimental.use_rotation_socket && data_type == CD_PROP_QUATERNION) {
-      const bNodeTree* tree = reinterpret_cast<const bNodeTree*>(ptr->owner_id);
-      if (tree->type == NTREE_GEOMETRY) {
         return true;
-      }
     }
     return ELEM(data_type, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_BOOL, CD_PROP_INT32);
   };
