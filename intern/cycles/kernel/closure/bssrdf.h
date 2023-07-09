@@ -263,6 +263,11 @@ ccl_device_forceinline float bssrdf_pdf(const Spectrum radius, float r)
 
 ccl_device_inline ccl_private Bssrdf *bssrdf_alloc(ccl_private ShaderData *sd, Spectrum weight)
 {
+  float sample_weight = fabsf(average(weight));
+  if (sample_weight < CLOSURE_WEIGHT_CUTOFF) {
+    return NULL;
+  }
+
   ccl_private Bssrdf *bssrdf = (ccl_private Bssrdf *)closure_alloc(
       sd, sizeof(Bssrdf), CLOSURE_NONE_ID, weight);
 
@@ -270,9 +275,8 @@ ccl_device_inline ccl_private Bssrdf *bssrdf_alloc(ccl_private ShaderData *sd, S
     return NULL;
   }
 
-  float sample_weight = fabsf(average(weight));
   bssrdf->sample_weight = sample_weight;
-  return (sample_weight >= CLOSURE_WEIGHT_CUTOFF) ? bssrdf : NULL;
+  return bssrdf;
 }
 
 ccl_device int bssrdf_setup(ccl_private ShaderData *sd,
