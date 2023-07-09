@@ -241,7 +241,7 @@ ccl_device_forceinline Spectrum microfacet_fresnel(ccl_private const MicrofacetB
        * Used by Principled v1. */
       const float F_real = fresnel_dielectric_cos(dot(wi, H), bsdf->ior);
       const float F0_real = F0_from_ior(bsdf->ior);
-      s = inverse_lerp(F0_real, 1.0f, F_real);
+      s = saturatef(inverse_lerp(F0_real, 1.0f, F_real));
     }
     else {
       /* Regular case: Generalized Schlick term. */

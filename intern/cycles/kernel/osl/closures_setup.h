@@ -322,11 +322,21 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
   bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
-  bsdf->ior = ior_from_F0(average(closure->f0));
+  bsdf->T = closure->T;
+
+  if (closure->exponent < 0.0f) {
+    /* Trick for principled BSDF: Since we use the real Fresnel equation and remap
+     * to the F0...F90 range, this allows us to use the real IOR.
+     * Computing it back from F0 might give a different result in case of specular
+     * tinting. */
+    bsdf->ior = -closure->exponent;
+  }
+  else {
+    bsdf->ior = ior_from_F0(average(closure->f0));
+  }
   if (sd->flag & SD_BACKFACING) {
     bsdf->ior = 1.0f / bsdf->ior;
   }
-  bsdf->T = closure->T;
 
   bool preserve_energy = false;
 
