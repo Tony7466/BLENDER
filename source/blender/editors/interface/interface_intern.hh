@@ -345,6 +345,7 @@ struct uiButDecorator : public uiBut {
 struct uiButProgressbar : public uiBut {
   /* 0..1 range */
   float progress = 0;
+  uiButProgressType progress_type;
 };
 
 struct uiButViewItem : public uiBut {

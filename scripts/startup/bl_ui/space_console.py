@@ -15,6 +15,10 @@ class CONSOLE_HT_header(Header):
 
         CONSOLE_MT_editor_menus.draw_collapsible(context, layout)
 
+        layout.progress_bar(progress = 0.4)
+        layout.progress_bar(type = 'RING', progress = 0.8)
+        layout.progress_bar(type = 'PIE', progress = 0.7)
+
 
 class CONSOLE_MT_editor_menus(Menu):
     bl_idname = "CONSOLE_MT_editor_menus"

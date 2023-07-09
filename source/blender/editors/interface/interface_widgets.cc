@@ -3604,14 +3604,9 @@ static void widget_scroll(uiBut *but,
   UI_draw_widget_scroll(wcol, rect, &rect1, (state->but_flag & UI_SELECT) ? UI_SCROLL_PRESSED : 0);
 }
 
-static void widget_progressbar(uiBut *but,
-                               uiWidgetColors *wcol,
-                               rcti *rect,
-                               const uiWidgetStateInfo * /*state*/,
-                               int roundboxalign,
-                               const float zoom)
+static void widget_progress_determinate_bar(
+    uiButProgressbar *but, uiWidgetColors *wcol, rcti *rect, int roundboxalign, const float zoom)
 {
-  uiButProgressbar *but_progressbar = (uiButProgressbar *)but;
   rcti rect_prog = *rect, rect_bar = *rect;
 
   uiWidgetBase wtb, wtb_bar;
@@ -3619,7 +3614,7 @@ static void widget_progressbar(uiBut *but,
   widget_init(&wtb_bar);
 
   /* round corners */
-  const float value = but_progressbar->progress;
+  const float value = but->progress;
   const float ofs = widget_radius_from_zoom(zoom, wcol);
   float w = value * BLI_rcti_size_x(&rect_prog);
 
@@ -3637,6 +3632,44 @@ static void widget_progressbar(uiBut *but,
   /* "slider" bar color */
   copy_v3_v3_uchar(wcol->inner, wcol->item);
   widgetbase_draw(&wtb_bar, wcol);
+}
+
+static void widget_progress_determinate_ring(uiButProgressbar *but,
+                                             uiWidgetColors *wcol,
+                                             rcti *rect,
+                                             const float ring_width)
+{
+  float outer_rad = (rect->xmax - rect->xmin) / 2.0f;
+  float inner_rad = outer_rad * ring_width;
+  float x = rect->xmin + outer_rad;
+  float y = rect->ymin + outer_rad;
+  float start = 0.0f;
+  float end = but->progress * 360.0f;
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4ubv(wcol->item);
+  imm_draw_disk_partial_fill_2d(pos, x, y, inner_rad, outer_rad, 48, start, end);
+  immUnbindProgram();
+}
+
+static void widget_progressbar(uiBut *but,
+                               uiWidgetColors *wcol,
+                               rcti *rect,
+                               const uiWidgetStateInfo * /*state*/,
+                               int roundboxalign,
+                               const float zoom)
+{
+  uiButProgressbar *but_progressbar = (uiButProgressbar *)but;
+  if (but_progressbar->progress_type == UI_PROGRESS_DETERMINATE_LINEAR) {
+    widget_progress_determinate_bar(but_progressbar, wcol, rect, roundboxalign, zoom);
+  }
+  else if (but_progressbar->progress_type == UI_PROGRESS_DETERMINATE_RING) {
+    widget_progress_determinate_ring(but_progressbar, wcol, rect, 0.6f);
+  }
+  else if (but_progressbar->progress_type == UI_PROGRESS_DETERMINATE_PIE) {
+    widget_progress_determinate_ring(but_progressbar, wcol, rect, 0.0f);
+  }
 }
 
 static void widget_view_item(uiWidgetColors *wcol,

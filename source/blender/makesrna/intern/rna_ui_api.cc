@@ -938,6 +938,13 @@ void RNA_api_ui_layout(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem progress_types[] = {
+      {UI_PROGRESS_DETERMINATE_LINEAR, "BAR", 0, "Bar", ""},
+      {UI_PROGRESS_DETERMINATE_RING, "RING", 0, "Ring", ""},
+      {UI_PROGRESS_DETERMINATE_PIE, "PIE", 0, "Pie", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem asset_view_template_options[] = {
       {UI_TEMPLATE_ASSET_DRAW_NO_NAMES,
        "NO_NAMES",
@@ -1330,6 +1337,24 @@ void RNA_api_ui_layout(StructRNA *srna)
   func = RNA_def_function(srna, "separator_spacer", "uiItemSpacer");
   RNA_def_function_ui_description(
       func, "Item. Inserts horizontal spacing empty space into the layout between items");
+
+  func = RNA_def_function(srna, "progress_bar", "uiItemProgressBar");
+  RNA_def_function_ui_description(func, "Progress indicator");
+  RNA_def_enum(func,
+               "type",
+               progress_types,
+               UI_PROGRESS_DETERMINATE_LINEAR,
+               "Type",
+               "The type of progress indicator");
+  RNA_def_float(func,
+                "progress",
+                0.0f,
+                0.0f,
+                1.0f,
+                "Progress",
+                "Amount of progress from 0.0f to 1.0f",
+                0.0f,
+                1.0f);
 
   /* context */
   func = RNA_def_function(srna, "context_pointer_set", "uiLayoutSetContextPointer");

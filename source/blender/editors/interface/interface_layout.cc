@@ -3475,6 +3475,32 @@ void uiItemS(uiLayout *layout)
   uiItemS_ex(layout, 1.0f);
 }
 
+void uiItemProgressBar(uiLayout *layout, int progress_type, float progress)
+{
+  uiBlock *block = layout->root->block;
+  const short width = short(UI_UNIT_X *
+                            ((progress_type == UI_PROGRESS_DETERMINATE_LINEAR) ? 5.0f : 1.0f));
+  UI_block_layout_set_current(block, layout);
+  uiBut *but = uiDefBut(block,
+                        UI_BTYPE_PROGRESS_BAR,
+                        0,
+                        "",
+                        0,
+                        0,
+                        width,
+                        short(UI_UNIT_Y),
+                        nullptr,
+                        0.0,
+                        0.0,
+                        0,
+                        0,
+                        "");
+
+  uiButProgressbar *progress_bar = static_cast<uiButProgressbar *>(but);
+  progress_bar->progress_type = static_cast<uiButProgressType>(progress_type);
+  progress_bar->progress = progress;
+}
+
 void uiItemSpacer(uiLayout *layout)
 {
   uiBlock *block = layout->root->block;
