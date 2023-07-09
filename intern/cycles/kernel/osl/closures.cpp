@@ -55,6 +55,14 @@ static_assert(sizeof(ShaderGlobals) == sizeof(OSL::ShaderGlobals) &&
 
 #include "closures_template.h"
 
+static OSL::ClosureParam *osl_closure_layer_params()
+{
+  static OSL::ClosureParam params[] = {CLOSURE_CLOSURE_PARAM(LayerClosure, top),
+                                       CLOSURE_CLOSURE_PARAM(LayerClosure, base),
+                                       CLOSURE_FINISH_PARAM(LayerClosure)};
+  return params;
+}
+
 void OSLRenderServices::register_closures(OSL::ShadingSystem *ss)
 {
 #define OSL_CLOSURE_STRUCT_BEGIN(Upper, lower) \
@@ -62,6 +70,8 @@ void OSLRenderServices::register_closures(OSL::ShadingSystem *ss)
       #lower, OSL_CLOSURE_##Upper##_ID, osl_closure_##lower##_params(), nullptr, nullptr);
 
 #include "closures_template.h"
+  ss->register_closure(
+      "layer", OSL_CLOSURE_LAYER_ID, osl_closure_layer_params(), nullptr, nullptr);
 }
 
 /* Surface & Background */
@@ -160,7 +170,8 @@ void osl_eval_nodes<SHADER_TYPE_SURFACE>(const KernelGlobalsCPU *kg,
 
   /* flatten closure tree */
   if (globals->Ci) {
-    flatten_closure_tree(kg, sd, path_flag, reinterpret_cast<OSLClosure *>(globals->Ci));
+    flatten_closure_tree(
+        kg, sd, path_flag, one_float3(), reinterpret_cast<OSLClosure *>(globals->Ci));
   }
 }
 
@@ -203,7 +214,8 @@ void osl_eval_nodes<SHADER_TYPE_VOLUME>(const KernelGlobalsCPU *kg,
 
   /* flatten closure tree */
   if (globals->Ci) {
-    flatten_closure_tree(kg, sd, path_flag, reinterpret_cast<OSLClosure *>(globals->Ci));
+    flatten_closure_tree(
+        kg, sd, path_flag, one_float3(), reinterpret_cast<OSLClosure *>(globals->Ci));
   }
 }
 
