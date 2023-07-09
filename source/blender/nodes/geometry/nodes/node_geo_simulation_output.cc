@@ -337,10 +337,11 @@ void values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_i
           fn::evaluate_constant_field(field, value);
           state_item = std::make_unique<bke::sim::PrimitiveSimulationStateItem>(
               value_or_field_type.value, value);
+          value_or_field_type.value.destruct(value);
           break;
         }
 
-        /* Fields are evaluated and stored as attributes. */
+        /* Fields are evaluated and stored as attributes only on geometry. */
         if (stored_geometries.is_empty()) {
           break;
         }
