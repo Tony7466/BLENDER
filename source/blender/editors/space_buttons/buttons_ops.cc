@@ -45,7 +45,7 @@
  * \note Almost a duplicate of the file browser operator #FILE_OT_start_filter.
  * \{ */
 
-static int buttons_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
+static int buttons_start_filter_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceProperties *space = CTX_wm_space_properties(C);
   ScrArea *area = CTX_wm_area(C);
@@ -68,7 +68,7 @@ void BUTTONS_OT_start_filter(wmOperatorType *ot)
   ot->poll = ED_operator_buttons_active;
 }
 
-static int buttons_clear_filter_exec(bContext *C, wmOperator *UNUSED(op))
+static int buttons_clear_filter_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceProperties *space = CTX_wm_space_properties(C);
 
@@ -99,7 +99,7 @@ void BUTTONS_OT_clear_filter(wmOperatorType *ot)
 /** \name Pin ID Operator
  * \{ */
 
-static int toggle_pin_exec(bContext *C, wmOperator *UNUSED(op))
+static int toggle_pin_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
 
@@ -112,7 +112,7 @@ static int toggle_pin_exec(bContext *C, wmOperator *UNUSED(op))
 
   /* Create the new ID pointer and set the pin ID with RNA
    * so we can use the property's RNA update functionality. */
-  ID *new_id = (sbuts->flag & SB_PIN_CONTEXT) ? buttons_context_id_path(C) : NULL;
+  ID *new_id = (sbuts->flag & SB_PIN_CONTEXT) ? buttons_context_id_path(C) : nullptr;
   PointerRNA new_id_ptr;
   RNA_id_pointer_create(new_id, &new_id_ptr);
   RNA_pointer_set(&sbuts_ptr, "pin_id", new_id_ptr);
@@ -140,12 +140,12 @@ void BUTTONS_OT_toggle_pin(wmOperatorType *ot)
 /** \name Context Menu Operator
  * \{ */
 
-static int context_menu_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+static int context_menu_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
   uiPopupMenu *pup = UI_popup_menu_begin(C, IFACE_("Context Menu"), ICON_NONE);
   uiLayout *layout = UI_popup_menu_layout(pup);
 
-  uiItemM(layout, "INFO_MT_area", NULL, ICON_NONE);
+  uiItemM(layout, "INFO_MT_area", nullptr, ICON_NONE);
   UI_popup_menu_end(C, pup);
 
   return OPERATOR_INTERFACE;
@@ -169,28 +169,28 @@ void BUTTONS_OT_context_menu(wmOperatorType *ot)
 /** \name File Browse Operator
  * \{ */
 
-typedef struct FileBrowseOp {
+struct FileBrowseOp {
   PointerRNA ptr;
   PropertyRNA *prop;
   bool is_undo;
   bool is_userdef;
-} FileBrowseOp;
+};
 
 static int file_browse_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  FileBrowseOp *fbo = op->customdata;
+  FileBrowseOp *fbo = static_cast<FileBrowseOp *>(op->customdata);
   ID *id;
   char *path;
   int path_len;
   const char *path_prop = RNA_struct_find_property(op->ptr, "directory") ? "directory" :
                                                                            "filepath";
 
-  if (RNA_struct_property_is_set(op->ptr, path_prop) == 0 || fbo == NULL) {
+  if (RNA_struct_property_is_set(op->ptr, path_prop) == 0 || fbo == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  path = RNA_string_get_alloc(op->ptr, path_prop, NULL, 0, &path_len);
+  path = RNA_string_get_alloc(op->ptr, path_prop, nullptr, 0, &path_len);
 
   /* Add slash for directories, important for some properties. */
   if (RNA_property_subtype(fbo->prop) == PROP_DIRPATH) {
@@ -207,11 +207,11 @@ static int file_browse_exec(bContext *C, wmOperator *op)
       if (is_relative) {
         BLI_path_rel(path_buf, BKE_main_blendfile_path(bmain));
         path_len = strlen(path_buf);
-        path = MEM_reallocN(path, path_len + 1);
+        path = static_cast<char *>(MEM_reallocN(path, path_len + 1));
         memcpy(path, path_buf, path_len + 1);
       }
       else {
-        path = MEM_reallocN(path, path_len + 1);
+        path = static_cast<char *>(MEM_reallocN(path, path_len + 1));
       }
     }
     else {
@@ -251,10 +251,10 @@ static int file_browse_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void file_browse_cancel(bContext *UNUSED(C), wmOperator *op)
+static void file_browse_cancel(bContext * /*C*/, wmOperator *op)
 {
   MEM_freeN(op->customdata);
-  op->customdata = NULL;
+  op->customdata = nullptr;
 }
 
 static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -278,7 +278,7 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  path = RNA_property_string_get_alloc(&ptr, prop, NULL, 0, NULL);
+  path = RNA_property_string_get_alloc(&ptr, prop, nullptr, 0, nullptr);
 
   /* Useful yet irritating feature, Shift+Click to open the file
    * Alt+Click to browse a folder in the OS's browser. */
@@ -295,7 +295,7 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
     WM_operator_properties_create_ptr(&props_ptr, ot);
     RNA_string_set(&props_ptr, "filepath", path);
-    WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &props_ptr, NULL);
+    WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &props_ptr, nullptr);
     WM_operator_properties_free(&props_ptr);
 
     MEM_freeN(path);
@@ -305,7 +305,7 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   PropertyRNA *prop_relpath;
   const char *path_prop = RNA_struct_find_property(op->ptr, "directory") ? "directory" :
                                                                            "filepath";
-  fbo = MEM_callocN(sizeof(FileBrowseOp), "FileBrowseOp");
+  fbo = static_cast<FileBrowseOp *>(MEM_callocN(sizeof(FileBrowseOp), "FileBrowseOp"));
   fbo->ptr = ptr;
   fbo->prop = prop;
   fbo->is_undo = is_undo;

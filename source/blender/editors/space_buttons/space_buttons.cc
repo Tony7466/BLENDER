@@ -46,25 +46,25 @@
 /** \name Default Callbacks for Properties Space
  * \{ */
 
-static SpaceLink *buttons_create(const ScrArea *UNUSED(area), const Scene *UNUSED(scene))
+static SpaceLink *buttons_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
   ARegion *region;
   SpaceProperties *sbuts;
 
-  sbuts = MEM_callocN(sizeof(SpaceProperties), "initbuts");
+  sbuts = static_cast<SpaceProperties *>(MEM_callocN(sizeof(SpaceProperties), "initbuts"));
   sbuts->spacetype = SPACE_PROPERTIES;
 
   sbuts->mainb = sbuts->mainbuser = BCONTEXT_OBJECT;
 
   /* header */
-  region = MEM_callocN(sizeof(ARegion), "header for buts");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "header for buts"));
 
   BLI_addtail(&sbuts->regionbase, region);
   region->regiontype = RGN_TYPE_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
   /* navigation bar */
-  region = MEM_callocN(sizeof(ARegion), "navigation bar for buts");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "navigation bar for buts"));
 
   BLI_addtail(&sbuts->regionbase, region);
   region->regiontype = RGN_TYPE_NAV_BAR;
@@ -79,7 +79,7 @@ static SpaceLink *buttons_create(const ScrArea *UNUSED(area), const Scene *UNUSE
 #endif
 
   /* main region */
-  region = MEM_callocN(sizeof(ARegion), "main region for buts");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "main region for buts"));
 
   BLI_addtail(&sbuts->regionbase, region);
   region->regiontype = RGN_TYPE_WINDOW;
@@ -97,24 +97,25 @@ static void buttons_free(SpaceLink *sl)
   }
 
   if (sbuts->texuser) {
-    ButsContextTexture *ct = sbuts->texuser;
+    ButsContextTexture *ct = static_cast<ButsContextTexture *>(sbuts->texuser);
     BLI_freelistN(&ct->users);
     MEM_freeN(ct);
   }
 
-  if (sbuts->runtime != NULL) {
+  if (sbuts->runtime != nullptr) {
     MEM_SAFE_FREE(sbuts->runtime->tab_search_results);
     MEM_freeN(sbuts->runtime);
   }
 }
 
 /* spacetype; init callback */
-static void buttons_init(wmWindowManager *UNUSED(wm), ScrArea *area)
+static void buttons_init(wmWindowManager * /*wm*/, ScrArea *area)
 {
   SpaceProperties *sbuts = (SpaceProperties *)area->spacedata.first;
 
-  if (sbuts->runtime == NULL) {
-    sbuts->runtime = MEM_mallocN(sizeof(SpaceProperties_Runtime), __func__);
+  if (sbuts->runtime == nullptr) {
+    sbuts->runtime = static_cast<SpaceProperties_Runtime *>(
+        MEM_mallocN(sizeof(SpaceProperties_Runtime), __func__));
     sbuts->runtime->search_string[0] = '\0';
     sbuts->runtime->tab_search_results = BLI_BITMAP_NEW(BCONTEXT_TOT * 2, __func__);
   }
@@ -123,13 +124,13 @@ static void buttons_init(wmWindowManager *UNUSED(wm), ScrArea *area)
 static SpaceLink *buttons_duplicate(SpaceLink *sl)
 {
   SpaceProperties *sfile_old = (SpaceProperties *)sl;
-  SpaceProperties *sbutsn = MEM_dupallocN(sl);
+  SpaceProperties *sbutsn = static_cast<SpaceProperties *>(MEM_dupallocN(sl));
 
   /* clear or remove stuff from old */
-  sbutsn->path = NULL;
-  sbutsn->texuser = NULL;
-  if (sfile_old->runtime != NULL) {
-    sbutsn->runtime = MEM_dupallocN(sfile_old->runtime);
+  sbutsn->path = nullptr;
+  sbutsn->texuser = nullptr;
+  if (sfile_old->runtime != nullptr) {
+    sbutsn->runtime = static_cast<SpaceProperties_Runtime *>(MEM_dupallocN(sfile_old->runtime));
     sbutsn->runtime->search_string[0] = '\0';
     sbutsn->runtime->tab_search_results = BLI_BITMAP_NEW(BCONTEXT_TOT, __func__);
   }
@@ -301,9 +302,9 @@ static void buttons_main_region_layout_properties(const bContext *C,
 {
   buttons_context_compute(C, sbuts);
 
-  const char *contexts[2] = {buttons_main_region_context_string(sbuts->mainb), NULL};
+  const char *contexts[2] = {buttons_main_region_context_string(sbuts->mainb), nullptr};
 
-  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts, NULL);
+  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts, nullptr);
 }
 
 /** \} */
@@ -340,14 +341,14 @@ bool ED_buttons_tab_has_search_result(SpaceProperties *sbuts, const int index)
 
 static bool property_search_for_context(const bContext *C, ARegion *region, SpaceProperties *sbuts)
 {
-  const char *contexts[2] = {buttons_main_region_context_string(sbuts->mainb), NULL};
+  const char *contexts[2] = {buttons_main_region_context_string(sbuts->mainb), nullptr};
 
   if (sbuts->mainb == BCONTEXT_TOOL) {
     return false;
   }
 
   buttons_context_compute(C, sbuts);
-  return ED_region_property_search(C, region, &region->type->paneltypes, contexts, NULL);
+  return ED_region_property_search(C, region, &region->type->paneltypes, contexts, nullptr);
 }
 
 static void property_search_move_to_next_tab_with_results(SpaceProperties *sbuts,
@@ -402,10 +403,10 @@ static void property_search_all_tabs(const bContext *C,
   CTX_wm_region_set((bContext *)C, region_copy);
 
   SpaceProperties sbuts_copy = *sbuts;
-  sbuts_copy.path = NULL;
-  sbuts_copy.texuser = NULL;
-  sbuts_copy.runtime = MEM_dupallocN(sbuts->runtime);
-  sbuts_copy.runtime->tab_search_results = NULL;
+  sbuts_copy.path = nullptr;
+  sbuts_copy.texuser = nullptr;
+  sbuts_copy.runtime = static_cast<SpaceProperties_Runtime *>(MEM_dupallocN(sbuts->runtime));
+  sbuts_copy.runtime->tab_search_results = nullptr;
   BLI_listbase_clear(&area_copy.spacedata);
   BLI_addtail(&area_copy.spacedata, &sbuts_copy);
 
@@ -544,7 +545,7 @@ static void buttons_keymap(wmKeyConfig *keyconf)
  * \{ */
 
 /* add handlers, stuff you only do once or on area/region changes */
-static void buttons_header_region_init(wmWindowManager *UNUSED(wm), ARegion *region)
+static void buttons_header_region_init(wmWindowManager * /*wm*/, ARegion *region)
 {
   ED_region_header_init(region);
 }
@@ -564,13 +565,12 @@ static void buttons_header_region_message_subscribe(const wmRegionMessageSubscri
   struct wmMsgBus *mbus = params->message_bus;
   ScrArea *area = params->area;
   ARegion *region = params->region;
-  SpaceProperties *sbuts = area->spacedata.first;
+  SpaceProperties *sbuts = static_cast<SpaceProperties *>(area->spacedata.first);
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
-      .owner = region,
-      .user_data = region,
-      .notify = ED_region_do_msg_notify_tag_redraw,
-  };
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
+  msg_sub_value_region_tag_redraw.owner = region;
+  msg_sub_value_region_tag_redraw.user_data = region;
+  msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
 
   /* Don't check for SpaceProperties.mainb here, we may toggle between view-layers
    * where one has no active object, so that available contexts changes. */
@@ -630,7 +630,7 @@ static void buttons_navigation_bar_region_message_subscribe(
  * showing that button set, to reduce unnecessary drawing. */
 static void buttons_area_redraw(ScrArea *area, short buttons)
 {
-  SpaceProperties *sbuts = area->spacedata.first;
+  SpaceProperties *sbuts = static_cast<SpaceProperties *>(area->spacedata.first);
 
   /* if the area's current button set is equal to the one to redraw */
   if (sbuts->mainb == buttons) {
@@ -649,7 +649,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
 {
   ScrArea *area = params->area;
   const wmNotifier *wmn = params->notifier;
-  SpaceProperties *sbuts = area->spacedata.first;
+  SpaceProperties *sbuts = static_cast<SpaceProperties *>(area->spacedata.first);
 
   /* context changes */
   switch (wmn->category) {
@@ -854,7 +854,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
-static void buttons_id_remap(ScrArea *UNUSED(area),
+static void buttons_id_remap(ScrArea * /*area*/,
                              SpaceLink *slink,
                              const struct IDRemapper *mappings)
 {
@@ -867,7 +867,7 @@ static void buttons_id_remap(ScrArea *UNUSED(area),
   }
 
   if (sbuts->path) {
-    ButsContextPath *path = sbuts->path;
+    ButsContextPath *path = static_cast<ButsContextPath *>(sbuts->path);
     for (int i = 0; i < path->len; i++) {
       switch (BKE_id_remapper_apply(mappings, &path->ptr[i].owner_id, ID_REMAP_APPLY_DEFAULT)) {
         case ID_REMAP_RESULT_SOURCE_UNASSIGNED: {
@@ -902,29 +902,29 @@ static void buttons_id_remap(ScrArea *UNUSED(area),
   }
 
   if (sbuts->texuser) {
-    ButsContextTexture *ct = sbuts->texuser;
+    ButsContextTexture *ct = static_cast<ButsContextTexture *>(sbuts->texuser);
     BKE_id_remapper_apply(mappings, (ID **)&ct->texture, ID_REMAP_APPLY_DEFAULT);
     BLI_freelistN(&ct->users);
-    ct->user = NULL;
+    ct->user = nullptr;
   }
 }
 
-static void buttons_space_blend_read_data(BlendDataReader *UNUSED(reader), SpaceLink *sl)
+static void buttons_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceProperties *sbuts = (SpaceProperties *)sl;
 
-  sbuts->path = NULL;
-  sbuts->texuser = NULL;
+  sbuts->path = nullptr;
+  sbuts->texuser = nullptr;
   sbuts->mainbo = sbuts->mainb;
   sbuts->mainbuser = sbuts->mainb;
-  sbuts->runtime = NULL;
+  sbuts->runtime = nullptr;
 }
 
 static void buttons_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceProperties *sbuts = (SpaceProperties *)sl;
   BLO_read_id_address(reader, parent_id, &sbuts->pinid);
-  if (sbuts->pinid == NULL) {
+  if (sbuts->pinid == nullptr) {
     sbuts->flag &= ~SB_PIN_CONTEXT;
   }
 }
@@ -942,7 +942,7 @@ static void buttons_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_buttons(void)
 {
-  SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype buttons");
+  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype buttons"));
   ARegionType *art;
 
   st->spaceid = SPACE_PROPERTIES;
@@ -962,7 +962,7 @@ void ED_spacetype_buttons(void)
   st->blend_write = buttons_space_blend_write;
 
   /* regions: main window */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype buttons region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype buttons region"));
   art->regionid = RGN_TYPE_WINDOW;
   art->init = buttons_main_region_init;
   art->layout = buttons_main_region_layout;
@@ -974,15 +974,15 @@ void ED_spacetype_buttons(void)
 
   /* Register the panel types from modifiers. The actual panels are built per modifier rather
    * than per modifier type. */
-  for (ModifierType i = 0; i < NUM_MODIFIER_TYPES; i++) {
-    const ModifierTypeInfo *mti = BKE_modifier_get_info(i);
-    if (mti != NULL && mti->panelRegister != NULL) {
+  for (int i = 0; i < NUM_MODIFIER_TYPES; i++) {
+    const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(i));
+    if (mti != nullptr && mti->panelRegister != nullptr) {
       mti->panelRegister(art);
     }
   }
   for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(i);
-    if (mti != NULL && mti->panelRegister != NULL) {
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(GpencilModifierType(i));
+    if (mti != nullptr && mti->panelRegister != nullptr) {
       mti->panelRegister(art);
     }
   }
@@ -990,14 +990,14 @@ void ED_spacetype_buttons(void)
     if (i == eShaderFxType_Light_deprecated) {
       continue;
     }
-    const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(i);
-    if (fxti != NULL && fxti->panelRegister != NULL) {
+    const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(ShaderFxType(i));
+    if (fxti != nullptr && fxti->panelRegister != nullptr) {
       fxti->panelRegister(art);
     }
   }
 
   /* regions: header */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype buttons region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype buttons region"));
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
@@ -1008,7 +1008,8 @@ void ED_spacetype_buttons(void)
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: navigation bar */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype nav buttons region");
+  art = static_cast<ARegionType *>(
+      MEM_callocN(sizeof(ARegionType), "spacetype nav buttons region"));
   art->regionid = RGN_TYPE_NAV_BAR;
   art->prefsizex = AREAMINX;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES | ED_KEYMAP_NAVBAR;
