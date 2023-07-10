@@ -31,9 +31,9 @@ set(SRC
   physics_fluid.cc
   physics_ops.cc
   physics_pointcache.cc
-  rigidbody_constraint.c
-  rigidbody_object.c
-  rigidbody_world.c
+  rigidbody_constraint.cc
+  rigidbody_object.cc
+  rigidbody_world.cc
 
   particle_edit_utildefines.h
   physics_intern.h

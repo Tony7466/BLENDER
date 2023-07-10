@@ -47,8 +47,8 @@
 
 static bool operator_rigidbody_editable_poll(Scene *scene)
 {
-  if (scene == NULL || ID_IS_LINKED(scene) || ID_IS_OVERRIDE_LIBRARY(scene) ||
-      (scene->rigidbody_world != NULL && scene->rigidbody_world->group != NULL &&
+  if (scene == nullptr || ID_IS_LINKED(scene) || ID_IS_OVERRIDE_LIBRARY(scene) ||
+      (scene->rigidbody_world != nullptr && scene->rigidbody_world->group != nullptr &&
        (ID_IS_LINKED(scene->rigidbody_world->group) ||
         ID_IS_OVERRIDE_LIBRARY(scene->rigidbody_world->group))))
   {
@@ -120,8 +120,8 @@ static int rigidbody_object_add_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
-    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
+    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -162,15 +162,15 @@ static int rigidbody_object_remove_exec(bContext *C, wmOperator *op)
   bool changed = false;
 
   /* apply to active object */
-  if (!ELEM(NULL, ob, ob->rigidbody_object)) {
+  if (!ELEM(nullptr, ob, ob->rigidbody_object)) {
     ED_rigidbody_object_remove(bmain, scene, ob);
     changed = true;
   }
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
-    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
+    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -215,8 +215,8 @@ static int rigidbody_objects_add_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
-    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
+    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -249,7 +249,7 @@ void RIGIDBODY_OT_objects_add(wmOperatorType *ot)
 
 /* ************ Remove Rigid Bodies ************** */
 
-static int rigidbody_objects_remove_exec(bContext *C, wmOperator *UNUSED(op))
+static int rigidbody_objects_remove_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -266,8 +266,8 @@ static int rigidbody_objects_remove_exec(bContext *C, wmOperator *UNUSED(op))
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
-    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
+    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -318,8 +318,8 @@ static int rigidbody_objects_shape_change_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, NULL);
-    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, nullptr);
+    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -354,10 +354,10 @@ void RIGIDBODY_OT_shape_change(wmOperatorType *ot)
 /* ************ Calculate Mass ************** */
 
 /* Entry in material density table */
-typedef struct rbMaterialDensityItem {
+struct rbMaterialDensityItem {
   const char *name; /* Name of material */
   float density;    /* Density (kg/m^3) */
-} rbMaterialDensityItem;
+};
 
 /* Preset density values for materials (kg/m^3)
  * Selected values obtained from:
@@ -379,10 +379,8 @@ static rbMaterialDensityItem RB_MATERIAL_DENSITY_TABLE[] = {
     {N_("Bronze"), 8860.0f},
     {N_("Carbon (Solid)"), 2146.0f},
     {N_("Cardboard"), 689.0f},
-    {N_("Cast Iron"), 7150.0f},
-    /* {N_("Cement"), 1442.0f}, */
-    {N_("Chalk (Solid)"), 2499.0f},
-    /* {N_("Coffee (Fresh/Roast)"), ~500}, */
+    {N_("Cast Iron"), 7150.0f},     /* {N_("Cement"), 1442.0f}, */
+    {N_("Chalk (Solid)"), 2499.0f}, /* {N_("Coffee (Fresh/Roast)"), ~500}, */
     {N_("Concrete"), 2320.0f},
     {N_("Charcoal"), 208.0f},
     {N_("Cork"), 240.0f},
@@ -422,13 +420,13 @@ static const int NUM_RB_MATERIAL_PRESETS = sizeof(RB_MATERIAL_DENSITY_TABLE) /
  * - Although there is a runtime cost, this has a lower maintenance cost
  *   in the long run than other two-list solutions...
  */
-static const EnumPropertyItem *rigidbody_materials_itemf(bContext *UNUSED(C),
-                                                         PointerRNA *UNUSED(ptr),
-                                                         PropertyRNA *UNUSED(prop),
+static const EnumPropertyItem *rigidbody_materials_itemf(bContext * /*C*/,
+                                                         PointerRNA * /*ptr*/,
+                                                         PropertyRNA * /*prop*/,
                                                          bool *r_free)
 {
   EnumPropertyItem item_tmp = {0};
-  EnumPropertyItem *item = NULL;
+  EnumPropertyItem *item = nullptr;
   int totitem = 0;
   int i = 0;
 
@@ -508,7 +506,7 @@ static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -516,7 +514,7 @@ static int rigidbody_objects_calc_mass_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static bool mass_calculate_poll_property(const bContext *UNUSED(C),
+static bool mass_calculate_poll_property(const bContext * /*C*/,
                                          wmOperator *op,
                                          const PropertyRNA *prop)
 {

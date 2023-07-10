@@ -44,8 +44,8 @@
 
 static bool operator_rigidbody_constraints_editable_poll(Scene *scene)
 {
-  if (scene == NULL || ID_IS_LINKED(scene) || ID_IS_OVERRIDE_LIBRARY(scene) ||
-      (scene->rigidbody_world != NULL && scene->rigidbody_world->constraints != NULL &&
+  if (scene == nullptr || ID_IS_LINKED(scene) || ID_IS_OVERRIDE_LIBRARY(scene) ||
+      (scene->rigidbody_world != nullptr && scene->rigidbody_world->constraints != nullptr &&
        (ID_IS_LINKED(scene->rigidbody_world->constraints) ||
         ID_IS_OVERRIDE_LIBRARY(scene->rigidbody_world->constraints))))
   {
@@ -89,8 +89,8 @@ bool ED_rigidbody_constraint_add(
     return false;
   }
   /* create constraint group if it doesn't already exits */
-  if (rbw->constraints == NULL) {
-    rbw->constraints = BKE_collection_add(bmain, NULL, "RigidBodyConstraints");
+  if (rbw->constraints == nullptr) {
+    rbw->constraints = BKE_collection_add(bmain, nullptr, "RigidBodyConstraints");
     id_us_plus(&rbw->constraints->id);
   }
   /* make rigidbody constraint settings */
@@ -131,7 +131,7 @@ static int rigidbody_con_add_exec(bContext *C, wmOperator *op)
   bool changed;
 
   /* sanity checks */
-  if (ELEM(NULL, scene, rbw)) {
+  if (ELEM(nullptr, scene, rbw)) {
     BKE_report(op->reports, RPT_ERROR, "No Rigid Body World to add Rigid Body Constraint to");
     return OPERATOR_CANCELLED;
   }
@@ -140,7 +140,7 @@ static int rigidbody_con_add_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* send updates */
-    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
+    WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
 
     /* done */
     return OPERATOR_FINISHED;
@@ -182,14 +182,14 @@ static int rigidbody_con_remove_exec(bContext *C, wmOperator *op)
   Object *ob = BKE_view_layer_active_object_get(view_layer);
 
   /* apply to active object */
-  if (ELEM(NULL, ob, ob->rigidbody_constraint)) {
+  if (ELEM(nullptr, ob, ob->rigidbody_constraint)) {
     BKE_report(op->reports, RPT_ERROR, "Object has no Rigid Body Constraint to remove");
     return OPERATOR_CANCELLED;
   }
   ED_rigidbody_constraint_remove(bmain, scene, ob);
 
   /* send updates */
-  WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
+  WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, nullptr);
 
   /* done */
   return OPERATOR_FINISHED;
