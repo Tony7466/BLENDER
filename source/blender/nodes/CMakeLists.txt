@@ -28,6 +28,7 @@ set(INC
   ../imbuf
   ../makesdna
   ../makesrna
+  ../modifiers
   ../render
   ../windowmanager
   ../../../extern/fmtlib/include

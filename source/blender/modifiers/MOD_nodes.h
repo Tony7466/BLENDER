@@ -4,8 +4,17 @@
 
 #pragma once
 
+#include "DNA_modifier_types.h"
+
 struct NodesModifierData;
 struct Object;
+
+namespace blender::bke::sim {
+class ModifierSimulationCache;
+}
+namespace blender::nodes::geo_eval_log {
+class GeoModifierLog;
+}
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,6 +26,24 @@ extern "C" {
  * the values.
  */
 void MOD_nodes_update_interface(struct Object *object, struct NodesModifierData *nmd);
+
+namespace blender {
+
+struct NodesModifierRuntime {
+  /**
+   * Contains logged information from the last evaluation.
+   * This can be used to help the user to debug a node tree.
+   */
+  std::unique_ptr<nodes::geo_eval_log::GeoModifierLog> eval_log;
+  /**
+   * Simulation cache that is shared between original and evaluated modifiers. This allows the
+   * original modifier to be removed, without also removing the simulation state which may still be
+   * used by the evaluated modifier.
+   */
+  std::shared_ptr<bke::sim::ModifierSimulationCache> simulation_cache;
+};
+
+}  // namespace blender
 
 #ifdef __cplusplus
 }
