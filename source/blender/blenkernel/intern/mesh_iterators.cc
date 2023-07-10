@@ -181,16 +181,11 @@ void BKE_mesh_foreach_mapped_loop(Mesh *mesh,
       do {
         const BMVert *eve = l_iter->v;
         const int v_idx = BM_elem_index_get(eve);
-        if (corner_normals.is_empty()) {
-          func(userData, v_idx, f_idx, positions.is_empty() ? positions[v_idx] : eve->co, nullptr);
-        }
-        else {
-          func(userData,
-               v_idx,
-               f_idx,
-               positions.is_empty() ? positions[v_idx] : eve->co,
-               corner_normals[BM_elem_index_get(l_iter)]);
-        }
+        func(userData,
+             v_idx,
+             f_idx,
+             positions.is_empty() ? positions[v_idx] : blender::float3(eve->co),
+             corner_normals.is_empty() ? nullptr : &corner_normals[BM_elem_index_get(l_iter)].x);
       } while ((l_iter = l_iter->next) != l_first);
     }
   }
