@@ -531,7 +531,7 @@ static int rna_Sequence_frame_editable(PointerRNA *ptr, const char ** /*r_info*/
 {
   Sequence *seq = (Sequence *)ptr->data;
   /* Effect sequences' start frame and length must be readonly! */
-  return (SEQ_effect_get_num_inputs(seq->type)) ? 0 : PROP_EDITABLE;
+  return (SEQ_effect_get_num_inputs(seq->type)) ? PropertyFlag(0) : PROP_EDITABLE;
 }
 
 static void rna_Sequence_channel_set(PointerRNA *ptr, int value)
@@ -1474,8 +1474,9 @@ static Sequence *rna_SeqTimelineChannel_owner_get(Editing *ed, SeqTimelineChanne
     if (seq->type != SEQ_TYPE_META) {
       continue;
     }
-    if (BLI_findindex(&seq->channels, channel) >= 0) {
+    if (BLI_findindex(&seq->channels, channel) != -1) {
       channel_owner = seq;
+      break;
     }
   }
 

@@ -147,8 +147,10 @@ endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   string(APPEND GENSRC_FLAGS " -Wno-missing-variable-declarations")
 elseif(MSVC)
-  # Restore warn C4100 (unreferenced formal parameter) back to w4
-  remove_cc_flag(/w34100)
+  remove_cc_flag(
+    # Restore warn C4100 (unreferenced formal parameter) back to w4.
+    "/w34100"
+  )
 endif()
 
 set(GENSRC_C ${GENSRC})
@@ -409,8 +411,8 @@ if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
 endif()
 
-if(WITH_VULKAN_METAL)
-  add_definitions(-DWITH_VULKAN_METAL)
+if(WITH_METAL_BACKEND)
+  add_definitions(-DWITH_METAL_BACKEND)
 endif()
 
 if(WITH_VULKAN_BACKEND)
@@ -426,11 +428,12 @@ add_cc_flags_custom_test(makesrna)
 
 add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
 setup_platform_linker_flags(makesrna)
+setup_platform_linker_libs(makesrna)
 blender_target_include_dirs(makesrna ${INC})
 blender_target_include_dirs_sys(makesrna ${INC_SYS})
 
 target_link_libraries(makesrna PRIVATE bf_dna)
-target_link_libraries(makesrna PRIVATE bf_intern_atomic)
+target_link_libraries(makesrna PRIVATE bf::intern::atomic)
 target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
 
 if(WIN32 AND NOT UNIX)

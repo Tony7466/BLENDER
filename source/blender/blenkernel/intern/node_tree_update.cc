@@ -25,10 +25,10 @@
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_update.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "NOD_node_declaration.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph_query.h"
@@ -1139,7 +1139,7 @@ class NodeTreeMainUpdater {
     }
 
     /* Used to generate new unique IDs if necessary. */
-    RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+    RandomNumberGenerator rng(PIL_check_seconds_timer_i() & UINT_MAX);
 
     Map<int32_t, bNestedNodePath> new_path_by_id;
     for (const bNestedNodePath &path : nested_node_paths) {
