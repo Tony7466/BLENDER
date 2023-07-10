@@ -98,8 +98,6 @@ class ReflectionProbeModule {
 
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
 
-  bool do_world_update_ = false;
-
   int3 dispatch_probe_pack_ = int3(0);
   /**
    * Texture containing a cubemap used as input for updating #probes_tx_.
@@ -125,10 +123,8 @@ class ReflectionProbeModule {
     pass->bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
   }
 
-  void do_world_update_set(bool value)
-  {
-    do_world_update_ = value;
-  }
+  bool do_world_update_get() const;
+  void do_world_update_set(bool value);
 
   void debug_print() const;
 
@@ -156,11 +152,6 @@ class ReflectionProbeModule {
    * hold a texture with the given subdivision_level.
    */
   ReflectionProbeData find_empty_reflection_probe_data(int subdivision_level) const;
-
-  bool do_world_update_get() const
-  {
-    return do_world_update_;
-  }
 
   /**
    * Pop the next reflection probe that requires to be updated.

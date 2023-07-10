@@ -338,6 +338,17 @@ void ReflectionProbeModule::recalc_lod_factors()
     probe_data.lod_factor = lod_factor;
   }
 }
+bool ReflectionProbeModule::do_world_update_get() const
+{
+  const ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
+  return world_probe.do_render;
+}
+
+void ReflectionProbeModule::do_world_update_set(bool value)
+{
+  ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
+  world_probe.do_render = value;
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Debugging
