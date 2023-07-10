@@ -36,7 +36,7 @@
 static int rule_add_exec(bContext *C, wmOperator *op)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   int type = RNA_enum_get(op->ptr, "type");
 
   BoidRule *rule;
@@ -48,7 +48,7 @@ static int rule_add_exec(bContext *C, wmOperator *op)
 
   state = boid_get_current_state(part->boids);
 
-  for (rule = state->rules.first; rule; rule = rule->next) {
+  for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
     rule->flag &= ~BOIDRULE_CURRENT;
   }
 
@@ -78,11 +78,11 @@ void BOID_OT_rule_add(wmOperatorType *ot)
 
   ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_boidrule_type_items, 0, "Type", "");
 }
-static int rule_del_exec(bContext *C, wmOperator *UNUSED(op))
+static int rule_del_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidRule *rule;
   BoidState *state;
 
@@ -92,14 +92,14 @@ static int rule_del_exec(bContext *C, wmOperator *UNUSED(op))
 
   state = boid_get_current_state(part->boids);
 
-  for (rule = state->rules.first; rule; rule = rule->next) {
+  for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
     if (rule->flag & BOIDRULE_CURRENT) {
       BLI_remlink(&state->rules, rule);
       MEM_freeN(rule);
       break;
     }
   }
-  rule = state->rules.first;
+  rule = static_cast<BoidRule *>(state->rules.first);
 
   if (rule) {
     rule->flag |= BOIDRULE_CURRENT;
@@ -126,10 +126,10 @@ void BOID_OT_rule_del(wmOperatorType *ot)
 }
 
 /************************ move up/down boid rule operators *********************/
-static int rule_move_up_exec(bContext *C, wmOperator *UNUSED(op))
+static int rule_move_up_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidRule *rule;
   BoidState *state;
 
@@ -138,7 +138,7 @@ static int rule_move_up_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   state = boid_get_current_state(part->boids);
-  for (rule = state->rules.first; rule; rule = rule->next) {
+  for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
     if (rule->flag & BOIDRULE_CURRENT && rule->prev) {
       BLI_remlink(&state->rules, rule);
       BLI_insertlinkbefore(&state->rules, rule->prev, rule);
@@ -163,10 +163,10 @@ void BOID_OT_rule_move_up(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int rule_move_down_exec(bContext *C, wmOperator *UNUSED(op))
+static int rule_move_down_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidRule *rule;
   BoidState *state;
 
@@ -175,7 +175,7 @@ static int rule_move_down_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   state = boid_get_current_state(part->boids);
-  for (rule = state->rules.first; rule; rule = rule->next) {
+  for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
     if (rule->flag & BOIDRULE_CURRENT && rule->next) {
       BLI_remlink(&state->rules, rule);
       BLI_insertlinkafter(&state->rules, rule->next, rule);
@@ -201,17 +201,17 @@ void BOID_OT_rule_move_down(wmOperatorType *ot)
 }
 
 /************************ add/del boid state operators *********************/
-static int state_add_exec(bContext *C, wmOperator *UNUSED(op))
+static int state_add_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidState *state;
 
   if (!part || part->phystype != PART_PHYS_BOIDS) {
     return OPERATOR_CANCELLED;
   }
 
-  for (state = part->boids->states.first; state; state = state->next) {
+  for (state = static_cast<BoidState *>(part->boids->states.first); state; state = state->next) {
     state->flag &= ~BOIDSTATE_CURRENT;
   }
 
@@ -236,18 +236,18 @@ void BOID_OT_state_add(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
-static int state_del_exec(bContext *C, wmOperator *UNUSED(op))
+static int state_del_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidState *state;
 
   if (!part || part->phystype != PART_PHYS_BOIDS) {
     return OPERATOR_CANCELLED;
   }
 
-  for (state = part->boids->states.first; state; state = state->next) {
+  for (state = static_cast<BoidState *>(part->boids->states.first); state; state = state->next) {
     if (state->flag & BOIDSTATE_CURRENT) {
       BLI_remlink(&part->boids->states, state);
       MEM_freeN(state);
@@ -261,7 +261,7 @@ static int state_del_exec(bContext *C, wmOperator *UNUSED(op))
     BLI_addtail(&part->boids->states, state);
   }
   else {
-    state = part->boids->states.first;
+    state = static_cast<BoidState *>(part->boids->states.first);
   }
 
   state->flag |= BOIDSTATE_CURRENT;
@@ -287,10 +287,10 @@ void BOID_OT_state_del(wmOperatorType *ot)
 }
 
 /************************ move up/down boid state operators *********************/
-static int state_move_up_exec(bContext *C, wmOperator *UNUSED(op))
+static int state_move_up_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidSettings *boids;
   BoidState *state;
 
@@ -300,7 +300,7 @@ static int state_move_up_exec(bContext *C, wmOperator *UNUSED(op))
 
   boids = part->boids;
 
-  for (state = boids->states.first; state; state = state->next) {
+  for (state = static_cast<BoidState *>(boids->states.first); state; state = state->next) {
     if (state->flag & BOIDSTATE_CURRENT && state->prev) {
       BLI_remlink(&boids->states, state);
       BLI_insertlinkbefore(&boids->states, state->prev, state);
@@ -323,10 +323,10 @@ void BOID_OT_state_move_up(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int state_move_down_exec(bContext *C, wmOperator *UNUSED(op))
+static int state_move_down_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "particle_settings", &RNA_ParticleSettings);
-  ParticleSettings *part = ptr.data;
+  ParticleSettings *part = static_cast<ParticleSettings *>(ptr.data);
   BoidSettings *boids;
   BoidState *state;
 
@@ -336,7 +336,7 @@ static int state_move_down_exec(bContext *C, wmOperator *UNUSED(op))
 
   boids = part->boids;
 
-  for (state = boids->states.first; state; state = state->next) {
+  for (state = static_cast<BoidState *>(boids->states.first); state; state = state->next) {
     if (state->flag & BOIDSTATE_CURRENT && state->next) {
       BLI_remlink(&boids->states, state);
       BLI_insertlinkafter(&boids->states, state->next, state);
