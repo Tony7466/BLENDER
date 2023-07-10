@@ -27,7 +27,7 @@ set(SRC
   particle_boids.cc
   particle_edit.cc
   particle_edit_undo.cc
-  particle_object.c
+  particle_object.cc
   physics_fluid.c
   physics_ops.c
   physics_pointcache.c
