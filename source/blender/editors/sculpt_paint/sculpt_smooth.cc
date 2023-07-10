@@ -293,12 +293,12 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
 
   struct NodeData {};
 
-  using PBVHVertexRangeImpl = blender::bke::pbvh::PBVHVertexRange<NodeData, PBVH_FACES, void *>;
+  using PBVHNodeVertRangeImpl = blender::bke::pbvh::PBVHNodeVertRange<NodeData, PBVH_FACES, void *>;
 
   // #define TEST_PBVH_ITER_NEW
 #ifdef TEST_PBVH_ITER_NEW
   void *ptr;
-  for (auto &vd : PBVHVertexRangeImpl(ss->pbvh, data->nodes[n], nullptr, ptr)) {
+  for (auto &vd : PBVHNodeVertRangeImpl(ss->pbvh, data->nodes[n], nullptr, ptr)) {
 #endif
     BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
       if (!sculpt_brush_test_sq_fn(&test, vd.co)) {

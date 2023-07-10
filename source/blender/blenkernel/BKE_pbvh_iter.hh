@@ -55,174 +55,13 @@ struct FilterResultAbstract {
   bool in_range;
 };
 
-template<typename NodeData, PBVHType pbvh_type, typename FilterResult = FilterResultAbstract>
-struct VertexListRange {
-  struct VertTriplet {
-    PBVHVertRef vertex;
-    int node_index;        /* Index of node within the brush nodes vector. */
-    int vertex_node_index; /* Index of vertex inside node list. */
-    FilterResult filter_result;
-  };
-
-  struct iterator {
-    PBVHVertRef vertex;
-    int index; /* Vertex index. */
-
-    float *co, *mask;
-    const float *no;
-    const FilterResult *result;
-
-    PBVHNode *node;
-    NodeData *node_data;
-    int vertex_node_index; /* Index of vertex inside node list. */
-
-    bool is_mesh;
-
-    inline iterator(IndexRange _range, VertexListRange &_owner, int _i) noexcept
-        : i(_i), owner(_owner), range(_range)
-    {
-      is_mesh = pbvh_type == PBVH_FACES;
-
-      if (i >= owner.range.start() && i <= owner.range.last()) {
-        load_data();
-      }
-    }
-
-    inline iterator(const iterator &b) noexcept : i(b.i), owner(b.owner), range(b.range)
-    {
-      is_mesh = pbvh_type == PBVH_FACES;
-
-      if (i >= owner.range.start() && i <= owner.range.last()) {
-        load_data();
-      }
-    }
-
-    inline iterator &operator*() const noexcept
-    {
-      return *this;
-    }
-
-    inline bool operator==(const iterator &b) const noexcept
-    {
-      return b.i == i;
-    }
-
-    inline bool operator!=(const iterator &b) const noexcept
-    {
-      return b.i != i;
-    }
-
-    inline iterator &operator++() noexcept
-    {
-      i++;
-      load_data();
-      return *this;
-    }
-
-    ATTR_NO_OPT inline void load_data() noexcept
-    {
-      if (i == range.start() + range.size()) {
-        return;
-      }
-
-      const VertTriplet &vt = owner.verts[i];
-
-      node = owner.nodes[vt.node_index];
-      vertex = vt.vertex;
-      index = BKE_pbvh_vertex_to_index(owner.pbvh, vertex);
-
-      node_data = &owner.node_data[vt.node_index];
-      vertex_node_index = vt.vertex_node_index;
-      result = &vt.filter_result;
-
-      if constexpr (pbvh_type == PBVH_BMESH) {
-        BMVert *v = reinterpret_cast<BMVert *>(vertex.i);
-
-        co = v->co;
-        no = v->no;
-
-        mask = owner.cd_vert_mask_offset != -1 ?
-                   static_cast<float *>(BM_ELEM_CD_GET_VOID_P(v, owner.cd_vert_mask_offset)) :
-                   nullptr;
-      }
-      else if constexpr (pbvh_type == PBVH_FACES) {
-        mask = owner.vert_mask ? owner.vert_mask + vertex.i : nullptr;
-        co = owner.vert_positions[vertex.i];
-        no = owner.vert_normals[vertex.i];
-      }
-      else if constexpr (pbvh_type == PBVH_GRIDS) {
-        const int grid_index = vertex.i / owner.key->grid_area;
-        const int vertex_index = vertex.i - grid_index * owner.key->grid_area;
-        CCGElem *elem = owner.grids[grid_index];
-
-        co = CCG_elem_co(owner.key, CCG_elem_offset(owner.key, elem, vertex_index));
-      }
-    }
-
-   private:
-    int i;
-    VertexListRange &owner;
-    IndexRange range;
-  };
-
-  PBVH *pbvh;
-  Span<VertTriplet> verts;
-  IndexRange range;
-  float *vert_mask;
-  MutableSpan<NodeData> node_data;
-  Span<PBVHNode *> nodes;
-
-  /* PBVH_FACES */
-  float (*vert_positions)[3];
-  const float (*vert_normals)[3];
-
-  /* PBVH_GRIDS */
-  const CCGKey *key;
-  CCGElem **grids;
-
-  /* PBVH_BMESH */
-  int cd_vert_mask_offset;
-
-  inline VertexListRange(PBVH *_pbvh,
-                         Span<VertTriplet> _verts,
-                         Span<PBVHNode *> _nodes,
-                         MutableSpan<NodeData> _node_data,
-                         IndexRange _range) noexcept
-      : pbvh(_pbvh), verts(_verts), range(_range), node_data(_node_data), nodes(_nodes)
-  {
-    if constexpr (pbvh_type == PBVH_FACES) {
-      vert_mask = static_cast<float *>(
-          CustomData_get_layer_for_write(pbvh->vdata, CD_PAINT_MASK, pbvh->totvert));
-      vert_positions = BKE_pbvh_get_vert_positions(pbvh);
-      vert_normals = BKE_pbvh_get_vert_normals(pbvh);
-    }
-    else if constexpr (pbvh_type == PBVH_BMESH) {
-      cd_vert_mask_offset = CustomData_get_offset(&BKE_pbvh_get_bmesh(pbvh)->vdata, CD_PAINT_MASK);
-    }
-    else if constexpr (pbvh_type == PBVH_GRIDS) {
-      key = BKE_pbvh_get_grid_key(pbvh);
-      grids = BKE_pbvh_get_grids(pbvh);
-    }
-  }
-
-  inline iterator begin() noexcept
-  {
-    return iterator(range, *this, range.start());
-  }
-
-  inline iterator end() noexcept
-  {
-    return iterator(range, *this, range.start() + range.size());
-  }
-};
-
 /* PBVHNode vertex iterator. */
 template<typename NodeData,
          PBVHType pbvh_type,
          typename FilterResult = void,
          typename FilterFunc = void *> /* (PBVHVertRef vertex, const float *co, const float *no)
                                           Should return a FilterResult if set. */
-struct PBVHVertexRange {
+struct PBVHNodeVertRange {
   struct iterator {
     PBVHVertRef vertex;
     int index;
@@ -413,7 +252,7 @@ struct PBVHVertexRange {
       vertex_node_index = vd_.i;
     }
 
-    friend struct PBVHVertexRange;
+    friend struct PBVHNodeVertRange;
 
     FilterFunc &filter_func_;
     PBVH *pbvh_;
@@ -439,10 +278,10 @@ struct PBVHVertexRange {
 #endif
   }
 
-  inline PBVHVertexRange(PBVH *pbvh,
-                         PBVHNode *node,
-                         NodeData *node_data,
-                         FilterFunc &filter_func) noexcept
+  inline PBVHNodeVertRange(PBVH *pbvh,
+                           PBVHNode *node,
+                           NodeData *node_data,
+                           FilterFunc &filter_func) noexcept
       : pbvh_(pbvh),
         node_(node),
         node_data_(node_data),
@@ -458,6 +297,167 @@ struct PBVHVertexRange {
   NodeData *node_data_;
   FilterFunc &filter_func_;
   iterator end_;
+};
+
+template<typename NodeData, PBVHType pbvh_type, typename FilterResult = FilterResultAbstract>
+struct VertexListRange {
+  struct VertTriplet {
+    PBVHVertRef vertex;
+    int node_index;        /* Index of node within the brush nodes vector. */
+    int vertex_node_index; /* Index of vertex inside node list. */
+    FilterResult filter_result;
+  };
+
+  struct iterator {
+    PBVHVertRef vertex;
+    int index; /* Vertex index. */
+
+    float *co, *mask;
+    const float *no;
+    const FilterResult *result;
+
+    PBVHNode *node;
+    NodeData *node_data;
+    int vertex_node_index; /* Index of vertex inside node list. */
+
+    bool is_mesh;
+
+    inline iterator(IndexRange _range, VertexListRange &_owner, int _i) noexcept
+        : i(_i), owner(_owner), range(_range)
+    {
+      is_mesh = pbvh_type == PBVH_FACES;
+
+      if (i >= owner.range.start() && i <= owner.range.last()) {
+        load_data();
+      }
+    }
+
+    inline iterator(const iterator &b) noexcept : i(b.i), owner(b.owner), range(b.range)
+    {
+      is_mesh = pbvh_type == PBVH_FACES;
+
+      if (i >= owner.range.start() && i <= owner.range.last()) {
+        load_data();
+      }
+    }
+
+    inline iterator &operator*() const noexcept
+    {
+      return *this;
+    }
+
+    inline bool operator==(const iterator &b) const noexcept
+    {
+      return b.i == i;
+    }
+
+    inline bool operator!=(const iterator &b) const noexcept
+    {
+      return b.i != i;
+    }
+
+    inline iterator &operator++() noexcept
+    {
+      i++;
+      load_data();
+      return *this;
+    }
+
+    ATTR_NO_OPT inline void load_data() noexcept
+    {
+      if (i == range.start() + range.size()) {
+        return;
+      }
+
+      const VertTriplet &vt = owner.verts[i];
+
+      node = owner.nodes[vt.node_index];
+      vertex = vt.vertex;
+      index = BKE_pbvh_vertex_to_index(owner.pbvh, vertex);
+
+      node_data = &owner.node_data[vt.node_index];
+      vertex_node_index = vt.vertex_node_index;
+      result = &vt.filter_result;
+
+      if constexpr (pbvh_type == PBVH_BMESH) {
+        BMVert *v = reinterpret_cast<BMVert *>(vertex.i);
+
+        co = v->co;
+        no = v->no;
+
+        mask = owner.cd_vert_mask_offset != -1 ?
+                   static_cast<float *>(BM_ELEM_CD_GET_VOID_P(v, owner.cd_vert_mask_offset)) :
+                   nullptr;
+      }
+      else if constexpr (pbvh_type == PBVH_FACES) {
+        mask = owner.vert_mask ? owner.vert_mask + vertex.i : nullptr;
+        co = owner.vert_positions[vertex.i];
+        no = owner.vert_normals[vertex.i];
+      }
+      else if constexpr (pbvh_type == PBVH_GRIDS) {
+        const int grid_index = vertex.i / owner.key->grid_area;
+        const int vertex_index = vertex.i - grid_index * owner.key->grid_area;
+        CCGElem *elem = owner.grids[grid_index];
+
+        co = CCG_elem_co(owner.key, CCG_elem_offset(owner.key, elem, vertex_index));
+      }
+    }
+
+   private:
+    int i;
+    VertexListRange &owner;
+    IndexRange range;
+  };
+
+  PBVH *pbvh;
+  Span<VertTriplet> verts;
+  IndexRange range;
+  float *vert_mask;
+  MutableSpan<NodeData> node_data;
+  Span<PBVHNode *> nodes;
+
+  /* PBVH_FACES */
+  float (*vert_positions)[3];
+  const float (*vert_normals)[3];
+
+  /* PBVH_GRIDS */
+  const CCGKey *key;
+  CCGElem **grids;
+
+  /* PBVH_BMESH */
+  int cd_vert_mask_offset;
+
+  inline VertexListRange(PBVH *_pbvh,
+                         Span<VertTriplet> _verts,
+                         Span<PBVHNode *> _nodes,
+                         MutableSpan<NodeData> _node_data,
+                         IndexRange _range) noexcept
+      : pbvh(_pbvh), verts(_verts), range(_range), node_data(_node_data), nodes(_nodes)
+  {
+    if constexpr (pbvh_type == PBVH_FACES) {
+      vert_mask = static_cast<float *>(
+          CustomData_get_layer_for_write(pbvh->vdata, CD_PAINT_MASK, pbvh->totvert));
+      vert_positions = BKE_pbvh_get_vert_positions(pbvh);
+      vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+    }
+    else if constexpr (pbvh_type == PBVH_BMESH) {
+      cd_vert_mask_offset = CustomData_get_offset(&BKE_pbvh_get_bmesh(pbvh)->vdata, CD_PAINT_MASK);
+    }
+    else if constexpr (pbvh_type == PBVH_GRIDS) {
+      key = BKE_pbvh_get_grid_key(pbvh);
+      grids = BKE_pbvh_get_grids(pbvh);
+    }
+  }
+
+  inline iterator begin() noexcept
+  {
+    return iterator(range, *this, range.start());
+  }
+
+  inline iterator end() noexcept
+  {
+    return iterator(range, *this, range.start() + range.size());
+  }
 };
 
 /*
@@ -495,7 +495,7 @@ void foreach_brush_verts_simple_intern(
 
   using FilterResult =
       typename std::invoke_result_t<FilterFunc, PBVHVertRef, const float *, const float *>;
-  using PBVHVertexRangeImpl = PBVHVertexRange<NodeData, pbvh_type, FilterResult, FilterFunc>;
+  using PBVHNodeVertRangeImpl = PBVHNodeVertRange<NodeData, pbvh_type, FilterResult, FilterFunc>;
 
   for (PBVHNode *node : nodes) {
     if (node_visit_pre) {
@@ -509,12 +509,12 @@ void foreach_brush_verts_simple_intern(
   for (int iteration : IndexRange(repeat + 1)) {
     if (!threaded) {
       for (int i : nodes.index_range()) {
-        exec(PBVHVertexRangeImpl(pbvh, nodes[i], &node_datas[i], filter_verts));
+        exec(PBVHNodeVertRangeImpl(pbvh, nodes[i], &node_datas[i], filter_verts));
       }
     }
     else {
       threading::parallel_for_each(nodes.index_range(), [&](int i) {
-        exec(PBVHVertexRangeImpl(pbvh, nodes[i], &node_datas[i], filter_verts));
+        exec(PBVHNodeVertRangeImpl(pbvh, nodes[i], &node_datas[i], filter_verts));
       });
     }
   }
