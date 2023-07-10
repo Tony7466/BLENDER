@@ -629,7 +629,6 @@ class CLIP_OT_setup_tracking_scene(Operator):
                 fg = view_layers.new("Foreground")
 
             fg.use_sky = True
-            fg.use_pass_ambient_occlusion = True
 
         if not view_layers.get("Background"):
             _bg = view_layers.new("Background")
