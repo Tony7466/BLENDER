@@ -18,14 +18,7 @@ DragInfo::DragInfo(const wmDrag &drag, const wmEvent &event, const DropLocation 
 std::optional<DropLocation> DropTargetInterface::determine_drop_location(
     const wmEvent & /*event*/) const
 {
-  return DROP_INTO;
-}
-
-bool drop_target_can_drop(const DropTargetInterface &drop_target,
-                          const wmDrag &drag,
-                          const char **r_disabled_hint)
-{
-  return drop_target.can_drop(drag, r_disabled_hint);
+  return DropLocation::Into;
 }
 
 bool drop_target_apply_drop(bContext &C,

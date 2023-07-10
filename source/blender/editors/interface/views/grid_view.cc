@@ -241,12 +241,6 @@ AbstractGridViewItemDropTarget::AbstractGridViewItemDropTarget(AbstractGridView 
 {
 }
 
-std::optional<DropLocation> AbstractGridViewItemDropTarget::determine_drop_location(
-    const wmEvent & /*event*/) const
-{
-  return DROP_INTO;
-}
-
 /* ---------------------------------------------------------------------- */
 
 /**

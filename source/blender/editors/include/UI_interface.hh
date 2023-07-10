@@ -69,29 +69,45 @@ void attribute_search_add_items(StringRefNull str,
                                 uiSearchItems *items,
                                 bool is_first);
 
-enum DropLocation {
-  DROP_INTO,
-  DROP_BEFORE,
-  DROP_AFTER,
+/**
+ * Some drop targets simply allow dropping onto/into them, others support dragging in-between them.
+ * Classes implementing the drop-target interface can use this type to control the behavior by
+ * letting it influence the result of #determine_drop_location().
+ */
+enum class DropBehavior {
+  /**
+   * Enable dropping before (#DropLocation::Before) and after (#DropLocation::After) the
+   * drop target. Typically used for reordering items.
+   */
+  Reorder,
+  /** Only enable dropping onto/into the drop target (#DropLocation::Into). */
+  Insert,
+  /**
+   * Enable dropping onto/into (#DropLocation::Into), before (#DropLocation::Before) and after
+   * (#DropLocation::After) the drop target. Typically used for reordering items with nesting
+   * support. */
+  Reorder_and_Insert,
 };
 
+/**
+ * Information on how dragged data should be inserted on drop, as determined through
+ * #DropTargetInterface::determine_drop_location(). Also see #DropBehavior.
+ */
+enum class DropLocation {
+  Into,
+  Before,
+  After,
+};
+
+/**
+ * Information passed to drop targets while dragging over them.
+ */
 struct DragInfo {
   const wmDrag &drag_data;
   const wmEvent &event;
   const DropLocation drop_location;
 
   DragInfo(const wmDrag &drag, const wmEvent &event, DropLocation drop_location);
-};
-
-/**
- * Drop targets sometimes want to support multiple behaviors (e.g. inserting into vs. inserting
- * before/after). This can be used to toggle that, #DropTargetInterface::determine_drop_location()
- * can then use this to return the wanted drop location (before, into or after).
- */
-enum class DropBehavior {
-  Reorder,
-  Insert,
-  Reorder_and_Insert,
 };
 
 /**
@@ -123,6 +139,16 @@ class DropTargetInterface {
    */
   virtual bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const = 0;
 
+  /**
+   * Once the drop target validated that it can receive the dragged data using #can_drop(), this
+   * method can determine where/how the data should be dropped exactly: before, after or into the
+   * drop target. Additional feedback can be drawn then while dragging, and the #on_drop() function
+   * should operate accordingly. Implementations of this interface can use #DropBehavior to control
+   * which locations may be returned.
+   *
+   * If the returned optional is unset, dropping will be disabled. The default implementation
+   * returns #DropLocation::Into.
+   */
   virtual std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
   /**
    * Custom text to display when dragging over the element using this drop target. Should
@@ -137,10 +163,6 @@ class DropTargetInterface {
    */
   virtual bool on_drop(bContext *C, const DragInfo &drag) const = 0;
 };
-
-bool drop_target_can_drop(const DropTargetInterface &drop_target,
-                          const wmDrag &drag,
-                          const char **r_disabled_hint);
 
 /**
  * Let a drop target handle a drop event.
