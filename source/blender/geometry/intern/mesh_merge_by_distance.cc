@@ -1283,11 +1283,10 @@ static void weld_mesh_context_create(const Mesh &mesh,
  */
 static void merge_groups_create(Span<int> dest_map,
                                 Span<int> double_elems,
-                                MutableSpan<int> r_groups_offsets,
+                                Array<int> &r_groups_offsets,
                                 Array<int> &r_groups_buffer)
 {
-  BLI_assert(r_groups_offsets.size() == dest_map.size() + 1);
-  r_groups_offsets.fill(0);
+  r_groups_offsets = Array(dest_map.size() + 1, 0);
 
   /* TODO: Check using #array_utils::count_indices instead. At the moment it cannot be used
    * because `dest_map` has negative values and `double_elems` (which indicates only the indexes to
@@ -1410,6 +1409,48 @@ static void customdata_weld(
   }
 }
 
+static void merge_final_index_map_create(Span<int> dest_map,
+                                         const int dest_size,
+                                         Array<int> &r_final_map)
+{
+  UNUSED_VARS_NDEBUG(dest_size);
+
+  r_final_map.reinitialize(dest_map.size());
+
+  bool finalize_map = false;
+  int final_index = 0;
+  for (const int source : dest_map.index_range()) {
+    const int target = dest_map[source];
+    if (ELEM(target, source, OUT_OF_CONTEXT)) {
+      r_final_map[source] = final_index++;
+    }
+    else if (target == ELEM_COLLAPSED) {
+      /* Any value will do. This field must not be accessed anymore. */
+      r_final_map[source] = 0;
+    }
+    else if (target < source) {
+      r_final_map[source] = r_final_map[target];
+    }
+    else {
+      /* Mark as negative to set at the end. */
+      r_final_map[source] = -target;
+      finalize_map = true;
+    }
+  }
+
+  if (finalize_map) {
+    for (const int i : r_final_map.index_range()) {
+      if (r_final_map[i] < 0) {
+        r_final_map[i] = r_final_map[-r_final_map[i]];
+        BLI_assert(r_final_map[i] < dest_size);
+      }
+      BLI_assert(r_final_map[i] >= 0);
+    }
+  }
+
+  BLI_assert(final_index == dest_size);
+}
+
 /**
  * \brief Applies to `CustomData *dest` the values in `CustomData *source`.
  *
@@ -1433,37 +1474,24 @@ static void merge_customdata_all(const CustomData *source,
                                  const bool do_mix_data,
                                  Array<int> &r_final_map)
 {
-  UNUSED_VARS_NDEBUG(dest_size);
+  merge_final_index_map_create(dest_map, dest_size, r_final_map);
 
-  const int source_size = dest_map.size();
-
-  MutableSpan<int> groups_offs_;
-  Array<int> groups_buffer;
+  Array<int> groups_offs_, groups_buffer;
   if (do_mix_data) {
-    r_final_map.reinitialize(source_size + 1);
-
-    /* Be careful when setting values to this array as it uses the same buffer as `r_final_map`. */
-    groups_offs_ = r_final_map;
     merge_groups_create(dest_map, double_elems, groups_offs_, groups_buffer);
   }
-  else {
-    r_final_map.reinitialize(source_size);
-  }
+
   OffsetIndices<int> groups_offs(groups_offs_);
 
-  bool finalize_map = false;
-  int dest_index = 0;
+  const int source_size = dest_map.size();
   for (int i = 0; i < source_size; i++) {
     const int source_index = i;
-    int count = 0;
     while (i < source_size && dest_map[i] == OUT_OF_CONTEXT) {
-      r_final_map[i] = dest_index + count;
-      count++;
       i++;
     }
+    const int count = i - source_index;
     if (count) {
-      CustomData_copy_data(source, dest, source_index, dest_index, count);
-      dest_index += count;
+      CustomData_copy_data(source, dest, source_index, r_final_map[source_index], count);
     }
     if (i == source_size) {
       break;
@@ -1475,45 +1503,13 @@ static void merge_customdata_all(const CustomData *source,
                         dest,
                         &groups_buffer[grp_buffer_range.start()],
                         grp_buffer_range.size(),
-                        dest_index);
+                        r_final_map[i]);
       }
       else {
-        CustomData_copy_data(source, dest, i, dest_index, 1);
-      }
-      r_final_map[i] = dest_index;
-      dest_index++;
-    }
-    else if (dest_map[i] == ELEM_COLLAPSED) {
-      /* Any value will do. This field must not be accessed anymore. */
-      r_final_map[i] = 0;
-    }
-    else {
-      const int elem_dest = dest_map[i];
-      BLI_assert(elem_dest != OUT_OF_CONTEXT);
-      BLI_assert(dest_map[elem_dest] == elem_dest);
-      if (elem_dest < i) {
-        r_final_map[i] = r_final_map[elem_dest];
-        BLI_assert(r_final_map[i] < dest_size);
-      }
-      else {
-        /* Mark as negative to set at the end. */
-        r_final_map[i] = -elem_dest;
-        finalize_map = true;
+        CustomData_copy_data(source, dest, i, r_final_map[i], 1);
       }
     }
   }
-
-  if (finalize_map) {
-    for (const int i : r_final_map.index_range()) {
-      if (r_final_map[i] < 0) {
-        r_final_map[i] = r_final_map[-r_final_map[i]];
-        BLI_assert(r_final_map[i] < dest_size);
-      }
-      BLI_assert(r_final_map[i] >= 0);
-    }
-  }
-
-  BLI_assert(dest_index == dest_size);
 }
 
 /** \} */
