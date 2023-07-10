@@ -26,3 +26,4 @@ Referenced by commit 4094cd207ac8a576c9f804e28dfb2c82ae2b3e62, Outliner: Remove 
 Referenced by pull request #109684, Outliner: Port bone elements to new tree-element code design
 Referenced by commit af92de664b9d859bfb639504ea6131008c359fa4, Outliner: Port bone elements to new tree-element code design
 Referenced by pull request #109793, Outliner: Port edit bone elements to new tree-element code design
+Referenced by commit bfae400ea55b75be6389c3b18179f0b30595a367, Outliner: Port edit bone elements to new tree-element code design
