@@ -291,9 +291,11 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
   SCULPT_automasking_node_begin(
       data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
 
-  struct NodeData {};
+  struct NodeData {
+  };
 
-  using PBVHNodeVertRangeImpl = blender::bke::pbvh::PBVHNodeVertRange<NodeData, PBVH_FACES, void *>;
+  using PBVHNodeVertRangeImpl =
+      blender::bke::pbvh::PBVHNodeVertRange<NodeData, PBVH_FACES, void *>;
 
   // #define TEST_PBVH_ITER_NEW
 #ifdef TEST_PBVH_ITER_NEW
@@ -365,7 +367,8 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
     SCULPT_vertex_random_access_ensure(ss);
     SCULPT_boundary_info_ensure(ob);
 
-    struct NodeData {};
+    struct NodeData {
+    };
     // printf("iterations: %d\n", repeat + 1);
 
     // for (int iteration : blender::IndexRange(repeat + 1)) {
@@ -410,6 +413,7 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
   void SCULPT_smooth(
       Sculpt * sd, Object * ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
   {
+#if 1
     printf("\n");
 
     /* Saturate cache to get accurate test results, SCULPT_smooth_new will be
@@ -445,6 +449,9 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
         SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
       }
     }
+#else
+  SCULPT_smooth_new(sd, ob, nodes, bstrength, smooth_mask);
+#endif
   }
 
   static void SCULPT_smooth_old(

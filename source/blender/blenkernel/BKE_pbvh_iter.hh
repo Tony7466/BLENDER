@@ -664,11 +664,12 @@ void foreach_brush_verts(
     int repeat = 0) /* Visit nodes after exec. */ noexcept
 {
 
-#if 0 
-  foreach_brush_verts_simple<NodeData>(
-      pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
-  return;
-#endif
+  printf("limit count: %d\n", int(pbvh->leaf_limit * nodes.size()));
+  if (pbvh->leaf_limit * nodes.size() > 70000) {
+    foreach_brush_verts_simple<NodeData>(
+        pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
+    return;
+  }
 
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES:
