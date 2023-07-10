@@ -356,6 +356,8 @@ DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_CYCLIC, 0, "INPUT_SPLINE_CYCLIC",Inp
 DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_LENGTH, 0, "SPLINE_LENGTH", SplineLength, "Spline Length", "Retrieve the total length of each spline, as a distance or as a number of points")
 DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_RESOLUTION, 0, "INPUT_SPLINE_RESOLUTION", InputSplineResolution, "Spline Resolution", "Retrieve the number of evaluated points that will be generated for every control point on curves")
 DefNode(GeometryNode, GEO_NODE_INPUT_TANGENT, 0, "INPUT_TANGENT", InputTangent, "Curve Tangent", "Retrieve the direction of curves at each control point")
+DefNode(GeometryNode, GEO_NODE_INPUT_VOLUME_COORDINATE, 0, "INPUT_VOLUME_COORDINATES", InputVolumeCoordinates, "Volume Coordinates", "Grid coordinates of the active voxels of a volume")
+DefNode(GeometryNode, GEO_NODE_INPUT_VOLUME_VALUE, def_geo_volume_value, "INPUT_VOLUME_VALUE", InputVolumeValue, "Volume Value", "Value stored in the active voxels of a volume")
 DefNode(GeometryNode, GEO_NODE_INSTANCE_ON_POINTS, 0, "INSTANCE_ON_POINTS", InstanceOnPoints, "Instance on Points", "Generate a reference to geometry at each of the input points, without duplicating its underlying data")
 DefNode(GeometryNode, GEO_NODE_INSTANCES_TO_POINTS, 0, "INSTANCES_TO_POINTS",InstancesToPoints, "Instances to Points", "Generate points at the origins of instances.\nNote: Nested instances are not affected by this node")
 DefNode(GeometryNode, GEO_NODE_IS_VIEWPORT, 0, "IS_VIEWPORT", IsViewport, "Is Viewport", "Retrieve whether the nodes are being evaluated for the viewport rather than the final render")
@@ -443,6 +445,10 @@ DefNode(GeometryNode, GEO_NODE_UV_UNWRAP, def_geo_uv_unwrap, "UV_UNWRAP", UVUnwr
 DefNode(GeometryNode, GEO_NODE_VIEWER, def_geo_viewer, "VIEWER", Viewer, "Viewer", "Display the input data in the Spreadsheet Editor")
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, def_geo_volume_to_mesh, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
+DefNode(GeometryNode, GEO_NODE_VOLUME_INFO, 0, "VOLUME_INFO", VolumeInfo, "Volume Info", "Properties of a volume grid")
+DefNode(GeometryNode, GEO_NODE_VOLUME_DIVERGENCE, 0, "VOLUME_DIVERGENCE", VolumeDivergence, "Volume Divergence", "Compute the divergence of a vector grid")
+DefNode(GeometryNode, GEO_NODE_VOLUME_GRADIENT, 0, "VOLUME_GRADIENT", VolumeGradient, "Volume Gradient", "Compute the gradient of a scalar grid")
+DefNode(GeometryNode, GEO_NODE_VOLUME_SOLVE_POISSON, 0, "VOLUME_SOLVE_POISSON", VolumeSolvePoisson, "Volume Solve Poisson", "Solve a Poisson equation on a grid")
 
 DefNode(GeometryNode, GEO_NODE_INTERPOLATE_CURVES, 0, "INTERPOLATE_CURVES", InterpolateCurves, "Interpolate Curves", "Generate new curves on points by interpolating between existing curves")
 

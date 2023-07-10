@@ -312,6 +312,7 @@ set(SRC
   intern/vfontdata_freetype.c
   intern/viewer_path.cc
   intern/volume.cc
+  intern/volume_attribute.cc
   intern/volume_geometry.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
@@ -505,6 +506,7 @@ set(SRC
   BKE_vfontdata.h
   BKE_viewer_path.h
   BKE_volume.h
+  BKE_volume_attribute.hh
   BKE_volume_geometry.hh
   BKE_volume_render.h
   BKE_volume_to_mesh.hh

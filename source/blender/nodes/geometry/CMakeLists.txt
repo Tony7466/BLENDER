@@ -110,6 +110,8 @@ set(SRC
   nodes/node_geo_input_spline_length.cc
   nodes/node_geo_input_spline_resolution.cc
   nodes/node_geo_input_tangent.cc
+  nodes/node_geo_input_volume_coordinate.cc
+  nodes/node_geo_input_volume_value.cc
   nodes/node_geo_instance_on_points.cc
   nodes/node_geo_instances_to_points.cc
   nodes/node_geo_interpolate_curves.cc
@@ -190,6 +192,10 @@ set(SRC
   nodes/node_geo_uv_unwrap.cc
   nodes/node_geo_viewer.cc
   nodes/node_geo_volume_cube.cc
+  nodes/node_geo_volume_divergence.cc
+  nodes/node_geo_volume_gradient.cc
+  nodes/node_geo_volume_info.cc
+  nodes/node_geo_volume_solve_poisson.cc
   nodes/node_geo_volume_to_mesh.cc
 
   node_geometry_register.cc

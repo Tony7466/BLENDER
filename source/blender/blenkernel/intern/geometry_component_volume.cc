@@ -142,17 +142,18 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
 
   static auto update_on_change = [](void * /*owner*/) {};
 
-  static BuiltinVolumeAttributeProvider position("position",
-                                                 ATTR_DOMAIN_POINT,
-                                                 CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::NonCreatable,
-                                                 BuiltinAttributeProvider::NonDeletable,
-                                                 grid_access,
-                                                 update_on_change);
+  // static BuiltinVolumeAttributeProvider position("position",
+  //                                                ATTR_DOMAIN_POINT,
+  //                                                CD_PROP_FLOAT3,
+  //                                                BuiltinAttributeProvider::NonCreatable,
+  //                                                BuiltinAttributeProvider::NonDeletable,
+  //                                                grid_access,
+  //                                                update_on_change);
 
-  static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_POINT, grid_access);
+  // static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_POINT, grid_access);
 
-  return ComponentAttributeProviders({&position}, {&voxel_custom_data});
+  // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
+  return ComponentAttributeProviders({}, {});
 }
 
 static AttributeAccessorFunctions get_volume_accessor_functions()

@@ -21,6 +21,7 @@ namespace blender::bke {
 
 class CurvesGeometry;
 class GeometryFieldInput;
+class VolumeGeometry;
 
 class MeshFieldContext : public fn::FieldContext {
  private:
@@ -85,6 +86,28 @@ class InstancesFieldContext : public fn::FieldContext {
   }
 };
 
+class VolumeFieldContext : public fn::FieldContext {
+ private:
+  const VolumeGeometry &volume_;
+  const eAttrDomain domain_;
+
+ public:
+  VolumeFieldContext(const VolumeGeometry &volume, const eAttrDomain domain)
+      : volume_(volume), domain_(domain)
+  {
+  }
+
+  const VolumeGeometry &volume() const
+  {
+    return volume_;
+  }
+
+  eAttrDomain domain() const
+  {
+    return domain_;
+  }
+};
+
 /**
  * A field context that can represent meshes, curves, point clouds, or instances,
  * used for field inputs that can work for multiple geometry types.
@@ -126,12 +149,14 @@ class GeometryFieldContext : public fn::FieldContext {
   const CurvesGeometry *curves() const;
   const PointCloud *pointcloud() const;
   const Instances *instances() const;
+  const VolumeGeometry *volume() const;
 
  private:
   GeometryFieldContext(const Mesh &mesh, eAttrDomain domain);
   GeometryFieldContext(const CurvesGeometry &curves, eAttrDomain domain);
   GeometryFieldContext(const PointCloud &points);
   GeometryFieldContext(const Instances &instances);
+  GeometryFieldContext(const VolumeGeometry &volume);
 };
 
 class GeometryFieldInput : public fn::FieldInput {
@@ -186,6 +211,17 @@ class InstancesFieldInput : public fn::FieldInput {
                                  const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const Instances &instances,
+                                         const IndexMask &mask) const = 0;
+};
+
+class VolumeFieldInput : public fn::FieldInput {
+ public:
+  using fn::FieldInput::FieldInput;
+  GVArray get_varray_for_context(const fn::FieldContext &context,
+                                 const IndexMask &mask,
+                                 ResourceScope &scope) const override;
+  virtual GVArray get_varray_for_context(const VolumeGeometry &instances,
+                                         eAttrDomain domain,
                                          const IndexMask &mask) const = 0;
 };
 

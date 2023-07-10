@@ -4883,6 +4883,27 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bCont
   return items;
 }
 
+static bool volume_attribute_type_supported(const EnumPropertyItem *item)
+{
+  return ELEM(item->value,
+              CD_PROP_FLOAT,
+              CD_PROP_FLOAT2,
+              CD_PROP_FLOAT3,
+              CD_PROP_COLOR,
+              CD_PROP_BOOL,
+              CD_PROP_INT32,
+              CD_PROP_BYTE_COLOR,
+              CD_PROP_QUATERNION);
+}
+static const EnumPropertyItem *rna_GeometryNodeVolumeValue_data_type_itemf(bContext * /*C*/,
+                                                                           PointerRNA * /*ptr*/,
+                                                                           PropertyRNA * /*prop*/,
+                                                                           bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(rna_enum_attribute_type_items, volume_attribute_type_supported);
+}
+
 #else
 
 static const EnumPropertyItem prop_image_layer_items[] = {
@@ -11540,6 +11561,19 @@ static void def_geo_scale_elements(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "custom2");
   RNA_def_property_enum_items(prop, scale_mode_items);
   RNA_def_property_ui_text(prop, "Scale Mode", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+}
+
+static void def_geo_volume_value(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_GeometryNodeVolumeValue_data_type_itemf");
+  RNA_def_property_ui_text(prop, "Data Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
 }
 

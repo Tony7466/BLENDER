@@ -12,9 +12,11 @@
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_type_conversions.hh"
+#include "BKE_volume.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
+#include "DNA_volume_types.h"
 
 #include "BLT_translation.h"
 
@@ -74,7 +76,12 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       geometry_ = instances_component.get_for_read();
       break;
     }
-    case GeometryComponent::Type::Volume:
+    case GeometryComponent::Type::Volume: {
+      const VolumeComponent &volume_component = static_cast<const VolumeComponent &>(component);
+      const Volume *volume = volume_component.get_for_read();
+      geometry_ = volume ? &volume->geometry.wrap() : nullptr;
+      break;
+    }
     case GeometryComponent::Type::Edit:
       BLI_assert_unreachable();
       break;
@@ -138,6 +145,13 @@ const Instances *GeometryFieldContext::instances() const
 {
   return this->type() == GeometryComponent::Type::Instance ?
              static_cast<const Instances *>(geometry_) :
+             nullptr;
+}
+
+const VolumeGeometry *GeometryFieldContext::volume() const
+{
+  return this->type() == GeometryComponent::Type::Volume ?
+             static_cast<const VolumeGeometry *>(geometry_) :
              nullptr;
 }
 
@@ -210,7 +224,8 @@ GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context
     }
   }
   if (const CurvesFieldContext *curves_context = dynamic_cast<const CurvesFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context(curves_context->curves(), curves_context->domain(), mask);
   }
   return {};
@@ -256,6 +271,26 @@ GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &cont
           &context))
   {
     return this->get_varray_for_context(instances_context->instances(), mask);
+  }
+  return {};
+}
+
+GVArray VolumeFieldInput::get_varray_for_context(const fn::FieldContext &context,
+                                                 const IndexMask &mask,
+                                                 ResourceScope & /*scope*/) const
+{
+  if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
+          &context))
+  {
+    if (const VolumeGeometry *volume = geometry_context->volume()) {
+      return this->get_varray_for_context(*volume, geometry_context->domain() , mask);
+    }
+  }
+  if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
+          &context))
+  {
+    return this->get_varray_for_context(
+        volume_context->volume(), volume_context->domain(), mask);
   }
   return {};
 }
@@ -601,7 +636,8 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input)) {
+              &field_input))
+      {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
@@ -624,13 +660,15 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input)) {
+              &field_input))
+      {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
       }
       else if (const auto *curves_field_input = dynamic_cast<const CurvesFieldInput *>(
-                   &field_input)) {
+                   &field_input))
+      {
         if (!handle_domain(curves_field_input->preferred_domain(curves->geometry.wrap()))) {
           return std::nullopt;
         }
