@@ -40,6 +40,7 @@ eGPUTextureFormat Result::get_texture_format() const
         case ResultType::Color:
           return GPU_RGBA16F;
       }
+      break;
     case ResultPrecision::Full:
       switch (type_) {
         case ResultType::Float:
@@ -48,7 +49,11 @@ eGPUTextureFormat Result::get_texture_format() const
         case ResultType::Color:
           return GPU_RGBA32F;
       }
+      break;
   }
+
+  BLI_assert_unreachable();
+  return GPU_RGBA32F;
 }
 
 void Result::allocate_texture(Domain domain)
