@@ -389,8 +389,8 @@ static Vector<WeldEdge> weld_edge_ctx_alloc_and_find_collapsed(Span<int2> edges,
  * \param weld_edges: Candidate edges for merging (edges that don't collapse and that have at least
  *                    one weld vertex).
  *
- * \return r_edge_dest_map: Map of indices pointing edges that will be merged.
- * \return r_edge_double_kill_len: Number of edges to be destroyed by merging or collapsing.
+ * \return r_edge_dest_map: Map of indices pointing the source edges to eacth targed.
+ * \return r_edge_double_kill_len: Number of duplicate edges to be destroyed.
  */
 static void weld_edge_find_doubles(Span<WeldEdge> weld_edges,
                                    int mvert_num,
@@ -1433,7 +1433,7 @@ static void customdata_weld(
  *
  * This function creates the CustomData of the resulting mesh according to the merge map in
  * `dest_map`. The resulting customdata will not have the source elements, so the indexes will be
- * modified. To indicate the new indices `r_final_map` is also created..
+ * modified. To indicate the new indices `r_final_map` is also created.
  *
  * \param dest_map: Map that defines the source and target elements. The source elements will be
  *                  merged into the target. Each target corresponds to a group.
@@ -1441,7 +1441,7 @@ static void customdata_weld(
  * \param do_mix_data: If true the target element will have the custom data interpolated with all
  *                     sources pointing to it.
  *
- * \return r_final_map: Array indicating the new indices of the elements..
+ * \return r_final_map: Array indicating the new indices of the elements.
  */
 static void merge_customdata_all(const CustomData *source,
                                  CustomData *dest,
