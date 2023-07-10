@@ -49,11 +49,17 @@
 
 /* Used to obtain a list of animation channels for the operators to work on. */
 #define OPERATOR_DATA_FILTER \
-  (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY | \
-   ANIMFILTER_FOREDIT | ANIMFILTER_SEL | ANIMFILTER_NODUPLIS)
+  \ 
+\ 
+(ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY | \ 
+ANIMFILTER_FOREDIT | \
+      \ 
+\ 
+ANIMFILTER_SEL | \
+      ANIMFILTER_NODUPLIS)
 
 /* This data type is only used for modal operation. */
-typedef struct tGraphSliderOp {
+struct tGraphSliderOp {
   bAnimContext ac;
   Scene *scene;
   ScrArea *area;
@@ -75,12 +81,12 @@ typedef struct tGraphSliderOp {
   void (*free_operator_data)(void *operator_data);
 
   NumInput num;
-} tGraphSliderOp;
+};
 
-typedef struct tBeztCopyData {
+struct tBeztCopyData {
   int tot_vert;
   BezTriple *bezt;
-} tBeztCopyData;
+};
 
 /** \} */
 
@@ -98,9 +104,10 @@ static void apply_fcu_segment_function(bAnimContext *ac,
                                                                 FCurveSegment *segment,
                                                                 const float factor))
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
 
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
@@ -147,34 +154,36 @@ static void common_draw_status_header(bContext *C, tGraphSliderOp *gso, const ch
  */
 static void store_original_bezt_arrays(tGraphSliderOp *gso)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimContext *ac = &gso->ac;
   bAnimListElem *ale;
 
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and copy the curves. */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
-    if (fcu->bezt == NULL) {
+    if (fcu->bezt == nullptr) {
       /* This curve is baked, skip it. */
       continue;
     }
 
     const int arr_size = sizeof(BezTriple) * fcu->totvert;
 
-    tBeztCopyData *copy = MEM_mallocN(sizeof(tBeztCopyData), "bezts_copy");
-    BezTriple *bezts_copy = MEM_mallocN(arr_size, "bezts_copy_array");
+    tBeztCopyData *copy = static_cast<tBeztCopyData *>(
+        MEM_mallocN(sizeof(tBeztCopyData), "bezts_copy"));
+    BezTriple *bezts_copy = static_cast<BezTriple *>(MEM_mallocN(arr_size, "bezts_copy_array"));
 
     copy->tot_vert = fcu->totvert;
     memcpy(bezts_copy, fcu->bezt, arr_size);
 
     copy->bezt = bezts_copy;
 
-    LinkData *link = NULL;
+    LinkData *link = nullptr;
 
-    link = MEM_callocN(sizeof(LinkData), "Bezt Link");
+    link = static_cast<LinkData *>(MEM_callocN(sizeof(LinkData), "Bezt Link"));
     link->data = copy;
 
     BLI_addtail(&gso->bezt_arr_list, link);
@@ -186,31 +195,36 @@ static void store_original_bezt_arrays(tGraphSliderOp *gso)
 /* Overwrite the current bezts arrays with the original data. */
 static void reset_bezts(tGraphSliderOp *gso)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   LinkData *link_bezt;
   bAnimListElem *ale;
 
   bAnimContext *ac = &gso->ac;
 
   /* Filter data. */
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and reset bezts. */
-  for (ale = anim_data.first, link_bezt = gso->bezt_arr_list.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first),
+      link_bezt = static_cast<LinkData *>(gso->bezt_arr_list.first);
+       ale;
+       ale = ale->next)
+  {
     FCurve *fcu = (FCurve *)ale->key_data;
 
-    if (fcu->bezt == NULL) {
+    if (fcu->bezt == nullptr) {
       /* This curve is baked, skip it. */
       continue;
     }
 
-    tBeztCopyData *data = link_bezt->data;
+    tBeztCopyData *data = static_cast<tBeztCopyData *>(link_bezt->data);
 
     const int arr_size = sizeof(BezTriple) * data->tot_vert;
 
     MEM_freeN(fcu->bezt);
 
-    fcu->bezt = MEM_mallocN(arr_size, __func__);
+    fcu->bezt = static_cast<BezTriple *>(MEM_mallocN(arr_size, __func__));
     fcu->totvert = data->tot_vert;
 
     memcpy(fcu->bezt, data->bezt, arr_size);
@@ -227,7 +241,7 @@ static void reset_bezts(tGraphSliderOp *gso)
  */
 static float slider_factor_get_and_remember(wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   const float factor = ED_slider_factor_get(gso->slider);
   RNA_property_float_set(op->ptr, gso->factor_prop, factor);
   return factor;
@@ -241,15 +255,15 @@ static float slider_factor_get_and_remember(wmOperator *op)
 
 static void graph_slider_exit(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   wmWindow *win = CTX_wm_window(C);
 
   /* If data exists, clear its data and exit. */
-  if (gso == NULL) {
+  if (gso == nullptr) {
     return;
   }
 
-  if (gso->free_operator_data != NULL) {
+  if (gso->free_operator_data != nullptr) {
     gso->free_operator_data(gso->operator_data);
   }
 
@@ -258,8 +272,9 @@ static void graph_slider_exit(bContext *C, wmOperator *op)
 
   ED_slider_destroy(C, gso->slider);
 
-  for (link = gso->bezt_arr_list.first; link != NULL; link = link->next) {
-    tBeztCopyData *copy = link->data;
+  for (link = static_cast<LinkData *>(gso->bezt_arr_list.first); link != nullptr;
+       link = link->next) {
+    tBeztCopyData *copy = static_cast<tBeztCopyData *>(link->data);
     MEM_freeN(copy->bezt);
     MEM_freeN(link->data);
   }
@@ -269,15 +284,15 @@ static void graph_slider_exit(bContext *C, wmOperator *op)
 
   /* Return to normal cursor and header status. */
   WM_cursor_modal_restore(win);
-  ED_area_status_text(area, NULL);
+  ED_area_status_text(area, nullptr);
 
   /* cleanup */
-  op->customdata = NULL;
+  op->customdata = nullptr;
 }
 
 static int graph_slider_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   const bool has_numinput = hasNumInput(&gso->num);
 
@@ -302,7 +317,7 @@ static int graph_slider_modal(bContext *C, wmOperator *op, const wmEvent *event)
       if (event->val == KM_PRESS) {
         reset_bezts(gso);
 
-        WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+        WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
         graph_slider_exit(C, op);
 
@@ -355,7 +370,8 @@ static int graph_slider_invoke(bContext *C, wmOperator *op, const wmEvent *event
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
 
   /* Init slide-op data. */
-  gso = op->customdata = MEM_callocN(sizeof(tGraphSliderOp), "tGraphSliderOp");
+  gso = static_cast<tGraphSliderOp *>(
+      op->customdata = MEM_callocN(sizeof(tGraphSliderOp), "tGraphSliderOp"));
 
   /* Get editor data. */
   if (ANIM_animdata_get_context(C, &gso->ac) == 0) {
@@ -372,7 +388,7 @@ static int graph_slider_invoke(bContext *C, wmOperator *op, const wmEvent *event
   gso->slider = ED_slider_create(C);
   ED_slider_init(gso->slider, event);
 
-  if (gso->bezt_arr_list.first == NULL) {
+  if (gso->bezt_arr_list.first == nullptr) {
     WM_report(RPT_ERROR, "Cannot find keys to operate on");
     graph_slider_exit(C, op);
     return OPERATOR_CANCELLED;
@@ -388,21 +404,22 @@ static int graph_slider_invoke(bContext *C, wmOperator *op, const wmEvent *event
 /** \name Decimate Keyframes Operator
  * \{ */
 
-typedef enum tDecimModes {
+enum tDecimModes {
   DECIM_RATIO = 1,
   DECIM_ERROR,
-} tDecimModes;
+};
 
 static void decimate_graph_keys(bAnimContext *ac, float factor, float error_sq_max)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
 
   /* Filter data. */
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and clean curves. */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     if (!decimate_fcurve(ale, factor, error_sq_max)) {
       /* The selection contains unsupported keyframe types! */
       WM_report(RPT_WARNING, "Decimate: Skipping non linear/bezier keyframes!");
@@ -444,7 +461,7 @@ static void decimate_modal_update(bContext *C, wmOperator *op)
 {
   /* Perform decimate updates - in response to some user action
    * (e.g. pressing a key or moving the mouse). */
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   decimate_draw_status(C, gso);
 
@@ -456,7 +473,7 @@ static void decimate_modal_update(bContext *C, wmOperator *op)
   /* We don't want to limit the decimation to a certain error margin. */
   const float error_sq_max = FLT_MAX;
   decimate_graph_keys(&gso->ac, factor, error_sq_max);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int decimate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -467,7 +484,7 @@ static int decimate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   gso->modal_update = decimate_modal_update;
   ED_slider_allow_overshoot_set(gso->slider, false, false);
@@ -484,7 +501,7 @@ static int decimate_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  tDecimModes mode = RNA_enum_get(op->ptr, "mode");
+  tDecimModes mode = tDecimModes(RNA_enum_get(op->ptr, "mode"));
   /* We want to be able to work on all available keyframes. */
   float factor = 1.0f;
   /* We don't want to limit the decimation to a certain error margin. */
@@ -510,14 +527,12 @@ static int decimate_exec(bContext *C, wmOperator *op)
   decimate_graph_keys(&ac, factor, error_sq_max);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
 
-static bool decimate_poll_property(const bContext *UNUSED(C),
-                                   wmOperator *op,
-                                   const PropertyRNA *prop)
+static bool decimate_poll_property(const bContext * /*C*/, wmOperator *op, const PropertyRNA *prop)
 {
   const char *prop_id = RNA_property_identifier(prop);
   const int mode = RNA_enum_get(op->ptr, "mode");
@@ -532,7 +547,7 @@ static bool decimate_poll_property(const bContext *UNUSED(C),
   return true;
 }
 
-static char *decimate_desc(bContext *UNUSED(C), wmOperatorType *UNUSED(op), PointerRNA *ptr)
+static char *decimate_desc(bContext * /*C*/, wmOperatorType * /*op*/, PointerRNA *ptr)
 {
 
   if (RNA_enum_get(ptr, "mode") == DECIM_ERROR) {
@@ -541,7 +556,7 @@ static char *decimate_desc(bContext *UNUSED(C), wmOperatorType *UNUSED(op), Poin
   }
 
   /* Use default description. */
-  return NULL;
+  return nullptr;
 }
 
 static const EnumPropertyItem decimate_mode_items[] = {
@@ -556,7 +571,7 @@ static const EnumPropertyItem decimate_mode_items[] = {
      "Error Margin",
      "Use an error margin to specify how much the curve is allowed to deviate from the original "
      "path"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 void GRAPH_OT_decimate(wmOperatorType *ot)
@@ -619,7 +634,7 @@ static void blend_to_neighbor_graph_keys(bAnimContext *ac, const float factor)
 
 static void blend_to_neighbor_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   common_draw_status_header(C, gso, "Blend to Neighbor");
 
@@ -629,7 +644,7 @@ static void blend_to_neighbor_modal_update(bContext *C, wmOperator *op)
   const float factor = slider_factor_get_and_remember(op);
   blend_to_neighbor_graph_keys(&gso->ac, factor);
 
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int blend_to_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -640,7 +655,7 @@ static int blend_to_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent *
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = blend_to_neighbor_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Neighbor");
@@ -663,7 +678,7 @@ static int blend_to_neighbor_exec(bContext *C, wmOperator *op)
   blend_to_neighbor_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -708,7 +723,7 @@ static void breakdown_graph_keys(bAnimContext *ac, float factor)
 
 static void breakdown_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   common_draw_status_header(C, gso, "Breakdown");
 
@@ -716,7 +731,7 @@ static void breakdown_modal_update(bContext *C, wmOperator *op)
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
   breakdown_graph_keys(&gso->ac, factor);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int breakdown_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -727,7 +742,7 @@ static int breakdown_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = breakdown_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Breakdown");
@@ -750,7 +765,7 @@ static int breakdown_exec(bContext *C, wmOperator *op)
   breakdown_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -790,14 +805,15 @@ void GRAPH_OT_breakdown(wmOperatorType *ot)
 
 static void blend_to_default_graph_keys(bAnimContext *ac, const float factor)
 {
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ListBase anim_data = {nullptr, nullptr};
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* Check if the curves actually have any points. */
-    if (fcu == NULL || fcu->bezt == NULL || fcu->totvert == 0) {
+    if (fcu == nullptr || fcu->bezt == nullptr || fcu->totvert == 0) {
       continue;
     }
 
@@ -814,7 +830,7 @@ static void blend_to_default_graph_keys(bAnimContext *ac, const float factor)
 
 static void blend_to_default_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   common_draw_status_header(C, gso, "Blend to Default Value");
 
@@ -823,7 +839,7 @@ static void blend_to_default_modal_update(bContext *C, wmOperator *op)
   const float factor = ED_slider_factor_get(gso->slider);
   RNA_property_float_set(op->ptr, gso->factor_prop, factor);
   blend_to_default_graph_keys(&gso->ac, factor);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int blend_to_default_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -834,7 +850,7 @@ static int blend_to_default_invoke(bContext *C, wmOperator *op, const wmEvent *e
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = blend_to_default_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Default Value");
@@ -856,7 +872,7 @@ static int blend_to_default_exec(bContext *C, wmOperator *op)
   blend_to_default_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -900,7 +916,7 @@ static void ease_graph_keys(bAnimContext *ac, const float factor)
 
 static void ease_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   common_draw_status_header(C, gso, "Ease Keys");
 
@@ -908,7 +924,7 @@ static void ease_modal_update(bContext *C, wmOperator *op)
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
   ease_graph_keys(&gso->ac, factor);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -919,7 +935,7 @@ static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Ease Keys");
@@ -943,7 +959,7 @@ static int ease_exec(bContext *C, wmOperator *op)
   ease_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -982,48 +998,51 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 
 /* It is necessary to store data for smoothing when running in modal, because the sampling of
  * FCurves shouldn't be done on every update. */
-typedef struct tGaussOperatorData {
+struct tGaussOperatorData {
   double *kernel;
   ListBase segment_links; /* tFCurveSegmentLink */
   ListBase anim_data;     /* bAnimListElem */
-} tGaussOperatorData;
+};
 
 /* Store data to smooth an FCurve segment. */
-typedef struct tFCurveSegmentLink {
+struct tFCurveSegmentLink {
   struct tFCurveSegmentLink *next, *prev;
   FCurve *fcu;
   FCurveSegment *segment;
   float *samples; /* Array of y-values of the FCurve segment. */
-} tFCurveSegmentLink;
+};
 
 static void gaussian_smooth_allocate_operator_data(tGraphSliderOp *gso,
                                                    const int filter_width,
                                                    const float sigma)
 {
-  tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
-                                                  "tGaussOperatorData");
+  tGaussOperatorData *operator_data = static_cast<tGaussOperatorData *>(
+      MEM_callocN(sizeof(tGaussOperatorData), "tGaussOperatorData"));
   const int kernel_size = filter_width + 1;
-  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
+  double *kernel = static_cast<double *>(
+      MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel"));
   ED_ANIM_get_1d_gauss_kernel(sigma, kernel_size, kernel);
   operator_data->kernel = kernel;
 
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(&gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, gso->ac.datatype);
+  ListBase anim_data = {nullptr, nullptr};
+  ANIM_animdata_filter(
+      &gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, eAnimCont_Types(gso->ac.datatype));
 
-  ListBase segment_links = {NULL, NULL};
+  ListBase segment_links = {nullptr, nullptr};
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase fcu_segments = find_fcurve_segments(fcu);
     LISTBASE_FOREACH (FCurveSegment *, segment, &fcu_segments) {
-      tFCurveSegmentLink *segment_link = MEM_callocN(sizeof(tFCurveSegmentLink),
-                                                     "FCurve Segment Link");
+      tFCurveSegmentLink *segment_link = static_cast<tFCurveSegmentLink *>(
+          MEM_callocN(sizeof(tFCurveSegmentLink), "FCurve Segment Link"));
       segment_link->fcu = fcu;
       segment_link->segment = segment;
       BezTriple left_bezt = fcu->bezt[segment->start_index];
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
       const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
                                (filter_width * 2 + 1);
-      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      float *samples = static_cast<float *>(
+          MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples"));
       sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
       segment_link->samples = samples;
       BLI_addtail(&segment_links, segment_link);
@@ -1050,7 +1069,7 @@ static void gaussian_smooth_free_operator_data(void *operator_data)
 
 static void gaussian_smooth_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   bAnimContext ac;
 
@@ -1078,7 +1097,7 @@ static void gaussian_smooth_modal_update(bContext *C, wmOperator *op)
   }
 
   ANIM_animdata_update(&ac, &operator_data->anim_data);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int gaussian_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1089,7 +1108,7 @@ static int gaussian_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *ev
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = gaussian_smooth_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
 
@@ -1111,8 +1130,9 @@ static void gaussian_smooth_graph_keys(bAnimContext *ac,
                                        double *kernel,
                                        const int filter_width)
 {
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ListBase anim_data = {nullptr, nullptr};
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
@@ -1123,7 +1143,8 @@ static void gaussian_smooth_graph_keys(bAnimContext *ac,
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
       const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
                                (filter_width * 2 + 1);
-      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      float *samples = static_cast<float *>(
+          MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples"));
       sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
       smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
       MEM_freeN(samples);
@@ -1147,7 +1168,8 @@ static int gaussian_smooth_exec(bContext *C, wmOperator *op)
   const float factor = RNA_float_get(op->ptr, "factor");
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
   const int kernel_size = filter_width + 1;
-  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
+  double *kernel = static_cast<double *>(
+      MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel"));
   ED_ANIM_get_1d_gauss_kernel(RNA_float_get(op->ptr, "sigma"), kernel_size, kernel);
 
   gaussian_smooth_graph_keys(&ac, factor, kernel, filter_width);
@@ -1155,7 +1177,7 @@ static int gaussian_smooth_exec(bContext *C, wmOperator *op)
   MEM_freeN(kernel);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
