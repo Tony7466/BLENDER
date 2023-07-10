@@ -174,7 +174,7 @@ void SyncModule::sync_point_cloud(Object *ob,
     }
     PassMain::Sub &object_pass = matpass.sub_pass->sub("Point Cloud Sub Pass");
     GPUBatch *geometry = point_cloud_sub_pass_setup(object_pass, ob, matpass.gpumat);
-    matpass.sub_pass->draw(geometry, res_handle);
+    object_pass.draw(geometry, res_handle);
   };
 
   drawcall_add(material.shading);
