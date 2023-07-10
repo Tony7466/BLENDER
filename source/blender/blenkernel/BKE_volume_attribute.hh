@@ -92,7 +92,7 @@ template<typename Fn> auto volume_grid_to_static_type_tag(const VolumeGridType g
   return volume_grid_to_static_type(grid_type, executor);
 }
 
-const CPPType &volume_grid_type_to_cpp_type(const VolumeGridType grid_type)
+inline const CPPType &volume_grid_type_to_cpp_type(const VolumeGridType grid_type)
 {
   const CPPType *cpptype = nullptr;
   volume_grid_to_static_type_tag(grid_type, [&cpptype](auto tag) {
