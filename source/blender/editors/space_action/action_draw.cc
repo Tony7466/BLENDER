@@ -47,7 +47,7 @@
 #include "ED_anim_api.h"
 #include "ED_keyframes_draw.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "action_intern.hh"
 
@@ -770,7 +770,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       if (nmd->node_group == nullptr) {
         continue;
       }
-      if (nmd->runtime->simulation_cache) {
+      if (!nmd->runtime->simulation_cache) {
         continue;
       }
       if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {

@@ -67,7 +67,7 @@
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 using blender::Array;
 using blender::float2;

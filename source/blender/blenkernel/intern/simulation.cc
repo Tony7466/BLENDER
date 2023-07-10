@@ -48,7 +48,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "BLO_read_write.h"
 

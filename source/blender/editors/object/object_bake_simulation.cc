@@ -50,7 +50,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "object_intern.h"
 

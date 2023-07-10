@@ -17,7 +17,7 @@
 
 #include "ED_viewer_path.hh"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 namespace blender::nodes::geo_eval_log {
 
