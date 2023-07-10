@@ -65,7 +65,7 @@ static float fcurve_display_alpha(FCurve *fcu)
 
 /* TODO: draw a shaded poly showing the region of influence too!!! */
 /**
- * \param adt_nla_remap: Send NULL if no NLA remapping necessary.
+ * \param adt_nla_remap: Send nullptr if no NLA remapping necessary.
  */
 static void draw_fcurve_modifier_controls_envelope(FModifier *fcm,
                                                    View2D *v2d,
@@ -324,7 +324,7 @@ static void draw_fcurve_selected_handle_vertices(
   immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert * 2);
 
   BezTriple *bezt = fcu->bezt;
-  BezTriple *prevbezt = NULL;
+  BezTriple *prevbezt = nullptr;
   for (int i = 0; i < fcu->totvert; i++, prevbezt = bezt, bezt++) {
     /* Draw the editmode handles for a bezier curve (others don't have handles)
      * if their selection status matches the selection status we're drawing for
@@ -444,12 +444,12 @@ static void draw_fcurve_vertices(
 static bool draw_fcurve_handles_check(SpaceGraph *sipo, FCurve *fcu)
 {
   /* don't draw handle lines if handles are not to be shown */
-  if (
-      /* handles shouldn't be shown anywhere */
+  if (/* handles shouldn't be shown anywhere */
       (sipo->flag & SIPO_NOHANDLES) ||
       /* keyframes aren't editable */
       (fcu->flag & FCURVE_PROTECTED) ||
-#if 0 /* handles can still be selected and handle types set, better draw - campbell */
+#if 0
+      /* handles can still be selected and handle types set, better draw - campbell */
       /* editing the handles here will cause weird/incorrect interpolation issues */
       (fcu->flag & FCURVE_INT_VALUES) ||
 #endif
@@ -483,7 +483,7 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
    * so that selected points are clearly visible
    */
   for (sel = 0; sel < 2; sel++) {
-    BezTriple *bezt = fcu->bezt, *prevbezt = NULL;
+    BezTriple *bezt = fcu->bezt, *prevbezt = nullptr;
     int basecol = (sel) ? TH_HANDLE_SEL_FREE : TH_HANDLE_FREE;
     uchar col[4];
 
@@ -571,7 +571,7 @@ static void draw_fcurve_samples(ARegion *region, FCurve *fcu, const float unit_s
 
   /* get verts */
   first = fcu->fpt;
-  last = (first) ? (first + (fcu->totvert - 1)) : (NULL);
+  last = (first) ? (first + (fcu->totvert - 1)) : (nullptr);
 
   /* draw */
   if (first && last) {
@@ -620,7 +620,7 @@ static void draw_fcurve_curve(bAnimContext *ac,
 
   /* disable any drivers */
   FCurve fcurve_for_draw = *fcu_;
-  fcurve_for_draw.driver = NULL;
+  fcurve_for_draw.driver = nullptr;
 
   /* compute unit correction factor */
   float offset;
@@ -670,7 +670,7 @@ static void draw_fcurve_curve(bAnimContext *ac,
   float stime = v2d->cur.xmin;
   float etime = v2d->cur.xmax;
 
-  AnimData *adt = use_nla_remap ? BKE_animdata_from_id(id) : NULL;
+  AnimData *adt = use_nla_remap ? BKE_animdata_from_id(id) : nullptr;
 
   /* If not drawing extrapolation, then change fcurve drawing bounds to its keyframe bounds clamped
    * by graph editor bounds. */
@@ -1009,7 +1009,7 @@ static void draw_fcurve_curve_bezts(
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
       int resolution = calculate_bezt_draw_resolution(
-          bezt, prevbezt, max_bezt_resolution, fcu->driver != NULL);
+          bezt, prevbezt, max_bezt_resolution, fcu->driver != nullptr);
       draw_bezt(bezt, prevbezt, resolution, pos);
     }
 
@@ -1071,7 +1071,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
 
   /* map keyframes for drawing if scaled F-Curve */
   if (adt) {
-    ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
+    ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
   }
 
   /* draw curve:
@@ -1146,9 +1146,9 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
          * So we undo the keyframe remapping and instead remap the evaluation time when drawing the
          * curve itself. Afterward, we go back and redo the keyframe remapping so the controls are
          * drawn properly. */
-        ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, true, false);
+        ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, false);
         draw_fcurve_curve(ac, ale->id, fcu, &region->v2d, shdr_pos, true, draw_extrapolation);
-        ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, false, false);
+        ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, false);
       }
       else {
         draw_fcurve_curve(ac, ale->id, fcu, &region->v2d, shdr_pos, false, draw_extrapolation);
@@ -1235,7 +1235,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
 
   /* undo mapping of keyframes for drawing if scaled F-Curve */
   if (adt) {
-    ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 0);
+    ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
   }
 }
 
@@ -1388,7 +1388,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
 
   const bool draw_extrapolation = (sipo->flag & SIPO_NO_DRAW_EXTRAPOLATION) == 0;
   /* the ghost curves are simply sampled F-Curves stored in sipo->runtime.ghost_curves */
-  for (fcu = sipo->runtime.ghost_curves.first; fcu; fcu = fcu->next) {
+  for (fcu = static_cast<FCurve *>(sipo->runtime.ghost_curves.first); fcu; fcu = fcu->next) {
     /* set whatever color the curve has set
      * - this is set by the function which creates these
      * - draw with a fixed opacity of 2
@@ -1396,7 +1396,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
     immUniformColor3fvAlpha(fcu->color, 0.5f);
 
     /* simply draw the stored samples */
-    draw_fcurve_curve_samples(ac, NULL, fcu, &region->v2d, shdr_pos, draw_extrapolation);
+    draw_fcurve_curve_samples(ac, nullptr, fcu, &region->v2d, shdr_pos, draw_extrapolation);
   }
 
   immUnbindProgram();
@@ -1409,21 +1409,22 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
 
 void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, short sel)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
   /* build list of curves to draw */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY);
   filter |= ((sel) ? (ANIMFILTER_SEL) : (ANIMFILTER_UNSEL));
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* for each curve:
    * draw curve, then handle-lines, and finally vertices in this order so that
    * the data will be layered correctly
    */
-  bAnimListElem *ale_active_fcurve = NULL;
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  bAnimListElem *ale_active_fcurve = nullptr;
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     const FCurve *fcu = (FCurve *)ale->key_data;
     if (fcu->flag & FCURVE_ACTIVE) {
       ale_active_fcurve = ale;
@@ -1434,7 +1435,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
 
   /* Draw the active FCurve last so that it (especially the active keyframe)
    * shows on top of the other curves. */
-  if (ale_active_fcurve != NULL) {
+  if (ale_active_fcurve != nullptr) {
     draw_fcurve(ac, sipo, region, ale_active_fcurve);
   }
 
@@ -1450,7 +1451,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
 
 void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -1461,7 +1462,8 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
   /* build list of channels to draw */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS |
             ANIMFILTER_FCURVESONLY);
-  items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  items = ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* Update max-extent of channels here (taking into account scrollers):
    * - this is done to allow the channel list to be scrollable, but must be done here
@@ -1475,7 +1477,9 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     size_t channel_index = 0;
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
-    for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+         ale = ale->next, ymax -= channel_step, channel_index++)
+    {
       const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
@@ -1494,7 +1498,9 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     /* set blending again, as may not be set in previous step */
     GPU_blend(GPU_BLEND_ALPHA);
 
-    for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+         ale = ale->next, ymax -= channel_step, channel_index++)
+    {
       const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
