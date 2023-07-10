@@ -361,7 +361,7 @@ static Vector<WeldEdge> weld_edge_ctx_alloc_and_find_collapsed(Span<int2> edges,
     int v2 = edges[i][1];
     int v_dest_1 = vert_dest_map[v1];
     int v_dest_2 = vert_dest_map[v2];
-    if ((v_dest_1 == OUT_OF_CONTEXT) && (v_dest_2 == OUT_OF_CONTEXT)) {
+    if (v_dest_1 == OUT_OF_CONTEXT && v_dest_2 == OUT_OF_CONTEXT) {
       r_edge_dest_map[i] = OUT_OF_CONTEXT;
       continue;
     }
@@ -1319,9 +1319,9 @@ static void merge_groups_create(Span<int> dest_map,
     r_groups_offsets[group_index]++;
   }
 
-  OffsetIndices offset = offset_indices::accumulate_counts_to_offsets(r_groups_offsets);
+  const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(r_groups_offsets);
 
-  r_groups_buffer.reinitialize(offset.total_size());
+  r_groups_buffer.reinitialize(offsets.total_size());
   BLI_assert(r_groups_buffer.size() == double_elems.size());
 
   /* Use a reverse for loop to ensure that indices are assigned in ascending order. */
