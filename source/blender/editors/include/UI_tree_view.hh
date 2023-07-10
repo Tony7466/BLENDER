@@ -194,6 +194,11 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   virtual std::unique_ptr<TreeViewItemDropTarget> create_drop_target();
 
   AbstractTreeView &get_tree_view() const;
+  /**
+   * Calculate the view item rectangle from its view-item button, converted to window space.
+   * Returns an unset optional if there is no view item button for this item.
+   */
+  std::optional<rctf> get_win_rect() const;
 
   void begin_renaming();
   void toggle_collapsed();

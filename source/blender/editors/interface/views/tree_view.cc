@@ -82,19 +82,14 @@ AbstractTreeViewItem *AbstractTreeView::find_hovered(const int2 &xy)
 {
   AbstractTreeViewItem *hovered_item = nullptr;
   foreach_item_recursive(
-      [&, this](const AbstractTreeViewItem &item) {
+      [&](AbstractTreeViewItem &item) {
         if (hovered_item) {
           return;
         }
 
-        uiButViewItem *but = item.view_item_button();
-        if (!but) {
-          return;
-        }
-        rctf win_rect;
-        ui_block_to_window_rctf(region_, block_, &win_rect, &but->rect);
-        if (BLI_rctf_isect_y(&win_rect, xy[1])) {
-          hovered_item = reinterpret_cast<AbstractTreeViewItem *>(but->view_item);
+        std::optional<rctf> win_rect = item.get_win_rect();
+        if (win_rect && BLI_rctf_isect_y(&*win_rect, xy[1])) {
+          hovered_item = &item;
         }
       },
       IterOptions::SkipCollapsed | IterOptions::SkipFiltered);
@@ -269,11 +264,9 @@ std::optional<DropLocation> TreeViewItemDropTarget::determine_drop_location(
   if (!hovered_item) {
     return std::nullopt;
   }
-  uiButViewItem *hovered_but = hovered_item->view_item_button();
-
-  rctf but_win_rect;
-  ui_block_to_window_rctf(view_.region_, view_.block_, &but_win_rect, &hovered_but->rect);
-  const float item_height = BLI_rctf_size_y(&but_win_rect);
+  std::optional<rctf> win_rect = hovered_item->get_win_rect();
+  BLI_assert(win_rect.has_value());
+  const float item_height = BLI_rctf_size_y(&*win_rect);
 
   BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::ReorderAndInsert));
 
@@ -477,6 +470,22 @@ std::unique_ptr<TreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target
 AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
 {
   return dynamic_cast<AbstractTreeView &>(get_view());
+}
+
+std::optional<rctf> AbstractTreeViewItem::get_win_rect() const
+{
+  uiButViewItem *item_but = view_item_button();
+  if (!item_but) {
+    return std::nullopt;
+  }
+
+  const uiBlock *block = item_but->block;
+  const ARegion *region = CTX_wm_region(static_cast<bContext *>(block->evil_C));
+
+  rctf win_rect;
+  ui_block_to_window_rctf(region, item_but->block, &win_rect, &item_but->rect);
+
+  return win_rect;
 }
 
 int AbstractTreeViewItem::count_parents() const

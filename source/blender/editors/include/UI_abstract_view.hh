@@ -64,12 +64,6 @@ class AbstractView {
   /* See #get_bounds(). */
   std::optional<rcti> bounds_;
 
- protected:
-  /* Not too great to have these here, but makes things a bit simpler. Views are recreated on
-   * redraws, so saving these pointers should be save. */
-  const ARegion *region_ = nullptr;
-  const uiBlock *block_ = nullptr;
-
  public:
   virtual ~AbstractView() = default;
 
