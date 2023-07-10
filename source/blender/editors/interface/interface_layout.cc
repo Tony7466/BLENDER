@@ -3475,7 +3475,7 @@ void uiItemS(uiLayout *layout)
   uiItemS_ex(layout, 1.0f);
 }
 
-void uiItemProgressBar(uiLayout *layout, int progress_type, float progress)
+void uiItemProgressBar(uiLayout *layout, float progress, int progress_type)
 {
   uiBlock *block = layout->root->block;
   const short width = short(UI_UNIT_X *

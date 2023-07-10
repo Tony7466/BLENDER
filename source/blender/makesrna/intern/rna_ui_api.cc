@@ -1340,12 +1340,6 @@ void RNA_api_ui_layout(StructRNA *srna)
 
   func = RNA_def_function(srna, "progress_bar", "uiItemProgressBar");
   RNA_def_function_ui_description(func, "Progress indicator");
-  RNA_def_enum(func,
-               "type",
-               progress_types,
-               UI_PROGRESS_DETERMINATE_LINEAR,
-               "Type",
-               "The type of progress indicator");
   RNA_def_float(func,
                 "progress",
                 0.0f,
@@ -1355,6 +1349,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                 "Amount of progress from 0.0f to 1.0f",
                 0.0f,
                 1.0f);
+  RNA_def_enum(func,
+               "progress_type",
+               progress_types,
+               UI_PROGRESS_DETERMINATE_LINEAR,
+               "Type",
+               "The type of progress indicator");
 
   /* context */
   func = RNA_def_function(srna, "context_pointer_set", "uiLayoutSetContextPointer");
