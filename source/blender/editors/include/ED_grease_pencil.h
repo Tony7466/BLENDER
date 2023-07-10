@@ -25,12 +25,19 @@ struct wmKeyConfig;
 extern "C" {
 #endif
 
+enum {
+  LAYER_REORDER_ABOVE,
+  LAYER_REORDER_BELOW,
+};
+
 /* -------------------------------------------------------------------- */
 /** \name C Wrappers
  * \{ */
 
 void ED_operatortypes_grease_pencil(void);
 void ED_operatortypes_grease_pencil_draw(void);
+void ED_operatortypes_grease_pencil_frames(void);
+void ED_operatortypes_grease_pencil_layers(void);
 void ED_operatortypes_grease_pencil_select(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 /**
@@ -46,6 +53,8 @@ eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
  */
 bool ED_grease_pencil_segment_selection_mode(struct bContext *C);
 
+/** \} */
+
 #ifdef __cplusplus
 }
 #endif
@@ -57,8 +66,10 @@ bool ED_grease_pencil_segment_selection_mode(struct bContext *C);
 
 namespace blender::ed::greasepencil {
 
+bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
+bool grease_pencil_painting_poll(bContext *C);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);

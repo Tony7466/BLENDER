@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -1858,14 +1858,6 @@ msgid "Length of the bone"
 msgstr "Luun pituus"
 
 
-msgid "3x3 bone matrix"
-msgstr "3x3 luumatriisi"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "4x4 luumatriisi suhteellinen luurankoon"
-
-
 msgid "Parent"
 msgstr "Isäntä"
 
@@ -2208,10 +2200,6 @@ msgstr "Välimuistitiedoston aktiivinen taso"
 
 msgid "Object Path"
 msgstr "Objektin polku"
-
-
-msgid "Path"
-msgstr "Polku"
 
 
 msgid "Object path"
@@ -3894,18 +3882,6 @@ msgid "Factor"
 msgstr "Tekijä"
 
 
-msgid "Wave Type"
-msgstr "Aaltotyyppi"
-
-
-msgid "Depth Change"
-msgstr "Syvyysvaihdos"
-
-
-msgid "Force"
-msgstr "Voima"
-
-
 msgid "Canvas Settings"
 msgstr "Kankaan asetukset"
 
@@ -4080,6 +4056,10 @@ msgstr "Häntävalinta"
 
 msgid "Boid"
 msgstr "Boid"
+
+
+msgid "Force"
+msgstr "Voima"
 
 
 msgid "Harmonic"
@@ -4404,10 +4384,6 @@ msgstr "Muoto"
 
 msgid "Axis"
 msgstr "Akseli"
-
-
-msgid "Wave"
-msgstr "Aalto"
 
 
 msgid "Noise"
@@ -4738,8 +4714,16 @@ msgid "Auto-Masking Strokes"
 msgstr "Automaattinen maskauspiirto"
 
 
+msgid "Active Grease Pencil layer"
+msgstr "Aktiivinen öljykynän taso"
+
+
 msgid "Push"
 msgstr "Työnnä"
+
+
+msgid "Path"
+msgstr "Polku"
 
 
 msgid "Normals"
@@ -5027,6 +5011,10 @@ msgstr "Ruuvi"
 
 msgid "Skin"
 msgstr "Iho"
+
+
+msgid "Wave"
+msgstr "Aalto"
 
 
 msgid "U Offset"
@@ -6628,6 +6616,10 @@ msgid "Wave Profile"
 msgstr "Aaltoprofiili"
 
 
+msgid "Wave Type"
+msgstr "Aaltotyyppi"
+
+
 msgid "Vector Rotate"
 msgstr "Vektorin kirto"
 
@@ -6818,6 +6810,46 @@ msgstr "Objektiasetukset"
 
 msgid "Animation settings"
 msgstr "Animaatioasetukset"
+
+
+msgid "Material Groups"
+msgstr "Materiaaliryhmät"
+
+
+msgid "OBJ Groups"
+msgstr "OBJ-ryhmät"
+
+
+msgid "Export Blender objects as OBJ groups"
+msgstr "Vie Blender-objektit OBJ-ryhminä"
+
+
+msgid "Keep Vertex Order"
+msgstr "Pidä kärkien järjestys"
+
+
+msgid "OBJ Objects"
+msgstr "OBJ-objektit"
+
+
+msgid "Export Blender objects as OBJ objects"
+msgstr "Vie Blender-objektit OBJ-objekteina"
+
+
+msgid "Include Edges"
+msgstr "Sisällytä reunat"
+
+
+msgid "Write Materials"
+msgstr "Kirjoita materiaalit"
+
+
+msgid "Apply modifiers"
+msgstr "Kytke muuntimet"
+
+
+msgid "Write Normals"
+msgstr "Kirjoita normaalit"
 
 
 msgctxt "Operator"
@@ -7109,10 +7141,6 @@ msgid "Active Layer"
 msgstr "Aktiivinen taso"
 
 
-msgid "Active Grease Pencil layer"
-msgstr "Aktiivinen öljykynän taso"
-
-
 msgctxt "Operator"
 msgid "Add New Layer"
 msgstr "Lisää uusi taso"
@@ -7319,6 +7347,11 @@ msgstr "Pidä materiaali"
 
 msgid "New Material"
 msgstr "Uusi materiaali"
+
+
+msgctxt "View3D"
+msgid "Camera"
+msgstr "Kamera"
 
 
 msgid "Selected Points"
@@ -8525,11 +8558,6 @@ msgid "Active Camera"
 msgstr "Aktiivinen kamera"
 
 
-msgctxt "View3D"
-msgid "Camera"
-msgstr "Kamera"
-
-
 msgctxt "Operator"
 msgid "Plane"
 msgstr "Taso"
@@ -9483,10 +9511,6 @@ msgid "Grouping"
 msgstr "Ryhmittäminen"
 
 
-msgid "Material Groups"
-msgstr "Materiaaliryhmät"
-
-
 msgid "Data Types"
 msgstr "Tietotyypit"
 
@@ -9847,10 +9871,6 @@ msgid "Stone"
 msgstr "Kivi"
 
 
-msgid "3D Local View"
-msgstr "Lokaali 3D-näkymä"
-
-
 msgid "Scene has no camera"
 msgstr "Kohtauksessa ei ole kameraa"
 
@@ -10085,10 +10105,6 @@ msgstr "RGBA-bitti"
 
 msgid " RGB byte"
 msgstr "RGB-bitti"
-
-
-msgid " + Z"
-msgstr " + Z"
 
 
 msgid "No packed file"

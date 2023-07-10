@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Arvid Rudling <arvid.r@gmail.com>\n"
 "Language-Team: \n"
@@ -321,10 +321,6 @@ msgid "Outline"
 msgstr "Kontur"
 
 
-msgid "Path"
-msgstr "Bana"
-
-
 msgid "Opacity"
 msgstr "Genomskinlighet"
 
@@ -565,10 +561,6 @@ msgid "Factor"
 msgstr "Faktor"
 
 
-msgid "Force"
-msgstr "Kraft"
-
-
 msgid "Velocity"
 msgstr "Hastighet"
 
@@ -595,6 +587,10 @@ msgstr "Vertex"
 
 msgid "Anti-Aliasing"
 msgstr "Antialias"
+
+
+msgid "Force"
+msgstr "Kraft"
 
 
 msgid "Turbulence"
@@ -671,10 +667,6 @@ msgstr "Form"
 
 msgid "Axis"
 msgstr "Axel"
-
-
-msgid "Kink"
-msgstr "Nyck"
 
 
 msgid "Seed"
@@ -911,6 +903,10 @@ msgstr "Beskärningsstart"
 
 msgid "Display Background Images"
 msgstr "Visa bakgrundsbilder"
+
+
+msgid "Path"
+msgstr "Bana"
 
 
 msgid "Font"
@@ -2106,6 +2102,10 @@ msgstr "Instrument"
 
 msgid "Histogram"
 msgstr "Histogram"
+
+
+msgid "Kink"
+msgstr "Nyck"
 
 
 msgid "Physics"

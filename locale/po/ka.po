@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Tamar Mebonia <tammebonia@gmail.com>, 2023\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3307,16 +3307,8 @@ msgid "Bone Matrix"
 msgstr "ძვლის მატრიცა"
 
 
-msgid "3x3 bone matrix"
-msgstr "ძვლის 3x3 მატრიცა"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "ძვლის არმატურასთან შეფარდებული მატრიცა"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "ძვლის 4x4 მატრიცა არმატურასთან მიმართებაში"
 
 
 msgid "Parent"
@@ -4510,10 +4502,6 @@ msgstr "ობიექტის მისამართი"
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Alembic არქივში მყოფი ობიექტის მისამართი"
-
-
-msgid "Path"
-msgstr "ბილიკი"
 
 
 msgid "Object path"
@@ -10088,26 +10076,6 @@ msgid "Multiplier for wave influence of this brush"
 msgstr "ამ ფუნჯის ტალღის ზეგავლენის მამრავლი"
 
 
-msgid "Wave Type"
-msgstr "ტალღის ტიპი"
-
-
-msgid "Depth Change"
-msgstr "სიღრმის ცვლილება"
-
-
-msgid "Obstacle"
-msgstr "დაბრკოლება"
-
-
-msgid "Force"
-msgstr "ძალა"
-
-
-msgid "Reflect Only"
-msgstr "მხოლოდ არეკლვა"
-
-
 msgid "Canvas Settings"
 msgstr "ტილოს პარამეტრები"
 
@@ -10376,10 +10344,6 @@ msgid "Anti-Aliasing"
 msgstr "ანტი-ალიასინგი"
 
 
-msgid "Use 5x multisampling to smooth paint edges"
-msgstr "გამოიყენე 5-ჯერადი მულტისემპლინგი საღებავის ნაპირების დასარბილებლად"
-
-
 msgid "Enable to make surface changes disappear over time"
 msgstr "ჩართე, რათა ზედაპირის ცვლილებები დროთა განმავლობაში გააქრო"
 
@@ -10630,6 +10594,10 @@ msgstr "წინაღობა"
 
 msgid "Drag effector weight"
 msgstr "წინაღობის ეფექტორის წონა"
+
+
+msgid "Force"
+msgstr "ძალა"
 
 
 msgid "Force effector weight"
@@ -11894,28 +11862,8 @@ msgid "Adjust the offset to the beginning/end"
 msgstr "გაუსწორე აცდენა დასაწყისს/დასასრულს"
 
 
-msgid "Kink"
-msgstr "დახვევა"
-
-
 msgid "Type of periodic offset on the curve"
 msgstr "პერიოდული აცდენის ტიპი მრუდზე"
-
-
-msgid "Braid"
-msgstr "ნაწნავი"
-
-
-msgid "Curl"
-msgstr "კულულა"
-
-
-msgid "Radial"
-msgstr "რადიალური"
-
-
-msgid "Wave"
-msgstr "ტალღოვანი"
 
 
 msgid "The distance from which particles are affected fully"
@@ -12056,6 +12004,10 @@ msgstr "ტექსტურის რეჟიმი"
 
 msgid "How the texture effect is calculated (RGB and Curl need a RGB texture, else Gradient will be used instead)"
 msgstr "როგორ გამოითვლება ტექსტურის ეფექტი (RGB-სა და კულულას სჭირდება RGB ტექსტურა, წინააღმდეგ შემთხვევაში მის ნაცვლად გამოიყენება გრადიენტი)"
+
+
+msgid "Curl"
+msgstr "კულულა"
 
 
 msgid "Gradient"
@@ -13257,6 +13209,10 @@ msgstr "დენადი ნივთიერება"
 
 msgid "Highlight only the cells of type Fluid"
 msgstr "გამოყავი მხოლოდ დენადი ნივთიერების ტიპის უჯრედები"
+
+
+msgid "Obstacle"
+msgstr "დაბრკოლება"
 
 
 msgid "Highlight only the cells of type Obstacle"
@@ -15503,6 +15459,10 @@ msgid "Use single point to create rings"
 msgstr "გამოიყენე ერთი წერტილი რგოლების შესაქმნელად"
 
 
+msgid "Radial"
+msgstr "რადიალური"
+
+
 msgid "Use single point as direction"
 msgstr "გამოიყენე ერთი წერტილი მიმართულებად"
 
@@ -17123,8 +17083,8 @@ msgid "Step"
 msgstr "საფეხური"
 
 
-msgid "Number of frames before recalculate random values again"
-msgstr "კადრების რაოდენობა შემთხვევითი მნიშვნელობების ხელახალ გამოთვლამდე"
+msgid "Number of frames between randomization steps"
+msgstr "კადრების რიცხვი გაშემთხვევითების საფეხურთა შორის"
 
 
 msgid "Use Curvature"
@@ -17757,10 +17717,6 @@ msgstr "გაშემთხვევითება მხოლოდ სა�
 
 msgid "Noise Seed"
 msgstr "ხმაურის პირველსაწყისი"
-
-
-msgid "Number of frames between randomization steps"
-msgstr "კადრების რიცხვი გაშემთხვევითების საფეხურთა შორის"
 
 
 msgid "Use a custom curve to define noise effect along the strokes"
@@ -18497,6 +18453,10 @@ msgstr "აქტიური შრის ნიღბის ინდექს
 
 msgid "Active index in layer mask array"
 msgstr "აქტიური ინდექსი შრის ნიღბის მასივში"
+
+
+msgid "Active Grease Pencil layer"
+msgstr "ცვილის ფანქრის აქტიური შრე"
 
 
 msgid "Editor header containing UI elements"
@@ -21394,6 +21354,10 @@ msgstr "წაწვრილების განაწილება"
 
 msgid "Map effect of the taper object to the beveled part of the curve"
 msgstr "გადაანაწილე წაწვრილების ობიექტის ეფექტი წირის დაცერობებულ ნაწილზე"
+
+
+msgid "Path"
+msgstr "ბილიკი"
 
 
 msgid "Enable the curve to become a translation path"
@@ -24563,54 +24527,6 @@ msgid "Max size of a tile (smaller values gives better distribution of multiple 
 msgstr "ფილის მაქსიმალური ზომა (რაც უფრო მცირეა მნიშვნელობები, მით უკეთესია მრავალ ნაკადთა დისტრიბუცია, მაგრამ იმატებს ოვერჰედი)"
 
 
-msgid "32x32"
-msgstr "32x32"
-
-
-msgid "Chunksize of 32x32"
-msgstr "ნაჭრის ზომა 32x32"
-
-
-msgid "64x64"
-msgstr "64x64"
-
-
-msgid "Chunksize of 64x64"
-msgstr "ნაჭრის ზომა 64x64"
-
-
-msgid "128x128"
-msgstr "128x128"
-
-
-msgid "Chunksize of 128x128"
-msgstr "ნაჭრის ზომა 128x128"
-
-
-msgid "256x256"
-msgstr "256x256"
-
-
-msgid "Chunksize of 256x256"
-msgstr "ნაჭრის ზომა 256x256"
-
-
-msgid "512x512"
-msgstr "512x512"
-
-
-msgid "Chunksize of 512x512"
-msgstr "ნაჭრის ზომა 512x512"
-
-
-msgid "1024x1024"
-msgstr "1024x1024"
-
-
-msgid "Chunksize of 1024x1024"
-msgstr "ნაჭრის ზომა 1024x1024"
-
-
 msgid "Edit Quality"
 msgstr "რედაქტირების ხარისხი"
 
@@ -24975,16 +24891,8 @@ msgid "Origin offset distance"
 msgstr "ამოსავალი წერტილის აცდენის მანძილი"
 
 
-msgid "Empty Image Side"
-msgstr "ცარიელი გამოსახულების მხარე"
-
-
 msgid "Show front/back side"
 msgstr "წინა/უკანა მხრის ჩვენება"
-
-
-msgid "Both"
-msgstr "ორივე"
 
 
 msgid "Settings for using the object as a field in physics simulation"
@@ -26045,10 +25953,6 @@ msgstr "სოლების საფეხური"
 
 msgid "Type of periodic offset on the path"
 msgstr "ბილიკზე პერიოდული აცდენის ტიპი"
-
-
-msgid "Spiral"
-msgstr "სპირალი"
 
 
 msgid "Amplitude Clump"
@@ -28257,10 +28161,6 @@ msgid "YCC"
 msgstr "YCC"
 
 
-msgid "Z Buffer"
-msgstr "Z ბუფერი"
-
-
 msgid "Tile Number"
 msgstr "ფილის ნომერი"
 
@@ -29253,17 +29153,9 @@ msgid "Media Play/Pause"
 msgstr "მედიის დაკვრა/პაუზა"
 
 
-msgid ">/||"
-msgstr ">/||"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "მედიის გაჩერება"
-
-
-msgid "Stop"
-msgstr "Stop"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -29271,17 +29163,9 @@ msgid "Media First"
 msgstr "მედია პირველი"
 
 
-msgid "|<<"
-msgstr "|<<"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Last"
 msgstr "მედია ბოლო"
-
-
-msgid ">>|"
-msgstr ">>|"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -31551,6 +31435,10 @@ msgid "Warp"
 msgstr "დაბრიცე"
 
 
+msgid "Wave"
+msgstr "ტალღოვანი"
+
+
 msgid "Soft Body"
 msgstr "რბილი სხეული"
 
@@ -32383,6 +32271,10 @@ msgstr "მიმართულება, რომლიდანაც მზ
 
 msgid "Sun Disc"
 msgstr "მზის დისკო"
+
+
+msgid "Wave Type"
+msgstr "ტალღის ტიპი"
 
 
 msgid "Default Value"
@@ -33451,6 +33343,15 @@ msgstr "საწყისი კადრი საექსპორტოდ"
 
 
 msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY-ის ექსპორტირება"
+
+
+msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
+msgstr "Stanford PLY-ის ექსპორტი ნორმალებით, წვეროების ფერებითა და ტექსტურების კოორდინატებით"
+
+
+msgctxt "Operator"
 msgid "Export STL"
 msgstr "STL-ის ექსპორტირება"
 
@@ -33523,6 +33424,19 @@ msgstr "ობიექტის პარამეტრები"
 
 msgid "Animation settings"
 msgstr "ანიმაციის პარამეტრები"
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "დააექსპორტირე OBJ"
+
+
+msgid "Save a Wavefront OBJ File"
+msgstr "Wavefront OBJ ფაილის შენახვა"
+
+
+msgid "Material Groups"
+msgstr "მასალის ჯგუფები"
 
 
 msgctxt "Operator"
@@ -33993,10 +33907,6 @@ msgid "Active Layer"
 msgstr "აქტიური შრე"
 
 
-msgid "Active Grease Pencil layer"
-msgstr "ცვილის ფანქრის აქტიური შრე"
-
-
 msgctxt "Operator"
 msgid "Add New Layer"
 msgstr "დაამატე ახალი შრე"
@@ -34206,6 +34116,10 @@ msgid "Send to Back"
 msgstr "გაუშვი ბოლოში"
 
 
+msgid "Both"
+msgstr "ორივე"
+
+
 msgid "Select section and cut"
 msgstr "მონიშნე განყოფილება და გაჭერი"
 
@@ -34370,6 +34284,19 @@ msgstr "გამჭვირვალობისთვის გამოი�
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "დააიმპორტირე PLY"
+
+
+msgid "Load a PLY geometry file"
+msgstr "ჩატვირთე PLY გეომეტრიული ფაილი"
+
+
+msgid "File path used for importing the PLY file"
+msgstr "ფაილის მისამართი PLY ფაილის დასაიმპორტირებლად"
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "დააიმპორტირე STL"
 
@@ -34394,6 +34321,15 @@ msgstr "დააიმპორტირე glTF 2.0"
 
 msgid "Load a glTF 2.0 file"
 msgstr "ჩატვირთე glTF 2.0 ფაილი"
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "დააიმპორტირე OBJ"
+
+
+msgid "Load a Wavefront OBJ File"
+msgstr "ჩატვირთე Wavefront OBJ ფაილი"
 
 
 msgctxt "Operator"
@@ -38657,16 +38593,6 @@ msgstr "გახსენი მისამართი ფაილები�
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY-ის ექსპორტირება"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "დააიმპორტირე PLY"
-
-
-msgctxt "Operator"
 msgid "Batch-Clear Previews"
 msgstr "წინასწარი ხედების ერთობლივი გასუფთავება"
 
@@ -39540,6 +39466,10 @@ msgstr "ტექსტურის ნიღაბი"
 
 msgid "Histogram"
 msgstr "ჰისტოგრამა"
+
+
+msgid "Kink"
+msgstr "დახვევა"
 
 
 msgid "Type 1"
@@ -46488,10 +46418,6 @@ msgid "Object Groups"
 msgstr "ობიექტების ჯგუფები"
 
 
-msgid "Material Groups"
-msgstr "მასალის ჯგუფები"
-
-
 msgid "Mesh Data"
 msgstr "მეშის მონაცემები"
 
@@ -46775,10 +46701,6 @@ msgstr "ქვა"
 
 msgid "Stone (Crushed)"
 msgstr "ქვა (დამსხვრეული)"
-
-
-msgid "3D Local View"
-msgstr "3გ ლოკალური ხედი"
 
 
 msgid "Scene has no camera"
@@ -47579,10 +47501,6 @@ msgid "%s '%s' not found"
 msgstr "%s '%s' ნაპოვნი არაა"
 
 
-msgid "%d x %s: %.4f ms, average: %.8f ms"
-msgstr "%d x %s: %.4f მწ, საშუალოდ: %.8f მწ"
-
-
 msgctxt "WindowManager"
 msgid "Limited Platform Support"
 msgstr "პლატფორმის მხარდაჭერა შეზღუდულია"
@@ -47957,8 +47875,16 @@ msgid "STL format"
 msgstr "STL ფორმატი"
 
 
+msgid "File > Import/Export"
+msgstr "ფაილი > იმპორტი/ექსპორტი"
+
+
 msgid "UV Layout"
 msgstr "UV განლაგება"
+
+
+msgid "Wavefront OBJ format (legacy)"
+msgstr "Wavefront OBJ ფორმატი (ძველებური)"
 
 
 msgid "glTF 2.0 format"

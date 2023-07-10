@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: Ivan Paulos Tomé <ivan.paulos.tome@yandex.com>\n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: 2017-09-08 21:24-0300\n"
 "Last-Translator: Ivan Paulos Tomé <greylica@gmail.com>\n"
 "Language-Team: Ivan Paulos Tomé, Inês Almeida, João Brandão (ULISBOA), Paulo Martins <ivan.paulos.tome@yandex.com>\n"
@@ -2413,16 +2413,8 @@ msgid "Bone Matrix"
 msgstr "Matriz do osso"
 
 
-msgid "3x3 bone matrix"
-msgstr "Matriz de osso 3x3"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "Matriz do osso relativa a armação"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "Matriz de osso 4x4 relativo a armação."
 
 
 msgid "Parent"
@@ -2903,10 +2895,6 @@ msgstr "Caminho de objetos"
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Caminho de um objeto dentro de um ficheiro de cache do tipo Alembic."
-
-
-msgid "Path"
-msgstr "Caminho"
 
 
 msgid "Object path"
@@ -6933,26 +6921,6 @@ msgid "Multiplier for wave influence of this brush"
 msgstr "Multiplicador para a influência de onda deste pincel."
 
 
-msgid "Wave Type"
-msgstr "Tipo de onda"
-
-
-msgid "Depth Change"
-msgstr "Alteração de profundidade"
-
-
-msgid "Obstacle"
-msgstr "Obstáculo"
-
-
-msgid "Force"
-msgstr "Força"
-
-
-msgid "Reflect Only"
-msgstr "Somente refletir"
-
-
 msgid "Canvas Settings"
 msgstr "Definições de lona"
 
@@ -7201,10 +7169,6 @@ msgid "Anti-Aliasing"
 msgstr "Antisserrilhamento"
 
 
-msgid "Use 5x multisampling to smooth paint edges"
-msgstr "Usa a multi-amostragem com cinco amostras (5x) para suavizar a pintura de arestas."
-
-
 msgid "Enable to make surface changes disappear over time"
 msgstr "Ative para fazer com que as alterações de superfície desapareçam com o tempo."
 
@@ -7427,6 +7391,10 @@ msgstr "Arrasto"
 
 msgid "Drag effector weight"
 msgstr "Peso de influência do efetor arrasto."
+
+
+msgid "Force"
+msgstr "Força"
 
 
 msgid "Force effector weight"
@@ -8414,28 +8382,8 @@ msgid "Adjust the offset to the beginning/end"
 msgstr "Ajusta o deslocamento para o início ou para o final."
 
 
-msgid "Kink"
-msgstr "Torção angular"
-
-
 msgid "Type of periodic offset on the curve"
 msgstr "Tipo do deslocamento periódico na curva."
-
-
-msgid "Braid"
-msgstr "Trançar"
-
-
-msgid "Curl"
-msgstr "Encaracolar"
-
-
-msgid "Radial"
-msgstr "Radial"
-
-
-msgid "Wave"
-msgstr "Ondas"
 
 
 msgid "The distance from which particles are affected fully"
@@ -8552,6 +8500,10 @@ msgstr "Textura para ser usada como força."
 
 msgid "Texture Mode"
 msgstr "Modo de textura"
+
+
+msgid "Curl"
+msgstr "Encaracolar"
 
 
 msgid "Gradient"
@@ -9132,6 +9084,10 @@ msgstr "Gravidade na direção X, Y e Z."
 
 msgid "Fluid"
 msgstr "Fluido"
+
+
+msgid "Obstacle"
+msgstr "Obstáculo"
 
 
 msgid "Outflow"
@@ -10176,6 +10132,10 @@ msgstr "Espaçamento"
 
 msgid "Circular"
 msgstr "Circular"
+
+
+msgid "Radial"
+msgstr "Radial"
 
 
 msgid "Grid"
@@ -12265,6 +12225,10 @@ msgid "Map Taper"
 msgstr "Mapear afilador"
 
 
+msgid "Path"
+msgstr "Caminho"
+
+
 msgid "Enable the curve to become a translation path"
 msgstr "Ativa a curva para se tornar um caminho de movimentação (translação)."
 
@@ -14253,54 +14217,6 @@ msgid "Max size of a tile (smaller values gives better distribution of multiple 
 msgstr "Tamanho máximo do ladrilho (valores menores são melhores na distribuição de múltiplas tarefas, mas são mais dispendiosos)."
 
 
-msgid "32x32"
-msgstr "32x32"
-
-
-msgid "Chunksize of 32x32"
-msgstr "Tamanho de bloco de 32X32."
-
-
-msgid "64x64"
-msgstr "64x64"
-
-
-msgid "Chunksize of 64x64"
-msgstr "Tamanho de bloco de 64x64."
-
-
-msgid "128x128"
-msgstr "128x128"
-
-
-msgid "Chunksize of 128x128"
-msgstr "Tamanho de bloco de 128x128."
-
-
-msgid "256x256"
-msgstr "256x256"
-
-
-msgid "Chunksize of 256x256"
-msgstr "Tamanho de bloco de 256x256."
-
-
-msgid "512x512"
-msgstr "512x512"
-
-
-msgid "Chunksize of 512x512"
-msgstr "Tamanho de bloco de 512x512."
-
-
-msgid "1024x1024"
-msgstr "1024x1024"
-
-
-msgid "Chunksize of 1024x1024"
-msgstr "Tamanho de bloco de 1024x1024."
-
-
 msgid "Edit Quality"
 msgstr "Qualidade de edição"
 
@@ -14551,10 +14467,6 @@ msgstr "Deslocamento da origem"
 
 msgid "Origin offset distance"
 msgstr "Distância de deslocamento da origem."
-
-
-msgid "Both"
-msgstr "Ambos"
 
 
 msgid "Settings for using the object as a field in physics simulation"
@@ -15219,10 +15131,6 @@ msgstr "Passos de chave"
 
 msgid "Type of periodic offset on the path"
 msgstr "Tipo de deslocamento periódico no caminho."
-
-
-msgid "Spiral"
-msgstr "Espiral"
 
 
 msgid "Amplitude Clump"
@@ -17599,10 +17507,6 @@ msgid "When rendering animations, save JPG preview images in same directory"
 msgstr "Durante a renderização das animações, guarda imagens de pré-visualização em formato JPG no mesmo diretório."
 
 
-msgid "Z Buffer"
-msgstr "Buffer Z"
-
-
 msgid "Format of multiview media"
 msgstr "Formato de mídia com múltiplas visualizações."
 
@@ -18442,17 +18346,9 @@ msgid "Media Play/Pause"
 msgstr "Multimedia - Reproduzir ou pausar"
 
 
-msgid ">/||"
-msgstr ">/||"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "Multimedia - Interromper"
-
-
-msgid "Stop"
-msgstr "Interromper"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -18460,17 +18356,9 @@ msgid "Media First"
 msgstr "Multimedia - Primeira"
 
 
-msgid "|<<"
-msgstr "|<<"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Last"
 msgstr "Multimedia - Última"
-
-
-msgid ">>|"
-msgstr ">>|"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -21445,6 +21333,10 @@ msgstr "Deformação de superfície"
 
 msgid "Warp"
 msgstr "Conformar em curva"
+
+
+msgid "Wave"
+msgstr "Ondas"
 
 
 msgid "Dynamic Paint"
@@ -27917,6 +27809,10 @@ msgid "Use a sawtooth profile"
 msgstr "Usa um perfil em padrão serrilhado."
 
 
+msgid "Wave Type"
+msgstr "Tipo de onda"
+
+
 msgid "Use standard wave texture in bands"
 msgstr "Usa a textura padrão de onda em faixas."
 
@@ -32201,16 +32097,8 @@ msgstr "Converte rotações para o Euler ZYX."
 
 
 msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exportar STL"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Guarda o ficheiro em formato de ficheiro ASCII"
+msgid "Export PLY"
+msgstr "Exportar PLY"
 
 
 msgid "X Forward"
@@ -32257,6 +32145,39 @@ msgid "-Z Up"
 msgstr "-Z Para cima"
 
 
+msgid "Export the active vertex color layer"
+msgstr "Exporta a camada ativa de cor de vértice."
+
+
+msgid "Apply Modifiers"
+msgstr "Aplicar modificadores"
+
+
+msgid "Apply Modifiers to the exported mesh"
+msgstr "Aplica os modificadores para a malha exportada."
+
+
+msgid "Selection Only"
+msgstr "Somente a seleção"
+
+
+msgid "Export selected objects only"
+msgstr "Exporta somente os objetos selecionados."
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "Exportar STL"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Guarda o ficheiro em formato de ficheiro ASCII"
+
+
 msgid "Batch Mode"
 msgstr "Modo de tarefas em lote"
 
@@ -32269,10 +32190,6 @@ msgid "Each object as a file"
 msgstr "Cada objeto como um ficheiro"
 
 
-msgid "Apply Modifiers"
-msgstr "Aplicar modificadores"
-
-
 msgid "Apply the modifiers before saving"
 msgstr "Aplica os modificadores antes de guardar."
 
@@ -32283,14 +32200,6 @@ msgstr "Unidades da cena"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Aplica as unidades atuais da cena (como definidas pelas unidades de escala) para os dados exportados."
-
-
-msgid "Selection Only"
-msgstr "Somente a seleção"
-
-
-msgid "Export selected objects only"
-msgstr "Exporta somente os objetos selecionados."
 
 
 msgctxt "Operator"
@@ -32600,6 +32509,87 @@ msgstr "Converte todas as faces para triângulos"
 
 msgid "Add binormal and tangent vectors, together with normal they form the tangent space (will only work correctly with tris/quads only meshes!)"
 msgstr "Adiciona vetores binormais e tangentes, juntamente com as normais que eles formam dentro do espaço tangente (só funciona corretamente com malhas formadas por triângulos ou quadriláteros !)."
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "Exportar OBJ"
+
+
+msgid "Save a Wavefront OBJ File"
+msgstr "Guarda um ficheiro Wavefront OBJ"
+
+
+msgid "Material Groups"
+msgstr "Grupos de materiais"
+
+
+msgid "Keep Vertex Order"
+msgstr "Manter a ordem de vértices"
+
+
+msgid "Write out an OBJ for each frame"
+msgstr "Escreve externamente um ficheiro OBJ para cada fotograma."
+
+
+msgid "Include Edges"
+msgstr "Incluir arestas"
+
+
+msgid "Write Materials"
+msgstr "Escrever materiais"
+
+
+msgid "Write out the MTL file"
+msgstr "Escreve a saída para o ficheiro MTL"
+
+
+msgid "Apply modifiers"
+msgstr "Aplicar modificadores"
+
+
+msgid "Write Normals"
+msgstr "Escrever normais"
+
+
+msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
+msgstr "Exportar uma normal por face e por vértice, para representar faces achatadas e arestas ressaltadas."
+
+
+msgid "Write Nurbs"
+msgstr "Escrever Nurbs"
+
+
+msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
+msgstr "Escreve as curvas Nurbs no formato Nurbs OBJ ao invés de convertê-las para geometria."
+
+
+msgid "Smooth Groups"
+msgstr "Grupos suavizados"
+
+
+msgid "Write sharp edges as smooth groups"
+msgstr "Escreve as arestas ressaltadas como grupos suavizados"
+
+
+msgid "Bitflag Smooth Groups"
+msgstr "Grupos suavizados com Bitflag"
+
+
+msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
+msgstr "O mesmo que \"Grupos suavizados\", mas gera identificadores de grupos suavizados como bandeiras em formato de bits (produz ao menos, 32 grupos diferentes de suavização, mas usualmente, muito menos)."
+
+
+msgid "Include UVs"
+msgstr "Incluir UVs"
+
+
+msgid "Write out the active UV coordinates"
+msgstr "Escreve as coordenadas UV ativas"
+
+
+msgid "Polygroups"
+msgstr "Diversos grupos"
 
 
 msgid "Compress"
@@ -33861,6 +33851,10 @@ msgid "Send to Back"
 msgstr "Enviar para o fundo"
 
 
+msgid "Both"
+msgstr "Ambos"
+
+
 msgctxt "Operator"
 msgid "Change Stroke Color"
 msgstr "Alterar a cor dos traços"
@@ -34708,6 +34702,19 @@ msgstr "Insensível a luzes ou sombras"
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importar PLY"
+
+
+msgid "Load a PLY geometry file"
+msgstr "Carrega um ficheiro de geometria PLY"
+
+
+msgid "File path used for importing the PLY file"
+msgstr "Caminho de ficheiro usado para importar o ficheiro PLY."
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importar STL"
 
@@ -34847,6 +34854,59 @@ msgstr "Usar rotação prévia ou posterior"
 
 msgid "Use pre/post rotation from FBX transform (you may have to disable that in some cases)"
 msgstr "Usa uma rotação prévia ou posterior a partir das transformações FBX (será necessário desativar esta funcionalidade em alguns casos)."
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "Importar OBJ"
+
+
+msgid "Load a Wavefront OBJ File"
+msgstr "Carrega um ficheiro Alias Wavefront (.OBJ)."
+
+
+msgid "Clamp Size"
+msgstr "Limitar tamanho"
+
+
+msgid "Clamp bounds under this value (zero to disable)"
+msgstr "Limita as margens abaixo deste valor (zero para desativar)."
+
+
+msgid "Keep Vert Order"
+msgstr "Manter a ordem dos vértices"
+
+
+msgid "Keep vertex order from file"
+msgstr "Mantém a ordem dos vértices a partir do ficheiro."
+
+
+msgid "Import lines and faces with 2 verts as edge"
+msgstr "Importa as linhas e faces com dois vértices como aresta."
+
+
+msgid "Poly Groups"
+msgstr "Grupo de polígonos"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "Importa os grupos OBJ como grupos de vértices."
+
+
+msgid "Search subdirs for any associated images (Warning, may be slow)"
+msgstr "Pesquisa os sub-diretórios por quaisquer imagens associadas (atenção, pode ser lento)."
+
+
+msgid "Surround smooth groups by sharp edges"
+msgstr "Envolve os grupos suavizados por arestas ressaltadas."
+
+
+msgid "Import OBJ Groups into Blender Objects"
+msgstr "Importa os grupos OBJ em objetos Blender"
+
+
+msgid "Import OBJ Objects into Blender Objects"
+msgstr "Importa os objetos OBJ em objetos Blender"
 
 
 msgctxt "Operator"
@@ -42911,18 +42971,6 @@ msgid "The effect inputs to swap"
 msgstr "As entradas de efeito para trocar."
 
 
-msgid "A -> B"
-msgstr "A -> B"
-
-
-msgid "B -> C"
-msgstr "B -> C"
-
-
-msgid "A -> C"
-msgstr "A -> C"
-
-
 msgctxt "Operator"
 msgid "Change Effect Type"
 msgstr "Alterar os tipos de efeito"
@@ -46673,10 +46721,6 @@ msgid "Print memory statistics to the console"
 msgstr "Imprime estatísticas de memória na linha de comando."
 
 
-msgid "Import OBJ groups as vertex groups"
-msgstr "Importa os grupos OBJ como grupos de vértices."
-
-
 msgid "Open a Blender file"
 msgstr "Abre um ficheiro Blender."
 
@@ -46726,16 +46770,6 @@ msgstr "Permite adicionar ou remover uma predefinição de operador."
 
 msgid "Open a path in a file browser"
 msgstr "Abre um caminho em um navegador de ficheiros."
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exportar PLY"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importar PLY"
 
 
 msgctxt "Operator"
@@ -47921,6 +47955,10 @@ msgstr "Transformações delta"
 
 msgid "Boid Brain"
 msgstr "Cérebro da revoada"
+
+
+msgid "Kink"
+msgstr "Torção angular"
 
 
 msgid "Parting"
@@ -49885,22 +49923,6 @@ msgstr "Definição de tecla"
 
 msgid "The name of the active key configuration"
 msgstr "O nome da definição de chave ativa."
-
-
-msgid "2x"
-msgstr "2x"
-
-
-msgid "4x"
-msgstr "4x"
-
-
-msgid "8x"
-msgstr "8x"
-
-
-msgid "16x"
-msgstr "16x"
 
 
 msgid "Audio Device"
@@ -62876,14 +62898,6 @@ msgid "Error during export (see Console)"
 msgstr "Erro durante a exportação (veja a linha de comando)."
 
 
-msgid "Material Groups"
-msgstr "Grupos de materiais"
-
-
-msgid "Smooth Groups"
-msgstr "Grupos suavizados"
-
-
 msgctxt "Mesh"
 msgid "Plane"
 msgstr "Plano"
@@ -63835,26 +63849,6 @@ msgid "Rigid Body World has no associated physics data to export"
 msgstr "Ambiente (mundo) de corpo rígido não possui dados de física associados para exportar."
 
 
-msgid "3D Local View"
-msgstr "Visão local 3D"
-
-
-msgid "Frame:%d "
-msgstr " Fotograma: %d "
-
-
-msgid "| Last:%s "
-msgstr "| Último: %s |"
-
-
-msgid "Time:%s "
-msgstr " Tempo: %s "
-
-
-msgid "| Mem:%.2fM, Peak: %.2fM "
-msgstr "| Memória: %.2fM, Pico: %.2fM "
-
-
 msgid "Cannot write a single file with an animation format selected"
 msgstr "Não é possível escrever um ficheiro único com um formato de animação selecionado."
 
@@ -64588,10 +64582,6 @@ msgid " RGB byte"
 msgstr " byte RGB"
 
 
-msgid " + Z"
-msgstr " +Z"
-
-
 msgid "unsupported image format"
 msgstr "Formato de imagem não suportado."
 
@@ -65123,14 +65113,6 @@ msgstr "Pesos de vértices"
 
 msgid "Object as Camera"
 msgstr "Objeto como câmara"
-
-
-msgid "fps: %.2f"
-msgstr "Fotogramas/Seg: %.2f"
-
-
-msgid "fps: %i"
-msgstr "Fotogramas/Seg: %i"
 
 
 msgid "Cannot dolly when the view offset is locked"
@@ -66704,10 +66686,6 @@ msgstr "Propriedade a partir do caminho '%s' não está definida em ponto flutua
 
 msgid "Property from path '%s' has length %d instead of %d"
 msgstr "Propriedade a partir do caminho '%s' possui comprimento %d ao invés de %d"
-
-
-msgid "%d x %s: %.4f ms, average: %.8f ms"
-msgstr "%d x %s: %.4f ms, média: %.8f ms"
 
 
 msgid "Failed to create a window without quad-buffer support, you may experience flickering"

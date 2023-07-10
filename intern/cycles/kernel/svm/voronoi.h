@@ -878,11 +878,12 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &p
                           params.lacunarity == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
-    VoronoiOutput octave = (params.feature == NODE_VORONOI_F1) ?
-                               voronoi_f1(params, coord * scale) :
-                           (params.feature == NODE_VORONOI_SMOOTH_F1) ?
+    VoronoiOutput octave = (params.feature == NODE_VORONOI_F2) ?
+                               voronoi_f2(params, coord * scale) :
+                           (params.feature == NODE_VORONOI_SMOOTH_F1 &&
+                            params.smoothness != 0.0f) ?
                                voronoi_smooth_f1(params, coord * scale) :
-                               voronoi_f2(params, coord * scale);
+                               voronoi_f1(params, coord * scale);
 
     if (zero_input) {
       max_amplitude = 1.0f;
@@ -925,7 +926,7 @@ ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParam
                                                   const T coord)
 {
   float amplitude = 1.0f;
-  float max_amplitude = 0.5f + 0.5f * params.randomness;
+  float max_amplitude = params.max_distance;
   float scale = 1.0f;
   float distance = 8.0f;
 
@@ -940,7 +941,7 @@ ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParam
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
+      max_amplitude = mix(max_amplitude, params.max_distance / scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -948,8 +949,7 @@ ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParam
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = mix(
-            max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
+        float lerp_amplitude = mix(max_amplitude, params.max_distance / scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -1052,6 +1052,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   switch (params.feature) {
     case NODE_VORONOI_DISTANCE_TO_EDGE: {
       float distance = 0.0f;
+      params.max_distance = 0.5f + 0.5f * params.randomness;
       switch (dimensions) {
         case 1:
           distance = fractal_voronoi_distance_to_edge(params, w);

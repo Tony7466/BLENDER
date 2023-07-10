@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: \n"
 "Last-Translator: DeathBlood\n"
 "Language-Team: \n"
@@ -3335,16 +3335,8 @@ msgid "Bone Matrix"
 msgstr "骨骼矩阵"
 
 
-msgid "3x3 bone matrix"
-msgstr "3x3 骨骼矩阵"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "骨头相关的矩阵"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "相应骨架的 4x4 骨骼矩阵"
 
 
 msgid "Parent"
@@ -4546,10 +4538,6 @@ msgstr "物体路径"
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Alembic存档中物体的路径"
-
-
-msgid "Path"
-msgstr "路径"
 
 
 msgid "Object path"
@@ -10169,26 +10157,6 @@ msgid "Multiplier for wave influence of this brush"
 msgstr "用此笔刷的波形影响量倍值"
 
 
-msgid "Wave Type"
-msgstr "波纹类型"
-
-
-msgid "Depth Change"
-msgstr "改变深度"
-
-
-msgid "Obstacle"
-msgstr "障碍"
-
-
-msgid "Force"
-msgstr "常力"
-
-
-msgid "Reflect Only"
-msgstr "仅反射"
-
-
 msgid "Canvas Settings"
 msgstr "画布设置"
 
@@ -10457,10 +10425,6 @@ msgid "Anti-Aliasing"
 msgstr "抗锯齿"
 
 
-msgid "Use 5x multisampling to smooth paint edges"
-msgstr "使用 5 级多重采样以平滑绘制边缘"
-
-
 msgid "Enable to make surface changes disappear over time"
 msgstr "启用后, 可使表层的变化随时间消失"
 
@@ -10711,6 +10675,10 @@ msgstr "拖拽"
 
 msgid "Drag effector weight"
 msgstr "拖拽权重效果"
+
+
+msgid "Force"
+msgstr "常力"
 
 
 msgid "Force effector weight"
@@ -11979,28 +11947,8 @@ msgid "Adjust the offset to the beginning/end"
 msgstr "根据首位调整偏移量"
 
 
-msgid "Kink"
-msgstr "扭结"
-
-
 msgid "Type of periodic offset on the curve"
 msgstr "曲线的周期偏移类型"
-
-
-msgid "Braid"
-msgstr "编织"
-
-
-msgid "Curl"
-msgstr "卷曲"
-
-
-msgid "Radial"
-msgstr "径向"
-
-
-msgid "Wave"
-msgstr "波浪"
 
 
 msgid "The distance from which particles are affected fully"
@@ -12141,6 +12089,10 @@ msgstr "纹理模式"
 
 msgid "How the texture effect is calculated (RGB and Curl need a RGB texture, else Gradient will be used instead)"
 msgstr "纹理影响的计算方式 ( RGB 与旋量需要一个 RGB 纹理, 否则将使用渐变)"
+
+
+msgid "Curl"
+msgstr "卷曲"
 
 
 msgid "Gradient"
@@ -13354,6 +13306,10 @@ msgstr "流体"
 
 msgid "Highlight only the cells of type Fluid"
 msgstr "仅突出显示类型为流体的单元"
+
+
+msgid "Obstacle"
+msgstr "障碍"
 
 
 msgid "Highlight only the cells of type Obstacle"
@@ -15605,6 +15561,10 @@ msgid "Use single point to create rings"
 msgstr "使用单点创建环"
 
 
+msgid "Radial"
+msgstr "径向"
+
+
 msgid "Use single point as direction"
 msgstr "使用单点作为方向"
 
@@ -17233,8 +17193,8 @@ msgid "Step"
 msgstr "步长"
 
 
-msgid "Number of frames before recalculate random values again"
-msgstr "重新计算随机值之前的帧数"
+msgid "Number of frames between randomization steps"
+msgstr "随机化步数之间的帧数"
 
 
 msgid "Use Curvature"
@@ -17879,10 +17839,6 @@ msgstr "仅在关键帧上随机化"
 
 msgid "Noise Seed"
 msgstr "噪波随机种"
-
-
-msgid "Number of frames between randomization steps"
-msgstr "随机化步数之间的帧数"
 
 
 msgid "Use a custom curve to define noise effect along the strokes"
@@ -18623,6 +18579,10 @@ msgstr "活动层遮罩编号"
 
 msgid "Active index in layer mask array"
 msgstr "层遮罩数组中的活动编号"
+
+
+msgid "Active Grease Pencil layer"
+msgstr "活动蜡笔图层"
 
 
 msgid "Editor header containing UI elements"
@@ -21614,6 +21574,10 @@ msgstr "映射锥化"
 
 msgid "Map effect of the taper object to the beveled part of the curve"
 msgstr "映射锥化物体的效果到曲线的倒角部分"
+
+
+msgid "Path"
+msgstr "路径"
 
 
 msgid "Enable the curve to become a translation path"
@@ -24807,54 +24771,6 @@ msgid "Max size of a tile (smaller values gives better distribution of multiple 
 msgstr "分块最大尺寸 (较小值可获得更好的多线程分配, 但较消耗系统资源)"
 
 
-msgid "32x32"
-msgstr "32x32"
-
-
-msgid "Chunksize of 32x32"
-msgstr "块尺寸32x32"
-
-
-msgid "64x64"
-msgstr "64x64"
-
-
-msgid "Chunksize of 64x64"
-msgstr "块尺寸64x64"
-
-
-msgid "128x128"
-msgstr "128x128"
-
-
-msgid "Chunksize of 128x128"
-msgstr "块尺寸 128x128"
-
-
-msgid "256x256"
-msgstr "256x256"
-
-
-msgid "Chunksize of 256x256"
-msgstr "256x256 的块尺寸"
-
-
-msgid "512x512"
-msgstr "512x512"
-
-
-msgid "Chunksize of 512x512"
-msgstr "块尺寸512x512"
-
-
-msgid "1024x1024"
-msgstr "1024x1024"
-
-
-msgid "Chunksize of 1024x1024"
-msgstr "1024x1024 的块尺寸"
-
-
 msgid "Edit Quality"
 msgstr "编辑品质"
 
@@ -25219,16 +25135,8 @@ msgid "Origin offset distance"
 msgstr "原点偏移距离"
 
 
-msgid "Empty Image Side"
-msgstr "空图像边"
-
-
 msgid "Show front/back side"
 msgstr "显示前/后侧"
-
-
-msgid "Both"
-msgstr "两者"
 
 
 msgid "Settings for using the object as a field in physics simulation"
@@ -26297,10 +26205,6 @@ msgstr "帧步长"
 
 msgid "Type of periodic offset on the path"
 msgstr "路径中的周期性偏移类型"
-
-
-msgid "Spiral"
-msgstr "螺旋"
 
 
 msgid "Amplitude Clump"
@@ -29641,14 +29545,6 @@ msgid "When rendering animations, save JPG preview images in same directory"
 msgstr "当渲染动画时, 在相同的目录下存储 JPG 预览图像"
 
 
-msgid "Z Buffer"
-msgstr "Z 缓冲"
-
-
-msgid "Save the z-depth per pixel (32-bit unsigned integer z-buffer)"
-msgstr "保存每个像素的Z深度(32位无符号整型Z缓冲)"
-
-
 msgid "Format of multiview media"
 msgstr "多视图媒体格式"
 
@@ -30829,17 +30725,9 @@ msgid "Media Play/Pause"
 msgstr "媒体 播放/暂停"
 
 
-msgid ">/||"
-msgstr ">/||"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "媒体停止"
-
-
-msgid "Stop"
-msgstr "停止"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -30847,17 +30735,9 @@ msgid "Media First"
 msgstr "媒体开始"
 
 
-msgid "|<<"
-msgstr "|<<"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Last"
 msgstr "媒体结束"
-
-
-msgid ">>|"
-msgstr ">>|"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -35127,6 +35007,10 @@ msgstr "弯绕"
 
 msgid "Warp parts of a mesh to a new location in a very flexible way thanks to 2 specified objects"
 msgstr "由于具有 2 个指定物体，以非常灵活的方式将网格的零件弯绕到新位置"
+
+
+msgid "Wave"
+msgstr "波浪"
 
 
 msgid "Adds a ripple-like motion to an object's geometry"
@@ -46724,6 +46608,10 @@ msgid "Use a triangle profile"
 msgstr "使用三角波形轮廓"
 
 
+msgid "Wave Type"
+msgstr "波纹类型"
+
+
 msgid "Use standard wave texture in bands"
 msgstr "使用标准的斜纹波纹理"
 
@@ -52851,20 +52739,12 @@ msgstr "转换转动至欧拉 ZYX"
 
 
 msgctxt "Operator"
-msgid "Export STL"
-msgstr "导出STL"
+msgid "Export PLY"
+msgstr "导出PLY"
 
 
-msgid "Save STL triangle mesh data"
-msgstr "保存 STL 三角网格数据"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "保存文件为 ASCII 文件格式"
+msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
+msgstr "导出为带有法线、顶点颜色和纹理坐标的斯坦福 PLY"
 
 
 msgid "X Forward"
@@ -52911,6 +52791,59 @@ msgid "-Z Up"
 msgstr "-Z 向上"
 
 
+msgid "ASCII"
+msgstr "ASCII"
+
+
+msgid "Export using ASCII file format, otherwise use binary"
+msgstr "使用ASCII文件格式导出，否则使用二进制"
+
+
+msgid "Export the active vertex color layer"
+msgstr "导出活动顶点颜色色层"
+
+
+msgid "Apply Modifiers"
+msgstr "应用修改器"
+
+
+msgid "Apply Modifiers to the exported mesh"
+msgstr "为输出的网格应用修改器"
+
+
+msgid "Export vertex normals"
+msgstr "导出顶点法向"
+
+
+msgid "Selection Only"
+msgstr "仅导出选中的物体"
+
+
+msgid "Export selected objects only"
+msgstr "仅导出选择的物体"
+
+
+msgid "Export the active UV layer (will split edges by seams)"
+msgstr "导出活动 UV 层(将按缝合线拆分边)"
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "导出STL"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "保存 STL 三角网格数据"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "保存文件为 ASCII 文件格式"
+
+
 msgid "Batch Mode"
 msgstr "批量模式"
 
@@ -52931,10 +52864,6 @@ msgid "Export in this reference space"
 msgstr "在此参考空间中导出"
 
 
-msgid "Apply Modifiers"
-msgstr "应用修改器"
-
-
 msgid "Apply the modifiers before saving"
 msgstr "保存前应用修改器"
 
@@ -52945,14 +52874,6 @@ msgstr "场景单位"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "应用当前场景单位 (由单位比例定义) 输出数据"
-
-
-msgid "Selection Only"
-msgstr "仅导出选中的物体"
-
-
-msgid "Export selected objects only"
-msgstr "仅导出选择的物体"
 
 
 msgctxt "Operator"
@@ -53767,6 +53688,107 @@ msgstr "记住导出设置"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "将 glTF 导出设置存储在 Blender 中"
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "导出OBJ"
+
+
+msgid "Save a Wavefront OBJ File"
+msgstr "保存一个Wavefront的OBJ文件"
+
+
+msgid "Material Groups"
+msgstr "材质组"
+
+
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "为几何中使用不同材质的每个部分生成OBJ组"
+
+
+msgid "OBJ Groups"
+msgstr "OBJ组"
+
+
+msgid "Export Blender objects as OBJ groups"
+msgstr "导出Blender物体为OBJ组"
+
+
+msgid "Keep Vertex Order"
+msgstr "保持顶点顺序"
+
+
+msgid "Write out an OBJ for each frame"
+msgstr "为每帧写出一个OBJ"
+
+
+msgid "OBJ Objects"
+msgstr "OBJ物体"
+
+
+msgid "Export Blender objects as OBJ objects"
+msgstr "导出Blender物体为OBJ物体"
+
+
+msgid "Include Edges"
+msgstr "包括边"
+
+
+msgid "Write Materials"
+msgstr "写入材质"
+
+
+msgid "Write out the MTL file"
+msgstr "写入为 MTL 文件"
+
+
+msgid "Apply modifiers"
+msgstr "应用修改器"
+
+
+msgid "Write Normals"
+msgstr "写入法线"
+
+
+msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
+msgstr "逐点逐面导出法向, 已显示平直面和锐利边线"
+
+
+msgid "Write Nurbs"
+msgstr "写入Nurbs"
+
+
+msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
+msgstr "将 Nurbs 曲线作为 OBJ Nurbs 写入, 而不是转换为几何体"
+
+
+msgid "Smooth Groups"
+msgstr "平滑组"
+
+
+msgid "Write sharp edges as smooth groups"
+msgstr "写出锐边为平滑组"
+
+
+msgid "Bitflag Smooth Groups"
+msgstr "Bitflag 平滑组"
+
+
+msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
+msgstr "与'平滑组'相同，但生成平滑组 ID 为位标记(最多生成 32 个不同的平滑组，通常要少得多)"
+
+
+msgid "Include UVs"
+msgstr "包括UV"
+
+
+msgid "Write out the active UV coordinates"
+msgstr "写入活动UV 坐标轴"
+
+
+msgid "Polygroups"
+msgstr "多边形组"
 
 
 msgctxt "Operator"
@@ -55773,10 +55795,6 @@ msgid "Active Layer"
 msgstr "活动层"
 
 
-msgid "Active Grease Pencil layer"
-msgstr "活动蜡笔图层"
-
-
 msgctxt "Operator"
 msgid "Add New Layer"
 msgstr "添加新层"
@@ -56539,6 +56557,10 @@ msgid "Change stroke caps mode (rounded or flat)"
 msgstr "修改笔画端点模式(圆形或扁平)"
 
 
+msgid "Both"
+msgstr "两者"
+
+
 msgid "Set as default rounded"
 msgstr "设置为默认圆形"
 
@@ -56773,6 +56795,26 @@ msgstr "新材质"
 
 msgid "Thickness of the stroke perimeter"
 msgstr "笔画周长的粗细"
+
+
+msgctxt "View3D"
+msgid "View"
+msgstr "视图"
+
+
+msgctxt "View3D"
+msgid "Front"
+msgstr "前视图"
+
+
+msgctxt "View3D"
+msgid "Top"
+msgstr "顶视图"
+
+
+msgctxt "View3D"
+msgid "Camera"
+msgstr "摄像机"
 
 
 msgctxt "Operator"
@@ -58550,6 +58592,19 @@ msgstr "将Alpha 通道用于透明"
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "导入PLY"
+
+
+msgid "Load a PLY geometry file"
+msgstr "加载 PLY 几何体文件"
+
+
+msgid "File path used for importing the PLY file"
+msgstr "导入 PLY 文件的路径"
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "导入STL"
 
@@ -58790,6 +58845,63 @@ msgstr "日志级别"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "glTF 格式要求将不连续法向、UV以及其他顶点属性存储为单独的顶点，这是在典型图形硬件上渲染所需的。此选项将尽可能合并同一位置的顶点。当前无法合并具有不同法向的顶点"
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "导入OBJ"
+
+
+msgid "Load a Wavefront OBJ File"
+msgstr "加载 OBJ 文件"
+
+
+msgid "Clamp Size"
+msgstr "钳制尺寸"
+
+
+msgid "Clamp bounds under this value (zero to disable)"
+msgstr "钳制的下界(0为禁用)"
+
+
+msgid "Split geometry, omits vertices unused by edges or faces"
+msgstr "拆分几何体，忽略未被边或面使用的顶点"
+
+
+msgid "Keep Vert Order"
+msgstr "保留顶点顺序"
+
+
+msgid "Keep vertex order from file"
+msgstr "保留文件中的顶点顺序"
+
+
+msgid "Import lines and faces with 2 verts as edge"
+msgstr "将线条以及含有 2 个顶点的面作为线元素导入"
+
+
+msgid "Poly Groups"
+msgstr "多边形组"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "将 OBJ 组导入为顶点组"
+
+
+msgid "Search subdirs for any associated images (Warning, may be slow)"
+msgstr "为所有关联图像搜索子目录(警告, 速度可能会慢)"
+
+
+msgid "Surround smooth groups by sharp edges"
+msgstr "使用锐边包围光滑组"
+
+
+msgid "Import OBJ Groups into Blender Objects"
+msgstr "将OBJ组导入到Blender物体"
+
+
+msgid "Import OBJ Objects into Blender Objects"
+msgstr "将OBJ物体导入到Blender物体"
 
 
 msgctxt "Operator"
@@ -64735,10 +64847,6 @@ msgid "Bake Light Cache"
 msgstr "烘焙光照缓存"
 
 
-msgid "Bake the active view layer lighting"
-msgstr "烘焙活动视图层光照"
-
-
 msgid "Delay in millisecond before baking starts"
 msgstr "烘焙开始前延迟一毫秒"
 
@@ -70441,6 +70549,10 @@ msgid "Add or remove grease pencil material preset"
 msgstr "添加或移除蜡笔材质预设"
 
 
+msgid "Bake the active view layer lighting"
+msgstr "烘焙活动视图层光照"
+
+
 msgid "Bake both irradiance grids and reflection cubemaps"
 msgstr "烘焙辐射网格和反射立方体贴图"
 
@@ -72251,18 +72363,6 @@ msgstr "改变效果接口"
 
 msgid "The effect inputs to swap"
 msgstr "交换特效输入"
-
-
-msgid "A -> B"
-msgstr "A -> B"
-
-
-msgid "B -> C"
-msgstr "B -> C"
-
-
-msgid "A -> C"
-msgstr "A -> C"
 
 
 msgctxt "Operator"
@@ -76706,11 +76806,6 @@ msgstr "相对当前坐标系的旋转"
 
 
 msgctxt "View3D"
-msgid "View"
-msgstr "视图"
-
-
-msgctxt "View3D"
 msgid "Left"
 msgstr "左"
 
@@ -76737,18 +76832,8 @@ msgid "View from the bottom"
 msgstr "从底部查看"
 
 
-msgctxt "View3D"
-msgid "Top"
-msgstr "顶视图"
-
-
 msgid "View from the top"
 msgstr "从顶部查看"
-
-
-msgctxt "View3D"
-msgid "Front"
-msgstr "前视图"
 
 
 msgid "View from the front"
@@ -78327,10 +78412,6 @@ msgid "Export Material Groups"
 msgstr "导出材质组"
 
 
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "为几何中使用不同材质的每个部分生成OBJ组"
-
-
 msgid "Export Materials"
 msgstr "导出材质"
 
@@ -78456,10 +78537,6 @@ msgid "Resize the objects to keep bounding box under this value. Value 0 disable
 msgstr "调整物体大小以使边界框保持在该值以下。数值为0禁用钳制"
 
 
-msgid "Import OBJ groups as vertex groups"
-msgstr "将 OBJ 组导入为顶点组"
-
-
 msgid "Split By Group"
 msgstr "按组拆分"
 
@@ -78559,16 +78636,6 @@ msgstr "启用工作区的插件"
 
 msgid "Open a path in a file browser"
 msgstr "在文件浏览器中打开路径"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "导出PLY"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "导入PLY"
 
 
 msgctxt "Operator"
@@ -81197,6 +81264,10 @@ msgstr "簇集"
 
 msgid "Clump Noise"
 msgstr "簇噪波"
+
+
+msgid "Kink"
+msgstr "扭结"
 
 
 msgid "Parting"
@@ -84900,22 +84971,6 @@ msgid "Quality of anisotropic filtering"
 msgstr "各向异性过滤的质量"
 
 
-msgid "2x"
-msgstr "2x"
-
-
-msgid "4x"
-msgstr "4x"
-
-
-msgid "8x"
-msgstr "8x"
-
-
-msgid "16x"
-msgstr "16x"
-
-
 msgid "Audio Device"
 msgstr "音频设备"
 
@@ -86374,10 +86429,6 @@ msgid "Combination of true displacement and bump mapping for finer detail"
 msgstr "置换与凹凸映射相结合以获得更好的细节"
 
 
-msgid "Emission Sampling"
-msgstr "自发光采样"
-
-
 msgid "Sampling strategy for emissive surfaces"
 msgstr "自发光表面的采样策略"
 
@@ -86396,10 +86447,6 @@ msgstr "仅将表面的正面视为光源，通常用于内部不可见的闭合
 
 msgid "Treat only back side of the surface as a light for sampling"
 msgstr "仅将表面的背面视为采样光"
-
-
-msgid "Front and Back"
-msgstr "正面和背面"
 
 
 msgid "Treat surface as a light for sampling, emitting from both the front and back side"
@@ -88693,10 +88740,6 @@ msgstr "为视图渲染使用的像素尺寸"
 
 msgid "Automatic pixel size, depends on the user interface scale"
 msgstr "依照用户界面缩放值自动调整像素尺寸"
-
-
-msgid "1x"
-msgstr "1x"
 
 
 msgid "Render at full resolution"
@@ -91976,14 +92019,6 @@ msgstr "序列片段的变换参数"
 
 msgid "Type of filter to use for image transformation"
 msgstr "用于图像转换的滤镜类型"
-
-
-msgid "Subsampling (3x3)"
-msgstr "子采样 (3x3)"
-
-
-msgid "Use nearest with 3x3 subsamples during rendering"
-msgstr "在渲染过程中使用最接近的 3x3 子样本"
 
 
 msgid "Move along X axis"
@@ -100211,10 +100246,6 @@ msgid "Fine"
 msgstr "精细"
 
 
-msgid "Display box for each leaf node containing 8x8 voxels"
-msgstr "为包含8x8体素的每个叶节点的显示框"
-
-
 msgid "Type of wireframe display"
 msgstr "线框显示的类型"
 
@@ -103631,6 +103662,10 @@ msgstr "请先创建变量"
 msgctxt "Operator"
 msgid "Add a new Variant Slot"
 msgstr "添加新的变量槽"
+
+
+msgid "Curves as NURBS"
+msgstr "曲线为NURBS"
 
 
 msgid "untitled"
@@ -109566,11 +109601,6 @@ msgid "Active Camera"
 msgstr "活动摄像机"
 
 
-msgctxt "View3D"
-msgid "Camera"
-msgstr "摄像机"
-
-
 msgctxt "Operator"
 msgid "Orbit Opposite"
 msgstr "相对视轨"
@@ -113739,6 +113769,14 @@ msgid "Operation is not allowed in edit mode"
 msgstr "禁止从编辑模式使用该操作"
 
 
+msgid "Loading Asset Libraries"
+msgstr "加载资产库"
+
+
+msgid "Cannot evaluate node group"
+msgstr "无法解算节点组"
+
+
 msgid "Annotation Create Poly: LMB click to place next stroke vertex | ESC/Enter to end  (or click outside this area)"
 msgstr "标注创建多边形：鼠标左键点击放置下一个笔画点 | ESC/回车 结束操作  (或者在区域外单击)"
 
@@ -115113,10 +115151,6 @@ msgid "Triangulated Mesh"
 msgstr "三角化网格"
 
 
-msgid "Curves as NURBS"
-msgstr "曲线为NURBS"
-
-
 msgid "Grouping"
 msgstr "分组"
 
@@ -115125,20 +115159,8 @@ msgid "Object Groups"
 msgstr "物体组"
 
 
-msgid "Material Groups"
-msgstr "材质组"
-
-
-msgid "Smooth Groups"
-msgstr "平滑组"
-
-
 msgid "Smooth Group Bitflags"
 msgstr "平滑组位标记"
-
-
-msgid "ASCII"
-msgstr "ASCII"
 
 
 msgid "File References"
@@ -115272,10 +115294,6 @@ msgstr "切割次数: %s, 平滑: %s (Alt)"
 
 msgid "Loop cut does not work well on deformed edit mesh display"
 msgstr "在形变编辑网格的显示状态下循环切割工具将会丢失精度"
-
-
-msgid "Click on the mesh to select a Face Set"
-msgstr "单击网格以选择面组"
 
 
 msgid "The geometry can not be extracted with dyntopo activated"
@@ -116852,30 +116870,6 @@ msgid "Rigid Body World has no associated physics data to export"
 msgstr "刚体世界环境没有可供导出的关联物理数据"
 
 
-msgid "3D Local View"
-msgstr "3D局部视图"
-
-
-msgid "Frame:%d "
-msgstr "帧: %d "
-
-
-msgid "| Last:%s "
-msgstr "| 用时: %s "
-
-
-msgid "Time:%s "
-msgstr "时间: %s "
-
-
-msgid "| Mem:%.2fM (Peak %.2fM) "
-msgstr "| 内存: %.2fM (峰值: %.2fM) "
-
-
-msgid "| Mem:%.2fM, Peak: %.2fM "
-msgstr "| 内存: %.2fM, 峰值: %.2fM "
-
-
 msgid "Cannot write a single file with an animation format selected"
 msgstr "无法在选中一个动画格式时写入文件"
 
@@ -118074,10 +118068,6 @@ msgid "Can't Load Image"
 msgstr "无法加载图像"
 
 
-msgid "%d x %d, "
-msgstr "%d x %d, "
-
-
 msgid "%d float channel(s)"
 msgstr "%d 浮动型通道"
 
@@ -118096,10 +118086,6 @@ msgstr " RGBA 字节型"
 
 msgid " RGB byte"
 msgstr " RGB 字节型"
-
-
-msgid " + Z"
-msgstr " + Z"
 
 
 msgid ",  %s"
@@ -118364,10 +118350,6 @@ msgstr "在 '%s' 与 '%s' 之间无法通过相互匹配来进行交换"
 
 msgid "Modifier could not be added to (%s : %s) (see console for details)"
 msgstr "修改器无法被添加至 (%s : %s)(请参考控制台的打印信息)"
-
-
-msgid "Loading Asset Libraries"
-msgstr "加载资产库"
 
 
 msgid "Some nodes references could not be restored, will be left empty"
@@ -119005,10 +118987,6 @@ msgstr "找到无效的层级根 ('%s')，需要从数据块 '%s' 创建库重�
 
 msgid "Could not create library override from one or more of the selected data-blocks"
 msgstr "无法从一个或多个选定的数据块创建库重写"
-
-
-msgid "Cannot clear embedded library override id '%s', only overrides of real data-blocks can be directly deleted"
-msgstr "无法清除嵌入式库重写 ID '%s', 只能直接删除真实数据块的重写"
 
 
 msgid "Current File"
@@ -121966,10 +121944,6 @@ msgid "Node group's first output must be a geometry"
 msgstr "节点组的第一个输出必须是几何"
 
 
-msgid "Cannot evaluate node group"
-msgstr "无法解算节点组"
-
-
 msgid "NormalEdit"
 msgstr "法线编辑"
 
@@ -124649,10 +124623,6 @@ msgid "Property from path '%s' has length %d instead of %d"
 msgstr "路径 '%s' 的属性长度为 %d 而非 %d"
 
 
-msgid "%d x %s: %.4f ms, average: %.8f ms"
-msgstr "%d x %s: %.4f ms, 平均: %.8f ms"
-
-
 msgctxt "WindowManager"
 msgid "Limited Platform Support"
 msgstr "有限平台支持"
@@ -125276,6 +125246,18 @@ msgid "Import SVG as curves"
 msgstr "导入SVG为曲线"
 
 
+msgid "Stanford PLY format"
+msgstr "斯坦福PLY格式"
+
+
+msgid "File > Import/Export"
+msgstr "文件 > 导入/导出"
+
+
+msgid "Import-Export PLY mesh data with UVs and vertex colors"
+msgstr "导入-导出带有UV和顶点颜色的PLY网格数据"
+
+
 msgid "UV Layout"
 msgstr "UV布局"
 
@@ -125286,6 +125268,10 @@ msgstr "UV 编辑器 > UV > 导出 UV 布局"
 
 msgid "Export the UV layout as a 2D graphic"
 msgstr "将 UV 布局导出为二维图形"
+
+
+msgid "Wavefront OBJ format (legacy)"
+msgstr "Wavefront OBJ 格式 (旧版)"
 
 
 msgid "glTF 2.0 format"

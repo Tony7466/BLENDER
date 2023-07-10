@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: 2020-01-04 05:04+0900\n"
 "Last-Translator: Geuntak Jeong <beroberos@gmail.com>\n"
 "Language-Team: Korean (http://www.transifex.com/lxlalexlxl/blender/language/ko/)\n"
@@ -2647,16 +2647,8 @@ msgid "Bone Matrix"
 msgstr "본 매트릭스"
 
 
-msgid "3x3 bone matrix"
-msgstr "3x3 본 매트릭스"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "본 상대적인 아마튜어 매트릭스"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "아마튜어로 4x4 본 매트릭스 상대적"
 
 
 msgid "Parent"
@@ -3409,10 +3401,6 @@ msgstr "오브젝트 경로"
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Alembic 아카이브 내부에 있는 오브젝트의 경로"
-
-
-msgid "Path"
-msgstr "경로"
 
 
 msgid "Object path"
@@ -8423,26 +8411,6 @@ msgid "Multiplier for wave influence of this brush"
 msgstr "이 브러시의 웨이브 영향력에 대한 승수"
 
 
-msgid "Wave Type"
-msgstr "웨이브 유형"
-
-
-msgid "Depth Change"
-msgstr "깊이를 변경"
-
-
-msgid "Obstacle"
-msgstr "장애물"
-
-
-msgid "Force"
-msgstr "포스"
-
-
-msgid "Reflect Only"
-msgstr "반영 만"
-
-
 msgid "Canvas Settings"
 msgstr "캔버스 설정"
 
@@ -8707,10 +8675,6 @@ msgid "Anti-Aliasing"
 msgstr "안티앨리어싱"
 
 
-msgid "Use 5x multisampling to smooth paint edges"
-msgstr "스무스 페인트 에지에 5x 멀티 셈플링을 사용"
-
-
 msgid "Enable to make surface changes disappear over time"
 msgstr "표면 변화를 시간이 지남에 따라 사라지게 할 수 있습니다"
 
@@ -8949,6 +8913,10 @@ msgstr "드래그"
 
 msgid "Drag effector weight"
 msgstr "이펙터 웨이트를 드래그"
+
+
+msgid "Force"
+msgstr "포스"
 
 
 msgid "Force effector weight"
@@ -10101,28 +10069,8 @@ msgid "Adjust the offset to the beginning/end"
 msgstr "시작/종료 오프셋을 조절하기"
 
 
-msgid "Kink"
-msgstr "꼬임"
-
-
 msgid "Type of periodic offset on the curve"
 msgstr "커브에 주기 오프셋의 유형"
-
-
-msgid "Braid"
-msgstr "노끈"
-
-
-msgid "Curl"
-msgstr "말기"
-
-
-msgid "Radial"
-msgstr "방사형"
-
-
-msgid "Wave"
-msgstr "웨이브"
 
 
 msgid "The distance from which particles are affected fully"
@@ -10259,6 +10207,10 @@ msgstr "포스로 사용하는 텍스처"
 
 msgid "Texture Mode"
 msgstr "텍스처 모드"
+
+
+msgid "Curl"
+msgstr "말기"
 
 
 msgid "Gradient"
@@ -11003,6 +10955,10 @@ msgstr "X에서 중력, Y 및 Z 방향"
 
 msgid "Fluid"
 msgstr "유체"
+
+
+msgid "Obstacle"
+msgstr "장애물"
 
 
 msgid "Outflow"
@@ -12677,6 +12633,10 @@ msgid "Use single point to create rings"
 msgstr "싱글 포인트를 사용하여 링을 생성"
 
 
+msgid "Radial"
+msgstr "방사형"
+
+
 msgid "Use single point as direction"
 msgstr "싱글 포인트를 방향으로 사용"
 
@@ -13719,10 +13679,6 @@ msgstr "포인트 밀도"
 
 msgid "Step"
 msgstr "단계"
-
-
-msgid "Number of frames before recalculate random values again"
-msgstr "다시 렌덤 값을 재계산하기 전의 프레임 수"
 
 
 msgid "Overscan"
@@ -16144,6 +16100,10 @@ msgstr "맵 테이퍼"
 
 msgid "Map effect of the taper object to the beveled part of the curve"
 msgstr "곡선의 베벨된 부분에 대한 테이퍼 오브젝트의 효과를 맵"
+
+
+msgid "Path"
+msgstr "경로"
 
 
 msgid "Enable the curve to become a translation path"
@@ -18944,54 +18904,6 @@ msgid "Max size of a tile (smaller values gives better distribution of multiple 
 msgstr "타일의 최대 크기 (값이 작을수록 다중 스레드의 분배가 좋지만 오버 헤드가 많음)"
 
 
-msgid "32x32"
-msgstr "32x32"
-
-
-msgid "Chunksize of 32x32"
-msgstr "32x32의 청크사이즈"
-
-
-msgid "64x64"
-msgstr "64x64"
-
-
-msgid "Chunksize of 64x64"
-msgstr "64x64의 청크사이즈"
-
-
-msgid "128x128"
-msgstr "128x128"
-
-
-msgid "Chunksize of 128x128"
-msgstr "128x128의 청크사이즈"
-
-
-msgid "256x256"
-msgstr "256x256"
-
-
-msgid "Chunksize of 256x256"
-msgstr "256x256의 청크사이즈"
-
-
-msgid "512x512"
-msgstr "512x512"
-
-
-msgid "Chunksize of 512x512"
-msgstr "512x512의 청크사이즈"
-
-
-msgid "1024x1024"
-msgstr "1024x1024"
-
-
-msgid "Chunksize of 1024x1024"
-msgstr "1024x1024의 청크사이즈"
-
-
 msgid "Edit Quality"
 msgstr "품질을 편집"
 
@@ -19304,16 +19216,8 @@ msgid "Origin offset distance"
 msgstr "오리진 오프셋 거리"
 
 
-msgid "Empty Image Side"
-msgstr "엠프티 이미지 측면"
-
-
 msgid "Show front/back side"
 msgstr "전면/후면을 보기"
-
-
-msgid "Both"
-msgstr "양쪽"
 
 
 msgid "Settings for using the object as a field in physics simulation"
@@ -20177,10 +20081,6 @@ msgstr "키 단계"
 
 msgid "Type of periodic offset on the path"
 msgstr "경로에 주기 오프셋의 유형"
-
-
-msgid "Spiral"
-msgstr "나선형"
 
 
 msgid "Amplitude Clump"
@@ -22873,10 +22773,6 @@ msgid "When rendering animations, save JPG preview images in same directory"
 msgstr "애니메이션을 렌더링 할 때 JPG 미리보기 이미지를 같은 디렉토리에 저장"
 
 
-msgid "Z Buffer"
-msgstr "Z 버퍼"
-
-
 msgid "Format of multiview media"
 msgstr "멀티뷰 미디어의 형식"
 
@@ -23741,17 +23637,9 @@ msgid "Media Play/Pause"
 msgstr "Media Play/Pause"
 
 
-msgid ">/||"
-msgstr ">/||"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "Media Stop"
-
-
-msgid "Stop"
-msgstr "Stop"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -23759,17 +23647,9 @@ msgid "Media First"
 msgstr "Media First"
 
 
-msgid "|<<"
-msgstr "|<<"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Last"
 msgstr "Media Last"
-
-
-msgid ">>|"
-msgstr ">>|"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -27446,6 +27326,10 @@ msgstr "왜곡"
 
 msgid "Warp parts of a mesh to a new location in a very flexible way thanks to 2 specified objects"
 msgstr "2 개의 지정된 오브젝트 덕분에 메쉬의 일부를 매우 유연한 방식으로 새로운 위치로 변형합니다"
+
+
+msgid "Wave"
+msgstr "웨이브"
 
 
 msgid "Dynamic Paint"
@@ -34884,6 +34768,10 @@ msgid "Use a sawtooth profile"
 msgstr "쏘우투스 단면을 사용"
 
 
+msgid "Wave Type"
+msgstr "웨이브 유형"
+
+
 msgid "Use standard wave texture in bands"
 msgstr "대역에서 표준 웨이브 텍스처를 사용"
 
@@ -39685,20 +39573,12 @@ msgstr "오일러 ZYX에 회전을 변환"
 
 
 msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL을 내보내기"
+msgid "Export PLY"
+msgstr "PLY를 내보내기"
 
 
-msgid "Save STL triangle mesh data"
-msgstr "STL 삼각형 메쉬 데이터를 저장"
-
-
-msgid "Ascii"
-msgstr "아스키"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "ASCII 파일 형식으로 파일을 저장"
+msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
+msgstr "노멀, 버텍스 컬러 및 텍스처 좌표를 사용하여 Stanford PLY로 내보내기"
 
 
 msgid "X Forward"
@@ -39745,6 +39625,43 @@ msgid "-Z Up"
 msgstr "-Z 위쪽"
 
 
+msgid "Export the active vertex color layer"
+msgstr "활성 버텍스 컬러 레이어를 내보내기"
+
+
+msgid "Apply Modifiers"
+msgstr "모디파이어를 적용"
+
+
+msgid "Apply Modifiers to the exported mesh"
+msgstr "내보낸 메쉬에 모디파이어를 적용"
+
+
+msgid "Selection Only"
+msgstr "선택 만"
+
+
+msgid "Export selected objects only"
+msgstr "선택된 오브젝트 만 내보내기"
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "STL을 내보내기"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "STL 삼각형 메쉬 데이터를 저장"
+
+
+msgid "Ascii"
+msgstr "아스키"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "ASCII 파일 형식으로 파일을 저장"
+
+
 msgid "Batch Mode"
 msgstr "일괄 모드"
 
@@ -39757,10 +39674,6 @@ msgid "Each object as a file"
 msgstr "각 오브젝트를 파일로"
 
 
-msgid "Apply Modifiers"
-msgstr "모디파이어를 적용"
-
-
 msgid "Apply the modifiers before saving"
 msgstr "저장하기 이전에 모디파이어를 적용"
 
@@ -39771,14 +39684,6 @@ msgstr "씬 단위"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "내보내기된 데이터로 현재 씬의 단위(단위 축적으로 한정된)를 적용"
-
-
-msgid "Selection Only"
-msgstr "선택 만"
-
-
-msgid "Export selected objects only"
-msgstr "선택된 오브젝트 만 내보내기"
 
 
 msgctxt "Operator"
@@ -40357,6 +40262,87 @@ msgstr "내보내기 설정 저장"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "블렌더 프로젝트에 glTF 내보내기 설정을 저장"
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "OBJ를 내보내기"
+
+
+msgid "Save a Wavefront OBJ File"
+msgstr "웨이브프론트 OBJ 파일을 저장"
+
+
+msgid "Material Groups"
+msgstr "매테리얼 그룹"
+
+
+msgid "Keep Vertex Order"
+msgstr "버텍스 순서를 유지"
+
+
+msgid "Write out an OBJ for each frame"
+msgstr "각 프레임에 대한 OBJ를 작성"
+
+
+msgid "Include Edges"
+msgstr "에지를 포함"
+
+
+msgid "Write Materials"
+msgstr "매테리얼을 작성"
+
+
+msgid "Write out the MTL file"
+msgstr "MTL 파일을 작성"
+
+
+msgid "Apply modifiers"
+msgstr "모디파이어를 적용"
+
+
+msgid "Write Normals"
+msgstr "노멀을 작성"
+
+
+msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
+msgstr "버텍스 및 페이스 마다 하나의 노멀을 내보내기, 플랫 페이스 및 샤프 에지 표현하는"
+
+
+msgid "Write Nurbs"
+msgstr "넙스를 쓰기"
+
+
+msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
+msgstr "지오메트리로 변환하는 대신 OBJ 넙스로 넙스 커브를 작성"
+
+
+msgid "Smooth Groups"
+msgstr "스무스 그룹"
+
+
+msgid "Write sharp edges as smooth groups"
+msgstr "샤프 에지를 스무스 그룹으로 작성"
+
+
+msgid "Bitflag Smooth Groups"
+msgstr "비트플래그 스무스 그룹"
+
+
+msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
+msgstr "'스무스 그룹'과 동일하지만, 비트 플래그로 매끈한 그룹 ID를 생성 (대부분 32 가지 스무스 그룹으로 생산, 일반적으로 훨씬 적은)"
+
+
+msgid "Include UVs"
+msgstr "UV를 포함"
+
+
+msgid "Write out the active UV coordinates"
+msgstr "활성 UV 좌표를 작성"
+
+
+msgid "Polygroups"
+msgstr "폴리그룹"
 
 
 msgctxt "Operator"
@@ -42155,6 +42141,10 @@ msgid "Set Caps Mode"
 msgstr "캡 모드를 설정"
 
 
+msgid "Both"
+msgstr "양쪽"
+
+
 msgid "Set as default rounded"
 msgstr "기본 둥근으로 설정"
 
@@ -43603,6 +43593,19 @@ msgstr "투명도를 위해 알파 채널을 사용"
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY를 가져오기"
+
+
+msgid "Load a PLY geometry file"
+msgstr "PLY 지오메트리 파일을 불러오기"
+
+
+msgid "File path used for importing the PLY file"
+msgstr "PLY 파일을 가져오기에 사용된 파일 경로"
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "STL을 가져오기"
 
@@ -43775,6 +43778,59 @@ msgstr "플랫 셰이딩"
 
 msgid "Log Level"
 msgstr "로그 레벨"
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "OBJ를 가져오기"
+
+
+msgid "Load a Wavefront OBJ File"
+msgstr "파면의 OBJ 파일을 불러오기"
+
+
+msgid "Clamp Size"
+msgstr "클램프 크기"
+
+
+msgid "Clamp bounds under this value (zero to disable)"
+msgstr "이 값보다 아래 경계를 클램프 (사용 중지할 때 제로)"
+
+
+msgid "Keep Vert Order"
+msgstr "버텍스 순서를 유지"
+
+
+msgid "Keep vertex order from file"
+msgstr "파일에서 버텍스 순서를 유지"
+
+
+msgid "Import lines and faces with 2 verts as edge"
+msgstr "에지로 2개 버텍스와 페이스 및 라인을 가져오기"
+
+
+msgid "Poly Groups"
+msgstr "폴리 그룹"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "버텍스 그룹으로 OBJ 그룹을 가져오기"
+
+
+msgid "Search subdirs for any associated images (Warning, may be slow)"
+msgstr "연관된 이미지를 위해 하위 디렉터리를 검색 (경고: 속도가 느려질 수 있습니다)"
+
+
+msgid "Surround smooth groups by sharp edges"
+msgstr "샤프 에지로 스무스 그룹을 둘러싸기"
+
+
+msgid "Import OBJ Groups into Blender Objects"
+msgstr "OBJ 그룹을 블렌더 오브젝트로 가져오기"
+
+
+msgid "Import OBJ Objects into Blender Objects"
+msgstr "OBJ 오브젝트를 블렌더 오브젝트로 가져오기"
 
 
 msgctxt "Operator"
@@ -48642,10 +48698,6 @@ msgid "Bake Light Cache"
 msgstr "라이트 캐시를 베이크"
 
 
-msgid "Bake the active view layer lighting"
-msgstr "활성 뷰레이어 라이트닝을 베이크"
-
-
 msgid "Delay in millisecond before baking starts"
 msgstr "배이킹 시작전 밀리 초 지연"
 
@@ -53097,6 +53149,10 @@ msgid "Add or remove grease pencil material preset"
 msgstr "그리이스 펜슬 매테리얼 프리셋을 추가 또는 제거"
 
 
+msgid "Bake the active view layer lighting"
+msgstr "활성 뷰레이어 라이트닝을 베이크"
+
+
 msgid "Bake both irradiance grids and reflection cubemaps"
 msgstr "방사 조도 격자 및 반사 큐브 맵을 모두 구워 내기"
 
@@ -53936,18 +53992,6 @@ msgstr "이팩트 입력을 변경"
 
 msgid "The effect inputs to swap"
 msgstr "교환하는 이펙트 입력"
-
-
-msgid "A -> B"
-msgstr "A -> B"
-
-
-msgid "B -> C"
-msgstr "B -> C"
-
-
-msgid "A -> C"
-msgstr "A -> C"
 
 
 msgctxt "Operator"
@@ -58594,10 +58638,6 @@ msgid "Object Properties"
 msgstr "오브젝트 프로퍼티스"
 
 
-msgid "Import OBJ groups as vertex groups"
-msgstr "버텍스 그룹으로 OBJ 그룹을 가져오기"
-
-
 msgctxt "Operator"
 msgid "Open"
 msgstr "열기"
@@ -58664,16 +58704,6 @@ msgstr "UI 테그"
 
 msgid "Open a path in a file browser"
 msgstr "파일 브라우저에서 경로를 열기"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY를 내보내기"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY를 가져오기"
 
 
 msgctxt "Operator"
@@ -60356,6 +60386,10 @@ msgstr "응집"
 
 msgid "Clump Noise"
 msgstr "덩어리 노이즈"
+
+
+msgid "Kink"
+msgstr "꼬임"
 
 
 msgid "Parting"
@@ -63288,22 +63322,6 @@ msgid "Show UI Key-Config"
 msgstr "UI 키-구성을 표시"
 
 
-msgid "2x"
-msgstr "2x"
-
-
-msgid "4x"
-msgstr "4x"
-
-
-msgid "8x"
-msgstr "8x"
-
-
-msgid "16x"
-msgstr "16x"
-
-
 msgid "Audio Device"
 msgstr "오디오 장치"
 
@@ -65946,10 +65964,6 @@ msgstr "뷰포트 렌더링을 위한 픽셀 크기"
 
 msgid "Automatic pixel size, depends on the user interface scale"
 msgstr "자동 픽셀 크기, 사용자 인터페이스 배율에 따라 다름"
-
-
-msgid "1x"
-msgstr "1x"
 
 
 msgid "Render at full resolution"
@@ -83015,14 +83029,6 @@ msgid "Parsing errors in Document (see Blender Console)"
 msgstr "문서의 구문 분석 오류 (Blender Console 참조)"
 
 
-msgid "Material Groups"
-msgstr "매테리얼 그룹"
-
-
-msgid "Smooth Groups"
-msgstr "스무스 그룹"
-
-
 msgctxt "Mesh"
 msgid "Plane"
 msgstr "평면"
@@ -84178,26 +84184,6 @@ msgid "Rigid Body World has no associated physics data to export"
 msgstr "리지드 바디 월드에 내보낼 피직스 데이터가 없음"
 
 
-msgid "3D Local View"
-msgstr "3D 로컬 뷰"
-
-
-msgid "Frame:%d "
-msgstr "프레임:%d "
-
-
-msgid "| Last:%s "
-msgstr "| 마지막:%s "
-
-
-msgid "Time:%s "
-msgstr "시간:%s "
-
-
-msgid "| Mem:%.2fM, Peak: %.2fM "
-msgstr "| 메모리:%.2fM, 최고: %.2fM "
-
-
 msgid "Cannot write a single file with an animation format selected"
 msgstr "선택한 애니메이션 형식으로 단일 파일을 작성 할 수 없습니다"
 
@@ -85076,10 +85062,6 @@ msgid "Can't Load Image"
 msgstr "이미지를 불러올 수 없습니다"
 
 
-msgid "%d x %d, "
-msgstr "%d x %d, "
-
-
 msgid "%d float channel(s)"
 msgstr "%d 실수 채널(들)"
 
@@ -85098,10 +85080,6 @@ msgstr " RGBA byte"
 
 msgid " RGB byte"
 msgstr " RGB byte"
-
-
-msgid " + Z"
-msgstr " + Z"
 
 
 msgid "Frame %d / %d"
@@ -87868,10 +87846,6 @@ msgstr "경로 '%s'에서 속성이 실수가 아님"
 
 msgid "Property from path '%s' has length %d instead of %d"
 msgstr "경로 '%s'의 속성의 길이는 %d 이고 %d는 아닙니다"
-
-
-msgid "%d x %s: %.4f ms, average: %.8f ms"
-msgstr "%d x %s: %.4f ms, 평균: %.8f ms"
 
 
 msgctxt "WindowManager"

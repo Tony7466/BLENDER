@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Martin Tabačan <tabycz@gmail.com>\n"
 "Language-Team: Taby <tabycz@gmail.com>\n"
@@ -2844,10 +2844,6 @@ msgstr "Cesta k objektu"
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Cesta objektu uvnitř alembického archivu"
-
-
-msgid "Path"
-msgstr "Cesta"
 
 
 msgid "Object path"
@@ -5881,26 +5877,6 @@ msgid "Factor"
 msgstr "Faktor"
 
 
-msgid "Wave Type"
-msgstr "Stejné typy"
-
-
-msgid "Depth Change"
-msgstr "Změna hloubky"
-
-
-msgid "Obstacle"
-msgstr "Objekt"
-
-
-msgid "Force"
-msgstr "Síla"
-
-
-msgid "Reflect Only"
-msgstr "Pouze vybrané"
-
-
 msgid "Canvas Settings"
 msgstr "Nastavení Plátna"
 
@@ -6215,6 +6191,10 @@ msgstr "Přesun"
 
 msgid "Drag effector weight"
 msgstr "Vlastnosti zaoblení"
+
+
+msgid "Force"
+msgstr "Síla"
 
 
 msgid "Global gravity weight"
@@ -6823,22 +6803,6 @@ msgid "Adjust the offset to the beginning/end"
 msgstr "Vyhlazuje hrany textury"
 
 
-msgid "Braid"
-msgstr "Mřížka"
-
-
-msgid "Curl"
-msgstr "Křivka"
-
-
-msgid "Radial"
-msgstr "Radiální"
-
-
-msgid "Wave"
-msgstr "Vlnění"
-
-
 msgid "Harmonic Damping"
 msgstr "Mřížka"
 
@@ -6905,6 +6869,10 @@ msgstr "Velikost prostor textury"
 
 msgid "Texture Mode"
 msgstr "Textury"
+
+
+msgid "Curl"
+msgstr "Křivka"
 
 
 msgid "Gradient"
@@ -7423,6 +7391,10 @@ msgid "Fluid"
 msgstr "Tekutina"
 
 
+msgid "Obstacle"
+msgstr "Objekt"
+
+
 msgid "Outflow"
 msgstr "Odtok"
 
@@ -7857,6 +7829,10 @@ msgstr "Mezery"
 
 msgid "Circular"
 msgstr "Kruh"
+
+
+msgid "Radial"
+msgstr "Radiální"
 
 
 msgid "Grid"
@@ -9487,6 +9463,10 @@ msgid "Map Taper"
 msgstr "Stejné typy"
 
 
+msgid "Path"
+msgstr "Cesta"
+
+
 msgid "Follow"
 msgstr "Následovat Cestu"
 
@@ -10645,26 +10625,6 @@ msgid "Chunksize"
 msgstr "Skrýt skryté soubory"
 
 
-msgid "Chunksize of 32x32"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 64x64"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 128x128"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 256x256"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 512x512"
-msgstr "Skrýt skryté soubory"
-
-
 msgid "Edit Quality"
 msgstr "Nejlepší kvalita"
 
@@ -10875,10 +10835,6 @@ msgstr "Odsazení počátku"
 
 msgid "Origin offset distance"
 msgstr "Vzdálenost odsazení počátku"
-
-
-msgid "Both"
-msgstr "Oba"
 
 
 msgid "Settings for using the object as a field in physics simulation"
@@ -12922,10 +12878,6 @@ msgid "When rendering animations, save JPG preview images in same directory"
 msgstr "Při renderování animace ukládat náhledy obrázků JPG ve stejném adresáři"
 
 
-msgid "Z Buffer"
-msgstr "Z-Buffer"
-
-
 msgid "Image Preview"
 msgstr "Náhled obrázku"
 
@@ -13444,10 +13396,6 @@ msgstr "Media Play/Pause"
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "Media Stop"
-
-
-msgid "Stop"
-msgstr "Stop"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -14962,6 +14910,10 @@ msgstr "Deformace povrchu"
 
 msgid "Warp"
 msgstr "Warp"
+
+
+msgid "Wave"
+msgstr "Vlnění"
 
 
 msgid "Dynamic Paint"
@@ -18630,6 +18582,10 @@ msgid "Wave Texture"
 msgstr "Vlnová textura"
 
 
+msgid "Wave Type"
+msgstr "Stejné typy"
+
+
 msgid "Use standard wave texture in bands"
 msgstr "Zobrazit materiál daného objektu"
 
@@ -21733,16 +21689,8 @@ msgstr "Původni rotace"
 
 
 msgctxt "Operator"
-msgid "Export STL"
+msgid "Export PLY"
 msgstr "Exportovat"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Uložit současný soubor na vybrané umístění"
 
 
 msgid "X Forward"
@@ -21789,20 +21737,20 @@ msgid "-Z Up"
 msgstr "-Z nahoru"
 
 
-msgid "Batch Mode"
-msgstr "Pózy kostí"
+msgid "ASCII"
+msgstr "ASCII"
 
 
-msgid "All data in one file"
-msgstr "Všechna data v jednom souboru"
+msgid "Export the active vertex color layer"
+msgstr "Načíst uložené Render Hladiny"
 
 
 msgid "Apply Modifiers"
 msgstr "Aplikovat modifikátor"
 
 
-msgid "Apply the modifiers before saving"
-msgstr "Před kreslením aplikovat normály vertexů"
+msgid "Apply Modifiers to the exported mesh"
+msgstr "Vazby objektu"
 
 
 msgid "Selection Only"
@@ -21811,6 +21759,31 @@ msgstr "Pouze vybrané"
 
 msgid "Export selected objects only"
 msgstr "Ostranit označené Objekt(y) Globálně"
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "Exportovat"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Uložit současný soubor na vybrané umístění"
+
+
+msgid "Batch Mode"
+msgstr "Pózy kostí"
+
+
+msgid "All data in one file"
+msgstr "Všechna data v jednom souboru"
+
+
+msgid "Apply the modifiers before saving"
+msgstr "Před kreslením aplikovat normály vertexů"
 
 
 msgctxt "Operator"
@@ -21981,6 +21954,59 @@ msgstr "Vykreslovatelné objekty"
 
 msgid "Remember Export Settings"
 msgstr "Zapamatovat si Nastavení Exportu"
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "Exportovat"
+
+
+msgid "Save a Wavefront OBJ File"
+msgstr "Uložit soubor OBJ Wavefront"
+
+
+msgid "Material Groups"
+msgstr "Materiál"
+
+
+msgid "Export Blender objects as OBJ groups"
+msgstr "Exportovat objekty Blenderu jako skupiny OBJ"
+
+
+msgid "Keep Vertex Order"
+msgstr "Nová vertexová barva"
+
+
+msgid "Include Edges"
+msgstr "Auto Úchop"
+
+
+msgid "Write Materials"
+msgstr "Aktivovat materiálové uzly"
+
+
+msgid "Write out the MTL file"
+msgstr "Nelze uložit soubor"
+
+
+msgid "Write Nurbs"
+msgstr "Obnovit Křivku"
+
+
+msgid "Smooth Groups"
+msgstr "Přidat do skupiny"
+
+
+msgid "Include UVs"
+msgstr "Auto Úchop"
+
+
+msgid "Write out the active UV coordinates"
+msgstr "Smazat koordináty nálepky textury"
+
+
+msgid "Polygroups"
+msgstr "Polyskupiny"
 
 
 msgctxt "Operator"
@@ -22831,6 +22857,10 @@ msgid "Apply Stroke Thickness"
 msgstr "Aplikovat Tloušťku Štetce"
 
 
+msgid "Both"
+msgstr "Oba"
+
+
 msgctxt "Operator"
 msgid "Change Stroke Color"
 msgstr "Změnit Barvu Tahu"
@@ -23376,6 +23406,19 @@ msgstr "Shader záření"
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importovat"
+
+
+msgid "Load a PLY geometry file"
+msgstr "Skrýt skryté soubory"
+
+
+msgid "File path used for importing the PLY file"
+msgstr "Typ filtru"
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importovat"
 
@@ -23416,6 +23459,31 @@ msgstr "Data Dělení"
 msgctxt "Operator"
 msgid "Import glTF 2.0"
 msgstr "Importovat glTF 2.0"
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "Importovat"
+
+
+msgid "Load a Wavefront OBJ File"
+msgstr "Skrýt skryté soubory"
+
+
+msgid "Clamp Size"
+msgstr "Vyčistit změnu měřítka"
+
+
+msgid "Poly Groups"
+msgstr "Žádné skupiny"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "Odstranit ze skupiny vertexů"
+
+
+msgid "Import OBJ Groups into Blender Objects"
+msgstr "Importuje OBJ skupiny do objektů Blenderu"
 
 
 msgctxt "Operator"
@@ -26316,10 +26384,6 @@ msgid "Bake Light Cache"
 msgstr "Bake Mezipaměť Osvětlení"
 
 
-msgid "Bake the active view layer lighting"
-msgstr "Bake aktivní zobrazovací vrstvu osvětlení"
-
-
 msgid "Selected Only"
 msgstr "Pouze Vybrané"
 
@@ -28867,6 +28931,10 @@ msgid "Add Line Thickness Modifier"
 msgstr "Přidat Modifikátor Tloušťka Čáry"
 
 
+msgid "Bake the active view layer lighting"
+msgstr "Bake aktivní zobrazovací vrstvu osvětlení"
+
+
 msgctxt "Operator"
 msgid "New Scene"
 msgstr "Nová scéna"
@@ -29369,18 +29437,6 @@ msgstr "Změnit Vstup Efektu"
 
 msgid "The effect inputs to swap"
 msgstr "Jméno skriptu"
-
-
-msgid "A -> B"
-msgstr "A -> B"
-
-
-msgid "B -> C"
-msgstr "B -> C"
-
-
-msgid "A -> C"
-msgstr "A -> C"
 
 
 msgctxt "Operator"
@@ -31873,10 +31929,6 @@ msgid "Object Properties"
 msgstr "Vlastnosti objektu"
 
 
-msgid "Import OBJ groups as vertex groups"
-msgstr "Odstranit ze skupiny vertexů"
-
-
 msgctxt "Operator"
 msgid "Open"
 msgstr "Otevřít"
@@ -31914,16 +31966,6 @@ msgstr "Přidat, nebo odstranit přednastavení operátoru"
 
 msgid "Open a path in a file browser"
 msgstr "Skrýt skryté soubory"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exportovat"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importovat"
 
 
 msgid "Save Backups"
@@ -45275,18 +45317,6 @@ msgstr "Nelze vytvořit exportní soubor"
 
 msgid "Can't overwrite export file"
 msgstr "Nelze přepsat exportní soubor"
-
-
-msgid "Material Groups"
-msgstr "Materiál"
-
-
-msgid "Smooth Groups"
-msgstr "Přidat do skupiny"
-
-
-msgid "ASCII"
-msgstr "ASCII"
 
 
 msgctxt "Mesh"

@@ -38,8 +38,8 @@ static int select_all_exec(bContext *C, wmOperator *op)
   eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
-        blender::ed::curves::select_all(drawing.geometry.wrap(), selection_domain, action);
+      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        blender::ed::curves::select_all(drawing.strokes_for_write(), selection_domain, action);
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -93,7 +93,7 @@ static int select_more_less_exec(bContext *C, wmOperator *op)
           selection_before = ed::greasepencil::point_selection_get(&drawing);
         }
 
-        blender::ed::curves::select_adjacent(drawing.geometry.wrap(), deselect);
+        blender::ed::curves::select_adjacent(drawing.strokes_for_write(), deselect);
 
         /* In segment mode, expand the changed point selection to segments. */
         if (segment_mode) {
@@ -152,8 +152,8 @@ static int select_linked_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [](int /*drawing_index*/, GreasePencilDrawing &drawing) {
-        blender::ed::curves::select_linked(drawing.geometry.wrap());
+      scene->r.cfra, [](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        blender::ed::curves::select_linked(drawing.strokes_for_write());
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -178,6 +178,7 @@ static void GREASE_PENCIL_OT_select_linked(wmOperatorType *ot)
 
 static int select_random_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   const float ratio = RNA_float_get(op->ptr, "ratio");
   const int seed = WM_operator_properties_select_random_seed_increment_get(op);
   ViewContext vc;
@@ -201,23 +202,37 @@ static int select_random_exec(bContext *C, wmOperator *op)
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
+      scene->r.cfra, [&](int drawing_index, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
         if (segment_mode) {
           /* Set random selection values for each segment on all curves. */
           expand_random_selection_to_segments(
-              drawing.geometry.wrap(),
-              curve_offset,
-              strokes_2d,
-              blender::get_default_hash_2<int>(seed, drawing_index),
-              ratio);
+            curves,
+            curve_offset,
+            strokes_2d,
+            blender::get_default_hash_2<int>(seed, drawing_index),
+            ratio);
 
           curve_offset += drawing.geometry.curve_num;
-        }
         else {
-          blender::ed::curves::select_random(drawing.geometry.wrap(),
-                                             selection_domain,
-                                             blender::get_default_hash_2<int>(seed, drawing_index),
-                                             ratio);
+          IndexMaskMemory memory;
+          const IndexMask random_elements = ed::curves::random_mask(
+              curves,
+              selection_domain,
+              blender::get_default_hash_2<int>(seed, drawing_index),
+              ratio,
+              memory);
+
+          const bool was_anything_selected = ed::curves::has_anything_selected(curves);
+          bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+              curves, selection_domain, CD_PROP_BOOL);
+          if (!was_anything_selected) {
+            curves::fill_selection_true(selection.span);
+          }
+
+          curves::fill_selection_false(selection.span, random_elements);
+          selection.finish();
         }
       });
 
@@ -241,6 +256,44 @@ static void GREASE_PENCIL_OT_select_random(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   WM_operator_properties_select_random(ot);
+}
+
+static int select_alternate_exec(bContext *C, wmOperator *op)
+{
+  const bool deselect_ends = RNA_boolean_get(op->ptr, "deselect_ends");
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        blender::ed::curves::select_alternate(drawing.strokes_for_write(), deselect_ends);
+      });
+
+  /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
+   * attribute for now. */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
+{
+  ot->name = "Select Alternate";
+  ot->idname = "GREASE_PENCIL_OT_select_alternate";
+  ot->description = "Select alternated points in strokes with already selected points";
+
+  ot->exec = select_alternate_exec;
+  ot->poll = editable_grease_pencil_point_selection_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(ot->srna,
+                  "deselect_ends",
+                  false,
+                  "Deselect Ends",
+                  "(De)select the first and last point of each stroke");
 }
 
 static int select_ends_exec(bContext *C, wmOperator *op)
@@ -267,14 +320,33 @@ static int select_ends_exec(bContext *C, wmOperator *op)
   }
 
   grease_pencil.foreach_editable_drawing(
-      scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
+      scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
         /* In segment mode, store the pre-change point selection. */
         Vector<bool> selection_before;
         if (segment_mode) {
           selection_before = ed::greasepencil::point_selection_get(&drawing);
         }
 
-        blender::ed::curves::select_ends(drawing.geometry.wrap(), amount_start, amount_end);
+        IndexMaskMemory memory;
+        const IndexMask inverted_end_points_mask = ed::curves::end_points(
+            curves, amount_start, amount_end, true, memory);
+
+        const bool was_anything_selected = ed::curves::has_anything_selected(curves);
+        bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+            curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+        if (!was_anything_selected) {
+          ed::curves::fill_selection_true(selection.span);
+        }
+
+        if (selection.span.type().is<bool>()) {
+          index_mask::masked_fill(selection.span.typed<bool>(), false, inverted_end_points_mask);
+        }
+        if (selection.span.type().is<float>()) {
+          index_mask::masked_fill(selection.span.typed<float>(), 0.0f, inverted_end_points_mask);
+        }
+        selection.finish();
 
         /* In segment mode, expand the changed point selection to segments. */
         if (segment_mode) {
@@ -513,7 +585,7 @@ bool ED_grease_pencil_segment_selection_mode(bContext *C)
   return (ts->gpencil_selectmode_edit == GP_SELECTMODE_SEGMENT);
 }
 
-void ED_operatortypes_grease_pencil_select(void)
+void ED_operatortypes_grease_pencil_select()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_select_all);
@@ -521,5 +593,6 @@ void ED_operatortypes_grease_pencil_select(void)
   WM_operatortype_append(GREASE_PENCIL_OT_select_less);
   WM_operatortype_append(GREASE_PENCIL_OT_select_linked);
   WM_operatortype_append(GREASE_PENCIL_OT_select_random);
+  WM_operatortype_append(GREASE_PENCIL_OT_select_alternate);
   WM_operatortype_append(GREASE_PENCIL_OT_select_ends);
 }

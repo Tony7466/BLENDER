@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-04 16:07:54\n"
 "PO-Revision-Date: 2018-01-03 14:47+0000\n"
 "Last-Translator: Lockal <lockalsash@gmail.com>, 2023\n"
 "Language-Team: Russian (https://app.transifex.com/translateblender/teams/82039/ru/)\n"
@@ -3180,16 +3180,8 @@ msgid "Bone Matrix"
 msgstr "Матрица кости"
 
 
-msgid "3x3 bone matrix"
-msgstr "Матрица кости 3x3"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "Матрица кости относительно арматуры"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "Матрица кости 4x4 по отношению к арматуры"
 
 
 msgid "Parent"
@@ -4199,10 +4191,6 @@ msgstr "Путь объекта"
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Путь к объекту в архиве Alembic"
-
-
-msgid "Path"
-msgstr "Путь"
 
 
 msgid "Object path"
@@ -9610,26 +9598,6 @@ msgid "Multiplier for wave influence of this brush"
 msgstr "Множитель для волнового влияния этой кисти"
 
 
-msgid "Wave Type"
-msgstr "Тип волны"
-
-
-msgid "Depth Change"
-msgstr "Изменение глубины"
-
-
-msgid "Obstacle"
-msgstr "Препятствие"
-
-
-msgid "Force"
-msgstr "Сила"
-
-
-msgid "Reflect Only"
-msgstr "Только отражение"
-
-
 msgid "Canvas Settings"
 msgstr "Параметры холста"
 
@@ -9894,10 +9862,6 @@ msgid "Anti-Aliasing"
 msgstr "Сглаживание"
 
 
-msgid "Use 5x multisampling to smooth paint edges"
-msgstr "Использовать пятикратный мультисэмплинг для сглаживания границ рисования"
-
-
 msgid "Enable to make surface changes disappear over time"
 msgstr "Включите, чтобы изменения поверхности исчезали со временем"
 
@@ -10148,6 +10112,10 @@ msgstr "Сопротивление"
 
 msgid "Drag effector weight"
 msgstr "Вес эффектора сопротивления"
+
+
+msgid "Force"
+msgstr "Сила"
 
 
 msgid "Force effector weight"
@@ -11372,28 +11340,8 @@ msgid "Adjust the offset to the beginning/end"
 msgstr "Настройка значения смещения к началу/концу"
 
 
-msgid "Kink"
-msgstr "Изгиб"
-
-
 msgid "Type of periodic offset on the curve"
 msgstr "Тип периодического смещения на кривой"
-
-
-msgid "Braid"
-msgstr "Оплётка"
-
-
-msgid "Curl"
-msgstr "Завиток"
-
-
-msgid "Radial"
-msgstr "Радиально"
-
-
-msgid "Wave"
-msgstr "Волна"
 
 
 msgid "The distance from which particles are affected fully"
@@ -11534,6 +11482,10 @@ msgstr "Режим текстуры"
 
 msgid "How the texture effect is calculated (RGB and Curl need a RGB texture, else Gradient will be used instead)"
 msgstr "Метод расчёта эффекта текстуры (для RGB и Вихрь необходима RGB-текстура, иначе будет использоваться Градиент)"
+
+
+msgid "Curl"
+msgstr "Завиток"
 
 
 msgid "Gradient"
@@ -12706,6 +12658,10 @@ msgstr "Жидкость"
 
 msgid "Highlight only the cells of type Fluid"
 msgstr "Подсвечивать только ячейки с типом «жидкость»"
+
+
+msgid "Obstacle"
+msgstr "Препятствие"
 
 
 msgid "Highlight only the cells of type Obstacle"
@@ -14917,6 +14873,10 @@ msgid "Use single point to create rings"
 msgstr "Использовать центральную точку для рисования по кругу"
 
 
+msgid "Radial"
+msgstr "Радиально"
+
+
 msgid "Use single point as direction"
 msgstr "Использовать точку рисования линий, исходящих из центра"
 
@@ -16183,10 +16143,6 @@ msgstr "Множитель начала"
 
 msgid "Step"
 msgstr "Шаг"
-
-
-msgid "Number of frames before recalculate random values again"
-msgstr "Число кадров перед очередным пересчётом случайных значений"
 
 
 msgid "Use random values over time"
@@ -19173,6 +19129,10 @@ msgid "Map effect of the taper object to the beveled part of the curve"
 msgstr "Распределить эффект объекта сужения на часть кривой с фаской"
 
 
+msgid "Path"
+msgstr "Путь"
+
+
 msgid "Enable the curve to become a translation path"
 msgstr "Включить режим траектории перемещения для кривой"
 
@@ -21972,54 +21932,6 @@ msgid "Max size of a tile (smaller values gives better distribution of multiple 
 msgstr "Максимальный размер плитки (меньший размер улучшает распределение между потоками, но увеличивает накладные расходы)"
 
 
-msgid "32x32"
-msgstr "32×32"
-
-
-msgid "Chunksize of 32x32"
-msgstr "Участок размером 32×32"
-
-
-msgid "64x64"
-msgstr "64×64"
-
-
-msgid "Chunksize of 64x64"
-msgstr "Участок размером 64×64"
-
-
-msgid "128x128"
-msgstr "128×128"
-
-
-msgid "Chunksize of 128x128"
-msgstr "Участок размером 128×128"
-
-
-msgid "256x256"
-msgstr "256×256"
-
-
-msgid "Chunksize of 256x256"
-msgstr "Участок размером 256×256"
-
-
-msgid "512x512"
-msgstr "512×512"
-
-
-msgid "Chunksize of 512x512"
-msgstr "Участок размером 512×512"
-
-
-msgid "1024x1024"
-msgstr "1024×1024"
-
-
-msgid "Chunksize of 1024x1024"
-msgstr "Участок размером 1024×1024"
-
-
 msgid "Edit Quality"
 msgstr "Качество редактирования"
 
@@ -22336,16 +22248,8 @@ msgid "Origin offset distance"
 msgstr "Расстояние смещения центральной точки"
 
 
-msgid "Empty Image Side"
-msgstr "Сторона изображения-пустышки"
-
-
 msgid "Show front/back side"
 msgstr "Показать переднюю/заднюю стороны"
-
-
-msgid "Both"
-msgstr "Оба(е)"
 
 
 msgid "Settings for using the object as a field in physics simulation"
@@ -23214,10 +23118,6 @@ msgstr "Шаг ключей"
 
 msgid "Type of periodic offset on the path"
 msgstr "Тип периодического смещения на пути"
-
-
-msgid "Spiral"
-msgstr "Спираль"
 
 
 msgid "Amplitude Clump"
@@ -26015,10 +25915,6 @@ msgid "When rendering animations, save JPG preview images in same directory"
 msgstr "Сохранять JPG-изображения предпросмотра при рендеринга анимаций в той же папке"
 
 
-msgid "Z Buffer"
-msgstr "Z-буфер"
-
-
 msgid "Format of multiview media"
 msgstr "Формат среды мультипросмотра"
 
@@ -26936,17 +26832,9 @@ msgid "Media Play/Pause"
 msgstr "Медиа пауза/воспроизведение"
 
 
-msgid ">/||"
-msgstr ">/||"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "Медиа остановка"
-
-
-msgid "Stop"
-msgstr "Stop"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -26954,17 +26842,9 @@ msgid "Media First"
 msgstr "Медиа к началу"
 
 
-msgid "|<<"
-msgstr "|<<"
-
-
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Last"
 msgstr "Медиа к концу"
-
-
-msgid ">>|"
-msgstr ">>|"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -30613,6 +30493,10 @@ msgstr "Деформация поверхности"
 
 msgid "Warp"
 msgstr "Обтекание"
+
+
+msgid "Wave"
+msgstr "Волна"
 
 
 msgid "Dynamic Paint"
@@ -38158,6 +38042,10 @@ msgid "Use a sawtooth profile"
 msgstr "Использовать пилообразный профиль"
 
 
+msgid "Wave Type"
+msgstr "Тип волны"
+
+
 msgid "Use standard wave texture in bands"
 msgstr "Использовать стандартную текстуру с волнами в виде полос"
 
@@ -43051,16 +42939,8 @@ msgstr "Преобразовать вращения по Эйлеру ZYX"
 
 
 msgctxt "Operator"
-msgid "Export STL"
-msgstr "Экспортировать STL"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Сохранить файл в формате ASCII"
+msgid "Export PLY"
+msgstr "Экспортировать PLY"
 
 
 msgid "X Forward"
@@ -43107,6 +42987,39 @@ msgid "-Z Up"
 msgstr "Вверх по −Z"
 
 
+msgid "Export the active vertex color layer"
+msgstr "Экспортировать активный слой цветов вершин"
+
+
+msgid "Apply Modifiers"
+msgstr "Применить модификаторы"
+
+
+msgid "Apply Modifiers to the exported mesh"
+msgstr "Применить модификаторы в экспортируемом меше"
+
+
+msgid "Selection Only"
+msgstr "Только выделенное"
+
+
+msgid "Export selected objects only"
+msgstr "Экспортировать только выделенные объекты"
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "Экспортировать STL"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Сохранить файл в формате ASCII"
+
+
 msgid "Batch Mode"
 msgstr "Пакетный режим"
 
@@ -43119,10 +43032,6 @@ msgid "Each object as a file"
 msgstr "Каждый объект в отдельном файле"
 
 
-msgid "Apply Modifiers"
-msgstr "Применить модификаторы"
-
-
 msgid "Apply the modifiers before saving"
 msgstr "Применить модификаторы перед сохранением"
 
@@ -43133,14 +43042,6 @@ msgstr "Единицы сцены"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Применить текущие единицы сцены (заданные масштабом единиц) к экспортируемым данным"
-
-
-msgid "Selection Only"
-msgstr "Только выделенное"
-
-
-msgid "Export selected objects only"
-msgstr "Экспортировать только выделенные объекты"
 
 
 msgctxt "Operator"
@@ -43711,6 +43612,87 @@ msgstr "Запомнить настройки экспорта"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Сохранить настройки экспорта glTF в файле Blender"
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "Экспортировать OBJ"
+
+
+msgid "Save a Wavefront OBJ File"
+msgstr "Сохранить файла в формате Wavefront OBJ"
+
+
+msgid "Material Groups"
+msgstr "Группы материалов"
+
+
+msgid "Keep Vertex Order"
+msgstr "Сохранить порядок вершин"
+
+
+msgid "Write out an OBJ for each frame"
+msgstr "Записать OBJ для каждого кадра"
+
+
+msgid "Include Edges"
+msgstr "Включая рёбра"
+
+
+msgid "Write Materials"
+msgstr "Записать материалы"
+
+
+msgid "Write out the MTL file"
+msgstr "Записать файл MTL"
+
+
+msgid "Apply modifiers"
+msgstr "Применить модификаторы"
+
+
+msgid "Write Normals"
+msgstr "Записывать нормали"
+
+
+msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
+msgstr "Экспортировать нормали на вершины и грани для представления плоских граней и острых рёбер"
+
+
+msgid "Write Nurbs"
+msgstr "Записать NURBS"
+
+
+msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
+msgstr "Записать кривые NURBS в OBJ NURBS, не преобразовывая их в геометрические объекты"
+
+
+msgid "Smooth Groups"
+msgstr "Группы сглаживания"
+
+
+msgid "Write sharp edges as smooth groups"
+msgstr "Записывать острые рёбра как группы сглаживания"
+
+
+msgid "Bitflag Smooth Groups"
+msgstr "Битовый флаг группы сглаживания"
+
+
+msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
+msgstr "То же, что и «Группы сглаживания», но генерировать идентификаторы групп сглаживания с помощью битовых флагов (даёт не больше 32 различных групп сглаживания, но обычно этого достаточно)"
+
+
+msgid "Include UVs"
+msgstr "Включить UV"
+
+
+msgid "Write out the active UV coordinates"
+msgstr "Записать активные UV-координаты"
+
+
+msgid "Polygroups"
+msgstr "Полигруппы"
 
 
 msgctxt "Operator"
@@ -45557,6 +45539,10 @@ msgid "Set Caps Mode"
 msgstr "Установить режим концов штрихов"
 
 
+msgid "Both"
+msgstr "Оба(е)"
+
+
 msgid "Set as default rounded"
 msgstr "Установить по умолчанию скруглённый"
 
@@ -45690,6 +45676,21 @@ msgstr "Использовать весь штрих, а не только вы�
 
 msgid "New Material"
 msgstr "Создать материал"
+
+
+msgctxt "View3D"
+msgid "Front"
+msgstr "Спереди"
+
+
+msgctxt "View3D"
+msgid "Top"
+msgstr "Сверху"
+
+
+msgctxt "View3D"
+msgid "Camera"
+msgstr "Камера"
 
 
 msgctxt "Operator"
@@ -46950,6 +46951,19 @@ msgstr "Использовать альфа-канал для прозрачно
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Импортировать PLY"
+
+
+msgid "Load a PLY geometry file"
+msgstr "Загрузить файл геометрии PLY"
+
+
+msgid "File path used for importing the PLY file"
+msgstr "Путь к файлу, используемый при импорте файла PLY"
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "Импортировать STL"
 
@@ -47130,6 +47144,59 @@ msgstr "Уровень логирования"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "Формат glTF требует, чтобы прерывистые нормали, UV и другие атрибуты вершин хранились как отдельные вершины, как это требуется для рендеринга на типичном графическом оборудовании. Эта опция пытается объединить совмещенные вершины, где это возможно. В настоящее время нельзя комбинировать вершины с разными нормалями"
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "Импортировать OBJ"
+
+
+msgid "Load a Wavefront OBJ File"
+msgstr "Загрузить файл формата Wavefront OBJ"
+
+
+msgid "Clamp Size"
+msgstr "Ограничить размер"
+
+
+msgid "Clamp bounds under this value (zero to disable)"
+msgstr "Ограничить область этим значением (0 для отключения)"
+
+
+msgid "Keep Vert Order"
+msgstr "Сохранять порядок вершин"
+
+
+msgid "Keep vertex order from file"
+msgstr "Сохранять порядок вершин из файла"
+
+
+msgid "Import lines and faces with 2 verts as edge"
+msgstr "Импортировать линии и грани с двумя вершинами как рёбра"
+
+
+msgid "Poly Groups"
+msgstr "Полигруппы"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "Импортировать группы OBJ как группы вершин"
+
+
+msgid "Search subdirs for any associated images (Warning, may be slow)"
+msgstr "Искать связанные изображения в подпапках (предупреждение: может быть медленным)"
+
+
+msgid "Surround smooth groups by sharp edges"
+msgstr "Окружить группы сглаживания острыми рёбрами"
+
+
+msgid "Import OBJ Groups into Blender Objects"
+msgstr "Импортировать группы OBJ как объекты Blender"
+
+
+msgid "Import OBJ Objects into Blender Objects"
+msgstr "Импортировать объекты OBJ как объекты Blender"
 
 
 msgctxt "Operator"
@@ -52064,10 +52131,6 @@ msgid "Bake Light Cache"
 msgstr "Запечь кэш освещения"
 
 
-msgid "Bake the active view layer lighting"
-msgstr "Запечь освещение в активном слое визуализации"
-
-
 msgid "Delay in millisecond before baking starts"
 msgstr "Задержка в миллисекундах перед тем как начнётся запекание"
 
@@ -56558,6 +56621,10 @@ msgid "Add or remove grease pencil material preset"
 msgstr "Добавить или удалить предустановку материала Grease Pencil"
 
 
+msgid "Bake the active view layer lighting"
+msgstr "Запечь освещение в активном слое визуализации"
+
+
 msgid "Bake both irradiance grids and reflection cubemaps"
 msgstr "Запечь и сетки освещённости, и кубические карты отражения"
 
@@ -57389,18 +57456,6 @@ msgstr "Сменить вход эффекта"
 
 msgid "The effect inputs to swap"
 msgstr "Входы эффекта, переключаемые между собой"
-
-
-msgid "A -> B"
-msgstr "A → B"
-
-
-msgid "B -> C"
-msgstr "B → C"
-
-
-msgid "A -> C"
-msgstr "A → C"
 
 
 msgctxt "Operator"
@@ -60934,16 +60989,6 @@ msgstr "Снизу"
 
 
 msgctxt "View3D"
-msgid "Top"
-msgstr "Сверху"
-
-
-msgctxt "View3D"
-msgid "Front"
-msgstr "Спереди"
-
-
-msgctxt "View3D"
 msgid "Back"
 msgstr "Сзади"
 
@@ -62136,10 +62181,6 @@ msgid "Object Properties"
 msgstr "Настройки объекта"
 
 
-msgid "Import OBJ groups as vertex groups"
-msgstr "Импортировать группы OBJ как группы вершин"
-
-
 msgctxt "Operator"
 msgid "Open"
 msgstr "Открыть"
@@ -62206,16 +62247,6 @@ msgstr "Тег интерфейса"
 
 msgid "Open a path in a file browser"
 msgstr "Открыть путь в файловом менеджере"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Экспортировать PLY"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Импортировать PLY"
 
 
 msgctxt "Operator"
@@ -63902,6 +63933,10 @@ msgstr "Скопление"
 
 msgid "Clump Noise"
 msgstr "Шум скопления"
+
+
+msgid "Kink"
+msgstr "Изгиб"
 
 
 msgid "Parting"
@@ -66839,22 +66874,6 @@ msgid "Show UI Key-Config"
 msgstr "Показать интерфейс конфигурации клавиш"
 
 
-msgid "2x"
-msgstr "2x"
-
-
-msgid "4x"
-msgstr "4x"
-
-
-msgid "8x"
-msgstr "8x"
-
-
-msgid "16x"
-msgstr "16x"
-
-
 msgid "Audio Device"
 msgstr "Звуковая подсистема"
 
@@ -69521,10 +69540,6 @@ msgstr "Размер пикселя во вьюпорте во время рен
 
 msgid "Automatic pixel size, depends on the user interface scale"
 msgstr "Автоматический размер пикселя; зависит от масштаба пользовательского интерфейса"
-
-
-msgid "1x"
-msgstr "1x"
 
 
 msgid "Render at full resolution"
@@ -83620,11 +83635,6 @@ msgid "Active Camera"
 msgstr "Активная камера"
 
 
-msgctxt "View3D"
-msgid "Camera"
-msgstr "Камера"
-
-
 msgctxt "Operator"
 msgid "Orbit Opposite"
 msgstr "Противоположный облёт"
@@ -87344,14 +87354,6 @@ msgid "Parsing errors in Document (see Blender Console)"
 msgstr "Ошибки парсинга документа (см. консоль Blender)"
 
 
-msgid "Material Groups"
-msgstr "Группы материалов"
-
-
-msgid "Smooth Groups"
-msgstr "Группы сглаживания"
-
-
 msgid "Mesh Data"
 msgstr "Данные меша"
 
@@ -87447,10 +87449,6 @@ msgstr "Количество разрезов: %s, Сглаживание: %s (A
 
 msgid "Loop cut does not work well on deformed edit mesh display"
 msgstr "Разрез петлёй может работать неправильно, если меш деформирован модификаторами"
-
-
-msgid "Click on the mesh to select a Face Set"
-msgstr "Кликните на меш, чтобы выбрать набор граней"
 
 
 msgid "Path selection requires two matching elements to be selected"
@@ -88542,26 +88540,6 @@ msgid "Rigid Body World has no associated physics data to export"
 msgstr "У среды твёрдых тел нет связанных физических данных для экспорта"
 
 
-msgid "3D Local View"
-msgstr "Локальный 3D-вид"
-
-
-msgid "Frame:%d "
-msgstr "Кадр:%d "
-
-
-msgid "| Last:%s "
-msgstr "| Посл.:%s "
-
-
-msgid "Time:%s "
-msgstr "Время:%s "
-
-
-msgid "| Mem:%.2fM, Peak: %.2fM "
-msgstr "| Память:%.2fМбайт, пик: %.2fМбайт "
-
-
 msgid "Cannot write a single file with an animation format selected"
 msgstr "Невозможно записать анимацию в одиночный файл выбранного формата"
 
@@ -89480,10 +89458,6 @@ msgid "Can't Load Image"
 msgstr "Не удалось загрузить изображение"
 
 
-msgid "%d x %d, "
-msgstr "%d × %d, "
-
-
 msgid "%d float channel(s)"
 msgstr "%d нецелочисл. кан."
 
@@ -89502,10 +89476,6 @@ msgstr " RGBA 8 бит/канал"
 
 msgid " RGB byte"
 msgstr " RGB 8 бит/канал"
-
-
-msgid " + Z"
-msgstr " + Z"
 
 
 msgid "Frame %d / %d"
@@ -92437,10 +92407,6 @@ msgstr "Свойство по пути «%s» не является нецело
 
 msgid "Property from path '%s' has length %d instead of %d"
 msgstr "Длина свойства по пути «%s» составляет %d, а не %d"
-
-
-msgid "%d x %s: %.4f ms, average: %.8f ms"
-msgstr "%d × %s: %.4f мс,  в среднем: %.8f мс"
 
 
 msgctxt "WindowManager"
