@@ -59,7 +59,7 @@
 #define FLUID_JOB_FREE_GUIDES "FLUID_OT_free_guides"
 #define FLUID_JOB_BAKE_PAUSE "FLUID_OT_pause_bake"
 
-typedef struct FluidJob {
+struct FluidJob {
   /* from wmJob */
   void *owner;
   bool *stop, *do_update;
@@ -78,7 +78,7 @@ typedef struct FluidJob {
   double start;
 
   int *pause_frame;
-} FluidJob;
+};
 
 static inline bool fluid_is_bake_all(FluidJob *job)
 {
@@ -132,7 +132,7 @@ static inline bool fluid_is_free_guiding(FluidJob *job)
 static bool fluid_initjob(
     bContext *C, FluidJob *job, wmOperator *op, char *error_msg, int error_size)
 {
-  FluidModifierData *fmd = NULL;
+  FluidModifierData *fmd = nullptr;
   FluidDomainSettings *fds;
   Object *ob = ED_object_active_context(C);
 
@@ -224,7 +224,7 @@ static bool fluid_validatepaths(FluidJob *job, ReportList *reports)
 
 static void fluid_bake_free(void *customdata)
 {
-  FluidJob *job = customdata;
+  FluidJob *job = static_cast<FluidJob *>(customdata);
   MEM_freeN(job);
 }
 
@@ -234,7 +234,7 @@ static void fluid_bake_sequence(FluidJob *job)
   Scene *scene = job->scene;
   int frame = 1, orig_frame;
   int frames;
-  int *pause_frame = NULL;
+  int *pause_frame = nullptr;
   bool is_first_frame;
 
   frames = fds->cache_frame_end - fds->cache_frame_start + 1;
@@ -299,7 +299,7 @@ static void fluid_bake_sequence(FluidJob *job)
 
 static void fluid_bake_endjob(void *customdata)
 {
-  FluidJob *job = customdata;
+  FluidJob *job = static_cast<FluidJob *>(customdata);
   FluidDomainSettings *fds = job->fmd->domain;
 
   if (fluid_is_bake_noise(job) || fluid_is_bake_all(job)) {
@@ -331,7 +331,7 @@ static void fluid_bake_endjob(void *customdata)
 
   G.is_rendering = false;
   BKE_spacedata_draw_locks(false);
-  WM_set_locked_interface(G_MAIN->wm.first, false);
+  WM_set_locked_interface(static_cast<wmWindowManager *>(G_MAIN->wm.first), false);
 
   /* Bake was successful:
    * Report for ended bake and how long it took. */
@@ -352,7 +352,7 @@ static void fluid_bake_endjob(void *customdata)
 
 static void fluid_bake_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
 {
-  FluidJob *job = customdata;
+  FluidJob *job = static_cast<FluidJob *>(customdata);
   FluidDomainSettings *fds = job->fmd->domain;
 
   char temp_dir[FILE_MAX];
@@ -435,12 +435,12 @@ static void fluid_bake_startjob(void *customdata, bool *stop, bool *do_update, f
 
 static void fluid_free_endjob(void *customdata)
 {
-  FluidJob *job = customdata;
+  FluidJob *job = static_cast<FluidJob *>(customdata);
   FluidDomainSettings *fds = job->fmd->domain;
 
   G.is_rendering = false;
   BKE_spacedata_draw_locks(false);
-  WM_set_locked_interface(G_MAIN->wm.first, false);
+  WM_set_locked_interface(static_cast<wmWindowManager *>(G_MAIN->wm.first), false);
 
   /* Reflect the now empty cache in the viewport too. */
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
@@ -464,7 +464,7 @@ static void fluid_free_endjob(void *customdata)
 
 static void fluid_free_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
 {
-  FluidJob *job = customdata;
+  FluidJob *job = static_cast<FluidJob *>(customdata);
   FluidDomainSettings *fds = job->fmd->domain;
 
   job->stop = stop;
@@ -515,7 +515,7 @@ static void fluid_free_startjob(void *customdata, bool *stop, bool *do_update, f
 
 static int fluid_bake_exec(bContext *C, wmOperator *op)
 {
-  FluidJob *job = MEM_mallocN(sizeof(FluidJob), "FluidJob");
+  FluidJob *job = static_cast<FluidJob *>(MEM_mallocN(sizeof(FluidJob), "FluidJob"));
   char error_msg[256] = "\0";
 
   if (!fluid_initjob(C, job, op, error_msg, sizeof(error_msg))) {
@@ -531,17 +531,17 @@ static int fluid_bake_exec(bContext *C, wmOperator *op)
   }
   WM_report_banners_cancel(job->bmain);
 
-  fluid_bake_startjob(job, NULL, NULL, NULL);
+  fluid_bake_startjob(job, nullptr, nullptr, nullptr);
   fluid_bake_endjob(job);
   fluid_bake_free(job);
 
   return OPERATOR_FINISHED;
 }
 
-static int fluid_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(_event))
+static int fluid_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*_event*/)
 {
   Scene *scene = CTX_data_scene(C);
-  FluidJob *job = MEM_mallocN(sizeof(FluidJob), "FluidJob");
+  FluidJob *job = static_cast<FluidJob *>(MEM_mallocN(sizeof(FluidJob), "FluidJob"));
   char error_msg[256] = "\0";
 
   if (!fluid_initjob(C, job, op, error_msg, sizeof(error_msg))) {
@@ -569,7 +569,7 @@ static int fluid_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 
   WM_jobs_customdata_set(wm_job, job, fluid_bake_free);
   WM_jobs_timer(wm_job, 0.01, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
-  WM_jobs_callbacks(wm_job, fluid_bake_startjob, NULL, NULL, fluid_bake_endjob);
+  WM_jobs_callbacks(wm_job, fluid_bake_startjob, nullptr, nullptr, fluid_bake_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
 
@@ -579,7 +579,7 @@ static int fluid_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int fluid_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int fluid_bake_modal(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   /* no running blender, remove handler and pass through */
   if (0 == WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_OBJECT_SIM_FLUID)) {
@@ -595,7 +595,7 @@ static int fluid_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *
 
 static int fluid_free_exec(bContext *C, wmOperator *op)
 {
-  FluidModifierData *fmd = NULL;
+  FluidModifierData *fmd = nullptr;
   FluidDomainSettings *fds;
   Object *ob = ED_object_active_context(C);
   Scene *scene = CTX_data_scene(C);
@@ -622,7 +622,7 @@ static int fluid_free_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  FluidJob *job = MEM_mallocN(sizeof(FluidJob), "FluidJob");
+  FluidJob *job = static_cast<FluidJob *>(MEM_mallocN(sizeof(FluidJob), "FluidJob"));
   job->bmain = CTX_data_main(C);
   job->scene = scene;
   job->depsgraph = CTX_data_depsgraph_pointer(C);
@@ -648,7 +648,7 @@ static int fluid_free_exec(bContext *C, wmOperator *op)
 
   WM_jobs_customdata_set(wm_job, job, fluid_bake_free);
   WM_jobs_timer(wm_job, 0.01, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
-  WM_jobs_callbacks(wm_job, fluid_free_startjob, NULL, NULL, fluid_free_endjob);
+  WM_jobs_callbacks(wm_job, fluid_free_startjob, nullptr, nullptr, fluid_free_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
 
@@ -660,7 +660,7 @@ static int fluid_free_exec(bContext *C, wmOperator *op)
 
 static int fluid_pause_exec(bContext *C, wmOperator *op)
 {
-  FluidModifierData *fmd = NULL;
+  FluidModifierData *fmd = nullptr;
   FluidDomainSettings *fds;
   Object *ob = ED_object_active_context(C);
 
