@@ -16,7 +16,6 @@ set(INC
   metal
   opengl
   vulkan
-  ../blenkernel
   ../bmesh
   ../draw
   ../imbuf
@@ -323,6 +322,7 @@ set(METAL_SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic

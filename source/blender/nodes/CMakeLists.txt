@@ -17,7 +17,6 @@ set(INC
   shader
   texture
   ../editors/include
-  ../blenkernel
   ../blentranslation
   ../bmesh
   ../depsgraph
@@ -79,6 +78,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   bf_bmesh
   PRIVATE bf::dna
