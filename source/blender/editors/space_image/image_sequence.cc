@@ -28,10 +28,10 @@
 
 #include "ED_image.h"
 
-typedef struct ImageFrame {
+struct ImageFrame {
   struct ImageFrame *next, *prev;
   int framenr;
-} ImageFrame;
+};
 
 /**
  * Get a list of frames from the list of image files matching the first file name sequence pattern.
@@ -43,7 +43,7 @@ static void image_sequence_get_frame_ranges(wmOperator *op, ListBase *ranges)
 {
   char dir[FILE_MAXDIR];
   const bool do_frame_range = RNA_boolean_get(op->ptr, "use_sequence_detection");
-  ImageFrameRange *range = NULL;
+  ImageFrameRange *range = nullptr;
   int range_first_frame = 0;
   /* Track when a new series of files are found that aren't compatible with the previous file. */
   char base_head[FILE_MAX], base_tail[FILE_MAX];
@@ -52,15 +52,15 @@ static void image_sequence_get_frame_ranges(wmOperator *op, ListBase *ranges)
   RNA_BEGIN (op->ptr, itemptr, "files") {
     char head[FILE_MAX], tail[FILE_MAX];
     ushort digits;
-    char *filename = RNA_string_get_alloc(&itemptr, "name", NULL, 0, NULL);
-    ImageFrame *frame = MEM_callocN(sizeof(ImageFrame), "image_frame");
+    char *filename = RNA_string_get_alloc(&itemptr, "name", nullptr, 0, nullptr);
+    ImageFrame *frame = static_cast<ImageFrame *>(MEM_callocN(sizeof(ImageFrame), "image_frame"));
 
     /* use the first file in the list as base filename */
     frame->framenr = BLI_path_sequence_decode(
         filename, head, sizeof(head), tail, sizeof(tail), &digits);
 
     /* still in the same sequence */
-    if (do_frame_range && (range != NULL) && STREQLEN(base_head, head, FILE_MAX) &&
+    if (do_frame_range && (range != nullptr) && STREQLEN(base_head, head, FILE_MAX) &&
         STREQLEN(base_tail, tail, FILE_MAX))
     {
       /* Set filepath to first frame in the range. */
@@ -71,7 +71,7 @@ static void image_sequence_get_frame_ranges(wmOperator *op, ListBase *ranges)
     }
     else {
       /* start a new frame range */
-      range = MEM_callocN(sizeof(*range), __func__);
+      range = static_cast<ImageFrameRange *>(MEM_callocN(sizeof(*range), __func__));
       BLI_path_join(range->filepath, sizeof(range->filepath), dir, filename);
       BLI_addtail(ranges, range);
 
@@ -89,8 +89,8 @@ static void image_sequence_get_frame_ranges(wmOperator *op, ListBase *ranges)
 
 static int image_cmp_frame(const void *a, const void *b)
 {
-  const ImageFrame *frame_a = a;
-  const ImageFrame *frame_b = b;
+  const ImageFrame *frame_a = static_cast<const ImageFrame *>(a);
+  const ImageFrame *frame_b = static_cast<const ImageFrame *>(b);
 
   if (frame_a->framenr < frame_b->framenr) {
     return -1;
@@ -123,12 +123,12 @@ static void image_detect_frame_range(ImageFrameRange *range, const bool detect_u
   /* Image Sequence */
   BLI_listbase_sort(&range->frames, image_cmp_frame);
 
-  ImageFrame *frame = range->frames.first;
-  if (frame != NULL) {
+  ImageFrame *frame = static_cast<ImageFrame *>(range->frames.first);
+  if (frame != nullptr) {
     int frame_curr = frame->framenr;
     range->offset = frame_curr;
 
-    while (frame != NULL && (frame->framenr == frame_curr)) {
+    while (frame != nullptr && (frame->framenr == frame_curr)) {
       frame_curr++;
       frame = frame->next;
     }
@@ -167,7 +167,7 @@ ListBase ED_image_filesel_detect_sequences(Main *bmain, wmOperator *op, const bo
   }
   /* Filepath property for drag & drop etc. */
   else {
-    ImageFrameRange *range = MEM_callocN(sizeof(*range), __func__);
+    ImageFrameRange *range = static_cast<ImageFrameRange *>(MEM_callocN(sizeof(*range), __func__));
     BLI_addtail(&ranges, range);
 
     STRNCPY(range->filepath, filepath);
