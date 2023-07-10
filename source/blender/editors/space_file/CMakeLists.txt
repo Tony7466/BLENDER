@@ -34,7 +34,7 @@ set(SRC
   file_draw.cc
   file_indexer.cc
   file_ops.cc
-  file_panels.c
+  file_panels.cc
   file_utils.c
   filelist.cc
   filesel.cc
