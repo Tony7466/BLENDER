@@ -18,6 +18,7 @@ endif()
 
 
 add_subdirectory(rangetree)
+add_subdirectory(nanosvg)
 add_subdirectory(wcwidth)
 
 if(WITH_BULLET)

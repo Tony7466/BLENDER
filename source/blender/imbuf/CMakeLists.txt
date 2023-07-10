@@ -84,6 +84,7 @@ set(LIB
   bf_intern_guardedalloc
   bf_intern_memutil
   bf_intern_opencolorio
+  PRIVATE bf::extern::nanosvg
 
   ${JPEG_LIBRARIES}
 )

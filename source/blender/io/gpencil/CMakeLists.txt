@@ -16,8 +16,7 @@ set(INC
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/guardedalloc
-  ../../../../intern/utfconv
-  ../../../../extern/nanosvg
+  ../../../../intern/utfconv 
 )
 
 set(INC_SYS
@@ -34,15 +33,13 @@ set(SRC
   intern/gpencil_io_export_base.hh
   intern/gpencil_io_import_base.hh
   intern/gpencil_io_import_svg.hh
-
-  # Only so this file is known by CMake.
-  ../../../../extern/nanosvg/nanosvg.h
 )
 
 set(LIB
   bf_blenkernel
   bf_blenlib
   bf_io_common
+  PRIVATE bf::extern::nanosvg
 )
 
 if(WITH_PUGIXML)

@@ -14,13 +14,8 @@
 #include "IMB_colormanagement.h"
 #include "IMB_filetype.h"
 #include "IMB_imbuf_types.h"
-
-/* Custom flags for NanoSVG. */
-#define NANOSVG_ALL_COLOR_KEYWORDS
-#define NANOSVG_IMPLEMENTATION
-#define NANOSVGRAST_IMPLEMENTATION
-
-#include "../../../extern/nanosvg/nanosvgrast.h"
+#include "nanosvg.h"
+#include "nanosvgrast.h"
 
 ImBuf *imb_load_filepath_thumbnail_svg(const char *filepath,
                                        const int /* flags */,
