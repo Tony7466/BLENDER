@@ -471,8 +471,11 @@ static short copy_graph_keys(bAnimContext *ac)
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_NODUPLIS);
 
-  if (ANIM_animdata_filter(
-          ac, &anim_data, filter | ANIMFILTER_SEL, ac->data, eAnimCont_Types(ac->datatype)) == 0)
+  if (ANIM_animdata_filter(ac,
+                           &anim_data,
+                           eAnimFilter_Flags(filter | ANIMFILTER_SEL),
+                           ac->data,
+                           eAnimCont_Types(ac->datatype)) == 0)
   {
     ANIM_animdata_filter(
         ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
@@ -505,8 +508,11 @@ static eKeyPasteError paste_graph_keys(bAnimContext *ac,
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
 
-  if (ANIM_animdata_filter(
-          ac, &anim_data, filter | ANIMFILTER_SEL, ac->data, eAnimCont_Types(ac->datatype)) == 0)
+  if (ANIM_animdata_filter(ac,
+                           &anim_data,
+                           eAnimFilter_Flags(filter | ANIMFILTER_SEL),
+                           ac->data,
+                           eAnimCont_Types(ac->datatype)) == 0)
   {
     ANIM_animdata_filter(
         ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
@@ -1765,7 +1771,7 @@ struct tEulerFilter {
   /** ID-block which owns the channels */
   ID *id;
   /** 3 Pointers to F-Curves. */
-  FCurve *(fcurves[3]);
+  FCurve *fcurves[3];
   /** Pointer to one of the RNA Path's used by one of the F-Curves. */
   const char *rna_path;
 };
@@ -2502,7 +2508,7 @@ static bool graph_has_selected_control_points(bContext *C)
 
   /* Get editor data. */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
-    return OPERATOR_CANCELLED;
+    return false;
   }
 
   /* Filter data. */
@@ -3071,11 +3077,7 @@ void GRAPH_OT_fmodifier_copy(wmOperatorType *ot)
 
 /* Id-props */
 #if 0
-  ot->prop = RNA_def_boolean(ot->srna,
-                             "all",
-                             1,
-                             "All F-Modifiers",
-                             "Copy all the F-Modifiers, instead of just the active one");
+ot->prop = RNA_def_boolean(ot->srna, "all", 1, "All F-Modifiers", "Copy all the F-Modifiers, instead of just the active one");
 #endif
 }
 
