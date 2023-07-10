@@ -621,7 +621,7 @@ int *BKE_mesh_calc_smoothgroups(const int totedge,
                                             const int edge_user_count,
                                             const blender::Span<int> edge_face_map_elem) {
     /* Edge is sharp if one of its faces is flat, or edge itself is sharp,
-     * or edge is not used by exactly two facegons. */
+     * or edge is not used by exactly two faces. */
     if (face_is_smooth(face_index) && !(sharp_edges && sharp_edges[edge_index]) &&
         (edge_user_count == 2))
     {

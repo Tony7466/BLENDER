@@ -11,14 +11,14 @@
 struct BMEditMesh;
 
 struct EditMeshData {
-  /** when set, \a vertexNos, polyNos are lazy initialized */
+  /** when set, \a vertexNos, faceNos are lazy initialized */
   float (*vertexCos)[3];
 
   /** lazy initialize (when \a vertexCos is set) */
   float const (*vertexNos)[3];
-  float const (*polyNos)[3];
+  float const (*faceNos)[3];
   /** also lazy init but don't depend on \a vertexCos */
-  const float (*polyCos)[3];
+  const float (*faceCos)[3];
 };
 
 void BKE_editmesh_cache_ensure_poly_normals(BMEditMesh *em, EditMeshData *emd);

@@ -590,8 +590,7 @@ static void extrude_mesh_edges(Mesh &mesh,
               GrainSize(256), [&](const int64_t orig_edge_index, const int64_t i_edge_selection) {
                 const Span<int> connected_faces = edge_to_face_map[orig_edge_index];
                 if (connected_faces.is_empty()) {
-                  /* If there are no connected facegons, there is no corner data to
-                   * interpolate. */
+                  /* If there are no connected faces, there is no corner data to interpolate. */
                   new_data.slice(4 * i_edge_selection, 4).fill(T());
                   return;
                 }
@@ -608,7 +607,7 @@ static void extrude_mesh_edges(Mesh &mesh,
                 const int orig_vert_2 = new_vert_indices[new_vert_2 - orig_vert_size];
 
                 /* Average the corner data from the corners that share a vertex from the
-                 * facegons that share an edge with the extruded edge. */
+                 * faces that share an edge with the extruded edge. */
                 for (const int i_connected_face : connected_faces.index_range()) {
                   const IndexRange connected_face = faces[connected_faces[i_connected_face]];
                   for (const int i_loop : IndexRange(connected_face)) {
@@ -745,7 +744,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   const GroupedSpan<int> edge_to_face_map = bke::mesh::build_edge_to_face_map(
       orig_faces, mesh.corner_edges(), mesh.totedge, edge_to_face_offsets, edge_to_face_indices);
 
-  /* All vertices that are connected to the selected facegons.
+  /* All vertices that are connected to the selected faces.
    * Start the size at one vert per face to reduce unnecessary reallocation. */
   VectorSet<int> all_selected_verts;
   all_selected_verts.reserve(orig_faces.size());
@@ -816,7 +815,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
 
   /* New vertices forming the duplicated boundary edges and the ends of the new inner edges. */
   const IndexRange new_vert_range{orig_vert_size, new_vert_indices.size()};
-  /* One edge connects each selected vertex to a new vertex on the extruded facegons. */
+  /* One edge connects each selected vertex to a new vertex on the extruded faces. */
   const IndexRange connect_edge_range{orig_edges.size(), extruded_vert_size};
   /* Each selected edge is duplicated to form a single edge on the extrusion. */
   const IndexRange boundary_edge_range = connect_edge_range.after(boundary_edge_indices.size());
@@ -845,7 +844,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
   MutableSpan<int> new_corner_edges = corner_edges.slice(side_loop_range);
 
-  /* Initialize the new side facegons. */
+  /* Initialize the new side faces. */
   if (!new_face_offsets.is_empty()) {
     offset_indices::fill_constant_group_size(4, orig_loop_size, new_face_offsets);
   }
@@ -1131,7 +1130,7 @@ static void extrude_individual_mesh_faces(
 
   /* Build an array of offsets into the new data for each face. This is used to facilitate
    * parallelism later on by avoiding the need to keep track of an offset when iterating through
-   * all facegons. */
+   * all faces. */
   int extrude_corner_size = 0;
   Array<int> group_per_face_data(face_selection.size() + 1);
   face_selection.foreach_index_optimized<int>([&](const int index, const int i_selection) {
@@ -1143,7 +1142,7 @@ static void extrude_individual_mesh_faces(
   const OffsetIndices<int> group_per_face(group_per_face_data);
 
   const IndexRange new_vert_range{orig_vert_size, extrude_corner_size};
-  /* One edge connects each selected vertex to a new vertex on the extruded facegons. */
+  /* One edge connects each selected vertex to a new vertex on the extruded faces. */
   const IndexRange connect_edge_range{orig_edge_size, extrude_corner_size};
   /* Each selected edge is duplicated to form a single edge on the extrusion. */
   const IndexRange duplicate_edge_range = connect_edge_range.after(extrude_corner_size);
@@ -1174,7 +1173,7 @@ static void extrude_individual_mesh_faces(
    * edges, and build the faces that form the sides of the extrusion. Build "original index"
    * arrays for the new vertices and edges so they can be accessed later.
    *
-   * Filling some of this data like the new edges or facegons could be easily split into
+   * Filling some of this data like the new edges or faces could be easily split into
    * separate loops, which may or may not be faster, but would involve more duplication. */
   Array<int> new_vert_indices(extrude_corner_size);
   Array<int> duplicate_edge_indices(extrude_corner_size);

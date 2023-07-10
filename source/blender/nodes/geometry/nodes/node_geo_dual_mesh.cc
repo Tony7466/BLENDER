@@ -28,10 +28,10 @@ static void node_declare(NodeDeclarationBuilder &b)
 }
 
 enum class EdgeType : int8_t {
-  Loose = 0,       /* No facegons connected to it. */
+  Loose = 0,       /* No faces connected to it. */
   Boundary = 1,    /* An edge connected to exactly one face. */
-  Normal = 2,      /* A normal edge (connected to two facegons). */
-  NonManifold = 3, /* An edge connected to more than two facegons. */
+  Normal = 2,      /* A normal edge (connected to two faces). */
+  NonManifold = 3, /* An edge connected to more than two faces. */
 };
 
 static EdgeType get_edge_type_with_added_neighbor(EdgeType old_type)
@@ -207,7 +207,7 @@ static void transfer_attributes(
 }
 
 /**
- * Calculates the boundaries of the mesh. Boundary facegons are not computed since we don't need
+ * Calculates the boundaries of the mesh. Boundary faces are not computed since we don't need
  * them later on. We use the following definitions:
  * - An edge is on a boundary if it is connected to only one face.
  * - A vertex is on a boundary if it is on an edge on a boundary.
@@ -265,16 +265,16 @@ static void calc_boundaries(const Mesh &mesh,
 }
 
 /**
- * Sorts the facegons connected to the given vertex based on face adjacency. The ordering is
+ * Sorts the faces connected to the given vertex based on face adjacency. The ordering is
  * so such that the normals point in the same way as the original mesh. If the vertex is a
  * boundary vertex, the first and last face have a boundary edge connected to the vertex. The
  * `r_shared_edges` array at index i is set to the index of the shared edge between the i-th and
  * `(i+1)-th` sorted face. Similarly the `r_sorted_corners` array at index i is set to the
- * corner in the i-th sorted face. If the facegons couldn't be sorted, `false` is returned.
+ * corner in the i-th sorted face. If the faces couldn't be sorted, `false` is returned.
  *
  * How the faces are sorted (see diagrams below):
  * (For this explanation we'll assume all faces are oriented clockwise)
- * (The vertex whose connected facegons we need to sort is "v0")
+ * (The vertex whose connected faces we need to sort is "v0")
  *
  * \code{.unparsed}
  *     Normal case:                    Boundary Vertex case:
@@ -382,7 +382,7 @@ static bool sort_vertex_faces(const Span<int2> edges,
       }
     }
     if (shared_edge_i == -1) {
-      /* The rotation is inconsistent between the two facegons on the boundary. Just choose one
+      /* The rotation is inconsistent between the two faces on the boundary. Just choose one
        * of the face's orientation. */
       for (const int i : connected_faces.index_range()) {
         const int corner_1 = face_vertex_corners[i].first;
@@ -440,7 +440,7 @@ static bool sort_vertex_faces(const Span<int2> edges,
       }
     }
     if (j == connected_faces.size()) {
-      /* The vertex is not manifold because the facegons around the vertex don't form a loop, and
+      /* The vertex is not manifold because the faces around the vertex don't form a loop, and
        * hence can't be sorted. */
       return false;
     }
@@ -531,7 +531,7 @@ static void add_edge(const int old_edge_i,
   loop_edges.append(new_edge_i);
 }
 
-/* Returns true if the vertex is connected only to the two facegons and is not on the boundary. */
+/* Returns true if the vertex is connected only to the two faces and is not on the boundary. */
 static bool vertex_needs_dissolving(const int vertex,
                                     const int first_face_index,
                                     const int second_face_index,
@@ -546,9 +546,9 @@ static bool vertex_needs_dissolving(const int vertex,
 }
 
 /**
- * Finds 'normal' vertices which are connected to only two facegons and marks them to not be
- * used in the data-structures derived from the mesh. For each pair of facegons which has such a
- * vertex, an edge is created for the dual mesh between the centers of those two facegons. All
+ * Finds 'normal' vertices which are connected to only two faces and marks them to not be
+ * used in the data-structures derived from the mesh. For each pair of faces which has such a
+ * vertex, an edge is created for the dual mesh between the centers of those two faces. All
  * edges in the input mesh which contain such a vertex are marked as 'done' to prevent duplicate
  * edges being created. (See #94144)
  */
@@ -627,7 +627,7 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
   Array<VertexType> vertex_types(src_mesh.totvert);
   Array<EdgeType> edge_types(src_mesh.totedge);
   calc_boundaries(src_mesh, vertex_types, edge_types);
-  /* Stores the indices of the facegons connected to the vertex. Because the facegons are looped
+  /* Stores the indices of the faces connected to the vertex. Because the faces are looped
    * over in order of their indices, the face's indices will be sorted in ascending order.
    * (This can change once they are sorted using `sort_vertex_faces`). */
   Array<int> vert_to_face_offset_data;
@@ -779,7 +779,7 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
        * loop_indices), together with their shared edges e3 and e4 (which get stored in
        * shared_edges). The ordering could end up being clockwise or counterclockwise, for this
        * we'll assume that the ordering f1->f2->f3 is chosen. After that we add the edges in
-       * between the facegons, in this case the edges f1--f2, and f2--f3. Now we need to merge
+       * between the faces, in this case the edges f1--f2, and f2--f3. Now we need to merge
        * these with the boundary edges e1 and e2. To do this we create an edge from f3 to the
        * midpoint of e2 (computed in a previous step), from this midpoint to V, from V to the
        * midpoint of e1 and from the midpoint of e1 to f1.
@@ -817,7 +817,7 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
       int edge1;
       int edge2;
       if (loop_indices.size() >= 2) {
-        /* The first boundary edge is at the end of the chain of facegons. */
+        /* The first boundary edge is at the end of the chain of faces. */
         boundary_edge_on_face(src_edges,
                               src_corner_edges.slice(src_faces[loop_indices.last()]),
                               i,

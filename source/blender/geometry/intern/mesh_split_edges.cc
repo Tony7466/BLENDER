@@ -225,7 +225,7 @@ static int adjacent_edge(const Span<int> corner_verts,
 
 /**
  * Calculate the disjoint fans connected to the vertex, where a fan is a group of edges connected
- * through facegons. The connected_edges vector is rearranged in such a way that edges in the same
+ * through faces. The connected_edges vector is rearranged in such a way that edges in the same
  * fan are grouped together. The r_fans_sizes Vector gives the sizes of the different fans, and can
  * be used to retrieve the fans from connected_edges.
  */

@@ -597,8 +597,8 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
 
 /* Components of the algorithm:
  * 1. Figure out which vertices should be present in the output mesh.
- * 2. Find edges and facegons only using those vertices.
- * 3. Create a new mesh that only uses the found vertices, edges and facegons.
+ * 2. Find edges and faces only using those vertices.
+ * 3. Create a new mesh that only uses the found vertices, edges and faces.
  */
 static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
 {

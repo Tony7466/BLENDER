@@ -128,7 +128,7 @@ enum {
   MREMAP_MODE_LOOP_POLYINTERP_LNORPROJ = MREMAP_MODE_LOOP | MREMAP_USE_POLY | MREMAP_USE_NORPROJ |
                                          MREMAP_USE_INTERP,
 
-  /* ***** Target's facegons ***** */
+  /* ***** Target's faces ***** */
   MREMAP_MODE_POLY = 1 << 27,
 
   /* Nearest source face. */
