@@ -36,7 +36,7 @@
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
@@ -180,7 +180,6 @@ const float (*BKE_mesh_wrapper_vert_coords(const Mesh *mesh))[3]
   }
   return nullptr;
 }
-
 
 const float (*BKE_mesh_wrapper_poly_normals(Mesh *mesh))[3]
 {
