@@ -59,11 +59,11 @@ class LayerNodeDropTarget : public AbstractTreeViewItemDropTarget {
     std::string_view drop_name = drop_tree_node_.name;
 
     switch (drag_info.drop_location) {
-      case DROP_INTO:
+      case DropLocation::Into:
         return fmt::format(TIP_("Move layer {} into {}"), drag_name, drop_name);
-      case DROP_BEFORE:
+      case DropLocation::Before:
         return fmt::format(TIP_("Move layer {} above {}"), drag_name, drop_name);
-      case DROP_AFTER:
+      case DropLocation::After:
         return fmt::format(TIP_("Move layer {} below {}"), drag_name, drop_name);
       default:
         BLI_assert_unreachable();
@@ -89,7 +89,7 @@ class LayerNodeDropTarget : public AbstractTreeViewItemDropTarget {
     }
 
     switch (drag_info.drop_location) {
-      case DROP_INTO: {
+      case DropLocation::Into: {
         BLI_assert_msg(drop_tree_node_.is_group(),
                        "Inserting should not be possible for layers, only for groups, because "
                        "only groups use DropBehavior::Reorder_and_Insert");
@@ -99,12 +99,12 @@ class LayerNodeDropTarget : public AbstractTreeViewItemDropTarget {
         drop_group.add_layer(&drag_layer);
         return true;
       }
-      case DROP_BEFORE:
+      case DropLocation::Before:
         drag_parent.unlink_node(&drag_layer.as_node());
         /* Draw order is inverted, so inserting before means inserting below. */
         drop_parent_group->add_layer_after(&drag_layer, &drop_tree_node_);
         return true;
-      case DROP_AFTER:
+      case DropLocation::After:
         drag_parent.unlink_node(&drag_layer.as_node());
         /* Draw order is inverted, so inserting after means inserting above. */
         drop_parent_group->add_layer_before(&drag_layer, &drop_tree_node_);
