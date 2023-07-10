@@ -35,12 +35,12 @@ class LayerTreeView : public AbstractTreeView {
   GreasePencil &grease_pencil_;
 };
 
-class LayerNodeDropTarget : public AbstractTreeViewItemDropTarget {
+class LayerNodeDropTarget : public TreeViewItemDropTarget {
   TreeNode &drop_tree_node_;
 
  public:
   LayerNodeDropTarget(AbstractTreeView &view, TreeNode &drop_tree_node, DropBehavior behavior)
-      : AbstractTreeViewItemDropTarget(view, behavior), drop_tree_node_(drop_tree_node)
+      : TreeViewItemDropTarget(view, behavior), drop_tree_node_(drop_tree_node)
   {
   }
 
@@ -203,7 +203,7 @@ class LayerViewItem : public AbstractTreeViewItem {
         static_cast<LayerTreeView &>(get_tree_view()), grease_pencil_, layer_);
   }
 
-  std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target() override
+  std::unique_ptr<TreeViewItemDropTarget> create_drop_target() override
   {
     return std::make_unique<LayerNodeDropTarget>(
         get_tree_view(), layer_.as_node(), DropBehavior::Reorder);
@@ -272,10 +272,10 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
     return group_.name();
   }
 
-  std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target() override
+  std::unique_ptr<TreeViewItemDropTarget> create_drop_target() override
   {
     return std::make_unique<LayerNodeDropTarget>(
-        get_tree_view(), group_.as_node(), DropBehavior::Reorder_and_Insert);
+        get_tree_view(), group_.as_node(), DropBehavior::ReorderAndInsert);
   }
 
  private:
