@@ -11,8 +11,6 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "IMB_colormanagement.h"
-
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
 
@@ -68,6 +66,11 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute() override
   {
+    if (get_input("Image").is_single_value()) {
+      get_input("Image").pass_through(get_result("Image"));
+      return;
+    }
+
     if (node_storage(bnode()).variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
       execute_anisotropic();
     }
@@ -78,15 +81,15 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
   void execute_classic()
   {
-    summed_area_table(context(), get_input("Image"), get_result("Image"));
-    return;
+    /* For high radii, we accelerate the filter using a summed area table, making the filter
+     * execute in constant time as opposed to the trivial quadratic complexity. */
+    if (node_storage(bnode()).size > 5) {
+      execute_classic_summed_area_table();
+      return;
+    }
 
     GPUShader *shader = shader_manager().get("compositor_kuwahara_classic");
     GPU_shader_bind(shader);
-
-    float luminance_coefficients[3];
-    IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
-    GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
 
@@ -103,6 +106,40 @@ class ConvertKuwaharaOperation : public NodeOperation {
     input_image.unbind_as_texture();
     output_image.unbind_as_image();
     GPU_shader_unbind();
+  }
+
+  void execute_classic_summed_area_table()
+  {
+    Result table = Result::Temporary(ResultType::Color, texture_pool(), ResultPrecision::Full);
+    summed_area_table(context(), get_input("Image"), table);
+
+    Result squared_table = Result::Temporary(
+        ResultType::Color, texture_pool(), ResultPrecision::Full);
+    summed_area_table(
+        context(), get_input("Image"), squared_table, SummedAreaTableOperation::Square);
+
+    GPUShader *shader = shader_manager().get("compositor_kuwahara_classic_summed_area_table");
+    GPU_shader_bind(shader);
+
+    GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
+
+    table.bind_as_texture(shader, "table_tx");
+    squared_table.bind_as_texture(shader, "squared_table_tx");
+
+    const Domain domain = compute_domain();
+    Result &output_image = get_result("Image");
+    output_image.allocate_texture(domain);
+    output_image.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    table.unbind_as_texture();
+    squared_table.unbind_as_texture();
+    output_image.unbind_as_image();
+    GPU_shader_unbind();
+
+    table.release();
+    squared_table.release();
   }
 
   void execute_anisotropic()

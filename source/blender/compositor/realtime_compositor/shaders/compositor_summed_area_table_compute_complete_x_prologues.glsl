@@ -7,9 +7,8 @@ shared vec4 complete_prologue[gl_WorkGroupSize.x];
 /* See the compute_complete_x_prologues function for a description of this shader. */
 void main()
 {
-  /* Note that the prologues are stored transposed, so the dispatch domain actually conceptually
-   * covers the vertical axis of the image. But the direction is not important in this shader, so
-   * assume a horizontal dispatch domain for simplicity. */
+  /* Note that the X prologues are stored transposed, hence the horizontal dispatch domain, even
+   * though, conceptually, the dispatch domain covers the vertical axis of the image. */
   int x = int(gl_GlobalInvocationID.x);
 
   vec4 accumulated_color = vec4(0.0);

@@ -1,31 +1,52 @@
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
 
+/* An intermediate shared memory where the result of X accumulation will be stored. */
+shared vec4 block[gl_WorkGroupSize.x][gl_WorkGroupSize.y];
+
 /* See the compute_incomplete_prologues function for a description of this shader. */
 void main()
 {
-  /* Dispatches along the y axis corresponds to groups along the serial axis, while dispatches
-   * along the x axis corresponds to individual threads along the parallel axis. */
-  int parallel_axis_index = int(gl_GlobalInvocationID.x);
-  int serial_axis_group_index = int(gl_GlobalInvocationID.y);
+  /* Accumulate the block along the horizontal direction writing each accumulation step to the
+   * intermediate shared memory block, and writing the final accumulated value to the suitable
+   * prologue. */
+  if (gl_LocalInvocationID.x == 0) {
+    vec4 x_accumulated_color = vec4(0.0);
+    for (int i = 0; i < gl_WorkGroupSize.x; i++) {
+      ivec2 texel = ivec2(gl_WorkGroupID.x * gl_WorkGroupSize.x + i, gl_GlobalInvocationID.y);
+      x_accumulated_color += OPERATION(texture_load(input_tx, texel, vec4(0.0)));
+      block[i][gl_LocalInvocationID.y] = x_accumulated_color;
+    }
 
-  /* Note that the first prologue is the result of summing a virtual block that is before the first
-   * block and we assume that this prologue is all zeros, so we set the prologue to zero as well.
-   * This is implemented by setting the accumulation length to zero for the first dispatch. */
-  int accumulation_length = serial_axis_group_index == 0 ? 0 : int(gl_WorkGroupSize.x);
-
-  vec4 x_accumulated_color = vec4(0.0);
-  vec4 y_accumulated_color = vec4(0.0);
-  for (int i = 0; i < accumulation_length; i++) {
-    /* We subtract one because the first group is the virtual group as mentioned above. */
-    int serial_axis_index = (serial_axis_group_index - 1) * int(gl_WorkGroupSize.x) + i;
-    ivec2 x_read_texel = ivec2(serial_axis_index, parallel_axis_index);
-    x_accumulated_color += texture_load(input_tx, x_read_texel, vec4(0.0));
-    y_accumulated_color += texture_load(input_tx, x_read_texel.yx, vec4(0.0));
+    /* Note that the first column of prologues is the result of accumulating a virtual block that
+     * is before the first column of blocks and we assume that this block is all zeros, so we set
+     * the prologue to zero as well. This is implemented by writing starting from the second column
+     * and writing zero to the first column, hence the plus one in the write_texel. */
+    ivec2 write_texel = ivec2(gl_GlobalInvocationID.y, gl_WorkGroupID.x + 1);
+    imageStore(incomplete_x_prologues_img, write_texel, x_accumulated_color);
+    if (gl_WorkGroupID.x == 0) {
+      imageStore(incomplete_x_prologues_img, ivec2(write_texel.x, 0), vec4(0.0));
+    }
   }
 
-  /* Store both prologues with the parallel axis aligned with the horizontal texture axis for
-   * better cache locality. */
-  ivec2 write_texel = ivec2(parallel_axis_index, serial_axis_group_index);
-  imageStore(incomplete_x_prologues_img, write_texel, x_accumulated_color);
-  imageStore(incomplete_y_prologues_img, write_texel, y_accumulated_color);
+  /* Make sure the result of X accumulation is completely done. */
+  barrier();
+
+  /* Accumulate the block along the vertical direction writing the final accumulated value to the
+   * suitable prologue. */
+  if (gl_LocalInvocationID.y == 0) {
+    vec4 y_accumulated_color = vec4(0.0);
+    for (int i = 0; i < gl_WorkGroupSize.y; i++) {
+      y_accumulated_color += block[gl_LocalInvocationID.x][i];
+    }
+
+    /* Note that the first row of prologues is the result of accumulating a virtual block that is
+     * before the first row of blocks and we assume that this block is all zeros, so we set the
+     * prologue to zero as well. This is implemented by writing starting from the second row and
+     * writing zero to the first row, hence the plus one in the write_texel. */
+    ivec2 write_texel = ivec2(gl_GlobalInvocationID.x, gl_WorkGroupID.y + 1);
+    imageStore(incomplete_y_prologues_img, write_texel, y_accumulated_color);
+    if (gl_WorkGroupID.y == 0) {
+      imageStore(incomplete_y_prologues_img, ivec2(write_texel.x, 0), vec4(0.0));
+    }
+  }
 }
