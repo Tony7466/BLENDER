@@ -197,27 +197,30 @@ static void build_face_to_face_by_edge_map(const OffsetIndices<int> faces,
                                            Array<int> &r_offsets,
                                            Array<int> &r_indices)
 {
-  Array<int> edge_to_face_offsets;
+  Array<int> edge_to_face_offset_data;
   Array<int> edge_to_face_indices;
   const GroupedSpan<int> edge_to_face_map = bke::mesh::build_edge_to_face_map(
-      faces, corner_edges, edges_num, edge_to_face_offsets, edge_to_face_indices);
+      faces, corner_edges, edges_num, edge_to_face_offset_data, edge_to_face_indices);
+  const OffsetIndices<int> edge_to_face_offsets(edge_to_face_offset_data);
 
   r_offsets = Array<int>(faces.size() + 1, 0);
-  for (const int face_i : faces.index_range()) {
-    for (const int edge : corner_edges.slice(faces[face_i])) {
-      for (const int neighbor : edge_to_face_map[edge]) {
-        if (neighbor != face_i) {
-          r_offsets[face_i]++;
-        }
+  threading::parallel_for(faces.index_range(), 4096, [&](const IndexRange range) {
+    for (const int face_i : range) {
+      for (const int edge : corner_edges.slice(faces[face_i])) {
+        /* Subtract face itself from the number of faces connected to the edge. */
+        r_offsets[face_i] += edge_to_face_offsets[edge].size() - 1;
       }
     }
-  }
-  const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
+  });
+  const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
   r_indices.reinitialize(offsets.total_size());
 
   threading::parallel_for(faces.index_range(), 1024, [&](IndexRange range) {
     for (const int face_i : range) {
       MutableSpan<int> neighbors = r_indices.as_mutable_span().slice(offsets[face_i]);
+      if (neighbors.is_empty()) {
+        continue;
+      }
       int count = 0;
       for (const int edge : corner_edges.slice(faces[face_i])) {
         for (const int neighbor : edge_to_face_map[edge]) {

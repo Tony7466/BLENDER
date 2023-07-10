@@ -776,9 +776,7 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
 
   /* Allocate new point cloud. */
   PointCloud *dst_pointcloud = BKE_pointcloud_new_nomain(tot_points);
-  bke::PointCloudComponent &dst_component =
-      r_realized_geometry.get_component_for_write<bke::PointCloudComponent>();
-  dst_component.replace(dst_pointcloud);
+  r_realized_geometry.replace_pointcloud(dst_pointcloud);
   bke::MutableAttributeAccessor dst_attributes = dst_pointcloud->attributes_for_write();
 
   const RealizePointCloudTask &first_task = tasks.first();
@@ -1092,12 +1090,10 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   const int tot_vertices = last_task.start_indices.vertex + last_mesh.totvert;
   const int tot_edges = last_task.start_indices.edge + last_mesh.totedge;
   const int tot_loops = last_task.start_indices.loop + last_mesh.totloop;
-  const int tot_face = last_task.start_indices.face + last_mesh.faces_num;
+  const int tot_faces = last_task.start_indices.face + last_mesh.faces_num;
 
-  Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_face, tot_loops);
-  bke::MeshComponent &dst_component =
-      r_realized_geometry.get_component_for_write<bke::MeshComponent>();
-  dst_component.replace(dst_mesh);
+  Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_faces, tot_loops);
+  r_realized_geometry.replace_mesh(dst_mesh);
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
   MutableSpan<float3> dst_positions = dst_mesh->vert_positions_for_write();
   MutableSpan<int2> dst_edges = dst_mesh->edges_for_write();
