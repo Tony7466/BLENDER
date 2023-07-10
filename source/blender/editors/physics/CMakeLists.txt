@@ -23,7 +23,7 @@ set(INC_SYS
 )
 
 set(SRC
-  dynamicpaint_ops.c
+  dynamicpaint_ops.cc
   particle_boids.c
   particle_edit.c
   particle_edit_undo.c

@@ -53,9 +53,9 @@
 
 #include "physics_intern.h" /* own include */
 
-static int surface_slot_add_exec(bContext *C, wmOperator *UNUSED(op))
+static int surface_slot_add_exec(bContext *C, wmOperator * /*op*/)
 {
-  DynamicPaintModifierData *pmd = NULL;
+  DynamicPaintModifierData *pmd = nullptr;
   Object *cObject = ED_object_context(C);
   DynamicPaintCanvasSettings *canvas;
   DynamicPaintSurface *surface;
@@ -96,9 +96,9 @@ void DPAINT_OT_surface_slot_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int surface_slot_remove_exec(bContext *C, wmOperator *UNUSED(op))
+static int surface_slot_remove_exec(bContext *C, wmOperator * /*op*/)
 {
-  DynamicPaintModifierData *pmd = NULL;
+  DynamicPaintModifierData *pmd = nullptr;
   Object *obj_ctx = ED_object_context(C);
   DynamicPaintCanvasSettings *canvas;
   DynamicPaintSurface *surface;
@@ -111,7 +111,7 @@ static int surface_slot_remove_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   canvas = pmd->canvas;
-  surface = canvas->surfaces.first;
+  surface = static_cast<DynamicPaintSurface *>(canvas->surfaces.first);
 
   /* find active surface and remove it */
   for (; surface; surface = surface->next) {
@@ -234,10 +234,10 @@ static int output_toggle_exec(bContext *C, wmOperator *op)
     /* Vertex Color Layer */
     if (surface->type == MOD_DPAINT_SURFACE_T_PAINT) {
       if (!exists) {
-        ED_mesh_color_add(ob->data, name, true, true, op->reports);
+        ED_mesh_color_add(static_cast<Mesh *>(ob->data), name, true, true, op->reports);
       }
       else {
-        BKE_id_attribute_remove(ob->data, name, NULL);
+        BKE_id_attribute_remove(static_cast<ID *>(ob->data), name, nullptr);
       }
     }
     /* Vertex Weight Layer */
@@ -264,7 +264,7 @@ void DPAINT_OT_output_toggle(wmOperatorType *ot)
   static const EnumPropertyItem prop_output_toggle_types[] = {
       {0, "A", 0, "Output A", ""},
       {1, "B", 0, "Output B", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -285,7 +285,7 @@ void DPAINT_OT_output_toggle(wmOperatorType *ot)
 
 /***************************** Image Sequence Baking ******************************/
 
-typedef struct DynamicPaintBakeJob {
+struct DynamicPaintBakeJob {
   /* from wmJob */
   void *owner;
   bool *stop, *do_update;
@@ -301,17 +301,17 @@ typedef struct DynamicPaintBakeJob {
 
   int success;
   double start;
-} DynamicPaintBakeJob;
+};
 
 static void dpaint_bake_free(void *customdata)
 {
-  DynamicPaintBakeJob *job = customdata;
+  DynamicPaintBakeJob *job = static_cast<DynamicPaintBakeJob *>(customdata);
   MEM_freeN(job);
 }
 
 static void dpaint_bake_endjob(void *customdata)
 {
-  DynamicPaintBakeJob *job = customdata;
+  DynamicPaintBakeJob *job = static_cast<DynamicPaintBakeJob *>(customdata);
   DynamicPaintCanvasSettings *canvas = job->canvas;
 
   canvas->flags &= ~MOD_DPAINT_BAKING;
@@ -321,7 +321,7 @@ static void dpaint_bake_endjob(void *customdata)
   G.is_rendering = false;
   BKE_spacedata_draw_locks(false);
 
-  WM_set_locked_interface(G_MAIN->wm.first, false);
+  WM_set_locked_interface(static_cast<wmWindowManager *>(G_MAIN->wm.first), false);
 
   /* Bake was successful:
    * Report for ended bake and how long it took */
@@ -434,7 +434,7 @@ static void dynamicPaint_bakeImageSequence(DynamicPaintBakeJob *job)
 
 static void dpaint_bake_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
 {
-  DynamicPaintBakeJob *job = customdata;
+  DynamicPaintBakeJob *job = static_cast<DynamicPaintBakeJob *>(customdata);
 
   job->stop = stop;
   job->do_update = do_update;
@@ -473,14 +473,14 @@ static int dynamicpaint_bake_exec(bContext *C, wmOperator *op)
    */
   DynamicPaintModifierData *pmd = (DynamicPaintModifierData *)BKE_modifiers_findby_type(
       object_eval, eModifierType_DynamicPaint);
-  if (pmd == NULL) {
+  if (pmd == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Bake failed: no Dynamic Paint modifier found");
     return OPERATOR_CANCELLED;
   }
 
   /* Make sure we're dealing with a canvas */
   DynamicPaintCanvasSettings *canvas = pmd->canvas;
-  if (canvas == NULL) {
+  if (canvas == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Bake failed: invalid canvas");
     return OPERATOR_CANCELLED;
   }
@@ -490,7 +490,8 @@ static int dynamicpaint_bake_exec(bContext *C, wmOperator *op)
   canvas->error[0] = '\0';
   canvas->flags |= MOD_DPAINT_BAKING;
 
-  DynamicPaintBakeJob *job = MEM_mallocN(sizeof(DynamicPaintBakeJob), "DynamicPaintBakeJob");
+  DynamicPaintBakeJob *job = static_cast<DynamicPaintBakeJob *>(
+      MEM_mallocN(sizeof(DynamicPaintBakeJob), "DynamicPaintBakeJob"));
   job->bmain = CTX_data_main(C);
   job->scene = scene_eval;
   job->depsgraph = depsgraph;
@@ -507,7 +508,7 @@ static int dynamicpaint_bake_exec(bContext *C, wmOperator *op)
 
   WM_jobs_customdata_set(wm_job, job, dpaint_bake_free);
   WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
-  WM_jobs_callbacks(wm_job, dpaint_bake_startjob, NULL, NULL, dpaint_bake_endjob);
+  WM_jobs_callbacks(wm_job, dpaint_bake_startjob, nullptr, nullptr, dpaint_bake_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
 
