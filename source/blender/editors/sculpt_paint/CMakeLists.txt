@@ -15,7 +15,6 @@ set(INC
   ../../geometry
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../render
@@ -97,7 +96,8 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
-  PRIVATE bf_intern_atomic
+  PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_TBB)
