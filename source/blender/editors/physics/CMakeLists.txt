@@ -29,7 +29,7 @@ set(SRC
   particle_edit_undo.cc
   particle_object.cc
   physics_fluid.cc
-  physics_ops.c
+  physics_ops.cc
   physics_pointcache.c
   rigidbody_constraint.c
   rigidbody_object.c
