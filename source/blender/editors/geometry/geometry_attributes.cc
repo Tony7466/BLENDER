@@ -11,7 +11,6 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
-//#include "DNA_point_cloud_types.h"
 
 #include "BLI_bounds.hh"
 #include "BLI_generic_pointer.hh"
@@ -99,25 +98,19 @@ std::optional<Bounds<float3>> selection_bounds_for_geometry(const bke::GeometryS
 {
   Vector<Bounds<float3>> bounds_list;
 
-  if (geometry.has_curves()) {
-    const Curves &curves_id = *geometry.get_curves_for_read();
-    const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-    const std::optional<Bounds<float3>> bounds = selection_bounds_for_curves(curves);
-    if (bounds.has_value()) {
+  if (const Curves *curves_id = geometry.get_curves_for_read()) {
+    const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    if (const std::optional<Bounds<float3>> bounds = selection_bounds_for_curves(curves)) {
       bounds_list.append(*bounds);
     }
   }
-  if (geometry.has_mesh()) {
-    const Mesh &mesh = *geometry.get_mesh_for_read();
-    const std::optional<Bounds<float3>> bounds = selection_bounds_for_mesh(mesh);
-    if (bounds.has_value()) {
+  if (const Mesh *mesh = geometry.get_mesh_for_read()) {
+    if (const std::optional<Bounds<float3>> bounds = selection_bounds_for_mesh(*mesh)) {
       bounds_list.append(*bounds);
     }
   }
-  if (geometry.has_pointcloud()) {
-    const PointCloud &points = *geometry.get_pointcloud_for_read();
-    const std::optional<Bounds<float3>> bounds = selection_bounds_for_points(points);
-    if (bounds.has_value()) {
+  if (const PointCloud *points = geometry.get_pointcloud_for_read()) {
+    if (const std::optional<Bounds<float3>> bounds = selection_bounds_for_points(*points)) {
       bounds_list.append(*bounds);
     }
   }

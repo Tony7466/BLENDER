@@ -18,7 +18,6 @@
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
-#include "BKE_curves.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"

@@ -13,9 +13,9 @@
 #include <optional>
 
 #include "BLI_bounds_types.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
-#include "BLI_virtual_array.hh"
 
 namespace blender::bounds {
 
@@ -102,38 +102,6 @@ template<typename T>
         Bounds<T> result = init;
         mask.slice(range).foreach_index_optimized<int>(
             [&](const int i) { math::min_max(values[i], result.min, result.max); });
-        return result;
-      },
-      [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
-}
-
-template<typename T>
-[[nodiscard]] inline std::optional<Bounds<T>> min_max_selected(const Span<T> values,
-                                                               const VArray<bool> selections)
-{
-  if (values.is_empty()) {
-    return std::nullopt;
-  }
-  if (std::optional<bool> selection = selections.get_if_single()) {
-    if (selection) {
-      return min_max(values);
-    }
-    else {
-      return std::nullopt;
-    }
-  }
-  const Bounds<T> init{values.first(), values.first()};
-  return threading::parallel_reduce(
-      values.index_range(),
-      1024,
-      init,
-      [&](const IndexRange range, const Bounds<T> &init) {
-        Bounds<T> result = init;
-        for (const int i : range) {
-          if (selections[i]) {
-            math::min_max(values[i], result.min, result.max);
-          }
-        }
         return result;
       },
       [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
