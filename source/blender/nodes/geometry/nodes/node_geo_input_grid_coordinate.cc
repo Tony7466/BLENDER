@@ -22,7 +22,7 @@
 #  include <openvdb/tools/Interpolation.h>
 #endif
 
-namespace blender::nodes::node_geo_input_volume_coordinate_cc {
+namespace blender::nodes::node_geo_input_grid_coordinate_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -112,16 +112,15 @@ static void node_geo_exec(GeoNodeExecParams /*params*/)
   // #endif
 }
 
-}  // namespace blender::nodes::node_geo_input_volume_coordinate_cc
+}  // namespace blender::nodes::node_geo_input_grid_coordinate_cc
 
-void register_node_type_geo_input_volume_coordinate()
+void register_node_type_geo_input_grid_coordinate()
 {
-  namespace file_ns = blender::nodes::node_geo_input_volume_coordinate_cc;
+  namespace file_ns = blender::nodes::node_geo_input_grid_coordinate_cc;
 
   static bNodeType ntype;
 
-  geo_node_type_base(
-      &ntype, GEO_NODE_INPUT_VOLUME_COORDINATE, "Grid Coordinate", NODE_CLASS_INPUT);
+  geo_node_type_base(&ntype, GEO_NODE_INPUT_GRID_COORDINATE, "Grid Coordinate", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;

@@ -93,8 +93,8 @@ void register_geometry_nodes()
   register_node_type_geo_input_spline_length();
   register_node_type_geo_input_spline_resolution();
   register_node_type_geo_input_tangent();
-  register_node_type_geo_input_volume_coordinate();
-  register_node_type_geo_input_volume_value();
+  register_node_type_geo_input_grid_coordinate();
+  register_node_type_geo_input_grid_value();
   register_node_type_geo_instance_on_points();
   register_node_type_geo_instances_to_points();
   register_node_type_geo_interpolate_curves();
@@ -153,6 +153,7 @@ void register_geometry_nodes()
   register_node_type_geo_set_curve_normal();
   register_node_type_geo_set_curve_radius();
   register_node_type_geo_set_curve_tilt();
+  register_node_type_geo_set_grid_value();
   register_node_type_geo_set_id();
   register_node_type_geo_set_material_index();
   register_node_type_geo_set_material();

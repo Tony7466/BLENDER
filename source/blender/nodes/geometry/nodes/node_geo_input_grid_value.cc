@@ -23,7 +23,7 @@
 #  include <openvdb/tools/Interpolation.h>
 #endif
 
-namespace blender::nodes::node_geo_input_volume_value_cc {
+namespace blender::nodes::node_geo_input_grid_value_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -481,20 +481,20 @@ static void node_geo_exec(GeoNodeExecParams /*params*/)
 #endif
 }
 
-}  // namespace blender::nodes::node_geo_input_volume_value_cc
+}  // namespace blender::nodes::node_geo_input_grid_value_cc
 
-void register_node_type_geo_input_volume_value()
+void register_node_type_geo_input_grid_value()
 {
-  namespace file_ns = blender::nodes::node_geo_input_volume_value_cc;
+  namespace file_ns = blender::nodes::node_geo_input_grid_value_cc;
 
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_INPUT_VOLUME_VALUE, "Grid Value", NODE_CLASS_INPUT);
+  geo_node_type_base(&ntype, GEO_NODE_INPUT_GRID_VALUE, "Grid Value", NODE_CLASS_INPUT);
   ntype.initfunc = file_ns::node_init;
   ntype.updatefunc = file_ns::node_update;
+  ntype.draw_buttons = file_ns::node_layout;
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   ntype.gather_link_search_ops = file_ns::search_link_ops;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
