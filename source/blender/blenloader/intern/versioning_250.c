@@ -1999,113 +1999,111 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 259, 1)) {
-    {LISTBASE_FOREACH (Scene *, scene, &bmain->scenes){scene->r.ffcodecdata.audio_channels = 2;
-    scene->audio.volume = 1.0f;
-    if (scene->ed) {
-      SEQ_for_each_callback(&scene->ed->seqbase, seq_set_pitch_cb, NULL);
-    }
-  }
-}
-
-{LISTBASE_FOREACH (bScreen *, screen, &bmain->screens){
-    /* add regions */
-    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase){SpaceLink *sl = area->spacedata.first;
-if (sl->spacetype == SPACE_SEQ) {
-  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    if (region->regiontype == RGN_TYPE_WINDOW) {
-      if (region->v2d.min[1] == 4.0f) {
-        region->v2d.min[1] = 0.5f;
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->r.ffcodecdata.audio_channels = 2;
+      scene->audio.volume = 1.0f;
+      if (scene->ed) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_set_pitch_cb, NULL);
       }
     }
-  }
-}
-LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-  if (sl->spacetype == SPACE_SEQ) {
-    LISTBASE_FOREACH (ARegion *, region, &sl->regionbase) {
-      if (region->regiontype == RGN_TYPE_WINDOW) {
-        if (region->v2d.min[1] == 4.0f) {
-          region->v2d.min[1] = 0.5f;
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      /* add regions */
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        SpaceLink *sl = area->spacedata.first;
+        if (sl->spacetype == SPACE_SEQ) {
+          LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+            if (region->regiontype == RGN_TYPE_WINDOW) {
+              if (region->v2d.min[1] == 4.0f) {
+                region->v2d.min[1] = 0.5f;
+              }
+            }
+          }
+        }
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SEQ) {
+            LISTBASE_FOREACH (ARegion *, region, &sl->regionbase) {
+              if (region->regiontype == RGN_TYPE_WINDOW) {
+                if (region->v2d.min[1] == 4.0f) {
+                  region->v2d.min[1] = 0.5f;
+                }
+              }
+            }
+          }
         }
       }
     }
-  }
-}
-}
-}
-}
 
-{
-  /* Make "auto-clamped" handles a per-keyframe setting instead of per-FCurve
-   *
-   * We're only patching F-Curves in Actions here, since it is assumed that most
-   * drivers out there won't be using this (and if they are, they're in the minority).
-   * While we should aim to fix everything ideally, in practice it's far too hard
-   * to get to every animdata block, not to mention the performance hit that'd have
-   */
-  LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
-    LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
-      BezTriple *bezt;
-      uint i = 0;
+    /* Make "auto-clamped" handles a per-keyframe setting instead of per-FCurve
+     *
+     * We're only patching F-Curves in Actions here, since it is assumed that most
+     * drivers out there won't be using this (and if they are, they're in the minority).
+     * While we should aim to fix everything ideally, in practice it's far too hard
+     * to get to every animdata block, not to mention the performance hit that'd have
+     */
+    LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+      LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+        BezTriple *bezt;
+        uint i = 0;
 
-      /* only need to touch curves that had this flag set */
-      if ((fcu->flag & FCURVE_AUTO_HANDLES) == 0) {
-        continue;
-      }
-      if ((fcu->totvert == 0) || (fcu->bezt == NULL)) {
-        continue;
-      }
-
-      /* only change auto-handles to auto-clamped */
-      for (bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
-        if (bezt->h1 == HD_AUTO) {
-          bezt->h1 = HD_AUTO_ANIM;
+        /* only need to touch curves that had this flag set */
+        if ((fcu->flag & FCURVE_AUTO_HANDLES) == 0) {
+          continue;
         }
-        if (bezt->h2 == HD_AUTO) {
-          bezt->h2 = HD_AUTO_ANIM;
+        if ((fcu->totvert == 0) || (fcu->bezt == NULL)) {
+          continue;
         }
-      }
 
-      fcu->flag &= ~FCURVE_AUTO_HANDLES;
+        /* only change auto-handles to auto-clamped */
+        for (bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
+          if (bezt->h1 == HD_AUTO) {
+            bezt->h1 = HD_AUTO_ANIM;
+          }
+          if (bezt->h2 == HD_AUTO) {
+            bezt->h2 = HD_AUTO_ANIM;
+          }
+        }
+
+        fcu->flag &= ~FCURVE_AUTO_HANDLES;
+      }
     }
   }
-}
-}
 
-if (!MAIN_VERSION_ATLEAST(bmain, 259, 2)) {
-  {
-    /* Convert default socket values from bNodeStack */
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 259, 2)) {
+    {
+      /* Convert default socket values from bNodeStack */
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
+            do_versions_socket_default_value_259(sock);
+          }
+          LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
+            do_versions_socket_default_value_259(sock);
+          }
+        }
+
+        LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
           do_versions_socket_default_value_259(sock);
         }
-        LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
+        LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
           do_versions_socket_default_value_259(sock);
         }
-      }
 
-      LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
-        do_versions_socket_default_value_259(sock);
+        BKE_ntree_update_tag_all(ntree);
       }
-      LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
-        do_versions_socket_default_value_259(sock);
-      }
-
-      BKE_ntree_update_tag_all(ntree);
-    }
-    FOREACH_NODETREE_END;
-  }
-}
-
-if (!MAIN_VERSION_ATLEAST(bmain, 259, 4)) {
-  {
-    /* Adaptive time step for particle systems */
-    LISTBASE_FOREACH (ParticleSettings *, part, &bmain->particles) {
-      part->courant_target = 0.2f;
-      part->time_flag &= ~PART_TIME_AUTOSF;
+      FOREACH_NODETREE_END;
     }
   }
-}
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 259, 4)) {
+    {
+      /* Adaptive time step for particle systems */
+      LISTBASE_FOREACH (ParticleSettings *, part, &bmain->particles) {
+        part->courant_target = 0.2f;
+        part->time_flag &= ~PART_TIME_AUTOSF;
+      }
+    }
+  }
 }
 
 /* updates group node socket identifier so that
